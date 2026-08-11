@@ -93,17 +93,25 @@ export const opsPpBadge =
   "inline-flex items-center rounded-md bg-gold-soft px-[11px] py-[3px] text-xs font-bold text-gold-d";
 
 export const opsPpSummary =
-  "mt-4 flex flex-wrap gap-0 border-t border-border pt-3.5 max-lg:grid max-lg:grid-cols-2 max-lg:gap-x-0 max-lg:gap-y-1";
+  "mt-4 flex flex-wrap gap-0 border-t border-border pt-3.5 max-lg:grid max-lg:grid-cols-2 max-lg:gap-x-2 max-lg:gap-y-2.5 max-lg:pt-3";
 
 export const opsPpCell =
-  "mb-2.5 min-w-0 border-s border-border px-3 first:border-s-0 first:ps-0 max-lg:border-s-0 max-lg:px-2 sm:min-w-[140px] sm:px-[18px]";
+  "mb-2.5 min-w-0 border-s border-border px-3 first:border-s-0 first:ps-0 max-lg:mb-0 max-lg:border-s-0 max-lg:px-0 sm:min-w-[140px] sm:px-[18px]";
 
 export const opsPpCellK = "mb-[3px] text-[11px] text-text-3";
 
-export const opsPpCellV = "text-[13.5px] font-semibold text-heading";
+export const opsPpCellV =
+  "break-words text-[13px] font-semibold text-heading sm:text-[13.5px]";
+
+/** Confirm receipt control in task summary — desktop far-left, mobile full-width touch target. */
+export const opsReceiptConfirmWrap =
+  "flex shrink-0 items-center justify-end max-lg:col-span-2 max-lg:mt-1 max-lg:w-full lg:ms-auto lg:border-s-0 lg:pe-0 lg:ps-3";
+
+export const opsReceiptConfirmBtn =
+  "inline-flex min-h-11 items-center justify-center gap-2 rounded-[9px] border-none bg-ink px-[18px] py-2.5 font-[inherit] text-[13px] font-bold text-white transition-colors enabled:hover:bg-navy-3 disabled:cursor-not-allowed disabled:opacity-55 max-lg:w-full max-lg:min-h-12 sm:min-h-9 sm:px-3.5 sm:py-1.5 sm:text-[12.5px]";
 
 export const opsStepFlow =
-  "my-1.5 flex flex-wrap items-center gap-x-0 gap-y-1.5";
+  "my-1.5 flex flex-wrap items-center gap-x-0 gap-y-1.5 max-lg:gap-y-2";
 
 export const opsStep = "flex items-center gap-[9px]";
 
@@ -122,15 +130,15 @@ export const opsStepLbl = "text-[12.5px] font-semibold text-text-3";
 
 export const opsStepLblOn = "text-[12.5px] font-semibold text-heading";
 
-export const opsStepLine = "mx-2 h-0.5 w-[34px] bg-border-md";
+export const opsStepLine = "mx-1.5 h-0.5 w-5 bg-border-md sm:mx-2 sm:w-[34px]";
 
-export const opsStepLineOn = "mx-2 h-0.5 w-[34px] bg-ink";
+export const opsStepLineOn = "mx-1.5 h-0.5 w-5 bg-ink sm:mx-2 sm:w-[34px]";
 
 export const opsMutedHint = "m-0 text-[11.5px] text-text-3";
 
 export const opsLetterTitle = "text-[13.5px] font-extrabold text-heading";
 
-export const opsLetterSub = "text-[11.5px] text-text-3";
+export const opsLetterSub = "text-[11.5px] leading-relaxed text-text-3";
 
 export const opsLetterMeta = "text-[11.5px] font-semibold text-text-3";
 
@@ -160,16 +168,16 @@ export const opsTaskDesc =
   "mt-4 rounded-xl border border-border bg-surface-2 px-4 py-3.5 text-[13px] leading-[1.7] text-text";
 
 export const opsRemindCard =
-  "mt-4 flex flex-wrap items-center justify-between gap-3.5 rounded-xl border border-border bg-surface px-3.5 py-3.5 shadow-card sm:px-[18px]";
+  "mt-4 flex flex-wrap items-center justify-between gap-3.5 rounded-xl border border-border bg-surface px-3.5 py-3.5 shadow-card max-lg:flex-col max-lg:items-stretch sm:px-[18px]";
 
 export const opsRemindBtn =
-  "inline-flex items-center gap-2 rounded-[9px] border-none bg-gold-d px-[18px] py-2.5 font-[inherit] text-[13px] font-bold text-white shadow-[0_6px_16px_-6px_color-mix(in_srgb,var(--gold-d)_60%,transparent)] transition-[background,transform] duration-150 enabled:hover:-translate-y-px enabled:hover:bg-gold disabled:cursor-not-allowed disabled:opacity-55";
+  "inline-flex items-center justify-center gap-2 rounded-[9px] border-none bg-gold-d px-[18px] py-2.5 font-[inherit] text-[13px] font-bold text-white shadow-[0_6px_16px_-6px_color-mix(in_srgb,var(--gold-d)_60%,transparent)] transition-[background,transform] duration-150 enabled:hover:-translate-y-px enabled:hover:bg-gold disabled:cursor-not-allowed disabled:opacity-55 max-lg:w-full max-lg:min-h-11";
 
 export const opsLetterCard =
   "overflow-hidden rounded-[14px] border border-border bg-surface";
 
 export const opsLetterHead =
-  "flex flex-wrap items-center justify-between gap-3 border-b border-border bg-surface-2 px-3.5 py-3.5 sm:px-[18px] sm:py-[15px]";
+  "flex flex-wrap items-center justify-between gap-3 border-b border-border bg-surface-2 px-3.5 py-3.5 max-lg:flex-col max-lg:items-stretch sm:px-[18px] sm:py-[15px]";
 
 export const opsCmtThread = "flex flex-col";
 
@@ -207,9 +215,10 @@ export const opsCmtBar = "mt-[11px] flex items-center gap-2.5";
 
 export const opsAttachBtn = "inline-flex cursor-pointer items-center gap-[7px] rounded-lg border border-border-md bg-surface px-3.5 py-[9px] font-[inherit] text-[12.5px] font-semibold text-text-2 transition-colors duration-[130ms] hover:bg-row-hover hover:text-heading";
 
-export const opsCdWrap = "group/cd relative inline-flex items-center";
+export const opsCdWrap = "group/cd relative inline-flex items-center gap-2";
 
-export const opsCdDot = "relative me-2 inline-block h-[9px] w-[9px] shrink-0 rounded-full";
+export const opsCdDot =
+  "relative inline-block h-[9px] w-[9px] shrink-0 self-center rounded-full";
 
 /** Pair with residual CSS class `ops-cd-dot-live` for pulse + ::after ring */
 export const opsCdTip = "ops-cd-tip pointer-events-none invisible absolute bottom-[calc(100%+8px)] start-0 z-[25] whitespace-nowrap rounded-lg bg-ink px-2.5 py-1.5 text-[11.5px] font-semibold text-white opacity-0 shadow-[0_8px_22px_-8px_rgba(18,40,76,0.42)] transition-[opacity,transform,visibility] duration-150 -translate-y-1 group-hover/cd:visible group-hover/cd:translate-y-0 group-hover/cd:opacity-100";

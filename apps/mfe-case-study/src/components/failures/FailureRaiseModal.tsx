@@ -5,11 +5,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { AppModal } from "@case-study/mfe/components/ui/AppModal";
 import { prototypeKeys } from "@platform/app-shared/query/prototype-keys";
 import { Button, useToast } from "@platform/design-system";
-import {
-  FailureRaiseFields,
-  createFailure,
-  failurePayloadFromDescription,
-} from "@failures/mfe";
+import { FailureRaiseFields, createFailure, failurePayloadFromDescription } from "@failures/mfe";
 
 export function FailureRaiseModal({
   open,
@@ -70,7 +66,17 @@ export function FailureRaiseModal({
       await queryClient.invalidateQueries({
         queryKey: prototypeKeys.failures(),
       });
-      await queryClient.invalidateQueries({ queryKey: prototypeKeys.all });
+      await queryClient.invalidateQueries({
+        queryKey: prototypeKeys.operationsTasks(),
+      });
+      // poRecords / workflow for shells that filter by active failure — not
+      // the whole prototype tree (avoids mass sidebar/finance refetch).
+      await queryClient.invalidateQueries({
+        queryKey: prototypeKeys.workflowTasks(),
+      });
+      await queryClient.invalidateQueries({
+        queryKey: prototypeKeys.poListRows(),
+      });
       showToast("تم رفع التعذر — سيظهر لأخصائي دراسة الحالة.", "success");
       onSubmitted?.();
       onClose();

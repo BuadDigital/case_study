@@ -118,6 +118,8 @@ const nextConfig: NextConfig = {
     "@failures/mfe",
     "@settings/mfe",
     "@survey/mfe",
+    "@financial/mfe",
+    "@keys/mfe",
     "@platform/app-shared",
     "@platform/api-client",
     "@platform/auth-client",

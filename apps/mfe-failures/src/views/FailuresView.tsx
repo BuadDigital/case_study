@@ -120,7 +120,7 @@ function partyScopedFailuresEmptyLine(role: RoleId): string | null {
     case "real-estate-appraiser":
       return "لا توجد تعذرات — سجّل تعذراً من قائمة تقييم العقار أو من تبويب التعذرات في المعاملة.";
     case "government-reviewer":
-      return "لا توجد تعذرات مرتبطة بمهامك — تظهر هنا التعذرات التي رفعتها.";
+      return "لا توجد تعذرات — سجّل تعذراً من تفاصيل المهمة في «المهام»، ثم تظهر هنا.";
     default:
       return null;
   }

@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   Button,
   FormGroup,
@@ -37,10 +38,14 @@ import {
   deletePartyFeePricingTable,
   loadPartyFeePricingById,
   loadPartyFeePricingTables,
+  partyFeePricingTableQueryKey,
+  partyFeePricingTablesQueryKey,
   revisePartyFeePricingConfig,
   savePartyFeePricingAssignments,
   savePartyFeePricingConfig,
 } from "../lib/financial-api";
+
+const PRICING_STALE_MS = 60_000;
 
 const CATEGORIES: {
   id: PartyFeePricingCategory;
@@ -126,6 +131,15 @@ function defaultTableName(count: number): string {
   return count === 0 ? "افتراضي" : `جدول ${count + 1}`;
 }
 
+function pickTableId(
+  list: PartyFeePricingTableSummaryDto[],
+  preferId?: string,
+): string {
+  return preferId && list.some((t) => t.id === preferId)
+    ? preferId
+    : (list.find((t) => t.isActive)?.id ?? list[0]?.id ?? "");
+}
+
 function MoneyInput({
   id,
   value,
@@ -157,6 +171,7 @@ function MoneyInput({
 
 export function FinancePartyFeePricing() {
   const { showToast } = useToast();
+  const queryClient = useQueryClient();
   const isSystemAdmin = useCapability("manage-system-config");
   const canEditOps = useCapability("manage-operations");
   const canEditSpecialist = useCapability("manage-work-orders");
@@ -166,18 +181,61 @@ export function FinancePartyFeePricing() {
   const staffUsers = staffResult?.users ?? [];
   const [selectedCategory, setSelectedCategory] =
     useState<PartyFeePricingCategory>("engineering-survey");
-  const [tables, setTables] = useState<PartyFeePricingTableSummaryDto[]>([]);
   const [selectedId, setSelectedId] = useState("");
   const [draft, setDraft] = useState<PartyFeePricingDto>(
     emptyDraft("engineering-survey"),
   );
-  const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [busy, setBusy] = useState(false);
   const [assignOpen, setAssignOpen] = useState(false);
   const [assignDraft, setAssignDraft] = useState<string[]>([]);
   /** After data lands, drive a short enter animation */
   const [panelEpoch, setPanelEpoch] = useState(0);
+  /** Prefer this table after create/activate/save (before lists settle). */
+  const preferTableIdRef = useRef<string | undefined>(undefined);
+  const syncedDetailIdRef = useRef("");
+
+  const tablesQuery = useQuery({
+    queryKey: partyFeePricingTablesQueryKey(selectedCategory),
+    queryFn: () => loadPartyFeePricingTables(selectedCategory),
+    staleTime: PRICING_STALE_MS,
+  });
+  const tables = tablesQuery.data ?? [];
+
+  // Resolve which table to open (prefer ref after mutations, else active/first).
+  useEffect(() => {
+    if (!tablesQuery.isSuccess) return;
+    const prefer = preferTableIdRef.current;
+    const next = pickTableId(tables, prefer ?? (selectedId || undefined));
+    if (prefer && tables.some((t) => t.id === prefer)) {
+      preferTableIdRef.current = undefined;
+    }
+    if (next !== selectedId) setSelectedId(next);
+  }, [tablesQuery.isSuccess, tables, selectedCategory, selectedId]);
+
+  const detailQuery = useQuery({
+    queryKey: partyFeePricingTableQueryKey(selectedId),
+    queryFn: () => loadPartyFeePricingById(selectedId),
+    enabled: Boolean(selectedId),
+    staleTime: PRICING_STALE_MS,
+  });
+
+  // Apply server detail only when the selected table changes (not background refetch).
+  useEffect(() => {
+    if (!detailQuery.isSuccess || !detailQuery.data) return;
+    if (detailQuery.data.id !== selectedId) return;
+    if (syncedDetailIdRef.current === selectedId) return;
+    syncedDetailIdRef.current = selectedId;
+    setDraft(detailQuery.data);
+    setPanelEpoch((n) => n + 1);
+  }, [selectedId, detailQuery.isSuccess, detailQuery.data]);
+
+  // Tables loading, or detail for the selected table not yet applied to the draft.
+  const loading =
+    tablesQuery.isPending ||
+    (Boolean(selectedId) &&
+      draft.id !== selectedId &&
+      !detailQuery.isSuccess);
   const locked = loading || saving || busy || !canEdit;
 
   /** Category that the on-screen draft belongs to (kept while the next fetch runs). */
@@ -204,75 +262,60 @@ export function FinancePartyFeePricing() {
   const holdingPrevious = loading && Boolean(draft.id);
   const isInitialLoad = loading && !draft.id;
 
-  const pickTableId = (
-    list: PartyFeePricingTableSummaryDto[],
-    preferId?: string,
-  ) =>
-    preferId && list.some((t) => t.id === preferId)
-      ? preferId
-      : (list.find((t) => t.isActive)?.id ?? list[0]?.id ?? "");
+  const invalidateTables = (category: PartyFeePricingCategory) =>
+    queryClient.invalidateQueries({
+      queryKey: partyFeePricingTablesQueryKey(category),
+    });
+
+  const cacheTable = (dto: PartyFeePricingDto) => {
+    queryClient.setQueryData(partyFeePricingTableQueryKey(dto.id), dto);
+    syncedDetailIdRef.current = dto.id;
+    setDraft(dto);
+  };
 
   const refreshTables = async (
     category: PartyFeePricingCategory,
     preferId?: string,
   ) => {
-    const list = await loadPartyFeePricingTables(category);
-    setTables(list);
+    if (preferId) preferTableIdRef.current = preferId;
+    await invalidateTables(category);
+    const list = await queryClient.fetchQuery({
+      queryKey: partyFeePricingTablesQueryKey(category),
+      queryFn: () => loadPartyFeePricingTables(category),
+      staleTime: PRICING_STALE_MS,
+    });
     const nextId = pickTableId(list, preferId);
-    setSelectedId(nextId);
+    if (nextId !== selectedId) setSelectedId(nextId);
     return nextId;
   };
 
   const loadTable = async (id: string, category: PartyFeePricingCategory) => {
     if (!id) {
       setDraft(emptyDraft(category));
+      syncedDetailIdRef.current = "";
       return;
     }
-    setDraft(await loadPartyFeePricingById(id));
+    syncedDetailIdRef.current = "";
+    setSelectedId(id);
+    const detail = await queryClient.fetchQuery({
+      queryKey: partyFeePricingTableQueryKey(id),
+      queryFn: () => loadPartyFeePricingById(id),
+      staleTime: PRICING_STALE_MS,
+    });
+    cacheTable(detail);
   };
-
-  useEffect(() => {
-    let cancelled = false;
-    const category = selectedCategory;
-    setLoading(true);
-
-    void (async () => {
-      try {
-        const list = await loadPartyFeePricingTables(category);
-        if (cancelled) return;
-        setTables(list);
-        const id = pickTableId(list);
-        setSelectedId(id);
-        if (id) {
-          const detail = await loadPartyFeePricingById(id);
-          if (cancelled) return;
-          setDraft(detail);
-        } else {
-          setDraft(emptyDraft(category));
-        }
-        if (!cancelled) setPanelEpoch((n) => n + 1);
-      } catch {
-        if (!cancelled) showToast("تعذّر تحميل تسعير الأتعاب", "error");
-      } finally {
-        if (!cancelled) setLoading(false);
-      }
-    })();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [selectedCategory, showToast]);
 
   const selectCategory = (category: PartyFeePricingCategory) => {
     if (category === selectedCategory || busy || saving) return;
-    // Do not wipe draft/tables — keep previous content for a smooth hold until fetch lands.
+    // Drop selection so we do not fetch the previous category's table id.
+    syncedDetailIdRef.current = "";
+    preferTableIdRef.current = undefined;
+    setSelectedId("");
     setSelectedCategory(category);
-    setLoading(true);
   };
 
   const selectTable = async (id: string) => {
     if (!id || id === selectedId || loading) return;
-    setSelectedId(id);
     setBusy(true);
     try {
       await loadTable(id, selectedCategory);
@@ -300,12 +343,7 @@ export function FinancePartyFeePricing() {
       const saved = createsRevision
         ? await revisePartyFeePricingConfig(draft.id, request)
         : await savePartyFeePricingConfig(draft.id, request);
-      setDraft(saved);
-      setTables((prev) =>
-        prev.map((t) =>
-          t.id === saved.id ? { ...t, name: saved.name, isActive: saved.isActive } : t,
-        ),
-      );
+      cacheTable(saved);
       await refreshTables(selectedCategory, saved.id);
       showToast(
         createsRevision
@@ -341,7 +379,7 @@ export function FinancePartyFeePricing() {
           : undefined,
       );
       await refreshTables(selectedCategory, created.id);
-      setDraft(created);
+      cacheTable(created);
       showToast(
         kind === "flat" ? "تم إنشاء جدول حوافز مقطوع" : "تم إنشاء جدول جديد",
         "success",
@@ -361,7 +399,7 @@ export function FinancePartyFeePricing() {
     setBusy(true);
     try {
       const activated = await activatePartyFeePricingTable(draft.id);
-      setDraft(activated);
+      cacheTable(activated);
       await refreshTables(selectedCategory, activated.id);
       showToast("صار هذا الجدول هو الافتراضي للفئة", "success");
     } catch (err: unknown) {
@@ -390,7 +428,7 @@ export function FinancePartyFeePricing() {
     setBusy(true);
     try {
       const saved = await savePartyFeePricingAssignments(draft.id, assignDraft);
-      setDraft(saved);
+      cacheTable(saved);
       await refreshTables(selectedCategory, saved.id);
       setAssignOpen(false);
       showToast("تم حفظ الإسناد", "success");
@@ -410,9 +448,15 @@ export function FinancePartyFeePricing() {
     setBusy(true);
     try {
       await deletePartyFeePricingTable(draft.id);
+      queryClient.removeQueries({
+        queryKey: partyFeePricingTableQueryKey(draft.id),
+      });
       const nextId = await refreshTables(selectedCategory);
       if (nextId) await loadTable(nextId, selectedCategory);
-      else setDraft(emptyDraft(selectedCategory));
+      else {
+        syncedDetailIdRef.current = "";
+        setDraft(emptyDraft(selectedCategory));
+      }
       showToast("تم حذف الجدول", "success");
     } catch (err: unknown) {
       showToast(
@@ -487,18 +531,18 @@ export function FinancePartyFeePricing() {
       : "";
 
   return (
-    <div className="w-full pb-8">
+    <div className="w-full pb-10 sm:pb-12">
       {/* رأس بسيط — خطوة واحدة واضحة */}
-      <header className="mb-6 space-y-1">
-        <h1 className="m-0 text-[1.35rem] font-bold tracking-tight text-heading">
+      <header className="mb-7 space-y-2">
+        <h1 className="m-0 text-[1.35rem] font-bold tracking-tight text-heading sm:text-[1.5rem]">
           التسعيرة
         </h1>
-        <p className="m-0 text-[13px] leading-relaxed text-text-2">
+        <p className="m-0 max-w-2xl text-[13px] leading-relaxed text-text-2 sm:text-[13.5px]">
           اختر الفئة، عدّل الأسعار، احفظ. الإسناد للمستحقين اختياري من زر «من يخصّه
           الجدول».
         </p>
         {!canEdit ? (
-          <p className="m-0 pt-1 text-[12px] text-text-3">
+          <p className="m-0 pt-0.5 text-[12px] text-text-3">
             وضع العرض فقط — لا صلاحية للتعديل.
           </p>
         ) : null}
@@ -506,7 +550,7 @@ export function FinancePartyFeePricing() {
 
       {/* 1) الفئة — شريط أفقي بدل قائمة جانبية */}
       <div
-        className="mb-5 flex flex-wrap gap-2"
+        className="mb-4 flex flex-wrap gap-2 sm:mb-5"
         role="tablist"
         aria-label="فئة التسعيرة"
       >
@@ -521,7 +565,7 @@ export function FinancePartyFeePricing() {
               disabled={busy || saving}
               onClick={() => selectCategory(cat.id)}
               className={cn(
-                "rounded-full border px-3.5 py-2 text-[13px] font-semibold transition-colors duration-200 ease-out",
+                "rounded-full border px-4 py-2.5 text-[13px] font-semibold transition-colors duration-200 ease-out",
                 on
                   ? "border-heading bg-heading text-white"
                   : "border-border bg-surface text-text-2 hover:border-border-md hover:bg-surface-2",
@@ -536,7 +580,7 @@ export function FinancePartyFeePricing() {
       {/* 2) الجدول — صف واحد: قائمة + إضافة */}
       <div
         className={cn(
-          "mb-5 flex flex-col gap-2 transition-opacity duration-200 sm:flex-row sm:items-center",
+          "mb-5 flex flex-col gap-2.5 transition-opacity duration-200 sm:mb-6 sm:flex-row sm:items-center sm:gap-3",
           holdingPrevious ? "opacity-55" : "opacity-100",
         )}
       >
@@ -546,7 +590,7 @@ export function FinancePartyFeePricing() {
         <select
           id="pricing-table-select"
           className={cn(
-            "min-h-11 w-full flex-1 rounded-lg border border-border bg-surface px-3 text-[13px] font-medium text-text",
+            "min-h-11 w-full flex-1 rounded-lg border border-border bg-surface px-3.5 py-2.5 text-[13px] font-medium text-text",
             "transition-[border-color,box-shadow] duration-200",
             "focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-primary",
           )}
@@ -573,7 +617,7 @@ export function FinancePartyFeePricing() {
           )}
         </select>
         {canEdit ? (
-          <div className="flex shrink-0 gap-2">
+          <div className="flex shrink-0 flex-wrap gap-2">
             <Button
               type="button"
               variant="outline"
@@ -599,25 +643,25 @@ export function FinancePartyFeePricing() {
       {/* 3) مساحة العمل — hold + fade بدل skeleton عند التنقل */}
       <div
         className={cn(
-          "relative min-h-[240px] overflow-hidden rounded-xl border border-border bg-surface",
+          "relative min-h-[260px] overflow-hidden rounded-xl border border-border bg-surface shadow-sm",
           "transition-[box-shadow,border-color] duration-300 ease-out",
           holdingPrevious && "border-border-md shadow-none",
         )}
         aria-busy={loading || busy}
       >
         {isInitialLoad ? (
-          <div className="space-y-3 px-5 py-10" aria-live="polite">
+          <div className="space-y-4 px-6 py-12 sm:px-8 sm:py-14" aria-live="polite">
             <div className="mx-auto h-3 w-32 animate-pulse rounded bg-surface-2" />
             <div className="mx-auto h-10 max-w-md animate-pulse rounded-lg bg-surface-2" />
             <div className="mx-auto h-10 max-w-md animate-pulse rounded-lg bg-surface-2" />
-            <p className="m-0 pt-2 text-center text-[12px] text-text-3">
+            <p className="m-0 pt-1 text-center text-[12px] text-text-3">
               جاري تحميل {activeCategory?.label ?? "التسعيرة"}…
             </p>
           </div>
         ) : showEmpty ? (
           <div
             key={`empty-${panelEpoch}`}
-            className="px-5 py-12 text-center animate-[pricing-panel-in_0.28s_ease-out]"
+            className="px-6 py-14 text-center animate-[pricing-panel-in_0.28s_ease-out] sm:px-8 sm:py-16"
           >
             <p className="m-0 text-[14px] font-medium text-text">
               لا يوجد جدول في هذه الفئة
@@ -626,7 +670,7 @@ export function FinancePartyFeePricing() {
               <Button
                 type="button"
                 variant="primary"
-                className="mt-4"
+                className="mt-5"
                 disabled={locked}
                 onClick={() => void createTable("party-rates")}
               >
@@ -645,11 +689,11 @@ export function FinancePartyFeePricing() {
             )}
           >
             {/* هوية الجدول */}
-            <div className="space-y-4 px-5 py-5">
+            <div className="space-y-5 px-5 py-6 sm:px-7 sm:py-7">
               <FormGroup>
                 <Label
                   htmlFor="pricing-name"
-                  className="mb-1.5 text-[12px] font-semibold text-text-2"
+                  className="mb-2 text-[12px] font-semibold text-text-2"
                 >
                   اسم الجدول
                 </Label>
@@ -665,9 +709,9 @@ export function FinancePartyFeePricing() {
                 />
               </FormGroup>
 
-              <div className="flex flex-wrap items-center gap-2">
+              <div className="flex flex-wrap items-center gap-2.5">
                 {draft.isActive ? (
-                  <span className="rounded-md bg-success-bg px-2.5 py-1 text-[11px] font-semibold text-success">
+                  <span className="rounded-md bg-success-bg px-3 py-1.5 text-[11px] font-semibold text-success">
                     الافتراضي للفئة
                   </span>
                 ) : canEdit ? (
@@ -675,7 +719,7 @@ export function FinancePartyFeePricing() {
                     type="button"
                     disabled={locked}
                     onClick={() => void activate()}
-                    className="rounded-md border border-border px-2.5 py-1 text-[11px] font-semibold text-text-2 hover:bg-surface-2 disabled:opacity-50"
+                    className="rounded-md border border-border px-3 py-1.5 text-[11px] font-semibold text-text-2 hover:bg-surface-2 disabled:opacity-50"
                   >
                     اجعله الافتراضي
                   </button>
@@ -686,7 +730,7 @@ export function FinancePartyFeePricing() {
                     type="button"
                     disabled={locked}
                     onClick={openAssign}
-                    className="rounded-md border border-border px-2.5 py-1 text-[11px] font-semibold text-text-2 hover:bg-surface-2 disabled:opacity-50"
+                    className="rounded-md border border-border px-3 py-1.5 text-[11px] font-semibold text-text-2 hover:bg-surface-2 disabled:opacity-50"
                   >
                     من يخصّه الجدول
                     {hasAssignments ? ` (${draft.assignedCount})` : ""}
@@ -700,7 +744,7 @@ export function FinancePartyFeePricing() {
                       locked || tables.length <= 1 || hasAssignments
                     }
                     onClick={() => void removeTable()}
-                    className="ms-auto rounded-md px-2.5 py-1 text-[11px] font-semibold text-danger-text hover:bg-danger-bg disabled:cursor-not-allowed disabled:opacity-40"
+                    className="ms-auto rounded-md px-3 py-1.5 text-[11px] font-semibold text-danger-text hover:bg-danger-bg disabled:cursor-not-allowed disabled:opacity-40"
                   >
                     حذف الجدول
                   </button>
@@ -708,24 +752,27 @@ export function FinancePartyFeePricing() {
               </div>
 
               {assignedNames.length > 0 ? (
-                <p className="m-0 text-[12px] text-text-3">
-                  مسند إلى: {assignedNames.map((p) => p.name).join("، ")}
+                <p className="m-0 rounded-lg bg-surface-2/80 px-3.5 py-2.5 text-[12px] leading-relaxed text-text-2">
+                  مسند إلى:{" "}
+                  <span className="font-semibold text-text">
+                    {assignedNames.map((p) => p.name).join("، ")}
+                  </span>
                 </p>
               ) : contentCategory === "engineering-survey" ? (
-                <p className="m-0 text-[12px] text-amber">
+                <p className="m-0 rounded-lg bg-amber/10 px-3.5 py-2.5 text-[12px] leading-relaxed text-amber">
                   لم يُسند لأي مكتب — لن يُستخدم حتى تسنده من «من يخصّه الجدول».
                 </p>
               ) : (
-                <p className="m-0 text-[12px] text-text-3">
+                <p className="m-0 text-[12px] leading-relaxed text-text-3">
                   بلا إسناد — يُستخدم الافتراضي عند الاحتساب.
                 </p>
               )}
             </div>
 
             {/* الأسعار */}
-            <div className="space-y-4 px-5 py-5">
+            <div className="space-y-5 px-5 py-6 sm:px-7 sm:py-7">
               {hasAssignments ? (
-                <p className="m-0 rounded-lg bg-surface-2 px-3 py-2.5 text-[12px] leading-relaxed text-text-2">
+                <p className="m-0 rounded-lg bg-surface-2 px-3.5 py-3 text-[12px] leading-relaxed text-text-2">
                   مرتبط بمستحقين: الحفظ ينشئ{" "}
                   <strong className="font-semibold">نسخة جديدة</strong> وينقل
                   الإسناد إليها (بدون كسر الأرقام السابقة).
@@ -734,35 +781,37 @@ export function FinancePartyFeePricing() {
 
               {contentCategory === "engineering-survey" ? (
                 <>
-                  <div className="flex items-center justify-between gap-3">
-                    <h2 className="m-0 text-[14px] font-bold text-heading">
-                      شرائح المساحة
-                    </h2>
-                    {canEdit ? (
-                      <button
-                        type="button"
-                        disabled={locked}
-                        onClick={addTier}
-                        className="text-[12px] font-semibold text-primary hover:underline disabled:opacity-50"
-                      >
-                        + شريحة
-                      </button>
-                    ) : null}
+                  <div className="space-y-1.5">
+                    <div className="flex items-center justify-between gap-3">
+                      <h2 className="m-0 text-[14px] font-bold text-heading">
+                        شرائح المساحة
+                      </h2>
+                      {canEdit ? (
+                        <button
+                          type="button"
+                          disabled={locked}
+                          onClick={addTier}
+                          className="text-[12px] font-semibold text-primary hover:underline disabled:opacity-50"
+                        >
+                          + شريحة
+                        </button>
+                      ) : null}
+                    </div>
+                    <p className="m-0 text-[12px] leading-relaxed text-text-3">
+                      من / حتى بالمتر، والسعر بالريال. الأخير = فأكثر.
+                    </p>
                   </div>
-                  <p className="m-0 -mt-2 text-[12px] text-text-3">
-                    من / حتى بالمتر، والسعر بالريال. الأخير = فأكثر.
-                  </p>
 
-                  <div className="space-y-2">
+                  <div className="space-y-2.5">
                     {draft.areaTiers.map((tier, index) => {
                       const isLast = index === draft.areaTiers.length - 1;
                       return (
                         <div
                           key={`${tier.sortOrder}-${index}`}
-                          className="grid grid-cols-[1fr_1fr_1fr_auto] items-end gap-2 rounded-lg border border-border bg-bg/40 px-3 py-3 sm:gap-3"
+                          className="grid grid-cols-[1fr_1fr_1fr_auto] items-end gap-2.5 rounded-lg border border-border bg-bg/40 px-3.5 py-3.5 sm:gap-3.5 sm:px-4"
                         >
                           <div>
-                            <span className="mb-1 block text-[10px] font-semibold uppercase tracking-wide text-text-3">
+                            <span className="mb-1.5 block text-[10px] font-semibold uppercase tracking-wide text-text-3">
                               من
                             </span>
                             <MoneyInput
@@ -773,7 +822,7 @@ export function FinancePartyFeePricing() {
                             />
                           </div>
                           <div>
-                            <span className="mb-1 block text-[10px] font-semibold uppercase tracking-wide text-text-3">
+                            <span className="mb-1.5 block text-[10px] font-semibold uppercase tracking-wide text-text-3">
                               حتى
                             </span>
                             {isLast ? (
@@ -792,7 +841,7 @@ export function FinancePartyFeePricing() {
                             )}
                           </div>
                           <div>
-                            <span className="mb-1 block text-[10px] font-semibold uppercase tracking-wide text-text-3">
+                            <span className="mb-1.5 block text-[10px] font-semibold uppercase tracking-wide text-text-3">
                               أتعاب
                             </span>
                             <MoneyInput
@@ -804,7 +853,7 @@ export function FinancePartyFeePricing() {
                               }
                             />
                           </div>
-                          <div className="pb-1">
+                          <div className="pb-0.5">
                             {canEdit ? (
                               <button
                                 type="button"
@@ -829,18 +878,20 @@ export function FinancePartyFeePricing() {
               ) : null}
 
               {contentCategory === "court-visit" ? (
-                <>
-                  <h2 className="m-0 text-[14px] font-bold text-heading">
-                    أتعاب زيارة المحكمة
-                  </h2>
-                  <p className="m-0 -mt-2 text-[12px] text-text-3">
-                    للمراجع المتعاون عند إكمال الزيارة. الموظف بلا أتعاب زيارة
-                    هنا.
-                  </p>
-                  <FormGroup className="max-w-xs">
+                <div className="space-y-4">
+                  <div className="space-y-1.5">
+                    <h2 className="m-0 text-[14px] font-bold text-heading">
+                      أتعاب زيارة المحكمة
+                    </h2>
+                    <p className="m-0 max-w-xl text-[12px] leading-relaxed text-text-3">
+                      للمراجع المتعاون عند إكمال الزيارة. الموظف بلا أتعاب زيارة
+                      هنا.
+                    </p>
+                  </div>
+                  <FormGroup className="max-w-sm">
                     <Label
                       htmlFor="fee-court-visit"
-                      className="mb-1.5 text-[12px] font-semibold text-text-2"
+                      className="mb-2 text-[12px] font-semibold text-text-2"
                     >
                       المبلغ (ر.س)
                     </Label>
@@ -853,19 +904,19 @@ export function FinancePartyFeePricing() {
                       }
                     />
                   </FormGroup>
-                </>
+                </div>
               ) : null}
 
               {contentCategory === "field-inspector" &&
               draft.pricingKind === "flat" ? (
-                <>
+                <div className="space-y-4">
                   <h2 className="m-0 text-[14px] font-bold text-heading">
                     حافز موظف (مقطوع)
                   </h2>
-                  <FormGroup className="max-w-xs">
+                  <FormGroup className="max-w-sm">
                     <Label
                       htmlFor="fee-flat"
-                      className="mb-1.5 text-[12px] font-semibold text-text-2"
+                      className="mb-2 text-[12px] font-semibold text-text-2"
                     >
                       المبلغ (ر.س)
                     </Label>
@@ -878,20 +929,20 @@ export function FinancePartyFeePricing() {
                       }
                     />
                   </FormGroup>
-                </>
+                </div>
               ) : null}
 
               {contentCategory === "field-inspector" &&
               draft.pricingKind !== "flat" ? (
-                <>
+                <div className="space-y-4">
                   <h2 className="m-0 text-[14px] font-bold text-heading">
                     أتعاب المعاين
                   </h2>
-                  <div className="grid max-w-lg grid-cols-1 gap-4 sm:grid-cols-2">
+                  <div className="grid max-w-lg grid-cols-1 gap-5 sm:grid-cols-2 sm:gap-6">
                     <FormGroup>
                       <Label
                         htmlFor="fee-insp-ind"
-                        className="mb-1.5 text-[12px] font-semibold text-text-2"
+                        className="mb-2 text-[12px] font-semibold text-text-2"
                       >
                         متعاون فرد (ر.س)
                       </Label>
@@ -910,7 +961,7 @@ export function FinancePartyFeePricing() {
                     <FormGroup>
                       <Label
                         htmlFor="fee-insp-org"
-                        className="mb-1.5 text-[12px] font-semibold text-text-2"
+                        className="mb-2 text-[12px] font-semibold text-text-2"
                       >
                         منشأة (ر.س)
                       </Label>
@@ -927,14 +978,14 @@ export function FinancePartyFeePricing() {
                       />
                     </FormGroup>
                   </div>
-                </>
+                </div>
               ) : null}
             </div>
 
             {/* حفظ واضح */}
             {canEdit ? (
-              <div className="flex flex-wrap items-center justify-between gap-3 bg-surface-2/60 px-5 py-4">
-                <p className="m-0 text-[12px] text-text-3">
+              <div className="flex flex-col-reverse gap-3.5 border-t border-border bg-surface-2/70 px-5 py-5 sm:flex-row sm:items-center sm:justify-between sm:gap-4 sm:px-7 sm:py-5">
+                <p className="m-0 text-[12px] leading-relaxed text-text-3 sm:max-w-[55%]">
                   {
                     CATEGORIES.find((c) => c.id === contentCategory)?.hint ??
                     activeCategory?.hint
@@ -947,6 +998,7 @@ export function FinancePartyFeePricing() {
                   loading={saving}
                   disabled={locked || !draft.id}
                   showActionToast={false}
+                  className="w-full shrink-0 sm:w-auto sm:min-w-[10.5rem]"
                   onClick={() => void save()}
                 >
                   {hasAssignments ? "حفظ كنسخة جديدة" : "حفظ"}
@@ -1040,3 +1092,4 @@ export function FinancePartyFeePricing() {
     </div>
   );
 }
+

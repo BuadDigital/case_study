@@ -66,6 +66,18 @@ import {
   canRemindOperationsTasks,
   operationsTasksUseAssigneeScope,
 } from "../lib/prototype/operations-task-roles";
+import { failureTargetsForOperationsTask } from "../lib/prototype/operations-task-failure-targets";
+import type { OperationsTaskFailureTarget } from "../lib/prototype/operations-task-failure-targets";
+import {
+  isOperationsTaskBlockedByFailure,
+  isOpsTaskFailurePauseReason,
+  OPS_TASK_FAILURE_PAUSE_REASON,
+} from "../lib/prototype/operations-task-failure-obstruction";
+import {
+  GOVERNMENT_REVIEWER_FAILURE_RAISER,
+  useFailuresQuery,
+} from "@failures/mfe";
+import { FailureRaiseModal } from "../components/failures/FailureRaiseModal";
 import { agentInfoFromStaff } from "../lib/prototype/internal-delegation-letters";
 import {
   partyAccountForRole,
@@ -160,6 +172,8 @@ import {
   opsPpMeta,
   opsPpSummary,
   opsPpTitle,
+  opsReceiptConfirmBtn,
+  opsReceiptConfirmWrap,
   opsRemindBtn,
   opsRemindCard,
   opsRemindMini,
@@ -179,6 +193,7 @@ import {
   opsTd,
   opsTdC,
   opsTh,
+  opsThStart,
   opsThead,
   opsTkCheck,
   opsTkCheckInput,
@@ -1051,13 +1066,11 @@ function DueCell({ task, now }: { task: OperationsTask; now: number }) {
       <span
         className={cn(opsCdDot, urgency?.pulse && "ops-cd-dot-live")}
         style={{ background: urgency?.color ?? "#3f8f5f" }}
+        aria-hidden
       />
-      <span
-        className={cd.over ? opsDueCdOver : opsDueCd}
-        dir="ltr"
-      >
-        {cd.txt}
-      </span>
+      {/* Keep Arabic overdue labels in one LTR-neutral run so the marker stays
+          flush with the start edge of the column (matches header). */}
+      <span className={cd.over ? opsDueCdOver : opsDueCd}>{cd.txt}</span>
       <span className={opsCdTip}>الاستحقاق: {formatTaskDueLabel(task.dueAt)}</span>
     </div>
   );
@@ -1504,6 +1517,8 @@ export function OperationsTasksView() {
     live: true,
     assigneeId: assigneeScopeId,
   });
+  const { data: failures = [] } = useFailuresQuery();
+  const failureResumeBusyRef = useRef(false);
 
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
@@ -1551,6 +1566,8 @@ export function OperationsTasksView() {
   const [reassignDueTime, setReassignDueTime] = useState("12:00");
   const [reassignReason, setReassignReason] = useState("");
   const [reassignError, setReassignError] = useState<string | null>(null);
+  const [govFailureTarget, setGovFailureTarget] =
+    useState<OperationsTaskFailureTarget | null>(null);
   const [now, setNow] = useState(() => Date.now());
   const commentFileInputRef = useRef<HTMLInputElement>(null);
   const closeFileInputRef = useRef<HTMLInputElement>(null);
@@ -1582,11 +1599,28 @@ export function OperationsTasksView() {
     setCreateOpen(true);
   }, [canCreate, createFlag, prefillPo, prefillType, prefillScope, prefillDeed]);
 
+  const queueTasks = useMemo(() => {
+    if (!useIndependentQueue) return tasks;
+    // Hide while a linked failure is open, or while parked for failure pause
+    // (until auto-resume / staff clears the obstruction).
+    return tasks.filter((t) => {
+      if (
+        t.status === "paused" &&
+        isOpsTaskFailurePauseReason(t.pauseReason)
+      ) {
+        return false;
+      }
+      return !isOperationsTaskBlockedByFailure(t, failures, poRecords);
+    });
+  }, [tasks, useIndependentQueue, failures, poRecords]);
+
   const kpis = useMemo(() => {
-    const created = tasks.filter((t) => t.status === "created").length;
-    const inProgress = tasks.filter((t) => t.status === "in_progress").length;
-    const paused = tasks.filter((t) => t.status === "paused").length;
-    const completed = tasks.filter((t) => t.status === "completed").length;
+    const created = queueTasks.filter((t) => t.status === "created").length;
+    const inProgress = queueTasks.filter(
+      (t) => t.status === "in_progress",
+    ).length;
+    const paused = queueTasks.filter((t) => t.status === "paused").length;
+    const completed = queueTasks.filter((t) => t.status === "completed").length;
     return {
       active: created + inProgress,
       created,
@@ -1594,11 +1628,11 @@ export function OperationsTasksView() {
       inProgress,
       completed,
     };
-  }, [tasks]);
+  }, [queueTasks]);
 
   const visibleTasks = useMemo(() => {
     const q = search.trim();
-    const list = tasks.filter((t) => {
+    const list = queueTasks.filter((t) => {
       const hay = `${t.title} ${t.assigneeName} ${t.displayId} ${t.poNumber ?? ""} ${t.deeds.join(" ")}`;
       const okQ = !q || hay.includes(q);
       const okS = !statusFilter || t.status === statusFilter;
@@ -1615,12 +1649,53 @@ export function OperationsTasksView() {
       // newest first within the same status band
       return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
     });
-  }, [tasks, search, statusFilter, scopeFilter, showAll]);
+  }, [queueTasks, search, statusFilter, scopeFilter, showAll]);
+
+  // When staff resolves a blocking failure, reopen paused-for-failure tasks as
+  // «منشأة» so the assignee confirms receipt again (fresh start, not mid-work).
+  useEffect(() => {
+    if (failureResumeBusyRef.current) return;
+    const toReopen = tasks.filter(
+      (t) =>
+        t.status === "paused" &&
+        isOpsTaskFailurePauseReason(t.pauseReason) &&
+        !isOperationsTaskBlockedByFailure(t, failures, poRecords),
+    );
+    if (toReopen.length === 0) return;
+
+    failureResumeBusyRef.current = true;
+    void (async () => {
+      try {
+        for (const task of toReopen) {
+          await patchOperationsTaskRecord(task.id, { status: "created" });
+        }
+        await refetch();
+      } finally {
+        failureResumeBusyRef.current = false;
+      }
+    })();
+  }, [tasks, failures, poRecords, refetch]);
 
   const detail = useMemo(
     () => (detailId ? tasks.find((t) => t.id === detailId) ?? null : null),
     [tasks, detailId],
   );
+
+  // Deep-link / stale detail must not keep assignee on a failure-blocked task.
+  useEffect(() => {
+    if (!useIndependentQueue || !detail) return;
+    const parkedForFailure =
+      detail.status === "paused" &&
+      isOpsTaskFailurePauseReason(detail.pauseReason);
+    const blocked = isOperationsTaskBlockedByFailure(
+      detail,
+      failures,
+      poRecords,
+    );
+    if (!parkedForFailure && !blocked) return;
+    setDetailId(null);
+    setSelectedId(null);
+  }, [useIndependentQueue, detail, failures, poRecords]);
 
   const reviewerStaff = useMemo(() => {
     const id = reviewerAccount?.assigneeId?.trim();
@@ -2284,6 +2359,58 @@ export function OperationsTasksView() {
     return false;
   }, [detail, reviewerAccount, viewerDisplayName, useIndependentQueue]);
 
+  /** Government reviewer only: raise failures from the task detail (button → modal). */
+  const govFailureTargets = useMemo(() => {
+    if (role !== "government-reviewer" || !detail) return [];
+    return failureTargetsForOperationsTask(detail, poRecords);
+  }, [role, detail, poRecords]);
+
+  const showGovFailureRaise =
+    role === "government-reviewer" &&
+    isAssignee &&
+    Boolean(detail) &&
+    detail?.status !== "cancelled" &&
+    detail?.status !== "completed" &&
+    detail?.status !== "paused" &&
+    !isOperationsTaskBlockedByFailure(detail!, failures, poRecords);
+
+  const openGovFailureRaise = useCallback(() => {
+    if (govFailureTargets.length === 0) {
+      showToast(
+        "لا يمكن تسجيل تعذر — اربط المهمة بأمر عمل وصك معروف في النظام",
+        "error",
+      );
+      return;
+    }
+    // Court-visit letter may list multiple deeds; open the first resolved target.
+    setGovFailureTarget(govFailureTargets[0] ?? null);
+  }, [govFailureTargets, showToast]);
+
+  const afterGovFailureRaised = useCallback(async () => {
+    const taskId = detail?.id;
+    setGovFailureTarget(null);
+    if (taskId) {
+      const pause = await patchOperationsTaskRecord(taskId, {
+        status: "paused",
+        pauseReason: OPS_TASK_FAILURE_PAUSE_REASON,
+      });
+      if (!pause.ok) {
+        showToast(
+          pause.error ||
+            "رُفع التعذر لكن تعذّر إيقاف المهمة — أبلغ المشرف",
+          "error",
+        );
+      }
+    }
+    setDetailId(null);
+    setSelectedId(null);
+    await refetch();
+    // Drop ?task= deep-link so we stay on the list, not the same detail.
+    if (deepLinkTaskId) {
+      router.replace("/operations-tasks");
+    }
+  }, [detail?.id, deepLinkTaskId, refetch, router, showToast]);
+
   if (!isFetched && isFetching) {
     return <PanelSkeleton className="p-4" />;
   }
@@ -2301,7 +2428,10 @@ export function OperationsTasksView() {
         : `${operationsTaskScopeLabel(detail.scope)} · ${operationsTaskLinkLabel(detail)}`;
 
     return (
-      <PageShell variant="canvas" className="gap-0 p-4 sm:p-6">
+      <PageShell
+        variant="canvas"
+        className="gap-0 p-3 pb-[max(1rem,env(safe-area-inset-bottom))] sm:p-6"
+      >
         {error ? <Note tone="danger">{error}</Note> : null}
 
         <div className={opsPpHead}>
@@ -2373,18 +2503,38 @@ export function OperationsTasksView() {
             </div>
             {(() => {
               const receipt = operationsTaskReceiptLabel(detail);
+              const canConfirmReceipt =
+                detail.status === "created" && isAssignee;
               if (receipt === null && isTerminalOperationsTask(detail)) {
+                return null;
+              }
+              if (canConfirmReceipt) {
                 return (
-                  <div className={opsPpCell}>
-                    <div className={opsPpCellK}>تأكيد الاستلام</div>
-                    <div className={opsPpCellV}>—</div>
+                  <div className={opsReceiptConfirmWrap}>
+                    <button
+                      type="button"
+                      className={opsReceiptConfirmBtn}
+                      disabled={busy}
+                      aria-busy={busy || undefined}
+                      aria-label="تأكيد الاستلام"
+                      onClick={() => void runStatus(detail.id, "in_progress")}
+                    >
+                      {busy ? <Spinner /> : null}
+                      <span>
+                        {busy ? "جاري التأكيد…" : "✓ تأكيد الاستلام"}
+                      </span>
+                    </button>
                   </div>
                 );
               }
               if (!receipt) return null;
               return (
-                <div className={opsPpCell}>
-                  <div className={opsPpCellK}>تأكيد الاستلام</div>
+                <div
+                  className={cn(
+                    opsPpCell,
+                    "max-lg:col-span-2 lg:ms-auto lg:border-s-0 lg:pe-0",
+                  )}
+                >
                   <div
                     className={opsPpCellV}
                     style={
@@ -2403,36 +2553,13 @@ export function OperationsTasksView() {
           <div className={tasksDescClassName("plain")}>{detail.description}</div>
         ) : null}
 
-        {detail.status === "created" && isAssignee ? (
-          <div className="mt-4 flex flex-col gap-2.5 rounded-[13px] border border-gold bg-gold-soft px-4 py-3.5 sm:flex-row sm:items-center sm:justify-between">
-            <div>
-              <div className="text-[13px] font-bold text-heading">
-                بانتظار تأكيد الاستلام
-              </div>
-              <p className="m-0 mt-0.5 text-[12px] text-text-2">
-                أنت المنفّذ على هذه المهمة — أكّد الاستلام للانتقال إلى «قيد التنفيذ».
-              </p>
-            </div>
-            <button
-              type="button"
-              className={cn(opsBtnPrimary, "shrink-0")}
-              disabled={busy}
-              aria-busy={busy || undefined}
-              onClick={() => void runStatus(detail.id, "in_progress")}
-            >
-              {busy ? <Spinner /> : null}
-              <span>{busy ? "جاري التأكيد…" : "✓ تأكيد الاستلام"}</span>
-            </button>
-          </div>
-        ) : null}
-
         {isActiveOperationsTask(detail) ? (
           <div className={opsRemindCard}>
-            <div className="flex items-center gap-3">
+            <div className="flex min-w-0 flex-1 items-center gap-3">
               <span className="grid h-[38px] w-[38px] shrink-0 place-items-center rounded-[10px] bg-[color-mix(in_srgb,var(--gold)_18%,transparent)] text-gold-d">
                 <BellIcon size={19} />
               </span>
-              <div>
+              <div className="min-w-0">
                 <div className={opsLetterTitle}>التذكير التلقائي</div>
                 <div className="mt-0.5 text-xs text-text-2">
                   أولوية{" "}
@@ -2450,17 +2577,34 @@ export function OperationsTasksView() {
                 </div>
               </div>
             </div>
-            {canRemind ? (
-            <button
-              type="button"
-              className={opsRemindBtn}
-              disabled={busy}
-              aria-busy={busy || undefined}
-              onClick={() => void remindTask(detail)}
-            >
-              {busy ? <Spinner /> : <BellIcon size={15} />}
-              <span>{busy ? "جاري التذكير…" : "تذكير الآن"}</span>
-            </button>
+            {canRemind || showGovFailureRaise ? (
+              <div className="flex shrink-0 flex-wrap items-center justify-end gap-2 max-lg:w-full max-lg:flex-col max-lg:items-stretch">
+                {canRemind ? (
+                  <button
+                    type="button"
+                    className={opsRemindBtn}
+                    disabled={busy}
+                    aria-busy={busy || undefined}
+                    onClick={() => void remindTask(detail)}
+                  >
+                    {busy ? <Spinner /> : <BellIcon size={15} />}
+                    <span>{busy ? "جاري التذكير…" : "تذكير الآن"}</span>
+                  </button>
+                ) : null}
+                {showGovFailureRaise ? (
+                  <button
+                    type="button"
+                    className={cn(
+                      opsBtnGhost,
+                      "max-lg:min-h-11 max-lg:w-full max-lg:justify-center",
+                    )}
+                    disabled={busy}
+                    onClick={openGovFailureRaise}
+                  >
+                    تعذر
+                  </button>
+                ) : null}
+              </div>
             ) : null}
           </div>
         ) : null}
@@ -2479,7 +2623,7 @@ export function OperationsTasksView() {
                   </div>
                 </div>
               </div>
-              <div className="flex flex-wrap items-center gap-2.5">
+              <div className="flex flex-wrap items-center gap-2.5 max-lg:w-full max-lg:flex-col max-lg:items-stretch">
                 <span className="text-xs font-bold text-text-2">
                   الرقم المرجعي:{" "}
                   <span dir="ltr" className="text-gold-d">
@@ -2489,7 +2633,10 @@ export function OperationsTasksView() {
                 {detail.letterRows.length > 0 ? (
                   <button
                     type="button"
-                    className={cn(opsBtnGhost, "min-h-9 px-3.5 py-2 text-[12.5px]")}
+                    className={cn(
+                      opsBtnGhost,
+                      "min-h-9 px-3.5 py-2 text-[12.5px] max-lg:w-full max-lg:min-h-11 max-lg:justify-center",
+                    )}
                     onClick={() =>
                       printOperationsTaskDelegationLetter(
                         detail,
@@ -2502,9 +2649,9 @@ export function OperationsTasksView() {
                 ) : null}
               </div>
             </div>
-            <div className="px-[18px] py-4">
+            <div className="px-3.5 py-3.5 sm:px-[18px] sm:py-4">
               <LetterTable rows={detail.letterRows} />
-              <p className="mx-0.5 mt-3 text-[11.5px] text-text-3">
+              <p className="mx-0.5 mt-3 text-[11.5px] leading-relaxed text-text-3">
                 الترميز المرجعي الموحّد + snapshot للبيانات وقت الإصدار — يُطبع على
                 الترويسة الرسمية.
               </p>
@@ -2596,7 +2743,10 @@ export function OperationsTasksView() {
             </span>
             <button
               type="button"
-              className={cn(opsBtnPrimary, "shrink-0 sm:ms-auto")}
+              className={cn(
+                opsBtnPrimary,
+                "w-full shrink-0 max-lg:min-h-12 sm:ms-auto sm:w-auto",
+              )}
               onClick={() => openKeysRegisterFromTask(detail)}
             >
               تسجيل الظرف الآن
@@ -2689,6 +2839,23 @@ export function OperationsTasksView() {
             onConfirm={() => confirmCloseTask(detail)}
           />
         </AppModal>
+
+        {govFailureTarget ? (
+          <FailureRaiseModal
+            open
+            onClose={() => setGovFailureTarget(null)}
+            poNumber={govFailureTarget.poNumber}
+            propertyId={govFailureTarget.propertyId}
+            deedNumber={govFailureTarget.deedNumber}
+            specialist={
+              detail.assigneeName?.trim() || GOVERNMENT_REVIEWER_FAILURE_RAISER
+            }
+            raisedByRole={GOVERNMENT_REVIEWER_FAILURE_RAISER}
+            onSubmitted={() => {
+              void afterGovFailureRaised();
+            }}
+          />
+        ) : null}
 
         <AppModal
           open={pauseOpen}
@@ -2967,18 +3134,13 @@ export function OperationsTasksView() {
                   }}
                 />
               </div>
-              {[
-                "المهمة",
-                "النطاق / الربط",
-                "المنفّذ",
-                "الاستحقاق",
-                "الحالة",
-                "إجراءات",
-              ].map((h) => (
-                <div key={h} className={cn(opsTh, h === "إجراءات" && opsTdC)}>
-                  {h}
-                </div>
-              ))}
+              {/* Text headers: start-aligned with body cells (not center). */}
+              <div className={opsThStart}>المهمة</div>
+              <div className={opsThStart}>النطاق / الربط</div>
+              <div className={opsThStart}>المنفّذ</div>
+              <div className={opsThStart}>الاستحقاق</div>
+              <div className={cn(opsTh, opsTdC)}>الحالة</div>
+              <div className={cn(opsTh, opsTdC)}>إجراءات</div>
             </div>
 
             {visibleTasks.length === 0 ? (
@@ -3086,11 +3248,11 @@ export function OperationsTasksView() {
                     <div className={opsTd}>
                       <DueCell task={task} now={now} />
                     </div>
-                    <div className={opsTd}>
+                    <div className={cn(opsTd, opsTdC)}>
                       <TaskStatusPill status={task.status} />
                     </div>
                     <div
-                      className={opsTd}
+                      className={cn(opsTd, opsTdC)}
                       onClick={(e) => e.stopPropagation()}
                     >
                       <div className="flex w-full items-center justify-center gap-0.5">

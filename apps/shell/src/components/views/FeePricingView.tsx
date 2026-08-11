@@ -11,7 +11,7 @@ export function FeePricingView() {
       variant="canvas"
       className="h-fit min-w-0 max-w-full bg-bg font-sans text-text"
     >
-      <div className="mx-auto max-w-3xl px-4 py-5 sm:px-6 sm:py-7">
+      <div className="mx-auto w-full max-w-3xl px-4 py-6 sm:px-6 sm:py-8 lg:px-8">
         <FinancePartyFeePricing />
       </div>
     </PageShell>
