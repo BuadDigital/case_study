@@ -119,11 +119,17 @@ internal static class TestBoundedContexts
 
     public static PropertyAccessHoldService CreateAccessHolds(
         ApplicationDbContext app,
-        FailuresDbContext failures) =>
-        new(
-            TestInspectorFeeServiceFactory.ShareCaseStudy(app),
+        FailuresDbContext failures)
+    {
+        var cs = TestInspectorFeeServiceFactory.ShareCaseStudy(app);
+        var identity = TestInspectorFeeServiceFactory.ShareIdentity(app);
+        return new(
+            cs,
             failures,
-            TestInspectorFeeServiceFactory.ShareIdentity(app));
+            identity,
+            new NullNotificationService(),
+            new NotificationRecipientResolver(cs, identity));
+    }
 
     public static KeyEnvelopesService CreateKeyEnvelopesService(Bundle bundle)
     {
@@ -134,14 +140,20 @@ internal static class TestBoundedContexts
     public static KeyEnvelopesService CreateKeyEnvelopesService(
         ApplicationDbContext app,
         FailuresDbContext failures,
-        OperationsDbContext ops) =>
-        new(
+        OperationsDbContext ops)
+    {
+        var cs = TestInspectorFeeServiceFactory.ShareCaseStudy(app);
+        var identity = TestInspectorFeeServiceFactory.ShareIdentity(app);
+        return new(
             ops,
-            TestInspectorFeeServiceFactory.ShareCaseStudy(app),
+            cs,
             TestInspectorFeeServiceFactory.ShareFinancial(app),
             TestInspectorFeeServiceFactory.ShareAttachments(app),
             CreateAccessHolds(app, failures),
-            new KeyEnvelopePeopleResolver(TestInspectorFeeServiceFactory.ShareIdentity(app)));
+            new KeyEnvelopePeopleResolver(identity),
+            new NullNotificationService(),
+            new NotificationRecipientResolver(cs, identity));
+    }
 
     public static PropertyKeyGateResolver CreateKeyGate(ApplicationDbContext app, OperationsDbContext ops) =>
         new(ops, TestInspectorFeeServiceFactory.ShareCaseStudy(app));

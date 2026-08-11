@@ -7,7 +7,6 @@ import { FAILURE_TYPES_CHANGED_EVENT } from "@failures/mfe/lib/failure-types-eve
 import {
   ENGINEERING_SURVEY_ACCEPTED_EVENT,
   ENGINEERING_SURVEY_RETURNED_EVENT,
-  ENGINEERING_SURVEY_SUBMITTED_EVENT,
   EVALUATOR_SUBMITTED_EVENT,
   FIELD_INSPECTION_SUBMITTED_EVENT,
 } from "@platform/app-shared/prototype/party-workflow-events";
@@ -63,20 +62,11 @@ export const DOMAIN_NOTIFICATION_RULES: DomainNotificationRule[] = [
     auditAction: "إرسال معاينة ميدانية",
     auditEntity: "field-inspection",
   },
-  {
-    event: ENGINEERING_SURVEY_SUBMITTED_EVENT,
-    notification: {
-      title: "إرسال الرفع المساحي",
-      body: "تم إرسال الرفع المساحي.",
-      tone: "success",
-      href: "/active-survey",
-      category: "workflow",
-      entityType: "task",
-      sourceEvent: ENGINEERING_SURVEY_SUBMITTED_EVENT,
-    },
-    auditAction: "إرسال الرفع المساحي",
-    auditEntity: "active-survey",
-  },
+  // ENGINEERING_SURVEY_SUBMITTED_EVENT is intentionally omitted: it only fires
+  // in the submitter's browser, and PartyActiveTaskWork already shows the
+  // single success toast ("اكتمل الرفع المساحي لهذا العقار."). Domain toasts
+  // here duplicated that message (option A only). Returned/accepted stay —
+  // those are still useful inbox signals for the engineering office.
   {
     event: ENGINEERING_SURVEY_RETURNED_EVENT,
     notification: {

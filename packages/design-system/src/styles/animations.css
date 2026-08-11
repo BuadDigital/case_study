@@ -57,14 +57,17 @@
   }
 }
 
-/* Full-row gray blink while a queue row / card is opening */
+/* Full-row gray blink while a queue row / card is opening — starts at full
+   tint immediately (not ramped up from transparent) since the loading state
+   itself only lasts ~300-400ms, shorter than a full ease-in-out cycle would
+   take to become visible. */
 @keyframes ui-queue-row-gray-blink {
   0%,
   100% {
-    background-color: transparent;
+    background-color: color-mix(in srgb, #8a96a6 26%, transparent);
   }
   50% {
-    background-color: color-mix(in srgb, #8a96a6 14%, transparent);
+    background-color: color-mix(in srgb, #8a96a6 12%, transparent);
   }
 }
 
@@ -137,7 +140,7 @@
   .ui-queue-row-opening {
     position: relative;
     z-index: 0;
-    animation: ui-queue-row-gray-blink 1.1s ease-in-out infinite;
+    animation: ui-queue-row-gray-blink 0.7s ease-in-out infinite;
     transition: background-color 180ms ease;
   }
 
@@ -147,7 +150,7 @@
   }
   tr.ui-queue-row-opening > td,
   tr.ui-queue-row-opening > th {
-    animation: ui-queue-row-gray-blink 1.1s ease-in-out infinite;
+    animation: ui-queue-row-gray-blink 0.7s ease-in-out infinite;
   }
 
   .ui-queue-spinner-in {
@@ -165,7 +168,7 @@
 
   /* Mobile card open: same full-surface gray blink */
   .ui-queue-card-opening {
-    animation: ui-queue-row-gray-blink 1.1s ease-in-out infinite;
+    animation: ui-queue-row-gray-blink 0.7s ease-in-out infinite;
   }
 }
 
@@ -186,7 +189,7 @@
   .ui-queue-card-opening,
   tr.ui-queue-row-opening > td,
   tr.ui-queue-row-opening > th {
-    background-color: color-mix(in srgb, #8a96a6 10%, transparent) !important;
+    background-color: color-mix(in srgb, #8a96a6 20%, transparent) !important;
   }
 
   .ui-skeleton-shimmer {

@@ -10,6 +10,18 @@ export type FinalizeEngineeringSurveyResult = {
   warning?: string;
 };
 
+/** API lock message when the party case-study form is already submitted. */
+const PARTY_FORM_ALREADY_CLOSED =
+  "تم إغلاق نموذج الطرف بعد رفع دراسة الحالة";
+
+function isPartyFormAlreadyClosedError(error: string | undefined): boolean {
+  if (!error) return false;
+  return (
+    error === PARTY_FORM_ALREADY_CLOSED ||
+    error.includes("إغلاق نموذج الطرف")
+  );
+}
+
 /** يرسل الرفع المساحي + إجابات نموذج الدراسة لأخصائي دراسة الحالة. */
 export async function finalizeEngineeringSurveySubmission(
   surveyTaskId: string,
@@ -19,13 +31,15 @@ export async function finalizeEngineeringSurveySubmission(
 
   let warning: string | undefined;
   const partyDraft = await loadPartyCaseStudyFormDraft(surveyTaskId);
-  if (partyDraft) {
+  // Already locked on a previous attempt — leave alone; success UI is the
+  // single host toast ("اكتمل الرفع المساحي…"), not this side-effect.
+  if (partyDraft && partyDraft.status !== "submitted") {
     const saved = await savePartyCaseStudyFormDraft({
       ...partyDraft,
       status: "submitted",
       savedAtUtc: new Date().toISOString(),
     });
-    if (!saved.ok) {
+    if (!saved.ok && !isPartyFormAlreadyClosedError(saved.error)) {
       warning =
         saved.error ?? "تعذّر حفظ إجابات دراسة الحالة — راجع مع الأخصائي";
     }

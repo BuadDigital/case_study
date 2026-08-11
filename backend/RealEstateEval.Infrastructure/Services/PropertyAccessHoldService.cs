@@ -1,8 +1,10 @@
 using Microsoft.EntityFrameworkCore;
 using RealEstateEval.Application.Abstractions;
+using RealEstateEval.Application.Contracts;
 using RealEstateEval.Application.Rules;
 using RealEstateEval.Domain;
 using RealEstateEval.Infrastructure.Data.Contexts;
+using RealEstateEval.Infrastructure.Notifications;
 
 namespace RealEstateEval.Infrastructure.Services;
 
@@ -19,15 +21,21 @@ public sealed class PropertyAccessHoldService : IPropertyAccessHoldService
     private readonly CaseStudyDbContext _cs;
     private readonly FailuresDbContext _failures;
     private readonly IdentityDbContext _identity;
+    private readonly INotificationService _notifications;
+    private readonly NotificationRecipientResolver _recipients;
 
     public PropertyAccessHoldService(
         CaseStudyDbContext cs,
         FailuresDbContext failures,
-        IdentityDbContext identity)
+        IdentityDbContext identity,
+        INotificationService notifications,
+        NotificationRecipientResolver recipients)
     {
         _cs = cs;
         _failures = failures;
         _identity = identity;
+        _notifications = notifications;
+        _recipients = recipients;
     }
 
     public async Task EnsureEvictionHoldAsync(
@@ -209,6 +217,14 @@ public sealed class PropertyAccessHoldService : IPropertyAccessHoldService
 
         task.Block(reason, DateTime.UtcNow);
         await _cs.SaveChangesAsync(cancellationToken);
+        await NotifySpecialistAsync(
+            task.Id,
+            task.AssigneeId,
+            "تعليق دراسة الحالة",
+            reason,
+            "warn",
+            $"case-study-blocked:{task.Id}",
+            cancellationToken);
     }
 
     private async Task UnblockCaseStudyTaskAsync(
@@ -232,5 +248,46 @@ public sealed class PropertyAccessHoldService : IPropertyAccessHoldService
         // The property is linked here, so a row with no remembered phase resumes at bourse.
         task.Unblock(DateTime.UtcNow, WorkflowTaskPhase.Bourse);
         await _cs.SaveChangesAsync(cancellationToken);
+        await NotifySpecialistAsync(
+            task.Id,
+            task.AssigneeId,
+            "استئناف دراسة الحالة",
+            "زال سبب التعليق — استؤنفت المعاملة.",
+            "success",
+            $"case-study-unblocked:{task.Id}",
+            cancellationToken);
+    }
+
+    private async Task NotifySpecialistAsync(
+        Guid taskId,
+        string? assigneeId,
+        string title,
+        string body,
+        string tone,
+        string sourceEvent,
+        CancellationToken cancellationToken)
+    {
+        var trimmedAssigneeId = assigneeId?.Trim();
+        if (string.IsNullOrWhiteSpace(trimmedAssigneeId)) return;
+
+        var userId = await _recipients.ResolveUserIdForDistributionAssigneeAsync(
+            trimmedAssigneeId,
+            cancellationToken);
+        if (string.IsNullOrWhiteSpace(userId)) return;
+
+        await _notifications.CreateForUserAsync(
+            userId,
+            new CreateUserNotificationRequest
+            {
+                Title = title,
+                Body = body,
+                Tone = tone,
+                Href = $"/case-study/{Uri.EscapeDataString(taskId.ToString())}",
+                Category = "workflow",
+                EntityType = "task",
+                EntityId = taskId.ToString(),
+                SourceEvent = sourceEvent,
+            },
+            cancellationToken);
     }
 }

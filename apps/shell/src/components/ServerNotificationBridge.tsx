@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useCallback, useEffect, useRef } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import {
   createNotification,
@@ -29,7 +29,6 @@ import {
   type AppNotification,
 } from "@platform/app-shared/notifications/notification-store";
 
-const POLL_FALLBACK_MS = 180_000;
 const SSE_RETRY_MS = 5_000;
 const LOCAL_SYNC_SUPPRESS_MS = 60_000;
 
@@ -40,28 +39,71 @@ function isNetworkFailure(err: unknown): boolean {
   );
 }
 
-/** Server inbox sync via SSE with polling fallback. */
+/**
+ * Server inbox sync — three independent delivery channels can each surface the
+ * same notification (SSE stream, browser Web Push via the service worker, and
+ * a tab-refocus catch-up pull), so `seenIdsRef` / `localSyncSourceEventsRef`
+ * are shared at component scope and every channel must check them before
+ * showing a toast — otherwise the same event shows up more than once.
+ */
 export function ServerNotificationBridge() {
   const { token, authReady, isAuthenticated, role, user } = useAuth();
   const queryClient = useQueryClient();
   const seenIdsRef = useRef<Set<string>>(new Set());
   const initialLoadRef = useRef(true);
   const localSyncSourceEventsRef = useRef<Map<string, number>>(new Map());
+  const refreshDebounceRef = useRef<number | undefined>(undefined);
+
+  // Any server-pushed notification means something changed on the backend
+  // (workflow submit/return/accept/distribution, financial/fee status,
+  // failures, court visits, ...) — refresh every queue's cached data
+  // instantly instead of waiting on a manual refresh. Categories are
+  // inconsistent/ad-hoc across services, so refresh on all of them rather
+  // than chase an allow-list — invalidation only refetches currently-mounted
+  // queries, so this is cheap. Debounced: a single bulk action (e.g.
+  // distribution assigning many tasks) fans out one notification per
+  // recipient/task — without coalescing, each would fire its own refetch.
+  const refreshTransactions = useCallback(() => {
+    if (refreshDebounceRef.current !== undefined) {
+      window.clearTimeout(refreshDebounceRef.current);
+    }
+    refreshDebounceRef.current = window.setTimeout(() => {
+      refreshDebounceRef.current = undefined;
+      void queryClient.invalidateQueries({ queryKey: prototypeKeys.all });
+      // Not under the prototype key prefix — the executive dashboard's KPI
+      // data needs its own explicit invalidation to refresh live too.
+      void queryClient.invalidateQueries({
+        queryKey: ["reporting", "dashboard"],
+      });
+    }, 250);
+  }, [queryClient]);
+
+  // A locally-pushed notification is synced to the server with a rewritten
+  // sourceEvent (see the onPushed effect below); when that same notification
+  // echoes back over SSE/push/pull, this suppresses the redundant toast.
+  const shouldSuppressEchoToast = useCallback((sourceEvent?: string): boolean => {
+    if (!sourceEvent) return false;
+    const at = localSyncSourceEventsRef.current.get(sourceEvent);
+    if (!at) return false;
+    if (Date.now() - at > LOCAL_SYNC_SUPPRESS_MS) {
+      localSyncSourceEventsRef.current.delete(sourceEvent);
+      return false;
+    }
+    return true;
+  }, []);
+
+  // Shared id-based dedup: whichever channel (SSE, push, pull) sees a given
+  // notification id first "wins" and is responsible for the toast/refresh;
+  // every later delivery of the same id is a silent store update only.
+  const markSeenIfNew = useCallback((id: string): boolean => {
+    const isNew = !seenIdsRef.current.has(id);
+    seenIdsRef.current.add(id);
+    return isNew;
+  }, []);
 
   useEffect(() => {
     if (!isFeatureEnabled("notificationCenter")) return;
     if (!authReady || !isAuthenticated || !token) return;
-
-    // Any server-pushed notification means something changed on the backend
-    // (workflow submit/return/accept/distribution, financial/fee status,
-    // failures, court visits, ...) — refresh every queue's cached data
-    // instantly instead of waiting on the 30s poll or a manual refresh.
-    // Categories are inconsistent/ad-hoc across services, so refresh on all
-    // of them rather than chase an allow-list — invalidation only refetches
-    // currently-mounted queries, so this is cheap.
-    function refreshTransactions() {
-      void queryClient.invalidateQueries({ queryKey: prototypeKeys.all });
-    }
 
     setNotificationStorageUser(user?.id);
     seenIdsRef.current.clear();
@@ -71,7 +113,31 @@ export function ServerNotificationBridge() {
     let stopSync = false;
     let warnedNetwork = false;
 
-    async function pull(notifyNew: boolean) {
+    let pullInFlight: Promise<void> | null = null;
+    let pullPendingNotify = false;
+
+    // Re-entrancy guard: a tab-refocus during an in-flight pull could overlap
+    // with the next one. Both would then read the same stale seenIdsRef
+    // snapshot (only updated after the fetch resolves) and both re-toast the
+    // same "new" unread notifications. Coalesce instead of running
+    // concurrently.
+    function pull(notifyNew: boolean): Promise<void> {
+      if (pullInFlight) {
+        pullPendingNotify = pullPendingNotify || notifyNew;
+        return pullInFlight;
+      }
+      pullInFlight = runPull(notifyNew).finally(() => {
+        pullInFlight = null;
+        if (pullPendingNotify) {
+          const rerunNotify = pullPendingNotify;
+          pullPendingNotify = false;
+          void pull(rerunNotify);
+        }
+      });
+      return pullInFlight;
+    }
+
+    async function runPull(notifyNew: boolean) {
       const authToken = token;
       if (!authToken || stopSync) return;
       try {
@@ -123,22 +189,10 @@ export function ServerNotificationBridge() {
       }
     }
 
-    function shouldSuppressEchoToast(sourceEvent?: string): boolean {
-      if (!sourceEvent) return false;
-      const at = localSyncSourceEventsRef.current.get(sourceEvent);
-      if (!at) return false;
-      if (Date.now() - at > LOCAL_SYNC_SUPPRESS_MS) {
-        localSyncSourceEventsRef.current.delete(sourceEvent);
-        return false;
-      }
-      return true;
-    }
-
     function handleServerDto(dto: UserNotificationDto) {
       const item = notificationFromDto(dto);
       if (!shouldShowNotificationToast(role, item)) return;
-      const isNew = !seenIdsRef.current.has(item.id);
-      seenIdsRef.current.add(item.id);
+      const isNew = markSeenIfNew(item.id);
       upsertNotificationFromServer(item);
       if (isNew) refreshTransactions();
 
@@ -158,12 +212,8 @@ export function ServerNotificationBridge() {
 
     void pull(false);
 
-    const pollTimer = window.setInterval(() => {
-      if (document.visibilityState === "visible") {
-        void pull(true);
-      }
-    }, POLL_FALLBACK_MS);
-
+    // No blind interval poll — SSE is the live channel, and a tab refocus
+    // (below) is the catch-up path if SSE silently dropped while hidden.
     const onVisible = () => {
       if (document.visibilityState === "visible") {
         void pull(true);
@@ -185,28 +235,45 @@ export function ServerNotificationBridge() {
           handleServerDto,
           streamAbort.signal,
         );
+        // Resolved without throwing means the stream ended cleanly (e.g. a
+        // backend deploy/restart closed the connection) — reconnect just
+        // like a network failure would, or the tab goes stale silently.
       } catch (err) {
         if (cancelled || streamAbort.signal.aborted || stopSync) return;
         if (err instanceof ApiAuthError) {
           stopSync = true;
           return;
         }
-        retryTimer = window.setTimeout(() => {
-          void connectStream();
-        }, SSE_RETRY_MS);
       }
+
+      if (cancelled || streamAbort.signal.aborted || stopSync) return;
+      retryTimer = window.setTimeout(() => {
+        void connectStream();
+      }, SSE_RETRY_MS);
     }
 
     void connectStream();
 
     return () => {
       cancelled = true;
-      window.clearInterval(pollTimer);
       if (retryTimer !== undefined) window.clearTimeout(retryTimer);
+      if (refreshDebounceRef.current !== undefined) {
+        window.clearTimeout(refreshDebounceRef.current);
+        refreshDebounceRef.current = undefined;
+      }
       streamAbort.abort();
       document.removeEventListener("visibilitychange", onVisible);
     };
-  }, [authReady, isAuthenticated, token, role, user?.id, queryClient]);
+  }, [
+    authReady,
+    isAuthenticated,
+    token,
+    role,
+    user?.id,
+    refreshTransactions,
+    shouldSuppressEchoToast,
+    markSeenIfNew,
+  ]);
 
   useEffect(() => {
     if (!token) return;
@@ -214,13 +281,14 @@ export function ServerNotificationBridge() {
     function onPushed(event: Event) {
       const item = (event as CustomEvent<AppNotification>).detail;
       if (!item) return;
-      // Must match exactly what gets synced to the server below — the SSE/poll
-      // echo of this same notification carries the *synced* sourceEvent, not
-      // the original one, so suppression has to be keyed on the same string
-      // or the echo re-fires a second toast for the action just shown.
-      // Pushes without an original sourceEvent get a per-notification id
-      // instead of a shared literal, so two unrelated self-authored toasts
-      // fired within the suppression window don't mask each other.
+      // Must match exactly what gets synced to the server below — the
+      // SSE/push/pull echo of this same notification carries the *synced*
+      // sourceEvent, not the original one, so suppression has to be keyed on
+      // the same string or the echo re-fires a second toast for the action
+      // just shown. Pushes without an original sourceEvent get a
+      // per-notification id instead of a shared literal, so two unrelated
+      // self-authored toasts fired within the suppression window don't mask
+      // each other.
       const syncedSourceEvent = item.sourceEvent
         ? `local:${item.sourceEvent}`
         : `self-authored:${item.id}`;
@@ -260,12 +328,21 @@ export function ServerNotificationBridge() {
           createdAtUtc: new Date().toISOString(),
           read: false,
         });
+        // This channel used to show a toast unconditionally — a web-push
+        // delivery arriving for the same notification the SSE stream (or a
+        // local self-push) already surfaced showed as a duplicate/triple
+        // toast. Same shared dedup as the other two channels.
+        if (!shouldShowNotificationToast(role, item)) return;
+        const isNew = markSeenIfNew(item.id);
         upsertNotificationFromServer(item);
-        window.dispatchEvent(
-          new CustomEvent<AppNotification>(NOTIFICATION_TOAST_EVENT, {
-            detail: item,
-          }),
-        );
+        if (isNew) refreshTransactions();
+        if (isNew && !item.read && !shouldSuppressEchoToast(item.sourceEvent)) {
+          window.dispatchEvent(
+            new CustomEvent<AppNotification>(NOTIFICATION_TOAST_EVENT, {
+              detail: item,
+            }),
+          );
+        }
       }
       if (data.type === "PUSH_NAVIGATE" && data.href) {
         window.location.assign(data.href);
@@ -279,7 +356,7 @@ export function ServerNotificationBridge() {
     return () => {
       navigator.serviceWorker.removeEventListener("message", onMessage);
     };
-  }, [token, role]);
+  }, [token, role, refreshTransactions, shouldSuppressEchoToast, markSeenIfNew]);
 
   return null;
 }

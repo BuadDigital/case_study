@@ -4,6 +4,7 @@ using RealEstateEval.Application.Contracts;
 using RealEstateEval.Application.Rules;
 using RealEstateEval.Domain;
 using RealEstateEval.Infrastructure.Data;
+using RealEstateEval.Infrastructure.Notifications;
 
 namespace RealEstateEval.Infrastructure.Services;
 
@@ -23,19 +24,58 @@ public sealed class WorkflowTaskLifecycleCommands : IWorkflowTaskLifecycleComman
     private readonly IPropertyTimelineService _timeline;
     private readonly WorkflowTaskCascadeCleanup _cascade;
     private readonly IWorkflowTaskSlotSynchronizer _slots;
+    private readonly INotificationService _notifications;
+    private readonly NotificationRecipientResolver _recipients;
 
     public WorkflowTaskLifecycleCommands(
         ApplicationDbContext db,
         IInspectorFeeService inspectorFees,
         IPropertyTimelineService timeline,
         WorkflowTaskCascadeCleanup cascade,
-        IWorkflowTaskSlotSynchronizer slots)
+        IWorkflowTaskSlotSynchronizer slots,
+        INotificationService notifications,
+        NotificationRecipientResolver recipients)
     {
         _db = db;
         _inspectorFees = inspectorFees;
         _timeline = timeline;
         _cascade = cascade;
         _slots = slots;
+        _notifications = notifications;
+        _recipients = recipients;
+    }
+
+    private async Task NotifyAssigneeAsync(
+        Guid taskId,
+        string? assigneeId,
+        string title,
+        string body,
+        string tone,
+        string sourceEvent,
+        CancellationToken cancellationToken)
+    {
+        var trimmedAssigneeId = assigneeId?.Trim();
+        if (string.IsNullOrWhiteSpace(trimmedAssigneeId)) return;
+
+        var userId = await _recipients.ResolveUserIdForDistributionAssigneeAsync(
+            trimmedAssigneeId,
+            cancellationToken);
+        if (string.IsNullOrWhiteSpace(userId)) return;
+
+        await _notifications.CreateForUserAsync(
+            userId,
+            new CreateUserNotificationRequest
+            {
+                Title = title,
+                Body = body,
+                Tone = tone,
+                Href = $"/case-study/{Uri.EscapeDataString(taskId.ToString())}",
+                Category = "workflow",
+                EntityType = "task",
+                EntityId = taskId.ToString(),
+                SourceEvent = sourceEvent,
+            },
+            cancellationToken);
     }
 
     public async Task<WorkflowTaskDto?> AdvanceAfterEnfathAsync(
@@ -166,6 +206,7 @@ public sealed class WorkflowTaskLifecycleCommands : IWorkflowTaskLifecycleComman
             property.BourseCompletedAtUtc = null;
         }
 
+        var displacedAssigneeIds = new List<string>();
         if (current == WorkflowTaskPhase.Distribution)
         {
             entity.SetDistribution(
@@ -177,6 +218,12 @@ public sealed class WorkflowTaskLifecycleCommands : IWorkflowTaskLifecycleComman
                 .ToListAsync(cancellationToken);
             if (children.Count > 0)
             {
+                displacedAssigneeIds = children
+                    .Select(c => c.AssigneeId?.Trim())
+                    .Where(assigneeId => !string.IsNullOrWhiteSpace(assigneeId))
+                    .Cast<string>()
+                    .Distinct(StringComparer.Ordinal)
+                    .ToList();
                 await _cascade.RemovePartySubmissionsForTasksAsync(
                     children.Select(c => c.Id).ToList(),
                     cancellationToken);
@@ -215,6 +262,30 @@ public sealed class WorkflowTaskLifecycleCommands : IWorkflowTaskLifecycleComman
                 cancellationToken);
         }
 
+        if (displacedAssigneeIds.Count > 0)
+        {
+            var displacedUserIds = await _recipients.ResolveUserIdsForDistributionAssigneesAsync(
+                displacedAssigneeIds,
+                cancellationToken);
+            if (displacedUserIds.Count > 0)
+            {
+                await _notifications.CreateForUsersAsync(
+                    displacedUserIds.Values.Distinct(StringComparer.Ordinal).ToList(),
+                    new CreateUserNotificationRequest
+                    {
+                        Title = "أُلغي إسنادك",
+                        Body = $"أُعيدت المعاملة على {po} لمرحلة سابقة — أُلغي إسنادك على هذا العقار.",
+                        Tone = "warn",
+                        Href = "/active-primary-data",
+                        Category = "workflow",
+                        EntityType = "task",
+                        EntityId = entity.Id.ToString(),
+                        SourceEvent = $"case-study-phase-reverted:{entity.Id}:{entity.UpdatedAtUtc:O}",
+                    },
+                    cancellationToken);
+            }
+        }
+
         return (WorkflowTaskMapper.ToDto(entity), null);
     }
 
@@ -229,6 +300,8 @@ public sealed class WorkflowTaskLifecycleCommands : IWorkflowTaskLifecycleComman
         var wasCaseStudyCompleted =
             entity.Kind == CaseStudyPropertyKind
             && entity.Status == WorkflowTaskStatus.Completed;
+        var wasBlocked = entity.Status == WorkflowTaskStatus.Blocked;
+        var previousAssigneeId = entity.AssigneeId;
 
         entity.ApplyShellPatch(
             phase: WorkflowTaskPhaseValues.ParseOptional(request.Phase),
@@ -263,6 +336,25 @@ public sealed class WorkflowTaskLifecycleCommands : IWorkflowTaskLifecycleComman
             && entity.PropertyId is Guid feePropertyId)
         {
             await _inspectorFees.EnsureLedgersForPropertyAsync(feePropertyId, cancellationToken);
+        }
+
+        // Supervisor resolved an obstruction and handed the transaction back to
+        // the specialist (or re-targeted it to a new one) — they had no way to
+        // know it moved without a manual refresh before this.
+        var nowCaseSpecialist = entity.Kind == CaseStudyPropertyKind
+            && string.Equals(entity.AssigneeRole, "case-specialist", StringComparison.OrdinalIgnoreCase)
+            && entity.Status == WorkflowTaskStatus.Open
+            && (wasBlocked || entity.AssigneeId != previousAssigneeId);
+        if (nowCaseSpecialist)
+        {
+            await NotifyAssigneeAsync(
+                entity.Id,
+                entity.AssigneeId,
+                "معاملة أُعيدت إليك",
+                "أُعيدت المعاملة إليك بعد معالجة التعذر — تابع دراسة الحالة.",
+                "info",
+                $"case-study-returned:{entity.Id}:{entity.UpdatedAtUtc:O}",
+                cancellationToken);
         }
 
         return WorkflowTaskMapper.ToDto(entity);
@@ -352,6 +444,14 @@ public sealed class WorkflowTaskLifecycleCommands : IWorkflowTaskLifecycleComman
         if (toRemove.All(t => t.Id != task.Id))
             toRemove.Add(task);
 
+        var displacedAssigneeIds = toRemove
+            .Where(t => t.Id != task.Id)
+            .Select(t => t.AssigneeId?.Trim())
+            .Where(assigneeId => !string.IsNullOrWhiteSpace(assigneeId))
+            .Cast<string>()
+            .Distinct(StringComparer.Ordinal)
+            .ToList();
+
         await _cascade.RemovePartySubmissionsForTasksAsync(
             toRemove.Select(t => t.Id).ToList(),
             cancellationToken);
@@ -381,6 +481,31 @@ public sealed class WorkflowTaskLifecycleCommands : IWorkflowTaskLifecycleComman
         }
 
         await _db.SaveChangesAsync(cancellationToken);
+
+        if (displacedAssigneeIds.Count > 0)
+        {
+            var displacedUserIds = await _recipients.ResolveUserIdsForDistributionAssigneesAsync(
+                displacedAssigneeIds,
+                cancellationToken);
+            if (displacedUserIds.Count > 0)
+            {
+                await _notifications.CreateForUsersAsync(
+                    displacedUserIds.Values.Distinct(StringComparer.Ordinal).ToList(),
+                    new CreateUserNotificationRequest
+                    {
+                        Title = "أُلغي إسنادك",
+                        Body = $"حُذف العقار على {po} — أُلغي إسنادك عليه.",
+                        Tone = "warn",
+                        Href = "/active-primary-data",
+                        Category = "workflow",
+                        EntityType = "task",
+                        EntityId = task.Id.ToString(),
+                        SourceEvent = $"case-study-slot-deleted:{task.Id}",
+                    },
+                    cancellationToken);
+            }
+        }
+
         return (true, null);
     }
 
@@ -430,9 +555,10 @@ public sealed class WorkflowTaskLifecycleCommands : IWorkflowTaskLifecycleComman
         entity.Reopen(DateTime.UtcNow);
         await _db.SaveChangesAsync(cancellationToken);
 
+        var detail = string.IsNullOrWhiteSpace(actorName) ? reason : $"{actorName}: {reason}";
+
         if (entity.PropertyId is Guid propertyId)
         {
-            var detail = string.IsNullOrWhiteSpace(actorName) ? reason : $"{actorName}: {reason}";
             await _timeline.RecordAsync(
                 entity.PoNumber,
                 propertyId,
@@ -443,6 +569,15 @@ public sealed class WorkflowTaskLifecycleCommands : IWorkflowTaskLifecycleComman
                 entity.UpdatedAtUtc,
                 cancellationToken);
         }
+
+        await NotifyAssigneeAsync(
+            entity.Id,
+            entity.AssigneeId,
+            "أُعيدت فتح معاملتك",
+            $"أعاد المشرف فتح المعاملة: {detail}",
+            "warn",
+            $"case-study-reopened:{entity.Id}:{entity.UpdatedAtUtc:O}",
+            cancellationToken);
 
         return (WorkflowTaskMapper.ToDto(entity), null);
     }
