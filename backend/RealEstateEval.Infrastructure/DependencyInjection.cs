@@ -487,7 +487,8 @@ public static class DependencyInjection
     public static IServiceCollection AddOperationsInfrastructure(
         this IServiceCollection services,
         IConfiguration configuration,
-        string connectionString)
+        string connectionString,
+        IHostEnvironment environment)
     {
         services.AddOperationsPersistence(configuration, connectionString);
         // Residual cross-boundary reads: property rows, fee charges, attachment checks, identity labels.
@@ -496,6 +497,11 @@ public static class DependencyInjection
         services.AddFinancialPersistence(configuration, connectionString);
         services.AddIdentityPersistence(configuration, connectionString);
         services.AddAttachmentsPersistence(configuration, connectionString);
+        // Pure-host outbox for platform notification requests (mirrors AddFailuresInfrastructure) —
+        // KeyEnvelopesService / PropertyAccessHoldService notify the case specialist and need
+        // INotificationService + NotificationRecipientResolver to be resolvable here.
+        services.AddMessagingPersistence(configuration, connectionString);
+        services.AddNotificationInfrastructure(configuration, environment);
         services.AddScoped<ISurveyOfficesService, SurveyOfficesService>();
         services.AddScoped<IPropertyKeysService, PropertyKeysService>();
         services.AddScoped<IPropertyKeyGateResolver, PropertyKeyGateResolver>();

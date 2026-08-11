@@ -7,6 +7,7 @@ using RealEstateEval.Application.Rules;
 using RealEstateEval.Domain;
 using RealEstateEval.Infrastructure.Data;
 using RealEstateEval.Infrastructure.Data.Contexts;
+using RealEstateEval.Infrastructure.Notifications;
 
 namespace RealEstateEval.Infrastructure.Services;
 
@@ -25,6 +26,8 @@ public sealed class KeyEnvelopesService : IKeyEnvelopesService
     private readonly AttachmentsDbContext _attachments;
     private readonly IPropertyAccessHoldService _holds;
     private readonly IKeyEnvelopePeopleResolver _people;
+    private readonly INotificationService _notifications;
+    private readonly NotificationRecipientResolver _recipients;
 
     public KeyEnvelopesService(
         OperationsDbContext ops,
@@ -32,7 +35,9 @@ public sealed class KeyEnvelopesService : IKeyEnvelopesService
         FinancialDbContext financial,
         AttachmentsDbContext attachments,
         IPropertyAccessHoldService holds,
-        IKeyEnvelopePeopleResolver people)
+        IKeyEnvelopePeopleResolver people,
+        INotificationService notifications,
+        NotificationRecipientResolver recipients)
     {
         _ops = ops;
         _caseStudy = caseStudy;
@@ -40,6 +45,8 @@ public sealed class KeyEnvelopesService : IKeyEnvelopesService
         _attachments = attachments;
         _holds = holds;
         _people = people;
+        _notifications = notifications;
+        _recipients = recipients;
     }
 
     public async Task<IReadOnlyList<KeyEnvelopeDto>> ListAsync(
@@ -393,6 +400,17 @@ public sealed class KeyEnvelopesService : IKeyEnvelopesService
             now);
 
         await SaveAndDetachAsync(cancellationToken);
+
+        if (request.PropertyId is Guid assignedPropertyId)
+        {
+            await NotifyCaseSpecialistForPropertyAsync(
+                assignedPropertyId,
+                "إسناد مفتاح لعقارك",
+                $"سُجّل إسناد مبدئي لمفتاح الصك {deed} — بانتظار التأكيد الميداني.",
+                $"key-assignment-added:{envelopeId}:{deed}",
+                cancellationToken);
+        }
+
         return (await GetAsync(envelopeId, cancellationToken), null);
     }
 
@@ -444,6 +462,15 @@ public sealed class KeyEnvelopesService : IKeyEnvelopesService
                 unmatchedPid,
                 deedNumber,
                 actorDisplayName,
+                cancellationToken);
+        }
+        else if (unmatchedPropertyId is Guid matchedPropertyId)
+        {
+            await NotifyCaseSpecialistForPropertyAsync(
+                matchedPropertyId,
+                "تأكيد مفتاح العقار",
+                $"تم تأكيد مطابقة مفتاح الصك {deedNumber} ميدانياً.",
+                $"key-assignment-confirmed:{envelopeId}:{deedNumber}",
                 cancellationToken);
         }
 
@@ -531,6 +558,26 @@ public sealed class KeyEnvelopesService : IKeyEnvelopesService
             now);
 
         await SaveAndDetachAsync(cancellationToken);
+
+        var toUserId = NullIfBlank(request.ToUserId);
+        if (toUserId is not null)
+        {
+            await _notifications.CreateForUserAsync(
+                toUserId,
+                new CreateUserNotificationRequest
+                {
+                    Title = "تسليم ظرف مفاتيح",
+                    Body = $"سُلّم إليك ظرف المفاتيح {entity.RequestNumber} من {fromParty}.",
+                    Tone = "info",
+                    Href = "/keys",
+                    Category = "workflow",
+                    EntityType = "property",
+                    EntityId = entity.Id.ToString(),
+                    SourceEvent = $"key-handoff-created:{handoff.Id}",
+                },
+                cancellationToken);
+        }
+
         return (await GetAsync(envelopeId, cancellationToken), null);
     }
 
@@ -578,6 +625,26 @@ public sealed class KeyEnvelopesService : IKeyEnvelopesService
             now);
 
         await SaveAndDetachAsync(cancellationToken);
+
+        var createdByUserId = NullIfBlank(handoff.CreatedByUserId);
+        if (createdByUserId is not null)
+        {
+            await _notifications.CreateForUserAsync(
+                createdByUserId,
+                new CreateUserNotificationRequest
+                {
+                    Title = "تأكيد استلام ظرف مفاتيح",
+                    Body = $"أكّد {actorDisplayName.Trim()} استلام ظرف المفاتيح {entity.RequestNumber}.",
+                    Tone = "success",
+                    Href = "/keys",
+                    Category = "workflow",
+                    EntityType = "property",
+                    EntityId = entity.Id.ToString(),
+                    SourceEvent = $"key-handoff-confirmed:{handoff.Id}",
+                },
+                cancellationToken);
+        }
+
         return (await GetAsync(envelopeId, cancellationToken), null);
     }
 
@@ -887,4 +954,42 @@ public sealed class KeyEnvelopesService : IKeyEnvelopesService
     private static string? NullIfBlank(string? value) =>
         string.IsNullOrWhiteSpace(value) ? null : value.Trim();
 
+    /// <summary>
+    /// Resolves the case specialist for a property's case-study parent task and
+    /// notifies them — the specialist is the one waiting on the key to unblock
+    /// field work, but had no visibility into key-envelope changes before this.
+    /// </summary>
+    private async Task NotifyCaseSpecialistForPropertyAsync(
+        Guid propertyId,
+        string title,
+        string body,
+        string sourceEvent,
+        CancellationToken cancellationToken)
+    {
+        var specialistAssigneeId = await _caseStudy.WorkflowTasks.AsNoTracking()
+            .Where(t => t.PropertyId == propertyId && t.Kind == WorkflowTaskKind.CaseStudyProperty)
+            .Select(t => t.AssigneeId)
+            .FirstOrDefaultAsync(cancellationToken);
+        if (string.IsNullOrWhiteSpace(specialistAssigneeId)) return;
+
+        var userId = await _recipients.ResolveUserIdForDistributionAssigneeAsync(
+            specialistAssigneeId,
+            cancellationToken);
+        if (string.IsNullOrWhiteSpace(userId)) return;
+
+        await _notifications.CreateForUserAsync(
+            userId,
+            new CreateUserNotificationRequest
+            {
+                Title = title,
+                Body = body,
+                Tone = "info",
+                Href = "/keys",
+                Category = "workflow",
+                EntityType = "property",
+                EntityId = propertyId.ToString(),
+                SourceEvent = sourceEvent,
+            },
+            cancellationToken);
+    }
 }

@@ -133,6 +133,38 @@ export async function clearNotifications(
   if (!res.ok) throw new Error(`notifications clear ${res.status}`);
 }
 
+/**
+ * The server writes a real event or a `: keepalive` comment at least every
+ * 25s (see NotificationsController's StreamKeepAliveInterval). A middlebox
+ * (corporate proxy, some load balancers, mobile NAT) can kill the underlying
+ * TCP connection without the browser noticing — `reader.read()` then just
+ * hangs forever, no error, no `done`. If nothing arrives for well beyond one
+ * keepalive interval, treat the connection as dead so the caller's retry
+ * loop can reconnect instead of the tab silently going stale.
+ */
+const STREAM_SILENCE_TIMEOUT_MS = 75_000;
+
+function readWithTimeout(
+  reader: ReadableStreamDefaultReader<Uint8Array>,
+  timeoutMs: number,
+): Promise<ReadableStreamReadResult<Uint8Array>> {
+  return new Promise((resolve, reject) => {
+    const timer = setTimeout(() => {
+      reject(new Error("notifications stream silent — no data or keepalive received"));
+    }, timeoutMs);
+    reader.read().then(
+      (result) => {
+        clearTimeout(timer);
+        resolve(result);
+      },
+      (err: unknown) => {
+        clearTimeout(timer);
+        reject(err);
+      },
+    );
+  });
+}
+
 /** SSE stream — Authorization header via fetch (not EventSource). */
 export async function subscribeNotificationStream(
   config: NotificationsApiConfig,
@@ -153,25 +185,33 @@ export async function subscribeNotificationStream(
   const decoder = new TextDecoder();
   let buffer = "";
 
-  for (;;) {
-    const { done, value } = await reader.read();
-    if (done) break;
+  try {
+    for (;;) {
+      const { done, value } = await readWithTimeout(reader, STREAM_SILENCE_TIMEOUT_MS);
+      if (done) break;
 
-    buffer += decoder.decode(value, { stream: true });
-    const chunks = buffer.split("\n\n");
-    buffer = chunks.pop() ?? "";
+      buffer += decoder.decode(value, { stream: true });
+      const chunks = buffer.split("\n\n");
+      buffer = chunks.pop() ?? "";
 
-    for (const chunk of chunks) {
-      const dataLine = chunk
-        .split("\n")
-        .find((line) => line.startsWith("data: "));
-      if (!dataLine) continue;
+      for (const chunk of chunks) {
+        const dataLine = chunk
+          .split("\n")
+          .find((line) => line.startsWith("data: "));
+        if (!dataLine) continue;
 
-      try {
-        onNotification(JSON.parse(dataLine.slice(6)) as UserNotificationDto);
-      } catch {
-        // ignore malformed frames
+        try {
+          onNotification(JSON.parse(dataLine.slice(6)) as UserNotificationDto);
+        } catch {
+          // ignore malformed frames
+        }
       }
     }
+  } catch (err) {
+    // Silence timeout or a real read error — the connection is unusable
+    // either way, so cancel it explicitly (releases the dead socket) before
+    // letting the caller's retry loop take over.
+    await reader.cancel().catch(() => {});
+    throw err;
   }
 }

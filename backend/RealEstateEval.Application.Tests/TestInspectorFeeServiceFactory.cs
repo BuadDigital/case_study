@@ -177,7 +177,8 @@ internal static class TestInspectorFeeServiceFactory
         var slots = new WorkflowTaskSlotSynchronizer(db, query);
         var distribution = new WorkflowTaskDistributionCommands(db, notifications, recipients, timeline);
         var cascade = new WorkflowTaskCascadeCleanup(db, fees);
-        var lifecycle = new WorkflowTaskLifecycleCommands(db, fees, timeline, cascade, slots);
+        var lifecycle = new WorkflowTaskLifecycleCommands(
+            db, fees, timeline, cascade, slots, notifications, recipients);
         return new WorkflowTaskService(query, slots, distribution, lifecycle);
     }
 
