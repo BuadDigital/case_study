@@ -34,11 +34,13 @@ export function fieldInspectionTaskStatusBadge(
         className: "b-done",
       };
     }
-    if (
-      workspace.status === "draft" ||
-      workspace.status === "reopened" ||
-      workspaceHasDraftProgress(workspace)
-    ) {
+    if (workspace.status === "reopened") {
+      return {
+        label: inspectorWorkspaceStatusLabel("reopened"),
+        className: "b-returned",
+      };
+    }
+    if (workspace.status === "draft" || workspaceHasDraftProgress(workspace)) {
       return { label: "مسودة", className: "b-prog" };
     }
     return { label: "جديدة", className: "b-new" };

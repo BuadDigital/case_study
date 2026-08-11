@@ -77,7 +77,7 @@ function partyCards(submittedLabel = "مُرسَلة"): PageSituationCardDef[] {
       sub: "بانتظار الاعتماد",
       tone: "green",
     },
-    { key: "returned", label: "مُعادة", sub: "للتصحيح", tone: "red" },
+    { key: "returned", label: "معادة للتصحيح", sub: "أرجعها الأخصائي", tone: "red" },
   ];
 }
 
@@ -107,7 +107,7 @@ function appraisalCards(): PageSituationCardDef[] {
     },
     {
       key: "reopened",
-      label: "مُعادة للتعديل",
+      label: "معادة للتصحيح",
       sub: "أرجعها الأخصائي بملاحظات",
       tone: "red",
       icon: "refresh",
@@ -179,6 +179,13 @@ export const PAGE_SITUATION_CARDS: Partial<Record<PageId, PageSituationCardDef[]
         sub: "جارية الآن",
         tone: "warn",
         icon: "clock",
+      },
+      {
+        key: "returned",
+        label: "معادة للتصحيح",
+        sub: "أرجعها الأخصائي",
+        tone: "red",
+        icon: "refresh",
       },
       {
         key: "submitted",
@@ -584,6 +591,7 @@ export function computePageSituationValues(
     let waiting = 0;
     let inProgress = 0;
     let submitted = 0;
+    let returned = 0;
     for (const task of allSurvey) {
       const bucket = classifyPartyTask(task);
       if (bucket === "submitted" || task.status === "completed") {
@@ -592,13 +600,14 @@ export function computePageSituationValues(
       }
       if (!open.includes(task)) continue;
       if (bucket === "waiting") waiting += 1;
-      else if (bucket === "returned") inProgress += 1;
+      else if (bucket === "returned") returned += 1;
       else inProgress += 1;
     }
     return {
       waiting,
       inProgress,
       submitted,
+      returned,
       unbilled: input.unbilledFeeCount ?? 0,
     };
   }

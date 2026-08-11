@@ -94,7 +94,7 @@ export function appraiserQueueStatusBadge(
     return { label: "مُرسَلة للأخصائي", className: "b-navy" };
   }
   if (st === "reopened") {
-    return { label: "مُعاد للتعديل", className: "b-prog" };
+    return { label: "معادة للتصحيح", className: "b-returned" };
   }
   const rd = appraiserReadiness(task, tasks);
   if (rd === "ready") return { label: "جاهزة للتقييم", className: "b-gold" };

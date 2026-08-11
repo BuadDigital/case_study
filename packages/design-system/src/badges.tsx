@@ -19,6 +19,7 @@ export function StatusPill({
 }) {
   return (
     <span
+      dir="rtl"
       className={cn(
         "inline-flex items-center gap-1.5 whitespace-nowrap rounded-md px-2.5 py-1 text-[12px] font-bold",
         className,

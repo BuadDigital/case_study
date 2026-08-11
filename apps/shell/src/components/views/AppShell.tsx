@@ -347,7 +347,9 @@ function ActiveTransactionNavRow({
       <NavIcon d={icon} size={rail ? 16 : 12} />
       <span className={navLabelClasses(rail)}>{label}</span>
       {badgeCount != null && badgeCount > 0 ? (
-        <span className={navBadgeClasses(rail)}>{badgeCount}</span>
+        <span className="ms-auto inline-flex shrink-0 items-center gap-1.5">
+          <span className={navBadgeClasses(rail)}>{badgeCount}</span>
+        </span>
       ) : !available ? (
         <span className={cn(navBadgeClasses(), navLabelClasses(rail), "opacity-70")}>
           بدون صلاحية
@@ -1062,7 +1064,6 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   );
 
   const showActiveTransactionsGroup = activeTransactionItems.length > 0;
-  const activeTxBadges = useActiveTransactionNavBadges();
   const failuresNavBadge = useFailuresNavBadge();
   const financeNavBadges = useFinanceNavBadges();
   const showFinancialGroup = showFinancialNavGroup(rolePages);
@@ -1116,6 +1117,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     () => ((pathParts[0] ?? "dashboard") as PageId),
     [pathParts],
   );
+
+  const activeTxNav = useActiveTransactionNavBadges();
+  const activeTxBadges = activeTxNav.badges;
 
   useEffect(() => {
     const run = () => prefetchPrototypePage(queryClient, currentPage);

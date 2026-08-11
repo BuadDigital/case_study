@@ -21,7 +21,7 @@ import {
   tasksForPartyAssignee,
   tasksForRole,
 } from "@case-study/mfe";
-import type { PoIntakeRecord } from "@case-study/mfe";
+import type { PoIntakeRecord, WorkflowTask } from "@case-study/mfe";
 import {
   usePendingBourseItemsQuery,
   usePoRecordsQuery,
@@ -38,8 +38,13 @@ function poRecordsMap(records: PoIntakeRecord[] | undefined) {
   return map;
 }
 
-/** Red sidebar counts for المعاملات النشطة (open work only). */
-export function useActiveTransactionNavBadges(): Partial<Record<PageId, number>> {
+export type ActiveTransactionNavIndicators = {
+  /** Red count badges (open work). */
+  badges: Partial<Record<PageId, number>>;
+};
+
+/** Red sidebar counts for المعاملات النشطة. */
+export function useActiveTransactionNavBadges(): ActiveTransactionNavIndicators {
   const { role, viewerEmail, distributionAssigneeId, hasCapability } =
     usePrototype();
   const resolvedViewerEmail = viewerEmail ?? getAuthSession()?.user.email ?? null;
@@ -65,7 +70,7 @@ export function useActiveTransactionNavBadges(): Partial<Record<PageId, number>>
     staleTime: 30_000,
   });
 
-  return useMemo(() => {
+  const indicators = useMemo(() => {
     const poByNumber = poRecordsMap(poRecords);
     const mine = seesAllCaseStudyWorkflowTasks(role)
       ? (tasks ?? [])
@@ -83,31 +88,42 @@ export function useActiveTransactionNavBadges(): Partial<Record<PageId, number>>
       (t) =>
         (t.status === "open" || t.status === "blocked") &&
         !isTaskOnSuspendedProperty(t),
-    ).length;
+    );
 
     const bourseOpen = filterActionablePendingBourseItems(
       pendingBourse ?? [],
       failures,
-    ).length;
+    );
 
     const distributionOpen = filterTasksForDistribution(mine, poByNumber).filter(
       (t) => t.status === "open" || t.status === "blocked",
-    ).length;
+    );
 
     const caseStudyOpen = filterTasksForCaseStudy(mine).filter(
       (t) => t.status === "open" || t.status === "blocked",
-    ).length;
+    );
 
     const badges: Partial<Record<PageId, number>> = {};
-    if (primaryOpen > 0) badges["active-primary-data"] = primaryOpen;
-    if (bourseOpen > 0) badges["bourse-inquiry"] = bourseOpen;
-    if (distributionOpen > 0) badges["active-distribution"] = distributionOpen;
-    if (caseStudyOpen > 0) badges["active-case-study"] = caseStudyOpen;
+
+    const setPage = (
+      pageId: PageId,
+      openTasks: WorkflowTask[],
+      count?: number,
+    ) => {
+      const n = count ?? openTasks.length;
+      if (n > 0) badges[pageId] = n;
+    };
+
+    setPage("active-primary-data", primaryOpen);
+    if (bourseOpen.length > 0) badges["bourse-inquiry"] = bourseOpen.length;
+
+    setPage("active-distribution", distributionOpen);
+    setPage("active-case-study", caseStudyOpen);
 
     for (const def of Object.values(PARTY_TASK_PAGES)) {
       if (def.roleId !== role) continue;
-      const open = listedTasksForPage(def.pageId, partyMine, poByNumber).length;
-      if (open > 0) badges[def.pageId] = open;
+      const listed = listedTasksForPage(def.pageId, partyMine, poByNumber);
+      if (listed.length > 0) badges[def.pageId] = listed.length;
     }
 
     const feeRows = feeSummary?.rows ?? [];
@@ -118,23 +134,25 @@ export function useActiveTransactionNavBadges(): Partial<Record<PageId, number>>
         role === "government-reviewer";
       const isSupervisor =
         hasCapability("manage-operations") && !isPartyFeesRole;
-      const feeCount = isSupervisor
+      const feeHits = isSupervisor
         ? feeRows.filter(
             (r) =>
               r.billingStatus === "sup-review" ||
               (r.billingStatus === "returned" && r.returnTo === "supervisor"),
-          ).length
+          )
         : feeRows.filter(
             (r) =>
               r.canSubmitToSupervisor ||
               ((r.billingStatus === "returned" ||
                 r.billingStatus === "inquiry") &&
                 r.returnTo === "office"),
-          ).length;
-      if (feeCount > 0) badges["party-fees"] = feeCount;
+          );
+      if (feeHits.length > 0) {
+        badges["party-fees"] = feeHits.length;
+      }
     }
 
-    return badges;
+    return { badges };
   }, [
     role,
     resolvedViewerEmail,
@@ -147,4 +165,6 @@ export function useActiveTransactionNavBadges(): Partial<Record<PageId, number>>
     feeSummary?.rows,
     hasCapability,
   ]);
+
+  return indicators;
 }

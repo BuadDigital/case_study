@@ -1,7 +1,7 @@
 "use client";
 
 import type { ReactNode } from "react";
-import { Spinner, cn } from "@platform/design-system";
+import { cn } from "@platform/design-system";
 
 const TONE_CLASS = {
   primary: "text-primary",
@@ -10,9 +10,9 @@ const TONE_CLASS = {
 } as const;
 
 /**
- * Deed / identifier cell with open-loading feedback for queue tables.
+ * Deed / identifier cell for queue tables.
+ * Loading feedback is on the full row (`.ui-queue-row-opening`) — no inline spinner.
  * Pair with `group/atq-row` on the parent row for hover underline.
- * Default type matches قائمة أوامر العمل primary link (13.5 bold).
  */
 export function InteractiveDeedCell({
   label,
@@ -36,11 +36,7 @@ export function InteractiveDeedCell({
 }) {
   return (
     <span
-      className={cn(
-        "inline-flex max-w-full flex-col gap-0.5",
-        loading && "ui-queue-deed-loading",
-        className,
-      )}
+      className={cn("inline-flex max-w-full flex-col gap-0.5", className)}
       aria-busy={loading || undefined}
     >
       <span
@@ -52,27 +48,23 @@ export function InteractiveDeedCell({
           labelClassName,
         )}
       >
-        {loading ? (
-          <span
-            role="status"
-            aria-label="جاري الفتح"
-            className="ui-queue-spinner-in inline-flex"
-          >
-            <Spinner className={cn("size-3", TONE_CLASS[tone])} />
-          </span>
-        ) : null}
+        {/* Trailing first so in RTL it sits on the physical right (start). */}
+        {trailing}
         <span
           dir={rtl ? "rtl" : "ltr"}
           className={cn(
             "inline-block truncate transition-transform duration-150",
             !rtl && "text-end",
-            loading && "translate-x-0",
           )}
         >
           {label}
         </span>
-        {trailing}
       </span>
+      {loading ? (
+        <span className="sr-only" role="status">
+          جاري الفتح
+        </span>
+      ) : null}
       {subtitle}
     </span>
   );

@@ -88,10 +88,12 @@ import {
   usePropertyKeyGateQuery,
 } from "../../query/use-property-key-gate-query";
 import {
-  loadSeenPropertyTabs,
+  loadSeenPropertyTabFingerprints,
   markPropertyTabSeen,
   propertyTabHasNewDot,
+  type SeenPropertyTabMap,
 } from "../../lib/prototype/property-detail-local-ui";
+import { buildPropertyDetailTabActivity } from "../../lib/prototype/property-detail-tab-activity";
 
 /** Case Study.html `tabs` order in renderProperty. */
 const TABS = [
@@ -570,7 +572,7 @@ export function PoPropertyDetailTabs({
     if (workspaceForced) return inspectorWorkspace?.forceEdit !== false;
     return inspectParam === "edit";
   });
-  const [seenTabs, setSeenTabs] = useState<Set<string>>(() => new Set());
+  const [seenTabs, setSeenTabs] = useState<SeenPropertyTabMap>(() => ({}));
   const { data: tasks = [] } = useWorkflowTasksQuery();
   const { data: staffResult } = useStaffUsersQuery();
   const staffUsers = staffResult?.users ?? [];
@@ -610,18 +612,8 @@ export function PoPropertyDetailTabs({
   }, [visibleTabs, tab, workspaceForced]);
 
   useEffect(() => {
-    setSeenTabs(loadSeenPropertyTabs(property.id));
+    setSeenTabs(loadSeenPropertyTabFingerprints(property.id));
   }, [property.id]);
-
-  useEffect(() => {
-    markPropertyTabSeen(property.id, tab);
-    setSeenTabs((prev) => {
-      if (prev.has(tab)) return prev;
-      const next = new Set(prev);
-      next.add(tab);
-      return next;
-    });
-  }, [property.id, tab]);
 
   const task = useMemo(
     () => caseStudyTaskForProperty(poNumber, property.id, tasks),
@@ -806,6 +798,62 @@ export function PoPropertyDetailTabs({
       primaryCourtVisit,
   );
 
+  const governmentTask = useMemo(() => {
+    if (!task) return null;
+    return (
+      childTasksForCaseStudyParent(task.id, tasks).find(
+        (t) => t.kind === "government-review",
+      ) ??
+      tasks.find(
+        (t) =>
+          t.kind === "government-review" &&
+          t.poNumber.trim() === poNumber &&
+          t.propertyId === property.id,
+      ) ??
+      null
+    );
+  }, [task, tasks, poNumber, property.id]);
+
+  const tabActivity = useMemo(
+    () =>
+      buildPropertyDetailTabActivity({
+        parties: partySubmissionsQuery.data ?? null,
+        failures: propertyFailures.map((f) => ({
+          id: f.id,
+          status: f.status,
+          updatedAt: f.updatedAt,
+        })),
+        feeRows: propertyFeeRows.map((r) => ({
+          workflowTaskId: r.workflowTaskId,
+          billingStatus: r.billingStatus,
+          updatedAtUtc: r.updatedAtUtc ?? null,
+        })),
+        logEvents: logEvents.map((e) => ({ id: e.id, at: e.at })),
+        keysStatus: keyGate?.keysStatus ?? keysStatus,
+        governmentReviewTaskStatus: governmentTask?.status ?? null,
+        governmentReviewUpdatedAt: governmentTask?.updatedAt ?? null,
+      }),
+    [
+      partySubmissionsQuery.data,
+      propertyFailures,
+      propertyFeeRows,
+      logEvents,
+      keyGate?.keysStatus,
+      keysStatus,
+      governmentTask,
+    ],
+  );
+
+  useEffect(() => {
+    const fingerprint = tabActivity[tab] ?? null;
+    if (!fingerprint) return;
+    markPropertyTabSeen(property.id, tab, fingerprint);
+    setSeenTabs((prev) => {
+      if (prev[tab] === fingerprint) return prev;
+      return { ...prev, [tab]: fingerprint };
+    });
+  }, [property.id, tab, tabActivity]);
+
   return (
     <div className="flex min-h-0 min-w-0 flex-1 flex-col">
       <PropertyDetailMobileGlance
@@ -840,7 +888,11 @@ export function PoPropertyDetailTabs({
           >
             {visibleTabs.map((t) => {
               const active = tab === t.id;
-              const hasNew = propertyTabHasNewDot(property.id, t.id, seenTabs);
+              const hasNew = propertyTabHasNewDot(
+                t.id,
+                tabActivity[t.id],
+                seenTabs,
+              );
               return (
                 <Tab
                   key={t.id}

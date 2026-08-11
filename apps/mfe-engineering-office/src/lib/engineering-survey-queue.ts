@@ -31,7 +31,7 @@ export function engineeringSurveyTaskStatusBadge(
     return { label: "مكتمل", className: "b-done" };
   }
   if (sub?.status === "reopened") {
-    return { label: "متعذر", className: "b-returned" };
+    return { label: "معادة للتصحيح", className: "b-returned" };
   }
   if (sub && sub.latitude && sub.surveyReportFileName) {
     return { label: "قيد التنفيذ", className: "b-prog" };

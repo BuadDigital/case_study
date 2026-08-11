@@ -23,6 +23,7 @@ export function Badge({
 }: HTMLAttributes<HTMLSpanElement> & { tone?: BadgeTone; dot?: boolean }) {
   return (
     <span
+      dir="rtl"
       className={cn(
         "inline-flex items-center gap-1.5 rounded-md px-2.5 py-1 text-[12px] font-bold whitespace-nowrap",
         toneClasses[tone],

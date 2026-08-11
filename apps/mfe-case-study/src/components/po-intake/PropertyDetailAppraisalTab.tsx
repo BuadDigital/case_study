@@ -50,7 +50,7 @@ export function PropertyDetailAppraisalTab({
       />
       {submission?.packageStatus === "reopened" && returnRemark?.trim() ? (
         <div className="mb-3 rounded-lg border border-amber border-e-[3px] border-e-amber bg-amber-light px-3.5 py-2.5 text-xs leading-relaxed text-amber-text">
-          <strong>مُعاد للتعديل</strong> — {returnRemark.trim()}
+          <strong>معادة للتصحيح</strong> — {returnRemark.trim()}
         </div>
       ) : null}
       <PartyRoleDetailPanel

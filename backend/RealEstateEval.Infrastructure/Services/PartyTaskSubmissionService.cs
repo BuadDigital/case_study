@@ -21,6 +21,17 @@ public class PartyTaskSubmissionService : IPartyTaskSubmissionService
         WorkflowTaskKind.FieldInspection,
     ];
 
+    /// <summary>Case-specialist / supervisor inbox copy for a party's submit action, by task kind.</summary>
+    private static readonly Dictionary<WorkflowTaskKind, (string Title, string Body)> SubmitNotificationText = new()
+    {
+        [WorkflowTaskKind.EngineeringSurvey] =
+            ("إرسال الرفع المساحي", "أرسل المكتب الهندسي مخرجات الرفع المساحي للمراجعة"),
+        [WorkflowTaskKind.FieldInspection] =
+            ("إرسال المعاينة الميدانية", "أرسل المعاين بيانات المعاينة الميدانية للمراجعة"),
+        [WorkflowTaskKind.PropertyAppraisal] =
+            ("إرسال تقرير التقييم", "أرسل المقيم تقرير التقييم العقاري للمراجعة"),
+    };
+
     private readonly ApplicationDbContext _db;
     private readonly IWorkflowTaskService _tasks;
     private readonly IFieldInspectionAttachmentVerifier _fieldInspectionAttachments;
@@ -290,6 +301,8 @@ public class PartyTaskSubmissionService : IPartyTaskSubmissionService
                 now,
                 cancellationToken);
         }
+
+        await NotifySpecialistAndSupervisorOnSubmitAsync(task, cancellationToken);
 
         return (await ToDtoAsync(entity, cancellationToken), null);
     }
@@ -574,6 +587,62 @@ public class PartyTaskSubmissionService : IPartyTaskSubmissionService
                 EntityType = "task",
                 EntityId = task.Id.ToString(),
                 SourceEvent = sourceEvent,
+            },
+            cancellationToken);
+    }
+
+    /// <summary>
+    /// Party submit (engineering office / inspector / evaluator) currently only notifies via a
+    /// same-tab frontend window event, which never reaches the assigned case specialist or the
+    /// section supervisor on their own sessions. Fan out server-side so both actually get an
+    /// inbox notification when a party sends work in for review.
+    /// </summary>
+    private async Task NotifySpecialistAndSupervisorOnSubmitAsync(
+        WorkflowTask task,
+        CancellationToken cancellationToken)
+    {
+        if (!SubmitNotificationText.TryGetValue(task.Kind, out var text)) return;
+        if (task.ParentTaskId is not Guid parentTaskId) return;
+
+        var parent = await _db.WorkflowTasks.AsNoTracking()
+            .FirstOrDefaultAsync(t => t.Id == parentTaskId, cancellationToken);
+        if (parent is null) return;
+
+        var userIds = new HashSet<string>(StringComparer.Ordinal);
+
+        var specialistAssigneeId = parent.AssigneeId?.Trim();
+        if (!string.IsNullOrWhiteSpace(specialistAssigneeId))
+        {
+            var specialistUserId = await _recipients.ResolveUserIdForDistributionAssigneeAsync(
+                specialistAssigneeId,
+                cancellationToken);
+            if (!string.IsNullOrWhiteSpace(specialistUserId))
+                userIds.Add(specialistUserId);
+        }
+
+        var supervisorUserIds = await _recipients.ResolveUserIdsWithPrototypeRoleAsync(
+            "section-supervisor",
+            cancellationToken);
+        foreach (var id in supervisorUserIds)
+            userIds.Add(id);
+
+        if (userIds.Count == 0) return;
+
+        var refLabel = task.PoNumber?.Trim();
+        var body = string.IsNullOrEmpty(refLabel) ? $"{text.Body}." : $"{text.Body} على {refLabel}.";
+
+        await _notifications.CreateForUsersAsync(
+            userIds,
+            new CreateUserNotificationRequest
+            {
+                Title = text.Title,
+                Body = body,
+                Tone = "info",
+                Href = $"/case-study/{Uri.EscapeDataString(parent.Id.ToString())}",
+                Category = "workflow",
+                EntityType = "task",
+                EntityId = parent.Id.ToString(),
+                SourceEvent = $"party-submitted:{task.Id}",
             },
             cancellationToken);
     }

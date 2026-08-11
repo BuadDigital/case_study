@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import {
   createNotification,
   listNotifications,
@@ -10,6 +11,7 @@ import {
 import { ApiAuthError } from "@platform/api-client";
 import { isFeatureEnabled } from "@platform/app-shared/feature-flags";
 import { useAuth } from "@platform/app-shared/hooks/useAuth";
+import { prototypeKeys } from "@platform/app-shared/query/prototype-keys";
 import {
   filterNotificationsForRole,
   shouldShowNotificationToast,
@@ -41,6 +43,7 @@ function isNetworkFailure(err: unknown): boolean {
 /** Server inbox sync via SSE with polling fallback. */
 export function ServerNotificationBridge() {
   const { token, authReady, isAuthenticated, role, user } = useAuth();
+  const queryClient = useQueryClient();
   const seenIdsRef = useRef<Set<string>>(new Set());
   const initialLoadRef = useRef(true);
   const localSyncSourceEventsRef = useRef<Map<string, number>>(new Map());
@@ -48,6 +51,17 @@ export function ServerNotificationBridge() {
   useEffect(() => {
     if (!isFeatureEnabled("notificationCenter")) return;
     if (!authReady || !isAuthenticated || !token) return;
+
+    // Any server-pushed notification means something changed on the backend
+    // (workflow submit/return/accept/distribution, financial/fee status,
+    // failures, court visits, ...) — refresh every queue's cached data
+    // instantly instead of waiting on the 30s poll or a manual refresh.
+    // Categories are inconsistent/ad-hoc across services, so refresh on all
+    // of them rather than chase an allow-list — invalidation only refetches
+    // currently-mounted queries, so this is cheap.
+    function refreshTransactions() {
+      void queryClient.invalidateQueries({ queryKey: prototypeKeys.all });
+    }
 
     setNotificationStorageUser(user?.id);
     seenIdsRef.current.clear();
@@ -76,6 +90,7 @@ export function ServerNotificationBridge() {
         seenIdsRef.current = new Set(items.map((item) => item.id));
 
         if (notifyNew && !initialLoadRef.current) {
+          if (newUnread.length > 0) refreshTransactions();
           for (const item of newUnread) {
             if (shouldSuppressEchoToast(item.sourceEvent)) continue;
             if (!shouldShowNotificationToast(role, item)) continue;
@@ -125,6 +140,7 @@ export function ServerNotificationBridge() {
       const isNew = !seenIdsRef.current.has(item.id);
       seenIdsRef.current.add(item.id);
       upsertNotificationFromServer(item);
+      if (isNew) refreshTransactions();
 
       if (
         !initialLoadRef.current &&
@@ -190,7 +206,7 @@ export function ServerNotificationBridge() {
       streamAbort.abort();
       document.removeEventListener("visibilitychange", onVisible);
     };
-  }, [authReady, isAuthenticated, token, role, user?.id]);
+  }, [authReady, isAuthenticated, token, role, user?.id, queryClient]);
 
   useEffect(() => {
     if (!token) return;
@@ -198,16 +214,22 @@ export function ServerNotificationBridge() {
     function onPushed(event: Event) {
       const item = (event as CustomEvent<AppNotification>).detail;
       if (!item) return;
-      if (item.sourceEvent) {
-        localSyncSourceEventsRef.current.set(item.sourceEvent, Date.now());
-      }
+      // Must match exactly what gets synced to the server below — the SSE/poll
+      // echo of this same notification carries the *synced* sourceEvent, not
+      // the original one, so suppression has to be keyed on the same string
+      // or the echo re-fires a second toast for the action just shown.
+      // Pushes without an original sourceEvent get a per-notification id
+      // instead of a shared literal, so two unrelated self-authored toasts
+      // fired within the suppression window don't mask each other.
+      const syncedSourceEvent = item.sourceEvent
+        ? `local:${item.sourceEvent}`
+        : `self-authored:${item.id}`;
+      localSyncSourceEventsRef.current.set(syncedSourceEvent, Date.now());
       void createNotification(
         { token: token! },
         {
           ...notificationToCreateRequest(item),
-          sourceEvent: item.sourceEvent
-            ? `local:${item.sourceEvent}`
-            : "self-authored",
+          sourceEvent: syncedSourceEvent,
         },
       ).catch((err) => {
         console.warn("Failed to sync local notification to server", err);

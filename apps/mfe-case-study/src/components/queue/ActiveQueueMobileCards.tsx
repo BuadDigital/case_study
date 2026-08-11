@@ -3,7 +3,6 @@
 import type { ReactNode } from "react";
 import {
   StatusPill,
-  Spinner,
   cn,
   queueLegacyStatusStyle,
   type StatusPillStyle,
@@ -12,6 +11,7 @@ import {
   RowMoreMenu,
   type RowMoreMenuItem,
 } from "../ui/RowMoreMenu";
+import { RowAttentionDot } from "../ui/RowAttentionDot";
 
 export type ActiveQueueMobileCardTone = "new" | "pending" | "returned" | "done";
 
@@ -38,6 +38,8 @@ export type ActiveQueueMobileCardItem = {
   onOpen: () => void;
   /** Show open-loading affordance on the title. */
   loading?: boolean;
+  /** Outlook-style unread dot next to the title — new / returned / needs action. */
+  unread?: boolean;
   /** Optional leading control (e.g. ops checkbox). */
   leading?: ReactNode;
   /** Extra block under the status pill (assignee / due / etc.). */
@@ -282,23 +284,15 @@ export function ActiveQueueMobileCards({
               ) : null}
 
               <div className="relative z-[1] min-w-0 flex-1 overflow-hidden">
-                <div
-                  className={cn(
-                    "flex items-center gap-1.5 truncate text-[13.5px] font-semibold leading-snug tracking-tight text-heading",
-                    item.loading && "ui-queue-deed-loading",
-                  )}
-                >
-                  {item.loading ? (
-                    <span
-                      role="status"
-                      aria-label="جاري الفتح"
-                      className="ui-queue-spinner-in"
-                    >
-                      <Spinner className="size-3 shrink-0 text-primary" />
-                    </span>
-                  ) : null}
+                <div className="flex items-center gap-1.5 truncate text-[13.5px] font-semibold leading-snug tracking-tight text-heading">
+                  {item.unread ? <RowAttentionDot /> : null}
                   <span className="truncate">{item.title}</span>
                 </div>
+                {item.loading ? (
+                  <span className="sr-only" role="status">
+                    جاري الفتح
+                  </span>
+                ) : null}
                 {meta.length > 0 ? (
                   <div className="mt-1.5 flex flex-wrap items-center gap-x-2.5 gap-y-1 text-[11px] text-text-3">
                     {meta.map((m, i) => (

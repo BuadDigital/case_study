@@ -45,6 +45,7 @@ import { RemainingTimeCell } from "@case-study/mfe/components/ui/RemainingTimeCe
 import { RowMoreMenu } from "@case-study/mfe/components/ui/RowMoreMenu";
 import type { RowMoreMenuItem } from "@case-study/mfe/components/ui/RowMoreMenu";
 import { InteractiveDeedCell } from "../components/ui/InteractiveDeedCell";
+import { RowAttentionDot } from "../components/ui/RowAttentionDot";
 import { PartyAssigneeCell } from "../components/ui/PartyAssigneeCell";
 import { HoverPortalCard } from "../components/ui/HoverPortalCard";
 import { buildActiveQueueRowMoreItems } from "../lib/prototype/active-queue-row-menu";
@@ -97,6 +98,11 @@ import {
 } from "../lib/prototype/tasks-storage";
 import { resolveQueueTasksForViewer } from "../lib/prototype/viewer-task-access";
 import {
+  buildRowAttentionFingerprint,
+  rowHasAttentionDot,
+  useRowAttentionSeenMap,
+} from "../lib/prototype/row-attention-storage";
+import {
   buildDistributionQueueRowMeta,
   buildPrimaryQueueRowMeta,
   filterDistributionQueueRows,
@@ -128,7 +134,6 @@ import {
   appraiserQueueStatusGroup,
   appraiserSurveyDone,
 } from "@evaluator/mfe/lib/evaluator/evaluator-queue";
-import { loadEvaluatorSubmission } from "@evaluator/mfe/lib/evaluator/evaluator-submission-storage";
 import { ActiveTransactionPageLayout } from "../components/active-transactions/ActiveTransactionPageLayout";
 import { prototypeKeys } from "@platform/app-shared/query/prototype-keys";
 
@@ -139,7 +144,7 @@ const APPRAISAL_STATUS_FILTERS: { value: string; label: string }[] = [
   { value: "ready", label: "جاهزة للتقييم" },
   { value: "submitted", label: "مُرسَلة للأخصائي" },
   { value: "closed", label: "مكتملة على النظام" },
-  { value: "reopened", label: "مُعادة للتعديل" },
+  { value: "reopened", label: "معادة للتصحيح" },
 ];
 
 export type ActiveTransactionQueueTableLayout =
@@ -546,10 +551,45 @@ export function ActiveTransactionQueueView({
     [router, config, resolveTaskFullPagePath],
   );
 
+  const resolveTaskBadge = useCallback(
+    (task: WorkflowTask) =>
+      resolveQueueTaskStatusBadge(task, {
+        getTaskStatusBadge: config.getTaskStatusBadge,
+        inspectionWorkspace: inspectionWorkspaceByTaskId.get(task.id),
+        partySubmission: getCachedPartySubmission(task.id),
+      }),
+    [config, inspectionWorkspaceByTaskId, submissionCacheGen],
+  );
+
+  const [rowAttentionSeen, markRowAttentionSeen] = useRowAttentionSeenMap();
+
+  /** Outlook-style unread dot: new task, status change, or badge change
+   * (return / reply / new action) that the row hasn't been opened since. */
+  const resolveRowAttention = useCallback(
+    (task: WorkflowTask): boolean =>
+      rowHasAttentionDot(
+        task.id,
+        buildRowAttentionFingerprint(task, resolveTaskBadge(task)?.className),
+        rowAttentionSeen,
+      ),
+    [resolveTaskBadge, rowAttentionSeen],
+  );
+
+  const markTaskRowSeen = useCallback(
+    (task: WorkflowTask) => {
+      markRowAttentionSeen(
+        task.id,
+        buildRowAttentionFingerprint(task, resolveTaskBadge(task)?.className),
+      );
+    },
+    [markRowAttentionSeen, resolveTaskBadge],
+  );
+
   const handleRowClick = useCallback(
     (taskId: string) => {
       const task = listed.find((t) => t.id === taskId);
       if (task && config.canOpenTask && !config.canOpenTask(task)) return;
+      if (task) markTaskRowSeen(task);
 
       const fullPath = task ? resolveTaskFullPagePath(task) : undefined;
       // Closing the open row should not flash a loading state.
@@ -581,6 +621,7 @@ export function ActiveTransactionQueueView({
       config,
       resolveTaskFullPagePath,
       router,
+      markTaskRowSeen,
     ],
   );
 
@@ -691,7 +732,10 @@ export function ActiveTransactionQueueView({
           err instanceof Error ? err.message : err,
         );
       });
-  }, [listedTaskIdsKey, needsPartySubmissions]);
+    // Re-run on every fresh `tasks` fetch (live poll or a server-pushed
+    // workflow notification), not just when the id set changes — a returned/
+    // reopened submission on an already-listed task needs a fresh badge too.
+  }, [listedTaskIdsKey, needsPartySubmissions, tasks]);
 
   const renderStatusOrRemaining = useCallback(
     (
@@ -713,16 +757,6 @@ export function ActiveTransactionQueueView({
       }
       return <RemainingTimeCell state={remainingTime} />;
     },
-    [config, inspectionWorkspaceByTaskId, submissionCacheGen],
-  );
-
-  const resolveTaskBadge = useCallback(
-    (task: WorkflowTask) =>
-      resolveQueueTaskStatusBadge(task, {
-        getTaskStatusBadge: config.getTaskStatusBadge,
-        inspectionWorkspace: inspectionWorkspaceByTaskId.get(task.id),
-        partySubmission: getCachedPartySubmission(task.id),
-      }),
     [config, inspectionWorkspaceByTaskId, submissionCacheGen],
   );
 
@@ -989,6 +1023,11 @@ export function ActiveTransactionQueueView({
     }
   }, [selectedId, selectedTask, queuePending, listed, closePanel, tasks]);
 
+  useEffect(() => {
+    if (!selectedTask) return;
+    markTaskRowSeen(selectedTask);
+  }, [selectedTask, markTaskRowSeen]);
+
   const resultCountChip = (
     <span
       className="inline-flex shrink-0 items-center gap-1 rounded-[6px] bg-gold-soft px-2.5 py-[3px] text-[12px] font-bold text-gold-d max-lg:self-start lg:ms-auto"
@@ -1160,6 +1199,7 @@ export function ActiveTransactionQueueView({
 
   const handleDistributionRowClick = useCallback(
     (task: WorkflowTask, propertyId: string | undefined) => {
+      markTaskRowSeen(task);
       if (showPartyColumns && propertyId) {
         setOpeningTaskId(task.id);
         startOpenTask(() => {
@@ -1171,7 +1211,7 @@ export function ActiveTransactionQueueView({
       }
       handleRowClick(task.id);
     },
-    [showPartyColumns, router, handleRowClick],
+    [showPartyColumns, router, handleRowClick, markTaskRowSeen],
   );
 
   const mobileQueueCardItems = useMemo((): ActiveQueueMobileCardItem[] => {
@@ -1503,6 +1543,11 @@ export function ActiveTransactionQueueView({
                                             loading={isTaskOpening(
                                               meta.task.id,
                                             )}
+                                            trailing={
+                                              resolveRowAttention(meta.task) ? (
+                                                <RowAttentionDot />
+                                              ) : undefined
+                                            }
                                           />
                                         </Td>
                                         <Td>
@@ -1563,6 +1608,11 @@ export function ActiveTransactionQueueView({
                                 <InteractiveDeedCell
                                   label={meta.deedCell}
                                   loading={isTaskOpening(meta.task.id)}
+                                  trailing={
+                                    resolveRowAttention(meta.task) ? (
+                                      <RowAttentionDot />
+                                    ) : undefined
+                                  }
                                 />
                               </Td>
                               <Td>
@@ -1676,6 +1726,7 @@ export function ActiveTransactionQueueView({
                                     className="relative z-[1] inline-flex max-w-full cursor-pointer border-0 bg-transparent p-0 font-inherit text-start"
                                     onClick={(e) => {
                                       e.stopPropagation();
+                                      markTaskRowSeen(task);
                                       setOpeningTaskId(task.id);
                                       startOpenTask(() => {
                                         router.push(
@@ -1692,6 +1743,11 @@ export function ActiveTransactionQueueView({
                                       label={row.deedLabel}
                                       loading={isTaskOpening(task.id)}
                                       labelClassName={INSPECTION_TABLE_TYPE.deed}
+                                      trailing={
+                                        resolveRowAttention(task) ? (
+                                          <RowAttentionDot />
+                                        ) : undefined
+                                      }
                                     />
                                   </button>
                                 ) : (
@@ -1699,6 +1755,11 @@ export function ActiveTransactionQueueView({
                                     label={row.deedLabel}
                                     loading={isTaskOpening(task.id)}
                                     labelClassName={INSPECTION_TABLE_TYPE.deed}
+                                    trailing={
+                                      resolveRowAttention(task) ? (
+                                        <RowAttentionDot />
+                                      ) : undefined
+                                    }
                                   />
                                 )}
                               </span>
@@ -1825,8 +1886,6 @@ export function ActiveTransactionQueueView({
                           const badge = resolveTaskBadge(task);
                           const statusLabel = badge?.label ?? "—";
                           const statusClass = badge?.className ?? "b-new";
-                          const isNewFresh =
-                            statusClass === "b-new" && !missingPhone;
                           const propertyType =
                             property?.propertyType?.trim() ||
                             property?.classification?.trim() ||
@@ -1855,12 +1914,9 @@ export function ActiveTransactionQueueView({
                                   tone="gold"
                                   labelClassName="text-[13.5px] justify-end"
                                   trailing={
-                                    isNewFresh ? (
-                                      <span
-                                        className="ui-status-dot-live size-2 shrink-0 rounded-full bg-[#2f7de1]"
-                                        aria-hidden
-                                      />
-                                    ) : null
+                                    resolveRowAttention(task) ? (
+                                      <RowAttentionDot />
+                                    ) : undefined
                                   }
                                   subtitle={
                                     propertyType ? (
@@ -1929,11 +1985,6 @@ export function ActiveTransactionQueueView({
                                       statusClass,
                                     )}
                                   />
-                                  {isNewFresh ? (
-                                    <span className="text-[10px] font-bold tracking-wide text-[#8a5e14]">
-                                      لم يُتخذ إجراء بعد
-                                    </span>
-                                  ) : null}
                                   {missingPhone ? (
                                     <span className="whitespace-nowrap rounded-md border border-[color-mix(in_srgb,#d9694f_28%,transparent)] bg-[color-mix(in_srgb,#d9694f_10%,transparent)] px-[7px] py-0.5 text-[10.5px] font-bold text-[#a5432e]">
                                       بلا رقم اتصال
@@ -2059,11 +2110,6 @@ export function ActiveTransactionQueueView({
                             task,
                             tasks ?? [],
                           );
-                          const sub = loadEvaluatorSubmission(task.id);
-                          const isFreshDraft =
-                            (!sub || sub.status === "draft") &&
-                            !sub?.reportFileName &&
-                            !sub?.landValue?.trim();
                           const propertyType =
                             property?.propertyType?.trim() ||
                             property?.classification?.trim() ||
@@ -2113,13 +2159,9 @@ export function ActiveTransactionQueueView({
                                   tone="gold"
                                   labelClassName="text-[13.5px] justify-end"
                                   trailing={
-                                    isFreshDraft ? (
-                                      <span
-                                        className="ui-status-dot-live size-2 shrink-0 rounded-full bg-[#2f7de1]"
-                                        title="معاملة جديدة — لم يُتخذ عليها إجراء"
-                                        aria-hidden
-                                      />
-                                    ) : null
+                                    resolveRowAttention(task) ? (
+                                      <RowAttentionDot />
+                                    ) : undefined
                                   }
                                   subtitle={
                                     propertyType ? (

@@ -554,7 +554,7 @@ export function EvaluatorWindow({
 
         {draft.status === "reopened" ? (
           <EngInfo variant="amber">
-            <strong>⚠ أُعيدت المعاملة من الأخصائي للتعديل</strong> — يمكنك تعديل
+            <strong>⚠ معادة للتصحيح</strong> — أرجعها الأخصائي؛ يمكنك تعديل
             جميع الحقول وإعادة الإرسال.
           </EngInfo>
         ) : null}

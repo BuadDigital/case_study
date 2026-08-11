@@ -181,7 +181,7 @@ export function FieldInspectionAdvisoryPanel({
       {submission.status === "reopened" && submission.returnNote?.trim() ? (
         <div className={noteWarnClass}>
           <p className="m-0">
-            <strong>مُعاد للتصحيح</strong> — {submission.returnNote.trim()}
+            <strong>معادة للتصحيح</strong> — {submission.returnNote.trim()}
           </p>
         </div>
       ) : null}
