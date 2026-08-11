@@ -138,20 +138,42 @@ const REAL_ESTATE_APPRAISER_TAB_IDS: readonly TabId[] = [
   "survey-notes",
 ];
 
+/** مكتب هندسي: survey package + dues/notes. */
+const ENGINEERING_OFFICE_TAB_IDS: readonly TabId[] = [
+  "basic",
+  "survey",
+  "failures",
+  "finance",
+  "survey-notes",
+];
+
+/** معاين ميداني: inspection media + dues/notes. */
+const FIELD_INSPECTOR_TAB_IDS: readonly TabId[] = [
+  "basic",
+  "documents",
+  "linked",
+  "inspection",
+  "photos",
+  "failures",
+  "finance",
+  "survey-notes",
+];
+
+const ROLE_PROPERTY_DETAIL_TABS: Readonly<
+  Partial<Record<string, readonly TabId[]>>
+> = {
+  "government-reviewer": GOVERNMENT_REVIEWER_TAB_IDS,
+  "real-estate-appraiser": REAL_ESTATE_APPRAISER_TAB_IDS,
+  "engineering-office": ENGINEERING_OFFICE_TAB_IDS,
+  "field-inspector": FIELD_INSPECTOR_TAB_IDS,
+};
+
 function propertyDetailTabsForRole(
   role: string,
 ): readonly (typeof TABS)[number][] {
-  if (role === "government-reviewer") {
-    return TABS.filter((t) =>
-      (GOVERNMENT_REVIEWER_TAB_IDS as readonly string[]).includes(t.id),
-    );
-  }
-  if (role === "real-estate-appraiser") {
-    return TABS.filter((t) =>
-      (REAL_ESTATE_APPRAISER_TAB_IDS as readonly string[]).includes(t.id),
-    );
-  }
-  return TABS;
+  const allowed = ROLE_PROPERTY_DETAIL_TABS[role];
+  if (!allowed) return TABS;
+  return TABS.filter((t) => (allowed as readonly string[]).includes(t.id));
 }
 
 function isAllowedPropertyTab(
