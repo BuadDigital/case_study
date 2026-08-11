@@ -956,7 +956,10 @@ export function tasksForPartyAssignee(
     .sort(compareWorkflowTasks);
 }
 
-export async function syncTasksFromPoRecords(): Promise<SyncTasksResult> {
+export async function syncTasksFromPoRecords(options?: {
+  /** Default true — set false when warming the PO cache so reads don't fan out. */
+  notify?: boolean;
+}): Promise<SyncTasksResult> {
   const config = workOrdersApiConfig();
   if (!config) {
     return { ok: false, error: apiErrorMessage("auth") };
@@ -975,7 +978,9 @@ export async function syncTasksFromPoRecords(): Promise<SyncTasksResult> {
       ),
     };
   }
-  notifyTasksChanged();
+  if (options?.notify !== false) {
+    notifyTasksChanged();
+  }
   return { ok: true };
 }
 

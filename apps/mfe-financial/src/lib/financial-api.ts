@@ -47,6 +47,17 @@ export async function loadPartyFeePricingById(id: string): Promise<PartyFeePrici
   return unwrapApiResult(result, "تعذّر تحميل تسعير الأتعاب");
 }
 
+/** React Query keys — shared with shell prefetch on /fee-pricing. */
+export function partyFeePricingTablesQueryKey(
+  category: PartyFeePricingCategory,
+) {
+  return ["financial", "party-fee-pricing", "tables", category] as const;
+}
+
+export function partyFeePricingTableQueryKey(id: string) {
+  return ["financial", "party-fee-pricing", "table", id] as const;
+}
+
 export async function createPartyFeePricingTable(
   category: PartyFeePricingCategory,
   name: string,

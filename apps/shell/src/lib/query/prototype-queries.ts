@@ -2,32 +2,21 @@
 
 import { useQueryClient, type QueryClient } from "@tanstack/react-query";
 import type { PageId } from "@platform/types";
-import {
-  loadPendingBourseItems,
-} from "@case-study/mfe";
-import {
-  loadPoListRows,
-  loadPropertyListItems,
-} from "@platform/app-shared/prototype/work-orders-read";
-import {
-  FAILURES_CHANGED_EVENT,
-  loadFailuresQuery,
-} from "@failures/mfe";
-import {
-  CASE_STUDY_INFO_ROLES_CHANGED_EVENT,
-  loadCaseStudyInfoRolesConfig,
-  loadCourtsCatalog,
-} from "@settings/mfe";
-import {
-  loadPoRecordsWithTaskSync,
-  loadWorkflowTasksForQuery,
-  TASKS_CHANGED_EVENT,
-  WORK_ORDERS_CHANGED_EVENT,
-} from "@case-study/mfe/query/case-study-queries";
+import { loadPendingBourseItems } from "@case-study/mfe";
+import { loadPoListRows, loadPropertyListItems } from "@platform/app-shared/prototype/work-orders-read";
+import { FAILURES_CHANGED_EVENT, loadFailuresQuery } from "@failures/mfe";
+import { CASE_STUDY_INFO_ROLES_CHANGED_EVENT, loadCaseStudyInfoRolesConfig, loadCourtsCatalog } from "@settings/mfe";
+import { loadPoRecordsWithTaskSync, loadWorkflowTasksForQuery, TASKS_CHANGED_EVENT, WORK_ORDERS_CHANGED_EVENT } from "@case-study/mfe/query/case-study-queries";
 import { loadSuspendedTransactions } from "@case-study/mfe/lib/prototype/suspended-transactions-storage";
 import { loadFailureTypesCatalog } from "@failures/mfe/lib/failure-types-storage";
 import { loadReportingDashboard } from "@dashboard/mfe/lib/dashboard-reporting-api";
-import { loadPropertyKeysPage } from "@keys/mfe/lib/keys-api";
+import { loadKeyEnvelopes } from "@keys/mfe/lib/keys-envelope-api";
+import {
+  loadPartyFeePricingById,
+  loadPartyFeePricingTables,
+  partyFeePricingTableQueryKey,
+  partyFeePricingTablesQueryKey,
+} from "@financial/mfe/lib/financial-api";
 import { prototypeKeys } from "@platform/app-shared/query/prototype-keys";
 import { useEffect } from "react";
 
@@ -72,6 +61,7 @@ export function prefetchPrototypePage(
         queryFn: loadReportingDashboard,
         ...opts,
       });
+      break;
     case "po":
       void queryClient.prefetchQuery({
         queryKey: prototypeKeys.poListRows(),
@@ -94,10 +84,12 @@ export function prefetchPrototypePage(
       prefetchTasksAndPos();
       break;
     case "keys":
-      prefetchActiveTransactionsSituation();
+      // KeysView lists envelopes only (`keyEnvelopes`). Do NOT warm PO/workflow
+      // or the legacy property-keys page here — that used to starve the real
+      // list request with sync + 4-5 concurrent APIs the screen never shows.
       void queryClient.prefetchQuery({
-        queryKey: prototypeKeys.propertyKeys(),
-        queryFn: loadPropertyKeysPage,
+        queryKey: prototypeKeys.keyEnvelopes(),
+        queryFn: loadKeyEnvelopes,
         ...opts,
       });
       break;
@@ -152,6 +144,32 @@ export function prefetchPrototypePage(
         ...opts,
       });
       break;
+    case "fee-pricing": {
+      // Default category matches FinancePartyFeePricing initial state.
+      const category = "engineering-survey" as const;
+      void queryClient
+        .prefetchQuery({
+          queryKey: partyFeePricingTablesQueryKey(category),
+          queryFn: () => loadPartyFeePricingTables(category),
+          ...opts,
+        })
+        .then(() => {
+          const list = queryClient.getQueryData(
+            partyFeePricingTablesQueryKey(category),
+          ) as
+            | Awaited<ReturnType<typeof loadPartyFeePricingTables>>
+            | undefined;
+          const id =
+            list?.find((t) => t.isActive)?.id ?? list?.[0]?.id ?? "";
+          if (!id) return;
+          void queryClient.prefetchQuery({
+            queryKey: partyFeePricingTableQueryKey(id),
+            queryFn: () => loadPartyFeePricingById(id),
+            ...opts,
+          });
+        });
+      break;
+    }
     case "financial":
       break;
     default:
@@ -187,7 +205,23 @@ export function usePrototypeDataSync(): void {
 
   useEffect(() => {
     const invalidateWorkOrders = () => {
-      void queryClient.invalidateQueries({ queryKey: prototypeKeys.all });
+      // Work-order mutations need PO list / property list + records, not the
+      // entire prototype tree (finance badges, fee summaries, timelines…).
+      void queryClient.invalidateQueries({
+        queryKey: prototypeKeys.poListRows(),
+      });
+      void queryClient.invalidateQueries({
+        queryKey: prototypeKeys.propertyListItems(),
+      });
+      void queryClient.invalidateQueries({
+        queryKey: prototypeKeys.poRecords(),
+      });
+      void queryClient.invalidateQueries({
+        queryKey: prototypeKeys.workflowTasks(),
+      });
+      void queryClient.invalidateQueries({
+        queryKey: prototypeKeys.pendingBourseItems(),
+      });
     };
 
     const invalidateTasks = () => {
@@ -204,6 +238,10 @@ export function usePrototypeDataSync(): void {
     const invalidateFailures = () => {
       void queryClient.invalidateQueries({
         queryKey: prototypeKeys.failures(),
+      });
+      // Ops tasks can park/resume when a linked failure opens or clears.
+      void queryClient.invalidateQueries({
+        queryKey: prototypeKeys.operationsTasks(),
       });
     };
 

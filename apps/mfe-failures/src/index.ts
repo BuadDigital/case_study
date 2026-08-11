@@ -12,6 +12,7 @@ export {
 export {
   FAILURE_RAISER_SPECIALIST,
   FAILURE_RAISER_SUPERVISOR,
+  GOVERNMENT_REVIEWER_FAILURE_RAISER,
   failureRaiserRoleForParty,
   FAILURE_RAISER_LABEL_BY_KIND,
 } from "./lib/failure-party-roles";

@@ -54,24 +54,37 @@ export function ServerNotificationBridge() {
   const localSyncSourceEventsRef = useRef<Map<string, number>>(new Map());
   const refreshDebounceRef = useRef<number | undefined>(undefined);
 
-  // Any server-pushed notification means something changed on the backend
-  // (workflow submit/return/accept/distribution, financial/fee status,
-  // failures, court visits, ...) — refresh every queue's cached data
-  // instantly instead of waiting on a manual refresh. Categories are
-  // inconsistent/ad-hoc across services, so refresh on all of them rather
-  // than chase an allow-list — invalidation only refetches currently-mounted
-  // queries, so this is cheap. Debounced: a single bulk action (e.g.
-  // distribution assigning many tasks) fans out one notification per
-  // recipient/task — without coalescing, each would fire its own refetch.
+  // Any server-pushed notification means something changed on the backend.
+  // Invalidate only live queues / sidebar feeds — NOT prototypeKeys.all
+  // (which also marks finance nav, inspector-fees badges, court visit fees,
+  // property timelines, … and fights every page change with a mass refetch).
   const refreshTransactions = useCallback(() => {
     if (refreshDebounceRef.current !== undefined) {
       window.clearTimeout(refreshDebounceRef.current);
     }
     refreshDebounceRef.current = window.setTimeout(() => {
       refreshDebounceRef.current = undefined;
-      void queryClient.invalidateQueries({ queryKey: prototypeKeys.all });
-      // Not under the prototype key prefix — the executive dashboard's KPI
-      // data needs its own explicit invalidation to refresh live too.
+      void queryClient.invalidateQueries({
+        queryKey: prototypeKeys.workflowTasks(),
+      });
+      void queryClient.invalidateQueries({
+        queryKey: prototypeKeys.poListRows(),
+      });
+      void queryClient.invalidateQueries({
+        queryKey: prototypeKeys.propertyListItems(),
+      });
+      void queryClient.invalidateQueries({
+        queryKey: prototypeKeys.operationsTasks(),
+      });
+      void queryClient.invalidateQueries({
+        queryKey: prototypeKeys.failures(),
+      });
+      void queryClient.invalidateQueries({
+        queryKey: prototypeKeys.pendingBourseItems(),
+      });
+      void queryClient.invalidateQueries({
+        queryKey: prototypeKeys.suspendedTransactions(),
+      });
       void queryClient.invalidateQueries({
         queryKey: ["reporting", "dashboard"],
       });

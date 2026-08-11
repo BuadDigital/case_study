@@ -209,7 +209,7 @@ public sealed class OperationsTaskCommands : IOperationsTaskCommands
                 return (null, "الحالة غير مدعومة");
 
             var error = OperationsTaskLifecycleRules.ValidateStatusTransition(
-                entity, next, actorAssigneeId, actorRole, actorName);
+                entity, next, actorAssigneeId, actorRole, actorName, request.PauseReason);
             if (error is not null) return (null, error);
 
             var pauseReason = request.PauseReason?.Trim();

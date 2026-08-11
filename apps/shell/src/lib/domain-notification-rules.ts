@@ -1,4 +1,3 @@
-import { FAILURES_CHANGED_EVENT } from "@failures/mfe";
 import { PARTY_TASK_RECALL_REQUESTED_EVENT } from "@platform/app-shared/prototype/party-task-recall-storage";
 import {
   SUSPENDED_TRANSACTIONS_CHANGED_EVENT,
@@ -21,20 +20,11 @@ export type DomainNotificationRule = {
 
 /** Inbox + toast rules — workflow submits use dedicated *-submitted events only. */
 export const DOMAIN_NOTIFICATION_RULES: DomainNotificationRule[] = [
-  {
-    event: FAILURES_CHANGED_EVENT,
-    notification: {
-      title: "تحديث في التعذرات",
-      body: "راجع قائمة التعذرات.",
-      tone: "warn",
-      href: "/failures",
-      category: "failures",
-      entityType: "failure",
-      sourceEvent: FAILURES_CHANGED_EVENT,
-    },
-    auditAction: "تحديث تعذرات",
-    auditEntity: "failures",
-  },
+  // FAILURES_CHANGED_EVENT is intentionally omitted: it only fires in the
+  // same browser that mutated failures, and raise/resolve UIs already show a
+  // specific success toast. The generic "تحديث في التعذرات" toast was a
+  // duplicate (same pattern as ENGINEERING_SURVEY_SUBMITTED). Queries still
+  // listen for the event directly for invalidate/refresh.
   {
     event: FAILURE_TYPES_CHANGED_EVENT,
     notification: {

@@ -9,6 +9,18 @@
   }
 }
 
+/* Toast enters from the physical right, slides left into place */
+@keyframes ui-toast-slide-in {
+  from {
+    opacity: 0;
+    transform: translateX(1.5rem);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
 @keyframes ui-skeleton-shimmer {
   0% {
     opacity: 0.55;
@@ -117,6 +129,10 @@
     animation: ui-fade-in 160ms ease-out both;
   }
 
+  .ui-animate-toast-in {
+    animation: ui-toast-slide-in 280ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  }
+
   /* Table / KPI skeleton placeholders */
   .ui-skeleton-shimmer {
     animation: ui-skeleton-shimmer 1.4s ease-in-out infinite;
@@ -175,6 +191,7 @@
 @media (prefers-reduced-motion: reduce) {
   .ui-animate-modal-overlay,
   .ui-animate-fade-in,
+  .ui-animate-toast-in,
   .ui-queue-row-opening,
   tr.ui-queue-row-opening > td,
   tr.ui-queue-row-opening > th,

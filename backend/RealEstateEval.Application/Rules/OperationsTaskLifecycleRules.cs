@@ -41,7 +41,8 @@ public static class OperationsTaskLifecycleRules
         OperationsTaskStatus next,
         string actorAssigneeId,
         string actorRole,
-        string? actorName = null)
+        string? actorName = null,
+        string? pauseReason = null)
     {
         if (entity.IsTerminal)
             return "المهمة في حالة نهائية";
@@ -78,10 +79,41 @@ public static class OperationsTaskLifecycleRules
                 return "هذا الإجراء للمنفّذ المكلّف فقط";
         }
 
-        if (next is OperationsTaskStatus.Paused or OperationsTaskStatus.Cancelled && !isManager)
+        if (next == OperationsTaskStatus.Cancelled && !isManager)
             return "هذا الإجراء للمنشئ أو المشرف فقط";
 
+        // Managers pause anytime; the assignee may pause only when reporting an
+        // active property failure (تعذر) so the task leaves their active queue.
+        if (next == OperationsTaskStatus.Paused && !isManager)
+        {
+            if (!isAssignee || !IsFailureObstructionPauseReason(pauseReason))
+                return "هذا الإجراء للمنشئ أو المشرف فقط";
+        }
+
+        // Reopen as «منشأة» after a failure is cleared — managers anytime;
+        // the assignee only when the pause was a failure obstruction.
+        if (next == OperationsTaskStatus.Created)
+        {
+            if (entity.Status != OperationsTaskStatus.Paused)
+                return "انتقال حالة غير مسموح";
+            if (!isManager)
+            {
+                if (!isAssignee || !IsFailureObstructionPauseReason(entity.PauseReason))
+                    return "هذا الإجراء للمنفّذ المكلّف أو المشرف فقط";
+            }
+        }
+
         return entity.CanTransitionTo(next) ? null : "انتقال حالة غير مسموح";
+    }
+
+    /// <summary>
+    /// Pause reasons used when a linked property has an open failure (تعذر) —
+    /// must stay in sync with the front-end <c>OPS_TASK_FAILURE_PAUSE_REASON</c>.
+    /// </summary>
+    public static bool IsFailureObstructionPauseReason(string? pauseReason)
+    {
+        var reason = pauseReason?.Trim() ?? "";
+        return reason.StartsWith("تعذر نشط", StringComparison.Ordinal);
     }
 
     public static DateTime DefaultDueAt(OperationsTaskPriority priority, DateTime now) =>
@@ -105,6 +137,8 @@ public static class OperationsTaskLifecycleRules
             OperationsTaskStatus.InProgress => from == OperationsTaskStatus.Paused
                 ? $"{actor} استأنف المهمة"
                 : $"{actor} أكّد الاستلام",
+            OperationsTaskStatus.Created when from == OperationsTaskStatus.Paused =>
+                $"{actor} أعاد فتح المهمة من جديد بعد رفع التعذر",
             OperationsTaskStatus.Completed => $"{actor} أكمل المهمة",
             OperationsTaskStatus.Paused => string.IsNullOrWhiteSpace(pauseReason)
                 ? $"{actor} أوقف المهمة مؤقتاً"

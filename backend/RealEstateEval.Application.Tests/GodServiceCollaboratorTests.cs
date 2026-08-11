@@ -36,6 +36,61 @@ public class GodServiceCollaboratorTests
     }
 
     [Fact]
+    public void Operations_assignee_may_pause_only_for_active_failure()
+    {
+        var entity = OperationsTaskInStatus(OperationsTaskStatus.InProgress);
+
+        Assert.Equal(
+            "هذا الإجراء للمنشئ أو المشرف فقط",
+            OperationsTaskLifecycleRules.ValidateStatusTransition(
+                entity,
+                OperationsTaskStatus.Paused,
+                "a1",
+                "government-reviewer",
+                pauseReason: "ظرف طارئ"));
+
+        Assert.Null(
+            OperationsTaskLifecycleRules.ValidateStatusTransition(
+                entity,
+                OperationsTaskStatus.Paused,
+                "a1",
+                "government-reviewer",
+                pauseReason: "تعذر نشط — بانتظار حل الأخصائي/المشرف"));
+    }
+
+    [Fact]
+    public void Operations_assignee_may_reopen_to_created_after_failure_pause()
+    {
+        var entity = OperationsTaskInStatus(OperationsTaskStatus.InProgress);
+        entity.TransitionTo(
+            OperationsTaskStatus.Paused,
+            DateTime.UtcNow,
+            pauseReason: "تعذر نشط — بانتظار حل الأخصائي/المشرف");
+
+        Assert.Null(
+            OperationsTaskLifecycleRules.ValidateStatusTransition(
+                entity,
+                OperationsTaskStatus.Created,
+                "a1",
+                "government-reviewer"));
+
+        Assert.Null(
+            OperationsTaskLifecycleRules.ValidateStatusTransition(
+                entity,
+                OperationsTaskStatus.Created,
+                "other",
+                "case-specialist"));
+
+        Assert.Equal(
+            "هذا الإجراء للمنفّذ المكلّف أو المشرف فقط",
+            OperationsTaskLifecycleRules.ValidateStatusTransition(
+                entity,
+                OperationsTaskStatus.Created,
+                "other",
+                "field-inspector"));
+    }
+
+    [Fact]
     public void Court_visit_normalize_requires_contacts_for_other_party()
     {
         var (_, error) = OperationsTaskCourtVisitRules.Normalize(new OperationsTaskCourtVisitResultDto

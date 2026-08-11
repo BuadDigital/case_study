@@ -235,7 +235,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
     <ToastContext.Provider value={value}>
       {children}
       <div
-        className="pointer-events-none fixed bottom-6 left-1/2 z-[400] flex max-w-[90vw] -translate-x-1/2 flex-col items-center gap-2"
+        className="pointer-events-none fixed bottom-6 right-6 z-[400] flex max-w-[min(420px,calc(100vw-3rem))] flex-col items-end gap-2"
         aria-live="polite"
         aria-relevant="additions"
       >
@@ -243,7 +243,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
           <div
             key={toast.id}
             role="status"
-            className="pointer-events-auto flex items-center gap-2.5 ui-animate-fade-in"
+            className="pointer-events-auto flex items-center gap-2.5 ui-animate-toast-in"
             style={{
               background: "var(--ink)",
               color: "#fff",
@@ -252,7 +252,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
               fontSize: 13,
               fontWeight: 600,
               boxShadow: "0 12px 30px -8px rgba(18,43,78,.5)",
-              maxWidth: "90vw",
+              maxWidth: "100%",
             }}
           >
             <ToastIcon tone={toast.tone} />

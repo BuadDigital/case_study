@@ -117,15 +117,16 @@ public class OperationsTask
         };
 
     /// <summary>
-    /// The legal status edges. Resume is always <see cref="OperationsTaskStatus.InProgress"/> —
-    /// never <see cref="PrevStatus"/>, because pausing from "created" would otherwise resume to
-    /// "created" and be rejected here.
+    /// The legal status edges. Manual resume is always <see cref="OperationsTaskStatus.InProgress"/>.
+    /// After a property-failure (تعذر) lift, tasks may reopen as <see cref="OperationsTaskStatus.Created"/>
+    /// so the assignee re-confirms receipt from the start.
     /// </summary>
     public static bool IsLegalTransition(OperationsTaskStatus from, OperationsTaskStatus to) =>
         (from, to) switch
         {
             (OperationsTaskStatus.Created, OperationsTaskStatus.InProgress) => true,
             (OperationsTaskStatus.Paused, OperationsTaskStatus.InProgress) => true,
+            (OperationsTaskStatus.Paused, OperationsTaskStatus.Created) => true,
             (OperationsTaskStatus.InProgress, OperationsTaskStatus.Completed) => true,
             (OperationsTaskStatus.Paused, OperationsTaskStatus.Completed) => true,
             (OperationsTaskStatus.Created, OperationsTaskStatus.Paused) => true,
@@ -172,10 +173,16 @@ public class OperationsTask
         {
             PausedAtUtc = null;
             PauseOverLimitRemindedAtUtc = null;
+            PauseReason = null;
+            PrevStatus = null;
         }
 
         if (next == OperationsTaskStatus.Cancelled)
             CancelReason = cancelReason!.Trim();
+
+        // Reopen after failure (paused → created): force a fresh receipt confirmation.
+        if (next == OperationsTaskStatus.Created && from == OperationsTaskStatus.Paused)
+            ReceiptConfirmedAtUtc = null;
 
         // Entering execution is also the receipt confirmation, including a resume after a
         // pause taken straight from "created".
