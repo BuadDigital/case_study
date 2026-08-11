@@ -58,32 +58,48 @@ describe("buildPropertyFromPriorDeed", () => {
       contacts: [{ name: "جهة", role: "مالك", phone: "0500000000" }],
     }) as PriorDeedRegistrationDto;
 
-  it("fills enfath and bourse fields from prior as editable baseline", () => {
+  it("fills all prior fields including request, mandate, and document names", () => {
     const existing = {
       ...emptyProperty(),
       id: "slot-new",
       deedNumber: "1234567890",
-      assignmentDocFileNames: ["local.pdf"],
     };
-    const next = buildPropertyFromPriorDeed(existing, priorBase());
+    const next = buildPropertyFromPriorDeed(existing, {
+      ...priorBase(),
+      requestNumber: "REQ-PRIOR",
+      assignmentMandateNumber: "MAND-1",
+      assignmentMandateDate: "2020-01-01",
+      assignmentDocFileNames: ["decree.pdf"],
+      delegationLetterFileNames: ["letter.pdf"],
+      otherDocumentFileNames: ["other.pdf"],
+      realEstateRegFileName: "reg.pdf",
+    });
     expect(next.id).toBe("slot-new");
     expect(next.ownerName).toBe("مالك سابق");
     expect(next.city).toBe("الرياض");
     expect(next.area).toBe("500");
-    expect(next.assignmentDocFileNames).toEqual(["local.pdf"]);
+    expect(next.requestNumber).toBe("REQ-PRIOR");
+    expect(next.assignmentMandateNumber).toBe("MAND-1");
+    expect(next.assignmentMandateDate).toBe("2020-01-01");
+    expect(next.assignmentDocFileNames).toEqual(["decree.pdf"]);
+    expect(next.delegationLetterFileNames).toEqual(["letter.pdf"]);
+    expect(next.otherDocumentFileNames).toEqual(["other.pdf"]);
+    expect(next.realEstateRegFileName).toBe("reg.pdf");
     expect(next.bourseDataCompleted).toBe(false);
   });
 
-  it("keeps current-slot files and soft-delete state", () => {
+  it("keeps soft-delete state on the current slot", () => {
     const existing = {
       ...emptyProperty(),
       id: "slot-x",
       deedNumber: "1234567890",
       isRemoved: true,
       removalReason: "اختبار",
-      otherDocumentFileNames: ["o.docx"],
     };
-    const next = buildPropertyFromPriorDeed(existing, priorBase());
+    const next = buildPropertyFromPriorDeed(existing, {
+      ...priorBase(),
+      otherDocumentFileNames: ["o.docx"],
+    });
     expect(next.isRemoved).toBe(true);
     expect(next.removalReason).toBe("اختبار");
     expect(next.otherDocumentFileNames).toEqual(["o.docx"]);

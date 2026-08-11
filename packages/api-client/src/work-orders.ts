@@ -163,6 +163,7 @@ export type PriorDeedRegistrationDto = {
   deedDate?: string;
   ownerName?: string;
   requestNumber?: string;
+  hasRequestNumber?: boolean;
   assignmentMandateNumber?: string;
   assignmentMandateDate?: string;
   court?: string;
@@ -197,6 +198,13 @@ export type PriorDeedRegistrationDto = {
   locationMapUrl?: string;
   bourseDataCompleted?: boolean;
   workOrderCreatedAtUtc?: string;
+  /** Prior study documents — client clones attachment bytes when auto-filling. */
+  assignmentDocFileNames?: string[];
+  delegationLetterFileNames?: string[];
+  otherDocumentFileNames?: string[];
+  realEstateRegFileName?: string;
+  realEstateRegNumber?: string;
+  realEstateRegDate?: string;
 };
 
 export type PropertyTimelineEventDto = {

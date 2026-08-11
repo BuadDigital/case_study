@@ -484,9 +484,11 @@ export function buildCopyPriorTargetOptions(
 }
 
 /**
- * Build a full property form from the latest prior deed registration.
- * Keeps the current property id, local file-name caches, and soft-delete flags.
- * Does not mark bourse completed — the new transaction must confirm data.
+ * Full prior-study clone onto the current property slot: every field the prior
+ * registration carries (enfath + bourse + document file names). Soft-delete and
+ * id stay on the current slot. Bourse stays unconfirmed until this transaction
+ * completes its own bourse phase. Callers should also run
+ * {@link clonePropertyDocumentsFromPrior} so PDF bytes are re-attached.
  */
 export function buildPropertyFromPriorDeed(
   existing: PoPropertyIntake,
@@ -497,28 +499,61 @@ export function buildPropertyFromPriorDeed(
     (prior.deedNumber ?? "").trim() ||
     "";
   const filled = priorDeedToPropertyIntake(prior, deed, "bourse");
+  const priorMandate = (prior.assignmentMandateNumber ?? "").trim();
+  const priorRequest = (prior.requestNumber ?? "").trim();
   return {
     ...filled,
     id: existing.id,
     deedNumber: deed || filled.deedNumber,
-    // Keep files already uploaded on this (new) slot — prior DTO has no attachments.
-    assignmentDocFileNames: existing.assignmentDocFileNames,
-    delegationLetterFileNames: existing.delegationLetterFileNames,
-    otherDocumentFileNames: existing.otherDocumentFileNames,
-    realEstateRegFileName: existing.realEstateRegFileName,
-    realEstateRegNumber:
-      existing.realEstateRegNumber.trim() || filled.realEstateRegNumber || "",
-    realEstateRegDate:
-      existing.realEstateRegDate.trim() || filled.realEstateRegDate || "",
+    requestNumber: priorRequest || filled.requestNumber,
     hasRequestNumber:
-      existing.hasRequestNumber === false && !filled.requestNumber.trim()
+      prior.hasRequestNumber === false && !priorRequest
         ? false
         : true,
+    assignmentMandateNumber: priorMandate || filled.assignmentMandateNumber,
+    assignmentMandateDate:
+      (prior.assignmentMandateDate ?? "").trim() || filled.assignmentMandateDate,
+    realEstateRegNumber:
+      (prior.realEstateRegNumber ?? "").trim() ||
+      existing.realEstateRegNumber.trim() ||
+      filled.realEstateRegNumber ||
+      "",
+    realEstateRegDate:
+      (prior.realEstateRegDate ?? "").trim() ||
+      existing.realEstateRegDate.trim() ||
+      filled.realEstateRegDate ||
+      "",
+    assignmentDocFileNames: listFromPrior(
+      prior.assignmentDocFileNames,
+      filled.assignmentDocFileNames,
+    ),
+    delegationLetterFileNames: listFromPrior(
+      prior.delegationLetterFileNames,
+      filled.delegationLetterFileNames,
+    ),
+    otherDocumentFileNames: listFromPrior(
+      prior.otherDocumentFileNames,
+      filled.otherDocumentFileNames,
+    ),
+    realEstateRegFileName:
+      (prior.realEstateRegFileName ?? "").trim() ||
+      filled.realEstateRegFileName ||
+      "",
     bourseDataCompleted: false,
     isRemoved: existing.isRemoved,
     removalReason: existing.removalReason,
     removedAtUtc: existing.removedAtUtc,
   };
+}
+
+function listFromPrior(
+  fromPrior: string[] | undefined,
+  fallback: string[],
+): string[] {
+  if (fromPrior?.length) {
+    return fromPrior.map((n) => n.trim()).filter(Boolean);
+  }
+  return fallback;
 }
 
 /** Map prior deed lookup into a new property draft for the current PO. */
@@ -539,11 +574,17 @@ export function priorDeedToPropertyIntake(
         }))
       : base.contacts;
 
+  const assignmentDocs = listFromPrior(prior.assignmentDocFileNames, []);
+  const delegationDocs = listFromPrior(prior.delegationLetterFileNames, []);
+  const otherDocs = listFromPrior(prior.otherDocumentFileNames, []);
+  const regFile = (prior.realEstateRegFileName ?? "").trim();
+
   const enfath: PoPropertyIntake = {
     ...base,
     identifierType,
     deedNumber: (prior.deedNumber ?? deedNumber).trim() || deedNumber.trim(),
     requestNumber: prior.requestNumber?.trim() ?? "",
+    hasRequestNumber: prior.hasRequestNumber !== false,
     assignmentMandateNumber: prior.assignmentMandateNumber?.trim() ?? "",
     assignmentMandateDate: prior.assignmentMandateDate?.trim() ?? "",
     deedDate: prior.deedDate?.trim() ?? "",
@@ -555,7 +596,13 @@ export function priorDeedToPropertyIntake(
     planNumber: prior.planNumber?.trim() ?? "",
     plotNumber: prior.plotNumber?.trim() ?? "",
     locationMapUrl: prior.locationMapUrl?.trim() ?? "",
+    realEstateRegNumber: prior.realEstateRegNumber?.trim() ?? "",
+    realEstateRegDate: prior.realEstateRegDate?.trim() ?? "",
     contacts,
+    assignmentDocFileNames: assignmentDocs,
+    delegationLetterFileNames: delegationDocs,
+    otherDocumentFileNames: otherDocs,
+    realEstateRegFileName: regFile,
     bourseDataCompleted: false,
   };
 
@@ -586,6 +633,10 @@ export function priorDeedToPropertyIntake(
     eastBoundaryLengthM: prior.eastBoundaryLengthM?.trim() ?? "",
     westBoundary: prior.westBoundary?.trim() ?? "",
     westBoundaryLengthM: prior.westBoundaryLengthM?.trim() ?? "",
+    assignmentDocFileNames: assignmentDocs,
+    delegationLetterFileNames: delegationDocs,
+    otherDocumentFileNames: otherDocs,
+    realEstateRegFileName: regFile,
     bourseDataCompleted: false,
   };
 }
@@ -601,6 +652,7 @@ function mergePriorOntoExisting(
       identifierType: draft.identifierType,
       deedNumber: draft.deedNumber,
       requestNumber: draft.requestNumber,
+      hasRequestNumber: draft.hasRequestNumber,
       assignmentMandateNumber: draft.assignmentMandateNumber,
       assignmentMandateDate: draft.assignmentMandateDate,
       deedDate: draft.deedDate,
@@ -615,6 +667,12 @@ function mergePriorOntoExisting(
       plotNumber: draft.plotNumber,
       locationMapUrl: draft.locationMapUrl,
       contacts: draft.contacts,
+      assignmentDocFileNames: draft.assignmentDocFileNames,
+      delegationLetterFileNames: draft.delegationLetterFileNames,
+      otherDocumentFileNames: draft.otherDocumentFileNames,
+      realEstateRegFileName: draft.realEstateRegFileName,
+      realEstateRegNumber: draft.realEstateRegNumber || existing.realEstateRegNumber,
+      realEstateRegDate: draft.realEstateRegDate || existing.realEstateRegDate,
     };
   }
   return {
@@ -679,13 +737,22 @@ export async function copyPropertyFromPriorTransaction(
       assignToTaskId: target.taskId,
     });
     if (!added.ok) return added;
-    return finishBourseIfNeeded(
+    const withDocs = await applyClonedDocuments(
+      prior,
       poNumber,
       added.data.id,
       { ...draft, id: added.data.id },
+    );
+    // Persist cloned file names (and re-echo mandate/request) after attachment clone.
+    const saved = await updatePropertyInPo(poNumber, added.data.id, withDocs);
+    if (!saved.ok) return saved;
+    return finishBourseIfNeeded(
+      poNumber,
+      added.data.id,
+      withDocs,
       prior,
       scope,
-      added,
+      saved,
     );
   }
 
@@ -699,17 +766,66 @@ export async function copyPropertyFromPriorTransaction(
   }
 
   const merged = mergePriorOntoExisting(existing, draft, scope);
-  const updated = await updatePropertyInPo(poNumber, target.propertyId, merged);
+  const withDocs = await applyClonedDocuments(
+    prior,
+    poNumber,
+    target.propertyId,
+    { ...merged, id: target.propertyId },
+  );
+  const updated = await updatePropertyInPo(poNumber, target.propertyId, withDocs);
   if (!updated.ok) return updated;
 
   return finishBourseIfNeeded(
     poNumber,
     target.propertyId,
-    { ...merged, id: target.propertyId },
+    withDocs,
     prior,
     scope,
     updated,
   );
+}
+
+async function applyClonedDocuments(
+  prior: import("@platform/api-client").PriorDeedRegistrationDto,
+  targetPo: string,
+  targetPropertyId: string,
+  draft: PoPropertyIntake,
+): Promise<PoPropertyIntake> {
+  const sourcePo = prior.poNumber?.trim() ?? "";
+  const sourceId = prior.propertyId?.trim() ?? "";
+  if (!sourcePo || !sourceId || !targetPo.trim() || !targetPropertyId.trim()) {
+    return draft;
+  }
+  try {
+    const { clonePropertyDocumentsFromPrior } = await import(
+      "./assignment-doc-attachments"
+    );
+    const cloned = await clonePropertyDocumentsFromPrior(
+      sourcePo,
+      sourceId,
+      targetPo,
+      targetPropertyId,
+    );
+    return {
+      ...draft,
+      assignmentDocFileNames:
+        cloned.assignmentDocFileNames.length > 0
+          ? cloned.assignmentDocFileNames
+          : draft.assignmentDocFileNames,
+      delegationLetterFileNames:
+        cloned.delegationLetterFileNames.length > 0
+          ? cloned.delegationLetterFileNames
+          : draft.delegationLetterFileNames,
+      otherDocumentFileNames:
+        cloned.otherDocumentFileNames.length > 0
+          ? cloned.otherDocumentFileNames
+          : draft.otherDocumentFileNames,
+      realEstateRegFileName:
+        cloned.realEstateRegFileName || draft.realEstateRegFileName,
+    };
+  } catch {
+    return draft;
+  }
 }
 
 export async function loadPendingBourseItems(): Promise<
@@ -911,6 +1027,7 @@ export async function addPropertyToPo(
   const config = workOrdersApiConfig();
   if (!config) return { ok: false, error: apiErrorMessage("auth") };
 
+  const provisionalId = property.id?.trim() ?? "";
   const result = await addWorkOrderProperty(
     config,
     poNumber,
@@ -924,7 +1041,49 @@ export async function addPropertyToPo(
     };
   }
 
-  const prop = dtoToProperty(result.data);
+  let prop = dtoToProperty(result.data);
+
+  // Re-clone prior PDFs under the real server property id when auto-fill ran first.
+  if (provisionalId && provisionalId !== prop.id) {
+    try {
+      const { completePendingPriorDocumentClone } = await import(
+        "./assignment-doc-attachments"
+      );
+      const recloned = await completePendingPriorDocumentClone(
+        provisionalId,
+        poNumber,
+        prop.id,
+      );
+      if (recloned) {
+        prop = {
+          ...prop,
+          assignmentDocFileNames:
+            recloned.assignmentDocFileNames.length > 0
+              ? recloned.assignmentDocFileNames
+              : prop.assignmentDocFileNames,
+          delegationLetterFileNames:
+            recloned.delegationLetterFileNames.length > 0
+              ? recloned.delegationLetterFileNames
+              : prop.delegationLetterFileNames,
+          otherDocumentFileNames:
+            recloned.otherDocumentFileNames.length > 0
+              ? recloned.otherDocumentFileNames
+              : prop.otherDocumentFileNames,
+          realEstateRegFileName:
+            recloned.realEstateRegFileName || prop.realEstateRegFileName,
+        };
+        const resaved = await updatePropertyInPo(poNumber, prop.id, {
+          ...property,
+          ...prop,
+          id: prop.id,
+        });
+        if (resaved.ok) prop = resaved.data;
+      }
+    } catch {
+      /* file names from insert DTO still apply */
+    }
+  }
+
   const record = await getPoRecord(poNumber);
   if (options?.assignToTaskId) {
     const advanced = await advanceTaskAfterEnfath(options.assignToTaskId, prop);
