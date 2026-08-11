@@ -287,9 +287,9 @@ export function PpDeedCell({
       <span
         dir="ltr"
         className={cn(
-          "truncate text-[13px] font-bold text-heading",
+          "truncate text-[13px] font-bold text-gold-d",
           emphasize &&
-            "text-primary underline decoration-primary underline-offset-2",
+            "underline decoration-gold-d underline-offset-2",
         )}
       >
         {deed}
