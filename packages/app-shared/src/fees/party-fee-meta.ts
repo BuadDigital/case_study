@@ -15,7 +15,6 @@ const ASSIGNEE_DISPLAY_FALLBACKS: Record<string, string> = {
   "gov-firas": "فراس كمرين",
   "val-abdullah": "عبدالله الكثيري",
   "eo-jeddah": "مكتب جدة للمساحة",
-  "vc-mohammed-diab": "محمد دياب",
 };
 
 /**

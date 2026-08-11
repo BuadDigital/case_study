@@ -122,12 +122,33 @@ const GOVERNMENT_REVIEWER_TAB_IDS: readonly TabId[] = [
   "survey-notes",
 ];
 
+/**
+ * مقيم عقاري: study + valuation workspace only
+ * (no survey package, court/keys, enfaz upload, finance, or audit log).
+ */
+const REAL_ESTATE_APPRAISER_TAB_IDS: readonly TabId[] = [
+  "basic",
+  "documents",
+  "linked",
+  "inspection",
+  "photos",
+  "appraisal",
+  "failures",
+  "report",
+  "survey-notes",
+];
+
 function propertyDetailTabsForRole(
   role: string,
 ): readonly (typeof TABS)[number][] {
   if (role === "government-reviewer") {
     return TABS.filter((t) =>
       (GOVERNMENT_REVIEWER_TAB_IDS as readonly string[]).includes(t.id),
+    );
+  }
+  if (role === "real-estate-appraiser") {
+    return TABS.filter((t) =>
+      (REAL_ESTATE_APPRAISER_TAB_IDS as readonly string[]).includes(t.id),
     );
   }
   return TABS;

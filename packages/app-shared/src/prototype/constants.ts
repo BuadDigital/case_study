@@ -115,6 +115,7 @@ export const ROLES: Record<RoleId, RoleDef> = {
     bg: "var(--info-bg)",
     tc: "var(--info)",
     pages: [
+      "po",
       "favorites",
       "operations-tasks",
       "active-inspection",
@@ -144,6 +145,7 @@ export const ROLES: Record<RoleId, RoleDef> = {
     bg: "var(--purple-bg)",
     tc: "var(--purple)",
     pages: [
+      "po",
       "operations-tasks",
       "favorites",
       "active-survey",

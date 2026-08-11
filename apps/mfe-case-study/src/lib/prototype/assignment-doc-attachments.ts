@@ -1,8 +1,3 @@
-/**
- * Property document uploads — persisted via `/api/attachments`.
- * Filenames are also saved on the work-order property API.
- * Decree / delegation support multiple files per property; keys-proof stays single.
- */
 import {
   deleteAttachment,
   downloadAttachmentBlob,
@@ -584,6 +579,150 @@ export async function prefetchKeysProofDoc(
     propertyId,
     expectedFileName,
   );
+}
+
+export type ClonedPropertyDocNames = {
+  assignmentDocFileNames: string[];
+  delegationLetterFileNames: string[];
+  otherDocumentFileNames: string[];
+  realEstateRegFileName: string;
+};
+
+/** When enfath auto-fill clones docs onto a client-only id, re-run after server insert. */
+const pendingPriorDocumentClones = new Map<
+  string,
+  { sourcePo: string; sourcePropertyId: string }
+>();
+
+export function rememberPendingPriorDocumentClone(
+  provisionalPropertyId: string,
+  sourcePo: string,
+  sourcePropertyId: string,
+): void {
+  const id = provisionalPropertyId.trim();
+  const fromPo = sourcePo.trim();
+  const fromId = sourcePropertyId.trim();
+  if (!id || !fromPo || !fromId) return;
+  pendingPriorDocumentClones.set(id, {
+    sourcePo: fromPo,
+    sourcePropertyId: fromId,
+  });
+}
+
+/**
+ * After the first save creates a real property id, copy prior PDFs onto it
+ * (attachments cloned under a provisional client id do not survive insert).
+ */
+export async function completePendingPriorDocumentClone(
+  provisionalPropertyId: string,
+  targetPo: string,
+  targetPropertyId: string,
+): Promise<ClonedPropertyDocNames | null> {
+  const pending = pendingPriorDocumentClones.get(provisionalPropertyId.trim());
+  if (!pending) return null;
+  pendingPriorDocumentClones.delete(provisionalPropertyId.trim());
+  if (provisionalPropertyId.trim() === targetPropertyId.trim()) {
+    return null;
+  }
+  return clonePropertyDocumentsFromPrior(
+    pending.sourcePo,
+    pending.sourcePropertyId,
+    targetPo,
+    targetPropertyId,
+  );
+}
+
+/**
+ * Clone attachment bytes from a prior property (PO + id) onto the current slot.
+ * Replaces target scopes so the new transaction has its own independent copies.
+ */
+export async function clonePropertyDocumentsFromPrior(
+  sourcePo: string,
+  sourcePropertyId: string,
+  targetPo: string,
+  targetPropertyId: string,
+): Promise<ClonedPropertyDocNames> {
+  const empty: ClonedPropertyDocNames = {
+    assignmentDocFileNames: [],
+    delegationLetterFileNames: [],
+    otherDocumentFileNames: [],
+    realEstateRegFileName: "",
+  };
+  const fromPo = sourcePo.trim();
+  const toPo = targetPo.trim();
+  const fromId = sourcePropertyId.trim();
+  const toId = targetPropertyId.trim();
+  if (!fromPo || !toPo || !fromId || !toId) return empty;
+  if (fromPo === toPo && fromId === toId) return empty;
+
+  const config = prototypeModulesApiConfig();
+  if (!config) return empty;
+
+  async function cloneKind(
+    kind: PropertyDocKind,
+  ): Promise<string[]> {
+    const listed = await listAttachments(
+      config!,
+      API_SCOPE[kind],
+      scopeKey(fromPo, fromId),
+    );
+    if (!listed.ok || listed.data.length === 0) return [];
+
+    // Wipe target scope first so we do not mix old and new names.
+    await replaceScopeAttachments(API_SCOPE[kind], scopeKey(toPo, toId));
+    const targetCacheKey = cacheKey(kind, toPo, toId);
+    bumpWriteGeneration(targetCacheKey);
+    docCache.delete(targetCacheKey);
+    notifyCacheListeners();
+
+    const names: string[] = [];
+    for (const meta of listed.data) {
+      const blobResult = await downloadAttachmentBlob(config!, meta.id);
+      if (!blobResult.ok) continue;
+      const contentBase64 = await blobToBase64(blobResult.data);
+      const upload = await uploadAttachment(config!, {
+        scope: API_SCOPE[kind],
+        scopeKey: scopeKey(toPo, toId),
+        fileName: meta.fileName,
+        contentType: meta.contentType || "application/octet-stream",
+        contentBase64,
+      });
+      if (!upload.ok) continue;
+      names.push(upload.data.fileName || meta.fileName);
+      upsertCachedDoc(targetCacheKey, {
+        fileName: upload.data.fileName || meta.fileName,
+        mimeType: upload.data.contentType || meta.contentType,
+        attachmentId: upload.data.id,
+      });
+    }
+    return names;
+  }
+
+  const [decree, delegation, other, registry, boundaries] = await Promise.all([
+    cloneKind("decree"),
+    cloneKind("delegation"),
+    cloneKind("other"),
+    cloneKind("registry"),
+    cloneKind("boundaries"),
+  ]);
+  // boundaries are stored by attachment only; external doc name is a separate text field.
+  void boundaries;
+
+  return {
+    assignmentDocFileNames: decree,
+    delegationLetterFileNames: delegation,
+    otherDocumentFileNames: other,
+    realEstateRegFileName: registry[0] ?? "",
+  };
+}
+
+async function blobToBase64(blob: Blob): Promise<string> {
+  const bytes = new Uint8Array(await blob.arrayBuffer());
+  let binary = "";
+  for (let i = 0; i < bytes.length; i += 1) {
+    binary += String.fromCharCode(bytes[i]!);
+  }
+  return btoa(binary);
 }
 
 export function isImageMime(mimeType: string): boolean {

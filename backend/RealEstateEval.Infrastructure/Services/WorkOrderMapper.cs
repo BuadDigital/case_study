@@ -232,6 +232,13 @@ public static class WorkOrderMapper
             LocationMapUrl = p.LocationMapUrl,
             BourseDataCompleted = p.BourseDataCompleted,
             WorkOrderCreatedAtUtc = p.WorkOrder?.CreatedAtUtc.ToString("O"),
+            AssignmentDocFileNames = ParseFileNameList(p.AssignmentDocFileName),
+            DelegationLetterFileNames = ParseFileNameList(p.DelegationLetterFileName),
+            OtherDocumentFileNames = ParseFileNameList(p.OtherDocumentFileNames),
+            RealEstateRegFileName = p.RealEstateRegFileName,
+            RealEstateRegNumber = p.RealEstateRegNumber,
+            RealEstateRegDate = p.RealEstateRegDate,
+            HasRequestNumber = p.HasRequestNumber,
         };
     }
 }

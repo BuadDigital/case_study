@@ -244,6 +244,15 @@ public class PriorDeedRegistrationDto
     public bool BourseDataCompleted { get; set; }
     /// <summary>Work-order creation timestamp (UTC ISO) for prior-study ordering.</summary>
     public string? WorkOrderCreatedAtUtc { get; set; }
+
+    /// <summary>Prior study document file names — client re-clones attachment bytes onto the new property.</summary>
+    public List<string> AssignmentDocFileNames { get; set; } = [];
+    public List<string> DelegationLetterFileNames { get; set; } = [];
+    public List<string> OtherDocumentFileNames { get; set; } = [];
+    public string? RealEstateRegFileName { get; set; }
+    public string? RealEstateRegNumber { get; set; }
+    public string? RealEstateRegDate { get; set; }
+    public bool HasRequestNumber { get; set; } = true;
 }
 
 public class UpdateLocationMapUrlRequest

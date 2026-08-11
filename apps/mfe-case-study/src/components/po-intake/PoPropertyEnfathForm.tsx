@@ -20,6 +20,8 @@ import {
   cacheOtherPropertyDoc,
   cacheRegistryDoc,
   clearCachedPropertyDoc,
+  clonePropertyDocumentsFromPrior,
+  rememberPendingPriorDocumentClone,
   removeCachedPropertyDoc,
 } from "../../lib/prototype/assignment-doc-attachments";
 import {
@@ -136,7 +138,7 @@ export function PoPropertyEnfathForm({
     let cancelled = false;
     const timer = window.setTimeout(() => {
       void findPriorDeedFull(deed, priorExcludePo, priorExcludePropertyId)
-        .then((hit) => {
+        .then(async (hit) => {
           if (cancelled) return;
           const hitPo = hit?.poNumber?.trim() || null;
           if (hitPo && priorExcludePo && hitPo === priorExcludePo) {
@@ -156,12 +158,48 @@ export function PoPropertyEnfathForm({
             return;
           }
 
-          const next = buildPropertyFromPriorDeed(propertyRef.current, hit);
+          let next = buildPropertyFromPriorDeed(propertyRef.current, hit);
+
+          // Clone PDF/image bytes onto this property (independent copies of prior attachments).
+          const sourcePropId = hit.propertyId?.trim() ?? "";
+          if (attachPo && property.id && sourcePropId && hitPo) {
+            try {
+              const cloned = await clonePropertyDocumentsFromPrior(
+                hitPo,
+                sourcePropId,
+                attachPo,
+                property.id,
+              );
+              if (cancelled) return;
+              // First save may replace the client id with a server GUID — re-clone then.
+              rememberPendingPriorDocumentClone(property.id, hitPo, sourcePropId);
+              next = {
+                ...next,
+                assignmentDocFileNames:
+                  cloned.assignmentDocFileNames.length > 0
+                    ? cloned.assignmentDocFileNames
+                    : next.assignmentDocFileNames,
+                delegationLetterFileNames:
+                  cloned.delegationLetterFileNames.length > 0
+                    ? cloned.delegationLetterFileNames
+                    : next.delegationLetterFileNames,
+                otherDocumentFileNames:
+                  cloned.otherDocumentFileNames.length > 0
+                    ? cloned.otherDocumentFileNames
+                    : next.otherDocumentFileNames,
+                realEstateRegFileName:
+                  cloned.realEstateRegFileName || next.realEstateRegFileName,
+              };
+            } catch {
+              /* keep file-name hints from prior DTO even if byte clone fails */
+            }
+          }
+          if (cancelled) return;
+
           appliedPriorKeyRef.current = applyKey;
           if (onReplaceProperty) {
             onReplaceProperty(next);
           } else {
-            // Fallback: apply every scalable field (attachments already preserved on next).
             const keys = Object.keys(next) as (keyof PoPropertyIntake)[];
             for (const key of keys) {
               if (key === "id") continue;
@@ -186,7 +224,7 @@ export function PoPropertyEnfathForm({
     };
     // Autofill once per deed identity — not on every field change after user edits.
     // eslint-disable-next-line react-hooks/exhaustive-deps -- see above
-  }, [property.deedNumber, property.id, priorExcludePo, priorExcludePropertyId, onPatch, onReplaceProperty, showToast]);
+  }, [property.deedNumber, property.id, priorExcludePo, priorExcludePropertyId, attachPo, onPatch, onReplaceProperty, showToast]);
 
   const priorPoNotice = property.deedNumber.trim().length >= DEED_NUMBER_DIGIT_LENGTH
     ? priorPo
@@ -233,8 +271,8 @@ export function PoPropertyEnfathForm({
           <strong>صك متكرر</strong> — وُجدت بيانات في أمر العمل «{priorPoNotice}».
           <span className="mt-1.5 block text-[12.5px] leading-relaxed text-text-2">
             {priorFilled
-              ? "تم تعبئة بيانات الإنفاذ والبورصة المتاحة كأساس. عدّل ما تغيّر فقط ثم احفظ — النسخة المحفوظة في هذه المعاملة هي المعتمدة؛ الدراسات السابقة تبقى للأرشيف والربط."
-              : "جاري جلب البيانات السابقة…"}
+              ? "تم نسخ بيانات الدراسة السابقة بالكامل (بما فيها المستندات والـ PDF وخطابات التفويض) كأساس. عدّل ما تغيّر ثم احفظ — النسخة المحفوظة في هذه المعاملة هي المعتمدة؛ الدراسات السابقة تبقى للأرشيف والربط."
+              : "جاري جلب ونسخ البيانات والمستندات السابقة…"}
           </span>
         </Note>
       ) : null}

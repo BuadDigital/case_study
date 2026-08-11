@@ -75,7 +75,7 @@ public static class PlatformPermissionCatalog
         ],
         ["field-inspector"] =
         [
-            "favorites", "operations-tasks", "active-inspection", "party-fees", "failures",
+            "po", "favorites", "operations-tasks", "active-inspection", "party-fees", "failures",
         ],
         ["government-reviewer"] =
         [
@@ -83,7 +83,7 @@ public static class PlatformPermissionCatalog
         ],
         ["engineering-office"] =
         [
-            "operations-tasks", "favorites", "active-survey", "party-fees", "failures",
+            "po", "operations-tasks", "favorites", "active-survey", "party-fees", "failures",
         ],
         ["financial-officer"] =
         [
