@@ -768,7 +768,7 @@ export function EngineeringSurveyWorkPanel({
     ) : locked ? (
       <EngStatusPill label="مُرسل" color={ENG_STATUS_COLORS.submitted} />
     ) : draft.status === "reopened" ? (
-      <EngStatusPill label="مُعاد للتصحيح" color={ENG_STATUS_COLORS.reopened} />
+      <EngStatusPill label="معادة للتصحيح" color={ENG_STATUS_COLORS.reopened} />
     ) : (
       <EngStatusPill label="مسودة" color={ENG_STATUS_COLORS.draft} />
     );

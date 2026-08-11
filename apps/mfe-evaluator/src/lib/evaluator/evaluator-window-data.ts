@@ -221,7 +221,7 @@ export function createEvaluatorDraft(input: {
 export function evaluatorStatusLabel(status: EvaluatorSubmissionStatus): string {
   if (status === "draft") return "مسودة";
   if (status === "submitted") return "مُرسَل للأخصائي";
-  if (status === "reopened") return "مُعاد للتعديل";
+  if (status === "reopened") return "معادة للتصحيح";
   return "مكتمل";
 }
 

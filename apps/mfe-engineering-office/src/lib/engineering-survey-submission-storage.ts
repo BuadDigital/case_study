@@ -353,7 +353,7 @@ export function engineeringSurveyStatusLabel(
   status: EngineeringSurveySubmissionStatus,
 ): string {
   if (status === "submitted") return "مُرسَل";
-  if (status === "reopened") return "مُعاد";
+  if (status === "reopened") return "معادة للتصحيح";
   return "قيد العمل";
 }
 

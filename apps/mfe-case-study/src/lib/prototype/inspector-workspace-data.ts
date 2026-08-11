@@ -437,7 +437,7 @@ export function inspectorWorkspaceStatusLabel(
 ): string {
   if (status === "submitted" && options?.accepted) return "معتمد";
   if (status === "submitted") return "مُرسَل — بانتظار الاعتماد";
-  if (status === "reopened") return "مُعاد للتصحيح";
+  if (status === "reopened") return "معادة للتصحيح";
   return "قيد العمل";
 }
 

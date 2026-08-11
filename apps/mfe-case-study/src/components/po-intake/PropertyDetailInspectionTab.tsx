@@ -989,7 +989,7 @@ export function PropertyDetailInspectionTab({
 
       {draft?.status === "reopened" && draft.returnNote?.trim() ? (
         <div className="mb-3 rounded-lg border border-amber border-e-[3px] border-e-amber bg-amber-light px-3.5 py-2.5 text-xs leading-relaxed text-amber-text">
-          <strong>مُعاد للتصحيح</strong> — {draft.returnNote.trim()}
+          <strong>معادة للتصحيح</strong> — {draft.returnNote.trim()}
         </div>
       ) : null}
 

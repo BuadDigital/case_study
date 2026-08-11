@@ -159,7 +159,7 @@ export function evaluatorStatusLabel(
   if (status === "draft") return "مسودة";
   if (status === "submitted" && options?.accepted) return "معتمد";
   if (status === "submitted") return "مُرسَل للأخصائي — بانتظار الاعتماد";
-  if (status === "reopened") return "مُعاد للتعديل";
+  if (status === "reopened") return "معادة للتصحيح";
   if (status === "completed") return "مكتمل";
   return status;
 }
@@ -170,7 +170,7 @@ export function engineeringSurveyStatusLabel(
 ): string {
   if (status === "submitted" && options?.accepted) return "معتمد";
   if (status === "submitted") return "مُرسَل — بانتظار الاعتماد";
-  if (status === "reopened") return "مُعاد للتصحيح";
+  if (status === "reopened") return "معادة للتصحيح";
   return "قيد العمل";
 }
 

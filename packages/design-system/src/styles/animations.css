@@ -57,6 +57,17 @@
   }
 }
 
+/* Full-row gray blink while a queue row / card is opening */
+@keyframes ui-queue-row-gray-blink {
+  0%,
+  100% {
+    background-color: transparent;
+  }
+  50% {
+    background-color: color-mix(in srgb, #8a96a6 14%, transparent);
+  }
+}
+
 /* Spinner appear next to deed */
 @keyframes ui-queue-spinner-in {
   from {
@@ -122,12 +133,21 @@
     animation: ui-pulse-ring 1.6s ease-out infinite;
   }
 
-  /* Row: soft press while opening — no decorative gold borders */
+  /* Row/card: full gray blink while opening (replaces spinner circle) */
   .ui-queue-row-opening {
     position: relative;
     z-index: 0;
-    animation: ui-queue-row-press 220ms cubic-bezier(0.22, 1, 0.36, 1) both;
+    animation: ui-queue-row-gray-blink 1.1s ease-in-out infinite;
     transition: background-color 180ms ease;
+  }
+
+  /* Table rows don't paint background reliably — blink on cells */
+  tr.ui-queue-row-opening {
+    animation: none;
+  }
+  tr.ui-queue-row-opening > td,
+  tr.ui-queue-row-opening > th {
+    animation: ui-queue-row-gray-blink 1.1s ease-in-out infinite;
   }
 
   .ui-queue-spinner-in {
@@ -143,9 +163,9 @@
     animation: ui-queue-panel-in 220ms cubic-bezier(0.22, 1, 0.36, 1) both;
   }
 
-  /* Mobile card open: press only — no gold border/ring */
+  /* Mobile card open: same full-surface gray blink */
   .ui-queue-card-opening {
-    animation: ui-queue-row-press 220ms cubic-bezier(0.22, 1, 0.36, 1) both;
+    animation: ui-queue-row-gray-blink 1.1s ease-in-out infinite;
   }
 }
 
@@ -153,11 +173,20 @@
   .ui-animate-modal-overlay,
   .ui-animate-fade-in,
   .ui-queue-row-opening,
+  tr.ui-queue-row-opening > td,
+  tr.ui-queue-row-opening > th,
   .ui-queue-spinner-in,
   .ui-queue-deed-loading,
   .ui-queue-panel-in,
   .ui-queue-card-opening {
     animation: none !important;
+  }
+
+  .ui-queue-row-opening:not(tr),
+  .ui-queue-card-opening,
+  tr.ui-queue-row-opening > td,
+  tr.ui-queue-row-opening > th {
+    background-color: color-mix(in srgb, #8a96a6 10%, transparent) !important;
   }
 
   .ui-skeleton-shimmer {
