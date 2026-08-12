@@ -133,7 +133,7 @@ export default function LoginPage() {
   const mobileRef = useRef<HTMLInputElement | null>(null);
   const otpConfirmingRef = useRef(false);
 
-  const isEmailMode = identifier.includes("@");
+  const isEmailMode = /[a-zA-Z@]/.test(identifier);
   const mobileDigits = identifier.replace(/\D/g, "");
   const credsReady = isEmailMode
     ? identifier.trim().length > 3 && password.length >= 1
@@ -176,8 +176,10 @@ export default function LoginPage() {
   function onIdentifierChange(raw: string) {
     setError(null);
     setMobileBad(false);
-    if (raw.includes("@")) {
-      setIdentifier(raw);
+    // Any letter means the user is entering an email, not a mobile number —
+    // keep it verbatim so characters before the "@" are not stripped away.
+    if (/[a-zA-Z@]/.test(raw)) {
+      setIdentifier(raw.slice(0, 120));
       return;
     }
     const digits = raw.replace(/\D/g, "").slice(0, 9);
@@ -482,7 +484,10 @@ export default function LoginPage() {
                       placeholder={
                         isEmailMode ? "name@example.com" : "5X XXX XXXX"
                       }
-                      maxLength={isEmailMode ? 120 : 11}
+                      // No DOM clamp: phone digits are limited in
+                      // onIdentifierChange, and a pasted email must not be
+                      // truncated by the phone-mode length before mode flips.
+                      maxLength={120}
                       value={identifier}
                       onChange={(e) => onIdentifierChange(e.target.value)}
                       dir="ltr"

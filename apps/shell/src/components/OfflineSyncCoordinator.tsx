@@ -426,7 +426,8 @@ export function OfflineSyncCoordinator() {
   useEffect(() => {
     if (!capable || !isAuthenticated) return;
     if (!online) {
-      setSyncState("offline");
+      // Microtask keeps the effect body free of synchronous setState.
+      queueMicrotask(() => setSyncState("offline"));
       void evaluateOfflineLease().then((lease) => {
         if (!lease) return;
         if (lease.warn1h) {

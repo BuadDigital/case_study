@@ -199,7 +199,9 @@ public sealed class OperationsTaskNotifier
         OperationsTask entity,
         CancellationToken cancellationToken)
     {
-        var unix = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+        // Recurring per cadence for the same task+reason → stable SourceEvent (no timestamp),
+        // so re-emits refresh the still-unread row via IX_UserNotifications_UserId_SourceEvent_Unread
+        // instead of stacking duplicates in the activity feed.
         var body = $"المهمة {entity.DisplayId} متوقفة مؤقتاً لأكثر من يوم عمل — يلزم الاستئناف.";
         var href = OperationsTaskHref(entity.Id);
 
@@ -217,7 +219,7 @@ public sealed class OperationsTaskNotifier
                     Category = "workflow",
                     EntityType = "operations-task",
                     EntityId = entity.Id.ToString(),
-                    SourceEvent = $"ops-task-pause-limit:{entity.Id}:{unix}:assignee",
+                    SourceEvent = $"ops-task-pause-limit:{entity.Id}:assignee",
                 },
                 cancellationToken);
         }
@@ -237,7 +239,7 @@ public sealed class OperationsTaskNotifier
                     Category = "workflow",
                     EntityType = "operations-task",
                     EntityId = entity.Id.ToString(),
-                    SourceEvent = $"ops-task-pause-limit:{entity.Id}:{unix}:creator",
+                    SourceEvent = $"ops-task-pause-limit:{entity.Id}:creator",
                 },
                 cancellationToken);
         }
@@ -248,7 +250,12 @@ public sealed class OperationsTaskNotifier
         bool auto,
         CancellationToken cancellationToken)
     {
-        var unix = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+        // Reminders repeat on the work-hours cadence until the task closes. The message is the
+        // same each time, so the SourceEvent must stay stable (no timestamp): while the previous
+        // reminder is still unread, NotificationService refreshes it in place
+        // (IX_UserNotifications_UserId_SourceEvent_Unread) instead of piling up duplicate
+        // "تذكير بمهمة" rows in the activity feed. A new row only appears after the user read
+        // the previous one.
         var body = $"تذكير بالمهمة {entity.DisplayId}: {entity.Title}.";
         var href = OperationsTaskHref(entity.Id);
 
@@ -266,7 +273,7 @@ public sealed class OperationsTaskNotifier
                     Category = "workflow",
                     EntityType = "operations-task",
                     EntityId = entity.Id.ToString(),
-                    SourceEvent = $"ops-task-remind:{entity.Id}:{unix}:assignee",
+                    SourceEvent = $"ops-task-remind:{entity.Id}:assignee",
                 },
                 cancellationToken);
         }
@@ -290,7 +297,7 @@ public sealed class OperationsTaskNotifier
                 Category = "workflow",
                 EntityType = "operations-task",
                 EntityId = entity.Id.ToString(),
-                SourceEvent = $"ops-task-remind:{entity.Id}:{unix}:creator",
+                SourceEvent = $"ops-task-remind:{entity.Id}:creator",
             },
             cancellationToken);
     }

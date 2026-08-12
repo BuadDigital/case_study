@@ -12,6 +12,9 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // Vendored bundles (pdf.js worker) are not our code to lint.
+    "public/**/*.mjs",
+    "public/**/*.js",
   ]),
 ]);
 
