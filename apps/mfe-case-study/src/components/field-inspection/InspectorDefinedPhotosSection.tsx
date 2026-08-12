@@ -29,6 +29,11 @@ import {
   type ServiceAmenityPhotoSlotDef,
 } from "../../lib/prototype/inspector-workspace-data";
 import {
+  INSPECTOR_PHOTO_ACCEPT,
+  filterInspectorPhotoFiles,
+  useInspectorPhotoDropZone,
+} from "../../lib/prototype/inspector-photo-drop";
+import {
   clearInspectorPhotoDataUrl,
   getInspectorPhotoDataUrl,
   openInspectorPhotoPreview,
@@ -832,6 +837,11 @@ function MobilePhotoTile({
 }) {
   const inputRef = useRef<HTMLInputElement>(null);
   const { runWithUploadToast } = useToast();
+  const dropBlocked = Boolean(disabled || none);
+  const { dragOver, dropZoneProps } = useInspectorPhotoDropZone({
+    disabled: dropBlocked,
+    onFiles: (files) => runWithUploadToast(() => onUpload(files)),
+  });
 
   return (
     <div className="flex flex-col gap-1">
@@ -843,7 +853,9 @@ function MobilePhotoTile({
           done
             ? "border-solid border-border bg-surface-2"
             : "border-dashed border-[var(--border-md,#ddd8cc)] bg-surface",
+          dragOver && "border-primary bg-[color-mix(in_srgb,var(--primary)_8%,transparent)]",
         )}
+        {...dropZoneProps}
         onClick={() => {
           if (done && onOpenDone) {
             onOpenDone();
@@ -868,7 +880,11 @@ function MobilePhotoTile({
           </svg>
         )}
         <span className="text-center text-[11px] leading-tight text-text-2">
-          {none ? `غير متوفر · ${label}` : label}
+          {dragOver
+            ? "أفلِت الصورة"
+            : none
+              ? `غير متوفر · ${label}`
+              : label}
         </span>
         {!required && !none ? (
           <span className="text-[9px] font-semibold text-text-3">اختياري</span>
@@ -892,12 +908,12 @@ function MobilePhotoTile({
       <input
         ref={inputRef}
         type="file"
-        accept="image/*,.heic,.heif"
+        accept={INSPECTOR_PHOTO_ACCEPT}
         capture="environment"
         disabled={disabled}
         className="sr-only"
         onChange={(e) => {
-          const files = Array.from(e.target.files ?? []);
+          const files = filterInspectorPhotoFiles(e.target.files);
           e.target.value = "";
           if (files.length > 0) {
             void runWithUploadToast(() => onUpload(files));
@@ -938,6 +954,11 @@ function DesktopHtmlPhotoTile({
 }) {
   const inputRef = useRef<HTMLInputElement>(null);
   const { runWithUploadToast } = useToast();
+  const dropBlocked = Boolean(disabled || none);
+  const { dragOver, dropZoneProps } = useInspectorPhotoDropZone({
+    disabled: dropBlocked,
+    onFiles: (files) => runWithUploadToast(() => onUpload(files)),
+  });
   const [dataUrl, setDataUrl] = useState(
     () =>
       photoRef ? getInspectorPhotoDataUrl(taskId, photoRef) : undefined,
@@ -969,7 +990,15 @@ function DesktopHtmlPhotoTile({
       <button
         type="button"
         disabled={disabled}
-        title={none ? "اضغط لإلغاء «غير متوفر»" : done ? "معاينة" : "رفع صورة"}
+        title={
+          none
+            ? "اضغط لإلغاء «غير متوفر»"
+            : dragOver
+              ? "أفلِت الصور هنا"
+              : done
+                ? "معاينة — أو اسحب صوراً إضافية"
+                : "رفع صورة — اسحب وأفلت أو اضغط"
+        }
         className={cn(
           "relative grid h-[108px] w-full place-items-center overflow-hidden rounded-lg border font-inherit",
           none
@@ -977,10 +1006,12 @@ function DesktopHtmlPhotoTile({
             : done
               ? "border-solid border-border bg-surface-2"
               : "border-dashed border-[var(--gold-d,#a4906f)] bg-[color-mix(in_srgb,var(--gold)_6%,transparent)]",
+          dragOver &&
+            "border-primary bg-[color-mix(in_srgb,var(--primary)_10%,transparent)]",
           !disabled && "cursor-pointer",
         )}
         style={
-          dataUrl && !none
+          dataUrl && !none && !dragOver
             ? {
                 backgroundImage: `url(${dataUrl})`,
                 backgroundSize: "cover",
@@ -988,6 +1019,7 @@ function DesktopHtmlPhotoTile({
               }
             : undefined
         }
+        {...dropZoneProps}
         onClick={() => {
           if (none) {
             onToggleNone();
@@ -1020,11 +1052,21 @@ function DesktopHtmlPhotoTile({
               <circle cx="8.5" cy="9.5" r="1.5" />
               <path d="m4 17 5-5 4 4 3-2 4 4" />
             </svg>
+          ) : dragOver ? (
+            <span className="flex flex-col items-center gap-1 px-1.5 pb-5 text-center">
+              <i className="ti ti-upload text-xl text-primary" aria-hidden />
+              <span className="text-[11px] font-bold text-primary">
+                أفلِت الصور هنا
+              </span>
+            </span>
           ) : (
             <span className="flex flex-col items-center gap-1 px-1.5 pb-5 text-center">
               <i className="ti ti-camera-plus text-xl text-[var(--gold-d,#a4906f)]" aria-hidden />
               <span className="text-[11px] font-bold text-[var(--gold-d,#a4906f)]">
                 ارفع صورة
+              </span>
+              <span className="text-[9px] font-normal text-text-3">
+                أو اسحب وأفلت
               </span>
             </span>
           )
@@ -1047,12 +1089,12 @@ function DesktopHtmlPhotoTile({
       <input
         ref={inputRef}
         type="file"
-        accept="image/*,.heic,.heif,image/jpeg,image/png,image/webp"
+        accept={INSPECTOR_PHOTO_ACCEPT}
         multiple
         disabled={disabled}
         className="sr-only"
         onChange={(e) => {
-          const files = Array.from(e.target.files ?? []);
+          const files = filterInspectorPhotoFiles(e.target.files);
           e.target.value = "";
           if (files.length > 0) {
             void runWithUploadToast(() => onUpload(files));

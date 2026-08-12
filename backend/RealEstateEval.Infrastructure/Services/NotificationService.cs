@@ -14,13 +14,16 @@ public sealed class NotificationService : INotificationService
 
     private readonly MessagingDbContext _db;
     private readonly IIntegrationEventPublisher _events;
+    private readonly INotificationRealtimePublisher _realtime;
 
     public NotificationService(
         MessagingDbContext db,
-        IIntegrationEventPublisher events)
+        IIntegrationEventPublisher events,
+        INotificationRealtimePublisher realtime)
     {
         _db = db;
         _events = events;
+        _realtime = realtime;
     }
 
     public async Task<IReadOnlyList<UserNotificationDto>> ListForUserAsync(
@@ -238,6 +241,13 @@ public sealed class NotificationService : INotificationService
         _db.UserNotifications.RemoveRange(overflow);
 
         await _db.SaveChangesAsync(cancellationToken);
+
+        // Push to SSE clients connected to this Platform process immediately.
+        // Waiting for Messaging outbox → Rabbit → realtime consumer adds seconds
+        // of delay (and feels like "only works after reload", which hits List).
+        foreach (var row in result)
+            _realtime.Publish(row.UserId, ToDto(row));
+
         return result;
     }
 

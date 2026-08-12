@@ -4,7 +4,6 @@ import {
   BOURSE_INQUIRY_IDENTIFIER_STATUS,
   DEED_NUMBER_DIGIT_LENGTH,
   isBourseInquiryIdentifier,
-  requiresAssignmentDecree,
   requiresContacts,
   requiresRequestNumberField,
   requiredPropertyIdentifierDigitLength,
@@ -16,6 +15,7 @@ import {
 } from "../../lib/prototype/po-intake-data";
 import {
   cacheAssignmentDoc,
+  cacheDeedOwnershipDoc,
   cacheDelegationDoc,
   cacheOtherPropertyDoc,
   cacheRegistryDoc,
@@ -90,7 +90,6 @@ export function PoPropertyEnfathForm({
   const propertyRef = useRef(property);
   propertyRef.current = property;
 
-  const showAssignmentDecree = requiresAssignmentDecree(assignmentType);
   const showCourt = showsCourtFields(assignmentType);
   const showRequestNumber = requiresRequestNumberField(assignmentType);
   const contactsRequired = requiresContacts(assignmentType);
@@ -189,6 +188,10 @@ export function PoPropertyEnfathForm({
                     : next.otherDocumentFileNames,
                 realEstateRegFileName:
                   cloned.realEstateRegFileName || next.realEstateRegFileName,
+                deedOwnershipFileName:
+                  cloned.deedOwnershipFileName || next.deedOwnershipFileName,
+                bourseDeedImageFileName:
+                  cloned.bourseDeedImageFileName || next.bourseDeedImageFileName,
               };
             } catch {
               /* keep file-name hints from prior DTO even if byte clone fails */
@@ -626,10 +629,10 @@ export function PoPropertyEnfathForm({
         />
       ) : null}
 
-      {showAssignmentDecree && showExtended ? (
+      {showExtended ? (
         <PropertyFileUploadField
           id={`assignment_doc_${property.id}`}
-          label={<>قرار الإسناد *</>}
+          label={<>خطاب الإسناد *</>}
           fileNames={property.assignmentDocFileNames}
           error={fieldErrors.assignmentDocFileNames}
           attachPo={attachPo}
@@ -649,7 +652,7 @@ export function PoPropertyEnfathForm({
                 })
                 .catch(() => {
                   showToast(
-                    "تعذّر حفظ مرفق قرار الإسناد — حاول مرة أخرى",
+                    "تعذّر حفظ مرفق خطاب الإسناد — حاول مرة أخرى",
                     "error",
                   );
                 });
@@ -668,7 +671,40 @@ export function PoPropertyEnfathForm({
         />
       ) : null}
 
-      {fieldsMode === "all" ? (
+      {showExtended ? (
+        <PropertyFileUploadField
+          id={`deed_ownership_${property.id}`}
+          label="صورة وثيقة التملك (الصك) (اختياري)"
+          fileName={property.deedOwnershipFileName}
+          error={fieldErrors.deedOwnershipFileName}
+          attachPo={attachPo}
+          propertyId={property.id}
+          docKind="deed"
+          onUpload={(file) => {
+            onPatch("deedOwnershipFileName", file.name);
+            if (attachPo) {
+              void cacheDeedOwnershipDoc(attachPo, property.id, file)
+                .then((result) => {
+                  if (!result.ok) showToast(result.error, "error");
+                })
+                .catch(() => {
+                  showToast(
+                    "تعذّر حفظ صورة وثيقة التملك — حاول مرة أخرى",
+                    "error",
+                  );
+                });
+            }
+          }}
+          onClear={() => {
+            onPatch("deedOwnershipFileName", "");
+            if (attachPo) {
+              clearCachedPropertyDoc("deed", attachPo, property.id);
+            }
+          }}
+        />
+      ) : null}
+
+      {fieldsMode === "all" || isPrimaryOnly ? (
         <PropertyFileUploadField
           id={`other_docs_${property.id}`}
           label="مستندات أخرى (اختياري)"

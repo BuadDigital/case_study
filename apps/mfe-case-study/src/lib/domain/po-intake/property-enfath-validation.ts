@@ -1,6 +1,5 @@
 import {
   isBourseInquiryIdentifier,
-  requiresAssignmentDecree,
   requiresContacts,
   requiresRequestNumberField,
   showsCourtFields,
@@ -82,12 +81,8 @@ export function validatePropertyEnfathFields(
         [...requiredKeys],
       ),
     );
-    if (
-      requiresAssignmentDecree(assignmentType) &&
-      p.assignmentDocFileNames.length === 0
-    ) {
-      errors.assignmentDocFileNames =
-        "ارفع قرار الإسناد الخاص بهذا العقار (مطلوب لمسار التنفيذ)";
+    if (p.assignmentDocFileNames.length === 0) {
+      errors.assignmentDocFileNames = "خطاب الإسناد مطلوب";
     }
     const identifierError = validatePropertyIdentifierNumber(
       p.identifierType,
@@ -125,12 +120,8 @@ export function validatePropertyEnfathFields(
 
   validateDeedOrRealEstateReg(p, errors);
 
-  if (
-    requiresAssignmentDecree(assignmentType) &&
-    p.assignmentDocFileNames.length === 0
-  ) {
-    errors.assignmentDocFileNames =
-      "ارفع قرار الإسناد الخاص بهذا العقار (مطلوب لمسار التنفيذ)";
+  if (p.assignmentDocFileNames.length === 0) {
+    errors.assignmentDocFileNames = "خطاب الإسناد مطلوب";
   }
 
   return errors;

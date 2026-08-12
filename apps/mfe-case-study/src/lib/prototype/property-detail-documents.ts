@@ -84,7 +84,8 @@ export function collectIntakeDocuments(input: {
   showDecree: boolean;
   poNumber: string;
 }): PropertyDetailDocumentEntry[] {
-  const { property, showDecree, poNumber } = input;
+  const { property, poNumber } = input;
+  void input.showDecree;
   const docs: PropertyDetailDocumentEntry[] = [];
   const source = "البيانات الأولية";
 
@@ -107,27 +108,63 @@ export function collectIntakeDocuments(input: {
     });
   }
 
-  if (showDecree) {
-    property.assignmentDocFileNames.forEach((fileName, index) => {
-      const name = fileName.trim();
-      if (!name) return;
-      const cached = getCachedPropertyDocMatching(
-        "decree",
-        poNumber,
-        property.id,
-        name,
-      );
-      pushEntry(docs, {
-        id: `intake-assignment-${index}-${name}`,
-        name: property.assignmentDocFileNames.length > 1
-          ? `قرار الإسناد (${index + 1})`
-          : "قرار الإسناد",
-        fileName: name,
-        source,
-        kind: fileKind(name, cached?.mimeType),
-        dataUrl: cached?.dataUrl,
-        attachmentId: cached?.attachmentId,
-      });
+  property.assignmentDocFileNames.forEach((fileName, index) => {
+    const name = fileName.trim();
+    if (!name) return;
+    const cached = getCachedPropertyDocMatching(
+      "decree",
+      poNumber,
+      property.id,
+      name,
+    );
+    pushEntry(docs, {
+      id: `intake-assignment-${index}-${name}`,
+      name: property.assignmentDocFileNames.length > 1
+        ? `خطاب الإسناد (${index + 1})`
+        : "خطاب الإسناد",
+      fileName: name,
+      source,
+      kind: fileKind(name, cached?.mimeType),
+      dataUrl: cached?.dataUrl,
+      attachmentId: cached?.attachmentId,
+    });
+  });
+
+  if (property.deedOwnershipFileName?.trim()) {
+    const name = property.deedOwnershipFileName.trim();
+    const cached = getCachedPropertyDocMatching(
+      "deed",
+      poNumber,
+      property.id,
+      name,
+    );
+    pushEntry(docs, {
+      id: "intake-deed-ownership",
+      name: "صورة وثيقة التملك (الصك)",
+      fileName: name,
+      source,
+      kind: fileKind(name, cached?.mimeType),
+      dataUrl: cached?.dataUrl,
+      attachmentId: cached?.attachmentId,
+    });
+  }
+
+  if (property.bourseDeedImageFileName?.trim()) {
+    const name = property.bourseDeedImageFileName.trim();
+    const cached = getCachedPropertyDocMatching(
+      "bourse-deed",
+      poNumber,
+      property.id,
+      name,
+    );
+    pushEntry(docs, {
+      id: "intake-bourse-deed",
+      name: "صورة الصك من البورصة",
+      fileName: name,
+      source: "استعلام البورصة",
+      kind: fileKind(name, cached?.mimeType),
+      dataUrl: cached?.dataUrl,
+      attachmentId: cached?.attachmentId,
     });
   }
 

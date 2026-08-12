@@ -167,7 +167,7 @@ public class WorkOrderValidatorTests
     }
 
     [Fact]
-    public void ValidatePropertyEnfath_requires_assignment_doc_for_execution()
+    public void ValidatePropertyEnfath_requires_assignment_doc()
     {
         var dto = ValidDeedProperty();
         dto.AssignmentDocFileNames = [];
@@ -179,9 +179,7 @@ public class WorkOrderValidatorTests
             null,
             (_, _) => false);
 
-        Assert.Equal(
-            "ارفع قرار الإسناد الخاص بهذا العقار (مطلوب لمسار التنفيذ)",
-            errors["assignmentDocFileNames"]);
+        Assert.Equal("خطاب الإسناد مطلوب", errors["assignmentDocFileNames"]);
     }
 
     [Fact]
@@ -385,6 +383,7 @@ public class WorkOrderValidatorTests
 
         Assert.Contains("city", errors.Keys);
         Assert.Contains("district", errors.Keys);
+        Assert.Contains("bourseDeedImageFileName", errors.Keys);
         Assert.DoesNotContain("classification", errors.Keys);
         Assert.DoesNotContain("propertyType", errors.Keys);
     }
@@ -398,6 +397,7 @@ public class WorkOrderValidatorTests
             District = "Al Olaya",
             Classification = "residential",
             PropertyType = "land",
+            BourseDeedImageFileName = "deed.png",
             RestrictionsPresent = "maybe",
             BoundariesAvailability = "unknown",
         });
@@ -413,6 +413,7 @@ public class WorkOrderValidatorTests
         {
             City = "Riyadh",
             District = "Al Olaya",
+            BourseDeedImageFileName = "deed.png",
             RestrictionsPresent = "yes",
         });
 
@@ -426,6 +427,7 @@ public class WorkOrderValidatorTests
         {
             City = "Riyadh",
             District = "Al Olaya",
+            BourseDeedImageFileName = "deed.png",
             RestrictionsPresent = "yes",
             RestrictionType = "other",
         });
@@ -442,6 +444,7 @@ public class WorkOrderValidatorTests
             District = "Al Olaya",
             Classification = "residential",
             PropertyType = "land",
+            BourseDeedImageFileName = "deed.png",
             RestrictionsPresent = "yes",
             RestrictionType = "mortgaged,seized",
             BoundariesAvailability = "available",
@@ -458,6 +461,7 @@ public class WorkOrderValidatorTests
         {
             City = "Riyadh",
             District = "Al Olaya",
+            BourseDeedImageFileName = "deed.png",
             RestrictionsPresent = "yes",
             RestrictionType = "mortgaged,other",
         });
@@ -474,6 +478,7 @@ public class WorkOrderValidatorTests
             District = "Al Olaya",
             Classification = "residential",
             PropertyType = "land",
+            BourseDeedImageFileName = "deed.png",
             BoundariesAvailability = "doc",
         });
 
@@ -502,6 +507,7 @@ public class WorkOrderValidatorTests
         Court = "محكمة التنفيذ",
         Circuit = "1",
         DelegationLetterFileNames = ["letter.pdf"],
+        AssignmentDocFileNames = ["decree.pdf"],
         Contacts =
         [
             new PropertyContactDto { Phone = "0501234567", Role = "ضابط" },

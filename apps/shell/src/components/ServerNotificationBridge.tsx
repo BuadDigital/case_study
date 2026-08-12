@@ -204,7 +204,7 @@ export function ServerNotificationBridge() {
 
     function handleServerDto(dto: UserNotificationDto) {
       const item = notificationFromDto(dto);
-      if (!shouldShowNotificationToast(role, item)) return;
+      // Always upsert into the inbox; toast policy only gates the popup.
       const isNew = markSeenIfNew(item.id);
       upsertNotificationFromServer(item);
       if (isNew) refreshTransactions();
@@ -213,6 +213,7 @@ export function ServerNotificationBridge() {
         !initialLoadRef.current &&
         isNew &&
         !item.read &&
+        shouldShowNotificationToast(role, item) &&
         !shouldSuppressEchoToast(item.sourceEvent)
       ) {
         window.dispatchEvent(
@@ -225,8 +226,16 @@ export function ServerNotificationBridge() {
 
     void pull(false);
 
-    // No blind interval poll — SSE is the live channel, and a tab refocus
-    // (below) is the catch-up path if SSE silently dropped while hidden.
+    // SSE is the primary live channel. A short visible-tab poll covers:
+    // outbox/Rabbit lag, silent SSE drops, and RabbitMQ-disabled local runs
+    // (backend comment: "clients retain polling fallback").
+    const POLL_FALLBACK_MS = 12_000;
+    const pollTimer = window.setInterval(() => {
+      if (document.visibilityState === "visible") {
+        void pull(true);
+      }
+    }, POLL_FALLBACK_MS);
+
     const onVisible = () => {
       if (document.visibilityState === "visible") {
         void pull(true);
@@ -270,6 +279,7 @@ export function ServerNotificationBridge() {
     return () => {
       cancelled = true;
       if (retryTimer !== undefined) window.clearTimeout(retryTimer);
+      window.clearInterval(pollTimer);
       if (refreshDebounceRef.current !== undefined) {
         window.clearTimeout(refreshDebounceRef.current);
         refreshDebounceRef.current = undefined;

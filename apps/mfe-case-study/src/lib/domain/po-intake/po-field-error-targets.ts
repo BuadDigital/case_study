@@ -41,6 +41,8 @@ export const PO_PROPERTY_ERROR_KEY_ORDER = [
   "boundariesExternalDocName",
   "delegationLetterFileNames",
   "assignmentDocFileNames",
+  "deedOwnershipFileName",
+  "bourseDeedImageFileName",
   "_contacts",
 ] as const;
 
@@ -94,6 +96,10 @@ export function poPropertyErrorTargetId(
       return `delegation_${prop.id}`;
     case "assignmentDocFileNames":
       return `assignment_doc_${prop.id}`;
+    case "deedOwnershipFileName":
+      return `deed_ownership_${prop.id}`;
+    case "bourseDeedImageFileName":
+      return `bourse_deed_image_${prop.id}`;
     case "planNumber":
       return isBourse ? "plan_number_bourse" : "plan_number";
     case "plotNumber":

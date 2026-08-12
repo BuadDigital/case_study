@@ -283,6 +283,7 @@ export function PoPropertyEdit({
             property={property}
             fieldErrors={fieldErrors}
             onPatch={patchProperty}
+            poNumber={poNumber}
           />
         </RegistrationFormCard>
       ) : (

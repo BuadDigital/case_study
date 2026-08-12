@@ -3621,6 +3621,9 @@ namespace RealEstateEval.Infrastructure.Data.Migrations
                     b.Property<bool>("BourseDataCompleted")
                         .HasColumnType("boolean");
 
+                    b.Property<string>("BourseDeedImageFileName")
+                        .HasColumnType("text");
+
                     b.Property<string>("Circuit")
                         .HasColumnType("text");
 
@@ -3653,6 +3656,9 @@ namespace RealEstateEval.Infrastructure.Data.Migrations
                         .IsRequired()
                         .HasMaxLength(128)
                         .HasColumnType("character varying(128)");
+
+                    b.Property<string>("DeedOwnershipFileName")
+                        .HasColumnType("text");
 
                     b.Property<string>("DeedStatus")
                         .HasColumnType("text");

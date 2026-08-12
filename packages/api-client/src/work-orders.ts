@@ -63,6 +63,8 @@ export type WorkOrderPropertyDto = {
   delegationLetterFileNames?: string[];
   otherDocumentFileNames?: string[];
   realEstateRegFileName?: string;
+  deedOwnershipFileName?: string;
+  bourseDeedImageFileName?: string;
   bourseDataCompleted?: boolean;
   planNumber?: string;
   plotNumber?: string;
@@ -140,6 +142,7 @@ export type UpdatePropertyBourseRequest = {
   propertyType: string;
   area?: string;
   deedStatus?: string;
+  bourseDeedImageFileName?: string;
   restrictionsPresent?: string;
   restrictionType?: string;
   restrictionOtherReason?: string;
@@ -203,6 +206,8 @@ export type PriorDeedRegistrationDto = {
   delegationLetterFileNames?: string[];
   otherDocumentFileNames?: string[];
   realEstateRegFileName?: string;
+  deedOwnershipFileName?: string;
+  bourseDeedImageFileName?: string;
   realEstateRegNumber?: string;
   realEstateRegDate?: string;
 };

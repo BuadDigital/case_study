@@ -1,5 +1,9 @@
 export { cn, type ClassValue } from "./lib/cn";
 export {
+  parsePastedDate,
+  applyIsoDateToInput,
+} from "./lib/pasted-date";
+export {
   formControlClassName,
   formControlErrorClassName,
 } from "./lib/form-control-classes";

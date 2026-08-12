@@ -1,29 +1,16 @@
 "use client";
 
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useSearchParams } from "next/navigation";
-import {
-  findSurveyChildForParent,
-} from "@engineering-office/mfe";
+import { findSurveyChildForParent } from "@engineering-office/mfe";
 import { useMemo, useState, useEffect } from "react";
-import {
-  failuresForProperty,
-  useFailuresQuery,
-} from "@failures/mfe";
+import { failuresForProperty, useFailuresQuery } from "@failures/mfe";
 import { failureStatusLabel } from "@failures/mfe/lib/failures-labels";
 import type { FailureRecord } from "@failures/mfe";
 import { Button, cn, Tab, TabBar, TabPanel } from "@platform/design-system";
 import { usePrototype } from "@platform/app-shared/contexts/PrototypeContext";
-import {
-  DetailBadge,
-  EmptyState,
-  FieldBox,
-  FieldsGrid,
-  InfoBox,
-  ltrValueClass,
-  SectionHeader,
-} from "./PropertyDetailFields";
+import { isSuperAdmin } from "@platform/app-shared/prototype/prototype-role-access";
+import { DetailBadge, EmptyState, FieldBox, FieldsGrid, InfoBox, ltrValueClass, SectionHeader } from "./PropertyDetailFields";
 import { PropertyDetailAppraisalTab } from "./PropertyDetailAppraisalTab";
 import { PropertyDetailPhotosTab } from "./PropertyDetailPhotosTab";
 import { PropertyDetailLinkedTab } from "./PropertyDetailLinkedTab";
@@ -38,13 +25,8 @@ import { PropertyDetailMobileGlance } from "./PropertyDetailMobileGlance";
 import { PropertyDetailMediaGlance } from "./PropertyDetailMediaGlance";
 import { PropertyDetailInspectionTab } from "./PropertyDetailInspectionTab";
 import { PropertyDetailPartyPackageReview } from "./PropertyDetailPartyPackageReview";
-import {
-  boundariesAvailabilityLabel,
-  boundariesMarkedUnavailable,
-  formatDateAr,
-  formatPropertyDeedDisplay,
-  hasBourseDetailFields,
-  ownershipStatusLabel,
+import { boundariesAvailabilityLabel, boundariesMarkedUnavailable, formatDateAr, formatPropertyDeedDisplay, hasBourseDetailFields, 
+  ownershipStatusLabel, 
   formatPropertyRestrictionsLine,
   showsCourtFields,
   skipsBourseForIdentifier,
@@ -56,46 +38,23 @@ import { useStaffUsersQuery } from "@settings/mfe/query/settings-queries";
 import { resolveAssigneeDisplayName } from "@platform/app-shared/fees/party-fee-meta";
 import { isValidContactEntry } from "../../lib/domain/po-intake/property-validation";
 import { PartyRoleDetailPanel } from "./PartyRoleDetailPanel";
-import {
-  buildPropertyDetailPartyCards,
-  type PropertyDetailPartyCard,
-} from "../../lib/prototype/property-detail-parties";
+import { buildPropertyDetailPartyCards, type PropertyDetailPartyCard } from "../../lib/prototype/property-detail-parties";
 import { poPropertyFailurePath } from "../../lib/po-routes";
-import {
-  buildPropertyDetailTimeline,
-  formatTimelineDate,
-} from "../../lib/prototype/property-detail-timeline";
+import { buildPropertyDetailTimeline, formatTimelineDate } from "../../lib/prototype/property-detail-timeline";
 import { usePropertyTimelineQuery } from "../../query/use-property-timeline-query";
-import {
-  caseStudyTaskForProperty,
-  type WorkflowTask,
-} from "../../lib/prototype/tasks-storage";
+import { caseStudyTaskForProperty, type WorkflowTask } from "../../lib/prototype/tasks-storage";
 import { childTasksForCaseStudyParent } from "../../lib/prototype/case-study-party-answers";
-import {
-  downloadPropertyDetailDocument,
-  listPropertyDetailPhotos,
-  type PropertyDetailDocumentEntry,
-  type PropertyDetailDocumentSection,
-} from "../../lib/prototype/property-detail-documents";
+import { downloadPropertyDetailDocument, listPropertyDetailPhotos, type PropertyDetailDocumentEntry, type PropertyDetailDocumentSection } from "../../lib/prototype/property-detail-documents";
 import { usePropertyDetailDocuments } from "../../query/property-detail-documents-query";
 import { useWorkflowTasksQuery } from "../../query/case-study-queries";
 import { useInspectorFeesQuery } from "../../query/inspector-fees-queries";
 import { usePropertyDetailPartySubmissionsQuery } from "../../query/property-detail-party-submissions-queries";
 import { poPropertyPath } from "../../lib/po-routes";
 import { usePropertyOperationsTasks } from "../../query/use-property-operations-tasks";
-import {
-  keysStatusLabelAr,
-  usePropertyKeyGateQuery,
-} from "../../query/use-property-key-gate-query";
-import {
-  loadSeenPropertyTabFingerprints,
-  markPropertyTabSeen,
-  propertyTabHasNewDot,
-  type SeenPropertyTabMap,
-} from "../../lib/prototype/property-detail-local-ui";
+import { keysStatusLabelAr, usePropertyKeyGateQuery } from "../../query/use-property-key-gate-query";
+import { loadSeenPropertyTabFingerprints, markPropertyTabSeen, propertyTabHasNewDot, type SeenPropertyTabMap} from "../../lib/prototype/property-detail-local-ui";
 import { buildPropertyDetailTabActivity } from "../../lib/prototype/property-detail-tab-activity";
 
-/** Case Study.html `tabs` order in renderProperty. */
 const TABS = [
   { id: "basic", label: "البيانات الأساسية" },
   { id: "documents", label: "مستندات العقار" },
@@ -557,9 +516,8 @@ export function PoPropertyDetailTabs({
   const searchParams = useSearchParams();
   const { role } = usePrototype();
   const visibleTabs = useMemo(() => propertyDetailTabsForRole(role), [role]);
-  /** Timeline + party status rail — case specialist and section supervisor only. */
-  const showCaseStudySideRail =
-    role === "case-specialist" || role === "section-supervisor";
+  /** Timeline + party status rail — system admin (CDO) only. */
+  const showCaseStudySideRail = isSuperAdmin(role);
   const initialTab = searchParams.get("tab");
   const inspectParam = searchParams.get("inspect");
   const workspaceForced = Boolean(inspectorWorkspace);

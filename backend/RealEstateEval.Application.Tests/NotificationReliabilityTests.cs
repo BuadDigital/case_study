@@ -173,6 +173,35 @@ public sealed class NotificationReliabilityTests
         Assert.False(secondReader.TryRead(out _));
     }
 
+    [Fact]
+    public async Task CreateForUser_pushes_sse_immediately_without_waiting_for_outbox_fanout()
+    {
+        await using var messaging = CreateMessagingDb();
+        var hub = new NotificationRealtimeHub();
+        var (_, reader) = hub.Subscribe("user-1");
+        var service = new NotificationService(
+            messaging,
+            new MessagingOutboxPublisher(
+                messaging,
+                NullLogger<MessagingOutboxPublisher>.Instance),
+            hub);
+
+        var created = await service.CreateForUserAsync(
+            "user-1",
+            new CreateUserNotificationRequest
+            {
+                Title = "Instant",
+                Body = "after distribution",
+                Category = "workflow",
+                SourceEvent = "distribution-assigned:task-1",
+            });
+
+        var pushed = await reader.ReadAsync();
+        Assert.Equal(created.Id, pushed.Id);
+        Assert.Equal("Instant", pushed.Title);
+        Assert.False(reader.TryRead(out _));
+    }
+
     private static NotificationService CreateService(MessagingDbContext db) =>
         TestMessagingContexts.CreateNotificationService(db);
 

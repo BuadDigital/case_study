@@ -20,7 +20,12 @@ public sealed class OutboxDispatcherOptions
 
 public sealed class OutboxDispatcherHostedService : BackgroundService
 {
-    private static readonly int[] EmptyBackoffSeconds = [2, 5, 10, 20, 30];
+    /// <summary>
+    /// Idle poll cadence. Keep short so assignment notifications (distribution →
+    /// outbox → Platform) reach the assignee within a couple of seconds instead of
+    /// waiting up to half a minute after the dispatcher goes quiet.
+    /// </summary>
+    private static readonly int[] EmptyBackoffSeconds = [1, 2, 3, 5];
 
     private const int BatchSize = 25;
 

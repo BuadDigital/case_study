@@ -16,11 +16,16 @@ import {
   type BourseDeedVitality,
   type PoPropertyIntake,
 } from "../../lib/prototype/po-intake-data";
+import {
+  cacheBourseDeedImageDoc,
+  clearCachedPropertyDoc,
+} from "../../lib/prototype/assignment-doc-attachments";
 import { PoPropertyBoundariesEntrySection } from "./PoPropertyBoundariesEntrySection";
+import { PropertyFileUploadField } from "./PropertyFileUploadField";
 import { RegionCitySelects } from "./RegionCitySelects";
 import { RegField, RegSelect } from "@platform/app-shared/registration/FormFields";
 import type { FieldErrors } from "@platform/app-shared/registration/registration-utils";
-import { cn, FormRow, Label, Note } from "@platform/design-system";
+import { cn, FormRow, Label, Note, useToast } from "@platform/design-system";
 
 type Props = {
   property: PoPropertyIntake;
@@ -29,6 +34,7 @@ type Props = {
     key: K,
     value: PoPropertyIntake[K],
   ) => void;
+  poNumber?: string;
   showIntroNote?: boolean;
   /** مسار الصك فعال / غير فعال → متعذر (استعلام البورصة ومهام الأخصائي). */
   showDeedVitalityFlow?: boolean;
@@ -51,6 +57,7 @@ export function PoPropertyBourseForm({
   property,
   fieldErrors,
   onPatch,
+  poNumber,
   showIntroNote = true,
   showDeedVitalityFlow = false,
   deedVitality = null,
@@ -59,6 +66,8 @@ export function PoPropertyBourseForm({
   onObstructionReasonChange,
   obstructionReasonError,
 }: Props) {
+  const { showToast } = useToast();
+  const attachPo = poNumber?.trim() || "";
   const obstructionPath = showDeedVitalityFlow && deedVitality === "inactive";
 
   return (
@@ -149,6 +158,37 @@ export function PoPropertyBourseForm({
 
       {!obstructionPath ? (
         <>
+          <PropertyFileUploadField
+            id={`bourse_deed_image_${property.id}`}
+            label={<>صورة الصك من البورصة *</>}
+            fileName={property.bourseDeedImageFileName}
+            error={fieldErrors.bourseDeedImageFileName}
+            attachPo={attachPo || undefined}
+            propertyId={property.id}
+            docKind="bourse-deed"
+            onUpload={(file) => {
+              onPatch("bourseDeedImageFileName", file.name);
+              if (attachPo) {
+                void cacheBourseDeedImageDoc(attachPo, property.id, file)
+                  .then((result) => {
+                    if (!result.ok) showToast(result.error, "error");
+                  })
+                  .catch(() => {
+                    showToast(
+                      "تعذّر حفظ صورة الصك من البورصة — حاول مرة أخرى",
+                      "error",
+                    );
+                  });
+              }
+            }}
+            onClear={() => {
+              onPatch("bourseDeedImageFileName", "");
+              if (attachPo) {
+                clearCachedPropertyDoc("bourse-deed", attachPo, property.id);
+              }
+            }}
+          />
+
           <div
             id="restrictions_present"
             className={cn(

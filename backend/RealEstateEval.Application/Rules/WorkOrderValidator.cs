@@ -112,11 +112,9 @@ public static class WorkOrderValidator
             }
         }
 
-        if (RequiresAssignmentDecree(assignmentType) &&
-            dto.AssignmentDocFileNames.All(string.IsNullOrWhiteSpace))
+        if (dto.AssignmentDocFileNames.All(string.IsNullOrWhiteSpace))
         {
-            errors["assignmentDocFileNames"] =
-                "ارفع قرار الإسناد الخاص بهذا العقار (مطلوب لمسار التنفيذ)";
+            errors["assignmentDocFileNames"] = "خطاب الإسناد مطلوب";
         }
 
         ValidateContacts(dto, AssignmentTypeRules.RequiresContacts(assignmentType), errors);
@@ -133,6 +131,8 @@ public static class WorkOrderValidator
             errors["city"] = "المدينة مطلوبة";
         if (string.IsNullOrWhiteSpace(dto.District))
             errors["district"] = "الحي مطلوب";
+        if (string.IsNullOrWhiteSpace(dto.BourseDeedImageFileName))
+            errors["bourseDeedImageFileName"] = "صورة الصك من البورصة مطلوبة";
 
         if (!string.IsNullOrWhiteSpace(dto.RestrictionsPresent))
         {

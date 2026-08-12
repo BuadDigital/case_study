@@ -512,6 +512,7 @@ export function BourseInquiryView() {
                     property={property}
                     fieldErrors={fieldErrors}
                     onPatch={patchProperty}
+                    poNumber={selected.poNumber}
                     showIntroNote={false}
                     showDeedVitalityFlow
                     deedVitality={deedVitality}

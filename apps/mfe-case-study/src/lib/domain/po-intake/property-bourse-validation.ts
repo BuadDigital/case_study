@@ -22,6 +22,10 @@ export function validatePropertyBourseFields(
     ),
   );
 
+  if (!p.bourseDeedImageFileName.trim()) {
+    errors.bourseDeedImageFileName = "صورة الصك من البورصة مطلوبة";
+  }
+
   const restrictions = p.restrictionsPresent.trim().toLowerCase();
   if (restrictions && !RESTRICTIONS_VALUES.has(restrictions)) {
     errors.restrictionsPresent = "قيمة القيود غير صالحة";
@@ -56,6 +60,7 @@ export function firstBourseValidationMessage(errors: FieldErrors): string {
   return (
     errors.city ??
     errors.district ??
+    errors.bourseDeedImageFileName ??
     errors.restrictionsPresent ??
     errors.restrictionType ??
     errors.restrictionOtherReason ??
