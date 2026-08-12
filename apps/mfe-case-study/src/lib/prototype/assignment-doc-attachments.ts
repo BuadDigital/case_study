@@ -14,6 +14,8 @@ import { processEvidencePhoto } from "./process-evidence-photo";
 export type PropertyDocKind =
   | "decree"
   | "delegation"
+  | "deed"
+  | "bourse-deed"
   | "keys-proof"
   | "other"
   | "registry"
@@ -22,6 +24,8 @@ export type PropertyDocKind =
 const API_SCOPE: Record<PropertyDocKind, string> = {
   decree: "property-decree",
   delegation: "property-delegation",
+  deed: "property-deed-ownership",
+  "bourse-deed": "property-bourse-deed",
   "keys-proof": "government-keys-proof",
   other: "property-other",
   registry: "property-registry",
@@ -375,6 +379,26 @@ export async function cacheRegistryDoc(
   });
 }
 
+export async function cacheDeedOwnershipDoc(
+  poNumber: string,
+  propertyId: string,
+  file: File,
+): Promise<DocCacheResult> {
+  return writeCachedDoc("deed", poNumber, propertyId, file, {
+    replaceAll: true,
+  });
+}
+
+export async function cacheBourseDeedImageDoc(
+  poNumber: string,
+  propertyId: string,
+  file: File,
+): Promise<DocCacheResult> {
+  return writeCachedDoc("bourse-deed", poNumber, propertyId, file, {
+    replaceAll: true,
+  });
+}
+
 export async function cacheBoundariesDoc(
   poNumber: string,
   propertyId: string,
@@ -562,6 +586,8 @@ export async function prefetchPropertyDocAttachments(
   await Promise.all([
     hydrateKindFromApi("decree", poNumber, propertyId),
     hydrateKindFromApi("delegation", poNumber, propertyId),
+    hydrateKindFromApi("deed", poNumber, propertyId),
+    hydrateKindFromApi("bourse-deed", poNumber, propertyId),
     hydrateKindFromApi("registry", poNumber, propertyId),
     hydrateKindFromApi("other", poNumber, propertyId),
     hydrateKindFromApi("boundaries", poNumber, propertyId),
@@ -586,6 +612,8 @@ export type ClonedPropertyDocNames = {
   delegationLetterFileNames: string[];
   otherDocumentFileNames: string[];
   realEstateRegFileName: string;
+  deedOwnershipFileName: string;
+  bourseDeedImageFileName: string;
 };
 
 /** When enfath auto-fill clones docs onto a client-only id, re-run after server insert. */
@@ -647,6 +675,8 @@ export async function clonePropertyDocumentsFromPrior(
     delegationLetterFileNames: [],
     otherDocumentFileNames: [],
     realEstateRegFileName: "",
+    deedOwnershipFileName: "",
+    bourseDeedImageFileName: "",
   };
   const fromPo = sourcePo.trim();
   const toPo = targetPo.trim();
@@ -698,13 +728,16 @@ export async function clonePropertyDocumentsFromPrior(
     return names;
   }
 
-  const [decree, delegation, other, registry, boundaries] = await Promise.all([
-    cloneKind("decree"),
-    cloneKind("delegation"),
-    cloneKind("other"),
-    cloneKind("registry"),
-    cloneKind("boundaries"),
-  ]);
+  const [decree, delegation, other, registry, deedOwnership, bourseDeed, boundaries] =
+    await Promise.all([
+      cloneKind("decree"),
+      cloneKind("delegation"),
+      cloneKind("other"),
+      cloneKind("registry"),
+      cloneKind("deed"),
+      cloneKind("bourse-deed"),
+      cloneKind("boundaries"),
+    ]);
   // boundaries are stored by attachment only; external doc name is a separate text field.
   void boundaries;
 
@@ -713,6 +746,8 @@ export async function clonePropertyDocumentsFromPrior(
     delegationLetterFileNames: delegation,
     otherDocumentFileNames: other,
     realEstateRegFileName: registry[0] ?? "",
+    deedOwnershipFileName: deedOwnership[0] ?? "",
+    bourseDeedImageFileName: bourseDeed[0] ?? "",
   };
 }
 

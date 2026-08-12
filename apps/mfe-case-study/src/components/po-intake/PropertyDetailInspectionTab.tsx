@@ -53,6 +53,11 @@ import {
   prefetchInspectorPhoto,
   uploadInspectorPhotoFromFile,
 } from "../../lib/prototype/inspector-photo-upload";
+import {
+  INSPECTOR_PHOTO_ACCEPT,
+  filterInspectorPhotoFiles,
+  useInspectorPhotoDropZone,
+} from "../../lib/prototype/inspector-photo-drop";
 import { InspectorDefinedPhotosSection } from "../field-inspection/InspectorDefinedPhotosSection";
 import { InspectorPhotoFilePicker } from "../field-inspection/InspectorPhotoFilePicker";
 import { InspectorStampedPhotoThumb } from "../field-inspection/InspectorStampedPhotoThumb";
@@ -471,25 +476,39 @@ function EditableFeaturePhotoCell({
 }) {
   const inputRef = useRef<HTMLInputElement>(null);
   const { runWithUploadToast } = useToast();
+  const { dragOver, dropZoneProps } = useInspectorPhotoDropZone({
+    disabled,
+    onFiles: (files) => {
+      const file = files[0];
+      if (file) void runWithUploadToast(() => onUpload(file));
+    },
+  });
 
   if (!needsPhoto) {
     return <span className="text-text-3">—</span>;
   }
 
   return (
-    <span className="inline-flex flex-col items-center gap-1">
+    <span
+      className={cn(
+        "inline-flex flex-col items-center gap-1 rounded-md px-1 py-0.5",
+        dragOver &&
+          "bg-[color-mix(in_srgb,var(--primary)_8%,transparent)] ring-2 ring-primary/30",
+      )}
+      {...dropZoneProps}
+    >
       {hasPhoto ? (
         <button
           type="button"
           disabled={disabled}
-          title="استبدال من الجهاز"
+          title="استبدال — اسحب صورة جديدة أو اختر من الجهاز"
           className="inline-flex items-center gap-1 border-0 bg-transparent p-0 font-inherit text-[10.5px] text-[#1f6f6f] hover:underline disabled:cursor-default"
           onClick={() => inputRef.current?.click()}
         >
           <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden>
             <path d="M20 6 9 17l-5-5" />
           </svg>
-          مرفقة
+          {dragOver ? "أفلِت هنا" : "مرفقة"}
         </button>
       ) : (
         <button
@@ -499,21 +518,22 @@ function EditableFeaturePhotoCell({
             "inline-flex items-center gap-1 rounded-md border border-dashed border-border-md bg-surface px-2.5 py-1.5",
             "font-inherit text-[10.5px] font-semibold text-text-2 hover:border-primary hover:text-primary",
             "disabled:cursor-not-allowed disabled:opacity-60",
+            dragOver && "border-primary text-primary",
           )}
           onClick={() => inputRef.current?.click()}
         >
           <i className="ti ti-upload text-[13px]" aria-hidden />
-          إرفاق صورة
+          {dragOver ? "أفلِت الصورة" : "إرفاق صورة"}
         </button>
       )}
       <input
         ref={inputRef}
         type="file"
-        accept="image/*,.heic,.heif,image/jpeg,image/png,image/webp"
+        accept={INSPECTOR_PHOTO_ACCEPT}
         disabled={disabled}
         className="sr-only"
         onChange={(e) => {
-          const file = e.target.files?.[0];
+          const file = filterInspectorPhotoFiles(e.target.files)[0];
           e.target.value = "";
           if (file) void runWithUploadToast(() => onUpload(file));
         }}

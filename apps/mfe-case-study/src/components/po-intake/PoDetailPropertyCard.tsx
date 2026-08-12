@@ -151,7 +151,7 @@ export function PoDetailPropertyCard({
       {showDecree ? (
         <div className="mt-2.5 flex flex-col gap-1.5 border-t border-border pt-2.5">
           <span className="text-[10px] font-semibold text-text-3">
-            مرفق قرار الإسناد
+            مرفق خطاب الإسناد
           </span>
           {property.assignmentDocFileNames.length === 0 ? (
             <span className="text-[11px] text-text-3">غير مرفق</span>

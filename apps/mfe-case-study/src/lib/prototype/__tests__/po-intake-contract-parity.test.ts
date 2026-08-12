@@ -9,6 +9,7 @@ describe("PO intake frontend/backend rule parity", () => {
       ...emptyProperty(),
       city: "الرياض",
       district: "العليا",
+      bourseDeedImageFileName: "deed.png",
       restrictionsPresent: "no",
       restrictionType: "invalid",
     };

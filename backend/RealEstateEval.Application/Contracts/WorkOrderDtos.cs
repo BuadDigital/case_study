@@ -52,6 +52,8 @@ public class WorkOrderPropertyDto
     public List<string> DelegationLetterFileNames { get; set; } = [];
     public List<string> OtherDocumentFileNames { get; set; } = [];
     public string? RealEstateRegFileName { get; set; }
+    public string? DeedOwnershipFileName { get; set; }
+    public string? BourseDeedImageFileName { get; set; }
     public bool BourseDataCompleted { get; set; }
     public string? PlanNumber { get; set; }
     public string? PlotNumber { get; set; }
@@ -144,6 +146,7 @@ public class UpdatePropertyBourseRequest
     public string PropertyType { get; set; } = "";
     public string? Area { get; set; }
     public string? DeedStatus { get; set; }
+    public string? BourseDeedImageFileName { get; set; }
     public string? RestrictionsPresent { get; set; }
     public string? RestrictionType { get; set; }
     public string? RestrictionOtherReason { get; set; }
@@ -250,6 +253,8 @@ public class PriorDeedRegistrationDto
     public List<string> DelegationLetterFileNames { get; set; } = [];
     public List<string> OtherDocumentFileNames { get; set; } = [];
     public string? RealEstateRegFileName { get; set; }
+    public string? DeedOwnershipFileName { get; set; }
+    public string? BourseDeedImageFileName { get; set; }
     public string? RealEstateRegNumber { get; set; }
     public string? RealEstateRegDate { get; set; }
     public bool HasRequestNumber { get; set; } = true;

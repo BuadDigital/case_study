@@ -147,6 +147,8 @@ function dtoToProperty(dto: WorkOrderPropertyDto): PoPropertyIntake {
     delegationLetterFileNames: dto.delegationLetterFileNames ?? [],
     otherDocumentFileNames: dto.otherDocumentFileNames ?? [],
     realEstateRegFileName: dto.realEstateRegFileName ?? "",
+    deedOwnershipFileName: dto.deedOwnershipFileName ?? "",
+    bourseDeedImageFileName: dto.bourseDeedImageFileName ?? "",
     planNumber: dto.planNumber ?? "",
     plotNumber: dto.plotNumber ?? "",
     locationMapUrl: dto.locationMapUrl ?? "",
@@ -222,6 +224,8 @@ export function propertyToEnfathDto(
         ? prop.otherDocumentFileNames
         : undefined,
     realEstateRegFileName: prop.realEstateRegFileName || undefined,
+    deedOwnershipFileName: prop.deedOwnershipFileName || undefined,
+    bourseDeedImageFileName: prop.bourseDeedImageFileName || undefined,
     planNumber: prop.planNumber.trim() || undefined,
     plotNumber: prop.plotNumber.trim() || undefined,
     locationMapUrl: prop.locationMapUrl.trim() || undefined,
@@ -251,6 +255,7 @@ export function propertyToDto(prop: PoPropertyIntake): WorkOrderPropertyDto {
     locationMapUrl: prop.locationMapUrl || undefined,
     deedStatus: prop.deedStatus || undefined,
     area: prop.area || undefined,
+    bourseDeedImageFileName: prop.bourseDeedImageFileName || undefined,
     city: prop.city.trim(),
     district: prop.district.trim(),
     classification: prop.classification.trim(),
@@ -271,6 +276,7 @@ export function propertyToBourseRequest(
     propertyType: prop.propertyType.trim(),
     area: prop.area || undefined,
     deedStatus: prop.deedStatus || undefined,
+    bourseDeedImageFileName: prop.bourseDeedImageFileName || undefined,
     restrictionsPresent: prop.restrictionsPresent || undefined,
     restrictionType: prop.restrictionType || undefined,
     restrictionOtherReason: prop.restrictionOtherReason || undefined,
@@ -539,6 +545,14 @@ export function buildPropertyFromPriorDeed(
       (prior.realEstateRegFileName ?? "").trim() ||
       filled.realEstateRegFileName ||
       "",
+    deedOwnershipFileName:
+      (prior.deedOwnershipFileName ?? "").trim() ||
+      filled.deedOwnershipFileName ||
+      "",
+    bourseDeedImageFileName:
+      (prior.bourseDeedImageFileName ?? "").trim() ||
+      filled.bourseDeedImageFileName ||
+      "",
     bourseDataCompleted: false,
     isRemoved: existing.isRemoved,
     removalReason: existing.removalReason,
@@ -578,6 +592,8 @@ export function priorDeedToPropertyIntake(
   const delegationDocs = listFromPrior(prior.delegationLetterFileNames, []);
   const otherDocs = listFromPrior(prior.otherDocumentFileNames, []);
   const regFile = (prior.realEstateRegFileName ?? "").trim();
+  const deedOwnershipFile = (prior.deedOwnershipFileName ?? "").trim();
+  const bourseDeedImageFile = (prior.bourseDeedImageFileName ?? "").trim();
 
   const enfath: PoPropertyIntake = {
     ...base,
@@ -603,6 +619,8 @@ export function priorDeedToPropertyIntake(
     delegationLetterFileNames: delegationDocs,
     otherDocumentFileNames: otherDocs,
     realEstateRegFileName: regFile,
+    deedOwnershipFileName: deedOwnershipFile,
+    bourseDeedImageFileName: bourseDeedImageFile,
     bourseDataCompleted: false,
   };
 
@@ -637,6 +655,8 @@ export function priorDeedToPropertyIntake(
     delegationLetterFileNames: delegationDocs,
     otherDocumentFileNames: otherDocs,
     realEstateRegFileName: regFile,
+    deedOwnershipFileName: deedOwnershipFile,
+    bourseDeedImageFileName: bourseDeedImageFile,
     bourseDataCompleted: false,
   };
 }
@@ -671,6 +691,8 @@ function mergePriorOntoExisting(
       delegationLetterFileNames: draft.delegationLetterFileNames,
       otherDocumentFileNames: draft.otherDocumentFileNames,
       realEstateRegFileName: draft.realEstateRegFileName,
+      deedOwnershipFileName: draft.deedOwnershipFileName,
+      bourseDeedImageFileName: draft.bourseDeedImageFileName,
       realEstateRegNumber: draft.realEstateRegNumber || existing.realEstateRegNumber,
       realEstateRegDate: draft.realEstateRegDate || existing.realEstateRegDate,
     };
@@ -822,6 +844,10 @@ async function applyClonedDocuments(
           : draft.otherDocumentFileNames,
       realEstateRegFileName:
         cloned.realEstateRegFileName || draft.realEstateRegFileName,
+      deedOwnershipFileName:
+        cloned.deedOwnershipFileName || draft.deedOwnershipFileName,
+      bourseDeedImageFileName:
+        cloned.bourseDeedImageFileName || draft.bourseDeedImageFileName,
     };
   } catch {
     return draft;
@@ -1071,6 +1097,10 @@ export async function addPropertyToPo(
               : prop.otherDocumentFileNames,
           realEstateRegFileName:
             recloned.realEstateRegFileName || prop.realEstateRegFileName,
+          deedOwnershipFileName:
+            recloned.deedOwnershipFileName || prop.deedOwnershipFileName,
+          bourseDeedImageFileName:
+            recloned.bourseDeedImageFileName || prop.bourseDeedImageFileName,
         };
         const resaved = await updatePropertyInPo(poNumber, prop.id, {
           ...property,

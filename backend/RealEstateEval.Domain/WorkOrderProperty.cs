@@ -60,6 +60,10 @@ public class WorkOrderProperty
     /// <summary>JSON array of filenames.</summary>
     public string? OtherDocumentFileNames { get; set; }
     public string? RealEstateRegFileName { get; set; }
+    /// <summary>صورة وثيقة التملك (الصك) — مرفق البيانات الأولية.</summary>
+    public string? DeedOwnershipFileName { get; set; }
+    /// <summary>صورة الصك من البورصة — مرفق استعلام البورصة.</summary>
+    public string? BourseDeedImageFileName { get; set; }
     public bool BourseDataCompleted { get; set; }
     public DateTime? BourseCompletedAtUtc { get; set; }
     /// <summary>رقم المخطط — بيانات أولية.</summary>

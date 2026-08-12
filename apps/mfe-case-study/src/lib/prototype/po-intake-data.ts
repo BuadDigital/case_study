@@ -900,6 +900,10 @@ export type PoPropertyIntake = {
   delegationLetterFileNames: string[];
   otherDocumentFileNames: string[];
   realEstateRegFileName: string;
+  /** صورة وثيقة التملك (الصك) — مرفق البيانات الأولية (اختياري). */
+  deedOwnershipFileName: string;
+  /** صورة الصك من البورصة — مرفق استعلام البورصة (إلزامي). */
+  bourseDeedImageFileName: string;
   planNumber: string;
   plotNumber: string;
   locationMapUrl: string;
@@ -975,6 +979,8 @@ export function emptyProperty(): PoPropertyIntake {
     delegationLetterFileNames: [],
     otherDocumentFileNames: [],
     realEstateRegFileName: "",
+    deedOwnershipFileName: "",
+    bourseDeedImageFileName: "",
     planNumber: "",
     plotNumber: "",
     locationMapUrl: "",

@@ -4,12 +4,16 @@ import {
   formControlClassName,
   formControlErrorClassName,
 } from "../lib/form-control-classes";
+import {
+  applyIsoDateToInput,
+  parsePastedDate,
+} from "../lib/pasted-date";
 
 export type InputProps = InputHTMLAttributes<HTMLInputElement> & {
   hasError?: boolean;
 };
 
-export function Input({ className, hasError, ...props }: InputProps) {
+export function Input({ className, hasError, onPaste, type, ...props }: InputProps) {
   return (
     <input
       className={cn(
@@ -18,6 +22,18 @@ export function Input({ className, hasError, ...props }: InputProps) {
         hasError && formControlErrorClassName,
         className,
       )}
+      type={type}
+      onPaste={(e) => {
+        if (type === "date") {
+          const iso = parsePastedDate(e.clipboardData.getData("text"));
+          if (iso) {
+            e.preventDefault();
+            applyIsoDateToInput(e.currentTarget, iso);
+            return;
+          }
+        }
+        onPaste?.(e);
+      }}
       {...props}
     />
   );

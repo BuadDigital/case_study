@@ -90,6 +90,7 @@ public sealed class WorkOrderPropertyCommands : IWorkOrderPropertyCommands
                 PropertyType = property.PropertyType,
                 Area = property.Area,
                 DeedStatus = property.DeedStatus,
+                BourseDeedImageFileName = property.BourseDeedImageFileName,
                 RestrictionsPresent = property.RestrictionsPresent,
                 RestrictionType = property.RestrictionType,
                 RestrictionOtherReason = property.RestrictionOtherReason,
@@ -216,6 +217,7 @@ public sealed class WorkOrderPropertyCommands : IWorkOrderPropertyCommands
         existing.PropertyType = request.PropertyType.Trim();
         existing.Area = request.Area?.Trim();
         existing.DeedStatus = request.DeedStatus?.Trim();
+        existing.BourseDeedImageFileName = request.BourseDeedImageFileName?.Trim();
         existing.RestrictionsPresent = request.RestrictionsPresent?.Trim();
         existing.RestrictionType = NormalizeRestrictionType(request.RestrictionsPresent, request.RestrictionType);
         existing.RestrictionOtherReason = NormalizeRestrictionOtherReason(
@@ -378,6 +380,8 @@ public sealed class WorkOrderPropertyCommands : IWorkOrderPropertyCommands
         entity.DelegationLetterFileName = WorkOrderMapper.SerializeFileNameList(dto.DelegationLetterFileNames);
         entity.OtherDocumentFileNames = WorkOrderMapper.SerializeFileNameList(dto.OtherDocumentFileNames);
         entity.RealEstateRegFileName = dto.RealEstateRegFileName?.Trim();
+        entity.DeedOwnershipFileName = dto.DeedOwnershipFileName?.Trim();
+        entity.BourseDeedImageFileName = dto.BourseDeedImageFileName?.Trim();
         entity.CourtId = dto.CourtId;
         entity.CircuitId = dto.CircuitId;
         entity.RegionId = dto.RegionId;
@@ -473,6 +477,7 @@ public sealed class WorkOrderPropertyCommands : IWorkOrderPropertyCommands
         entity.PropertyType = dto.PropertyType.Trim();
         entity.Area = dto.Area?.Trim();
         entity.DeedStatus = dto.DeedStatus?.Trim();
+        entity.BourseDeedImageFileName = dto.BourseDeedImageFileName?.Trim();
         entity.RestrictionsPresent = dto.RestrictionsPresent?.Trim();
         entity.RestrictionType = NormalizeRestrictionType(dto.RestrictionsPresent, dto.RestrictionType);
         entity.RestrictionOtherReason = NormalizeRestrictionOtherReason(

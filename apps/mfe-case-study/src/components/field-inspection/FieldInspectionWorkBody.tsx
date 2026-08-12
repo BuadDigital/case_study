@@ -22,6 +22,11 @@ import {
 import { useInspectorKeyAvailability } from "./InspectorKeyStatusTab";
 import { clearInspectorPhotoDataUrl, uploadInspectorPhotoFromFile } from "../../lib/prototype/inspector-photo-upload";
 import {
+  INSPECTOR_PHOTO_ACCEPT,
+  filterInspectorPhotoFiles,
+  useInspectorPhotoDropZone,
+} from "../../lib/prototype/inspector-photo-drop";
+import {
   approximatePropertyGeo,
   boundariesMarkedUnavailable,
   formatPropertyDeedDisplay,
@@ -102,6 +107,13 @@ function DesktopFeaturePhotoCell({
 }) {
   const inputRef = useRef<HTMLInputElement>(null);
   const { runWithUploadToast } = useToast();
+  const { dragOver, dropZoneProps } = useInspectorPhotoDropZone({
+    disabled,
+    onFiles: (files) => {
+      const file = files[0];
+      if (file) void runWithUploadToast(() => onUpload(file));
+    },
+  });
 
   if (!needsPhoto) {
     return <span className="text-text-3">—</span>;
@@ -113,12 +125,19 @@ function DesktopFeaturePhotoCell({
   };
 
   return (
-    <span className="inline-flex flex-col items-center justify-center gap-1">
+    <span
+      className={cn(
+        "inline-flex flex-col items-center justify-center gap-1 rounded-md px-1 py-0.5",
+        dragOver &&
+          "bg-[color-mix(in_srgb,var(--primary)_8%,transparent)] ring-2 ring-primary/30",
+      )}
+      {...dropZoneProps}
+    >
       {hasPhoto ? (
         <button
           type="button"
           disabled={disabled}
-          title="استبدال الصورة من الجهاز"
+          title="استبدال الصورة — اسحب صورة جديدة أو اختر من الجهاز"
           className="inline-flex items-center gap-1 border-0 bg-transparent p-0 font-inherit text-[10.5px] text-[#1f6f6f] hover:underline disabled:cursor-default disabled:no-underline"
           onClick={openFilePicker}
         >
@@ -133,7 +152,7 @@ function DesktopFeaturePhotoCell({
           >
             <path d="M20 6 9 17l-5-5" />
           </svg>
-          مرفقة
+          {dragOver ? "أفلِت هنا" : "مرفقة"}
         </button>
       ) : (
         <button
@@ -144,22 +163,23 @@ function DesktopFeaturePhotoCell({
             "font-inherit text-[10.5px] font-semibold text-text-2",
             "hover:border-primary hover:text-primary",
             "disabled:cursor-not-allowed disabled:opacity-60",
+            dragOver && "border-primary text-primary",
           )}
           onClick={openFilePicker}
         >
           <i className="ti ti-upload text-[13px]" aria-hidden />
-          إرفاق صورة
+          {dragOver ? "أفلِت الصورة" : "إرفاق صورة"}
         </button>
       )}
       {/* Desktop: no capture attribute — opens local file dialog on PC. */}
       <input
         ref={inputRef}
         type="file"
-        accept="image/*,.heic,.heif,image/jpeg,image/png,image/webp"
+        accept={INSPECTOR_PHOTO_ACCEPT}
         disabled={disabled}
         className="sr-only"
         onChange={(e) => {
-          const file = e.target.files?.[0];
+          const file = filterInspectorPhotoFiles(e.target.files)[0];
           e.target.value = "";
           if (file) void runWithUploadToast(() => onUpload(file));
         }}

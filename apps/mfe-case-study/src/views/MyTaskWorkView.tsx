@@ -806,6 +806,7 @@ export function CaseStudyTaskWork({
             property={property}
             fieldErrors={fieldErrors}
             onPatch={patchProperty}
+            poNumber={task.poNumber}
             showDeedVitalityFlow
             deedVitality={deedVitality}
             onDeedVitalityChange={setDeedVitality}

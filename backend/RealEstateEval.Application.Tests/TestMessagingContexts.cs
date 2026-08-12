@@ -5,6 +5,7 @@ using Microsoft.Extensions.Logging.Abstractions;
 using RealEstateEval.Infrastructure.Data;
 using RealEstateEval.Infrastructure.Data.Contexts;
 using RealEstateEval.Infrastructure.Integration;
+using RealEstateEval.Infrastructure.Notifications;
 using RealEstateEval.Infrastructure.Services;
 
 namespace RealEstateEval.Application.Tests;
@@ -44,5 +45,6 @@ internal static class TestMessagingContexts
             messaging,
             new MessagingOutboxPublisher(
                 messaging,
-                NullLogger<MessagingOutboxPublisher>.Instance));
+                NullLogger<MessagingOutboxPublisher>.Instance),
+            new NotificationRealtimeHub());
 }
