@@ -292,7 +292,14 @@ export function PoPropertiesPage({
 
       <PpCard>
         {visibleProperties.length === 0 ? (
-          <PpEmpty />
+          expected > 0 ? (
+            <PpEmpty
+              title="لم تُسجَّل عقارات هذا الأمر بعد."
+              subtitle={`بانتظار تسجيل ${expected === 1 ? "عقار واحد" : `${expected} عقارات`} من قِبل أخصائي دراسة الحالة.`}
+            />
+          ) : (
+            <PpEmpty />
+          )
         ) : (
           <div className="overflow-x-auto">
             <PpGrid>

@@ -956,10 +956,19 @@ export function tasksForPartyAssignee(
     .sort(compareWorkflowTasks);
 }
 
-export async function syncTasksFromPoRecords(options?: {
-  /** Default true — set false when warming the PO cache so reads don't fan out. */
-  notify?: boolean;
-}): Promise<SyncTasksResult> {
+/**
+ * Single-flight + cooldown for the slot sync. Cache warm-ups fire from several
+ * query keys on every navigation (see `loadPoRecordsWithTaskSync` and the shell
+ * prefetches), and overlapping POST /workflow-tasks/sync calls used to race on
+ * the same rows server-side. Concurrent callers collapse onto one request, and
+ * quiet warm-ups (`notify: false`) skip entirely inside the cooldown window.
+ * Mutating paths (default `notify: true`) always run a fresh sync.
+ */
+const SYNC_COOLDOWN_MS = 60_000;
+let syncInFlight: Promise<SyncTasksResult> | null = null;
+let lastSyncOkAtMs = 0;
+
+async function syncTasksOnce(): Promise<SyncTasksResult> {
   const config = workOrdersApiConfig();
   if (!config) {
     return { ok: false, error: apiErrorMessage("auth") };
@@ -978,10 +987,35 @@ export async function syncTasksFromPoRecords(options?: {
       ),
     };
   }
-  if (options?.notify !== false) {
+  lastSyncOkAtMs = Date.now();
+  return { ok: true };
+}
+
+export async function syncTasksFromPoRecords(options?: {
+  /** Default true — set false when warming the PO cache so reads don't fan out. */
+  notify?: boolean;
+}): Promise<SyncTasksResult> {
+  const quiet = options?.notify === false;
+  if (quiet) {
+    if (syncInFlight) return syncInFlight;
+    if (Date.now() - lastSyncOkAtMs < SYNC_COOLDOWN_MS) {
+      return { ok: true };
+    }
+  } else if (syncInFlight) {
+    // Serialize behind the in-flight warm-up, then run fresh — a mutation may
+    // have landed after that sync started.
+    await syncInFlight.catch(() => undefined);
+  }
+
+  const flight = syncTasksOnce().finally(() => {
+    syncInFlight = null;
+  });
+  syncInFlight = flight;
+  const result = await flight;
+  if (result.ok && !quiet) {
     notifyTasksChanged();
   }
-  return { ok: true };
+  return result;
 }
 
 export async function patchTaskDistribution(

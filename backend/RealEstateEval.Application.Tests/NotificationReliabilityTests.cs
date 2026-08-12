@@ -176,7 +176,7 @@ public sealed class NotificationReliabilityTests
     [Fact]
     public async Task CreateForUser_pushes_sse_immediately_without_waiting_for_outbox_fanout()
     {
-        await using var messaging = CreateMessagingDb();
+        await using var messaging = CreateDb();
         var hub = new NotificationRealtimeHub();
         var (_, reader) = hub.Subscribe("user-1");
         var service = new NotificationService(

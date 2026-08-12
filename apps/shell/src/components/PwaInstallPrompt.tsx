@@ -54,9 +54,12 @@ export function PwaInstallPrompt() {
       } catch {
         /* ignore */
       }
-      setIosTip(true);
-      setVisible(true);
-      return;
+      // Deferred so the effect body stays free of synchronous setState.
+      const tipTimer = window.setTimeout(() => {
+        setIosTip(true);
+        setVisible(true);
+      }, 0);
+      return () => window.clearTimeout(tipTimer);
     }
 
     const onBeforeInstall = (event: Event) => {

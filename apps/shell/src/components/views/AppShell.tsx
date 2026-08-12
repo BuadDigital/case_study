@@ -1534,7 +1534,6 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                     run.items[run.items.length - 1]?.id === item.id &&
                     ri === navRuns.length - 1;
                   if (shouldInsertGeneral) {
-                    // eslint-disable-next-line react-hooks/immutability -- render-local marker used only within this render pass.
                     generalNavInserted = true;
                     nodes.push(
                       <div
@@ -1564,7 +1563,6 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                       />,
                     );
                     if (showOrphanScreensGroup) {
-                      // eslint-disable-next-line react-hooks/immutability -- render-local marker used only within this render pass.
                       orphanScreensInserted = true;
                       nodes.push(
                         <OrphanScreensNavDropdown

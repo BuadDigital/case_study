@@ -22,7 +22,9 @@ export function usePullToRefresh(
   const pulling = useRef(false);
   const refreshingRef = useRef(false);
   const onRefreshRef = useRef(onRefresh);
-  onRefreshRef.current = onRefresh;
+  useEffect(() => {
+    onRefreshRef.current = onRefresh;
+  }, [onRefresh]);
 
   const setPullBoth = useCallback((value: number) => {
     pullRef.current = value;
