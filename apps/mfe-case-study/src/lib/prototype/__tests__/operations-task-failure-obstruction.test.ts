@@ -24,7 +24,7 @@ describe("operations-task-failure-obstruction", () => {
       deeds: ["111"],
       letterRows: [],
       scope: "work_order",
-    } as OperationsTask;
+    } as unknown as OperationsTask;
     const poRecords = [
       {
         poNumber: "PO-1",

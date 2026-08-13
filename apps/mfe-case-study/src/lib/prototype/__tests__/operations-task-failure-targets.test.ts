@@ -7,7 +7,6 @@ function minimalTask(
   patch: Partial<OperationsTask> & Pick<OperationsTask, "id">,
 ): OperationsTask {
   return {
-    id: patch.id,
     displayId: "OT-1",
     type: "court_visit",
     title: "زيارة",

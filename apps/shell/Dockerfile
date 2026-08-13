@@ -20,7 +20,6 @@ COPY apps/mfe-evaluator/package.json       ./apps/mfe-evaluator/
 COPY apps/mfe-failures/package.json        ./apps/mfe-failures/
 COPY apps/mfe-financial/package.json       ./apps/mfe-financial/
 COPY apps/mfe-keys/package.json            ./apps/mfe-keys/
-COPY apps/mfe-kpi/package.json             ./apps/mfe-kpi/
 COPY apps/mfe-settings/package.json        ./apps/mfe-settings/
 COPY apps/mfe-survey/package.json          ./apps/mfe-survey/
 COPY apps/mfe-valuation/package.json       ./apps/mfe-valuation/
@@ -28,9 +27,17 @@ COPY packages/api-client/package.json      ./packages/api-client/
 COPY packages/app-shared/package.json      ./packages/app-shared/
 COPY packages/auth-client/package.json     ./packages/auth-client/
 COPY packages/design-system/package.json   ./packages/design-system/
+COPY packages/offline-client/package.json  ./packages/offline-client/
 COPY packages/types/package.json           ./packages/types/
 
-RUN npm ci
+RUN npm ci --no-audit --no-fund
+
+# package-lock.json is generated on Windows, so it records only the win32 native binaries.
+# Tailwind and lightningcss load a platform-specific package at build time, so add the
+# linux-musl builds at the exact versions npm ci just installed.
+RUN npm install --no-save --no-audit --no-fund \
+      "lightningcss-linux-x64-musl@$(node -p "require('lightningcss/package.json').version")" \
+      "@tailwindcss/oxide-linux-x64-musl@$(node -p "require('@tailwindcss/oxide/package.json').version")"
 
 # ── Stage 2: Build ─────────────────────────────────────────────────────────────
 FROM node:22.17.1-alpine@sha256:99351363debf40f3495cb7fc657a777334c3b21143e594dbfcc7de187439633c AS builder
@@ -44,15 +51,17 @@ COPY --from=deps /app/node_modules ./node_modules
 COPY package.json package-lock.json ./
 COPY tsconfig.base.json tsconfig.json ./
 COPY apps/tsconfig.mfe-paths.json ./apps/
+COPY packages/tsconfig.mfe-paths.json ./packages/
 
 # Copy full source of every workspace package.
 # These packages export directly from ./src (TypeScript), so Next.js
 # transpilePackages compiles them at build time — no separate build step needed.
-COPY packages/api-client/    ./packages/api-client/
-COPY packages/app-shared/    ./packages/app-shared/
-COPY packages/auth-client/   ./packages/auth-client/
-COPY packages/design-system/ ./packages/design-system/
-COPY packages/types/         ./packages/types/
+COPY packages/api-client/     ./packages/api-client/
+COPY packages/app-shared/     ./packages/app-shared/
+COPY packages/auth-client/    ./packages/auth-client/
+COPY packages/design-system/  ./packages/design-system/
+COPY packages/offline-client/ ./packages/offline-client/
+COPY packages/types/          ./packages/types/
 
 # Copy all MFE apps (the shell depends on them as workspace packages)
 COPY apps/mfe-case-study/      ./apps/mfe-case-study/
@@ -62,7 +71,6 @@ COPY apps/mfe-evaluator/       ./apps/mfe-evaluator/
 COPY apps/mfe-failures/        ./apps/mfe-failures/
 COPY apps/mfe-financial/       ./apps/mfe-financial/
 COPY apps/mfe-keys/            ./apps/mfe-keys/
-COPY apps/mfe-kpi/             ./apps/mfe-kpi/
 COPY apps/mfe-settings/        ./apps/mfe-settings/
 COPY apps/mfe-survey/          ./apps/mfe-survey/
 COPY apps/mfe-valuation/       ./apps/mfe-valuation/

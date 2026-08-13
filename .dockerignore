@@ -45,8 +45,8 @@ data
 **/.DS_Store
 **/Thumbs.db
 
-# .NET
-backend/*/bin
-backend/*/obj
+# .NET — local build output at any depth would otherwise poison the image restore
+**/bin/
+**/obj/
 **/*.user
 **/.vs
