@@ -444,7 +444,6 @@ export function BourseInquiryView() {
                             <InteractiveDeedCell
                               label={deedLabel}
                               loading={isItemOpening(item)}
-                              labelClassName="text-[12px] font-medium"
                             />
                           </Td>
                           <Td className="text-text-2">
@@ -456,13 +455,13 @@ export function BourseInquiryView() {
                             <PoNumber
                               value={item.poNumber}
                               link
-                              className="text-[12px] !font-medium"
+                              className="!text-[12.5px] !font-semibold text-text-2"
                             />
                           </Td>
                           <Td className="text-text-2">
                             <span
                               dir="ltr"
-                              className="inline-block text-[12px] font-medium text-primary"
+                              className="inline-block text-[12.5px] font-semibold text-primary"
                             >
                               {item.requestNumber?.trim() || "—"}
                             </span>

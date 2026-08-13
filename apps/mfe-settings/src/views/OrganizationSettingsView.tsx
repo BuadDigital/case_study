@@ -8,18 +8,26 @@ import {
   type OrganizationSettingsDto,
 } from "@platform/api-client";
 import { Can, useCapability } from "@platform/app-shared/components/Can";
+import { cn, Note, PageShell, Spinner, useToast } from "@platform/design-system";
 import {
-  Button,
-  Input,
-  Label,
-  Note,
-  PageGutter,
-  PageShell,
-  PageShellHeader,
-  Select,
-  Spinner,
-  useToast,
-} from "@platform/design-system";
+  opsBtnGhost,
+  opsBtnPrimary,
+  opsFld,
+  opsFldControl,
+  opsFldFull,
+  opsFormGrid,
+  opsIconBoxGold,
+  opsLetterCard,
+  opsLetterHead,
+  opsLetterSub,
+  opsLetterTitle,
+  opsTfActions,
+  opsTfLbl,
+  opsTfNote,
+  opsTfSeg,
+  opsTfSegActive,
+  opsTfSegRow,
+} from "@case-study/mfe/lib/prototype/ops-tasks-tw";
 import { organizationSettingsApiConfig } from "../lib/settings-api-config";
 
 type TabId = "company" | "evaluator" | "branding" | "communications" | "sla";
@@ -31,6 +39,47 @@ const TABS: { id: TabId; label: string }[] = [
   { id: "communications", label: "الاتصالات" },
   { id: "sla", label: "معايير المهل" },
 ];
+
+const TAB_META: Record<TabId, { icon: string; sub: string }> = {
+  company: {
+    icon: "M3 21h18M5 21V7l7-4 7 4v14M9 21v-6h6v6",
+    sub: "الاسم الرسمي والبيانات الضريبية المستخدمة في التقارير والمخرجات",
+  },
+  evaluator: {
+    icon: "M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2M12 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8z",
+    sub: "بيانات المقيم المعتمد التي تظهر في تقارير التقييم",
+  },
+  branding: {
+    icon: "M4 16l4.6-4.6a2 2 0 0 1 2.8 0L16 16m-2-2 1.6-1.6a2 2 0 0 1 2.8 0L20 14M14 8h.01M6 20h12a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2z",
+    sub: "الختم والتوقيع والترويسة والعلامة المائية للمستندات الصادرة",
+  },
+  communications: {
+    icon: "M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2zM22 6l-10 7L2 6",
+    sub: "قنوات إرسال رموز التحقق (OTP) والدعوات عبر SMS والبريد",
+  },
+  sla: {
+    icon: "M12 22a10 10 0 1 0 0-20 10 10 0 0 0 0 20zM12 6v6l4 2",
+    sub: "المهل الافتراضية بأيام العمل لأوامر العمل الجديدة",
+  },
+};
+
+function TabIcon({ path, size = 20 }: { path: string; size?: number }) {
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.8"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden
+    >
+      <path d={path} />
+    </svg>
+  );
+}
 
 function emptySettings(): OrganizationSettingsDto {
   return {
@@ -59,6 +108,19 @@ function emptySettings(): OrganizationSettingsDto {
     sla: { defaultBusinessDays: 4, privateSectorBusinessDays: 10 },
     updatedAtUtc: new Date().toISOString(),
   };
+}
+
+function formatUpdatedAt(iso: string): string {
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) return "—";
+  try {
+    return new Intl.DateTimeFormat("ar-SA", {
+      dateStyle: "medium",
+      timeStyle: "short",
+    }).format(date);
+  } catch {
+    return "—";
+  }
 }
 
 export function OrganizationSettingsView() {
@@ -158,213 +220,296 @@ export function OrganizationSettingsView() {
     }
   }
 
+  if (loading) {
+    return (
+      <PageShell variant="canvas" className="gap-0 p-4 sm:p-6" dir="rtl">
+        <div className="flex items-center justify-center gap-2 py-20 text-text-3">
+          <Spinner />
+          <span className="text-[13px]">جاري تحميل الإعدادات…</span>
+        </div>
+      </PageShell>
+    );
+  }
+
+  if (loadError) {
+    return (
+      <PageShell variant="canvas" className="gap-0 p-4 sm:p-6" dir="rtl">
+        <Note tone="danger">{loadError}</Note>
+      </PageShell>
+    );
+  }
+
+  const active = TAB_META[tab];
+
   return (
-    <PageShell variant="canvas" className="min-h-0 flex-1">
-      <PageShellHeader
-        title="إعدادات المنشأة"
-        meta="بيانات الشركة والمقيم والأصول والاتصالات ومعايير المهل"
-      />
-      <PageGutter className="space-y-4 pb-8">
-        {loading ? (
-          <div className="flex justify-center py-16">
-            <Spinner />
-          </div>
-        ) : loadError ? (
-          <Note tone="danger">{loadError}</Note>
-        ) : (
-          <>
-            <div className="flex flex-wrap gap-2 border-b border-border pb-3">
-              {TABS.map((item) => (
-                <button
-                  key={item.id}
-                  type="button"
-                  onClick={() => setTab(item.id)}
-                  className={`rounded-md px-3 py-1.5 text-[13px] font-semibold transition-colors ${
-                    tab === item.id
-                      ? "bg-primary text-white"
-                      : "bg-surface-2 text-text-2 hover:border-border-md"
-                  }`}
-                >
-                  {item.label}
-                </button>
-              ))}
+    <PageShell
+      variant="canvas"
+      className="gap-0 p-4 pb-[max(1rem,env(safe-area-inset-bottom))] sm:p-6"
+      dir="rtl"
+    >
+      {!canEdit ? (
+        <p className={cn(opsTfNote, "m-0 mb-3.5")}>
+          عرض فقط — حفظ الإعدادات يتطلّب صلاحية ضبط النظام.
+        </p>
+      ) : null}
+
+      {/* أقسام الإعدادات — أزرار مقسّمة بنمط المهام */}
+      <div
+        className={cn(opsTfSegRow, "mb-3.5")}
+        role="tablist"
+        aria-label="أقسام الإعدادات"
+      >
+        {TABS.map((item) => (
+          <button
+            key={item.id}
+            type="button"
+            role="tab"
+            aria-selected={tab === item.id}
+            className={tab === item.id ? opsTfSegActive : opsTfSeg}
+            onClick={() => setTab(item.id)}
+          >
+            {item.label}
+          </button>
+        ))}
+      </div>
+
+      {/* بطاقة القسم */}
+      <section className={opsLetterCard}>
+        <div className={opsLetterHead}>
+          <div className="flex items-center gap-[11px]">
+            <span className={opsIconBoxGold}>
+              <TabIcon path={active.icon} />
+            </span>
+            <div>
+              <div className={opsLetterTitle}>
+                {TABS.find((t) => t.id === tab)?.label}
+              </div>
+              <div className={opsLetterSub}>{active.sub}</div>
             </div>
+          </div>
+          <span className="text-[11.5px] font-semibold text-text-3">
+            آخر تحديث: {formatUpdatedAt(draft.updatedAtUtc)}
+          </span>
+        </div>
 
-            {!canEdit ? (
-              <Note tone="info">عرض فقط — حفظ الإعدادات يتطلّب صلاحية ضبط النظام.</Note>
-            ) : null}
+        <div className="px-4 pb-[18px] pt-4 sm:px-[18px]">
+          {tab === "company" ? (
+            <div className={opsFormGrid}>
+              <div className={opsFldFull}>
+                <label htmlFor="org-company-name" className={opsTfLbl}>
+                  اسم الشركة
+                </label>
+                <input
+                  id="org-company-name"
+                  className={opsFldControl}
+                  value={draft.company.name}
+                  disabled={!canEdit}
+                  onChange={(e) =>
+                    setDraft((d) => ({
+                      ...d,
+                      company: { ...d.company, name: e.target.value },
+                    }))
+                  }
+                />
+              </div>
+              <div className={opsFld}>
+                <label htmlFor="org-tax-number" className={opsTfLbl}>
+                  الرقم الضريبي
+                </label>
+                <input
+                  id="org-tax-number"
+                  className={opsFldControl}
+                  dir="ltr"
+                  placeholder="3xxxxxxxxxxxxxx"
+                  value={draft.company.taxNumber ?? ""}
+                  disabled={!canEdit}
+                  onChange={(e) =>
+                    setDraft((d) => ({
+                      ...d,
+                      company: { ...d.company, taxNumber: e.target.value },
+                    }))
+                  }
+                />
+              </div>
+              <div className={opsFldFull}>
+                <label htmlFor="org-address" className={opsTfLbl}>
+                  العنوان
+                </label>
+                <input
+                  id="org-address"
+                  className={opsFldControl}
+                  value={draft.company.address ?? ""}
+                  disabled={!canEdit}
+                  onChange={(e) =>
+                    setDraft((d) => ({
+                      ...d,
+                      company: { ...d.company, address: e.target.value },
+                    }))
+                  }
+                />
+              </div>
+            </div>
+          ) : null}
 
-            {tab === "company" ? (
-              <section className="grid max-w-2xl gap-3 sm:grid-cols-2">
-                <div className="sm:col-span-2">
-                  <Label>اسم الشركة</Label>
-                  <Input
-                    value={draft.company.name}
-                    disabled={!canEdit}
-                    onChange={(e) =>
-                      setDraft((d) => ({
-                        ...d,
-                        company: { ...d.company, name: e.target.value },
-                      }))
-                    }
-                  />
-                </div>
-                <div>
-                  <Label>الرقم الضريبي</Label>
-                  <Input
-                    dir="ltr"
-                    value={draft.company.taxNumber ?? ""}
-                    disabled={!canEdit}
-                    onChange={(e) =>
-                      setDraft((d) => ({
-                        ...d,
-                        company: { ...d.company, taxNumber: e.target.value },
-                      }))
-                    }
-                  />
-                </div>
-                <div className="sm:col-span-2">
-                  <Label>العنوان</Label>
-                  <Input
-                    value={draft.company.address ?? ""}
-                    disabled={!canEdit}
-                    onChange={(e) =>
-                      setDraft((d) => ({
-                        ...d,
-                        company: { ...d.company, address: e.target.value },
-                      }))
-                    }
-                  />
-                </div>
-              </section>
-            ) : null}
+          {tab === "evaluator" ? (
+            <div className={opsFormGrid}>
+              <div className={opsFldFull}>
+                <label htmlFor="org-evaluator-name" className={opsTfLbl}>
+                  اسم المقيم المعتمد
+                </label>
+                <input
+                  id="org-evaluator-name"
+                  className={opsFldControl}
+                  value={draft.evaluator.name ?? ""}
+                  disabled={!canEdit}
+                  onChange={(e) =>
+                    setDraft((d) => ({
+                      ...d,
+                      evaluator: { ...d.evaluator, name: e.target.value },
+                    }))
+                  }
+                />
+              </div>
+              <div className={opsFld}>
+                <label htmlFor="org-license-no" className={opsTfLbl}>
+                  رقم الترخيص
+                </label>
+                <input
+                  id="org-license-no"
+                  className={opsFldControl}
+                  dir="ltr"
+                  value={draft.evaluator.licenseNumber ?? ""}
+                  disabled={!canEdit}
+                  onChange={(e) =>
+                    setDraft((d) => ({
+                      ...d,
+                      evaluator: {
+                        ...d.evaluator,
+                        licenseNumber: e.target.value,
+                      },
+                    }))
+                  }
+                />
+              </div>
+              <div className={opsFld}>
+                <label htmlFor="org-membership-no" className={opsTfLbl}>
+                  رقم العضوية
+                </label>
+                <input
+                  id="org-membership-no"
+                  className={opsFldControl}
+                  dir="ltr"
+                  value={draft.evaluator.membershipNumber ?? ""}
+                  disabled={!canEdit}
+                  onChange={(e) =>
+                    setDraft((d) => ({
+                      ...d,
+                      evaluator: {
+                        ...d.evaluator,
+                        membershipNumber: e.target.value,
+                      },
+                    }))
+                  }
+                />
+              </div>
+            </div>
+          ) : null}
 
-            {tab === "evaluator" ? (
-              <section className="grid max-w-2xl gap-3 sm:grid-cols-2">
-                <div className="sm:col-span-2">
-                  <Label>اسم المقيم المعتمد</Label>
-                  <Input
-                    value={draft.evaluator.name ?? ""}
-                    disabled={!canEdit}
-                    onChange={(e) =>
-                      setDraft((d) => ({
-                        ...d,
-                        evaluator: { ...d.evaluator, name: e.target.value },
-                      }))
-                    }
-                  />
-                </div>
-                <div>
-                  <Label>رقم الترخيص</Label>
-                  <Input
-                    dir="ltr"
-                    value={draft.evaluator.licenseNumber ?? ""}
-                    disabled={!canEdit}
-                    onChange={(e) =>
-                      setDraft((d) => ({
-                        ...d,
-                        evaluator: {
-                          ...d.evaluator,
-                          licenseNumber: e.target.value,
-                        },
-                      }))
-                    }
-                  />
-                </div>
-                <div>
-                  <Label>رقم العضوية</Label>
-                  <Input
-                    dir="ltr"
-                    value={draft.evaluator.membershipNumber ?? ""}
-                    disabled={!canEdit}
-                    onChange={(e) =>
-                      setDraft((d) => ({
-                        ...d,
-                        evaluator: {
-                          ...d.evaluator,
-                          membershipNumber: e.target.value,
-                        },
-                      }))
-                    }
-                  />
-                </div>
-              </section>
-            ) : null}
+          {tab === "branding" ? (
+            <div className={opsFormGrid}>
+              <div className={opsFldFull}>
+                <label htmlFor="org-stamp-url" className={opsTfLbl}>
+                  رابط الختم
+                </label>
+                <input
+                  id="org-stamp-url"
+                  className={opsFldControl}
+                  dir="ltr"
+                  value={draft.branding.stampUrl}
+                  disabled={!canEdit}
+                  onChange={(e) =>
+                    setDraft((d) => ({
+                      ...d,
+                      branding: { ...d.branding, stampUrl: e.target.value },
+                    }))
+                  }
+                />
+              </div>
+              <div className={opsFldFull}>
+                <label htmlFor="org-signature-url" className={opsTfLbl}>
+                  رابط التوقيع
+                </label>
+                <input
+                  id="org-signature-url"
+                  className={opsFldControl}
+                  dir="ltr"
+                  value={draft.branding.signatureUrl}
+                  disabled={!canEdit}
+                  onChange={(e) =>
+                    setDraft((d) => ({
+                      ...d,
+                      branding: { ...d.branding, signatureUrl: e.target.value },
+                    }))
+                  }
+                />
+              </div>
+              <div className={opsFld}>
+                <label htmlFor="org-header-url" className={opsTfLbl}>
+                  رابط الترويسة (اختياري)
+                </label>
+                <input
+                  id="org-header-url"
+                  className={opsFldControl}
+                  dir="ltr"
+                  value={draft.branding.headerUrl ?? ""}
+                  disabled={!canEdit}
+                  onChange={(e) =>
+                    setDraft((d) => ({
+                      ...d,
+                      branding: { ...d.branding, headerUrl: e.target.value },
+                    }))
+                  }
+                />
+              </div>
+              <div className={opsFld}>
+                <label htmlFor="org-watermark" className={opsTfLbl}>
+                  نص العلامة المائية
+                </label>
+                <input
+                  id="org-watermark"
+                  className={opsFldControl}
+                  dir="ltr"
+                  value={draft.branding.watermarkText}
+                  disabled={!canEdit}
+                  onChange={(e) =>
+                    setDraft((d) => ({
+                      ...d,
+                      branding: {
+                        ...d.branding,
+                        watermarkText: e.target.value,
+                      },
+                    }))
+                  }
+                />
+              </div>
+            </div>
+          ) : null}
 
-            {tab === "branding" ? (
-              <section className="grid max-w-2xl gap-3 sm:grid-cols-2">
-                <div className="sm:col-span-2">
-                  <Label>رابط الختم</Label>
-                  <Input
-                    dir="ltr"
-                    value={draft.branding.stampUrl}
-                    disabled={!canEdit}
-                    onChange={(e) =>
-                      setDraft((d) => ({
-                        ...d,
-                        branding: { ...d.branding, stampUrl: e.target.value },
-                      }))
-                    }
-                  />
-                </div>
-                <div className="sm:col-span-2">
-                  <Label>رابط التوقيع</Label>
-                  <Input
-                    dir="ltr"
-                    value={draft.branding.signatureUrl}
-                    disabled={!canEdit}
-                    onChange={(e) =>
-                      setDraft((d) => ({
-                        ...d,
-                        branding: { ...d.branding, signatureUrl: e.target.value },
-                      }))
-                    }
-                  />
-                </div>
-                <div className="sm:col-span-2">
-                  <Label>رابط الترويسة (اختياري)</Label>
-                  <Input
-                    dir="ltr"
-                    value={draft.branding.headerUrl ?? ""}
-                    disabled={!canEdit}
-                    onChange={(e) =>
-                      setDraft((d) => ({
-                        ...d,
-                        branding: { ...d.branding, headerUrl: e.target.value },
-                      }))
-                    }
-                  />
-                </div>
-                <div>
-                  <Label>نص العلامة المائية</Label>
-                  <Input
-                    dir="ltr"
-                    value={draft.branding.watermarkText}
-                    disabled={!canEdit}
-                    onChange={(e) =>
-                      setDraft((d) => ({
-                        ...d,
-                        branding: {
-                          ...d.branding,
-                          watermarkText: e.target.value,
-                        },
-                      }))
-                    }
-                  />
-                </div>
-              </section>
-            ) : null}
-
-            {tab === "communications" ? (
-              <section className="grid max-w-2xl gap-3 sm:grid-cols-2">
-                <Note tone="info" className="sm:col-span-2 text-xs">
-                  واجهة موحّدة لإرسال OTP والدعوات. الافتراضي <code>dev-log</code> يكتب
-                  الرمز في سجل الخادم. مفاتيح API وكلمات مرور SMTP لا تُعاد في الاستجابة —
-                  اترك الحقل فارغاً للإبقاء على القيمة الحالية.
-                </Note>
-                <div>
-                  <Label>مزوّد OTP</Label>
-                  <Select
+          {tab === "communications" ? (
+            <>
+              <p className={cn(opsTfNote, "m-0 mb-3.5")}>
+                واجهة موحّدة لإرسال OTP والدعوات. الافتراضي <code>dev-log</code>{" "}
+                يكتب الرمز في سجل الخادم. مفاتيح API وكلمات مرور SMTP لا تُعاد في
+                الاستجابة — اترك الحقل فارغاً للإبقاء على القيمة الحالية.
+              </p>
+              <div className={opsFormGrid}>
+                <div className={opsFld}>
+                  <label htmlFor="org-otp-provider" className={opsTfLbl}>
+                    مزوّد OTP
+                  </label>
+                  <select
+                    id="org-otp-provider"
+                    className={opsFldControl}
                     value={draft.communications.otpProvider}
                     disabled={!canEdit}
                     onChange={(e) =>
@@ -380,11 +525,15 @@ export function OrganizationSettingsView() {
                     <option value="dev-log">dev-log (تطوير)</option>
                     <option value="sms">sms</option>
                     <option value="email">email</option>
-                  </Select>
+                  </select>
                 </div>
-                <div>
-                  <Label>قناة OTP الافتراضية</Label>
-                  <Select
+                <div className={opsFld}>
+                  <label htmlFor="org-otp-channel" className={opsTfLbl}>
+                    قناة OTP الافتراضية
+                  </label>
+                  <select
+                    id="org-otp-channel"
+                    className={opsFldControl}
                     value={draft.communications.defaultOtpChannel}
                     disabled={!canEdit}
                     onChange={(e) =>
@@ -399,11 +548,15 @@ export function OrganizationSettingsView() {
                   >
                     <option value="sms">sms</option>
                     <option value="email">email</option>
-                  </Select>
+                  </select>
                 </div>
-                <div>
-                  <Label>معرّف مرسل SMS</Label>
-                  <Input
+                <div className={opsFld}>
+                  <label htmlFor="org-sms-sender" className={opsTfLbl}>
+                    معرّف مرسل SMS
+                  </label>
+                  <input
+                    id="org-sms-sender"
+                    className={opsFldControl}
                     dir="ltr"
                     value={draft.communications.smsSenderId ?? ""}
                     disabled={!canEdit}
@@ -418,9 +571,13 @@ export function OrganizationSettingsView() {
                     }
                   />
                 </div>
-                <div>
-                  <Label>بريد المرسل</Label>
-                  <Input
+                <div className={opsFld}>
+                  <label htmlFor="org-email-from" className={opsTfLbl}>
+                    بريد المرسل
+                  </label>
+                  <input
+                    id="org-email-from"
+                    className={opsFldControl}
                     dir="ltr"
                     value={draft.communications.emailFrom ?? ""}
                     disabled={!canEdit}
@@ -435,9 +592,13 @@ export function OrganizationSettingsView() {
                     }
                   />
                 </div>
-                <div className="sm:col-span-2">
-                  <Label>عنوان API للرسائل (SMS)</Label>
-                  <Input
+                <div className={opsFldFull}>
+                  <label htmlFor="org-sms-api-url" className={opsTfLbl}>
+                    عنوان API للرسائل (SMS)
+                  </label>
+                  <input
+                    id="org-sms-api-url"
+                    className={opsFldControl}
                     dir="ltr"
                     placeholder="https://…"
                     value={draft.communications.smsApiUrl ?? ""}
@@ -453,14 +614,16 @@ export function OrganizationSettingsView() {
                     }
                   />
                 </div>
-                <div className="sm:col-span-2">
-                  <Label>
+                <div className={opsFldFull}>
+                  <label htmlFor="org-sms-api-key" className={opsTfLbl}>
                     مفتاح API للرسائل
                     {draft.communications.smsApiKeyConfigured
                       ? " (محفوظ — اترك فارغاً للإبقاء)"
                       : ""}
-                  </Label>
-                  <Input
+                  </label>
+                  <input
+                    id="org-sms-api-key"
+                    className={opsFldControl}
                     dir="ltr"
                     type="password"
                     autoComplete="new-password"
@@ -480,9 +643,13 @@ export function OrganizationSettingsView() {
                     }
                   />
                 </div>
-                <div>
-                  <Label>خادم SMTP</Label>
-                  <Input
+                <div className={opsFld}>
+                  <label htmlFor="org-smtp-host" className={opsTfLbl}>
+                    خادم SMTP
+                  </label>
+                  <input
+                    id="org-smtp-host"
+                    className={opsFldControl}
                     dir="ltr"
                     value={draft.communications.smtpHost ?? ""}
                     disabled={!canEdit}
@@ -497,9 +664,13 @@ export function OrganizationSettingsView() {
                     }
                   />
                 </div>
-                <div>
-                  <Label>منفذ SMTP</Label>
-                  <Input
+                <div className={opsFld}>
+                  <label htmlFor="org-smtp-port" className={opsTfLbl}>
+                    منفذ SMTP
+                  </label>
+                  <input
+                    id="org-smtp-port"
+                    className={opsFldControl}
                     dir="ltr"
                     type="number"
                     value={String(draft.communications.smtpPort ?? 587)}
@@ -515,9 +686,13 @@ export function OrganizationSettingsView() {
                     }
                   />
                 </div>
-                <div>
-                  <Label>مستخدم SMTP</Label>
-                  <Input
+                <div className={opsFld}>
+                  <label htmlFor="org-smtp-user" className={opsTfLbl}>
+                    مستخدم SMTP
+                  </label>
+                  <input
+                    id="org-smtp-user"
+                    className={opsFldControl}
                     dir="ltr"
                     value={draft.communications.smtpUsername ?? ""}
                     disabled={!canEdit}
@@ -532,14 +707,14 @@ export function OrganizationSettingsView() {
                     }
                   />
                 </div>
-                <div>
-                  <Label>
+                <div className={opsFld}>
+                  <label htmlFor="org-smtp-password" className={opsTfLbl}>
                     كلمة مرور SMTP
-                    {draft.communications.smtpPasswordConfigured
-                      ? " (محفوظة)"
-                      : ""}
-                  </Label>
-                  <Input
+                    {draft.communications.smtpPasswordConfigured ? " (محفوظة)" : ""}
+                  </label>
+                  <input
+                    id="org-smtp-password"
+                    className={opsFldControl}
                     dir="ltr"
                     type="password"
                     autoComplete="new-password"
@@ -561,38 +736,50 @@ export function OrganizationSettingsView() {
                     }
                   />
                 </div>
-                <div className="sm:col-span-2 flex flex-wrap items-end gap-2 border-t border-border pt-3">
-                  <div className="min-w-[12rem] flex-1">
-                    <Label>وجهة اختبار (جوال أو بريد)</Label>
-                    <Input
-                      dir="ltr"
-                      value={testDestination}
-                      disabled={!canEdit}
-                      onChange={(e) => setTestDestination(e.target.value)}
-                      placeholder="+9665… أو email@…"
-                    />
-                  </div>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    disabled={!canEdit || testing || !testDestination.trim()}
-                    onClick={() => void runTest()}
-                  >
-                    {testing ? "جاري الإرسال…" : "اختبار الإرسال"}
-                  </Button>
-                </div>
-              </section>
-            ) : null}
+              </div>
 
-            {tab === "sla" ? (
-              <section className="grid max-w-xl gap-3 sm:grid-cols-2">
-                <Note tone="info" className="sm:col-span-2 text-xs">
-                  التعديل يسري على أوامر العمل الجديدة فقط. الجارية تحتفظ بمهلتها المحسوبة عند
-                  الاستلام.
-                </Note>
-                <div>
-                  <Label>أيام عمل — تنفيذ / تركات</Label>
-                  <Input
+              <div className="mt-4 flex flex-wrap items-end gap-2.5 rounded-[10px] border border-dashed border-border-md bg-surface-2 px-3.5 py-3">
+                <div className={cn(opsFld, "min-w-[12rem] flex-1")}>
+                  <label htmlFor="org-test-destination" className={opsTfLbl}>
+                    وجهة اختبار (جوال أو بريد)
+                  </label>
+                  <input
+                    id="org-test-destination"
+                    className={cn(opsFldControl, "bg-surface")}
+                    dir="ltr"
+                    value={testDestination}
+                    disabled={!canEdit}
+                    onChange={(e) => setTestDestination(e.target.value)}
+                    placeholder="+9665… أو email@…"
+                  />
+                </div>
+                <button
+                  type="button"
+                  className={opsBtnGhost}
+                  disabled={!canEdit || testing || !testDestination.trim()}
+                  onClick={() => void runTest()}
+                >
+                  {testing ? <Spinner /> : null}
+                  <span>{testing ? "جاري الإرسال…" : "اختبار الإرسال"}</span>
+                </button>
+              </div>
+            </>
+          ) : null}
+
+          {tab === "sla" ? (
+            <>
+              <p className={cn(opsTfNote, "m-0 mb-3.5")}>
+                التعديل يسري على أوامر العمل الجديدة فقط. الجارية تحتفظ بمهلتها
+                المحسوبة عند الاستلام.
+              </p>
+              <div className={opsFormGrid}>
+                <div className={opsFld}>
+                  <label htmlFor="org-sla-default" className={opsTfLbl}>
+                    أيام عمل — تنفيذ / تركات
+                  </label>
+                  <input
+                    id="org-sla-default"
+                    className={opsFldControl}
                     type="number"
                     min={1}
                     max={60}
@@ -610,9 +797,13 @@ export function OrganizationSettingsView() {
                     }
                   />
                 </div>
-                <div>
-                  <Label>أيام عمل — قطاع خاص</Label>
-                  <Input
+                <div className={opsFld}>
+                  <label htmlFor="org-sla-private" className={opsTfLbl}>
+                    أيام عمل — قطاع خاص
+                  </label>
+                  <input
+                    id="org-sla-private"
+                    className={opsFldControl}
                     type="number"
                     min={1}
                     max={60}
@@ -630,25 +821,26 @@ export function OrganizationSettingsView() {
                     }
                   />
                 </div>
-              </section>
-            ) : null}
-
-            <Can capability="manage-system-config">
-              <div className="flex justify-end pt-2">
-                <Button
-                  type="button"
-                  variant="primary"
-                  disabled={saving}
-                  loading={saving}
-                  onClick={() => void onSave()}
-                >
-                  حفظ الإعدادات
-                </Button>
               </div>
-            </Can>
-          </>
-        )}
-      </PageGutter>
+            </>
+          ) : null}
+
+          <Can capability="manage-system-config">
+            <div className={opsTfActions}>
+              <button
+                type="button"
+                className={opsBtnPrimary}
+                disabled={saving}
+                aria-busy={saving || undefined}
+                onClick={() => void onSave()}
+              >
+                {saving ? <Spinner /> : null}
+                <span>{saving ? "جاري الحفظ…" : "✓ حفظ الإعدادات"}</span>
+              </button>
+            </div>
+          </Can>
+        </div>
+      </section>
     </PageShell>
   );
 }
