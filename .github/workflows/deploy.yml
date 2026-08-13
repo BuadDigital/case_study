@@ -333,6 +333,12 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
     needs: build-and-push
+    # The run's own token can pull the images it just pushed, so the host needs no
+    # long-lived registry PAT. It expires with the job; whatever docker leaves in
+    # ~/.docker/config.json afterwards is already dead.
+    permissions:
+      contents: read
+      packages: read
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
@@ -368,9 +374,8 @@ jobs:
           script: |
             set -eu
             cd /app
-            # Log into GHCR on the VPS with a read:packages PAT. The username must be the
-            # PAT owner, which is not necessarily whoever pushed the commit.
-            echo "${{ secrets.GHCR_PAT }}" | docker login ghcr.io -u "${{ secrets.GHCR_USER || github.actor }}" --password-stdin
+            # Log into GHCR on the VPS with this run's token (see the job permissions).
+            echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u "${{ github.actor }}" --password-stdin
 
             # Export variables for compose
             export IMAGE_OWNER="${{ needs.build-and-push.outputs.image_owner }}"
