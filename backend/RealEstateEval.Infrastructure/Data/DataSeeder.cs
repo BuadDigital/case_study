@@ -790,9 +790,15 @@ public static class DataSeeder
         }
 
         // Assign compensated field inspectors to the employee flat table (never to party-rates).
+        // Every field inspector carries HasCompensation, cooperators included, so the flat
+        // table has to be selected by contract type. Without this the cooperator demo
+        // inspector lands here as well and the block below adds him a second time — the
+        // pending insert is invisible to that query, so a fresh database fails on the
+        // (Category, AssigneeId) unique index.
         var employeeInspectorIds = await db.UserProfiles.AsNoTracking()
             .Where(p =>
                 p.HasCompensation
+                && p.InspectorType == "employee"
                 && p.DistributionAssigneeId != null
                 && p.DistributionAssigneeId.StartsWith("fi-"))
             .Select(p => p.DistributionAssigneeId!)

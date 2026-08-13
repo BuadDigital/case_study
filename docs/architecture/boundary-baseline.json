@@ -292,6 +292,7 @@
       "operations"
     ],
     "backend/RealEstateEval.Infrastructure/Services/OperationsTaskVisitFeeHelper.cs": [
+      "case_study",
       "financial",
       "identity"
     ],
