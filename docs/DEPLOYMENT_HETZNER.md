@@ -205,12 +205,10 @@ ssh -i ~/.ssh/hetzner_deploy root@SERVER_IP "echo OK"
 | `TLS_CERTIFICATE_PATH` | `/etc/letsencrypt/live/app.example.com/fullchain.pem` |
 | `TLS_PRIVATE_KEY_PATH` | `/etc/letsencrypt/live/app.example.com/privkey.pem` |
 | `PUBLIC_APP_URL` | `https://app.example.com` |
-| `GHCR_PAT` | Personal Access Token (classic) بصلاحية `read:packages` — يستخدمه السيرفر لسحب الصور من GHCR |
-| `GHCR_USER` | اسم مستخدم GitHub **مالك** الـ PAT (اختياري؛ الافتراضي هو من عمل الـ push، وهذا يفشل لو دفع شخص آخر) |
 
-`GHCR_PAT` يُنشأ من `github.com/settings/tokens` → Generate new token (classic) → اختر `read:packages` فقط.
-
-> الصور تُنشر على `ghcr.io/buaddigital/case_study/*` وتكون **private** افتراضياً؛ لذلك السيرفر يحتاج الـ PAT. لو خليتها public تقدر تحذف الحاجة له.
+سبعة أسرار فقط — **لا حاجة لتوكن GHCR دائم**. الصور private على
+`ghcr.io/buaddigital/case_study/*`، لكن مرحلة النشر تسجّل الدخول بتوكن التشغيل نفسه
+(`GITHUB_TOKEN`) الذي مُنح صلاحية `packages: read`، وينتهي مفعوله بانتهاء التشغيل.
 
 ---
 
@@ -262,7 +260,8 @@ curl -I https://app.example.com
 cd /app
 export IMAGE_OWNER=buaddigital
 export TAG=latest
-docker login ghcr.io -u <username> --password <GHCR_PAT>
+# توكن مؤقت بصلاحية read:packages من github.com/settings/tokens (لازم فقط للسحب اليدوي)
+docker login ghcr.io -u <username> --password <token>
 docker compose -f docker-compose.prod.yml pull
 docker compose -f docker-compose.prod.yml run --rm migrate
 docker compose -f docker-compose.prod.yml up -d --remove-orphans
@@ -306,7 +305,7 @@ ssh -L 3001:$(docker inspect -f '{{range .NetworkSettings.Networks}}{{.IPAddress
 | العرض | السبب والحل |
 | --- | --- |
 | `deploy` يفشل عند `test -r "$TLS_CERTIFICATE_PATH"` | الشهادة غير موجودة أو المسار في الأسرار غلط. راجع الخطوة 2. |
-| `denied` عند `docker compose pull` | `GHCR_PAT` منتهي أو بدون صلاحية `read:packages`. |
+| `denied` عند `docker compose pull` | مرحلة النشر تفتقد `packages: read` في صلاحياتها، أو تسجّل الدخول بتوكن منتهٍ. |
 | حاويات تُقتل / `Exited (137)` | ذاكرة غير كافية. كبّر السيرفر أو أوقف حزمة المراقبة (`elasticsearch`، `jaeger`، `prometheus`، `grafana`). |
 | `Set POSTGRES_PASSWORD` عند التشغيل | ملف `/app/.env` غير موجود أو ناقص. |
 | الموقع يفتح لكن `/api` يرجّع 502 | Gateway لم يمر بفحص الصحة. `docker compose logs gateway identity`. |
