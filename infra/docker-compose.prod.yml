@@ -264,6 +264,9 @@ services:
       Jwt__Issuer: RealEstateEval
       Jwt__Audience: RealEstateEval
       Jwt__SigningKey: ${JWT_SIGNING_KEY:?Set JWT_SIGNING_KEY}
+      # Reporting aggregates by calling back through the gateway. The default is the
+      # localhost port `npm run dev:api` uses, which resolves to the container itself.
+      UpstreamServices__GatewayBaseUrl: http://gateway:5160
     depends_on:
       postgres:
         condition: service_healthy
