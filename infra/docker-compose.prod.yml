@@ -27,6 +27,12 @@ x-rabbit-env: &rabbit-env
   RabbitMQ__UserName: ${RABBITMQ_USER:?Set RABBITMQ_USER}
   RabbitMQ__Password: ${RABBITMQ_PASSWORD:?Set RABBITMQ_PASSWORD}
 
+x-redis-env: &redis-env
+  # Same reasoning as the broker: the default is localhost:6379, which inside a container
+  # is the container itself. A service that caches without this silently fails every
+  # lookup until its circuit breaker opens and the endpoint starts returning 500.
+  Redis__ConnectionString: redis:6379
+
 services:
   postgres:
     image: postgres:17.5-alpine
@@ -177,10 +183,9 @@ services:
     container_name: ree-prod-identity
     restart: always
     environment:
-      <<: [*otel-env, *rabbit-env]
+      <<: [*otel-env, *rabbit-env, *redis-env]
       ASPNETCORE_ENVIRONMENT: Production
       Database__MigrateOnStartup: "false"
-      Redis__ConnectionString: redis:6379
       REAL_ESTATE_EVAL_PG_CONNECTION_STRING: Host=postgres;Port=5432;Database=realestate_eval_prod;Username=postgres;Password=${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD}
       Jwt__Issuer: RealEstateEval
       Jwt__Audience: RealEstateEval
@@ -203,11 +208,10 @@ services:
     container_name: ree-prod-case-study
     restart: always
     environment:
-      <<: [*otel-env, *rabbit-env]
+      <<: [*otel-env, *rabbit-env, *redis-env]
       ASPNETCORE_ENVIRONMENT: Production
       Database__MigrateOnStartup: "false"
       Database__SeedDemoData: "false"
-      Redis__ConnectionString: redis:6379
       REAL_ESTATE_EVAL_PG_CONNECTION_STRING: Host=postgres;Port=5432;Database=realestate_eval_prod;Username=postgres;Password=${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD}
       Jwt__Issuer: RealEstateEval
       Jwt__Audience: RealEstateEval
@@ -216,6 +220,8 @@ services:
       postgres:
         condition: service_healthy
       rabbitmq:
+        condition: service_healthy
+      redis:
         condition: service_healthy
       migrate:
         condition: service_completed_successfully
@@ -228,7 +234,7 @@ services:
     container_name: ree-prod-operations
     restart: always
     environment:
-      <<: [*otel-env, *rabbit-env]
+      <<: [*otel-env, *rabbit-env, *redis-env]
       ASPNETCORE_ENVIRONMENT: Production
       REAL_ESTATE_EVAL_PG_CONNECTION_STRING: Host=postgres;Port=5432;Database=realestate_eval_prod;Username=postgres;Password=${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD}
       Jwt__Issuer: RealEstateEval
@@ -238,6 +244,8 @@ services:
       postgres:
         condition: service_healthy
       rabbitmq:
+        condition: service_healthy
+      redis:
         condition: service_healthy
       migrate:
         condition: service_completed_successfully
@@ -250,7 +258,7 @@ services:
     container_name: ree-prod-reporting
     restart: always
     environment:
-      <<: [*otel-env, *rabbit-env]
+      <<: [*otel-env, *rabbit-env, *redis-env]
       ASPNETCORE_ENVIRONMENT: Production
       REAL_ESTATE_EVAL_PG_CONNECTION_STRING: Host=postgres;Port=5432;Database=realestate_eval_prod;Username=postgres;Password=${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD}
       Jwt__Issuer: RealEstateEval
@@ -260,6 +268,8 @@ services:
       postgres:
         condition: service_healthy
       rabbitmq:
+        condition: service_healthy
+      redis:
         condition: service_healthy
       migrate:
         condition: service_completed_successfully
@@ -272,7 +282,7 @@ services:
     container_name: ree-prod-financial
     restart: always
     environment:
-      <<: [*otel-env, *rabbit-env]
+      <<: [*otel-env, *rabbit-env, *redis-env]
       ASPNETCORE_ENVIRONMENT: Production
       REAL_ESTATE_EVAL_PG_CONNECTION_STRING: Host=postgres;Port=5432;Database=realestate_eval_prod;Username=postgres;Password=${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD}
       Jwt__Issuer: RealEstateEval
@@ -282,6 +292,8 @@ services:
       postgres:
         condition: service_healthy
       rabbitmq:
+        condition: service_healthy
+      redis:
         condition: service_healthy
       migrate:
         condition: service_completed_successfully
@@ -294,7 +306,7 @@ services:
     container_name: ree-prod-valuation
     restart: always
     environment:
-      <<: [*otel-env, *rabbit-env]
+      <<: [*otel-env, *rabbit-env, *redis-env]
       ASPNETCORE_ENVIRONMENT: Production
       REAL_ESTATE_EVAL_PG_CONNECTION_STRING: Host=postgres;Port=5432;Database=realestate_eval_prod;Username=postgres;Password=${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD}
       Jwt__Issuer: RealEstateEval
@@ -304,6 +316,8 @@ services:
       postgres:
         condition: service_healthy
       rabbitmq:
+        condition: service_healthy
+      redis:
         condition: service_healthy
       migrate:
         condition: service_completed_successfully
@@ -316,7 +330,7 @@ services:
     container_name: ree-prod-failures
     restart: always
     environment:
-      <<: [*otel-env, *rabbit-env]
+      <<: [*otel-env, *rabbit-env, *redis-env]
       ASPNETCORE_ENVIRONMENT: Production
       REAL_ESTATE_EVAL_PG_CONNECTION_STRING: Host=postgres;Port=5432;Database=realestate_eval_prod;Username=postgres;Password=${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD}
       Jwt__Issuer: RealEstateEval
@@ -326,6 +340,8 @@ services:
       postgres:
         condition: service_healthy
       rabbitmq:
+        condition: service_healthy
+      redis:
         condition: service_healthy
       migrate:
         condition: service_completed_successfully
@@ -338,7 +354,7 @@ services:
     container_name: ree-prod-platform
     restart: always
     environment:
-      <<: [*otel-env, *rabbit-env]
+      <<: [*otel-env, *rabbit-env, *redis-env]
       ASPNETCORE_ENVIRONMENT: Production
       REAL_ESTATE_EVAL_PG_CONNECTION_STRING: Host=postgres;Port=5432;Database=realestate_eval_prod;Username=postgres;Password=${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD}
       Jwt__Issuer: RealEstateEval
@@ -348,6 +364,8 @@ services:
       postgres:
         condition: service_healthy
       rabbitmq:
+        condition: service_healthy
+      redis:
         condition: service_healthy
       migrate:
         condition: service_completed_successfully
@@ -360,9 +378,8 @@ services:
     container_name: ree-prod-attachments
     restart: always
     environment:
-      <<: [*otel-env, *rabbit-env]
+      <<: [*otel-env, *rabbit-env, *redis-env]
       ASPNETCORE_ENVIRONMENT: Production
-      Redis__ConnectionString: redis:6379
       REAL_ESTATE_EVAL_PG_CONNECTION_STRING: Host=postgres;Port=5432;Database=realestate_eval_prod;Username=postgres;Password=${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD}
       Jwt__Issuer: RealEstateEval
       Jwt__Audience: RealEstateEval
@@ -374,6 +391,8 @@ services:
       postgres:
         condition: service_healthy
       rabbitmq:
+        condition: service_healthy
+      redis:
         condition: service_healthy
       migrate:
         condition: service_completed_successfully
@@ -440,8 +459,13 @@ services:
       - "443:443"
     volumes:
       - ./nginx.conf:/etc/nginx/nginx.conf:ro
+      # These must be real files, never the symlinks under letsencrypt/live: a bind mount
+      # resolves its source once, when the container is created, so a renewed certificate
+      # would sit on disk while nginx kept serving the expired one it first opened. The
+      # renewal hook copies into these paths in place and reloads nginx.
       - ${TLS_CERTIFICATE_PATH:?Set TLS_CERTIFICATE_PATH}:/etc/nginx/tls/fullchain.pem:ro
       - ${TLS_PRIVATE_KEY_PATH:?Set TLS_PRIVATE_KEY_PATH}:/etc/nginx/tls/privkey.pem:ro
+      - ${ACME_WEBROOT:-/app/acme}:/var/www/certbot:ro
     depends_on:
       frontend:
         condition: service_healthy
