@@ -70,7 +70,7 @@ describe("distribution-load", () => {
       taskCountsTowardDistributionLoad(
         task({
           kind: "case-study-property",
-          phase: "enfaz",
+          phase: "enfath",
           assigneeRole: "case-specialist",
           status: "open",
         }),

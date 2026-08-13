@@ -690,6 +690,8 @@ Phase 6            Module Federation + separate deploys per MFE
 | [docs/ARCHITECTURE_MICROFRONTENDS_AND_MICROSERVICES.md](docs/ARCHITECTURE_MICROFRONTENDS_AND_MICROSERVICES.md) | Full architecture & phases |
 | [docs/LOCAL_INFRA.md](docs/LOCAL_INFRA.md) | Docker services, URLs, troubleshooting |
 | [docs/DEMO_ROLE_CREDENTIALS.txt](docs/DEMO_ROLE_CREDENTIALS.txt) | Draft `@ejadah.dev` demo accounts |
+| [docs/DEPLOYMENT_HETZNER.md](docs/DEPLOYMENT_HETZNER.md) | Production deploy to Hetzner: server prep, TLS, secrets, CI/CD |
+| [infra/HTTPS.md](infra/HTTPS.md) | TLS termination and certificate renewal details |
 
 <div align="center">
   <p>Built for internal real-estate evaluation & case study — Ejada</p>
