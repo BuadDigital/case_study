@@ -17,6 +17,16 @@ x-otel-env: &otel-env
   # ASP.NET sees the original HTTPS scheme and client address.
   ASPNETCORE_FORWARDEDHEADERS_ENABLED: "true"
 
+x-rabbit-env: &rabbit-env
+  # One broker, one credential pair, on the private compose network. Handing it to every
+  # application service keeps startup validation from turning into a per-service hunt:
+  # several of them register outbox or notification options through shared infrastructure
+  # helpers rather than in their own Program.cs.
+  RabbitMQ__Host: rabbitmq
+  RabbitMQ__Port: 5672
+  RabbitMQ__UserName: ${RABBITMQ_USER:?Set RABBITMQ_USER}
+  RabbitMQ__Password: ${RABBITMQ_PASSWORD:?Set RABBITMQ_PASSWORD}
+
 services:
   postgres:
     image: postgres:17.5-alpine
@@ -167,7 +177,7 @@ services:
     container_name: ree-prod-identity
     restart: always
     environment:
-      <<: *otel-env
+      <<: [*otel-env, *rabbit-env]
       ASPNETCORE_ENVIRONMENT: Production
       Database__MigrateOnStartup: "false"
       Redis__ConnectionString: redis:6379
@@ -177,6 +187,8 @@ services:
       Jwt__SigningKey: ${JWT_SIGNING_KEY:?Set JWT_SIGNING_KEY}
     depends_on:
       postgres:
+        condition: service_healthy
+      rabbitmq:
         condition: service_healthy
       redis:
         condition: service_healthy
@@ -191,7 +203,7 @@ services:
     container_name: ree-prod-case-study
     restart: always
     environment:
-      <<: *otel-env
+      <<: [*otel-env, *rabbit-env]
       ASPNETCORE_ENVIRONMENT: Production
       Database__MigrateOnStartup: "false"
       Database__SeedDemoData: "false"
@@ -200,10 +212,6 @@ services:
       Jwt__Issuer: RealEstateEval
       Jwt__Audience: RealEstateEval
       Jwt__SigningKey: ${JWT_SIGNING_KEY:?Set JWT_SIGNING_KEY}
-      RabbitMQ__Host: rabbitmq
-      RabbitMQ__Port: 5672
-      RabbitMQ__UserName: ${RABBITMQ_USER:?Set RABBITMQ_USER}
-      RabbitMQ__Password: ${RABBITMQ_PASSWORD:?Set RABBITMQ_PASSWORD}
     depends_on:
       postgres:
         condition: service_healthy
@@ -220,7 +228,7 @@ services:
     container_name: ree-prod-operations
     restart: always
     environment:
-      <<: *otel-env
+      <<: [*otel-env, *rabbit-env]
       ASPNETCORE_ENVIRONMENT: Production
       REAL_ESTATE_EVAL_PG_CONNECTION_STRING: Host=postgres;Port=5432;Database=realestate_eval_prod;Username=postgres;Password=${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD}
       Jwt__Issuer: RealEstateEval
@@ -228,6 +236,8 @@ services:
       Jwt__SigningKey: ${JWT_SIGNING_KEY:?Set JWT_SIGNING_KEY}
     depends_on:
       postgres:
+        condition: service_healthy
+      rabbitmq:
         condition: service_healthy
       migrate:
         condition: service_completed_successfully
@@ -240,7 +250,7 @@ services:
     container_name: ree-prod-reporting
     restart: always
     environment:
-      <<: *otel-env
+      <<: [*otel-env, *rabbit-env]
       ASPNETCORE_ENVIRONMENT: Production
       REAL_ESTATE_EVAL_PG_CONNECTION_STRING: Host=postgres;Port=5432;Database=realestate_eval_prod;Username=postgres;Password=${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD}
       Jwt__Issuer: RealEstateEval
@@ -248,6 +258,8 @@ services:
       Jwt__SigningKey: ${JWT_SIGNING_KEY:?Set JWT_SIGNING_KEY}
     depends_on:
       postgres:
+        condition: service_healthy
+      rabbitmq:
         condition: service_healthy
       migrate:
         condition: service_completed_successfully
@@ -260,7 +272,7 @@ services:
     container_name: ree-prod-financial
     restart: always
     environment:
-      <<: *otel-env
+      <<: [*otel-env, *rabbit-env]
       ASPNETCORE_ENVIRONMENT: Production
       REAL_ESTATE_EVAL_PG_CONNECTION_STRING: Host=postgres;Port=5432;Database=realestate_eval_prod;Username=postgres;Password=${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD}
       Jwt__Issuer: RealEstateEval
@@ -268,6 +280,8 @@ services:
       Jwt__SigningKey: ${JWT_SIGNING_KEY:?Set JWT_SIGNING_KEY}
     depends_on:
       postgres:
+        condition: service_healthy
+      rabbitmq:
         condition: service_healthy
       migrate:
         condition: service_completed_successfully
@@ -280,16 +294,12 @@ services:
     container_name: ree-prod-valuation
     restart: always
     environment:
-      <<: *otel-env
+      <<: [*otel-env, *rabbit-env]
       ASPNETCORE_ENVIRONMENT: Production
       REAL_ESTATE_EVAL_PG_CONNECTION_STRING: Host=postgres;Port=5432;Database=realestate_eval_prod;Username=postgres;Password=${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD}
       Jwt__Issuer: RealEstateEval
       Jwt__Audience: RealEstateEval
       Jwt__SigningKey: ${JWT_SIGNING_KEY:?Set JWT_SIGNING_KEY}
-      RabbitMQ__Host: rabbitmq
-      RabbitMQ__Port: 5672
-      RabbitMQ__UserName: ${RABBITMQ_USER:?Set RABBITMQ_USER}
-      RabbitMQ__Password: ${RABBITMQ_PASSWORD:?Set RABBITMQ_PASSWORD}
     depends_on:
       postgres:
         condition: service_healthy
@@ -306,18 +316,12 @@ services:
     container_name: ree-prod-failures
     restart: always
     environment:
-      <<: *otel-env
+      <<: [*otel-env, *rabbit-env]
       ASPNETCORE_ENVIRONMENT: Production
       REAL_ESTATE_EVAL_PG_CONNECTION_STRING: Host=postgres;Port=5432;Database=realestate_eval_prod;Username=postgres;Password=${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD}
       Jwt__Issuer: RealEstateEval
       Jwt__Audience: RealEstateEval
       Jwt__SigningKey: ${JWT_SIGNING_KEY:?Set JWT_SIGNING_KEY}
-      # AddFailuresInfrastructure registers notification commands, which publish through
-      # the shared outbox; their options are validated at startup.
-      RabbitMQ__Host: rabbitmq
-      RabbitMQ__Port: 5672
-      RabbitMQ__UserName: ${RABBITMQ_USER:?Set RABBITMQ_USER}
-      RabbitMQ__Password: ${RABBITMQ_PASSWORD:?Set RABBITMQ_PASSWORD}
     depends_on:
       postgres:
         condition: service_healthy
@@ -334,18 +338,12 @@ services:
     container_name: ree-prod-platform
     restart: always
     environment:
-      <<: *otel-env
+      <<: [*otel-env, *rabbit-env]
       ASPNETCORE_ENVIRONMENT: Production
       REAL_ESTATE_EVAL_PG_CONNECTION_STRING: Host=postgres;Port=5432;Database=realestate_eval_prod;Username=postgres;Password=${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD}
       Jwt__Issuer: RealEstateEval
       Jwt__Audience: RealEstateEval
       Jwt__SigningKey: ${JWT_SIGNING_KEY:?Set JWT_SIGNING_KEY}
-      # Platform owns the notification inbox and consumes the integration events the
-      # other services publish, so it needs the broker before it can start.
-      RabbitMQ__Host: rabbitmq
-      RabbitMQ__Port: 5672
-      RabbitMQ__UserName: ${RABBITMQ_USER:?Set RABBITMQ_USER}
-      RabbitMQ__Password: ${RABBITMQ_PASSWORD:?Set RABBITMQ_PASSWORD}
     depends_on:
       postgres:
         condition: service_healthy
@@ -362,7 +360,7 @@ services:
     container_name: ree-prod-attachments
     restart: always
     environment:
-      <<: *otel-env
+      <<: [*otel-env, *rabbit-env]
       ASPNETCORE_ENVIRONMENT: Production
       Redis__ConnectionString: redis:6379
       REAL_ESTATE_EVAL_PG_CONNECTION_STRING: Host=postgres;Port=5432;Database=realestate_eval_prod;Username=postgres;Password=${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD}
@@ -374,6 +372,8 @@ services:
       - ree_prod_attachments_data:/app/attachments-data
     depends_on:
       postgres:
+        condition: service_healthy
+      rabbitmq:
         condition: service_healthy
       migrate:
         condition: service_completed_successfully
