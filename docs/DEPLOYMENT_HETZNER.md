@@ -15,6 +15,30 @@
 
 ---
 
+## الطريق السريع (سكربت واحد)
+
+الأقسام 1 إلى 4 مؤتمتة في `infra/setup-hetzner-server.sh`. من السيرفر:
+
+```sh
+curl -fsSL -o setup.sh \
+  https://raw.githubusercontent.com/BuadDigital/case_study/main/infra/setup-hetzner-server.sh
+chmod +x setup.sh
+./setup.sh app.example.com you@example.com
+```
+
+> الريبو خاص، فرابط `raw` يحتاج توكن. الأسهل: انسخ الملف من جهازك بـ
+> `scp infra/setup-hetzner-server.sh root@SERVER_IP:~/`.
+
+السكربت يثبّت Docker، يقفل الجدار الناري، ينشئ `/app`، يصدر شهادة Let's Encrypt،
+يركّب خطافات التجديد، يولّد `/app/.env` بأسرار عشوائية، ثم يطبع قيم أسرار GitHub.
+آمن لإعادة التشغيل: لا يستبدل شهادة موجودة ولا ملف `.env` موجوداً.
+
+بعده يتبقى عليك خطوتان فقط: **المفتاح (قسم 4)** و **أسرار GitHub (قسم 5)**.
+
+الأقسام التالية تشرح ما يفعله السكربت خطوة بخطوة — للمراجعة أو للتنفيذ اليدوي.
+
+---
+
 ## 1. تجهيز السيرفر (مرة واحدة)
 
 ادخل بالسيرفر: `ssh root@SERVER_IP`
