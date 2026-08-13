@@ -1,0 +1,4 @@
+# These files are executed or read on Linux (servers, containers). core.autocrlf on a
+# Windows checkout would rewrite them to CRLF, and bash then fails with $'\r': not found.
+*.sh text eol=lf
+infra/*.conf text eol=lf
