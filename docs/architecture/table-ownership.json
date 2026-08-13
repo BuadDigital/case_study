@@ -1042,6 +1042,36 @@
       "note": "Write path FinancialDbContext (A4)."
     },
     {
+      "table": "PoEnfazFollowups",
+      "schema": "financial",
+      "dbSet": "PoEnfazFollowups",
+      "entity": "PoEnfazFollowup",
+      "owner": "financial",
+      "status": "approved",
+      "ownershipModel": "single-owner",
+      "contexts": [
+        "FinancialDbContext"
+      ],
+      "transactionGroup": "financial.enfaz-invoicing",
+      "decision": null,
+      "note": "Follow-up rows behind enfaz billing; written by PoEnfazBillingService alongside the invoice it belongs to. Write path FinancialDbContext (A4)."
+    },
+    {
+      "table": "PoEnfazFinanceFlags",
+      "schema": "financial",
+      "dbSet": "PoEnfazFinanceFlags",
+      "entity": "PoEnfazFinanceFlag",
+      "owner": "financial",
+      "status": "approved",
+      "ownershipModel": "single-owner",
+      "contexts": [
+        "FinancialDbContext"
+      ],
+      "transactionGroup": "financial.enfaz-invoicing",
+      "decision": null,
+      "note": "Per-PO finance flags written by PoEnfazBillingService in the same transaction as the invoice. Write path FinancialDbContext (A4)."
+    },
+    {
       "table": "PartyBillingStatements",
       "schema": "financial",
       "dbSet": "PartyBillingStatements",

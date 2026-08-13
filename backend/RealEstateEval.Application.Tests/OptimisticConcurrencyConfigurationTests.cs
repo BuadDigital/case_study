@@ -1,4 +1,5 @@
 ﻿using System.Net;
+using System.Text.Json;
 using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata;
@@ -78,8 +79,14 @@ public class OptimisticConcurrencyConfigurationTests
 
         context.Response.Body.Position = 0;
         var body = await new StreamReader(context.Response.Body).ReadToEndAsync();
-        Assert.Contains("\"status\":409", body);
-        Assert.Contains("changed by another request", body);
+
+        // Read the payload rather than the raw text: the detail is Arabic, which the
+        // default serializer emits as \u escapes.
+        using var problem = JsonDocument.Parse(body);
+        Assert.Equal(409, problem.RootElement.GetProperty("status").GetInt32());
+        Assert.Contains(
+            "تم تحديث السجل من طلب آخر",
+            problem.RootElement.GetProperty("detail").GetString());
     }
 
     private sealed class TestHostEnvironment : IHostEnvironment
