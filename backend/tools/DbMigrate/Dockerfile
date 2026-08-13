@@ -11,7 +11,10 @@ COPY backend/tools/DbMigrate/ backend/tools/DbMigrate/
 RUN dotnet restore backend/tools/DbMigrate/DbMigrate.csproj
 RUN dotnet publish backend/tools/DbMigrate/DbMigrate.csproj -c Release -o /app/publish --no-restore
 
-FROM mcr.microsoft.com/dotnet/runtime:10.0.10@sha256:ca17638b4cbab2063771e8943dbe887ea6c0ae00c5fede3498d5938758c85dfe
+# aspnet, not runtime: Infrastructure carries ASP.NET code (health endpoints), so the
+# migrator inherits a FrameworkReference on Microsoft.AspNetCore.App and the plain
+# runtime image cannot start it.
+FROM mcr.microsoft.com/dotnet/aspnet:10.0.10@sha256:1f51d2d65ace46d6395e773fb4cfc1c74d36fb4f08e5cf996e7f6961b45e9283
 WORKDIR /app
 COPY --from=build /app/publish .
 USER $APP_UID
