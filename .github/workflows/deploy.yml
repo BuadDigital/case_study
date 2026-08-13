@@ -3,6 +3,11 @@ name: CI/CD Pipeline
 on:
   push:
     branches: [main, master]
+    # Documentation cannot change a running system, and a full run costs 12 image builds.
+    paths-ignore:
+      - "**.md"
+      - "docs/**"
+      - "requirements/**"
   pull_request:
     branches: [main, master]
   workflow_dispatch:
@@ -15,10 +20,10 @@ on:
   schedule:
     - cron: "0 2 * * *"
 
-# One deploy at a time; a second push waits instead of racing the first onto the host.
-concurrency:
-  group: cicd-${{ github.ref }}
-  cancel-in-progress: false
+# Concurrency is set per job, not here. A workflow-level group either cancels a deploy
+# halfway through the host, or makes every superseded build sit in the queue ahead of the
+# one that matters — we hit the second when a documentation commit delayed a fix by 20
+# minutes. Builds are disposable and get cancelled; deploys never are.
 
 jobs:
   # ----------------------------------------------------
@@ -150,6 +155,10 @@ jobs:
     if: github.event_name != 'pull_request' && github.event_name != 'schedule'
     runs-on: ubuntu-latest
     needs: [frontend, test]
+    # A newer commit makes these images pointless; drop them and let the new run build.
+    concurrency:
+      group: build-${{ github.ref }}
+      cancel-in-progress: true
     permissions:
       contents: read
       packages: write
@@ -333,6 +342,10 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
     needs: build-and-push
+    # Never interrupted, never concurrent: a second deploy waits for the host to settle.
+    concurrency:
+      group: deploy-production
+      cancel-in-progress: false
     # The run's own token can pull the images it just pushed, so the host needs no
     # long-lived registry PAT. It expires with the job; whatever docker leaves in
     # ~/.docker/config.json afterwards is already dead.
