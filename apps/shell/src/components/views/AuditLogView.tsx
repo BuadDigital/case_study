@@ -9,20 +9,22 @@ import { exportRowsToCsv } from "@platform/app-shared/export/export-csv";
 import { isFeatureEnabled } from "@platform/app-shared/feature-flags";
 import { Can } from "@platform/app-shared/components/Can";
 import { useAuth } from "@platform/app-shared/hooks/useAuth";
+import { cn, InlineLoadingSkeleton, PageShell, Spinner } from "@platform/design-system";
 import {
-  Button,
-  EmptyState,
-  InlineLoadingSkeleton,
-  PageGutter,
-  PageShell,
-  PageShellHeader,
-  Table,
-  TBody,
-  Td,
-  Th,
-  THead,
-  Tr,
-} from "@platform/design-system";
+  opsBtnGhost,
+  opsEmptyHint,
+  opsLetterCard,
+  opsLetterRow,
+  opsListCount,
+  opsTdPlain,
+  opsTfNote,
+  opsThead,
+  opsThStart,
+  opsToolbar,
+} from "@case-study/mfe/lib/prototype/ops-tasks-tw";
+
+const GRID_COLS =
+  "[grid-template-columns:150px_1fr_1fr_1.3fr_2fr]";
 
 function formatAt(iso: string): string {
   try {
@@ -92,37 +94,36 @@ export function AuditLogView() {
 
   if (!isFeatureEnabled("auditLog")) {
     return (
-      <PageShell>
-        <PageGutter>
-          <EmptyState line="سجل التدقيق غير مفعّل في هذا البيئة." />
-        </PageGutter>
+      <PageShell variant="canvas" className="gap-0 p-4 sm:p-6" dir="rtl">
+        <p className={cn(opsTfNote, "m-0")}>
+          سجل التدقيق غير مفعّل في هذه البيئة.
+        </p>
       </PageShell>
     );
   }
 
   return (
-    <PageShell>
-      <PageShellHeader
-        title="سجل التدقيق"
-        meta={`سجل مركزي دائم للإجراءات المهمة داخل النظام · ${total} حدث`}
-      />
-      <PageGutter>
+    <PageShell
+      variant="canvas"
+      className="gap-0 p-4 pb-[max(1rem,env(safe-area-inset-bottom))] sm:p-6"
+      dir="rtl"
+    >
+      <div className={opsToolbar}>
         <Can capability="manage-system-config">
-          <div className="mb-3 flex flex-wrap gap-2">
-            <Button
+          <div className="flex flex-wrap items-center gap-2.5 max-lg:w-full">
+            <button
               type="button"
-              size="sm"
-              variant="outline"
+              className={opsBtnGhost}
               onClick={() => void refresh()}
               disabled={loading}
-              aria-busy={loading}
+              aria-busy={loading || undefined}
             >
-              {loading ? "جارٍ التحديث…" : "تحديث"}
-            </Button>
-            <Button
+              {loading ? <Spinner /> : null}
+              <span>{loading ? "جارٍ التحديث…" : "تحديث"}</span>
+            </button>
+            <button
               type="button"
-              size="sm"
-              variant="outline"
+              className={opsBtnGhost}
               onClick={() =>
                 exportRowsToCsv("audit-log", [
                   { header: "الوقت", value: (r) => formatAt(r.createdAtUtc) },
@@ -136,42 +137,63 @@ export function AuditLogView() {
               disabled={entries.length === 0}
             >
               تصدير CSV
-            </Button>
+            </button>
           </div>
         </Can>
-        {loading ? (
-          <InlineLoadingSkeleton />
-        ) : failed ? (
-          <EmptyState line="تعذر تحميل سجل التدقيق. حاول التحديث مرة أخرى." />
-        ) : entries.length === 0 ? (
-          <EmptyState line="لا توجد أحداث مسجّلة بعد." />
-        ) : (
-          <Table>
-            <THead>
-              <Tr hoverable={false}>
-                <Th>الوقت</Th>
-                <Th>المستخدم</Th>
-                <Th>الإجراء</Th>
-                <Th>الكيان</Th>
-                <Th>التفاصيل</Th>
-              </Tr>
-            </THead>
-            <TBody>
-              {entries.map((entry) => (
-                <Tr key={entry.id} hoverable={false}>
-                  <Td className="whitespace-nowrap">{formatAt(entry.createdAtUtc)}</Td>
-                  <Td>{entry.actorId}</Td>
-                  <Td>{entry.action}</Td>
-                  <Td>{entry.entityType} · {entry.entityId}</Td>
-                  <Td className="max-w-xl truncate text-text-3" title={formatDetail(entry)}>
-                    {formatDetail(entry)}
-                  </Td>
-                </Tr>
-              ))}
-            </TBody>
-          </Table>
-        )}
-      </PageGutter>
+        <span className={opsListCount} aria-live="polite">
+          {total} حدث
+        </span>
+      </div>
+
+      {loading ? (
+        <InlineLoadingSkeleton />
+      ) : failed ? (
+        <section className={opsLetterCard}>
+          <p className={opsEmptyHint}>
+            تعذر تحميل سجل التدقيق. حاول التحديث مرة أخرى.
+          </p>
+        </section>
+      ) : entries.length === 0 ? (
+        <section className={opsLetterCard}>
+          <p className={opsEmptyHint}>لا توجد أحداث مسجّلة بعد.</p>
+        </section>
+      ) : (
+        <section className={cn(opsLetterCard, "overflow-x-auto")}>
+          <div className="min-w-[860px]" dir="rtl">
+            <div className={cn(opsThead, GRID_COLS)}>
+              <div className={opsThStart}>الوقت</div>
+              <div className={opsThStart}>المستخدم</div>
+              <div className={opsThStart}>الإجراء</div>
+              <div className={opsThStart}>الكيان</div>
+              <div className={opsThStart}>التفاصيل</div>
+            </div>
+            {entries.map((entry) => (
+              <div key={entry.id} className={cn(opsLetterRow, GRID_COLS)}>
+                <div className={cn(opsTdPlain, "whitespace-nowrap text-text-2")}>
+                  {formatAt(entry.createdAtUtc)}
+                </div>
+                <div className={cn(opsTdPlain, "font-semibold text-text-2")}>
+                  {entry.actorId}
+                </div>
+                <div className={cn(opsTdPlain, "font-bold text-heading")}>
+                  {entry.action}
+                </div>
+                <div className={opsTdPlain}>
+                  <span className="min-w-0 truncate">
+                    {entry.entityType} · {entry.entityId}
+                  </span>
+                </div>
+                <div
+                  className={cn(opsTdPlain, "text-text-3")}
+                  title={formatDetail(entry)}
+                >
+                  <span className="min-w-0 truncate">{formatDetail(entry)}</span>
+                </div>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
     </PageShell>
   );
 }

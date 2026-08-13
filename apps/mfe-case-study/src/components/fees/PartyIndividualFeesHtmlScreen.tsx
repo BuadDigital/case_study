@@ -1108,7 +1108,7 @@ export function PartyIndividualFeesHtmlScreen({
         <>
           <KeyEnvelopeFeesPanel
             canCollect={hasCapability("manage-financial")}
-            onOpenEnvelope={(envelopeId) => {
+            onOpenEnvelope={(envelopeId: string) => {
               window.location.assign(
                 `/keys?envelope=${encodeURIComponent(envelopeId)}`,
               );

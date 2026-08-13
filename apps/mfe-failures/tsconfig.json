@@ -11,6 +11,8 @@
       "@engineering-office/mfe/*": ["../mfe-engineering-office/src/*"],
       "@evaluator/mfe": ["../mfe-evaluator/src/index.ts"],
       "@evaluator/mfe/*": ["../mfe-evaluator/src/*"],
+      "@keys/mfe": ["../mfe-keys/src/index.ts"],
+      "@keys/mfe/*": ["../mfe-keys/src/*"],
       "@settings/mfe": ["../mfe-settings/src/index.ts"],
       "@settings/mfe/*": ["../mfe-settings/src/*"],
       "@platform/api-client": ["../../packages/api-client/src/index.ts"],

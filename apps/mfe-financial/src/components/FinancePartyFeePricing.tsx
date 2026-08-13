@@ -5,8 +5,6 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   Button,
   FormGroup,
-  Input,
-  Label,
   ModalBody,
   ModalCard,
   ModalClose,
@@ -15,6 +13,7 @@ import {
   ModalOverlay,
   ModalTitle,
   Note,
+  Spinner,
   cn,
   useToast,
 } from "@platform/design-system";
@@ -31,6 +30,23 @@ import {
   getGovernmentAuditors,
   type DistributionAssignee,
 } from "@case-study/mfe/lib/distribution-assignees";
+import {
+  opsBtnGhost,
+  opsBtnPrimary,
+  opsFldControl,
+  opsIconBoxGold,
+  opsLetterCard,
+  opsLetterHead,
+  opsLetterSub,
+  opsLetterTitle,
+  opsPpBadge,
+  opsTfActions,
+  opsTfLbl,
+  opsTfNote,
+  opsTfSeg,
+  opsTfSegActive,
+  opsTfSegRow,
+} from "@case-study/mfe/lib/prototype/ops-tasks-tw";
 import { useStaffUsersQuery } from "@settings/mfe/query/settings-queries";
 import {
   activatePartyFeePricingTable,
@@ -46,6 +62,26 @@ import {
 } from "../lib/financial-api";
 
 const PRICING_STALE_MS = 60_000;
+
+const PRICING_ICON = "M12 1v22M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6";
+
+function OpsIcon({ path, size = 20 }: { path: string; size?: number }) {
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.8"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden
+    >
+      <path d={path} />
+    </svg>
+  );
+}
 
 const CATEGORIES: {
   id: PartyFeePricingCategory;
@@ -154,14 +190,18 @@ function MoneyInput({
   className?: string;
 }) {
   return (
-    <Input
+    <input
       id={id}
       type="text"
       inputMode="decimal"
       dir="ltr"
       readOnly={locked}
       disabled={locked}
-      className={cn("text-start tabular-nums", className)}
+      className={cn(
+        opsFldControl,
+        "text-start tabular-nums disabled:cursor-not-allowed disabled:opacity-60",
+        className,
+      )}
       value={value === 0 ? "" : String(value)}
       placeholder="0"
       onChange={(e) => onChange(num(e.target.value))}
@@ -532,25 +572,15 @@ export function FinancePartyFeePricing() {
 
   return (
     <div className="w-full pb-10 sm:pb-12">
-      {/* رأس بسيط — خطوة واحدة واضحة */}
-      <header className="mb-7 space-y-2">
-        <h1 className="m-0 text-[1.35rem] font-bold tracking-tight text-heading sm:text-[1.5rem]">
-          التسعيرة
-        </h1>
-        <p className="m-0 max-w-2xl text-[13px] leading-relaxed text-text-2 sm:text-[13.5px]">
-          اختر الفئة، عدّل الأسعار، احفظ. الإسناد للمستحقين اختياري من زر «من يخصّه
-          الجدول».
+      {!canEdit ? (
+        <p className={cn(opsTfNote, "m-0 mb-3.5")}>
+          وضع العرض فقط — لا صلاحية للتعديل.
         </p>
-        {!canEdit ? (
-          <p className="m-0 pt-0.5 text-[12px] text-text-3">
-            وضع العرض فقط — لا صلاحية للتعديل.
-          </p>
-        ) : null}
-      </header>
+      ) : null}
 
-      {/* 1) الفئة — شريط أفقي بدل قائمة جانبية */}
+      {/* الفئة — أزرار مقسّمة بنمط المهام */}
       <div
-        className="mb-4 flex flex-wrap gap-2 sm:mb-5"
+        className={cn(opsTfSegRow, "mb-3.5")}
         role="tablist"
         aria-label="فئة التسعيرة"
       >
@@ -564,12 +594,7 @@ export function FinancePartyFeePricing() {
               aria-selected={on}
               disabled={busy || saving}
               onClick={() => selectCategory(cat.id)}
-              className={cn(
-                "rounded-full border px-4 py-2.5 text-[13px] font-semibold transition-colors duration-200 ease-out",
-                on
-                  ? "border-heading bg-heading text-white"
-                  : "border-border bg-surface text-text-2 hover:border-border-md hover:bg-surface-2",
-              )}
+              className={on ? opsTfSegActive : opsTfSeg}
             >
               {cat.label}
             </button>
@@ -577,80 +602,79 @@ export function FinancePartyFeePricing() {
         })}
       </div>
 
-      {/* 2) الجدول — صف واحد: قائمة + إضافة */}
-      <div
-        className={cn(
-          "mb-5 flex flex-col gap-2.5 transition-opacity duration-200 sm:mb-6 sm:flex-row sm:items-center sm:gap-3",
-          holdingPrevious ? "opacity-55" : "opacity-100",
-        )}
-      >
-        <label className="sr-only" htmlFor="pricing-table-select">
-          الجدول
-        </label>
-        <select
-          id="pricing-table-select"
-          className={cn(
-            "min-h-11 w-full flex-1 rounded-lg border border-border bg-surface px-3.5 py-2.5 text-[13px] font-medium text-text",
-            "transition-[border-color,box-shadow] duration-200",
-            "focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-primary",
-          )}
-          value={selectValue}
-          disabled={
-            loading || busy || tables.length === 0 || !draftMatchesCategory
-          }
-          onChange={(e) => void selectTable(e.target.value)}
-        >
-          {loading ? (
-            <option value="">
-              جاري تحميل {activeCategory?.label ?? "الجداول"}…
-            </option>
-          ) : tables.length === 0 ? (
-            <option value="">لا جداول بعد</option>
-          ) : (
-            tables.map((t) => (
-              <option key={t.id} value={t.id}>
-                {t.name || "بدون اسم"}
-                {t.isActive ? " · افتراضي" : ""}
-                {(t.assignedCount ?? 0) > 0 ? ` · ${t.assignedCount} مسند` : ""}
-              </option>
-            ))
-          )}
-        </select>
-        {canEdit ? (
-          <div className="flex shrink-0 flex-wrap gap-2">
-            <Button
-              type="button"
-              variant="outline"
-              disabled={locked}
-              onClick={() => void createTable("party-rates")}
+      {/* بطاقة القسم — رأس فيه اختيار الجدول وأزرار الإنشاء */}
+      <section className={opsLetterCard} aria-busy={loading || busy}>
+        <div className={opsLetterHead}>
+          <div className="flex items-center gap-[11px]">
+            <span className={opsIconBoxGold}>
+              <OpsIcon path={PRICING_ICON} />
+            </span>
+            <div>
+              <div className={opsLetterTitle}>
+                {activeCategory?.label ?? "التسعيرة"}
+              </div>
+              <div className={opsLetterSub}>{activeCategory?.hint}</div>
+            </div>
+          </div>
+          <div className="flex flex-wrap items-center gap-2.5 max-lg:w-full">
+            <label className="sr-only" htmlFor="pricing-table-select">
+              الجدول
+            </label>
+            <select
+              id="pricing-table-select"
+              className="min-h-11 w-full min-w-[210px] flex-1 rounded-[9px] border border-border-md bg-surface px-3 py-[9px] font-[inherit] text-[13px] font-medium text-text outline-none transition-[border-color,box-shadow] focus:border-gold focus:shadow-[0_0_0_3px_color-mix(in_srgb,var(--gold)_20%,transparent)] sm:w-auto"
+              value={selectValue}
+              disabled={
+                loading || busy || tables.length === 0 || !draftMatchesCategory
+              }
+              onChange={(e) => void selectTable(e.target.value)}
             >
-              جدول جديد
-            </Button>
-            {selectedCategory === "field-inspector" && draftMatchesCategory ? (
-              <Button
-                type="button"
-                variant="ghost"
-                disabled={locked}
-                onClick={() => void createTable("flat")}
-              >
-                جدول حوافز
-              </Button>
+              {loading ? (
+                <option value="">
+                  جاري تحميل {activeCategory?.label ?? "الجداول"}…
+                </option>
+              ) : tables.length === 0 ? (
+                <option value="">لا جداول بعد</option>
+              ) : (
+                tables.map((t) => (
+                  <option key={t.id} value={t.id}>
+                    {t.name || "بدون اسم"}
+                    {t.isActive ? " · افتراضي" : ""}
+                    {(t.assignedCount ?? 0) > 0
+                      ? ` · ${t.assignedCount} مسند`
+                      : ""}
+                  </option>
+                ))
+              )}
+            </select>
+            {canEdit ? (
+              <>
+                <button
+                  type="button"
+                  className={opsBtnGhost}
+                  disabled={locked}
+                  onClick={() => void createTable("party-rates")}
+                >
+                  ＋ جدول جديد
+                </button>
+                {selectedCategory === "field-inspector" && draftMatchesCategory ? (
+                  <button
+                    type="button"
+                    className={opsBtnGhost}
+                    disabled={locked}
+                    onClick={() => void createTable("flat")}
+                  >
+                    جدول حوافز
+                  </button>
+                ) : null}
+              </>
             ) : null}
           </div>
-        ) : null}
-      </div>
+        </div>
 
-      {/* 3) مساحة العمل — hold + fade بدل skeleton عند التنقل */}
-      <div
-        className={cn(
-          "relative min-h-[260px] overflow-hidden rounded-xl border border-border bg-surface shadow-sm",
-          "transition-[box-shadow,border-color] duration-300 ease-out",
-          holdingPrevious && "border-border-md shadow-none",
-        )}
-        aria-busy={loading || busy}
-      >
+        <div className="min-h-[220px] px-4 pb-[18px] pt-4 sm:px-[18px]">
         {isInitialLoad ? (
-          <div className="space-y-4 px-6 py-12 sm:px-8 sm:py-14" aria-live="polite">
+          <div className="space-y-4 py-10" aria-live="polite">
             <div className="mx-auto h-3 w-32 animate-pulse rounded bg-surface-2" />
             <div className="mx-auto h-10 max-w-md animate-pulse rounded-lg bg-surface-2" />
             <div className="mx-auto h-10 max-w-md animate-pulse rounded-lg bg-surface-2" />
@@ -661,45 +685,44 @@ export function FinancePartyFeePricing() {
         ) : showEmpty ? (
           <div
             key={`empty-${panelEpoch}`}
-            className="px-6 py-14 text-center animate-[pricing-panel-in_0.28s_ease-out] sm:px-8 sm:py-16"
+            className="py-12 text-center animate-[pricing-panel-in_0.28s_ease-out]"
           >
             <p className="m-0 text-[14px] font-medium text-text">
               لا يوجد جدول في هذه الفئة
             </p>
             {canEdit ? (
-              <Button
+              <button
                 type="button"
-                variant="primary"
-                className="mt-5"
+                className={cn(opsBtnPrimary, "mt-5")}
                 disabled={locked}
                 onClick={() => void createTable("party-rates")}
               >
-                إنشاء أول جدول
-              </Button>
+                ＋ إنشاء أول جدول
+              </button>
             ) : null}
           </div>
         ) : showEditor ? (
           <div
             key={`${draft.id}-${panelEpoch}`}
             className={cn(
-              "divide-y divide-border transition-opacity duration-200 ease-out",
+              "transition-opacity duration-200 ease-out",
               holdingPrevious
                 ? "pointer-events-none select-none opacity-45"
                 : "animate-[pricing-panel-in_0.28s_ease-out] opacity-100",
             )}
           >
             {/* هوية الجدول */}
-            <div className="space-y-5 px-5 py-6 sm:px-7 sm:py-7">
-              <FormGroup>
-                <Label
-                  htmlFor="pricing-name"
-                  className="mb-2 text-[12px] font-semibold text-text-2"
-                >
+            <div className="space-y-5">
+              <div className="flex min-w-0 flex-col gap-1.5">
+                <label htmlFor="pricing-name" className={opsTfLbl}>
                   اسم الجدول
-                </Label>
-                <Input
+                </label>
+                <input
                   id="pricing-name"
-                  className="text-[15px]"
+                  className={cn(
+                    opsFldControl,
+                    "text-[15px] disabled:cursor-not-allowed disabled:opacity-60",
+                  )}
                   value={draft.name}
                   readOnly={locked}
                   disabled={locked}
@@ -707,19 +730,17 @@ export function FinancePartyFeePricing() {
                     setDraft((d) => ({ ...d, name: e.target.value }))
                   }
                 />
-              </FormGroup>
+              </div>
 
               <div className="flex flex-wrap items-center gap-2.5">
                 {draft.isActive ? (
-                  <span className="rounded-md bg-success-bg px-3 py-1.5 text-[11px] font-semibold text-success">
-                    الافتراضي للفئة
-                  </span>
+                  <span className={opsPpBadge}>★ الافتراضي للفئة</span>
                 ) : canEdit ? (
                   <button
                     type="button"
                     disabled={locked}
                     onClick={() => void activate()}
-                    className="rounded-md border border-border px-3 py-1.5 text-[11px] font-semibold text-text-2 hover:bg-surface-2 disabled:opacity-50"
+                    className="inline-flex cursor-pointer items-center gap-1.5 rounded-[9px] border border-border-md bg-surface px-3.5 py-2 font-[inherit] text-[12.5px] font-semibold text-text-2 transition-colors enabled:hover:bg-row-hover disabled:cursor-not-allowed disabled:opacity-50"
                   >
                     اجعله الافتراضي
                   </button>
@@ -730,7 +751,7 @@ export function FinancePartyFeePricing() {
                     type="button"
                     disabled={locked}
                     onClick={openAssign}
-                    className="rounded-md border border-border px-3 py-1.5 text-[11px] font-semibold text-text-2 hover:bg-surface-2 disabled:opacity-50"
+                    className="inline-flex cursor-pointer items-center gap-1.5 rounded-[9px] border border-border-md bg-surface px-3.5 py-2 font-[inherit] text-[12.5px] font-semibold text-text-2 transition-colors enabled:hover:bg-row-hover disabled:cursor-not-allowed disabled:opacity-50"
                   >
                     من يخصّه الجدول
                     {hasAssignments ? ` (${draft.assignedCount})` : ""}
@@ -744,7 +765,7 @@ export function FinancePartyFeePricing() {
                       locked || tables.length <= 1 || hasAssignments
                     }
                     onClick={() => void removeTable()}
-                    className="ms-auto rounded-md px-3 py-1.5 text-[11px] font-semibold text-danger-text hover:bg-danger-bg disabled:cursor-not-allowed disabled:opacity-40"
+                    className="ms-auto inline-flex cursor-pointer items-center rounded-[9px] border border-transparent bg-transparent px-3.5 py-2 font-[inherit] text-[12.5px] font-semibold text-[#d9694f] transition-colors enabled:hover:bg-danger-bg disabled:cursor-not-allowed disabled:opacity-40"
                   >
                     حذف الجدول
                   </button>
@@ -752,14 +773,14 @@ export function FinancePartyFeePricing() {
               </div>
 
               {assignedNames.length > 0 ? (
-                <p className="m-0 rounded-lg bg-surface-2/80 px-3.5 py-2.5 text-[12px] leading-relaxed text-text-2">
+                <p className={cn(opsTfNote, "m-0")}>
                   مسند إلى:{" "}
-                  <span className="font-semibold text-text">
+                  <span className="font-semibold text-heading">
                     {assignedNames.map((p) => p.name).join("، ")}
                   </span>
                 </p>
               ) : contentCategory === "engineering-survey" ? (
-                <p className="m-0 rounded-lg bg-amber/10 px-3.5 py-2.5 text-[12px] leading-relaxed text-amber">
+                <p className="m-0 rounded-[10px] border border-dashed border-amber/50 bg-amber/10 px-3.5 py-3 text-[12.5px] leading-relaxed text-amber">
                   لم يُسند لأي مكتب — لن يُستخدم حتى تسنده من «من يخصّه الجدول».
                 </p>
               ) : (
@@ -770,12 +791,12 @@ export function FinancePartyFeePricing() {
             </div>
 
             {/* الأسعار */}
-            <div className="space-y-5 px-5 py-6 sm:px-7 sm:py-7">
+            <div className="mt-6 space-y-5 border-t border-border pt-6">
               {hasAssignments ? (
-                <p className="m-0 rounded-lg bg-surface-2 px-3.5 py-3 text-[12px] leading-relaxed text-text-2">
+                <p className={cn(opsTfNote, "m-0")}>
                   مرتبط بمستحقين: الحفظ ينشئ{" "}
-                  <strong className="font-semibold">نسخة جديدة</strong> وينقل
-                  الإسناد إليها (بدون كسر الأرقام السابقة).
+                  <strong className="font-semibold text-heading">نسخة جديدة</strong>{" "}
+                  وينقل الإسناد إليها (بدون كسر الأرقام السابقة).
                 </p>
               ) : null}
 
@@ -783,7 +804,7 @@ export function FinancePartyFeePricing() {
                 <>
                   <div className="space-y-1.5">
                     <div className="flex items-center justify-between gap-3">
-                      <h2 className="m-0 text-[14px] font-bold text-heading">
+                      <h2 className="m-0 text-[13.5px] font-extrabold text-heading">
                         شرائح المساحة
                       </h2>
                       {canEdit ? (
@@ -791,13 +812,13 @@ export function FinancePartyFeePricing() {
                           type="button"
                           disabled={locked}
                           onClick={addTier}
-                          className="text-[12px] font-semibold text-primary hover:underline disabled:opacity-50"
+                          className="inline-flex cursor-pointer items-center gap-1.5 rounded-[9px] border border-border-md bg-surface px-3.5 py-2 font-[inherit] text-[12.5px] font-semibold text-text-2 transition-colors enabled:hover:bg-row-hover disabled:cursor-not-allowed disabled:opacity-50"
                         >
-                          + شريحة
+                          ＋ شريحة
                         </button>
                       ) : null}
                     </div>
-                    <p className="m-0 text-[12px] leading-relaxed text-text-3">
+                    <p className="m-0 text-[11.5px] leading-relaxed text-text-3">
                       من / حتى بالمتر، والسعر بالريال. الأخير = فأكثر.
                     </p>
                   </div>
@@ -808,10 +829,10 @@ export function FinancePartyFeePricing() {
                       return (
                         <div
                           key={`${tier.sortOrder}-${index}`}
-                          className="grid grid-cols-[1fr_1fr_1fr_auto] items-end gap-2.5 rounded-lg border border-border bg-bg/40 px-3.5 py-3.5 sm:gap-3.5 sm:px-4"
+                          className="grid grid-cols-[1fr_1fr_1fr_auto] items-end gap-2.5 rounded-[10px] border border-border bg-surface px-3.5 py-3.5 sm:gap-3.5 sm:px-4"
                         >
                           <div>
-                            <span className="mb-1.5 block text-[10px] font-semibold uppercase tracking-wide text-text-3">
+                            <span className={cn(opsTfLbl, "mb-1.5")}>
                               من
                             </span>
                             <MoneyInput
@@ -822,7 +843,7 @@ export function FinancePartyFeePricing() {
                             />
                           </div>
                           <div>
-                            <span className="mb-1.5 block text-[10px] font-semibold uppercase tracking-wide text-text-3">
+                            <span className={cn(opsTfLbl, "mb-1.5")}>
                               حتى
                             </span>
                             {isLast ? (
@@ -841,7 +862,7 @@ export function FinancePartyFeePricing() {
                             )}
                           </div>
                           <div>
-                            <span className="mb-1.5 block text-[10px] font-semibold uppercase tracking-wide text-text-3">
+                            <span className={cn(opsTfLbl, "mb-1.5")}>
                               أتعاب
                             </span>
                             <MoneyInput
@@ -880,21 +901,18 @@ export function FinancePartyFeePricing() {
               {contentCategory === "court-visit" ? (
                 <div className="space-y-4">
                   <div className="space-y-1.5">
-                    <h2 className="m-0 text-[14px] font-bold text-heading">
+                    <h2 className="m-0 text-[13.5px] font-extrabold text-heading">
                       أتعاب زيارة المحكمة
                     </h2>
-                    <p className="m-0 max-w-xl text-[12px] leading-relaxed text-text-3">
+                    <p className="m-0 max-w-xl text-[11.5px] leading-relaxed text-text-3">
                       للمراجع المتعاون عند إكمال الزيارة. الموظف بلا أتعاب زيارة
                       هنا.
                     </p>
                   </div>
                   <FormGroup className="max-w-sm">
-                    <Label
-                      htmlFor="fee-court-visit"
-                      className="mb-2 text-[12px] font-semibold text-text-2"
-                    >
+                    <label htmlFor="fee-court-visit" className={opsTfLbl}>
                       المبلغ (ر.س)
-                    </Label>
+                    </label>
                     <MoneyInput
                       id="fee-court-visit"
                       value={draft.courtVisitFeeSar}
@@ -910,16 +928,13 @@ export function FinancePartyFeePricing() {
               {contentCategory === "field-inspector" &&
               draft.pricingKind === "flat" ? (
                 <div className="space-y-4">
-                  <h2 className="m-0 text-[14px] font-bold text-heading">
+                  <h2 className="m-0 text-[13.5px] font-extrabold text-heading">
                     حافز موظف (مقطوع)
                   </h2>
                   <FormGroup className="max-w-sm">
-                    <Label
-                      htmlFor="fee-flat"
-                      className="mb-2 text-[12px] font-semibold text-text-2"
-                    >
+                    <label htmlFor="fee-flat" className={opsTfLbl}>
                       المبلغ (ر.س)
-                    </Label>
+                    </label>
                     <MoneyInput
                       id="fee-flat"
                       value={draft.flatAmountSar ?? 0}
@@ -935,17 +950,14 @@ export function FinancePartyFeePricing() {
               {contentCategory === "field-inspector" &&
               draft.pricingKind !== "flat" ? (
                 <div className="space-y-4">
-                  <h2 className="m-0 text-[14px] font-bold text-heading">
+                  <h2 className="m-0 text-[13.5px] font-extrabold text-heading">
                     أتعاب المعاين
                   </h2>
                   <div className="grid max-w-lg grid-cols-1 gap-5 sm:grid-cols-2 sm:gap-6">
                     <FormGroup>
-                      <Label
-                        htmlFor="fee-insp-ind"
-                        className="mb-2 text-[12px] font-semibold text-text-2"
-                      >
+                      <label htmlFor="fee-insp-ind" className={opsTfLbl}>
                         متعاون فرد (ر.س)
-                      </Label>
+                      </label>
                       <MoneyInput
                         id="fee-insp-ind"
                         value={draft.fieldInspectorIndividualFeeSar}
@@ -959,12 +971,9 @@ export function FinancePartyFeePricing() {
                       />
                     </FormGroup>
                     <FormGroup>
-                      <Label
-                        htmlFor="fee-insp-org"
-                        className="mb-2 text-[12px] font-semibold text-text-2"
-                      >
+                      <label htmlFor="fee-insp-org" className={opsTfLbl}>
                         منشأة (ر.س)
-                      </Label>
+                      </label>
                       <MoneyInput
                         id="fee-insp-org"
                         value={draft.fieldInspectorOrganizationFeeSar}
@@ -984,30 +993,30 @@ export function FinancePartyFeePricing() {
 
             {/* حفظ واضح */}
             {canEdit ? (
-              <div className="flex flex-col-reverse gap-3.5 border-t border-border bg-surface-2/70 px-5 py-5 sm:flex-row sm:items-center sm:justify-between sm:gap-4 sm:px-7 sm:py-5">
-                <p className="m-0 text-[12px] leading-relaxed text-text-3 sm:max-w-[55%]">
-                  {
-                    CATEGORIES.find((c) => c.id === contentCategory)?.hint ??
-                    activeCategory?.hint
-                  }
-                </p>
-                <Button
+              <div className={opsTfActions}>
+                <button
                   type="button"
-                  variant="primary"
-                  size="lg"
-                  loading={saving}
+                  className={opsBtnPrimary}
                   disabled={locked || !draft.id}
-                  showActionToast={false}
-                  className="w-full shrink-0 sm:w-auto sm:min-w-[10.5rem]"
+                  aria-busy={saving || undefined}
+                  data-no-action-toast
                   onClick={() => void save()}
                 >
-                  {hasAssignments ? "حفظ كنسخة جديدة" : "حفظ"}
-                </Button>
+                  {saving ? <Spinner /> : null}
+                  <span>
+                    {saving
+                      ? "جاري الحفظ…"
+                      : hasAssignments
+                        ? "✓ حفظ كنسخة جديدة"
+                        : "✓ حفظ"}
+                  </span>
+                </button>
               </div>
             ) : null}
           </div>
         ) : null}
-      </div>
+        </div>
+      </section>
 
       {assignOpen ? (
         <ModalOverlay role="presentation" onClick={() => setAssignOpen(false)}>
@@ -1043,13 +1052,13 @@ export function FinancePartyFeePricing() {
                       className={cn(
                         "flex cursor-pointer items-center gap-3 rounded-lg border px-3 py-3 transition-colors",
                         checked
-                          ? "border-heading/30 bg-heading/5"
+                          ? "border-gold-2 bg-gold-soft"
                           : "border-border hover:bg-surface-2",
                       )}
                     >
                       <input
                         type="checkbox"
-                        className="size-4"
+                        className="size-4 accent-gold-d"
                         checked={checked}
                         onChange={() => toggleAssignee(party.id)}
                       />

@@ -3,11 +3,28 @@
 import { useCallback, useEffect, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { usePrototype } from "@platform/app-shared/contexts/PrototypeContext";
-import { RegField, RegSelect } from "@platform/app-shared/registration/FormFields";
-import { Button, cn, InlineLoadingSkeleton, pageGutterClassName, PageShell, PageShellHeader, PageGutter, useToast } from "@platform/design-system";
+import { cn, InlineLoadingSkeleton, PageShell, Spinner, useToast } from "@platform/design-system";
 import { prototypeKeys } from "@platform/app-shared/query/prototype-keys";
 import { isSuperAdmin } from "@platform/app-shared/prototype/prototype-role-access";
 import type { RoleId } from "@platform/types";
+import {
+  opsBtnGhost,
+  opsBtnPrimary,
+  opsEmptyHint,
+  opsFld,
+  opsFldControl,
+  opsFldFull,
+  opsFormGrid,
+  opsIconBoxGold,
+  opsLetterCard,
+  opsLetterHead,
+  opsLetterSub,
+  opsLetterTitle,
+  opsPpBadge,
+  opsTfActions,
+  opsTfLbl,
+  opsTfNote,
+} from "@case-study/mfe/lib/prototype/ops-tasks-tw";
 import {
   addFailureProblemType,
   removeFailureProblemType,
@@ -19,8 +36,27 @@ function canManageFailureTypes(role: RoleId): boolean {
   return isSuperAdmin(role) || role === "section-supervisor";
 }
 
-const noteBase =
-  "mb-3 rounded-[var(--radius-DEFAULT)] border border-e-[3px] px-3.5 py-2.5 text-xs leading-relaxed";
+const FOLDER_ICON =
+  "M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z";
+const PLUS_ICON = "M12 5v14M5 12h14";
+
+function OpsIcon({ path, size = 20 }: { path: string; size?: number }) {
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.8"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden
+    >
+      <path d={path} />
+    </svg>
+  );
+}
 
 export function FailureTypesView() {
   const queryClient = useQueryClient();
@@ -104,119 +140,178 @@ export function FailureTypesView() {
   const sortedCategories = [...(catalog?.categories ?? [])].sort(
     (a, b) => a.order - b.order,
   );
+  const problemTypes = catalog?.problemTypes ?? [];
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col overflow-hidden bg-bg">
-      <PageShell className="min-h-0 flex-1">
-        <PageShellHeader title="أنواع التعذرات" />
-        <PageGutter className={cn("pt-4 pb-4", !isFetched && "opacity-55")}>
+    <PageShell
+      variant="canvas"
+      className={cn(
+        "gap-0 p-4 pb-[max(1rem,env(safe-area-inset-bottom))] sm:p-6",
+        !isFetched && "opacity-55",
+      )}
+      dir="rtl"
+    >
       {!isFetched ? <InlineLoadingSkeleton className="mb-3" /> : null}
 
       {!canEdit ? (
-        <div className={cn(noteBase, "border-info bg-info-bg text-info-text")}>
+        <p className={cn(opsTfNote, "m-0 mb-3.5")}>
           وضع الاطلاع — صلاحية التعديل للمشرف ومسؤول النظام.
-        </div>
+        </p>
       ) : null}
 
-      <div className={cn(noteBase, "border-amber bg-amber-light text-amber-text")}>
+      <p className={cn(opsTfNote, "m-0 mb-3.5")}>
         القائمة مبدئية وقابلة للتوسع — تُضاف أنواع جديدة دون الحاجة لتعديل في الكود
         (§4 وثيقة التعذرات).
-      </div>
+      </p>
 
       {canEdit ? (
-        <article className="mb-0 w-full overflow-hidden rounded-none border-none bg-surface shadow-none">
-          <header className="mb-0 flex flex-wrap items-start justify-between gap-3 border-b border-border px-4 py-3.5">
-            <div className="min-w-0 flex-1">
-              <h2 className="m-0 mb-1 text-base font-bold text-text">إضافة نوع تعذر</h2>
+        <section className={cn(opsLetterCard, "mb-3.5")}>
+          <div className={opsLetterHead}>
+            <div className="flex items-center gap-[11px]">
+              <span className={opsIconBoxGold}>
+                <OpsIcon path={PLUS_ICON} />
+              </span>
+              <div>
+                <div className={opsLetterTitle}>إضافة نوع تعذر</div>
+                <div className={opsLetterSub}>
+                  يُضاف النوع الجديد تحت التصنيف المحدد ويظهر فوراً في شاشات رفع التعذر
+                </div>
+              </div>
             </div>
-          </header>
-          <div className="grid gap-3 px-4 pb-3 sm:px-6">
-            <RegSelect
-              id="failure_type_category"
-              label="التصنيف"
-              value={categoryId}
-              onChange={setCategoryId}
-              options={sortedCategories.map((c) => ({
-                value: c.id,
-                label: c.label,
-              }))}
-            />
-            <RegField
-              id="failure_type_label"
-              label="اسم نوع المشكلة"
-              value={label}
-              onChange={setLabel}
-            />
-            <RegField
-              id="failure_type_description"
-              label="وصف (اختياري)"
-              value={description}
-              onChange={setDescription}
-            />
           </div>
-          <div className="flex flex-wrap gap-2 px-4 pb-4 sm:px-6">
-            <Button type="button" variant="primary" size="sm" loading={busy} disabled={busy} onClick={() => void handleAdd()}>
-              إضافة
-            </Button>
-            <Button type="button" size="sm" loading={busy} disabled={busy} onClick={() => void handleReset()}>
-              استعادة القائمة الافتراضية
-            </Button>
+          <div className="px-4 pb-[18px] pt-4 sm:px-[18px]">
+            <div className={opsFormGrid}>
+              <div className={opsFld}>
+                <label htmlFor="failure_type_category" className={opsTfLbl}>
+                  التصنيف
+                </label>
+                <select
+                  id="failure_type_category"
+                  className={opsFldControl}
+                  value={categoryId}
+                  onChange={(e) => setCategoryId(e.target.value)}
+                >
+                  {sortedCategories.map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {c.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div className={opsFld}>
+                <label htmlFor="failure_type_label" className={opsTfLbl}>
+                  اسم نوع المشكلة
+                </label>
+                <input
+                  id="failure_type_label"
+                  className={opsFldControl}
+                  value={label}
+                  onChange={(e) => setLabel(e.target.value)}
+                />
+              </div>
+              <div className={opsFldFull}>
+                <label htmlFor="failure_type_description" className={opsTfLbl}>
+                  وصف (اختياري)
+                </label>
+                <input
+                  id="failure_type_description"
+                  className={opsFldControl}
+                  value={description}
+                  onChange={(e) => setDescription(e.target.value)}
+                />
+              </div>
+            </div>
+            <div className={opsTfActions}>
+              <button
+                type="button"
+                className={opsBtnPrimary}
+                disabled={busy || !categoryId || !label.trim()}
+                aria-busy={busy || undefined}
+                onClick={() => void handleAdd()}
+              >
+                {busy ? <Spinner /> : null}
+                <span>✓ إضافة</span>
+              </button>
+              <button
+                type="button"
+                className={opsBtnGhost}
+                disabled={busy}
+                onClick={() => void handleReset()}
+              >
+                استعادة القائمة الافتراضية
+              </button>
+            </div>
           </div>
-        </article>
+        </section>
       ) : null}
 
-      {sortedCategories.map((category) => {
-        const types = (catalog?.problemTypes ?? [])
-          .filter((t) => t.categoryId === category.id)
-          .sort((a, b) => a.order - b.order);
-        return (
-          <article
-            key={category.id}
-            className="mb-0 w-full overflow-hidden rounded-none border-none bg-surface shadow-none"
-          >
-            <header className="mb-0 flex flex-wrap items-start justify-between gap-3 border-b border-border px-4 py-3.5">
-              <div className="min-w-0 flex-1">
-                <h2 className="m-0 mb-1 text-base font-bold text-text">{category.label}</h2>
+      <div className="flex flex-col gap-3.5">
+        {sortedCategories.map((category) => {
+          const types = problemTypes
+            .filter((t) => t.categoryId === category.id)
+            .sort((a, b) => a.order - b.order);
+          return (
+            <section key={category.id} className={opsLetterCard}>
+              <div className={opsLetterHead}>
+                <div className="flex items-center gap-[11px]">
+                  <span className={opsIconBoxGold}>
+                    <OpsIcon path={FOLDER_ICON} />
+                  </span>
+                  <div>
+                    <div className={opsLetterTitle}>{category.label}</div>
+                    <div className={opsLetterSub}>
+                      {types.length === 0
+                        ? "لا أنواع تحت هذا التصنيف"
+                        : `${types.length} ${types.length === 1 ? "نوع" : "أنواع"}`}
+                    </div>
+                  </div>
+                </div>
+                <span className={opsPpBadge}>{types.length}</span>
               </div>
-            </header>
-            <div className="px-4 py-3 sm:px-6">
-              {types.length === 0 ? (
-                <p className="text-[13px] text-text-3">لا أنواع.</p>
-              ) : (
-                types.map((type) => (
-                  <div
-                    key={type.id}
-                    className="flex items-start justify-between gap-3 border-b border-dashed border-border py-2"
-                  >
-                    <div>
-                      <div className="text-[13px] font-medium">{type.label}</div>
-                      {type.description ? (
-                        <div className="mt-0.5 text-xs text-text-3">
-                          {type.description}
+              <div className="px-4 pb-2 sm:px-[18px]">
+                {types.length === 0 ? (
+                  <p className={opsEmptyHint}>لا أنواع.</p>
+                ) : (
+                  types.map((type) => (
+                    <div
+                      key={type.id}
+                      className="flex items-center justify-between gap-3 border-b border-border py-3 last:border-b-0"
+                    >
+                      <div className="min-w-0">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <span className="text-[13.5px] font-bold text-heading">
+                            {type.label}
+                          </span>
+                          {type.id.startsWith("custom-") ? (
+                            <span className="inline-flex items-center rounded-full bg-gold-soft px-2 py-0.5 text-[10.5px] font-bold text-gold-d">
+                              مخصص
+                            </span>
+                          ) : null}
                         </div>
+                        {type.description ? (
+                          <div className="mt-0.5 text-[11.5px] leading-relaxed text-text-3">
+                            {type.description}
+                          </div>
+                        ) : null}
+                      </div>
+                      {canEdit && type.id.startsWith("custom-") ? (
+                        <button
+                          type="button"
+                          className="inline-flex shrink-0 cursor-pointer items-center gap-1.5 rounded-[9px] border border-border-md bg-surface px-3.5 py-2 font-[inherit] text-[12.5px] font-semibold text-[#d9694f] transition-colors enabled:hover:border-[#d9694f]/40 enabled:hover:bg-danger-bg disabled:cursor-not-allowed disabled:opacity-50"
+                          disabled={busy}
+                          onClick={() => void handleRemove(type.id)}
+                        >
+                          حذف
+                        </button>
                       ) : null}
                     </div>
-                    {canEdit && type.id.startsWith("custom-") ? (
-                      <Button
-                        type="button"
-                        size="sm"
-                        variant="danger"
-                        loading={busy}
-                        disabled={busy}
-                        onClick={() => void handleRemove(type.id)}
-                      >
-                        حذف
-                      </Button>
-                    ) : null}
-                  </div>
-                ))
-              )}
-            </div>
-          </article>
-        );
-      })}
-        </PageGutter>
-      </PageShell>
-    </div>
+                  ))
+                )}
+              </div>
+            </section>
+          );
+        })}
+      </div>
+    </PageShell>
   );
 }
