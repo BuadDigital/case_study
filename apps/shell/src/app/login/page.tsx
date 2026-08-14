@@ -150,10 +150,10 @@ export default function LoginPage() {
     });
   }, [router]);
 
-  useEffect(() => {
-    const timer = window.setTimeout(() => router.prefetch("/po"), 2000);
-    return () => window.clearTimeout(timer);
-  }, [router]);
+  // Do NOT prefetch protected routes here: on the login page there is no
+  // ree-auth cookie yet, so the middleware answers the prefetch with a
+  // redirect to /login?from=... and Next caches it — after login, clicking
+  // that nav item then replays the cached redirect back to the login page.
 
   useEffect(() => {
     if (resendLeft <= 0) return;
