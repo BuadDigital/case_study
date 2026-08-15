@@ -158,9 +158,11 @@ jobs:
     if: github.event_name != 'pull_request' && github.event_name != 'schedule'
     runs-on: ubuntu-latest
     needs: [frontend, test]
-    # A newer commit makes these images pointless; drop them and let the new run build.
+    # Per-image group: a newer push cancels only the matching image build from the
+    # previous run. A shared group with cancel-in-progress would cancel sibling
+    # matrix jobs in the same run (one starts → the rest get cancelled).
     concurrency:
-      group: build-${{ github.ref }}
+      group: build-${{ github.ref }}-${{ matrix.name }}
       cancel-in-progress: true
     permissions:
       contents: read
