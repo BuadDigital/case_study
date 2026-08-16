@@ -203,6 +203,32 @@ chmod 600 /app/.env
 
 القالب المرجعي: `infra/production.env.example`.
 
+### تفعيل إشعارات Push (اختياري)
+
+الافتراضي في الإنتاج: **مطفأ**. بعد ما الموقع على HTTPS، ولّد مفاتيح VAPID مرة واحدة:
+
+```sh
+npx --yes web-push generate-vapid-keys
+```
+
+**الطريقة المفضّلة (CI):** خزّن القيم كـ GitHub Secrets على المستودع:
+
+- `WEB_PUSH_ENABLED=true`
+- `WEB_PUSH_PUBLIC_KEY`
+- `WEB_PUSH_PRIVATE_KEY`
+- `WEB_PUSH_SUBJECT` (مثلاً `mailto:ops@your-domain.com`)
+
+نشر `main` يكتبها إلى `/app/.env` ويعيد تشغيل الـ stack عبر `docker-compose.prod.yml`.
+
+**يدوياً على السيرفر:** أضف نفس المتغيرات إلى `/app/.env` ثم:
+
+```sh
+cd /app
+docker compose -f docker-compose.prod.yml up -d platform
+```
+
+بدون هذي القيم تظهر في البروفايل: «إشعارات Push غير مفعّلة على الخادم حالياً».
+
 ---
 
 ## 4. مفتاح SSH للنشر
