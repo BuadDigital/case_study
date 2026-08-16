@@ -29,6 +29,9 @@ public class CaseStudyFormDto
     public string InfathLinkedAssetsNotes { get; set; } = "";
     public string InfathOtherNotes { get; set; } = "";
     public string InfathClosingNotes { get; set; } = "";
+    /// <summary>matched | differences | impediment | "" — calc/issuance gate for traditional deeds.</summary>
+    public string DeedNatureMatchOutcome { get; set; } = "";
+    public string DeedNatureMatchNotes { get; set; } = "";
     public string? SavedAtUtc { get; set; }
 }
 

@@ -24,6 +24,10 @@ public sealed class PlatformDbContext(DbContextOptions<PlatformDbContext> option
     public DbSet<City> Cities => Set<City>();
     public DbSet<District> Districts => Set<District>();
     public DbSet<FieldDictionaryConfig> FieldDictionaryConfigs => Set<FieldDictionaryConfig>();
+    public DbSet<AttachmentPrintDictionaryConfig> AttachmentPrintDictionaryConfigs =>
+        Set<AttachmentPrintDictionaryConfig>();
+    public DbSet<DifferenceFactorCatalogConfig> DifferenceFactorCatalogConfigs =>
+        Set<DifferenceFactorCatalogConfig>();
     public DbSet<CaseStudyInfoRolesConfig> CaseStudyInfoRolesConfigs => Set<CaseStudyInfoRolesConfig>();
     public DbSet<OrganizationSettings> OrganizationSettings => Set<OrganizationSettings>();
     public DbSet<FieldSyncStatus> FieldSyncStatuses => Set<FieldSyncStatus>();

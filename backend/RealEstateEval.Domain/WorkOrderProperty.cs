@@ -5,53 +5,71 @@ public class WorkOrderProperty
     public Guid Id { get; set; }
     public Guid WorkOrderId { get; set; }
     public PropertyIdentifierType IdentifierType { get; set; }
+    /// <summary>Deed kind — traditional / registered title.</summary>
+    public DeedKind DeedKind { get; set; } = DeedKind.Traditional;
     public string DeedNumber { get; set; } = "";
-    /// <summary>رقم الطلب (كان سابقاً رقم المهمة).</summary>
+    /// <summary>Request number (formerly task number).</summary>
     public string? RequestNumber { get; set; }
-    /// <summary>false = لا يوجد رقم طلب ويمكن تجاوز الحقل.</summary>
+    /// <summary>false = no request number; field may be skipped.</summary>
     public bool HasRequestNumber { get; set; } = true;
-    /// <summary>رقم التكليف — بيانات أولية إلزامية.</summary>
+    /// <summary>Assignment mandate number — required initial data.</summary>
     public string? AssignmentMandateNumber { get; set; }
-    /// <summary>تاريخ التكليف — بيانات أولية إلزامية (yyyy-MM-dd).</summary>
+    /// <summary>Assignment mandate date — required initial data (yyyy-MM-dd).</summary>
     public string? AssignmentMandateDate { get; set; }
     public string? DeedDate { get; set; }
-    /// <summary>رقم التسجيل العيني — مسار السجل العقاري.</summary>
+    /// <summary>Real-estate registration number — registered-title path.</summary>
     public string? RealEstateRegNumber { get; set; }
-    /// <summary>تاريخ التسجيل العيني — مسار السجل العقاري (yyyy-MM-dd).</summary>
+    /// <summary>Real-estate registration date — registered-title path (yyyy-MM-dd).</summary>
     public string? RealEstateRegDate { get; set; }
     public string? OwnerName { get; set; }
-    /// <summary>yes / no — القيود على العقار (مرحلة البورصة).</summary>
+    /// <summary>JSON array of {name, sharePct} — الملاك وحصصهم from the deed transcription (§4ج-7).</summary>
+    public string? DeedOwnersJson { get; set; }
+    /// <summary>Manual نوع الملكية override — see <see cref="OwnershipTypes"/>. Null = derived.</summary>
+    public string? OwnershipType { get; set; }
+    /// <summary>True when the valuer overrode the derived ownership type (e.g. استثمار).</summary>
+    public bool OwnershipTypeIsManual { get; set; }
+    /// <summary>yes / no — property restrictions (bourse stage).</summary>
     public string? RestrictionsPresent { get; set; }
-    /// <summary>mortgaged / seized / suspended / other — يمكن عدة أنواع مفصولة بفاصلة.</summary>
+    /// <summary>mortgaged / seized / suspended / other — comma-separated when multiple.</summary>
     public string? RestrictionType { get; set; }
-    /// <summary>سبب القيد عند اختيار «أخرى».</summary>
+    /// <summary>Restriction reason when type includes other.</summary>
     public string? RestrictionOtherReason { get; set; }
     /// <summary>deed / bourse / doc / no</summary>
     public string? BoundariesAvailability { get; set; }
     public string? BoundariesExternalDocName { get; set; }
     public string? NorthBoundary { get; set; }
     public string? NorthBoundaryLengthM { get; set; }
+    /// <summary>street | plot | passage | rail — injection map §5.3.</summary>
+    public string? NorthBoundaryType { get; set; }
+    /// <summary>Facade finishing material — north.</summary>
+    public string? NorthFacadeFinishing { get; set; }
     public string? SouthBoundary { get; set; }
     public string? SouthBoundaryLengthM { get; set; }
+    public string? SouthBoundaryType { get; set; }
+    public string? SouthFacadeFinishing { get; set; }
     public string? EastBoundary { get; set; }
     public string? EastBoundaryLengthM { get; set; }
+    public string? EastBoundaryType { get; set; }
+    public string? EastFacadeFinishing { get; set; }
     public string? WestBoundary { get; set; }
     public string? WestBoundaryLengthM { get; set; }
+    public string? WestBoundaryType { get; set; }
+    public string? WestFacadeFinishing { get; set; }
     public string City { get; set; } = "";
-    /// <summary>اسم المنطقة (لقطة من دليل المناطق).</summary>
+    /// <summary>Region name (snapshot from region catalog).</summary>
     public string? Region { get; set; }
     public string District { get; set; } = "";
     public string? DeedStatus { get; set; }
     public string? Area { get; set; }
     public string? Court { get; set; }
     public string? Circuit { get; set; }
-    /// <summary>مرجع محكمة الدليل (اختياري؛ الاسم يُنسخ في Court).</summary>
+    /// <summary>Court catalog ref (optional; name copied into Court).</summary>
     public Guid? CourtId { get; set; }
-    /// <summary>مرجع دائرة الدليل (اختياري؛ الرقم يُنسخ في Circuit).</summary>
+    /// <summary>Circuit catalog ref (optional; number copied into Circuit).</summary>
     public Guid? CircuitId { get; set; }
-    /// <summary>مرجع منطقة الدليل.</summary>
+    /// <summary>Region catalog ref.</summary>
     public Guid? RegionId { get; set; }
-    /// <summary>مرجع مدينة الدليل.</summary>
+    /// <summary>City catalog ref.</summary>
     public Guid? CityId { get; set; }
     public string Classification { get; set; } = "";
     public string PropertyType { get; set; } = "";
@@ -60,27 +78,40 @@ public class WorkOrderProperty
     /// <summary>JSON array of filenames.</summary>
     public string? OtherDocumentFileNames { get; set; }
     public string? RealEstateRegFileName { get; set; }
-    /// <summary>صورة وثيقة التملك (الصك) — مرفق البيانات الأولية.</summary>
+    /// <summary>Ownership deed image — initial-data attachment.</summary>
     public string? DeedOwnershipFileName { get; set; }
-    /// <summary>صورة الصك من البورصة — مرفق استعلام البورصة.</summary>
+    /// <summary>Deed image from bourse — bourse-inquiry attachment.</summary>
     public string? BourseDeedImageFileName { get; set; }
     public bool BourseDataCompleted { get; set; }
     public DateTime? BourseCompletedAtUtc { get; set; }
-    /// <summary>رقم المخطط — بيانات أولية.</summary>
+    /// <summary>Plan number — initial data.</summary>
     public string? PlanNumber { get; set; }
-    /// <summary>رقم القطعة — بيانات أولية.</summary>
+    /// <summary>Plan name — seed field property_plan_name.</summary>
+    public string? PlanName { get; set; }
+    /// <summary>Plot number — initial data.</summary>
     public string? PlotNumber { get; set; }
-    /// <summary>رابط خريطة الموقع — يُدخَل مع البيانات الأولية (عشوائي بدون مخطط/قطعة).</summary>
+    /// <summary>Block number — seed field property_block_number.</summary>
+    public string? BlockNumber { get; set; }
+    /// <summary>Site map URL — initial data (ad-hoc when no plan/plot).</summary>
     public string? LocationMapUrl { get; set; }
 
-    /// <summary>حذف ناعم من طوابير المعاملات — يبقى ظاهراً في قائمة عقارات أمر العمل.</summary>
+    /// <summary>Finishing level: luxury | medium | ordinary | none.</summary>
+    public string? FinishingType { get; set; }
+    /// <summary>Structural system: concrete | metal | mixed | other.</summary>
+    public string? FinishingStructure { get; set; }
+
+    /// <summary>Are there buildings/structures to value? yes | no | ""</summary>
+    public string HasStructuresToValue { get; set; } = "";
+
+    /// <summary>Soft-removed from transaction queues; still listed on the work-order property list.</summary>
     public bool IsRemoved { get; set; }
 
-    /// <summary>سبب الحذف — يُعرض في قائمة العقارات.</summary>
+    /// <summary>Removal reason — shown on the property list.</summary>
     public string? RemovalReason { get; set; }
 
     public DateTime? RemovedAtUtc { get; set; }
 
     public WorkOrder? WorkOrder { get; set; }
     public ICollection<PropertyContact> Contacts { get; set; } = [];
+    public ICollection<BuildingInventoryLine> BuildingInventoryLines { get; set; } = [];
 }

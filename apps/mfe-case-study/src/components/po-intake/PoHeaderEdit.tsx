@@ -1,13 +1,13 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   formatDateAr,
   type AssignmentType,
   type PoIntakeRecord,
 } from "../../lib/prototype/po-intake-data";
 import { updatePoRecord } from "../../lib/prototype/po-intake-storage";
-import { RegField, RegTextarea } from "@platform/app-shared/registration/FormFields";
+import { RegField, RegSelect, RegTextarea } from "@platform/app-shared/registration/FormFields";
 import { RegistrationFormCard } from "@platform/app-shared/registration/RegistrationFormCard";
 import {
   collectRequiredErrors,
@@ -21,6 +21,8 @@ import {
   scheduleScrollToFirstPoHeaderError,
 } from "../../lib/domain/po-intake/po-field-error-targets";
 import { Label, Note } from "@platform/design-system";
+import { listClients, type ClientDto } from "@platform/api-client";
+import { workOrdersApiConfig } from "../../lib/work-orders-api-config";
 import { AssignmentTypeFields } from "./AssignmentTypeFields";
 import { PoEditShell } from "./PoEditShell";
 
@@ -80,9 +82,28 @@ export function PoHeaderEdit({
   const [workOrderDescription, setWorkOrderDescription] = useState(
     record.workOrderDescription ?? "",
   );
+  const [clientId, setClientId] = useState(record.clientId ?? "");
+  const [reportUserClientIds, setReportUserClientIds] = useState<string[]>(
+    record.reportUserClientIds ?? [],
+  );
+  const [clients, setClients] = useState<ClientDto[]>([]);
+  const [clientsLoading, setClientsLoading] = useState(true);
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
   const [formError, setFormError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    const config = workOrdersApiConfig();
+    if (!config) {
+      setClientsLoading(false);
+      return;
+    }
+    void listClients(config, true).then((res) => {
+      setClientsLoading(false);
+      if (!res.ok) return;
+      setClients(res.data);
+    });
+  }, []);
 
   const receivedDisplay = useMemo(
     () => formatDateAr(record.receivedFromEnfathAt),
@@ -99,6 +120,8 @@ export function PoHeaderEdit({
     assignmentSpecialist.trim() !== record.assignmentSpecialist ||
     assignmentSpecialistEmail.trim() !== record.assignmentSpecialistEmail ||
     workOrderDescription.trim() !== (record.workOrderDescription ?? "").trim() ||
+    clientId !== (record.clientId ?? "") ||
+    reportUserClientIds.join(",") !== (record.reportUserClientIds ?? []).join(",") ||
     Math.max(1, parseInt(expectedPropertyCount, 10) || 1) !==
       (record.expectedPropertyCount ?? 1);
 
@@ -108,8 +131,9 @@ export function PoHeaderEdit({
         {
           assignmentType,
           promulgationDate,
+          clientId,
         },
-        ["assignmentType", "promulgationDate"],
+        ["assignmentType", "promulgationDate", "clientId"],
       ),
     );
     if (
@@ -133,6 +157,7 @@ export function PoHeaderEdit({
     setFormError(null);
     setFieldErrors({});
 
+    const clientNameAr = clients.find((c) => c.id === clientId)?.nameAr;
     const next: PoIntakeRecord = {
       ...record,
       assignmentType: assignmentType as AssignmentType,
@@ -141,6 +166,9 @@ export function PoHeaderEdit({
       assignmentSpecialistEmail: assignmentSpecialistEmail.trim(),
       expectedPropertyCount: Math.max(1, count || 1),
       workOrderDescription: workOrderDescription.trim(),
+      clientId: clientId.trim(),
+      reportUserClientIds,
+      clientNameAr,
     };
 
     const result = await updatePoRecord(next);
@@ -184,6 +212,57 @@ export function PoHeaderEdit({
             error={fieldErrors.promulgationDate}
             onChange={setPromulgationDate}
           />
+          <RegSelect
+            id="po_client_edit"
+            label="العميل"
+            required
+            value={clientId}
+            error={fieldErrors.clientId}
+            disabled={clientsLoading}
+            placeholder={clientsLoading ? "جاري التحميل…" : "اختر العميل"}
+            options={clients
+              .filter((c) => c.isActive || c.id === clientId)
+              .map((c) => ({
+                value: c.id,
+                label: c.isActive ? c.nameAr : `${c.nameAr} (معطّل)`,
+              }))}
+            onChange={setClientId}
+          />
+          <div>
+            <p className="mb-1 text-[11px] font-semibold text-text-2">
+              مستخدمو التقرير (0..ن) — من سجل العملاء (§4ج-1)
+            </p>
+            <div className="flex max-h-32 flex-col gap-1 overflow-y-auto rounded-lg border border-border-md bg-surface px-2 py-1.5">
+              {clients
+                .filter((c) => c.isActive || reportUserClientIds.includes(c.id))
+                .map((c) => (
+                  <label
+                    key={c.id}
+                    className="flex items-center gap-1.5 text-[12px] text-text-2"
+                  >
+                    <input
+                      type="checkbox"
+                      checked={reportUserClientIds.includes(c.id)}
+                      onChange={(e) =>
+                        setReportUserClientIds((prev) =>
+                          e.target.checked
+                            ? [...prev, c.id]
+                            : prev.filter((id) => id !== c.id),
+                        )
+                      }
+                    />
+                    {c.nameAr}
+                    {c.id === clientId ? " (العميل نفسه)" : ""}
+                  </label>
+                ))}
+              {clients.length === 0 && !clientsLoading ? (
+                <span className="text-[11px] text-text-3">لا عملاء مسجلين</span>
+              ) : null}
+            </div>
+            <p className="mt-1 text-[10.5px] text-text-3">
+              بلا اختيار: التقرير للعميل وحده — وتشتق جملة حصر الاستخدام تلقائيًا.
+            </p>
+          </div>
           <AssignmentTypeFields
             value={assignmentType}
             error={fieldErrors.assignmentType}

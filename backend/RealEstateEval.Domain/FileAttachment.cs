@@ -13,4 +13,10 @@ public class FileAttachment
     public long SizeBytes { get; set; }
     public string UploadedByUserId { get; set; } = "";
     public DateTime CreatedAtUtc { get; set; }
+
+    /// <summary>Key from attachment print dictionary; empty = library-only.</summary>
+    public string DictionaryTypeKey { get; set; } = "";
+
+    /// <summary>Print in report — requires a dictionary type.</summary>
+    public bool PrintInReport { get; set; }
 }

@@ -99,6 +99,9 @@ public class WorkOrderService : IWorkOrderService
         var headerErrors = WorkOrderValidator.ValidateHeader(request);
         if (headerErrors.Count > 0) return (null, headerErrors);
 
+        var clientError = await RequireActiveClientAsync(request.ClientId, cancellationToken);
+        if (clientError is not null) return (null, clientError);
+
         var po = IWorkOrderLoader.NormalizePo(request.PoNumber);
         if (await ExistsAsync(po, cancellationToken))
             return (null, new Dictionary<string, string> { ["poNumber"] = "رقم PO مسجّل مسبقاً" });
@@ -143,6 +146,8 @@ public class WorkOrderService : IWorkOrderService
             ExpectedPropertyCount = request.ExpectedPropertyCount,
             PropertiesRegion = IWorkOrderLoader.NormalizeOptionalText(request.PropertiesRegion),
             WorkOrderDescription = IWorkOrderLoader.NormalizeOptionalText(request.WorkOrderDescription),
+            ClientId = request.ClientId,
+            ReportUserClientIdsJson = WorkOrderReportUsers.Serialize(request.ReportUserClientIds),
             DueDateAt = BusinessDueDateCalculator.Compute(
                 promulgation,
                 request.ReceivedFromEnfathTime,
@@ -207,6 +212,9 @@ public class WorkOrderService : IWorkOrderService
         var errors = WorkOrderValidator.ValidateUpdateHeader(request);
         if (errors.Count > 0) return (null, errors);
 
+        var clientError = await RequireActiveClientAsync(request.ClientId, cancellationToken);
+        if (clientError is not null) return (null, clientError);
+
         if (!AssignmentTypeLabels.TryParseLabel(request.AssignmentType, out var assignmentType))
             return (null, new Dictionary<string, string> { ["assignmentType"] = "نوع الإسناد غير صالح" });
 
@@ -233,6 +241,8 @@ public class WorkOrderService : IWorkOrderService
         entity.ExpectedPropertyCount = request.ExpectedPropertyCount;
         entity.PropertiesRegion = IWorkOrderLoader.NormalizeOptionalText(request.PropertiesRegion);
         entity.WorkOrderDescription = IWorkOrderLoader.NormalizeOptionalText(request.WorkOrderDescription);
+        entity.ClientId = request.ClientId;
+        entity.ReportUserClientIdsJson = WorkOrderReportUsers.Serialize(request.ReportUserClientIds);
         // DueDateAt is the SLA snapshot taken when Enfath first hands us the work order. Editing
         // header facts later must not move the deadline of work that is already in progress.
 
@@ -376,6 +386,21 @@ public class WorkOrderService : IWorkOrderService
         entity.LifecycleStatus = lifecycleStatus;
         await _db.SaveChangesAsync(cancellationToken);
         return (true, null);
+    }
+
+    private async Task<Dictionary<string, string>?> RequireActiveClientAsync(
+        Guid clientId,
+        CancellationToken cancellationToken)
+    {
+        if (clientId == Guid.Empty)
+            return new Dictionary<string, string> { ["clientId"] = "العميل مطلوب" };
+
+        var active = await _db.Clients.AsNoTracking()
+            .AnyAsync(c => c.Id == clientId && c.IsActive, cancellationToken);
+        if (!active)
+            return new Dictionary<string, string> { ["clientId"] = "العميل غير موجود أو غير نشط" };
+
+        return null;
     }
 
     private async Task NotifySpecialistAssignedIfChangedAsync(

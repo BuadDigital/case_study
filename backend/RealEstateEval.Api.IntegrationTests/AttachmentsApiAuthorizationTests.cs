@@ -146,6 +146,17 @@ internal sealed class StubAttachmentService : IAttachmentService
             null));
     }
 
+    public Task<FileAttachmentMetaDto?> GetMetaAsync(
+        Guid id,
+        CancellationToken cancellationToken = default)
+        => Task.FromResult<FileAttachmentMetaDto?>(null);
+
+    public Task<(FileAttachmentMetaDto? Meta, string? Error)> ClassifyAsync(
+        Guid id,
+        ClassifyAttachmentRequest request,
+        CancellationToken cancellationToken = default)
+        => Task.FromResult<(FileAttachmentMetaDto?, string?)>((null, null));
+
     public Task<bool> DeleteAsync(
         Guid id,
         CancellationToken cancellationToken = default)

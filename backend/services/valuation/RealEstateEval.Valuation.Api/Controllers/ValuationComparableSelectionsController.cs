@@ -1,0 +1,123 @@
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
+using RealEstateEval.Application.Abstractions;
+using RealEstateEval.Application.Contracts;
+using RealEstateEval.Shared.Web;
+using RealEstateEval.Shared.Web.Authorization;
+
+namespace RealEstateEval.Valuation.Api.Controllers;
+
+/// <summary>
+/// Select / adopt bank comps + sequential market adjustments / weights (ت-3 / ت-6).
+/// </summary>
+[ApiController]
+[Route("api/valuation-requests/{valuationRequestId:guid}/comparable-selections")]
+[Route("api/valuation-requests/v1/{valuationRequestId:guid}/comparable-selections")]
+[Authorize]
+public class ValuationComparableSelectionsController : ControllerBase
+{
+    private readonly IValuationComparableSelectionService _selections;
+
+    public ValuationComparableSelectionsController(IValuationComparableSelectionService selections) => _selections = selections;
+
+    [HttpGet]
+    [Authorize(Policy = CapabilityPolicyNames.ReadValuationQueue)]
+    public async Task<ActionResult<ValuationComparableSelectionListDto>> List(
+        Guid valuationRequestId,
+        CancellationToken ct)
+    {
+        var dto = await _selections.ListAsync(valuationRequestId, ct);
+        return dto is null ? NotFound() : Ok(dto);
+    }
+
+    [HttpPut]
+    [Authorize(Policy = CapabilityPolicyNames.SubmitValuationReport)]
+    public async Task<ActionResult<ValuationComparableSelectionListDto>> Replace(
+        Guid valuationRequestId,
+        [FromBody] ReplaceValuationComparableSelectionsRequest request,
+        CancellationToken ct)
+    {
+        var (result, errors) = await _selections.ReplaceAsync(
+            valuationRequestId,
+            request,
+            ActorClaims.Id(User),
+            ct);
+        if (errors is not null)
+            return BadRequest(new FieldErrorsResponseDto { Errors = errors });
+        return Ok(result);
+    }
+
+    [HttpPut("{selectionId:guid}/market")]
+    [Authorize(Policy = CapabilityPolicyNames.SubmitValuationReport)]
+    public async Task<ActionResult<ValuationComparableSelectionDto>> SaveMarket(
+        Guid valuationRequestId,
+        Guid selectionId,
+        [FromBody] SaveValuationComparableMarketRequest request,
+        CancellationToken ct)
+    {
+        var (result, errors) = await _selections.SaveMarketAsync(
+            valuationRequestId,
+            selectionId,
+            request,
+            ct);
+        if (errors is not null)
+            return BadRequest(new FieldErrorsResponseDto { Errors = errors });
+        return Ok(result);
+    }
+
+    [HttpPut("~/api/valuation-requests/{valuationRequestId:guid}/market-approach")]
+    [HttpPut("~/api/valuation-requests/v1/{valuationRequestId:guid}/market-approach")]
+    [Authorize(Policy = CapabilityPolicyNames.SubmitValuationReport)]
+    public async Task<ActionResult<ValuationComparableSelectionListDto>> SaveMarketApproach(
+        Guid valuationRequestId,
+        [FromBody] SaveValuationMarketApproachRequest request,
+        CancellationToken ct)
+    {
+        var (result, errors) = await _selections.SaveMarketApproachAsync(
+            valuationRequestId,
+            request,
+            ct);
+        if (errors is not null)
+            return BadRequest(new FieldErrorsResponseDto { Errors = errors });
+        return Ok(result);
+    }
+
+    [HttpPost("{comparablePropertyId:guid}/adopt")]
+    [Authorize(Policy = CapabilityPolicyNames.SubmitValuationReport)]
+    public async Task<ActionResult<ValuationComparableSelectionDto>> SetAdopted(
+        Guid valuationRequestId,
+        Guid comparablePropertyId,
+        [FromBody] AdoptComparableRequest body,
+        CancellationToken ct)
+    {
+        var (result, error) = await _selections.SetAdoptedAsync(
+            valuationRequestId,
+            comparablePropertyId,
+            body.IsAdopted,
+            ActorClaims.Id(User),
+            ct);
+        if (error is not null)
+            return BadRequest(new { message = error });
+        return Ok(result);
+    }
+
+    [HttpDelete("{comparablePropertyId:guid}")]
+    [Authorize(Policy = CapabilityPolicyNames.SubmitValuationReport)]
+    public async Task<IActionResult> Remove(
+        Guid valuationRequestId,
+        Guid comparablePropertyId,
+        CancellationToken ct)
+    {
+        var (ok, error) = await _selections.RemoveAsync(
+            valuationRequestId,
+            comparablePropertyId,
+            ct);
+        if (!ok) return BadRequest(new { message = error });
+        return NoContent();
+    }
+}
+
+public sealed class AdoptComparableRequest
+{
+    public bool IsAdopted { get; init; } = true;
+}

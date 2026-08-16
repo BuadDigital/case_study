@@ -14,6 +14,66 @@ public enum PropertyIdentifierType
     BourseInquiry = 2,
 }
 
+/// <summary>
+/// Deed kind governing spatial confidence and the match gate (valuation spec §1.3 / §8b-4).
+/// Registered title → definitive spatial data, no survey match; traditional → case-study match.
+/// </summary>
+public enum DeedKind
+{
+    /// <summary>Traditional deed — deed/nature match gate required before calc.</summary>
+    Traditional = 0,
+    /// <summary>Registered title — deed data definitive; survey match stage dropped.</summary>
+    RegisteredTitle = 1,
+}
+
+public static class DeedKindLabels
+{
+    public const string Traditional = "traditional";
+    public const string RegisteredTitle = "registered_title";
+
+    public static string ToApiValue(DeedKind kind) => kind switch
+    {
+        DeedKind.RegisteredTitle => RegisteredTitle,
+        _ => Traditional,
+    };
+
+    public static bool TryParseApiValue(string? value, out DeedKind kind)
+    {
+        var n = value?.Trim() ?? "";
+        if (n is RegisteredTitle or "registered" or "عينية" or "سجل عيني")
+        {
+            kind = DeedKind.RegisteredTitle;
+            return true;
+        }
+
+        kind = DeedKind.Traditional;
+        return n is Traditional or "تقليدي" or "" || string.Equals(n, "traditional", StringComparison.OrdinalIgnoreCase);
+    }
+
+    /// <summary>Initial suggestion from identifier type — real-estate registration → registered title.</summary>
+    public static DeedKind SuggestFromIdentifier(PropertyIdentifierType identifier) =>
+        identifier == PropertyIdentifierType.RealEstateRegistration
+            ? DeedKind.RegisteredTitle
+            : DeedKind.Traditional;
+
+    public static string LabelAr(DeedKind kind) =>
+        kind == DeedKind.RegisteredTitle ? "سجل عيني" : "صك تقليدي";
+}
+
+/// <summary>Deed↔nature match outcome — case-study gate before calc.</summary>
+public static class DeedNatureMatchOutcomes
+{
+    public const string Unset = "";
+    public const string Matched = "matched";
+    public const string Differences = "differences";
+    public const string Impediment = "impediment";
+    public static bool IsKnown(string? value)
+    {
+        var n = value?.Trim() ?? "";
+        return n is Unset or Matched or Differences or Impediment;
+    }
+}
+
 public static class AssignmentTypeLabels
 {
     public const string Execution = "تنفيذ";
@@ -39,8 +99,7 @@ public static class AssignmentTypeLabels
     }
 }
 
-public static class PropertyIdentifierTypeLabels
-{
+public static class PropertyIdentifierTypeLabels {
     public const string Deed = "deed";
     public const string RealEstateReg = "real_estate_reg";
     public const string BourseInquiry = "bourse_inquiry";

@@ -147,6 +147,10 @@ public class FileAttachmentMetaDto
     public long SizeBytes { get; init; }
     public DateTime CreatedAtUtc { get; init; }
     public PhotoMetadataDto? PhotoMetadata { get; init; }
+    /// <summary>Attachment print dictionary type key; empty = library only.</summary>
+    public string DictionaryTypeKey { get; init; } = "";
+    /// <summary>When true with a type key, attachment is eligible for report §§22–25.</summary>
+    public bool PrintInReport { get; init; }
 }
 
 public class UploadAttachmentRequest

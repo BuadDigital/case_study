@@ -182,6 +182,7 @@ public class BoundaryRequestValidatorTests
         Assert.Contains(result.Errors, error => error.PropertyName == "assignmentType");
         Assert.Contains(result.Errors, error => error.PropertyName == "promulgationDate");
         Assert.Contains(result.Errors, error => error.PropertyName == "expectedPropertyCount");
+        Assert.Contains(result.Errors, error => error.PropertyName == "clientId");
     }
 
     [Fact]

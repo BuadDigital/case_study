@@ -29,6 +29,7 @@ public class CapabilityPolicyRegistrationTests
                      CapabilityPolicyNames.ReadManagementReports,
                      CapabilityPolicyNames.ReadKeyData,
                      CapabilityPolicyNames.ReadValuationQueue,
+                     CapabilityPolicyNames.WriteComparableBank,
                      CapabilityPolicyNames.ListDistributionAssignees,
                  })
         {

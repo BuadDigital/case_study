@@ -51,8 +51,7 @@ public class EnfazBillingController : ControllerBase
 
     [HttpGet("aging")]
     [Authorize(Policy = CapabilityPolicyNames.ReadFinancialData)]
-    public async Task<ActionResult<EnfazAgingReportDto>> Aging(CancellationToken ct) =>
-        Ok(await _billing.GetAgingReportAsync(ct));
+    public async Task<ActionResult<EnfazAgingReportDto>> Aging(CancellationToken ct) => Ok(await _billing.GetAgingReportAsync(ct));
 
     [HttpPost("{poNumber}/issue-invoice")]
     [Authorize(Policy = CapabilityPolicyNames.ManageFinancial)]

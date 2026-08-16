@@ -4,6 +4,7 @@ import type { FieldErrors } from "@platform/app-shared/registration/registration
 import { Input, Label } from "@platform/design-system";
 import {
   PROPERTY_BOUNDARY_ROWS,
+  PROPERTY_BOUNDARY_TYPE_OPTIONS,
   type PoPropertyIntake,
 } from "../../lib/prototype/po-intake-data";
 
@@ -32,21 +33,26 @@ export function PoPropertyBoundariesEntrySection({
         </span>
       </div>
       <p className="mb-3 text-[11px] leading-relaxed text-text-3">
-        أدخل وصف كل حد وطوله التقريبي من بيانات البورصة — يُستخدم لاحقاً في
-        مطابقة المعاين والمكتب الهندسي.
+        أدخل وصف كل حد ونوعه وطوله — نوع الحد يُحسب منه عدد الشوارع في التسويات.
       </p>
       <div className="overflow-x-auto">
-        <table className="w-full min-w-[520px] border-collapse text-xs">
+        <table className="w-full min-w-[720px] border-collapse text-xs">
           <thead>
             <tr className="bg-surface">
               <th className="border border-border px-2 py-2 text-start font-semibold text-text-2">
                 الاتجاه
               </th>
               <th className="border border-border px-2 py-2 text-start font-semibold text-text-2">
+                النوع
+              </th>
+              <th className="border border-border px-2 py-2 text-start font-semibold text-text-2">
                 الوصف
               </th>
               <th className="w-28 border border-border px-2 py-2 text-start font-semibold text-text-2">
                 الطول (م)
+              </th>
+              <th className="border border-border px-2 py-2 text-start font-semibold text-text-2">
+                تشطيب الواجهة
               </th>
             </tr>
           </thead>
@@ -58,6 +64,20 @@ export function PoPropertyBoundariesEntrySection({
                 <tr key={row.descKey} className="bg-surface">
                   <td className="border border-border px-2 py-2 align-top font-semibold text-text-2">
                     {row.label}
+                  </td>
+                  <td className="border border-border px-2 py-2 align-top">
+                    <select
+                      id={`bnd_type_${row.typeKey}`}
+                      className="w-full rounded-md border border-border bg-surface px-2 py-1.5 text-xs text-text"
+                      value={property[row.typeKey]}
+                      onChange={(e) => onPatch(row.typeKey, e.target.value)}
+                    >
+                      {PROPERTY_BOUNDARY_TYPE_OPTIONS.map((o) => (
+                        <option key={o.value || "empty"} value={o.value}>
+                          {o.label}
+                        </option>
+                      ))}
+                    </select>
                   </td>
                   <td className="border border-border px-2 py-2 align-top">
                     <Input
@@ -83,6 +103,15 @@ export function PoPropertyBoundariesEntrySection({
                     {lenError ? (
                       <p className="mt-1 text-[10px] text-danger-text">{lenError}</p>
                     ) : null}
+                  </td>
+                  <td className="border border-border px-2 py-2 align-top">
+                    <Input
+                      id={`bnd_facade_${row.facadeKey}`}
+                      className="text-xs"
+                      value={property[row.facadeKey]}
+                      placeholder="مثال: حجر / دهان"
+                      onChange={(e) => onPatch(row.facadeKey, e.target.value)}
+                    />
                   </td>
                 </tr>
               );

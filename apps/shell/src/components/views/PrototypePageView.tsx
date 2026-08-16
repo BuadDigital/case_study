@@ -76,6 +76,10 @@ const ValuationRequestsView = dynamic(
   () => import("@valuation/mfe").then((m) => m.ValuationRequestsView),
   { ssr: false, loading: MfeLoading },
 );
+const ComparablePropertiesView = dynamic(
+  () => import("@valuation/mfe").then((m) => m.ComparablePropertiesView),
+  { ssr: false, loading: MfeLoading },
+);
 const FinancialView = dynamic(
   () => import("@financial/mfe").then((m) => m.FinancialView),
   { ssr: false, loading: MfeLoading },
@@ -98,6 +102,18 @@ const LocationsPendingView = dynamic(
 );
 const OrganizationSettingsView = dynamic(
   () => import("@settings/mfe").then((m) => m.OrganizationSettingsView),
+  { ssr: false, loading: MfeLoading },
+);
+const ClientsView = dynamic(
+  () => import("@settings/mfe").then((m) => m.ClientsView),
+  { ssr: false, loading: MfeLoading },
+);
+const AttachmentPrintDictionaryView = dynamic(
+  () => import("@settings/mfe").then((m) => m.AttachmentPrintDictionaryView),
+  { ssr: false, loading: MfeLoading },
+);
+const DifferenceFactorCatalogView = dynamic(
+  () => import("@settings/mfe").then((m) => m.DifferenceFactorCatalogView),
   { ssr: false, loading: MfeLoading },
 );
 const SystemFieldsCatalogView = dynamic(
@@ -152,6 +168,7 @@ const VIEWS: Partial<Record<PageId, ComponentType>> = {
   failures: FailuresView,
   "suspended-transactions": SuspendedTransactionsView,
   "valuation-requests": ValuationRequestsView,
+  "comparable-properties": ComparablePropertiesView,
   "operations-tasks": OperationsTasksView,
   "system-fields-catalog": SystemFieldsCatalogView,
   "system-screen-catalog": SystemScreenCatalogView,
@@ -161,6 +178,9 @@ const VIEWS: Partial<Record<PageId, ComponentType>> = {
   courts: CourtsView,
   "location-pending": LocationsPendingView,
   "organization-settings": OrganizationSettingsView,
+  clients: ClientsView,
+  "attachment-print-dictionary": AttachmentPrintDictionaryView,
+  "difference-factor-catalog": DifferenceFactorCatalogView,
   "failure-types": FailureTypesView,
   "case-study-info-roles": CaseStudyInfoRolesView,
   "party-fees": PartyFeesView,

@@ -1,7 +1,7 @@
 import type { CaseStudyFormAnswer } from "../../lib/prototype/case-study-form-data";
 import type { PartyQuestionContribution } from "../../lib/prototype/case-study-party-answers";
 import type { CaseStudyInfoPartyId } from "@settings/mfe";
-export type MatrixYn = "Y" | "N";
+export type MatrixYn = "Y" | "N" | "NA";
 export type PartyMatrixKey = "MA" | "EN" | "EV" | "GR";
 export const PARTY_MATRIX_ORDER: PartyMatrixKey[] = ["MA", "EN", "EV", "GR"];
 const PARTY_ID_TO_MATRIX: Partial<Record<CaseStudyInfoPartyId, PartyMatrixKey>> =
@@ -26,12 +26,14 @@ export function answerToYn(
 ): MatrixYn | null {
   if (value === "A") return "Y";
   if (value === "B") return "N";
+  if (value === "NA") return "NA";
   return null;
 }
 
 export function ynToAnswer(value: MatrixYn | null): CaseStudyFormAnswer | null {
   if (value === "Y") return "A";
   if (value === "N") return "B";
+  if (value === "NA") return "NA";
   return null;
 }
 
@@ -54,9 +56,8 @@ export function getMatrixRowStatus(
 ): MatrixRowStatus {
   const vals = Object.values(answers);
   if (vals.length === 0) return "pending";
-  const hasY = vals.includes("Y");
-  const hasN = vals.includes("N");
-  if (hasY && hasN) return "conflict";
+  const distinct = new Set(vals);
+  if (distinct.size > 1) return "conflict";
   return "consensus";
 }
 

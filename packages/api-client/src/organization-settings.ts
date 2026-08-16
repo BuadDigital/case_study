@@ -17,12 +17,27 @@ export type OrganizationEvaluatorSettings = {
   name?: string | null;
   licenseNumber?: string | null;
   membershipNumber?: string | null;
+  licenseExpiresAt?: string | null;
+  membershipExpiresAt?: string | null;
+};
+
+/** Additional valuers for report participants — certified singleton stays on `evaluator`. */
+export type OrganizationValuerRosterEntry = {
+  id: string;
+  nameAr: string;
+  licenseNumber?: string | null;
+  membershipNumber?: string | null;
+  /** certified | assistant | reviewer */
+  role: string;
+  isActive: boolean;
 };
 
 export type OrganizationBrandingSettings = {
   stampUrl: string;
   signatureUrl: string;
   headerUrl?: string | null;
+  /** Report letterhead image — rendered as 3 slices (header 41mm / footer 27mm / sidebar 13mm). */
+  letterheadUrl?: string | null;
   watermarkText: string;
 };
 
@@ -46,21 +61,30 @@ export type OrganizationSlaSettings = {
   privateSectorBusinessDays: number;
 };
 
+/** ت-2 «حد أقصى قابل للضبط» — P2-5 approved 2026-08-16. */
+export type OrganizationValuationSettings = {
+  maxAdoptedComparables: number;
+};
+
 export type OrganizationSettingsDto = {
   company: OrganizationCompanySettings;
   evaluator: OrganizationEvaluatorSettings;
+  valuers: OrganizationValuerRosterEntry[];
   branding: OrganizationBrandingSettings;
   communications: OrganizationCommunicationsSettings;
   sla: OrganizationSlaSettings;
+  valuation: OrganizationValuationSettings;
   updatedAtUtc: string;
 };
 
 export type SaveOrganizationSettingsRequest = {
   company?: OrganizationCompanySettings;
   evaluator?: OrganizationEvaluatorSettings;
+  valuers?: OrganizationValuerRosterEntry[];
   branding?: OrganizationBrandingSettings;
   communications?: OrganizationCommunicationsSettings;
   sla?: OrganizationSlaSettings;
+  valuation?: OrganizationValuationSettings;
 };
 
 export type OrganizationSettingsResult<T> =
@@ -114,6 +138,29 @@ function normalizeCommunications(
   };
 }
 
+function normalizeValuers(raw: unknown): OrganizationValuerRosterEntry[] {
+  if (!Array.isArray(raw)) return [];
+  const out: OrganizationValuerRosterEntry[] = [];
+  for (const item of raw) {
+    const v = (item ?? {}) as Record<string, unknown>;
+    const nameAr = String(v.nameAr ?? v.NameAr ?? "").trim();
+    if (!nameAr) continue;
+    out.push({
+      id:
+        String(v.id ?? v.Id ?? "").trim() ||
+        `v-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`,
+      nameAr,
+      licenseNumber: (v.licenseNumber ?? v.LicenseNumber ?? null) as string | null,
+      membershipNumber: (v.membershipNumber ??
+        v.MembershipNumber ??
+        null) as string | null,
+      role: String(v.role ?? v.Role ?? "assistant").trim() || "assistant",
+      isActive: Boolean(v.isActive ?? v.IsActive ?? true),
+    });
+  }
+  return out;
+}
+
 function normalizeSettings(raw: Record<string, unknown>): OrganizationSettingsDto {
   const company = (raw.company ?? raw.Company ?? {}) as Record<string, unknown>;
   const evaluator = (raw.evaluator ?? raw.Evaluator ?? {}) as Record<string, unknown>;
@@ -122,6 +169,7 @@ function normalizeSettings(raw: Record<string, unknown>): OrganizationSettingsDt
     raw.Communications ??
     {}) as Record<string, unknown>;
   const sla = (raw.sla ?? raw.Sla ?? {}) as Record<string, unknown>;
+  const valuation = (raw.valuation ?? raw.Valuation ?? {}) as Record<string, unknown>;
 
   return {
     company: {
@@ -137,7 +185,14 @@ function normalizeSettings(raw: Record<string, unknown>): OrganizationSettingsDt
       membershipNumber: (evaluator.membershipNumber ??
         evaluator.MembershipNumber ??
         null) as string | null,
+      licenseExpiresAt: (evaluator.licenseExpiresAt ??
+        evaluator.LicenseExpiresAt ??
+        null) as string | null,
+      membershipExpiresAt: (evaluator.membershipExpiresAt ??
+        evaluator.MembershipExpiresAt ??
+        null) as string | null,
     },
+    valuers: normalizeValuers(raw.valuers ?? raw.Valuers),
     branding: {
       stampUrl: String(
         branding.stampUrl ?? branding.StampUrl ?? "/case-study/ejadah-stamp.png",
@@ -148,6 +203,9 @@ function normalizeSettings(raw: Record<string, unknown>): OrganizationSettingsDt
           "/case-study/ejadah-signature.png",
       ),
       headerUrl: (branding.headerUrl ?? branding.HeaderUrl ?? null) as string | null,
+      letterheadUrl: (branding.letterheadUrl ?? branding.LetterheadUrl ?? null) as
+        | string
+        | null,
       watermarkText: String(branding.watermarkText ?? branding.WatermarkText ?? "EJADAH"),
     },
     communications: normalizeCommunications(communications),
@@ -157,6 +215,11 @@ function normalizeSettings(raw: Record<string, unknown>): OrganizationSettingsDt
       ),
       privateSectorBusinessDays: Number(
         sla.privateSectorBusinessDays ?? sla.PrivateSectorBusinessDays ?? 10,
+      ),
+    },
+    valuation: {
+      maxAdoptedComparables: Number(
+        valuation.maxAdoptedComparables ?? valuation.MaxAdoptedComparables ?? 3,
       ),
     },
     updatedAtUtc: String(raw.updatedAtUtc ?? raw.UpdatedAtUtc ?? new Date().toISOString()),

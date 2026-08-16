@@ -344,7 +344,7 @@ export function EvaluatorAdvisoryPanel({
         ))}
       {submission.reportFileName ? (
         <div className={infoRowClass}>
-          <span className="shrink-0 text-text-3">تقرير المقياس</span>
+          <span className="shrink-0 text-text-3">تقرير التقييم</span>
           <span className="text-left font-medium text-text">
             {submission.reportFileName}{" "}
             <Button

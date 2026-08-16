@@ -3,6 +3,11 @@
 import { useEffect, useMemo, useState } from "react";
 import { useToast } from "@platform/design-system";
 import {
+  INFATH_SEED_CLIENT_ID,
+  listClients,
+  type ClientDto,
+} from "@platform/api-client";
+import {
   type AssignmentType,
   type PoIntakeRecord,
 } from "../../lib/prototype/po-intake-data";
@@ -26,6 +31,7 @@ import {
   PO_HEADER_MODAL_FIELD_IDS,
   scheduleScrollToFirstPoHeaderError,
 } from "../../lib/domain/po-intake/po-field-error-targets";
+import { workOrdersApiConfig } from "../../lib/work-orders-api-config";
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -44,6 +50,9 @@ export function usePoIntakeForm(onComplete: (record: PoIntakeRecord) => void) {
   const [assignmentSpecialistEmail, setAssignmentSpecialistEmail] = useState("");
   const [expectedPropertyCount, setExpectedPropertyCount] = useState("1");
   const [workOrderDescription, setWorkOrderDescription] = useState("");
+  const [clientId, setClientId] = useState(INFATH_SEED_CLIENT_ID);
+  const [clients, setClients] = useState<ClientDto[]>([]);
+  const [clientsLoading, setClientsLoading] = useState(true);
 
   useEffect(() => {
     void hydratePoDraft()
@@ -57,6 +66,7 @@ export function usePoIntakeForm(onComplete: (record: PoIntakeRecord) => void) {
           const count = draft.expectedPropertyCount;
           setExpectedPropertyCount(count && count > 0 ? String(count) : "1");
           setWorkOrderDescription(draft.workOrderDescription ?? "");
+          if (draft.clientId?.trim()) setClientId(draft.clientId.trim());
         }
         setDraftReady(true);
       })
@@ -69,6 +79,18 @@ export function usePoIntakeForm(onComplete: (record: PoIntakeRecord) => void) {
         );
         setDraftReady(true);
       });
+  }, []);
+
+  useEffect(() => {
+    const config = workOrdersApiConfig();
+    if (!config) {
+      setClientsLoading(false);
+      return;
+    }
+    void listClients(config).then((res) => {
+      setClientsLoading(false);
+      if (res.ok) setClients(res.data);
+    });
   }, []);
 
   useEffect(() => {
@@ -89,6 +111,7 @@ export function usePoIntakeForm(onComplete: (record: PoIntakeRecord) => void) {
       !!assignmentSpecialist.trim() ||
       !!assignmentSpecialistEmail.trim() ||
       !!workOrderDescription.trim() ||
+      clientId !== INFATH_SEED_CLIENT_ID ||
       expectedPropertyCount !== "1",
     [
       poNumber,
@@ -97,6 +120,7 @@ export function usePoIntakeForm(onComplete: (record: PoIntakeRecord) => void) {
       assignmentSpecialist,
       assignmentSpecialistEmail,
       workOrderDescription,
+      clientId,
       expectedPropertyCount,
     ],
   );
@@ -116,6 +140,7 @@ export function usePoIntakeForm(onComplete: (record: PoIntakeRecord) => void) {
       ),
       propertiesRegion: "",
       workOrderDescription,
+      clientId,
     });
   }, [
     draftReady,
@@ -126,6 +151,7 @@ export function usePoIntakeForm(onComplete: (record: PoIntakeRecord) => void) {
     assignmentSpecialistEmail,
     expectedPropertyCount,
     workOrderDescription,
+    clientId,
   ]);
 
   function clearErrors() {
@@ -141,8 +167,9 @@ export function usePoIntakeForm(onComplete: (record: PoIntakeRecord) => void) {
           poNumber,
           promulgationDate,
           assignmentType,
+          clientId,
         },
-        ["poNumber", "promulgationDate", "assignmentType"],
+        ["poNumber", "promulgationDate", "assignmentType", "clientId"],
       ),
     );
     if (
@@ -177,6 +204,7 @@ export function usePoIntakeForm(onComplete: (record: PoIntakeRecord) => void) {
     setSaving(true);
     clearErrors();
 
+    const clientNameAr = clients.find((c) => c.id === clientId)?.nameAr;
     const record = buildPoRecord({
       poNumber: poNumber.trim(),
       assignmentType: assignmentType as AssignmentType,
@@ -184,8 +212,11 @@ export function usePoIntakeForm(onComplete: (record: PoIntakeRecord) => void) {
       assignmentSpecialist: assignmentSpecialist.trim(),
       assignmentSpecialistEmail: assignmentSpecialistEmail.trim(),
       expectedPropertyCount: Math.max(1, parseInt(expectedPropertyCount, 10) || 1),
+      reportUserClientIds: [],
       propertiesRegion: "",
       workOrderDescription: workOrderDescription.trim(),
+      clientId: clientId.trim(),
+      clientNameAr,
       properties: [],
     });
 
@@ -221,6 +252,10 @@ export function usePoIntakeForm(onComplete: (record: PoIntakeRecord) => void) {
     setExpectedPropertyCount,
     workOrderDescription,
     setWorkOrderDescription,
+    clientId,
+    setClientId,
+    clients,
+    clientsLoading,
     save,
   };
 }

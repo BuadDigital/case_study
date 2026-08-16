@@ -22,6 +22,45 @@ namespace RealEstateEval.Infrastructure.Data.Contexts.Platform.Migrations
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
 
+            modelBuilder.Entity("RealEstateEval.Domain.AttachmentPrintDictionaryConfig", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("CatalogJson")
+                        .IsRequired()
+                        .HasColumnType("jsonb");
+
+                    b.Property<DateTime>("UpdatedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("AttachmentPrintDictionaryConfigs", "platform");
+                });
+
+            modelBuilder.Entity("RealEstateEval.Domain.DifferenceFactorCatalogConfig", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("CatalogJson")
+                        .IsRequired()
+                        .HasColumnType("jsonb");
+
+                    b.Property<DateTime>("UpdatedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("Version")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("DifferenceFactorCatalogConfigs", "platform");
+                });
+
             modelBuilder.Entity("RealEstateEval.Domain.AuditLog", b =>
                 {
                     b.Property<Guid>("Id")

@@ -349,6 +349,21 @@ export function PoPropertyEnfathForm({
               error={fieldErrors.plotNumber}
               onChange={(v) => onPatch("plotNumber", v)}
             />
+            <RegField
+              id="plan_name_bourse"
+              label="اسم المخطط"
+              value={property.planName}
+              error={fieldErrors.planName}
+              onChange={(v) => onPatch("planName", v)}
+            />
+            <RegField
+              id="block_number_bourse"
+              label="رقم البلك"
+              dir="ltr"
+              value={property.blockNumber}
+              error={fieldErrors.blockNumber}
+              onChange={(v) => onPatch("blockNumber", v)}
+            />
           </div>
           <RegField
             id="location_map_url_bourse"
@@ -422,6 +437,28 @@ export function PoPropertyEnfathForm({
           error={fieldErrors.realEstateRegDate}
           onChange={(v) => onPatch("realEstateRegDate", v)}
         />
+        <div>
+          <label
+            htmlFor="deed_kind"
+            className="mb-1 block text-[11px] font-semibold text-text-2"
+          >
+            نوع الصك (§4ج-8)
+          </label>
+          <select
+            id="deed_kind"
+            className="w-full rounded-lg border border-border-md bg-surface px-[11px] py-[7px] text-[12.5px] text-text"
+            value={property.deedKind}
+            onChange={(e) => onPatch("deedKind", e.target.value)}
+          >
+            <option value="">
+              تلقائي — {property.suggestedDeedKind === "registered_title"
+                ? "سجل عيني"
+                : "صك تقليدي"}
+            </option>
+            <option value="traditional">صك تقليدي</option>
+            <option value="registered_title">سجل عيني</option>
+          </select>
+        </div>
         <RegField
           id="assignment_mandate_number"
           label="رقم التكليف"
@@ -518,6 +555,21 @@ export function PoPropertyEnfathForm({
             value={property.plotNumber}
             error={fieldErrors.plotNumber}
             onChange={(v) => onPatch("plotNumber", v)}
+          />
+          <RegField
+            id="plan_name"
+            label="اسم المخطط"
+            value={property.planName}
+            error={fieldErrors.planName}
+            onChange={(v) => onPatch("planName", v)}
+          />
+          <RegField
+            id="block_number"
+            label="رقم البلك"
+            dir="ltr"
+            value={property.blockNumber}
+            error={fieldErrors.blockNumber}
+            onChange={(v) => onPatch("blockNumber", v)}
           />
         </div>
         <RegField

@@ -37,6 +37,7 @@ public sealed class WorkOrderAssignmentNotificationTests
         var bundle = CreateDb();
         var db = bundle.App;
         SeedUser(db, "user-feras", "feras@ejadah.dev");
+        SeedClient(db);
         await db.SaveChangesAsync();
         var service = CreateService(bundle);
 
@@ -62,6 +63,8 @@ public sealed class WorkOrderAssignmentNotificationTests
     {
         var bundle = CreateDb();
         var db = bundle.App;
+        SeedClient(db);
+        await db.SaveChangesAsync();
         var service = CreateService(bundle);
 
         var (result, errors) = await service.CreateAsync(
@@ -80,6 +83,7 @@ public sealed class WorkOrderAssignmentNotificationTests
         var db = bundle.App;
         SeedUser(db, "user-a", "a@ejadah.dev");
         SeedUser(db, "user-b", "b@ejadah.dev");
+        SeedClient(db);
         await db.SaveChangesAsync();
         var service = CreateService(bundle);
 
@@ -116,6 +120,8 @@ public sealed class WorkOrderAssignmentNotificationTests
     {
         var bundle = CreateDb();
         var db = bundle.App;
+        SeedClient(db);
+        await db.SaveChangesAsync();
         var service = CreateService(bundle);
         var (created, createErrors) = await service.CreateAsync(
             ValidCreate("PO-FIXED-DUE", "owner@ejadah.dev"),
@@ -152,6 +158,7 @@ public sealed class WorkOrderAssignmentNotificationTests
         AssignmentSpecialist = "Specialist",
         AssignmentSpecialistEmail = email,
         ExpectedPropertyCount = 1,
+        ClientId = SeedClientIds.InfathAssignmentCenter,
     };
 
     private static UpdateWorkOrderHeaderRequest ValidUpdate(string email) => new()
@@ -161,7 +168,20 @@ public sealed class WorkOrderAssignmentNotificationTests
         AssignmentSpecialist = "Specialist",
         AssignmentSpecialistEmail = email,
         ExpectedPropertyCount = 1,
+        ClientId = SeedClientIds.InfathAssignmentCenter,
     };
+
+    private static void SeedClient(ApplicationDbContext db)
+    {
+        db.Clients.Add(new Client
+        {
+            Id = SeedClientIds.InfathAssignmentCenter,
+            NameAr = "مركز الإسناد والتصفية (إنفاذ)",
+            IsActive = true,
+            CreatedAtUtc = DateTime.UtcNow,
+            UpdatedAtUtc = DateTime.UtcNow,
+        });
+    }
 
     private static void SeedUser(ApplicationDbContext db, string userId, string email)
     {

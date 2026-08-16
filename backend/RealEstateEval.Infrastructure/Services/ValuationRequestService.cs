@@ -44,6 +44,20 @@ public sealed class ValuationRequestService : IValuationRequestService
         return row is null ? null : ToDto(row);
     }
 
+    public async Task<ValuationRequestDto?> GetOpenByPropertyAsync(
+        string propertyId,
+        CancellationToken cancellationToken = default)
+    {
+        var key = propertyId?.Trim() ?? "";
+        if (key.Length == 0) return null;
+
+        var row = await _db.ValuationRequests.AsNoTracking()
+            .Where(x => x.PropertyId == key && x.Status != ValuationRequestStatus.Done)
+            .OrderByDescending(x => x.UpdatedAtUtc)
+            .FirstOrDefaultAsync(cancellationToken);
+        return row is null ? null : ToDto(row);
+    }
+
     public async Task<(ValuationRequestDto? Result, string? Error)> CreateAsync(
         SaveValuationRequestRequest request,
         CancellationToken cancellationToken = default)

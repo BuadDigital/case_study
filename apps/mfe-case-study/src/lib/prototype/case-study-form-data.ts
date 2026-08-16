@@ -11,7 +11,7 @@ import {
 
 export type { CaseStudyQuestionSection };
 
-export type CaseStudyFormAnswer = "A" | "B";
+export type CaseStudyFormAnswer = "A" | "B" | "NA";
 
 export const CASE_STUDY_FORM_STEPS = [
   { id: 1, label: "بيانات الصك والعقار" },
@@ -62,16 +62,17 @@ export const CASE_STUDY_EXTRA_QUESTIONS =
 
 export const CASE_STUDY_TABLE_HEADERS: Record<
   CaseStudyQuestionSection,
-  { colA: string; colB: string }
+  { colA: string; colB: string; colNa: string }
 > = {
   deed: {
     colA: "فعال / مطابق / نعم",
     colB: "غيرفعال / غير مطابق / لا",
+    colNa: "لا ينطبق",
   },
-  survey: { colA: "تم التطبيق", colB: "لم يتم التطبيق" },
-  comp: { colA: "يوجد", colB: "لا يوجد" },
-  occ: { colA: "نعم", colB: "لا" },
-  extra: { colA: "يوجد", colB: "لا يوجد" },
+  survey: { colA: "تم التطبيق", colB: "لم يتم التطبيق", colNa: "لا ينطبق" },
+  comp: { colA: "يوجد", colB: "لا يوجد", colNa: "لا ينطبق" },
+  occ: { colA: "نعم", colB: "لا", colNa: "لا ينطبق" },
+  extra: { colA: "يوجد", colB: "لا يوجد", colNa: "لا ينطبق" },
 };
 
 export const CASE_STUDY_SECTION_QUESTIONS =
@@ -102,7 +103,7 @@ export function caseStudyFormSummary(answers: Record<string, CaseStudyFormAnswer
 } {
   const total = caseStudyTotalQuestions();
   const answered = Object.values(answers).filter(
-    (v) => v === "A" || v === "B",
+    (v) => v === "A" || v === "B" || v === "NA",
   ).length;
   const pending = total - answered;
   const pct = total > 0 ? Math.round((answered / total) * 100) : 0;

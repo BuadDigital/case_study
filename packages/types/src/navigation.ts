@@ -13,6 +13,7 @@ export type PageId =
   | "failures"
   | "suspended-transactions"
   | "valuation-requests"
+  | "comparable-properties"
   | "property-inspection"
   | "active-inspection"
   | "operations-tasks"
@@ -31,6 +32,9 @@ export type PageId =
   | "audit-log"
   | "fee-pricing"
   | "organization-settings"
+  | "attachment-print-dictionary"
+  | "difference-factor-catalog"
+  | "clients"
   | "field-sync-board"
   | "profile";
 
@@ -95,6 +99,7 @@ export function isPageId(value: string): value is PageId {
     value === "failures" ||
     value === "suspended-transactions" ||
     value === "valuation-requests" ||
+    value === "comparable-properties" ||
     value === "property-inspection" ||
     value === "active-inspection" ||
     value === "operations-tasks" ||
@@ -113,6 +118,9 @@ export function isPageId(value: string): value is PageId {
     value === "audit-log" ||
     value === "fee-pricing" ||
     value === "organization-settings" ||
+    value === "attachment-print-dictionary" ||
+    value === "difference-factor-catalog" ||
+    value === "clients" ||
     value === "field-sync-board" ||
     value === "profile"
   );

@@ -52,14 +52,17 @@ export type CaseStudyFormDraft = {
   sigDeed: string;
   sigApprover: string;
   sigDate: string;
-  /** اعتماد الأخصائي بعد مراجعة إجابات الأطراف — questionKey → true */
+  /** Specialist approval after reviewing party answers — questionKey → true */
   specialistReviewApproved?: Record<string, boolean>;
-  /** حقول الرفع لإنفاذ — أخصائي */
+  /** Infath package fields — specialist */
   infathLinkedAssets?: "" | "yes" | "no";
   infathLinkedDeedNumbers?: string;
   infathLinkedAssetsNotes?: string;
   infathOtherNotes?: string;
   infathClosingNotes?: string;
+  /** matched | differences | impediment | "" */
+  deedNatureMatchOutcome?: string;
+  deedNatureMatchNotes?: string;
   savedAtUtc?: string;
   answerProvenance?: Record<string, CaseStudyAnswerProvenanceEntry>;
 };
@@ -91,6 +94,8 @@ function dtoToDraft(dto: CaseStudyFormDto): CaseStudyFormDraft {
     infathLinkedAssetsNotes: dto.infathLinkedAssetsNotes ?? "",
     infathOtherNotes: dto.infathOtherNotes ?? "",
     infathClosingNotes: dto.infathClosingNotes ?? "",
+    deedNatureMatchOutcome: dto.deedNatureMatchOutcome ?? "",
+    deedNatureMatchNotes: dto.deedNatureMatchNotes ?? "",
     savedAtUtc: dto.savedAtUtc,
     answerProvenance: dto.answerProvenance as
       | Record<string, CaseStudyAnswerProvenanceEntry>
@@ -125,6 +130,8 @@ function draftToDto(draft: CaseStudyFormDraft): CaseStudyFormDto {
     infathLinkedAssetsNotes: draft.infathLinkedAssetsNotes ?? "",
     infathOtherNotes: draft.infathOtherNotes ?? "",
     infathClosingNotes: draft.infathClosingNotes ?? "",
+    deedNatureMatchOutcome: draft.deedNatureMatchOutcome ?? "",
+    deedNatureMatchNotes: draft.deedNatureMatchNotes ?? "",
     savedAtUtc: draft.savedAtUtc,
   };
 }
@@ -170,6 +177,8 @@ export function emptyCaseStudyFormDraft(
     infathLinkedAssetsNotes: "",
     infathOtherNotes: "",
     infathClosingNotes: "",
+    deedNatureMatchOutcome: "",
+    deedNatureMatchNotes: "",
   };
 }
 

@@ -6,6 +6,8 @@ import { RegField, RegTextarea} from "@platform/app-shared/registration/FormFiel
 import type { PartyTaskPageDef } from "@platform/app-shared/prototype/party-task-pages";
 import { usePrototype } from "@platform/app-shared/contexts/PrototypeContext";
 import { JEDDAH_DEFAULT_LAT, JEDDAH_DEFAULT_LNG } from "@engineering-office/mfe/lib/jeddah-default-coords";
+import { BuildingInventorySection } from "./BuildingInventorySection";
+import { FieldComparableCaptureSection } from "./FieldComparableCaptureSection";
 import { InspectorDefinedPhotosSection } from "./InspectorDefinedPhotosSection";
 import { InspectorSubmitFooter } from "./InspectorSubmitFooter";
 import { InspectorPhotoFilePicker } from "./InspectorPhotoFilePicker";
@@ -91,8 +93,8 @@ const EDIT_CONTROL_CLASS =
   "w-full appearance-none rounded-lg border border-border-md bg-surface px-[11px] py-[7px] text-[12.5px] text-text font-inherit";
 
 /**
- * Desktop feature «صورة» cell — always a real file picker on computer
- * (not camera-only). Empty: «إرفاق صورة»; attached: HTML-style «مرفقة» + replace.
+ * Desktop feature photo cell — always a real file picker on computer
+ * (not camera-only). Empty: attach photo; attached: HTML-style "attached" + replace.
  */
 function DesktopFeaturePhotoCell({
   needsPhoto,
@@ -1558,6 +1560,19 @@ export function FieldInspectionWorkBody({
               ))}
             </FormRow>
           )}
+          <BuildingInventorySection
+            poNumber={task.poNumber}
+            propertyId={propertyId}
+            disabled={workLocked}
+            mobile={mobile}
+          />
+          <FieldComparableCaptureSection
+            latitude={draft.mapLatitude}
+            longitude={draft.mapLongitude}
+            city={property?.city}
+            district={property?.district}
+            disabled={workLocked}
+          />
         </InspectorCard>
 
         {!boundariesUnavailable && property ? (

@@ -29,12 +29,15 @@ public class CaseStudyForm
     public string SigApprover { get; set; } = "";
     public string SigDate { get; set; } = "";
     public string? SpecialistReviewApprovedJson { get; set; }
-    /// <summary>هل الأصل مرتبط بأصول أخرى؟ — empty | yes | no</summary>
+    /// <summary>Is the asset linked to other assets? — empty | yes | no</summary>
     public string InfathLinkedAssets { get; set; } = "";
     public string InfathLinkedDeedNumbers { get; set; } = "";
     public string InfathLinkedAssetsNotes { get; set; } = "";
     public string InfathOtherNotes { get; set; } = "";
     public string InfathClosingNotes { get; set; } = "";
+    /// <summary>matched | differences | impediment | "" — traditional-deed quality gate.</summary>
+    public string DeedNatureMatchOutcome { get; set; } = "";
+    public string DeedNatureMatchNotes { get; set; } = "";
     public DateTime? SavedAtUtc { get; set; }
     public DateTime CreatedAtUtc { get; set; }
     public DateTime UpdatedAtUtc { get; set; }

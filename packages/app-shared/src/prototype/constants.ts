@@ -37,6 +37,7 @@ export const ROLES: Record<RoleId, RoleDef> = {
       "failures",
       "suspended-transactions",
       "valuation-requests",
+      "comparable-properties",
       "financial",
       "courts",
       "location-pending",
@@ -104,6 +105,7 @@ export const ROLES: Record<RoleId, RoleDef> = {
       "favorites",
       "operations-tasks",
       "property-appraisal",
+      "comparable-properties",
       "failures",
       "suspended-transactions",
     ],
@@ -250,6 +252,7 @@ export const PAGE_TITLES: Record<PageId, string> = {
   failures: "إدارة التعذرات",
   "suspended-transactions": "المعاملات المعلقة",
   "valuation-requests": "طلبات التقييم",
+  "comparable-properties": "بنك المقارنات",
   "property-inspection": "معاينة العقار (يتيم)",
   "active-inspection": "معاينة العقار",
   "operations-tasks": "المهام",
@@ -268,6 +271,9 @@ export const PAGE_TITLES: Record<PageId, string> = {
   "audit-log": "سجل التدقيق",
   "fee-pricing": "التسعيرة",
   "organization-settings": "إعدادات المنشأة",
+  "attachment-print-dictionary": "قاموس مرفقات التقرير",
+  "difference-factor-catalog": "تعريفات عوامل الاختلاف",
+  clients: "سجل العملاء",
   profile: "البروفايل",
 };
 
@@ -290,6 +296,7 @@ export const PAGE_BREADCRUMB: Record<PageId, string> = {
   failures: "إدارة التعذرات",
   "suspended-transactions": "المعاملات المعلقة",
   "valuation-requests": "طلبات التقييم",
+  "comparable-properties": "بنك المقارنات",
   "property-inspection": "معاينة العقار",
   "active-inspection": "معاينة العقار",
   "operations-tasks": "المهام",
@@ -308,6 +315,9 @@ export const PAGE_BREADCRUMB: Record<PageId, string> = {
   "audit-log": "سجل التدقيق",
   "fee-pricing": "التسعيرة",
   "organization-settings": "إعدادات المنشأة",
+  "attachment-print-dictionary": "قاموس مرفقات التقرير",
+  "difference-factor-catalog": "تعريفات عوامل الاختلاف",
+  clients: "سجل العملاء",
   profile: "البروفايل",
 };
 

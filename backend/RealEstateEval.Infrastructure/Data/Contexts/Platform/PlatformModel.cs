@@ -138,6 +138,32 @@ internal static class PlatformModel
             e.Property(x => x.StateJson).HasColumnType("jsonb");
         });
 
+        builder.Entity<AttachmentPrintDictionaryConfig>(e =>
+        {
+            if (ownsMigrations)
+                e.ToTable("AttachmentPrintDictionaryConfigs", DatabaseSchemas.Platform);
+            else
+                e.ToTable(
+                    "AttachmentPrintDictionaryConfigs",
+                    DatabaseSchemas.Platform,
+                    t => t.ExcludeFromMigrations());
+
+            e.Property(x => x.CatalogJson).HasColumnType("jsonb");
+        });
+
+        builder.Entity<DifferenceFactorCatalogConfig>(e =>
+        {
+            if (ownsMigrations)
+                e.ToTable("DifferenceFactorCatalogConfigs", DatabaseSchemas.Platform);
+            else
+                e.ToTable(
+                    "DifferenceFactorCatalogConfigs",
+                    DatabaseSchemas.Platform,
+                    t => t.ExcludeFromMigrations());
+
+            e.Property(x => x.CatalogJson).HasColumnType("jsonb");
+        });
+
         builder.Entity<CaseStudyInfoRolesConfig>(e =>
         {
             e.ToTable("CaseStudyInfoRolesConfigs", DatabaseSchemas.Platform);

@@ -8,9 +8,9 @@ public static class PlatformPermissionCatalog
         "dashboard", "active-primary-data", "active-distribution", "active-case-study",
         "system-upload",
         "po", "all-transactions", "favorites", "bourse-inquiry", "survey", "keys", "failures", "suspended-transactions",
-        "valuation-requests", "property-inspection", "active-inspection", "operations-tasks",
+        "valuation-requests", "comparable-properties", "property-inspection", "active-inspection", "operations-tasks",
         "property-appraisal", "active-survey", "party-fees",
-        "system-fields-catalog", "system-screen-catalog", "financial",
+        "system-fields-catalog", "attachment-print-dictionary", "difference-factor-catalog", "system-screen-catalog", "financial",
         "users", "courts", "failure-types", "case-study-info-roles",
         "audit-log", "fee-pricing", "organization-settings", "field-sync-board",
     ];
@@ -52,6 +52,7 @@ public static class PlatformPermissionCatalog
             "po", "favorites", "active-primary-data", "bourse-inquiry", "active-distribution",
             "active-case-study", "system-upload", "operations-tasks", "keys", "failures", "suspended-transactions",
             "valuation-requests",
+            "comparable-properties",
             "financial", "courts", "failure-types", "case-study-info-roles",
         ],
         ["section-supervisor"] =
@@ -71,7 +72,9 @@ public static class PlatformPermissionCatalog
         ],
         ["real-estate-appraiser"] =
         [
-            "po", "favorites", "operations-tasks", "property-appraisal", "failures", "suspended-transactions",
+            "po", "favorites", "operations-tasks", "property-appraisal",
+            "comparable-properties",
+            "failures", "suspended-transactions",
         ],
         ["field-inspector"] =
         [

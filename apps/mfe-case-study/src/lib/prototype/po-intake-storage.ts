@@ -91,6 +91,9 @@ function normalizePoRecord(record: PoIntakeRecord): PoIntakeRecord {
     id: String(record.id),
     propertiesRegion: record.propertiesRegion ?? "",
     workOrderDescription: record.workOrderDescription ?? "",
+    clientId: record.clientId?.trim() ?? "",
+    reportUserClientIds: record.reportUserClientIds ?? [],
+    clientNameAr: record.clientNameAr?.trim() || undefined,
     receivedFromEnfathTime,
     dueDateAt:
       record.dueDateAt ||
@@ -116,6 +119,12 @@ function dtoToProperty(dto: WorkOrderPropertyDto): PoPropertyIntake {
     realEstateRegNumber: dto.realEstateRegNumber ?? "",
     realEstateRegDate: dto.realEstateRegDate ?? "",
     ownerName: dto.ownerName ?? "",
+    deedKind: dto.deedKind ?? "",
+    suggestedDeedKind: dto.suggestedDeedKind ?? "",
+    ownersJson: dto.owners?.length ? JSON.stringify(dto.owners) : "",
+    ownershipType: dto.ownershipType ?? "",
+    suggestedOwnershipType: dto.suggestedOwnershipType ?? "",
+    ownershipTypeIsManual: Boolean(dto.ownershipTypeIsManual),
     restrictionsPresent: dto.restrictionsPresent ?? "",
     restrictionType: dto.restrictionType ?? "",
     restrictionOtherReason: dto.restrictionOtherReason ?? "",
@@ -123,12 +132,20 @@ function dtoToProperty(dto: WorkOrderPropertyDto): PoPropertyIntake {
     boundariesExternalDocName: dto.boundariesExternalDocName ?? "",
     northBoundary: dto.northBoundary ?? "",
     northBoundaryLengthM: dto.northBoundaryLengthM ?? "",
+    northBoundaryType: dto.northBoundaryType ?? "",
+    northFacadeFinishing: dto.northFacadeFinishing ?? "",
     southBoundary: dto.southBoundary ?? "",
     southBoundaryLengthM: dto.southBoundaryLengthM ?? "",
+    southBoundaryType: dto.southBoundaryType ?? "",
+    southFacadeFinishing: dto.southFacadeFinishing ?? "",
     eastBoundary: dto.eastBoundary ?? "",
     eastBoundaryLengthM: dto.eastBoundaryLengthM ?? "",
+    eastBoundaryType: dto.eastBoundaryType ?? "",
+    eastFacadeFinishing: dto.eastFacadeFinishing ?? "",
     westBoundary: dto.westBoundary ?? "",
     westBoundaryLengthM: dto.westBoundaryLengthM ?? "",
+    westBoundaryType: dto.westBoundaryType ?? "",
+    westFacadeFinishing: dto.westFacadeFinishing ?? "",
     city: dto.city ?? "",
     region: dto.region ?? "",
     district: dto.district ?? "",
@@ -150,8 +167,12 @@ function dtoToProperty(dto: WorkOrderPropertyDto): PoPropertyIntake {
     deedOwnershipFileName: dto.deedOwnershipFileName ?? "",
     bourseDeedImageFileName: dto.bourseDeedImageFileName ?? "",
     planNumber: dto.planNumber ?? "",
+    planName: dto.planName ?? "",
     plotNumber: dto.plotNumber ?? "",
+    blockNumber: dto.blockNumber ?? "",
     locationMapUrl: dto.locationMapUrl ?? "",
+    finishingType: dto.finishingType ?? "",
+    finishingStructure: dto.finishingStructure ?? "",
     bourseDataCompleted: dto.bourseDataCompleted ?? false,
     isRemoved: Boolean(dto.isRemoved),
     removalReason: dto.removalReason ?? "",
@@ -177,6 +198,9 @@ function dtoToRecord(dto: WorkOrderDto): PoIntakeRecord {
     expectedPropertyCount: dto.expectedPropertyCount ?? 1,
     propertiesRegion: dto.propertiesRegion ?? "",
     workOrderDescription: dto.workOrderDescription ?? "",
+    clientId: dto.clientId ?? "",
+    reportUserClientIds: dto.reportUserClientIds ?? [],
+    clientNameAr: dto.clientNameAr ?? undefined,
     dueDateAt: dto.dueDateAt,
     createdAtUtc: dto.createdAtUtc,
     properties: dto.properties.map(dtoToProperty),
@@ -206,6 +230,7 @@ export function propertyToEnfathDto(
       ) || undefined,
     realEstateRegDate: prop.realEstateRegDate.trim() || undefined,
     ownerName: prop.ownerName || undefined,
+    deedKind: prop.deedKind || undefined,
     city: prop.city.trim() || undefined,
     region: prop.region.trim() || undefined,
     district: prop.district.trim() || undefined,
@@ -227,8 +252,12 @@ export function propertyToEnfathDto(
     deedOwnershipFileName: prop.deedOwnershipFileName || undefined,
     bourseDeedImageFileName: prop.bourseDeedImageFileName || undefined,
     planNumber: prop.planNumber.trim() || undefined,
+    planName: prop.planName.trim() || undefined,
     plotNumber: prop.plotNumber.trim() || undefined,
+    blockNumber: prop.blockNumber.trim() || undefined,
     locationMapUrl: prop.locationMapUrl.trim() || undefined,
+    finishingType: prop.finishingType.trim() || undefined,
+    finishingStructure: prop.finishingStructure.trim() || undefined,
     bourseDataCompleted: prop.bourseDataCompleted,
     contacts: contactsForApi(prop.contacts),
   };
@@ -244,15 +273,27 @@ export function propertyToDto(prop: PoPropertyIntake): WorkOrderPropertyDto {
     boundariesExternalDocName: prop.boundariesExternalDocName || undefined,
     northBoundary: prop.northBoundary || undefined,
     northBoundaryLengthM: prop.northBoundaryLengthM || undefined,
+    northBoundaryType: prop.northBoundaryType || undefined,
+    northFacadeFinishing: prop.northFacadeFinishing || undefined,
     southBoundary: prop.southBoundary || undefined,
     southBoundaryLengthM: prop.southBoundaryLengthM || undefined,
+    southBoundaryType: prop.southBoundaryType || undefined,
+    southFacadeFinishing: prop.southFacadeFinishing || undefined,
     eastBoundary: prop.eastBoundary || undefined,
     eastBoundaryLengthM: prop.eastBoundaryLengthM || undefined,
+    eastBoundaryType: prop.eastBoundaryType || undefined,
+    eastFacadeFinishing: prop.eastFacadeFinishing || undefined,
     westBoundary: prop.westBoundary || undefined,
     westBoundaryLengthM: prop.westBoundaryLengthM || undefined,
+    westBoundaryType: prop.westBoundaryType || undefined,
+    westFacadeFinishing: prop.westFacadeFinishing || undefined,
     planNumber: prop.planNumber || undefined,
+    planName: prop.planName || undefined,
     plotNumber: prop.plotNumber || undefined,
+    blockNumber: prop.blockNumber || undefined,
     locationMapUrl: prop.locationMapUrl || undefined,
+    finishingType: prop.finishingType || undefined,
+    finishingStructure: prop.finishingStructure || undefined,
     deedStatus: prop.deedStatus || undefined,
     area: prop.area || undefined,
     bourseDeedImageFileName: prop.bourseDeedImageFileName || undefined,
@@ -277,6 +318,9 @@ export function propertyToBourseRequest(
     area: prop.area || undefined,
     deedStatus: prop.deedStatus || undefined,
     bourseDeedImageFileName: prop.bourseDeedImageFileName || undefined,
+    owners: parseOwnersDraft(prop.ownersJson),
+    ownershipType: prop.ownershipTypeIsManual ? prop.ownershipType || undefined : undefined,
+    ownershipTypeIsManual: prop.ownershipTypeIsManual,
     restrictionsPresent: prop.restrictionsPresent || undefined,
     restrictionType: prop.restrictionType || undefined,
     restrictionOtherReason: prop.restrictionOtherReason || undefined,
@@ -284,13 +328,42 @@ export function propertyToBourseRequest(
     boundariesExternalDocName: prop.boundariesExternalDocName || undefined,
     northBoundary: prop.northBoundary || undefined,
     northBoundaryLengthM: prop.northBoundaryLengthM || undefined,
+    northBoundaryType: prop.northBoundaryType || undefined,
+    northFacadeFinishing: prop.northFacadeFinishing || undefined,
     southBoundary: prop.southBoundary || undefined,
     southBoundaryLengthM: prop.southBoundaryLengthM || undefined,
+    southBoundaryType: prop.southBoundaryType || undefined,
+    southFacadeFinishing: prop.southFacadeFinishing || undefined,
     eastBoundary: prop.eastBoundary || undefined,
     eastBoundaryLengthM: prop.eastBoundaryLengthM || undefined,
+    eastBoundaryType: prop.eastBoundaryType || undefined,
+    eastFacadeFinishing: prop.eastFacadeFinishing || undefined,
     westBoundary: prop.westBoundary || undefined,
     westBoundaryLengthM: prop.westBoundaryLengthM || undefined,
+    westBoundaryType: prop.westBoundaryType || undefined,
+    westFacadeFinishing: prop.westFacadeFinishing || undefined,
   };
+}
+
+/** §4ج-7 — parse the flat-draft owners JSON into API rows (invalid JSON → undefined). */
+export function parseOwnersDraft(
+  ownersJson: string,
+): { name: string; sharePct?: number | null }[] | undefined {
+  const raw = ownersJson.trim();
+  if (!raw) return undefined;
+  try {
+    const parsed = JSON.parse(raw) as { name?: string; sharePct?: number | null }[];
+    if (!Array.isArray(parsed)) return undefined;
+    const rows = parsed
+      .map((o) => ({
+        name: String(o?.name ?? "").trim(),
+        sharePct: o?.sharePct == null ? null : Number(o.sharePct),
+      }))
+      .filter((o) => o.name !== "");
+    return rows.length > 0 ? rows : undefined;
+  } catch {
+    return undefined;
+  }
 }
 
 export async function loadPoRecords(): Promise<PoIntakeRecord[]> {
@@ -320,6 +393,8 @@ export async function savePoRecord(
     expectedPropertyCount: record.expectedPropertyCount,
     propertiesRegion: record.propertiesRegion.trim() || undefined,
     workOrderDescription: record.workOrderDescription.trim() || undefined,
+    clientId: record.clientId.trim(),
+    reportUserClientIds: record.reportUserClientIds ?? [],
     properties: record.properties.map((p) =>
       propertyToEnfathDto(p, { forInsert: true }),
     ),
@@ -610,8 +685,12 @@ export function priorDeedToPropertyIntake(
     courtId: prior.courtId?.trim() ?? "",
     circuitId: prior.circuitId?.trim() ?? "",
     planNumber: prior.planNumber?.trim() ?? "",
+    planName: prior.planName?.trim() ?? "",
     plotNumber: prior.plotNumber?.trim() ?? "",
+    blockNumber: prior.blockNumber?.trim() ?? "",
     locationMapUrl: prior.locationMapUrl?.trim() ?? "",
+    finishingType: prior.finishingType?.trim() ?? "",
+    finishingStructure: prior.finishingStructure?.trim() ?? "",
     realEstateRegNumber: prior.realEstateRegNumber?.trim() ?? "",
     realEstateRegDate: prior.realEstateRegDate?.trim() ?? "",
     contacts,
@@ -645,12 +724,20 @@ export function priorDeedToPropertyIntake(
     boundariesExternalDocName: prior.boundariesExternalDocName?.trim() ?? "",
     northBoundary: prior.northBoundary?.trim() ?? "",
     northBoundaryLengthM: prior.northBoundaryLengthM?.trim() ?? "",
+    northBoundaryType: prior.northBoundaryType?.trim() ?? "",
+    northFacadeFinishing: prior.northFacadeFinishing?.trim() ?? "",
     southBoundary: prior.southBoundary?.trim() ?? "",
     southBoundaryLengthM: prior.southBoundaryLengthM?.trim() ?? "",
+    southBoundaryType: prior.southBoundaryType?.trim() ?? "",
+    southFacadeFinishing: prior.southFacadeFinishing?.trim() ?? "",
     eastBoundary: prior.eastBoundary?.trim() ?? "",
     eastBoundaryLengthM: prior.eastBoundaryLengthM?.trim() ?? "",
+    eastBoundaryType: prior.eastBoundaryType?.trim() ?? "",
+    eastFacadeFinishing: prior.eastFacadeFinishing?.trim() ?? "",
     westBoundary: prior.westBoundary?.trim() ?? "",
     westBoundaryLengthM: prior.westBoundaryLengthM?.trim() ?? "",
+    westBoundaryType: prior.westBoundaryType?.trim() ?? "",
+    westFacadeFinishing: prior.westFacadeFinishing?.trim() ?? "",
     assignmentDocFileNames: assignmentDocs,
     delegationLetterFileNames: delegationDocs,
     otherDocumentFileNames: otherDocs,
@@ -988,6 +1075,8 @@ export async function updatePoRecord(
     expectedPropertyCount: record.expectedPropertyCount,
     propertiesRegion: record.propertiesRegion.trim() || undefined,
     workOrderDescription: record.workOrderDescription.trim() || undefined,
+    clientId: record.clientId.trim(),
+    reportUserClientIds: record.reportUserClientIds ?? [],
   });
 
   if (!result.ok) {
@@ -1233,6 +1322,7 @@ export type PoIntakeDraftPayload = {
   expectedPropertyCount: number;
   propertiesRegion: string;
   workOrderDescription: string;
+  clientId: string;
 };
 
 function draftToDto(draft: PoIntakeDraftPayload) {
@@ -1246,6 +1336,7 @@ function draftToDto(draft: PoIntakeDraftPayload) {
     expectedPropertyCount: draft.expectedPropertyCount,
     propertiesRegion: draft.propertiesRegion,
     workOrderDescription: draft.workOrderDescription,
+    clientId: draft.clientId,
   };
 }
 
@@ -1259,6 +1350,7 @@ function dtoToDraft(dto: {
   expectedPropertyCount?: number;
   propertiesRegion?: string;
   workOrderDescription?: string;
+  clientId?: string;
 }): PoIntakeDraftPayload {
   return {
     step: dto.step ?? 1,
@@ -1273,6 +1365,7 @@ function dtoToDraft(dto: {
         : 1,
     propertiesRegion: dto.propertiesRegion ?? "",
     workOrderDescription: dto.workOrderDescription ?? "",
+    clientId: dto.clientId ?? "",
   };
 }
 

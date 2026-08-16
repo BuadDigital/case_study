@@ -7,7 +7,7 @@ import type { PropertyDetailPartyCard } from "../../lib/prototype/property-detai
 import type { PropertyDetailPartySubmission } from "../../lib/prototype/property-detail-party-submissions";
 
 /**
- * Property-detail «تقييم العقار» — package review + read-only payload.
+ * Property-detail appraisal tab — package review + read-only payload.
  */
 export function PropertyDetailAppraisalTab({
   appraisalTaskId,

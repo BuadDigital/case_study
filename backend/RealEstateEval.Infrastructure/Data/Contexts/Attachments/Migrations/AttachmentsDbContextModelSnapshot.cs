@@ -39,10 +39,18 @@ namespace RealEstateEval.Infrastructure.Data.Contexts.Attachments.Migrations
                     b.Property<DateTime>("CreatedAtUtc")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<string>("DictionaryTypeKey")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
                     b.Property<string>("FileName")
                         .IsRequired()
                         .HasMaxLength(512)
                         .HasColumnType("character varying(512)");
+
+                    b.Property<bool>("PrintInReport")
+                        .HasColumnType("boolean");
 
                     b.Property<string>("Scope")
                         .IsRequired()
@@ -69,6 +77,8 @@ namespace RealEstateEval.Infrastructure.Data.Contexts.Attachments.Migrations
                     b.HasKey("Id");
 
                     b.HasIndex("Scope", "ScopeKey");
+
+                    b.HasIndex("ScopeKey", "PrintInReport");
 
                     b.ToTable("FileAttachments", "attachments");
                 });

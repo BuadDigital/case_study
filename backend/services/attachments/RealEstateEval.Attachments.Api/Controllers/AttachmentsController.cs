@@ -47,6 +47,14 @@ public class AttachmentsController : ControllerBase
         return File(content, meta.ContentType, meta.FileName);
     }
 
+    [HttpGet("{id:guid}/meta")]
+    [Authorize(Policy = CapabilityPolicyNames.ManageAttachments)]
+    public async Task<ActionResult<FileAttachmentMetaDto>> GetMeta(Guid id, CancellationToken ct)
+    {
+        var meta = await _attachments.GetMetaAsync(id, ct);
+        return meta is null ? NotFound() : Ok(meta);
+    }
+
     [HttpPost]
     [Authorize(Policy = CapabilityPolicyNames.ManageAttachments)]
     public async Task<ActionResult<FileAttachmentMetaDto>> Upload(
@@ -68,6 +76,19 @@ public class AttachmentsController : ControllerBase
         }
 
         return CreatedAtAction(nameof(Download), new { id = meta!.Id }, meta);
+    }
+
+    [HttpPatch("{id:guid}/classify")]
+    [Authorize(Policy = CapabilityPolicyNames.ManageAttachments)]
+    public async Task<ActionResult<FileAttachmentMetaDto>> Classify(
+        Guid id,
+        [FromBody] ClassifyAttachmentRequest request,
+        CancellationToken ct)
+    {
+        var (meta, error) = await _attachments.ClassifyAsync(id, request, ct);
+        if (error is not null)
+            return this.BadRequestProblem(error);
+        return meta is null ? NotFound() : Ok(meta);
     }
 
     [HttpDelete("{id:guid}")]

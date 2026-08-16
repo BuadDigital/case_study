@@ -20,6 +20,7 @@ import { CASE_STUDY_FORM_STEPS, caseStudyAnswerKey,type CaseStudyFormAnswer,type
 import { CaseStudyReportActions } from "./CaseStudyReportActions";
 import { CaseStudyProgressDonut } from "./CaseStudyProgressDonut";
 import { CaseStudyMatrixTable } from "./CaseStudyMatrixTable";
+import { CaseStudyDeedNatureMatchSection } from "./CaseStudyDeedNatureMatchSection";
 import { CaseStudyInfathSpecialistSection } from "./CaseStudyInfathSpecialistSection";
 import { canPartyAnswerQuestion, canSpecialistApproveQuestion, CASE_STUDY_INFO_ROLES_CHANGED_EVENT,
   emptyCaseStudyInfoRolesConfig,
@@ -64,7 +65,7 @@ const FORM_STEP_SECTIONS: CaseStudyQuestionSection[] = [
   "extra",
 ];
 
-/** Clamp step index; only shift when value is from legacy six-tab drafts (تعميد + 5 sections). */
+/** Clamp step index; only shift when value is from legacy six-tab drafts (promulgation + 5 sections). */
 function normalizeFormStep(storedStep: number): number {
   const max = FORM_STEP_SECTIONS.length - 1;
   let step = storedStep;
@@ -83,14 +84,14 @@ type Props = {
     "assignmentSpecialist" | "receivedFromEnfathAt" | "promulgationDate"
   > | null;
   requestDateSeed?: string;
-  /** أخصائي — نموذج كامل؛ طرف — الأسئلة المسندة في المصفوفة فقط */
+  /** Specialist — full form; party — matrix-assigned questions only */
   variant?: "specialist" | "party";
   partyId?: CaseStudyInfoPartyId;
   partyChildTaskId?: string;
   parentFormTaskId?: string;
-  /** مقيم — إجابات استدلالية للأخصائي وليست نهائية في نموذج الدراسة */
+  /** Appraiser — advisory answers for the specialist; not final on the study form */
   partyAdvisory?: boolean;
-  /** قفل العرض (مثلاً بعد إتمام مهمة الطرف) — رمادي وغير قابل للتعديل */
+  /** Lock the view (e.g. after party task completion) — greyed out and non-editable */
   forceReadOnly?: boolean;
 };
 
@@ -542,7 +543,7 @@ export function CaseStudyForm({
       });
 
       const displayAnswers = { ...draft.answers, [key]: value };
-      const marksPartyReview = !isParty && (value === "A" || value === "B");
+      const marksPartyReview = !isParty && (value === "A" || value === "B" || value === "NA");
       const next: CaseStudyFormDraft = {
         ...draft,
         answers: displayAnswers,
@@ -601,7 +602,7 @@ export function CaseStudyForm({
         if (!isQuestionVisible(key)) return;
         total += 1;
         const v = draft.answers[key];
-        if (v === "A" || v === "B") answered += 1;
+        if (v === "A" || v === "B" || v === "NA") answered += 1;
       });
     }
     const pending = total - answered;
@@ -689,6 +690,20 @@ export function CaseStudyForm({
       return;
     }
     const { answered, total, pct } = summary;
+    const deedNonMatchKeys = sectionQuestions.deed
+      .map((_, i) => caseStudyAnswerKey("deed", i))
+      .filter((key) => isQuestionVisible(key) && draft.answers[key] === "B");
+    if (
+      deedNonMatchKeys.length > 0 &&
+      !String(draft.deedRemarks ?? "").trim()
+    ) {
+      showToast(
+        "الملاحظات إلزامية عند إجابة «غير مطابق» في أسئلة الصك — أكمل ملاحظات قسم الصك.",
+        "error",
+      );
+      if (draft.currentStep !== 0) goStep(0);
+      return;
+    }
     if (pct < 100) {
       const missing = new Set<string>();
       let firstMissingKey: string | null = null;
@@ -698,7 +713,7 @@ export function CaseStudyForm({
           const key = caseStudyAnswerKey(section, i);
           if (!isQuestionVisible(key)) return;
           const v = draft.answers[key];
-          if (v === "A" || v === "B") return;
+          if (v === "A" || v === "B" || v === "NA") return;
           missing.add(key);
           if (!firstMissingKey) {
             firstMissingKey = key;
@@ -946,6 +961,18 @@ export function CaseStudyForm({
               ) : undefined
             }
           />
+          {!isParty ? (
+            <CaseStudyDeedNatureMatchSection
+              draft={draft}
+              disabled={isFormReadOnly}
+              onPatch={(p) => {
+                if (p.deedNatureMatchOutcome !== undefined)
+                  patch("deedNatureMatchOutcome", p.deedNatureMatchOutcome);
+                if (p.deedNatureMatchNotes !== undefined)
+                  patch("deedNatureMatchNotes", p.deedNatureMatchNotes);
+              }}
+            />
+          ) : null}
           {!isParty && isLastVisibleStep ? (
             <SpecialistClosingCards reportModel={reportModel} />
           ) : null}

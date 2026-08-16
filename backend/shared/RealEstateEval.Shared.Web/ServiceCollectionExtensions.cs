@@ -70,6 +70,16 @@ public static class AuthorizationExtensions
                     PlatformCapabilities.ManageValuationRequests,
                     PlatformCapabilities.SubmitValuationReport)));
 
+            // 11هـ2 feed #1 — الميداني يلتقط العروض والصفقات أثناء المعاينة, so the
+            // party-work capability also writes to the shared bank.
+            options.AddPolicy(
+                CapabilityPolicyNames.WriteComparableBank,
+                policy => policy.RequireAssertion(ctx => HasAnyCapability(
+                    ctx,
+                    PlatformCapabilities.ManageValuationRequests,
+                    PlatformCapabilities.SubmitValuationReport,
+                    PlatformCapabilities.SubmitPartyWork)));
+
             options.AddPolicy(
                 CapabilityPolicyNames.ListDistributionAssignees,
                 policy => policy.RequireAssertion(ctx => HasAnyCapability(

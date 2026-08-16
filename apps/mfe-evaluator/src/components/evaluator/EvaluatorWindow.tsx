@@ -52,6 +52,7 @@ import {
   EvaluatorPropertyTab,
   type EvaluatorPropertySummary,
 } from "./EvaluatorPropertyTab";
+import { EvaluatorComparableSelectionPanel } from "./EvaluatorComparableSelectionPanel";
 import {
   appraiserInspectionDone,
   appraiserNeedsSurvey,
@@ -76,12 +77,14 @@ import {
 
 export type EvaluatorWindowTab =
   | "property"
+  | "comparables"
   | "valuation"
   | "infath"
   | "checklist";
 
 const VAL_TABS: { id: EvaluatorWindowTab; label: string }[] = [
   { id: "property", label: "بيانات العقار" },
+  { id: "comparables", label: "المقارنات" },
   { id: "valuation", label: "التقييم" },
   { id: "infath", label: "بيانات الرفع لإنفاذ" },
   { id: "checklist", label: "قائمة الفحص" },
@@ -571,13 +574,26 @@ export function EvaluatorWindow({
         <div
           className={cn(
             formDisabled &&
-              activeTab !== "property"
+              activeTab !== "property" &&
+              activeTab !== "comparables"
               ? "opacity-75"
               : undefined,
           )}
         >
           {activeTab === "property" ? (
             <EvaluatorPropertyTab property={summary} />
+          ) : null}
+
+          {activeTab === "comparables" ? (
+            <EvaluatorComparableSelectionPanel
+              propertyId={task.propertyId ?? ""}
+              poNumber={task.poNumber}
+              districtHint={
+                summary.property?.district?.trim() ||
+                summary.cityDistrict.split(/[|/·,،]/)[0]?.trim() ||
+                undefined
+              }
+            />
           ) : null}
 
           {activeTab === "checklist" ? (
@@ -605,7 +621,7 @@ export function EvaluatorWindow({
 
           {activeTab === "valuation" ? (
             <div className="flex flex-col gap-3">
-              <EngSection>تقرير التقييم (المقياس)</EngSection>
+              <EngSection>تقرير التقييم (PDF)</EngSection>
               <div className="mb-3 grid max-w-[260px] grid-cols-1 gap-1.5">
                 <label htmlFor="val-report-no" className={valLabelClassName}>
                   رقم التقرير <span className="text-[#a5432e]">*</span>
@@ -668,7 +684,7 @@ export function EvaluatorWindow({
                         رفع تقرير التقييم
                       </div>
                       <div className="mb-2.5 text-[11px] text-text-3">
-                        PDF صادر من برنامج المقياس · حتى 20 ميجابايت · ملف واحد
+                        PDF لتقرير التقييم · حتى 20 ميجابايت · ملف واحد
                         لكل عقار
                       </div>
                       {!formDisabled ? (

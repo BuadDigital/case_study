@@ -18,5 +18,14 @@ public interface IAttachmentService
         string uploadedByUserId,
         CancellationToken cancellationToken = default);
 
+    Task<FileAttachmentMetaDto?> GetMetaAsync(
+        Guid id,
+        CancellationToken cancellationToken = default);
+
+    Task<(FileAttachmentMetaDto? Meta, string? Error)> ClassifyAsync(
+        Guid id,
+        ClassifyAttachmentRequest request,
+        CancellationToken cancellationToken = default);
+
     Task<bool> DeleteAsync(Guid id, CancellationToken cancellationToken = default);
 }

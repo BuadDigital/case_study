@@ -30,6 +30,8 @@ export type CaseStudyFormDto = {
   infathLinkedAssetsNotes?: string;
   infathOtherNotes?: string;
   infathClosingNotes?: string;
+  deedNatureMatchOutcome?: string;
+  deedNatureMatchNotes?: string;
   savedAtUtc?: string;
 };
 

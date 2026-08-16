@@ -224,16 +224,52 @@ public sealed class WorkOrderPropertyCommands : IWorkOrderPropertyCommands
             request.RestrictionsPresent,
             request.RestrictionType,
             request.RestrictionOtherReason);
+
+        // §4ج-7 — owners+shares from the transcription; ownership type is editable-derived.
+        if (request.Owners is not null)
+        {
+            var owners = request.Owners
+                .Select(o => new DeedOwner(o.Name?.Trim() ?? "", o.SharePct))
+                .Where(o => !string.IsNullOrWhiteSpace(o.Name))
+                .ToList();
+            if (OwnershipTypeRules.ValidateOwners(owners) is { } ownersError)
+                return (null, new Dictionary<string, string> { ["owners"] = ownersError });
+            existing.DeedOwnersJson = OwnershipTypeRules.SerializeOwners(owners);
+            if (owners.Count > 0)
+                existing.OwnerName = owners[0].Name;
+        }
+
+        if (request.OwnershipTypeIsManual)
+        {
+            if (!OwnershipTypes.IsKnown(request.OwnershipType))
+                return (null, new Dictionary<string, string> { ["ownershipType"] = "نوع ملكية غير معروف" });
+            existing.OwnershipType = request.OwnershipType!.Trim().ToLowerInvariant();
+            existing.OwnershipTypeIsManual = true;
+        }
+        else
+        {
+            existing.OwnershipType = null;
+            existing.OwnershipTypeIsManual = false;
+        }
+
         existing.BoundariesAvailability = request.BoundariesAvailability?.Trim();
         existing.BoundariesExternalDocName = request.BoundariesExternalDocName?.Trim();
         existing.NorthBoundary = IWorkOrderLoader.NormalizeOptionalText(request.NorthBoundary);
         existing.NorthBoundaryLengthM = IWorkOrderLoader.NormalizeOptionalText(request.NorthBoundaryLengthM);
+        existing.NorthBoundaryType = NormalizeBoundaryType(request.NorthBoundaryType);
+        existing.NorthFacadeFinishing = IWorkOrderLoader.NormalizeOptionalText(request.NorthFacadeFinishing);
         existing.SouthBoundary = IWorkOrderLoader.NormalizeOptionalText(request.SouthBoundary);
         existing.SouthBoundaryLengthM = IWorkOrderLoader.NormalizeOptionalText(request.SouthBoundaryLengthM);
+        existing.SouthBoundaryType = NormalizeBoundaryType(request.SouthBoundaryType);
+        existing.SouthFacadeFinishing = IWorkOrderLoader.NormalizeOptionalText(request.SouthFacadeFinishing);
         existing.EastBoundary = IWorkOrderLoader.NormalizeOptionalText(request.EastBoundary);
         existing.EastBoundaryLengthM = IWorkOrderLoader.NormalizeOptionalText(request.EastBoundaryLengthM);
+        existing.EastBoundaryType = NormalizeBoundaryType(request.EastBoundaryType);
+        existing.EastFacadeFinishing = IWorkOrderLoader.NormalizeOptionalText(request.EastFacadeFinishing);
         existing.WestBoundary = IWorkOrderLoader.NormalizeOptionalText(request.WestBoundary);
         existing.WestBoundaryLengthM = IWorkOrderLoader.NormalizeOptionalText(request.WestBoundaryLengthM);
+        existing.WestBoundaryType = NormalizeBoundaryType(request.WestBoundaryType);
+        existing.WestFacadeFinishing = IWorkOrderLoader.NormalizeOptionalText(request.WestFacadeFinishing);
         existing.BourseDataCompleted = true;
         var bourseNow = DateTime.UtcNow;
         existing.BourseCompletedAtUtc = bourseNow;
@@ -358,6 +394,13 @@ public sealed class WorkOrderPropertyCommands : IWorkOrderPropertyCommands
         PropertyIdentifierTypeLabels.TryParseApiValue(dto.IdentifierType, out var idType);
         entity.IdentifierType = idType;
 
+        // §4ج-8 — suggestion from the identifier; the valuer's explicit choice wins.
+        entity.DeedKind =
+            !string.IsNullOrWhiteSpace(dto.DeedKind)
+            && DeedKindLabels.TryParseApiValue(dto.DeedKind, out var deedKind)
+                ? deedKind
+                : DeedKindLabels.SuggestFromIdentifier(idType);
+
         if (idType == PropertyIdentifierType.BourseInquiry &&
             string.IsNullOrWhiteSpace(dto.DeedNumber))
         {
@@ -395,8 +438,12 @@ public sealed class WorkOrderPropertyCommands : IWorkOrderPropertyCommands
         entity.DeedStatus = dto.DeedStatus?.Trim();
         entity.Area = dto.Area?.Trim();
         entity.PlanNumber = IWorkOrderLoader.NormalizeOptionalText(dto.PlanNumber);
+        entity.PlanName = IWorkOrderLoader.NormalizeOptionalText(dto.PlanName);
         entity.PlotNumber = IWorkOrderLoader.NormalizeOptionalText(dto.PlotNumber);
+        entity.BlockNumber = IWorkOrderLoader.NormalizeOptionalText(dto.BlockNumber);
         entity.LocationMapUrl = IWorkOrderLoader.NormalizeOptionalText(dto.LocationMapUrl);
+        entity.FinishingType = NormalizeFinishingType(dto.FinishingType);
+        entity.FinishingStructure = NormalizeFinishingStructure(dto.FinishingStructure);
     }
 
     private void DetachTrackedContacts(WorkOrderProperty entity)
@@ -488,12 +535,41 @@ public sealed class WorkOrderPropertyCommands : IWorkOrderPropertyCommands
         entity.BoundariesExternalDocName = dto.BoundariesExternalDocName?.Trim();
         entity.NorthBoundary = IWorkOrderLoader.NormalizeOptionalText(dto.NorthBoundary);
         entity.NorthBoundaryLengthM = IWorkOrderLoader.NormalizeOptionalText(dto.NorthBoundaryLengthM);
+        entity.NorthBoundaryType = NormalizeBoundaryType(dto.NorthBoundaryType);
+        entity.NorthFacadeFinishing = IWorkOrderLoader.NormalizeOptionalText(dto.NorthFacadeFinishing);
         entity.SouthBoundary = IWorkOrderLoader.NormalizeOptionalText(dto.SouthBoundary);
         entity.SouthBoundaryLengthM = IWorkOrderLoader.NormalizeOptionalText(dto.SouthBoundaryLengthM);
+        entity.SouthBoundaryType = NormalizeBoundaryType(dto.SouthBoundaryType);
+        entity.SouthFacadeFinishing = IWorkOrderLoader.NormalizeOptionalText(dto.SouthFacadeFinishing);
         entity.EastBoundary = IWorkOrderLoader.NormalizeOptionalText(dto.EastBoundary);
         entity.EastBoundaryLengthM = IWorkOrderLoader.NormalizeOptionalText(dto.EastBoundaryLengthM);
+        entity.EastBoundaryType = NormalizeBoundaryType(dto.EastBoundaryType);
+        entity.EastFacadeFinishing = IWorkOrderLoader.NormalizeOptionalText(dto.EastFacadeFinishing);
         entity.WestBoundary = IWorkOrderLoader.NormalizeOptionalText(dto.WestBoundary);
         entity.WestBoundaryLengthM = IWorkOrderLoader.NormalizeOptionalText(dto.WestBoundaryLengthM);
+        entity.WestBoundaryType = NormalizeBoundaryType(dto.WestBoundaryType);
+        entity.WestFacadeFinishing = IWorkOrderLoader.NormalizeOptionalText(dto.WestFacadeFinishing);
+    }
+
+    private static string? NormalizeBoundaryType(string? value)
+    {
+        var t = IWorkOrderLoader.NormalizeOptionalText(value);
+        if (t is null) return null;
+        return PropertyBoundaryTypes.IsKnown(t) ? t.Trim().ToLowerInvariant() : t;
+    }
+
+    private static string? NormalizeFinishingType(string? value)
+    {
+        var t = IWorkOrderLoader.NormalizeOptionalText(value);
+        if (t is null) return null;
+        return PropertyFinishingTypes.IsKnown(t) ? t.Trim().ToLowerInvariant() : t;
+    }
+
+    private static string? NormalizeFinishingStructure(string? value)
+    {
+        var t = IWorkOrderLoader.NormalizeOptionalText(value);
+        if (t is null) return null;
+        return PropertyFinishingStructures.IsKnown(t) ? t.Trim().ToLowerInvariant() : t;
     }
 
     private async Task ApplyDocumentarySideEffectsAfterPropertySaveAsync(

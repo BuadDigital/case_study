@@ -45,6 +45,7 @@ import { usePropertyTimelineQuery } from "../../query/use-property-timeline-quer
 import { caseStudyTaskForProperty, type WorkflowTask } from "../../lib/prototype/tasks-storage";
 import { childTasksForCaseStudyParent } from "../../lib/prototype/case-study-party-answers";
 import { downloadPropertyDetailDocument, listPropertyDetailPhotos, type PropertyDetailDocumentEntry, type PropertyDetailDocumentSection } from "../../lib/prototype/property-detail-documents";
+import { ReportAttachmentClassifyControls } from "./ReportAttachmentClassifyControls";
 import { usePropertyDetailDocuments } from "../../query/property-detail-documents-query";
 import { useWorkflowTasksQuery } from "../../query/case-study-queries";
 import { useInspectorFeesQuery } from "../../query/inspector-fees-queries";
@@ -84,7 +85,7 @@ const GOVERNMENT_REVIEWER_TAB_IDS: readonly TabId[] = [
 ];
 
 /**
- * مقيم عقاري: study + valuation workspace only
+ * Real-estate appraiser: study + valuation workspace only
  * (no survey package, court/keys, enfaz upload, finance, or audit log).
  */
 const REAL_ESTATE_APPRAISER_TAB_IDS: readonly TabId[] = [
@@ -153,46 +154,77 @@ function docExtLabel(doc: PropertyDetailDocumentEntry): string {
   return ext.slice(0, 4) || "DOC";
 }
 
-function DocumentRow({ doc }: { doc: PropertyDetailDocumentEntry }) {
+function suggestDocKindForClassify(doc: PropertyDetailDocumentEntry): string {
+  const id = doc.id.toLowerCase();
+  if (id.includes("reg")) return "registry";
+  if (id.includes("assignment") || id.includes("decree")) return "decree";
+  if (id.includes("bourse")) return "bourse-deed";
+  if (id.includes("deed")) return "deed";
+  if (id.includes("delegation")) return "delegation";
+  if (id.includes("boundar") || id.includes("survey")) return "boundaries";
+  if (id.includes("map") || id.includes("site")) return "site-map";
+  if (id.includes("photo") || doc.kind === "image") return "photo";
+  return "other";
+}
+
+function DocumentRow({
+  doc,
+  propertyTypeKey,
+}: {
+  doc: PropertyDetailDocumentEntry;
+  propertyTypeKey?: string;
+}) {
   const ext = docExtLabel(doc);
+  const attachmentId = doc.attachmentId?.trim();
 
   return (
-    <div className="flex items-center justify-between gap-2.5 rounded border border-border bg-surface-2 px-3 py-2.5">
-      <div className="flex min-w-0 items-center gap-2.5">
-        <span
-          className="inline-flex h-[30px] w-[30px] shrink-0 items-center justify-center rounded-md border border-border bg-[color-mix(in_srgb,#a4906f_14%,transparent)] text-[9px] font-extrabold text-[#8c7857]"
-          aria-hidden
+    <div className="rounded border border-border bg-surface-2 px-3 py-2.5">
+      <div className="flex items-center justify-between gap-2.5">
+        <div className="flex min-w-0 items-center gap-2.5">
+          <span
+            className="inline-flex h-[30px] w-[30px] shrink-0 items-center justify-center rounded-md border border-border bg-[color-mix(in_srgb,#a4906f_14%,transparent)] text-[9px] font-extrabold text-[#8c7857]"
+            aria-hidden
+          >
+            {ext}
+          </span>
+          <span className="inline-flex min-w-0 flex-col gap-px">
+            <span className="truncate text-[12.5px] font-semibold text-text">
+              {doc.name}
+            </span>
+            <span className="truncate text-[10.5px] text-text-3">
+              {doc.source}
+              {" · "}
+              <bdi dir="ltr" className={ltrValueClass}>
+                {doc.fileName}
+              </bdi>
+            </span>
+          </span>
+        </div>
+        <button
+          type="button"
+          className="shrink-0 rounded-md border border-border-md bg-surface px-3 py-1 text-[11px] font-bold text-text-2 max-lg:min-h-11"
+          onClick={() => downloadPropertyDetailDocument(doc)}
         >
-          {ext}
-        </span>
-        <span className="inline-flex min-w-0 flex-col gap-px">
-          <span className="truncate text-[12.5px] font-semibold text-text">
-            {doc.name}
-          </span>
-          <span className="truncate text-[10.5px] text-text-3">
-            {doc.source}
-            {" · "}
-            <bdi dir="ltr" className={ltrValueClass}>
-              {doc.fileName}
-            </bdi>
-          </span>
-        </span>
+          تنزيل
+        </button>
       </div>
-      <button
-        type="button"
-        className="shrink-0 rounded-md border border-border-md bg-surface px-3 py-1 text-[11px] font-bold text-text-2 max-lg:min-h-11"
-        onClick={() => downloadPropertyDetailDocument(doc)}
-      >
-        تنزيل
-      </button>
+      {attachmentId ? (
+        <ReportAttachmentClassifyControls
+          attachmentId={attachmentId}
+          docKind={suggestDocKindForClassify(doc)}
+          propertyTypeKey={propertyTypeKey}
+        />
+      ) : null}
     </div>
   );
 }
 
 function DocumentsTab({
   sections,
+  propertyTypeKey,
 }: {
   sections: PropertyDetailDocumentSection[];
+  propertyTypeKey?: string;
 }) {
   if (sections.length === 0) {
     return (
@@ -213,7 +245,7 @@ function DocumentsTab({
           </div>
           <div className="grid gap-2">
             {section.documents.map((doc) => (
-              <DocumentRow key={doc.id} doc={doc} />
+              <DocumentRow key={doc.id} doc={doc} propertyTypeKey={propertyTypeKey} />
             ))}
           </div>
         </section>
@@ -508,7 +540,7 @@ export function PoPropertyDetailTabs({
   showDecree: boolean;
   /**
    * Case Study.html `inspect-desktop`: stay on property-detail chrome with
-   * معاينة العقار in input mode. Used by /active-inspection desktop.
+   * property inspection in input mode. Used by /active-inspection desktop.
    */
   inspectorWorkspace?: PoPropertyDetailInspectorWorkspace;
 }) {
@@ -558,7 +590,7 @@ export function PoPropertyDetailTabs({
       setTab(nextTab);
     }
     const nextInspect = searchParams.get("inspect");
-    /* وضع الإدخال فقط عند ?inspect=edit (من الزر) — لا من مجرد فتح التبويب. */
+    /* Input mode only when ?inspect=edit (from the button) — not merely opening the tab. */
     setInspectEdit(nextInspect === "edit");
   }, [searchParams, workspaceForced, inspectorWorkspace?.forceEdit, role]);
 
@@ -858,7 +890,7 @@ export function PoPropertyDetailTabs({
                   onClick={() => {
                     setTab(t.id);
                     if (workspaceForced) return;
-                    /* التبويب للعرض فقط — وضع الإدخال يُفتح من زر «معاينة العقار». */
+                    /* Tab is view-only — input mode opens from the property-inspection button. */
                     if (t.id === "inspection" && inspectEdit) {
                       setInspectEdit(false);
                       replaceInspectQuery(null);
@@ -892,7 +924,7 @@ export function PoPropertyDetailTabs({
           ) : null}
 
           {tab === "documents" ? (
-            <DocumentsTab sections={propertyDocumentSections} />
+            <DocumentsTab sections={propertyDocumentSections} propertyTypeKey={property.propertyType} />
           ) : null}
 
           {tab === "linked" ? (

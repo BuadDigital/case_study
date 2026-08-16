@@ -1,7 +1,7 @@
 "use client";
 
 import { AppModal } from "@case-study/mfe/components/ui/AppModal";
-import { RegField, RegTextarea } from "@platform/app-shared/registration/FormFields";
+import { RegField, RegSelect, RegTextarea } from "@platform/app-shared/registration/FormFields";
 import { RegistrationFormCard } from "@platform/app-shared/registration/RegistrationFormCard";
 import { UNSAVED_CONFIRM_MSG } from "@platform/app-shared/registration/registration-utils";
 import { Button, Note } from "@platform/design-system";
@@ -86,6 +86,20 @@ export function PoIntakeModal({
             value={form.assignmentSpecialistEmail}
             error={form.fieldErrors.assignmentSpecialistEmail}
             onChange={form.setAssignmentSpecialistEmail}
+          />
+          <RegSelect
+            id="po_client_modal"
+            label="العميل"
+            required
+            value={form.clientId}
+            error={form.fieldErrors.clientId}
+            disabled={form.clientsLoading}
+            placeholder={form.clientsLoading ? "جاري التحميل…" : "اختر العميل"}
+            options={form.clients.map((c) => ({
+              value: c.id,
+              label: c.nameAr,
+            }))}
+            onChange={form.setClientId}
           />
           <AssignmentTypeFields
             value={form.assignmentType}

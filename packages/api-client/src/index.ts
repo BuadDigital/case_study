@@ -264,6 +264,8 @@ export {
 export {
   deleteAttachment,
   downloadAttachmentBlob,
+  getAttachmentMeta,
+  classifyAttachment,
   getFailureTypesCatalog,
   getFieldDictionary,
   getEvaluatorRecallApi,
@@ -309,6 +311,7 @@ export {
   type FieldDictionaryFieldDto,
   type FieldDictionaryStateDto,
   type FileAttachmentMetaDto,
+  type ClassifyAttachmentRequest,
   type KeyEnvelopeAssignmentDto,
   type KeyEnvelopeAssignmentInput,
   type KeyEnvelopeDto,
@@ -514,12 +517,51 @@ export {
   type OrganizationCommunicationsSettings,
   type OrganizationCompanySettings,
   type OrganizationEvaluatorSettings,
+  type OrganizationValuerRosterEntry,
   type OrganizationSettingsApiConfig,
   type OrganizationSettingsDto,
   type OrganizationSettingsResult,
   type OrganizationSlaSettings,
   type SaveOrganizationSettingsRequest,
 } from "./organization-settings";
+
+export {
+  getAttachmentPrintDictionary,
+  saveAttachmentPrintDictionary,
+  type AttachmentPrintDictionaryApiConfig,
+  type AttachmentPrintDictionaryDto,
+  type AttachmentPrintTypeDto,
+} from "./attachment-print-dictionary";
+
+export {
+  getDifferenceFactorCatalog,
+  saveDifferenceFactorCatalog,
+  type DifferenceFactorCatalogApiConfig,
+  type DifferenceFactorCatalogDto,
+  type DifferenceFactorDefinitionDto,
+} from "./difference-factor-catalog";
+
+export {
+  getPropertyGroup,
+  suggestPropertyGroupLinks,
+  confirmPropertyGroupLink,
+  unlinkPropertyGroup,
+  type PropertyGroupDto,
+  type PropertyGroupMemberDto,
+  type PropertyGroupSuggestionDto,
+  type PropertyGroupsApiConfig,
+} from "./property-groups";
+
+export {
+  listClients,
+  getClient,
+  createClient,
+  updateClient,
+  deactivateClient,
+  INFATH_SEED_CLIENT_ID,
+  type ClientDto,
+  type UpsertClientRequest,
+} from "./clients";
 
 export {
   clearFieldSyncStatus,
@@ -529,3 +571,66 @@ export {
   type FieldSyncStatusDto,
   type UpsertFieldSyncStatusRequest,
 } from "./field-sync-status";
+export {
+  listComparableProperties,
+  suggestComparablePropertiesByProximity,
+  createComparableProperty,
+  deactivateComparableProperty,
+  type ComparablePropertiesApiConfig,
+  type ComparablePropertyDto,
+  type ComparablePropertyListQuery,
+  type ComparableProximityQuery,
+  type ComparableProximitySuggestionDto,
+  type ComparableProximitySuggestionListDto,
+  type ComparableSourceCardDto,
+  type UpsertComparablePropertyRequest,
+} from "./comparable-properties";
+
+export {
+  getOpenValuationRequestByProperty,
+  listValuationComparableSelections,
+  replaceValuationComparableSelections,
+  setValuationComparableAdopted,
+  removeValuationComparableSelection,
+  saveValuationComparableMarket,
+  saveValuationMarketApproach,
+  getValuationCostApproach,
+  saveValuationCostApproach,
+  getValuationReconciliation,
+  saveValuationReconciliation,
+  getValuationIssuanceGates,
+  getValuationReportDocument,
+  getValuationReportFieldPayload,
+  type ValuationComparableAdjustmentLineDto,
+  type ValuationComparableMarketDto,
+  type ValuationComparableSelectionDto,
+  type ValuationComparableSelectionItemRequest,
+  type ValuationComparableSelectionListDto,
+  type SaveValuationComparableMarketRequest,
+  type SaveValuationMarketApproachRequest,
+  type ValuationCostApproachDto,
+  type ValuationCostLineDto,
+  type SaveValuationCostApproachRequest,
+  type ValuationReconciliationDto,
+  type ValuationReconciliationMethodDto,
+  type SaveValuationReconciliationRequest,
+  type ValuationIssuanceGatesDto,
+  type ValuationIssuanceGateItemDto,
+  type ValuationMethodologyAlertItemDto,
+  type ValuationReportDocumentDto,
+  type ValuationReportPrintedAttachmentDto,
+  type ValuationReportSectionDto,
+  type ValuationRequestLiteDto,
+  type ValuationSelectionsApiConfig,
+  type ValuationReportFieldPayloadDto,
+  type ValuationReportFieldDto,
+} from "./valuation-comparable-selections";
+
+export {
+  getBuildingInventory,
+  saveBuildingInventory,
+  type BuildingInventoryDto,
+  type BuildingInventoryLineDto,
+  type BuildingStructureKind,
+  type SaveBuildingInventoryRequest,
+} from "./building-inventory";

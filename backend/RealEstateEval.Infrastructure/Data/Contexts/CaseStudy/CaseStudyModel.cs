@@ -26,17 +26,38 @@ internal static class CaseStudyModel
             e.Property(x => x.LifecycleStatus).HasMaxLength(32).IsRequired(false);
             e.Property(x => x.PropertiesRegion).HasMaxLength(256).IsRequired(false);
             e.Property(x => x.WorkOrderDescription).HasMaxLength(2000).IsRequired(false);
+            e.Property(x => x.ReportUserClientIdsJson).HasColumnType("jsonb");
+            e.HasOne(x => x.Client)
+                .WithMany()
+                .HasForeignKey(x => x.ClientId)
+                .OnDelete(DeleteBehavior.Restrict);
             e.HasMany(x => x.Properties)
                 .WithOne(x => x.WorkOrder)
                 .HasForeignKey(x => x.WorkOrderId)
                 .OnDelete(DeleteBehavior.Cascade);
             e.HasIndex(x => x.CreatedAtUtc);
+            e.HasIndex(x => x.ClientId);
+        });
+
+        builder.Entity<Client>(e =>
+        {
+            MapTable(e, "Clients", DatabaseSchemas.CaseStudy, ownsMigrations);
+            e.Property(x => x.NameAr).HasMaxLength(256).IsRequired();
+            e.Property(x => x.NameEn).HasMaxLength(256);
+            e.Property(x => x.IdentityNumber).HasMaxLength(64);
+            e.Property(x => x.Phone).HasMaxLength(32);
+            e.Property(x => x.Email).HasMaxLength(256);
+            e.HasIndex(x => x.IsActive);
+            e.HasIndex(x => x.NameAr);
         });
 
         builder.Entity<WorkOrderProperty>(e =>
         {
             MapTable(e, "WorkOrderProperties", DatabaseSchemas.CaseStudy, ownsMigrations);
             e.Property(x => x.DeedNumber).HasMaxLength(128);
+            e.Property(x => x.DeedKind)
+                .HasConversion<int>();
+            e.Property(x => x.HasStructuresToValue).HasMaxLength(8);
             e.Property(x => x.RequestNumber).HasMaxLength(64);
             e.Property(x => x.AssignmentMandateNumber).HasMaxLength(64);
             e.Property(x => x.AssignmentMandateDate).HasMaxLength(32);
@@ -48,18 +69,32 @@ internal static class CaseStudyModel
             e.Property(x => x.BoundariesExternalDocName).HasMaxLength(512);
             e.Property(x => x.NorthBoundary).HasMaxLength(512);
             e.Property(x => x.NorthBoundaryLengthM).HasMaxLength(32);
+            e.Property(x => x.NorthBoundaryType).HasMaxLength(32);
+            e.Property(x => x.NorthFacadeFinishing).HasMaxLength(128);
             e.Property(x => x.SouthBoundary).HasMaxLength(512);
             e.Property(x => x.SouthBoundaryLengthM).HasMaxLength(32);
+            e.Property(x => x.SouthBoundaryType).HasMaxLength(32);
+            e.Property(x => x.SouthFacadeFinishing).HasMaxLength(128);
             e.Property(x => x.EastBoundary).HasMaxLength(512);
             e.Property(x => x.EastBoundaryLengthM).HasMaxLength(32);
+            e.Property(x => x.EastBoundaryType).HasMaxLength(32);
+            e.Property(x => x.EastFacadeFinishing).HasMaxLength(128);
             e.Property(x => x.WestBoundary).HasMaxLength(512);
             e.Property(x => x.WestBoundaryLengthM).HasMaxLength(32);
+            e.Property(x => x.WestBoundaryType).HasMaxLength(32);
+            e.Property(x => x.WestFacadeFinishing).HasMaxLength(128);
             e.Property(x => x.RestrictionsPresent).HasMaxLength(8);
             e.Property(x => x.RestrictionType).HasMaxLength(128);
             e.Property(x => x.RestrictionOtherReason).HasMaxLength(500);
+            e.Property(x => x.DeedOwnersJson).HasMaxLength(4000);
+            e.Property(x => x.OwnershipType).HasMaxLength(32);
             e.Property(x => x.PlanNumber).HasMaxLength(128);
+            e.Property(x => x.PlanName).HasMaxLength(256);
             e.Property(x => x.PlotNumber).HasMaxLength(128);
+            e.Property(x => x.BlockNumber).HasMaxLength(64);
             e.Property(x => x.LocationMapUrl).HasMaxLength(1024);
+            e.Property(x => x.FinishingType).HasMaxLength(32);
+            e.Property(x => x.FinishingStructure).HasMaxLength(32);
             e.Property(x => x.RemovalReason).HasMaxLength(500);
             e.Property(x => x.City).HasMaxLength(128);
             e.Property(x => x.Region).HasMaxLength(100);
@@ -77,6 +112,42 @@ internal static class CaseStudyModel
                 .WithOne(x => x.Property)
                 .HasForeignKey(x => x.PropertyId)
                 .OnDelete(DeleteBehavior.Cascade);
+            e.HasMany(x => x.BuildingInventoryLines)
+                .WithOne(x => x.Property)
+                .HasForeignKey(x => x.PropertyId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        builder.Entity<BuildingInventoryLine>(e =>
+        {
+            MapTable(e, "BuildingInventoryLines", DatabaseSchemas.CaseStudy, ownsMigrations);
+            e.Property(x => x.StructureKind).HasMaxLength(32).IsRequired();
+            e.Property(x => x.Label).HasMaxLength(256).IsRequired();
+            e.Property(x => x.AreaSqm).HasMaxLength(32);
+            e.Property(x => x.Notes).HasMaxLength(2000);
+            e.HasIndex(x => x.PropertyId);
+            e.HasIndex(x => new { x.PropertyId, x.SortOrder });
+        });
+
+        builder.Entity<PropertyGroup>(e =>
+        {
+            MapTable(e, "PropertyGroups", DatabaseSchemas.CaseStudy, ownsMigrations);
+            e.Property(x => x.Name).HasMaxLength(256);
+            e.HasMany(x => x.Members)
+                .WithOne(x => x.Group!)
+                .HasForeignKey(x => x.GroupId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        builder.Entity<PropertyGroupMember>(e =>
+        {
+            MapTable(e, "PropertyGroupMembers", DatabaseSchemas.CaseStudy, ownsMigrations);
+            e.Property(x => x.LinkedByUserId).HasMaxLength(128).IsRequired();
+            e.Property(x => x.SuggestionSignals).HasMaxLength(512);
+            e.Property(x => x.UnlinkReason).HasMaxLength(2000);
+            e.Property(x => x.UnlinkedByUserId).HasMaxLength(128);
+            e.HasIndex(x => x.GroupId);
+            e.HasIndex(x => new { x.PropertyId, x.IsActive });
         });
 
         builder.Entity<PropertyContact>(e =>
@@ -182,6 +253,8 @@ internal static class CaseStudyModel
             e.Property(x => x.InfathLinkedAssetsNotes).HasMaxLength(4000);
             e.Property(x => x.InfathOtherNotes).HasMaxLength(4000);
             e.Property(x => x.InfathClosingNotes).HasMaxLength(4000);
+            e.Property(x => x.DeedNatureMatchOutcome).HasMaxLength(32);
+            e.Property(x => x.DeedNatureMatchNotes).HasMaxLength(4000);
             e.Property(x => x.PoNumber).HasMaxLength(64);
             e.HasIndex(x => new { x.TaskId, x.IsPartyForm }).IsUnique();
         });

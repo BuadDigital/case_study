@@ -13,10 +13,17 @@ namespace RealEstateEval.Valuation.Api.Controllers;
 public class ValuationRequestsController : ControllerBase
 {
     private readonly IValuationRequestService _service;
+    private readonly IValuationIssuanceGateService _issuanceGates;
+    private readonly IPriorValuationBankFeeder _bankFeeder;
 
-    public ValuationRequestsController(IValuationRequestService service)
+    public ValuationRequestsController(
+        IValuationRequestService service,
+        IValuationIssuanceGateService issuanceGates,
+        IPriorValuationBankFeeder bankFeeder)
     {
         _service = service;
+        _issuanceGates = issuanceGates;
+        _bankFeeder = bankFeeder;
     }
 
     [HttpGet]
@@ -29,6 +36,16 @@ public class ValuationRequestsController : ControllerBase
     public async Task<ActionResult<ValuationRequestDto>> Get(Guid id, CancellationToken ct)
     {
         var dto = await _service.GetAsync(id, ct);
+        return dto is null ? NotFound() : Ok(dto);
+    }
+
+    [HttpGet("open-by-property/{propertyId}")]
+    [Authorize(Policy = CapabilityPolicyNames.ReadValuationQueue)]
+    public async Task<ActionResult<ValuationRequestDto>> GetOpenByProperty(
+        string propertyId,
+        CancellationToken ct)
+    {
+        var dto = await _service.GetOpenByPropertyAsync(propertyId, ct);
         return dto is null ? NotFound() : Ok(dto);
     }
 
@@ -52,13 +69,50 @@ public class ValuationRequestsController : ControllerBase
     [Authorize(Policy = CapabilityPolicyNames.SubmitValuationReport)]
     public async Task<ActionResult<ValuationRequestDto>> SubmitReport(Guid id, CancellationToken ct)
     {
+        var gates = await _issuanceGates.EvaluateAsync(id, ct);
+        if (gates is null) return NotFound();
+        if (!gates.AllowsIssuance)
+        {
+            return BadRequest(new
+            {
+                error = "issuance_blocked",
+                message = "تعذّر إصدار التقرير — بوابات الإصدار غير مكتملة",
+                blockingReasons = gates.BlockingReasonsAr,
+            });
+        }
+
         var (result, error) = await _service.SubmitReportAsync(id, ct);
+        if (error is null)
+        {
+            // ق-8 — the completed valuation feeds the shared bank («تقييم سابق»).
+            // Best-effort: harvest failure must never fail the submit itself.
+            try
+            {
+                await _bankFeeder.FeedAsync(id, ct);
+            }
+            catch (Exception)
+            {
+                // Missing bank inputs (coords/value/area) skip quietly inside the
+                // feeder; anything else is non-fatal to report submission.
+            }
+        }
+
         return error switch
         {
             "not_found" => NotFound(),
             "already_submitted" => BadRequest(new { error = "report already submitted" }),
             _ => Ok(result),
         };
+    }
+
+    [HttpGet("{id:guid}/issuance-gates")]
+    [Authorize(Policy = CapabilityPolicyNames.ReadValuationQueue)]
+    public async Task<ActionResult<ValuationIssuanceGatesDto>> GetIssuanceGates(
+        Guid id,
+        CancellationToken ct)
+    {
+        var dto = await _issuanceGates.EvaluateAsync(id, ct);
+        return dto is null ? NotFound() : Ok(dto);
     }
 
     [HttpPost("{id:guid}/impediment")]

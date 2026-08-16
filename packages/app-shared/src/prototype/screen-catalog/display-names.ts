@@ -30,6 +30,10 @@ export const SCREEN_CATALOG_PAGE_NAMES: Partial<Record<PageId, string>> = {
   "system-fields-catalog": "قاموس الحقول المركزي",
   "system-screen-catalog": "دليل الشاشات",
   "fee-pricing": "التسعيرة — أسعار الأتعاب",
+  "organization-settings": "إعدادات المنشأة",
+  "attachment-print-dictionary": "قاموس مرفقات التقرير",
+  "difference-factor-catalog": "تعريفات عوامل الاختلاف",
+  clients: "سجل العملاء",
   "audit-log": "سجل التدقيق",
 };
 

@@ -8,6 +8,7 @@ import {
   type PropertyDetailDocumentEntry,
 } from "../../lib/prototype/property-detail-documents";
 import { openPropertyPhotosPdfPrint } from "../../lib/prototype/property-photos-pdf";
+import { ReportAttachmentClassifyControls } from "./ReportAttachmentClassifyControls";
 
 /**
  * Case Study.html photo groups — sections always listed; empty groups hide tiles
@@ -52,42 +53,52 @@ const HTML_PHOTO_GROUPS: {
 
 function PhotoTile({ photo }: { photo: PropertyDetailDocumentEntry }) {
   const canOpen = Boolean(photo.dataUrl);
+  const attachmentId = photo.attachmentId?.trim();
   return (
-    <button
-      type="button"
-      className={cn(
-        "relative h-[110px] overflow-hidden rounded border border-border bg-surface-2 p-0",
-        canOpen ? "cursor-pointer" : "cursor-default opacity-80",
-      )}
-      disabled={!canOpen}
-      onClick={() => openPropertyDetailDocumentPreview(photo)}
-      aria-label={photo.name}
-    >
-      {photo.dataUrl ? (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img
-          src={photo.dataUrl}
-          alt={photo.name}
-          className="h-full w-full object-cover"
+    <div className="flex flex-col gap-1">
+      <button
+        type="button"
+        className={cn(
+          "relative h-[110px] overflow-hidden rounded border border-border bg-surface-2 p-0",
+          canOpen ? "cursor-pointer" : "cursor-default opacity-80",
+        )}
+        disabled={!canOpen}
+        onClick={() => openPropertyDetailDocumentPreview(photo)}
+        aria-label={photo.name}
+      >
+        {photo.dataUrl ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={photo.dataUrl}
+            alt={photo.name}
+            className="h-full w-full object-cover"
+          />
+        ) : (
+          <div className="flex h-full w-full items-center justify-center text-text-3">
+            <svg
+              width="26"
+              height="26"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.5"
+              aria-hidden
+            >
+              <rect x="3" y="4" width="18" height="16" rx="2" />
+              <circle cx="8.5" cy="9.5" r="1.5" />
+              <path d="m4 17 5-5 4 4 3-2 4 4" />
+            </svg>
+          </div>
+        )}
+      </button>
+      {attachmentId ? (
+        <ReportAttachmentClassifyControls
+          attachmentId={attachmentId}
+          docKind="photo"
+          className="mt-0"
         />
-      ) : (
-        <div className="flex h-full w-full items-center justify-center text-text-3">
-          <svg
-            width="26"
-            height="26"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="1.5"
-            aria-hidden
-          >
-            <rect x="3" y="4" width="18" height="16" rx="2" />
-            <circle cx="8.5" cy="9.5" r="1.5" />
-            <path d="m4 17 5-5 4 4 3-2 4 4" />
-          </svg>
-        </div>
-      )}
-    </button>
+      ) : null}
+    </div>
   );
 }
 

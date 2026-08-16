@@ -16,6 +16,18 @@ public sealed class ValuationDbContext(DbContextOptions<ValuationDbContext> opti
     : DbContext(options), IOutboxContext
 {
     public DbSet<ValuationRequest> ValuationRequests => Set<ValuationRequest>();
+    public DbSet<ComparableProperty> ComparableProperties => Set<ComparableProperty>();
+    public DbSet<ValuationComparableSelection> ValuationComparableSelections =>
+        Set<ValuationComparableSelection>();
+    public DbSet<ValuationComparableAdjustmentLine> ValuationComparableAdjustmentLines =>
+        Set<ValuationComparableAdjustmentLine>();
+    public DbSet<ValuationMarketApproach> ValuationMarketApproaches => Set<ValuationMarketApproach>();
+    public DbSet<ValuationCostApproach> ValuationCostApproaches => Set<ValuationCostApproach>();
+    public DbSet<ValuationCostLine> ValuationCostLines => Set<ValuationCostLine>();
+    public DbSet<ValuationIndirectCostItem> ValuationIndirectCostItems => Set<ValuationIndirectCostItem>();
+    public DbSet<ValuationReconciliation> ValuationReconciliations => Set<ValuationReconciliation>();
+    public DbSet<ValuationReconciliationMethodLine> ValuationReconciliationMethodLines =>
+        Set<ValuationReconciliationMethodLine>();
     public DbSet<EvaluatorRecallRecord> EvaluatorRecallRecords => Set<EvaluatorRecallRecord>();
     public DbSet<OutboxMessage> OutboxMessages => Set<OutboxMessage>();
 

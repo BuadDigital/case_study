@@ -22,6 +22,19 @@ public class WorkOrderPropertyDto
     public string? RealEstateRegNumber { get; set; }
     public string? RealEstateRegDate { get; set; }
     public string? OwnerName { get; set; }
+    /// <summary>§4ج-8 — deed kind: traditional | registered_title. Empty on write = use suggestion.</summary>
+    public string? DeedKind { get; set; }
+    public string? DeedKindLabelAr { get; set; }
+    /// <summary>Suggestion from the identifier type (real-estate registration → registered title).</summary>
+    public string? SuggestedDeedKind { get; set; }
+    /// <summary>الملاك وحصصهم — deed transcription (§4ج-7).</summary>
+    public List<DeedOwnerDto> Owners { get; set; } = [];
+    /// <summary>Effective نوع الملكية (manual override or derived).</summary>
+    public string? OwnershipType { get; set; }
+    public string? OwnershipTypeLabelAr { get; set; }
+    /// <summary>Derived suggestion (رهن→مرهون · حصص→مشاع · else مطلقة).</summary>
+    public string? SuggestedOwnershipType { get; set; }
+    public bool OwnershipTypeIsManual { get; set; }
     public string? RestrictionsPresent { get; set; }
     public string? RestrictionType { get; set; }
     public string? RestrictionOtherReason { get; set; }
@@ -29,12 +42,20 @@ public class WorkOrderPropertyDto
     public string? BoundariesExternalDocName { get; set; }
     public string? NorthBoundary { get; set; }
     public string? NorthBoundaryLengthM { get; set; }
+    public string? NorthBoundaryType { get; set; }
+    public string? NorthFacadeFinishing { get; set; }
     public string? SouthBoundary { get; set; }
     public string? SouthBoundaryLengthM { get; set; }
+    public string? SouthBoundaryType { get; set; }
+    public string? SouthFacadeFinishing { get; set; }
     public string? EastBoundary { get; set; }
     public string? EastBoundaryLengthM { get; set; }
+    public string? EastBoundaryType { get; set; }
+    public string? EastFacadeFinishing { get; set; }
     public string? WestBoundary { get; set; }
     public string? WestBoundaryLengthM { get; set; }
+    public string? WestBoundaryType { get; set; }
+    public string? WestFacadeFinishing { get; set; }
     public string City { get; set; } = "";
     public string? Region { get; set; }
     public string District { get; set; } = "";
@@ -56,8 +77,12 @@ public class WorkOrderPropertyDto
     public string? BourseDeedImageFileName { get; set; }
     public bool BourseDataCompleted { get; set; }
     public string? PlanNumber { get; set; }
+    public string? PlanName { get; set; }
     public string? PlotNumber { get; set; }
+    public string? BlockNumber { get; set; }
     public string? LocationMapUrl { get; set; }
+    public string? FinishingType { get; set; }
+    public string? FinishingStructure { get; set; }
     public bool IsRemoved { get; set; }
     public string? RemovalReason { get; set; }
     public string? RemovedAtUtc { get; set; }
@@ -79,6 +104,10 @@ public class WorkOrderDto
     public string CreatedAtUtc { get; set; } = "";
     public string? PropertiesRegion { get; set; }
     public string? WorkOrderDescription { get; set; }
+    public Guid? ClientId { get; set; }
+    public string? ClientNameAr { get; set; }
+    /// <summary>§4ج-1 — report users (0..n) from the client registry.</summary>
+    public List<Guid> ReportUserClientIds { get; set; } = [];
     public List<WorkOrderPropertyDto> Properties { get; set; } = [];
 }
 
@@ -108,6 +137,13 @@ public class CreateWorkOrderRequest
     [MaxLength(2000)]
     public string? WorkOrderDescription { get; set; }
 
+    /// <summary>Registered client — required before opening a work order.</summary>
+    [Required]
+    public Guid ClientId { get; set; }
+
+    /// <summary>§4ج-1 — report users (0..n); may include the client.</summary>
+    public List<Guid>? ReportUserClientIds { get; set; }
+
     public List<WorkOrderPropertyDto> Properties { get; set; } = [];
 }
 
@@ -133,6 +169,12 @@ public class UpdateWorkOrderHeaderRequest
 
     [MaxLength(2000)]
     public string? WorkOrderDescription { get; set; }
+
+    [Required]
+    public Guid ClientId { get; set; }
+
+    /// <summary>§4ج-1 — report users (0..n); may include the client.</summary>
+    public List<Guid>? ReportUserClientIds { get; set; }
 }
 
 public class UpdatePropertyBourseRequest
@@ -147,6 +189,11 @@ public class UpdatePropertyBourseRequest
     public string? Area { get; set; }
     public string? DeedStatus { get; set; }
     public string? BourseDeedImageFileName { get; set; }
+    /// <summary>الملاك وحصصهم — replaces the whole list when provided.</summary>
+    public List<DeedOwnerDto>? Owners { get; set; }
+    /// <summary>Manual نوع الملكية override; requires OwnershipTypeIsManual.</summary>
+    public string? OwnershipType { get; set; }
+    public bool OwnershipTypeIsManual { get; set; }
     public string? RestrictionsPresent { get; set; }
     public string? RestrictionType { get; set; }
     public string? RestrictionOtherReason { get; set; }
@@ -154,12 +201,20 @@ public class UpdatePropertyBourseRequest
     public string? BoundariesExternalDocName { get; set; }
     public string? NorthBoundary { get; set; }
     public string? NorthBoundaryLengthM { get; set; }
+    public string? NorthBoundaryType { get; set; }
+    public string? NorthFacadeFinishing { get; set; }
     public string? SouthBoundary { get; set; }
     public string? SouthBoundaryLengthM { get; set; }
+    public string? SouthBoundaryType { get; set; }
+    public string? SouthFacadeFinishing { get; set; }
     public string? EastBoundary { get; set; }
     public string? EastBoundaryLengthM { get; set; }
+    public string? EastBoundaryType { get; set; }
+    public string? EastFacadeFinishing { get; set; }
     public string? WestBoundary { get; set; }
     public string? WestBoundaryLengthM { get; set; }
+    public string? WestBoundaryType { get; set; }
+    public string? WestFacadeFinishing { get; set; }
 }
 
 public class PropertyListRowDto
@@ -187,9 +242,9 @@ public class WorkOrderListItemDto
 {
     public string PoNumber { get; set; } = "";
     public string AssignmentType { get; set; } = "";
-    /// <summary>عقارات مسجّلة فعلياً في النظام.</summary>
+    /// <summary>Properties actually registered in the system.</summary>
     public int PropertyCount { get; set; }
-    /// <summary>عدد العقارات الوارد من إنفاذ عند التعميد.</summary>
+    /// <summary>Property count from Infath at promulgation.</summary>
     public int ExpectedPropertyCount { get; set; }
     public int CompletedCount { get; set; }
     public string Status { get; set; } = "progress";
@@ -235,15 +290,27 @@ public class PriorDeedRegistrationDto
     public string? BoundariesExternalDocName { get; set; }
     public string? NorthBoundary { get; set; }
     public string? NorthBoundaryLengthM { get; set; }
+    public string? NorthBoundaryType { get; set; }
+    public string? NorthFacadeFinishing { get; set; }
     public string? SouthBoundary { get; set; }
     public string? SouthBoundaryLengthM { get; set; }
+    public string? SouthBoundaryType { get; set; }
+    public string? SouthFacadeFinishing { get; set; }
     public string? EastBoundary { get; set; }
     public string? EastBoundaryLengthM { get; set; }
+    public string? EastBoundaryType { get; set; }
+    public string? EastFacadeFinishing { get; set; }
     public string? WestBoundary { get; set; }
     public string? WestBoundaryLengthM { get; set; }
+    public string? WestBoundaryType { get; set; }
+    public string? WestFacadeFinishing { get; set; }
     public string? PlanNumber { get; set; }
+    public string? PlanName { get; set; }
     public string? PlotNumber { get; set; }
+    public string? BlockNumber { get; set; }
     public string? LocationMapUrl { get; set; }
+    public string? FinishingType { get; set; }
+    public string? FinishingStructure { get; set; }
     public bool BourseDataCompleted { get; set; }
     /// <summary>Work-order creation timestamp (UTC ISO) for prior-study ordering.</summary>
     public string? WorkOrderCreatedAtUtc { get; set; }
@@ -298,4 +365,12 @@ public class CourtCatalogEntryDto
 public class SaveCourtsCatalogRequest
 {
     public List<CourtCatalogEntryDto> Entries { get; set; } = [];
+}
+
+/// <summary>One deed owner (الملاك وحصصهم) — share optional for single-owner deeds.</summary>
+public class DeedOwnerDto
+{
+    public string Name { get; set; } = "";
+    /// <summary>Share % in (0, 100]; null = unstated.</summary>
+    public decimal? SharePct { get; set; }
 }

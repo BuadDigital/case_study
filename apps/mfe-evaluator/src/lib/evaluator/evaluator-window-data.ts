@@ -48,7 +48,7 @@ export type EvaluatorSubmission = {
   propertyId: string;
   poNumber: string;
   status: EvaluatorSubmissionStatus;
-  /** رقم التقرير (المقياس) — Case Study.html `reportNo`. */
+  /** رقم التقرير — Case Study.html `reportNo`. */
   reportNo: string;
   evaluatorPrice: string;
   evaluatorNotes: string;

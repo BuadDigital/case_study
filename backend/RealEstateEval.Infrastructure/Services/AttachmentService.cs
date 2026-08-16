@@ -17,11 +17,16 @@ public sealed class AttachmentService : IAttachmentService
         (int)(AttachmentUploadRules.DefaultMaxBytes / 3 + 1) * 4 + 1024;
     private readonly AttachmentsDbContext _db;
     private readonly IBlobStorage _blobs;
+    private readonly IAttachmentPrintDictionaryService? _printDictionary;
 
-    public AttachmentService(AttachmentsDbContext db, IBlobStorage blobs)
+    public AttachmentService(
+        AttachmentsDbContext db,
+        IBlobStorage blobs,
+        IAttachmentPrintDictionaryService? printDictionary = null)
     {
         _db = db;
         _blobs = blobs;
+        _printDictionary = printDictionary;
     }
 
     public async Task<IReadOnlyList<FileAttachmentMetaDto>> ListAsync(
@@ -145,6 +150,63 @@ public sealed class AttachmentService : IAttachmentService
             or "key-envelope-photo"
             or "government-keys-proof";
 
+    public async Task<FileAttachmentMetaDto?> GetMetaAsync(
+        Guid id,
+        CancellationToken cancellationToken = default)
+    {
+        var row = await _db.FileAttachments.AsNoTracking()
+            .FirstOrDefaultAsync(x => x.Id == id, cancellationToken);
+        if (row is null) return null;
+
+        var photo = await _db.PhotoMetadata.AsNoTracking()
+            .FirstOrDefaultAsync(p => p.PhotoId == id, cancellationToken);
+        return ToMeta(row, photo);
+    }
+
+    public async Task<(FileAttachmentMetaDto? Meta, string? Error)> ClassifyAsync(
+        Guid id,
+        ClassifyAttachmentRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        var row = await _db.FileAttachments.FirstOrDefaultAsync(x => x.Id == id, cancellationToken);
+        if (row is null) return (null, null);
+
+        var typeKey = (request.DictionaryTypeKey ?? "").Trim().ToLowerInvariant();
+        if (typeKey.Length > 64)
+            return (null, "نوع المرفق غير صالح");
+
+        // Library ≠ report: print requires a type; clearing type clears print.
+        if (string.IsNullOrWhiteSpace(typeKey))
+        {
+            row.DictionaryTypeKey = "";
+            row.PrintInReport = false;
+        }
+        else
+        {
+            // 11ف — the key must exist and be active in the admin dictionary; a typo
+            // must not produce a "printable" attachment that can never route.
+            if (_printDictionary is not null)
+            {
+                var dictionary = await _printDictionary.GetAsync(cancellationToken);
+                var known = dictionary.Types.Any(t =>
+                    t.IsActive && string.Equals(t.Key, typeKey, StringComparison.OrdinalIgnoreCase));
+                if (!known)
+                    return (null, "نوع المرفق غير معرف في قاموس المرفقات (11ف)");
+            }
+
+            row.DictionaryTypeKey = typeKey;
+            row.PrintInReport = AttachmentPrintRules.IsPrintable(
+                typeKey,
+                request.PrintInReport == true);
+        }
+
+        await _db.SaveChangesAsync(cancellationToken);
+
+        var photo = await _db.PhotoMetadata.AsNoTracking()
+            .FirstOrDefaultAsync(p => p.PhotoId == id, cancellationToken);
+        return (ToMeta(row, photo), null);
+    }
+
     public async Task<bool> DeleteAsync(Guid id, CancellationToken cancellationToken = default)
     {
         var row = await _db.FileAttachments.FirstOrDefaultAsync(x => x.Id == id, cancellationToken);
@@ -181,6 +243,8 @@ public sealed class AttachmentService : IAttachmentService
         ContentType = contentTypeOverride ?? row.ContentType,
         SizeBytes = row.SizeBytes > 0 ? row.SizeBytes : row.Content?.LongLength ?? 0,
         CreatedAtUtc = row.CreatedAtUtc,
+        DictionaryTypeKey = row.DictionaryTypeKey ?? "",
+        PrintInReport = row.PrintInReport,
         PhotoMetadata = photo is null
             ? null
             : new PhotoMetadataDto

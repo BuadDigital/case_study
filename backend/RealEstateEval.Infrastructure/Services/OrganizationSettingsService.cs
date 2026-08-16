@@ -45,6 +45,7 @@ public sealed class OrganizationSettingsService : IOrganizationSettingsService
         var next = Merge(current, request);
         ValidateSla(next.Sla);
         ValidateCommunications(next.Communications);
+        ValidateValuation(next.Valuation);
 
         var row = await _db.OrganizationSettings.FirstOrDefaultAsync(cancellationToken);
         var now = DateTime.UtcNow;
@@ -87,6 +88,12 @@ public sealed class OrganizationSettingsService : IOrganizationSettingsService
             throw new ArgumentOutOfRangeException(nameof(sla.PrivateSectorBusinessDays), "مهلة القطاع الخاص يجب أن تكون بين 1 و 60 يوم عمل.");
     }
 
+    private static void ValidateValuation(OrganizationValuationSettingsDto v)
+    {
+        if (v.MaxAdoptedComparables is < 1 or > 20)
+            throw new ArgumentOutOfRangeException(nameof(v.MaxAdoptedComparables), "الحد الأقصى للمقارنات المعتمدة يجب أن يكون بين 1 و 20.");
+    }
+
     private static void ValidateCommunications(OrganizationCommunicationsSettingsDto c)
     {
         var provider = (c.OtpProvider ?? "dev-log").Trim().ToLowerInvariant();
@@ -100,6 +107,7 @@ public sealed class OrganizationSettingsService : IOrganizationSettingsService
     {
         Company = new OrganizationCompanySettingsDto(),
         Evaluator = new OrganizationEvaluatorSettingsDto(),
+        Valuers = [],
         Branding = new OrganizationBrandingSettingsDto(),
         Communications = new OrganizationCommunicationsSettingsDto(),
         Sla = new OrganizationSlaSettingsDto(),
@@ -116,6 +124,7 @@ public sealed class OrganizationSettingsService : IOrganizationSettingsService
             {
                 Company = dto.Company ?? new OrganizationCompanySettingsDto(),
                 Evaluator = dto.Evaluator ?? new OrganizationEvaluatorSettingsDto(),
+                Valuers = NormalizeValuers(dto.Valuers),
                 Branding = dto.Branding ?? new OrganizationBrandingSettingsDto(),
                 Communications = NormalizeCommunications(dto.Communications),
                 Sla = NormalizeSla(dto.Sla),
@@ -129,6 +138,7 @@ public sealed class OrganizationSettingsService : IOrganizationSettingsService
             {
                 Company = fallback.Company,
                 Evaluator = fallback.Evaluator,
+                Valuers = fallback.Valuers,
                 Branding = fallback.Branding,
                 Communications = fallback.Communications,
                 Sla = fallback.Sla,
@@ -164,6 +174,7 @@ public sealed class OrganizationSettingsService : IOrganizationSettingsService
         {
             Company = dto.Company,
             Evaluator = dto.Evaluator,
+            Valuers = NormalizeValuers(dto.Valuers),
             Branding = dto.Branding,
             Communications = new OrganizationCommunicationsSettingsDto
             {
@@ -186,6 +197,32 @@ public sealed class OrganizationSettingsService : IOrganizationSettingsService
             UpdatedAtUtc = dto.UpdatedAtUtc,
         };
 
+    private static List<OrganizationValuerRosterEntryDto> NormalizeValuers(
+        IEnumerable<OrganizationValuerRosterEntryDto>? valuers)
+    {
+        if (valuers is null) return [];
+        return valuers
+            .Where(v => !string.IsNullOrWhiteSpace(v.NameAr))
+            .Select(v => new OrganizationValuerRosterEntryDto
+            {
+                Id = string.IsNullOrWhiteSpace(v.Id) ? Guid.NewGuid().ToString("N") : v.Id.Trim(),
+                NameAr = v.NameAr.Trim(),
+                LicenseNumber = string.IsNullOrWhiteSpace(v.LicenseNumber) ? null : v.LicenseNumber.Trim(),
+                MembershipNumber = string.IsNullOrWhiteSpace(v.MembershipNumber)
+                    ? null
+                    : v.MembershipNumber.Trim(),
+                Role = NormalizeValuerRole(v.Role),
+                IsActive = v.IsActive,
+            })
+            .ToList();
+    }
+
+    private static string NormalizeValuerRole(string? role)
+    {
+        var r = (role ?? "assistant").Trim().ToLowerInvariant();
+        return r is "certified" or "assistant" or "reviewer" ? r : "assistant";
+    }
+
     private static OrganizationSlaSettingsDto NormalizeSla(OrganizationSlaSettingsDto? sla) =>
         new()
         {
@@ -204,9 +241,13 @@ public sealed class OrganizationSettingsService : IOrganizationSettingsService
         {
             Company = request.Company ?? current.Company,
             Evaluator = request.Evaluator ?? current.Evaluator,
+            Valuers = request.Valuers is null
+                ? NormalizeValuers(current.Valuers)
+                : NormalizeValuers(request.Valuers),
             Branding = request.Branding ?? current.Branding,
             Communications = MergeCommunications(current.Communications, request.Communications),
             Sla = NormalizeSla(request.Sla ?? current.Sla),
+            Valuation = request.Valuation ?? current.Valuation,
             UpdatedAtUtc = DateTime.UtcNow,
         };
 

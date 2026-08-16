@@ -109,10 +109,10 @@ export function computePartyCaseStudyProgress(
     const partyAnswers = answersByParty[party.id] ?? {};
     const answered = visibleKeys.filter((key) => {
       const value = partyAnswers[key];
-      if (value === "A" || value === "B") return true;
+      if (value === "A" || value === "B" || value === "NA") return true;
       if (party.id === "specA" || !includeSpecialistAnswers) return false;
       const official = specialistAnswers[key];
-      return official === "A" || official === "B";
+      return official === "A" || official === "B" || official === "NA";
     }).length;
     const total = visibleKeys.length;
     const pct = total > 0 ? Math.round((answered / total) * 100) : 0;

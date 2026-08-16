@@ -21,6 +21,11 @@ export type PropertyContactDto = {
   phone: string;
 };
 
+export type DeedOwnerDto = {
+  name: string;
+  sharePct?: number | null;
+};
+
 export type WorkOrderPropertyDto = {
   id?: string;
   identifierType: string;
@@ -33,6 +38,16 @@ export type WorkOrderPropertyDto = {
   realEstateRegDate?: string;
   hasRequestNumber?: boolean;
   ownerName?: string;
+  /** §4ج-8 — traditional | registered_title. */
+  deedKind?: string;
+  deedKindLabelAr?: string;
+  suggestedDeedKind?: string;
+  /** §4ج-7 — الملاك وحصصهم. */
+  owners?: DeedOwnerDto[];
+  ownershipType?: string;
+  ownershipTypeLabelAr?: string;
+  suggestedOwnershipType?: string;
+  ownershipTypeIsManual?: boolean;
   restrictionsPresent?: string;
   restrictionType?: string;
   restrictionOtherReason?: string;
@@ -40,12 +55,20 @@ export type WorkOrderPropertyDto = {
   boundariesExternalDocName?: string;
   northBoundary?: string;
   northBoundaryLengthM?: string;
+  northBoundaryType?: string;
+  northFacadeFinishing?: string;
   southBoundary?: string;
   southBoundaryLengthM?: string;
+  southBoundaryType?: string;
+  southFacadeFinishing?: string;
   eastBoundary?: string;
   eastBoundaryLengthM?: string;
+  eastBoundaryType?: string;
+  eastFacadeFinishing?: string;
   westBoundary?: string;
   westBoundaryLengthM?: string;
+  westBoundaryType?: string;
+  westFacadeFinishing?: string;
   city?: string;
   region?: string;
   district?: string;
@@ -67,8 +90,12 @@ export type WorkOrderPropertyDto = {
   bourseDeedImageFileName?: string;
   bourseDataCompleted?: boolean;
   planNumber?: string;
+  planName?: string;
   plotNumber?: string;
+  blockNumber?: string;
   locationMapUrl?: string;
+  finishingType?: string;
+  finishingStructure?: string;
   isRemoved?: boolean;
   removalReason?: string;
   removedAtUtc?: string;
@@ -89,6 +116,9 @@ export type WorkOrderDto = {
   createdAtUtc: string;
   propertiesRegion?: string;
   workOrderDescription?: string;
+  clientId?: string | null;
+  reportUserClientIds?: string[];
+  clientNameAr?: string | null;
   properties: WorkOrderPropertyDto[];
 };
 
@@ -118,6 +148,8 @@ export type CreateWorkOrderRequest = {
   expectedPropertyCount: number;
   propertiesRegion?: string;
   workOrderDescription?: string;
+  clientId: string;
+  reportUserClientIds?: string[];
   properties?: WorkOrderPropertyDto[];
 };
 
@@ -130,6 +162,8 @@ export type UpdateWorkOrderHeaderRequest = {
   expectedPropertyCount: number;
   propertiesRegion?: string;
   workOrderDescription?: string;
+  clientId: string;
+  reportUserClientIds?: string[];
 };
 
 export type UpdatePropertyBourseRequest = {
@@ -143,6 +177,10 @@ export type UpdatePropertyBourseRequest = {
   area?: string;
   deedStatus?: string;
   bourseDeedImageFileName?: string;
+  /** §4ج-7 — replaces the whole owners list when provided. */
+  owners?: DeedOwnerDto[];
+  ownershipType?: string;
+  ownershipTypeIsManual?: boolean;
   restrictionsPresent?: string;
   restrictionType?: string;
   restrictionOtherReason?: string;
@@ -150,12 +188,20 @@ export type UpdatePropertyBourseRequest = {
   boundariesExternalDocName?: string;
   northBoundary?: string;
   northBoundaryLengthM?: string;
+  northBoundaryType?: string;
+  northFacadeFinishing?: string;
   southBoundary?: string;
   southBoundaryLengthM?: string;
+  southBoundaryType?: string;
+  southFacadeFinishing?: string;
   eastBoundary?: string;
   eastBoundaryLengthM?: string;
+  eastBoundaryType?: string;
+  eastFacadeFinishing?: string;
   westBoundary?: string;
   westBoundaryLengthM?: string;
+  westBoundaryType?: string;
+  westFacadeFinishing?: string;
 };
 
 export type PriorDeedRegistrationDto = {
@@ -190,15 +236,27 @@ export type PriorDeedRegistrationDto = {
   boundariesExternalDocName?: string;
   northBoundary?: string;
   northBoundaryLengthM?: string;
+  northBoundaryType?: string;
+  northFacadeFinishing?: string;
   southBoundary?: string;
   southBoundaryLengthM?: string;
+  southBoundaryType?: string;
+  southFacadeFinishing?: string;
   eastBoundary?: string;
   eastBoundaryLengthM?: string;
+  eastBoundaryType?: string;
+  eastFacadeFinishing?: string;
   westBoundary?: string;
   westBoundaryLengthM?: string;
+  westBoundaryType?: string;
+  westFacadeFinishing?: string;
   planNumber?: string;
+  planName?: string;
   plotNumber?: string;
+  blockNumber?: string;
   locationMapUrl?: string;
+  finishingType?: string;
+  finishingStructure?: string;
   bourseDataCompleted?: boolean;
   workOrderCreatedAtUtc?: string;
   /** Prior study documents — client clones attachment bytes when auto-filling. */

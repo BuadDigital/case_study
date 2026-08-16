@@ -1,4 +1,4 @@
-﻿using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -332,6 +332,9 @@ public static class DependencyInjection
         services.AddScoped<IWorkOrderQuery, WorkOrderQueryService>();
         services.AddScoped<IWorkOrderPropertyCommands, WorkOrderPropertyCommands>();
         services.AddScoped<IWorkOrderService, WorkOrderService>();
+        services.AddScoped<IClientService, ClientService>();
+        services.AddScoped<IBuildingInventoryService, BuildingInventoryService>();
+        services.AddScoped<IPropertyGroupService, PropertyGroupService>();
         services.AddWorkflowTaskCollaborators();
         services.AddScoped<IWorkOrderVisibilityFilter, WorkOrderVisibilityFilter>();
         services.AddScoped<ICaseStudyFormService, CaseStudyFormService>();
@@ -454,6 +457,9 @@ public static class DependencyInjection
         string connectionString)
     {
         services.AddAttachmentsPersistence(configuration, connectionString);
+        // 11ف — classification validates keys against the admin print dictionary.
+        services.AddPlatformPersistence(configuration, connectionString);
+        services.AddScoped<IAttachmentPrintDictionaryService, AttachmentPrintDictionaryService>();
         services.AddScoped<IAttachmentService, AttachmentService>();
         return services;
     }
@@ -533,6 +539,8 @@ public static class DependencyInjection
     {
         services.AddPlatformPersistence(configuration, connectionString);
         services.AddScoped<IFieldDictionaryService, FieldDictionaryService>();
+        services.AddScoped<IAttachmentPrintDictionaryService, AttachmentPrintDictionaryService>();
+        services.AddScoped<IDifferenceFactorCatalogService, DifferenceFactorCatalogService>();
         services.AddScoped<ICourtsService, CourtsService>();
         services.AddScoped<ICourtsCatalogService, CourtsCatalogService>();
         services.AddScoped<IRegionsService, RegionsService>();
@@ -651,8 +659,22 @@ public static class DependencyInjection
     {
         // Residual cross-boundary PO read for event payloads (Phase 3 replaces with API/projection).
         services.AddCaseStudyPersistence(configuration, connectionString);
+        services.AddPlatformPersistence(configuration, connectionString);
+        // Report document + attachments gate read printable attachments (11ف).
+        services.AddAttachmentsPersistence(configuration, connectionString);
+        services.AddScoped<IAttachmentPrintDictionaryService, AttachmentPrintDictionaryService>();
         services.AddValuationRequestInfrastructure(configuration, connectionString);
+        services.TryAddSingleton<IAuditLogWriter, AuditLogWriter>();
+        services.AddScoped<IOrganizationSettingsService, OrganizationSettingsService>();
         services.AddScoped<IEvaluatorRecallsService, EvaluatorRecallsService>();
+        services.AddScoped<IComparablePropertyService, ComparablePropertyService>();
+        services.AddScoped<IValuationComparableSelectionService, ValuationComparableSelectionService>();
+        services.AddScoped<IValuationCostApproachService, ValuationCostApproachService>();
+        services.AddScoped<IValuationReconciliationService, ValuationReconciliationService>();
+        services.AddScoped<IValuationIssuanceGateService, ValuationIssuanceGateService>();
+        services.AddScoped<IValuationReportDocumentService, ValuationReportDocumentService>();
+        services.AddScoped<IValuationReportFieldInjectionService, ValuationReportFieldInjectionService>();
+        services.AddScoped<IPriorValuationBankFeeder, PriorValuationBankFeeder>();
         return services;
     }
 

@@ -18,9 +18,7 @@ builder.Services
 
 builder.Services.AddResponseCompression(options => options.EnableForHttps = true);
 
-var connectionString = ServiceCollectionExtensions.RequireConnectionString(
-    builder.Configuration,
-    ServiceDatabaseNames.Attachments);
+var connectionString = ServiceCollectionExtensions.RequireConnectionString(builder.Configuration, ServiceDatabaseNames.Attachments);
 builder.Services.AddHostSharedInfrastructure(builder.Configuration);
 builder.Services.AddClaimsPermissionService();
 builder.Services.AddBlobStorage(builder.Configuration);

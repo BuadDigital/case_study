@@ -1,4 +1,4 @@
-/** PO intake wizard — steps and reference lists (from متطلبات النظام v1.2). */
+/** PO intake wizard — steps and reference lists (from system requirements v1.2). */
 
 import { getCachedOrganizationSla } from "@platform/app-shared/organization/organization-settings-cache";
 
@@ -26,11 +26,11 @@ export const ASSIGNMENT_TYPE_OPTIONS = [
 
 export type AssignmentType = (typeof ASSIGNMENT_TYPE_OPTIONS)[number];
 
-/** التصنيف الأساسي على أمر العمل (مواصفة v2). */
+/** Primary classification on the work order (spec v2). */
 export const ASSIGNMENT_PRIMARY_OPTIONS = ["تنفيذ", "خاص"] as const;
 export type AssignmentPrimary = (typeof ASSIGNMENT_PRIMARY_OPTIONS)[number];
 
-/** الفرعي المعروض في الواجهة — يُخزَّن كـ AssignmentType. */
+/** Subtype shown in the UI — stored as AssignmentType. */
 export type AssignmentSecondary = "تنفيذ" | "تركات" | "خاص";
 
 export function assignmentPrimary(type: AssignmentType): AssignmentPrimary {
@@ -62,7 +62,7 @@ export function assignmentTypeFromParts(
   return "تنفيذ";
 }
 
-/** مسار المحكمة: رقم الطلب + محكمة/دائرة + قرار إسناد + زيارات/مفاتيح. */
+/** Court path: request number + court/circuit + assignment decision + visits/keys. */
 export function isCourtAssignmentPath(type: AssignmentType): boolean {
   return type === "تنفيذ";
 }
@@ -71,7 +71,7 @@ export function requiresAssignmentDecree(type: AssignmentType): boolean {
   return isCourtAssignmentPath(type);
 }
 
-/** محكمة ودائرة — تنفيذ/تنفيذ فقط. */
+/** Court and circuit — execution path only. */
 export function showsCourtFields(type: AssignmentType): boolean {
   return isCourtAssignmentPath(type);
 }
@@ -80,7 +80,7 @@ export function requiresRequestNumberField(type: AssignmentType): boolean {
   return isCourtAssignmentPath(type);
 }
 
-/** ضابط اتصال إجباري في التنفيذ والتركات، اختياري في الخاص. */
+/** Contact officer required for execution and estates; optional for private sector. */
 export function requiresContacts(type: AssignmentType): boolean {
   return type !== "قطاع خاص";
 }
@@ -95,7 +95,7 @@ export function businessDaysForAssignmentType(type: AssignmentType): number {
 
 export const DEED_STATUS_OPTIONS = ["فعال", "موقوف", "قيد التحقق"] as const;
 
-/** بيانات البورصة — فعالية الصك قبل إكمال المسار. */
+/** Bourse data — deed validity before path completion. */
 export type BourseDeedVitality = "active" | "inactive";
 
 export const BOURSE_DEED_VITALITY_ACTIVE = "الصك فعال";
@@ -121,7 +121,7 @@ const RESTRICTION_TYPE_VALUE_SET = new Set<string>(
   RESTRICTION_TYPE_OPTIONS.map((o) => o.value),
 );
 
-/** أنواع القيد المخزّنة مفصولة بفاصلة — دعم اختيار متعدد. */
+/** Restriction types stored comma-separated — multi-select support. */
 export function parseRestrictionTypes(value: string): RestrictionTypeValue[] {
   const seen = new Set<string>();
   const out: RestrictionTypeValue[] = [];
@@ -173,7 +173,7 @@ export const BOUNDARIES_AVAILABILITY_OPTIONS = [
   { value: "no", label: "غير متوفرة" },
 ] as const;
 
-/** محاكاة محاكم ودوائر — تُستبدل بقائمة يديرها المشرف. */
+/** Mock courts and circuits — replace with supervisor-managed list. */
 export const COURTS_BY_CITY: Record<
   string,
   { court: string; circuits: string[] }[]
@@ -205,7 +205,7 @@ export const COURTS_BY_CITY: Record<
   ],
 };
 
-/** 5 تصنيفات — 47 نوع (المتطلبات). */
+/** 5 classifications — 47 types (requirements). */
 export const PROPERTY_CLASSIFICATIONS: Record<string, string[]> = {
   أرض: ["سكنية", "تجارية", "صناعية", "زراعية", "مختلطة"],
   "مبنى مفرد": [
@@ -266,7 +266,7 @@ export const CITY_OPTIONS = [
   "أخرى",
 ] as const;
 
-/** رقم تجريبي — يعرض حالة «ناقص» في قائمة العقارات. */
+/** Demo deed number — shows incomplete status on the property list. */
 export const INCOMPLETE_CONTACT_MARKER_PHONE = "0500000000";
 
 export const CONTACT_ROLE_OPTIONS = [
@@ -281,12 +281,12 @@ export const CONTACT_ROLE_OPTIONS = [
 
 export type PoContact = {
   name: string;
-  /** صفة الضابط — مطلوب */
+  /** Officer capacity — required */
   role: string;
   phone: string;
 };
 
-/** الرفع المساحي غير مطلوب لوحدة داخل مبنى. */
+/** Survey lift not required for a unit inside a building. */
 export function classificationRequiresSurvey(classification: string): boolean {
   return classification.trim() !== "وحدة داخل مبنى";
 }
@@ -301,14 +301,14 @@ export function isBourseInquiryIdentifier(
   return type === "bourse_inquiry";
 }
 
-/** تسجيل عيني — يتخطى البورصة وينتقل مباشرة لتوزيع المعاملات. */
+/** Registered title — skips bourse and goes straight to transaction distribution. */
 export function skipsBourseForIdentifier(
   type: PropertyIdentifierType,
 ): boolean {
   return type === "real_estate_reg";
 }
 
-/** تجاوز البورصة عند تعبئة رقم التسجيل العيني. */
+/** Skip bourse when real-estate registration number is filled. */
 export function propertySkipsBourse(property: {
   realEstateRegNumber: string;
   identifierType: PropertyIdentifierType;
@@ -333,7 +333,7 @@ export function identifierTypeLabel(type: PropertyIdentifierType): string {
   return "صك ملكية";
 }
 
-/** Display label — رقم الصك، وإلا التسجيل العيني؛ «قيد الدراسة» لمسار البورصة الفارغ. */
+/** Display label — deed number, else registration; under-study for empty bourse path. */
 export function formatPropertyDeedDisplay(
   property: Pick<
     PoPropertyIntake,
@@ -390,7 +390,7 @@ export function propertyIdentifierFieldLabel(
     : "رقم الصك";
 }
 
-/** عناوين أعمدة الجداول — يشمل الصك والتسجيل العيني. */
+/** Table column headers — includes deed and registered title. */
 export const PROPERTY_IDENTIFIER_COLUMN_LABEL = "رقم الصك/التسجيل العيني";
 
 /** Digits only — used while typing (max length enforced). */
@@ -446,7 +446,7 @@ export function restrictionTypeLabel(value: string): string {
     .join(" · ");
 }
 
-/** عرض موحّد للقيود + نوع القيد + سبب أخرى. */
+/** Unified display for restrictions + type + other reason. */
 export function formatPropertyRestrictionsLine(
   property: Pick<
     PoPropertyIntake,
@@ -478,7 +478,7 @@ export function boundariesAvailabilityLabel(value: string): string {
   );
 }
 
-/** موضحة في الصك / البورصة / مستند خارجي — تفاصيل الحدود اختيارية. */
+/** Shown on deed / bourse / external doc — boundary details optional. */
 export function boundariesDetailFieldsOptional(value: string): boolean {
   const v = value.trim().toLowerCase();
   return v === "deed" || v === "bourse" || v === "doc";
@@ -488,34 +488,97 @@ export function boundariesMarkedUnavailable(value: string): boolean {
   return value.trim().toLowerCase() === "no";
 }
 
-/** صفوف إدخال الحدود والأطوال — مرحلة البورصة (الأخصائي). */
+/** Boundary and length input rows — bourse stage (specialist). */
 export const PROPERTY_BOUNDARY_ROWS = [
   {
     descKey: "northBoundary",
     lenKey: "northBoundaryLengthM",
+    typeKey: "northBoundaryType",
+    facadeKey: "northFacadeFinishing",
     label: "الحد الشمالي",
   },
   {
     descKey: "southBoundary",
     lenKey: "southBoundaryLengthM",
+    typeKey: "southBoundaryType",
+    facadeKey: "southFacadeFinishing",
     label: "الحد الجنوبي",
   },
   {
     descKey: "eastBoundary",
     lenKey: "eastBoundaryLengthM",
+    typeKey: "eastBoundaryType",
+    facadeKey: "eastFacadeFinishing",
     label: "الحد الشرقي",
   },
   {
     descKey: "westBoundary",
     lenKey: "westBoundaryLengthM",
+    typeKey: "westBoundaryType",
+    facadeKey: "westFacadeFinishing",
     label: "الحد الغربي",
   },
+] as const;
+
+export const PROPERTY_BOUNDARY_TYPE_OPTIONS = [
+  { value: "", label: "—" },
+  { value: "street", label: "شارع" },
+  { value: "plot", label: "قطعة" },
+  { value: "passage", label: "ممر" },
+  { value: "rail", label: "سكة" },
+] as const;
+
+export const PROPERTY_FINISHING_TYPE_OPTIONS = [
+  { value: "", label: "—" },
+  { value: "luxury", label: "فاخر" },
+  { value: "medium", label: "متوسط" },
+  { value: "ordinary", label: "عادي" },
+  { value: "none", label: "بدون تشطيب" },
+] as const;
+
+export const PROPERTY_FINISHING_STRUCTURE_OPTIONS = [
+  { value: "", label: "—" },
+  { value: "concrete", label: "خرساني" },
+  { value: "metal", label: "معدني" },
+  { value: "mixed", label: "مختلط" },
+  { value: "other", label: "أخرى" },
 ] as const;
 
 export type PropertyBoundaryDescKey =
   (typeof PROPERTY_BOUNDARY_ROWS)[number]["descKey"];
 export type PropertyBoundaryLenKey =
   (typeof PROPERTY_BOUNDARY_ROWS)[number]["lenKey"];
+export type PropertyBoundaryTypeKey =
+  (typeof PROPERTY_BOUNDARY_ROWS)[number]["typeKey"];
+export type PropertyBoundaryFacadeKey =
+  (typeof PROPERTY_BOUNDARY_ROWS)[number]["facadeKey"];
+
+export function clearPropertyBoundaryFields(): Pick<
+  PoPropertyIntake,
+  | PropertyBoundaryDescKey
+  | PropertyBoundaryLenKey
+  | PropertyBoundaryTypeKey
+  | PropertyBoundaryFacadeKey
+> {
+  return {
+    northBoundary: "",
+    northBoundaryLengthM: "",
+    northBoundaryType: "",
+    northFacadeFinishing: "",
+    southBoundary: "",
+    southBoundaryLengthM: "",
+    southBoundaryType: "",
+    southFacadeFinishing: "",
+    eastBoundary: "",
+    eastBoundaryLengthM: "",
+    eastBoundaryType: "",
+    eastFacadeFinishing: "",
+    westBoundary: "",
+    westBoundaryLengthM: "",
+    westBoundaryType: "",
+    westFacadeFinishing: "",
+  };
+}
 
 function formatBoundaryRow(
   property: Pick<PoPropertyIntake, PropertyBoundaryDescKey | PropertyBoundaryLenKey>,
@@ -532,7 +595,7 @@ function formatBoundaryRow(
   return `${label}: ${lenPart}`;
 }
 
-/** الأطوال والأبعاد — من حقول الحدود في بيانات البورصة. */
+/** Lengths and dimensions — from boundary fields in bourse data. */
 export function formatPropertyBoundaryDimensions(
   property: Pick<PoPropertyIntake, PropertyBoundaryDescKey | PropertyBoundaryLenKey>,
 ): string {
@@ -543,7 +606,7 @@ export function formatPropertyBoundaryDimensions(
     .join(" · ");
 }
 
-/** واجهات الأرض — أوصاف الحدود عند توفرها. */
+/** Land frontages — boundary descriptions when available. */
 export function formatPropertyLandFrontages(
   property: Pick<PoPropertyIntake, PropertyBoundaryDescKey>,
 ): string {
@@ -555,7 +618,7 @@ export function formatPropertyLandFrontages(
     .join(" · ");
 }
 
-/** رقم القطعة / المخطط. */
+/** Plot / plan number. */
 export function formatPropertyPlotPlanNumber(
   property: Pick<PoPropertyIntake, "plotNumber" | "planNumber">,
 ): string {
@@ -579,7 +642,7 @@ type PropertyBoundarySurveyFields = Pick<
   | "bourseDataCompleted"
 >;
 
-/** Empty-state label for مساحية fields on property detail. */
+/** Empty-state label for survey fields on property detail. */
 export function propertySurveyEmptyLabel(
   property: Pick<PoPropertyIntake, "bourseDataCompleted" | "boundariesAvailability">,
   field: "dimensions" | "frontages" | "plot",
@@ -595,7 +658,7 @@ export function propertySurveyEmptyLabel(
     : "غير محدد";
 }
 
-/** الأطوال والأبعاد — مع تلميح عند توفر الحدود دون إدخال تفصيلي. */
+/** Lengths and dimensions — hint when boundaries exist without detail entry. */
 export function formatPropertyBoundaryDimensionsDisplay(
   property: PropertyBoundarySurveyFields,
 ): string {
@@ -610,7 +673,7 @@ export function formatPropertyBoundaryDimensionsDisplay(
   return "";
 }
 
-/** واجهات الأرض — مع تلميح عند توفر الحدود دون أوصاف. */
+/** Land frontages — hint when boundaries exist without descriptions. */
 export function formatPropertyLandFrontagesDisplay(
   property: PropertyBoundarySurveyFields,
 ): string {
@@ -622,7 +685,7 @@ export function formatPropertyLandFrontagesDisplay(
   return "";
 }
 
-/** رابط خريطة تقريبي من المدينة والحي (حتى يُزوَّد رابط موقع دقيق). */
+/** Approximate map link from city and district (until a precise site URL is provided). */
 export function approximatePropertyMapSearchUrl(
   property: Pick<PoPropertyIntake, "city" | "district">,
 ): string | null {
@@ -690,7 +753,7 @@ export function formatGeoDec(lat: number, lng: number): string {
   return `${lat.toFixed(6)}, ${lng.toFixed(6)}`;
 }
 
-/** Short property description under the main photo (HTML «وصف العقار»). */
+/** Short property description under the main photo (HTML property description). */
 export function buildPropertyDescriptionLine(
   property: Pick<
     PoPropertyIntake,
@@ -758,7 +821,7 @@ export function propertyLocationMapUrl(
   return approximatePropertyMapSearchUrl(property);
 }
 
-/** حالة الملك — مشتقة مؤقتاً حتى يُضاف حقل مستقل في الـ API. */
+/** Ownership status — derived temporarily until a dedicated API field exists. */
 export function ownershipStatusLabel(
   property: Pick<PoPropertyIntake, "ownerName" | "deedStatus">,
 ): string {
@@ -767,23 +830,7 @@ export function ownershipStatusLabel(
   return "";
 }
 
-export function clearPropertyBoundaryFields(): Pick<
-  PoPropertyIntake,
-  PropertyBoundaryDescKey | PropertyBoundaryLenKey
-> {
-  return {
-    northBoundary: "",
-    northBoundaryLengthM: "",
-    southBoundary: "",
-    southBoundaryLengthM: "",
-    eastBoundary: "",
-    eastBoundaryLengthM: "",
-    westBoundary: "",
-    westBoundaryLengthM: "",
-  };
-}
-
-/** Any field filled on استعلام بورصة (even before حفظ وإكمال). */
+/** Any field filled on bourse inquiry (even before save-and-complete). */
 export function hasBourseDetailFields(
   property: Pick<
     PoPropertyIntake,
@@ -853,16 +900,25 @@ export type PoPropertyIntake = {
   identifierType: PropertyIdentifierType;
   deedNumber: string;
   requestNumber: string;
-  /** عند false يمكن تجاوز رقم الطلب (غير إلزامي). */
+  /** When false, request number may be skipped (not required). */
   hasRequestNumber: boolean;
   assignmentMandateNumber: string;
   assignmentMandateDate: string;
   deedDate: string;
-  /** رقم التسجيل العيني — مسار السجل العقاري. */
+  /** Real-estate registration number — registered-title path. */
   realEstateRegNumber: string;
-  /** تاريخ التسجيل العيني — مسار السجل العقاري. */
+  /** Real-estate registration date — registered-title path. */
   realEstateRegDate: string;
   ownerName: string;
+  /** §4ج-8 — traditional | registered_title ("" = use suggestion). */
+  deedKind: string;
+  suggestedDeedKind: string;
+  /** §4ج-7 — JSON array [{name, sharePct}] (flat-draft representation). */
+  ownersJson: string;
+  /** Effective نوع الملكية from the API ("" until loaded). */
+  ownershipType: string;
+  suggestedOwnershipType: string;
+  ownershipTypeIsManual: boolean;
   restrictionsPresent: string;
   restrictionType: string;
   restrictionOtherReason: string;
@@ -870,29 +926,37 @@ export type PoPropertyIntake = {
   boundariesExternalDocName: string;
   northBoundary: string;
   northBoundaryLengthM: string;
+  northBoundaryType: string;
+  northFacadeFinishing: string;
   southBoundary: string;
   southBoundaryLengthM: string;
+  southBoundaryType: string;
+  southFacadeFinishing: string;
   eastBoundary: string;
   eastBoundaryLengthM: string;
+  eastBoundaryType: string;
+  eastFacadeFinishing: string;
   westBoundary: string;
   westBoundaryLengthM: string;
+  westBoundaryType: string;
+  westFacadeFinishing: string;
   city: string;
-  /** لقطة اسم المنطقة من الدليل. */
+  /** Region name snapshot from the catalog. */
   region: string;
   district: string;
   deedStatus: string;
   area: string;
   court: string;
   circuit: string;
-  /** دليل المحاكم — مرجع المحكمة (اختياري). */
+  /** Courts catalog — court ref (optional). */
   courtId: string;
-  /** دليل المحاكم — مرجع الدائرة (اختياري). */
+  /** Courts catalog — circuit ref (optional). */
   circuitId: string;
-  /** دليل المناطق — مرجع المنطقة. */
+  /** Regions catalog — region ref. */
   regionId: string;
-  /** دليل المدن — مرجع المدينة. */
+  /** Cities catalog — city ref. */
   cityId: string;
-  /** دليل الأحياء — مرجع الحي (اختياري حتى الاعتماد). */
+  /** Districts catalog — district ref (optional until approved). */
   districtId: string;
   classification: string;
   propertyType: string;
@@ -900,13 +964,17 @@ export type PoPropertyIntake = {
   delegationLetterFileNames: string[];
   otherDocumentFileNames: string[];
   realEstateRegFileName: string;
-  /** صورة وثيقة التملك (الصك) — مرفق البيانات الأولية (اختياري). */
+  /** Ownership deed image — initial-data attachment (optional). */
   deedOwnershipFileName: string;
-  /** صورة الصك من البورصة — مرفق استعلام البورصة (إلزامي). */
+  /** Deed image from bourse — bourse-inquiry attachment (required). */
   bourseDeedImageFileName: string;
   planNumber: string;
+  planName: string;
   plotNumber: string;
+  blockNumber: string;
   locationMapUrl: string;
+  finishingType: string;
+  finishingStructure: string;
   bourseDataCompleted: boolean;
   /** Soft-deleted from active queues — still listed on PO properties. */
   isRemoved: boolean;
@@ -921,15 +989,21 @@ export type PoIntakeRecord = {
   assignmentType: AssignmentType;
   promulgationDate: string;
   receivedFromEnfathAt: string;
-  /** وقت الاستلام (HH:mm) — اختياري؛ يُستخدم في حساب تاريخ الاستحقاق */
+  /** Receipt time (HH:mm) — optional; used in due-date calculation */
   receivedFromEnfathTime: string;
   assignmentSpecialist: string;
   assignmentSpecialistEmail: string;
   expectedPropertyCount: number;
-  /** وصف نصي اختياري — منطقة العقارات */
+  /** Optional text — properties region */
   propertiesRegion: string;
-  /** وصف نصي اختياري — وصف أمر العمل */
+  /** Optional text — work-order description */
   workOrderDescription: string;
+  /** Registered client id — required on create/update */
+  clientId: string;
+  /** §4ج-1 — report users (0..n) from the client registry. */
+  reportUserClientIds: string[];
+  /** Denormalized client name from API when available */
+  clientNameAr?: string;
   dueDateAt: string;
   properties: PoPropertyIntake[];
   createdAtUtc: string;
@@ -955,6 +1029,12 @@ export function emptyProperty(): PoPropertyIntake {
     realEstateRegNumber: "",
     realEstateRegDate: "",
     ownerName: "",
+    deedKind: "",
+    suggestedDeedKind: "",
+    ownersJson: "",
+    ownershipType: "",
+    suggestedOwnershipType: "",
+    ownershipTypeIsManual: false,
     restrictionsPresent: "",
     restrictionType: "",
     restrictionOtherReason: "",
@@ -982,8 +1062,12 @@ export function emptyProperty(): PoPropertyIntake {
     deedOwnershipFileName: "",
     bourseDeedImageFileName: "",
     planNumber: "",
+    planName: "",
     plotNumber: "",
+    blockNumber: "",
     locationMapUrl: "",
+    finishingType: "",
+    finishingStructure: "",
     bourseDataCompleted: false,
     isRemoved: false,
     removalReason: "",
@@ -1026,7 +1110,7 @@ function formatLocalIsoDate(d: Date): string {
   return `${y}-${m}-${day}`;
 }
 
-/** نقطة البداية: استلام خارج الدوام/عطلة → أول يوم عمل (لاحقاً). */
+/** Start point: after-hours/holiday receipt → next business day (later). */
 export function getEffectiveStartDate(received: Date): Date {
   if (isBusinessDay(received) && isWithinBusinessHours(received)) {
     const start = new Date(received);
@@ -1044,7 +1128,7 @@ export function getEffectiveStartDate(received: Date): Date {
   return cursor;
 }
 
-/** 4 أيام عمل (أحد–خميس) — يوم الاستلام يوم 1 إن كان قبل 17:00؛ بعد 17:00 لا يُحسب. */
+/** 4 business days (Sun–Thu) — receipt day counts as day 1 if before 17:00; after 17:00 it does not. */
 function addBusinessDaysFromEffectiveStart(start: Date, count: number): Date {
   const d = new Date(start);
   let remaining = count;
@@ -1055,7 +1139,7 @@ function addBusinessDaysFromEffectiveStart(start: Date, count: number): Date {
   return d;
 }
 
-/** أيام عمل من تاريخ/وقت الاستلام من إنفاذ (4 تنفيذ/تركات، 10 خاص). */
+/** Business days from Infath receipt date/time (4 execution/estates, 10 private). */
 export function computeBusinessDueDate(
   receivedIso: string,
   receivedTime?: string,

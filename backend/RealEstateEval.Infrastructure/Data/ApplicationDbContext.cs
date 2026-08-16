@@ -1,4 +1,4 @@
-﻿using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
@@ -27,6 +27,8 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>, IOutboxC
     public DbSet<ProcServiceProviderProfile> ProcServiceProviderProfiles => Set<ProcServiceProviderProfile>();
     public DbSet<WorkOrder> WorkOrders => Set<WorkOrder>();
     public DbSet<WorkOrderProperty> WorkOrderProperties => Set<WorkOrderProperty>();
+    public DbSet<Client> Clients => Set<Client>();
+    public DbSet<BuildingInventoryLine> BuildingInventoryLines => Set<BuildingInventoryLine>();
     public DbSet<PropertyContact> PropertyContacts => Set<PropertyContact>();
     public DbSet<CourtCatalogEntry> CourtCatalogEntries => Set<CourtCatalogEntry>();
     public DbSet<Court> Courts => Set<Court>();
@@ -52,9 +54,22 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>, IOutboxC
     public DbSet<PropertyFailure> PropertyFailures => Set<PropertyFailure>();
     public DbSet<PropertyTimelineEntry> PropertyTimelineEntries => Set<PropertyTimelineEntry>();
     public DbSet<FieldDictionaryConfig> FieldDictionaryConfigs => Set<FieldDictionaryConfig>();
+    public DbSet<AttachmentPrintDictionaryConfig> AttachmentPrintDictionaryConfigs =>
+        Set<AttachmentPrintDictionaryConfig>();
     public DbSet<FailureTypesCatalogConfig> FailureTypesCatalogConfigs => Set<FailureTypesCatalogConfig>();
     public DbSet<SurveyOffice> SurveyOffices => Set<SurveyOffice>();
     public DbSet<ValuationRequest> ValuationRequests => Set<ValuationRequest>();
+    public DbSet<ComparableProperty> ComparableProperties => Set<ComparableProperty>();
+    public DbSet<ValuationComparableSelection> ValuationComparableSelections =>
+        Set<ValuationComparableSelection>();
+    public DbSet<ValuationComparableAdjustmentLine> ValuationComparableAdjustmentLines =>
+        Set<ValuationComparableAdjustmentLine>();
+    public DbSet<ValuationMarketApproach> ValuationMarketApproaches => Set<ValuationMarketApproach>();
+    public DbSet<ValuationCostApproach> ValuationCostApproaches => Set<ValuationCostApproach>();
+    public DbSet<ValuationCostLine> ValuationCostLines => Set<ValuationCostLine>();
+    public DbSet<ValuationReconciliation> ValuationReconciliations => Set<ValuationReconciliation>();
+    public DbSet<ValuationReconciliationMethodLine> ValuationReconciliationMethodLines =>
+        Set<ValuationReconciliationMethodLine>();
     public DbSet<PropertyKeyRecord> PropertyKeyRecords => Set<PropertyKeyRecord>();
     public DbSet<KeyEnvelope> KeyEnvelopes => Set<KeyEnvelope>();
     public DbSet<KeyEnvelopeAssignment> KeyEnvelopeAssignments => Set<KeyEnvelopeAssignment>();

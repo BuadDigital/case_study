@@ -143,22 +143,23 @@ function renderSection(section: CaseStudyReportSection): string {
         <td>${esc(row.question)}${occSuffix}</td>
         <td class="csrd-yn">${renderCb(row.markA)}</td>
         <td class="csrd-yn">${renderCb(row.markB)}</td>
+        <td class="csrd-yn">${renderCb(row.markNa)}</td>
       </tr>`;
       const sub =
         section.id === "extra"
-          ? `<tr class="csrd-sub-row"><td colspan="3">${esc(EXTRA_SUB_NOTE_DEFAULT)}</td></tr>`
+          ? `<tr class="csrd-sub-row"><td colspan="4">${esc(EXTRA_SUB_NOTE_DEFAULT)}</td></tr>`
           : "";
       return main + sub;
     })
     .join("");
 
   const extras = compExtras
-    .map((line) => `<tr><td colspan="3">${esc(line)}</td></tr>`)
+    .map((line) => `<tr><td colspan="4">${esc(line)}</td></tr>`)
     .join("");
 
   const notes =
     section.id !== "extra"
-      ? `<tr class="csrd-notes-row"><td colspan="3">
+      ? `<tr class="csrd-notes-row"><td colspan="4">
           <span class="csrd-notes-label">${esc(notesLabel)}</span>
           ${section.remarks?.trim() ? esc(section.remarks) : "—"}
         </td></tr>`
@@ -167,11 +168,12 @@ function renderSection(section: CaseStudyReportSection): string {
   return `<div class="csrd-section${pageBreak}">
     ${alert}
     <table class="csrd-table"><tbody>
-      <tr class="csrd-sec-hdr"><td colspan="3">${esc(section.title)}</td></tr>
+      <tr class="csrd-sec-hdr"><td colspan="4">${esc(section.title)}</td></tr>
       <tr class="csrd-col-hdr">
         <th>الأسئلة</th>
         <th class="csrd-yn">${esc(section.colAHeader)}</th>
         <th class="csrd-yn">${esc(section.colBHeader)}</th>
+        <th class="csrd-yn">${esc(section.colNaHeader)}</th>
       </tr>
       ${bodyRows}${extras}${notes}
     </tbody></table>

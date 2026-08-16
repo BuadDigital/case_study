@@ -158,7 +158,7 @@ function NotesRow({
 }) {
   return (
     <tr className="csrd-notes-row">
-      <td colSpan={3}>
+      <td colSpan={4}>
         <span className="csrd-notes-label">{label}</span>
         {notes?.trim() ? notes : "—"}
       </td>
@@ -184,12 +184,13 @@ function ReportSection({ section }: { section: CaseStudyReportSection }) {
       <table className="csrd-table">
         <tbody>
           <tr className="csrd-sec-hdr">
-            <td colSpan={3}>{section.title}</td>
+            <td colSpan={4}>{section.title}</td>
           </tr>
           <tr className="csrd-col-hdr">
             <th>الأسئلة</th>
             <th className="csrd-yn">{section.colAHeader}</th>
             <th className="csrd-yn">{section.colBHeader}</th>
+            <th className="csrd-yn">{section.colNaHeader}</th>
           </tr>
           {section.rows.map((row, i) => (
             <Fragment key={`${section.id}-${i}`}>
@@ -208,17 +209,20 @@ function ReportSection({ section }: { section: CaseStudyReportSection }) {
                 <td className="csrd-yn">
                   <Cb checked={row.markB} />
                 </td>
+                <td className="csrd-yn">
+                  <Cb checked={row.markNa} />
+                </td>
               </tr>
               {section.id === "extra" ? (
                 <tr className="csrd-sub-row">
-                  <td colSpan={3}>{EXTRA_SUB_NOTE_DEFAULT}</td>
+                  <td colSpan={4}>{EXTRA_SUB_NOTE_DEFAULT}</td>
                 </tr>
               ) : null}
             </Fragment>
           ))}
           {compExtras.map((line) => (
             <tr key={line}>
-              <td colSpan={3}>{line}</td>
+              <td colSpan={4}>{line}</td>
             </tr>
           ))}
           {section.id !== "extra" ? (

@@ -12,6 +12,8 @@ public sealed class CaseStudyDbContext(DbContextOptions<CaseStudyDbContext> opti
 {
     public DbSet<WorkOrder> WorkOrders => Set<WorkOrder>();
     public DbSet<WorkOrderProperty> WorkOrderProperties => Set<WorkOrderProperty>();
+    public DbSet<Client> Clients => Set<Client>();
+    public DbSet<BuildingInventoryLine> BuildingInventoryLines => Set<BuildingInventoryLine>();
     public DbSet<PropertyContact> PropertyContacts => Set<PropertyContact>();
     public DbSet<WorkflowTask> WorkflowTasks => Set<WorkflowTask>();
     public DbSet<CaseStudyForm> CaseStudyForms => Set<CaseStudyForm>();
@@ -24,6 +26,8 @@ public sealed class CaseStudyDbContext(DbContextOptions<CaseStudyDbContext> opti
         Set<DocumentReferenceCounter>();
     public DbSet<PoIntakeDraft> PoIntakeDrafts => Set<PoIntakeDraft>();
     public DbSet<PropertyTimelineEntry> PropertyTimelineEntries => Set<PropertyTimelineEntry>();
+    public DbSet<PropertyGroup> PropertyGroups => Set<PropertyGroup>();
+    public DbSet<PropertyGroupMember> PropertyGroupMembers => Set<PropertyGroupMember>();
 
     protected override void OnModelCreating(ModelBuilder builder) =>
         builder.ApplyCaseStudyModel();

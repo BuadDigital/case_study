@@ -8,6 +8,8 @@ import {
   DEED_STATUS_OPTIONS,
   RESTRICTIONS_PRESENT_OPTIONS,
   RESTRICTION_TYPE_OPTIONS,
+  PROPERTY_FINISHING_STRUCTURE_OPTIONS,
+  PROPERTY_FINISHING_TYPE_OPTIONS,
   boundariesDetailFieldsOptional,
   boundariesMarkedUnavailable,
   clearPropertyBoundaryFields,
@@ -21,6 +23,8 @@ import {
   clearCachedPropertyDoc,
 } from "../../lib/prototype/assignment-doc-attachments";
 import { PoPropertyBoundariesEntrySection } from "./PoPropertyBoundariesEntrySection";
+import { PoPropertyGroupSection } from "./PoPropertyGroupSection";
+import { PoPropertyOwnersSection } from "./PoPropertyOwnersSection";
 import { PropertyFileUploadField } from "./PropertyFileUploadField";
 import { RegionCitySelects } from "./RegionCitySelects";
 import { RegField, RegSelect } from "@platform/app-shared/registration/FormFields";
@@ -286,6 +290,9 @@ export function PoPropertyBourseForm({
             ) : null}
           </div>
 
+          <PoPropertyOwnersSection property={property} onPatch={onPatch} />
+          <PoPropertyGroupSection propertyId={property.id} />
+
           <div
             id="boundaries_availability"
             className={cn(
@@ -352,6 +359,30 @@ export function PoPropertyBourseForm({
                 onPatch={onPatch}
               />
             ) : null}
+            <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <RegSelect
+                id="finishing_type"
+                label="مستوى التشطيب"
+                value={property.finishingType}
+                error={fieldErrors.finishingType}
+                onChange={(v) => onPatch("finishingType", v)}
+                options={PROPERTY_FINISHING_TYPE_OPTIONS.map((o) => ({
+                  value: o.value,
+                  label: o.label,
+                }))}
+              />
+              <RegSelect
+                id="finishing_structure"
+                label="الهيكل الإنشائي"
+                value={property.finishingStructure}
+                error={fieldErrors.finishingStructure}
+                onChange={(v) => onPatch("finishingStructure", v)}
+                options={PROPERTY_FINISHING_STRUCTURE_OPTIONS.map((o) => ({
+                  value: o.value,
+                  label: o.label,
+                }))}
+              />
+            </div>
           </div>
         </>
       ) : null}

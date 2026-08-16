@@ -24,6 +24,9 @@ public static class WorkOrderMapper
             CreatedAtUtc = entity.CreatedAtUtc.ToString("o"),
             PropertiesRegion = entity.PropertiesRegion,
             WorkOrderDescription = entity.WorkOrderDescription,
+            ClientId = entity.ClientId,
+            ClientNameAr = entity.Client?.NameAr,
+            ReportUserClientIds = [.. WorkOrderReportUsers.Parse(entity.ReportUserClientIdsJson)],
             Properties = entity.Properties
                 .OrderBy(p => p.DeedNumber)
                 .Select(ToPropertyDto)
@@ -33,10 +36,19 @@ public static class WorkOrderMapper
 
     public static WorkOrderPropertyDto ToPropertyDto(WorkOrderProperty p)
     {
+        var owners = OwnershipTypeRules.ParseOwners(p.DeedOwnersJson);
+        var suggestedOwnership = OwnershipTypeRules.Suggest(owners, p.RestrictionType);
+        var effectiveOwnership = OwnershipTypeRules.Effective(
+            p.OwnershipTypeIsManual, p.OwnershipType, owners, p.RestrictionType);
+
         return new WorkOrderPropertyDto
         {
             Id = p.Id,
             IdentifierType = PropertyIdentifierTypeLabels.ToApiValue(p.IdentifierType),
+            DeedKind = DeedKindLabels.ToApiValue(p.DeedKind),
+            DeedKindLabelAr = DeedKindLabels.LabelAr(p.DeedKind),
+            SuggestedDeedKind = DeedKindLabels.ToApiValue(
+                DeedKindLabels.SuggestFromIdentifier(p.IdentifierType)),
             DeedNumber = p.DeedNumber,
             RequestNumber = p.RequestNumber,
             HasRequestNumber = p.HasRequestNumber,
@@ -46,6 +58,13 @@ public static class WorkOrderMapper
             RealEstateRegNumber = p.RealEstateRegNumber,
             RealEstateRegDate = p.RealEstateRegDate,
             OwnerName = p.OwnerName,
+            Owners = owners
+                .Select(o => new DeedOwnerDto { Name = o.Name, SharePct = o.SharePct })
+                .ToList(),
+            OwnershipType = effectiveOwnership,
+            OwnershipTypeLabelAr = OwnershipTypes.LabelAr(effectiveOwnership),
+            SuggestedOwnershipType = suggestedOwnership,
+            OwnershipTypeIsManual = p.OwnershipTypeIsManual,
             RestrictionsPresent = p.RestrictionsPresent,
             RestrictionType = p.RestrictionType,
             RestrictionOtherReason = p.RestrictionOtherReason,
@@ -53,12 +72,20 @@ public static class WorkOrderMapper
             BoundariesExternalDocName = p.BoundariesExternalDocName,
             NorthBoundary = p.NorthBoundary,
             NorthBoundaryLengthM = p.NorthBoundaryLengthM,
+            NorthBoundaryType = p.NorthBoundaryType,
+            NorthFacadeFinishing = p.NorthFacadeFinishing,
             SouthBoundary = p.SouthBoundary,
             SouthBoundaryLengthM = p.SouthBoundaryLengthM,
+            SouthBoundaryType = p.SouthBoundaryType,
+            SouthFacadeFinishing = p.SouthFacadeFinishing,
             EastBoundary = p.EastBoundary,
             EastBoundaryLengthM = p.EastBoundaryLengthM,
+            EastBoundaryType = p.EastBoundaryType,
+            EastFacadeFinishing = p.EastFacadeFinishing,
             WestBoundary = p.WestBoundary,
             WestBoundaryLengthM = p.WestBoundaryLengthM,
+            WestBoundaryType = p.WestBoundaryType,
+            WestFacadeFinishing = p.WestFacadeFinishing,
             City = p.City,
             Region = p.Region,
             District = p.District,
@@ -80,8 +107,12 @@ public static class WorkOrderMapper
             BourseDeedImageFileName = p.BourseDeedImageFileName,
             BourseDataCompleted = p.BourseDataCompleted,
             PlanNumber = p.PlanNumber,
+            PlanName = p.PlanName,
             PlotNumber = p.PlotNumber,
+            BlockNumber = p.BlockNumber,
             LocationMapUrl = p.LocationMapUrl,
+            FinishingType = p.FinishingType,
+            FinishingStructure = p.FinishingStructure,
             IsRemoved = p.IsRemoved,
             RemovalReason = p.RemovalReason,
             RemovedAtUtc = p.RemovedAtUtc?.ToString("o"),
@@ -223,15 +254,27 @@ public static class WorkOrderMapper
             BoundariesExternalDocName = p.BoundariesExternalDocName,
             NorthBoundary = p.NorthBoundary,
             NorthBoundaryLengthM = p.NorthBoundaryLengthM,
+            NorthBoundaryType = p.NorthBoundaryType,
+            NorthFacadeFinishing = p.NorthFacadeFinishing,
             SouthBoundary = p.SouthBoundary,
             SouthBoundaryLengthM = p.SouthBoundaryLengthM,
+            SouthBoundaryType = p.SouthBoundaryType,
+            SouthFacadeFinishing = p.SouthFacadeFinishing,
             EastBoundary = p.EastBoundary,
             EastBoundaryLengthM = p.EastBoundaryLengthM,
+            EastBoundaryType = p.EastBoundaryType,
+            EastFacadeFinishing = p.EastFacadeFinishing,
             WestBoundary = p.WestBoundary,
             WestBoundaryLengthM = p.WestBoundaryLengthM,
+            WestBoundaryType = p.WestBoundaryType,
+            WestFacadeFinishing = p.WestFacadeFinishing,
             PlanNumber = p.PlanNumber,
+            PlanName = p.PlanName,
             PlotNumber = p.PlotNumber,
+            BlockNumber = p.BlockNumber,
             LocationMapUrl = p.LocationMapUrl,
+            FinishingType = p.FinishingType,
+            FinishingStructure = p.FinishingStructure,
             BourseDataCompleted = p.BourseDataCompleted,
             WorkOrderCreatedAtUtc = p.WorkOrder?.CreatedAtUtc.ToString("O"),
             AssignmentDocFileNames = ParseFileNameList(p.AssignmentDocFileName),

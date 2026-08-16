@@ -58,7 +58,7 @@ export function validateEvaluatorSubmission(input: {
 
   const report = getCachedEvaluatorReport(taskId);
   if (!report?.dataUrl) {
-    errors.evaluator_report_file = "مطلوب رفع تقرير PDF من برنامج المقياس.";
+    errors.evaluator_report_file = "مطلوب رفع تقرير التقييم PDF.";
   }
 
   const land = parseEvaluatorAmount(landValue);

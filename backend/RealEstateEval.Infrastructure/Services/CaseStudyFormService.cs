@@ -80,6 +80,25 @@ public class CaseStudyFormService : ICaseStudyFormService
         CaseStudyFormActor? actor = null,
         CancellationToken cancellationToken = default)
     {
+        // §7.3 gate integrity — unknown outcomes rejected; فروق/تعذر need written notes.
+        var matchOutcome = (form.DeedNatureMatchOutcome ?? "").Trim().ToLowerInvariant();
+        if (!DeedNatureMatchOutcomes.IsKnown(matchOutcome))
+        {
+            return (null, new Dictionary<string, string>
+            {
+                ["deedNatureMatchOutcome"] = "مخرج المطابقة غير معروف",
+            });
+        }
+
+        if (matchOutcome is DeedNatureMatchOutcomes.Differences or DeedNatureMatchOutcomes.Impediment
+            && string.IsNullOrWhiteSpace(form.DeedNatureMatchNotes))
+        {
+            return (null, new Dictionary<string, string>
+            {
+                ["deedNatureMatchNotes"] = "ملاحظات المطابقة إلزامية عند «فروق» أو «مرشح تعذر» (§7.3)",
+            });
+        }
+
         // Autosave / multi-tab can race on xmin — retry with a fresh load instead of 409 noise.
         const int maxAttempts = 3;
         for (var attempt = 1; attempt <= maxAttempts; attempt++)
@@ -350,6 +369,9 @@ public class CaseStudyFormService : ICaseStudyFormService
         entity.InfathLinkedAssetsNotes = dto.InfathLinkedAssetsNotes ?? "";
         entity.InfathOtherNotes = dto.InfathOtherNotes ?? "";
         entity.InfathClosingNotes = dto.InfathClosingNotes ?? "";
+        // Validated in SaveAsync (§7.3) — normalized here.
+        entity.DeedNatureMatchOutcome = (dto.DeedNatureMatchOutcome ?? "").Trim().ToLowerInvariant();
+        entity.DeedNatureMatchNotes = dto.DeedNatureMatchNotes ?? "";
         entity.SavedAtUtc = now;
         entity.UpdatedAtUtc = now;
     }
@@ -402,6 +424,8 @@ public class CaseStudyFormService : ICaseStudyFormService
             InfathLinkedAssetsNotes = entity.InfathLinkedAssetsNotes,
             InfathOtherNotes = entity.InfathOtherNotes,
             InfathClosingNotes = entity.InfathClosingNotes,
+            DeedNatureMatchOutcome = entity.DeedNatureMatchOutcome,
+            DeedNatureMatchNotes = entity.DeedNatureMatchNotes,
             SavedAtUtc = entity.SavedAtUtc?.ToString("O"),
         };
     }

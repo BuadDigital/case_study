@@ -60,6 +60,23 @@ public class WorkOrderValidatorTests
     }
 
     [Fact]
+    public void Request_number_must_differ_from_deed_number()
+    {
+        // §4ج-3 — the discovered sample error: رقم الطلب = رقم الصك.
+        var dto = ValidDeedProperty();
+        dto.RequestNumber = dto.DeedNumber;
+
+        var errors = WorkOrderValidator.ValidatePropertyEnfath(
+            dto,
+            AssignmentType.Execution,
+            "PO-1",
+            null,
+            (_, _) => false);
+
+        Assert.Contains(errors, e => e.Key == "requestNumber");
+    }
+
+    [Fact]
     public void ValidatePropertyEnfath_allows_empty_contacts_for_private()
     {
         var dto = ValidDeedProperty();
@@ -112,6 +129,7 @@ public class WorkOrderValidatorTests
         Assert.Contains("poNumber", errors.Keys);
         Assert.Contains("assignmentType", errors.Keys);
         Assert.Contains("promulgationDate", errors.Keys);
+        Assert.Contains("clientId", errors.Keys);
         Assert.DoesNotContain(errors, e => e.Key == "assignmentSpecialist");
         Assert.DoesNotContain(errors, e => e.Key == "assignmentSpecialistEmail");
     }
@@ -160,6 +178,7 @@ public class WorkOrderValidatorTests
             AssignmentSpecialist = "Feras",
             AssignmentSpecialistEmail = "feras@ejadah.dev",
             ExpectedPropertyCount = 2,
+            ClientId = SeedClientIds.InfathAssignmentCenter,
         });
 
         Assert.Empty(errors);
@@ -493,6 +512,7 @@ public class WorkOrderValidatorTests
         AssignmentSpecialist = "Feras",
         AssignmentSpecialistEmail = "feras@ejadah.dev",
         ExpectedPropertyCount = 1,
+        ClientId = SeedClientIds.InfathAssignmentCenter,
     };
 
     private static WorkOrderPropertyDto ValidDeedProperty() => new()

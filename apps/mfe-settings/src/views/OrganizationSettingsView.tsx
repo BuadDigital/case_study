@@ -1,12 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import {
-  getOrganizationSettings,
-  saveOrganizationSettings,
-  testOrganizationCommunication,
-  type OrganizationSettingsDto,
-} from "@platform/api-client";
+import { getOrganizationSettings, saveOrganizationSettings, testOrganizationCommunication, type OrganizationSettingsDto, type OrganizationValuerRosterEntry} from "@platform/api-client";
 import { Can, useCapability } from "@platform/app-shared/components/Can";
 import { cn, Note, PageShell, Spinner, useToast } from "@platform/design-system";
 import {
@@ -47,7 +42,7 @@ const TAB_META: Record<TabId, { icon: string; sub: string }> = {
   },
   evaluator: {
     icon: "M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2M12 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8z",
-    sub: "بيانات المقيم المعتمد التي تظهر في تقارير التقييم",
+    sub: "المقيم المعتمد لبوابات الإصدار + قائمة المشاركين في التقرير",
   },
   branding: {
     icon: "M4 16l4.6-4.6a2 2 0 0 1 2.8 0L16 16m-2-2 1.6-1.6a2 2 0 0 1 2.8 0L20 14M14 8h.01M6 20h12a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2z",
@@ -81,14 +76,33 @@ function TabIcon({ path, size = 20 }: { path: string; size?: number }) {
   );
 }
 
+function emptyValuer(): OrganizationValuerRosterEntry {
+  return {
+    id: `v-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`,
+    nameAr: "",
+    licenseNumber: "",
+    membershipNumber: "",
+    role: "assistant",
+    isActive: true,
+  };
+}
+
 function emptySettings(): OrganizationSettingsDto {
   return {
     company: { name: "شركة إجادة المهنية للتقييم", taxNumber: "", address: "" },
-    evaluator: { name: "", licenseNumber: "", membershipNumber: "" },
+    evaluator: {
+      name: "",
+      licenseNumber: "",
+      membershipNumber: "",
+      licenseExpiresAt: "",
+      membershipExpiresAt: "",
+    },
+    valuers: [],
     branding: {
       stampUrl: "/case-study/ejadah-stamp.png",
       signatureUrl: "/case-study/ejadah-signature.png",
       headerUrl: "",
+      letterheadUrl: "",
       watermarkText: "EJADAH",
     },
     communications: {
@@ -106,6 +120,7 @@ function emptySettings(): OrganizationSettingsDto {
       smtpPasswordConfigured: false,
     },
     sla: { defaultBusinessDays: 4, privateSectorBusinessDays: 10 },
+    valuation: { maxAdoptedComparables: 3 },
     updatedAtUtc: new Date().toISOString(),
   };
 }
@@ -171,9 +186,11 @@ export function OrganizationSettingsView() {
       const result = await saveOrganizationSettings(config, {
         company: draft.company,
         evaluator: draft.evaluator,
+        valuers: draft.valuers,
         branding: draft.branding,
         communications: draft.communications,
         sla: draft.sla,
+        valuation: draft.valuation,
       });
       if (!result.ok) {
         showToast(
@@ -253,7 +270,7 @@ export function OrganizationSettingsView() {
         </p>
       ) : null}
 
-      {/* أقسام الإعدادات — أزرار مقسّمة بنمط المهام */}
+      {/* Settings sections — segmented buttons matching ops task pattern */}
       <div
         className={cn(opsTfSegRow, "mb-3.5")}
         role="tablist"
@@ -273,7 +290,7 @@ export function OrganizationSettingsView() {
         ))}
       </div>
 
-      {/* بطاقة القسم */}
+      {/* Section card */}
       <section className={opsLetterCard}>
         <div className={opsLetterHead}>
           <div className="flex items-center gap-[11px]">
@@ -412,6 +429,204 @@ export function OrganizationSettingsView() {
                   }
                 />
               </div>
+              <div className={opsFld}>
+                <label htmlFor="org-license-expires" className={opsTfLbl}>
+                  انتهاء ترخيص المزاولة
+                </label>
+                <input
+                  id="org-license-expires"
+                  className={opsFldControl}
+                  type="date"
+                  dir="ltr"
+                  value={draft.evaluator.licenseExpiresAt ?? ""}
+                  disabled={!canEdit}
+                  onChange={(e) =>
+                    setDraft((d) => ({
+                      ...d,
+                      evaluator: {
+                        ...d.evaluator,
+                        licenseExpiresAt: e.target.value,
+                      },
+                    }))
+                  }
+                />
+              </div>
+              <div className={opsFld}>
+                <label htmlFor="org-membership-expires" className={opsTfLbl}>
+                  انتهاء / سريان العضوية
+                </label>
+                <input
+                  id="org-membership-expires"
+                  className={opsFldControl}
+                  type="date"
+                  dir="ltr"
+                  value={draft.evaluator.membershipExpiresAt ?? ""}
+                  disabled={!canEdit}
+                  onChange={(e) =>
+                    setDraft((d) => ({
+                      ...d,
+                      evaluator: {
+                        ...d.evaluator,
+                        membershipExpiresAt: e.target.value,
+                      },
+                    }))
+                  }
+                />
+              </div>
+
+              <div className={opsFldFull}>
+                <p className={cn(opsTfNote, "m-0 mb-2")}>
+                  قائمة المشاركين (بالإضافة للمقيم المعتمد أعلاه) — تظهر في §17
+                  التقرير وحقن مقياس.
+                </p>
+                {(draft.valuers ?? []).map((row, index) => (
+                  <div
+                    key={row.id || `valuer-${index}`}
+                    className={cn(opsFormGrid, "mb-3 rounded-md border border-[var(--border)] p-3")}
+                  >
+                    <div className={opsFldFull}>
+                      <label className={opsTfLbl} htmlFor={`valuer-name-${index}`}>
+                        الاسم
+                      </label>
+                      <input
+                        id={`valuer-name-${index}`}
+                        className={opsFldControl}
+                        value={row.nameAr}
+                        disabled={!canEdit}
+                        onChange={(e) =>
+                          setDraft((d) => ({
+                            ...d,
+                            valuers: d.valuers.map((v, i) =>
+                              i === index ? { ...v, nameAr: e.target.value } : v,
+                            ),
+                          }))
+                        }
+                      />
+                    </div>
+                    <div className={opsFld}>
+                      <label className={opsTfLbl} htmlFor={`valuer-role-${index}`}>
+                        الدور
+                      </label>
+                      <select
+                        id={`valuer-role-${index}`}
+                        className={opsFldControl}
+                        value={row.role}
+                        disabled={!canEdit}
+                        onChange={(e) =>
+                          setDraft((d) => ({
+                            ...d,
+                            valuers: d.valuers.map((v, i) =>
+                              i === index ? { ...v, role: e.target.value } : v,
+                            ),
+                          }))
+                        }
+                      >
+                        <option value="certified">معتمد</option>
+                        <option value="assistant">مساعد</option>
+                        <option value="reviewer">مراجع</option>
+                      </select>
+                    </div>
+                    <div className={opsFld}>
+                      <label className={opsTfLbl} htmlFor={`valuer-active-${index}`}>
+                        الحالة
+                      </label>
+                      <select
+                        id={`valuer-active-${index}`}
+                        className={opsFldControl}
+                        value={row.isActive ? "1" : "0"}
+                        disabled={!canEdit}
+                        onChange={(e) =>
+                          setDraft((d) => ({
+                            ...d,
+                            valuers: d.valuers.map((v, i) =>
+                              i === index
+                                ? { ...v, isActive: e.target.value === "1" }
+                                : v,
+                            ),
+                          }))
+                        }
+                      >
+                        <option value="1">نشط</option>
+                        <option value="0">موقوف</option>
+                      </select>
+                    </div>
+                    <div className={opsFld}>
+                      <label className={opsTfLbl} htmlFor={`valuer-lic-${index}`}>
+                        رقم الترخيص
+                      </label>
+                      <input
+                        id={`valuer-lic-${index}`}
+                        className={opsFldControl}
+                        dir="ltr"
+                        value={row.licenseNumber ?? ""}
+                        disabled={!canEdit}
+                        onChange={(e) =>
+                          setDraft((d) => ({
+                            ...d,
+                            valuers: d.valuers.map((v, i) =>
+                              i === index
+                                ? { ...v, licenseNumber: e.target.value }
+                                : v,
+                            ),
+                          }))
+                        }
+                      />
+                    </div>
+                    <div className={opsFld}>
+                      <label className={opsTfLbl} htmlFor={`valuer-mem-${index}`}>
+                        رقم العضوية
+                      </label>
+                      <input
+                        id={`valuer-mem-${index}`}
+                        className={opsFldControl}
+                        dir="ltr"
+                        value={row.membershipNumber ?? ""}
+                        disabled={!canEdit}
+                        onChange={(e) =>
+                          setDraft((d) => ({
+                            ...d,
+                            valuers: d.valuers.map((v, i) =>
+                              i === index
+                                ? { ...v, membershipNumber: e.target.value }
+                                : v,
+                            ),
+                          }))
+                        }
+                      />
+                    </div>
+                    {canEdit ? (
+                      <div className={opsFldFull}>
+                        <button
+                          type="button"
+                          className={opsBtnGhost}
+                          onClick={() =>
+                            setDraft((d) => ({
+                              ...d,
+                              valuers: d.valuers.filter((_, i) => i !== index),
+                            }))
+                          }
+                        >
+                          إزالة
+                        </button>
+                      </div>
+                    ) : null}
+                  </div>
+                ))}
+                {canEdit ? (
+                  <button
+                    type="button"
+                    className={opsBtnGhost}
+                    onClick={() =>
+                      setDraft((d) => ({
+                        ...d,
+                        valuers: [...(d.valuers ?? []), emptyValuer()],
+                      }))
+                    }
+                  >
+                    إضافة مشارك
+                  </button>
+                ) : null}
+              </div>
             </div>
           ) : null}
 
@@ -467,6 +682,25 @@ export function OrganizationSettingsView() {
                     setDraft((d) => ({
                       ...d,
                       branding: { ...d.branding, headerUrl: e.target.value },
+                    }))
+                  }
+                />
+              </div>
+              <div className={opsFld}>
+                <label htmlFor="org-letterhead-url" className={opsTfLbl}>
+                  رابط كليشة التقرير (ثلاث شرائح — اختياري)
+                </label>
+                <input
+                  id="org-letterhead-url"
+                  className={opsFldControl}
+                  dir="ltr"
+                  placeholder="/ejadah/ejadah-letterhead.png"
+                  value={draft.branding.letterheadUrl ?? ""}
+                  disabled={!canEdit}
+                  onChange={(e) =>
+                    setDraft((d) => ({
+                      ...d,
+                      branding: { ...d.branding, letterheadUrl: e.target.value },
                     }))
                   }
                 />
@@ -816,6 +1050,30 @@ export function OrganizationSettingsView() {
                         sla: {
                           ...d.sla,
                           privateSectorBusinessDays: Number(e.target.value) || 1,
+                        },
+                      }))
+                    }
+                  />
+                </div>
+                <div className={opsFld}>
+                  <label htmlFor="org-max-adopted-comps" className={opsTfLbl}>
+                    الحد الأقصى للمقارنات المعتمدة لكل تقييم (ت-2)
+                  </label>
+                  <input
+                    id="org-max-adopted-comps"
+                    className={opsFldControl}
+                    type="number"
+                    min={1}
+                    max={20}
+                    dir="ltr"
+                    value={String(draft.valuation.maxAdoptedComparables)}
+                    disabled={!canEdit}
+                    onChange={(e) =>
+                      setDraft((d) => ({
+                        ...d,
+                        valuation: {
+                          ...d.valuation,
+                          maxAdoptedComparables: Number(e.target.value) || 1,
                         },
                       }))
                     }

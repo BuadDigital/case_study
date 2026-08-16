@@ -41,6 +41,7 @@ const BREADCRUMB_LABEL_HREF: Record<string, string> = {
   "مسيرات الصرف": "/profile",
   المعاين: "/profile",
   المستحقات: "/profile",
+  "بنك المقارنات": "/comparable-properties",
   "طلبات التقييم": "/valuation-requests",
   "قاموس الحقول المركزي": "/system-fields-catalog",
   "دليل الشاشات": "/system-screen-catalog",

@@ -21,6 +21,7 @@ public sealed class WorkOrderLoader : IWorkOrderLoader
     {
         var po = IWorkOrderLoader.NormalizePo(poNumber);
         IQueryable<WorkOrder> q = _db.WorkOrders
+            .Include(w => w.Client)
             .Include(w => w.Properties)
             .ThenInclude(p => p.Contacts);
 

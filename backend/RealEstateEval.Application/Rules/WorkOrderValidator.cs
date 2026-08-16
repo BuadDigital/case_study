@@ -24,6 +24,8 @@ public static class WorkOrderValidator
         ValidateOptionalSpecialistEmail(request.AssignmentSpecialistEmail, errors);
         if (request.ExpectedPropertyCount < 1)
             errors["expectedPropertyCount"] = "عدد العقارات يجب أن يكون 1 على الأقل";
+        if (request.ClientId == Guid.Empty)
+            errors["clientId"] = "العميل مطلوب";
         return errors;
     }
 
@@ -37,6 +39,8 @@ public static class WorkOrderValidator
         ValidateOptionalSpecialistEmail(request.AssignmentSpecialistEmail, errors);
         if (request.ExpectedPropertyCount < 1)
             errors["expectedPropertyCount"] = "عدد العقارات يجب أن يكون 1 على الأقل";
+        if (request.ClientId == Guid.Empty)
+            errors["clientId"] = "العميل مطلوب";
         return errors;
     }
 
@@ -110,6 +114,14 @@ public static class WorkOrderValidator
             {
                 errors["deedNumber"] = "رقم الصك مسجّل مسبقاً في هذا أمر العمل";
             }
+        }
+
+        // §4ج-3 — رقم الطلب مرجع خارجي ولا يجوز أن يساوي رقم الصك (خطأ العينة المكتشف).
+        if (!string.IsNullOrWhiteSpace(dto.RequestNumber)
+            && !string.IsNullOrWhiteSpace(dto.DeedNumber)
+            && string.Equals(dto.RequestNumber.Trim(), dto.DeedNumber.Trim(), StringComparison.Ordinal))
+        {
+            errors["requestNumber"] = "رقم الطلب لا يجوز أن يساوي رقم الصك (§4ج-3)";
         }
 
         if (dto.AssignmentDocFileNames.All(string.IsNullOrWhiteSpace))

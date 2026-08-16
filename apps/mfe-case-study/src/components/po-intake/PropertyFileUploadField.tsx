@@ -6,7 +6,7 @@ import {
   clearCachedPropertyDoc,
   type PropertyDocKind,
 } from "../../lib/prototype/assignment-doc-attachments";
-import { AssignmentDocAttachment } from "./AssignmentDocAttachment";
+import { AssignmentDocWithReportClassify } from "./AssignmentDocWithReportClassify";
 
 const ACCEPT =
   "application/pdf,image/*,.pdf,.jpg,.jpeg,.png,.heic,.heif,.webp";
@@ -131,7 +131,7 @@ export function PropertyFileUploadField({
             >
               <div className="min-w-0 flex-1">
                 {showPreview ? (
-                  <AssignmentDocAttachment
+                  <AssignmentDocWithReportClassify
                     key={`${docKind}-${attachPo}-${propertyId}-${name}`}
                     poNumber={attachPo!}
                     propertyId={propertyId!}

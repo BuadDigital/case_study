@@ -163,6 +163,7 @@ export type PoHeaderFieldIdMap = {
   assignmentSpecialist?: string;
   assignmentSpecialistEmail: string;
   expectedPropertyCount: string;
+  clientId?: string;
 };
 
 export const PO_HEADER_MODAL_FIELD_IDS: PoHeaderFieldIdMap = {
@@ -172,6 +173,7 @@ export const PO_HEADER_MODAL_FIELD_IDS: PoHeaderFieldIdMap = {
   assignmentSpecialist: "po_specialist_modal",
   assignmentSpecialistEmail: "po_specialist_email_modal",
   expectedPropertyCount: "expected_property_count_modal",
+  clientId: "po_client_modal",
 };
 
 export const PO_HEADER_EDIT_FIELD_IDS: PoHeaderFieldIdMap = {
@@ -180,11 +182,13 @@ export const PO_HEADER_EDIT_FIELD_IDS: PoHeaderFieldIdMap = {
   assignmentSpecialist: "po_specialist_edit",
   assignmentSpecialistEmail: "po_specialist_email_edit",
   expectedPropertyCount: "expected_property_count_edit",
+  clientId: "po_client_edit",
 };
 
 const HEADER_KEY_ORDER = [
   "poNumber",
   "promulgationDate",
+  "clientId",
   "assignmentType",
   "assignmentSpecialist",
   "assignmentSpecialistEmail",

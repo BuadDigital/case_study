@@ -64,19 +64,27 @@ function IconAlert({ size = 13 }: { size?: number }) {
 }
 
 function PartyBadge({ short, value }: { short: string; value: MatrixYn }) {
-  const label = value === "Y" ? "نعم" : "لا";
+  const label = value === "Y" ? "نعم" : value === "NA" ? "لا ينطبق" : "لا";
   return (
     <span
       className={cn(
         "inline-flex items-center gap-1 rounded-[6px] border px-2 py-0.5 text-[11px] leading-none whitespace-nowrap",
         value === "Y"
           ? "border-[color-mix(in_srgb,var(--ink)_18%,var(--border))] bg-success-bg text-success-text"
-          : "border-[color-mix(in_srgb,var(--danger)_22%,var(--border))] bg-danger-bg text-danger",
+          : value === "NA"
+            ? "border-border-md bg-surface-2 text-text-2"
+            : "border-[color-mix(in_srgb,var(--danger)_22%,var(--border))] bg-danger-bg text-danger",
       )}
     >
       <span className="font-semibold text-text-2">{short}</span>
       <span className="inline-flex items-center" aria-hidden="true">
-        {value === "Y" ? <IconCheck size={11} /> : <IconX size={11} />}
+        {value === "Y" ? (
+          <IconCheck size={11} />
+        ) : value === "NA" ? (
+          <span className="text-[10px] font-bold">—</span>
+        ) : (
+          <IconX size={11} />
+        )}
       </span>
       <span className="font-semibold">{label}</span>
     </span>
@@ -100,7 +108,13 @@ function OfficialAnswerCell({
 }) {
   const on = value === target;
   const adoptLabel =
-    target === "Y" ? "اعتماد الأطراف (نعم)" : "اعتماد الأطراف (لا)";
+    target === "Y"
+      ? "اعتماد الأطراف (نعم)"
+      : target === "NA"
+        ? "اعتماد الأطراف (لا ينطبق)"
+        : "اعتماد الأطراف (لا)";
+  const aria =
+    target === "Y" ? "نعم" : target === "NA" ? "لا ينطبق" : "لا";
 
   return (
     <div className="mx-auto flex w-full max-w-[3rem] flex-col items-center justify-center gap-1">
@@ -111,20 +125,30 @@ function OfficialAnswerCell({
           on
             ? target === "Y"
               ? "border-ink bg-ink text-white"
-              : "border-danger bg-danger text-white"
+              : target === "NA"
+                ? "border-ink bg-surface-2 text-heading"
+                : "border-danger bg-danger text-white"
             : "border-border-md bg-surface text-text-3 hover:border-[color-mix(in_srgb,var(--ink)_30%,var(--border))] hover:text-heading",
           disabled &&
             "cursor-not-allowed opacity-45 hover:border-border-md hover:text-text-3",
         )}
         aria-pressed={on}
-        aria-label={target === "Y" ? "نعم" : "لا"}
+        aria-label={aria}
         disabled={disabled}
         onClick={() => {
           if (disabled) return;
           onPick(on ? null : target);
         }}
       >
-        {on ? (target === "Y" ? <IconCheck size={12} /> : <IconX size={12} />) : null}
+        {on ? (
+          target === "Y" ? (
+            <IconCheck size={12} />
+          ) : target === "NA" ? (
+            <span className="text-[10px] font-bold">—</span>
+          ) : (
+            <IconX size={12} />
+          )
+        ) : null}
       </button>
       {showAdopt && onAdopt ? (
         <button
@@ -229,15 +253,17 @@ export function CaseStudyMatrixTable({
           <colgroup>
             {showPartyColumn ? (
               <>
-                <col style={{ width: "40%" }} />
+                <col style={{ width: "36%" }} />
                 <col />
-                <col style={{ width: 72 }} />
+                <col style={{ width: 64 }} />
+                <col style={{ width: 64 }} />
                 <col style={{ width: 72 }} />
               </>
             ) : (
               <>
                 <col />
-                <col style={{ width: 72 }} />
+                <col style={{ width: 64 }} />
+                <col style={{ width: 64 }} />
                 <col style={{ width: 72 }} />
               </>
             )}
@@ -258,6 +284,9 @@ export function CaseStudyMatrixTable({
               </th>
               <th scope="col" className={cn(headClass, ynColClass)}>
                 لا
+              </th>
+              <th scope="col" className={cn(headClass, ynColClass)}>
+                لا ينطبق
               </th>
             </tr>
           </thead>
@@ -380,6 +409,22 @@ export function CaseStudyMatrixTable({
                         official !== "N"
                       }
                       onAdopt={() => setOfficial("N")}
+                    />
+                  </td>
+                  <td className={cn(cellClass, ynColClass, conflictBg)}>
+                    <OfficialAnswerCell
+                      value={official}
+                      target="NA"
+                      disabled={!editable}
+                      onPick={setOfficial}
+                      showAdopt={
+                        editable &&
+                        showPartyColumn &&
+                        status === "consensus" &&
+                        consensus === "NA" &&
+                        official !== "NA"
+                      }
+                      onAdopt={() => setOfficial("NA")}
                     />
                   </td>
                 </tr>

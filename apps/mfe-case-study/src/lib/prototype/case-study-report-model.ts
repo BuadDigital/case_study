@@ -27,8 +27,10 @@ export type CaseStudyReportQuestionRow = {
   question: string;
   colAHeader: string;
   colBHeader: string;
+  colNaHeader: string;
   markA: boolean;
   markB: boolean;
+  markNa: boolean;
 };
 
 export type CaseStudyReportSection = {
@@ -36,6 +38,7 @@ export type CaseStudyReportSection = {
   title: string;
   colAHeader: string;
   colBHeader: string;
+  colNaHeader: string;
   rows: CaseStudyReportQuestionRow[];
   remarks?: string;
   /** Extra lines below the table (meter, HOA, etc.) */
@@ -138,8 +141,10 @@ function buildSectionRows(
       question,
       colAHeader: headers.colA,
       colBHeader: headers.colB,
+      colNaHeader: headers.colNa,
       markA: val === "A",
       markB: val === "B",
+      markNa: val === "NA",
     };
   });
 }
@@ -190,6 +195,7 @@ export function buildCaseStudyReportModel(
       title: SECTION_TITLES[id],
       colAHeader: headers.colA,
       colBHeader: headers.colB,
+      colNaHeader: headers.colNa,
       rows: buildSectionRows(id, draft.answers, catalog.sectionQuestions),
     };
 
