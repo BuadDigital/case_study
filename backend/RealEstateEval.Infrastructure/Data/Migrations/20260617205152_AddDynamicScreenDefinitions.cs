@@ -5,10 +5,10 @@ using Microsoft.EntityFrameworkCore.Migrations;
 
 namespace RealEstateEval.Infrastructure.Data.Migrations
 {
-    /// <inheritdoc />
+ /// <inheritdoc />
     public partial class AddDynamicScreenDefinitions : Migration
     {
-        /// <inheritdoc />
+ /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
             migrationBuilder.AddColumn<string>(
@@ -85,7 +85,7 @@ namespace RealEstateEval.Infrastructure.Data.Migrations
                 unique: true);
         }
 
-        /// <inheritdoc />
+ /// <inheritdoc />
         protected override void Down(MigrationBuilder migrationBuilder)
         {
             migrationBuilder.DropTable(

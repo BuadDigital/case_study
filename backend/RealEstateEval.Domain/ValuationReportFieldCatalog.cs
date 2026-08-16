@@ -1,8 +1,8 @@
 namespace RealEstateEval.Domain;
 
 /// <summary>
-/// Mikyas Word-merge codes ⟵ Ejada field_key (package analysis + injection map).
-/// §8 corrections: comparable bank fills template slots; boundaries from deed dump;
+/// Word-merge template codes ⟵ Ejada field_key.
+/// corrections: comparable bank fills template slots; boundaries from deed dump;
 /// liquidation discount stored not applied; building fields empty when vacant land.
 /// </summary>
 public enum ValuationReportFieldSourceKind
@@ -136,11 +136,11 @@ public static class ValuationReportFieldCatalog
         new("7680", "القيمة السوقية (الدخل)", "income.market_value", ValuationReportFieldSourceKind.Deferred, null),
         new("9060", "وصف الصيانة", "notes.9060", ValuationReportFieldSourceKind.Deferred, null),
         new("9140", "نص المطابقة لفسح البناء", "notes.9140", ValuationReportFieldSourceKind.Deferred, null),
-        new("9190", "رأي المثمن العقاري", "valuer_opinion_text", ValuationReportFieldSourceKind.Computed, "§8: يُعبَّأ عند الرفع — لا قسم مطبوع"),
+        new("9190", "رأي المثمن العقاري", "valuer_opinion_text", ValuationReportFieldSourceKind.Computed, "يُعبَّأ عند الرفع — لا قسم مطبوع"),
         new("9253", "غرض التقييم - الإسم العربي", "valuation_purpose_ar", ValuationReportFieldSourceKind.Deferred, "غرض التقييم"),
         new("9263", "أساس القيمة - الإسم العربي", "basis_of_value_ar", ValuationReportFieldSourceKind.Platform, "حقن: تصفية×فرضية مركّب، وإلا اسم الأساس"),
-        new("9360", "قائمة المخاطر", "risks_list", ValuationReportFieldSourceKind.Computed, "§8: تُعبَّأ عند الرفع من بيانات النظام — لا قسم مطبوع"),
-        new("9370", "نص المخاطر", "risks_text", ValuationReportFieldSourceKind.Computed, "§8: يُعبَّأ عند الرفع من بيانات النظام — لا قسم مطبوع"),
+        new("9360", "قائمة المخاطر", "risks_list", ValuationReportFieldSourceKind.Computed, "تُعبَّأ عند الرفع من بيانات النظام — لا قسم مطبوع"),
+        new("9370", "نص المخاطر", "risks_text", ValuationReportFieldSourceKind.Computed, "يُعبَّأ عند الرفع من بيانات النظام — لا قسم مطبوع"),
         new("9800", "الإحداثيات - خط الطول", "geo_longitude", ValuationReportFieldSourceKind.Platform, "من معاينة ميدانية"),
         new("9810", "الإحداثيات - خط العرض", "geo_latitude", ValuationReportFieldSourceKind.Platform, "من معاينة ميدانية"),
         new("9900", "التوقيع المعتمد - التوقيع", "org.signature", ValuationReportFieldSourceKind.Asset, null),
@@ -226,7 +226,7 @@ public static class ValuationReportFieldCatalog
         new("40061", "تسوية الأرض -  سعر متر الأرض بالنسبة للمقارنات 2", "adj.40061", ValuationReportFieldSourceKind.Computed, "خلية تسوية مسطّحة — تُسطَّح من بنك المقارنات لاحقًا"),
         new("40063", "تسوية الأرض -  سعر متر الأرض بالنسبة للمقارنات 4", "adj.40063", ValuationReportFieldSourceKind.Computed, "خلية تسوية مسطّحة — تُسطَّح من بنك المقارنات لاحقًا"),
         new("40065", "تسوية الأرض -  سعر متر الأرض بالنسبة للمقارنات 6", "adj.40065", ValuationReportFieldSourceKind.Computed, "خلية تسوية مسطّحة — تُسطَّح من بنك المقارنات لاحقًا"),
-        new("40067", "قيمة الارض بطرقية التسوية", "cost.land_value_from_market", ValuationReportFieldSourceKind.Computed, "ق-4"),
+        new("40067", "قيمة الارض بطرقية التسوية", "cost.land_value_from_market", ValuationReportFieldSourceKind.Computed, "من رأي السوق"),
         new("50016", "ملاحظات العيوب 2", "pending.50016", ValuationReportFieldSourceKind.Deferred, "لم يُربط بعد"),
         new("50017", "ملاحظات العيوب 3", "pending.50017", ValuationReportFieldSourceKind.Deferred, "لم يُربط بعد"),
         new("60010", "تاريخ البيع 1 - عروض بيع لأراضي مماثلة", "comp1.transaction_date", ValuationReportFieldSourceKind.Platform, null),

@@ -11,7 +11,7 @@ using RealEstateEval.Infrastructure.Services;
 namespace RealEstateEval.Application.Tests;
 
 /// <summary>
-/// ج٩: billing statements cover field-inspection, engineering-survey, and court-visit fees.
+/// billing statements cover field-inspection, engineering-survey, and court-visit fees.
 /// </summary>
 public class GeneralizedBillingStatementTests
 {
@@ -53,7 +53,7 @@ public class GeneralizedBillingStatementTests
             id: taskId,
             status: WorkflowTaskStatus.Completed));
 
-        // Legacy UserId + current assignee twins (same task + property).
+ // Legacy UserId + current assignee twins (same task + property).
         db.InspectorFeeLedgers.Add(new InspectorFeeLedger
         {
             WorkflowTaskId = taskId,
@@ -144,7 +144,7 @@ public class GeneralizedBillingStatementTests
             WorkflowTaskId = taskId,
             NetFeeSar = 400m,
         });
-        // Twin still looks "ready" in ledger table.
+ // Twin still looks "ready" in ledger table.
         db.InspectorFeeLedgers.Add(new InspectorFeeLedger
         {
             WorkflowTaskId = taskId,
@@ -236,7 +236,7 @@ public class GeneralizedBillingStatementTests
         Assert.Equal(PartyBillingPayeeType.Individual, result.Statement.PayeeType);
         Assert.Equal(350m, result.Statement.TotalNetSar);
 
-        // Once on a statement line, not ready again.
+ // Once on a statement line, not ready again.
         var readyAfter = await service.ListReadyLinesAsync();
         Assert.DoesNotContain(readyAfter, r => r.WorkflowTaskId == chargeId.ToString());
     }

@@ -37,7 +37,7 @@ public class EfModelBoundaryTests
             added.Count == 0,
             "New cross-schema foreign keys:\n  "
             + string.Join("\n  ", added)
-            + "\nSplit plan rule 2 forbids them: a foreign key across owners cannot survive a "
+ + "\n rule 2 forbids them: a foreign key across owners cannot survive a "
             + "database split.");
     }
 
@@ -68,6 +68,6 @@ public class EfModelBoundaryTests
             context.Database.HasPendingModelChanges(),
             "The model differs from ApplicationDbContextModelSnapshot. The legacy migration "
             + "stream is the baseline that the deploy-time migrator applies before any "
-            + "per-context stream (ADR 0006), so it must never drift.");
+ + "per-context stream (migration-stream rules), so it must never drift.");
     }
 }

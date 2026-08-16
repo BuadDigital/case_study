@@ -820,7 +820,7 @@ export type FileAttachmentMetaDto = {
   photoMetadata?: PhotoMetadataDto | null;
   /** Attachment print dictionary type key; empty = library only. */
   dictionaryTypeKey?: string;
-  /** When true with a type key, eligible for report §§22–25. */
+ /** When true with a type key, eligible for report –25. */
   printInReport?: boolean;
 };
 
@@ -851,7 +851,7 @@ export type UploadAttachmentRequest = {
   fileName: string;
   contentType?: string;
   contentBase64: string;
-  /** EXIF extracted on-device before compression (هـ). */
+  /** EXIF extracted on-device before compression. */
   photoMetadata?: PhotoMetadataInput | null;
 };
 

@@ -15,7 +15,7 @@ namespace RealEstateEval.Infrastructure.Data.Contexts.Platform.Migrations
     [Migration("20260802093122_ExpandOfficialRegionsCitiesCatalog")]
     partial class ExpandOfficialRegionsCitiesCatalog
     {
-        /// <inheritdoc />
+ /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618

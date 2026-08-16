@@ -54,10 +54,10 @@ public class AuthController : ControllerBase
             : Ok(result);
     }
 
-    /// <summary>
-    /// Redeems a one-time activation ticket and sets the account's first password.
-    /// Anonymous by necessity — the ticket itself is the proof of possession.
-    /// </summary>
+ /// <summary>
+ /// Redeems a one-time activation ticket and sets the account's first password.
+ /// Anonymous by necessity — the ticket itself is the proof of possession.
+ /// </summary>
     [HttpPost("activate")]
     [AllowAnonymous]
     public async Task<IActionResult> Activate(
@@ -96,17 +96,17 @@ public class AuthController : ControllerBase
         if (!ModelState.IsValid)
             return ValidationProblem(ModelState);
         var username = request.Username.Trim();
-        // Same message for missing/disabled users — do not confirm usernames.
+ // Same message for missing/disabled users — do not confirm usernames.
         var session = await _sessions.IssueForUsernameAsync(username, cancellationToken);
         return session is null
             ? Unauthorized(new { message = "تعذر تسجيل الدخول" })
             : Ok(session);
     }
 
-    /// <summary>
-    /// Exchanges a refresh token for a fresh access token, re-reading roles and
-    /// capabilities so permission changes apply without a new login.
-    /// </summary>
+ /// <summary>
+ /// Exchanges a refresh token for a fresh access token, re-reading roles and
+ /// capabilities so permission changes apply without a new login.
+ /// </summary>
     [HttpPost("refresh")]
     [AllowAnonymous]
     public async Task<ActionResult<LoginResponse>> Refresh(
@@ -122,7 +122,7 @@ public class AuthController : ControllerBase
             : Ok(session);
     }
 
-    /// <summary>Revokes the whole session family behind the supplied refresh token.</summary>
+ /// <summary>Revokes the whole session family behind the supplied refresh token.</summary>
     [HttpPost("logout")]
     [AllowAnonymous]
     public async Task<IActionResult> Logout(
@@ -169,7 +169,7 @@ public class AuthController : ControllerBase
         });
     }
 
-    /// <summary>Full staff profile for the signed-in user (same shape as users list).</summary>
+ /// <summary>Full staff profile for the signed-in user (same shape as users list).</summary>
     [HttpGet("profile")]
     [Authorize]
     public async Task<ActionResult<UserListItemDto>> Profile(

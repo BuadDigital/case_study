@@ -8,7 +8,7 @@ namespace RealEstateEval.Infrastructure.Services;
 
 /// <summary>
 /// Resolves the caller's permissions from the access-token claims issued at login.
-/// Non-Identity APIs use this so they no longer open the Identity stores (Phase 1 step 2).
+/// Non-Identity APIs use this so they no longer open the Identity stores.
 /// </summary>
 public sealed class ClaimsPermissionService(IHttpContextAccessor httpContextAccessor) : IPermissionService
 {
@@ -48,7 +48,7 @@ public sealed class ClaimsPermissionService(IHttpContextAccessor httpContextAcce
             .OrderBy(c => c, StringComparer.Ordinal)
             .ToList();
 
-        // Empty page set is intentional; screen catalog is CDO/super-admin only.
+ // Empty page set is intentional; screen catalog is CDO/super-admin only.
 
         if (!capabilities.Contains("authenticated", StringComparer.OrdinalIgnoreCase))
             capabilities.Add("authenticated");

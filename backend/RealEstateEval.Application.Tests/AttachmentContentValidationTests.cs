@@ -155,7 +155,7 @@ public class AttachmentContentValidationTests
     [Fact]
     public void Rejects_pdf_polyglot_prefixed_with_junk()
     {
-        // A leading-junk PDF is what makes a file parse as two formats at once.
+ // A leading-junk PDF is what makes a file parse as two formats at once.
         var payload = Ascii("GIF89a").Concat(Ascii("%PDF-1.7 trailing")).ToArray();
 
         var result = AttachmentUploadRules.Inspect(
@@ -196,7 +196,7 @@ public class AttachmentContentValidationTests
     [Fact]
     public void Accepts_octet_stream_when_the_bytes_are_a_supported_format()
     {
-        // Browsers legitimately send application/octet-stream for drag-and-drop uploads.
+ // Browsers legitimately send application/octet-stream for drag-and-drop uploads.
         var result = AttachmentUploadRules.Inspect(
             ImageScope,
             "application/octet-stream",

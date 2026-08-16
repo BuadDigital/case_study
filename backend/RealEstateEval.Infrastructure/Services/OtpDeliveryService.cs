@@ -77,7 +77,7 @@ public sealed class OtpDeliveryService : IOtpDeliveryService
                 "مزوّد SMS غير مكتمل الإعداد (عنوان API ومفتاح)"));
         }
 
-        // Vendor-agnostic HTTP hook — concrete gateway chosen later (directive §7 #2).
+ // Vendor-agnostic HTTP hook — concrete gateway chosen later.
         _logger.LogInformation(
             "OTP sms queued sender={Sender} to={Destination} api={Api}",
             comms.SmsSenderId,

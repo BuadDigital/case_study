@@ -1,15 +1,15 @@
 namespace RealEstateEval.Domain;
 
 /// <summary>
-/// Per-valuation-request market-approach header: subject area drives opinion value (ت-6 #53–57).
+/// Per-valuation-request market-approach header: subject area drives opinion value.
 /// </summary>
 public class ValuationMarketApproach
 {
     public Guid Id { get; set; }
     public Guid ValuationRequestId { get; set; }
-    /// <summary>Subject property area m² — multiplies weighted unit rate (per-m² basis only).</summary>
+ /// <summary>Subject property area m² — multiplies weighted unit rate (per-m² basis only).</summary>
     public decimal? SubjectAreaSqm { get; set; }
-    /// <summary>ت-1 #14 — one decision per valuation; changes the whole calc path.</summary>
+ /// <summary>one decision per valuation; changes the whole calc path.</summary>
     public string AdjustmentBasis { get; set; } = MarketAdjustmentBasisKeys.PricePerSqm;
     public string? AnalysisNotes { get; set; }
     public DateTime UpdatedAtUtc { get; set; }
@@ -17,7 +17,7 @@ public class ValuationMarketApproach
     public ValuationRequest? ValuationRequest { get; set; }
 }
 
-/// <summary>ت-1 — الأساس المعتمد في التسويات: سعر المتر (يُضرب في المساحة) أو قيمة العقار كاملة.</summary>
+/// <summary>الأساس المعتمد في التسويات: سعر المتر (يُضرب في المساحة) أو قيمة العقار كاملة.</summary>
 public static class MarketAdjustmentBasisKeys
 {
     public const string PricePerSqm = "price_per_sqm";
@@ -36,42 +36,42 @@ public static class MarketAdjustmentBasisKeys
 }
 
 /// <summary>
-/// Cost-approach (contractor method) header — ق-4 land imported from market, not typed freely.
+/// Cost-approach (contractor method) header — land imported from market, not typed freely.
 /// </summary>
 public class ValuationCostApproach
 {
     public Guid Id { get; set; }
     public Guid ValuationRequestId { get; set; }
-    /// <summary>ث-1 #59 — market weighted unit rate (SAR/m²) captured at import; locked (ق-4).</summary>
+ /// <summary>market weighted unit rate (SAR/m²) captured at import; locked.</summary>
     public decimal LandUnitRateFromMarket { get; set; }
-    /// <summary>Land area m² snapshot from the market header at import (deed/survey single source).</summary>
+ /// <summary>Land area m² snapshot from the market header at import (deed/survey single source).</summary>
     public decimal LandAreaSqm { get; set; }
-    /// <summary>ث-1 #60 — use-restriction discount %, default 0.</summary>
+ /// <summary>use-restriction discount %, default 0.</summary>
     public decimal UseRestrictionDiscountPct { get; set; }
-    /// <summary>ث-1 #61 — required when the discount is above zero.</summary>
+ /// <summary>required when the discount is above zero.</summary>
     public string? UseRestrictionRationale { get; set; }
-    /// <summary>ث-1 #62 — apartment share of land m²; overrides land area when set.</summary>
+ /// <summary>apartment share of land m²; overrides land area when set.</summary>
     public decimal? ApartmentLandShareSqm { get; set; }
-    /// <summary>Land value = discounted unit rate × land area (ق-4) — recomputed on every save.</summary>
+ /// <summary>Land value = discounted unit rate × land area — recomputed on every save.</summary>
     public decimal LandValueFromMarket { get; set; }
     public DateTime? LandImportedAtUtc { get; set; }
 
-    /// <summary>ث-3 #88 — financing annual rate % (0–30).</summary>
+ /// <summary>financing annual rate % (0–30).</summary>
     public decimal FinancingAnnualRatePct { get; set; }
-    /// <summary>ث-3 #89 — execution period in months (0–120).</summary>
+ /// <summary>execution period in months (0–120).</summary>
     public int FinancingMonths { get; set; }
 
-    /// <summary>ث-4 #93.</summary>
+ /// <summary>. </summary>
     public decimal? ActualAgeYears { get; set; }
-    /// <summary>ث-4 #94.</summary>
+ /// <summary>. </summary>
     public decimal? EconomicAgeYears { get; set; }
-    /// <summary>ث-4 #95 — extension basis required when above zero.</summary>
+ /// <summary>extension basis required when above zero.</summary>
     public decimal LifeExtensionYears { get; set; }
     public string? LifeExtensionBasis { get; set; }
-    /// <summary>ث-4 #96 — rationale required when above zero.</summary>
+ /// <summary>rationale required when above zero.</summary>
     public decimal FunctionalObsolescencePct { get; set; }
     public string? FunctionalObsolescenceRationale { get; set; }
-    /// <summary>ث-4 #97 — rationale required when above zero.</summary>
+ /// <summary>rationale required when above zero.</summary>
     public decimal ExternalObsolescencePct { get; set; }
     public string? ExternalObsolescenceRationale { get; set; }
 
@@ -83,12 +83,12 @@ public class ValuationCostApproach
     public ICollection<ValuationIndirectCostItem> IndirectItems { get; set; } = [];
 }
 
-/// <summary>ث-3 #82–87 — indirect cost item: % (0–50) + rationale, amount computed.</summary>
+/// <summary>indirect cost item: % (0–50) + rationale, amount computed.</summary>
 public class ValuationIndirectCostItem
 {
     public Guid Id { get; set; }
     public Guid CostApproachId { get; set; }
-    /// <summary>Key from <see cref="IndirectCostItemKeys"/>.</summary>
+ /// <summary>Key from <see cref="IndirectCostItemKeys"/>.</summary>
     public string ItemKey { get; set; } = IndirectCostItemKeys.DesignSupervision;
     public decimal Pct { get; set; }
     public string? Rationale { get; set; }
@@ -97,7 +97,7 @@ public class ValuationIndirectCostItem
     public ValuationCostApproach? CostApproach { get; set; }
 }
 
-/// <summary>The six ث-3 indirect items (#82–87).</summary>
+/// <summary>The six indirect items.</summary>
 public static class IndirectCostItemKeys
 {
     public const string DesignSupervision = "design_supervision";
@@ -133,16 +133,16 @@ public class ValuationCostLine
     public Guid CostApproachId { get; set; }
     public Guid? SourceInventoryLineId { get; set; }
     public string StructureKind { get; set; } = BuildingStructureKinds.Floor;
-    /// <summary>ث-2 defined item — see <see cref="CostLineItemKeys"/>; custom = free label.</summary>
+ /// <summary>defined item — see <see cref="CostLineItemKeys"/>; custom = free label.</summary>
     public string ItemKey { get; set; } = CostLineItemKeys.Custom;
     public string Label { get; set; } = "";
-    /// <summary>Quantity in the line's unit (م² for areas; م.ط/عدد/مقطوع otherwise).</summary>
+ /// <summary>Quantity in the line's unit (م² for areas; م.ط/عدد/مقطوع otherwise).</summary>
     public decimal AreaSqm { get; set; }
-    /// <summary>ث-2 unit — see <see cref="CostLineUnits"/>.</summary>
+ /// <summary>unit — see <see cref="CostLineUnits"/>.</summary>
     public string Unit { get; set; } = CostLineUnits.Sqm;
-    /// <summary>ث-2 نسبة البناء column (%), optional.</summary>
+ /// <summary>نسبة البناء column (%), optional.</summary>
     public decimal? BuildRatioPct { get; set; }
-    /// <summary>ق-13 — repeated-floors count; quantity derives from the first floor × count.</summary>
+ /// <summary>repeated-floors count; quantity derives from the first floor × count.</summary>
     public int? RepeatedFloorCount { get; set; }
     public decimal UnitCostSar { get; set; }
     public string Rationale { get; set; } = "";
@@ -152,7 +152,7 @@ public class ValuationCostLine
     public ValuationCostApproach? CostApproach { get; set; }
 }
 
-/// <summary>ث-2 units: م² · م.ط · عدد · مقطوع.</summary>
+/// <summary>units: م² · م.ط · عدد · مقطوع.</summary>
 public static class CostLineUnits
 {
     public const string Sqm = "sqm";
@@ -178,10 +178,10 @@ public static class CostLineUnits
     };
 }
 
-/// <summary>ث-2 defined items #64–79 — groups 1 (مسطحات) and 2 (تجهيزات) + custom.</summary>
+/// <summary>defined items — groups 1 (مسطحات) and 2 (تجهيزات) + custom.</summary>
 public static class CostLineItemKeys
 {
-    // Group 1 — مسطحات المبنى والأدوار
+ // Group 1 — مسطحات المبنى والأدوار
     public const string Basement = "basement";
     public const string GroundFloor = "ground_floor";
     public const string FirstFloor = "first_floor";
@@ -189,7 +189,7 @@ public static class CostLineItemKeys
     public const string UpperAnnex = "upper_annex";
     public const string ApartmentArea = "apartment_area";
     public const string SharedPortion = "shared_portion";
-    // Group 2 — تكاليف وتجهيزات إضافية
+ // Group 2 — تكاليف وتجهيزات إضافية
     public const string Parking = "parking";
     public const string Fence = "fence";
     public const string Pool = "pool";
@@ -238,7 +238,7 @@ public static class CostLineItemKeys
         _ => "بند مخصص",
     };
 
-    /// <summary>Sensible default unit per item (fence م.ط, elevator عدد, lump for systems).</summary>
+ /// <summary>Sensible default unit per item (fence م.ط, elevator عدد, lump for systems).</summary>
     public static string DefaultUnit(string? value) => Normalize(value) switch
     {
         Fence => CostLineUnits.LinearMeter,
@@ -248,7 +248,7 @@ public static class CostLineItemKeys
     };
 }
 
-/// <summary>ق-13 — repeated-floors quantity derives from the first-floor area × count.</summary>
+/// <summary>repeated-floors quantity derives from the first-floor area × count.</summary>
 public static class RepeatedFloorRules
 {
     public static decimal DeriveQuantity(decimal firstFloorAreaSqm, int repeatedCount) =>
@@ -274,18 +274,18 @@ public static class CostApproachRules
     public static decimal SumDirectCost(IEnumerable<(decimal area, decimal unit, bool included)> lines) =>
         lines.Where(l => l.included).Sum(l => LineTotal(l.area, l.unit));
 
-    /// <summary>Buildings (direct cost) + imported land (ق-4).</summary>
+ /// <summary>Buildings (direct cost) + imported land .</summary>
     public static decimal CostOpinionWithLand(decimal directCostTotal, decimal landValueFromMarket) =>
         Math.Round(Math.Max(0m, directCostTotal) + Math.Max(0m, landValueFromMarket), 2, MidpointRounding.AwayFromZero);
 
-    /// <summary>ث-1 #63 — unit rate after the use-restriction discount (clamped 0–100%).</summary>
+ /// <summary>unit rate after the use-restriction discount (clamped 0–100%).</summary>
     public static decimal LandUnitRateAfterDiscount(decimal unitRateSar, decimal discountPct)
     {
         var pct = Math.Clamp(discountPct, 0m, 100m);
         return Math.Round(Math.Max(0m, unitRateSar) * (1m - pct / 100m), 2, MidpointRounding.AwayFromZero);
     }
 
-    /// <summary>Land value from the discounted rate; apartment share (ث-1 #62) overrides land area when set.</summary>
+ /// <summary>Land value from the discounted rate; apartment share overrides land area when set.</summary>
     public static decimal LandValue(decimal unitRateAfterDiscount, decimal landAreaSqm, decimal? apartmentShareSqm)
     {
         var area = apartmentShareSqm is > 0m ? apartmentShareSqm.Value : landAreaSqm;
@@ -304,54 +304,54 @@ public static class CostApproachRules
             out area) && area >= 0m;
     }
 
-    // ─── ث-3 indirect costs ───
+ // ─── indirect costs ───
 
     public const decimal IndirectItemMaxPct = 50m;
     public const decimal FinancingAnnualRateMaxPct = 30m;
     public const int FinancingMonthsMax = 120;
 
-    /// <summary>ث-3 #90 — financing % = annual rate × (months ÷ 12) × 50%.</summary>
+ /// <summary>financing % = annual rate × (months ÷ 12) × 50%.</summary>
     public static decimal FinancingPct(decimal annualRatePct, int months) =>
         Math.Round(
             Math.Max(0m, annualRatePct) * (Math.Max(0, months) / 12m) * 0.5m,
             4, MidpointRounding.AwayFromZero);
 
-    /// <summary>ث-3 #91 — sum of item %s plus the financing %.</summary>
+ /// <summary>sum of item %s plus the financing %.</summary>
     public static decimal IndirectSumPct(IEnumerable<decimal> itemPcts, decimal financingPct) =>
         Math.Round(itemPcts.Sum(p => Math.Max(0m, p)) + Math.Max(0m, financingPct), 4, MidpointRounding.AwayFromZero);
 
-    /// <summary>Per-item computed amount from the direct-cost base.</summary>
+ /// <summary>Per-item computed amount from the direct-cost base.</summary>
     public static decimal IndirectItemAmount(decimal directCostTotal, decimal pct) =>
         Math.Round(Math.Max(0m, directCostTotal) * Math.Max(0m, pct) / 100m, 2, MidpointRounding.AwayFromZero);
 
-    /// <summary>ث-3 #92 — total cost = direct × (1 + indirect sum).</summary>
+ /// <summary>total cost = direct × (1 + indirect sum).</summary>
     public static decimal TotalCostWithIndirect(decimal directCostTotal, decimal indirectSumPct) =>
         Math.Round(Math.Max(0m, directCostTotal) * (1m + Math.Max(0m, indirectSumPct) / 100m), 2, MidpointRounding.AwayFromZero);
 
-    // ─── ث-4 age / depreciation ───
+ // ─── age / depreciation ───
 
-    /// <summary>Extended life = economic age + extension (basis mandatory when extended).</summary>
+ /// <summary>Extended life = economic age + extension (basis mandatory when extended).</summary>
     public static decimal ExtendedLifeYears(decimal? economicAgeYears, decimal lifeExtensionYears) =>
         Math.Max(0m, economicAgeYears ?? 0m) + Math.Max(0m, lifeExtensionYears);
 
-    /// <summary>ث-4 #98 — physical obsolescence = actual ÷ extended life. Unclamped so alert 3 can see &gt; 100%.</summary>
+ /// <summary>physical obsolescence = actual ÷ extended life. Unclamped so alert 3 can see &gt; 100%.</summary>
     public static decimal? PhysicalObsolescencePct(decimal? actualAgeYears, decimal extendedLifeYears)
     {
         if (actualAgeYears is not { } actual || extendedLifeYears <= 0m) return null;
         return Math.Round(Math.Max(0m, actual) / extendedLifeYears * 100m, 2, MidpointRounding.AwayFromZero);
     }
 
-    /// <summary>ث-4 #99 — physical + functional + external. Unclamped so alert 4 can see &gt; 100%.</summary>
+ /// <summary>physical + functional + external. Unclamped so alert 4 can see &gt; 100%.</summary>
     public static decimal TotalObsolescencePct(decimal? physicalPct, decimal functionalPct, decimal externalPct) =>
         Math.Round((physicalPct ?? 0m) + Math.Max(0m, functionalPct) + Math.Max(0m, externalPct), 2, MidpointRounding.AwayFromZero);
 
-    /// <summary>ث-4 #100 — depreciation on total cost; clamped 0–100% so value stays non-negative.</summary>
+ /// <summary>depreciation on total cost; clamped 0–100% so value stays non-negative.</summary>
     public static decimal DepreciationValue(decimal totalCostWithIndirect, decimal totalObsolescencePct) =>
         Math.Round(
             Math.Max(0m, totalCostWithIndirect) * Math.Clamp(totalObsolescencePct, 0m, 100m) / 100m,
             2, MidpointRounding.AwayFromZero);
 
-    /// <summary>ث-4 #101/#103 — buildings value after depreciation (المباني دون الأرض).</summary>
+ /// <summary>buildings value after depreciation (المباني دون الأرض).</summary>
     public static decimal BuildingsAfterDepreciation(decimal totalCostWithIndirect, decimal depreciationValue) =>
         Math.Round(Math.Max(0m, totalCostWithIndirect - depreciationValue), 2, MidpointRounding.AwayFromZero);
 }

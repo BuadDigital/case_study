@@ -62,7 +62,7 @@ public class WorkOrderValidatorTests
     [Fact]
     public void Request_number_must_differ_from_deed_number()
     {
-        // §4ج-3 — the discovered sample error: رقم الطلب = رقم الصك.
+ // the discovered sample error: رقم الطلب = رقم الصك.
         var dto = ValidDeedProperty();
         dto.RequestNumber = dto.DeedNumber;
 

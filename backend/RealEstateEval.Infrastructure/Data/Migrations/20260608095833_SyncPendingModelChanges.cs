@@ -4,10 +4,10 @@
 
 namespace RealEstateEval.Infrastructure.Data.Migrations
 {
-    /// <inheritdoc />
+ /// <inheritdoc />
     public partial class SyncPendingModelChanges : Migration
     {
-        /// <inheritdoc />
+ /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
             migrationBuilder.AlterColumn<string>(
@@ -35,7 +35,7 @@ namespace RealEstateEval.Infrastructure.Data.Migrations
                 oldNullable: true);
         }
 
-        /// <inheritdoc />
+ /// <inheritdoc />
         protected override void Down(MigrationBuilder migrationBuilder)
         {
             migrationBuilder.AlterColumn<string>(

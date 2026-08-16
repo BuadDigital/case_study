@@ -1,6 +1,6 @@
 namespace RealEstateEval.Domain;
 
-/// <summary>Approach kinds that can participate in ج-1 reconciliation (income deferred).</summary>
+/// <summary>Approach kinds that can participate in reconciliation (income deferred).</summary>
 public static class ValuationApproachKinds
 {
     public const string Market = "market";
@@ -16,7 +16,7 @@ public static class ValuationApproachKinds
             : "أسلوب المقارنة (السوق)";
 }
 
-/// <summary>IVS 2025 standard 102 annex — 8 bases (Solomon 2026-08-16).</summary>
+/// <summary>8 bases.</summary>
 public static class BasisOfValueKeys
 {
     public const string Market = "market";
@@ -51,9 +51,9 @@ public static class BasisOfValueKeys
             _ => string.IsNullOrWhiteSpace(key) ? "" : key.Trim(),
         };
 
-    /// <summary>
-    /// Legacy Mikyas field 9263 injection label: liquidation×premise → compound name; else basis label.
-    /// </summary>
+ /// <summary>
+ /// Word-merge field 9263 label: liquidation×premise → compound name; else basis label.
+ /// </summary>
     public static string InjectionLabelAr(string? basisKey, string? premiseKey)
     {
         var basis = (basisKey ?? "").Trim().ToLowerInvariant();
@@ -68,7 +68,7 @@ public static class BasisOfValueKeys
     }
 }
 
-/// <summary>IVS 2025 standard 102 (أ)90–(أ)120 — 4 premises (Solomon 2026-08-16).</summary>
+/// <summary>4 premises.</summary>
 public static class ValuePremiseKeys
 {
     public const string HighestAndBest = "hau";
@@ -93,9 +93,9 @@ public static class ValuePremiseKeys
             _ => string.IsNullOrWhiteSpace(key) ? "" : key.Trim(),
         };
 
-    /// <summary>
-    /// Liquidation basis pairs only with orderly/forced; other bases with HBU/current use.
-    /// </summary>
+ /// <summary>
+ /// Liquidation basis pairs only with orderly/forced; other bases with HBU/current use.
+ /// </summary>
     public static bool IsCompatible(string? basisKey, string? premiseKey)
     {
         if (string.IsNullOrWhiteSpace(premiseKey)) return true;
@@ -112,24 +112,24 @@ public static class ValuePremiseKeys
 }
 
 /// <summary>
-/// Final opinion reconciliation header (ج-1 / ج-2 scaffold).
-/// Liquidation discount applies only when basis = liquidation (provisional IVS rule).
+/// Final opinion reconciliation header.
+/// Liquidation discount applies only when basis = liquidation.
 /// </summary>
 public class ValuationReconciliation
 {
     public Guid Id { get; set; }
     public Guid ValuationRequestId { get; set; }
-    /// <summary>مبرر استخدام طرق التقييم — required when saving.</summary>
+ /// <summary>مبرر استخدام طرق التقييم — required when saving.</summary>
     public string MethodsRationale { get; set; } = "";
-    /// <summary>Rounding applied once on the final opinion (v3: no earlier rounding).</summary>
+ /// <summary>Rounding applied once on the final opinion (no earlier rounding).</summary>
     public int FinalRoundDecimals { get; set; }
-    /// <summary>Basis of value key — see <see cref="BasisOfValueKeys"/>.</summary>
+ /// <summary>Basis of value key — see <see cref="BasisOfValueKeys"/>.</summary>
     public string BasisOfValueKey { get; set; } = BasisOfValueKeys.Market;
-    /// <summary>Value premise when basis is liquidation — see <see cref="ValuePremiseKeys"/>.</summary>
+ /// <summary>Value premise when basis is liquidation — see <see cref="ValuePremiseKeys"/>.</summary>
     public string? ValuePremiseKey { get; set; }
     public decimal LiquidationDiscountPct { get; set; }
     public string? LiquidationDiscountRationale { get; set; }
-    /// <summary>JSON — soft methodology-alert overrides (rationale / ack) for §ح.</summary>
+ /// <summary>JSON — soft methodology-alert overrides (rationale / ack).</summary>
     public string? MethodologyAlertOverridesJson { get; set; }
     public DateTime UpdatedAtUtc { get; set; }
 
@@ -137,13 +137,13 @@ public class ValuationReconciliation
     public ICollection<ValuationReconciliationMethodLine> Methods { get; set; } = [];
 }
 
-/// <summary>One row per applied approach in the participation table (ج-1 #106–110).</summary>
+/// <summary>One row per applied approach in the participation table.</summary>
 public class ValuationReconciliationMethodLine
 {
     public Guid Id { get; set; }
     public Guid ReconciliationId { get; set; }
     public string ApproachKind { get; set; } = ValuationApproachKinds.Market;
-    /// <summary>Approach opinion snapshotted at save (market / cost with land).</summary>
+ /// <summary>Approach opinion snapshotted at save (market / cost with land).</summary>
     public decimal ApproachValue { get; set; }
     public decimal WeightPct { get; set; }
     public string Rationale { get; set; } = "";
@@ -157,7 +157,7 @@ public static class ReconciliationRules
 {
     public const decimal WeightSumTolerance = 0.05m;
 
-    /// <summary>Unrounded contribution for intermediate math (no round until final).</summary>
+ /// <summary>Unrounded contribution for intermediate math (no round until final).</summary>
     public static decimal Contribution(decimal approachValue, decimal weightPct) =>
         Math.Max(0m, approachValue) * (weightPct / 100m);
 
@@ -171,16 +171,16 @@ public static class ReconciliationRules
         return Math.Abs(sum - 100m) <= WeightSumTolerance;
     }
 
-    /// <summary>Round once on the final opinion (ج-2 #116).</summary>
+ /// <summary>Round once on the final opinion.</summary>
     public static decimal RoundFinal(decimal weightedValue, int decimals)
     {
         var d = Math.Clamp(decimals, 0, 4);
         return Math.Round(Math.Max(0m, weightedValue), d, MidpointRounding.AwayFromZero);
     }
 
-    /// <summary>
-    /// Provisional: apply discount only for liquidation basis with a known premise.
-    /// </summary>
+ /// <summary>
+ /// Provisional: apply discount only for liquidation basis with a known premise.
+ /// </summary>
     public static bool ShouldApplyLiquidationDiscount(
         string? basisOfValueKey,
         string? valuePremiseKey,
@@ -198,7 +198,7 @@ public static class ReconciliationRules
         return Math.Max(0m, valueBeforeDiscount * (1m - pct / 100m));
     }
 
-    /// <summary>Discount (if any) then round once.</summary>
+ /// <summary>Discount (if any) then round once.</summary>
     public static (decimal BeforeRounded, decimal Final, bool Applied) FinalOpinionWithOptionalDiscount(
         decimal weightedValue,
         int decimals,
@@ -216,10 +216,10 @@ public static class ReconciliationRules
             apply);
     }
 
-    /// <summary>
-    /// Suggest participation when both market and cost have positive values: equal split;
-    /// otherwise 100% on the sole positive approach.
-    /// </summary>
+ /// <summary>
+ /// Suggest participation when both market and cost have positive values: equal split;
+ /// otherwise 100% on the sole positive approach.
+ /// </summary>
     public static IReadOnlyList<(string kind, decimal weightPct)> SuggestWeights(
         decimal marketValue,
         decimal costValue)
@@ -238,7 +238,7 @@ public static class ReconciliationRules
     public static bool RequiresWeightRationale(decimal weightPct, bool included) =>
         included && weightPct != 0m;
 
-    /// <summary>n≥2 when two included methods each have a positive value and weight.</summary>
+ /// <summary>n≥2 when two included methods each have a positive value and weight.</summary>
     public static bool MeetsMultiMethodGate(
         IEnumerable<(decimal value, decimal weightPct, bool included)> methods)
     {

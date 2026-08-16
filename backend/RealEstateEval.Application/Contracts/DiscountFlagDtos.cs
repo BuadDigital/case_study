@@ -27,7 +27,7 @@ public sealed class CreateDiscountFlagRequest
 
 public sealed class ResolveDiscountFlagRequest
 {
-    /// <summary>Optional override; defaults to the proposed amount on approve.</summary>
+ /// <summary>Optional override; defaults to the proposed amount on approve.</summary>
     public decimal? DiscountSar { get; init; }
     public string? DiscountReason { get; init; }
     public string? Note { get; init; }

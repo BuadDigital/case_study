@@ -239,7 +239,7 @@ export function isTerminalOperationsTaskStatus(status: string): boolean {
   return status === "completed" || status === "cancelled";
 }
 
-/** Creator-facing receipt indicator (دورة اسناد المهام §9). */
+/** Creator-facing receipt indicator (دورة اسناد المهام ). */
 export function operationsTaskReceiptLabel(
   task: Pick<OperationsTaskDto, "receiptConfirmedAt" | "status">,
 ): "مؤكَّد" | "بانتظار المنفّذ" | null {

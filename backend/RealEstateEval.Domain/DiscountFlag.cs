@@ -8,21 +8,21 @@ public class DiscountFlag
 {
     public Guid Id { get; set; }
 
-    /// <summary>Work-order PO — the transaction key until ج٨ introduces a dedicated id.</summary>
+ /// <summary>Work-order PO — the transaction key until introduces a dedicated id.</summary>
     public string TransactionKey { get; set; } = "";
 
     public Guid? WorkflowTaskId { get; set; }
 
-    /// <summary>Distribution assignee whose fee is being flagged.</summary>
+ /// <summary>Distribution assignee whose fee is being flagged.</summary>
     public string TargetAssigneeId { get; set; } = "";
 
     public string FlaggedByUserId { get; set; } = "";
     public string Reason { get; set; } = "";
 
-    /// <summary>Suggested discount amount. The supervisor may change it on approve.</summary>
+ /// <summary>Suggested discount amount. The supervisor may change it on approve.</summary>
     public decimal ProposedDiscountSar { get; set; }
 
-    /// <summary>pending | approved | rejected</summary>
+ /// <summary>pending | approved | rejected</summary>
     public string Status { get; set; } = DiscountFlagStatuses.Pending;
 
     public string? ApprovedByUserId { get; set; }

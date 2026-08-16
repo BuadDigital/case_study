@@ -28,7 +28,7 @@ public class ComparablePropertiesController : ControllerBase
         CancellationToken ct)
         => Ok(await _bank.ListAsync(query, ct));
 
-    /// <summary>System proximity stream — nearest active bank comps to subject coords.</summary>
+ /// <summary>System proximity stream — nearest active bank comps to subject coords.</summary>
     [HttpGet("proximity-suggestions")]
     [Authorize(Policy = CapabilityPolicyNames.ReadValuationQueue)]
     public async Task<ActionResult<ComparableProximitySuggestionListDto>> ProximitySuggestions(

@@ -7,7 +7,7 @@ using RealEstateEval.Shared.Web.Authorization;
 
 namespace RealEstateEval.Valuation.Api.Controllers;
 
-/// <summary>ج-1 reconciliation + round-once final opinion.</summary>
+/// <summary>Reconciliation + round-once final opinion.</summary>
 [ApiController]
 [Route("api/valuation-requests/{valuationRequestId:guid}/reconciliation")]
 [Route("api/valuation-requests/v1/{valuationRequestId:guid}/reconciliation")]

@@ -420,22 +420,6 @@ export default function LoginPage() {
         </p>
         <div className="relative mt-auto flex items-center justify-between gap-3.5 pt-[30px] text-xs text-white/50">
           <span>© 2026 إجادة المهنية للتقييم العقاري</span>
-          <div className="flex flex-wrap gap-2">
-            <span className="inline-flex items-center gap-1.5 rounded-full border border-white/12 bg-white/[0.07] px-3 py-1.5 text-[11.5px] font-semibold text-white/78">
-              <svg
-                className="size-[13px] stroke-gold-2"
-                viewBox="0 0 24 24"
-                fill="none"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                aria-hidden
-              >
-                <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
-              </svg>
-              دخول موثّق برمز
-            </span>
-          </div>
         </div>
       </aside>
 

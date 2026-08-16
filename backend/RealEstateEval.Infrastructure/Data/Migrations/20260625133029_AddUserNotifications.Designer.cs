@@ -15,7 +15,7 @@ namespace RealEstateEval.Infrastructure.Data.Migrations
     [Migration("20260625133029_AddUserNotifications")]
     partial class AddUserNotifications
     {
-        /// <inheritdoc />
+ /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618

@@ -22,10 +22,10 @@ public class PartyTaskSubmissionDto
     public string? ReopenedByName { get; set; }
     public string UpdatedAtUtc { get; set; } = "";
 
-    /// <summary>
-    /// Engineering-survey / property-appraisal: sibling field-inspection is completed
-    /// (authoritative for EO/appraiser unlock). Also on WorkflowTaskDto list items.
-    /// </summary>
+ /// <summary>
+ /// Engineering-survey / property-appraisal: sibling field-inspection is completed
+ /// (authoritative for EO/appraiser unlock). Also on WorkflowTaskDto list items.
+ /// </summary>
     public bool? FieldInspectionCompleted { get; set; }
 }
 

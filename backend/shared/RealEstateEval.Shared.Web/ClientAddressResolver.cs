@@ -17,7 +17,7 @@ public static class ClientAddressResolver
 {
     public const string DefaultClientAddressHeaderName = "X-Real-IP";
 
-    /// <summary>Returns the normalized caller address, or null when it cannot be determined.</summary>
+ /// <summary>Returns the normalized caller address, or null when it cannot be determined.</summary>
     public static string? Resolve(HttpContext context, RateLimitingOptions options)
     {
         if (context.Request.Headers.TryGetValue(options.ClientAddressHeaderName, out var declared)
@@ -35,8 +35,8 @@ public static class ClientAddressResolver
                 ',',
                 StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
 
-            // Right-most entry is the closest proxy's view of its peer, which is the caller
-            // whenever exactly one proxy is in front of this process.
+ // Right-most entry is the closest proxy's view of its peer, which is the caller
+ // whenever exactly one proxy is in front of this process.
             for (var i = entries.Length - 1; i >= 0; i--)
             {
                 if (TryNormalize(entries[i], out var forwardedAddress))
@@ -61,7 +61,7 @@ public static class ClientAddressResolver
             return true;
         }
 
-        // Some proxies append "host:port"; IPv6 literals arrive bracketed.
+ // Some proxies append "host:port"; IPv6 literals arrive bracketed.
         var withoutPort = candidate;
         var separator = withoutPort.LastIndexOf(':');
         if (separator > 0)

@@ -29,7 +29,7 @@ const DOC_KIND_DEFAULT_TYPE: Record<string, string> = {
 };
 
 /**
- * Classify a library attachment for valuation report print (§1.8).
+ * Classify a library attachment for valuation report print.
  * Library ≠ report: print only when type is set and print-in-report is on.
  */
 export function ReportAttachmentClassifyControls({
@@ -40,7 +40,7 @@ export function ReportAttachmentClassifyControls({
 }: {
   attachmentId: string;
   docKind?: string;
-  /** 11ف — filters dictionary types linked to specific property types (e.g. رخصة المباني للمباني). */
+ /** filters dictionary types linked to specific property types (e.g. رخصة المباني للمباني). */
   propertyTypeKey?: string;
   className?: string;
 }) {

@@ -10,10 +10,10 @@ public static class WorkflowTaskPhaseRules
 {
     public const string CaseStudyPropertyKind = WorkflowTaskKindValues.CaseStudyProperty;
 
-    /// <summary>
-    /// A real-estate registration needs no bourse inquiry, so it goes straight to distribution;
-    /// a deed only skips the bourse phase once its inquiry data is in.
-    /// </summary>
+ /// <summary>
+ /// A real-estate registration needs no bourse inquiry, so it goes straight to distribution;
+ /// a deed only skips the bourse phase once its inquiry data is in.
+ /// </summary>
     public static WorkflowTaskPhase PhaseAfterEnfath(string identifierType, bool bourseCompleted)
     {
         if (identifierType == PropertyIdentifierTypeLabels.RealEstateReg)
@@ -49,12 +49,12 @@ public static class WorkflowTaskPhaseRules
         WorkflowTaskKind.FieldInspection => "تعيين المعاين الميداني",
         WorkflowTaskKind.EngineeringSurvey => "تعيين المكتب الهندسي",
         WorkflowTaskKind.PropertyAppraisal => "تعيين المقيّم العقاري",
-        // Legacy government-review children (no longer spawned).
+ // Legacy government-review children (no longer spawned).
         WorkflowTaskKind.GovernmentReview => "تعيين المراجع الحكومي",
         _ => "تعيين طرف",
     };
 
-    /// <summary>The shell keys assignee display names by the wire kind value.</summary>
+ /// <summary>The shell keys assignee display names by the wire kind value.</summary>
     public static string ResolveName(
         Dictionary<string, string> names,
         WorkflowTaskKind kind,
@@ -65,7 +65,7 @@ public static class WorkflowTaskPhaseRules
 
     public static TaskDistributionDraftDto NormalizeDistribution(TaskDistributionDraftDto dto)
     {
-        // المراجع الحكومي يُسند من مهام العمليات (court_visit) وليس من توزيع المعاملات.
+ // المراجع الحكومي يُسند من مهام العمليات (court_visit) وليس من توزيع المعاملات.
         dto.GovernmentAuditor = false;
         dto.GovernmentAuditorId = "";
         dto.OperationsCoordinatorId = "";
@@ -113,7 +113,7 @@ public static class WorkflowTaskPhaseRules
     public static string PartyTaskTitle(WorkflowTaskKind kind, string refLabel) => kind switch
     {
         WorkflowTaskKind.FieldInspection => $"معاينة ميدانية — {refLabel}",
-        // Legacy government-review children (no longer spawned).
+ // Legacy government-review children (no longer spawned).
         WorkflowTaskKind.GovernmentReview => $"مراجعة حكومية — {refLabel}",
         WorkflowTaskKind.PropertyAppraisal => $"تقييم عقاري — {refLabel}",
         _ => $"رفع مساحي — {refLabel}",

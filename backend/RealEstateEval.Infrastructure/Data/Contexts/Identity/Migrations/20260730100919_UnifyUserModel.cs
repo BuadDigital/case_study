@@ -5,10 +5,10 @@ using Microsoft.EntityFrameworkCore.Migrations;
 
 namespace RealEstateEval.Infrastructure.Data.Contexts.Identity.Migrations
 {
-    /// <inheritdoc />
+ /// <inheritdoc />
     public partial class UnifyUserModel : Migration
     {
-        /// <inheritdoc />
+ /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
             migrationBuilder.Sql(
@@ -336,7 +336,7 @@ namespace RealEstateEval.Infrastructure.Data.Contexts.Identity.Migrations
                 sql: "\"Status\" BETWEEN 0 AND 3");
         }
 
-        /// <inheritdoc />
+ /// <inheritdoc />
         protected override void Down(MigrationBuilder migrationBuilder)
         {
             migrationBuilder.DropIndex(

@@ -80,8 +80,8 @@ public class OptimisticConcurrencyConfigurationTests
         context.Response.Body.Position = 0;
         var body = await new StreamReader(context.Response.Body).ReadToEndAsync();
 
-        // Read the payload rather than the raw text: the detail is Arabic, which the
-        // default serializer emits as \u escapes.
+ // Read the payload rather than the raw text: the detail is Arabic, which the
+ // default serializer emits as \u escapes.
         using var problem = JsonDocument.Parse(body);
         Assert.Equal(409, problem.RootElement.GetProperty("status").GetInt32());
         Assert.Contains(

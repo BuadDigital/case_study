@@ -5,10 +5,10 @@ using Microsoft.EntityFrameworkCore.Migrations;
 
 namespace RealEstateEval.Infrastructure.Data.Contexts.Platform.Migrations
 {
-    /// <inheritdoc />
+ /// <inheritdoc />
     public partial class ExpandOfficialRegionsCitiesCatalog : Migration
     {
-        /// <inheritdoc />
+ /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
             migrationBuilder.DropIndex(
@@ -32,7 +32,7 @@ namespace RealEstateEval.Infrastructure.Data.Contexts.Platform.Migrations
                 nullable: false,
                 defaultValue: 0);
 
-            // Backfill before unique indexes — default 0 would collide across 13 rows.
+ // Backfill before unique indexes — default 0 would collide across 13 rows.
             migrationBuilder.Sql(
                 """
                 UPDATE platform."Regions" SET "OfficialId" = 1,  "AdminAreaId" = 1  WHERE "Code" = 'RD';
@@ -147,7 +147,7 @@ namespace RealEstateEval.Infrastructure.Data.Contexts.Platform.Migrations
                 nullable: false,
                 defaultValue: "approved");
 
-            // Existing v1 rows: keep searchable until EnsureSeeded rewrites NameSearch.
+ // Existing v1 rows: keep searchable until EnsureSeeded rewrites NameSearch.
             migrationBuilder.Sql(
                 """
                 UPDATE platform."Cities"
@@ -283,7 +283,7 @@ namespace RealEstateEval.Infrastructure.Data.Contexts.Platform.Migrations
                 onDelete: ReferentialAction.Restrict);
         }
 
-        /// <inheritdoc />
+ /// <inheritdoc />
         protected override void Down(MigrationBuilder migrationBuilder)
         {
             migrationBuilder.DropForeignKey(

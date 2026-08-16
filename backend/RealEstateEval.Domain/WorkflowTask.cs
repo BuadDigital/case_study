@@ -7,7 +7,7 @@ namespace RealEstateEval.Domain;
 /// </summary>
 public class WorkflowTask
 {
-    /// <summary>For EF materialization and the factory methods.</summary>
+ /// <summary>For EF materialization and the factory methods.</summary>
     private WorkflowTask()
     {
     }
@@ -24,7 +24,7 @@ public class WorkflowTask
     public string? AssigneeId { get; private set; }
     public Guid? ParentTaskId { get; private set; }
     public WorkflowTaskStatus Status { get; private set; } = WorkflowTaskStatus.Open;
-    /// <summary>JSON — TaskDistributionDraft from the shell.</summary>
+ /// <summary>JSON — TaskDistributionDraft from the shell.</summary>
     public string? DistributionJson { get; private set; }
     public string? ObstructionReason { get; private set; }
     public WorkflowTaskPhase? ObstructionPriorPhase { get; private set; }
@@ -36,11 +36,11 @@ public class WorkflowTask
 
     public bool IsTerminal => Status.IsTerminal();
 
-    /// <summary>
-    /// General factory. Production paths should prefer <see cref="CreateCaseStudySlot"/> or
-    /// <see cref="CreatePartyChild"/>; this overload exists for seeding, imports and fixtures
-    /// that need to start from an arbitrary but still valid state.
-    /// </summary>
+ /// <summary>
+ /// General factory. Production paths should prefer <see cref="CreateCaseStudySlot"/> or
+ /// <see cref="CreatePartyChild"/>; this overload exists for seeding, imports and fixtures
+ /// that need to start from an arbitrary but still valid state.
+ /// </summary>
     public static WorkflowTask Create(
         WorkflowTaskKind kind,
         string poNumber,
@@ -77,7 +77,7 @@ public class WorkflowTask
             UpdatedAtUtc = updatedAtUtc ?? nowUtc,
         };
 
-    /// <summary>An unlinked property slot on a work order, waiting for Enfath primary data.</summary>
+ /// <summary>An unlinked property slot on a work order, waiting for Enfath primary data.</summary>
     public static WorkflowTask CreateCaseStudySlot(
         string poNumber,
         int propertyOrdinal,
@@ -95,10 +95,10 @@ public class WorkflowTask
             distributionJson: distributionJson,
             assignmentType: assignmentType);
 
-    /// <summary>
-    /// A party task spawned by confirming distribution. Children carry no phase of their own,
-    /// so they start (and stay) in <see cref="WorkflowTaskPhase.Done"/>.
-    /// </summary>
+ /// <summary>
+ /// A party task spawned by confirming distribution. Children carry no phase of their own,
+ /// so they start (and stay) in <see cref="WorkflowTaskPhase.Done"/>.
+ /// </summary>
     public static WorkflowTask CreatePartyChild(
         WorkflowTask parent,
         WorkflowTaskKind kind,
@@ -155,7 +155,7 @@ public class WorkflowTask
         Touch(nowUtc);
     }
 
-    /// <summary>Links the Enfath property and moves the slot on to its next phase.</summary>
+ /// <summary>Links the Enfath property and moves the slot on to its next phase.</summary>
     public void AdvanceAfterEnfath(
         Guid? propertyId,
         WorkflowTaskPhase phase,
@@ -169,7 +169,7 @@ public class WorkflowTask
         Touch(nowUtc);
     }
 
-    /// <summary>Bourse data completed — the slot is ready for party distribution.</summary>
+ /// <summary>Bourse data completed — the slot is ready for party distribution.</summary>
     public void AdvanceAfterBourse(string title, DateTime nowUtc)
     {
         RequireOpenForPhaseChange();
@@ -178,7 +178,7 @@ public class WorkflowTask
         Touch(nowUtc);
     }
 
-    /// <summary>Distribution confirmed — the parent enters case study while its children run.</summary>
+ /// <summary>Distribution confirmed — the parent enters case study while its children run.</summary>
     public void ConfirmDistribution(string title, string distributionJson, DateTime nowUtc)
     {
         if (Phase != WorkflowTaskPhase.Distribution)
@@ -194,10 +194,10 @@ public class WorkflowTask
         Touch(nowUtc);
     }
 
-    /// <summary>
-    /// Sends a slot back one phase. Only <c>distribution → bourse</c> and
-    /// <c>bourse → enfath</c> are reachable: once case study starts there is party work to undo.
-    /// </summary>
+ /// <summary>
+ /// Sends a slot back one phase. Only <c>distribution → bourse</c> and
+ /// <c>bourse → enfath</c> are reachable: once case study starts there is party work to undo.
+ /// </summary>
     public bool CanRevertTo(WorkflowTaskPhase target) =>
         IsCaseStudyParent
         && !IsTerminal
@@ -216,10 +216,10 @@ public class WorkflowTask
         Touch(nowUtc);
     }
 
-    /// <summary>
-    /// Unlinks the property and returns the task to an empty Enfath slot — used when a property
-    /// is removed from the work order.
-    /// </summary>
+ /// <summary>
+ /// Unlinks the property and returns the task to an empty Enfath slot — used when a property
+ /// is removed from the work order.
+ /// </summary>
     public void ResetToEmptySlot(string title, string distributionJson, DateTime nowUtc)
     {
         PropertyId = null;
@@ -240,7 +240,7 @@ public class WorkflowTask
         Touch(nowUtc);
     }
 
-    /// <summary>Moves a linked slot to the phase its property data now warrants.</summary>
+ /// <summary>Moves a linked slot to the phase its property data now warrants.</summary>
     public void MoveToPhase(WorkflowTaskPhase phase, string title, DateTime nowUtc)
     {
         RequireOpenForPhaseChange();
@@ -269,10 +269,10 @@ public class WorkflowTask
 
     public bool CanReopen => Status == WorkflowTaskStatus.Completed;
 
-    /// <summary>
-    /// Section supervisor and above may reopen a completed task. A case-study parent goes back
-    /// to the case-study phase — that is where the reopened work is done.
-    /// </summary>
+ /// <summary>
+ /// Section supervisor and above may reopen a completed task. A case-study parent goes back
+ /// to the case-study phase — that is where the reopened work is done.
+ /// </summary>
     public void Reopen(DateTime nowUtc)
     {
         if (!CanReopen)
@@ -284,7 +284,7 @@ public class WorkflowTask
         Touch(nowUtc);
     }
 
-    /// <summary>Blocks the task on an obstruction (تعذر), remembering the phase to come back to.</summary>
+ /// <summary>Blocks the task on an obstruction (تعذر), remembering the phase to come back to.</summary>
     public void Block(string reason, DateTime nowUtc)
     {
         if (IsTerminal)
@@ -298,10 +298,10 @@ public class WorkflowTask
         Touch(nowUtc);
     }
 
-    /// <summary>
-    /// Clears the obstruction and returns to the remembered phase. <paramref name="fallbackPhase"/>
-    /// covers rows blocked before the prior phase was recorded.
-    /// </summary>
+ /// <summary>
+ /// Clears the obstruction and returns to the remembered phase. <paramref name="fallbackPhase"/>
+ /// covers rows blocked before the prior phase was recorded.
+ /// </summary>
     public void Unblock(DateTime nowUtc, WorkflowTaskPhase fallbackPhase = WorkflowTaskPhase.Enfath)
     {
         Phase = ObstructionPriorPhase ?? fallbackPhase;
@@ -311,11 +311,11 @@ public class WorkflowTask
         Touch(nowUtc);
     }
 
-    /// <summary>
-    /// The shell's generic PATCH. It is deliberately lenient — the endpoint has always accepted
-    /// any subset of fields — but it is the only unguarded door into the aggregate, and unknown
-    /// phase/status values are now dropped instead of being written through.
-    /// </summary>
+ /// <summary>
+ /// The shell's generic PATCH. It is deliberately lenient — the endpoint has always accepted
+ /// any subset of fields — but it is the only unguarded door into the aggregate, and unknown
+ /// phase/status values are now dropped instead of being written through.
+ /// </summary>
     public void ApplyShellPatch(
         WorkflowTaskPhase? phase,
         WorkflowTaskStatus? status,

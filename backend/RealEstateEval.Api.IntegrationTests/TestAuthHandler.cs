@@ -30,7 +30,7 @@ public sealed class TestAuthHandler : AuthenticationHandler<AuthenticationScheme
     {
     }
 
-    /// <summary>Builds a bearer token for an actor holding exactly <paramref name="capabilities"/>.</summary>
+ /// <summary>Builds a bearer token for an actor holding exactly <paramref name="capabilities"/>.</summary>
     public static string TokenFor(params string[] capabilities) =>
         CapabilityTokenPrefix + string.Join(',', capabilities);
 

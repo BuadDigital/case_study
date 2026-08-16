@@ -145,7 +145,7 @@ public sealed class WorkOrderAssignmentNotificationTests
         Assert.Null(errors);
         var stored = await db.WorkOrders.SingleAsync(w => w.PoNumber == "PO-FIXED-DUE");
         Assert.Equal(originalDueDate, stored.DueDateAt);
-        // The editable facts still change; only the accepted SLA snapshot is immutable.
+ // The editable facts still change; only the accepted SLA snapshot is immutable.
         Assert.Equal(new DateOnly(2026, 7, 20), stored.ReceivedFromEnfathAt);
         Assert.Equal(AssignmentType.Execution, stored.AssignmentType);
     }

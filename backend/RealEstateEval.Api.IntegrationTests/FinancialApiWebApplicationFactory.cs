@@ -114,10 +114,10 @@ internal sealed class StubPartyFeePricingService : IPartyFeePricingService
         return Task.FromResult(row);
     }
 
-    /// <summary>Deleting this table blows up the way the real service does for the last table in a category.</summary>
+ /// <summary>Deleting this table blows up the way the real service does for the last table in a category.</summary>
     public static readonly Guid ThrowingDeleteId = Guid.Parse("deadbeef-0000-4000-8000-000000000001");
 
-    /// <summary>Recognisable internal text that must never reach the HTTP response.</summary>
+ /// <summary>Recognisable internal text that must never reach the HTTP response.</summary>
     public const string InternalFailureMessage =
         "Cannot delete the last pricing table in this category. [table=fee_pricing_tables]";
 

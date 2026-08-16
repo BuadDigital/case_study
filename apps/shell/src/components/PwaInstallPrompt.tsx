@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 type BeforeInstallPromptEvent = Event & {
   prompt: () => Promise<void>;
@@ -27,6 +27,22 @@ function isIosSafari(): boolean {
   return iOS && webkit && !chromeIos;
 }
 
+function wasDismissed(key: string): boolean {
+  try {
+    return localStorage.getItem(key) === "1";
+  } catch {
+    return false;
+  }
+}
+
+function rememberDismiss(key: string): void {
+  try {
+    localStorage.setItem(key, "1");
+  } catch {
+    /* ignore */
+  }
+}
+
 /**
  * Android/desktop Chrome: beforeinstallprompt.
  * iOS Safari: tip for Share → Add to Home Screen (no install API).
@@ -37,25 +53,26 @@ export function PwaInstallPrompt() {
   );
   const [visible, setVisible] = useState(false);
   const [iosTip, setIosTip] = useState(false);
+  /** Stop re-showing when Chrome re-fires beforeinstallprompt after "لاحقاً". */
+  const dismissedRef = useRef(false);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
     if (isStandaloneDisplay()) return;
 
-    try {
-      if (localStorage.getItem(DISMISS_KEY) === "1") return;
-    } catch {
-      /* ignore */
+    if (wasDismissed(DISMISS_KEY)) {
+      dismissedRef.current = true;
+      return;
     }
 
     if (isIosSafari()) {
-      try {
-        if (localStorage.getItem(IOS_DISMISS_KEY) === "1") return;
-      } catch {
-        /* ignore */
+      if (wasDismissed(IOS_DISMISS_KEY)) {
+        dismissedRef.current = true;
+        return;
       }
       // Deferred so the effect body stays free of synchronous setState.
       const tipTimer = window.setTimeout(() => {
+        if (dismissedRef.current) return;
         setIosTip(true);
         setVisible(true);
       }, 0);
@@ -64,6 +81,10 @@ export function PwaInstallPrompt() {
 
     const onBeforeInstall = (event: Event) => {
       event.preventDefault();
+      if (dismissedRef.current || wasDismissed(DISMISS_KEY)) {
+        dismissedRef.current = true;
+        return;
+      }
       setDeferred(event as BeforeInstallPromptEvent);
       setVisible(true);
     };
@@ -114,15 +135,10 @@ export function PwaInstallPrompt() {
           type="button"
           className="inline-flex min-h-11 flex-1 items-center justify-center rounded-[9px] border border-border-md bg-surface px-4 text-[13px] font-semibold text-text-2"
           onClick={() => {
-            try {
-              localStorage.setItem(
-                iosTip ? IOS_DISMISS_KEY : DISMISS_KEY,
-                "1",
-              );
-            } catch {
-              /* ignore */
-            }
+            dismissedRef.current = true;
+            rememberDismiss(iosTip ? IOS_DISMISS_KEY : DISMISS_KEY);
             setVisible(false);
+            setDeferred(null);
           }}
         >
           {iosTip ? "حسناً" : "لاحقاً"}

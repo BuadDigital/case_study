@@ -14,19 +14,19 @@ public sealed class SecurityHeadersOptions
 {
     public const string SectionName = "SecurityHeaders";
 
-    /// <summary>
-    /// API responses are JSON and are never meant to execute or embed anything, so everything
-    /// is denied. Swagger UI gets <see cref="DefaultDocumentationContentSecurityPolicy"/>.
-    /// </summary>
+ /// <summary>
+ /// API responses are JSON and are never meant to execute or embed anything, so everything
+ /// is denied. Swagger UI gets <see cref="DefaultDocumentationContentSecurityPolicy"/>.
+ /// </summary>
     public const string DefaultContentSecurityPolicy =
         "default-src 'none'; frame-ancestors 'none'; base-uri 'none'; form-action 'none'";
 
-    /// <summary>
-    /// Swagger UI needs a policy of its own: it loads scripts and stylesheets as same-origin
-    /// files (so <c>'self'</c> is enough for scripts), but its React components set inline
-    /// <c>style</c> attributes, which <c>style-src</c> governs. Enabling Swagger's OAuth2
-    /// redirect page would additionally need inline script allowed here.
-    /// </summary>
+ /// <summary>
+ /// Swagger UI needs a policy of its own: it loads scripts and stylesheets as same-origin
+ /// files (so <c>'self'</c> is enough for scripts), but its React components set inline
+ /// <c>style</c> attributes, which <c>style-src</c> governs. Enabling Swagger's OAuth2
+ /// redirect page would additionally need inline script allowed here.
+ /// </summary>
     public const string DefaultDocumentationContentSecurityPolicy =
         "default-src 'self'; "
         + "script-src 'self'; "
@@ -60,7 +60,7 @@ public sealed class SecurityHeadersOptions
 
     public string PermissionsPolicy { get; init; } = DefaultPermissionsPolicy;
 
-    /// <summary>Defaults to on outside Development; only emitted on HTTPS requests.</summary>
+ /// <summary>Defaults to on outside Development; only emitted on HTTPS requests.</summary>
     public bool EnableHsts { get; init; }
 
     public int HstsMaxAgeSeconds { get; init; } = 31_536_000;
@@ -69,10 +69,10 @@ public sealed class SecurityHeadersOptions
 
     public bool HstsPreload { get; init; }
 
-    /// <summary>
-    /// TLS terminates at the ingress proxy, which forwards plain HTTP with
-    /// <c>X-Forwarded-Proto</c>. Without honouring it HSTS would never be emitted.
-    /// </summary>
+ /// <summary>
+ /// TLS terminates at the ingress proxy, which forwards plain HTTP with
+ /// <c>X-Forwarded-Proto</c>. Without honouring it HSTS would never be emitted.
+ /// </summary>
     public bool TrustForwardedProtoHeader { get; init; } = true;
 
     public static SecurityHeadersOptions FromConfiguration(
@@ -187,8 +187,8 @@ public sealed class SecurityHeadersMiddleware
 
     public Task InvokeAsync(HttpContext context)
     {
-        // Applied on first write: GlobalExceptionHandlerMiddleware calls Response.Clear() when
-        // it converts an exception into problem details, which would drop headers set earlier.
+ // Applied on first write: GlobalExceptionHandlerMiddleware calls Response.Clear when
+ // it converts an exception into problem details, which would drop headers set earlier.
         context.Response.OnStarting(ApplyHeadersCallback, (this, context));
         return _next(context);
     }

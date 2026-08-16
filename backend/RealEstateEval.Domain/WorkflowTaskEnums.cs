@@ -8,9 +8,9 @@ namespace RealEstateEval.Domain;
 public enum WorkflowTaskKind
 {
     CaseStudyProperty = 0,
-    /// <summary>Legacy only — no longer spawned; government-reviewer works via court visits.</summary>
+ /// <summary>Legacy only — no longer spawned; government-reviewer works via court visits.</summary>
     GovernmentReview = 1,
-    /// <summary>Legacy only — no longer spawned or shown as a product role.</summary>
+ /// <summary>Legacy only — no longer spawned or shown as a product role.</summary>
     ValuationCoordination = 2,
     FieldInspection = 3,
     PropertyAppraisal = 4,
@@ -46,16 +46,16 @@ public enum WorkflowTaskStatus
 public static class WorkflowTaskKindValues
 {
     public const string CaseStudyProperty = "case-study-property";
-    /// <summary>Legacy wire value — kept for existing DB rows; not spawned.</summary>
+ /// <summary>Legacy wire value — kept for existing DB rows; not spawned.</summary>
     public const string GovernmentReview = "government-review";
     public const string ValuationCoordination = "valuation-coordination";
     public const string FieldInspection = "field-inspection";
     public const string PropertyAppraisal = "property-appraisal";
     public const string EngineeringSurvey = "engineering-survey";
-    /// <summary>Ops court-visit fee charges (أتعاب الزيارة) — party-billing ready/statement kind.</summary>
+ /// <summary>Ops court-visit fee charges (أتعاب الزيارة) — party-billing ready/statement kind.</summary>
     public const string CourtVisit = "court-visit";
 
-    /// <summary>Party kinds that may still be spawned as children of a case-study parent.</summary>
+ /// <summary>Party kinds that may still be spawned as children of a case-study parent.</summary>
     public static readonly IReadOnlyList<WorkflowTaskKind> PartyKinds =
     [
         WorkflowTaskKind.FieldInspection,
@@ -87,10 +87,10 @@ public static class WorkflowTaskKindValues
         }
     }
 
-    /// <summary>
-    /// Lenient read path: unrecognised legacy values fall back to the parent kind rather than
-    /// throwing, so a stray row cannot take the whole list endpoint down.
-    /// </summary>
+ /// <summary>
+ /// Lenient read path: unrecognised legacy values fall back to the parent kind rather than
+ /// throwing, so a stray row cannot take the whole list endpoint down.
+ /// </summary>
     public static WorkflowTaskKind Parse(string? value) =>
         TryParse(value, out var kind) ? kind : WorkflowTaskKind.CaseStudyProperty;
 
@@ -132,7 +132,7 @@ public static class WorkflowTaskPhaseValues
         }
     }
 
-    /// <summary>Lenient read path; unrecognised legacy values read back as the first phase.</summary>
+ /// <summary>Lenient read path; unrecognised legacy values read back as the first phase.</summary>
     public static WorkflowTaskPhase Parse(string? value) =>
         TryParse(value, out var phase) ? phase : WorkflowTaskPhase.Enfath;
 
@@ -159,11 +159,11 @@ public static class WorkflowTaskStatusValues
         _ => Open,
     };
 
-    /// <summary>Completed and cancelled tasks are closed — no further transition is allowed.</summary>
+ /// <summary>Completed and cancelled tasks are closed — no further transition is allowed.</summary>
     public static bool IsTerminal(this WorkflowTaskStatus status) =>
         status is WorkflowTaskStatus.Completed or WorkflowTaskStatus.Cancelled;
 
-    /// <summary>Terminal check for wire values that have not been parsed yet.</summary>
+ /// <summary>Terminal check for wire values that have not been parsed yet.</summary>
     public static bool IsTerminalValue(string? status) =>
         TryParse(status, out var parsed) && parsed.IsTerminal();
 
@@ -179,7 +179,7 @@ public static class WorkflowTaskStatusValues
         }
     }
 
-    /// <summary>Lenient read path; unrecognised legacy values read back as open.</summary>
+ /// <summary>Lenient read path; unrecognised legacy values read back as open.</summary>
     public static WorkflowTaskStatus Parse(string? value) =>
         TryParse(value, out var status) ? status : WorkflowTaskStatus.Open;
 }

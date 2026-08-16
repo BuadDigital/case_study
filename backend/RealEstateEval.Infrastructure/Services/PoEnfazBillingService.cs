@@ -196,7 +196,7 @@ public sealed class PoEnfazBillingService : IPoEnfazBillingService
                 row.KeyEntitlementEnvelopeId = envelopeId;
             else if (row.KeyFeeSar > 0 && row.KeyEntitlementEnvelopeId is null)
             {
-                // Keep link if finance entered a key fee without resending envelope id.
+ // Keep link if finance entered a key fee without resending envelope id.
             }
             else if (row.KeyFeeSar <= 0)
                 row.KeyEntitlementEnvelopeId = null;
@@ -670,7 +670,7 @@ public sealed class PoEnfazBillingService : IPoEnfazBillingService
         if (propertyIds.Count == 0)
             return new Dictionary<Guid, KeyEntitlementInfo>();
 
-        // Entitled court envelopes linked to PO properties via assignments.
+ // Entitled court envelopes linked to PO properties via assignments.
         var rows = await (
             from a in _db.KeyEnvelopeAssignments.AsNoTracking()
             join e in _db.KeyEnvelopes.AsNoTracking() on a.EnvelopeId equals e.Id
@@ -717,12 +717,12 @@ public sealed class PoEnfazBillingService : IPoEnfazBillingService
         var billable = lines
             .Where(l => l.WorkStatus == "done" && l.IncludedInBilling)
             .ToList();
-        // ضريبة 15٪ على (تقييم + رفع) فقط — أتعاب المفاتيح شاملة الضريبة
+ // ضريبة 15٪ على (تقييم + رفع) فقط — أتعاب المفاتيح شاملة الضريبة
         var taxable = billable.Sum(l => l.CaseStudyFeeSar + l.SurveyFeeSar);
         var keyFees = billable.Sum(l => l.KeyFeeSar);
         var vat = Math.Round(taxable * VatRate, 2, MidpointRounding.AwayFromZero);
         var total = taxable + vat + keyFees;
-        // SubtotalSar = الأتعاب الخاضعة للضريبة (تقييم+رفع) — للتوافق مع واجهة الملخص
+ // SubtotalSar = الأتعاب الخاضعة للضريبة (تقييم+رفع) — للتوافق مع واجهة الملخص
         var subtotal = taxable;
         var collected = invoice?.CollectedAmountSar ?? 0m;
         var status = invoice?.Status;

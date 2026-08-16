@@ -63,7 +63,7 @@ export function PoPropertyGroupSection({ propertyId }: { propertyId: string }) {
     const config = workOrdersApiConfig();
     if (!config) return;
     if (!unlinkReason.trim()) {
-      showToast("مبرر فك الربط إلزامي (قرار 20)", "error");
+      showToast("مبرر فك الربط إلزامي", "error");
       return;
     }
     setBusy(true);
@@ -84,7 +84,7 @@ export function PoPropertyGroupSection({ propertyId }: { propertyId: string }) {
   return (
     <div className="mt-3 rounded-lg border border-border bg-surface-2/40 p-3">
       <p className="m-0 text-[12px] font-bold text-heading">
-        العقار المجمع (قرار 20) — صكوك متفرقة لعقار واحد
+        العقار المجمع — صكوك متفرقة لعقار واحد
       </p>
 
       {group ? (

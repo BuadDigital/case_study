@@ -5,16 +5,16 @@ using Microsoft.EntityFrameworkCore.Migrations;
 
 namespace RealEstateEval.Infrastructure.Data.Contexts.Financial.Migrations
 {
-    /// <summary>
-    /// Vendor invoice lifecycle on party billing statements.
-    /// Idempotent: columns may already exist if applied via an earlier ad-hoc path.
-    /// </summary>
+ /// <summary>
+ /// Vendor invoice lifecycle on party billing statements.
+ /// Idempotent: columns may already exist if applied via an earlier ad-hoc path.
+ /// </summary>
     public partial class PartyBillingVendorInvoiceLifecycle : Migration
     {
-        /// <inheritdoc />
+ /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
-            // PostgreSQL: add only when missing (hand-applied/dev DBs may already have columns).
+ // PostgreSQL: add only when missing (hand-applied/dev DBs may already have columns).
             migrationBuilder.Sql(
                 """
                 ALTER TABLE financial."PartyBillingStatements"
@@ -44,7 +44,7 @@ namespace RealEstateEval.Infrastructure.Data.Contexts.Financial.Migrations
                 """);
         }
 
-        /// <inheritdoc />
+ /// <inheritdoc />
         protected override void Down(MigrationBuilder migrationBuilder)
         {
             migrationBuilder.Sql(

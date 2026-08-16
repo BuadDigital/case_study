@@ -6,7 +6,7 @@ namespace RealEstateEval.Infrastructure.Data.Contexts;
 
 /// <summary>
 /// The <c>failures</c> schema mapping. Applied by <see cref="FailuresDbContext"/> (write path)
-/// and by the legacy context (transitional Case Study / billing reads until Phase 3).
+/// and by the legacy context (transitional Case Study / billing reads until owner APIs replace them).
 /// </summary>
 internal static class FailuresModel
 {

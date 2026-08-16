@@ -15,7 +15,7 @@ namespace RealEstateEval.Infrastructure.Data.Migrations
     [Migration("20260519111340_AddCaseStudyWorkOrders")]
     partial class AddCaseStudyWorkOrders
     {
-        /// <inheritdoc />
+ /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618

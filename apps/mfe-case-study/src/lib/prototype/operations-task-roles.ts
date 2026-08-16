@@ -11,7 +11,7 @@ export function canManageOperationsTasks(role: RoleId): boolean {
   );
 }
 
-/** Spec §8: remind = creator / supervisor (managers). */
+/** Spec : remind = creator / supervisor (managers). */
 export function canRemindOperationsTasks(role: RoleId): boolean {
   return canManageOperationsTasks(role);
 }

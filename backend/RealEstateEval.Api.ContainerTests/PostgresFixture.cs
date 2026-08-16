@@ -30,10 +30,10 @@ public sealed class PostgresFixture : IAsyncLifetime
         await _container.StartAsync();
     }
 
-    /// <summary>
-    /// Creates an empty database on the same server, so a test that needs an unmigrated schema
-    /// does not depend on which test ran first. Fails if the name is already taken.
-    /// </summary>
+ /// <summary>
+ /// Creates an empty database on the same server, so a test that needs an unmigrated schema
+ /// does not depend on which test ran first. Fails if the name is already taken.
+ /// </summary>
     public async Task<string> CreateDatabaseAsync(string name)
     {
         RequireIdentifier(name);
@@ -47,12 +47,12 @@ public sealed class PostgresFixture : IAsyncLifetime
         return ConnectionStringFor(name);
     }
 
-    /// <summary>
-    /// Creates the database only if it is not there yet, for tests in one class that share a
-    /// single migrated database. xUnit constructs a new instance of the class per test, so the
-    /// per-test setup runs repeatedly and has to be idempotent. Tests in a collection run
-    /// sequentially, so the check and the create cannot interleave.
-    /// </summary>
+ /// <summary>
+ /// Creates the database only if it is not there yet, for tests in one class that share a
+ /// single migrated database. xUnit constructs a new instance of the class per test, so the
+ /// per-test setup runs repeatedly and has to be idempotent. Tests in a collection run
+ /// sequentially, so the check and the create cannot interleave.
+ /// </summary>
     public async Task<string> EnsureDatabaseAsync(string name)
     {
         RequireIdentifier(name);

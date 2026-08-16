@@ -159,8 +159,8 @@ public class PartyTaskSubmissionAcceptTests
             CreatedAtUtc = now,
             UpdatedAtUtc = now,
         });
-        // Ledger already accrued: the fee guard short-circuits so acceptance
-        // exercises only the new AcceptedAtUtc persistence, no pricing needed.
+ // Ledger already accrued: the fee guard short-circuits so acceptance
+ // exercises only the new AcceptedAtUtc persistence, no pricing needed.
         db.InspectorFeeLedgers.Add(new InspectorFeeLedger
         {
             WorkflowTaskId = TaskId,

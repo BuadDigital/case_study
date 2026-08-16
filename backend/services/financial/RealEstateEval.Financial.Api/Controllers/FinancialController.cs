@@ -51,8 +51,8 @@ public class FinancialController : ControllerBase
         [FromQuery] string? category,
         CancellationToken ct)
     {
-        // An unknown filter used to be coerced to engineering-survey, so a typo silently returned
-        // another category's tables as if they were the ones asked for.
+ // An unknown filter used to be coerced to engineering-survey, so a typo silently returned
+ // another category's tables as if they were the ones asked for.
         if (!string.IsNullOrWhiteSpace(category) && !PartyFeePricingCategories.IsValid(category))
             return this.BadRequestProblem(PartyFeePricingCategories.InvalidMessage(category));
 
@@ -251,8 +251,8 @@ public class FinancialController : ControllerBase
         [FromBody] ResolveDiscountFlagRequest? request,
         CancellationToken ct)
     {
-        // ManageOperations holders act across departments on the financial host; department
-        // scoping is enforced in Case Study supervisor queues via InspectorFeesController.
+ // ManageOperations holders act across departments on the financial host; department
+ // scoping is enforced in Case Study supervisor queues via InspectorFeesController.
         var (row, error) = await _discountFlags.ApproveAsync(
             id,
             request ?? new ResolveDiscountFlagRequest(),

@@ -7,12 +7,12 @@ public sealed class PropertyKeyGateDto
     public string PoNumber { get; init; } = "";
     public string DeedNumber { get; init; } = "";
     public string RequestNumber { get; init; } = "";
-    /// <summary>received | pending | not_required | ""</summary>
+ /// <summary>received | pending | not_required | ""</summary>
     public string KeysStatus { get; init; } = "";
-    /// <summary>yes | no | ""</summary>
+ /// <summary>yes | no | ""</summary>
     public string KeyHandedToInspector { get; init; } = "";
     public bool KeyAvailable { get; init; }
-    /// <summary>envelope | court_access | legacy | none</summary>
+ /// <summary>envelope | court_access | legacy | none</summary>
     public string Source { get; init; } = "none";
     public Guid? EnvelopeId { get; init; }
     public Guid? AssignmentId { get; init; }

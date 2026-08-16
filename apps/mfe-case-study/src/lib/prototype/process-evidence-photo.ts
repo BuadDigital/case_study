@@ -1,4 +1,4 @@
-/** Re-export shared evidence pipeline (هـ). */
+/** Re-export shared evidence pipeline. */
 export {
   buildEvidenceStampLines,
   compressEvidenceImage,

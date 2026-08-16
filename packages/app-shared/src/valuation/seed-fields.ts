@@ -1,6 +1,6 @@
 /**
  * Valuation field seed — typed port of docs/ejadah-cursor-package-v1/seed-fields-v3.js
- * sourceKind / correction model for Phase 1 catalog prep.
+ * sourceKind / correction model for catalog prep.
  * Full 118+ field list remains in the package JS; this module exports the contract + helpers.
  */
 
@@ -32,8 +32,8 @@ export type ValuationSeedField = {
   disabled?: boolean;
 };
 
-/** Core fields that Phase 1 wires into the live product first. */
-export const PHASE1_VALUATION_SEED_FIELDS: ValuationSeedField[] = [
+/** Core fields wired into the live product first. */
+export const CORE_VALUATION_SEED_FIELDS: ValuationSeedField[] = [
   {
     label: "نوع الصك",
     section: "البيانات الأساسية",

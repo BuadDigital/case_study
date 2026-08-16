@@ -27,7 +27,7 @@ public static class AuthorizationExtensions
                     policy => policy.AddRequirements(new CapabilityRequirement(capability)));
             }
 
-            // Back-compat with existing controllers.
+ // Back-compat with existing controllers.
             options.AddPolicy(
                 "CanManageUsers",
                 policy => policy.AddRequirements(
@@ -70,8 +70,8 @@ public static class AuthorizationExtensions
                     PlatformCapabilities.ManageValuationRequests,
                     PlatformCapabilities.SubmitValuationReport)));
 
-            // 11هـ2 feed #1 — الميداني يلتقط العروض والصفقات أثناء المعاينة, so the
-            // party-work capability also writes to the shared bank.
+ // 11هـ2 feed — الميداني يلتقط العروض والصفقات أثناء المعاينة, so the
+ // party-work capability also writes to the shared bank.
             options.AddPolicy(
                 CapabilityPolicyNames.WriteComparableBank,
                 policy => policy.RequireAssertion(ctx => HasAnyCapability(
@@ -193,8 +193,8 @@ public static class ServiceCollectionExtensions
             {
                 if (environment.IsDevelopment())
                 {
-                    // Teammates browse the dev shell over the LAN, so any host on the Next.js
-                    // ports is allowed on top of whatever Cors:AllowedOrigins lists.
+ // Teammates browse the dev shell over the LAN, so any host on the Next.js
+ // ports is allowed on top of whatever Cors:AllowedOrigins lists.
                     var configured = corsOptions.AllowedOrigins.ToHashSet(
                         StringComparer.OrdinalIgnoreCase);
 
@@ -203,8 +203,8 @@ public static class ServiceCollectionExtensions
                 }
                 else
                 {
-                    // Empty list means "no cross-origin browser access", which is correct when
-                    // the frontend proxies /api through its own origin.
+ // Empty list means "no cross-origin browser access", which is correct when
+ // the frontend proxies /api through its own origin.
                     policy.WithOrigins([.. corsOptions.AllowedOrigins]);
                 }
 

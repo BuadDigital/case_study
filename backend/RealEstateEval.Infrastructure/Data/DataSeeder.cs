@@ -42,7 +42,7 @@ public static class DataSeeder
 
         if (await IsAlreadySeededAsync(services, cancellationToken))
         {
-            // Keep seed passwords/profile fields in sync on every demo startup.
+ // Keep seed passwords/profile fields in sync on every demo startup.
             await EnsureLegacyAdminAsync(userManager);
             foreach (var staff in HrStaffSeeds)
                 await EnsureHrStaffAsync(userManager, db, staff, cancellationToken);
@@ -110,9 +110,9 @@ public static class DataSeeder
 
     }
 
-    /// <summary>
-    /// Quick check used on startup to skip the full demo seed when data already exists.
-    /// </summary>
+ /// <summary>
+ /// Quick check used on startup to skip the full demo seed when data already exists.
+ /// </summary>
     public static async Task<bool> IsAlreadySeededAsync(
         IServiceProvider services,
         CancellationToken cancellationToken = default)
@@ -127,13 +127,13 @@ public static class DataSeeder
         return await db.SurveyOffices.AnyAsync(cancellationToken);
     }
 
-    /// <summary>Re-insert demo survey/valuation rows after a full system reset.</summary>
+ /// <summary>Re-insert demo survey/valuation rows after a full system reset.</summary>
     public static Task ReseedPrototypeModuleDataAsync(
         ApplicationDbContext db,
         CancellationToken cancellationToken = default) =>
         EnsurePrototypeModuleDataAsync(db, cancellationToken);
 
-    /// <summary>Re-create all seeded HR staff and proc demo accounts (idempotent).</summary>
+ /// <summary>Re-create all seeded HR staff and proc demo accounts (idempotent).</summary>
     public static async Task ReseedAllDemoUsersAsync(
         IServiceProvider services,
         CancellationToken cancellationToken = default)
@@ -162,7 +162,7 @@ public static class DataSeeder
             cancellationToken);
     }
 
-    /// <summary>Re-create a seeded HR demo account by login username (e.g. ahmed).</summary>
+ /// <summary>Re-create a seeded HR demo account by login username (e.g. ahmed).</summary>
     public static async Task ReseedHrStaffByLoginAsync(
         IServiceProvider services,
         string loginUsername,
@@ -185,7 +185,7 @@ public static class DataSeeder
         Guid.Parse("c3000001-0000-4000-8000-000000000003"),
     ];
 
-    /// <summary>Removes legacy demo rows for إدارة المفاتيح (E-440x / seeded GUIDs).</summary>
+ /// <summary>Removes legacy demo rows for إدارة المفاتيح (E-440x / seeded GUIDs).</summary>
     public static async Task RemoveDemoPropertyKeyRecordsAsync(
         ApplicationDbContext db,
         CancellationToken cancellationToken = default)
@@ -216,7 +216,7 @@ public static class DataSeeder
 
             "user1234",
 
-            "سليمان",
+            "مسؤول النظام",
 
             "مسؤول التحول الرقمي (CDO)",
 
@@ -312,8 +312,8 @@ public static class DataSeeder
 
             "Editor"),
 
-        // Freelance cooperator: court-visit tasks stamp visit fees and bill via CourtVisitFeeCharges.
-        // Internal reviewers complete visits without a visit charge (incentives via flat tables).
+ // Freelance cooperator: court-visit tasks stamp visit fees and bill via CourtVisitFeeCharges.
+ // Internal reviewers complete visits without a visit charge (incentives via flat tables).
         new(
 
             "feras",
@@ -522,11 +522,11 @@ public static class DataSeeder
             ["ahmed@ejadah.dev"] = "fi-ahmed",
             ["abdullah.abdulmane@ejadah.dev"] = "fi-abdullah-abdulmane",
             ["survey.jeddah@ejadah.dev"] = "eo-jeddah",
-            // Case specialists must be assignable on «توزيع المعاملات» (supervisors stay without ids).
+ // Case specialists must be assignable on «توزيع المعاملات» (supervisors stay without ids).
             ["osama@ejadah.dev"] = "cs-osama",
         };
 
-    /// <summary>HR membership / badge numbers shown as «رقم العضوية».</summary>
+ /// <summary>HR membership / badge numbers shown as «رقم العضوية».</summary>
     private static readonly Dictionary<string, string> EmployeeNumbersByEmail =
         new(StringComparer.OrdinalIgnoreCase)
         {
@@ -562,11 +562,11 @@ public static class DataSeeder
         profile.ReviewerCityCoverageJson = JsonSerializer.Serialize(cities);
     }
 
-    /// <summary>
-    /// Applies <paramref name="password"/> through Identity's AddPasswordAsync.
-    /// SeedDemoData is forbidden in Production; local seed passwords are intentionally
-    /// simple, so validators are suspended only for this call.
-    /// </summary>
+ /// <summary>
+ /// Applies <paramref name="password"/> through Identity's AddPasswordAsync.
+ /// SeedDemoData is forbidden in Production; local seed passwords are intentionally
+ /// simple, so validators are suspended only for this call.
+ /// </summary>
     private static async Task EnsureSeedPasswordAsync(
         UserManager<ApplicationUser> userManager,
         ApplicationUser user,
@@ -649,7 +649,7 @@ public static class DataSeeder
             profile.DistributionAssigneeId = assigneeId;
         }
 
-        // Any other active case specialist without an assignee id (not only seed email).
+ // Any other active case specialist without an assignee id (not only seed email).
         var specialists = await db.UserProfiles
             .Where(p =>
                 p.Status == UserStatus.Active
@@ -685,10 +685,10 @@ public static class DataSeeder
         return $"{prefix}-{slug}";
     }
 
-    /// <summary>
-    /// Prefer stable seed map, then keep an existing id, then generate for party-assignable roles.
-    /// Never clear a previously stored id when the email is absent from the map.
-    /// </summary>
+ /// <summary>
+ /// Prefer stable seed map, then keep an existing id, then generate for party-assignable roles.
+ /// Never clear a previously stored id when the email is absent from the map.
+ /// </summary>
     private static string? ResolveSeedDistributionAssigneeId(
         string email,
         string? roleId,
@@ -749,7 +749,7 @@ public static class DataSeeder
             }
         }
 
-        // Cooperator fee rates on the active field-inspector pricing table.
+ // Cooperator fee rates on the active field-inspector pricing table.
         var fiTable = await db.PartyFeePricingTables
             .FirstOrDefaultAsync(
                 t => t.Category == "field-inspector"
@@ -765,7 +765,7 @@ public static class DataSeeder
             fiTable.UpdatedAtUtc = DateTime.UtcNow;
         }
 
-        // Employee incentives require a flat table (not the cooperator party-rates default).
+ // Employee incentives require a flat table (not the cooperator party-rates default).
         const string flatName = "حوافز المعاينين الموظفين";
         var flatTable = await db.PartyFeePricingTables
             .FirstOrDefaultAsync(
@@ -789,12 +789,12 @@ public static class DataSeeder
             db.PartyFeePricingTables.Add(flatTable);
         }
 
-        // Assign compensated field inspectors to the employee flat table (never to party-rates).
-        // Every field inspector carries HasCompensation, cooperators included, so the flat
-        // table has to be selected by contract type. Without this the cooperator demo
-        // inspector lands here as well and the block below adds him a second time — the
-        // pending insert is invisible to that query, so a fresh database fails on the
-        // (Category, AssigneeId) unique index.
+ // Assign compensated field inspectors to the employee flat table (never to party-rates).
+ // Every field inspector carries HasCompensation, cooperators included, so the flat
+ // table has to be selected by contract type. Without this the cooperator demo
+ // inspector lands here as well and the block below adds him a second time — the
+ // pending insert is invisible to that query, so a fresh database fails on the
+ // (Category, AssigneeId) unique index.
         var employeeInspectorIds = await db.UserProfiles.AsNoTracking()
             .Where(p =>
                 p.HasCompensation
@@ -824,7 +824,7 @@ public static class DataSeeder
             }
             else if (existing.TableId != flatTable.Id)
             {
-                // Re-point off a party-rates / wrong table so accrual can resolve.
+ // Re-point off a party-rates / wrong table so accrual can resolve.
                 var pointed = await db.PartyFeePricingTables.AsNoTracking()
                     .FirstOrDefaultAsync(t => t.Id == existing.TableId, cancellationToken);
                 if (pointed is null
@@ -837,7 +837,7 @@ public static class DataSeeder
             }
         }
 
-        // Cooperator demo assignment (ahmed as cooperator path stays on party-rates when present).
+ // Cooperator demo assignment (ahmed as cooperator path stays on party-rates when present).
         if (fiTable is not null)
         {
             var hasAhmed = await db.PartyFeePricingAssignments.AnyAsync(
@@ -859,9 +859,9 @@ public static class DataSeeder
         await db.SaveChangesAsync(cancellationToken);
     }
 
-    /// <summary>
-    /// Align party child task <c>AssigneeId</c> with parent distribution (fixes empty/stale ids).
-    /// </summary>
+ /// <summary>
+ /// Align party child task <c>AssigneeId</c> with parent distribution (fixes empty/stale ids).
+ /// </summary>
     private static async Task BackfillPartyChildAssigneeIdsAsync(
         ApplicationDbContext db,
         ILogger logger,
@@ -942,7 +942,7 @@ public static class DataSeeder
     {
         return kind switch
         {
-            // Legacy government-review children — backfill only; new distribution no longer spawns them.
+ // Legacy government-review children — backfill only; new distribution no longer spawns them.
             WorkflowTaskKind.GovernmentReview => distribution.GovernmentAuditorId,
             WorkflowTaskKind.FieldInspection => distribution.InspectorId,
             WorkflowTaskKind.PropertyAppraisal => distribution.ValuatorId,
@@ -1616,10 +1616,10 @@ public static class DataSeeder
     private static readonly string[] RetiredOrgAdminUsernames =
         ["alaa", "ali", "shahd"];
 
-    /// <summary>
-    /// UserProfile.Department stores the canonical supervising-department code. Legacy Arabic
-    /// administration / section labels remain on HrEmployee for display only.
-    /// </summary>
+ /// <summary>
+ /// UserProfile.Department stores the canonical supervising-department code. Legacy Arabic
+ /// administration / section labels remain on HrEmployee for display only.
+ /// </summary>
     private static string? ResolveCanonicalDepartment(HrStaffSeed seed)
     {
         var roleId = PrototypeRoleResolver.LegacyRoleIdForJobTitle(seed.JobTitle);
@@ -1634,7 +1634,7 @@ public static class DataSeeder
         return department;
     }
 
-    /// <summary>Drops retired HR/PROC/CRM admin demo accounts (alaa / ali / shahd).</summary>
+ /// <summary>Drops retired HR/PROC/CRM admin demo accounts (alaa / ali / shahd).</summary>
     private static async Task RemoveRetiredOrgAdminUsersAsync(
         UserManager<ApplicationUser> userManager,
         CancellationToken cancellationToken)

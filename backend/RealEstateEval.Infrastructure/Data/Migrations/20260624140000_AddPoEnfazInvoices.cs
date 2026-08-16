@@ -11,7 +11,7 @@ namespace RealEstateEval.Infrastructure.Data.Migrations;
 [Migration("20260624140000_AddPoEnfazInvoices")]
 public partial class AddPoEnfazInvoices : Migration
 {
-    /// <inheritdoc />
+ /// <inheritdoc />
     protected override void Up(MigrationBuilder migrationBuilder)
     {
         migrationBuilder.Sql(
@@ -26,7 +26,7 @@ public partial class AddPoEnfazInvoices : Migration
             """);
     }
 
-    /// <inheritdoc />
+ /// <inheritdoc />
     protected override void Down(MigrationBuilder migrationBuilder)
     {
         migrationBuilder.Sql("""DROP TABLE IF EXISTS financial."PoEnfazInvoices";""");

@@ -11,7 +11,7 @@ namespace RealEstateEval.Application.Tests;
 
 /// <summary>
 /// Shared InMemory roots so legacy + Failures + Operations contexts see the same rows
-/// (extraction step 3 dual write).
+/// (extraction dual write).
 /// </summary>
 internal static class TestBoundedContexts
 {
@@ -48,12 +48,12 @@ internal static class TestBoundedContexts
         return new Bundle(app, failures, ops, name, root);
     }
 
-    /// <summary>
-    /// Pair Failures/Operations contexts to an existing ApplicationDbContext that already used
-    /// a plain <c>UseInMemoryDatabase(name)</c> (no shared root). Prefer <see cref="Create"/> for
-    /// new fixtures; this reuses the same name string only when the app context was built without
-    /// a root, which cannot share stores — so always create a full <see cref="Bundle"/> instead.
-    /// </summary>
+ /// <summary>
+ /// Pair Failures/Operations contexts to an existing ApplicationDbContext that already used
+ /// a plain <c>UseInMemoryDatabase(name)</c> (no shared root). Prefer <see cref="Create"/> for
+ /// new fixtures; this reuses the same name string only when the app context was built without
+ /// a root, which cannot share stores — so always create a full <see cref="Bundle"/> instead.
+ /// </summary>
     public static (FailuresDbContext Failures, OperationsDbContext Ops) SiblingContexts(
         string databaseName,
         InMemoryDatabaseRoot? root = null)

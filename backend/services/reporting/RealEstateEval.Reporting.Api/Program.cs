@@ -26,7 +26,7 @@ builder.Services.AddSingleton(httpResilience);
 builder.Services
     .AddHttpClient<IReportingUpstreamClient, ReportingUpstreamClient>(client =>
     {
-        // The resilience pipeline owns both per-attempt and total request timeouts.
+ // The resilience pipeline owns both per-attempt and total request timeouts.
         client.Timeout = Timeout.InfiniteTimeSpan;
     })
     .AddStandardResilienceHandler(options =>

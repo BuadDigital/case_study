@@ -15,12 +15,12 @@ namespace RealEstateEval.Shared.Web;
 
 public static class ObservabilityExtensions
 {
-    /// <summary>
-    /// One JSON object per log line, including the <c>CorrelationId</c> scope and the current
-    /// trace/span ids, so shipped logs can be filtered and joined to traces. Development keeps
-    /// the readable console writer. Override with <c>Observability:JsonConsoleLogging</c>.
-    /// The emitting service is identified by the container/process the line came from.
-    /// </summary>
+ /// <summary>
+ /// One JSON object per log line, including the <c>CorrelationId</c> scope and the current
+ /// trace/span ids, so shipped logs can be filtered and joined to traces. Development keeps
+ /// the readable console writer. Override with <c>Observability:JsonConsoleLogging</c>.
+ /// The emitting service is identified by the container/process the line came from.
+ /// </summary>
     public static WebApplicationBuilder AddRealEstateEvalStructuredLogging(
         this WebApplicationBuilder builder)
     {
@@ -82,8 +82,8 @@ public static class ServicePipelineExtensions
         if (!app.Environment.IsDevelopment())
             app.UseHttpsRedirection();
         app.UseCors();
-        // After CORS so a throttled browser can read the 429 body, before authentication so
-        // rejected floods never reach token validation.
+ // After CORS so a throttled browser can read the 429 body, before authentication so
+ // rejected floods never reach token validation.
         app.UseRealEstateEvalRateLimiter();
         app.UseAuthentication();
         app.UseAuthorization();
@@ -104,8 +104,8 @@ public static class GatewayPipelineExtensions
         app.UseRealEstateEvalSecurityHeaders();
         app.UseResponseCompression();
         app.UseCorrelationId();
-        // Redirects only once an HTTPS port is configured; TLS currently terminates at the
-        // ingress proxy, which forwards plain HTTP with X-Forwarded-Proto.
+ // Redirects only once an HTTPS port is configured; TLS currently terminates at the
+ // ingress proxy, which forwards plain HTTP with X-Forwarded-Proto.
         if (!app.Environment.IsDevelopment())
             app.UseHttpsRedirection();
         app.UseCors();

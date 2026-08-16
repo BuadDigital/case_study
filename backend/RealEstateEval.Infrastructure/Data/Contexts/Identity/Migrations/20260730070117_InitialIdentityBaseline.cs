@@ -11,12 +11,12 @@ namespace RealEstateEval.Infrastructure.Data.Contexts.Identity.Migrations;
 /// </summary>
 public partial class InitialIdentityBaseline : Migration
 {
-    /// <inheritdoc />
+ /// <inheritdoc />
     protected override void Up(MigrationBuilder migrationBuilder)
     {
     }
 
-    /// <inheritdoc />
+ /// <inheritdoc />
     protected override void Down(MigrationBuilder migrationBuilder)
     {
     }

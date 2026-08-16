@@ -34,17 +34,17 @@ public class DatabaseMigrationTests
         Assert.Empty(await db.Database.GetPendingMigrationsAsync());
         Assert.True(await db.Database.CanConnectAsync());
 
-        // A query per schema proves the migration built tables, not just the history table.
+ // A query per schema proves the migration built tables, not just the history table.
         Assert.Empty(await db.WorkOrders.AsNoTracking().ToListAsync());
         Assert.Empty(await db.WorkflowTasks.AsNoTracking().ToListAsync());
         Assert.Empty(await db.Users.AsNoTracking().ToListAsync());
     }
 
-    /// <summary>
-    /// The deploy runbook rolls back to a named migration, so the newest migration has to come
-    /// off and go back on cleanly. (Rolling all the way back to <c>0</c> currently fails on data
-    /// inserted by earlier migrations — see the rollback note in <c>backend/README.md</c>.)
-    /// </summary>
+ /// <summary>
+ /// The deploy runbook rolls back to a named migration, so the newest migration has to come
+ /// off and go back on cleanly. (Rolling all the way back to <c>0</c> currently fails on data
+ /// inserted by earlier migrations — see the rollback note in <c>backend/README.md</c>.)
+ /// </summary>
     [DockerFact]
     public async Task The_newest_migration_can_be_rolled_back_and_reapplied()
     {
@@ -95,8 +95,8 @@ public class DatabaseMigrationTests
 
         await using var provider = services.BuildServiceProvider();
 
-        // The seeder writes identity and platform tables, so it needs every stream the deploy
-        // migrator applies — the legacy one alone stops at the bounded-context cutover.
+ // The seeder writes identity and platform tables, so it needs every stream the deploy
+ // migrator applies — the legacy one alone stops at the bounded-context cutover.
         await using (var scope = provider.CreateAsyncScope())
         {
             await scope.ServiceProvider.GetRequiredService<ApplicationDbContext>()
@@ -121,7 +121,7 @@ public class DatabaseMigrationTests
             Assert.True(seededUsers > 0, "the demo seed created no users");
         }
 
-        // Startup re-runs the seeder on every boot; a second pass must not duplicate rows.
+ // Startup re-runs the seeder on every boot; a second pass must not duplicate rows.
         await using (var scope = provider.CreateAsyncScope())
         {
             await DataSeeder.SeedAsync(scope.ServiceProvider);

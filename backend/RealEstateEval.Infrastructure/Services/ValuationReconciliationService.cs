@@ -6,7 +6,7 @@ using RealEstateEval.Infrastructure.Data.Contexts;
 
 namespace RealEstateEval.Infrastructure.Services;
 
-/// <summary>ج-1 method participation + round-once final opinion; liquidation discount when basis allows.</summary>
+/// <summary>Method participation + round-once final opinion; liquidation discount when basis allows.</summary>
 public sealed class ValuationReconciliationService(
     ValuationDbContext db,
     CaseStudyDbContext caseStudy,
@@ -49,8 +49,8 @@ public sealed class ValuationReconciliationService(
         if (vr.Status == ValuationRequestStatus.Done)
             return (null, new Dictionary<string, string> { ["_"] = "طلب التقييم مكتمل" });
 
-        // §7.3 — بوابة جودة قبل الحساب لا عند الإصدار فقط: traditional deeds must clear
-        // the deed↔nature match before the final opinion is computed (registered title skips).
+ // بوابة جودة قبل الحساب لا عند الإصدار فقط: traditional deeds must clear
+ // the deed↔nature match before the final opinion is computed (registered title skips).
         if (Guid.TryParse(vr.PropertyId?.Trim(), out var propertyGuid))
         {
             var prop = await caseStudy.WorkOrderProperties.AsNoTracking()
@@ -66,7 +66,7 @@ public sealed class ValuationReconciliationService(
                 {
                     return (null, new Dictionary<string, string>
                     {
-                        ["_"] = "بوابة المطابقة (§7.3): صك تقليدي بلا مطابقة محسومة — يحسمها دارس الحالة قبل الحساب",
+                        ["_"] = "بوابة المطابقة: صك تقليدي بلا مطابقة محسومة — يحسمها دارس الحالة قبل الحساب",
                     });
                 }
             }
@@ -122,7 +122,7 @@ public sealed class ValuationReconciliationService(
         {
             if (string.IsNullOrWhiteSpace(ov.Code))
                 continue;
-            // Soft overrides are free-form; hard alerts cannot be overridden via this channel.
+ // Soft overrides are free-form; hard alerts cannot be overridden via this channel.
         }
 
         var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
@@ -208,8 +208,8 @@ public sealed class ValuationReconciliationService(
 
         await db.SaveChangesAsync(cancellationToken);
 
-        // س2 (Solomon 2026-08-16): every alert pass — rationale or acknowledgement —
-        // leaves an audit trail. Logged best-effort after the main save.
+ // س2 : every alert pass — rationale or acknowledgement —
+ // leaves an audit trail. Logged best-effort after the main save.
         if (!string.Equals(previousOverridesJson, entity.MethodologyAlertOverridesJson, StringComparison.Ordinal))
         {
             platformDb.AuditLogs.Add(audit.Create(

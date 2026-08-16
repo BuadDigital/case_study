@@ -163,7 +163,7 @@ public class AuthSessionServiceTests
         return login;
     }
 
-    /// <summary>Backdates rotations so the concurrent-refresh grace window has passed.</summary>
+ /// <summary>Backdates rotations so the concurrent-refresh grace window has passed.</summary>
     private static async Task AgeRotationsAsync(IdentityDbContext db, TimeSpan age)
     {
         var rotated = await db.RefreshTokens

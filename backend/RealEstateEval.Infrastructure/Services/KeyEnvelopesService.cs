@@ -86,9 +86,9 @@ public sealed class KeyEnvelopesService : IKeyEnvelopesService
 
         var chargedEnvelopeIds = charges.Select(c => c.EnvelopeId).ToHashSet();
 
-        // Entitlements and the historical stamped charges are one report, not an either/or: reading
-        // only the charges hid every envelope registered since the amount left the pricing table, and
-        // reading only the envelopes hid what finance had already collected.
+ // Entitlements and the historical stamped charges are one report, not an either/or: reading
+ // only the charges hid every envelope registered since the amount left the pricing table, and
+ // reading only the envelopes hid what finance had already collected.
         var entitlements = await _ops.KeyEnvelopes.AsNoTracking()
             .Where(x => x.RevenueEntitlementAtUtc != null || (x.FeeGenerated && x.FeeAmountSar != null))
             .OrderByDescending(x => x.CreatedAtUtc)
@@ -193,9 +193,9 @@ public sealed class KeyEnvelopesService : IKeyEnvelopesService
             .FirstOrDefaultAsync(e => e.Id == id, cancellationToken);
         if (envelope is null) return false;
 
-        // The fee charge is intentionally independent of the envelope FK,
-        // so remove it explicitly. Assignments, handoffs, and timeline entries
-        // are deleted through the envelope cascade configuration.
+ // The fee charge is intentionally independent of the envelope FK,
+ // so remove it explicitly. Assignments, handoffs, and timeline entries
+ // are deleted through the envelope cascade configuration.
         var charges = await _financial.KeyReceiptFeeCharges
             .Where(c => c.EnvelopeId == id)
             .ToListAsync(cancellationToken);
@@ -217,8 +217,8 @@ public sealed class KeyEnvelopesService : IKeyEnvelopesService
             .FirstOrDefaultAsync(c => c.EnvelopeId == envelopeId, cancellationToken);
         if (charge is null)
         {
-            // Only the historical stamped charges are collectable here. An entitlement carries no
-            // amount, so there is nothing for finance to confirm until enforcement billing prices it.
+ // Only the historical stamped charges are collectable here. An entitlement carries no
+ // amount, so there is nothing for finance to confirm until enforcement billing prices it.
             var isEntitlement = await _ops.KeyEnvelopes.AsNoTracking()
                 .AnyAsync(e => e.Id == envelopeId && e.RevenueEntitlementAtUtc != null, cancellationToken);
             return (
@@ -349,9 +349,9 @@ public sealed class KeyEnvelopesService : IKeyEnvelopesService
 
         if (scenario == KeyReceiveScenarios.Court)
         {
-            // Receipt revenue is billed to إنفاذ by finance, not owed to a party at a configured rate,
-            // so registration marks the entitlement and stops there. Stamping an amount from the
-            // pricing table produced a figure nobody had agreed to bill.
+ // Receipt revenue is billed to إنفاذ by finance, not owed to a party at a configured rate,
+ // so registration marks the entitlement and stops there. Stamping an amount from the
+ // pricing table produced a figure nobody had agreed to bill.
             entity.MarkCourtRevenueEntitlement(now);
             AddTimelineOnCreate(
                 entity,
@@ -510,8 +510,8 @@ public sealed class KeyEnvelopesService : IKeyEnvelopesService
         if (fromParty.Length == 0 || toParty.Length == 0)
             return (null, "من وإلى مطلوبان");
 
-        // HTML parity: internal / return_court / receive_back need no letter.
-        // External delivery requires proof file (or explicit letter fields).
+ // HTML parity: internal / return_court / receive_back need no letter.
+ // External delivery requires proof file (or explicit letter fields).
         var needsLetter = kind == KeyHandoffKinds.External;
         if (needsLetter)
         {
@@ -941,7 +941,7 @@ public sealed class KeyEnvelopesService : IKeyEnvelopesService
             }
             catch
             {
-                // Legacy / malformed JSON — allow link for completed court_visit.
+ // Legacy / malformed JSON — allow link for completed court_visit.
             }
         }
 
@@ -954,11 +954,11 @@ public sealed class KeyEnvelopesService : IKeyEnvelopesService
     private static string? NullIfBlank(string? value) =>
         string.IsNullOrWhiteSpace(value) ? null : value.Trim();
 
-    /// <summary>
-    /// Resolves the case specialist for a property's case-study parent task and
-    /// notifies them — the specialist is the one waiting on the key to unblock
-    /// field work, but had no visibility into key-envelope changes before this.
-    /// </summary>
+ /// <summary>
+ /// Resolves the case specialist for a property's case-study parent task and
+ /// notifies them — the specialist is the one waiting on the key to unblock
+ /// field work, but had no visibility into key-envelope changes before this.
+ /// </summary>
     private async Task NotifyCaseSpecialistForPropertyAsync(
         Guid propertyId,
         string title,

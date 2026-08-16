@@ -6,7 +6,7 @@ using RealEstateEval.Infrastructure.Data.Contexts;
 
 namespace RealEstateEval.Infrastructure.Services;
 
-/// <summary>Contractor cost approach scaffold — land from market (ق-4); lines priced by appraiser.</summary>
+/// <summary>Contractor cost approach scaffold — land from market ; lines priced by appraiser.</summary>
 public sealed class ValuationCostApproachService(
     ValuationDbContext db,
     IValuationComparableSelectionService selections) : IValuationCostApproachService
@@ -92,17 +92,17 @@ public sealed class ValuationCostApproachService(
         if (request.LifeExtensionYears < 0m)
             errors["lifeExtensionYears"] = "تمديد العمر يجب أن يكون ≥ 0";
         if (request.LifeExtensionYears > 0m && string.IsNullOrWhiteSpace(request.LifeExtensionBasis))
-            errors["lifeExtensionBasis"] = "بيان أساس تمديد العمر إلزامي عند التمديد (ث-4 #95)";
+            errors["lifeExtensionBasis"] = "بيان أساس تمديد العمر إلزامي عند التمديد";
         if (request.FunctionalObsolescencePct is < 0m or > 100m)
             errors["functionalObsolescencePct"] = "التقادم الوظيفي يجب أن يكون بين 0 و 100";
         if (request.FunctionalObsolescencePct > 0m
             && string.IsNullOrWhiteSpace(request.FunctionalObsolescenceRationale))
-            errors["functionalObsolescenceRationale"] = "مبرر التقادم الوظيفي إلزامي (ث-4 #96)";
+            errors["functionalObsolescenceRationale"] = "مبرر التقادم الوظيفي إلزامي";
         if (request.ExternalObsolescencePct is < 0m or > 100m)
             errors["externalObsolescencePct"] = "التقادم الخارجي يجب أن يكون بين 0 و 100";
         if (request.ExternalObsolescencePct > 0m
             && string.IsNullOrWhiteSpace(request.ExternalObsolescenceRationale))
-            errors["externalObsolescenceRationale"] = "مبرر التقادم الخارجي إلزامي (ث-4 #97)";
+            errors["externalObsolescenceRationale"] = "مبرر التقادم الخارجي إلزامي";
 
         if (errors.Count > 0) return (null, errors);
 
@@ -123,8 +123,8 @@ public sealed class ValuationCostApproachService(
         if (request.ImportLandFromMarket)
         {
             var market = await selections.ListAsync(valuationRequestId, cancellationToken);
-            // ث-1 #59: import the weighted unit rate, never the whole-property opinion —
-            // otherwise the building would be counted twice in the contractor method.
+ // : import the weighted unit rate, never the whole-property opinion —
+ // otherwise the building would be counted twice in the contractor method.
             entity.LandUnitRateFromMarket = market?.WeightedPricePerSqm ?? 0m;
             entity.LandAreaSqm = market?.SubjectAreaSqm ?? 0m;
             entity.LandImportedAtUtc = DateTime.UtcNow;
@@ -144,7 +144,7 @@ public sealed class ValuationCostApproachService(
         db.ValuationCostLines.RemoveRange(entity.Lines);
         entity.Lines.Clear();
 
-        // ق-13 — repeated-floors quantity derives from the first-floor area × count.
+ // repeated-floors quantity derives from the first-floor area × count.
         var firstFloorArea = lines
             .Where(l => CostLineItemKeys.Normalize(l.ItemKey) == CostLineItemKeys.FirstFloor)
             .Select(l => l.AreaSqm)
@@ -259,7 +259,7 @@ public sealed class ValuationCostApproachService(
             entity?.LandUnitRateFromMarket ?? 0m,
             entity?.UseRestrictionDiscountPct ?? 0m);
 
-        // ث-3 chain (#90–#92)
+ // chain (–)
         var financingPct = CostApproachRules.FinancingPct(
             entity?.FinancingAnnualRatePct ?? 0m,
             entity?.FinancingMonths ?? 0);
@@ -279,7 +279,7 @@ public sealed class ValuationCostApproachService(
             indirectItems.Select(i => i.Pct), financingPct);
         var totalCost = CostApproachRules.TotalCostWithIndirect(direct, indirectSum);
 
-        // ث-4 chain (#98–#101)
+ // chain (–)
         var extendedLife = CostApproachRules.ExtendedLifeYears(
             entity?.EconomicAgeYears, entity?.LifeExtensionYears ?? 0m);
         var physicalPct = CostApproachRules.PhysicalObsolescencePct(

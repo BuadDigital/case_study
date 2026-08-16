@@ -10,7 +10,7 @@ public static class InspectorFeeRules
     public const string TypeEmployee = "موظف";
     public const string TypeCooperatorIndividual = "متعاون فرد";
     public const string TypeCooperatorOrganization = "متعاون شركة";
-    /// <summary>Legacy label kept for older ledgers.</summary>
+ /// <summary>Legacy label kept for older ledgers.</summary>
     public const string TypeCooperatorLegacy = "متعاون";
 
     private static readonly HashSet<string> CooperatorAssigneeIds = new(StringComparer.Ordinal)
@@ -34,6 +34,6 @@ public static class InspectorFeeRules
     public static decimal NetFee(decimal agreedFeeSar, decimal supervisorDiscountSar) =>
         Math.Max(0m, agreedFeeSar - Math.Max(0m, supervisorDiscountSar));
 
-    /// <summary>Agreed fee must be entered before leaving draft (employees / deferred survey).</summary>
+ /// <summary>Agreed fee must be entered before leaving draft (employees / deferred survey).</summary>
     public static bool HasBillableAgreedFee(decimal agreedFeeSar) => agreedFeeSar > 0m;
 }

@@ -22,10 +22,10 @@ public interface IFailureService
         BourseObstructionRequest request,
         CancellationToken cancellationToken = default);
 
-    /// <summary>
-    /// Creates an internal system failure when none is active for the property
-    /// (idempotent for the given problem type while active).
-    /// </summary>
+ /// <summary>
+ /// Creates an internal system failure when none is active for the property
+ /// (idempotent for the given problem type while active).
+ /// </summary>
     Task<FailureRecordDto?> EnsureSystemInternalFailureAsync(
         string poNumber,
         string propertyId,

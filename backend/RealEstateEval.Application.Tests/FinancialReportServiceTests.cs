@@ -53,10 +53,10 @@ public class FinancialReportServiceTests
         Assert.Empty(store.Fin.ChangeTracker.Entries());
     }
 
-    /// <summary>
-    /// A disputed line has no agreed amount yet, so counting it would overstate external costs and
-    /// understate the margin. The exclusion has to hold for the aggregates, not just the fee list.
-    /// </summary>
+ /// <summary>
+ /// A disputed line has no agreed amount yet, so counting it would overstate external costs and
+ /// understate the margin. The exclusion has to hold for the aggregates, not just the fee list.
+ /// </summary>
     [Fact]
     public async Task Disputed_lines_stay_out_of_the_cost_aggregates()
     {

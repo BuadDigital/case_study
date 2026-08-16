@@ -15,7 +15,7 @@ namespace RealEstateEval.Infrastructure.Data.Migrations
     [Migration("20260728130000_SyncRegionsCitiesAndRestrictionType")]
     partial class SyncRegionsCitiesAndRestrictionType
     {
-        /// <inheritdoc />
+ /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618

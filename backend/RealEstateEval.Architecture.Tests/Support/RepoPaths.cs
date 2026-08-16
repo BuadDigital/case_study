@@ -15,7 +15,7 @@ internal static class RepoPaths
     public static string Combine(params string[] parts) =>
         Path.Combine(new[] { Root }.Concat(parts).ToArray());
 
-    /// <summary>Repository-relative, forward-slashed path used in baseline files.</summary>
+ /// <summary>Repository-relative, forward-slashed path used in baseline files.</summary>
     public static string Relative(string absolutePath) =>
         Path.GetRelativePath(Root, absolutePath).Replace('\\', '/');
 
@@ -37,10 +37,10 @@ internal static class RepoPaths
             || normalized.Contains("/obj/", StringComparison.Ordinal);
     }
 
-    /// <summary>
-    /// Walks up from the test binaries and, when they were built to an external artifacts
-    /// path, from this file's compile-time location.
-    /// </summary>
+ /// <summary>
+ /// Walks up from the test binaries and, when they were built to an external artifacts
+ /// path, from this file's compile-time location.
+ /// </summary>
     private static string ResolveRoot()
     {
         foreach (var start in new[] { AppContext.BaseDirectory, SourceDirectory() })

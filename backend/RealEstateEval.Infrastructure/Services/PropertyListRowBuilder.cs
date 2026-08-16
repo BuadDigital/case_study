@@ -33,10 +33,10 @@ public static class PropertyListRowBuilder
         return items;
     }
 
-    /// <summary>
-    /// Maps normalized deed → PO numbers that contain it.
-    /// Used so a property cannot satisfy «prior survey» by matching itself.
-    /// </summary>
+ /// <summary>
+ /// Maps normalized deed → PO numbers that contain it.
+ /// Used so a property cannot satisfy «prior survey» by matching itself.
+ /// </summary>
     private static Dictionary<string, HashSet<string>> BuildPriorDeedIndex(IReadOnlyList<WorkOrder> orders)
     {
         var priorByDeed = new Dictionary<string, HashSet<string>>(StringComparer.OrdinalIgnoreCase);
@@ -150,7 +150,7 @@ public static class PropertyListRowBuilder
             .ToList();
         if (active.Count == 0) return "fail";
 
-        // «مكتمل» فقط عند رفع نموذج الدراسة للنظام (اكتمال مهمة دراسة الحالة).
+ // «مكتمل» فقط عند رفع نموذج الدراسة للنظام (اكتمال مهمة دراسة الحالة).
         var parent = active.FirstOrDefault(t => t.Kind == WorkflowTaskKind.CaseStudyProperty);
         if (parent is not null &&
             (parent.Status == WorkflowTaskStatus.Completed || parent.Phase == WorkflowTaskPhase.Done))
@@ -200,10 +200,10 @@ public static class PropertyListRowBuilder
         return $"{poNumber}-{suffix}";
     }
 
-    /// <summary>
-    /// Survey waived when classification does not require it, or the same deed
-    /// already exists on a different work order (true prior registration).
-    /// </summary>
+ /// <summary>
+ /// Survey waived when classification does not require it, or the same deed
+ /// already exists on a different work order (true prior registration).
+ /// </summary>
     private static bool PriorSurveyWaived(
         WorkOrderProperty prop,
         string currentPoNumber,

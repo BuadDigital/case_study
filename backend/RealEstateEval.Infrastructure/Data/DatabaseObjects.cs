@@ -17,22 +17,22 @@ public static class DatabaseIndexNames
 /// <summary>PostgreSQL sequences owned by the model.</summary>
 public static class DatabaseSequences
 {
-    /// <summary>Backs the human-readable <c>VR-&lt;n&gt;</c> valuation request identifier.</summary>
+ /// <summary>Backs the human-readable <c>VR-&lt;n&gt;</c> valuation request identifier.</summary>
     public const string ValuationRequestDisplayId = "ValuationRequestDisplayId";
 
-    /// <summary>
-    /// First value handed out. The seeded catalogue occupies VR-441..VR-444, and the
-    /// migration pushes the sequence past whatever the retired counter already produced.
-    /// </summary>
+ /// <summary>
+ /// First value handed out. The seeded catalogue occupies VR-441..VR-444, and the
+ /// migration pushes the sequence past whatever the retired counter already produced.
+ /// </summary>
     public const int ValuationRequestDisplayIdStart = 445;
 
     public const string QualifiedValuationRequestDisplayId =
         DatabaseSchemas.Valuation + ".\"" + ValuationRequestDisplayId + "\"";
 
-    /// <summary>
-    /// Constant so it is not an interpolated string at the call site (EF1002). EF scalar
-    /// queries read the column named <c>Value</c>.
-    /// </summary>
+ /// <summary>
+ /// Constant so it is not an interpolated string at the call site (EF1002). EF scalar
+ /// queries read the column named <c>Value</c>.
+ /// </summary>
     public const string NextValuationRequestDisplayIdSql =
         "SELECT nextval('" + QualifiedValuationRequestDisplayId + "') AS \"Value\"";
 }

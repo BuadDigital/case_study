@@ -15,10 +15,10 @@ public sealed class InspectorFeeLedgerResolver : IInspectorFeeLedgerResolver
         _db = db;
     }
 
-    /// <summary>
-    /// Property-linked task → one deed. PO-level task → one deed per work-order property.
-    /// Orphan task with no properties → legacy stand-in (task id).
-    /// </summary>
+ /// <summary>
+ /// Property-linked task → one deed. PO-level task → one deed per work-order property.
+ /// Orphan task with no properties → legacy stand-in (task id).
+ /// </summary>
     public async Task<IReadOnlyList<InspectorFeeDeedTarget>> ResolveDeedTargetsAsync(
         WorkflowTask task,
         CancellationToken cancellationToken = default)
@@ -61,7 +61,7 @@ public sealed class InspectorFeeLedgerResolver : IInspectorFeeLedgerResolver
                 .Select(w => (Guid?)w.Id)
                 .FirstOrDefaultAsync(cancellationToken);
 
-        // Orphan PO strings still need a stable transaction key for the unique index.
+ // Orphan PO strings still need a stable transaction key for the unique index.
         var transactionId = workOrderId ?? StableGuidFromKey($"tx:{po}");
         var deedId = deedIdOverride ?? task.PropertyId ?? task.Id;
         var userId = task.AssigneeId?.Trim() ?? "";
@@ -85,7 +85,7 @@ public sealed class InspectorFeeLedgerResolver : IInspectorFeeLedgerResolver
             return null;
         }
 
-        // Legacy fallback for unsplit rows only — prefer per-deed ResolveDeedTargetsAsync.
+ // Legacy fallback for unsplit rows only — prefer per-deed ResolveDeedTargetsAsync.
         var po = task.PoNumber.Trim();
         if (string.IsNullOrEmpty(po)) return null;
 
@@ -115,8 +115,8 @@ public sealed class InspectorFeeLedgerResolver : IInspectorFeeLedgerResolver
         WorkflowTask task,
         CancellationToken cancellationToken = default)
     {
-        // Product rules: engineering office is always an external entity;
-        // government reviewers follow employee vs cooperator from the staff profile (ج٧).
+ // Product rules: engineering office is always an external entity;
+ // government reviewers follow employee vs cooperator from the staff profile.
         if (task.Kind == WorkflowTaskKind.EngineeringSurvey)
             return EngineeringSurveyFeeRules.OfficePartyType;
 

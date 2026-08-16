@@ -22,15 +22,15 @@ public sealed class AuthSessionService(
     private const int TokenBytes = 32;
     private const string RotatedReason = "rotated";
 
-    /// <summary>Rotated and expired rows are kept this long for audit, then pruned.</summary>
+ /// <summary>Rotated and expired rows are kept this long for audit, then pruned.</summary>
     private static readonly TimeSpan RetainAfterExpiry = TimeSpan.FromDays(7);
 
-    /// <summary>
-    /// Browser tabs each keep their own copy of a session, so two of them can rotate
-    /// the same token at nearly the same moment. Within this window a replay is
-    /// treated as that benign race and simply gets its own sibling token; later
-    /// replays are treated as theft and drop the session family.
-    /// </summary>
+ /// <summary>
+ /// Browser tabs each keep their own copy of a session, so two of them can rotate
+ /// the same token at nearly the same moment. Within this window a replay is
+ /// treated as that benign race and simply gets its own sibling token; later
+ /// replays are treated as theft and drop the session family.
+ /// </summary>
     private static readonly TimeSpan RotationGrace = TimeSpan.FromSeconds(60);
 
     private async Task<LoginResponse?> IssueAsync(
@@ -108,7 +108,7 @@ public sealed class AuthSessionService(
             return null;
         }
 
-        // Family expiry is absolute: rotating does not extend the login window.
+ // Family expiry is absolute: rotating does not extend the login window.
         return await IssueForSessionAsync(
             user,
             stored.SessionId,
@@ -182,7 +182,7 @@ public sealed class AuthSessionService(
             ExpiresAtUtc = refreshExpiresAtUtc,
         });
 
-        // Stamp last login on fresh session issue only — refresh rotation keeps the family window.
+ // Stamp last login on fresh session issue only — refresh rotation keeps the family window.
         if (sessionExpiresAtUtc is null)
         {
             var profile = await db.UserProfiles

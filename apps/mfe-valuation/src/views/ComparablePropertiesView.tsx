@@ -52,7 +52,7 @@ function emptyForm(): UpsertComparablePropertyRequest {
 }
 
 /**
- * Phase 2 scaffold — company-wide comparable bank CRUD.
+ * Company-wide comparable bank CRUD.
  * Selection / adopt into a valuation request lives on the appraiser workspace (المقارنات tab).
  */
 export function ComparablePropertiesView() {

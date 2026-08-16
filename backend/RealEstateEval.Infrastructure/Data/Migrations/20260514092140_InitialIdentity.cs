@@ -6,10 +6,10 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
 namespace RealEstateEval.Infrastructure.Data.Migrations
 {
-    /// <inheritdoc />
+ /// <inheritdoc />
     public partial class InitialIdentity : Migration
     {
-        /// <inheritdoc />
+ /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
             migrationBuilder.CreateTable(
@@ -196,7 +196,7 @@ namespace RealEstateEval.Infrastructure.Data.Migrations
                 unique: true);
         }
 
-        /// <inheritdoc />
+ /// <inheritdoc />
         protected override void Down(MigrationBuilder migrationBuilder)
         {
             migrationBuilder.DropTable(

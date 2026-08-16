@@ -15,7 +15,7 @@ namespace RealEstateEval.Infrastructure.Data.Migrations
     [Migration("20260521143044_AddExpectedPropertyCount")]
     partial class AddExpectedPropertyCount
     {
-        /// <inheritdoc />
+ /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618

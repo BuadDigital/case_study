@@ -93,7 +93,7 @@ public class AttachmentUploadValidationTests
         Assert.False(string.IsNullOrWhiteSpace(root.GetProperty("title").GetString()));
         Assert.False(string.IsNullOrWhiteSpace(root.GetProperty("detail").GetString()));
 
-        // Legacy member kept so existing front-end callers reading `error` still work.
+ // Legacy member kept so existing front-end callers reading `error` still work.
         Assert.Equal(
             root.GetProperty("detail").GetString(),
             root.GetProperty("error").GetString());

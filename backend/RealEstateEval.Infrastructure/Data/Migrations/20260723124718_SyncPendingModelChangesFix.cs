@@ -11,7 +11,7 @@ namespace RealEstateEval.Infrastructure.Data.Migrations;
 /// </summary>
 public partial class SyncPendingModelChangesFix : Migration
 {
-    /// <inheritdoc />
+ /// <inheritdoc />
     protected override void Up(MigrationBuilder migrationBuilder)
     {
         migrationBuilder.Sql(
@@ -86,7 +86,7 @@ public partial class SyncPendingModelChangesFix : Migration
             """);
     }
 
-    /// <inheritdoc />
+ /// <inheritdoc />
     protected override void Down(MigrationBuilder migrationBuilder)
     {
         migrationBuilder.Sql(

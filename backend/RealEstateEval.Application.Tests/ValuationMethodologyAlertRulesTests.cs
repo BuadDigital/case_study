@@ -136,7 +136,7 @@ public class ValuationMethodologyAlertRulesTests
     [Fact]
     public void Liquidation_discount_no_longer_fires_m10()
     {
-        // ح-10 is the ث-1 use-restriction discount; liquidation has its own validation.
+ // Use-restriction discount; liquidation has its own validation.
         var checks = ValuationMethodologyAlertRules.Evaluate(EmptyInput() with
         {
             LiquidationDiscountPct = 15m,
@@ -189,7 +189,7 @@ public class ValuationMethodologyAlertRulesTests
                 new(BuildingStructureKinds.Floor, "دور متكرر", 100m, 1800m, null, true),
             ],
         });
-        // Baseline is the FIRST floor (ق-14) — ground-floor difference alone is fine.
+ // Baseline is the FIRST floor — ground-floor difference alone is fine.
         Assert.True(checks.Single(c => c.Number == 9).Triggered);
 
         var withRationale = ValuationMethodologyAlertRules.Evaluate(EmptyInput() with
@@ -257,7 +257,7 @@ public class ValuationMethodologyAlertRulesTests
     [Fact]
     public void Age_alerts_m2_m3_live_from_cost_approach_inputs()
     {
-        // Extended life zero with age data present → m2.
+ // Extended life zero with age data present → m2.
         var m2 = ValuationMethodologyAlertRules.Evaluate(EmptyInput() with
         {
             ActualAgeYears = 10m,
@@ -266,7 +266,7 @@ public class ValuationMethodologyAlertRulesTests
         Assert.True(m2.Single(c => c.Number == 2).Evaluated);
         Assert.True(m2.Single(c => c.Number == 2).Triggered);
 
-        // Actual 60 over extended 50 → m3 (hard).
+ // Actual 60 over extended 50 → m3 (hard).
         var m3 = ValuationMethodologyAlertRules.Evaluate(EmptyInput() with
         {
             ActualAgeYears = 60m,

@@ -6,7 +6,7 @@ using RealEstateEval.Shared.Web.Authorization;
 
 namespace RealEstateEval.Valuation.Api.Controllers;
 
-/// <summary>Phase 3 scaffold — native valuation report document preview.</summary>
+/// <summary>Native valuation report document preview.</summary>
 [ApiController]
 [Route("api/valuation-requests/{valuationRequestId:guid}/report-document")]
 [Route("api/valuation-requests/v1/{valuationRequestId:guid}/report-document")]

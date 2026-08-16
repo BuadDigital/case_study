@@ -13,7 +13,7 @@ namespace RealEstateEval.Infrastructure.Data.Contexts.CaseStudy.Migrations;
 [Migration("20260812110000_AddDeedOwnershipFileName")]
 public partial class AddDeedOwnershipFileName : Migration
 {
-    /// <inheritdoc />
+ /// <inheritdoc />
     protected override void Up(MigrationBuilder migrationBuilder)
     {
         migrationBuilder.AddColumn<string>(
@@ -31,7 +31,7 @@ public partial class AddDeedOwnershipFileName : Migration
             nullable: true);
     }
 
-    /// <inheritdoc />
+ /// <inheritdoc />
     protected override void Down(MigrationBuilder migrationBuilder)
     {
         migrationBuilder.DropColumn(

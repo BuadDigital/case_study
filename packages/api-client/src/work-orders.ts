@@ -38,11 +38,11 @@ export type WorkOrderPropertyDto = {
   realEstateRegDate?: string;
   hasRequestNumber?: boolean;
   ownerName?: string;
-  /** §4ج-8 — traditional | registered_title. */
+ /** traditional | registered_title. */
   deedKind?: string;
   deedKindLabelAr?: string;
   suggestedDeedKind?: string;
-  /** §4ج-7 — الملاك وحصصهم. */
+ /** الملاك وحصصهم. */
   owners?: DeedOwnerDto[];
   ownershipType?: string;
   ownershipTypeLabelAr?: string;
@@ -177,7 +177,7 @@ export type UpdatePropertyBourseRequest = {
   area?: string;
   deedStatus?: string;
   bourseDeedImageFileName?: string;
-  /** §4ج-7 — replaces the whole owners list when provided. */
+ /** replaces the whole owners list when provided. */
   owners?: DeedOwnerDto[];
   ownershipType?: string;
   ownershipTypeIsManual?: boolean;

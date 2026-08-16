@@ -15,7 +15,7 @@ namespace RealEstateEval.Infrastructure.Data.Migrations
     [Migration("20260802052225_AddDiscountFlags")]
     partial class AddDiscountFlags
     {
-        /// <inheritdoc />
+ /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618

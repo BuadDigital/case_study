@@ -14,12 +14,12 @@ public sealed class GatewayReadinessOptions
 
     public int TimeoutSeconds { get; init; } = 2;
 
-    /// <summary>Container healthchecks poll frequently; results are reused for this long.</summary>
+ /// <summary>Container healthchecks poll frequently; results are reused for this long.</summary>
     public int CacheSeconds { get; init; } = 5;
 
     public string UpstreamHealthPath { get; init; } = "/health";
 
-    /// <summary>Empty means every cluster configured in <c>ReverseProxy:Clusters</c>.</summary>
+ /// <summary>Empty means every cluster configured in <c>ReverseProxy:Clusters</c>.</summary>
     public IReadOnlyList<string> RequiredClusters { get; init; } = [];
 
     public static GatewayReadinessOptions FromConfiguration(IConfiguration configuration)
@@ -243,10 +243,10 @@ public static class GatewayReadinessExtensions
         return services;
     }
 
-    /// <summary>
-    /// Maps <c>/ready</c>. Falls back to reporting the gateway's own liveness only when the
-    /// upstream probe is disabled, so the endpoint always exists for orchestrators.
-    /// </summary>
+ /// <summary>
+ /// Maps <c>/ready</c>. Falls back to reporting the gateway's own liveness only when the
+ /// upstream probe is disabled, so the endpoint always exists for orchestrators.
+ /// </summary>
     public static WebApplication MapGatewayUpstreamReady(
         this WebApplication app,
         string serviceName)

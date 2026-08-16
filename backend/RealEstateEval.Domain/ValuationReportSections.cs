@@ -36,11 +36,11 @@ public static class ValuationReportSectionKeys
 
 public enum ValuationReportSectionBodyKind
 {
-    /// <summary>Filled from live valuation / property data.</summary>
+ /// <summary>Filled from live valuation / property data.</summary>
     Data = 0,
-    /// <summary>Frozen text layer (standards / legal) — version id at issue.</summary>
+ /// <summary>Frozen text layer (standards / legal) — version id at issue.</summary>
     FrozenText = 1,
-    /// <summary>Attachment / map / photo page container.</summary>
+ /// <summary>Attachment / map / photo page container.</summary>
     AttachmentPage = 2,
 }
 
@@ -49,16 +49,16 @@ public sealed record ValuationReportSectionDefinition(
     string Key,
     string TitleAr,
     ValuationReportSectionBodyKind BodyKind,
-    /// <summary>When true, omit for vacant land (no structures).</summary>
+ /// <summary>When true, omit for vacant land (no structures).</summary>
     bool BuildingOnly = false,
-    /// <summary>When true, omit unless market approach is weighted/used.</summary>
+ /// <summary>When true, omit unless market approach is weighted/used.</summary>
     bool RequiresMarketApproach = false,
-    /// <summary>When true, omit unless cost approach is weighted/used.</summary>
+ /// <summary>When true, omit unless cost approach is weighted/used.</summary>
     bool RequiresCostApproach = false,
-    /// <summary>When true, omit unless income approach is used (deferred — always off).</summary>
+ /// <summary>When true, omit unless income approach is used (deferred — always off).</summary>
     bool RequiresIncomeApproach = false);
 
-/// <summary>Catalog + land/building / approach conditionals (system-spec §3 / §6).</summary>
+/// <summary>Catalog + land/building / approach conditionals.</summary>
 public static class ValuationReportSectionCatalog
 {
     public static IReadOnlyList<ValuationReportSectionDefinition> All { get; } =
@@ -92,10 +92,10 @@ public static class ValuationReportSectionCatalog
         new(27, ValuationReportSectionKeys.Glossary, "المصطلحات", ValuationReportSectionBodyKind.FrozenText),
     ];
 
-    /// <summary>
-    /// Visible sections for a report instance. Building-only content is folded into
-    /// existing slots (e.g. utilities label); approach tables drop when unused.
-    /// </summary>
+ /// <summary>
+ /// Visible sections for a report instance. Building-only content is folded into
+ /// existing slots (e.g. utilities label); approach tables drop when unused.
+ /// </summary>
     public static IReadOnlyList<ValuationReportSectionDefinition> ResolveVisible(
         bool hasStructuresToValue,
         bool marketApproachUsed,
@@ -121,7 +121,7 @@ public static class ValuationReportSectionCatalog
         return true;
     }
 
-    /// <summary>Section 9 title: land uses area utilities; buildings use full services.</summary>
+ /// <summary>Section 9 title: land uses area utilities; buildings use full services.</summary>
     public static string DisplayTitleAr(ValuationReportSectionDefinition section, bool hasStructuresToValue)
     {
         if (section.Key == ValuationReportSectionKeys.AreaUtilities && hasStructuresToValue)
@@ -136,7 +136,7 @@ public static class ValuationReportSectionCatalog
 /// <summary>Temporary report number until numbering workshop locks the final format.</summary>
 public static class ValuationReportNumberRules
 {
-    /// <summary>Format: تق-YYYY-DisplayId (temporary reference before issuance deposit code).</summary>
+ /// <summary>Format: تق-YYYY-DisplayId (temporary reference before issuance deposit code).</summary>
     public static string FormatTemporary(string displayId, DateOnly reportDate)
     {
         var id = string.IsNullOrWhiteSpace(displayId) ? "—" : displayId.Trim();
@@ -144,7 +144,7 @@ public static class ValuationReportNumberRules
     }
 }
 
-/// <summary>§7.2 — report validity: 90 days from the report date. ضابط تنبيهي لا حاجب.</summary>
+/// <summary>report validity: 90 days from the report date. ضابط تنبيهي لا حاجب.</summary>
 public static class ValuationReportValidityRules
 {
     public const int ValidityDays = 90;
@@ -158,13 +158,13 @@ public static class ValuationReportValidityRules
         + " (ضابط تنبيهي لا حاجب).";
 }
 
-/// <summary>Display-layer helpers (system-spec §6) — scaffold only.</summary>
+/// <summary>Display-layer helpers — scaffold only.</summary>
 public static class ValuationReportDisplayRules
 {
     public static string FormatGregorianDate(DateOnly date) =>
         $"{date.Year:D4}/{date.Month:D2}/{date.Day:D2}";
 
-    /// <summary>Hijri display — Um Al-Qura calendar (the Kingdom's official one), «هـ» suffix (§6).</summary>
+ /// <summary>Hijri display — Um Al-Qura calendar (the Kingdom's official one), «هـ» suffix.</summary>
     public static string FormatHijriDate(DateOnly date)
     {
         var hijri = new System.Globalization.UmAlQuraCalendar();
@@ -172,7 +172,7 @@ public static class ValuationReportDisplayRules
         return $"{hijri.GetYear(dt):D4}/{hijri.GetMonth(dt):D2}/{hijri.GetDayOfMonth(dt):D2}هـ";
     }
 
-    /// <summary>Formats an ISO yyyy-MM-dd (or ISO datetime) string as YYYY/MM/DD; falls back to input.</summary>
+ /// <summary>Formats an ISO yyyy-MM-dd (or ISO datetime) string as YYYY/MM/DD; falls back to input.</summary>
     public static string FormatIsoDateString(string? iso)
     {
         var s = (iso ?? "").Trim();
@@ -185,6 +185,6 @@ public static class ValuationReportDisplayRules
     public static string FormatMoney(decimal amount) =>
         amount.ToString("#,##0.00", System.Globalization.CultureInfo.InvariantCulture);
 
-    /// <summary>«المقيم» without tashkeel in body copy.</summary>
+ /// <summary>«المقيم» without tashkeel in body copy.</summary>
     public const string ValuerWordPlain = "المقيم";
 }

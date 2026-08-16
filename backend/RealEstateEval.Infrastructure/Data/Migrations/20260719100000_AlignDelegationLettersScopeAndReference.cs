@@ -12,7 +12,7 @@ namespace RealEstateEval.Infrastructure.Data.Migrations;
 [Migration("20260719100000_AlignDelegationLettersScopeAndReference")]
 public partial class AlignDelegationLettersScopeAndReference : Migration
 {
-    /// <inheritdoc />
+ /// <inheritdoc />
     protected override void Up(MigrationBuilder migrationBuilder)
     {
         migrationBuilder.DropIndex(
@@ -69,7 +69,7 @@ public partial class AlignDelegationLettersScopeAndReference : Migration
             unique: true);
     }
 
-    /// <inheritdoc />
+ /// <inheritdoc />
     protected override void Down(MigrationBuilder migrationBuilder)
     {
         migrationBuilder.DropTable(

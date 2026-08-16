@@ -12,7 +12,7 @@ namespace RealEstateEval.Infrastructure.Services;
 /// <summary>
 /// Financial summary. Owned fee/config tables live on <see cref="FinancialDbContext"/>;
 /// completed case-study property filters use <see cref="CaseStudyDbContext"/> reads;
-/// assignee display names use <see cref="IdentityDbContext"/> (residual until Phase 3).
+/// assignee display names use <see cref="IdentityDbContext"/> (residual until owner APIs replace them).
 /// </summary>
 public sealed class FinancialReportService : IFinancialReportService
 {
@@ -95,7 +95,7 @@ public sealed class FinancialReportService : IFinancialReportService
                 l => (decimal?)(l.AgreedFeeSar - l.SupervisorDiscountSar),
                 cancellationToken) ?? 0m;
 
-        // Collected Enfaz invoices only — entitlements / unissued lines do not count as revenue.
+ // Collected Enfaz invoices only — entitlements / unissued lines do not count as revenue.
         var invoices = await _fin.PoEnfazInvoices.AsNoTracking()
             .Where(i => i.CollectedAmountSar > 0)
             .ToListAsync(cancellationToken);
@@ -118,7 +118,7 @@ public sealed class FinancialReportService : IFinancialReportService
             var keys = lines.Sum(l => l.KeyFeeSar);
             if (core + keys <= 0 && invoice.SubtotalSar > 0)
             {
-                // Fallback when lines were wiped after issue: use stamped invoice subtotal.
+ // Fallback when lines were wiped after issue: use stamped invoice subtotal.
                 enfazCoreCollected += Math.Round(invoice.SubtotalSar * ratio, 2, MidpointRounding.AwayFromZero);
                 continue;
             }
@@ -127,9 +127,9 @@ public sealed class FinancialReportService : IFinancialReportService
             keyViaEnfazCollected += Math.Round(keys * ratio, 2, MidpointRounding.AwayFromZero);
         }
 
-        // Historical only. Nothing stamps key-receipt amounts any more — registering the envelope
-        // marks the entitlement and finance bills إنفاذ by hand — so this line covers the charges
-        // written before that change and empties out on its own.
+ // Historical only. Nothing stamps key-receipt amounts any more — registering the envelope
+ // marks the entitlement and finance bills إنفاذ by hand — so this line covers the charges
+ // written before that change and empties out on its own.
         var keyReceiptSummary = await _fin.KeyReceiptFeeCharges.AsNoTracking()
             .GroupBy(_ => 1)
             .Select(group => new
@@ -227,7 +227,7 @@ public sealed class FinancialReportService : IFinancialReportService
     private async Task<IQueryable<InspectorFeeLedger>> CompletedCaseStudyLedgersAsync(
         CancellationToken cancellationToken)
     {
-        // Cross-context filter: load completed case-study property ids, then filter financial ledgers.
+ // Cross-context filter: load completed case-study property ids, then filter financial ledgers.
         var completedPropertyIds = await _caseStudy.WorkflowTasks.AsNoTracking()
             .Where(task =>
                 task.Kind == WorkflowTaskKind.CaseStudyProperty
@@ -238,9 +238,9 @@ public sealed class FinancialReportService : IFinancialReportService
             .ToListAsync(cancellationToken);
 
         return _fin.InspectorFeeLedgers.AsNoTracking()
-            // Disputed lines have no agreed amount yet and suspended ones are withheld, so neither is
-            // a committed cost. Excluding them here keeps them out of every aggregate: costs, margin,
-            // payables, and the per-PO tracked/disbursed counts.
+ // Disputed lines have no agreed amount yet and suspended ones are withheld, so neither is
+ // a committed cost. Excluding them here keeps them out of every aggregate: costs, margin,
+ // payables, and the per-PO tracked/disbursed counts.
             .Where(ledger =>
                 ledger.BillingStatus != InspectorFeeBillingStatus.Disputed
                 && ledger.BillingStatus != InspectorFeeBillingStatus.Suspended)
@@ -283,7 +283,7 @@ public sealed class FinancialReportService : IFinancialReportService
         IQueryable<InspectorFeeLedger> completedLedgers,
         CancellationToken cancellationToken)
     {
-        // Project scalars only so InspectorFeeLedger entities are not materialized (F/D10 report tests).
+ // Project scalars only so InspectorFeeLedger entities are not materialized (F/D10 report tests).
         var ledgerSlices = await completedLedgers
             .Select(ledger => new
             {

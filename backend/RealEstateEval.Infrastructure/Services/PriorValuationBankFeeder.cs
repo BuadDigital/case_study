@@ -7,7 +7,7 @@ namespace RealEstateEval.Infrastructure.Services;
 
 /// <summary>
 /// Harvests a completed valuation's subject into the shared bank as source
-/// «تقييم سابق» (ق-8) — the source card then shows «من معاملات سابقة».
+/// «تقييم سابق» — the source card then shows «من معاملات سابقة».
 /// Skips quietly when mandatory bank data (final value, area, coordinates) is absent:
 /// «لا تُخترع بيانات».
 /// </summary>
@@ -27,7 +27,7 @@ public sealed class PriorValuationBankFeeder(
         if (vr is null) return false;
         if (!Guid.TryParse(vr.PropertyId?.Trim(), out var propertyGuid)) return false;
 
-        // Idempotent — one prior-valuation row per subject property.
+ // Idempotent — one prior-valuation row per subject property.
         var exists = await valuation.ComparableProperties.AsNoTracking()
             .AnyAsync(
                 c => c.SourcePropertyId == propertyGuid

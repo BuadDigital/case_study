@@ -169,7 +169,7 @@ public sealed class OperationsTaskCommands : IOperationsTaskCommands
         var actor = actorAssigneeId.Trim();
         var isAssignee = actor.Length > 0
             && string.Equals(entity.AssigneeId, actor, StringComparison.OrdinalIgnoreCase);
-        // Fallback: display name match when DistAssigneeId drifts (staff seed / create UI).
+ // Fallback: display name match when DistAssigneeId drifts (staff seed / create UI).
         if (!isAssignee && !isManager && !string.IsNullOrWhiteSpace(actorName))
         {
             isAssignee = string.Equals(
@@ -181,7 +181,7 @@ public sealed class OperationsTaskCommands : IOperationsTaskCommands
         if (!isManager && !isAssignee)
             return (null, "هذا الإجراء للمنفّذ المكلّف أو المشرف فقط");
 
-        // Non-managers may only transition status / execution fields — not re-author the task.
+ // Non-managers may only transition status / execution fields — not re-author the task.
         if (!isManager
             && (request.Title is not null
                 || request.Description is not null
@@ -225,8 +225,8 @@ public sealed class OperationsTaskCommands : IOperationsTaskCommands
                 var (normalized, courtError) = OperationsTaskCourtVisitRules.Normalize(request.CourtVisitResult);
                 if (courtError is not null) return (null, courtError);
 
-                // Price the visit before touching the task. Refusing further down would leave a
-                // completed entity sitting in the change tracker even though nothing was saved.
+ // Price the visit before touching the task. Refusing further down would leave a
+ // completed entity sitting in the change tracker even though nothing was saved.
                 (courtVisitFee, var pricingError) =
                     await _visitFees.ResolveCourtVisitFeeAsync(entity, cancellationToken);
                 if (pricingError is not null) return (null, pricingError);
@@ -568,7 +568,7 @@ public sealed class OperationsTaskCommands : IOperationsTaskCommands
         await _db.SaveChangesAsync(cancellationToken);
 
         var kind = request.Kind?.Trim() ?? "comment";
-        // Human thread only — system updates / reminders are not counterparty chatter.
+ // Human thread only — system updates / reminders are not counterparty chatter.
         if (kind is "comment" or "close" or "")
         {
             await _notifier.NotifyCounterpartyOnCommentAsync(
@@ -632,9 +632,9 @@ public sealed class OperationsTaskCommands : IOperationsTaskCommands
         return (displayId, reference);
     }
 
-    /// <summary>
-    /// Race-safe yearly counter (ج٩). Mirrors DocumentReferenceCounter upsert used by billing statements.
-    /// </summary>
+ /// <summary>
+ /// Race-safe yearly counter. Mirrors DocumentReferenceCounter upsert used by billing statements.
+ /// </summary>
     private async Task<int> NextOperationsTaskSeqAsync(
         int year,
         DateTime nowUtc,

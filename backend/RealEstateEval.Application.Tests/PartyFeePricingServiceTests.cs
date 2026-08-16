@@ -17,12 +17,12 @@ public class PartyFeePricingServiceTests
     private const decimal GovernmentRate = 350m;
     private const decimal OrganizationRate = 500m;
 
-    // ── التصنيف ─────────────────────────────────────────────────────────────────────────
+ // ── التصنيف ─────────────────────────────────────────────────────────────────────────
 
-    /// <summary>
-    /// An unknown category used to be coerced to engineering-survey, so a typo in the filter returned
-    /// another category's tables as though they were the ones asked for.
-    /// </summary>
+ /// <summary>
+ /// An unknown category used to be coerced to engineering-survey, so a typo in the filter returned
+ /// another category's tables as though they were the ones asked for.
+ /// </summary>
     [Theory]
     [InlineData("engineering_survey")]
     [InlineData("inspector")]
@@ -32,7 +32,7 @@ public class PartyFeePricingServiceTests
         await using var db = CreateDb();
         var service = new PartyFeePricingService(db);
 
-        // A blank filter means "every category", so only the create path rejects it.
+ // A blank filter means "every category", so only the create path rejects it.
         if (category.Length > 0)
         {
             await Assert.ThrowsAsync<ArgumentException>(() => service.ListAsync(category));
@@ -46,12 +46,12 @@ public class PartyFeePricingServiceTests
             }));
     }
 
-    // ── النسخ ───────────────────────────────────────────────────────────────────────────
+ // ── النسخ ───────────────────────────────────────────────────────────────────────────
 
-    /// <summary>
-    /// An explicit copy that cannot be honoured must fail. It used to fall through to whichever table
-    /// the category happened to have, handing the new table rates nobody asked for.
-    /// </summary>
+ /// <summary>
+ /// An explicit copy that cannot be honoured must fail. It used to fall through to whichever table
+ /// the category happened to have, handing the new table rates nobody asked for.
+ /// </summary>
     [Fact]
     public async Task Copying_from_a_table_that_does_not_exist_is_refused()
     {
@@ -69,10 +69,10 @@ public class PartyFeePricingServiceTests
         Assert.Contains("غير موجود", error.Message);
     }
 
-    /// <summary>
-    /// Categories price different things — area tiers against flat amounts — so carrying one over to
-    /// the other produces a table whose numbers mean nothing.
-    /// </summary>
+ /// <summary>
+ /// Categories price different things — area tiers against flat amounts — so carrying one over to
+ /// the other produces a table whose numbers mean nothing.
+ /// </summary>
     [Fact]
     public async Task Copying_across_categories_is_refused()
     {
@@ -133,12 +133,12 @@ public class PartyFeePricingServiceTests
         Assert.False(copy.IsActive);
     }
 
-    // ── منع الاحتياط ────────────────────────────────────────────────────────────────────
+ // ── منع الاحتياط ────────────────────────────────────────────────────────────────────
 
-    /// <summary>
-    /// Every category is given a placeholder table so the pricing screen has something to edit. It
-    /// must arrive empty: a placeholder that carries amounts is a rate nobody agreed to.
-    /// </summary>
+ /// <summary>
+ /// Every category is given a placeholder table so the pricing screen has something to edit. It
+ /// must arrive empty: a placeholder that carries amounts is a rate nobody agreed to.
+ /// </summary>
     [Fact]
     public async Task The_placeholder_each_category_starts_with_carries_no_amounts()
     {
@@ -175,10 +175,10 @@ public class PartyFeePricingServiceTests
         Assert.Empty(created.AreaTiers);
     }
 
-    /// <summary>
-    /// Zero is "nobody set a rate", not "the rate is zero", so it must resolve to nothing and let the
-    /// caller refuse to bill rather than write a zero-value line.
-    /// </summary>
+ /// <summary>
+ /// Zero is "nobody set a rate", not "the rate is zero", so it must resolve to nothing and let the
+ /// caller refuse to bill rather than write a zero-value line.
+ /// </summary>
     [Theory]
     [InlineData(WorkflowTaskKind.GovernmentReview, InspectorFeeRules.TypeCooperatorIndividual, null)]
     [InlineData(WorkflowTaskKind.FieldInspection, InspectorFeeRules.TypeCooperatorOrganization, null)]
@@ -198,10 +198,10 @@ public class PartyFeePricingServiceTests
         Assert.Null(fee.PricingTableId);
     }
 
-    /// <summary>
-    /// An employee's fee is agreed case by case and entered by hand, so the table must not answer for
-    /// them even once it is priced.
-    /// </summary>
+ /// <summary>
+ /// An employee's fee is agreed case by case and entered by hand, so the table must not answer for
+ /// them even once it is priced.
+ /// </summary>
     [Fact]
     public async Task An_employee_inspector_is_never_priced_from_the_table()
     {
@@ -236,10 +236,10 @@ public class PartyFeePricingServiceTests
                 InspectorFeeRules.TypeCooperatorOrganization)).FeeSar);
     }
 
-    /// <summary>
-    /// The amount is useless as evidence without the schedule behind it, so resolution names the
-    /// table it read — and names nothing when it read no rate.
-    /// </summary>
+ /// <summary>
+ /// The amount is useless as evidence without the schedule behind it, so resolution names the
+ /// table it read — and names nothing when it read no rate.
+ /// </summary>
     [Fact]
     public async Task A_resolved_fee_names_the_table_it_came_from()
     {
@@ -298,7 +298,7 @@ public class PartyFeePricingServiceTests
                 areaM2: 401m)).FeeSar);
     }
 
-    // ── اختيار الجدول والإسناد ──────────────────────────────────────────────────────────
+ // ── اختيار الجدول والإسناد ──────────────────────────────────────────────────────────
 
     [Fact]
     public async Task An_assigned_party_is_priced_by_their_own_table_not_the_default()
@@ -335,10 +335,10 @@ public class PartyFeePricingServiceTests
                 assigneeId: "gr-other")).FeeSar);
     }
 
-    /// <summary>
-    /// Survey rates are negotiated per office, so an office with no table of its own has no price at
-    /// all — the category default must not stand in for a contract that was never signed.
-    /// </summary>
+ /// <summary>
+ /// Survey rates are negotiated per office, so an office with no table of its own has no price at
+ /// all — the category default must not stand in for a contract that was never signed.
+ /// </summary>
     [Fact]
     public async Task An_engineering_office_with_no_assignment_has_no_price()
     {
@@ -353,7 +353,7 @@ public class PartyFeePricingServiceTests
             areaM2: 300m,
             assigneeId: "eo-unassigned")).FeeSar);
 
-        // The same area is priced once the office is pointed at the table.
+ // The same area is priced once the office is pointed at the table.
         await service.SetAssignmentsAsync(table.Id, ["eo-unassigned"]);
         Assert.Equal(
             1200m,
@@ -379,10 +379,10 @@ public class PartyFeePricingServiceTests
         Assert.Equal(2, saved.AssignedCount);
     }
 
-    /// <summary>
-    /// One party cannot hold two rates for the same work, so assigning them elsewhere has to take the
-    /// earlier assignment away rather than leave whichever row the resolver happens to read first.
-    /// </summary>
+ /// <summary>
+ /// One party cannot hold two rates for the same work, so assigning them elsewhere has to take the
+ /// earlier assignment away rather than leave whichever row the resolver happens to read first.
+ /// </summary>
     [Fact]
     public async Task Assigning_a_party_elsewhere_moves_them_off_their_previous_table()
     {
@@ -402,10 +402,10 @@ public class PartyFeePricingServiceTests
         Assert.Equal(["eo-1"], await service.ListAssignmentsAsync(second.Id));
     }
 
-    /// <summary>
-    /// An assignment is scoped to its category. A party paid survey rates from one table and
-    /// inspection rates from another must keep both.
-    /// </summary>
+ /// <summary>
+ /// An assignment is scoped to its category. A party paid survey rates from one table and
+ /// inspection rates from another must keep both.
+ /// </summary>
     [Fact]
     public async Task An_assignment_in_another_category_is_left_alone()
     {
@@ -424,10 +424,10 @@ public class PartyFeePricingServiceTests
             await service.ListAssignmentsAsync(PartyFeePricingService.DefaultInspectorTableId));
     }
 
-    /// <summary>
-    /// Once parties depend on a schedule, changing that row would silently rewrite the contract
-    /// behind their next fee. The old schedule becomes immutable instead.
-    /// </summary>
+ /// <summary>
+ /// Once parties depend on a schedule, changing that row would silently rewrite the contract
+ /// behind their next fee. The old schedule becomes immutable instead.
+ /// </summary>
     [Fact]
     public async Task An_assigned_table_refuses_direct_rate_changes()
     {
@@ -451,10 +451,10 @@ public class PartyFeePricingServiceTests
         Assert.Equal("افتراضي", unchanged.Name);
     }
 
-    /// <summary>
-    /// A revision is one operation: copy the rates, apply the edit, move every party, and transfer
-    /// the default flag. Nobody can observe an assignment pointing at a half-written schedule.
-    /// </summary>
+ /// <summary>
+ /// A revision is one operation: copy the rates, apply the edit, move every party, and transfer
+ /// the default flag. Nobody can observe an assignment pointing at a half-written schedule.
+ /// </summary>
     [Fact]
     public async Task Revising_an_assigned_table_copies_it_and_relinks_parties_atomically()
     {
@@ -534,7 +534,7 @@ public class PartyFeePricingServiceTests
         Assert.NotNull(await service.GetByIdAsync(sourceId));
     }
 
-    // ── الافتراضي وحذف الجداول ──────────────────────────────────────────────────────────
+ // ── الافتراضي وحذف الجداول ──────────────────────────────────────────────────────────
 
     [Fact]
     public async Task Activating_a_table_demotes_the_previous_default_of_its_category_only()
@@ -570,10 +570,10 @@ public class PartyFeePricingServiceTests
             service.DeleteAsync(PartyFeePricingService.DefaultCourtVisitTableId));
     }
 
-    /// <summary>
-    /// Deleting the default must hand the role to another table in the same breath, or the category is
-    /// left with no rates at all and every fee in it stops resolving.
-    /// </summary>
+ /// <summary>
+ /// Deleting the default must hand the role to another table in the same breath, or the category is
+ /// left with no rates at all and every fee in it stops resolving.
+ /// </summary>
     [Fact]
     public async Task Deleting_the_default_promotes_another_table_in_its_category()
     {
@@ -603,7 +603,7 @@ public class PartyFeePricingServiceTests
         Assert.False(await service.DeleteAsync(Guid.NewGuid()));
     }
 
-    // ── مساعدات ─────────────────────────────────────────────────────────────────────────
+ // ── مساعدات ─────────────────────────────────────────────────────────────────────────
 
     private static async Task<PartyFeePricingDto> SetGovernmentRateAsync(
         PartyFeePricingService service,

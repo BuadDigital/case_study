@@ -5,10 +5,10 @@ using Microsoft.EntityFrameworkCore.Migrations;
 
 namespace RealEstateEval.Infrastructure.Data.Migrations
 {
-    /// <inheritdoc />
+ /// <inheritdoc />
     public partial class AddCourtsEngine : Migration
     {
-        /// <inheritdoc />
+ /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
             migrationBuilder.AddColumn<Guid>(
@@ -117,7 +117,7 @@ namespace RealEstateEval.Infrastructure.Data.Migrations
                 columns: new[] { "Region", "City" });
         }
 
-        /// <inheritdoc />
+ /// <inheritdoc />
         protected override void Down(MigrationBuilder migrationBuilder)
         {
             migrationBuilder.DropTable(

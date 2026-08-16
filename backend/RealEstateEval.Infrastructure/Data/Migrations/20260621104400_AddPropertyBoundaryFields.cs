@@ -4,10 +4,10 @@
 
 namespace RealEstateEval.Infrastructure.Data.Migrations
 {
-    /// <inheritdoc />
+ /// <inheritdoc />
     public partial class AddPropertyBoundaryFields : Migration
     {
-        /// <inheritdoc />
+ /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
             migrationBuilder.AddColumn<string>(
@@ -75,7 +75,7 @@ namespace RealEstateEval.Infrastructure.Data.Migrations
                 nullable: true);
         }
 
-        /// <inheritdoc />
+ /// <inheritdoc />
         protected override void Down(MigrationBuilder migrationBuilder)
         {
             migrationBuilder.DropColumn(

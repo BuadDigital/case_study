@@ -5,10 +5,10 @@ using Microsoft.EntityFrameworkCore.Migrations;
 
 namespace RealEstateEval.Infrastructure.Data.Contexts.Identity.Migrations
 {
-    /// <inheritdoc />
+ /// <inheritdoc />
     public partial class AddUserProfileLastLoginAt : Migration
     {
-        /// <inheritdoc />
+ /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
             migrationBuilder.AddColumn<DateTime>(
@@ -19,7 +19,7 @@ namespace RealEstateEval.Infrastructure.Data.Contexts.Identity.Migrations
                 nullable: true);
         }
 
-        /// <inheritdoc />
+ /// <inheritdoc />
         protected override void Down(MigrationBuilder migrationBuilder)
         {
             migrationBuilder.DropColumn(

@@ -34,7 +34,7 @@ function formatSar(n: number) {
 
 /**
  * مستبعدة: بنود مخسومة/مستبعدة قبل الاستحقاق + مسيرات ملغاة (سجل).
- * وفق مرجع §4.3 — عرض فقط.
+ * وفق مرجع عرض فقط.
  */
 export function FinanceExcludedCosts({
   assigneeId = null,

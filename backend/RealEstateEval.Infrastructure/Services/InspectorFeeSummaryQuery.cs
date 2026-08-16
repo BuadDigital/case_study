@@ -38,17 +38,17 @@ public sealed class InspectorFeeSummaryQuery : IInspectorFeeSummaryQuery
 
         var query = _db.InspectorFeeLedgers.AsNoTracking();
 
-        // Applied to the query itself, before any row cap or projection, so a disputed line cannot
-        // reach finance through the list, the totals, or the queue counts derived from them.
+ // Applied to the query itself, before any row cap or projection, so a disputed line cannot
+ // reach finance through the list, the totals, or the queue counts derived from them.
         if (hideDisputed)
         {
             query = query.Where(x =>
                 x.BillingStatus != InspectorFeeBillingStatus.Disputed);
         }
 
-        // A non-null supervisingDepartment means the caller is department-scoped. Fail closed when
-        // the value is missing/unknown (e.g. Unassigned) so a supervisor without a department sees
-        // nothing rather than every queue.
+ // A non-null supervisingDepartment means the caller is department-scoped. Fail closed when
+ // the value is missing/unknown (e.g. Unassigned) so a supervisor without a department sees
+ // nothing rather than every queue.
         if (supervisingDepartment is not null)
         {
             var normalizedDepartment = SupervisingDepartments.NormalizeProfileValue(supervisingDepartment);
@@ -94,7 +94,7 @@ public sealed class InspectorFeeSummaryQuery : IInspectorFeeSummaryQuery
             .Where(t => taskIds.Contains(t.Id))
             .ToDictionaryAsync(t => t.Id, cancellationToken);
 
-        // An unrecognised filter value must match nothing rather than everything.
+ // An unrecognised filter value must match nothing rather than everything.
         if (!string.IsNullOrWhiteSpace(taskKind))
         {
             var kindMatched = WorkflowTaskKindValues.TryParse(taskKind, out var kind);
@@ -310,8 +310,8 @@ public sealed class InspectorFeeSummaryQuery : IInspectorFeeSummaryQuery
             .ToListAsync(cancellationToken);
         var engSet = engSurveyIds.ToHashSet();
 
-        // Engineering-survey: visible after specialist acceptance (AccruedAtUtc).
-        // Other party fees: still gated on completed case-study for the property.
+ // Engineering-survey: visible after specialist acceptance (AccruedAtUtc).
+ // Other party fees: still gated on completed case-study for the property.
         var nonEng = ledgers.Where(l => !engSet.Contains(l.WorkflowTaskId)).ToList();
         var engVisible = ledgers
             .Where(l => engSet.Contains(l.WorkflowTaskId) && l.AccruedAtUtc is not null)

@@ -1,7 +1,7 @@
 namespace RealEstateEval.Domain;
 
 /// <summary>
-/// Dual license + membership gate for report issuance (§7 / decision 2.1).
+/// Dual license + membership gate for report issuance (/ ).
 /// Expired license or membership blocks issue; ≤60 days remaining is a warning.
 /// </summary>
 public static class ValuerCredentialRules
@@ -37,7 +37,7 @@ public static class ValuerCredentialRules
         return days is >= 0 and <= WarningDays;
     }
 
-    /// <summary>Hard gate: both credentials must be present and not expired.</summary>
+ /// <summary>Hard gate: both credentials must be present and not expired.</summary>
     public static bool AllowsIssuance(
         string? licenseExpiresAt,
         string? membershipExpiresAt,

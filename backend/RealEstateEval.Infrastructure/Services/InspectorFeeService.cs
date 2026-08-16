@@ -88,7 +88,7 @@ public class InspectorFeeService : IInspectorFeeService
             .Where(x => x.WorkflowTaskId == workflowTaskId)
             .ToListAsync(cancellationToken);
 
-        // Idempotent: every target deed already accrued — do not create a second fee on re-accept.
+ // Idempotent: every target deed already accrued — do not create a second fee on re-accept.
         if (deeds.Count > 0
             && deeds.All(d => existingForTask.Any(l =>
                 l.DeedId == d.DeedId && l.AccruedAtUtc is not null && l.AgreedFeeSar > 0m)))
@@ -106,8 +106,8 @@ public class InspectorFeeService : IInspectorFeeService
             ordinal++;
             var areaM2 = await _resolver.ResolvePropertyAreaM2Async(
                 task, cancellationToken, deed.PropertyId);
-            // Offices enter المساحة الإجمالية on the survey form; PO Area is often still blank.
-            // Prefer that submitted area for tier pricing, and backfill the property row when empty.
+ // Offices enter المساحة الإجمالية on the survey form; PO Area is often still blank.
+ // Prefer that submitted area for tier pricing, and backfill the property row when empty.
             if (areaM2 is not > 0m)
             {
                 areaM2 = TryParseSurveyOnSiteAreaM2(submission.PayloadJson);
@@ -280,8 +280,8 @@ public class InspectorFeeService : IInspectorFeeService
         {
             if (!InspectorFeeRules.IsEmployee(ledger.InspectorType))
                 return null;
-            // Flat-priced incentives keep their table stamp; hand override is only for the legacy
-            // zero-draft rows that never resolved from a flat schedule.
+ // Flat-priced incentives keep their table stamp; hand override is only for the legacy
+ // zero-draft rows that never resolved from a flat schedule.
             if (ledger.PricingTableId is not null)
                 return null;
             ledger.AgreedFeeSar = Math.Max(0m, request.AgreedFeeSar.Value);
@@ -330,8 +330,8 @@ public class InspectorFeeService : IInspectorFeeService
         var discountApplied = request.SupervisorDiscountSar.HasValue
             && ledger.SupervisorDiscountSar > 0m;
 
-        // Employees never enter the office-approval / dispute loop. A supervisor discount sends the
-        // line straight to finance and the assignee is told.
+ // Employees never enter the office-approval / dispute loop. A supervisor discount sends the
+ // line straight to finance and the assignee is told.
         if (isEmployee
             && discountApplied
             && ledger.BillingStatus is InspectorFeeBillingStatus.Draft
@@ -353,7 +353,7 @@ public class InspectorFeeService : IInspectorFeeService
                 or InspectorFeeBillingStatus.Disputed
                 or InspectorFeeBillingStatus.SupReview)
         {
-            // Engineering-office billing: discounted cooperator lines need explicit office approval.
+ // Engineering-office billing: discounted cooperator lines need explicit office approval.
             if (ledger.SupervisorDiscountSar > 0m)
                 ledger.BillingStatus = InspectorFeeBillingStatus.OfficeReview;
             else if (ledger.BillingStatus is InspectorFeeBillingStatus.OfficeReview
@@ -422,15 +422,15 @@ public class InspectorFeeService : IInspectorFeeService
             return (null, error);
 
         await _db.SaveChangesAsync(cancellationToken);
-        // Return the row for the ledger we just transitioned (not an arbitrary FirstOrDefault).
+ // Return the row for the ledger we just transitioned (not an arbitrary FirstOrDefault).
         var row = await GetByWorkflowTaskIdAsync(workflowTaskId, cancellationToken);
         return (row, null);
     }
 
-    /// <summary>
-    /// Multiple identity lines can share one workflow task (reassign / legacy UserId).
-    /// Prefer the row the actor can legally transition — not an arbitrary insert order.
-    /// </summary>
+ /// <summary>
+ /// Multiple identity lines can share one workflow task (reassign / legacy UserId).
+ /// Prefer the row the actor can legally transition — not an arbitrary insert order.
+ /// </summary>
     public static InspectorFeeLedger? PickLedgerForTransition(
         IReadOnlyList<InspectorFeeLedger> candidates,
         string action,
@@ -576,7 +576,7 @@ public class InspectorFeeService : IInspectorFeeService
         string? actorAssigneeId,
         CancellationToken cancellationToken = default)
     {
-        // ج٩ / ق٦: new disbursement batches are retired — use party billing statements.
+ //new disbursement batches are retired — use party billing statements.
         return Task.FromResult(new CreateDisbursementBatchResult
         {
             Failed =
@@ -680,9 +680,9 @@ public class InspectorFeeService : IInspectorFeeService
         await _notifications.CreateManyAsync(notifications, cancellationToken);
     }
 
-    /// <summary>
-    /// Reads المساحة الإجمالية from the engineering-survey submission payload.
-    /// </summary>
+ /// <summary>
+ /// Reads المساحة الإجمالية from the engineering-survey submission payload.
+ /// </summary>
     private static decimal? TryParseSurveyOnSiteAreaM2(string payloadJson)
     {
         if (string.IsNullOrWhiteSpace(payloadJson)) return null;

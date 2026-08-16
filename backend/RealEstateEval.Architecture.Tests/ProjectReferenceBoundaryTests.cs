@@ -3,7 +3,7 @@ using RealEstateEval.Architecture.Tests.Support;
 namespace RealEstateEval.Architecture.Tests;
 
 /// <summary>
-/// ADR 0002 guardrails. The shared Application/Infrastructure/Domain assemblies are still
+/// Shared-assembly coupling guardrails. The shared Application/Infrastructure/Domain assemblies are still
 /// referenced by every API, so these tests freeze that coupling instead of pretending it is
 /// gone: existing references are recorded, new ones fail.
 /// </summary>
@@ -73,11 +73,11 @@ public class ProjectReferenceBoundaryTests
         }
     }
 
-    /// <summary>
-    /// Split plan, Phase 0: "architecture tests that prohibit new service references to the
-    /// global assemblies". Until a per-context replacement exists, the allowed set is exactly
-    /// what docs/architecture/boundary-baseline.json records.
-    /// </summary>
+ /// <summary>
+ ///, "architecture tests that prohibit new service references to the
+ /// global assemblies". Until a per-context replacement exists, the allowed set is exactly
+ /// what docs/architecture/boundary-baseline.json records.
+ /// </summary>
     [Fact]
     public void GlobalAssemblyReferencesDoNotGrow()
     {
@@ -96,7 +96,7 @@ public class ProjectReferenceBoundaryTests
             Assert.True(
                 added.Count == 0,
                 $"{project} added references to the shared assemblies: {string.Join(", ", added)}. "
-                + "ADR 0002 removes these; new dependencies on them must be approved and recorded "
+                + "Shared assemblies should not gain new dependents without approval and recording "
                 + "in docs/architecture/boundary-baseline.json.");
         }
     }

@@ -27,6 +27,6 @@ public partial class ShortenDefaultPricingTableNames : Migration
 
     protected override void Down(MigrationBuilder migrationBuilder)
     {
-        // Data-only cleanup — no rollback.
+ // Data-only cleanup — no rollback.
     }
 }

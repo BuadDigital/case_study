@@ -5,7 +5,7 @@ namespace RealEstateEval.Domain;
 /// <summary>One deed owner from the structured transcription (الملاك وحصصهم).</summary>
 public sealed record DeedOwner(string Name, decimal? SharePct);
 
-/// <summary>نوع الملكية values — decision 5 (سجل v2): مطلقة / مرهون / استثمار / مشاع.</summary>
+/// <summary>نوع الملكية values — مطلقة / مرهون / استثمار / مشاع.</summary>
 public static class OwnershipTypes
 {
     public const string Absolute = "absolute";
@@ -27,7 +27,7 @@ public static class OwnershipTypes
 }
 
 /// <summary>
-/// §4ج-7 — نوع الملكية derived from the structured deed transcription
+/// نوع الملكية derived from the structured deed transcription
 /// (editable-derived: the engine suggests, the valuer approves or overrides).
 /// Investment never appears on the deed, so it is manual-only.
 /// </summary>
@@ -35,10 +35,10 @@ public static class OwnershipTypeRules
 {
     private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web);
 
-    /// <summary>
-    /// Derivation order per the decision: قيد رهن ⟵ مرهون · ملاك بحصص ⟵ مشاع ·
-    /// مالك واحد بلا قيود ⟵ مطلقة مبدئيًا.
-    /// </summary>
+ /// <summary>
+ /// Derivation order per the decision: قيد رهن ⟵ مرهون · ملاك بحصص ⟵ مشاع ·
+ /// مالك واحد بلا قيود ⟵ مطلقة مبدئيًا.
+ /// </summary>
     public static string Suggest(
         IReadOnlyList<DeedOwner> owners,
         string? restrictionTypeCsv)
@@ -54,7 +54,7 @@ public static class OwnershipTypeRules
         return OwnershipTypes.Absolute;
     }
 
-    /// <summary>Effective value — manual override wins; otherwise the suggestion.</summary>
+ /// <summary>Effective value — manual override wins; otherwise the suggestion.</summary>
     public static string Effective(
         bool isManual,
         string? manualValue,
@@ -88,7 +88,7 @@ public static class OwnershipTypeRules
         return cleaned.Count == 0 ? null : JsonSerializer.Serialize(cleaned, JsonOptions);
     }
 
-    /// <summary>Validation: names required, shares in (0,100], sum ≤ 100 (tolerance for thirds).</summary>
+ /// <summary>Validation: names required, shares in (0,100], sum ≤ 100 (tolerance for thirds).</summary>
     public static string? ValidateOwners(IReadOnlyList<DeedOwner> owners)
     {
         foreach (var o in owners)

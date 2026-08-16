@@ -3,7 +3,7 @@ namespace RealEstateEval.Domain;
 /// <summary>Validation + price/m² + source-card helpers for the comparable bank scaffold.</summary>
 public static class ComparablePropertyRules
 {
-    /// <summary>Heuristic only — no hard TTL in the package; used for source-card freshness.</summary>
+ /// <summary>Heuristic only — no hard TTL in the package; used for source-card freshness.</summary>
     public const int RecentTransactionDays = 90;
 
     public static decimal ComputePricePerSqm(decimal price, decimal areaSqm)
@@ -22,16 +22,16 @@ public static class ComparablePropertyRules
     public static string FreshnessLabelAr(DateOnly transactionDate, DateOnly today) =>
         IsRecentTransaction(transactionDate, today) ? "حديث" : "مخزن";
 
-    /// <summary>§1.5 — computed price/m² deviating this far from the district median flags شذوذ.</summary>
+ /// <summary>computed price/m² deviating this far from the district median flags شذوذ.</summary>
     public const decimal AnomalyDeviationPct = 50m;
 
-    /// <summary>Minimum active peers in the district before the median check runs.</summary>
+ /// <summary>Minimum active peers in the district before the median check runs.</summary>
     public const int AnomalyMinPeers = 3;
 
-    /// <summary>
-    /// §1.5 anomaly notice — advisory, never blocking: zero rate, or a rate deviating
-    /// more than <see cref="AnomalyDeviationPct"/>٪ from the district's median.
-    /// </summary>
+ /// <summary>
+ /// anomaly notice — advisory, never blocking: zero rate, or a rate deviating
+ /// more than <see cref="AnomalyDeviationPct"/>٪ from the district's median.
+ /// </summary>
     public static string? PricePerSqmAnomalyNote(
         decimal pricePerSqm,
         IReadOnlyList<decimal> districtPeerRates)

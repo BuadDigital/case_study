@@ -332,8 +332,8 @@ public class UserRegistrationService : IUserRegistrationService
             PhoneNumberConfirmed = false,
         };
 
-        // Deliberately password-less: the account cannot sign in until its holder
-        // redeems an activation ticket, so no credential ever crosses the API boundary.
+ // Deliberately password-less: the account cannot sign in until its holder
+ // redeems an activation ticket, so no credential ever crosses the API boundary.
         var createResult = await _userManager.CreateAsync(user);
         if (!createResult.Succeeded)
         {
@@ -442,8 +442,8 @@ public class UserRegistrationService : IUserRegistrationService
         if (profile is null)
             return (null, FormError("ملف المستخدم غير موجود."));
 
-        // Resolve the target state first: an absent member keeps the stored value, and an
-        // empty string clears an optional one.
+ // Resolve the target state first: an absent member keeps the stored value, and an
+ // empty string clears an optional one.
         var roleId = request.RoleId is null ? profile.RoleId : request.RoleId.Trim();
         var displayName = request.DisplayName is null
             ? user.DisplayName
@@ -509,8 +509,8 @@ public class UserRegistrationService : IUserRegistrationService
         Track("inspectorType", profile.InspectorType, inspectorType);
         Track("hasCompensation", profile.HasCompensation, hasCompensation);
         Track("feeValueSar", profile.FeeValueSar, feeValueSar);
-        // Billing identifiers are recorded as presence only: the audit trail must prove that
-        // an IBAN changed without storing the account number itself.
+ // Billing identifiers are recorded as presence only: the audit trail must prove that
+ // an IBAN changed without storing the account number itself.
         Track("iban", profile.Iban is null ? "unset" : "set", iban is null ? "unset" : "set");
 
         var identityChanged =
@@ -581,8 +581,8 @@ public class UserRegistrationService : IUserRegistrationService
 
         if (identityChanged)
         {
-            // UserManager refreshes the normalized email and saves every tracked change,
-            // so the profile row and audit entry commit in the same round trip.
+ // UserManager refreshes the normalized email and saves every tracked change,
+ // so the profile row and audit entry commit in the same round trip.
             var updateResult = await _userManager.UpdateAsync(user);
             if (!updateResult.Succeeded)
             {
@@ -638,11 +638,11 @@ public class UserRegistrationService : IUserRegistrationService
         return (true, null);
     }
 
-    /// <summary>
-    /// Re-derives the job title, permission level, contract and identity roles for a new role.
-    /// The distribution assignee id is deliberately preserved: it is referenced by existing
-    /// work orders, so rewriting it would orphan live assignments.
-    /// </summary>
+ /// <summary>
+ /// Re-derives the job title, permission level, contract and identity roles for a new role.
+ /// The distribution assignee id is deliberately preserved: it is referenced by existing
+ /// work orders, so rewriting it would orphan live assignments.
+ /// </summary>
     private async Task ApplyRoleChangeAsync(
         ApplicationUser user,
         UserProfile profile,
@@ -661,8 +661,8 @@ public class UserRegistrationService : IUserRegistrationService
             : RegistrationSource.Hr;
         if (roleId == "section-supervisor")
         {
-            // Keep the stored department unless the request supplies a selectable one; the
-            // subsequent ResolveForStaff call rejects an invalid/missing selection.
+ // Keep the stored department unless the request supplies a selectable one; the
+ // subsequent ResolveForStaff call rejects an invalid/missing selection.
             var (selected, _) = SupervisingDepartments.ResolveForStaff(roleId, requestedDepartment);
             if (selected is not null)
                 profile.Department = selected;
@@ -784,7 +784,7 @@ public class UserRegistrationService : IUserRegistrationService
         return errors;
     }
 
-    /// <summary>Guards shared by disabling through PATCH and through the delete endpoint.</summary>
+ /// <summary>Guards shared by disabling through PATCH and through the delete endpoint.</summary>
     private static string? DisableRefusalReason(
         ApplicationUser user,
         string userId,
@@ -845,8 +845,8 @@ public class UserRegistrationService : IUserRegistrationService
         ActivateAccountRequest request,
         CancellationToken cancellationToken = default)
     {
-        // One opaque message for every failure: unknown user, bad/expired ticket and weak
-        // password must be indistinguishable to an unauthenticated caller.
+ // One opaque message for every failure: unknown user, bad/expired ticket and weak
+ // password must be indistinguishable to an unauthenticated caller.
         const string genericError = "رمز التفعيل غير صالح أو منتهي الصلاحية.";
 
         var userName = request.UserName?.Trim() ?? "";
@@ -871,8 +871,8 @@ public class UserRegistrationService : IUserRegistrationService
         var result = await _userManager.ResetPasswordAsync(user, request.Token, request.NewPassword);
         if (!result.Succeeded)
         {
-            // Password-policy failures are the one case worth surfacing: the ticket already
-            // proved possession, so the detail leaks nothing an attacker does not have.
+ // Password-policy failures are the one case worth surfacing: the ticket already
+ // proved possession, so the detail leaks nothing an attacker does not have.
             var policyOnly = result.Errors.All(e =>
                 e.Code.StartsWith("Password", StringComparison.Ordinal));
             return (false, policyOnly
@@ -880,7 +880,7 @@ public class UserRegistrationService : IUserRegistrationService
                 : genericError);
         }
 
-        // Redeeming a ticket clears any lockout left over from failed sign-in attempts.
+ // Redeeming a ticket clears any lockout left over from failed sign-in attempts.
         await _userManager.ResetAccessFailedCountAsync(user);
         await _userManager.SetLockoutEndDateAsync(user, null);
         if (profile is not null && profile.Status == UserStatus.PendingActivation)

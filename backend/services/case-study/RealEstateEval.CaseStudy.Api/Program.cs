@@ -79,8 +79,8 @@ if (migrateOnStartup || seedDemoData)
     var sp = scope.ServiceProvider;
     if (migrateOnStartup)
     {
-        // Same order as the deploy job: frozen legacy stream first, then whichever bounded
-        // contexts this process registers (backend/tools/DbMigrate covers all of them).
+ // Same order as the deploy job: frozen legacy stream first, then whichever bounded
+ // contexts this process registers (backend/tools/DbMigrate covers all of them).
         await sp.GetRequiredService<ApplicationDbContext>().Database.MigrateAsync();
         foreach (var contextType in BoundedContextMigrations.ApplyOrder)
         {
@@ -91,7 +91,7 @@ if (migrateOnStartup || seedDemoData)
 
     if (seedDemoData)
     {
-        // Demo seeding needs Identity stores; request paths use claims-based permissions.
+ // Demo seeding needs Identity stores; request paths use claims-based permissions.
         await using var seedProvider = RealEstateEval.Infrastructure.DependencyInjection.CreateIdentityMaintenanceProvider(app.Configuration,connectionString);
         await DataSeeder.SeedAsync(seedProvider);
     }

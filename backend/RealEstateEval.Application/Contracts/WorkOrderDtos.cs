@@ -22,17 +22,17 @@ public class WorkOrderPropertyDto
     public string? RealEstateRegNumber { get; set; }
     public string? RealEstateRegDate { get; set; }
     public string? OwnerName { get; set; }
-    /// <summary>§4ج-8 — deed kind: traditional | registered_title. Empty on write = use suggestion.</summary>
+ /// <summary>deed kind: traditional | registered_title. Empty on write = use suggestion.</summary>
     public string? DeedKind { get; set; }
     public string? DeedKindLabelAr { get; set; }
-    /// <summary>Suggestion from the identifier type (real-estate registration → registered title).</summary>
+ /// <summary>Suggestion from the identifier type (real-estate registration → registered title).</summary>
     public string? SuggestedDeedKind { get; set; }
-    /// <summary>الملاك وحصصهم — deed transcription (§4ج-7).</summary>
+ /// <summary>الملاك وحصصهم — deed transcription.</summary>
     public List<DeedOwnerDto> Owners { get; set; } = [];
-    /// <summary>Effective نوع الملكية (manual override or derived).</summary>
+ /// <summary>Effective نوع الملكية (manual override or derived).</summary>
     public string? OwnershipType { get; set; }
     public string? OwnershipTypeLabelAr { get; set; }
-    /// <summary>Derived suggestion (رهن→مرهون · حصص→مشاع · else مطلقة).</summary>
+ /// <summary>Derived suggestion (رهن→مرهون · حصص→مشاع · else مطلقة).</summary>
     public string? SuggestedOwnershipType { get; set; }
     public bool OwnershipTypeIsManual { get; set; }
     public string? RestrictionsPresent { get; set; }
@@ -106,7 +106,7 @@ public class WorkOrderDto
     public string? WorkOrderDescription { get; set; }
     public Guid? ClientId { get; set; }
     public string? ClientNameAr { get; set; }
-    /// <summary>§4ج-1 — report users (0..n) from the client registry.</summary>
+ /// <summary>report users (0..n) from the client registry.</summary>
     public List<Guid> ReportUserClientIds { get; set; } = [];
     public List<WorkOrderPropertyDto> Properties { get; set; } = [];
 }
@@ -137,11 +137,11 @@ public class CreateWorkOrderRequest
     [MaxLength(2000)]
     public string? WorkOrderDescription { get; set; }
 
-    /// <summary>Registered client — required before opening a work order.</summary>
+ /// <summary>Registered client — required before opening a work order.</summary>
     [Required]
     public Guid ClientId { get; set; }
 
-    /// <summary>§4ج-1 — report users (0..n); may include the client.</summary>
+ /// <summary>report users (0..n); may include the client.</summary>
     public List<Guid>? ReportUserClientIds { get; set; }
 
     public List<WorkOrderPropertyDto> Properties { get; set; } = [];
@@ -173,7 +173,7 @@ public class UpdateWorkOrderHeaderRequest
     [Required]
     public Guid ClientId { get; set; }
 
-    /// <summary>§4ج-1 — report users (0..n); may include the client.</summary>
+ /// <summary>report users (0..n); may include the client.</summary>
     public List<Guid>? ReportUserClientIds { get; set; }
 }
 
@@ -189,9 +189,9 @@ public class UpdatePropertyBourseRequest
     public string? Area { get; set; }
     public string? DeedStatus { get; set; }
     public string? BourseDeedImageFileName { get; set; }
-    /// <summary>الملاك وحصصهم — replaces the whole list when provided.</summary>
+ /// <summary>الملاك وحصصهم — replaces the whole list when provided.</summary>
     public List<DeedOwnerDto>? Owners { get; set; }
-    /// <summary>Manual نوع الملكية override; requires OwnershipTypeIsManual.</summary>
+ /// <summary>Manual نوع الملكية override; requires OwnershipTypeIsManual.</summary>
     public string? OwnershipType { get; set; }
     public bool OwnershipTypeIsManual { get; set; }
     public string? RestrictionsPresent { get; set; }
@@ -242,9 +242,9 @@ public class WorkOrderListItemDto
 {
     public string PoNumber { get; set; } = "";
     public string AssignmentType { get; set; } = "";
-    /// <summary>Properties actually registered in the system.</summary>
+ /// <summary>Properties actually registered in the system.</summary>
     public int PropertyCount { get; set; }
-    /// <summary>Property count from Infath at promulgation.</summary>
+ /// <summary>Property count from Infath at promulgation.</summary>
     public int ExpectedPropertyCount { get; set; }
     public int CompletedCount { get; set; }
     public string Status { get; set; } = "progress";
@@ -260,7 +260,7 @@ public class WorkOrderListItemDto
 public class PriorDeedRegistrationDto
 {
     public string PoNumber { get; set; } = "";
-    /// <summary>Source property id (for deep links on prior studies).</summary>
+ /// <summary>Source property id (for deep links on prior studies).</summary>
     public Guid PropertyId { get; set; }
     public string DeedNumber { get; set; } = "";
     public string IdentifierType { get; set; } = "deed";
@@ -312,10 +312,10 @@ public class PriorDeedRegistrationDto
     public string? FinishingType { get; set; }
     public string? FinishingStructure { get; set; }
     public bool BourseDataCompleted { get; set; }
-    /// <summary>Work-order creation timestamp (UTC ISO) for prior-study ordering.</summary>
+ /// <summary>Work-order creation timestamp (UTC ISO) for prior-study ordering.</summary>
     public string? WorkOrderCreatedAtUtc { get; set; }
 
-    /// <summary>Prior study document file names — client re-clones attachment bytes onto the new property.</summary>
+ /// <summary>Prior study document file names — client re-clones attachment bytes onto the new property.</summary>
     public List<string> AssignmentDocFileNames { get; set; } = [];
     public List<string> DelegationLetterFileNames { get; set; } = [];
     public List<string> OtherDocumentFileNames { get; set; } = [];
@@ -350,7 +350,7 @@ public class PendingBoursePropertyDto
     public string AssignmentType { get; set; } = "";
     public string ReceivedFromEnfathAt { get; set; } = "";
     public string DueDateAt { get; set; } = "";
-    /// <summary>PO creation time (UTC ISO) — used for newest-first queue order.</summary>
+ /// <summary>PO creation time (UTC ISO) — used for newest-first queue order.</summary>
     public string CreatedAtUtc { get; set; } = "";
 }
 
@@ -371,6 +371,6 @@ public class SaveCourtsCatalogRequest
 public class DeedOwnerDto
 {
     public string Name { get; set; } = "";
-    /// <summary>Share % in (0, 100]; null = unstated.</summary>
+ /// <summary>Share % in (0, 100]; null = unstated.</summary>
     public decimal? SharePct { get; set; }
 }

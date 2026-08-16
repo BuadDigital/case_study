@@ -4,7 +4,7 @@ using RealEstateEval.Domain;
 namespace RealEstateEval.Infrastructure.Data.Contexts;
 
 /// <summary>
-/// Write context for the Case Study bounded context (plan Phase 1, extraction order step 4).
+/// Write context for the Case Study bounded context.
 /// Maps existing Case Study–owned tables in the <c>case_study</c> schema.
 /// </summary>
 public sealed class CaseStudyDbContext(DbContextOptions<CaseStudyDbContext> options)

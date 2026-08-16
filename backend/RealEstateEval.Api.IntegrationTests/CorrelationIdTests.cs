@@ -25,11 +25,11 @@ public class CorrelationIdSanitizerTests
     [InlineData(null)]
     [InlineData("")]
     [InlineData("   ")]
-    // Header injection, log forging, and response splitting.
+ // Header injection, log forging, and response splitting.
     [InlineData("abc\r\nX-Injected: 1")]
     [InlineData("abc\ndef")]
     [InlineData("abc\u0000def")]
-    // Anything that would land unescaped in a log message or a dashboard filter.
+ // Anything that would land unescaped in a log message or a dashboard filter.
     [InlineData("<script>alert(1)</script>")]
     [InlineData("id with spaces")]
     [InlineData("id\"quoted\"")]

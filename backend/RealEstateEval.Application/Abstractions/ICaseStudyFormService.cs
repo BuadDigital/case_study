@@ -5,11 +5,11 @@ namespace RealEstateEval.Application.Abstractions;
 
 public interface ICaseStudyFormService
 {
-    /// <summary>
-    /// Reads a form. When <paramref name="actor"/> is supplied, party forms require
-    /// <see cref="Rules.PoRoleMatrixRules.CanReadPartyTask"/> and the internal case-study form
-    /// requires case-staff role; otherwise null is returned so callers cannot probe existence.
-    /// </summary>
+ /// <summary>
+ /// Reads a form. When <paramref name="actor"/> is supplied, party forms require
+ /// <see cref="Rules.PoRoleMatrixRules.CanReadPartyTask"/> and the internal case-study form
+ /// requires case-staff role; otherwise null is returned so callers cannot probe existence.
+ /// </summary>
     Task<CaseStudyFormDto?> GetAsync(
         Guid taskId,
         bool party,

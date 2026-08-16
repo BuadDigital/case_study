@@ -15,7 +15,7 @@ namespace RealEstateEval.Infrastructure.Data.Contexts.Attachments.Migrations
     [Migration("20260730061121_InitialAttachmentsBaseline")]
     partial class InitialAttachmentsBaseline
     {
-        /// <inheritdoc />
+ /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618

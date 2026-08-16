@@ -23,7 +23,7 @@ internal static class TestWorkOrderServiceFactory
         recipients ??= TestInspectorFeeServiceFactory.CreateRecipients(db);
         if (failures is null)
         {
-            // Prefer a shared-root Failures context from the test fixture.
+ // Prefer a shared-root Failures context from the test fixture.
             if (failuresDb is null)
                 throw new InvalidOperationException(
                     "Pass FailuresDbContext (via TestBoundedContexts.Create) or an IFailureService.");

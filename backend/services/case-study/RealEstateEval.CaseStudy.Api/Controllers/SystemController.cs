@@ -22,7 +22,7 @@ public class SystemController : ControllerBase
         _services = services;
     }
 
-    /// <summary>Development only — wipes operational + prototype config data; keeps org admin accounts; re-seeds demo users and catalog rows.</summary>
+ /// <summary>Development only — wipes operational + prototype config data; keeps org admin accounts; re-seeds demo users and catalog rows.</summary>
     [HttpDelete("data")]
     public async Task<ActionResult<SystemResetResultDto>> ResetAllData(
         CancellationToken cancellationToken)

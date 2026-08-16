@@ -43,7 +43,7 @@ export function canDeleteTransaction(role: RoleId): boolean {
   return canDeleteProperty(role);
 }
 
-/** §5 — المشرف والأخصائي يمكنهم رفع تعذر من شاشة العقار. */
+/** المشرف والأخصائي يمكنهم رفع تعذر من شاشة العقار. */
 export function canRaisePropertyFailure(role: RoleId): boolean {
   return canEditProperty(role) || canEditPoHeader(role);
 }

@@ -71,7 +71,7 @@ public static class InspectorFeeRowMapper
             CanApproveToFinance = workStatus == InspectorFeeWorkStatuses.Done
                 && !ledger.ExcludedFromBatch
                 && ledger.BillingStatus == InspectorFeeBillingStatus.SupReview,
-            // ج٩: all party fee kinds use billing statements; legacy disb-req rows stay on finance disburse.
+ // all party fee kinds use billing statements; legacy disb-req rows stay on finance disburse.
             CanCreateDisbursementRequest = false,
             CanOfficeApproveDiscount = workStatus == InspectorFeeWorkStatuses.Done
                 && !ledger.ExcludedFromBatch

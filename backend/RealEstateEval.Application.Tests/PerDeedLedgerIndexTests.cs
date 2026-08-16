@@ -7,7 +7,7 @@ using RealEstateEval.Infrastructure.Data;
 namespace RealEstateEval.Application.Tests;
 
 /// <summary>
-/// ج٨: one fee line per (transaction, deed, user). PO-level tasks expand per property.
+/// one fee line per (transaction, deed, user). PO-level tasks expand per property.
 /// </summary>
 public class PerDeedLedgerIndexTests
 {
@@ -97,7 +97,7 @@ public class PerDeedLedgerIndexTests
             UpdatedAtUtc = now,
         });
 
-        // fi-ahmed is the seeded cooperator individual id used when no profile is present.
+ // fi-ahmed is the seeded cooperator individual id used when no profile is present.
         var task1 = WorkflowTask.Create(
             WorkflowTaskKind.FieldInspection,
             "PO-DEED",

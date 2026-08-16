@@ -11,12 +11,12 @@ namespace RealEstateEval.Infrastructure.Data.Contexts.Failures.Migrations;
 /// </summary>
 public partial class InitialFailuresBaseline : Migration
 {
-    /// <inheritdoc />
+ /// <inheritdoc />
     protected override void Up(MigrationBuilder migrationBuilder)
     {
     }
 
-    /// <inheritdoc />
+ /// <inheritdoc />
     protected override void Down(MigrationBuilder migrationBuilder)
     {
     }

@@ -127,7 +127,7 @@ public sealed class GatewayWithUnreachableUpstreamFactory
     {
         builder.UseEnvironment("Production");
 
-        // Discard port: refused immediately, so readiness resolves without waiting.
+ // Discard port: refused immediately, so readiness resolves without waiting.
         builder.UseSetting(
             $"ReverseProxy:Clusters:{ProbeClusterId}:Destinations:probe:Address",
             "http://127.0.0.1:9");

@@ -11,11 +11,11 @@ public static class EngineeringSurveyFeeRules
 
     public readonly record struct AreaFeeTier(decimal? MaxAreaM2, decimal FeeSar);
 
-    /// <summary>
-    /// Returns <c>null</c> when the schedule cannot answer — either it has no tiers at all, or the
-    /// matching tier was left at zero, which means unset rather than free. Callers surface the
-    /// pricing error instead of billing an amount nobody configured.
-    /// </summary>
+ /// <summary>
+ /// Returns <c>null</c> when the schedule cannot answer — either it has no tiers at all, or the
+ /// matching tier was left at zero, which means unset rather than free. Callers surface the
+ /// pricing error instead of billing an amount nobody configured.
+ /// </summary>
     public static decimal? ResolveFeeFromTiers(decimal areaM2, IReadOnlyList<AreaFeeTier> tiers)
     {
         if (!HasTiers(tiers)) return null;
@@ -36,10 +36,10 @@ public static class EngineeringSurveyFeeRules
 
     public static bool HasTiers(IReadOnlyList<AreaFeeTier>? tiers) => tiers is { Count: > 0 };
 
-    /// <summary>
-    /// Ensures strictly increasing positive closed maxes and a final open-ended tier. Callers must
-    /// reject an empty table first: normalising nothing would mean inventing a price.
-    /// </summary>
+ /// <summary>
+ /// Ensures strictly increasing positive closed maxes and a final open-ended tier. Callers must
+ /// reject an empty table first: normalising nothing would mean inventing a price.
+ /// </summary>
     public static IReadOnlyList<AreaFeeTier> NormalizeTiers(IReadOnlyList<AreaFeeTier> tiers)
     {
         if (!HasTiers(tiers))

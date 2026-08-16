@@ -1,7 +1,7 @@
 namespace RealEstateEval.Domain;
 
 /// <summary>
-/// Frozen text layers for report §§4/5/19/21/26/27 — versioned at issue.
+/// Frozen text layers for report /5/19/21/26/27 — versioned at issue.
 /// Provisional wording until legal-copy workshop; structure matches decisions log.
 /// </summary>
 public static class ValuationReportFrozenTextLayers

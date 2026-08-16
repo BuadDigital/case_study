@@ -9,7 +9,7 @@ public interface IPartyFeePricingService
         string? category = null,
         CancellationToken cancellationToken = default);
 
-    /// <summary>Merged category-default schedules (legacy / admin overview).</summary>
+ /// <summary>Merged category-default schedules (legacy / admin overview).</summary>
     Task<PartyFeePricingDto> GetActiveAsync(CancellationToken cancellationToken = default);
 
     Task<PartyFeePricingDto?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default);
@@ -25,23 +25,23 @@ public interface IPartyFeePricingService
         CancellationToken cancellationToken = default,
         string actorId = "system");
 
-    /// <summary>
-    /// Copies an assigned immutable table, applies the requested rates to the copy, and moves all
-    /// of the source table's assignments to it in one database save.
-    /// </summary>
+ /// <summary>
+ /// Copies an assigned immutable table, applies the requested rates to the copy, and moves all
+ /// of the source table's assignments to it in one database save.
+ /// </summary>
     Task<PartyFeePricingDto> ReviseAsync(
         Guid sourceId,
         PartyFeePricingDto request,
         CancellationToken cancellationToken = default,
         string actorId = "system");
 
-    /// <summary>Marks the table as the category default (fallback when unassigned).</summary>
+ /// <summary>Marks the table as the category default (fallback when unassigned).</summary>
     Task<PartyFeePricingDto> ActivateAsync(
         Guid id,
         CancellationToken cancellationToken = default,
         string actorId = "system");
 
-    /// <summary>Returns false when the table was not found.</summary>
+ /// <summary>Returns false when the table was not found.</summary>
     Task<bool> DeleteAsync(
         Guid id,
         CancellationToken cancellationToken = default,
@@ -51,18 +51,18 @@ public interface IPartyFeePricingService
         Guid tableId,
         CancellationToken cancellationToken = default);
 
-    /// <summary>
-    /// Replaces assignees for this table. Assignees are removed from other tables
-    /// in the same category. Empty list clears all assignments on this table.
-    /// </summary>
+ /// <summary>
+ /// Replaces assignees for this table. Assignees are removed from other tables
+ /// in the same category. Empty list clears all assignments on this table.
+ /// </summary>
     Task<PartyFeePricingDto> SetAssignmentsAsync(Guid tableId,IReadOnlyList<string> assigneeIds,CancellationToken cancellationToken = default,string actorId = "system");
 
-    /// <summary>
-    /// Resolves the default agreed fee for a new ledger, with the table that produced it.
-    /// Uses the assignee's assigned table when present; otherwise the category default.
-    /// Engineering survey is unresolved when area is missing.
-    /// Employees resolve only from a flat incentive table (usually via assignment).
-    /// </summary>
+ /// <summary>
+ /// Resolves the default agreed fee for a new ledger, with the table that produced it.
+ /// Uses the assignee's assigned table when present; otherwise the category default.
+ /// Engineering survey is unresolved when area is missing.
+ /// Employees resolve only from a flat incentive table (usually via assignment).
+ /// </summary>
     Task<ResolvedPartyFee> ResolveDefaultFeeAsync(
         WorkflowTaskKind taskKind,
         string partyType,

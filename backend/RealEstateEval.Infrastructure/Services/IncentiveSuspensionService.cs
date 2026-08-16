@@ -100,8 +100,8 @@ public sealed class IncentiveSuspensionService : IIncentiveSuspensionService
         };
         _db.IncentiveSuspensions.Add(row);
 
-        // Existing ledgers for this assignee+PO that are still suspendable move to ج٣ suspended so
-        // the withhold is not only prospective.
+ // Existing ledgers for this assignee+PO that are still suspendable move to suspended so
+ // the withhold is not only prospective.
         var ledgers = await _db.InspectorFeeLedgers
             .Where(l =>
                 l.AssigneeId == assigneeId

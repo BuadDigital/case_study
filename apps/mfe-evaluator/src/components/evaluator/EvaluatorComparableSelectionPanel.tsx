@@ -70,7 +70,7 @@ type DraftLine = {
 
 const SEQUENTIAL_KEYS = new Set(["financing", "market", "transaction_type"]);
 
-/** ث-3 #82–87 — mirrors IndirectCostItemKeys on the backend. */
+/** mirrors IndirectCostItemKeys on the backend. */
 const INDIRECT_COST_ITEMS: { key: string; label: string }[] = [
   { key: "design_supervision", label: "التصميم والإشراف الهندسي" },
   { key: "licensing_fees", label: "الترخيص والرسوم الحكومية" },
@@ -80,7 +80,7 @@ const INDIRECT_COST_ITEMS: { key: string; label: string }[] = [
   { key: "developer_profit", label: "أرباح المطور والمخاطرة" },
 ];
 
-/** ث-2 #64–79 — mirrors CostLineItemKeys on the backend (defaults per item). */
+/** mirrors CostLineItemKeys on the backend (defaults per item). */
 const COST_ITEM_OPTIONS: { key: string; label: string; unit: string }[] = [
   { key: "basement", label: "القبو", unit: "sqm" },
   { key: "ground_floor", label: "الدور الأرضي", unit: "sqm" },
@@ -333,11 +333,11 @@ function MarketAdjustEditor({
         </span>
         <span>مجموع الكل: {market?.sumIncludedPct ?? 0}٪</span>
         {market?.exceedsLargeAdjustmentThreshold ? (
-          <span className="text-danger">تنبيه ق-11: |مجموع| &gt; 35٪</span>
+          <span className="text-danger">تنبيه: |مجموع| &gt; 35٪</span>
         ) : null}
       </div>
 
-      <p className={cn(valLabelClassName, "mb-1")}>التسويات التسلسلية (ت-3)</p>
+      <p className={cn(valLabelClassName, "mb-1")}>التسويات التسلسلية</p>
       <LineEditor
         lines={lines}
         setLines={setLines}
@@ -348,7 +348,7 @@ function MarketAdjustEditor({
       />
 
       <div className="mb-1 mt-3 flex flex-wrap items-center gap-2">
-        <p className={cn(valLabelClassName, "m-0")}>تسوية المساحة (ت-4)</p>
+        <p className={cn(valLabelClassName, "m-0")}>تسوية المساحة</p>
         <select
           className="rounded-md border border-border-md bg-surface px-2 py-1 text-[12px]"
           value={areaMethod}
@@ -364,7 +364,7 @@ function MarketAdjustEditor({
       </div>
 
       <p className={cn(valLabelClassName, "mb-1 mt-3")}>
-        عوامل الاختلاف (ت-5) — تُجمع ثم تُطبَّق مرة واحدة
+        عوامل الاختلاف — تُجمع ثم تُطبَّق مرة واحدة
       </p>
       <LineEditor
         lines={lines}
@@ -394,7 +394,7 @@ function MarketAdjustEditor({
             ])
           }
         >
-          إضافة عامل مضاف من المقيّم (ت-5 #48)
+          إضافة عامل مضاف من المقيّم
         </Button>
       </div>
 
@@ -423,7 +423,7 @@ function MarketAdjustEditor({
         {weightManual ? (
           <div className="sm:col-span-2">
             <Label className={valLabelClassName}>
-              مبرر تجاوز الوزن الآلي (إلزامي — قرار 19.3)
+              مبرر تجاوز الوزن الآلي (إلزامي)
             </Label>
             <Input
               className={valInputClassName}
@@ -452,8 +452,8 @@ function MarketAdjustEditor({
 }
 
 /**
- * Phase 2 — select / adopt bank comps + sequential market adjustments (ت-3) + weights (ق-9/10).
- * Difference-factor matrix (ت-5) deferred.
+ * select / adopt bank comps + sequential market adjustments + weights.
+ * Difference-factor matrix deferred.
  */
 export function EvaluatorComparableSelectionPanel({
   propertyId,
@@ -863,7 +863,7 @@ export function EvaluatorComparableSelectionPanel({
     }
     setCost(res.data);
     setCostDraft(res.data.lines);
-    showToast("تم حفظ أسلوب التكلفة (أرض من السوق ق-4)", "success");
+    showToast("تم حفظ أسلوب التكلفة (أرض من السوق)", "success");
     void reload();
   }
 
@@ -986,8 +986,8 @@ export function EvaluatorComparableSelectionPanel({
     <div className="flex flex-col gap-1">
       <EngSection>اختيار المقارنات والتسويات</EngSection>
       <Note>
-        سوق: تسلسل (ت-3) ← عوامل اختلاف (ت-5) ← أوزان ← مساحة × متر مرجّح. تكلفة:
-        بنود من الحصر + أرض مستوردة من رأي السوق (ق-4). ثم ترجيح الأساليب (ج-1)
+        سوق: تسلسل ← عوامل اختلاف ← أوزان ← مساحة × متر مرجّح. تكلفة:
+        بنود من الحصر + أرض مستوردة من رأي السوق. ثم ترجيح الأساليب
         وتقريب مرة واحدة على الرأي النهائي.
       </Note>
 
@@ -1022,7 +1022,7 @@ export function EvaluatorComparableSelectionPanel({
               />
             </div>
             <div>
-              <Label className={valLabelClassName}>الأساس المعتمد في التسويات (ت-1)</Label>
+              <Label className={valLabelClassName}>الأساس المعتمد في التسويات</Label>
               <select
                 className="w-full rounded-md border border-border-md bg-surface px-2 py-[7px] text-[12px]"
                 value={adjustmentBasis}
@@ -1054,7 +1054,7 @@ export function EvaluatorComparableSelectionPanel({
           <div className="mt-2">
             <div className="mb-1 flex items-center gap-2">
               <Label className={valLabelClassName}>
-                تحليل التسويات (ت-6 #58) — آلي متحدث أو محرَّر يدويًا
+                تحليل التسويات — آلي متحدث أو محرَّر يدويًا
               </Label>
               <Button
                 type="button"
@@ -1286,7 +1286,7 @@ export function EvaluatorComparableSelectionPanel({
         <div className="mt-3 rounded-lg border border-border-md px-3 py-2">
           <EngSection>أسلوب التكلفة (طريقة المقاول)</EngSection>
           <p className="mb-2 text-[12px] text-text-muted">
-            سعر متر الأرض يُستورد من رأي السوق (ق-4 / ث-1 #59) عند الحفظ — لا يُدخل يدويًا.
+            سعر متر الأرض يُستورد من رأي السوق عند الحفظ — لا يُدخل يدويًا.
           </p>
           {cost ? (
             <p className="mb-2 text-[12.5px] text-text">
@@ -1306,7 +1306,7 @@ export function EvaluatorComparableSelectionPanel({
           ) : null}
           <div className="mb-2 grid gap-2 sm:grid-cols-[8rem_1fr_10rem]">
             <div>
-              <Label className={valLabelClassName}>خصم تقييد الاستخدام ٪ (ث-1 #60)</Label>
+              <Label className={valLabelClassName}>خصم تقييد الاستخدام ٪</Label>
               <Input
                 className={valInputClassName}
                 inputMode="decimal"
@@ -1341,7 +1341,7 @@ export function EvaluatorComparableSelectionPanel({
           </div>
 
           <p className="mb-1 mt-3 text-[12px] font-semibold text-text">
-            التكاليف غير المباشرة (ث-3) — نسبة 0–50٪ + مبرر لكل بند
+            التكاليف غير المباشرة — نسبة 0–50٪ + مبرر لكل بند
           </p>
           <div className="mb-2 grid gap-1.5">
             {INDIRECT_COST_ITEMS.map((item) => (
@@ -1413,7 +1413,7 @@ export function EvaluatorComparableSelectionPanel({
           </div>
 
           <p className="mb-1 mt-3 text-[12px] font-semibold text-text">
-            العمر والإهلاك (ث-4)
+            العمر والإهلاك
           </p>
           <div className="mb-2 grid gap-2 sm:grid-cols-4">
             <div>
@@ -1551,7 +1551,7 @@ export function EvaluatorComparableSelectionPanel({
                 >
                   <div className="grid gap-2 sm:grid-cols-[11rem_1fr_5.5rem_5rem_6rem_auto]">
                     <div>
-                      <Label className={valLabelClassName}>البند (ث-2)</Label>
+                      <Label className={valLabelClassName}>البند</Label>
                       <select
                         className="w-full rounded-md border border-border-md bg-surface px-2 py-[7px] text-[12px]"
                         value={line.itemKey || "custom"}
@@ -1649,7 +1649,7 @@ export function EvaluatorComparableSelectionPanel({
                     {isRepeated ? (
                       <div>
                         <Label className={valLabelClassName}>
-                          عدد الأدوار (ق-13)
+                          عدد الأدوار
                         </Label>
                         <Input
                           className={valInputClassName}
@@ -1684,7 +1684,7 @@ export function EvaluatorComparableSelectionPanel({
                     )}
                     <div>
                       <Label className={valLabelClassName}>
-                        أساس التقدير (مبرر) — ق-15 للبنود الإضافية
+                        أساس التقدير (مبرر) — للبنود الإضافية
                       </Label>
                       <Input
                         className={valInputClassName}
@@ -1696,7 +1696,7 @@ export function EvaluatorComparableSelectionPanel({
                   </div>
                   {isRepeated ? (
                     <p className="m-0 text-[11px] text-text-muted">
-                      ق-13: الكمية = مسطح الدور الأول × العدد — تُشتق عند الحفظ.
+                      الكمية = مسطح الدور الأول × العدد — تُشتق عند الحفظ.
                     </p>
                   ) : null}
                 </li>
@@ -1733,7 +1733,7 @@ export function EvaluatorComparableSelectionPanel({
                 ])
               }
             >
-              إضافة بند (ث-2)
+              إضافة بند
             </Button>
           </div>
           {costDraft.length === 0 ? (
@@ -1748,7 +1748,7 @@ export function EvaluatorComparableSelectionPanel({
         <div className="mt-3 rounded-lg border border-border-md px-3 py-2">
           <EngSection>رأي القيمة النهائي (ترجيح الأساليب)</EngSection>
           <p className="mb-2 text-[12px] text-text-muted">
-            نسب المشاركة = 100٪. أساس وفرضية مستقلان (IVS 102). خصم التصفية فقط
+            نسب المشاركة = 100٪. أساس وفرضية مستقلان. خصم التصفية فقط
             عند أساس = قيمة التصفية مع فرضية منظمة/قسرية.
             {recon && !recon.meetsMultiMethodGate
               ? " · تنبيه: أسلوب واحد فقط بمشاركة (بوابة n≥2 لاحقًا)."
@@ -1972,7 +1972,7 @@ export function EvaluatorComparableSelectionPanel({
           {gates.methodologyAlerts?.length ? (
             <div className="mt-3 border-t border-border-md pt-2">
               <p className="mb-1 text-[12.5px] font-medium text-text">
-                تنبيهات منهجية (§ح) — مفعّل{" "}
+                تنبيهات منهجية — مفعّل{" "}
                 {gates.methodologyAlertTriggeredCount ?? 0}/17
               </p>
               <p className="mb-2 text-[11.5px] text-text-muted">

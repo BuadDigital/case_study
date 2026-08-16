@@ -25,7 +25,7 @@ const finStagePillBase =
 
 export const finStagePill = `${finStagePillBase} border-[#ddd8cc] bg-surface text-text-2 hover:border-gold hover:text-heading`;
 
-/** ink #102B4E — بدون ظل (مطابق HTML) */
+/** ink B4E — بدون ظل (مطابق HTML) */
 export const finStagePillOn = `${finStagePillBase} border-[#102B4E] bg-[#102B4E] text-white`;
 
 export const finStageCount =

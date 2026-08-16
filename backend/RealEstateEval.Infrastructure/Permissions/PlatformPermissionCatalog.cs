@@ -38,7 +38,7 @@ public static class PlatformPermissionCatalog
     private static readonly Dictionary<string, string[]> IdentityRolePages = new(StringComparer.OrdinalIgnoreCase)
     {
         ["CDO"] = AllPages.ToArray(),
-        // Department admins: no prototype shell surfaces by default (screen catalog is CDO-only).
+ // Department admins: no prototype shell surfaces by default (screen catalog is CDO-only).
         ["HR"] = [],
         ["PROC"] = [],
         ["CRM"] = [],
@@ -62,7 +62,7 @@ public static class PlatformPermissionCatalog
             "party-fees",
             "fee-pricing",
         ],
-        // مطابقة المشرف (صفحات + أتعاب + تسعيرة) — بلا financial / manage-financial
+ // مطابقة المشرف (صفحات + أتعاب + تسعيرة) — بلا financial / manage-financial
         ["case-specialist"] =
         [
             "po", "favorites", "active-primary-data", "bourse-inquiry", "active-distribution",
@@ -112,7 +112,7 @@ public static class PlatformPermissionCatalog
             "manage-failures", "manage-work-orders", "submit-party-work",
             "manage-attachments", "manage-operations", "courts.manage",
         ],
-        // مطابقة قدرات المشرف بدون manage-financial
+ // مطابقة قدرات المشرف بدون manage-financial
         ["case-specialist"] =
         [
             "manage-failures", "manage-work-orders", "submit-party-work",

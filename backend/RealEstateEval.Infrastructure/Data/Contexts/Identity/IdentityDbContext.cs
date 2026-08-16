@@ -5,7 +5,7 @@ using RealEstateEval.Domain;
 namespace RealEstateEval.Infrastructure.Data.Contexts;
 
 /// <summary>
-/// Write context for the Identity bounded context (plan Phase 1, extraction order step 2).
+/// Write context for the Identity bounded context.
 /// Inherits ASP.NET Identity's store context and maps the existing tables in the existing
 /// <c>identity</c> schema — this phase changes which context holds the write path, not where
 /// a row lives.

@@ -45,10 +45,10 @@ public interface IOperationsTaskService
         string actorRole,
         CancellationToken cancellationToken = default);
 
-    /// <summary>Scheduler entry: auto-remind active tasks whose next work-hours checkpoint has passed.</summary>
+ /// <summary>Scheduler entry: auto-remind active tasks whose next work-hours checkpoint has passed.</summary>
     Task<int> ProcessDueAutoRemindersAsync(CancellationToken cancellationToken = default);
 
-    /// <summary>Daily creator+assignee reminders for pauses past the one-workday limit.</summary>
+ /// <summary>Daily creator+assignee reminders for pauses past the one-workday limit.</summary>
     Task<int> ProcessOverLimitPauseRemindersAsync(CancellationToken cancellationToken = default);
 
     Task<(OperationsTaskDto? Result, string? Error)> AddCommentAsync(
@@ -59,7 +59,7 @@ public interface IOperationsTaskService
         string? actorName,
         CancellationToken cancellationToken = default);
 
-    /// <summary>أتعاب الزيارة generated from completed court_visit ops tasks.</summary>
+ /// <summary>أتعاب الزيارة generated from completed court_visit ops tasks.</summary>
     Task<IReadOnlyList<CourtVisitFeeReportRowDto>> ListCourtVisitFeesAsync(
         string? creditAssigneeId = null,
         CancellationToken cancellationToken = default);

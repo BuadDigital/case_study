@@ -15,7 +15,7 @@ namespace RealEstateEval.Infrastructure.Data.Contexts.Attachments.Migrations
     [Migration("20260802055103_AddPhotoMetadata")]
     partial class AddPhotoMetadata
     {
-        /// <inheritdoc />
+ /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618

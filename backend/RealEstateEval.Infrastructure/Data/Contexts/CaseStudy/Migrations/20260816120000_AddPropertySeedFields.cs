@@ -7,7 +7,7 @@ using RealEstateEval.Infrastructure.Data.Contexts;
 namespace RealEstateEval.Infrastructure.Data.Contexts.CaseStudy.Migrations;
 
 /// <summary>
-/// Seed fields from Mikyas injection map §5.2–5.3 / ق7: plan name, block, boundary types, facades, finishing.
+/// Seed fields: plan name, block, boundary types, facades, finishing.
 /// </summary>
 [DbContext(typeof(CaseStudyDbContext))]
 [Migration("20260816120000_AddPropertySeedFields")]

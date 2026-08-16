@@ -26,7 +26,7 @@ function isHeic(file: File): boolean {
   );
 }
 
-/** EXIF must be read from the original bytes before any transform (هـ). */
+/** EXIF must be read from the original bytes before any transform. */
 export async function extractEvidenceExif(file: File): Promise<EvidencePhotoExif> {
   try {
     const tags = await exifr.parse(file, {

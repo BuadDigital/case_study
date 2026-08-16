@@ -6,7 +6,7 @@ using RealEstateEval.Application.Abstractions;
 namespace RealEstateEval.Infrastructure.Services;
 
 /// <summary>
-/// Creates end-of-month vendor billing statements automatically (design §4.1).
+/// Creates end-of-month vendor billing statements automatically (design ).
 /// Runs on the 1st–3rd UTC each month; CreateMonthVendorStatementsAsync is idempotent.
 /// </summary>
 public sealed class PartyBillingMonthVendorHostedService : BackgroundService

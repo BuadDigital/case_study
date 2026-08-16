@@ -41,7 +41,7 @@ public static class PartyTaskSubmissionPayloadRules
                     break;
 
                 case "government-review":
-                    // Legacy kind — product surface removed; reject new submits.
+ // Legacy kind — product surface removed; reject new submits.
                     errors["_"] = "مسار المراجعة الحكومية لم يعد مدعوماً";
                     break;
 
@@ -93,7 +93,7 @@ public static class PartyTaskSubmissionPayloadRules
         }
         catch
         {
-            // ignore
+ // ignore
         }
 
         return null;

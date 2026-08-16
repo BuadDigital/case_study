@@ -11,9 +11,9 @@ export type { NavItem, PageId, RoleDef, RoleId };
 
 export const ROLES: Record<RoleId, RoleDef> = {
   cdo: {
-    name: "سليمان",
+    name: "مسؤول النظام",
     dept: "المسؤول",
-    init: "سل",
+    init: "مس",
     bg: "var(--purple-bg)",
     tc: "var(--purple)",
     pages: ["dashboard"],

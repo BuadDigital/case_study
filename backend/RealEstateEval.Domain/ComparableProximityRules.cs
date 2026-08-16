@@ -1,13 +1,13 @@
 namespace RealEstateEval.Domain;
 
-/// <summary>Geographic proximity helpers for comparable auto-suggest (§1.5 system stream).</summary>
+/// <summary>Geographic proximity helpers for comparable auto-suggest (system stream).</summary>
 public static class ComparableProximityRules
 {
     public const double EarthRadiusKm = 6371.0;
     public const decimal DefaultMaxDistanceKm = 5m;
     public const int DefaultTake = 15;
 
-    /// <summary>Great-circle distance in kilometres (Haversine).</summary>
+ /// <summary>Great-circle distance in kilometres (Haversine).</summary>
     public static decimal DistanceKm(
         decimal lat1,
         decimal lon1,

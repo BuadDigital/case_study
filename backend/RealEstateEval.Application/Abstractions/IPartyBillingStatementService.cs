@@ -23,10 +23,10 @@ public interface IPartyBillingStatementService
         string actorUserId,
         CancellationToken cancellationToken = default);
 
-    /// <summary>
-    /// Auto-create one draft vendor statement per engineering office with ready lines (month-end sweep).
-    /// Skips assignees that already have an open draft this calendar month.
-    /// </summary>
+ /// <summary>
+ /// Auto-create one draft vendor statement per engineering office with ready lines (month-end sweep).
+ /// Skips assignees that already have an open draft this calendar month.
+ /// </summary>
     Task<CreateMonthPartyBillingStatementsResult> CreateMonthVendorStatementsAsync(
         string actorUserId,
         CancellationToken cancellationToken = default);

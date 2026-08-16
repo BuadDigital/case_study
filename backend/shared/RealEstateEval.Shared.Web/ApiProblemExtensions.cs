@@ -16,10 +16,10 @@ namespace RealEstateEval.Shared.Web;
 /// </remarks>
 public static class ApiProblemExtensions
 {
-    /// <summary>Legacy single-message member kept for existing front-end callers.</summary>
+ /// <summary>Legacy single-message member kept for existing front-end callers.</summary>
     public const string LegacyErrorMember = "error";
 
-    /// <summary>Legacy per-field member kept for existing front-end callers.</summary>
+ /// <summary>Legacy per-field member kept for existing front-end callers.</summary>
     public const string LegacyErrorsMember = "errors";
 
     public static ObjectResult BadRequestProblem(
@@ -40,10 +40,10 @@ public static class ApiProblemExtensions
         string title = "Conflict") =>
         BuildProblem(controller, StatusCodes.Status409Conflict, title, detail);
 
-    /// <summary>
-    /// Per-field validation failure. <paramref name="errors"/> is surfaced both as the
-    /// legacy <c>errors</c> map and as the standard problem <c>detail</c>.
-    /// </summary>
+ /// <summary>
+ /// Per-field validation failure. <paramref name="errors"/> is surfaced both as the
+ /// legacy <c>errors</c> map and as the standard problem <c>detail</c>.
+ /// </summary>
     public static ObjectResult FieldErrorsProblem(
         this ControllerBase controller,
         IReadOnlyDictionary<string, string> errors,

@@ -6,7 +6,7 @@ public class EvaluatorRecallRecord
     public string TaskId { get; set; } = "";
     public string PoNumber { get; set; } = "";
     public string PropertyId { get; set; } = "";
-    /// <summary>pending | approved | rejected</summary>
+ /// <summary>pending | approved | rejected</summary>
     public string Status { get; set; } = EvaluatorRecallStatus.Pending;
     public string Reason { get; set; } = "";
     public string SpecialistNote { get; set; } = "";

@@ -5,10 +5,10 @@ using Microsoft.EntityFrameworkCore.Migrations;
 
 namespace RealEstateEval.Infrastructure.Data.Contexts.Platform.Migrations
 {
-    /// <inheritdoc />
+ /// <inheritdoc />
     public partial class AddOrganizationSettings : Migration
     {
-        /// <inheritdoc />
+ /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
             migrationBuilder.CreateTable(
@@ -26,7 +26,7 @@ namespace RealEstateEval.Infrastructure.Data.Contexts.Platform.Migrations
                 });
         }
 
-        /// <inheritdoc />
+ /// <inheritdoc />
         protected override void Down(MigrationBuilder migrationBuilder)
         {
             migrationBuilder.DropTable(

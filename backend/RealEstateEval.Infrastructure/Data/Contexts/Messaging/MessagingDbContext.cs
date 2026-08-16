@@ -6,8 +6,8 @@ namespace RealEstateEval.Infrastructure.Data.Contexts;
 
 /// <summary>
 /// Write context for Platform-owned notification / push tables and the shared messaging stream's
-/// migration history (plan Phase 1, extraction order step 5). Also maps outbox/inbox so Platform
-/// notification creates and their follow-up events stay in one <c>SaveChanges</c> (D5).
+/// migration history. Also maps outbox/inbox so Platform
+/// notification creates and their follow-up events stay in one <c>SaveChanges</c>.
 /// <para>
 /// Other producers still map <c>OutboxMessages</c> on their own contexts (Valuation, legacy Case Study).
 /// The Case Study outbox dispatcher claims rows through the legacy context against the same table.

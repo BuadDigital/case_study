@@ -16,7 +16,7 @@ const MATCH_OPTIONS = [
 ];
 
 /**
- * Deed↔nature match gate — valuation spec §7.3.
+ * Deed↔nature match gate — valuation spec.
  * Required for traditional deeds before the calc engine; registered title skips it.
  */
 export function CaseStudyDeedNatureMatchSection({

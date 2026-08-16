@@ -9,9 +9,9 @@ namespace RealEstateEval.Infrastructure.Data;
 /// </summary>
 public static class DbContextTransaction
 {
-    /// <summary>
-    /// Commits when <paramref name="action"/> completes without throwing.
-    /// </summary>
+ /// <summary>
+ /// Commits when <paramref name="action"/> completes without throwing.
+ /// </summary>
     public static Task ExecuteInTransactionAsync(
         DbContext db,
         Func<CancellationToken, Task> action,
@@ -25,11 +25,11 @@ public static class DbContextTransaction
             },
             cancellationToken);
 
-    /// <summary>
-    /// Runs <paramref name="action"/> and commits only when it returns
-    /// <c>Commit: true</c>. Returning <c>Commit: false</c> rolls back without throwing —
-    /// useful for business-rule failures that already produced an error payload.
-    /// </summary>
+ /// <summary>
+ /// Runs <paramref name="action"/> and commits only when it returns
+ /// <c>Commit: true</c>. Returning <c>Commit: false</c> rolls back without throwing —
+ /// useful for business-rule failures that already produced an error payload.
+ /// </summary>
     public static async Task<T> ExecuteInTransactionAsync<T>(
         DbContext db,
         Func<CancellationToken, Task<(bool Commit, T Result)>> action,

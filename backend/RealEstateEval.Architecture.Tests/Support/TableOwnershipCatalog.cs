@@ -33,7 +33,7 @@ internal sealed class TableOwnershipCatalog
 
     public List<string> OwnershipModels { get; set; } = [];
 
-    /// <summary>Last legacy migration the deploy migrator applies before any context stream.</summary>
+ /// <summary>Last legacy migration the deploy migrator applies before any context stream.</summary>
     public string LegacyMigrationCutover { get; set; } = "";
 
     public List<string> Schemas { get; set; } = [];
@@ -48,7 +48,7 @@ internal sealed class TableOwnershipCatalog
         Tables.Count > 0
         && Tables.All(table => string.Equals(table.Status, "approved", StringComparison.Ordinal));
 
-    /// <summary>Contexts that already hold a write path of their own (everything but the legacy one).</summary>
+ /// <summary>Contexts that already hold a write path of their own (everything but the legacy one).</summary>
     public IEnumerable<BoundedContext> ExtractedContexts =>
         Contexts.Where(context => string.Equals(context.State, "extracted", StringComparison.Ordinal));
 
@@ -80,7 +80,7 @@ internal sealed class TableOwnershipCatalog
         public string? Decision { get; set; }
         public string? Note { get; set; }
 
-        /// <summary>Messaging rows are owned per producing/consuming service, not per table.</summary>
+ /// <summary>Messaging rows are owned per producing/consuming service, not per table.</summary>
         public bool IsSharedInfrastructureTable =>
             !string.Equals(OwnershipModel, "single-owner", StringComparison.Ordinal);
 

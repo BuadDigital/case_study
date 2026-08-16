@@ -8,9 +8,9 @@ namespace RealEstateEval.Infrastructure.Permissions;
 /// </summary>
 public static class PrototypeRoleResolver
 {
-    /// <summary>
-    /// Exact JobTitle values from DataSeeder / login user switcher → English RoleId.
-    /// </summary>
+ /// <summary>
+ /// Exact JobTitle values from DataSeeder / login user switcher → English RoleId.
+ /// </summary>
     private static readonly Dictionary<string, string> ExactJobTitleToRoleId = new(StringComparer.Ordinal)
     {
         ["مسؤول التحول الرقمي (CDO)"] = "cdo",
@@ -24,7 +24,7 @@ public static class PrototypeRoleResolver
         ["مقدم خدمة — جهة"] = "engineering-office",
     };
 
-    /// <summary>Prototype roles the CDO can assign when creating staff.</summary>
+ /// <summary>Prototype roles the CDO can assign when creating staff.</summary>
     public static readonly IReadOnlyList<string> CreatableStaffRoleIds =
     [
         "cdo",
@@ -57,7 +57,7 @@ public static class PrototypeRoleResolver
         return null;
     }
 
-    /// <summary>Seed/migration compatibility only; authorization never calls this method.</summary>
+ /// <summary>Seed/migration compatibility only; authorization never calls this method.</summary>
     public static string? LegacyRoleIdForJobTitle(string? jobTitle) =>
         string.IsNullOrWhiteSpace(jobTitle)
             ? null

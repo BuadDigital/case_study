@@ -4,7 +4,7 @@ using System.Text.RegularExpressions;
 
 namespace RealEstateEval.Infrastructure.Locations;
 
-/// <summary>تطبيع أسماء المواقع للبحث — مطابق لمواصفة المناطق/المدن v2 §4.</summary>
+/// <summary>تطبيع أسماء المواقع للبحث — مطابق لمواصفة المناطق/المدن v2.</summary>
 public static partial class LocationNameNormalizer
 {
     private static readonly Regex Diacritics = DiacriticsRegex();
@@ -39,7 +39,7 @@ public static partial class LocationNameNormalizer
         return s;
     }
 
-    /// <summary>مسافة تحرير بسيطة للمقترحات المتشابهة.</summary>
+ /// <summary>مسافة تحرير بسيطة للمقترحات المتشابهة.</summary>
     public static int EditDistance(string a, string b)
     {
         a ??= "";
@@ -80,7 +80,7 @@ public static partial class LocationNameNormalizer
             var cat = CharUnicodeInfo.GetUnicodeCategory(ch);
             if (cat is UnicodeCategory.OtherLetter or UnicodeCategory.NonSpacingMark)
                 continue;
-            // Allow Arabic punctuation range roughly
+ // Allow Arabic punctuation range roughly
             if (ch is >= '\u0600' and <= '\u06FF') continue;
             return false;
         }

@@ -243,8 +243,8 @@ public class WorkOrderService : IWorkOrderService
         entity.WorkOrderDescription = IWorkOrderLoader.NormalizeOptionalText(request.WorkOrderDescription);
         entity.ClientId = request.ClientId;
         entity.ReportUserClientIdsJson = WorkOrderReportUsers.Serialize(request.ReportUserClientIds);
-        // DueDateAt is the SLA snapshot taken when Enfath first hands us the work order. Editing
-        // header facts later must not move the deadline of work that is already in progress.
+ // DueDateAt is the SLA snapshot taken when Enfath first hands us the work order. Editing
+ // header facts later must not move the deadline of work that is already in progress.
 
         await _db.SaveChangesAsync(cancellationToken);
         await NotifySpecialistAssignedIfChangedAsync(

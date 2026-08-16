@@ -1,7 +1,7 @@
 namespace RealEstateEval.Infrastructure.Data;
 
 /// <summary>
-/// Default report attachment types — صك، رفع مساحي، كروكي تنظيمي، رخصة المباني (§1.8 / ق-11ف).
+/// Default report attachment types — صك، رفع مساحي، كروكي تنظيمي، رخصة المباني (ف).
 /// </summary>
 internal static class AttachmentPrintDictionarySeed
 {

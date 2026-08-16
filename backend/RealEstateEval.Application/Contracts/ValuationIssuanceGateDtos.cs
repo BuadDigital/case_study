@@ -16,9 +16,9 @@ public class ValuationMethodologyAlertItemDto
     public required string Code { get; init; }
     public required string LabelAr { get; init; }
     public bool Triggered { get; init; }
-    /// <summary>True when severity is hard (Solomon: 3/4/5/11/15/16).</summary>
+ /// <summary>True when severity is hard (alerts 3/4/5/11/15/16).</summary>
     public bool IsHard { get; init; }
-    /// <summary>hard | require_rationale | require_ack</summary>
+ /// <summary>hard | require_rationale | require_ack</summary>
     public string SeverityKind { get; init; } = "require_ack";
     public bool Evaluated { get; init; }
     public bool BlocksIssuance { get; init; }
@@ -34,9 +34,9 @@ public class ValuationIssuanceGatesDto
     public bool AllowsIssuance { get; init; }
     public IReadOnlyList<ValuationIssuanceGateItemDto> Gates { get; init; } = [];
     public IReadOnlyList<string> BlockingReasonsAr { get; init; } = [];
-    /// <summary>§ح methodology alerts — Solomon 2026-08-16 three-tier.</summary>
+ /// <summary>Methodology alerts — three-tier.</summary>
     public IReadOnlyList<ValuationMethodologyAlertItemDto> MethodologyAlerts { get; init; } = [];
     public int MethodologyAlertTriggeredCount { get; init; }
     public string MethodologyAlertsNoteAr { get; init; } =
-        "تنبيهات منهجية (§ح): 6 حاجبة · 6 بمبرر نصي · 5 بإقرار (سليمان 2026-08-16).";
+        "تنبيهات منهجية: 6 حاجبة · 6 بمبرر نصي · 5 بإقرار.";
 }

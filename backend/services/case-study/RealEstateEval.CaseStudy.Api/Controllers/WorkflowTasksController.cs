@@ -205,7 +205,7 @@ public class WorkflowTasksController : ControllerBase
         return Ok(result);
     }
 
-    /// <summary>JWT carries identity roles (Editor/CDO), not prototype roles. Resolve like PermissionService.</summary>
+ /// <summary>JWT carries identity roles (Editor/CDO), not prototype roles. Resolve like PermissionService.</summary>
     private async Task<string> ActorPrototypeRoleAsync(CancellationToken cancellationToken)
     {
         var userId = ActorId();
@@ -223,9 +223,9 @@ public class WorkflowTasksController : ControllerBase
 
     private string ActorId() => ActorClaims.Id(User);
 
-    /// <summary>
-    /// Never fall back to <see cref="System.Security.Claims.ClaimsIdentity.Name"/> —
-    /// NameClaimType is <c>sub</c>, so Identity.Name is the user id GUID.
-    /// </summary>
+ /// <summary>
+ /// Never fall back to <see cref="System.Security.Claims.ClaimsIdentity.Name"/> —
+ /// NameClaimType is <c>sub</c>, so Identity.Name is the user id GUID.
+ /// </summary>
     private string ActorName() => ActorClaims.DisplayName(User);
 }

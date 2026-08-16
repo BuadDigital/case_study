@@ -1,7 +1,7 @@
 namespace RealEstateEval.Domain;
 
 /// <summary>
-/// Provisional narrative fills for report §§13 / 18 / 20 from live context.
+/// Provisional narrative fills for report / 18 / 20 from live context.
 /// Legal frozen layers stay versioned at issue; these are data-driven drafts.
 /// </summary>
 public static class ValuationReportNarrativeRules
@@ -89,7 +89,7 @@ public static class ValuationReportNarrativeRules
     }
 
     /// <summary>
-    /// 9190 — valuer-opinion text filled at upload from system data (§8 correction 4).
+    /// 9190 — valuer-opinion text filled at upload from system data.
     /// Internal platform field; never a printed report section.
     /// </summary>
     public static string ValuerOpinionText(
@@ -107,8 +107,8 @@ public static class ValuationReportNarrativeRules
     }
 
     /// <summary>
-    /// 9360/9370 — risks list/text filled at upload from live context (§8 correction 4).
-    /// Provisional standard lines; the structured risk field stays a deferred decision.
+    /// 9360/9370 — risks list/text filled at upload from live context.
+    /// Provisional standard lines; the structured risk field stays deferred.
     /// </summary>
     public static IReadOnlyList<string> RisksList(
         bool liquidationBasis,
@@ -135,10 +135,10 @@ public static class ValuationReportNarrativeRules
     public static string RisksText(IReadOnlyList<string> risksList) =>
         string.Join(" ", risksList);
 
-    /// <summary>
-    /// §4ج-1 / §6 — usage-restriction sentence with the three derived cases:
-    /// no other users / one user / several users listed by name.
-    /// </summary>
+ /// <summary>
+ /// usage-restriction sentence with the three derived cases:
+ /// no other users / one user / several users listed by name.
+ /// </summary>
     public static string UsageRestrictionSentence(
         string? clientNameAr,
         IReadOnlyList<string> reportUserNames)

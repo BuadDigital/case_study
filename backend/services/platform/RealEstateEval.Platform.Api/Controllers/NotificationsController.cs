@@ -90,7 +90,7 @@ public sealed class NotificationsController : ControllerBase
         }
         catch (OperationCanceledException) when (ct.IsCancellationRequested)
         {
-            // Client closed the tab or the host is shutting down (e.g. dev-api restart).
+ // Client closed the tab or the host is shutting down (e.g. dev-api restart).
         }
         finally
         {

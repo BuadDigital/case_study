@@ -15,14 +15,14 @@ public enum PropertyIdentifierType
 }
 
 /// <summary>
-/// Deed kind governing spatial confidence and the match gate (valuation spec §1.3 / §8b-4).
+/// Deed kind governing spatial confidence and the match gate (valuation spec b-4).
 /// Registered title → definitive spatial data, no survey match; traditional → case-study match.
 /// </summary>
 public enum DeedKind
 {
-    /// <summary>Traditional deed — deed/nature match gate required before calc.</summary>
+ /// <summary>Traditional deed — deed/nature match gate required before calc.</summary>
     Traditional = 0,
-    /// <summary>Registered title — deed data definitive; survey match stage dropped.</summary>
+ /// <summary>Registered title — deed data definitive; survey match stage dropped.</summary>
     RegisteredTitle = 1,
 }
 
@@ -50,7 +50,7 @@ public static class DeedKindLabels
         return n is Traditional or "تقليدي" or "" || string.Equals(n, "traditional", StringComparison.OrdinalIgnoreCase);
     }
 
-    /// <summary>Initial suggestion from identifier type — real-estate registration → registered title.</summary>
+ /// <summary>Initial suggestion from identifier type — real-estate registration → registered title.</summary>
     public static DeedKind SuggestFromIdentifier(PropertyIdentifierType identifier) =>
         identifier == PropertyIdentifierType.RealEstateRegistration
             ? DeedKind.RegisteredTitle
@@ -147,8 +147,8 @@ public static class WorkOrderListStatus
     public const string PartiallyBilled = "partially_billed";
     public const string FullyBilled = "fully_billed";
 
-    /// <param name="studiedCount">Properties whose case-study parent task is completed.</param>
-    /// <param name="hasEnfazInvoice">True when an Enfaz invoice was issued for this PO.</param>
+ /// <param name="studiedCount">Properties whose case-study parent task is completed.</param>
+ /// <param name="hasEnfazInvoice">True when an Enfaz invoice was issued for this PO.</param>
     public static string Resolve(
         WorkOrder order,
         int studiedCount,
@@ -163,7 +163,7 @@ public static class WorkOrderListStatus
         var allRegistered = registered > 0 && registered >= expected;
         var allStudied = allRegistered && studiedCount >= registered;
 
-        // Billing labels only when finance actually issued an invoice.
+ // Billing labels only when finance actually issued an invoice.
         if (hasEnfazInvoice)
             return allStudied ? FullyBilled : PartiallyBilled;
 

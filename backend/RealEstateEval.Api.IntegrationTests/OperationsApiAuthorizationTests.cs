@@ -54,10 +54,10 @@ public class OperationsApiAuthorizationTests : IClassFixture<OperationsApiFactor
         Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
     }
 
-    /// <summary>
-    /// A request that clears authorization is answered by the handler's own validation, so a 400
-    /// here (rather than 403) is the evidence that finance staff pass the key-data policy.
-    /// </summary>
+ /// <summary>
+ /// A request that clears authorization is answered by the handler's own validation, so a 400
+ /// here (rather than 403) is the evidence that finance staff pass the key-data policy.
+ /// </summary>
     [Fact]
     public async Task Finance_staff_pass_the_key_data_policy()
     {
@@ -86,10 +86,10 @@ public class OperationsApiAuthorizationTests : IClassFixture<OperationsApiFactor
         Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
     }
 
-    /// <summary>
-    /// Envelope writes sit behind both policies on the controller and the action, so key readers
-    /// and party submitters are each rejected on their own.
-    /// </summary>
+ /// <summary>
+ /// Envelope writes sit behind both policies on the controller and the action, so key readers
+ /// and party submitters are each rejected on their own.
+ /// </summary>
     [Theory]
     [InlineData(nameof(OperationsToken))]
     [InlineData(nameof(PartyToken))]
@@ -102,11 +102,11 @@ public class OperationsApiAuthorizationTests : IClassFixture<OperationsApiFactor
         Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
     }
 
-    /// <summary>
-    /// Confirming key-receipt collection is a finance act. It used to sit behind
-    /// <c>submit-party-work</c>, which finance staff do not hold, so the button labelled "المالية"
-    /// could only be pressed by the parties it was meant to keep out.
-    /// </summary>
+ /// <summary>
+ /// Confirming key-receipt collection is a finance act. It used to sit behind
+ /// <c>submit-party-work</c>, which finance staff do not hold, so the button labelled "المالية"
+ /// could only be pressed by the parties it was meant to keep out.
+ /// </summary>
     [Theory]
     [InlineData(nameof(PartyToken))]
     [InlineData(nameof(OperationsToken))]
@@ -119,10 +119,10 @@ public class OperationsApiAuthorizationTests : IClassFixture<OperationsApiFactor
         Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
     }
 
-    /// <summary>
-    /// This pipeline never reaches storage, so finance clearing the gate can only be shown by the
-    /// absence of a rejection — the handler fails later, on the database it cannot open.
-    /// </summary>
+ /// <summary>
+ /// This pipeline never reaches storage, so finance clearing the gate can only be shown by the
+ /// absence of a rejection — the handler fails later, on the database it cannot open.
+ /// </summary>
     [Fact]
     public async Task Finance_staff_clear_the_fee_collection_gate()
     {

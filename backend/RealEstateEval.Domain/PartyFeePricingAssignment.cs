@@ -10,10 +10,10 @@ public class PartyFeePricingAssignment
 
     public Guid TableId { get; set; }
 
-    /// <see cref="RealEstateEval.Application.PartyFeePricingCategories"/>
+ /// <see cref="RealEstateEval.Application.PartyFeePricingCategories"/>
     public string Category { get; set; } = "";
 
-    /// <summary>Workflow / distribution assignee id (e.g. eo-…).</summary>
+ /// <summary>Workflow / distribution assignee id (e.g. eo-…).</summary>
     public string AssigneeId { get; set; } = "";
 
     public DateTime UpdatedAtUtc { get; set; }

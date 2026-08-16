@@ -20,21 +20,21 @@ public sealed class DatabaseReadinessOptions
 {
     public const string SectionName = "Readiness";
 
-    /// <summary>
-    /// Connectivity alone cannot tell a migrated schema from an empty one, so a service with
-    /// pending migrations reports not-ready. Off in Development, where the shared dev database
-    /// is migrated by whichever service starts first.
-    /// </summary>
+ /// <summary>
+ /// Connectivity alone cannot tell a migrated schema from an empty one, so a service with
+ /// pending migrations reports not-ready. Off in Development, where the shared dev database
+ /// is migrated by whichever service starts first.
+ /// </summary>
     public bool CheckMigrations { get; init; }
 
-    /// <summary>
-    /// Soft RabbitMQ TCP reachability for hosts that own outbox / consumers. When true and
-    /// <c>RabbitMQ:Enabled</c>, the probe reports <c>rabbit</c> status in the body but does
-    /// <b>not</b> flip the HTTP 503 (broker flap must not take traffic offline).
-    /// </summary>
+ /// <summary>
+ /// Soft RabbitMQ TCP reachability for hosts that own outbox / consumers. When true and
+ /// <c>RabbitMQ:Enabled</c>, the probe reports <c>rabbit</c> status in the body but does
+ /// <b>not</b> flip the HTTP 503 (broker flap must not take traffic offline).
+ /// </summary>
     public bool CheckRabbit { get; init; }
 
-    /// <summary>Container healthchecks poll frequently; results are reused for this long.</summary>
+ /// <summary>Container healthchecks poll frequently; results are reused for this long.</summary>
     public int CacheSeconds { get; init; } = 5;
 
     public static DatabaseReadinessOptions FromConfiguration(
@@ -74,25 +74,25 @@ public static class ServiceHealthEndpoints
 {
     private const string LogCategory = "RealEstateEval.Readiness";
 
-    /// <summary>
-    /// Residual readiness for hosts that still register the legacy
-    /// <see cref="ApplicationDbContext"/> pool.
-    /// </summary>
+ /// <summary>
+ /// Residual readiness for hosts that still register the legacy
+ /// <see cref="ApplicationDbContext"/> pool.
+ /// </summary>
     public static WebApplication MapDatabaseReady(this WebApplication app, string serviceName) =>
         MapDatabaseReady<ApplicationDbContext>(app, serviceName);
 
-    /// <summary>
-    /// Maps <c>/ready</c> against one owned write context (A6 pure hosts). Connectivity and
-    /// that stream's pending migrations are checked — not the frozen legacy full model.
-    /// </summary>
+ /// <summary>
+ /// Maps <c>/ready</c> against one owned write context (A6 pure hosts). Connectivity and
+ /// that stream's pending migrations are checked — not the frozen legacy full model.
+ /// </summary>
     public static WebApplication MapDatabaseReady<TContext>(this WebApplication app, string serviceName)
         where TContext : DbContext =>
         MapDatabaseReady(app, serviceName, typeof(TContext));
 
-    /// <summary>
-    /// Maps <c>/ready</c> for a host with multiple owned write contexts (e.g. Platform catalogs +
-    /// messaging). Any stream with pending migrations fails readiness.
-    /// </summary>
+ /// <summary>
+ /// Maps <c>/ready</c> for a host with multiple owned write contexts (e.g. Platform catalogs +
+ /// messaging). Any stream with pending migrations fails readiness.
+ /// </summary>
     public static WebApplication MapDatabaseReady(
         this WebApplication app,
         string serviceName,
@@ -149,11 +149,11 @@ public static class ServiceHealthEndpoints
         return app;
     }
 
-    /// <summary>
-    /// Maps <c>/ready</c> for a service with no hard dependency of its own — it holds no schema,
-    /// and its upstreams are probed by the gateway's own readiness endpoint. Kept as a named
-    /// helper so "ready as soon as it is listening" is a deliberate choice, not an oversight.
-    /// </summary>
+ /// <summary>
+ /// Maps <c>/ready</c> for a service with no hard dependency of its own — it holds no schema,
+ /// and its upstreams are probed by the gateway's own readiness endpoint. Kept as a named
+ /// helper so "ready as soon as it is listening" is a deliberate choice, not an oversight.
+ /// </summary>
     public static WebApplication MapStatelessReady(this WebApplication app, string serviceName)
     {
         app.MapGet(
@@ -282,7 +282,7 @@ public static class ServiceHealthEndpoints
         }
     }
 
-    /// <summary>Single-flight cache so frequent probes do not fan out into the database.</summary>
+ /// <summary>Single-flight cache so frequent probes do not fan out into the database.</summary>
     private sealed class ReadinessCache(TimeSpan timeToLive)
     {
         private readonly SemaphoreSlim _gate = new(1, 1);

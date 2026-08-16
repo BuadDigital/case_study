@@ -16,7 +16,7 @@ public class OperationsTaskCommentFileDto
 {
     public string Name { get; set; } = "";
     public string Size { get; set; } = "";
-    /// <summary>Backing attachment id when the file was actually uploaded via /api/attachments.</summary>
+ /// <summary>Backing attachment id when the file was actually uploaded via /api/attachments.</summary>
     public string? AttachmentId { get; set; }
     public string? ContentType { get; set; }
 }
@@ -44,7 +44,7 @@ public class OperationsTaskCourtVisitDeedStatementDto
 
 public class OperationsTaskCourtVisitContactDto
 {
-    /// <summary>property | deed number</summary>
+ /// <summary>property | deed number</summary>
     public string Scope { get; set; } = "property";
     public string Name { get; set; } = "";
     public string? Role { get; set; }
@@ -58,9 +58,9 @@ public class OperationsTaskCourtVisitContactDto
 public class OperationsTaskCourtVisitResultDto
 {
     public string Kind { get; set; } = "";
-    /// <summary>Required when Kind = other.</summary>
+ /// <summary>Required when Kind = other.</summary>
     public string? Other { get; set; }
-    /// <summary>Unified court statement at request level.</summary>
+ /// <summary>Unified court statement at request level.</summary>
     public string? Statement { get; set; }
     public IReadOnlyList<OperationsTaskCourtVisitDeedStatementDto> PerDeed { get; set; } = [];
     public IReadOnlyList<OperationsTaskCourtVisitContactDto> Contacts { get; set; } = [];
@@ -97,16 +97,16 @@ public class OperationsTaskDto
     public string? OriginalAssigneeName { get; set; }
     public string? CreditAssigneeId { get; set; }
     public string? CreditAssigneeName { get; set; }
-    /// <summary>ISO when assignee confirmed receipt; null = بانتظار المنفّذ.</summary>
+ /// <summary>ISO when assignee confirmed receipt; null = بانتظار المنفّذ.</summary>
     public string? ReceiptConfirmedAt { get; set; }
-    /// <summary>Required reason when status is cancelled.</summary>
+ /// <summary>Required reason when status is cancelled.</summary>
     public string? CancelReason { get; set; }
-    /// <summary>Linked key envelope id when registered against this task.</summary>
+ /// <summary>Linked key envelope id when registered against this task.</summary>
     public string? LinkedEnvelopeId { get; set; }
-    /// <summary>
-    /// Cooperator visit fee: agreed at create, then mirrored from the stamped charge after complete.
-    /// Null for employee reviewers (no visit fee).
-    /// </summary>
+ /// <summary>
+ /// Cooperator visit fee: agreed at create, then mirrored from the stamped charge after complete.
+ /// Null for employee reviewers (no visit fee).
+ /// </summary>
     public decimal? VisitFeeAmountSar { get; set; }
 }
 
@@ -154,10 +154,10 @@ public class CreateOperationsTaskRequest
 
     public IReadOnlyList<OperationsTaskLetterRowDto>? LetterRows { get; set; }
 
-    /// <summary>
-    /// Required for cooperator court_visit assignees when the active pricing table has no default.
-    /// Ignored (must be null) for employee reviewers.
-    /// </summary>
+ /// <summary>
+ /// Required for cooperator court_visit assignees when the active pricing table has no default.
+ /// Ignored (must be null) for employee reviewers.
+ /// </summary>
     public decimal? VisitFeeAmountSar { get; set; }
 }
 
@@ -168,15 +168,15 @@ public class PatchOperationsTaskRequest
     public DateTime? DueAtUtc { get; set; }
     public string? Title { get; set; }
     public string? Description { get; set; }
-    /// <summary>Required when completing a court_visit task.</summary>
+ /// <summary>Required when completing a court_visit task.</summary>
     public OperationsTaskCourtVisitResultDto? CourtVisitResult { get; set; }
-    /// <summary>Required when Status = paused.</summary>
+ /// <summary>Required when Status = paused.</summary>
     [MaxLength(2000)]
     public string? PauseReason { get; set; }
-    /// <summary>Required when Status = cancelled.</summary>
+ /// <summary>Required when Status = cancelled.</summary>
     [MaxLength(2000)]
     public string? CancelReason { get; set; }
-    /// <summary>Execution-credit assignee when closing a reassigned task.</summary>
+ /// <summary>Execution-credit assignee when closing a reassigned task.</summary>
     public string? CreditAssigneeId { get; set; }
     public string? CreditAssigneeName { get; set; }
 }
@@ -197,7 +197,7 @@ public class ReassignOperationsTaskRequest
 
 public class RemindOperationsTaskRequest
 {
-    /// <summary>When true, marks the reminder as scheduler-generated.</summary>
+ /// <summary>When true, marks the reminder as scheduler-generated.</summary>
     public bool Auto { get; set; }
 }
 

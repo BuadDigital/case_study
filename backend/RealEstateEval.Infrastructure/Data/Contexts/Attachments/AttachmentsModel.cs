@@ -6,7 +6,7 @@ namespace RealEstateEval.Infrastructure.Data.Contexts;
 /// <summary>
 /// The <c>attachments</c> schema mapping. Applied by <see cref="AttachmentsDbContext"/>, which
 /// owns the write path, and by the legacy context, which still serves the existence checks
-/// that plan Phase 3 replaces with the Attachments API. A single definition is what keeps the
+/// until the Attachments API replaces them. A single definition is what keeps the
 /// two mappings from drifting while both exist.
 /// </summary>
 internal static class AttachmentsModel

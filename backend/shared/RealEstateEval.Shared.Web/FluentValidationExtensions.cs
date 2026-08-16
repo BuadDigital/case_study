@@ -10,11 +10,11 @@ namespace RealEstateEval.Shared.Web;
 
 public static class FluentValidationExtensions
 {
-    /// <summary>
-    /// Registers the intentionally small set of boundary validators and runs them for
-    /// controller action arguments. Async validation is supported without relying on
-    /// the deprecated FluentValidation.AspNetCore package.
-    /// </summary>
+ /// <summary>
+ /// Registers the intentionally small set of boundary validators and runs them for
+ /// controller action arguments. Async validation is supported without relying on
+ /// the deprecated FluentValidation.AspNetCore package.
+ /// </summary>
     public static IMvcBuilder AddRealEstateEvalValidation(this IMvcBuilder mvc)
     {
         mvc.Services.AddValidatorsFromAssemblyContaining<PasswordLoginRequestValidator>();

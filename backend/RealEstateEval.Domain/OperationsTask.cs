@@ -7,19 +7,19 @@ namespace RealEstateEval.Domain;
 /// </summary>
 public class OperationsTask
 {
-    /// <summary>For EF materialization and <see cref="Create"/>.</summary>
+ /// <summary>For EF materialization and <see cref="Create"/>.</summary>
     private OperationsTask()
     {
     }
 
     public Guid Id { get; private set; }
-    /// <summary>Human-readable id, e.g. T-2026-0041.</summary>
+ /// <summary>Human-readable id, e.g. T-2026-0041.</summary>
     public string DisplayId { get; private set; } = "";
     public OperationsTaskType Type { get; private set; } = OperationsTaskType.General;
     public string Title { get; private set; } = "";
     public string? Description { get; private set; }
     public OperationsTaskScope Scope { get; private set; } = OperationsTaskScope.General;
-    /// <summary>JSON array of deed numbers.</summary>
+ /// <summary>JSON array of deed numbers.</summary>
     public string? DeedsJson { get; private set; }
     public string? PoNumber { get; private set; }
     public string AssigneeId { get; private set; } = "";
@@ -32,38 +32,38 @@ public class OperationsTask
     public DateTime DueAtUtc { get; private set; }
     public DateTime CreatedAtUtc { get; private set; }
     public DateTime UpdatedAtUtc { get; private set; }
-    /// <summary>Delegation letter reference for court-visit tasks.</summary>
+ /// <summary>Delegation letter reference for court-visit tasks.</summary>
     public string? Reference { get; private set; }
-    /// <summary>JSON snapshot of letter rows for court visits.</summary>
+ /// <summary>JSON snapshot of letter rows for court visits.</summary>
     public string? LetterRowsJson { get; private set; }
-    /// <summary>JSON array of task comments.</summary>
+ /// <summary>JSON array of task comments.</summary>
     public string? CommentsJson { get; private set; }
-    /// <summary>JSON array of reminder log entries.</summary>
+ /// <summary>JSON array of reminder log entries.</summary>
     public string? RemindersJson { get; private set; }
-    /// <summary>JSON court-visit close outcome (kind, statement, contacts, …).</summary>
+ /// <summary>JSON court-visit close outcome (kind, statement, contacts, …).</summary>
     public string? CourtVisitResultJson { get; private set; }
-    /// <summary>
-    /// Agreed visit fee for a cooperator court_visit, set at create. Null for employees
-    /// (no visit fee) and for non-court tasks.
-    /// </summary>
+ /// <summary>
+ /// Agreed visit fee for a cooperator court_visit, set at create. Null for employees
+ /// (no visit fee) and for non-court tasks.
+ /// </summary>
     public decimal? AgreedVisitFeeSar { get; private set; }
-    /// <summary>Pricing table that supplied the create-time default, when applicable.</summary>
+ /// <summary>Pricing table that supplied the create-time default, when applicable.</summary>
     public Guid? VisitFeePricingTableId { get; private set; }
-    /// <summary>Required when status becomes paused.</summary>
+ /// <summary>Required when status becomes paused.</summary>
     public string? PauseReason { get; private set; }
-    /// <summary>UTC when the task was last paused.</summary>
+ /// <summary>UTC when the task was last paused.</summary>
     public DateTime? PausedAtUtc { get; private set; }
-    /// <summary>Last daily over-limit pause reminder (UTC).</summary>
+ /// <summary>Last daily over-limit pause reminder (UTC).</summary>
     public DateTime? PauseOverLimitRemindedAtUtc { get; private set; }
-    /// <summary>First assignee before any reassignment (execution-credit default).</summary>
+ /// <summary>First assignee before any reassignment (execution-credit default).</summary>
     public string? OriginalAssigneeId { get; private set; }
     public string? OriginalAssigneeName { get; private set; }
-    /// <summary>Who receives execution credit at close (defaults to original / current assignee).</summary>
+ /// <summary>Who receives execution credit at close (defaults to original / current assignee).</summary>
     public string? CreditAssigneeId { get; private set; }
     public string? CreditAssigneeName { get; private set; }
-    /// <summary>UTC when the assignee confirmed receipt («تأكيد الاستلام»).</summary>
+ /// <summary>UTC when the assignee confirmed receipt («تأكيد الاستلام»).</summary>
     public DateTime? ReceiptConfirmedAtUtc { get; private set; }
-    /// <summary>Required when status becomes cancelled.</summary>
+ /// <summary>Required when status becomes cancelled.</summary>
     public string? CancelReason { get; private set; }
 
     public bool IsTerminal => Status.IsTerminal();
@@ -116,11 +116,11 @@ public class OperationsTask
             VisitFeePricingTableId = visitFeePricingTableId,
         };
 
-    /// <summary>
-    /// The legal status edges. Manual resume is always <see cref="OperationsTaskStatus.InProgress"/>.
-    /// After a property-failure (تعذر) lift, tasks may reopen as <see cref="OperationsTaskStatus.Created"/>
-    /// so the assignee re-confirms receipt from the start.
-    /// </summary>
+ /// <summary>
+ /// The legal status edges. Manual resume is always <see cref="OperationsTaskStatus.InProgress"/>.
+ /// After a property-failure (تعذر) lift, tasks may reopen as <see cref="OperationsTaskStatus.Created"/>
+ /// so the assignee re-confirms receipt from the start.
+ /// </summary>
     public static bool IsLegalTransition(OperationsTaskStatus from, OperationsTaskStatus to) =>
         (from, to) switch
         {
@@ -140,11 +140,11 @@ public class OperationsTask
     public bool CanTransitionTo(OperationsTaskStatus next) =>
         !IsTerminal && IsLegalTransition(Status, next);
 
-    /// <summary>
-    /// Moves the task to <paramref name="next"/> and applies everything that hangs off the
-    /// transition: pause bookkeeping, cancel reason, receipt confirmation. Returns the status the
-    /// task came from so the caller can log it.
-    /// </summary>
+ /// <summary>
+ /// Moves the task to <paramref name="next"/> and applies everything that hangs off the
+ /// transition: pause bookkeeping, cancel reason, receipt confirmation. Returns the status the
+ /// task came from so the caller can log it.
+ /// </summary>
     public OperationsTaskStatus TransitionTo(
         OperationsTaskStatus next,
         DateTime nowUtc,
@@ -180,12 +180,12 @@ public class OperationsTask
         if (next == OperationsTaskStatus.Cancelled)
             CancelReason = cancelReason!.Trim();
 
-        // Reopen after failure (paused → created): force a fresh receipt confirmation.
+ // Reopen after failure (paused → created): force a fresh receipt confirmation.
         if (next == OperationsTaskStatus.Created && from == OperationsTaskStatus.Paused)
             ReceiptConfirmedAtUtc = null;
 
-        // Entering execution is also the receipt confirmation, including a resume after a
-        // pause taken straight from "created".
+ // Entering execution is also the receipt confirmation, including a resume after a
+ // pause taken straight from "created".
         if (next == OperationsTaskStatus.InProgress && ReceiptConfirmedAtUtc is null)
             ReceiptConfirmedAtUtc = nowUtc;
 
@@ -216,10 +216,10 @@ public class OperationsTask
         Touch(nowUtc);
     }
 
-    /// <summary>
-    /// Stamps who gets execution credit at close. Defaults to the original assignee so a
-    /// reassignment does not hand the credit to whoever happened to close the task.
-    /// </summary>
+ /// <summary>
+ /// Stamps who gets execution credit at close. Defaults to the original assignee so a
+ /// reassignment does not hand the credit to whoever happened to close the task.
+ /// </summary>
     public void ApplyExecutionCredit(string? requestedId, string? requestedName, DateTime nowUtc)
     {
         var creditId = requestedId?.Trim() ?? "";
@@ -244,7 +244,7 @@ public class OperationsTask
         Touch(nowUtc);
     }
 
-    /// <summary>True when the assignee changed after creation, so credit is worth logging.</summary>
+ /// <summary>True when the assignee changed after creation, so credit is worth logging.</summary>
     public bool WasReassigned =>
         !string.IsNullOrWhiteSpace(OriginalAssigneeId)
         && !string.Equals(OriginalAssigneeId, AssigneeId, StringComparison.Ordinal);
@@ -285,10 +285,10 @@ public class OperationsTask
         Touch(nowUtc);
     }
 
-    /// <summary>
-    /// Stamps (or recovers) the cooperator visit fee. Create normally writes this; complete may
-    /// call it when a legacy task was left without an amount but pricing still resolves.
-    /// </summary>
+ /// <summary>
+ /// Stamps (or recovers) the cooperator visit fee. Create normally writes this; complete may
+ /// call it when a legacy task was left without an amount but pricing still resolves.
+ /// </summary>
     public void StampAgreedVisitFee(decimal amountSar, Guid? pricingTableId, DateTime nowUtc)
     {
         if (!IsCourtVisit)

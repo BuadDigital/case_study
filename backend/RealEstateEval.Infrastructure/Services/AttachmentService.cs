@@ -12,7 +12,7 @@ public sealed class AttachmentService : IAttachmentService
     private const string BlobContainer = "attachments";
     private const int MaxAttachmentsPerScope = 200;
 
-    /// <summary>Base64 inflates by 4/3; allow a little slack for padding and whitespace.</summary>
+ /// <summary>Base64 inflates by 4/3; allow a little slack for padding and whitespace.</summary>
     private const int MaxBase64Length =
         (int)(AttachmentUploadRules.DefaultMaxBytes / 3 + 1) * 4 + 1024;
     private readonly AttachmentsDbContext _db;
@@ -59,8 +59,8 @@ public sealed class AttachmentService : IAttachmentService
         var content = await ReadContentAsync(row, cancellationToken);
         if (content is null) return (null, null);
 
-        // Rows written before content verification may carry a client-chosen MIME type.
-        // Serve what the bytes actually are, or nothing the browser will render.
+ // Rows written before content verification may carry a client-chosen MIME type.
+ // Serve what the bytes actually are, or nothing the browser will render.
         var format = FileSignatureInspector.Detect(content);
         return (content, ToMeta(row, contentTypeOverride: FileSignatureInspector.CanonicalMime(format)));
     }
@@ -70,7 +70,7 @@ public sealed class AttachmentService : IAttachmentService
         string uploadedByUserId,
         CancellationToken cancellationToken = default)
     {
-        // Reject implausibly large payloads before allocating the decoded buffer.
+ // Reject implausibly large payloads before allocating the decoded buffer.
         if (request.ContentBase64.Length > MaxBase64Length)
             return (null, "حجم الملف يتجاوز الحد المسموح");
 
@@ -107,7 +107,7 @@ public sealed class AttachmentService : IAttachmentService
             Scope = request.Scope.Trim(),
             ScopeKey = request.ScopeKey.Trim(),
             FileName = safeName,
-            // Persist the verified type, so downloads can never echo a client-chosen MIME.
+ // Persist the verified type, so downloads can never echo a client-chosen MIME.
             ContentType = inspection.ContentType,
             StorageKey = storageKey,
             Content = null,
@@ -175,7 +175,7 @@ public sealed class AttachmentService : IAttachmentService
         if (typeKey.Length > 64)
             return (null, "نوع المرفق غير صالح");
 
-        // Library ≠ report: print requires a type; clearing type clears print.
+ // Library ≠ report: print requires a type; clearing type clears print.
         if (string.IsNullOrWhiteSpace(typeKey))
         {
             row.DictionaryTypeKey = "";
@@ -183,15 +183,15 @@ public sealed class AttachmentService : IAttachmentService
         }
         else
         {
-            // 11ف — the key must exist and be active in the admin dictionary; a typo
-            // must not produce a "printable" attachment that can never route.
+ // the key must exist and be active in the admin dictionary; a typo
+ // must not produce a "printable" attachment that can never route.
             if (_printDictionary is not null)
             {
                 var dictionary = await _printDictionary.GetAsync(cancellationToken);
                 var known = dictionary.Types.Any(t =>
                     t.IsActive && string.Equals(t.Key, typeKey, StringComparison.OrdinalIgnoreCase));
                 if (!known)
-                    return (null, "نوع المرفق غير معرف في قاموس المرفقات (11ف)");
+                    return (null, "نوع المرفق غير معرف في قاموس المرفقات");
             }
 
             row.DictionaryTypeKey = typeKey;

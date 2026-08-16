@@ -7,7 +7,7 @@ using RealEstateEval.Infrastructure.Data.Contexts;
 namespace RealEstateEval.Infrastructure.Services;
 
 /// <summary>
-/// Decision 20 (Solomon 2026-08-16) — grouped-property linking: the system suggests
+/// grouped-property linking: the system suggests
 /// (same owner / same plan / adjacent plots / coordinate proximity), a human confirms,
 /// the confirmation is audited, and the link is reversible with a reason. Work orders
 /// stay administratively independent.
@@ -48,7 +48,7 @@ public sealed class PropertyGroupService(
         var linkedByProperty = alreadyLinked.ToDictionary(x => x.PropertyId, x => x.GroupId);
         var subjectGroupId = linkedByProperty.GetValueOrDefault(propertyId);
 
-        // Cross-work-order scan — the spec's whole point is deeds arriving in separate orders.
+ // Cross-work-order scan — the spec's whole point is deeds arriving in separate orders.
         var candidates = await db.WorkOrderProperties.AsNoTracking()
             .Where(p => p.Id != propertyId && !p.IsRemoved)
             .OrderByDescending(p => p.Id)
@@ -61,7 +61,7 @@ public sealed class PropertyGroupService(
         var results = new List<PropertyGroupSuggestionDto>();
         foreach (var candidate in candidates)
         {
-            // Same group already → nothing to suggest for this pair.
+ // Same group already → nothing to suggest for this pair.
             if (subjectGroupId != Guid.Empty
                 && linkedByProperty.GetValueOrDefault(candidate.Id) == subjectGroupId)
             {
@@ -166,7 +166,7 @@ public sealed class PropertyGroupService(
 
         await db.SaveChangesAsync(cancellationToken);
 
-        // التأكيد بشري مسجَّل بالتدقيق (decision 20 stage 1).
+ // التأكيد بشري مسجَّل بالتدقيق ( stage 1).
         platformDb.AuditLogs.Add(audit.Create(
             actor,
             "PROPERTY_GROUP_LINK_CONFIRMED",
@@ -186,7 +186,7 @@ public sealed class PropertyGroupService(
         CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrWhiteSpace(reason))
-            return (null, "مبرر فك الربط إلزامي (قرار 20)");
+            return (null, "مبرر فك الربط إلزامي");
 
         var member = await db.PropertyGroupMembers
             .FirstOrDefaultAsync(m => m.PropertyId == propertyId && m.IsActive, cancellationToken);

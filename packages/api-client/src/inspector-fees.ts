@@ -424,7 +424,7 @@ export async function batchTransitionInspectorFees(
   }
 }
 
-/** @deprecated ج٩/ق٦ — endpoint returns 410; use party billing statements. */
+/** @deprecated— endpoint returns 410; use party billing statements. */
 export async function createDisbursementBatch(
   config: InspectorFeesApiConfig,
   body: CreateDisbursementBatchRequest,

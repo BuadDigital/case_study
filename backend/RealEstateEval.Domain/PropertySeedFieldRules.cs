@@ -1,6 +1,6 @@
 namespace RealEstateEval.Domain;
 
-/// <summary>Boundary type LOV (injection map §5.3) — street · plot · passage · rail.</summary>
+/// <summary>Boundary type LOV — street · plot · passage · rail.</summary>
 public static class PropertyBoundaryTypes
 {
     public const string Street = "street";
@@ -23,12 +23,12 @@ public static class PropertyBoundaryTypes
         _ => value?.Trim() ?? "",
     };
 
-    /// <summary>Computed street count for adjustments (ق map) — اعتراض فقط when derived.</summary>
+ /// <summary>Computed street count for adjustments — اعتراض فقط when derived.</summary>
     public static int CountStreets(params string?[] types) =>
         types.Count(t => string.Equals(t?.Trim(), Street, StringComparison.OrdinalIgnoreCase));
 }
 
-/// <summary>Building finishing level — one of four standard texts (injection map ق7).</summary>
+/// <summary>Building finishing level — one of four standard texts.</summary>
 public static class PropertyFinishingTypes
 {
     public const string Luxury = "luxury";

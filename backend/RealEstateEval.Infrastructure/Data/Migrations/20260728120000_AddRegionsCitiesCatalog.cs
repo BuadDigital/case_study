@@ -12,7 +12,7 @@ namespace RealEstateEval.Infrastructure.Data.Migrations;
 [Migration("20260728120000_AddRegionsCitiesCatalog")]
 public partial class AddRegionsCitiesCatalog : Migration
 {
-        /// <inheritdoc />
+ /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
             migrationBuilder.AddColumn<string>(
@@ -117,7 +117,7 @@ public partial class AddRegionsCitiesCatalog : Migration
                 unique: true);
         }
 
-        /// <inheritdoc />
+ /// <inheritdoc />
         protected override void Down(MigrationBuilder migrationBuilder)
         {
             migrationBuilder.DropTable(

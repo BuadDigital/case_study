@@ -8,9 +8,9 @@ public class PoEnfazFinanceFlag
 {
     public Guid Id { get; set; }
     public string PoNumber { get; set; } = "";
-    /// <summary>When null, flag applies to all properties under the PO.</summary>
+ /// <summary>When null, flag applies to all properties under the PO.</summary>
     public Guid? PropertyId { get; set; }
-    /// <summary>stopped | excluded | difficult</summary>
+ /// <summary>stopped | excluded | difficult</summary>
     public string Flag { get; set; } = PoEnfazFinanceFlagKind.Stopped;
     public string? Note { get; set; }
     public string SetByUserId { get; set; } = "";

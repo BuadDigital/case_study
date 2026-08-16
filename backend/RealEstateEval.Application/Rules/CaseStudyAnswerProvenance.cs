@@ -58,7 +58,7 @@ public static class CaseStudyAnswerProvenance
             if (string.Equals(prevNorm, nextNorm, StringComparison.Ordinal))
                 continue;
 
-            // Clearing a value keeps the last non-empty provenance snapshot.
+ // Clearing a value keeps the last non-empty provenance snapshot.
             if (string.IsNullOrEmpty(nextNorm))
                 continue;
 

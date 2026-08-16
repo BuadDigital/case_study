@@ -26,7 +26,7 @@ public abstract class ServiceApiFactory<TEntryPoint> : WebApplicationFactory<TEn
     public const string TestSigningKey =
         "integration-test-signing-key-that-is-at-least-sixty-four-characters-long-1234567890";
 
-    /// <summary>Matches the key the service reads, e.g. <c>ConnectionStrings:Operations</c>.</summary>
+ /// <summary>Matches the key the service reads, e.g. <c>ConnectionStrings:Operations</c>.</summary>
     protected abstract string ServiceName { get; }
 
     protected override void ConfigureWebHost(IWebHostBuilder builder)

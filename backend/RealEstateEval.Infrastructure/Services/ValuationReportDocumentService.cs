@@ -46,7 +46,7 @@ public sealed class ValuationReportDocumentService(
                 .OrderByDescending(w => w.UpdatedAtUtc)
                 .FirstOrDefaultAsync(cancellationToken);
 
-            // Building-mode facts come from the inspector's submission (single source, decision 10).
+ // Building-mode facts come from the inspector's submission (single source, ).
             if (workspace is not null)
             {
                 var payloadJson = await caseStudy.PartyTaskSubmissions.AsNoTracking()
@@ -56,7 +56,7 @@ public sealed class ValuationReportDocumentService(
                 inspector = InspectorPayloadFacts.Parse(payloadJson);
             }
 
-            // §4ج-1 — client name derives from the registry; report users 0..n.
+ // client name derives from the registry; report users 0..n.
             if (prop is not null)
             {
                 var wo = await caseStudy.WorkOrders.AsNoTracking()
@@ -92,8 +92,8 @@ public sealed class ValuationReportDocumentService(
         var cost = await costApproach.GetAsync(valuationRequestId, cancellationToken);
         var recon = await reconciliation.GetAsync(valuationRequestId, cancellationToken);
         var gates = await issuanceGates.EvaluateAsync(valuationRequestId, cancellationToken);
-        // §7.5 / IVS 106 8-30 — an unresolved deed↔nature match is a material
-        // restriction: the standards text must not claim full compliance.
+ // An unresolved deed↔nature match is a material
+ // restriction: the standards text must not claim full compliance.
         var complianceRestricted = gates?.Gates
             .Any(g => g.Code == ValuationIssuanceGateCodes.DeedNatureMatch && !g.Passed) == true;
         var org = await organizationSettings.GetAsync(cancellationToken);
@@ -205,7 +205,7 @@ public sealed class ValuationReportDocumentService(
             hasStructures,
             cancellationToken);
 
-        // 11ف — «لا صفحات لأنواع غير مرفوعة»: attachment sections without uploads drop out.
+ // «لا صفحات لأنواع غير مرفوعة»: attachment sections without uploads drop out.
         var attachmentCounts = new Dictionary<int, int>
         {
             [22] = printed.SiteMaps.Count,
@@ -318,15 +318,15 @@ public sealed class ValuationReportDocumentService(
 
         var photoBudget = AttachmentPrintRules.PhotoBudget(hasStructures);
 
-        // 11س — photos are auto-dated at capture; the caption prints the date.
+ // 11س — photos are auto-dated at capture; the caption prints the date.
         var rowIds = rows.Select(r => r.Id).ToList();
         var capturedAt = await attachments.PhotoMetadata.AsNoTracking()
             .Where(m => rowIds.Contains(m.PhotoId) && m.CapturedAtUtc != null)
             .ToDictionaryAsync(m => m.PhotoId, m => m.CapturedAtUtc, cancellationToken);
 
-        // 11ف — freely-defined dictionary types must not be silently dropped: any
-        // active custom type routes to the appendix bucket (section 25) with its
-        // dictionary label, until the page-flow engine gives each its own page.
+ // freely-defined dictionary types must not be silently dropped: any
+ // active custom type routes to the appendix bucket (section 25) with its
+ // dictionary label, until the page-flow engine gives each its own page.
         var dictionary = await printDictionary.GetAsync(cancellationToken);
         var dictionaryLabels = dictionary.Types
             .Where(t => t.IsActive)
@@ -475,7 +475,7 @@ public sealed class ValuationReportDocumentService(
                 d["currency"] = "الريال السعودي";
                 d["basis"] = basisLabel;
                 d["premise"] = premiseLabel;
-                // §4ج-1 — client from the registry + report users + derived usage sentence.
+ // client from the registry + report users + derived usage sentence.
                 d["clientName"] = clientNameAr;
                 d["reportUsers"] = reportUserNames is { Count: > 0 }
                     ? string.Join(" · ", reportUserNames)
@@ -493,7 +493,7 @@ public sealed class ValuationReportDocumentService(
                     ? null
                     : DeedKindLabels.LabelAr(prop.DeedKind);
                 d["ownerName"] = prop?.OwnerName;
-                // Decision 5 (سجل v2): نوع الملكية field in section 6 — editable-derived.
+ // نوع الملكية field in section 6 — editable-derived.
                 d["ownershipType"] = prop is null
                     ? null
                     : OwnershipTypes.LabelAr(OwnershipTypeRules.Effective(
@@ -502,10 +502,10 @@ public sealed class ValuationReportDocumentService(
                         OwnershipTypeRules.ParseOwners(prop.DeedOwnersJson),
                         prop.RestrictionType));
                 d["hasStructures"] = hasStructures ? "yes" : "no";
-                // Decision 6 — حالة العقار prints for buildings only, deleted for land;
-                // source is the field inspector (بند «حالة البناء»).
+ // حالة العقار prints for buildings only, deleted for land;
+ // source is the field inspector (بند «حالة البناء»).
                 d["propertyCondition"] = hasStructures ? inspector.BuildState : null;
-                // §4ج-12 — المنقولات وصف حر من الميداني؛ الغياب يُدوَّن نفيًا.
+ // المنقولات وصف حر من الميداني؛ الغياب يُدوَّن نفيًا.
                 d["movables"] = inspector.Movables switch
                 {
                     "نعم" => "يوجد منقولات بالعقار (وفق معاينة الميداني)",
@@ -527,7 +527,7 @@ public sealed class ValuationReportDocumentService(
                 d["region"] = prop?.Region;
                 d["city"] = prop?.City;
                 d["district"] = prop?.District;
-                // Decision 8ب — building rows deleted for land, shown for buildings.
+ // building rows deleted for land, shown for buildings.
                 d["buildingAge"] = hasStructures ? inspector.PropertyAgeYears : null;
                 d["occupancyState"] = hasStructures ? inspector.OccupancyState : null;
                 d["planNumber"] = prop?.PlanNumber;
@@ -616,7 +616,7 @@ public sealed class ValuationReportDocumentService(
 
             case ValuationReportSectionKeys.Adjustments:
                 d["note"] = "التسويات التسلسلية وعوامل الاختلاف من تبويب المقارنات — تُطبع المبررات دون الاقتراح الآلي.";
-                // ت-1 #14 — the renderer switches the adjusted-amount column label on this.
+ // the renderer switches the adjusted-amount column label on this.
                 d["adjustmentBasis"] = market?.AdjustmentBasis ?? "price_per_sqm";
                 d["adjustmentBasisLabel"] = market?.AdjustmentBasisLabelAr;
                 break;
@@ -672,8 +672,8 @@ public sealed class ValuationReportDocumentService(
 
             case ValuationReportSectionKeys.AreaUtilities:
                 d["mode"] = hasStructures ? "full_services" : "area_utilities";
-                // Buildings print the inspector's actual services; land keeps the
-                // 4-field area-utilities framing (11ب) — «لا تُخترع بيانات» when empty.
+ // Buildings print the inspector's actual services; land keeps the
+ // 4-field area-utilities framing (11ب) — «لا تُخترع بيانات» when empty.
                 d["services"] = inspector.Services.Count > 0
                     ? string.Join(" · ", inspector.Services)
                     : null;
@@ -697,7 +697,7 @@ public sealed class ValuationReportDocumentService(
                 d["body"] = ValuationReportFrozenTextLayers.ForSectionKey(key)
                     + (complianceRestricted
                        && key == ValuationReportSectionKeys.ProfessionalStandards
-                        ? " تنبيه (IVS 106، الفقرة 8-30): توجد قيود مؤثرة غير محسومة"
+                        ? " تنبيه: توجد قيود مؤثرة غير محسومة"
                           + " (مطابقة الصك على الطبيعة) — لا يُدّعى الامتثال الكامل للمعايير"
                           + " حتى حسمها."
                         : "");
@@ -762,7 +762,7 @@ public sealed class ValuationReportDocumentService(
 
 /// <summary>
 /// Facts extracted from the field inspector's submission payload (single source,
-/// decision 10). Loose JSON parse — absent keys stay null («لا تُخترع بيانات»).
+/// ). Loose JSON parse — absent keys stay null («لا تُخترع بيانات»).
 /// </summary>
 public sealed class InspectorPayloadFacts
 {

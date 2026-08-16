@@ -13,7 +13,7 @@ public class UsernameLoginRequest
 
 public class PasswordLoginRequest
 {
-    /// <summary>Mobile (preferred), email, or legacy username.</summary>
+ /// <summary>Mobile (preferred), email, or legacy username.</summary>
     [Required]
     [MinLength(2)]
     [MaxLength(120)]
@@ -35,7 +35,7 @@ public class LoginResponse
 {
     public string Token { get; set; } = string.Empty;
     public DateTime ExpiresAtUtc { get; set; }
-    /// <summary>Opaque rotating token for <c>POST /api/auth/refresh</c>.</summary>
+ /// <summary>Opaque rotating token for <c>POST /api/auth/refresh</c>.</summary>
     public string RefreshToken { get; set; } = string.Empty;
     public DateTime RefreshTokenExpiresAtUtc { get; set; }
     public UserInfoDto User { get; set; } = null!;

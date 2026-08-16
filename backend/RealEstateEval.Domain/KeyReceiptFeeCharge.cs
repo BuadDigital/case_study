@@ -7,7 +7,7 @@ public class KeyReceiptFeeCharge
     public Guid EnvelopeId { get; set; }
     public string RequestNumber { get; set; } = "";
     public decimal AmountSar { get; set; }
-    /// <summary>open | collected</summary>
+ /// <summary>open | collected</summary>
     public string CollectionStatus { get; set; } = KeyReceiptFeeStatuses.Open;
     public Guid? PhotoAttachmentId { get; set; }
     public Guid? ReceiptAttachmentId { get; set; }

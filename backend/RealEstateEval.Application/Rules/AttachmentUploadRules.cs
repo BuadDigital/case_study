@@ -46,22 +46,22 @@ public static class AttachmentUploadRules
         "evaluator-plan-image",
     };
 
-    /// <summary>
-    /// Result of a content-verified upload check. <see cref="Error"/> is non-null exactly
-    /// when the upload must be rejected; otherwise the caller must persist
-    /// <see cref="ContentType"/> and <see cref="FileName"/> instead of what the client sent.
-    /// </summary>
+ /// <summary>
+ /// Result of a content-verified upload check. <see cref="Error"/> is non-null exactly
+ /// when the upload must be rejected; otherwise the caller must persist
+ /// <see cref="ContentType"/> and <see cref="FileName"/> instead of what the client sent.
+ /// </summary>
     public sealed record InspectedUpload(
         string? Error,
         DetectedFileFormat Format,
         string ContentType,
         string FileName);
 
-    /// <summary>
-    /// Full upload gate: identifies the content from its own bytes, requires the declared
-    /// MIME type and the file-name extension to agree with it, then applies the scope's
-    /// format and size budget. Everything outside the allow-list is rejected.
-    /// </summary>
+ /// <summary>
+ /// Full upload gate: identifies the content from its own bytes, requires the declared
+ /// MIME type and the file-name extension to agree with it, then applies the scope's
+ /// format and size budget. Everything outside the allow-list is rejected.
+ /// </summary>
     public static InspectedUpload Inspect(
         string scope,
         string? declaredContentType,
@@ -95,7 +95,7 @@ public static class AttachmentUploadRules
         if (!FileSignatureInspector.MatchesExtension(format, extension))
             return Reject("امتداد الملف لا يطابق محتوى الملف", format, safeName);
 
-        // Scope + size budget is judged on the verified type, never the declared one.
+ // Scope + size budget is judged on the verified type, never the declared one.
         var verifiedMime = FileSignatureInspector.CanonicalMime(format);
         var scopeError = Validate(scope, verifiedMime, content.Length, safeName);
         if (scopeError is not null)
@@ -104,11 +104,11 @@ public static class AttachmentUploadRules
         return new InspectedUpload(null, format, verifiedMime, safeName);
     }
 
-    /// <summary>
-    /// Strips any directory component — including Windows-style separators, which
-    /// <see cref="Path.GetFileName(string)"/> ignores on Linux — and any character that
-    /// has no business in a stored file name.
-    /// </summary>
+ /// <summary>
+ /// Strips any directory component — including Windows-style separators, which
+ /// <see cref="Path.GetFileName(string)"/> ignores on Linux — and any character that
+ /// has no business in a stored file name.
+ /// </summary>
     public static string SanitizeFileName(string? fileName, DetectedFileFormat format)
     {
         var name = (fileName ?? "").Trim();
@@ -134,10 +134,10 @@ public static class AttachmentUploadRules
     private static InspectedUpload Reject(string error, DetectedFileFormat format, string fileName) =>
         new(error, format, FileSignatureInspector.CanonicalMime(format), fileName);
 
-    /// <summary>
-    /// Metadata-only gate (scope allow-list plus size budget). Callers handling real bytes
-    /// must use <see cref="Inspect"/>, which additionally verifies the content itself.
-    /// </summary>
+ /// <summary>
+ /// Metadata-only gate (scope allow-list plus size budget). Callers handling real bytes
+ /// must use <see cref="Inspect"/>, which additionally verifies the content itself.
+ /// </summary>
     public static string? Validate(string scope, string contentType, long sizeBytes, string? fileName = null)
     {
         if (sizeBytes <= 0)
@@ -171,7 +171,7 @@ public static class AttachmentUploadRules
             return null;
         }
 
-        // Default: images + PDF, 20 MB cap.
+ // Default: images + PDF, 20 MB cap.
         if (!IsImage(mime) && !IsPdf(mime, fileName))
             return "نوع الملف غير مدعوم";
         if (sizeBytes > DefaultMaxBytes)

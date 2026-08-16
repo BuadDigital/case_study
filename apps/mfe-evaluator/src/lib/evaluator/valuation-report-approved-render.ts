@@ -265,7 +265,7 @@ function buildSectionBody(sec: number, doc: ValuationReportDocumentDto): string 
           : "";
       const costBlock = doc.costApproachUsed
         ? kvTable([
-            ["قيمة الأرض من السوق (ق-4)", dash(doc.landValueFromMarketDisplay)],
+            ["قيمة الأرض من السوق", dash(doc.landValueFromMarketDisplay)],
             ["رأي التكلفة مع الأرض", dash(doc.costOpinionWithLandDisplay)],
             ["رأي المباني فقط", dash(doc.costOpinionBuildingsOnlyDisplay)],
           ])
@@ -339,7 +339,7 @@ function buildSectionBody(sec: number, doc: ValuationReportDocumentDto): string 
 }
 
 /**
- * الكليشة أصل نظام تُستبدل من الإعدادات دون أثر على الكود (السلة الأولى):
+ * الكليشة أصل نظام تُستبدل من الإعدادات دون أثر على الكود :
  * ثلاث شرائح — ترويسة حتى 41مم، تذييل من 270مم (27مم)، شريط جانبي 13مم repeat-y.
  * Null keeps the template's baked letterhead untouched.
  */
@@ -495,7 +495,7 @@ export function mergeApprovedValuationTemplate(
 
   applyLetterheadSlices(dom, doc.letterheadImageUrl);
 
-  // محرك الصف التلقائي (السلة الأولى، قرار سليمان 2026-08-12): لا توزيع يدويًا —
+ // محرك الصف التلقائي : لا توزيع يدويًا —
   // القسم وحدة لا تنشطر بين صفحتين، وما لا يتسع ينزل لبداية الصفحة التالية،
   // وحذف الشرطيات يسحب ما بعدها، وصفحات المرفقات حاويات صفحة كاملة.
   reflowSheets(dom);

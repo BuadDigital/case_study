@@ -2,7 +2,7 @@
 
 public class InspectorFeeRowDto
 {
-    /// <summary>Ledger row id (identity when multiple rows share a workflow task).</summary>
+ /// <summary>Ledger row id (identity when multiple rows share a workflow task).</summary>
     public string Id { get; set; } = "";
     public string WorkflowTaskId { get; set; } = "";
     public string? PropertyId { get; set; }
@@ -51,7 +51,7 @@ public class InspectorFeesSummaryDto
     public decimal AtFinanceSar { get; set; }
     public decimal DisbReqSar { get; set; }
     public decimal DisbursedSar { get; set; }
-    /// <summary>Withheld money. Deliberately outside the payable buckets above.</summary>
+ /// <summary>Withheld money. Deliberately outside the payable buckets above.</summary>
     public decimal SuspendedSar { get; set; }
     public decimal TotalDiscountsSar { get; set; }
     public IReadOnlyList<InspectorFeeRowDto> Rows { get; set; } = [];
@@ -128,17 +128,17 @@ public class PoEnfazRevenueLineDto
     public string PropertyLabel { get; set; } = "";
     public string WorkStatus { get; set; } = "";
     public string WorkStatusLabel { get; set; } = "";
-    /// <summary>دخل دراسة المعاملة.</summary>
+ /// <summary>دخل دراسة المعاملة.</summary>
     public decimal CaseStudyFeeSar { get; set; }
-    /// <summary>دخل تكاليف الرفع.</summary>
+ /// <summary>دخل تكاليف الرفع.</summary>
     public decimal SurveyFeeSar { get; set; }
-    /// <summary>أتعاب مفاتيح (يدوي عند وجود استحقاق).</summary>
+ /// <summary>أتعاب مفاتيح (يدوي عند وجود استحقاق).</summary>
     public decimal KeyFeeSar { get; set; }
     public string? KeyEntitlementEnvelopeId { get; set; }
     public bool HasKeyEntitlement { get; set; }
-    /// <summary>مراجع مرفقات ظرف المفتاح (صورة/إيصال) — عرض فقط.</summary>
+ /// <summary>مراجع مرفقات ظرف المفتاح (صورة/إيصال) — عرض فقط.</summary>
     public IReadOnlyList<string> KeyAttachmentIds { get; set; } = [];
-    /// <summary>Computed total (CaseStudy + Survey + Key).</summary>
+ /// <summary>Computed total (CaseStudy + Survey + Key).</summary>
     public decimal EnfazFeeSar { get; set; }
     public bool IncludedInBilling { get; set; }
 }
@@ -157,7 +157,7 @@ public class PoEnfazBillingDto
     public decimal CollectedAmountSar { get; set; }
     public DateTime? CollectedAtUtc { get; set; }
     public bool IsOverdue { get; set; }
-    /// <summary>مرفقات مرتبطة بالفاتورة / ظروف المفاتيح — عرض فقط.</summary>
+ /// <summary>مرفقات مرتبطة بالفاتورة / ظروف المفاتيح — عرض فقط.</summary>
     public IReadOnlyList<string> AttachmentIds { get; set; } = [];
 }
 
@@ -166,20 +166,20 @@ public class EnfazTrackingRowDto
     public string PoNumber { get; set; } = "";
     public string PropertyId { get; set; } = "";
     public string PropertyLabel { get; set; } = "";
-    /// <summary>رقم الصك من عقار أمر العمل.</summary>
+ /// <summary>رقم الصك من عقار أمر العمل.</summary>
     public string DeedNumber { get; set; } = "";
-    /// <summary>المدينة — للفلترة والعرض في قائمة الإيرادات.</summary>
+ /// <summary>المدينة — للفلترة والعرض في قائمة الإيرادات.</summary>
     public string City { get; set; } = "";
-    /// <summary>مساحة الأرض من البيانات الأولية (نص كما أُدخل).</summary>
+ /// <summary>مساحة الأرض من البيانات الأولية (نص كما أُدخل).</summary>
     public string LandArea { get; set; } = "";
-    /// <summary>تاريخ اكتمال العمل (آخر مهمة مكتملة أو بورصة).</summary>
+ /// <summary>تاريخ اكتمال العمل (آخر مهمة مكتملة أو بورصة).</summary>
     public DateTime? CompletedAtUtc { get; set; }
     public string WorkStatus { get; set; } = "";
     public string WorkStatusLabel { get; set; } = "";
     public bool EnfazFilled { get; set; }
     public decimal CaseStudyFeeSar { get; set; }
     public decimal SurveyFeeSar { get; set; }
-    /// <summary>أتعاب استلام المفاتيح (شاملة الضريبة).</summary>
+ /// <summary>أتعاب استلام المفاتيح (شاملة الضريبة).</summary>
     public decimal KeyFeeSar { get; set; }
     public decimal EnfazFeeSar { get; set; }
     public string? InvoiceNumber { get; set; }
@@ -187,7 +187,7 @@ public class EnfazTrackingRowDto
     public decimal CollectedAmountSar { get; set; }
     public DateTime? InvoiceIssuedAtUtc { get; set; }
     public bool IsOverdue { get; set; }
-    /// <summary>stopped | excluded | difficult — علامة مالية يدوية.</summary>
+ /// <summary>stopped | excluded | difficult — علامة مالية يدوية.</summary>
     public string? FinanceFlag { get; set; }
     public string? FinanceFlagNote { get; set; }
     public int FollowupCount { get; set; }
@@ -267,7 +267,7 @@ public class EnfazAgingReportDto
 
 public class EnfazAgingBucketDto
 {
-    /// <summary>0_30 | 31_60 | 61_90 | 90_plus</summary>
+ /// <summary>0_30 | 31_60 | 61_90 | 90_plus</summary>
     public string Key { get; set; } = "";
     public string Label { get; set; } = "";
     public int InvoiceCount { get; set; }

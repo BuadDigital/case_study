@@ -1,7 +1,7 @@
 namespace RealEstateEval.Domain;
 
 /// <summary>
-/// Client registry — required before opening a work order (valuation spec §1.1 / §4c-1).
+/// Client registry — required before opening a work order (valuation spec c-1).
 /// Not a login account; business entity for the client name and report users.
 /// </summary>
 public class Client
@@ -9,7 +9,7 @@ public class Client
     public Guid Id { get; set; }
     public string NameAr { get; set; } = "";
     public string? NameEn { get; set; }
-    /// <summary>National ID / commercial registration — optional discriminator.</summary>
+ /// <summary>National ID / commercial registration — optional discriminator.</summary>
     public string? IdentityNumber { get; set; }
     public string? Phone { get; set; }
     public string? Email { get; set; }

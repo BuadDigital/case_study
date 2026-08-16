@@ -7,7 +7,7 @@ using RealEstateEval.Infrastructure.Data.Contexts;
 namespace RealEstateEval.Infrastructure.Services;
 
 /// <summary>
-/// Decision 19.2 (Solomon 2026-08-16) — factor definitions are admin-managed reference
+/// factor definitions are admin-managed reference
 /// data with a version log: every save bumps the version and writes an audit row.
 /// </summary>
 public sealed class DifferenceFactorCatalogService(
@@ -70,7 +70,7 @@ public sealed class DifferenceFactorCatalogService(
 
         row.CatalogJson = DifferenceFactorCatalog.Serialize(entries);
 
-        // سجل النسخ — the audit trail carries the before/after of every version.
+ // سجل النسخ — the audit trail carries the before/after of every version.
         db.AuditLogs.Add(audit.Create(
             string.IsNullOrWhiteSpace(actorId) ? "system" : actorId,
             "DIFFERENCE_FACTOR_CATALOG_SAVED",

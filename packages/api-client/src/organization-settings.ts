@@ -61,7 +61,7 @@ export type OrganizationSlaSettings = {
   privateSectorBusinessDays: number;
 };
 
-/** ت-2 «حد أقصى قابل للضبط» — P2-5 approved 2026-08-16. */
+/** «حد أقصى قابل للضبط» — P2-5 approved 2026-08-16. */
 export type OrganizationValuationSettings = {
   maxAdoptedComparables: number;
 };

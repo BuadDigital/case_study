@@ -9,10 +9,10 @@ public class RefreshToken
     public Guid Id { get; set; } = Guid.NewGuid();
     public string UserId { get; set; } = string.Empty;
 
-    /// <summary>
-    /// Session family shared by every token produced from one login. Presenting a
-    /// token that was already rotated revokes the whole family.
-    /// </summary>
+ /// <summary>
+ /// Session family shared by every token produced from one login. Presenting a
+ /// token that was already rotated revokes the whole family.
+ /// </summary>
     public Guid SessionId { get; set; }
 
     public string TokenHash { get; set; } = string.Empty;

@@ -87,10 +87,10 @@ public class ValuationRequestServiceTests
 
     private static ValuationDbContext CreateDb() => TestDatabases.Valuation("valuation-request");
 
-    /// <summary>
-    /// The Valuation context cannot read Case Study tables, so the PO number arrives through
-    /// the owner interface (split plan, Phase 1 work item 6).
-    /// </summary>
+ /// <summary>
+ /// The Valuation context cannot read Case Study tables, so the PO number arrives through
+ /// the owner interface.
+ /// </summary>
     private static ValuationRequestService CreateService(ValuationDbContext db) =>
         new(
             db,

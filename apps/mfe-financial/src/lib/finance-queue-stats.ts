@@ -9,7 +9,7 @@ export type FinanceDisburseBuckets = {
 
 const ATTENTION_STATUSES: InspectorFeeBillingStatus[] = ["returned", "inquiry"];
 
-/** ج٩: party fee statement path — not the legacy DisbursementBatch صرف queue. */
+/** party fee statement path — not the legacy DisbursementBatch صرف queue. */
 function isStatementBillingPath(row: InspectorFeeRowDto): boolean {
   const statementKind =
     row.taskKind === "engineering-survey" ||

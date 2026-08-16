@@ -156,9 +156,9 @@ public class OperationsTasksController : ControllerBase
         return permissions?.DistributionAssigneeId?.Trim();
     }
 
-    /// <summary>
-    /// JWT carries identity roles (Editor/CDO), not prototype roles. Resolve like PermissionService.
-    /// </summary>
+ /// <summary>
+ /// JWT carries identity roles (Editor/CDO), not prototype roles. Resolve like PermissionService.
+ /// </summary>
     private async Task<string> ActorPrototypeRoleAsync(CancellationToken ct)
     {
         var userId = ActorId();
@@ -169,7 +169,7 @@ public class OperationsTasksController : ControllerBase
         if (!string.IsNullOrWhiteSpace(resolved))
             return resolved;
 
-        // Capability fallback: anyone who can manage WOs/ops is an ops manager.
+ // Capability fallback: anyone who can manage WOs/ops is an ops manager.
         if (HasCapability(PlatformCapabilities.ManageWorkOrders)
             || HasCapability(PlatformCapabilities.ManageOperations)
             || HasCapability(PlatformCapabilities.ManageSystemConfig))
@@ -187,9 +187,9 @@ public class OperationsTasksController : ControllerBase
 
     private string ActorId() => ActorClaims.Id(User);
 
-    /// <summary>
-    /// Never fall back to <see cref="System.Security.Claims.ClaimsIdentity.Name"/> —
-    /// NameClaimType is <c>sub</c>, so Identity.Name is the user id GUID.
-    /// </summary>
+ /// <summary>
+ /// Never fall back to <see cref="System.Security.Claims.ClaimsIdentity.Name"/> —
+ /// NameClaimType is <c>sub</c>, so Identity.Name is the user id GUID.
+ /// </summary>
     private string ActorName() => ActorClaims.DisplayName(User);
 }

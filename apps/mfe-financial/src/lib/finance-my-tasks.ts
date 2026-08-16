@@ -307,7 +307,7 @@ export function buildCostMyTasks(input: {
         statementId: s.id,
       });
     }
-    // issued + vendor: بانتظار المكتب — ليس إجراء مالية (بوابة المكتب / مرجع §5)
+ // issued + vendor: بانتظار المكتب — ليس إجراء مالية (بوابة المكتب / مرجع )
   }
 
   return tasks;

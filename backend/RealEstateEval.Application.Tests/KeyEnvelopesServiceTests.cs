@@ -118,7 +118,7 @@ public class KeyEnvelopesServiceTests
             "مراجع");
         Assert.Null(error);
         Assert.NotNull(ok);
-        // Only the court scenario earns receipt revenue from إنفاذ.
+ // Only the court scenario earns receipt revenue from إنفاذ.
         Assert.Null(ok!.RevenueEntitlementAtUtc);
         Assert.Equal(0, ok.KeysCountActual);
     }
@@ -434,11 +434,11 @@ public class KeyEnvelopesServiceTests
         Assert.True(row.Key);
     }
 
-    /// <summary>
-    /// Registering the envelope is what earns the receipt revenue from إنفاذ, and that is all it does.
-    /// It used to stamp an amount off the government-review table — a figure the pricing screen owned
-    /// but nobody had agreed to bill — and it must not be confused with the visit fee either.
-    /// </summary>
+ /// <summary>
+ /// Registering the envelope is what earns the receipt revenue from إنفاذ, and that is all it does.
+ /// It used to stamp an amount off the government-review table — a figure the pricing screen owned
+ /// but nobody had agreed to bill — and it must not be confused with the visit fee either.
+ /// </summary>
     [Fact]
     public async Task CreateAsync_court_envelope_marks_entitlement_without_any_amount()
     {
@@ -467,10 +467,10 @@ public class KeyEnvelopesServiceTests
             t => t.Summary.Contains("فوترة إنفاذ", StringComparison.Ordinal));
     }
 
-    /// <summary>
-    /// The report is one list: what finance already has amounts for, and what is merely owed to be
-    /// billed. Reading either side alone hid the other.
-    /// </summary>
+ /// <summary>
+ /// The report is one list: what finance already has amounts for, and what is merely owed to be
+ /// billed. Reading either side alone hid the other.
+ /// </summary>
     [Fact]
     public async Task The_fee_report_shows_entitlements_beside_the_historical_charges()
     {
@@ -488,10 +488,10 @@ public class KeyEnvelopesServiceTests
         Assert.Null(Assert.Single(report, r => r.EnvelopeId == entitlement.Id).FeeAmountSar);
     }
 
-    /// <summary>
-    /// There is nothing for finance to confirm on an entitlement — the amount is entered during
-    /// enforcement billing — so the refusal has to say that rather than claim the record is missing.
-    /// </summary>
+ /// <summary>
+ /// There is nothing for finance to confirm on an entitlement — the amount is entered during
+ /// enforcement billing — so the refusal has to say that rather than claim the record is missing.
+ /// </summary>
     [Fact]
     public async Task Confirming_collection_on_an_entitlement_explains_it_carries_no_amount()
     {
@@ -525,10 +525,10 @@ public class KeyEnvelopesServiceTests
     private static KeyEnvelopesService CreateService(TestBoundedContexts.Bundle bundle) =>
         TestBoundedContexts.CreateKeyEnvelopesService(bundle);
 
-    /// <summary>
-    /// A charge from before key-receipt revenue left the pricing table. Nothing creates these any
-    /// more, but they stay readable and collectable.
-    /// </summary>
+ /// <summary>
+ /// A charge from before key-receipt revenue left the pricing table. Nothing creates these any
+ /// more, but they stay readable and collectable.
+ /// </summary>
     private static async Task AddHistoricalChargeAsync(
         ApplicationDbContext db,
         Guid envelopeId,
@@ -579,7 +579,7 @@ public class KeyEnvelopesServiceTests
         return envelope!;
     }
 
-    /// <summary>A parent slot in the case-study phase — the phase a court hold suspends.</summary>
+ /// <summary>A parent slot in the case-study phase — the phase a court hold suspends.</summary>
     private static WorkflowTask CaseStudyTask(string poNumber, Guid propertyId) =>
         WorkflowTask.Create(
             WorkflowTaskKind.CaseStudyProperty,

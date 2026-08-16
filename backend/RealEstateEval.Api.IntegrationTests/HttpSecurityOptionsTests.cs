@@ -133,8 +133,8 @@ public class SecurityHeadersOptionsTests
             BuildConfiguration(new Dictionary<string, string?>()),
             new TestHostEnvironment(Environments.Production));
 
-        // Swagger UI loads its assets as same-origin files but sets inline style attributes,
-        // and "Try it out" calls the API it documents.
+ // Swagger UI loads its assets as same-origin files but sets inline style attributes,
+ // and "Try it out" calls the API it documents.
         Assert.Contains("script-src 'self';", options.DocumentationContentSecurityPolicy);
         Assert.DoesNotContain("script-src 'self' 'unsafe-inline'", options.DocumentationContentSecurityPolicy);
         Assert.Contains("style-src 'self' 'unsafe-inline'", options.DocumentationContentSecurityPolicy);
@@ -255,7 +255,7 @@ public class CorsOptionsTests
             configuration,
             new TestHostEnvironment(Environments.Production)));
 
-        // Development keeps working on the localhost defaults.
+ // Development keeps working on the localhost defaults.
         RealEstateEvalCorsOptions.FromConfiguration(
             configuration,
             new TestHostEnvironment(Environments.Development));

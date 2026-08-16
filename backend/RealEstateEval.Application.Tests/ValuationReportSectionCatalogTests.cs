@@ -76,7 +76,7 @@ public class ValuationReportSectionCatalogTests
     {
         var text = ValuationReportDisplayRules.FormatHijriDate(new DateOnly(2026, 8, 16));
         Assert.EndsWith("هـ", text);
-        // Um Al-Qura: 2026-08-16 falls in 1448.
+ // Um Al-Qura: 2026-08-16 falls in 1448.
         Assert.StartsWith("1448/", text);
     }
 

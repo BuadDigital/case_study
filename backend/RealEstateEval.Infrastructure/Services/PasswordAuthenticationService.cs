@@ -22,10 +22,10 @@ public sealed class PasswordAuthenticationService(
             ? await userManager.FindByEmailAsync(login)
             : await userManager.FindByNameAsync(login);
 
-        // Keep username login compatible for API clients while the UI uses email.
+ // Keep username login compatible for API clients while the UI uses email.
         user ??= await userManager.FindByEmailAsync(login);
 
-        // Mobile is the product login identifier (E.164 / local SA digits).
+ // Mobile is the product login identifier (E.164 / local SA digits).
         if (user is null)
         {
             var mobile = NormalizeLoginMobile(login);
@@ -49,7 +49,7 @@ public sealed class PasswordAuthenticationService(
         return await sessions.IssueForUserIdAsync(user.Id, cancellationToken);
     }
 
-    /// <summary>Accepts +9665…, 9665…, 05…, or bare 5XXXXXXXX.</summary>
+ /// <summary>Accepts +9665…, 9665…, 05…, or bare 5XXXXXXXX.</summary>
     private static string? NormalizeLoginMobile(string raw)
     {
         var digits = Regex.Replace(raw, @"\D", "");

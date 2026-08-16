@@ -5,27 +5,27 @@ public class WorkOrder
     public Guid Id { get; set; }
     public string PoNumber { get; set; } = "";
     public AssignmentType AssignmentType { get; set; }
-    /// <summary>Promulgation date from Infath.</summary>
+ /// <summary>Promulgation date from Infath.</summary>
     public DateOnly PromulgationDate { get; set; }
     public DateOnly ReceivedFromEnfathAt { get; set; }
     public string? ReceivedFromEnfathTime { get; set; }
     public string? AssignmentSpecialist { get; set; }
     public string? AssignmentSpecialistEmail { get; set; }
-    /// <summary>Property count from Infath at promulgation.</summary>
+ /// <summary>Property count from Infath at promulgation.</summary>
     public int ExpectedPropertyCount { get; set; } = 1;
     public DateOnly DueDateAt { get; set; }
     public DateTime CreatedAtUtc { get; set; }
-    /// <summary>Manual override: cancelled | stopped — otherwise status is computed.</summary>
+ /// <summary>Manual override: cancelled | stopped — otherwise status is computed.</summary>
     public string? LifecycleStatus { get; set; }
-    /// <summary>Optional text — properties region.</summary>
+ /// <summary>Optional text — properties region.</summary>
     public string? PropertiesRegion { get; set; }
-    /// <summary>Optional text — work-order description.</summary>
+ /// <summary>Optional text — work-order description.</summary>
     public string? WorkOrderDescription { get; set; }
 
-    /// <summary>Transaction client — required (§1.1).</summary>
+ /// <summary>Transaction client — required.</summary>
     public Guid? ClientId { get; set; }
 
-    /// <summary>JSON array of client ids for report users (0..n) — see <see cref="WorkOrderReportUsers"/>.</summary>
+ /// <summary>JSON array of client ids for report users (0..n) — see <see cref="WorkOrderReportUsers"/>.</summary>
     public string? ReportUserClientIdsJson { get; set; }
 
     public Client? Client { get; set; }
@@ -62,10 +62,10 @@ public class WorkOrder
             CreatedAtUtc = createdAtUtc,
         };
 
-    /// <summary>
-    /// Apply a manual lifecycle override. Returns an Arabic error when the edge is illegal,
-    /// or null on success.
-    /// </summary>
+ /// <summary>
+ /// Apply a manual lifecycle override. Returns an Arabic error when the edge is illegal,
+ /// or null on success.
+ /// </summary>
     public string? TrySetLifecycleStatus(string lifecycleStatus, string alreadyAppliedMessage)
     {
         if (string.Equals(LifecycleStatus, lifecycleStatus, StringComparison.Ordinal))
@@ -82,7 +82,7 @@ public class WorkOrder
     }
 }
 
-/// <summary>§4ج-1 — report users (0..n) from the client registry, stored as a JSON id list.</summary>
+/// <summary>report users (0..n) from the client registry, stored as a JSON id list.</summary>
 public static class WorkOrderReportUsers
 {
     public static IReadOnlyList<Guid> Parse(string? json)

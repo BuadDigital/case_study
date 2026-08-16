@@ -9,11 +9,11 @@ namespace RealEstateEval.Application.Tests;
 /// Builds the Phase-1 contexts over one in-memory store, the way they run over one physical
 /// database. Sharing an explicit <see cref="InMemoryDatabaseRoot"/> is what lets a test write
 /// through an owner context and still read the row through the legacy context, which is
-/// exactly the arrangement the split relies on until Phase 4.
+/// exactly the arrangement the split relies on until owner APIs replace them.
 /// </summary>
 internal static class TestDatabases
 {
-    /// <summary>The legacy context plus every extracted context, all over the same store.</summary>
+ /// <summary>The legacy context plus every extracted context, all over the same store.</summary>
     internal sealed class ContextSet : IAsyncDisposable
     {
         private readonly InMemoryDatabaseRoot _root = new();

@@ -11,7 +11,7 @@ namespace RealEstateEval.Infrastructure.Data.Contexts.Platform.Migrations
     [Migration("20260802110000_AddFieldSyncStatuses")]
     public partial class AddFieldSyncStatuses : Migration
     {
-        /// <inheritdoc />
+ /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
             migrationBuilder.CreateTable(
@@ -41,7 +41,7 @@ namespace RealEstateEval.Infrastructure.Data.Contexts.Platform.Migrations
                 unique: true);
         }
 
-        /// <inheritdoc />
+ /// <inheritdoc />
         protected override void Down(MigrationBuilder migrationBuilder)
         {
             migrationBuilder.DropTable(

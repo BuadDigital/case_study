@@ -30,7 +30,7 @@ function emptyFactor(sortOrder: number): DifferenceFactorDefinitionDto {
 }
 
 /**
- * Decision 19.2 (Solomon 2026-08-16) — difference-factor definitions are admin-managed
+ * Decision 19.2  — difference-factor definitions are admin-managed
  * reference data with a version log; «ما لا يشمله» is the anti-double-counting control.
  */
 export function DifferenceFactorCatalogView() {
@@ -88,8 +88,8 @@ export function DifferenceFactorCatalogView() {
   return (
     <PageShell>
       <PageShellHeader
-        title="تعريفات عوامل الاختلاف (ت-5)"
-        meta={`بيانات مرجعية تديرها الإدارة — قرار 19.2 · النسخة الحالية: ${version}`}
+        title="تعريفات عوامل الاختلاف"
+        meta={`بيانات مرجعية تديرها الإدارة — النسخة الحالية: ${version}`}
       />
       <PageGutter>
         {error ? <Note tone="warn">{error}</Note> : null}

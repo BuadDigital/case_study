@@ -5,10 +5,10 @@ using Microsoft.EntityFrameworkCore.Migrations;
 
 namespace RealEstateEval.Infrastructure.Data.Contexts.Attachments.Migrations
 {
-    /// <inheritdoc />
+ /// <inheritdoc />
     public partial class AddPhotoMetadata : Migration
     {
-        /// <inheritdoc />
+ /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
             migrationBuilder.CreateTable(
@@ -38,7 +38,7 @@ namespace RealEstateEval.Infrastructure.Data.Contexts.Attachments.Migrations
                 unique: true);
         }
 
-        /// <inheritdoc />
+ /// <inheritdoc />
         protected override void Down(MigrationBuilder migrationBuilder)
         {
             migrationBuilder.DropTable(

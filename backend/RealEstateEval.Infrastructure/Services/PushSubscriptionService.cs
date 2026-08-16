@@ -75,7 +75,7 @@ public sealed class PushSubscriptionService : IPushSubscriptionService
         }
         else
         {
-            // Rebind shared-device endpoints to the current caller.
+ // Rebind shared-device endpoints to the current caller.
             existing.UserId = userId;
             existing.P256dh = request.P256dh.Trim();
             existing.Auth = request.Auth.Trim();
@@ -142,7 +142,7 @@ public sealed class PushSubscriptionService : IPushSubscriptionService
         return new PushPreferenceDto(row.PushEnabled);
     }
 
-    /// <summary>Prune soft-disabled subscriptions older than 30 days.</summary>
+ /// <summary>Prune soft-disabled subscriptions older than 30 days.</summary>
     public static async Task PruneDisabledAsync(
         MessagingDbContext db,
         CancellationToken cancellationToken = default)

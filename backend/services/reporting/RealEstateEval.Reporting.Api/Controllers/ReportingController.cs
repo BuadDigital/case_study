@@ -88,7 +88,7 @@ public class ReportingController : ControllerBase
 
         var specialistLoad = BuildTeamLoad(allTasks);
 
-        // Government-review workflow surface removed; keep DTO slot empty for API compat.
+ // Government-review workflow surface removed; keep DTO slot empty for API compat.
         var governmentReviews = Array.Empty<ReportingGovernmentReviewRowDto>();
 
         var failures = (await _upstream.GetFailuresAsync(ct))
@@ -209,10 +209,10 @@ public class ReportingController : ControllerBase
             .ToList();
     }
 
-    /// <summary>
-    /// Drop placeholder assignee rows where the name is just the role title (e.g. «معاين ميداني»)
-    /// or the legacy default demo persona superseded by named staff in HR seed.
-    /// </summary>
+ /// <summary>
+ /// Drop placeholder assignee rows where the name is just the role title (e.g. «معاين ميداني»)
+ /// or the legacy default demo persona superseded by named staff in HR seed.
+ /// </summary>
     private static bool IsTeamLoadPlaceholderRow(string name, string roleLabel)
     {
         var trimmed = name.Trim();
@@ -231,21 +231,21 @@ public class ReportingController : ControllerBase
         return string.Equals(trimmed, "أحمد سعيد", StringComparison.Ordinal);
     }
 
-    /// <summary>
-    /// Same open-work rules as sidebar badges and active-transaction queues (excludes completed/cancelled).
-    /// </summary>
+ /// <summary>
+ /// Same open-work rules as sidebar badges and active-transaction queues (excludes completed/cancelled).
+ /// </summary>
     private static bool IsActiveQueueStatus(string? status) =>
         status is WorkflowTaskStatusValues.Open or WorkflowTaskStatusValues.Blocked;
 
-    /// <summary>
-    /// Count only tasks that belong on each role's active queue — not every open task for that assignee role.
-    /// </summary>
+ /// <summary>
+ /// Count only tasks that belong on each role's active queue — not every open task for that assignee role.
+ /// </summary>
     private static bool MatchesTeamLoadTask(WorkflowTaskDto task, string roleId) =>
         task.AssigneeRole == roleId && roleId switch
         {
             "case-specialist" =>
                 task.Kind == "case-study-property" && task.Phase == "case-study",
-            // Legacy only: government-review children are no longer spawned.
+ // Legacy only: government-review children are no longer spawned.
             "government-reviewer" => task.Kind == "government-review",
             "field-inspector" => task.Kind == "field-inspection",
             "engineering-office" => task.Kind == "engineering-survey",

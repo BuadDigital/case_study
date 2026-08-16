@@ -22,7 +22,7 @@ public class CourtsController : ControllerBase
         _courts = courts;
     }
 
-    /// <summary>Legacy catalog list (city + court + circuits[]) for existing admin UI.</summary>
+ /// <summary>Legacy catalog list (city + court + circuits[]) for existing admin UI.</summary>
     [HttpGet]
     public async Task<ActionResult<IReadOnlyList<CourtCatalogEntryDto>>> List(
         CancellationToken cancellationToken)

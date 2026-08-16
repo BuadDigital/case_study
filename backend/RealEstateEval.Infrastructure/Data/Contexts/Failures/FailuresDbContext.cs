@@ -4,7 +4,7 @@ using RealEstateEval.Domain;
 namespace RealEstateEval.Infrastructure.Data.Contexts;
 
 /// <summary>
-/// Write context for the Failures bounded context (plan Phase 1, extraction order step 3).
+/// Write context for the Failures bounded context.
 /// Maps existing tables in the existing <c>failures</c> schema.
 /// </summary>
 public sealed class FailuresDbContext(DbContextOptions<FailuresDbContext> options) : DbContext(options)

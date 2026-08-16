@@ -1,6 +1,6 @@
 namespace RealEstateEval.Domain;
 
-/// <summary>Hard / soft issuance checks before native report submit (§7 / Phase 2–3 gates).</summary>
+/// <summary>Hard / soft issuance checks before native report submit.</summary>
 public static class ValuationIssuanceGateCodes
 {
     public const string Credentials = "credentials";
@@ -9,7 +9,7 @@ public static class ValuationIssuanceGateCodes
     public const string ComparableWeights = "comparable_weights";
     public const string ReconciliationWeights = "reconciliation_weights";
     public const string FinalOpinion = "final_opinion";
-    /// <summary>11ف — dictionary types marked required must have a printable upload.</summary>
+ /// <summary>dictionary types marked required must have a printable upload.</summary>
     public const string RequiredAttachments = "required_attachments";
 }
 
@@ -72,7 +72,7 @@ public static class ValuationIssuanceGateRules
     public static ValuationIssuanceGateCheck MinAdoptedComparables(int adoptedCount) =>
         new(
             ValuationIssuanceGateCodes.MinAdoptedComparables,
-            "مقارن معتمد واحد على الأقل (ق-6)",
+            "مقارن معتمد واحد على الأقل",
             adoptedCount >= 1,
             IsHard: true,
             DetailAr: adoptedCount < 1 ? "لا توجد مقارنات معتمدة" : null);
@@ -80,7 +80,7 @@ public static class ValuationIssuanceGateRules
     public static ValuationIssuanceGateCheck ComparableWeights(bool weightsSumTo100, int adoptedCount) =>
         new(
             ValuationIssuanceGateCodes.ComparableWeights,
-            "أوزان المقارنات = 100٪ (ق-10)",
+            "أوزان المقارنات = 100٪",
             adoptedCount == 0 || weightsSumTo100,
             IsHard: true,
             DetailAr: adoptedCount > 0 && !weightsSumTo100
@@ -92,7 +92,7 @@ public static class ValuationIssuanceGateRules
         bool weightsSumTo100) =>
         new(
             ValuationIssuanceGateCodes.ReconciliationWeights,
-            "نسب مشاركة الأساليب = 100٪ (ج-1)",
+            "نسب مشاركة الأساليب = 100٪",
             hasReconciliation && weightsSumTo100,
             IsHard: true,
             DetailAr: !hasReconciliation
@@ -107,11 +107,11 @@ public static class ValuationIssuanceGateRules
             IsHard: true,
             DetailAr: finalOpinionValue <= 0m ? "الرأي النهائي غير محسوب أو صفر" : null);
 
-    /// <summary>11ف — required dictionary types (matching the property type) need a printable upload.</summary>
+ /// <summary>required dictionary types (matching the property type) need a printable upload.</summary>
     public static ValuationIssuanceGateCheck RequiredAttachments(IReadOnlyList<string> missingLabelsAr) =>
         new(
             ValuationIssuanceGateCodes.RequiredAttachments,
-            "المرفقات الإلزامية (11ف)",
+            "المرفقات الإلزامية",
             missingLabelsAr.Count == 0,
             IsHard: true,
             DetailAr: missingLabelsAr.Count == 0

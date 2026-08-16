@@ -43,7 +43,7 @@ public sealed class WorkOrderPropertyCommands : IWorkOrderPropertyCommands
                 !p.IsRemoved && p.DeedNumber.Trim() == deed.Trim()));
         if (errors.Count > 0) return (null, errors);
 
-        // Never trust client ids on insert — draft ids make EF emit UPDATE and fail with 0 rows.
+ // Never trust client ids on insert — draft ids make EF emit UPDATE and fail with 0 rows.
         property.Id = null;
 
         var mapped = MapPropertyEnfath(property, entity.Id, forInsert: true);
@@ -121,10 +121,10 @@ public sealed class WorkOrderPropertyCommands : IWorkOrderPropertyCommands
             ApplyPropertyEnfath(existing, property);
         }
 
-        // Never mix contact DELETE/INSERT with property UPDATE in one SaveChanges —
-        // EF/Npgsql rewrites collection replaces into DELETE+UPDATE and throws
-        // DbUpdateConcurrencyException (0 rows). Detach contacts, save scalars, then
-        // rewrite contacts with ExecuteDelete + insert.
+ // Never mix contact DELETE/INSERT with property UPDATE in one SaveChanges —
+ // EF/Npgsql rewrites collection replaces into DELETE+UPDATE and throws
+ // DbUpdateConcurrencyException (0 rows). Detach contacts, save scalars, then
+ // rewrite contacts with ExecuteDelete + insert.
         DetachTrackedContacts(existing);
 
         try
@@ -225,7 +225,7 @@ public sealed class WorkOrderPropertyCommands : IWorkOrderPropertyCommands
             request.RestrictionType,
             request.RestrictionOtherReason);
 
-        // §4ج-7 — owners+shares from the transcription; ownership type is editable-derived.
+ // owners+shares from the transcription; ownership type is editable-derived.
         if (request.Owners is not null)
         {
             var owners = request.Owners
@@ -394,7 +394,7 @@ public sealed class WorkOrderPropertyCommands : IWorkOrderPropertyCommands
         PropertyIdentifierTypeLabels.TryParseApiValue(dto.IdentifierType, out var idType);
         entity.IdentifierType = idType;
 
-        // §4ج-8 — suggestion from the identifier; the valuer's explicit choice wins.
+ // suggestion from the identifier; the valuer's explicit choice wins.
         entity.DeedKind =
             !string.IsNullOrWhiteSpace(dto.DeedKind)
             && DeedKindLabels.TryParseApiValue(dto.DeedKind, out var deedKind)

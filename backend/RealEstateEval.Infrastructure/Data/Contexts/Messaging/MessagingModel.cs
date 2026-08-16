@@ -5,14 +5,14 @@ using RealEstateEval.Infrastructure.Data;
 namespace RealEstateEval.Infrastructure.Data.Contexts;
 
 /// <summary>
-/// The <c>messaging</c> schema mapping. Decision D5 makes the outbox per-producer and the
+/// The <c>messaging</c> schema mapping. makes the outbox per-producer and the
 /// inbox per-consumer: every context that publishes maps <c>OutboxMessages</c> so a business
 /// write and the event it raises land in one <c>SaveChanges</c>, and every context that
 /// consumes maps <c>ProcessedIntegrationEvents</c> and owns the rows carrying its own
 /// consumer name. These are the only tables allowed in more than one context.
 /// <para>
 /// Platform-owned notification / push tables (D3) are mapped here and by the legacy context
-/// for transitional dual write until Phase 3.
+/// for transitional dual write until owner APIs replace them.
 /// </para>
 /// </summary>
 internal static class MessagingModel
@@ -28,9 +28,9 @@ internal static class MessagingModel
             e.Property(x => x.LockedBy).HasMaxLength(128);
             e.HasIndex(x => x.ProcessedAtUtc);
             e.HasIndex(x => x.CreatedAtUtc);
-            // Drives the dispatcher claim query: unprocessed, not dead-lettered, oldest first.
-            // Partial so the index only ever holds the backlog instead of every message the
-            // system has published, which also lets the claim read rows already in claim order.
+ // Drives the dispatcher claim query: unprocessed, not dead-lettered, oldest first.
+ // Partial so the index only ever holds the backlog instead of every message the
+ // system has published, which also lets the claim read rows already in claim order.
             e.HasIndex(x => x.CreatedAtUtc, DatabaseIndexNames.OutboxPendingByCreatedAt)
                 .HasFilter("\"ProcessedAtUtc\" IS NULL AND \"DeadLetteredAtUtc\" IS NULL");
         });
@@ -43,8 +43,8 @@ internal static class MessagingModel
         builder.Entity<ProcessedIntegrationEvent>(e =>
         {
             MapTable(e, "ProcessedIntegrationEvents", DatabaseSchemas.Messaging, ownsMigrations);
-            // Composite key is the dedupe guarantee: the insert fails if the same consumer
-            // already handled the event, which is how redelivery is detected.
+ // Composite key is the dedupe guarantee: the insert fails if the same consumer
+ // already handled the event, which is how redelivery is detected.
             e.HasKey(x => new { x.Consumer, x.EventId });
             e.Property(x => x.Consumer).HasMaxLength(128);
             e.Property(x => x.EventType).HasMaxLength(128);
@@ -54,10 +54,10 @@ internal static class MessagingModel
         return builder;
     }
 
-    /// <summary>
-    /// Platform-owned in-app notification inbox and web-push rows (D3). Migration ownership is
-    /// <see cref="MessagingDbContext"/>; legacy maps ExcludeFromMigrations for dual/transitional paths.
-    /// </summary>
+ /// <summary>
+ /// Platform-owned in-app notification inbox and web-push rows (D3). Migration ownership is
+ /// <see cref="MessagingDbContext"/>; legacy maps ExcludeFromMigrations for dual/transitional paths.
+ /// </summary>
     public static ModelBuilder ApplyNotificationModel(
         this ModelBuilder builder,
         bool ownsMigrations = true)
@@ -77,9 +77,9 @@ internal static class MessagingModel
             e.Property(x => x.SourceEvent).HasMaxLength(256);
             e.HasIndex(x => new { x.UserId, x.CreatedAtUtc });
             e.HasIndex(x => new { x.UserId, x.ReadAtUtc });
-            // Dedupe rule: a user never holds two unread notifications for the same source
-            // event. Enforced here so concurrent deliveries of one event collide in the
-            // database instead of both passing a check-then-insert probe.
+ // Dedupe rule: a user never holds two unread notifications for the same source
+ // event. Enforced here so concurrent deliveries of one event collide in the
+ // database instead of both passing a check-then-insert probe.
             e.HasIndex(x => new { x.UserId, x.SourceEvent })
                 .IsUnique()
                 .HasFilter("\"SourceEvent\" IS NOT NULL AND \"ReadAtUtc\" IS NULL")
@@ -112,9 +112,9 @@ internal static class MessagingModel
         return builder;
     }
 
-    /// <summary>
-    /// Full messaging model for <see cref="MessagingDbContext"/> (migration owner + Platform write path).
-    /// </summary>
+ /// <summary>
+ /// Full messaging model for <see cref="MessagingDbContext"/> (migration owner + Platform write path).
+ /// </summary>
     public static ModelBuilder ApplyMessagingModel(this ModelBuilder builder, bool ownsMigrations = true) =>
         builder
             .ApplyOutboxModel(ownsMigrations)

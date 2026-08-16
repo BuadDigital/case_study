@@ -59,8 +59,8 @@ public static class InspectorFeeBillingRules
                     return false;
                 }
 
-                // Restore exactly where the line was withheld from: a draft must not be promoted to
-                // finance just because it spent time suspended.
+ // Restore exactly where the line was withheld from: a draft must not be promoted to
+ // finance just because it spent time suspended.
                 nextStatus = InspectorFeeBillingStatus.Suspendable.Contains(preSuspensionStatus ?? "")
                     ? preSuspensionStatus!
                     : InspectorFeeBillingStatus.SupReview;
@@ -215,7 +215,7 @@ public static class InspectorFeeBillingRules
         _ => "—",
     };
 
-    /// <summary>Lines eligible for inclusion in an engineering billing statement.</summary>
+ /// <summary>Lines eligible for inclusion in an engineering billing statement.</summary>
     public static bool IsReadyForEngStatement(string? status) =>
         status is InspectorFeeBillingStatus.AtFinance
             or InspectorFeeBillingStatus.Deferred;

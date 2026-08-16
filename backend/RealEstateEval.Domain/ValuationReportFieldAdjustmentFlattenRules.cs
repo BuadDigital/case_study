@@ -1,12 +1,12 @@
 namespace RealEstateEval.Domain;
 
 /// <summary>
-/// Flattens bank comparable adjustments into Mikyas Word-merge cells.
-/// Template uses columns 2/4/6 for the three comparable slots (§8 bank replaces fixed rows).
+/// Flattens bank comparable adjustments into Word-merge template cells.
+/// Template uses columns 2/4/6 for the three comparable slots (bank replaces fixed rows).
 /// </summary>
 public static class ValuationReportFieldAdjustmentFlattenRules
 {
-    /// <summary>Mikyas column index for adopted slot 0..2 → 2, 4, 6.</summary>
+ /// <summary>Word-merge column index for adopted slot 0..2 → 2, 4, 6.</summary>
     public static int ColumnForSlot(int slotIndexZeroBased) =>
         slotIndexZeroBased switch
         {
@@ -29,9 +29,9 @@ public static class ValuationReportFieldAdjustmentFlattenRules
     public static string FormatPct(decimal pct) =>
         pct.ToString("0.##", System.Globalization.CultureInfo.InvariantCulture);
 
-    /// <summary>
-    /// Writes adj.* field keys used by <see cref="ValuationReportFieldCatalog"/> for one slot.
-    /// </summary>
+ /// <summary>
+ /// Writes adj.* field keys used by <see cref="ValuationReportFieldCatalog"/> for one slot.
+ /// </summary>
     public static void PutSlotCells(
         IDictionary<string, string?> bag,
         int slotIndexZeroBased,
@@ -52,9 +52,9 @@ public static class ValuationReportFieldAdjustmentFlattenRules
             bag[codeFieldKey] = value.Trim();
         }
 
-        // ت-3 sequential rows. Ejada has no standalone time factor — ق-5 folds the time gap
-        // into تسوية ظروف السوق, so the market % goes only to the market row and the
-        // template's time row stays empty (writing it twice would double-apply on upload).
+ // sequential rows. Ejada has no standalone time factor — folds the time gap
+ // into تسوية ظروف السوق, so the market % goes only to the market row and the
+ // template's time row stays empty (writing it twice would double-apply on upload).
         Put($"adj.{CodeForFinancing(col)}", PercentForFactor(lines, MarketAdjustmentFactorKeys.Financing));
         Put($"adj.{CodeForMarket(col)}", PercentForFactor(lines, MarketAdjustmentFactorKeys.Market));
 
@@ -66,19 +66,19 @@ public static class ValuationReportFieldAdjustmentFlattenRules
         Put($"adj.{CodeForPriceAfterSequential(col)}",
             ValuationReportDisplayRules.FormatMoney(priceAfterSequential));
 
-        // Odd columns — the comparable's raw attributes next to each adjustment row.
+ // Odd columns — the comparable's raw attributes next to each adjustment row.
         if (comparableAreaSqm > 0m)
             Put($"adj.{CodeForAreaRaw(col)}", FormatPct(comparableAreaSqm));
         Put($"adj.{CodeForLocationRaw(col)}", comparableDistrict);
 
-        // ت-5 difference rows
+ // difference rows
         Put($"adj.{CodeForArea(col)}", PercentForFactor(lines, MarketAdjustmentFactorKeys.Area));
         Put($"adj.{CodeForLocation(col)}", PercentForFactor(lines, MarketAdjustmentFactorKeys.Location));
         Put($"adj.{CodeForStreetCount(col)}", PercentForFactor(lines, MarketAdjustmentFactorKeys.StreetCount));
         Put($"adj.{CodeForZoningFloors(col)}", PercentForFactor(lines, MarketAdjustmentFactorKeys.Zoning));
 
-        // TransactionType is sequential (ت-3 #29) — already inside priceAfterSequential;
-        // mixing it into this sum-then-apply difference row would count it twice.
+ // TransactionType is sequential — already inside priceAfterSequential;
+ // mixing it into this sum-then-apply difference row would count it twice.
         var other = lines
             .Where(l => l.IsIncluded && (
                 l.FactorKey is MarketAdjustmentFactorKeys.Custom
@@ -101,7 +101,7 @@ public static class ValuationReportFieldAdjustmentFlattenRules
         Put($"adj.{CodeForWeight(col)}", FormatPct(effectiveWeightPct));
     }
 
-    /// <summary>Default row descriptors — set only when absent so computed values (e.g. street count) survive.</summary>
+ /// <summary>Default row descriptors — set only when absent so computed values (e.g. street count) survive.</summary>
     public static void PutSharedLabels(IDictionary<string, string?> bag)
     {
         PutIfAbsent(bag, "adj.65441", MarketAdjustmentFactorKeys.DefaultLabelAr(MarketAdjustmentFactorKeys.StreetCount));
@@ -125,8 +125,8 @@ public static class ValuationReportFieldAdjustmentFlattenRules
         return line?.Percent;
     }
 
-    // Column codes from mikyas-report-template-analysis.md.
-    // Time row (60101/60103/60105) is deliberately never written — see PutSlotCells.
+ // Column codes from mikyas-report-template-analysis.md.
+ // Time row (60101/60103/60105) is deliberately never written — see PutSlotCells.
     private static string CodeForFinancing(int col) => col switch { 2 => "60107", 4 => "60109", 6 => "60111", _ => "" };
     private static string CodeForMarket(int col) => col switch { 2 => "60113", 4 => "60115", 6 => "60117", _ => "" };
     private static string CodeForFinancingMarketSum(int col) => col switch { 2 => "60119", 4 => "60121", 6 => "60123", _ => "" };

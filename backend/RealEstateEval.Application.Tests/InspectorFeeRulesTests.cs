@@ -78,10 +78,10 @@ public class InspectorFeeRulesTests
         Assert.Equal(900m, fee);
     }
 
-    /// <summary>
-    /// The old behaviour replaced an empty schedule with a built-in ladder, so a table nobody had
-    /// filled in still produced invoiceable amounts. Emptiness must now be unanswerable.
-    /// </summary>
+ /// <summary>
+ /// The old behaviour replaced an empty schedule with a built-in ladder, so a table nobody had
+ /// filled in still produced invoiceable amounts. Emptiness must now be unanswerable.
+ /// </summary>
     [Fact]
     public void An_empty_schedule_resolves_to_no_fee_at_all()
     {
@@ -90,10 +90,10 @@ public class InspectorFeeRulesTests
         Assert.False(EngineeringSurveyFeeRules.HasTiers(null));
     }
 
-    /// <summary>
-    /// The pricing screen scaffolds a new schedule with zero amounts, so a table can be saved with
-    /// tiers that carry no rate. Zero there means "nobody filled this in", not "this band is free".
-    /// </summary>
+ /// <summary>
+ /// The pricing screen scaffolds a new schedule with zero amounts, so a table can be saved with
+ /// tiers that carry no rate. Zero there means "nobody filled this in", not "this band is free".
+ /// </summary>
     [Fact]
     public void A_tier_left_at_zero_counts_as_unpriced()
     {
@@ -101,7 +101,7 @@ public class InspectorFeeRulesTests
             300m,
             [new(500m, 0m), new(null, 0m)]));
 
-        // A priced band still answers even when a neighbouring band is blank.
+ // A priced band still answers even when a neighbouring band is blank.
         Assert.Equal(900m, EngineeringSurveyFeeRules.ResolveFeeFromTiers(
             900m,
             [new(500m, 0m), new(null, 900m)]));
@@ -154,11 +154,11 @@ public class InspectorFeeRulesTests
             InspectorFeeRules.TypeEmployee));
     }
 
-    /// <summary>
-    /// The rates that used to live in code — 350 for a visit, 400/500 for a cooperator, and the
-    /// 300…4000 tier ladder — are gone by decision ق٨. Reflection is the only way to keep them from
-    /// creeping back as a "temporary" constant.
-    /// </summary>
+ /// <summary>
+ /// The rates that used to live in code — 350 for a visit, 400/500 for a cooperator, and the
+ /// 300…4000 tier ladder — are gone by. Reflection is the only way to keep them from
+ /// creeping back as a "temporary" constant.
+ /// </summary>
     [Theory]
     [InlineData(typeof(CourtVisitFeeRules))]
     [InlineData(typeof(InspectorFeeRules))]

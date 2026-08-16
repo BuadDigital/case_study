@@ -52,12 +52,12 @@ public sealed class PermissionService : IPermissionService
                 PlatformPermissionCatalog.ApplyPrototypeRole(prototypeRole, pages, capabilities);
         }
 
-        // Empty page set is intentional for department-only identity roles; do not invent shell pages.
+ // Empty page set is intentional for department-only identity roles; do not invent shell pages.
 
         capabilities.Add("authenticated");
 
-        // Prefer the stored department; fall back to the legacy HR section label so seeded
-        // supervisors whose UserProfile still says "إدارة التقييم العقاري" keep their authority.
+ // Prefer the stored department; fall back to the legacy HR section label so seeded
+ // supervisors whose UserProfile still says "إدارة التقييم العقاري" keep their authority.
         var department = SupervisingDepartments.NormalizeProfileValue(profile?.Department)
             ?? SupervisingDepartments.NormalizeProfileValue(profile?.HrEmployee?.Section)
             ?? SupervisingDepartments.DeriveForRole(prototypeRole ?? profile?.RoleId);

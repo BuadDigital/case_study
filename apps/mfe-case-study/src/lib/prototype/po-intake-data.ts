@@ -910,10 +910,10 @@ export type PoPropertyIntake = {
   /** Real-estate registration date — registered-title path. */
   realEstateRegDate: string;
   ownerName: string;
-  /** §4ج-8 — traditional | registered_title ("" = use suggestion). */
+ /** traditional | registered_title ("" = use suggestion). */
   deedKind: string;
   suggestedDeedKind: string;
-  /** §4ج-7 — JSON array [{name, sharePct}] (flat-draft representation). */
+ /** JSON array [{name, sharePct}] (flat-draft representation). */
   ownersJson: string;
   /** Effective نوع الملكية from the API ("" until loaded). */
   ownershipType: string;
@@ -1000,7 +1000,7 @@ export type PoIntakeRecord = {
   workOrderDescription: string;
   /** Registered client id — required on create/update */
   clientId: string;
-  /** §4ج-1 — report users (0..n) from the client registry. */
+ /** report users (0..n) from the client registry. */
   reportUserClientIds: string[];
   /** Denormalized client name from API when available */
   clientNameAr?: string;

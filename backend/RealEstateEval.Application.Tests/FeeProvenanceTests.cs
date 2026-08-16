@@ -46,10 +46,10 @@ public class FeeProvenanceTests
         Assert.NotEqual(Guid.Empty, ledger.Id);
     }
 
-    /// <summary>
-    /// Without a flat assignment and compensation flag, accrual must not invent a zero employee
-    /// draft — that was the old hand-entry path.
-    /// </summary>
+ /// <summary>
+ /// Without a flat assignment and compensation flag, accrual must not invent a zero employee
+ /// draft — that was the old hand-entry path.
+ /// </summary>
     [Fact]
     public async Task An_employee_without_a_flat_table_does_not_open_a_ledger()
     {
@@ -70,10 +70,10 @@ public class FeeProvenanceTests
         Assert.Empty(await db.InspectorFeeLedgers.ToListAsync());
     }
 
-    /// <summary>
-    /// A flat-priced incentive keeps its table stamp. Hand override is refused so provenance cannot
-    /// be erased by typing over the amount.
-    /// </summary>
+ /// <summary>
+ /// A flat-priced incentive keeps its table stamp. Hand override is refused so provenance cannot
+ /// be erased by typing over the amount.
+ /// </summary>
     [Fact]
     public async Task A_flat_priced_employee_fee_rejects_hand_override()
     {
@@ -123,7 +123,7 @@ public class FeeProvenanceTests
             WorkOrderId = Guid.NewGuid(),
             Area = "300",
         });
-        // Placeholder survey table with no tiers — ResolveDefaultFeeAsync must fail closed.
+ // Placeholder survey table with no tiers — ResolveDefaultFeeAsync must fail closed.
         db.PartyFeePricingTables.Add(new PartyFeePricingTable
         {
             Id = Guid.NewGuid(),
@@ -163,10 +163,10 @@ public class FeeProvenanceTests
         Assert.Empty(db.InspectorFeeLedgers);
     }
 
-    /// <summary>
-    /// Survey fees come from an area schedule that offices renegotiate, which makes the accrual the
-    /// place where provenance matters most.
-    /// </summary>
+ /// <summary>
+ /// Survey fees come from an area schedule that offices renegotiate, which makes the accrual the
+ /// place where provenance matters most.
+ /// </summary>
     [Fact]
     public async Task An_engineering_accrual_records_the_table_behind_the_tier()
     {
@@ -238,10 +238,10 @@ public class FeeProvenanceTests
         return tableId;
     }
 
-    /// <summary>
-    /// Survey tables only answer for offices assigned to them, so the assignment is part of the
-    /// fixture rather than an afterthought.
-    /// </summary>
+ /// <summary>
+ /// Survey tables only answer for offices assigned to them, so the assignment is part of the
+ /// fixture rather than an afterthought.
+ /// </summary>
     private static async Task<Guid> SetSurveyTierAsync(
         ApplicationDbContext db,
         string assigneeId,

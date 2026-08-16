@@ -269,10 +269,10 @@ public class GodServiceCollaboratorTests
             id: id,
             assigneeId: assigneeId);
 
-    /// <summary>
-    /// Walks a fresh task through the real transitions to reach <paramref name="status"/>; the
-    /// aggregate has no back door, and the path itself is part of what the rules assume.
-    /// </summary>
+ /// <summary>
+ /// Walks a fresh task through the real transitions to reach <paramref name="status"/>; the
+ /// aggregate has no back door, and the path itself is part of what the rules assume.
+ /// </summary>
     private static OperationsTask OperationsTaskInStatus(OperationsTaskStatus status)
     {
         var now = DateTime.UtcNow;

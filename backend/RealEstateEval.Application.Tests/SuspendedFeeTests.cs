@@ -70,10 +70,10 @@ public class SuspendedFeeTests
         Assert.Equal(InspectorFeeBillingStatus.AtFinance, stored.BillingStatus);
     }
 
-    /// <summary>
-    /// Without a restore point a suspended draft would come back as ready for finance, skipping the
-    /// supervisor approval it never received.
-    /// </summary>
+ /// <summary>
+ /// Without a restore point a suspended draft would come back as ready for finance, skipping the
+ /// supervisor approval it never received.
+ /// </summary>
     [Theory]
     [InlineData(InspectorFeeBillingStatus.Draft)]
     [InlineData(InspectorFeeBillingStatus.SupReview)]
@@ -116,10 +116,10 @@ public class SuspendedFeeTests
         Assert.Null(stored.PreSuspensionStatus);
     }
 
-    /// <summary>
-    /// Once a line joins a statement the money is committed there, so it has to be pulled back through
-    /// the statement rather than withheld behind the accountant's back.
-    /// </summary>
+ /// <summary>
+ /// Once a line joins a statement the money is committed there, so it has to be pulled back through
+ /// the statement rather than withheld behind the accountant's back.
+ /// </summary>
     [Theory]
     [InlineData(InspectorFeeBillingStatus.InStatement)]
     [InlineData(InspectorFeeBillingStatus.DisbReq)]
@@ -171,10 +171,10 @@ public class SuspendedFeeTests
         Assert.NotNull(error);
     }
 
-    /// <summary>
-    /// The engineering billing statement reads ready and deferred lines only, so withholding one has
-    /// to remove it from the eligible set rather than merely flag it.
-    /// </summary>
+ /// <summary>
+ /// The engineering billing statement reads ready and deferred lines only, so withholding one has
+ /// to remove it from the eligible set rather than merely flag it.
+ /// </summary>
     [Fact]
     public void A_suspended_line_is_not_eligible_for_a_statement() =>
         Assert.False(InspectorFeeBillingRules.IsReadyForEngStatement(

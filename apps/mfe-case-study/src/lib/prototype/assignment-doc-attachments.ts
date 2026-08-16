@@ -243,7 +243,7 @@ async function writeCachedDoc(
       }
     | undefined;
 
-  // Keys-proof images follow the evidence pipeline; PDFs/other docs stay raw (هـ).
+  // Keys-proof images follow the evidence pipeline; PDFs/other docs stay raw.
   if (
     kind === "keys-proof" &&
     !isPdfFile(file) &&

@@ -65,10 +65,10 @@ public class ValuationIntegrationHandlerTests
     Assert.Equal(WorkflowTaskStatus.Completed, task.Status);
   }
 
-  /// <summary>
-  /// D5 makes the outbox per-producer: the Valuation publisher must write through the Valuation
-  /// context, and the row must be visible in the shared messaging table either way.
-  /// </summary>
+ /// <summary>
+ /// D5 makes the outbox per-producer: the Valuation publisher must write through the Valuation
+ /// context, and the row must be visible in the shared messaging table either way.
+ /// </summary>
   [Fact]
   public async Task Valuation_outbox_publisher_queues_the_event_through_its_own_context()
   {

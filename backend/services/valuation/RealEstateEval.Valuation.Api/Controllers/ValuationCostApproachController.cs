@@ -7,7 +7,7 @@ using RealEstateEval.Shared.Web.Authorization;
 
 namespace RealEstateEval.Valuation.Api.Controllers;
 
-/// <summary>Contractor cost approach — land imported from market (ق-4).</summary>
+/// <summary>Contractor cost approach — land imported from market .</summary>
 [ApiController]
 [Route("api/valuation-requests/{valuationRequestId:guid}/cost-approach")]
 [Route("api/valuation-requests/v1/{valuationRequestId:guid}/cost-approach")]

@@ -68,8 +68,8 @@ public sealed class IntegrationEventInbox : IIntegrationEventInbox
         }
         catch (DbUpdateException)
         {
-            // Two deliveries of the same event raced past the check above and the primary key
-            // rejected the loser. Losing that race is the expected outcome, not a failure.
+ // Two deliveries of the same event raced past the check above and the primary key
+ // rejected the loser. Losing that race is the expected outcome, not a failure.
             _db.ChangeTracker.Clear();
             LogDuplicate(consumer, eventId, eventType);
             return false;

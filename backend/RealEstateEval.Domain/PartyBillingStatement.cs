@@ -8,13 +8,13 @@ public class PartyBillingStatement
 {
     public Guid Id { get; set; }
     public string ReferenceNumber { get; set; } = "";
-    /// <summary>Distribution assignee id (المستحق).</summary>
+ /// <summary>Distribution assignee id (المستحق).</summary>
     public string AssigneeId { get; set; } = "";
-    /// <summary><see cref="PartyBillingPayeeType"/> — vendor needs invoice match; individual does not.</summary>
+ /// <summary><see cref="PartyBillingPayeeType"/> — vendor needs invoice match; individual does not.</summary>
     public string PayeeType { get; set; } = PartyBillingPayeeType.Vendor;
-    /// <summary>Primary task kind snapped at create (engineering-survey · field-inspection · …).</summary>
+ /// <summary>Primary task kind snapped at create (engineering-survey · field-inspection · …).</summary>
     public string? TaskKind { get; set; }
-    /// <summary>draft | issued | invoice_received | closed | cancelled</summary>
+ /// <summary>draft | issued | invoice_received | closed | cancelled</summary>
     public string Status { get; set; } = PartyBillingStatementStatus.Draft;
     public decimal TotalNetSar { get; set; }
     public string CreatedByUserId { get; set; } = "";
@@ -23,20 +23,20 @@ public class PartyBillingStatement
     public string? IssuedByUserId { get; set; }
     public DateTime? ClosedAtUtc { get; set; }
     public string? ClosedByUserId { get; set; }
-    /// <summary>Invoice number from external accounting (legacy close field; also copies vendor invoice).</summary>
+ /// <summary>Invoice number from external accounting (legacy close field; also copies vendor invoice).</summary>
     public string? ExternalInvoiceNumber { get; set; }
-    /// <summary>Transfer receipt file (attachments scope).</summary>
+ /// <summary>Transfer receipt file (attachments scope).</summary>
     public Guid? TransferReceiptAttachmentId { get; set; }
-    /// <summary>Optional free-text receipt reference (alongside transfer ref).</summary>
+ /// <summary>Optional free-text receipt reference (alongside transfer ref).</summary>
     public string? TransferReceiptRef { get; set; }
-    /// <summary>Bank transfer reference — required with voucher + receipt at close.</summary>
+ /// <summary>Bank transfer reference — required with voucher + receipt at close.</summary>
     public string? TransferReference { get; set; }
-    /// <summary>Disbursement voucher number (سند صرف) — unique.</summary>
+ /// <summary>Disbursement voucher number (سند صرف) — unique.</summary>
     public string? DisbursementVoucher { get; set; }
     public DateTime? PaidAtUtc { get; set; }
     public string? Notes { get; set; }
 
-    // ---- Vendor invoice lifecycle (مكتب / منشأة) ----
+ // ---- Vendor invoice lifecycle (مكتب / منشأة) ----
     public string? VendorInvoiceNumber { get; set; }
     public DateTime? VendorInvoiceDate { get; set; }
     public Guid? VendorInvoiceAttachmentId { get; set; }
@@ -44,7 +44,7 @@ public class PartyBillingStatement
     public string? VendorInvoiceSubmittedByUserId { get; set; }
     public DateTime? VendorInvoiceMatchedAtUtc { get; set; }
     public string? VendorInvoiceMatchedByUserId { get; set; }
-    /// <summary>JSON array archive of rejected vendor invoices.</summary>
+ /// <summary>JSON array archive of rejected vendor invoices.</summary>
     public string? RejectedInvoicesJson { get; set; }
 
     public DateTime? CancelledAtUtc { get; set; }
@@ -60,7 +60,7 @@ public class PartyBillingStatementLine
     public Guid Id { get; set; }
     public Guid StatementId { get; set; }
     public Guid WorkflowTaskId { get; set; }
-    /// <summary>Net fee snapshot at statement creation.</summary>
+ /// <summary>Net fee snapshot at statement creation.</summary>
     public decimal NetFeeSar { get; set; }
 
     public PartyBillingStatement? Statement { get; set; }
@@ -86,7 +86,7 @@ public static class PartyBillingStatementStatus
 {
     public const string Draft = "draft";
     public const string Issued = "issued";
-    /// <summary>Vendor only — office uploaded invoice; finance must match or reject.</summary>
+ /// <summary>Vendor only — office uploaded invoice; finance must match or reject.</summary>
     public const string InvoiceReceived = "invoice_received";
     public const string Closed = "closed";
     public const string Cancelled = "cancelled";

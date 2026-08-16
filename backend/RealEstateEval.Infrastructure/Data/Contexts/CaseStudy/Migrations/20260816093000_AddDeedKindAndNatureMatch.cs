@@ -7,13 +7,13 @@ using RealEstateEval.Infrastructure.Data.Contexts;
 namespace RealEstateEval.Infrastructure.Data.Contexts.CaseStudy.Migrations;
 
 /// <summary>
-/// Valuation package Phase 1: نوع الصك على العقار + مخرج مطابقة الصك/الطبيعة على دراسة الحالة.
+/// Valuation package نوع الصك على العقار + مخرج مطابقة الصك/الطبيعة على دراسة الحالة.
 /// </summary>
 [DbContext(typeof(CaseStudyDbContext))]
 [Migration("20260816093000_AddDeedKindAndNatureMatch")]
 public partial class AddDeedKindAndNatureMatch : Migration
 {
-    /// <inheritdoc />
+ /// <inheritdoc />
     protected override void Up(MigrationBuilder migrationBuilder)
     {
         migrationBuilder.AddColumn<int>(
@@ -42,7 +42,7 @@ public partial class AddDeedKindAndNatureMatch : Migration
             nullable: false,
             defaultValue: "");
 
-        // سجّل عقاري كمعرّف ⟵ اقترح سجل عيني كنوع صك.
+ // سجّل عقاري كمعرّف ⟵ اقترح سجل عيني كنوع صك.
         migrationBuilder.Sql(
             """
             UPDATE case_study."WorkOrderProperties"
@@ -51,7 +51,7 @@ public partial class AddDeedKindAndNatureMatch : Migration
             """);
     }
 
-    /// <inheritdoc />
+ /// <inheritdoc />
     protected override void Down(MigrationBuilder migrationBuilder)
     {
         migrationBuilder.DropColumn(

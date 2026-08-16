@@ -13,19 +13,19 @@ public interface IInspectorFeeService
         Guid propertyId,
         CancellationToken cancellationToken = default);
 
-    /// <summary>
-    /// Accrues an engineering-survey fee from the pricing table when the specialist
-    /// accepts survey outputs. Idempotent if already accrued. Re-uploads do not create a second fee.
-    /// </summary>
+ /// <summary>
+ /// Accrues an engineering-survey fee from the pricing table when the specialist
+ /// accepts survey outputs. Idempotent if already accrued. Re-uploads do not create a second fee.
+ /// </summary>
     Task<(InspectorFeeRowDto? Row, string? Error)> AccrueEngineeringSurveyFeeAsync(
         Guid workflowTaskId,
         string actorUserId,
         CancellationToken cancellationToken = default);
 
-    /// <summary>
-    /// Set <paramref name="hideDisputed"/> for a finance-only actor: a line under pricing dispute must
-    /// not reach finance in any response, counts included, until operations resolves it.
-    /// </summary>
+ /// <summary>
+ /// Set <paramref name="hideDisputed"/> for a finance-only actor: a line under pricing dispute must
+ /// not reach finance in any response, counts included, until operations resolves it.
+ /// </summary>
     Task<InspectorFeesSummaryDto> GetSummaryAsync(
         string? assigneeId,
         string? workflowTaskId,
@@ -117,7 +117,7 @@ public interface IPoEnfazBillingService
     Task<EnfazAgingReportDto> GetAgingReportAsync(
         CancellationToken cancellationToken = default);
 
-    /// <summary>Returns PDF bytes for an already-issued Enfaz invoice, or null if none.</summary>
+ /// <summary>Returns PDF bytes for an already-issued Enfaz invoice, or null if none.</summary>
     Task<byte[]?> GetInvoicePdfAsync(
         string poNumber,
         CancellationToken cancellationToken = default);

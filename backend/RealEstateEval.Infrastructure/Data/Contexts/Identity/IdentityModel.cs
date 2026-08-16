@@ -6,8 +6,8 @@ namespace RealEstateEval.Infrastructure.Data.Contexts;
 
 /// <summary>
 /// The <c>identity</c> schema mapping. Applied by <see cref="IdentityDbContext"/>, which owns
-/// the write path, and by the legacy context, which still serves profile/user reads that plan
-/// Phase 3 replaces with the Identity API and JWT claims. A single definition keeps the two
+/// the write path, and by the legacy context, which still serves profile/user reads until
+/// owner APIs replace them. A single definition keeps the two
 /// mappings from drifting while both exist.
 /// </summary>
 internal static class IdentityModel

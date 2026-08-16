@@ -476,8 +476,7 @@ export function OrganizationSettingsView() {
 
               <div className={opsFldFull}>
                 <p className={cn(opsTfNote, "m-0 mb-2")}>
-                  قائمة المشاركين (بالإضافة للمقيم المعتمد أعلاه) — تظهر في §17
-                  التقرير وحقن مقياس.
+                  قائمة المشاركين (بالإضافة للمقيم المعتمد أعلاه) — تظهر في قسم المشاركين بالتقرير وحقن مقياس.
                 </p>
                 {(draft.valuers ?? []).map((row, index) => (
                   <div
@@ -1057,7 +1056,7 @@ export function OrganizationSettingsView() {
                 </div>
                 <div className={opsFld}>
                   <label htmlFor="org-max-adopted-comps" className={opsTfLbl}>
-                    الحد الأقصى للمقارنات المعتمدة لكل تقييم (ت-2)
+                    الحد الأقصى للمقارنات المعتمدة لكل تقييم
                   </label>
                   <input
                     id="org-max-adopted-comps"

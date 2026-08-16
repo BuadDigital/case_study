@@ -41,7 +41,7 @@ function serializeRows(rows: OwnerRow[]): string {
 }
 
 /**
- * §4ج-7 — الملاك وحصصهم + نوع الملكية (مشتق قابل للتحرير).
+ * الملاك وحصصهم + نوع الملكية (مشتق قابل للتحرير).
  * Derivation: رهن ⟵ مرهون · حصص ⟵ مشاع · مالك واحد بلا قيود ⟵ مطلقة · استثمار يدويًا.
  */
 export function PoPropertyOwnersSection({
@@ -65,7 +65,7 @@ export function PoPropertyOwnersSection({
   return (
     <div className="mt-3 rounded-lg border border-border bg-surface-2/40 p-3">
       <p className="m-0 text-[12px] font-bold text-heading">
-        الملاك وحصصهم — تفريغ الصك (§4ج-7)
+        الملاك وحصصهم — تفريغ الصك
       </p>
 
       <div className="mt-2 flex flex-col gap-1.5">

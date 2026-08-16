@@ -11,7 +11,7 @@ namespace RealEstateEval.Infrastructure.Integration;
 /// <summary>
 /// Writes integration events to the outbox in the same EF transaction as domain changes.
 /// <para>
-/// Decision D5 makes the outbox per-producer, so the publisher is bound to the context that
+/// makes the outbox per-producer, so the publisher is bound to the context that
 /// owns the business change. Publishing through a different context would split the event
 /// and the change it describes across two <c>SaveChanges</c> calls and lose atomicity.
 /// </para>
@@ -65,7 +65,7 @@ public sealed class MessagingOutboxPublisher(
     ILogger<MessagingOutboxPublisher> logger)
     : OutboxIntegrationEventPublisher<MessagingDbContext>(db, logger);
 
-/// <summary>Outbox writer owned by the Valuation context (D5).</summary>
+/// <summary>Outbox writer owned by the Valuation context.</summary>
 public sealed class ValuationOutboxPublisher(
     ValuationDbContext db,
     ILogger<ValuationOutboxPublisher> logger)

@@ -4,9 +4,9 @@ namespace RealEstateEval.Application.Contracts;
 
 public class TaskDistributionDraftDto
 {
-    /// <summary>Wire field only — always forced off (government work via operations tasks).</summary>
+ /// <summary>Wire field only — always forced off (government work via operations tasks).</summary>
     public bool GovernmentAuditor { get; set; }
-    /// <summary>Wire field only — always cleared on normalize.</summary>
+ /// <summary>Wire field only — always cleared on normalize.</summary>
     public string GovernmentAuditorId { get; set; } = "";
     public bool ValuationDepartment { get; set; }
     public string OperationsCoordinatorId { get; set; } = "";
@@ -14,7 +14,7 @@ public class TaskDistributionDraftDto
     public string ValuatorId { get; set; } = "";
     public bool EngineeringOffice { get; set; }
     public string EngineeringOfficeId { get; set; } = "";
-    /// <summary>Assign a normal case specialist (not section supervisor) as study owner.</summary>
+ /// <summary>Assign a normal case specialist (not section supervisor) as study owner.</summary>
     public bool CaseSpecialist { get; set; }
     public string CaseSpecialistId { get; set; } = "";
 }
@@ -40,10 +40,10 @@ public class WorkflowTaskDto
     public string CreatedAt { get; set; } = "";
     public string UpdatedAt { get; set; } = "";
 
-    /// <summary>
-    /// Engineering-survey / property-appraisal: sibling field-inspection workflow task is completed.
-    /// Populated on list so EO and appraiser unlock work without seeing the inspection task row.
-    /// </summary>
+ /// <summary>
+ /// Engineering-survey / property-appraisal: sibling field-inspection workflow task is completed.
+ /// Populated on list so EO and appraiser unlock work without seeing the inspection task row.
+ /// </summary>
     public bool? FieldInspectionCompleted { get; set; }
 }
 
@@ -56,7 +56,7 @@ public class ConfirmTaskDistributionRequest
 {
     public TaskDistributionDraftDto Distribution { get; set; } = new();
     public string DeedNumber { get; set; } = "";
-    /// <summary>Optional display names keyed by child kind (government-review, field-inspection, …).</summary>
+ /// <summary>Optional display names keyed by child kind (government-review, field-inspection, …).</summary>
     public Dictionary<string, string>? AssigneeNames { get; set; }
 }
 
@@ -73,9 +73,9 @@ public class ConfirmTaskDistributionResponseDto
 public class RedistributePartiesRequest
 {
     public TaskDistributionDraftDto Distribution { get; set; } = new();
-    /// <summary>Optional display names keyed by child kind (government-review, field-inspection, …).</summary>
+ /// <summary>Optional display names keyed by child kind (government-review, field-inspection, …).</summary>
     public Dictionary<string, string>? AssigneeNames { get; set; }
-    /// <summary>سبب إعادة إسناد الأطراف — إلزامي، يُسجَّل في سجل الأحداث.</summary>
+ /// <summary>سبب إعادة إسناد الأطراف — إلزامي، يُسجَّل في سجل الأحداث.</summary>
     [MaxLength(500)]
     public string? Reason { get; set; }
 }
@@ -95,20 +95,20 @@ public class AdvanceTaskAfterBourseRequest
 
 public class RevertWorkflowTaskPhaseRequest
 {
-    /// <summary>Target phase: <c>enfath</c> or <c>bourse</c>.</summary>
+ /// <summary>Target phase: <c>enfath</c> or <c>bourse</c>.</summary>
     public string TargetPhase { get; set; } = "";
 }
 
 public class DeleteCaseStudySlotRequest
 {
-    /// <summary>سبب الحذف — إلزامي ويُحفظ مع العقار إن وُجد.</summary>
+ /// <summary>سبب الحذف — إلزامي ويُحفظ مع العقار إن وُجد.</summary>
     [MaxLength(500)]
     public string Reason { get; set; } = "";
 }
 
 public class ReopenCompletedWorkflowTaskRequest
 {
-    /// <summary>سبب إعادة الفتح — إلزامي، يُسجَّل في سجل الأحداث.</summary>
+ /// <summary>سبب إعادة الفتح — إلزامي، يُسجَّل في سجل الأحداث.</summary>
     [MaxLength(500)]
     public string Reason { get; set; } = "";
 }

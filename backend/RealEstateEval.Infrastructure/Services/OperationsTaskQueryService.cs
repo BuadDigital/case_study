@@ -45,7 +45,7 @@ public sealed class OperationsTaskQueryService : IOperationsTaskQuery
         if (!string.IsNullOrEmpty(creator))
             query = query.Where(t => t.CreatedBy == creator);
 
-        // An unrecognised status filter matches nothing rather than being ignored.
+ // An unrecognised status filter matches nothing rather than being ignored.
         if (!string.IsNullOrWhiteSpace(status))
         {
             if (!OperationsTaskStatusValues.TryParse(status, out var statusFilter))
@@ -55,9 +55,9 @@ public sealed class OperationsTaskQueryService : IOperationsTaskQuery
 
         if (!OperationsTaskLifecycleRules.IsManager(actorRole))
         {
-            // Executor queue is independent: only tasks assigned to the actor
-            // (or rare cases they themselves created). Do not pull other
-            // assignees' tasks that merely share a PO.
+ // Executor queue is independent: only tasks assigned to the actor
+ // (or rare cases they themselves created). Do not pull other
+ // assignees' tasks that merely share a PO.
             var userId = actorUserId.Trim();
             var myAssignee = actorAssigneeId?.Trim() ?? "";
             query = query.Where(t =>

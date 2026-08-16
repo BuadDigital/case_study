@@ -7,21 +7,21 @@ namespace RealEstateEval.Application.Contracts;
 /// </summary>
 public class AnswerProvenanceEntryDto
 {
-    /// <summary>Answer value or remark text at the time of attribution.</summary>
+ /// <summary>Answer value or remark text at the time of attribution.</summary>
     public string? Value { get; set; }
 
-    /// <summary>Information-matrix party id when known (insp, eng, val, gov, …).</summary>
+ /// <summary>Information-matrix party id when known (insp, eng, val, gov, …).</summary>
     public string? SourcePartyId { get; set; }
 
-    /// <summary>Prototype / assignee role that produced the answer.</summary>
+ /// <summary>Prototype / assignee role that produced the answer.</summary>
     public string? SourceRole { get; set; }
 
-    /// <summary>Matrix role snapshot: primary | secondary | verify.</summary>
+ /// <summary>Matrix role snapshot: primary | secondary | verify.</summary>
     public string? MatrixRole { get; set; }
 
     public string WorkflowTaskId { get; set; } = "";
 
-    /// <summary>Case-study form id when available.</summary>
+ /// <summary>Case-study form id when available.</summary>
     public string? FormId { get; set; }
 
     public string? AnsweredByUserId { get; set; }

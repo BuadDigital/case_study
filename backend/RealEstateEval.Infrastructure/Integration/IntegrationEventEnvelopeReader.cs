@@ -8,8 +8,8 @@ namespace RealEstateEval.Infrastructure.Integration;
 /// </summary>
 public static class IntegrationEventEnvelopeReader
 {
-    /// <summary>Extracts the envelope id and type.</summary>
-    /// <returns>False when the message is not a readable envelope.</returns>
+ /// <summary>Extracts the envelope id and type.</summary>
+ /// <returns>False when the message is not a readable envelope.</returns>
     public static bool TryReadMetadata(string json, out Guid eventId, out string eventType)
     {
         eventId = Guid.Empty;
@@ -22,8 +22,8 @@ public static class IntegrationEventEnvelopeReader
             if (root.ValueKind != JsonValueKind.Object)
                 return false;
 
-            // Envelopes are written with the default serializer (PascalCase) but tolerated in
-            // camelCase, matching how the handlers read them.
+ // Envelopes are written with the default serializer (PascalCase) but tolerated in
+ // camelCase, matching how the handlers read them.
             if (!TryGetProperty(root, "eventId", "EventId", out var idElement)
                 || !idElement.TryGetGuid(out eventId)
                 || eventId == Guid.Empty)

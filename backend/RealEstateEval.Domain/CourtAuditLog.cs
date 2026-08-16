@@ -4,13 +4,13 @@ namespace RealEstateEval.Domain;
 public class CourtAuditLog
 {
     public Guid Id { get; set; }
-    /// <summary>مثل COURT_CREATED / CIRCUIT_ACTIVATED.</summary>
+ /// <summary>مثل COURT_CREATED / CIRCUIT_ACTIVATED.</summary>
     public string Action { get; set; } = "";
-    /// <summary>court | circuit</summary>
+ /// <summary>court | circuit</summary>
     public string EntityType { get; set; } = "";
     public Guid EntityId { get; set; }
     public string ActorId { get; set; } = "";
-    /// <summary>JSON: { field: { before, after } }</summary>
+ /// <summary>JSON: { field: { before, after } }</summary>
     public string ChangesJson { get; set; } = "{}";
     public DateTime TimestampUtc { get; set; }
 }

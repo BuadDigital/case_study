@@ -230,7 +230,7 @@ export function PoHeaderEdit({
           />
           <div>
             <p className="mb-1 text-[11px] font-semibold text-text-2">
-              مستخدمو التقرير (0..ن) — من سجل العملاء (§4ج-1)
+              مستخدمو التقرير (0..ن) — من سجل العملاء
             </p>
             <div className="flex max-h-32 flex-col gap-1 overflow-y-auto rounded-lg border border-border-md bg-surface px-2 py-1.5">
               {clients

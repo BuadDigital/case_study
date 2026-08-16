@@ -4,10 +4,10 @@ using RealEstateEval.Domain;
 namespace RealEstateEval.Infrastructure.Data.Contexts;
 
 /// <summary>
-/// Write context for the Platform catalogs (plan Phase 1, extraction order step 1): courts,
+/// Write context for the Platform catalogs : courts,
 /// circuits, the geography catalog, and the two configuration singletons.
 /// <para>
-/// <c>messaging.UserNotifications</c> is Platform-owned (decision D3) but stays on the legacy
+/// <c>messaging.UserNotifications</c> is Platform-owned but stays on the legacy
 /// context until the messaging slice, so the notification inbox and its dispatcher move
 /// together rather than in two half-steps.
 /// </para>

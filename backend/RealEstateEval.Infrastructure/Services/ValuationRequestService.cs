@@ -62,8 +62,8 @@ public sealed class ValuationRequestService : IValuationRequestService
         SaveValuationRequestRequest request,
         CancellationToken cancellationToken = default)
     {
-        // Taken before anything is staged so a lost race can hand the context back exactly
-        // as the caller passed it in — otherwise their next save replays the failed insert.
+ // Taken before anything is staged so a lost race can hand the context back exactly
+ // as the caller passed it in — otherwise their next save replays the failed insert.
         var checkpoint = ChangeTrackerCheckpoint.Capture(_db);
         var displayId = string.IsNullOrWhiteSpace(request.DisplayId)
             ? await NextDisplayIdAsync(cancellationToken)
@@ -131,7 +131,7 @@ public sealed class ValuationRequestService : IValuationRequestService
     {
         var row = await _db.ValuationRequests.FirstOrDefaultAsync(x => x.Id == id, cancellationToken);
         if (row is null) return (null, "not_found");
-        // The reason is checked before the transition so a missing reason leaves the row untouched.
+ // The reason is checked before the transition so a missing reason leaves the row untouched.
         if (string.IsNullOrWhiteSpace(request.Reason) && row.Status == ValuationRequestStatus.Progress)
             return (null, "reason_required");
 
@@ -147,10 +147,10 @@ public sealed class ValuationRequestService : IValuationRequestService
         return (ToDto(row), null);
     }
 
-    /// <summary>
-    /// Business errors for the unique indexes this insert can violate; anything else stays
-    /// an exception so it is not silently swallowed.
-    /// </summary>
+ /// <summary>
+ /// Business errors for the unique indexes this insert can violate; anything else stays
+ /// an exception so it is not silently swallowed.
+ /// </summary>
     private static string? ConflictError(DbUpdateException exception) =>
         PostgresErrors.ViolatedUniqueIndex(exception) switch
         {
@@ -159,15 +159,15 @@ public sealed class ValuationRequestService : IValuationRequestService
             _ => null,
         };
 
-    /// <summary>
-    /// Draws the running number from a PostgreSQL sequence. The previous COUNT(*) handed the
-    /// same number to concurrent callers and reused numbers after a delete.
-    /// </summary>
+ /// <summary>
+ /// Draws the running number from a PostgreSQL sequence. The previous COUNT(*) handed the
+ /// same number to concurrent callers and reused numbers after a delete.
+ /// </summary>
     private async Task<string> NextDisplayIdAsync(CancellationToken cancellationToken)
     {
         if (!_db.Database.IsRelational())
         {
-            // InMemory provider (tests) has no sequences; row count is enough there.
+ // InMemory provider (tests) has no sequences; row count is enough there.
             var used = await _db.ValuationRequests.CountAsync(cancellationToken);
             return $"VR-{DatabaseSequences.ValuationRequestDisplayIdStart + used}";
         }

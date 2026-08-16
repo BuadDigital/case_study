@@ -94,7 +94,7 @@ public sealed class UpdateStaffUserRequest
     public string? CommercialRegistration { get; init; }
     public DateOnly? JoinedAt { get; init; }
 
-    /// <summary>Only Active and Disabled are accepted; activation and lockout own the rest.</summary>
+ /// <summary>Only Active and Disabled are accepted; activation and lockout own the rest.</summary>
     public UserStatus? Status { get; init; }
 }
 
@@ -103,10 +103,10 @@ public sealed class CreateStaffUserResponseDto
     public required UserListItemDto User { get; init; }
     public required string UserName { get; init; }
 
-    /// <summary>
-    /// Always true: staff accounts are created without a password and cannot sign in
-    /// until the holder redeems an activation ticket.
-    /// </summary>
+ /// <summary>
+ /// Always true: staff accounts are created without a password and cannot sign in
+ /// until the holder redeems an activation ticket.
+ /// </summary>
     public bool ActivationRequired { get; init; } = true;
 }
 

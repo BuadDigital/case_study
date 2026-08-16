@@ -2,7 +2,7 @@ using RealEstateEval.Application.Contracts;
 
 namespace RealEstateEval.Application.Abstractions;
 
-/// <summary>Decision 20 — grouped-property linking: suggest → human confirm → link/unlink.</summary>
+/// <summary>grouped-property linking: suggest → human confirm → link/unlink.</summary>
 public interface IPropertyGroupService
 {
     Task<PropertyGroupDto?> GetForPropertyAsync(

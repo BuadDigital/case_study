@@ -5,14 +5,14 @@ using Microsoft.EntityFrameworkCore.Migrations;
 
 namespace RealEstateEval.Infrastructure.Data.Migrations
 {
-    /// <summary>
-    /// Financial pricing cleanup only. The KeyEnvelopes column lives on the Operations stream
-    /// (ADR 0003) as of extraction step 3; do not reshape <c>operations</c> from the legacy
-    /// stream after the cutover.
-    /// </summary>
+ /// <summary>
+ /// Financial pricing cleanup only. The KeyEnvelopes column lives on the Operations stream
+ /// as of extraction; do not reshape <c>operations</c> from the legacy
+ /// stream after the cutover.
+ /// </summary>
     public partial class KeyReceiptRevenueOutOfPricing : Migration
     {
-        /// <inheritdoc />
+ /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
             migrationBuilder.DropColumn(
@@ -21,7 +21,7 @@ namespace RealEstateEval.Infrastructure.Data.Migrations
                 table: "PartyFeePricingTables");
         }
 
-        /// <inheritdoc />
+ /// <inheritdoc />
         protected override void Down(MigrationBuilder migrationBuilder)
         {
             migrationBuilder.AddColumn<decimal>(

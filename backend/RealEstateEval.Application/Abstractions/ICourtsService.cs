@@ -61,6 +61,6 @@ public interface ICourtsService
         Guid courtId,
         CancellationToken cancellationToken = default);
 
-    /// <summary>Ensure Courts table is seeded (from legacy catalog or defaults).</summary>
+ /// <summary>Ensure Courts table is seeded (from legacy catalog or defaults).</summary>
     Task EnsureSeededAsync(CancellationToken cancellationToken = default);
 }

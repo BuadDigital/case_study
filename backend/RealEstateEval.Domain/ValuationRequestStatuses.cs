@@ -29,7 +29,7 @@ public static class ValuationRequestStatuses
         }
     }
 
-    /// <summary>Lenient read path; unrecognised legacy values read back as in-progress.</summary>
+ /// <summary>Lenient read path; unrecognised legacy values read back as in-progress.</summary>
     public static ValuationRequestStatus Parse(string? value) =>
         TryParse(value, out var status) ? status : ValuationRequestStatus.Progress;
 }

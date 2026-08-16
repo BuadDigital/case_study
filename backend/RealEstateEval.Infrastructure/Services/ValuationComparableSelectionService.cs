@@ -7,8 +7,8 @@ using RealEstateEval.Infrastructure.Data.Contexts;
 namespace RealEstateEval.Infrastructure.Services;
 
 /// <summary>
-/// Select / adopt bank comps + sequential market adjustments / weights (ت-3 / ت-6 scaffold).
-/// Full difference-factor matrix (ت-5) comes later.
+/// Select / adopt bank comps + sequential market adjustments / weights.
+/// Full difference-factor matrix comes later.
 /// </summary>
 public sealed class ValuationComparableSelectionService(
     ValuationDbContext db,
@@ -144,7 +144,7 @@ public sealed class ValuationComparableSelectionService(
 
         if (isAdopted)
         {
-            // ت-2: اعتماد انتقائي بحد أقصى قابل للضبط (P2-5, approved 2026-08-16).
+ // اعتماد انتقائي بحد أقصى قابل للضبط.
             var settings = await organizationSettings.GetInternalAsync(cancellationToken);
             var cap = Math.Max(1, settings.Valuation.MaxAdoptedComparables);
             var adoptedOthers = await db.ValuationComparableSelections
@@ -277,15 +277,15 @@ public sealed class ValuationComparableSelectionService(
                 errors["weightPct"] = "الوزن اليدوي مطلوب";
             else if (request.WeightPct is < 0m or > 100m)
                 errors["weightPct"] = "الوزن يجب أن يكون بين 0 و 100";
-            // Decision 19.3 (Solomon 2026-08-16): overriding the ق-9 suggestion needs a written rationale.
+ // Overriding the suggestion needs a written rationale.
             if (string.IsNullOrWhiteSpace(request.WeightOverrideRationale))
-                errors["weightOverrideRationale"] = "مبرر تجاوز الوزن الآلي إلزامي (قرار 19.3)";
+                errors["weightOverrideRationale"] = "مبرر تجاوز الوزن الآلي إلزامي";
         }
 
         if (request.AreaAdjustmentMethod is not null
             && !AreaAdjustmentMethods.IsKnown(request.AreaAdjustmentMethod))
         {
-            errors["areaAdjustmentMethod"] = "طريقة قياس تسوية المساحة غير معروفة (ت-4)";
+            errors["areaAdjustmentMethod"] = "طريقة قياس تسوية المساحة غير معروفة";
         }
 
         if (errors.Count > 0) return (null, errors);
@@ -397,7 +397,7 @@ public sealed class ValuationComparableSelectionService(
         if (request.SubjectAreaSqm is < 0m)
             return (null, new Dictionary<string, string> { ["subjectAreaSqm"] = "المساحة يجب أن تكون ≥ 0" });
         if (request.AdjustmentBasis is not null && !MarketAdjustmentBasisKeys.IsKnown(request.AdjustmentBasis))
-            return (null, new Dictionary<string, string> { ["adjustmentBasis"] = "أساس التسويات غير معروف (ت-1)" });
+            return (null, new Dictionary<string, string> { ["adjustmentBasis"] = "أساس التسويات غير معروف" });
 
         var header = await db.ValuationMarketApproaches
             .FirstOrDefaultAsync(x => x.ValuationRequestId == valuationRequestId, cancellationToken);
@@ -434,8 +434,8 @@ public sealed class ValuationComparableSelectionService(
             .Select(r => MarketApproachRules.SumIncludedPercents(
                 r.AdjustmentLines.Where(l => l.IsIncluded).Select(l => l.Percent)))
             .ToList();
-        // ق-9 raw suggestions, then renormalized around manual overrides (ق-10):
-        // partial overrides keep the total at 100 instead of blocking issuance.
+ / raw suggestions, then renormalized around manual overrides :
+ // partial overrides keep the total at 100 instead of blocking issuance.
         var suggested = MarketApproachRules.RenormalizeSuggestions(
             MarketApproachRules.SuggestWeights(sums),
             adoptedRows.Select(r => r.WeightIsManual && r.WeightPct is not null).ToList(),
@@ -480,7 +480,7 @@ public sealed class ValuationComparableSelectionService(
         var effectiveWeights = weightPairs.Select(p => p.weight).ToList();
         var weighted = MarketApproachRules.WeightedUnitRate(weightPairs);
         var area = header?.SubjectAreaSqm;
-        // ت-1 #14: whole-property basis yields the opinion directly — «دون ضرب في المساحة».
+ // : whole-property basis yields the opinion directly — «دون ضرب في المساحة».
         var opinion = basis == MarketAdjustmentBasisKeys.WholeProperty
             ? weighted
             : area is > 0m
@@ -524,7 +524,7 @@ public sealed class ValuationComparableSelectionService(
             .Select(l => l.Percent)
             .ToList();
 
-        // ت-1 #14: the chain runs on the whole deal price or the unit rate per the basis.
+ // : the chain runs on the whole deal price or the unit rate per the basis.
         var baseAmount = adjustmentBasis == MarketAdjustmentBasisKeys.WholeProperty
             ? comp.Price
             : comp.PricePerSqm;

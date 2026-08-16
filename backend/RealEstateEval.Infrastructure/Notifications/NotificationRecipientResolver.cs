@@ -8,7 +8,7 @@ namespace RealEstateEval.Infrastructure.Notifications;
 /// Resolves notification recipients (A6 — no residual ApplicationDbContext).
 /// Workflow assignee lookups use residual <see cref="CaseStudyDbContext"/>; profile and email
 /// maps use <see cref="IdentityDbContext"/>. Pure hosts that construct this must register both
-/// (Platform notification consumer does; Phase 3 removes the CS residual).
+/// (Platform notification consumer does; removes the CS residual).
 /// </summary>
 public sealed class NotificationRecipientResolver
 {
@@ -77,10 +77,10 @@ public sealed class NotificationRecipientResolver
             .FirstOrDefaultAsync(cancellationToken);
     }
 
-    /// <summary>
-    /// Maps an assignment-specialist email to the Identity user id via
-    /// <see cref="ApplicationUser.NormalizedEmail"/>.
-    /// </summary>
+ /// <summary>
+ /// Maps an assignment-specialist email to the Identity user id via
+ /// <see cref="ApplicationUser.NormalizedEmail"/>.
+ /// </summary>
     public async Task<string?> ResolveUserIdForEmailAsync(
         string email,
         CancellationToken cancellationToken = default)

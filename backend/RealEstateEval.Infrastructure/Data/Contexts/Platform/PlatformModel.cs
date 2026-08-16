@@ -7,15 +7,15 @@ namespace RealEstateEval.Infrastructure.Data.Contexts;
 /// The <c>platform</c> schema mapping: court catalogs, the geography catalog, and the two
 /// configuration singletons. Applied by <see cref="PlatformDbContext"/>, which owns the write
 /// path, and by the legacy context, which still serves cross-boundary reference reads until
-/// plan Phase 3 replaces them with a cacheable Platform API or a versioned snapshot.
+/// a cacheable Platform API or versioned snapshot replaces them.
 /// </summary>
 internal static class PlatformModel
 {
-    /// <param name="ownsMigrations">
-    /// True only for <see cref="PlatformDbContext"/>. The legacy context mirrors platform tables
-    /// for cross-boundary reads and must not scaffold create/alter ops for tables Platform owns
-    /// (e.g. OrganizationSettings, FieldSyncStatuses).
-    /// </param>
+ /// <param name="ownsMigrations">
+ /// True only for <see cref="PlatformDbContext"/>. The legacy context mirrors platform tables
+ /// for cross-boundary reads and must not scaffold create/alter ops for tables Platform owns
+ /// (e.g. OrganizationSettings, FieldSyncStatuses).
+ /// </param>
     public static ModelBuilder ApplyPlatformModel(this ModelBuilder builder, bool ownsMigrations = true)
     {
         builder.Entity<CourtCatalogEntry>(e =>
@@ -92,7 +92,7 @@ internal static class PlatformModel
             e.Property(x => x.RawInput).HasMaxLength(150);
             e.Property(x => x.CreatedByUserId).HasMaxLength(128);
             e.Property(x => x.ReviewedByUserId).HasMaxLength(128);
-            // Official national IDs are unique when present; pending suggestions have null.
+ // Official national IDs are unique when present; pending suggestions have null.
             e.HasIndex(x => x.OfficialId)
                 .IsUnique()
                 .HasFilter("\"OfficialId\" IS NOT NULL");

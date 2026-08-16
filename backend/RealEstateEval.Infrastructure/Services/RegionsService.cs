@@ -31,7 +31,7 @@ public sealed class RegionsService : IRegionsService
         if (payload?.Regions is null || payload.Cities is null || payload.Regions.Count == 0)
             return;
 
-        // Fast path: official catalog already imported (3077) with search keys.
+ // Fast path: official catalog already imported (3077) with search keys.
         var officialActive = await _db.Cities.CountAsync(
             c => c.OfficialId != null && c.IsActive && c.NameSearch != "",
             cancellationToken);
@@ -133,7 +133,7 @@ public sealed class RegionsService : IRegionsService
                 entity.Status = LocationCatalogStatuses.Approved;
         }
 
-        // Old v1 seeded cities that are not in the official catalog: deactivate (keep pending user rows).
+ // Old v1 seeded cities that are not in the official catalog: deactivate (keep pending user rows).
         foreach (var orphan in existingCities)
         {
             if (orphan.Status == LocationCatalogStatuses.Pending) continue;
@@ -144,13 +144,13 @@ public sealed class RegionsService : IRegionsService
                 continue;
             }
 
-            // Legacy seeded row without OfficialId yet — deactivate if its Guid is not in the new set.
+ // Legacy seeded row without OfficialId yet — deactivate if its Guid is not in the new set.
             var stillOfficial = payload.Cities.Any(c => SeedGuid(0xB2, c.Id) == orphan.Id);
             if (!stillOfficial)
                 orphan.IsActive = false;
         }
 
-        // Backfill OfficialId on regions that were seeded before the column existed (matched by SeedGuid).
+ // Backfill OfficialId on regions that were seeded before the column existed (matched by SeedGuid).
         foreach (var row in payload.Regions)
         {
             var expectedId = SeedGuid(0xB1, row.Id);

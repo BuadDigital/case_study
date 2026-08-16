@@ -13,7 +13,7 @@ public class PartyFeePricingTier
 
     public int SortOrder { get; set; }
 
-    /// <summary>Inclusive upper bound (م²). Null for the last (open-ended) tier.</summary>
+ /// <summary>Inclusive upper bound (م²). Null for the last (open-ended) tier.</summary>
     public decimal? MaxAreaM2 { get; set; }
 
     public decimal FeeSar { get; set; }

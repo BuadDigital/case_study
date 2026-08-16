@@ -43,9 +43,9 @@ public static class DeedNumberRules
     public static bool EqualsNormalized(string? a, string? b) =>
         string.Equals(Normalize(a), Normalize(b), StringComparison.OrdinalIgnoreCase);
 
-    /// <summary>
-    /// Variants suitable for SQL equality probes when the stored value may not be normalized.
-    /// </summary>
+ /// <summary>
+ /// Variants suitable for SQL equality probes when the stored value may not be normalized.
+ /// </summary>
     public static IReadOnlyList<string> MatchCandidates(string? raw)
     {
         var set = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
@@ -56,7 +56,7 @@ public static class DeedNumberRules
         if (n.Length > 0)
         {
             set.Add(n);
-            // Probe Eastern Arabic-Indic forms so DB rows with ٠-٩ still match.
+ // Probe Eastern Arabic-Indic forms so DB rows with ٠-٩ still match.
             set.Add(ToArabicIndic(n, eastern: false));
             set.Add(ToArabicIndic(n, eastern: true));
         }

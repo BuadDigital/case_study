@@ -12,7 +12,7 @@ namespace RealEstateEval.Infrastructure.Data.Migrations;
 [Migration("20260719140000_AddCourtAuditLogs")]
 public partial class AddCourtAuditLogs : Migration
 {
-    /// <inheritdoc />
+ /// <inheritdoc />
     protected override void Up(MigrationBuilder migrationBuilder)
     {
         migrationBuilder.CreateTable(
@@ -52,7 +52,7 @@ public partial class AddCourtAuditLogs : Migration
             column: "TimestampUtc");
     }
 
-    /// <inheritdoc />
+ /// <inheritdoc />
     protected override void Down(MigrationBuilder migrationBuilder)
     {
         migrationBuilder.DropTable(

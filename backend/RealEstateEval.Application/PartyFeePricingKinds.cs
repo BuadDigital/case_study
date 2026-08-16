@@ -3,13 +3,13 @@ namespace RealEstateEval.Application;
 /// <summary>How a <c>PartyFeePricingTable</c> produces an amount.</summary>
 public static class PartyFeePricingKinds
 {
-    /// <summary>Engineering survey — area tiers.</summary>
+ /// <summary>Engineering survey — area tiers.</summary>
     public const string Tiered = "tiered";
 
-    /// <summary>Cooperator / court-visit party rates (existing columns).</summary>
+ /// <summary>Cooperator / court-visit party rates (existing columns).</summary>
     public const string PartyRates = "party-rates";
 
-    /// <summary>Employee incentive — single flat amount managed for assignees with compensation.</summary>
+ /// <summary>Employee incentive — single flat amount managed for assignees with compensation.</summary>
     public const string Flat = "flat";
 
     public static readonly string[] All = [Tiered, PartyRates, Flat];
@@ -25,7 +25,7 @@ public static class PartyFeePricingKinds
     public static string InvalidMessage(string? value) =>
         $"نوع التسعير «{value}» غير معروف. المسموح: {string.Join(" · ", All)}.";
 
-    /// <summary>Default kind for a newly created table of the given category.</summary>
+ /// <summary>Default kind for a newly created table of the given category.</summary>
     public static string DefaultForCategory(string category) => category switch
     {
         PartyFeePricingCategories.EngineeringSurvey => Tiered,

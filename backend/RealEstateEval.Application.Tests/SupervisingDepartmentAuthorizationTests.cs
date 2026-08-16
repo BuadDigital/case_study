@@ -151,10 +151,10 @@ public class SupervisingDepartmentAuthorizationTests
         Assert.NotNull(resolved);
     }
 
-    /// <summary>
-    /// The batch endpoint walks the same transition code per row, so a supervisor must not be able to
-    /// smuggle another department's line through by submitting it alongside their own.
-    /// </summary>
+ /// <summary>
+ /// The batch endpoint walks the same transition code per row, so a supervisor must not be able to
+ /// smuggle another department's line through by submitting it alongside their own.
+ /// </summary>
     [Fact]
     public async Task A_batch_transition_is_checked_department_by_department()
     {

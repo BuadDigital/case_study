@@ -5,10 +5,10 @@ using Microsoft.EntityFrameworkCore.Migrations;
 
 namespace RealEstateEval.Infrastructure.Data.Contexts.Platform.Migrations
 {
-    /// <inheritdoc />
+ /// <inheritdoc />
     public partial class AddGeneralAuditLog : Migration
     {
-        /// <inheritdoc />
+ /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
             migrationBuilder.CreateTable(
@@ -54,8 +54,8 @@ namespace RealEstateEval.Infrastructure.Data.Contexts.Platform.Migrations
                 table: "AuditLogs",
                 columns: new[] { "EntityType", "EntityId" });
 
-            // Preserve the existing court audit history while moving all future writes to
-            // the unified before/after shape.
+ // Preserve the existing court audit history while moving all future writes to
+ // the unified before/after shape.
             migrationBuilder.Sql(
                 """
                 INSERT INTO platform."AuditLogs"
@@ -98,7 +98,7 @@ namespace RealEstateEval.Infrastructure.Data.Contexts.Platform.Migrations
                 """);
         }
 
-        /// <inheritdoc />
+ /// <inheritdoc />
         protected override void Down(MigrationBuilder migrationBuilder)
         {
             migrationBuilder.Sql(

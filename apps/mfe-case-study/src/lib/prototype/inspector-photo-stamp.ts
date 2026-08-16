@@ -15,7 +15,7 @@ function readAsDataUrl(file: File): Promise<string> {
   });
 }
 
-/** Burns a multi-line documentation strip into JPEG pixels after compression (هـ). */
+/** Burns a multi-line documentation strip into JPEG pixels after compression. */
 export async function burnInspectorPhotoStamp(
   file: File,
   stamp: string,

@@ -22,15 +22,15 @@ public class BoundedContextBoundaryTests
             Assert.True(
                 Catalog.FullyApproved,
                 "Contexts are marked extracted while table ownership is still proposed or pending. "
-                + "Plan rule 7: Phase 1 starts only after Phase 0's exit criteria are met.");
+ + "Plan rule 7: starts only after 's exit criteria are met.");
         }
     }
 
     [Fact]
     public void DeclaredContextsAreExactlyTheCataloguedOnes()
     {
-        // Primary constructors put `(DbContextOptions<...>)` between the name and the base.
-        // Identity's context inherits ASP.NET Identity's IdentityDbContext<TUser>.
+ // Primary constructors put `(DbContextOptions<...>)` between the name and the base.
+ // Identity's context inherits ASP.NET Identity's IdentityDbContext<TUser>.
         var declaration = new Regex(
             @"class\s+(\w+)(?:\s*\([^)]*\))?\s*:\s*(?:Microsoft\.(?:EntityFrameworkCore|AspNetCore\.Identity\.EntityFrameworkCore)\.)?(?:DbContext|IdentityDbContext)\b",
             RegexOptions.Compiled);
@@ -53,10 +53,10 @@ public class BoundedContextBoundaryTests
         Assert.Equal(catalogued, declared.ToArray());
     }
 
-    /// <summary>
-    /// Plan Phase 1, work item 1: "initially map existing table and schema names". A context
-    /// that maps more than it owns would put a second writer back on someone else's table.
-    /// </summary>
+ /// <summary>
+ /// Plan "initially map existing table and schema names". A context
+ /// that maps more than it owns would put a second writer back on someone else's table.
+ /// </summary>
     [Fact]
     public void ExtractedContextsMapExactlyTheTablesTheyOwn()
     {
@@ -85,10 +85,10 @@ public class BoundedContextBoundaryTests
         Assert.True(failures.Count == 0, string.Join("\n  ", failures));
     }
 
-    /// <summary>
-    /// Plan Phase 1 exit criterion: every table is writable through exactly one context. Only
-    /// the messaging tables are exempt, because D5 makes their rows — not the table — owned.
-    /// </summary>
+ /// <summary>
+ /// Plan exit criterion. Only
+ /// the messaging tables are exempt, because D5 makes their rows — not the table — owned.
+ /// </summary>
     [Fact]
     public void EveryTableHasExactlyOneWritingContext()
     {
@@ -107,7 +107,7 @@ public class BoundedContextBoundaryTests
                 failures.Add(
                     $"{table} is mapped by {string.Join(", ", table.Contexts)} but is "
                     + "single-owner. Only per-producer/per-consumer messaging tables may appear "
-                    + "in several contexts (D5).");
+ + "in several contexts.");
             }
 
             foreach (var name in table.Contexts)
@@ -120,11 +120,11 @@ public class BoundedContextBoundaryTests
         Assert.True(failures.Count == 0, string.Join("\n  ", failures));
     }
 
-    /// <summary>
-    /// Plan Phase 1, work item 3: unmoved slices stay on the legacy context and no new mapping
-    /// is added to it. Extracted tables keep their legacy mapping only so non-owner slices can
-    /// still read them; the write path has moved, and Phase 3 removes the read.
-    /// </summary>
+ /// <summary>
+ /// Plan unmoved slices stay on the legacy context and no new mapping
+ /// is added to it. Extracted tables keep their legacy mapping only so non-owner slices can
+ /// still read them; the write path has moved, and removes the read.
+ /// </summary>
     [Fact]
     public void ExtractedTablesAreNoLongerWrittenThroughTheLegacyContext()
     {
@@ -173,10 +173,10 @@ public class BoundedContextBoundaryTests
             + $"\nExtracted schemas: {string.Join(", ", extractedSchemas.Order(StringComparer.Ordinal))}.");
     }
 
-    /// <summary>
-    /// Plan Phase 1, work item 5. Sharing one history table would let a context claim another's
-    /// migrations as applied, which is unrecoverable once the databases are actually separate.
-    /// </summary>
+ /// <summary>
+ /// Plan. Sharing one history table would let a context claim another's
+ /// migrations as applied, which is unrecoverable once the databases are actually separate.
+ /// </summary>
     [Fact]
     public void EachExtractedContextRecordsMigrationsInItsOwnSchema()
     {

@@ -17,10 +17,10 @@ public class DatabaseReadinessOptionsTests
         Assert.Equal(5, options.CacheSeconds);
     }
 
-    /// <summary>
-    /// The dev database is migrated by whichever service starts first, so a strict check would
-    /// hold up `npm run dev:api` for reasons that never apply in a deployment.
-    /// </summary>
+ /// <summary>
+ /// The dev database is migrated by whichever service starts first, so a strict check would
+ /// hold up `npm run dev:api` for reasons that never apply in a deployment.
+ /// </summary>
     [Fact]
     public void Development_only_checks_connectivity()
     {

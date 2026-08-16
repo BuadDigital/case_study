@@ -79,8 +79,8 @@ public sealed class ReadinessCheckedFinancialApiFactory
         builder.UseSetting("ConnectionStrings:Financial", _connectionString);
         builder.UseSetting("Redis:Enabled", "false");
 
-        // Development defaults the migration check off; these tests are about the strict mode
-        // that non-Development deployments run, and caching would hide the second verdict.
+ // Development defaults the migration check off; these tests are about the strict mode
+ // that non-Development deployments run, and caching would hide the second verdict.
         builder.UseSetting("Readiness:CheckMigrations", "true");
         builder.UseSetting("Readiness:CacheSeconds", "0");
     }

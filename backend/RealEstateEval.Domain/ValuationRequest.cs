@@ -7,7 +7,7 @@ namespace RealEstateEval.Domain;
 /// </summary>
 public class ValuationRequest
 {
-    /// <summary>For EF materialization and <see cref="Create"/>.</summary>
+ /// <summary>For EF materialization and <see cref="Create"/>.</summary>
     private ValuationRequest()
     {
     }
@@ -22,11 +22,11 @@ public class ValuationRequest
     public string RequestDate { get; private set; } = "";
     public DateTime UpdatedAtUtc { get; private set; }
 
-    /// <summary>
-    /// Anything other than <see cref="ValuationRequestStatus.Done"/> counts as open and holds the
-    /// property, including an impediment. The partial unique index on ValuationRequests encodes
-    /// the same rule.
-    /// </summary>
+ /// <summary>
+ /// Anything other than <see cref="ValuationRequestStatus.Done"/> counts as open and holds the
+ /// property, including an impediment. The partial unique index on ValuationRequests encodes
+ /// the same rule.
+ /// </summary>
     public bool IsOpen => Status != ValuationRequestStatus.Done;
 
     public static ValuationRequest Create(
@@ -51,7 +51,7 @@ public class ValuationRequest
             UpdatedAtUtc = nowUtc,
         };
 
-    /// <summary>The appraiser delivered the report — the request closes and releases the property.</summary>
+ /// <summary>The appraiser delivered the report — the request closes and releases the property.</summary>
     public ValuationRequestTransition SubmitReport(DateTime nowUtc)
     {
         if (Status == ValuationRequestStatus.Done)
@@ -62,10 +62,10 @@ public class ValuationRequest
         return ValuationRequestTransition.Applied;
     }
 
-    /// <summary>
-    /// An impediment (تعذر) keeps the request open — the property stays held until the
-    /// impediment is resolved and a report is submitted.
-    /// </summary>
+ /// <summary>
+ /// An impediment (تعذر) keeps the request open — the property stays held until the
+ /// impediment is resolved and a report is submitted.
+ /// </summary>
     public ValuationRequestTransition RecordImpediment(DateTime nowUtc)
     {
         if (Status == ValuationRequestStatus.Done)

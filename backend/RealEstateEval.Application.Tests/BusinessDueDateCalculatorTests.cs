@@ -35,7 +35,7 @@ public class BusinessDueDateCalculatorTests
     [Fact]
     public void Compute_skips_weekend_when_received_on_friday()
     {
-        // Friday 2026-06-12 → effective start Sunday 2026-06-15
+ // Friday 2026-06-12 → effective start Sunday 2026-06-15
         var due = BusinessDueDateCalculator.Compute(new DateOnly(2026, 6, 12), "10:00");
 
         Assert.Equal(new DateOnly(2026, 6, 17), due);
@@ -60,7 +60,7 @@ public class BusinessDueDateCalculatorTests
     [Fact]
     public void Compute_uses_ten_business_days_for_private_sector()
     {
-        // Sun 2026-06-07 → 10 business days = Thu 2026-06-18
+ // Sun 2026-06-07 → 10 business days = Thu 2026-06-18
         var due = BusinessDueDateCalculator.Compute(
             new DateOnly(2026, 6, 7),
             "10:00",

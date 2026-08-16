@@ -4,10 +4,10 @@
 
 namespace RealEstateEval.Infrastructure.Data.Migrations
 {
-    /// <inheritdoc />
+ /// <inheritdoc />
     public partial class AddFeeSuspension : Migration
     {
-        /// <inheritdoc />
+ /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
             migrationBuilder.AddColumn<string>(
@@ -26,8 +26,8 @@ namespace RealEstateEval.Infrastructure.Data.Migrations
                 maxLength: 2000,
                 nullable: true);
 
-            // The restore point and the reason only mean something while the line is withheld, and a
-            // suspended line without them cannot be lifted back to where it came from.
+ // The restore point and the reason only mean something while the line is withheld, and a
+ // suspended line without them cannot be lifted back to where it came from.
             migrationBuilder.Sql(
                 """
                 ALTER TABLE case_study."InspectorFeeLedgers"
@@ -42,7 +42,7 @@ namespace RealEstateEval.Infrastructure.Data.Migrations
                 """);
         }
 
-        /// <inheritdoc />
+ /// <inheritdoc />
         protected override void Down(MigrationBuilder migrationBuilder)
         {
             migrationBuilder.Sql(

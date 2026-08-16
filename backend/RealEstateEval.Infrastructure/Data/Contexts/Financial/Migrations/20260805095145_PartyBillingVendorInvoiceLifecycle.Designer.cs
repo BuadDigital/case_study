@@ -15,7 +15,7 @@ namespace RealEstateEval.Infrastructure.Data.Contexts.Financial.Migrations
     [Migration("20260805095145_PartyBillingVendorInvoiceLifecycle")]
     partial class PartyBillingVendorInvoiceLifecycle
     {
-        /// <inheritdoc />
+ /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618

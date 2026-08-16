@@ -14,7 +14,7 @@ public class ComparableProximityRulesTests
     [Fact]
     public void DistanceKm_known_short_span()
     {
-        // ~1.11 km north from equator at lon 0 (approx 0.01°)
+ // ~1.11 km north from equator at lon 0 (approx 0.01°)
         var d = ComparableProximityRules.DistanceKm(0m, 0m, 0.01m, 0m);
         Assert.InRange(d, 1.0m, 1.3m);
     }

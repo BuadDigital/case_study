@@ -9,7 +9,7 @@ namespace RealEstateEval.Infrastructure.Services;
 
 public sealed class OrganizationSettingsService : IOrganizationSettingsService
 {
-    // Distinct from CaseStudyInfoRoles / FieldDictionary singleton rows.
+ // Distinct from CaseStudyInfoRoles / FieldDictionary singleton rows.
     private static readonly Guid SingletonId = Guid.Parse("c3d4e5f6-a7b8-9012-cdef-345678901234");
     private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web);
 
@@ -68,7 +68,7 @@ public sealed class OrganizationSettingsService : IOrganizationSettingsService
         }
 
         next = FromRow(row);
-        // Audit without secret values — only configuration shape.
+ // Audit without secret values — only configuration shape.
         _db.AuditLogs.Add(_audit.Create(
             string.IsNullOrWhiteSpace(actorId) ? "system" : actorId,
             "ORGANIZATION_SETTINGS_SAVED",

@@ -11,12 +11,12 @@ namespace RealEstateEval.Infrastructure.Data.Contexts.Platform.Migrations;
 /// </summary>
 public partial class InitialPlatformBaseline : Migration
 {
-    /// <inheritdoc />
+ /// <inheritdoc />
     protected override void Up(MigrationBuilder migrationBuilder)
     {
     }
 
-    /// <inheritdoc />
+ /// <inheritdoc />
     protected override void Down(MigrationBuilder migrationBuilder)
     {
     }

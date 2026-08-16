@@ -1,20 +1,20 @@
 namespace RealEstateEval.Domain;
 
 /// <summary>
-/// One sequential / difference-factor adjustment line on a selected comparable (ت-3 / ت-5).
-/// Sequential lines multiply in order; difference factors sum then apply once (spec §4).
+/// One sequential / difference-factor adjustment line on a selected comparable.
+/// Sequential lines multiply in order; difference factors sum then apply once (spec ).
 /// </summary>
 public class ValuationComparableAdjustmentLine
 {
     public Guid Id { get; set; }
     public Guid SelectionId { get; set; }
-    /// <summary>See <see cref="MarketAdjustmentFactorKeys"/>.</summary>
+ /// <summary>See <see cref="MarketAdjustmentFactorKeys"/>.</summary>
     public string FactorKey { get; set; } = MarketAdjustmentFactorKeys.Financing;
-    /// <summary>Display label — required for custom factors.</summary>
+ /// <summary>Display label — required for custom factors.</summary>
     public string LabelAr { get; set; } = "";
     public decimal Percent { get; set; }
     public string Rationale { get; set; } = "";
-    /// <summary>Calc include switch — excluding keeps the row for audit.</summary>
+ /// <summary>Calc include switch — excluding keeps the row for audit.</summary>
     public bool IsIncluded { get; set; } = true;
     public int SortOrder { get; set; }
 
@@ -23,13 +23,13 @@ public class ValuationComparableAdjustmentLine
 
 public static class MarketAdjustmentFactorKeys
 {
-    // ت-3 sequential
+ // sequential
     public const string Financing = "financing";
     public const string Market = "market";
     public const string TransactionType = "transaction_type";
-    // ت-4 area (treated with difference factors: sum-then-apply)
+ // area (treated with difference factors: sum-then-apply)
     public const string Area = "area";
-    // ت-5 difference factors
+ // difference factors
     public const string IdealArea = "ideal_area";
     public const string Location = "location";
     public const string Attraction = "attraction";
@@ -98,14 +98,14 @@ public static class MarketAdjustmentFactorKeys
 }
 
 /// <summary>
-/// Market-approach calc — sequential multiply → difference sum-then-apply → weights (ق-9..11).
+/// Market-approach calc — sequential multiply → difference sum-then-apply → weights.
 /// </summary>
 public static class MarketApproachRules
 {
     public const decimal LargeAdjustmentThresholdPct = 35m;
     private const decimal WeightEpsilon = 0.01m;
 
-    /// <summary>Sequential (multiplicative) application of included percents on a unit rate.</summary>
+ /// <summary>Sequential (multiplicative) application of included percents on a unit rate.</summary>
     public static decimal ApplySequential(decimal basePricePerSqm, IEnumerable<decimal> includedPercents)
     {
         var result = basePricePerSqm;
@@ -114,30 +114,30 @@ public static class MarketApproachRules
         return Math.Round(result, 2, MidpointRounding.AwayFromZero);
     }
 
-    /// <summary>Difference factors: sum included % then apply once (spec §4).</summary>
+ /// <summary>Difference factors: sum included % then apply once (spec ).</summary>
     public static decimal ApplyDifferenceFactorSum(decimal priceAfterSequential, decimal sumDifferencePct)
     {
         var result = priceAfterSequential * (1m + sumDifferencePct / 100m);
         return Math.Round(result, 2, MidpointRounding.AwayFromZero);
     }
 
-    /// <summary>
-    /// Full unit-rate path: sequential multiply, then difference sum-then-apply.
-    /// </summary>
+ /// <summary>
+ /// Full unit-rate path: sequential multiply, then difference sum-then-apply.
+ /// </summary>
     public static (decimal AfterSequential, decimal DifferenceSumPct, decimal AfterDifference) ApplyMarketUnitRate(
         decimal basePricePerSqm,
         IEnumerable<decimal> sequentialPercents,
         IEnumerable<decimal> differencePercents)
     {
         var afterSeq = ApplySequential(basePricePerSqm, sequentialPercents);
-        // Re-apply without intermediate round for chain, then round once at end of each stage
-        // (ApplySequential already rounds; ApplyDifferenceFactorSum rounds again — acceptable scaffold).
+ // Re-apply without intermediate round for chain, then round once at end of each stage
+ // (ApplySequential already rounds; ApplyDifferenceFactorSum rounds again — acceptable scaffold).
         var diffSum = SumIncludedPercents(differencePercents);
         var afterDiff = ApplyDifferenceFactorSum(afterSeq, diffSum);
         return (afterSeq, diffSum, afterDiff);
     }
 
-    /// <summary>Algebraic sum of included percents (ق-9 proximity / ق-11 threshold).</summary>
+ /// <summary>Algebraic sum of included percents.</summary>
     public static decimal SumIncludedPercents(IEnumerable<decimal> includedPercents) =>
         includedPercents.Sum();
 
@@ -152,9 +152,9 @@ public static class MarketApproachRules
         return Math.Max(0, months);
     }
 
-    /// <summary>
-    /// ق-9: closer absolute sum-of-adjustments to zero → higher weight.
-    /// </summary>
+ /// <summary>
+ // closer absolute sum-of-adjustments to zero → higher weight.
+ /// </summary>
     public static IReadOnlyList<decimal> SuggestWeights(IReadOnlyList<decimal> sumIncludedPercents)
     {
         if (sumIncludedPercents.Count == 0) return [];
@@ -179,11 +179,11 @@ public static class MarketApproachRules
         return weights;
     }
 
-    /// <summary>
-    /// ق-9/ق-10 — mixed manual + suggested weights: the non-manual comparables'
-    /// suggestions rescale into the remainder (100 − Σmanual) so a partial override
-    /// still sums to 100 instead of hard-blocking issuance.
-    /// </summary>
+ /// <summary>
+ /// mixed manual + suggested weights: the non-manual comparables'
+ /// suggestions rescale into the remainder (100 − Σmanual) so a partial override
+ /// still sums to 100 instead of hard-blocking issuance.
+ /// </summary>
     public static IReadOnlyList<decimal> RenormalizeSuggestions(
         IReadOnlyList<decimal> rawSuggestions,
         IReadOnlyList<bool> isManual,
@@ -226,7 +226,7 @@ public static class MarketApproachRules
             lastAutoIndex = i;
         }
 
-        // Fold rounding drift into the last auto row so the total lands exactly.
+ // Fold rounding drift into the last auto row so the total lands exactly.
         if (lastAutoIndex >= 0)
         {
             var drift = manualSum + remainder - result.Sum();
@@ -269,7 +269,7 @@ public static class MarketApproachRules
             .ToList();
     }
 
-    /// <summary>Seed ت-4/ت-5 standard difference-factor rows (0%, included).</summary>
+ /// <summary>Seed standard difference-factor rows (0%, included).</summary>
     public static IReadOnlyList<ValuationComparableAdjustmentLine> CreateStandardDifferenceFactorLines(
         Guid selectionId,
         int sortOrderStart = 10)
@@ -289,7 +289,7 @@ public static class MarketApproachRules
             .ToList();
     }
 
-    /// <summary>Sequential + difference seeds for a new selection.</summary>
+ /// <summary>Sequential + difference seeds for a new selection.</summary>
     public static IReadOnlyList<ValuationComparableAdjustmentLine> CreateStandardMarketLines(
         Guid selectionId)
     {
@@ -300,7 +300,7 @@ public static class MarketApproachRules
     }
 }
 
-/// <summary>ت-4 #33 — طريقة قياس تسوية المساحة.</summary>
+/// <summary>طريقة قياس تسوية المساحة.</summary>
 public static class AreaAdjustmentMethods
 {
     public const string Multiplier = "multiplier";
@@ -317,7 +317,7 @@ public static class AreaAdjustmentMethods
 }
 
 /// <summary>
-/// ت-4 #34 — computed area-adjustment suggestion. Sign per the inventory note:
+/// computed area-adjustment suggestion. Sign per the inventory note:
 /// smaller comparable → negative, larger → positive; excludes plot shape/regularity.
 /// Magnitude is a provisional scaffold (1% per 10% area difference, capped ±10%)
 /// until the v3 منطق-التسويات formulas arrive — the method key is stored so the

@@ -5,7 +5,7 @@ public static class OrgRoles
 {
     public const string Cdo = "CDO";
 
-    /// <summary>Retired department-admin roles — kept for org-overview labels / legacy rows.</summary>
+ /// <summary>Retired department-admin roles — kept for org-overview labels / legacy rows.</summary>
     public const string HrAdmin = "HrAdmin";
     public const string ProcAdmin = "ProcAdmin";
     public const string CrmAdmin = "CrmAdmin";

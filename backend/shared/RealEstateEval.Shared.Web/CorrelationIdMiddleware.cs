@@ -14,7 +14,7 @@ public sealed class CorrelationIdMiddleware
 {
     public const string HeaderName = "X-Correlation-Id";
 
-    /// <summary>Long enough for a GUID, a W3C trace id, or a caller's own request id.</summary>
+ /// <summary>Long enough for a GUID, a W3C trace id, or a caller's own request id.</summary>
     public const int MaxLength = 128;
 
     public const string LogScopeKey = "CorrelationId";
@@ -59,10 +59,10 @@ public sealed class CorrelationIdMiddleware
         }
     }
 
-    /// <summary>
-    /// Returns the id to use, or <c>null</c> when the candidate cannot be safely echoed
-    /// (header injection, log forging, or unbounded growth of an indexed log field).
-    /// </summary>
+ /// <summary>
+ /// Returns the id to use, or <c>null</c> when the candidate cannot be safely echoed
+ /// (header injection, log forging, or unbounded growth of an indexed log field).
+ /// </summary>
     public static string? Sanitize(string? candidate)
     {
         if (string.IsNullOrWhiteSpace(candidate))

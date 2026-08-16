@@ -9,7 +9,7 @@ public sealed record OtpDeliveryRequest(
 public sealed record OtpDeliveryResult(bool Ok, string Provider, string? Detail = null);
 
 /// <summary>
-/// Replaceable OTP / invitation delivery (cursor_build_directive §6 #6).
+/// Replaceable OTP / invitation delivery.
 /// Implementations must not be called directly from UI — go through this interface.
 /// </summary>
 public interface IOtpDeliveryService

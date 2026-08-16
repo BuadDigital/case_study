@@ -26,9 +26,9 @@ export type ValuationComparableMarketDto = {
   weightPct?: number | null;
   /** Decision 19.3 — required when weightIsManual. */
   weightOverrideRationale?: string | null;
-  /** ت-4 #33 — multiplier | amthal. */
+ /** multiplier | amthal. */
   areaAdjustmentMethod: string;
-  /** ت-4 #34 — computed suggestion (provisional until v3). */
+ /** computed suggestion (provisional until v3). */
   suggestedAreaAdjustmentPct: number;
 };
 
@@ -52,7 +52,7 @@ export type ValuationComparableSelectionListDto = {
   weightsSumTo100: boolean;
   weightedPricePerSqm: number;
   subjectAreaSqm?: number | null;
-  /** ت-1 #14 — price_per_sqm | whole_property. */
+ /** price_per_sqm | whole_property. */
   adjustmentBasis: string;
   adjustmentBasisLabelAr: string;
   marketOpinionValue: number;
@@ -62,7 +62,7 @@ export type ValuationComparableSelectionListDto = {
 
 export type SaveValuationMarketApproachRequest = {
   subjectAreaSqm?: number | null;
-  /** ت-1 #14 — price_per_sqm (default) | whole_property. */
+ /** price_per_sqm (default) | whole_property. */
   adjustmentBasis?: string | null;
   analysisNotes?: string | null;
 };
@@ -71,7 +71,7 @@ export type ValuationCostLineDto = {
   id: string;
   sourceInventoryLineId?: string | null;
   structureKind: string;
-  /** ث-2 defined item (#64–79) — custom = free label. */
+ /** defined item  — custom = free label. */
   itemKey: string;
   itemLabelAr: string;
   label: string;
@@ -81,7 +81,7 @@ export type ValuationCostLineDto = {
   unit: string;
   unitLabelAr: string;
   buildRatioPct?: number | null;
-  /** ق-13 — quantity derives from first floor × count. */
+ /** quantity derives from first floor × count. */
   repeatedFloorCount?: number | null;
   unitCostSar: number;
   lineTotal: number;
@@ -93,25 +93,25 @@ export type ValuationCostLineDto = {
 export type ValuationCostApproachDto = {
   valuationRequestId: string;
   propertyId: string;
-  /** ث-1 #59 — market weighted unit rate imported at land import (locked). */
+ /** market weighted unit rate imported at land import (locked). */
   landUnitRateFromMarket: number;
   landAreaSqm: number;
   useRestrictionDiscountPct: number;
   useRestrictionRationale?: string | null;
   apartmentLandShareSqm?: number | null;
-  /** ث-1 #63 — computed. */
+ /** computed. */
   landUnitRateAfterDiscount: number;
   landValueFromMarket: number;
   landImportedAtUtc?: string | null;
   directCostTotal: number;
-  /** ث-3 indirect costs (#82–92). */
+ /** indirect costs. */
   indirectItems: ValuationIndirectCostItemDto[];
   financingAnnualRatePct: number;
   financingMonths: number;
   financingPct: number;
   indirectRatesSumPct: number;
   totalCostWithIndirect: number;
-  /** ث-4 age / depreciation (#93–101). */
+ /** age / depreciation. */
   actualAgeYears?: number | null;
   economicAgeYears?: number | null;
   lifeExtensionYears: number;
@@ -151,7 +151,7 @@ export type SaveValuationCostLineRequest = {
   id?: string | null;
   sourceInventoryLineId?: string | null;
   structureKind: string;
-  /** ث-2 defined item; custom needs a label. */
+ /** defined item; custom needs a label. */
   itemKey?: string | null;
   label: string;
   areaSqm: number;
@@ -169,17 +169,17 @@ export type SaveValuationCostApproachRequest = {
   lines: SaveValuationCostLineRequest[];
   analysisNotes?: string | null;
   importLandFromMarket?: boolean;
-  /** ث-1 #60 — 0–100, default 0. */
+ /** 0–100, default 0. */
   useRestrictionDiscountPct?: number;
-  /** ث-1 #61 — required when the discount is above zero. */
+ /** required when the discount is above zero. */
   useRestrictionRationale?: string | null;
-  /** ث-1 #62 — apartment share of land m². */
+ /** apartment share of land m². */
   apartmentLandShareSqm?: number | null;
-  /** ث-3 indirect costs. */
+ /** indirect costs. */
   indirectItems?: SaveValuationIndirectCostItemRequest[];
   financingAnnualRatePct?: number;
   financingMonths?: number;
-  /** ث-4 age / depreciation. */
+ /** age / depreciation. */
   actualAgeYears?: number | null;
   economicAgeYears?: number | null;
   lifeExtensionYears?: number;
@@ -275,7 +275,7 @@ export type SaveValuationComparableMarketRequest = {
   weightIsManual?: boolean;
   /** Decision 19.3 — required when weightIsManual. */
   weightOverrideRationale?: string | null;
-  /** ت-4 #33 — multiplier (default) | amthal. */
+ /** multiplier (default) | amthal. */
   areaAdjustmentMethod?: string | null;
 };
 
@@ -760,7 +760,7 @@ export type ValuationReportDocumentDto = {
   incomeApproachUsed: boolean;
   reportNumber?: string | null;
   reportDateDisplay: string;
-  /** §7.2 — 90-day validity (advisory). */
+ /** 90-day validity (advisory). */
   validUntilDisplay?: string | null;
   validityNoteAr?: string | null;
   reportDateHijriDisplay?: string;

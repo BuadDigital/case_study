@@ -338,9 +338,9 @@ public sealed class WorkflowTaskLifecycleCommands : IWorkflowTaskLifecycleComman
             await _inspectorFees.EnsureLedgersForPropertyAsync(feePropertyId, cancellationToken);
         }
 
-        // Supervisor resolved an obstruction and handed the transaction back to
-        // the specialist (or re-targeted it to a new one) — they had no way to
-        // know it moved without a manual refresh before this.
+ // Supervisor resolved an obstruction and handed the transaction back to
+ // the specialist (or re-targeted it to a new one) — they had no way to
+ // know it moved without a manual refresh before this.
         var nowCaseSpecialist = entity.Kind == CaseStudyPropertyKind
             && string.Equals(entity.AssigneeRole, "case-specialist", StringComparison.OrdinalIgnoreCase)
             && entity.Status == WorkflowTaskStatus.Open

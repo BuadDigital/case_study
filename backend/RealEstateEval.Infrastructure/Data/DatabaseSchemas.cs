@@ -13,10 +13,10 @@ public static class DatabaseSchemas
     public const string Financial = "financial";
     public const string Messaging = "messaging";
 
-    /// <summary>
-    /// Shared append-only ledger. It holds one table so every writer can be granted INSERT on
-    /// that table alone instead of a whole owner's schema.
-    /// </summary>
+ /// <summary>
+ /// Shared append-only ledger. It holds one table so every writer can be granted INSERT on
+ /// that table alone instead of a whole owner's schema.
+ /// </summary>
     public const string Audit = "audit";
 
     public static readonly string[] All =

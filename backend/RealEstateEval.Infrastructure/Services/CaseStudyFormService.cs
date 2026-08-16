@@ -49,10 +49,10 @@ public class CaseStudyFormService : ICaseStudyFormService
         return entity is null ? null : ToDto(entity);
     }
 
-    /// <summary>
-    /// Case staff read every form. A party reads a form when assigned to the task itself or to
-    /// one of its child tasks — the party workspace seeds itself from the parent case-study form.
-    /// </summary>
+ /// <summary>
+ /// Case staff read every form. A party reads a form when assigned to the task itself or to
+ /// one of its child tasks — the party workspace seeds itself from the parent case-study form.
+ /// </summary>
     private async Task<bool> CanReadFormAsync(
         Guid taskId,
         CaseStudyFormActor actor,
@@ -80,7 +80,7 @@ public class CaseStudyFormService : ICaseStudyFormService
         CaseStudyFormActor? actor = null,
         CancellationToken cancellationToken = default)
     {
-        // §7.3 gate integrity — unknown outcomes rejected; فروق/تعذر need written notes.
+ // gate integrity — unknown outcomes rejected; فروق/تعذر need written notes.
         var matchOutcome = (form.DeedNatureMatchOutcome ?? "").Trim().ToLowerInvariant();
         if (!DeedNatureMatchOutcomes.IsKnown(matchOutcome))
         {
@@ -95,11 +95,11 @@ public class CaseStudyFormService : ICaseStudyFormService
         {
             return (null, new Dictionary<string, string>
             {
-                ["deedNatureMatchNotes"] = "ملاحظات المطابقة إلزامية عند «فروق» أو «مرشح تعذر» (§7.3)",
+                ["deedNatureMatchNotes"] = "ملاحظات المطابقة إلزامية عند «فروق» أو «مرشح تعذر»",
             });
         }
 
-        // Autosave / multi-tab can race on xmin — retry with a fresh load instead of 409 noise.
+ // Autosave / multi-tab can race on xmin — retry with a fresh load instead of 409 noise.
         const int maxAttempts = 3;
         for (var attempt = 1; attempt <= maxAttempts; attempt++)
         {
@@ -369,7 +369,7 @@ public class CaseStudyFormService : ICaseStudyFormService
         entity.InfathLinkedAssetsNotes = dto.InfathLinkedAssetsNotes ?? "";
         entity.InfathOtherNotes = dto.InfathOtherNotes ?? "";
         entity.InfathClosingNotes = dto.InfathClosingNotes ?? "";
-        // Validated in SaveAsync (§7.3) — normalized here.
+ // Validated in SaveAsync — normalized here.
         entity.DeedNatureMatchOutcome = (dto.DeedNatureMatchOutcome ?? "").Trim().ToLowerInvariant();
         entity.DeedNatureMatchNotes = dto.DeedNatureMatchNotes ?? "";
         entity.SavedAtUtc = now;

@@ -4,20 +4,20 @@ namespace RealEstateEval.Application.Abstractions;
 
 public interface IPartyTaskSubmissionService
 {
-    /// <summary>
-    /// Reads one submission. When <paramref name="actor"/> is supplied the caller must pass
-    /// <see cref="Rules.PoRoleMatrixRules.CanReadPartyTask"/>; otherwise null is returned so
-    /// callers cannot distinguish "missing" from "not yours".
-    /// </summary>
+ /// <summary>
+ /// Reads one submission. When <paramref name="actor"/> is supplied the caller must pass
+ /// <see cref="Rules.PoRoleMatrixRules.CanReadPartyTask"/>; otherwise null is returned so
+ /// callers cannot distinguish "missing" from "not yours".
+ /// </summary>
     Task<PartyTaskSubmissionDto?> GetAsync(
         Guid taskId,
         PartySubmissionActor? actor = null,
         CancellationToken cancellationToken = default);
 
-    /// <summary>
-    /// Reads submissions for the given tasks. When <paramref name="actor"/> is supplied,
-    /// tasks the actor may not read are silently dropped rather than failing the batch.
-    /// </summary>
+ /// <summary>
+ /// Reads submissions for the given tasks. When <paramref name="actor"/> is supplied,
+ /// tasks the actor may not read are silently dropped rather than failing the batch.
+ /// </summary>
     Task<IReadOnlyList<PartyTaskSubmissionDto>> ListForTasksAsync(
         IReadOnlyList<Guid> workflowTaskIds,
         PartySubmissionActor? actor = null,
@@ -40,9 +40,9 @@ public interface IPartyTaskSubmissionService
         PartySubmissionActor? actor = null,
         CancellationToken cancellationToken = default);
 
-    /// <summary>
-    /// Specialist accepts engineering-survey outputs — triggers fee accrual from the pricing table.
-    /// </summary>
+ /// <summary>
+ /// Specialist accepts engineering-survey outputs — triggers fee accrual from the pricing table.
+ /// </summary>
     Task<(PartyTaskSubmissionDto? Result, Dictionary<string, string>? Errors)> AcceptAsync(
         Guid taskId,
         PartySubmissionActor actor,

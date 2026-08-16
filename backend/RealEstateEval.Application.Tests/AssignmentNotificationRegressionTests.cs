@@ -137,7 +137,7 @@ public sealed class AssignmentNotificationRegressionTests
         Assert.Contains("user-supervisor", receipt.UserIds);
         Assert.DoesNotContain("user-gov", receipt.UserIds);
 
-        // complete after receipt
+ // complete after receipt
         var (done, doneError) = await service.PatchAsync(
             Guid.Parse(created.Id),
             new PatchOperationsTaskRequest { Status = "completed" },
@@ -182,7 +182,7 @@ public sealed class AssignmentNotificationRegressionTests
         Assert.NotNull(created);
         var taskId = Guid.Parse(created!.Id);
 
-        // priority change → assignee
+ // priority change → assignee
         var (_, prioErr) = await service.PatchAsync(
             taskId,
             new PatchOperationsTaskRequest { Priority = "high" },
@@ -197,7 +197,7 @@ public sealed class AssignmentNotificationRegressionTests
         Assert.Equal(["user-gov"], prioPayload.UserIds);
         Assert.StartsWith("ops-task-schedule:", prioPayload.SourceEvent);
 
-        // comment from creator → assignee
+ // comment from creator → assignee
         var (_, cmtErr) = await service.AddCommentAsync(
             taskId,
             new AddOperationsTaskCommentRequest { Text = "يرجى المتابعة" },
@@ -211,7 +211,7 @@ public sealed class AssignmentNotificationRegressionTests
         Assert.Equal(["user-gov"], cmtPayload.UserIds);
         Assert.StartsWith("ops-task-comment:", cmtPayload.SourceEvent);
 
-        // cancel → assignee
+ // cancel → assignee
         var (_, cancelErr) = await service.PatchAsync(
             taskId,
             new PatchOperationsTaskRequest

@@ -15,7 +15,7 @@ namespace RealEstateEval.Infrastructure.Data.Contexts.CaseStudy.Migrations
     [Migration("20260803061645_InitialCaseStudyBaseline")]
     partial class InitialCaseStudyBaseline
     {
-        /// <inheritdoc />
+ /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618

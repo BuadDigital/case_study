@@ -9,7 +9,7 @@ namespace RealEstateEval.Application.Rules;
 /// </summary>
 public static class CourtVisitFeeRules
 {
-    /// <summary>Cooperator individual — the party type priced by <c>CourtVisitFeeSar</c>.</summary>
+ /// <summary>Cooperator individual — the party type priced by <c>CourtVisitFeeSar</c>.</summary>
     public const string PartyType = InspectorFeeRules.TypeCooperatorIndividual;
 
     public static string ResolveReviewerType(

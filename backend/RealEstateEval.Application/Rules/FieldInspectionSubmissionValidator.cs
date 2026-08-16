@@ -20,10 +20,10 @@ public static class FieldInspectionSubmissionValidator
         "21.543300,39.172800",
     };
 
-    /// <summary>
-    /// Desktop table «صورة» + mobile proof: closed-list fields always when valued;
-    /// yes/no fields only when «نعم» (Case Study.html PHOTO_ON_YES + desktop table).
-    /// </summary>
+ /// <summary>
+ /// Desktop table «صورة» + mobile proof: closed-list fields always when valued;
+ /// yes/no fields only when «نعم» (Case Study.html PHOTO_ON_YES + desktop table).
+ /// </summary>
     private static readonly (string Key, string Label)[] FeaturePhotoFields =
     [
         ("assetSubject", "الأصل محل التقييم"),

@@ -245,7 +245,7 @@ public sealed class PropertyAccessHoldService : IPropertyAccessHoldService
                 cancellationToken);
         if (task is null) return;
 
-        // The property is linked here, so a row with no remembered phase resumes at bourse.
+ // The property is linked here, so a row with no remembered phase resumes at bourse.
         task.Unblock(DateTime.UtcNow, WorkflowTaskPhase.Bourse);
         await _cs.SaveChangesAsync(cancellationToken);
         await NotifySpecialistAsync(

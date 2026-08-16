@@ -3,7 +3,7 @@ using RealEstateEval.Architecture.Tests.Support;
 namespace RealEstateEval.Architecture.Tests;
 
 /// <summary>
-/// Phase 1 exit (A6): pure extracted hosts must not open the residual god-context pool.
+/// exit criterion.
 /// Residual dual-write host is case-study only (outbox drain + multi-boundary writers).
 /// </summary>
 public class LegacyPersistenceHostTests

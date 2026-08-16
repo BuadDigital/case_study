@@ -7,7 +7,7 @@ public class ValuationReportSectionDto
     public required string TitleAr { get; init; }
     public required string BodyKind { get; init; }
     public bool Included { get; init; }
-    /// <summary>Short scaffold body for preview — not the final letterhead HTML.</summary>
+ /// <summary>Short scaffold body for preview — not the final letterhead HTML.</summary>
     public string? PreviewText { get; init; }
     public IReadOnlyDictionary<string, string?> Fields { get; init; } =
         new Dictionary<string, string?>();
@@ -45,7 +45,7 @@ public class ValuationReportReconMethodRowDto
 public class ValuationReportPrintedAttachmentDto
 {
     public Guid AttachmentId { get; init; }
-    /// <summary>Relative API URL — /api/attachments/{id}.</summary>
+ /// <summary>Relative API URL — /api/attachments/{id}.</summary>
     public string ContentUrl { get; init; } = "";
     public string ContentType { get; init; } = "";
     public string DictionaryTypeKey { get; init; } = "";
@@ -53,7 +53,7 @@ public class ValuationReportPrintedAttachmentDto
     public string FileName { get; init; } = "";
     public int ReportSectionNumber { get; init; }
     public bool IsImage { get; init; }
-    /// <summary>Inspector capture date (11س — photos auto-dated), YYYY/MM/DD.</summary>
+ /// <summary>Inspector capture date (11س — photos auto-dated), YYYY/MM/DD.</summary>
     public string? CapturedAtDisplay { get; init; }
 }
 
@@ -68,7 +68,7 @@ public class ValuationReportDocumentDto
     public bool IncomeApproachUsed { get; init; }
     public string? ReportNumber { get; init; }
     public string ReportDateDisplay { get; init; } = "";
-    /// <summary>§7.2 — 90-day validity end (advisory, never blocking).</summary>
+ /// <summary>90-day validity end (advisory, never blocking).</summary>
     public string? ValidUntilDisplay { get; init; }
     public string? ValidityNoteAr { get; init; }
     public string PhotoBudgetHintAr { get; init; } = "";
@@ -80,9 +80,9 @@ public class ValuationReportDocumentDto
     public string? MethodsRationale { get; init; }
     public bool AllowsIssuance { get; init; }
     public string TextLayerNoteAr { get; init; } = "النصوص المعيارية/القانونية تُجمَّد برقم نسخة عند الإصدار — القالب البصري النهائي يعتمد report-template-approved.html عند توفره.";
-    /// <summary>Public URL of the approved letterhead HTML (shell static asset).</summary>
+ /// <summary>Public URL of the approved letterhead HTML (shell static asset).</summary>
     public string ApprovedTemplateUrl { get; init; } = "/ejadah/report-template-approved.html";
-    /// <summary>Org-settings letterhead (3-slice render); null keeps the template's baked one.</summary>
+ /// <summary>Org-settings letterhead (3-slice render); null keeps the template's baked one.</summary>
     public string? LetterheadImageUrl { get; init; }
     public string ReportDateHijriDisplay { get; init; } = "";
     public string MarketMethodLabelAr { get; init; } = "غير مستخدم";

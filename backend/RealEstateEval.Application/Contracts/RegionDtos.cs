@@ -19,7 +19,7 @@ public sealed class SelectableCityDto
     public bool IsCapital { get; set; }
     public bool IsGovernorate { get; set; }
     public string Status { get; set; } = "approved";
-    /// <summary>اسم المنطقة — مفيد عند اختيار المدينة أولاً.</summary>
+ /// <summary>اسم المنطقة — مفيد عند اختيار المدينة أولاً.</summary>
     public string RegionNameAr { get; set; } = "";
 }
 
@@ -36,18 +36,18 @@ public sealed class LocationSearchRequest
     public Guid? RegionId { get; set; }
     public Guid? CityId { get; set; }
     public string? Query { get; set; }
-    /// <summary>cities | districts</summary>
+ /// <summary>cities | districts</summary>
     public string Scope { get; set; } = "cities";
 }
 
 public sealed class SuggestLocationRequest
 {
-    /// <summary>city | district</summary>
+ /// <summary>city | district</summary>
     public string Kind { get; set; } = "city";
     public Guid? RegionId { get; set; }
     public Guid? CityId { get; set; }
     public string NameAr { get; set; } = "";
-    /// <summary>When true, skip similarity gate and create pending even if similar names exist.</summary>
+ /// <summary>When true, skip similarity gate and create pending even if similar names exist.</summary>
     public bool ForceCreate { get; set; }
 }
 
@@ -82,7 +82,7 @@ public sealed class PendingLocationDto
 
 public sealed class ReviewLocationRequest
 {
-    /// <summary>approve | rename | merge</summary>
+ /// <summary>approve | rename | merge</summary>
     public string Action { get; set; } = "approve";
     public string? NameAr { get; set; }
     public Guid? MergeIntoId { get; set; }

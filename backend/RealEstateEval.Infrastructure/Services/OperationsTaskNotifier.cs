@@ -13,7 +13,7 @@ public sealed class OperationsTaskNotifier
     private static readonly string[] StakeholderRoles =
     [
         "section-supervisor",
-        // general managers often oversee case study — keep in ops lifecycle loop
+ // general managers often oversee case study — keep in ops lifecycle loop
         "general-manager",
     ];
 
@@ -55,9 +55,9 @@ public sealed class OperationsTaskNotifier
             cancellationToken);
     }
 
-    /// <summary>
-    /// When the assignee confirms receipt (created → in_progress): creator + supervisors.
-    /// </summary>
+ /// <summary>
+ /// When the assignee confirms receipt (created → in_progress): creator + supervisors.
+ /// </summary>
     public async Task NotifyStakeholdersOnReceiptAsync(
         OperationsTask entity,
         string? actorName,
@@ -75,9 +75,9 @@ public sealed class OperationsTaskNotifier
             cancellationToken);
     }
 
-    /// <summary>
-    /// When the task is completed: creator + supervisors (and general manager).
-    /// </summary>
+ /// <summary>
+ /// When the task is completed: creator + supervisors (and general manager).
+ /// </summary>
     public async Task NotifyCreatorOnCompletedAsync(
         OperationsTask entity,
         string actorUserId,
@@ -95,7 +95,7 @@ public sealed class OperationsTaskNotifier
             cancellationToken);
     }
 
-    /// <summary>Task cancelled by manager → notify the assignee.</summary>
+ /// <summary>Task cancelled by manager → notify the assignee.</summary>
     public async Task NotifyAssigneeOnCancelledAsync(
         OperationsTask entity,
         string? actorName,
@@ -116,7 +116,7 @@ public sealed class OperationsTaskNotifier
             cancellationToken);
     }
 
-    /// <summary>Priority and/or due date changed → notify the assignee.</summary>
+ /// <summary>Priority and/or due date changed → notify the assignee.</summary>
     public async Task NotifyAssigneeOnScheduleChangedAsync(
         OperationsTask entity,
         bool priorityChanged,
@@ -144,9 +144,9 @@ public sealed class OperationsTaskNotifier
             cancellationToken);
     }
 
-    /// <summary>
-    /// New human comment: notify the other party (assignee ↔ creator).
-    /// </summary>
+ /// <summary>
+ /// New human comment: notify the other party (assignee ↔ creator).
+ /// </summary>
     public async Task NotifyCounterpartyOnCommentAsync(
         OperationsTask entity,
         string commenterSide,
@@ -183,7 +183,7 @@ public sealed class OperationsTaskNotifier
             return;
         }
 
-        // creator / manager → notify assignee
+ // creator / manager → notify assignee
         await NotifyAssigneeOnlyAsync(
             entity,
             title: "تحديث على المهمة",
@@ -199,9 +199,9 @@ public sealed class OperationsTaskNotifier
         OperationsTask entity,
         CancellationToken cancellationToken)
     {
-        // Recurring per cadence for the same task+reason → stable SourceEvent (no timestamp),
-        // so re-emits refresh the still-unread row via IX_UserNotifications_UserId_SourceEvent_Unread
-        // instead of stacking duplicates in the activity feed.
+ // Recurring per cadence for the same task+reason → stable SourceEvent (no timestamp),
+ // so re-emits refresh the still-unread row via IX_UserNotifications_UserId_SourceEvent_Unread
+ // instead of stacking duplicates in the activity feed.
         var body = $"المهمة {entity.DisplayId} متوقفة مؤقتاً لأكثر من يوم عمل — يلزم الاستئناف.";
         var href = OperationsTaskHref(entity.Id);
 
@@ -250,12 +250,12 @@ public sealed class OperationsTaskNotifier
         bool auto,
         CancellationToken cancellationToken)
     {
-        // Reminders repeat on the work-hours cadence until the task closes. The message is the
-        // same each time, so the SourceEvent must stay stable (no timestamp): while the previous
-        // reminder is still unread, NotificationService refreshes it in place
-        // (IX_UserNotifications_UserId_SourceEvent_Unread) instead of piling up duplicate
-        // "تذكير بمهمة" rows in the activity feed. A new row only appears after the user read
-        // the previous one.
+ // Reminders repeat on the work-hours cadence until the task closes. The message is the
+ // same each time, so the SourceEvent must stay stable (no timestamp): while the previous
+ // reminder is still unread, NotificationService refreshes it in place
+ // (IX_UserNotifications_UserId_SourceEvent_Unread) instead of piling up duplicate
+ // "تذكير بمهمة" rows in the activity feed. A new row only appears after the user read
+ // the previous one.
         var body = $"تذكير بالمهمة {entity.DisplayId}: {entity.Title}.";
         var href = OperationsTaskHref(entity.Id);
 
@@ -278,7 +278,7 @@ public sealed class OperationsTaskNotifier
                 cancellationToken);
         }
 
-        // Auto reminders escalate to creator until close (دورة اسناد المهام §9).
+ // Auto reminders escalate to creator until close (دورة اسناد المهام ).
         if (!auto) return;
 
         var creatorId = entity.CreatedBy.Trim();
@@ -306,7 +306,7 @@ public sealed class OperationsTaskNotifier
         OperationsTask entity,
         CancellationToken cancellationToken)
     {
-        // Notify active government-reviewers by role (court visits), not legacy GR workflow assignees.
+ // Notify active government-reviewers by role (court visits), not legacy GR workflow assignees.
         var userIds = await _db.UserProfiles.AsNoTracking()
             .Where(p =>
                 p.Status == UserStatus.Active
@@ -416,9 +416,9 @@ public sealed class OperationsTaskNotifier
             cancellationToken);
     }
 
-    /// <summary>
-    /// Task creator (typically specialist/supervisor) + active section supervisors / GMs.
-    /// </summary>
+ /// <summary>
+ /// Task creator (typically specialist/supervisor) + active section supervisors / GMs.
+ /// </summary>
     private async Task<IReadOnlyList<string>> CollectStakeholderUserIdsAsync(
         OperationsTask entity,
         string? excludeUserId,

@@ -27,7 +27,7 @@ builder.Services.AddClaimsPermissionService();
 builder.Services.AddPlatformInfrastructure(builder.Configuration, connectionString);
 builder.Services.AddMessagingPersistence(builder.Configuration, connectionString);
 // Residual cross-boundary reads for NotificationRecipientResolver (workflow assignee → user id).
-// Phase 3 replaces with owner-API / projection.
+// Replaced later by owner APIs.
 builder.Services.AddCaseStudyPersistence(builder.Configuration, connectionString);
 builder.Services.AddIdentityPersistence(builder.Configuration, connectionString);
 builder.Services.AddPlatformNotificationInfrastructure(builder.Configuration, builder.Environment);

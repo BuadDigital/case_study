@@ -8,7 +8,7 @@ public static class PostgresErrors
 {
     private const string UniqueViolationSqlState = "23505";
 
-    /// <summary>Name of the unique index a failed save violated, or <c>null</c>.</summary>
+ /// <summary>Name of the unique index a failed save violated, or <c>null</c>.</summary>
     public static string? ViolatedUniqueIndex(DbUpdateException exception) =>
         exception.InnerException is PostgresException { SqlState: UniqueViolationSqlState } violation
             ? violation.ConstraintName

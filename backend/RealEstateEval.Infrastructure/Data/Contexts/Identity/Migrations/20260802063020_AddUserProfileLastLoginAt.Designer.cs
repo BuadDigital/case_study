@@ -15,7 +15,7 @@ namespace RealEstateEval.Infrastructure.Data.Contexts.Identity.Migrations
     [Migration("20260802063020_AddUserProfileLastLoginAt")]
     partial class AddUserProfileLastLoginAt
     {
-        /// <inheritdoc />
+ /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618

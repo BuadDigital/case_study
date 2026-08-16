@@ -23,7 +23,7 @@ public sealed class OperationsTaskReminderHostedService : BackgroundService
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
-        // Delay first run slightly so the API finishes warming up.
+ // Delay first run slightly so the API finishes warming up.
         try
         {
             await Task.Delay(TimeSpan.FromSeconds(20), stoppingToken);

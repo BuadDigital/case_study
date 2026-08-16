@@ -15,7 +15,7 @@ namespace RealEstateEval.Infrastructure.Data.Contexts.Valuation.Migrations
     [Migration("20260730061151_InitialValuationBaseline")]
     partial class InitialValuationBaseline
     {
-        /// <inheritdoc />
+ /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618

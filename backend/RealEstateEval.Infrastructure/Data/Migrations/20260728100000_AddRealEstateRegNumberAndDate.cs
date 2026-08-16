@@ -11,7 +11,7 @@ namespace RealEstateEval.Infrastructure.Data.Migrations;
 [Migration("20260728100000_AddRealEstateRegNumberAndDate")]
 public partial class AddRealEstateRegNumberAndDate : Migration
 {
-    /// <inheritdoc />
+ /// <inheritdoc />
     protected override void Up(MigrationBuilder migrationBuilder)
     {
         migrationBuilder.AddColumn<string>(
@@ -39,7 +39,7 @@ public partial class AddRealEstateRegNumberAndDate : Migration
             defaultValue: true);
     }
 
-    /// <inheritdoc />
+ /// <inheritdoc />
     protected override void Down(MigrationBuilder migrationBuilder)
     {
         migrationBuilder.DropColumn(

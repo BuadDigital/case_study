@@ -8,7 +8,7 @@ public class MarketApproachRulesTests
     [Fact]
     public void ApplySequential_multiplies_in_order()
     {
-        // 1000 * 1.10 * 0.95 = 1045
+ // 1000 * 1.10 * 0.95 = 1045
         Assert.Equal(1045m, MarketApproachRules.ApplySequential(1000m, [10m, -5m]));
     }
 
@@ -59,14 +59,14 @@ public class MarketApproachRulesTests
     [Fact]
     public void ApplyDifferenceFactorSum_applies_once()
     {
-        // 1000 after seq * (1 + 0.08) = 1080
+ // 1000 after seq * (1 + 0.08) = 1080
         Assert.Equal(1080m, MarketApproachRules.ApplyDifferenceFactorSum(1000m, 8m));
     }
 
     [Fact]
     public void ApplyMarketUnitRate_sequential_then_difference()
     {
-        // 1000 * 1.10 = 1100; then * 1.05 = 1155
+ // 1000 * 1.10 = 1100; then * 1.05 = 1155
         var (afterSeq, diffSum, afterDiff) = MarketApproachRules.ApplyMarketUnitRate(
             1000m,
             [10m],
@@ -109,7 +109,7 @@ public class MarketApproachRulesTests
     [Fact]
     public void Area_adjustment_sign_smaller_comparable_negative()
     {
-        // ت-4 note: المقارن الأصغر يأخذ تسوية سالبة والأكبر موجبة.
+ // note: المقارن الأصغر يأخذ تسوية سالبة والأكبر موجبة.
         Assert.True(AreaAdjustmentRules.SuggestPct("multiplier", 400m, 300m) < 0m);
         Assert.True(AreaAdjustmentRules.SuggestPct("multiplier", 400m, 500m) > 0m);
         Assert.Equal(0m, AreaAdjustmentRules.SuggestPct("multiplier", 400m, 400m));
@@ -118,7 +118,7 @@ public class MarketApproachRulesTests
     [Fact]
     public void Renormalize_scales_auto_suggestions_around_manual_overrides()
     {
-        // ق-9/ق-10 — manual 50% on comp 1; comps 2+3 split the remaining 50 pro-rata.
+ // manual 50% on comp 1; comps 2+3 split the remaining 50 pro-rata.
         var result = MarketApproachRules.RenormalizeSuggestions(
             rawSuggestions: [40m, 40m, 20m],
             isManual: [true, false, false],
@@ -126,7 +126,7 @@ public class MarketApproachRulesTests
 
         Assert.Equal(50m, result[0]);
         Assert.Equal(100m, result.Sum());
-        // 40:20 ratio over the 50 remainder → 33.33 / 16.67.
+ // 40:20 ratio over the 50 remainder → 33.33 / 16.67.
         Assert.True(Math.Abs(result[1] - 33.33m) < 0.02m);
         Assert.True(Math.Abs(result[2] - 16.67m) < 0.02m);
     }
@@ -142,21 +142,21 @@ public class MarketApproachRulesTests
     [Fact]
     public void Anomaly_note_flags_large_deviation_from_district_median()
     {
-        // Median of 1000/1100/1200 = 1100; 2000 deviates ~82%.
+ // Median of 1000/1100/1200 = 1100; 2000 deviates ~82%.
         Assert.NotNull(ComparablePropertyRules.PricePerSqmAnomalyNote(
             2000m, [1000m, 1100m, 1200m]));
         Assert.Null(ComparablePropertyRules.PricePerSqmAnomalyNote(
             1150m, [1000m, 1100m, 1200m]));
-        // Fewer than 3 peers → no median check.
+ // Fewer than 3 peers → no median check.
         Assert.Null(ComparablePropertyRules.PricePerSqmAnomalyNote(9000m, [1000m]));
-        // Zero rate always flags.
+ // Zero rate always flags.
         Assert.NotNull(ComparablePropertyRules.PricePerSqmAnomalyNote(0m, []));
     }
 
     [Fact]
     public void Area_adjustment_caps_and_guards()
     {
-        // Negative side approaches −10 asymptotically (ratio → 0 ⇒ raw → −10).
+ // Negative side approaches −10 asymptotically (ratio → 0 ⇒ raw → −10).
         Assert.Equal(-9m, AreaAdjustmentRules.SuggestPct("amthal", 400m, 40m));
         Assert.Equal(10m, AreaAdjustmentRules.SuggestPct("amthal", 100m, 1000m));
         Assert.Equal(0m, AreaAdjustmentRules.SuggestPct("multiplier", 0m, 500m));

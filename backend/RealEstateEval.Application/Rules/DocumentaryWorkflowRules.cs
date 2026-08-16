@@ -17,9 +17,9 @@ public static class DocumentaryWorkflowRules
             || prototypeRole.Equals("section-supervisor", StringComparison.OrdinalIgnoreCase);
     }
 
-    /// <summary>
-    /// Roles allowed to set location map URL on property (initial data / specialist path).
-    /// </summary>
+ /// <summary>
+ /// Roles allowed to set location map URL on property (initial data / specialist path).
+ /// </summary>
     public static bool RoleCanSetLocationMapUrl(string? prototypeRole)
     {
         if (string.IsNullOrWhiteSpace(prototypeRole)) return false;
@@ -29,7 +29,7 @@ public static class DocumentaryWorkflowRules
             || prototypeRole.Equals("field-inspector", StringComparison.OrdinalIgnoreCase);
     }
 
-    /// <summary>عشوائي = غياب رقم المخطط ورقم القطعة معاً (AND).</summary>
+ /// <summary>عشوائي = غياب رقم المخطط ورقم القطعة معاً (AND).</summary>
     public static bool IsInformalSettlement(string? planNumber, string? plotNumber) =>
         string.IsNullOrWhiteSpace(planNumber) && string.IsNullOrWhiteSpace(plotNumber);
 
@@ -51,11 +51,11 @@ public static class DocumentaryWorkflowRules
     public static bool BoundariesUnavailable(string? boundariesAvailability) =>
         string.Equals(boundariesAvailability?.Trim(), "no", StringComparison.OrdinalIgnoreCase);
 
-    /// <summary>
-    /// Survey may be worked only after sibling inspection is completed,
-    /// and while there is no active property failure (unless bypass).
-    /// Informal map-URL gating was removed: assignments are filtered upstream.
-    /// </summary>
+ /// <summary>
+ /// Survey may be worked only after sibling inspection is completed,
+ /// and while there is no active property failure (unless bypass).
+ /// Informal map-URL gating was removed: assignments are filtered upstream.
+ /// </summary>
     public static string? SurveyWorkBlockReason(
         bool bypass,
         bool inspectionCompleted,
@@ -69,11 +69,11 @@ public static class DocumentaryWorkflowRules
         return null;
     }
 
-    /// <summary>
-    /// Field-inspection submit no longer requires a key in hand.
-    /// Key envelopes / court access remain informational and for other workflows.
-    /// Always returns null (kept for call-site compatibility until cleaned up).
-    /// </summary>
+ /// <summary>
+ /// Field-inspection submit no longer requires a key in hand.
+ /// Key envelopes / court access remain informational and for other workflows.
+ /// Always returns null (kept for call-site compatibility until cleaned up).
+ /// </summary>
     public static string? InspectorSubmitKeyBlockReason(
         bool bypass,
         bool vacantLand,
@@ -89,7 +89,7 @@ public static class DocumentaryWorkflowRules
         bool phoneWasPresentAtDeclaration)
     {
         if (bypass) return null;
-        // Once declaration path started with a phone, clearing later does not re-lock.
+ // Once declaration path started with a phone, clearing later does not re-lock.
         if (phoneWasPresentAtDeclaration) return null;
         if (hasPhone) return null;
         return "لا يمكن توقيع إقرار العميل بدون وسيلة اتصال (جوال) لأحد الأطراف.";

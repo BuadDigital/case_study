@@ -71,7 +71,7 @@ public class ValuationReportFieldCostLineFlattenRulesTests
 
         Assert.Equal("250", bag["cost_line.7180"]);
         Assert.Equal(ValuationReportDisplayRules.FormatMoney(530_000m), bag["cost_line.7200"]);
-        // Weighted average unit: 530,000 / 250 = 2,120
+ // Weighted average unit: 530,000 / 250 = 2,120
         Assert.Equal(ValuationReportDisplayRules.FormatMoney(2120m), bag["cost_line.7190"]);
     }
 

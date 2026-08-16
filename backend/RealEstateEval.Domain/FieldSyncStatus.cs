@@ -1,8 +1,8 @@
 namespace RealEstateEval.Domain;
 
 /// <summary>
-/// Field-device offline outbox heartbeat for the supervisor «ظروف معلّقة» board
-/// (security_offline_spec §6.3). Cleared when pendingCount is 0.
+/// Field-device offline outbox heartbeat for the supervisor «ظروف معلّقة» board.
+/// Cleared when pendingCount is 0.
 /// </summary>
 public class FieldSyncStatus
 {

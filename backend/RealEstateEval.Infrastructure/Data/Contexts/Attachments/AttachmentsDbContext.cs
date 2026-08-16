@@ -4,7 +4,7 @@ using RealEstateEval.Domain;
 namespace RealEstateEval.Infrastructure.Data.Contexts;
 
 /// <summary>
-/// Write context for the Attachments bounded context (plan Phase 1, extraction order step 1).
+/// Write context for the Attachments bounded context.
 /// It maps the existing table in the existing schema: this phase changes which context holds
 /// the write path, not where a row lives.
 /// </summary>

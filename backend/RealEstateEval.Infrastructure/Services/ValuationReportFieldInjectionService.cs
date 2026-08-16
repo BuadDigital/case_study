@@ -108,8 +108,8 @@ public sealed class ValuationReportFieldInjectionService(
             }
             else if (map.SourceKind == ValuationReportFieldSourceKind.ConditionalEmpty)
             {
-                // §8 correction 5 — conditional-delete codes upload with explicit empty
-                // values instead of dropping out of the merge payload.
+ // conditional-delete codes upload with explicit empty
+ // values instead of dropping out of the merge payload.
                 valuesByCode[map.Code] = "";
             }
 
@@ -151,7 +151,7 @@ public sealed class ValuationReportFieldInjectionService(
     {
         if (string.IsNullOrWhiteSpace(propertyId)) return [];
 
-        // Prefer classified print-in-report rows; fall back to images scoped to this property id.
+ // Prefer classified print-in-report rows; fall back to images scoped to this property id.
         var classified = await attachments.FileAttachments.AsNoTracking()
             .Where(a => a.PrintInReport
                         && a.ScopeKey.Contains(propertyId))
@@ -295,8 +295,8 @@ public sealed class ValuationReportFieldInjectionService(
                     l.IsIncluded))
                 .ToList();
 
-            // ت-1: the platform grid cells are per-m² — under the whole-property basis
-            // the chain carries deal values, so derive rates from the comparable's area.
+ // the platform grid cells are per-m² — under the whole-property basis
+ // the chain carries deal values, so derive rates from the comparable's area.
             var wholeBasis = string.Equals(
                 market?.AdjustmentBasis, MarketAdjustmentBasisKeys.WholeProperty, StringComparison.Ordinal);
             var seqForCells = wholeBasis && c.AreaSqm > 0m
@@ -339,7 +339,7 @@ public sealed class ValuationReportFieldInjectionService(
         }
         else if (prop?.BuildingInventoryLines is { Count: > 0 } inventoryLines)
         {
-            // Area-only fallback before the appraiser prices cost lines.
+ // Area-only fallback before the appraiser prices cost lines.
             var inventoryLites = inventoryLines
                 .OrderBy(l => l.SortOrder)
                 .Select(l =>
@@ -398,7 +398,7 @@ public sealed class ValuationReportFieldInjectionService(
         if (finalOpinion is { } fo)
             Put("final.opinion_tafqit", ArabicAmountWords.AmountToArabicWords(fo));
 
-        // §8 correction 4 — 9190/9360/9370 fill at upload from system data (no printed section).
+ // 9190/9360/9370 fill at upload from system data (no printed section).
         if (finalOpinion is { } opinion && opinion > 0m)
         {
             Put("valuer_opinion_text", ValuationReportNarrativeRules.ValuerOpinionText(
@@ -414,7 +414,7 @@ public sealed class ValuationReportFieldInjectionService(
         Put("risks_list", string.Join(" · ", risks));
         Put("risks_text", ValuationReportNarrativeRules.RisksText(risks));
 
-        // Images first into photo.01..24; remaining non-images into document.01..02
+ // Images first into photo.01..24; remaining non-images into document.01..02
         var images = printable
             .Where(a => a.ContentType.StartsWith("image/", StringComparison.OrdinalIgnoreCase))
             .Take(PhotoFieldKeys.Length)

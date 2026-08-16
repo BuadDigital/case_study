@@ -22,7 +22,7 @@ public sealed class OperationsTaskService : IOperationsTaskService
         _commands = commands;
     }
 
-    /// <summary>Test-friendly compose from a shared legacy + operations pair.</summary>
+ /// <summary>Test-friendly compose from a shared legacy + operations pair.</summary>
     public static OperationsTaskService Create(
         OperationsDbContext ops,
         ApplicationDbContext db,

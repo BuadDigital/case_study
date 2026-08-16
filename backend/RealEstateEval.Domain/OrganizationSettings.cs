@@ -1,7 +1,7 @@
 namespace RealEstateEval.Domain;
 
 /// <summary>
-/// Singleton organization / system settings (د — company, evaluator, branding, communications, SLA).
+/// Singleton organization / system settings (company, evaluator, branding, communications, SLA).
 /// </summary>
 public class OrganizationSettings
 {

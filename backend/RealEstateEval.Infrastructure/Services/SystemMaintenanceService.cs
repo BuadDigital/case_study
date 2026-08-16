@@ -97,7 +97,7 @@ public class SystemMaintenanceService : ISystemMaintenanceService
                     ?? throw new InvalidOperationException(
                         "ApplicationDbContext has no connection string for identity maintenance.");
 
-                // Identity writes stay off the Case Study request container (Phase 1 step 2).
+ // Identity writes stay off the Case Study request container.
                 await using var identityRoot = Di.CreateIdentityMaintenanceProvider(
                     _configuration,
                     connectionString);

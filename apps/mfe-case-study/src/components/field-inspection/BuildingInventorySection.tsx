@@ -38,7 +38,7 @@ function emptyLine(sortOrder: number): BuildingInventoryLineDto {
 }
 
 /**
- * Building/structure inventory — valuation spec §1.6 + governing structures question §3.
+ * Building/structure inventory — valuation spec + governing structures question.
  * Persisted on the property (not only inside inspection PayloadJson).
  */
 export function BuildingInventorySection({

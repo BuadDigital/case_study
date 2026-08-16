@@ -8,7 +8,7 @@ public class PoEnfazFollowup
     public Guid Id { get; set; }
     public string PoNumber { get; set; } = "";
     public DateTime FollowedAtUtc { get; set; }
-    /// <summary>call | email | portal | visit | other</summary>
+ /// <summary>call | email | portal | visit | other</summary>
     public string Channel { get; set; } = "call";
     public string Notes { get; set; } = "";
     public string CreatedByUserId { get; set; } = "";

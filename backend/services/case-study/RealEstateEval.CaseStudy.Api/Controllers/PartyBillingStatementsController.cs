@@ -44,7 +44,7 @@ public class PartyBillingStatementsController : ControllerBase
         var ctx = await BuildActorContextAsync(ct);
         if (ctx.UserId is null) return Unauthorized();
 
-        // Office: only own issued/closed statements.
+ // Office: only own issued/closed statements.
         if (!ctx.IsFinancialOfficer && !ctx.IsOperationsManager)
         {
             if (string.IsNullOrWhiteSpace(ctx.AssigneeId))
@@ -57,7 +57,7 @@ public class PartyBillingStatementsController : ControllerBase
                 ct));
         }
 
-        // Supervisor visibility: issued+ by default unless finance filters.
+ // Supervisor visibility: issued+ by default unless finance filters.
         var issuedOnly = issuedOrLaterOnly
             || (ctx.IsOperationsManager && !ctx.IsFinancialOfficer);
         return Ok(await _statements.ListStatementsAsync(
@@ -109,7 +109,7 @@ public class PartyBillingStatementsController : ControllerBase
         var existing = await _statements.GetStatementAsync(statementId, ct);
         if (existing is null) return NotFound();
 
-        // Finance or the assigned office may upload.
+ // Finance or the assigned office may upload.
         var isOwner = !string.IsNullOrWhiteSpace(ctx.AssigneeId)
             && string.Equals(ctx.AssigneeId, existing.AssigneeId, StringComparison.Ordinal);
         if (!ctx.IsFinancialOfficer && !isOwner)

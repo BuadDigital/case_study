@@ -11,7 +11,7 @@ namespace RealEstateEval.Infrastructure.Data.Contexts.CaseStudy.Migrations;
 [Migration("20260816094500_AddClientsRegistry")]
 public partial class AddClientsRegistry : Migration
 {
-    /// <inheritdoc />
+ /// <inheritdoc />
     protected override void Up(MigrationBuilder migrationBuilder)
     {
         migrationBuilder.CreateTable(
@@ -98,7 +98,7 @@ public partial class AddClientsRegistry : Migration
             """);
     }
 
-    /// <inheritdoc />
+ /// <inheritdoc />
     protected override void Down(MigrationBuilder migrationBuilder)
     {
         migrationBuilder.DropForeignKey(

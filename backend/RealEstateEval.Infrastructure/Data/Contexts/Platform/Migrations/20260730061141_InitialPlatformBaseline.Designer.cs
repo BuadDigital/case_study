@@ -15,7 +15,7 @@ namespace RealEstateEval.Infrastructure.Data.Contexts.Platform.Migrations
     [Migration("20260730061141_InitialPlatformBaseline")]
     partial class InitialPlatformBaseline
     {
-        /// <inheritdoc />
+ /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618

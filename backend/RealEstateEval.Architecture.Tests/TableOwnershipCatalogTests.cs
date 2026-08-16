@@ -5,7 +5,7 @@ using RealEstateEval.Infrastructure.Data.Contexts;
 namespace RealEstateEval.Architecture.Tests;
 
 /// <summary>
-/// Phase 0 guardrails for docs/architecture-split-plan.md: every table mapped by the legacy
+/// guardrails for architecture docs: every table mapped by the legacy
 /// context must have exactly one catalogued owner, and no table may appear or move schema
 /// without the catalog changing in the same commit.
 /// </summary>
@@ -31,7 +31,7 @@ public class TableOwnershipCatalogTests
             missing.Count == 0,
             "Tables are mapped by ApplicationDbContext but have no owner in "
             + $"docs/architecture/table-ownership.json: {string.Join(", ", missing)}. "
-            + "Adding persistence requires naming its write owner (split plan, Phase 0).");
+ + "Adding persistence requires naming its write owner.");
         Assert.True(
             stale.Count == 0,
             $"Catalog lists tables that the model no longer maps: {string.Join(", ", stale)}.");
@@ -53,7 +53,7 @@ public class TableOwnershipCatalogTests
                 string.Equals(modelSchema, table.Schema, StringComparison.Ordinal),
                 $"{table.Table} is mapped to schema '{modelSchema}' but catalogued under "
                 + $"'{table.Schema}'. Relocating a table is a data migration and needs an "
-                + "approved ownership decision first (ADR 0003).");
+ + "approved ownership decision first.");
         }
     }
 
@@ -75,7 +75,7 @@ public class TableOwnershipCatalogTests
             Assert.Contains(table.OwnershipModel, Catalog.OwnershipModels);
             Assert.False(
                 string.IsNullOrWhiteSpace(table.TransactionGroup),
-                $"{table} has no transaction group; Phase 1 needs it to place the write path.");
+                $"{table} has no transaction group; needs it to place the write path.");
             Assert.Contains(table.Status, Catalog.StatusValues);
         }
     }
@@ -120,12 +120,12 @@ public class TableOwnershipCatalogTests
         }
     }
 
-    /// <summary>
-    /// Plan rule 7: a phase starts only when the preceding phase's exit criteria are met. Every
-    /// open decision must therefore carry its outcome, and D6 — the production-consumer
-    /// inventory that repository inspection cannot produce — must say so explicitly rather than
-    /// be quietly closed.
-    /// </summary>
+ /// <summary>
+ /// Plan rule 7: a phase starts only when the preceding phase's exit criteria are met. Every
+ /// open decision must therefore carry its outcome, and D6 — the production-consumer
+ /// inventory that repository inspection cannot produce — must say so explicitly rather than
+ /// be quietly closed.
+ /// </summary>
     [Fact]
     public void EveryDecisionIsResolvedBeforePhaseOne()
     {
@@ -140,17 +140,17 @@ public class TableOwnershipCatalogTests
             unresolved.Count == 0,
             "Ownership decisions without a recorded outcome and rationale: "
             + string.Join(", ", unresolved)
-            + ". Phase 1 may not proceed on an undocumented ownership call.");
+ + ". may not proceed on an undocumented ownership call.");
 
         Assert.Contains(
             Catalog.Decisions,
             decision => string.Equals(decision.Status, "accepted-with-residual-risk", StringComparison.Ordinal));
     }
 
-    /// <summary>
-    /// The legacy stream is frozen at the cutover the catalog names, and the deploy migrator
-    /// applies it before any context stream (ADR 0006).
-    /// </summary>
+ /// <summary>
+ /// The legacy stream is frozen at the cutover the catalog names, and the deploy migrator
+ /// applies it before any context stream (migration-stream rules).
+ /// </summary>
     [Fact]
     public void CataloguedCutoverMatchesTheCode() =>
         Assert.Equal(BoundedContextMigrations.LegacyCutover, Catalog.LegacyMigrationCutover);

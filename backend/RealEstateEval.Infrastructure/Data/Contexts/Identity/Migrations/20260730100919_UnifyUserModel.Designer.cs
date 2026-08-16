@@ -15,7 +15,7 @@ namespace RealEstateEval.Infrastructure.Data.Contexts.Identity.Migrations
     [Migration("20260730100919_UnifyUserModel")]
     partial class UnifyUserModel
     {
-        /// <inheritdoc />
+ /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618

@@ -8,7 +8,7 @@ using RealEstateEval.Shared.Web.Authorization;
 namespace RealEstateEval.CaseStudy.Api.Controllers;
 
 /// <summary>
-/// Decision 20 — grouped-property linking: system suggests, a human confirms (audited),
+/// grouped-property linking: system suggests, a human confirms (audited),
 /// reversible with a reason. Work orders stay administratively independent.
 /// </summary>
 [ApiController]

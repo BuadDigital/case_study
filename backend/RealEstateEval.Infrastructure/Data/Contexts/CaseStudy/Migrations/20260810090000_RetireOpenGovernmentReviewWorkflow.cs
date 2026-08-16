@@ -14,7 +14,7 @@ namespace RealEstateEval.Infrastructure.Data.Contexts.CaseStudy.Migrations;
 [Migration("20260810090000_RetireOpenGovernmentReviewWorkflow")]
 public partial class RetireOpenGovernmentReviewWorkflow : Migration
 {
-    /// <inheritdoc />
+ /// <inheritdoc />
     protected override void Up(MigrationBuilder migrationBuilder)
     {
         migrationBuilder.Sql(
@@ -27,9 +27,9 @@ public partial class RetireOpenGovernmentReviewWorkflow : Migration
             """);
     }
 
-    /// <inheritdoc />
+ /// <inheritdoc />
     protected override void Down(MigrationBuilder migrationBuilder)
     {
-        // Irreversible data retirement — no-op.
+ // Irreversible data retirement — no-op.
     }
 }

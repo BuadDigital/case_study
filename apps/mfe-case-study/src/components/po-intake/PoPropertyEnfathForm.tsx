@@ -442,7 +442,7 @@ export function PoPropertyEnfathForm({
             htmlFor="deed_kind"
             className="mb-1 block text-[11px] font-semibold text-text-2"
           >
-            نوع الصك (§4ج-8)
+            نوع الصك
           </label>
           <select
             id="deed_kind"

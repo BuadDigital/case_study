@@ -15,7 +15,7 @@ internal static class BoundedContextFacts
     private const string PlaceholderConnection =
         "Host=architecture-tests;Database=model_only;Username=none;Password=none";
 
-    /// <summary>Context name to a factory for its model. Legacy first, then the extracted ones.</summary>
+ /// <summary>Context name to a factory for its model. Legacy first, then the extracted ones.</summary>
     public static IReadOnlyDictionary<string, Func<IModel>> ModelFactories { get; } =
         new Dictionary<string, Func<IModel>>(StringComparer.Ordinal)
         {
@@ -40,7 +40,7 @@ internal static class BoundedContextFacts
                 Build<MessagingDbContext>(options => new MessagingDbContext(options)),
         };
 
-    /// <summary>Context name to the tables it maps, as <c>schema.table</c>.</summary>
+ /// <summary>Context name to the tables it maps, as <c>schema.table</c>.</summary>
     public static IReadOnlyDictionary<string, IReadOnlyList<string>> TablesByContext { get; } =
         ModelFactories.ToDictionary(
             entry => entry.Key,
@@ -54,7 +54,7 @@ internal static class BoundedContextFacts
                 .ToList(),
             StringComparer.Ordinal);
 
-    /// <summary>The migrations-history schema each extracted context records itself in.</summary>
+ /// <summary>The migrations-history schema each extracted context records itself in.</summary>
     public static IReadOnlyDictionary<string, string> HistorySchemaByContext { get; } =
         BoundedContextMigrations.HistorySchemaByContext.ToDictionary(
             entry => entry.Key.Name,

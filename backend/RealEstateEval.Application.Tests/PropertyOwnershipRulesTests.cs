@@ -8,7 +8,7 @@ public class PropertyOwnershipRulesTests
     [Fact]
     public void Mortgage_restriction_wins_over_shares()
     {
-        // §4ج-7 order: قيد رهن ⟵ مرهون before حصص ⟵ مشاع.
+ // order: قيد رهن ⟵ مرهون before حصص ⟵ مشاع.
         var owners = new[] { new DeedOwner("أ", 50m), new DeedOwner("ب", 50m) };
         Assert.Equal(OwnershipTypes.Mortgaged, OwnershipTypeRules.Suggest(owners, "mortgaged,other"));
     }
@@ -40,7 +40,7 @@ public class PropertyOwnershipRulesTests
         Assert.Equal(
             OwnershipTypes.Investment,
             OwnershipTypeRules.Effective(true, "investment", owners, null));
-        // Not manual → derived wins even if a stale manual value remains.
+ // Not manual → derived wins even if a stale manual value remains.
         Assert.Equal(
             OwnershipTypes.Absolute,
             OwnershipTypeRules.Effective(false, "investment", owners, null));
@@ -85,7 +85,7 @@ public class WorkOrderReportUsersTests
     [Fact]
     public void Usage_restriction_sentence_three_cases()
     {
-        // §4ج-1: لا مستخدمين / واحد / متعدد.
+ // لا مستخدمين / واحد / متعدد.
         var none = ValuationReportNarrativeRules.UsageRestrictionSentence("إنفاذ", []);
         Assert.Contains("وحده", none);
         Assert.Contains("إنفاذ", none);

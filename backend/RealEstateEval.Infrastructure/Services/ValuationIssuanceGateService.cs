@@ -7,7 +7,7 @@ using RealEstateEval.Infrastructure.Data.Contexts;
 namespace RealEstateEval.Infrastructure.Services;
 
 /// <summary>
-/// Aggregates §7 credential + case-study match + ق-6/ق-10 + ج-1 gates + §ح methodology alerts.
+/// Aggregates credential + case-study match + gates + methodology alerts.
 /// </summary>
 public sealed class ValuationIssuanceGateService(
     ValuationDbContext valuation,
@@ -186,14 +186,14 @@ public sealed class ValuationIssuanceGateService(
             }).ToList(),
             MethodologyAlertTriggeredCount = ValuationMethodologyAlertRules.TriggeredCount(alerts),
             MethodologyAlertsNoteAr =
-                "تنبيهات منهجية (§ح): 6 حاجبة · 6 بمبرر نصي إلزامي · 5 بإقرار — سليمان 2026-08-16.",
+                "تنبيهات منهجية: 6 حاجبة · 6 بمبرر نصي إلزامي · 5 بإقرار.",
         };
     }
 
-    /// <summary>
-    /// 11ف — for every active dictionary type marked required (and matching the property
-    /// type, when linked), at least one printable classified upload must exist.
-    /// </summary>
+ /// <summary>
+ /// for every active dictionary type marked required (and matching the property
+ /// type, when linked), at least one printable classified upload must exist.
+ /// </summary>
     private async Task<IReadOnlyList<string>> FindMissingRequiredAttachmentLabelsAsync(
         string propertyId,
         string propertyType,

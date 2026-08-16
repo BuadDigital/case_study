@@ -18,10 +18,10 @@ public sealed class OperationsTaskVisitFeeHelper
         _pricing = pricing;
     }
 
-    /// <summary>
-    /// Create-time visit fee for court_visit: employees get none; cooperators need an amount
-    /// (request value, else the active table default).
-    /// </summary>
+ /// <summary>
+ /// Create-time visit fee for court_visit: employees get none; cooperators need an amount
+ /// (request value, else the active table default).
+ /// </summary>
     public async Task<(decimal? Fee, Guid? PricingTableId, string? Error)> ResolveCreateVisitFeeAsync(
         string assigneeId,
         decimal? requestedAmount,
@@ -38,7 +38,7 @@ public sealed class OperationsTaskVisitFeeHelper
 
         if (requestedAmount is > 0m)
         {
-            // Keep provenance when the specialist edited a table default.
+ // Keep provenance when the specialist edited a table default.
             var tableHint = await _pricing.ResolveDefaultFeeAsync(
                 WorkflowTaskKind.GovernmentReview,
                 CourtVisitFeeRules.PartyType,
@@ -63,11 +63,11 @@ public sealed class OperationsTaskVisitFeeHelper
         return (fromTable.FeeSar, fromTable.PricingTableId, null);
     }
 
-    /// <summary>
-    /// Resolves the fee to charge on complete. Employees and already-charged visits return
-    /// unresolved with no error. Cooperators require a positive amount (stamped on create, or
-    /// recovered from the active table if the stamp is missing) — never complete silently unpaid.
-    /// </summary>
+ /// <summary>
+ /// Resolves the fee to charge on complete. Employees and already-charged visits return
+ /// unresolved with no error. Cooperators require a positive amount (stamped on create, or
+ /// recovered from the active table if the stamp is missing) — never complete silently unpaid.
+ /// </summary>
     public async Task<(ResolvedPartyFee Fee, string? Error)> ResolveCourtVisitFeeAsync(
         OperationsTask entity,
         CancellationToken cancellationToken)
@@ -81,10 +81,10 @@ public sealed class OperationsTaskVisitFeeHelper
 
         if (!CourtVisitFeeRules.RequiresVisitFee(reviewerType))
         {
-            // Employee path: no visit charge (incentives are out of band).
+ // Employee path: no visit charge (incentives are out of band).
             if (entity.AgreedVisitFeeSar is > 0m)
             {
-                // Stale stamp after classification changed — do not invent a charge for an employee.
+ // Stale stamp after classification changed — do not invent a charge for an employee.
                 return (ResolvedPartyFee.Unresolved, null);
             }
 
@@ -97,7 +97,7 @@ public sealed class OperationsTaskVisitFeeHelper
         if (entity.AgreedVisitFeeSar is <= 0m)
             return (ResolvedPartyFee.Unresolved, PricingErrors.FeeUnresolved);
 
-        // Cooperator task left without a create-time stamp — recover from the active table once.
+ // Cooperator task left without a create-time stamp — recover from the active table once.
         var fromTable = await _pricing.ResolveDefaultFeeAsync(
             WorkflowTaskKind.GovernmentReview,
             CourtVisitFeeRules.PartyType,
@@ -136,10 +136,10 @@ public sealed class OperationsTaskVisitFeeHelper
         });
     }
 
-    /// <summary>
-    /// Opens charges for completed cooperator court visits that finished without a stamp
-    /// (employee→cooperator classification change, or pre-fix silent complete). Idempotent.
-    /// </summary>
+ /// <summary>
+ /// Opens charges for completed cooperator court visits that finished without a stamp
+ /// (employee→cooperator classification change, or pre-fix silent complete). Idempotent.
+ /// </summary>
     public async Task<int> BackfillMissingChargesForCompletedVisitsAsync(
         CancellationToken cancellationToken = default)
     {

@@ -81,8 +81,8 @@ public class InspectorFeesController : ControllerBase
 
         if (ctx.IsFinanceOnly)
         {
-            // The list already hides disputed rows from finance; the history must hide with it,
-            // otherwise the amount under dispute leaks through the audit entries.
+ // The list already hides disputed rows from finance; the history must hide with it,
+ // otherwise the amount under dispute leaks through the audit entries.
             var row = await _fees.GetByWorkflowTaskIdAsync(workflowTaskId, ct);
             if (row is not null
                 && row.BillingStatus == InspectorFeeBillingStatus.Disputed)
@@ -172,7 +172,7 @@ public class InspectorFeesController : ControllerBase
     [HttpPost("disbursement-batch")]
     public ActionResult CreateDisbursementBatch([FromBody] CreateDisbursementBatchRequest? request)
     {
-        // ج٩ / ق٦: path retired — party fees bill through statements.
+ //path retired — party fees bill through statements.
         return StatusCode(
             StatusCodes.Status410Gone,
             new
@@ -255,7 +255,7 @@ public class InspectorFeesController : ControllerBase
 
         public string? VisibleDepartment =>
             PrototypeRole is "section-supervisor" or "case-specialist"
-                // Fail closed: without department, do not open every queue.
+ // Fail closed: without department, do not open every queue.
                 ? Department ?? SupervisingDepartments.Unassigned
                 : null;
 
@@ -265,10 +265,10 @@ public class InspectorFeesController : ControllerBase
                 Department,
                 CanManageAllDepartments);
 
-        /// <summary>
-        /// Finance and nothing else. Operations resolves pricing disputes, so an actor who also holds
-        /// that capability — a CDO or a general manager — still needs to see disputed lines.
-        /// </summary>
+ /// <summary>
+ /// Finance and nothing else. Operations resolves pricing disputes, so an actor who also holds
+ /// that capability — a CDO or a general manager — still needs to see disputed lines.
+ /// </summary>
         public bool IsFinanceOnly => IsFinancialOfficer && !IsOperationsManager;
     }
 }

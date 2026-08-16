@@ -11,7 +11,7 @@ namespace RealEstateEval.Infrastructure.Data.Migrations;
 [Migration("20260716170000_WidenDelegationLetterFileNames")]
 public partial class WidenDelegationLetterFileNames : Migration
 {
-    /// <inheritdoc />
+ /// <inheritdoc />
     protected override void Up(MigrationBuilder migrationBuilder)
     {
         migrationBuilder.AlterColumn<string>(
@@ -27,7 +27,7 @@ public partial class WidenDelegationLetterFileNames : Migration
             oldNullable: true);
     }
 
-    /// <inheritdoc />
+ /// <inheritdoc />
     protected override void Down(MigrationBuilder migrationBuilder)
     {
         migrationBuilder.AlterColumn<string>(

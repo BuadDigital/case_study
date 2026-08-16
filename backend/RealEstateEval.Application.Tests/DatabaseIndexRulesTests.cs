@@ -83,7 +83,7 @@ public class DatabaseIndexRulesTests
             "\"ProcessedAtUtc\" IS NULL AND \"DeadLetteredAtUtc\" IS NULL",
             pending.GetFilter());
 
-        // The unfiltered composite it replaces indexed every message ever published.
+ // The unfiltered composite it replaces indexed every message ever published.
         Assert.DoesNotContain(
             outbox.GetIndexes(),
             index => index.Properties.Count == 3

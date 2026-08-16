@@ -24,7 +24,7 @@ public class PropertyGroupRulesTests
         Assert.False(PropertyGroupRules.ArePlotsAdjacent("45", "47"));
         Assert.False(PropertyGroupRules.ArePlotsAdjacent("45أ", "46"));
 
-        // Different plan → no plan/adjacency signals even for consecutive plots.
+ // Different plan → no plan/adjacency signals even for consecutive plots.
         var subject = new PropertyGroupRules.CandidateInput("أ", "م/1", "45", null, null);
         var candidate = new PropertyGroupRules.CandidateInput("ب", "م/2", "46", null, null);
         Assert.Empty(PropertyGroupRules.EvaluateSignals(subject, candidate));
@@ -33,7 +33,7 @@ public class PropertyGroupRulesTests
     [Fact]
     public void Coordinate_proximity_signal_within_threshold()
     {
-        // ~110m apart (0.001° latitude).
+ // ~110m apart (0.001° latitude).
         var subject = new PropertyGroupRules.CandidateInput(null, null, null, 21.5000m, 39.2000m);
         var near = new PropertyGroupRules.CandidateInput(null, null, null, 21.5010m, 39.2000m);
         var far = new PropertyGroupRules.CandidateInput(null, null, null, 21.6000m, 39.2000m);

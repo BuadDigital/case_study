@@ -40,14 +40,14 @@ public class SaveConflictHandlingTests
         db.ValuationRequests.Add(stored);
         await db.SaveChangesAsync();
 
-        // What the caller staged before handing the context to a service.
+ // What the caller staged before handing the context to a service.
         Assert.Equal(ValuationRequestTransition.Applied, stored.RecordImpediment(DateTime.UtcNow));
         var callerRow = Row("VR-501", "property-2");
         db.ValuationRequests.Add(callerRow);
 
         var checkpoint = ChangeTrackerCheckpoint.Capture(db);
 
-        // What the service stages and then loses on a unique index.
+ // What the service stages and then loses on a unique index.
         db.ValuationRequests.Add(Row("VR-502", "property-3"));
         var refreshed = await db.ValuationRequests.SingleAsync(x => x.DisplayId == "VR-500");
         checkpoint.Rollback();

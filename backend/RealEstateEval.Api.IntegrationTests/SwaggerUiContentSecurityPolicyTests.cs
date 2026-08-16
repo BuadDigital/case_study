@@ -39,12 +39,12 @@ public class SwaggerUiContentSecurityPolicyTests
         Assert.Contains("style-src 'self' 'unsafe-inline'", policy);
         Assert.DoesNotContain("default-src 'none'", policy);
 
-        // script-src 'self' is only safe while the page has no inline script block. If a
-        // Swashbuckle upgrade reintroduces one, relax SecurityHeaders:
-        // DocumentationContentSecurityPolicy instead of letting the UI break silently.
+ // script-src 'self' is only safe while the page has no inline script block. If a
+ // Swashbuckle upgrade reintroduces one, relax SecurityHeaders:
+ // DocumentationContentSecurityPolicy instead of letting the UI break silently.
         Assert.DoesNotMatch(new Regex(@"<script(?![^>]*\ssrc\s*=)", RegexOptions.IgnoreCase), html);
 
-        // Everything it loads must satisfy 'self'.
+ // Everything it loads must satisfy 'self'.
         foreach (var source in ExternalSources(html))
             Assert.Fail($"Swagger UI references a cross-origin asset: {source}");
     }
@@ -100,7 +100,7 @@ public sealed class SwaggerEnabledIdentityApiWebApplicationFactory
 {
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
-        // Swagger UI is only mapped in Development and Docker.
+ // Swagger UI is only mapped in Development and Docker.
         builder.UseEnvironment("Development");
         builder.UseSetting(
             "ConnectionStrings:Identity",

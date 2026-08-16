@@ -11,7 +11,7 @@ namespace RealEstateEval.Infrastructure.Data.Migrations;
 /// <inheritdoc />
 public partial class DropCustomAssignedScreens : Migration
 {
-    /// <inheritdoc />
+ /// <inheritdoc />
     protected override void Up(MigrationBuilder migrationBuilder)
     {
         migrationBuilder.DropTable(
@@ -27,7 +27,7 @@ public partial class DropCustomAssignedScreens : Migration
             schema: "platform");
     }
 
-    /// <inheritdoc />
+ /// <inheritdoc />
     protected override void Down(MigrationBuilder migrationBuilder)
     {
         migrationBuilder.CreateTable(

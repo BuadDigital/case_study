@@ -1,4 +1,4 @@
-/** Photo vs property location flags (security_offline_spec §5.4). Never blocks upload. */
+/** Photo vs property location flags. Never blocks upload. */
 
 export const PHOTO_LOCATION_MAX_MATCH_M = 500;
 

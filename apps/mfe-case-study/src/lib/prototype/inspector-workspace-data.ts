@@ -450,7 +450,7 @@ export function nextInspectorPhotoId(draft: InspectorWorkspaceDraft): number {
   return max + 1;
 }
 
-/** @deprecated Prefer buildEvidenceStampLines after EXIF extract (هـ). Kept for call sites. */
+/** @deprecated Prefer buildEvidenceStampLines after EXIF extract. Kept for call sites. */
 export function inspectorPhotoStampText(
   draft: InspectorWorkspaceDraft,
   deedNumber?: string | null,

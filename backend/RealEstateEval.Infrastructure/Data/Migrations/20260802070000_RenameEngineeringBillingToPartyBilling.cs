@@ -6,7 +6,7 @@ using RealEstateEval.Infrastructure.Data;
 
 namespace RealEstateEval.Infrastructure.Data.Migrations;
 
-/// <summary>ج٩ naming: generalized statements are no longer engineering-only.</summary>
+/// <summary>generalized statements are no longer engineering-only.</summary>
 [DbContext(typeof(ApplicationDbContext))]
 [Migration("20260802070000_RenameEngineeringBillingToPartyBilling")]
 public partial class RenameEngineeringBillingToPartyBilling : Migration

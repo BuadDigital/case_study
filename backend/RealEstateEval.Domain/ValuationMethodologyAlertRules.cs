@@ -1,8 +1,8 @@
 namespace RealEstateEval.Domain;
 
 /// <summary>
-/// Field-inventory §ح — 17 methodology alerts.
-/// Solomon 2026-08-16: 6 hard / 6 require text rationale / 5 require acknowledgement.
+/// Field-inventory — 17 methodology alerts.
+/// : 6 hard / 6 require text rationale / 5 require acknowledgement.
 /// </summary>
 public static class ValuationMethodologyAlertCodes
 {
@@ -36,15 +36,15 @@ public readonly record struct ValuationMethodologyAlertCheck(
     int Number,
     string Code,
     string LabelAr,
-    /// <summary>True when the alert condition fires.</summary>
+ /// <summary>True when the alert condition fires.</summary>
     bool Triggered,
-    /// <summary>True when severity is hard (blocks issuance unconditionally).</summary>
+ /// <summary>True when severity is hard (blocks issuance unconditionally).</summary>
     bool IsHard,
-    /// <summary>hard | require_rationale | require_ack</summary>
+ /// <summary>hard | require_rationale | require_ack</summary>
     string SeverityKind,
-    /// <summary>False when required inputs are not modeled yet.</summary>
+ /// <summary>False when required inputs are not modeled yet.</summary>
     bool Evaluated,
-    /// <summary>Triggered and still unresolved (hard, or soft without rationale/ack).</summary>
+ /// <summary>Triggered and still unresolved (hard, or soft without rationale/ack).</summary>
     bool BlocksIssuance,
     string? DetailAr);
 
@@ -54,17 +54,17 @@ public sealed record ValuationMethodologyAlertResolution(
     string? OverrideRationale = null,
     bool Acknowledged = false);
 
-/// <summary>Alert numbers that block issuance under Solomon 2026-08-16.</summary>
+/// <summary>Alert numbers that block issuance under .</summary>
 public static class ValuationMethodologyAlertSeverity
 {
-    /// <summary>حاجبة: 3, 4, 5, 11, 15, 16</summary>
+ /// <summary>حاجبة: 3, 4, 5, 11, 15, 16</summary>
     public static bool IsHard(int number) => number is 3 or 4 or 5 or 11 or 15 or 16;
 
-    /// <summary>تحذيري بمبرر نصي: 6, 8, 9, 10, 12, 17</summary>
+ /// <summary>تحذيري بمبرر نصي: 6, 8, 9, 10, 12, 17</summary>
     public static bool RequiresRationale(int number) =>
         number is 6 or 8 or 9 or 10 or 12 or 17;
 
-    /// <summary>تحذيري بإقرار: 1, 2, 7, 13, 14</summary>
+ /// <summary>تحذيري بإقرار: 1, 2, 7, 13, 14</summary>
     public static bool RequiresAcknowledgement(int number) =>
         number is 1 or 2 or 7 or 13 or 14;
 
@@ -73,7 +73,7 @@ public static class ValuationMethodologyAlertSeverity
         : RequiresRationale(number) ? ValuationMethodologyAlertSeverityKinds.RequireRationale
         : ValuationMethodologyAlertSeverityKinds.RequireAck;
 
-    /// <summary>Backward-compatible alias — hard blockers only.</summary>
+ /// <summary>Backward-compatible alias — hard blockers only.</summary>
     public static bool IsHardByDefault(int number) => IsHard(number);
 }
 
@@ -102,35 +102,35 @@ public sealed record ValuationMethodologyAlertInput(
     decimal LiquidationDiscountPct,
     string? LiquidationDiscountRationale,
     IReadOnlyList<ValuationMethodologyAlertComparableInput> AdoptedComparables,
-    /// <summary>Optional developer profit % when modeled; null = not evaluated.</summary>
+ /// <summary>Optional developer profit % when modeled; null = not evaluated.</summary>
     decimal? DeveloperProfitPct = null,
-    /// <summary>Optional sum of indirect cost %; null = not evaluated.</summary>
+ /// <summary>Optional sum of indirect cost %; null = not evaluated.</summary>
     decimal? IndirectRatesSumPct = null,
-    /// <summary>ث-1 #60 — use-restriction discount on land (alert #10).</summary>
+ /// <summary>use-restriction discount on land (alert ).</summary>
     decimal UseRestrictionDiscountPct = 0m,
-    /// <summary>ث-1 #61.</summary>
+ /// <summary>. </summary>
     string? UseRestrictionRationale = null,
-    /// <summary>ث-4 #93 — null when the cost approach has no age data yet.</summary>
+ /// <summary>null when the cost approach has no age data yet.</summary>
     decimal? ActualAgeYears = null,
-    /// <summary>ث-4 #94.</summary>
+ /// <summary>. </summary>
     decimal? EconomicAgeYears = null,
-    /// <summary>ث-4 #95.</summary>
+ /// <summary>. </summary>
     decimal LifeExtensionYears = 0m,
     string? LifeExtensionBasis = null,
-    /// <summary>Economic age + extension — computed by the cost approach.</summary>
+ /// <summary>Economic age + extension — computed by the cost approach.</summary>
     decimal? ExtendedLifeYears = null,
-    /// <summary>ث-4 #99 — computed, unclamped; null when no cost approach saved.</summary>
+ /// <summary>computed, unclamped; null when no cost approach saved.</summary>
     decimal? TotalObsolescencePct = null,
-    /// <summary>ث-4 #96.</summary>
+ /// <summary>. </summary>
     decimal FunctionalObsolescencePct = 0m,
     string? FunctionalObsolescenceRationale = null,
-    /// <summary>ث-4 #97.</summary>
+ /// <summary>. </summary>
     decimal ExternalObsolescencePct = 0m,
     string? ExternalObsolescenceRationale = null,
-    /// <summary>Soft-alert resolutions (rationale / ack) keyed by alert code.</summary>
+ /// <summary>Soft-alert resolutions (rationale / ack) keyed by alert code.</summary>
     IReadOnlyList<ValuationMethodologyAlertResolution>? Resolutions = null);
 
-/// <summary>Evaluates §ح alerts per Solomon 2026-08-16 three-tier severity.</summary>
+/// <summary>Evaluates alerts per three-tier severity.</summary>
 public static class ValuationMethodologyAlertRules
 {
     public const decimal DeveloperProfitMinPct = 10m;
@@ -158,21 +158,21 @@ public static class ValuationMethodologyAlertRules
             Eval(2, ValuationMethodologyAlertCodes.ExtendedLifeZero, "العمر الممتد صفر",
                 input.ActualAgeYears is not null || input.EconomicAgeYears is not null,
                 () => (input.ExtendedLifeYears ?? 0m) <= 0m,
-                "العمر الممتد (الاقتصادي + التمديد) ≤ 0 (ح-2)",
+                "العمر الممتد (الاقتصادي + التمديد) ≤ 0",
                 resolutions),
 
             Eval(3, ValuationMethodologyAlertCodes.EffectiveAgeExceedsLife,
                 "العمر الفعلي يتجاوز العمر الممتد",
                 input.ActualAgeYears is not null && (input.ExtendedLifeYears ?? 0m) > 0m,
                 () => input.ActualAgeYears! > input.ExtendedLifeYears!,
-                "الإهلاك المادي > ١٠٠٪ — العمر الفعلي يتجاوز الممتد (ح-3)",
+                "الإهلاك المادي > ١٠٠٪ — العمر الفعلي يتجاوز الممتد",
                 resolutions),
 
             Eval(4, ValuationMethodologyAlertCodes.ObsolescenceOver100,
                 "مجموع التقادم يتجاوز ١٠٠٪",
                 input.TotalObsolescencePct is not null,
                 () => input.TotalObsolescencePct! > 100m,
-                "مجموع التقادم > ١٠٠٪ — راجع الوظيفي والخارجي (ح-4)",
+                "مجموع التقادم > ١٠٠٪ — راجع الوظيفي والخارجي",
                 resolutions),
 
             Eval(5, ValuationMethodologyAlertCodes.NegativeValues, "قيم سالبة",
@@ -186,17 +186,17 @@ public static class ValuationMethodologyAlertRules
                 true,
                 () => input.LifeExtensionYears > 0m
                       && string.IsNullOrWhiteSpace(input.LifeExtensionBasis),
-                "التمديد > 0 وبيان الأساس فارغ (ث-4 #95)",
+                "التمديد > 0 وبيان الأساس فارغ",
                 resolutions),
 
-            // ح-7 condition per the inventory: repeated-floors line present while the
-            // first-floor line (its area source, ق-13) is deleted or without area.
+ // Repeated-floors line present while the
+ // first-floor line is deleted or without area.
             Eval(7, ValuationMethodologyAlertCodes.RepeatedFloorNoArea,
                 "بند الأدوار المتكررة بلا مسطح",
                 lines.Count > 0,
                 () => lines.Any(LooksLikeRepeatedFloor)
                       && !lines.Any(l => LooksLikeFirstFloor(l) && l.AreaSqm > 0m),
-                "بند الأدوار المتكررة موجود والدور الأول محذوف أو بلا مسطح (ق-13)",
+                "بند الأدوار المتكررة موجود والدور الأول محذوف أو بلا مسطح",
                 resolutions),
 
             Eval(8, ValuationMethodologyAlertCodes.ExtraLineNoRationale,
@@ -204,14 +204,14 @@ public static class ValuationMethodologyAlertRules
                 lines.Count > 0,
                 () => lines.Any(l =>
                     LooksLikeExtra(l) && string.IsNullOrWhiteSpace(l.Rationale)),
-                "بند إضافي/أخرى بلا مبرر — احتمال ازدواج (ق-15)",
+                "بند إضافي/أخرى بلا مبرر — احتمال ازدواج",
                 resolutions),
 
             Eval(9, ValuationMethodologyAlertCodes.RepeatedUnitCostMismatch,
                 "تكلفة متر المتكررة تخالف الدور الأول",
                 lines.Count >= 2,
                 () => HasRepeatedUnitCostMismatchWithoutRationale(lines),
-                "سعر متر الدور المتكرر يختلف عن الدور الأول بلا مبرر مكتوب (ق-14)",
+                "سعر متر الدور المتكرر يختلف عن الدور الأول بلا مبرر مكتوب",
                 resolutions),
 
             Eval(10, ValuationMethodologyAlertCodes.UseRestrictionNoRationale,
@@ -219,14 +219,14 @@ public static class ValuationMethodologyAlertRules
                 true,
                 () => input.UseRestrictionDiscountPct > 0m
                       && string.IsNullOrWhiteSpace(input.UseRestrictionRationale),
-                "خصم تقييد الاستخدام > 0 والمبرر فارغ (ث-1 #60/#61)",
+                "خصم تقييد الاستخدام > 0 والمبرر فارغ",
                 resolutions),
 
             Eval(11, ValuationMethodologyAlertCodes.NonVacantLandComps,
                 "مقارنات غير أرض فضاء",
                 !input.HasStructuresToValue && comps.Count > 0,
                 () => comps.Any(c => LooksBuiltUp(c.ComparablePropertyType)),
-                "للأرض الفضاء: مقارن يبدو بمبانٍ — خطر احتساب المبنى مرتين (ق-7)",
+                "للأرض الفضاء: مقارن يبدو بمبانٍ — خطر احتساب المبنى مرتين",
                 resolutions),
 
             Eval(12, ValuationMethodologyAlertCodes.ObsolescenceNoRationale,
@@ -236,7 +236,7 @@ public static class ValuationMethodologyAlertRules
                        && string.IsNullOrWhiteSpace(input.FunctionalObsolescenceRationale))
                       || (input.ExternalObsolescencePct > 0m
                           && string.IsNullOrWhiteSpace(input.ExternalObsolescenceRationale)),
-                "تقادم وظيفي/خارجي مُدخل بلا مبرر (ث-4 #96/#97)",
+                "تقادم وظيفي/خارجي مُدخل بلا مبرر",
                 resolutions),
 
             Eval(13, ValuationMethodologyAlertCodes.DeveloperProfitOutOfRange,
@@ -274,7 +274,7 @@ public static class ValuationMethodologyAlertRules
                 comps.Count > 0,
                 () => comps.Any(c => c.ExceedsLargeAdjustmentThreshold
                                      || MarketApproachRules.ExceedsLargeAdjustmentThreshold(c.SumIncludedPct)),
-                "تجاوز عتبة التسوية الكبيرة — التبرير إلزامي (ق-11)",
+                "تجاوز عتبة التسوية الكبيرة — التبرير إلزامي",
                 resolutions),
         ];
     }
@@ -388,7 +388,7 @@ public static class ValuationMethodologyAlertRules
     private static bool HasRepeatedUnitCostMismatchWithoutRationale(
         IReadOnlyList<ValuationMethodologyAlertCostLineInput> lines)
     {
-        // ق-14 compares the repeated floor against the FIRST floor (its area source).
+ / compares the repeated floor against the FIRST floor (its area source).
         var first = lines.FirstOrDefault(LooksLikeFirstFloor);
         if (first is null) return false;
 

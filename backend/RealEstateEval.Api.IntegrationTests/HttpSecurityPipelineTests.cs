@@ -47,8 +47,8 @@ public class HttpSecurityPipelineTests : IClassFixture<HardenedIdentityApiWebApp
     [Fact]
     public async Task Security_headers_survive_error_responses()
     {
-        // /api/auth/me challenges without a token; GlobalExceptionHandlerMiddleware-style
-        // rewrites must not drop the headers.
+ // /api/auth/me challenges without a token; GlobalExceptionHandlerMiddleware-style
+ // rewrites must not drop the headers.
         var response = await _client.GetAsync("/api/auth/me");
 
         Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
@@ -123,7 +123,7 @@ public class HttpSecurityPipelineTests : IClassFixture<HardenedIdentityApiWebApp
     {
         const string clientIp = "203.0.113.30";
 
-        // Container healthchecks and post-deploy smoke checks poll far above any budget.
+ // Container healthchecks and post-deploy smoke checks poll far above any budget.
         for (var attempt = 0; attempt < 25; attempt++)
         {
             using var health = new HttpRequestMessage(HttpMethod.Get, "/health");
@@ -137,8 +137,8 @@ public class HttpSecurityPipelineTests : IClassFixture<HardenedIdentityApiWebApp
     [Fact]
     public async Task Gateway_supplied_client_address_takes_precedence()
     {
-        // The gateway resolves the caller once and republishes it, so a stale or forged
-        // X-Forwarded-For chain cannot split one caller's budget.
+ // The gateway resolves the caller once and republishes it, so a stale or forged
+ // X-Forwarded-For chain cannot split one caller's budget.
         for (var attempt = 0; attempt < 2; attempt++)
         {
             using var warmup = LoginRequest();
@@ -231,8 +231,8 @@ public sealed class HardenedIdentityApiWebApplicationFactory
             "Jwt:SigningKey",
             "integration-test-signing-key-that-is-at-least-sixty-four-characters-long-1234567890");
 
-        // These are read while services are registered, so they have to be host settings
-        // rather than a configuration source added later.
+ // These are read while services are registered, so they have to be host settings
+ // rather than a configuration source added later.
         builder.UseSetting("RateLimiting:Auth:PermitLimit", "2");
         builder.UseSetting("RateLimiting:Global:PermitLimit", "500");
         builder.UseSetting("Cors:AllowedOrigins:0", AllowedOrigin);

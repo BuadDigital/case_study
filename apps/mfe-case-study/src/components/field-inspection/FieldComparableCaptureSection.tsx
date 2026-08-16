@@ -6,7 +6,7 @@ import { createComparableProperty } from "@platform/api-client";
 import { workOrdersApiConfig } from "../../lib/work-orders-api-config";
 
 /**
- * 11هـ2 feed #1 — الميداني يلتقط العروض والصفقات أثناء المعاينة.
+ * 11هـ2 feed — الميداني يلتقط العروض والصفقات أثناء المعاينة.
  * Captured rows enter the shared company bank with intakeChannel = "field".
  */
 export function FieldComparableCaptureSection({

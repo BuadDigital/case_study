@@ -46,7 +46,7 @@ public static class PoRoleMatrixRules
             || role is "section-supervisor" or "general-manager";
     }
 
-    /// <summary>Specialist accept / reopen of party submissions.</summary>
+ /// <summary>Specialist accept / reopen of party submissions.</summary>
     public static bool CanManagePartySubmissions(string? prototypeRole)
     {
         var role = Normalize(prototypeRole);
@@ -54,7 +54,7 @@ public static class PoRoleMatrixRules
             || role is "case-specialist" or "section-supervisor" or "general-manager";
     }
 
-    /// <summary>Operations-task managers (matches frontend <c>canManageOperationsTasks</c>).</summary>
+ /// <summary>Operations-task managers (matches frontend <c>canManageOperationsTasks</c>).</summary>
     public static bool CanManageOperationsTasks(string? prototypeRole)
     {
         var role = Normalize(prototypeRole);
@@ -62,9 +62,9 @@ public static class PoRoleMatrixRules
             || role is "case-specialist" or "section-supervisor" or "general-manager";
     }
 
-    /// <summary>
-    /// Party draft/submit: assigned party, or CDO / section supervisor override.
-    /// </summary>
+ /// <summary>
+ /// Party draft/submit: assigned party, or CDO / section supervisor override.
+ /// </summary>
     public static bool CanWritePartyTask(
         string? prototypeRole,
         string? taskAssigneeId,
@@ -89,10 +89,10 @@ public static class PoRoleMatrixRules
             && string.Equals(userId, assignee, StringComparison.Ordinal);
     }
 
-    /// <summary>
-    /// Party read access: case staff read every task, parties read only their own.
-    /// Strictly wider than <see cref="CanWritePartyTask"/>.
-    /// </summary>
+ /// <summary>
+ /// Party read access: case staff read every task, parties read only their own.
+ /// Strictly wider than <see cref="CanWritePartyTask"/>.
+ /// </summary>
     public static bool CanReadPartyTask(
         string? prototypeRole,
         string? taskAssigneeId,

@@ -344,12 +344,6 @@ export function UserProfileContent({ user }: { user: StaffUser }) {
             value={user.userName || "—"}
             dir="ltr"
           />
-          <div className="rounded-lg border border-dashed border-border bg-surface-2 px-3 py-2.5 sm:col-span-2">
-            <div className="text-[11px] font-medium text-text-3">الأجهزة والمحاولات</div>
-            <p className="m-0 mt-1 text-[12px] text-text-2">
-              إدارة الأجهزة وبصمة الجلسة تُبنى مع مرحلة الدعوات وOTP (د — مراحل ١–٣).
-            </p>
-          </div>
         </section>
       ) : null}
 

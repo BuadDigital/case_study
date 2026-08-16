@@ -113,8 +113,8 @@ public class CaseStudyValuationDispatchTests
         var db = contexts.Legacy;
         var timeline = TestInspectorFeeServiceFactory.CreateTimeline(db);
 
-        // The dispatch adapter runs in the Case Study process but writes valuation rows and
-        // their outbox event through the Valuation context, in one SaveChanges.
+ // The dispatch adapter runs in the Case Study process but writes valuation rows and
+ // their outbox event through the Valuation context, in one SaveChanges.
         var valuation = new ValuationRequestService(
             contexts.Valuation,
             new ValuationOutboxPublisher(

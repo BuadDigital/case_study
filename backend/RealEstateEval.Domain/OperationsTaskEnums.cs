@@ -77,7 +77,7 @@ public static class OperationsTaskTypeValues
         }
     }
 
-    /// <summary>Lenient read path; unrecognised legacy values read back as general.</summary>
+ /// <summary>Lenient read path; unrecognised legacy values read back as general.</summary>
     public static OperationsTaskType Parse(string? value) =>
         TryParse(value, out var type) ? type : OperationsTaskType.General;
 }
@@ -89,7 +89,7 @@ public static class OperationsTaskScopeValues
     public const string Multi = "multi";
     public const string General = "general";
 
-    /// <summary>Contact-level scope inside a court-visit result, distinct from the task scope.</summary>
+ /// <summary>Contact-level scope inside a court-visit result, distinct from the task scope.</summary>
     public const string ContactPropertyScope = "property";
 
     public static string ToDbValue(this OperationsTaskScope scope) => scope switch
@@ -112,7 +112,7 @@ public static class OperationsTaskScopeValues
         }
     }
 
-    /// <summary>Lenient read path; unrecognised legacy values read back as general.</summary>
+ /// <summary>Lenient read path; unrecognised legacy values read back as general.</summary>
     public static OperationsTaskScope Parse(string? value) =>
         TryParse(value, out var scope) ? scope : OperationsTaskScope.General;
 }
@@ -136,11 +136,11 @@ public static class OperationsTaskStatusValues
 
     public static string? ToDbValue(this OperationsTaskStatus? status) => status?.ToDbValue();
 
-    /// <summary>Completed and cancelled are final; nothing transitions out of them.</summary>
+ /// <summary>Completed and cancelled are final; nothing transitions out of them.</summary>
     public static bool IsTerminal(this OperationsTaskStatus status) =>
         status is OperationsTaskStatus.Completed or OperationsTaskStatus.Cancelled;
 
-    /// <summary>Statuses that still accept reminders and status changes.</summary>
+ /// <summary>Statuses that still accept reminders and status changes.</summary>
     public static bool IsActive(this OperationsTaskStatus status) =>
         status is OperationsTaskStatus.Created or OperationsTaskStatus.InProgress;
 
@@ -157,7 +157,7 @@ public static class OperationsTaskStatusValues
         }
     }
 
-    /// <summary>Lenient read path; unrecognised legacy values read back as created.</summary>
+ /// <summary>Lenient read path; unrecognised legacy values read back as created.</summary>
     public static OperationsTaskStatus Parse(string? value) =>
         TryParse(value, out var status) ? status : OperationsTaskStatus.Created;
 
@@ -196,7 +196,7 @@ public static class OperationsTaskPriorityValues
         }
     }
 
-    /// <summary>Lenient read path; unrecognised legacy values read back as medium.</summary>
+ /// <summary>Lenient read path; unrecognised legacy values read back as medium.</summary>
     public static OperationsTaskPriority Parse(string? value) =>
         TryParse(value, out var priority) ? priority : OperationsTaskPriority.Medium;
 }

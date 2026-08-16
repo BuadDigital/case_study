@@ -7,7 +7,7 @@ public sealed class PartyFeePricingTableSummaryDto
     public string Name { get; set; } = "";
     public string PricingKind { get; set; } = "";
     public string ManagedBy { get; set; } = "";
-    /// <summary>Category default (fallback when assignee has no assignment).</summary>
+ /// <summary>Category default (fallback when assignee has no assignment).</summary>
     public bool IsActive { get; set; }
     public int AssignedCount { get; set; }
     public DateTime? UpdatedAtUtc { get; set; }
@@ -18,7 +18,7 @@ public sealed class PartyFeePricingTierDto
     public Guid? Id { get; set; }
     public int SortOrder { get; set; }
 
-    /// <summary>Inclusive max م². Null = open-ended (must be last tier).</summary>
+ /// <summary>Inclusive max م². Null = open-ended (must be last tier).</summary>
     public decimal? MaxAreaM2 { get; set; }
 
     public decimal FeeSar { get; set; }
@@ -50,15 +50,15 @@ public sealed class CreatePartyFeePricingTableRequest
     public string Category { get; set; } = "";
     public string Name { get; set; } = "";
 
-    /// <summary>Optional; defaults from category. Use <c>flat</c> for employee incentives.</summary>
+ /// <summary>Optional; defaults from category. Use <c>flat</c> for employee incentives.</summary>
     public string? PricingKind { get; set; }
 
-    /// <summary>Optional; defaults to system-admin. Flat tables may be supervisor-managed.</summary>
+ /// <summary>Optional; defaults to system-admin. Flat tables may be supervisor-managed.</summary>
     public string? ManagedBy { get; set; }
 
     public decimal? FlatAmountSar { get; set; }
 
-    /// <summary>Optional source table to clone fees/tiers from.</summary>
+ /// <summary>Optional source table to clone fees/tiers from.</summary>
     public Guid? CopyFromTableId { get; set; }
 }
 

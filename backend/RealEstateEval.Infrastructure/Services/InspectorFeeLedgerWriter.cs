@@ -26,7 +26,7 @@ public sealed class InspectorFeeLedgerWriter : IInspectorFeeLedgerWriter
         IEnumerable<WorkflowTask> tasks,
         CancellationToken cancellationToken = default)
     {
-        // Engineering-survey fees accrue only on specialist acceptance — not here.
+ // Engineering-survey fees accrue only on specialist acceptance — not here.
         var feeTasks = tasks
             .Where(t => t.Kind is WorkflowTaskKind.FieldInspection
                 or WorkflowTaskKind.GovernmentReview)
@@ -40,8 +40,8 @@ public sealed class InspectorFeeLedgerWriter : IInspectorFeeLedgerWriter
             var partyType = await _resolver.ResolvePartyTypeAsync(task, cancellationToken);
             var isEmployee = InspectorFeeRules.IsEmployee(partyType);
 
-            // Employee incentives require an active compensation flag and a resolved flat table.
-            // Opening a zero draft for every employee was the hand-entry path ج٦ replaces.
+ // Employee incentives require an active compensation flag and a resolved flat table.
+ // Opening a zero draft for every employee was the hand-entry path replaces.
             if (isEmployee)
             {
                 var hasCompensation = await _resolver.AssigneeHasCompensationAsync(
@@ -65,14 +65,14 @@ public sealed class InspectorFeeLedgerWriter : IInspectorFeeLedgerWriter
                     task.AssigneeId,
                     cancellationToken);
 
-                // Unresolved means no rate yet — inventing zero here is exactly what we are removing.
+ // Unresolved means no rate yet — inventing zero here is exactly what we are removing.
                 if (!agreedFee.IsResolved) continue;
 
                 var identity = await _resolver.ResolveLedgerIdentityAsync(
                     task,
                     cancellationToken,
                     deed.DeedId);
-                // ج٨: same (transaction, deed, user) must not open a second line — even via another task.
+ // same (transaction, deed, user) must not open a second line — even via another task.
                 var tripleKey = (identity.TransactionId, identity.DeedId, identity.UserId);
                 if (!pendingTriples.Add(tripleKey)) continue;
                 var tripleExists = await _db.InspectorFeeLedgers.AnyAsync(
@@ -141,7 +141,7 @@ public sealed class InspectorFeeLedgerWriter : IInspectorFeeLedgerWriter
 
     public async Task BackfillMissingLedgersAsync(CancellationToken cancellationToken = default)
     {
-        // Engineering-survey ledgers are created only via AccrueEngineeringSurveyFeeAsync.
+ // Engineering-survey ledgers are created only via AccrueEngineeringSurveyFeeAsync.
         var feeTasks = await _db.WorkflowTasks.AsNoTracking()
             .Where(t =>
                 t.Kind == WorkflowTaskKind.FieldInspection
@@ -153,8 +153,8 @@ public sealed class InspectorFeeLedgerWriter : IInspectorFeeLedgerWriter
             feeTasks.Select(t => t.PropertyId),
             cancellationToken);
 
-        // Property-linked tasks need completed case-study; PO-level tasks (null PropertyId) are
-        // expanded per deed inside EnsureLedgersForTasksAsync.
+ // Property-linked tasks need completed case-study; PO-level tasks (null PropertyId) are
+ // expanded per deed inside EnsureLedgersForTasksAsync.
         feeTasks = feeTasks
             .Where(t =>
                 t.PropertyId is null

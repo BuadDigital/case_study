@@ -31,11 +31,11 @@ public static class OperationsTaskLifecycleRules
             _ => null,
         };
 
-    /// <summary>
-    /// Authorization plus reachability, returning the user-facing Arabic refusal. The legal edges
-    /// themselves live on the aggregate (<see cref="OperationsTask.CanTransitionTo"/>) — this only
-    /// decides who may walk them.
-    /// </summary>
+ /// <summary>
+ /// Authorization plus reachability, returning the user-facing Arabic refusal. The legal edges
+ /// themselves live on the aggregate (<see cref="OperationsTask.CanTransitionTo"/>) — this only
+ /// decides who may walk them.
+ /// </summary>
     public static string? ValidateStatusTransition(
         OperationsTask entity,
         OperationsTaskStatus next,
@@ -82,16 +82,16 @@ public static class OperationsTaskLifecycleRules
         if (next == OperationsTaskStatus.Cancelled && !isManager)
             return "هذا الإجراء للمنشئ أو المشرف فقط";
 
-        // Managers pause anytime; the assignee may pause only when reporting an
-        // active property failure (تعذر) so the task leaves their active queue.
+ // Managers pause anytime; the assignee may pause only when reporting an
+ // active property failure (تعذر) so the task leaves their active queue.
         if (next == OperationsTaskStatus.Paused && !isManager)
         {
             if (!isAssignee || !IsFailureObstructionPauseReason(pauseReason))
                 return "هذا الإجراء للمنشئ أو المشرف فقط";
         }
 
-        // Reopen as «منشأة» after a failure is cleared — managers anytime;
-        // the assignee only when the pause was a failure obstruction.
+ // Reopen as «منشأة» after a failure is cleared — managers anytime;
+ // the assignee only when the pause was a failure obstruction.
         if (next == OperationsTaskStatus.Created)
         {
             if (entity.Status != OperationsTaskStatus.Paused)
@@ -106,10 +106,10 @@ public static class OperationsTaskLifecycleRules
         return entity.CanTransitionTo(next) ? null : "انتقال حالة غير مسموح";
     }
 
-    /// <summary>
-    /// Pause reasons used when a linked property has an open failure (تعذر) —
-    /// must stay in sync with the front-end <c>OPS_TASK_FAILURE_PAUSE_REASON</c>.
-    /// </summary>
+ /// <summary>
+ /// Pause reasons used when a linked property has an open failure (تعذر) —
+ /// must stay in sync with the front-end <c>OPS_TASK_FAILURE_PAUSE_REASON</c>.
+ /// </summary>
     public static bool IsFailureObstructionPauseReason(string? pauseReason)
     {
         var reason = pauseReason?.Trim() ?? "";

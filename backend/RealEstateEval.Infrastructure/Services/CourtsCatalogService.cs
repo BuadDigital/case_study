@@ -67,8 +67,8 @@ public sealed class CourtsCatalogService : ICourtsCatalogService
     {
         await _courts.EnsureSeededAsync(cancellationToken);
 
-        // Wipe then recreate needs two SaveChanges (same Ids may be reused), so wrap both
-        // in a transaction — otherwise a failure after the wipe leaves an empty catalog.
+ // Wipe then recreate needs two SaveChanges (same Ids may be reused), so wrap both
+ // in a transaction — otherwise a failure after the wipe leaves an empty catalog.
         await DbContextTransaction.ExecuteInTransactionAsync(
             _db,
             async ct =>

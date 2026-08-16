@@ -8,7 +8,7 @@ using RealEstateEval.Domain;
 /// </summary>
 public static class AssignmentTypeRules
 {
-    /// <summary>مسار المحكمة: رقم الطلب + محكمة/دائرة + قرار إسناد + زيارات/مفاتيح.</summary>
+ /// <summary>مسار المحكمة: رقم الطلب + محكمة/دائرة + قرار إسناد + زيارات/مفاتيح.</summary>
     public static bool IsCourtPath(AssignmentType type) =>
         type == AssignmentType.Execution;
 
@@ -21,7 +21,7 @@ public static class AssignmentTypeRules
     public static bool RequiresCourtAndCircuit(AssignmentType type) =>
         IsCourtPath(type);
 
-    /// <summary>ضابط الاتصال إجباري في التنفيذ والتركات، اختياري في الخاص.</summary>
+ /// <summary>ضابط الاتصال إجباري في التنفيذ والتركات، اختياري في الخاص.</summary>
     public static bool RequiresContacts(AssignmentType type) =>
         type != AssignmentType.PrivateSector;
 

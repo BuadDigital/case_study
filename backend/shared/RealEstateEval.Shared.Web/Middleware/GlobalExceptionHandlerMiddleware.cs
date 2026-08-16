@@ -37,7 +37,7 @@ public sealed class GlobalExceptionHandlerMiddleware
         }
         catch (Exception ex) when (IsBenignCancellation(context, ex))
         {
-            // Long-lived requests (SSE) and shutdown cancel in-flight writes — not errors.
+ // Long-lived requests (SSE) and shutdown cancel in-flight writes — not errors.
         }
         catch (DbUpdateConcurrencyException ex)
         {

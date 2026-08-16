@@ -7,7 +7,7 @@ namespace RealEstateEval.Infrastructure.Data.Contexts;
 /// <summary>
 /// Operations-owned tables: the <c>operations</c> schema plus task rows that still live in
 /// <c>case_study</c> physically (D2). Applied by <see cref="OperationsDbContext"/> (write path)
-/// and by the legacy context for transitional cross-boundary reads until Phase 3.
+/// and by the legacy context for transitional cross-boundary reads until owner APIs replace them.
 /// </summary>
 internal static class OperationsModel
 {
@@ -128,7 +128,7 @@ internal static class OperationsModel
             e.HasIndex(x => x.StudyHoldStatus);
         });
 
-        // D2: task lifecycle is operations-owned while rows stay in case_study physically.
+ // D2: task lifecycle is operations-owned while rows stay in case_study physically.
         builder.Entity<OperationsTask>(e =>
         {
             MapTable(e, "OperationsTasks", DatabaseSchemas.CaseStudy, ownsMigrations);

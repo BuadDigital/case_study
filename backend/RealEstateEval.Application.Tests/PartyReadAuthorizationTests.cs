@@ -188,7 +188,7 @@ public class CaseStudyFormReadAuthorizationTests
         DistributionAssigneeId = "dist-party",
     };
 
-    /// <summary>A party on a different PO entirely — no task under this parent.</summary>
+ /// <summary>A party on a different PO entirely — no task under this parent.</summary>
     private static readonly CaseStudyFormActor Outsider = new()
     {
         UserId = "user-unrelated",

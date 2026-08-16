@@ -15,10 +15,10 @@ internal static class EfModelFacts
 
     public static IModel Model => LazyModel.Value;
 
-    /// <summary>Mapped table name to schema, including inherited ASP.NET Identity tables.</summary>
+ /// <summary>Mapped table name to schema, including inherited ASP.NET Identity tables.</summary>
     public static IReadOnlyDictionary<string, string> SchemaByTable { get; } = BuildSchemaByTable();
 
-    /// <summary>Public <c>DbSet</c> property name (declared or inherited) to mapped table name.</summary>
+ /// <summary>Public <c>DbSet</c> property name (declared or inherited) to mapped table name.</summary>
     public static IReadOnlyDictionary<string, string> TableByDbSet { get; } = BuildTableByDbSet();
 
     public static IReadOnlyDictionary<string, string> SchemaByEntityName { get; } =
@@ -37,7 +37,7 @@ internal static class EfModelFacts
     private static IModel BuildModel()
     {
         var options = new DbContextOptionsBuilder<ApplicationDbContext>()
-            // Never opened: only the relational model metadata is required.
+ // Never opened: only the relational model metadata is required.
             .UseNpgsql("Host=architecture-tests;Database=model_only;Username=none;Password=none")
             .Options;
 

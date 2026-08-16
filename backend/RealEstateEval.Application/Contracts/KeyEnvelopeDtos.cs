@@ -67,10 +67,10 @@ public class KeyEnvelopeDto
     public string? Notes { get; init; }
     public string ReceiveScenario { get; init; } = "court";
     public string Status { get; init; } = "reviewer";
-    /// <summary>Historical stamp — see <see cref="RevenueEntitlementAtUtc"/> for current envelopes.</summary>
+ /// <summary>Historical stamp — see <see cref="RevenueEntitlementAtUtc"/> for current envelopes.</summary>
     public bool FeeGenerated { get; init; }
     public decimal? FeeAmountSar { get; init; }
-    /// <summary>مؤشر استحقاق إيراد استلام المفاتيح — بلا مبلغ.</summary>
+ /// <summary>مؤشر استحقاق إيراد استلام المفاتيح — بلا مبلغ.</summary>
     public DateTime? RevenueEntitlementAtUtc { get; init; }
     public string CreatedByUserId { get; init; } = "";
     public string CreatedByName { get; init; } = "";
@@ -91,7 +91,7 @@ public class KeyEnvelopeFeeReportRowDto
     public string Circuit { get; init; } = "";
     public Guid? PhotoAttachmentId { get; init; }
     public Guid? ReceiptAttachmentId { get; init; }
-    /// <summary>Null for an entitlement finance has not yet priced in enforcement billing.</summary>
+ /// <summary>Null for an entitlement finance has not yet priced in enforcement billing.</summary>
     public decimal? FeeAmountSar { get; init; }
     public string CollectionStatus { get; init; } = "open";
     public string? InvoiceReference { get; init; }
@@ -127,7 +127,7 @@ public class CreateKeyEnvelopeRequest
     public int KeysCountLabeled { get; init; }
     [Range(0, 9999)]
     public int KeysCountActual { get; init; }
-    /// <summary>court | missing | third_party</summary>
+ /// <summary>court | missing | third_party</summary>
     [MaxLength(32)]
     public string ReceiveScenario { get; init; } = "court";
     public Guid? ReceiptAttachmentId { get; init; }
@@ -137,7 +137,7 @@ public class CreateKeyEnvelopeRequest
     public string? ContactPhones { get; init; }
     [MaxLength(4000)]
     public string? Notes { get; init; }
-    /// <summary>Optional link to the court_visit operations task.</summary>
+ /// <summary>Optional link to the court_visit operations task.</summary>
     public Guid? OperationsTaskId { get; init; }
     public IReadOnlyList<KeyEnvelopeAssignmentInput>? Assignments { get; init; }
 }
@@ -153,7 +153,7 @@ public class AddKeyEnvelopeAssignmentRequest
 
 public class ConfirmKeyAssignmentRequest
 {
-    /// <summary>matched | partial | unmatched | unmatched_inspected | missing</summary>
+ /// <summary>matched | partial | unmatched | unmatched_inspected | missing</summary>
     [Required, MaxLength(32)]
     public string Status { get; init; } = "";
     [MaxLength(2000)]
@@ -162,7 +162,7 @@ public class ConfirmKeyAssignmentRequest
 
 public class CreateKeyEnvelopeHandoffRequest
 {
-    /// <summary>internal | external | receive_back | return_court</summary>
+ /// <summary>internal | external | receive_back | return_court</summary>
     [Required, MaxLength(32)]
     public string Kind { get; init; } = "";
     [Required, MaxLength(256)]

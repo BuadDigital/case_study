@@ -117,8 +117,8 @@ public sealed class PartyFeePricingService : IPartyFeePricingService
         {
             if (request.CopyFromTableId is Guid copyId)
             {
-                // An explicit copy request that cannot be honoured must fail. Falling through to another
-                // table would hand the new table rates the caller never asked for.
+ // An explicit copy request that cannot be honoured must fail. Falling through to another
+ // table would hand the new table rates the caller never asked for.
                 source = await LoadTableAsync(copyId, tracking: false, cancellationToken)
                     ?? throw new InvalidOperationException(
                         "جدول المصدر المطلوب النسخ منه غير موجود.");
@@ -137,7 +137,7 @@ public sealed class PartyFeePricingService : IPartyFeePricingService
             }
             else
             {
-                // No source asked for: start from the current rates of the same category.
+ // No source asked for: start from the current rates of the same category.
                 source = await _db.PartyFeePricingTables.AsNoTracking()
                     .Include(x => x.AreaTiers)
                     .Where(x => x.Category == category
@@ -151,11 +151,11 @@ public sealed class PartyFeePricingService : IPartyFeePricingService
         var hasAnyInCategory = await _db.PartyFeePricingTables
             .AnyAsync(x => x.Category == category, cancellationToken);
 
-        // Flat incentive tables are never the category default — that slot stays for cooperator rates.
+ // Flat incentive tables are never the category default — that slot stays for cooperator rates.
         var isActive = pricingKind != PartyFeePricingKinds.Flat && !hasAnyInCategory;
 
-        // Without a source to copy, the table is created unpriced (zeros / no tiers). Filling it in
-        // is a deliberate act by whoever owns the rates, not something this service guesses.
+ // Without a source to copy, the table is created unpriced (zeros / no tiers). Filling it in
+ // is a deliberate act by whoever owns the rates, not something this service guesses.
         var table = new PartyFeePricingTable
         {
             Id = Guid.NewGuid(),
@@ -250,8 +250,8 @@ public sealed class PartyFeePricingService : IPartyFeePricingService
         var now = DateTime.UtcNow;
         var sourceBefore = Snapshot(source);
         var wasSourceActive = source.IsActive;
-        // Insert the revision inactive first. Postgres rejects an INSERT of an active row while
-        // the previous category default is still active (IX_PartyFeePricingTables_Category_OneActive).
+ // Insert the revision inactive first. Postgres rejects an INSERT of an active row while
+ // the previous category default is still active (IX_PartyFeePricingTables_Category_OneActive).
         var revision = new PartyFeePricingTable
         {
             Id = Guid.NewGuid(),
@@ -349,8 +349,8 @@ public sealed class PartyFeePricingService : IPartyFeePricingService
         var table = await LoadTableAsync(id, tracking: true, cancellationToken)
             ?? throw new KeyNotFoundException($"Pricing table {id} was not found.");
 
-        // Flat incentive tables are assigned to people; making one the category default would steal
-        // the cooperator fallback and leave employees pricing out of the wrong kind.
+ // Flat incentive tables are assigned to people; making one the category default would steal
+ // the cooperator fallback and leave employees pricing out of the wrong kind.
         if (table.PricingKind == PartyFeePricingKinds.Flat)
         {
             throw new InvalidOperationException(
@@ -362,9 +362,9 @@ public sealed class PartyFeePricingService : IPartyFeePricingService
             .Where(x => x.Id != id && x.Category == table.Category && x.IsActive)
             .ToListAsync(cancellationToken);
 
-        // Postgres filtered unique index IX_PartyFeePricingTables_Category_OneActive is checked
-        // per statement. Activating before demoting the previous default in the same SaveChanges
-        // batch briefly leaves two active rows and fails with 23505.
+ // Postgres filtered unique index IX_PartyFeePricingTables_Category_OneActive is checked
+ // per statement. Activating before demoting the previous default in the same SaveChanges
+ // batch briefly leaves two active rows and fails with 23505.
         var now = DateTime.UtcNow;
         foreach (var other in others)
         {
@@ -426,8 +426,8 @@ public sealed class PartyFeePricingService : IPartyFeePricingService
         var deletedSnapshot = Snapshot(table);
         _db.PartyFeePricingTables.Remove(table);
 
-        // Promote the next table in the same SaveChanges so a failure cannot leave the
-        // category without an active pricing table.
+ // Promote the next table in the same SaveChanges so a failure cannot leave the
+ // category without an active pricing table.
         if (wasActive)
         {
             var next = await _db.PartyFeePricingTables
@@ -556,9 +556,9 @@ public sealed class PartyFeePricingService : IPartyFeePricingService
         var category = CategoryForTaskKind(taskKind);
         if (category is null) return ResolvedPartyFee.Unresolved;
 
-        // Employee incentives may only come from flat tables. An accidental party-rates assignment
-        // (or the cooperator category default) must not silently leave the employee unpriced —
-        // and must not price them from cooperator columns.
+ // Employee incentives may only come from flat tables. An accidental party-rates assignment
+ // (or the cooperator category default) must not silently leave the employee unpriced —
+ // and must not price them from cooperator columns.
         PartyFeePricingDto? pricing;
         if (InspectorFeeRules.IsEmployee(partyType)
             && taskKind is WorkflowTaskKind.FieldInspection
@@ -581,14 +581,14 @@ public sealed class PartyFeePricingService : IPartyFeePricingService
 
         var fee = ResolveFromDto(pricing, taskKind, partyType, areaM2);
 
-        // A table that priced nothing is not the source of anything, so it is not recorded as one.
+ // A table that priced nothing is not the source of anything, so it is not recorded as one.
         return fee is > 0m ? new ResolvedPartyFee(fee, pricing.Id) : ResolvedPartyFee.Unresolved;
     }
 
-    /// <summary>
-    /// Flat table assigned to the employee, else any flat incentive table for the category.
-    /// Never returns the cooperator party-rates default.
-    /// </summary>
+ /// <summary>
+ /// Flat table assigned to the employee, else any flat incentive table for the category.
+ /// Never returns the cooperator party-rates default.
+ /// </summary>
     private async Task<PartyFeePricingDto?> ResolveEmployeeIncentiveTableAsync(
         string category,
         string? assigneeId,
@@ -643,8 +643,8 @@ public sealed class PartyFeePricingService : IPartyFeePricingService
             return EngineeringSurveyFeeRules.ResolveFeeFromTiers(areaM2.Value, tiers);
         }
 
-        // Employee incentives only come from flat tables. A party-rates default must not silently
-        // price them, and a flat table must not price cooperators out of cooperator columns.
+ // Employee incentives only come from flat tables. A party-rates default must not silently
+ // price them, and a flat table must not price cooperators out of cooperator columns.
         if (pricing.PricingKind == PartyFeePricingKinds.Flat)
         {
             return InspectorFeeRules.IsEmployee(partyType)
@@ -669,10 +669,10 @@ public sealed class PartyFeePricingService : IPartyFeePricingService
         };
     }
 
-    /// <summary>
-    /// An amount of zero means nobody set a rate, which is a different answer from "the rate is
-    /// zero" — callers must treat it as unresolved and refuse to bill.
-    /// </summary>
+ /// <summary>
+ /// An amount of zero means nobody set a rate, which is a different answer from "the rate is
+ /// zero" — callers must treat it as unresolved and refuse to bill.
+ /// </summary>
     private static decimal? Configured(decimal amount) => amount > 0m ? amount : null;
 
     private static string? CategoryForTaskKind(WorkflowTaskKind taskKind) => taskKind switch
@@ -705,7 +705,7 @@ public sealed class PartyFeePricingService : IPartyFeePricingService
                     return await ToDtoAsync(assigned, cancellationToken);
             }
 
-            // Engineering office: no table until explicitly assigned (no silent default).
+ // Engineering office: no table until explicitly assigned (no silent default).
             if (category == PartyFeePricingCategories.EngineeringSurvey)
                 return null;
         }
@@ -767,11 +767,11 @@ public sealed class PartyFeePricingService : IPartyFeePricingService
             return;
         }
 
-        // A placeholder so each category always has an active row for the pricing screen to edit.
-        // It carries no amounts: an empty table must block fees, not quietly supply them. Migrating an
-        // installation that predates the category split is the job of the migration that split it, not
-        // of this placeholder — it used to copy amounts off whatever table was newest, across
-        // categories.
+ // A placeholder so each category always has an active row for the pricing screen to edit.
+ // It carries no amounts: an empty table must block fees, not quietly supply them. Migrating an
+ // installation that predates the category split is the job of the migration that split it, not
+ // of this placeholder — it used to copy amounts off whatever table was newest, across
+ // categories.
         var table = new PartyFeePricingTable
         {
             Id = defaultId,
@@ -839,9 +839,9 @@ public sealed class PartyFeePricingService : IPartyFeePricingService
     {
         var normalized = EngineeringSurveyFeeRules.NormalizeTiers(tiers);
 
-        // Removed through the change tracker rather than ExecuteDelete so the old tiers and the new
-        // ones land in one SaveChanges — a failure between the two would otherwise leave the table
-        // with no schedule at all.
+ // Removed through the change tracker rather than ExecuteDelete so the old tiers and the new
+ // ones land in one SaveChanges — a failure between the two would otherwise leave the table
+ // with no schedule at all.
         var old = await _db.PartyFeePricingTiers
             .Where(t => t.TableId == table.Id)
             .ToListAsync(cancellationToken);
@@ -1085,7 +1085,7 @@ public sealed class PartyFeePricingService : IPartyFeePricingService
             .OrderBy(t => t.SortOrder)
             .Select(t => new EngineeringSurveyFeeRules.AreaFeeTier(t.MaxAreaM2, t.FeeSar))
             .ToList();
-        // An unpriced table stays visibly empty here so the pricing screen shows it needs setting up.
+ // An unpriced table stays visibly empty here so the pricing screen shows it needs setting up.
         var normalized = EngineeringSurveyFeeRules.HasTiers(tiers)
             ? EngineeringSurveyFeeRules.NormalizeTiers(tiers)
             : [];

@@ -19,11 +19,11 @@ namespace RealEstateEval.Infrastructure;
 
 public static class DependencyInjection
 {
-    /// <summary>
-    /// Host-local cross-cutting bits that do not open the legacy god context: database options,
-    /// clock, audit builder, Redis cache. Pure extracted APIs call this instead of
-    /// <see cref="AddPersistence"/> (A6).
-    /// </summary>
+ /// <summary>
+ /// Host-local cross-cutting bits that do not open the legacy god context: database options,
+ /// clock, audit builder, Redis cache. Pure extracted APIs call this instead of
+ /// <see cref="AddPersistence"/> (A6).
+ /// </summary>
     public static IServiceCollection AddHostSharedInfrastructure(
         this IServiceCollection services,
         IConfiguration configuration)
@@ -35,12 +35,12 @@ public static class DependencyInjection
         return services;
     }
 
-    /// <summary>
-    /// Residual <see cref="ApplicationDbContext"/> pool for hosts that still write or read through
-    /// the transitional god context (Case Study residual writers, dual fee paths, outbox drain).
-    /// Registers <see cref="IUserLabelLookup"/> because label resolution still loads Identity tables
-    /// via App (D10). Prefer owned contexts; do not call this from pure extracted hosts.
-    /// </summary>
+ /// <summary>
+ /// Residual <see cref="ApplicationDbContext"/> pool for hosts that still write or read through
+ /// the transitional god context (Case Study residual writers, dual fee paths, outbox drain).
+ /// Registers <see cref="IUserLabelLookup"/> because label resolution still loads Identity tables
+ /// via App. Prefer owned contexts; do not call this from pure extracted hosts.
+ /// </summary>
     public static IServiceCollection AddLegacyApplicationPersistence(
         this IServiceCollection services,
         IConfiguration configuration,
@@ -56,8 +56,8 @@ public static class DependencyInjection
                 npgsql.CommandTimeout(dbOptions.CommandTimeoutSeconds);
             }));
 
-        // Factory: dual ctors on UserLabelLookup are ambiguous when both Identity and App
-        // pools are registered (case-study). Prefer IdentityDbContext (D10 / A6).
+ // Factory: dual ctors on UserLabelLookup are ambiguous when both Identity and App
+ // pools are registered (case-study). Prefer IdentityDbContext (D10 / A6).
         services.TryAddScoped<IUserLabelLookup>(sp =>
         {
             if (sp.GetService<IdentityDbContext>() is { } identity)
@@ -67,11 +67,11 @@ public static class DependencyInjection
         return services;
     }
 
-    /// <summary>
-    /// Shared host bits + residual god-context pool. Use only while a host still needs
-    /// <see cref="ApplicationDbContext"/>. Extracted pure APIs should call
-    /// <see cref="AddHostSharedInfrastructure"/> + their owned context registration instead (A6).
-    /// </summary>
+ /// <summary>
+ /// Shared host bits + residual god-context pool. Use only while a host still needs
+ /// <see cref="ApplicationDbContext"/>. Extracted pure APIs should call
+ /// <see cref="AddHostSharedInfrastructure"/> + their owned context registration instead (A6).
+ /// </summary>
     public static IServiceCollection AddPersistence(
         this IServiceCollection services,
         IConfiguration configuration,
@@ -82,17 +82,17 @@ public static class DependencyInjection
         return services;
     }
 
-    /// <summary>Attachments write context (ADR 0003, plan Phase 1).</summary>
+ /// <summary>Attachments write context.</summary>
     public static IServiceCollection AddAttachmentsPersistence(
         this IServiceCollection services,
         IConfiguration configuration,
         string connectionString)
     {
-        // Block body (not expression-bodied): architecture fan-out scans method braces.
+ // Block body (not expression-bodied): architecture fan-out scans method braces.
         return services.AddBoundedContextPersistence<AttachmentsDbContext>(configuration, connectionString);
     }
 
-    /// <summary>Platform catalog write context (ADR 0003, plan Phase 1).</summary>
+ /// <summary>Platform catalog write context.</summary>
     public static IServiceCollection AddPlatformPersistence(
         this IServiceCollection services,
         IConfiguration configuration,
@@ -101,7 +101,7 @@ public static class DependencyInjection
         return services.AddBoundedContextPersistence<PlatformDbContext>(configuration, connectionString);
     }
 
-    /// <summary>Valuation write context, including its own outbox rows (ADR 0003, D5).</summary>
+ /// <summary>Valuation write context, including its own outbox rows.</summary>
     public static IServiceCollection AddValuationPersistence(
         this IServiceCollection services,
         IConfiguration configuration,
@@ -110,11 +110,11 @@ public static class DependencyInjection
         return services.AddBoundedContextPersistence<ValuationDbContext>(configuration, connectionString);
     }
 
-    /// <summary>
-    /// Registers one bounded-context pool against the same physical database as the legacy
-    /// context. Phase 1 separates models and migration streams, not connections: only the
-    /// migrations-history table differs, so each stream records itself in the schema it owns.
-    /// </summary>
+ /// <summary>
+ /// Registers one bounded-context pool against the same physical database as the legacy
+ /// context. separates models and migration streams, not connections: only the
+ /// migrations-history table differs, so each stream records itself in the schema it owns.
+ /// </summary>
     private static IServiceCollection AddBoundedContextPersistence<TContext>(
         this IServiceCollection services,
         IConfiguration configuration,
@@ -166,7 +166,7 @@ public static class DependencyInjection
         return services;
     }
 
-    /// <summary>Identity write context (ADR 0003, plan Phase 1 extraction step 2).</summary>
+ /// <summary>Identity write context.</summary>
     public static IServiceCollection AddIdentityPersistence(
         this IServiceCollection services,
         IConfiguration configuration,
@@ -175,7 +175,7 @@ public static class DependencyInjection
         return services.AddBoundedContextPersistence<IdentityDbContext>(configuration, connectionString);
     }
 
-    /// <summary>Failures write context (ADR 0003, plan Phase 1 extraction step 3).</summary>
+ /// <summary>Failures write context.</summary>
     public static IServiceCollection AddFailuresPersistence(
         this IServiceCollection services,
         IConfiguration configuration,
@@ -184,7 +184,7 @@ public static class DependencyInjection
         return services.AddBoundedContextPersistence<FailuresDbContext>(configuration, connectionString);
     }
 
-    /// <summary>Operations write context (ADR 0003, plan Phase 1 extraction step 3).</summary>
+ /// <summary>Operations write context.</summary>
     public static IServiceCollection AddOperationsPersistence(
         this IServiceCollection services,
         IConfiguration configuration,
@@ -193,7 +193,7 @@ public static class DependencyInjection
         return services.AddBoundedContextPersistence<OperationsDbContext>(configuration, connectionString);
     }
 
-    /// <summary>Financial write context (ADR 0003, plan Phase 1 extraction step 4).</summary>
+ /// <summary>Financial write context.</summary>
     public static IServiceCollection AddFinancialPersistence(
         this IServiceCollection services,
         IConfiguration configuration,
@@ -202,7 +202,7 @@ public static class DependencyInjection
         return services.AddBoundedContextPersistence<FinancialDbContext>(configuration, connectionString);
     }
 
-    /// <summary>Case Study write context (ADR 0003, plan Phase 1 extraction step 4).</summary>
+ /// <summary>Case Study write context.</summary>
     public static IServiceCollection AddCaseStudyPersistence(
         this IServiceCollection services,
         IConfiguration configuration,
@@ -211,17 +211,17 @@ public static class DependencyInjection
         return services.AddBoundedContextPersistence<CaseStudyDbContext>(configuration, connectionString);
     }
 
-    /// <summary>
-    /// ASP.NET Identity stores and Identity write/permission services. Callers must register
-    /// <see cref="IdentityDbContext"/> first (via <see cref="AddIdentityPersistence"/> or a
-    /// test InMemory registration).
-    /// </summary>
+ /// <summary>
+ /// ASP.NET Identity stores and Identity write/permission services. Callers must register
+ /// <see cref="IdentityDbContext"/> first (via <see cref="AddIdentityPersistence"/> or a
+ /// test InMemory registration).
+ /// </summary>
     public static IServiceCollection AddIdentityApplicationServices(this IServiceCollection services)
     {
         services.TryAddSingleton(TimeProvider.System);
         services.TryAddSingleton<IAuditLogWriter, AuditLogWriter>();
-        // No IUserLabelLookup: Identity uses IdentityDbContext stores; label resolution that still
-        // needs residual App lives only on hosts that call AddLegacyApplicationPersistence.
+ // No IUserLabelLookup: Identity uses IdentityDbContext stores; label resolution that still
+ // needs residual App lives only on hosts that call AddLegacyApplicationPersistence.
         services.AddIdentityStores();
         services.AddScoped<IJwtTokenService, JwtTokenService>();
         services.AddScoped<IAuthSessionService, AuthSessionService>();
@@ -231,11 +231,11 @@ public static class DependencyInjection
         return services;
     }
 
-    /// <summary>
-    /// Full Identity host registration: stores, session/auth writes, and database-backed
-    /// permission resolution. Only the Identity API (and Identity-focused tests/tools) should
-    /// call this.
-    /// </summary>
+ /// <summary>
+ /// Full Identity host registration: stores, session/auth writes, and database-backed
+ /// permission resolution. Only the Identity API (and Identity-focused tests/tools) should
+ /// call this.
+ /// </summary>
     public static IServiceCollection AddIdentityInfrastructure(
         this IServiceCollection services,
         IConfiguration configuration,
@@ -246,10 +246,10 @@ public static class DependencyInjection
         return services;
     }
 
-    /// <summary>
-    /// ASP.NET Identity stores against <see cref="IdentityDbContext"/>. Used by the Identity
-    /// host and by Development seeding hosts that still need <see cref="UserManager{TUser}"/>.
-    /// </summary>
+ /// <summary>
+ /// ASP.NET Identity stores against <see cref="IdentityDbContext"/>. Used by the Identity
+ /// host and by Development seeding hosts that still need <see cref="UserManager{TUser}"/>.
+ /// </summary>
     public static IServiceCollection AddIdentityStores(this IServiceCollection services)
     {
         services
@@ -274,10 +274,10 @@ public static class DependencyInjection
         return services;
     }
 
-    /// <summary>
-    /// Resolves the caller's permissions from JWT claims. Non-Identity APIs use this instead of
-    /// opening Identity stores (plan Phase 1 extraction step 2).
-    /// </summary>
+ /// <summary>
+ /// Resolves the caller's permissions from JWT claims. Non-Identity APIs use this instead of
+ /// opening Identity stores.
+ /// </summary>
     public static IServiceCollection AddClaimsPermissionService(this IServiceCollection services)
     {
         services.AddHttpContextAccessor();
@@ -285,10 +285,10 @@ public static class DependencyInjection
         return services;
     }
 
-    /// <summary>
-    /// Development-only Identity stores for demo seeding. Does not register auth write services
-    /// or database-backed <see cref="IPermissionService"/> — request paths still use claims.
-    /// </summary>
+ /// <summary>
+ /// Development-only Identity stores for demo seeding. Does not register auth write services
+ /// or database-backed <see cref="IPermissionService"/> — request paths still use claims.
+ /// </summary>
     public static IServiceCollection AddIdentitySeedStores(
         this IServiceCollection services,
         IConfiguration configuration,
@@ -299,10 +299,10 @@ public static class DependencyInjection
         return services;
     }
 
-    /// <summary>
-    /// Short-lived DI graph for Development identity seed/reset. Case Study request paths stay
-    /// claims-only; only this throwaway provider opens Identity stores and registration writes.
-    /// </summary>
+ /// <summary>
+ /// Short-lived DI graph for Development identity seed/reset. Case Study request paths stay
+ /// claims-only; only this throwaway provider opens Identity stores and registration writes.
+ /// </summary>
     public static ServiceProvider CreateIdentityMaintenanceProvider(
         IConfiguration configuration,
         string connectionString)
@@ -325,7 +325,7 @@ public static class DependencyInjection
         return services;
     }
 
-    /// <summary>Work orders, workflow tasks, and case-study / party forms.</summary>
+ /// <summary>Work orders, workflow tasks, and case-study / party forms.</summary>
     public static IServiceCollection AddCaseStudyCoreInfrastructure(this IServiceCollection services)
     {
         services.AddScoped<IWorkOrderLoader, WorkOrderLoader>();
@@ -358,7 +358,7 @@ public static class DependencyInjection
         return services;
     }
 
-    /// <summary>Inspector-fee façade + ledger/transition/summary collaborators.</summary>
+ /// <summary>Inspector-fee façade + ledger/transition/summary collaborators.</summary>
     public static IServiceCollection AddInspectorFeeCollaborators(this IServiceCollection services)
     {
         services.AddScoped<IInspectorFeeLedgerResolver, InspectorFeeLedgerResolver>();
@@ -369,7 +369,7 @@ public static class DependencyInjection
         return services;
     }
 
-    /// <summary>PO intake drafts, delegation letters, suspended-transaction reads.</summary>
+ /// <summary>PO intake drafts, delegation letters, suspended-transaction reads.</summary>
     public static IServiceCollection AddCaseStudyAuxiliaryInfrastructure(this IServiceCollection services)
     {
         services.AddScoped<IPoIntakeDraftService, PoIntakeDraftService>();
@@ -389,19 +389,19 @@ public static class DependencyInjection
         IConfiguration configuration,
         IHostEnvironment environment)
     {
-        // Hosts that call this must have registered AddCaseStudyPersistence /
-        // AddFinancialPersistence (and failures/ops as needed) against the same connection.
+ // Hosts that call this must have registered AddCaseStudyPersistence /
+ // AddFinancialPersistence (and failures/ops as needed) against the same connection.
         services.AddCaseStudyCoreInfrastructure();
         services.AddCaseStudyAuxiliaryInfrastructure();
         services.AddNotificationInfrastructure(configuration, environment);
         return services;
     }
 
-    /// <summary>
-    /// Development-only reset support for UserManager / seed. Hosts must already register
-    /// <see cref="AddIdentityPersistence"/> (fee residual paths on Case Study / Failures).
-    /// Does not re-register the Identity pool.
-    /// </summary>
+ /// <summary>
+ /// Development-only reset support for UserManager / seed. Hosts must already register
+ /// <see cref="AddIdentityPersistence"/> (fee residual paths on Case Study / Failures).
+ /// Does not re-register the Identity pool.
+ /// </summary>
     public static IServiceCollection AddDevelopmentSystemMaintenance(
         this IServiceCollection services,
         IConfiguration configuration,
@@ -423,10 +423,10 @@ public static class DependencyInjection
         IHostEnvironment environment)
     {
         services.AddFailuresPersistence(configuration, connectionString);
-        // Residual cross-boundary: WorkOrder/Workflow on Case Study; Identity labels/recipients.
+ // Residual cross-boundary: WorkOrder/Workflow on Case Study; Identity labels/recipients.
         services.AddCaseStudyPersistence(configuration, connectionString);
         services.AddIdentityPersistence(configuration, connectionString);
-        // Pure-host outbox for platform notification requests (A6 — no ApplicationDbContext).
+ // Pure-host outbox for platform notification requests (A6 — no ApplicationDbContext).
         services.AddMessagingPersistence(configuration, connectionString);
         services.AddNotificationInfrastructure(configuration, environment);
         services.TryAddScoped<IUserLabelLookup>(sp =>
@@ -438,7 +438,7 @@ public static class DependencyInjection
         return services;
     }
 
-    /// <summary>Workflow task façade + query / distribution / lifecycle collaborators.</summary>
+ /// <summary>Workflow task façade + query / distribution / lifecycle collaborators.</summary>
     public static IServiceCollection AddWorkflowTaskCollaborators(this IServiceCollection services)
     {
         services.AddScoped<IWorkflowTaskVisibilityFilter, WorkflowTaskVisibilityFilter>();
@@ -457,7 +457,7 @@ public static class DependencyInjection
         string connectionString)
     {
         services.AddAttachmentsPersistence(configuration, connectionString);
-        // 11ف — classification validates keys against the admin print dictionary.
+ // classification validates keys against the admin print dictionary.
         services.AddPlatformPersistence(configuration, connectionString);
         services.AddScoped<IAttachmentPrintDictionaryService, AttachmentPrintDictionaryService>();
         services.AddScoped<IAttachmentService, AttachmentService>();
@@ -470,7 +470,7 @@ public static class DependencyInjection
         string connectionString)
     {
         services.AddFinancialPersistence(configuration, connectionString);
-        // Report / discount / incentive residual reads (Phase 3 replaces with owner APIs).
+ // Report / discount / incentive residual reads.
         services.AddCaseStudyPersistence(configuration, connectionString);
         services.AddIdentityPersistence(configuration, connectionString);
         services.AddScoped<IFinancialReportService, FinancialReportService>();
@@ -480,7 +480,7 @@ public static class DependencyInjection
         return services;
     }
 
-    /// <summary>Financial services when financial (+ residual CS/identity) persistence is already registered.</summary>
+ /// <summary>Financial services when financial (+ residual CS/identity) persistence is already registered.</summary>
     public static IServiceCollection AddFinancialInfrastructure(this IServiceCollection services)
     {
         services.AddScoped<IFinancialReportService, FinancialReportService>();
@@ -497,15 +497,15 @@ public static class DependencyInjection
         IHostEnvironment environment)
     {
         services.AddOperationsPersistence(configuration, connectionString);
-        // Residual cross-boundary reads: property rows, fee charges, attachment checks, identity labels.
+ // Residual cross-boundary reads: property rows, fee charges, attachment checks, identity labels.
         services.AddFailuresPersistence(configuration, connectionString);
         services.AddCaseStudyPersistence(configuration, connectionString);
         services.AddFinancialPersistence(configuration, connectionString);
         services.AddIdentityPersistence(configuration, connectionString);
         services.AddAttachmentsPersistence(configuration, connectionString);
-        // Pure-host outbox for platform notification requests (mirrors AddFailuresInfrastructure) —
-        // KeyEnvelopesService / PropertyAccessHoldService notify the case specialist and need
-        // INotificationService + NotificationRecipientResolver to be resolvable here.
+ // Pure-host outbox for platform notification requests (mirrors AddFailuresInfrastructure) —
+ // KeyEnvelopesService / PropertyAccessHoldService notify the case specialist and need
+ // INotificationService + NotificationRecipientResolver to be resolvable here.
         services.AddMessagingPersistence(configuration, connectionString);
         services.AddNotificationInfrastructure(configuration, environment);
         services.AddScoped<ISurveyOfficesService, SurveyOfficesService>();
@@ -517,10 +517,10 @@ public static class DependencyInjection
         return services;
     }
 
-    /// <summary>
-    /// Operations services when the caller's host already registered
-    /// <see cref="AddOperationsPersistence"/> (or InMemory tests).
-    /// </summary>
+ /// <summary>
+ /// Operations services when the caller's host already registered
+ /// <see cref="AddOperationsPersistence"/> (or InMemory tests).
+ /// </summary>
     public static IServiceCollection AddOperationsInfrastructure(this IServiceCollection services)
     {
         services.AddScoped<ISurveyOfficesService, SurveyOfficesService>();
@@ -552,7 +552,7 @@ public static class DependencyInjection
         return services;
     }
 
-    /// <summary>Messaging write context (ADR 0003, plan Phase 1 extraction step 5).</summary>
+ /// <summary>Messaging write context.</summary>
     public static IServiceCollection AddMessagingPersistence(
         this IServiceCollection services,
         IConfiguration configuration,
@@ -561,18 +561,18 @@ public static class DependencyInjection
         return services.AddBoundedContextPersistence<MessagingDbContext>(configuration, connectionString);
     }
 
-    /// <summary>
-    /// Notification commands for non-owner services. Recipients are resolved locally, then
-    /// persistence is requested from Platform through the shared outbox.
-    /// </summary>
+ /// <summary>
+ /// Notification commands for non-owner services. Recipients are resolved locally, then
+ /// persistence is requested from Platform through the shared outbox.
+ /// </summary>
     public static IServiceCollection AddNotificationInfrastructure(
         this IServiceCollection services,
         IConfiguration configuration,
         IHostEnvironment environment)
     {
         services.AddValidatedRabbitMqOptions(configuration, environment);
-        // Prefer Messaging outbox when the host registered MessagingDbContext (pure A6 hosts).
-        // Residual dual-write hosts keep ApplicationDbContext OutboxIntegrationEventPublisher.
+ // Prefer Messaging outbox when the host registered MessagingDbContext (pure A6 hosts).
+ // Residual dual-write hosts keep ApplicationDbContext OutboxIntegrationEventPublisher.
         services.AddScoped<IIntegrationEventPublisher>(sp =>
         {
             if (sp.GetService<MessagingDbContext>() is { } messaging)
@@ -599,15 +599,15 @@ public static class DependencyInjection
         return services;
     }
 
-    /// <summary>Platform-owned per-user inbox and process-local SSE delivery endpoint.</summary>
+ /// <summary>Platform-owned per-user inbox and process-local SSE delivery endpoint.</summary>
     public static IServiceCollection AddPlatformNotificationInfrastructure(
         this IServiceCollection services,
         IConfiguration configuration,
         IHostEnvironment environment)
     {
-        // Host must register AddMessagingPersistence against the same connection first.
+ // Host must register AddMessagingPersistence against the same connection first.
         services.AddValidatedRabbitMqOptions(configuration, environment);
-        // Platform notification writes and their outbox rows must share MessagingDbContext.
+ // Platform notification writes and their outbox rows must share MessagingDbContext.
         services.AddScoped<IIntegrationEventPublisher, MessagingOutboxPublisher>();
         services.AddSingleton<NotificationRealtimeHub>();
         services.AddSingleton<INotificationRealtimePublisher>(sp =>
@@ -629,16 +629,16 @@ public static class DependencyInjection
         return services;
     }
 
-    /// <summary>
-    /// The valuation-request write path only: the Valuation context, its per-producer outbox
-    /// publisher (D5), the Case Study PO-number lookup it reads through, and the request service.
-    /// Hosts must already register <see cref="AddCaseStudyPersistence"/> (or an InMemory
-    /// <see cref="CaseStudyDbContext"/>) so <see cref="CaseStudyPropertyPoNumberLookup"/> can
-    /// resolve PO numbers without opening the legacy god context.
-    /// Case Study registers this rather than the full set because
-    /// <see cref="CaseStudyValuationDispatchService"/> creates a valuation request when a
-    /// case-study form is submitted; process ownership moves in Phase 3.
-    /// </summary>
+ /// <summary>
+ /// The valuation-request write path only: the Valuation context, its per-producer outbox
+ /// publisher, the Case Study PO-number lookup it reads through, and the request service.
+ /// Hosts must already register <see cref="AddCaseStudyPersistence"/> (or an InMemory
+ /// <see cref="CaseStudyDbContext"/>) so <see cref="CaseStudyPropertyPoNumberLookup"/> can
+ /// resolve PO numbers without opening the legacy god context.
+ /// Case Study registers this rather than the full set because
+ /// <see cref="CaseStudyValuationDispatchService"/> creates a valuation request when a
+ /// case-study form is submitted; process ownership moves in.
+ /// </summary>
     public static IServiceCollection AddValuationRequestInfrastructure(
         this IServiceCollection services,
         IConfiguration configuration,
@@ -651,16 +651,16 @@ public static class DependencyInjection
         return services;
     }
 
-    /// <summary>Everything the Valuation host serves, including evaluator recalls.</summary>
+ /// <summary>Everything the Valuation host serves, including evaluator recalls.</summary>
     public static IServiceCollection AddValuationInfrastructure(
         this IServiceCollection services,
         IConfiguration configuration,
         string connectionString)
     {
-        // Residual cross-boundary PO read for event payloads (Phase 3 replaces with API/projection).
+ // Residual cross-boundary PO read for event payloads.
         services.AddCaseStudyPersistence(configuration, connectionString);
         services.AddPlatformPersistence(configuration, connectionString);
-        // Report document + attachments gate read printable attachments (11ف).
+ // Report document + attachments gate read printable attachments.
         services.AddAttachmentsPersistence(configuration, connectionString);
         services.AddScoped<IAttachmentPrintDictionaryService, AttachmentPrintDictionaryService>();
         services.AddValuationRequestInfrastructure(configuration, connectionString);
@@ -678,10 +678,10 @@ public static class DependencyInjection
         return services;
     }
 
-    /// <summary>
-    /// Transactional outbox writer — use on any service that publishes integration events.
-    /// Does not start a background dispatcher.
-    /// </summary>
+ /// <summary>
+ /// Transactional outbox writer — use on any service that publishes integration events.
+ /// Does not start a background dispatcher.
+ /// </summary>
     public static IServiceCollection AddIntegrationEventPublishing(
         this IServiceCollection services,
         IConfiguration configuration,
@@ -692,13 +692,13 @@ public static class DependencyInjection
         return services;
     }
 
-    /// <summary>
-    /// Deduplication store for services that consume integration events.
-    /// Uses a factory so DI never has to pick between the dual public constructors
-    /// (Messaging vs Application). Prefers <see cref="MessagingDbContext"/> when registered
-    /// so Platform writes share the messaging unit of work; residual hosts use
-    /// <see cref="ApplicationDbContext"/>.
-    /// </summary>
+ /// <summary>
+ /// Deduplication store for services that consume integration events.
+ /// Uses a factory so DI never has to pick between the dual public constructors
+ /// (Messaging vs Application). Prefers <see cref="MessagingDbContext"/> when registered
+ /// so Platform writes share the messaging unit of work; residual hosts use
+ /// <see cref="ApplicationDbContext"/>.
+ /// </summary>
     public static IServiceCollection AddIntegrationEventInbox(this IServiceCollection services)
     {
         services.AddScoped<IIntegrationEventInbox>(sp =>
@@ -713,17 +713,17 @@ public static class DependencyInjection
         return services;
     }
 
-    /// <summary>
-    /// Polls <c>OutboxMessages</c> and publishes to RabbitMQ. Register on <b>one</b> service only (case-study).
-    /// </summary>
+ /// <summary>
+ /// Polls <c>OutboxMessages</c> and publishes to RabbitMQ. Register on <b>one</b> service only (case-study).
+ /// </summary>
     public static IServiceCollection AddOutboxDispatcher(
         this IServiceCollection services,
         IConfiguration configuration,
         IHostEnvironment environment)
     {
         services.AddValidatedRabbitMqOptions(configuration, environment);
-        // Residual single host: Case Study drains via ApplicationDbContext against the shared
-        // messaging.OutboxMessages table (E7 — rebind ContextType when multi-dispatcher lands).
+ // Residual single host: Case Study drains via ApplicationDbContext against the shared
+ // messaging.OutboxMessages table (E7 — rebind ContextType when multi-dispatcher lands).
         services.AddOptions<OutboxDispatcherOptions>();
         services.AddSingleton<RabbitMqMessagePublisher>();
         services.AddHostedService<OutboxDispatcherHostedService>();
@@ -759,14 +759,14 @@ public static class DependencyInjection
         return services;
     }
 
-    /// <summary>RabbitMQ event handlers for <c>ValuationIntegrationEventConsumer</c> (case-study).</summary>
+ /// <summary>RabbitMQ event handlers for <c>ValuationIntegrationEventConsumer</c> (case-study).</summary>
     public static IServiceCollection AddValuationIntegrationHandlers(this IServiceCollection services)
     {
         services.AddScoped<ValuationReportWorkflowHandler>();
         return services;
     }
 
-    /// <summary>RabbitMQ event handlers for <c>NotificationIntegrationEventConsumer</c> (platform).</summary>
+ /// <summary>RabbitMQ event handlers for <c>NotificationIntegrationEventConsumer</c> (platform).</summary>
     public static IServiceCollection AddNotificationIntegrationHandlers(this IServiceCollection services)
     {
         services.AddScoped<NotificationIntegrationEventHandler>();

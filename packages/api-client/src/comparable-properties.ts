@@ -27,7 +27,7 @@ export type ComparablePropertyDto = {
   transactionDate: string;
   price: number;
   pricePerSqm: number;
-  /** §1.5 anomaly notice — advisory. */
+ /** anomaly notice — advisory. */
   pricePerSqmAnomalyNoteAr?: string | null;
   city?: string | null;
   district: string;

@@ -44,7 +44,7 @@ public static class WorkOrderValidator
         return errors;
     }
 
-    /// <summary>مرحلة إنفاذ — إضافة عقار داخل أمر العمل.</summary>
+ /// <summary>مرحلة إنفاذ — إضافة عقار داخل أمر العمل.</summary>
     public static Dictionary<string, string> ValidatePropertyEnfath(
         WorkOrderPropertyDto dto,
         AssignmentType assignmentType,
@@ -116,12 +116,12 @@ public static class WorkOrderValidator
             }
         }
 
-        // §4ج-3 — رقم الطلب مرجع خارجي ولا يجوز أن يساوي رقم الصك (خطأ العينة المكتشف).
+ // رقم الطلب مرجع خارجي ولا يجوز أن يساوي رقم الصك (خطأ العينة المكتشف).
         if (!string.IsNullOrWhiteSpace(dto.RequestNumber)
             && !string.IsNullOrWhiteSpace(dto.DeedNumber)
             && string.Equals(dto.RequestNumber.Trim(), dto.DeedNumber.Trim(), StringComparison.Ordinal))
         {
-            errors["requestNumber"] = "رقم الطلب لا يجوز أن يساوي رقم الصك (§4ج-3)";
+            errors["requestNumber"] = "رقم الطلب لا يجوز أن يساوي رقم الصك";
         }
 
         if (dto.AssignmentDocFileNames.All(string.IsNullOrWhiteSpace))
@@ -134,7 +134,7 @@ public static class WorkOrderValidator
         return errors;
     }
 
-    /// <summary>مرحلة البورصة — استعلام البورصة.</summary>
+ /// <summary>مرحلة البورصة — استعلام البورصة.</summary>
     public static Dictionary<string, string> ValidatePropertyBourse(UpdatePropertyBourseRequest dto)
     {
         var errors = new Dictionary<string, string>();
@@ -188,8 +188,8 @@ public static class WorkOrderValidator
         var hasDeed = !string.IsNullOrWhiteSpace(dto.DeedNumber);
         var hasReg = !string.IsNullOrWhiteSpace(dto.RealEstateRegNumber);
 
-        // مطلوب أحدهما على الأقل: رقم الصك أو التسجيل العيني (أو كلاهما).
-        // التسجيل العيني عند التعبئة يتجاوز استعلام البورصة.
+ // مطلوب أحدهما على الأقل: رقم الصك أو التسجيل العيني (أو كلاهما).
+ // التسجيل العيني عند التعبئة يتجاوز استعلام البورصة.
         if (!hasDeed && !hasReg)
         {
             const string msg = "أدخل رقم الصك أو رقم التسجيل العيني";
@@ -228,7 +228,7 @@ public static class WorkOrderValidator
         PropertyIdentifierType idType,
         Dictionary<string, string> errors)
     {
-        // رقم الصك دائماً 12 رقماً — التسجيل العيني حقل منفصل.
+ // رقم الصك دائماً 12 رقماً — التسجيل العيني حقل منفصل.
         _ = idType;
         const string label = "رقم الصك";
         const int requiredLength = DeedNumberDigitLength;

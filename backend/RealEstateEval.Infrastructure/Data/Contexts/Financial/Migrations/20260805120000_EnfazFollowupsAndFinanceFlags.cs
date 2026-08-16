@@ -11,7 +11,7 @@ namespace RealEstateEval.Infrastructure.Data.Contexts.Financial.Migrations
     [Migration("20260805120000_EnfazFollowupsAndFinanceFlags")]
     public partial class EnfazFollowupsAndFinanceFlags : Migration
     {
-        /// <inheritdoc />
+ /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
             migrationBuilder.Sql(
@@ -52,7 +52,7 @@ namespace RealEstateEval.Infrastructure.Data.Contexts.Financial.Migrations
                 """);
         }
 
-        /// <inheritdoc />
+ /// <inheritdoc />
         protected override void Down(MigrationBuilder migrationBuilder)
         {
             migrationBuilder.Sql(

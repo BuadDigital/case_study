@@ -17,13 +17,13 @@ public sealed class RealEstateEvalCorsOptions
 
     public bool AllowCredentials { get; init; }
 
-    /// <summary>
-    /// Opt-in fail-fast: when set, a deployment outside Development that lists no origins
-    /// refuses to start instead of starting with cross-origin access denied.
-    /// </summary>
+ /// <summary>
+ /// Opt-in fail-fast: when set, a deployment outside Development that lists no origins
+ /// refuses to start instead of starting with cross-origin access denied.
+ /// </summary>
     public bool RequireAllowedOrigins { get; init; }
 
-    /// <summary>True when the process should shout about an empty list at startup.</summary>
+ /// <summary>True when the process should shout about an empty list at startup.</summary>
     public bool WarnOnMissingOrigins { get; init; }
 
     public static RealEstateEvalCorsOptions FromConfiguration(
@@ -66,8 +66,8 @@ public sealed class RealEstateEvalCorsOptions
 
             var candidate = entry.Trim();
 
-            // AllowAnyOrigin is never acceptable here: the API is credential-bearing and a
-            // wildcard cannot be combined with credentials at all.
+ // AllowAnyOrigin is never acceptable here: the API is credential-bearing and a
+ // wildcard cannot be combined with credentials at all.
             if (candidate == "*")
             {
                 throw new InvalidOperationException(

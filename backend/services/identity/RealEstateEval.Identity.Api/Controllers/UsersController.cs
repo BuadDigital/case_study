@@ -59,10 +59,10 @@ public class UsersController : ControllerBase
         return Ok(result);
     }
 
-    /// <summary>
-    /// Partial update of one staff account. Absent members keep their stored value, so a
-    /// caller can change a single field without resubmitting the whole profile.
-    /// </summary>
+ /// <summary>
+ /// Partial update of one staff account. Absent members keep their stored value, so a
+ /// caller can change a single field without resubmitting the whole profile.
+ /// </summary>
     [HttpPatch("{id}")]
     public async Task<ActionResult<UserListItemDto>> Update(
         string id,
@@ -80,7 +80,7 @@ public class UsersController : ControllerBase
         return Ok(result);
     }
 
-    /// <summary>Clears an Identity lockout after too many failed sign-in attempts.</summary>
+ /// <summary>Clears an Identity lockout after too many failed sign-in attempts.</summary>
     [HttpPost("{id}/unlock")]
     public async Task<IActionResult> Unlock(
         string id,
@@ -100,11 +100,11 @@ public class UsersController : ControllerBase
         return NoContent();
     }
 
-    /// <summary>
-    /// Issues a single-use activation ticket so the account holder can set their own
-    /// password. Kept off the create response so the secret is only minted when an
-    /// administrator explicitly asks for it.
-    /// </summary>
+ /// <summary>
+ /// Issues a single-use activation ticket so the account holder can set their own
+ /// password. Kept off the create response so the secret is only minted when an
+ /// administrator explicitly asks for it.
+ /// </summary>
     [HttpPost("{id}/activation-ticket")]
     public async Task<ActionResult<ActivationTicketDto>> IssueActivationTicket(
         [FromRoute] IssueActivationTicketRequest request,

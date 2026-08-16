@@ -147,9 +147,9 @@ public class FileAttachmentMetaDto
     public long SizeBytes { get; init; }
     public DateTime CreatedAtUtc { get; init; }
     public PhotoMetadataDto? PhotoMetadata { get; init; }
-    /// <summary>Attachment print dictionary type key; empty = library only.</summary>
+ /// <summary>Attachment print dictionary type key; empty = library only.</summary>
     public string DictionaryTypeKey { get; init; } = "";
-    /// <summary>When true with a type key, attachment is eligible for report §§22–25.</summary>
+ /// <summary>When true with a type key, attachment is eligible for report –25.</summary>
     public bool PrintInReport { get; init; }
 }
 
@@ -166,7 +166,7 @@ public class UploadAttachmentRequest
     [Required]
     public string ContentBase64 { get; init; } = "";
 
-    /// <summary>Optional EXIF extracted on-device before compression (هـ).</summary>
+ /// <summary>Optional EXIF extracted on-device before compression.</summary>
     public PhotoMetadataInput? PhotoMetadata { get; init; }
 }
 
@@ -175,7 +175,7 @@ public class PhotoMetadataInput
     public double? Latitude { get; init; }
     public double? Longitude { get; init; }
     public DateTime? CapturedAtUtc { get; init; }
-    /// <summary>Property GPS at capture time — used to stamp distance/flag (phase 2).</summary>
+ /// <summary>Property GPS at capture time — used to stamp distance/flag.</summary>
     public double? PropertyLatitude { get; init; }
     public double? PropertyLongitude { get; init; }
 }

@@ -2,7 +2,7 @@ using System.ComponentModel.DataAnnotations;
 
 namespace RealEstateEval.Application.Contracts;
 
-/// <summary>Decision 20 — grouped-property link member for display.</summary>
+/// <summary>grouped-property link member for display.</summary>
 public class PropertyGroupMemberDto
 {
     public Guid PropertyId { get; init; }
@@ -22,7 +22,7 @@ public class PropertyGroupDto
     public IReadOnlyList<PropertyGroupMemberDto> Members { get; init; } = [];
 }
 
-/// <summary>Decision 20 stage-1 — suggested candidate with its signals.</summary>
+/// <summary>stage-1 — suggested candidate with its signals.</summary>
 public class PropertyGroupSuggestionDto
 {
     public Guid PropertyId { get; init; }
@@ -33,7 +33,7 @@ public class PropertyGroupSuggestionDto
     public string? PlotNumber { get; init; }
     public IReadOnlyList<string> SignalCodes { get; init; } = [];
     public IReadOnlyList<string> SignalLabelsAr { get; init; } = [];
-    /// <summary>Already in a group — confirming joins that group.</summary>
+ /// <summary>Already in a group — confirming joins that group.</summary>
     public Guid? ExistingGroupId { get; init; }
 }
 
@@ -45,7 +45,7 @@ public class ConfirmPropertyGroupLinkRequest
 
 public class UnlinkPropertyGroupRequest
 {
-    /// <summary>قابل للفك بمبرر — required.</summary>
+ /// <summary>قابل للفك بمبرر — required.</summary>
     [Required, MaxLength(2000)]
     public string Reason { get; init; } = "";
 }

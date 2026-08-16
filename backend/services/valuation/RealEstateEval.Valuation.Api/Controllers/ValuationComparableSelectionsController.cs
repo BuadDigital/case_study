@@ -8,7 +8,7 @@ using RealEstateEval.Shared.Web.Authorization;
 namespace RealEstateEval.Valuation.Api.Controllers;
 
 /// <summary>
-/// Select / adopt bank comps + sequential market adjustments / weights (ت-3 / ت-6).
+/// Select / adopt bank comps + sequential market adjustments / weights.
 /// </summary>
 [ApiController]
 [Route("api/valuation-requests/{valuationRequestId:guid}/comparable-selections")]

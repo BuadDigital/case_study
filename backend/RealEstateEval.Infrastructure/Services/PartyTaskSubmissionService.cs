@@ -13,7 +13,7 @@ namespace RealEstateEval.Infrastructure.Services;
 
 public class PartyTaskSubmissionService : IPartyTaskSubmissionService
 {
-    /// <summary>Party kinds that submit work through this service — everything but the parent.</summary>
+ /// <summary>Party kinds that submit work through this service — everything but the parent.</summary>
     private static readonly HashSet<WorkflowTaskKind> AllowedKinds =
     [
         WorkflowTaskKind.EngineeringSurvey,
@@ -21,7 +21,7 @@ public class PartyTaskSubmissionService : IPartyTaskSubmissionService
         WorkflowTaskKind.FieldInspection,
     ];
 
-    /// <summary>Case-specialist / supervisor inbox copy for a party's submit action, by task kind.</summary>
+ /// <summary>Case-specialist / supervisor inbox copy for a party's submit action, by task kind.</summary>
     private static readonly Dictionary<WorkflowTaskKind, (string Title, string Body)> SubmitNotificationText = new()
     {
         [WorkflowTaskKind.EngineeringSurvey] =
@@ -269,8 +269,8 @@ public class PartyTaskSubmissionService : IPartyTaskSubmissionService
         if (entity.Kind == "field-inspection")
             await SyncFieldInspectionWorkspaceAsync(entity, cancellationToken);
 
-        // Submission status and workflow completion must commit together; otherwise the
-        // party looks submitted while the task is still open (or the reverse on rollback).
+ // Submission status and workflow completion must commit together; otherwise the
+ // party looks submitted while the task is still open (or the reverse on rollback).
         await DbContextTransaction.ExecuteInTransactionAsync(
             _db,
             async ct =>
@@ -348,8 +348,8 @@ public class PartyTaskSubmissionService : IPartyTaskSubmissionService
         entity.Status = PartyTaskSubmissionStatus.Reopened;
         entity.ReturnNote = returnNote;
         entity.SubmittedAtUtc = null;
-        // Returning for correction voids the acceptance so the specialist can
-        // accept the corrected outputs again.
+ // Returning for correction voids the acceptance so the specialist can
+ // accept the corrected outputs again.
         entity.AcceptedAtUtc = null;
         entity.AcceptedByUserId = null;
         entity.AcceptedByName = null;
@@ -366,8 +366,8 @@ public class PartyTaskSubmissionService : IPartyTaskSubmissionService
         if (task.Kind == WorkflowTaskKind.FieldInspection)
             await SyncFieldInspectionWorkspaceAsync(entity, cancellationToken);
 
-        // Reopen the submission and reopen the workflow task in one transaction so a
-        // mid-failure cannot leave a reopened submission still marked completed on the task.
+ // Reopen the submission and reopen the workflow task in one transaction so a
+ // mid-failure cannot leave a reopened submission still marked completed on the task.
         await DbContextTransaction.ExecuteInTransactionAsync(
             _db,
             async ct =>
@@ -454,7 +454,7 @@ public class PartyTaskSubmissionService : IPartyTaskSubmissionService
 
         if (task.Kind == WorkflowTaskKind.EngineeringSurvey)
         {
-            // Fee accrual and acceptance timestamp must succeed or fail together.
+ // Fee accrual and acceptance timestamp must succeed or fail together.
             var feeError = await DbContextTransaction.ExecuteInTransactionAsync(
                 _db,
                 async ct =>
@@ -481,7 +481,7 @@ public class PartyTaskSubmissionService : IPartyTaskSubmissionService
         }
         else if (!alreadyAccepted)
         {
-            // Field inspection / appraisal: package gate for إنفاذ (no fee accrual on accept).
+ // Field inspection / appraisal: package gate for إنفاذ (no fee accrual on accept).
             StampAcceptance(entity, actorUserId, actor.DisplayName);
             await _db.SaveChangesAsync(cancellationToken);
         }
@@ -591,12 +591,12 @@ public class PartyTaskSubmissionService : IPartyTaskSubmissionService
             cancellationToken);
     }
 
-    /// <summary>
-    /// Party submit (engineering office / inspector / evaluator) currently only notifies via a
-    /// same-tab frontend window event, which never reaches the assigned case specialist or the
-    /// section supervisor on their own sessions. Fan out server-side so both actually get an
-    /// inbox notification when a party sends work in for review.
-    /// </summary>
+ /// <summary>
+ /// Party submit (engineering office / inspector / evaluator) currently only notifies via a
+ /// same-tab frontend window event, which never reaches the assigned case specialist or the
+ /// section supervisor on their own sessions. Fan out server-side so both actually get an
+ /// inbox notification when a party sends work in for review.
+ /// </summary>
     private async Task NotifySpecialistAndSupervisorOnSubmitAsync(
         WorkflowTask task,
         CancellationToken cancellationToken)
@@ -741,8 +741,8 @@ public class PartyTaskSubmissionService : IPartyTaskSubmissionService
 
             case "field-inspection":
             {
-                // Informal map-URL access gate removed — tasks are not assigned without initial data.
-                // Key envelopes remain tracked (payload keyAvailable) but do not block submit.
+ // Informal map-URL access gate removed — tasks are not assigned without initial data.
+ // Key envelopes remain tracked (payload keyAvailable) but do not block submit.
                 var hasPhone = property is not null
                     && DocumentaryWorkflowRules.HasAnyPartyPhone(property.Contacts);
                 var phoneWasPresent = PartyTaskSubmissionPayloadRules.GetBool(root, "declarationPhoneSatisfied");
@@ -868,7 +868,7 @@ public class PartyTaskSubmissionService : IPartyTaskSubmissionService
         "field-inspection" => "إتمام المعاينة الميدانية",
         "engineering-survey" => "إتمام الرفع المساحي",
         "property-appraisal" => "إتمام التقييم العقاري",
-        // Legacy government-review submissions (product surface removed).
+ // Legacy government-review submissions (product surface removed).
         "government-review" => "إتمام المراجعة الحكومية",
         _ => "إتمام عمل الطرف",
     };

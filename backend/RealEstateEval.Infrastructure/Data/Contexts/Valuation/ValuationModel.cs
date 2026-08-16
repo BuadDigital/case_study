@@ -6,8 +6,7 @@ namespace RealEstateEval.Infrastructure.Data.Contexts;
 /// <summary>
 /// The <c>valuation</c> schema mapping and the display-id sequence. Applied by
 /// <see cref="ValuationDbContext"/>, which owns the write path, and by the legacy context,
-/// which still serves the Case Study dispatch pre-check until plan Phase 3 replaces it with
-/// a Valuation owner call.
+/// which still serves the Case Study dispatch pre-check until a Valuation owner call replaces it.
 /// </summary>
 internal static class ValuationModel
 {
@@ -29,8 +28,8 @@ internal static class ValuationModel
             e.HasIndex(x => x.DisplayId)
                 .IsUnique()
                 .HasDatabaseName(DatabaseIndexNames.ValuationRequestDisplayId);
-            // One open request per property is the dispatch rule; a partial unique index both
-            // enforces it against concurrent inserts and serves the "is one already open?" probe.
+ // One open request per property is the dispatch rule; a partial unique index both
+ // enforces it against concurrent inserts and serves the "is one already open?" probe.
             e.HasIndex(x => x.PropertyId)
                 .IsUnique()
                 .HasFilter($"\"Status\" <> '{ValuationRequestStatuses.Done}'")

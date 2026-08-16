@@ -128,9 +128,9 @@ public static class WorkOrderMapper
         };
     }
 
-    /// <summary>
-    /// Accepts legacy plain filename or JSON array string in the same column.
-    /// </summary>
+ /// <summary>
+ /// Accepts legacy plain filename or JSON array string in the same column.
+ /// </summary>
     public static List<string> ParseFileNameList(string? stored)
     {
         if (string.IsNullOrWhiteSpace(stored)) return [];

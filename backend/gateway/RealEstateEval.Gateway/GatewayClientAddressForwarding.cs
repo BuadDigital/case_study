@@ -5,11 +5,11 @@ namespace RealEstateEval.Gateway;
 
 public static class GatewayClientAddressForwarding
 {
-    /// <summary>
-    /// Overwrites the client-address header on every proxied request with the caller the gateway
-    /// resolved, so downstream services throttle per caller without counting proxy hops (and so a
-    /// caller-supplied value can never survive the gateway).
-    /// </summary>
+ /// <summary>
+ /// Overwrites the client-address header on every proxied request with the caller the gateway
+ /// resolved, so downstream services throttle per caller without counting proxy hops (and so a
+ /// caller-supplied value can never survive the gateway).
+ /// </summary>
     public static IReverseProxyBuilder AddRealEstateEvalClientAddressForwarding(
         this IReverseProxyBuilder builder) =>
         builder.AddTransforms(context => context.AddRequestTransform(transform =>

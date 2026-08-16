@@ -4,14 +4,14 @@
 
 namespace RealEstateEval.Infrastructure.Data.Migrations
 {
-    /// <inheritdoc />
+ /// <inheritdoc />
     public partial class AddLedgerNetAndPaidAmounts : Migration
     {
-        /// <inheritdoc />
+ /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
-            // Snapshot also reflects Platform/Identity columns mirrored on ApplicationDbContext;
-            // those streams own OrganizationSettings / LastLoginAtUtc — do not create them here.
+ // Snapshot also reflects Platform/Identity columns mirrored on ApplicationDbContext;
+ // those streams own OrganizationSettings / LastLoginAtUtc — do not create them here.
 
             migrationBuilder.AddColumn<decimal>(
                 name: "NetFeeSar",
@@ -45,7 +45,7 @@ namespace RealEstateEval.Infrastructure.Data.Migrations
                 """);
         }
 
-        /// <inheritdoc />
+ /// <inheritdoc />
         protected override void Down(MigrationBuilder migrationBuilder)
         {
             migrationBuilder.DropColumn(

@@ -60,7 +60,7 @@ public sealed class InspectorFeeTransitionApplier : IInspectorFeeTransitionAppli
             return "هذا البند يتبع قسماً آخر — الإجراء متاح لمشرف قسم المعاملة فقط.";
         }
 
-        // ج٩ / ق٦: DisbursementBatch creation is retired for every task kind.
+ //DisbursementBatch creation is retired for every task kind.
         if (action == InspectorFeeActions.CreateDisbursementRequest)
         {
             return "إنشاء طلب صرف متوقف — البنود الجاهزة تُفوتر عبر كشف الأطراف.";

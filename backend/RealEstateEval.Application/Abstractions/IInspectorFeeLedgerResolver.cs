@@ -14,7 +14,7 @@ public interface IInspectorFeeLedgerResolver
         WorkflowTask task,
         CancellationToken cancellationToken = default);
 
-    /// <summary>ج٨ identity: one line per (transaction, deed, user).</summary>
+ /// <summary>one line per (transaction, deed, user).</summary>
     Task<(Guid TransactionId, Guid DeedId, string UserId)> ResolveLedgerIdentityAsync(
         WorkflowTask task,
         CancellationToken cancellationToken = default,

@@ -8,15 +8,15 @@ using RealEstateEval.Infrastructure.Data.Contexts;
 //
 // Applies the frozen legacy stream first, then each bounded-context stream in
 // BoundedContextMigrations.ApplyOrder. Every stream records itself in its own
-// migrations-history table, so they cannot claim each other's migrations (ADR 0003/0006).
+// migrations-history table, so they cannot claim each other's migrations (bounded-context split).
 //
 // Usage:
-//   RealEstateEval.DbMigrate                          apply all pending migrations, all streams
-//   RealEstateEval.DbMigrate update                   same as above
-//   RealEstateEval.DbMigrate list                     show applied and pending, all streams
-//   RealEstateEval.DbMigrate rollback <name>          migrate the legacy stream down to a migration
-//   RealEstateEval.DbMigrate rollback <name> <stream> roll back one context stream
-//   RealEstateEval.DbMigrate rollback 0               remove all migrations (empty DB schema target)
+// RealEstateEval.DbMigrate apply all pending migrations, all streams
+// RealEstateEval.DbMigrate update same as above
+// RealEstateEval.DbMigrate list show applied and pending, all streams
+// RealEstateEval.DbMigrate rollback <name> migrate the legacy stream down to a migration
+// RealEstateEval.DbMigrate rollback <name> <stream> roll back one context stream
+// RealEstateEval.DbMigrate rollback 0 remove all migrations (empty DB schema target)
 
 var connectionString =
     Environment.GetEnvironmentVariable("REAL_ESTATE_EVAL_PG_CONNECTION_STRING")

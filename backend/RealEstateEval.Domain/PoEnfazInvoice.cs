@@ -9,14 +9,14 @@ public class PoEnfazInvoice
     public string InvoiceNumber { get; set; } = "";
     public DateTime IssuedAtUtc { get; set; }
 
-    /// <summary>issued | partially_collected | collected</summary>
+ /// <summary>issued | partially_collected | collected</summary>
     public string Status { get; set; } = PoEnfazInvoiceStatus.Issued;
     public decimal SubtotalSar { get; set; }
     public decimal VatSar { get; set; }
     public decimal TotalSar { get; set; }
     public decimal CollectedAmountSar { get; set; }
     public DateTime? CollectedAtUtc { get; set; }
-    /// <summary>Optional attachment ids (JSON array of Guid strings).</summary>
+ /// <summary>Optional attachment ids (JSON array of Guid strings).</summary>
     public string? AttachmentIdsJson { get; set; }
 }
 

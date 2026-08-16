@@ -94,9 +94,9 @@ public class WorkOrdersController : ControllerBase
         return Ok(hit);
     }
 
-    /// <summary>
-    /// All prior registrations for a deed (newest first), not only the latest.
-    /// </summary>
+ /// <summary>
+ /// All prior registrations for a deed (newest first), not only the latest.
+ /// </summary>
     [HttpGet("deeds/prior/history")]
     [Authorize(Policy = CapabilityPolicyNames.ManageWorkOrders)]
     public async Task<ActionResult<IReadOnlyList<PriorDeedRegistrationDto>>> ListPriorDeedHistory(
@@ -280,10 +280,10 @@ public class WorkOrdersController : ControllerBase
         return Ok(result);
     }
 
-    /// <summary>
-    /// Narrow write for location map URL — specialist / inspector / supervisor / CDO.
-    /// Does not require manage-work-orders (inspectors only have submit-party-work).
-    /// </summary>
+ /// <summary>
+ /// Narrow write for location map URL — specialist / inspector / supervisor / CDO.
+ /// Does not require manage-work-orders (inspectors only have submit-party-work).
+ /// </summary>
     [HttpPut("{poNumber}/properties/{propertyId:guid}/location-map-url")]
     public async Task<ActionResult<WorkOrderPropertyDto>> UpdateLocationMapUrl(
         string poNumber,

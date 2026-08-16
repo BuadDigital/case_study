@@ -345,7 +345,7 @@ export function propertyToBourseRequest(
   };
 }
 
-/** §4ج-7 — parse the flat-draft owners JSON into API rows (invalid JSON → undefined). */
+/** parse the flat-draft owners JSON into API rows (invalid JSON → undefined). */
 export function parseOwnersDraft(
   ownersJson: string,
 ): { name: string; sharePct?: number | null }[] | undefined {

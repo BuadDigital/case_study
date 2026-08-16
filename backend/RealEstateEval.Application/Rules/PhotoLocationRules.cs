@@ -1,7 +1,7 @@
 namespace RealEstateEval.Application.Rules;
 
 /// <summary>
-/// Photo vs property location flags (security_offline_spec §5.4). Never blocks upload.
+/// Photo vs property location flags. Never blocks upload.
 /// </summary>
 public static class PhotoLocationRules
 {

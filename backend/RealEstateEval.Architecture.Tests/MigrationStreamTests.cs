@@ -6,7 +6,7 @@ using RealEstateEval.Infrastructure.Data.Contexts;
 namespace RealEstateEval.Architecture.Tests;
 
 /// <summary>
-/// ADR 0003 and ADR 0006 guardrails for the migration architecture. Every stream belongs to
+/// bounded-context split guardrails for the migration architecture. Every stream belongs to
 /// exactly one context, the legacy stream is frozen at the catalogued cutover, and only the
 /// deploy-time migrator (or the development-only Case Study startup path) applies any of them.
 /// </summary>
@@ -39,7 +39,7 @@ public class MigrationStreamTests
         Assert.Equal(catalogued, directories);
     }
 
-    /// <summary>One snapshot per stream, and it belongs to that stream's context.</summary>
+ /// <summary>One snapshot per stream, and it belongs to that stream's context.</summary>
     [Fact]
     public void EveryStreamHasExactlyOneSnapshotForItsOwnContext()
     {
@@ -87,15 +87,15 @@ public class MigrationStreamTests
         Assert.True(
             offenders.Count == 0,
             "Migrations sit in another context's stream: " + string.Join(", ", offenders)
-            + ". Each context owns its migrations assembly and history table (ADR 0003).");
+ + ". Each context owns its migrations assembly and history table.");
     }
 
-    /// <summary>
-    /// Plan Phase 1, work item 5, as the catalog states it: the legacy stream is frozen for the
-    /// schemas that have been extracted. A schema still on the legacy context may keep changing
-    /// there — that is where its write path lives — but a legacy migration that reshaped an
-    /// extracted schema would leave the two streams disagreeing about who shaped it last.
-    /// </summary>
+ /// <summary>
+ /// Plan, as the catalog states it: the legacy stream is frozen for the
+ /// schemas that have been extracted. A schema still on the legacy context may keep changing
+ /// there — that is where its write path lives — but a legacy migration that reshaped an
+ /// extracted schema would leave the two streams disagreeing about who shaped it last.
+ /// </summary>
     [Fact]
     public void LegacyMigrationsAfterTheCutoverLeaveExtractedSchemasAlone()
     {
@@ -128,7 +128,7 @@ public class MigrationStreamTests
             failures.Count == 0,
             "Legacy migrations added after the cutover reshape an extracted context's schema: "
             + string.Join(", ", failures.Distinct(StringComparer.Ordinal))
-            + ". That schema is shaped by its owner's stream now (ADR 0003).");
+ + ". That schema is shaped by its owner's stream now.");
     }
 
     [Fact]
@@ -160,10 +160,10 @@ public class MigrationStreamTests
             + string.Join(", ", unknown));
     }
 
-    /// <summary>
-    /// Plan Phase 1 exit criterion: no new migration touches another context's schema. An
-    /// extracted context may only shape the schemas the catalog assigns to it.
-    /// </summary>
+ /// <summary>
+ /// Plan exit criterion. An
+ /// extracted context may only shape the schemas the catalog assigns to it.
+ /// </summary>
     [Fact]
     public void ContextStreamsOnlyTouchTheirOwnSchemas()
     {
@@ -219,13 +219,13 @@ public class MigrationStreamTests
             offenders.Count == 0,
             "Hosts other than the Case Study development path call MigrateAsync: "
             + string.Join(", ", offenders)
-            + ". ADR 0006 makes schema change a deploy-time job (backend/tools/DbMigrate).");
+ + ". migration-stream rules makes schema change a deploy-time job (backend/tools/DbMigrate).");
     }
 
-    /// <summary>
-    /// The deploy migrator must apply every catalogued stream; a stream it does not know about
-    /// silently never runs in production.
-    /// </summary>
+ /// <summary>
+ /// The deploy migrator must apply every catalogued stream; a stream it does not know about
+ /// silently never runs in production.
+ /// </summary>
     [Fact]
     public void DeployMigratorAppliesTheLegacyStreamThenEveryContextStream()
     {

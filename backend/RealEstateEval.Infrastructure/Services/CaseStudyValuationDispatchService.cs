@@ -99,8 +99,8 @@ public sealed class CaseStudyValuationDispatchService : ICaseStudyValuationDispa
 
         if (created is null)
         {
-            // A concurrent dispatch won the unique index; the request it created is the one
-            // that counts, so this pass behaves exactly like the pre-check above.
+ // A concurrent dispatch won the unique index; the request it created is the one
+ // that counts, so this pass behaves exactly like the pre-check above.
             _logger.LogInformation(
                 "CaseStudyValuationDispatch: skipped for property {PropertyId} ({Error})",
                 propertyId,

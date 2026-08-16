@@ -4,7 +4,7 @@ using RealEstateEval.Domain;
 namespace RealEstateEval.Infrastructure.Data.Contexts;
 
 /// <summary>
-/// Write context for the Operations bounded context (plan Phase 1, extraction order step 3):
+/// Write context for the Operations bounded context :
 /// key envelopes, survey offices, property-key records, court access, and operations tasks
 /// (tasks still physically in <c>case_study</c> per D2).
 /// <para>

@@ -11,8 +11,8 @@ public interface IInspectorFeeLedgerWriter
         IEnumerable<WorkflowTask> tasks,
         CancellationToken cancellationToken = default);
 
-    /// <summary>
-    /// Backfill draft ledgers for tasks whose case-study is complete (engineering survey excluded).
-    /// </summary>
+ /// <summary>
+ /// Backfill draft ledgers for tasks whose case-study is complete (engineering survey excluded).
+ /// </summary>
     Task BackfillMissingLedgersAsync(CancellationToken cancellationToken = default);
 }

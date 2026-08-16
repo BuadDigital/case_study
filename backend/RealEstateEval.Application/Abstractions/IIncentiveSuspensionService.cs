@@ -20,9 +20,9 @@ public interface IIncentiveSuspensionService
         string actorUserId,
         CancellationToken cancellationToken = default);
 
-    /// <summary>
-    /// Active withhold for this assignee on this PO, if any. Used at accrual to stamp ج٣ suspended.
-    /// </summary>
+ /// <summary>
+ /// Active withhold for this assignee on this PO, if any. Used at accrual to stamp suspended.
+ /// </summary>
     Task<IncentiveSuspensionDto?> FindActiveAsync(
         string assigneeId,
         string transactionKey,

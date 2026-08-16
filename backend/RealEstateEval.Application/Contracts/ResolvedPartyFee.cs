@@ -7,7 +7,7 @@ namespace RealEstateEval.Application.Contracts;
 /// </summary>
 public readonly record struct ResolvedPartyFee(decimal? FeeSar, Guid? PricingTableId)
 {
-    /// <summary>No rate was configured, or the party is not priced from a table at all.</summary>
+ /// <summary>No rate was configured, or the party is not priced from a table at all.</summary>
     public static readonly ResolvedPartyFee Unresolved = new(null, null);
 
     public bool IsResolved => FeeSar is > 0m;

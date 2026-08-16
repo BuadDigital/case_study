@@ -1,7 +1,7 @@
 namespace RealEstateEval.Domain;
 
 /// <summary>
-/// Lite cost / inventory line for Mikyas Word-merge cells (no Application DTO dependency).
+/// Lite cost / inventory line for Word-merge template cells (no Application DTO dependency).
 /// </summary>
 public readonly record struct ValuationReportFieldCostLineLite(
     string StructureKind,
@@ -12,7 +12,7 @@ public readonly record struct ValuationReportFieldCostLineLite(
     string ItemKey = "");
 
 /// <summary>
-/// Maps priced cost-approach (or inventory area) lines into Mikyas cost_line.* / inventory.* keys.
+/// Maps priced cost-approach (or inventory area) lines into Word-merge cost_line.* / inventory.* keys.
 /// Label heuristics disambiguate floor/annex slots; StructureKind is the primary gate.
 /// </summary>
 public static class ValuationReportFieldCostLineFlattenRules
@@ -39,8 +39,8 @@ public static class ValuationReportFieldCostLineFlattenRules
     {
         if (!hasStructuresToValue || lines.Count == 0) return;
 
-        // Aggregate per bucket — several repeated floors (or fences, pools…) must sum,
-        // not overwrite each other, so 7180/7190/7200 carry the whole group.
+ // Aggregate per bucket — several repeated floors (or fences, pools…) must sum,
+ // not overwrite each other, so 7180/7190/7200 carry the whole group.
         var used = new HashSet<Bucket>();
         var totals = new Dictionary<Bucket, (decimal Area, decimal Total)>();
 
@@ -64,7 +64,7 @@ public static class ValuationReportFieldCostLineFlattenRules
             bag["inventory.7270"] = FormatQty(annexAreaSum);
     }
 
-    /// <summary>ث-2 item keys route deterministically — label heuristics are the fallback only.</summary>
+ /// <summary>item keys route deterministically — label heuristics are the fallback only.</summary>
     private static Bucket? ResolveBucketByItemKey(string? itemKey) =>
         (itemKey ?? "").Trim().ToLowerInvariant() switch
         {
@@ -153,7 +153,7 @@ public static class ValuationReportFieldCostLineFlattenRules
         if (total > 0m)
             bag[totalKey] = ValuationReportDisplayRules.FormatMoney(total);
 
-        // Catalog maps code 6589 to cost_line.6589 — must match or the code never fills.
+ // Catalog maps code 6589 to cost_line.6589 — must match or the code never fills.
         if (bucket == Bucket.Basement && total > 0m)
             bag["cost_line.6589"] = ValuationReportDisplayRules.FormatMoney(total);
     }

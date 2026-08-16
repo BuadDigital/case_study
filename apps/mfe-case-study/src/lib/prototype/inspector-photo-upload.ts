@@ -18,7 +18,7 @@ import {
 import { parseCoord } from "@platform/app-shared/media/photo-location";
 
 const SCOPE = "field-inspection-photo";
-/** Pre-process ceiling; after هـ compress the upload is ≤ 1 MB. */
+/** Pre-process ceiling; after compress the upload is ≤ 1 MB. */
 const MAX_IMAGE_BYTES = 20 * 1024 * 1024;
 
 const previewCache = new Map<string, string>();

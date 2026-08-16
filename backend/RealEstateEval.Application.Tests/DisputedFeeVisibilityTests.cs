@@ -32,14 +32,14 @@ public class DisputedFeeVisibilityTests
         Assert.Single(summary.Rows);
         Assert.Equal(ReadyTaskId.ToString(), summary.Rows[0].WorkflowTaskId);
 
-        // The disputed 900 must not reach finance through the totals either.
+ // The disputed 900 must not reach finance through the totals either.
         Assert.Equal(450m, summary.AtFinanceSar);
     }
 
-    /// <summary>
-    /// Operations resolves the dispute, so the same query must still return it for them. Hiding it
-    /// from everyone would strand the line with nobody able to act on it.
-    /// </summary>
+ /// <summary>
+ /// Operations resolves the dispute, so the same query must still return it for them. Hiding it
+ /// from everyone would strand the line with nobody able to act on it.
+ /// </summary>
     [Fact]
     public async Task Operations_still_sees_the_disputed_row()
     {
@@ -58,10 +58,10 @@ public class DisputedFeeVisibilityTests
             r => r.BillingStatus == InspectorFeeBillingStatus.Disputed);
     }
 
-    /// <summary>
-    /// Filtering explicitly for disputed while hidden must return nothing rather than override the
-    /// exclusion — otherwise the rule is one query parameter away from being bypassed.
-    /// </summary>
+ /// <summary>
+ /// Filtering explicitly for disputed while hidden must return nothing rather than override the
+ /// exclusion — otherwise the rule is one query parameter away from being bypassed.
+ /// </summary>
     [Fact]
     public async Task Asking_for_disputed_explicitly_does_not_bypass_the_exclusion()
     {
@@ -90,10 +90,10 @@ public class DisputedFeeVisibilityTests
         await db.SaveChangesAsync();
     }
 
-    /// <summary>
-    /// Engineering-survey ledgers become visible on accrual alone, which keeps the fixture free of
-    /// the completed-case-study gate that other party fees sit behind.
-    /// </summary>
+ /// <summary>
+ /// Engineering-survey ledgers become visible on accrual alone, which keeps the fixture free of
+ /// the completed-case-study gate that other party fees sit behind.
+ /// </summary>
     private static WorkflowTask SurveyTask(Guid id, string poNumber) =>
         WorkflowTask.Create(
             WorkflowTaskKind.EngineeringSurvey,

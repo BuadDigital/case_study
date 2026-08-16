@@ -40,7 +40,7 @@ public sealed class RateLimitingOptions
         "/api/auth/activate",
     ];
 
-    /// <summary>Container healthchecks and post-deploy smoke checks poll these.</summary>
+ /// <summary>Container healthchecks and post-deploy smoke checks poll these.</summary>
     private static readonly string[] DefaultExemptPathPrefixes = ["/health", "/ready"];
 
     public bool Enabled { get; init; } = true;
@@ -53,17 +53,17 @@ public sealed class RateLimitingOptions
 
     public IReadOnlyList<string> ExemptPathPrefixes { get; init; } = DefaultExemptPathPrefixes;
 
-    /// <summary>
-    /// Single-value header carrying the caller's address as resolved by the ingress proxy.
-    /// nginx sets it, and the gateway overwrites it for downstream services, so a service
-    /// never has to guess how many proxy hops are in front of it.
-    /// </summary>
+ /// <summary>
+ /// Single-value header carrying the caller's address as resolved by the ingress proxy.
+ /// nginx sets it, and the gateway overwrites it for downstream services, so a service
+ /// never has to guess how many proxy hops are in front of it.
+ /// </summary>
     public string ClientAddressHeaderName { get; init; } =
         ClientAddressResolver.DefaultClientAddressHeaderName;
 
-    /// <summary>
-    /// Fallback for callers that arrive without <see cref="ClientAddressHeaderName"/>.
-    /// </summary>
+ /// <summary>
+ /// Fallback for callers that arrive without <see cref="ClientAddressHeaderName"/>.
+ /// </summary>
     public bool TrustForwardedForHeader { get; init; } = true;
 
     public string ForwardedForHeaderName { get; init; } = "X-Forwarded-For";
@@ -78,9 +78,9 @@ public sealed class RateLimitingOptions
         var options = new RateLimitingOptions
         {
             Enabled = section.GetValue("Enabled", true),
-            // Development shares one loopback partition for the whole machine: the Next.js
-            // dev proxy and the Playwright suite all reach the gateway from 127.0.0.1, so the
-            // budgets there are wide enough to stay out of the way.
+ // Development shares one loopback partition for the whole machine: the Next.js
+ // dev proxy and the Playwright suite all reach the gateway from 127.0.0.1, so the
+ // budgets there are wide enough to stay out of the way.
             Global = ReadWindow(
                 section.GetSection("Global"),
                 defaultPermitLimit: isDevelopment ? 10_000 : 600),
@@ -188,12 +188,12 @@ public static class RateLimitingExtensions
         PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
     };
 
-    /// <summary>
-    /// Registers a single global partitioned limiter: exempt paths pass through, authentication
-    /// paths draw on the strict per-client budget, everything else on the default budget.
-    /// Partitioning centrally (instead of per-endpoint attributes) keeps every service throttled
-    /// by the shared pipeline without touching controllers.
-    /// </summary>
+ /// <summary>
+ /// Registers a single global partitioned limiter: exempt paths pass through, authentication
+ /// paths draw on the strict per-client budget, everything else on the default budget.
+ /// Partitioning centrally (instead of per-endpoint attributes) keeps every service throttled
+ /// by the shared pipeline without touching controllers.
+ /// </summary>
     public static IServiceCollection AddRealEstateEvalRateLimiting(
         this IServiceCollection services,
         IConfiguration configuration,
@@ -201,7 +201,7 @@ public static class RateLimitingExtensions
     {
         var options = RateLimitingOptions.FromConfiguration(configuration, environment);
 
-        // Registered even when disabled so the pipeline can tell "off" from "not configured".
+ // Registered even when disabled so the pipeline can tell "off" from "not configured".
         services.AddSingleton(options);
 
         if (!options.Enabled)
@@ -222,7 +222,7 @@ public static class RateLimitingExtensions
         return services;
     }
 
-    /// <summary>No-op when rate limiting is disabled or was never registered.</summary>
+ /// <summary>No-op when rate limiting is disabled or was never registered.</summary>
     public static WebApplication UseRealEstateEvalRateLimiter(this WebApplication app)
     {
         if (app.Services.GetService<RateLimitingOptions>() is { Enabled: true })
@@ -244,7 +244,7 @@ public static class RateLimitingExtensions
 
         var clientKey = ClientAddressResolver.Resolve(context, options) ?? "unknown";
 
-        // CORS preflight is not a credential attempt; keep it off the strict budget.
+ // CORS preflight is not a credential attempt; keep it off the strict budget.
         if (!HttpMethods.IsOptions(context.Request.Method) && MatchesPrefix(path, authPrefixes))
             return FixedWindow($"auth|{clientKey}", options.Auth);
 

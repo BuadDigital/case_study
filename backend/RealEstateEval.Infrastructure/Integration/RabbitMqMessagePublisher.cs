@@ -21,14 +21,14 @@ public sealed class RabbitMqMessagePublisher : IDisposable
         _logger = logger;
     }
 
-    /// <summary>
-    /// Publishes one message to the topic exchange.
-    /// </summary>
-    /// <returns>
-    /// True only when the broker accepted the message. A disabled or unreachable broker
-    /// returns false so callers keep the message queued instead of treating the skip as a
-    /// delivery.
-    /// </returns>
+ /// <summary>
+ /// Publishes one message to the topic exchange.
+ /// </summary>
+ /// <returns>
+ /// True only when the broker accepted the message. A disabled or unreachable broker
+ /// returns false so callers keep the message queued instead of treating the skip as a
+ /// delivery.
+ /// </returns>
     public async Task<bool> PublishAsync(
         string routingKey,
         string payloadJson,

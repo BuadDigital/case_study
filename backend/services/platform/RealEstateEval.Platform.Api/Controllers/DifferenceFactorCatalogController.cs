@@ -7,7 +7,7 @@ using RealEstateEval.Shared.Web.Authorization;
 
 namespace RealEstateEval.Platform.Api.Controllers;
 
-/// <summary>Decision 19.2 — factor definitions as admin reference data with a version log.</summary>
+/// <summary>factor definitions as admin reference data with a version log.</summary>
 [ApiController]
 [Route("api/difference-factor-catalog")]
 [Authorize]

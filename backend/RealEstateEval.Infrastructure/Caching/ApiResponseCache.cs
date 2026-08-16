@@ -20,11 +20,11 @@ public sealed class ApiResponseCache
         PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
     };
 
-    /// <summary>
-    /// In-flight rebuilds, so a cold or expired key costs one query per process instead of
-    /// one per concurrent request. Keyed by cache key and result type because the same key
-    /// must never hand back a task producing a different shape.
-    /// </summary>
+ /// <summary>
+ /// In-flight rebuilds, so a cold or expired key costs one query per process instead of
+ /// one per concurrent request. Keyed by cache key and result type because the same key
+ /// must never hand back a task producing a different shape.
+ /// </summary>
     private readonly ConcurrentDictionary<(string Key, Type Type), Lazy<Task<object?>>> _inFlight =
         new();
 
@@ -72,11 +72,11 @@ public sealed class ApiResponseCache
         return await LoadOnceAsync(fullKey, ttl, factory, cancellationToken);
     }
 
-    /// <summary>
-    /// Collapses concurrent misses on one key into a single rebuild. Callers that arrive
-    /// while a rebuild is running wait for it; the alternative is every request that hits an
-    /// expired key running the same expensive aggregate against PostgreSQL at once.
-    /// </summary>
+ /// <summary>
+ /// Collapses concurrent misses on one key into a single rebuild. Callers that arrive
+ /// while a rebuild is running wait for it; the alternative is every request that hits an
+ /// expired key running the same expensive aggregate against PostgreSQL at once.
+ /// </summary>
     private async Task<T> LoadOnceAsync<T>(
         string fullKey,
         TimeSpan ttl,
@@ -97,8 +97,8 @@ public sealed class ApiResponseCache
             }
             catch (Exception ex) when (!cancellationToken.IsCancellationRequested)
             {
-                // The request that owned the rebuild was aborted or failed; its scoped
-                // DbContext is gone, so load on our own instead of failing with it.
+ // The request that owned the rebuild was aborted or failed; its scoped
+ // DbContext is gone, so load on our own instead of failing with it.
                 _logger.LogWarning(
                     ex,
                     "Shared rebuild for {Key} did not complete; loading from source",

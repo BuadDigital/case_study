@@ -10,7 +10,7 @@ namespace RealEstateEval.Infrastructure.Services;
 
 public class JwtTokenService : IJwtTokenService
 {
-    /// <summary>Access tokens stay short because capabilities are baked into them.</summary>
+ /// <summary>Access tokens stay short because capabilities are baked into them.</summary>
     public const int DefaultAccessTokenMinutes = 15;
     private const int MaxAccessTokenMinutes = 480;
 

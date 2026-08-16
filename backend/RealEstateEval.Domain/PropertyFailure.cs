@@ -6,31 +6,31 @@ namespace RealEstateEval.Domain;
 /// </summary>
 public class PropertyFailure
 {
-    /// <summary>For EF materialization and factories.</summary>
+ /// <summary>For EF materialization and factories.</summary>
     private PropertyFailure()
     {
     }
 
     public Guid Id { get; private set; }
     public string PoNumber { get; private set; } = "";
-    /// <summary>Frontend property key — usually work-order property Guid string.</summary>
+ /// <summary>Frontend property key — usually work-order property Guid string.</summary>
     public string PropertyId { get; private set; } = "";
     public string DeedNumber { get; private set; } = "";
     public string Title { get; private set; } = "";
     public string ProblemTypeId { get; private set; } = "";
-    /// <summary>suspected | internal</summary>
+ /// <summary>suspected | internal</summary>
     public string Severity { get; private set; } = "internal";
     public string RaisedByRole { get; private set; } = "";
     public string InternalNote { get; private set; } = "";
     public string FinalNote { get; private set; } = "";
     public string ResolutionReason { get; private set; } = "";
     public string ContinueInstructions { get; private set; } = "";
-    /// <summary>internal | review | approved | returned | resolved | suspended</summary>
+ /// <summary>internal | review | approved | returned | resolved | suspended</summary>
     public string Status { get; private set; } = PropertyFailureStatus.Internal;
     public string Specialist { get; private set; } = "";
-    /// <summary>When the failure was suspended. Null until suspend (or for rows predating this column).</summary>
+ /// <summary>When the failure was suspended. Null until suspend (or for rows predating this column).</summary>
     public DateTime? SuspendedAtUtc { get; private set; }
-    /// <summary>User id of who suspended. Null for historical rows that predate capture.</summary>
+ /// <summary>User id of who suspended. Null for historical rows that predate capture.</summary>
     public string? SuspendedByUserId { get; private set; }
     public DateTime CreatedAtUtc { get; private set; }
     public DateTime UpdatedAtUtc { get; private set; }
@@ -128,7 +128,7 @@ public class PropertyFailure
         return true;
     }
 
-    /// <summary>Park an open non-terminal failure as suspended (system hold paths).</summary>
+ /// <summary>Park an open non-terminal failure as suspended (system hold paths).</summary>
     public bool TryForceSuspend(string finalNote, DateTime nowUtc)
     {
         if (Status is PropertyFailureStatus.Resolved or PropertyFailureStatus.Approved
@@ -141,7 +141,7 @@ public class PropertyFailure
         return true;
     }
 
-    /// <summary>System-driven field refresh while a hold remains open (eviction retarget).</summary>
+ /// <summary>System-driven field refresh while a hold remains open (eviction retarget).</summary>
     public void RefreshOpenHold(
         string problemTypeId,
         string title,
@@ -154,10 +154,10 @@ public class PropertyFailure
         UpdatedAtUtc = nowUtc;
     }
 
-    /// <summary>
-    /// Resolve any open failure regardless of active-list rules (system holds).
-    /// Approved / already resolved rows stay final.
-    /// </summary>
+ /// <summary>
+ /// Resolve any open failure regardless of active-list rules (system holds).
+ /// Approved / already resolved rows stay final.
+ /// </summary>
     public bool TrySystemResolve(
         string resolutionReason,
         string continueInstructions,
@@ -175,10 +175,10 @@ public class PropertyFailure
         return true;
     }
 
-    /// <summary>
-    /// Test and historical seed path. Production writes go through <see cref="Create"/> and
-    /// transition methods so the status machine stays centralized.
-    /// </summary>
+ /// <summary>
+ /// Test and historical seed path. Production writes go through <see cref="Create"/> and
+ /// transition methods so the status machine stays centralized.
+ /// </summary>
     public static PropertyFailure Reconstitute(
         Guid id,
         string poNumber,

@@ -4,7 +4,7 @@ using RealEstateEval.Domain;
 namespace RealEstateEval.Infrastructure.Data.Contexts;
 
 /// <summary>
-/// Write context for the Financial bounded context (plan Phase 1, extraction order step 4).
+/// Write context for the Financial bounded context.
 /// Maps the <c>financial</c> schema plus D1 inspector-fee tables still physically in
 /// <c>case_study</c>.
 /// </summary>
@@ -51,10 +51,10 @@ public sealed class FinancialDbContext(DbContextOptions<FinancialDbContext> opti
         return base.SaveChangesAsync(acceptAllChangesOnSuccess, cancellationToken);
     }
 
-    /// <summary>
-    /// Fills ج٨ identity columns when callers still construct ledgers with only WorkflowTaskId /
-    /// PropertyId / AssigneeId (tests and transitional paths). Also stamps NetFeeSar / PaidAmountSar.
-    /// </summary>
+ /// <summary>
+ /// Fills identity columns when callers still construct ledgers with only WorkflowTaskId /
+ /// PropertyId / AssigneeId (tests and transitional paths). Also stamps NetFeeSar / PaidAmountSar.
+ /// </summary>
     private void StampInspectorFeeLedgerIdentity()
     {
         foreach (var entry in ChangeTracker.Entries<InspectorFeeLedger>())

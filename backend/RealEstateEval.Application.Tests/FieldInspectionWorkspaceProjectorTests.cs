@@ -86,9 +86,9 @@ public class FieldInspectionWorkspaceProjectorTests
         Assert.Equal(39.186500m, workspace.MapLongitude);
         Assert.True(workspace.InspectionConfirmed);
         Assert.Equal(PartyTaskSubmissionStatus.Submitted, workspace.Status);
-        // 2 services + 1 amenity
+ // 2 services + 1 amenity
         Assert.Equal(3, workspace.RequiredPhotoSlots);
-        // electricity approved + amenity none = 2 complete; water pending not complete
+ // electricity approved + amenity none = 2 complete; water pending not complete
         Assert.Equal(2, workspace.CompletedPhotoSlots);
         Assert.Equal(1, workspace.PendingPhotoApprovals);
         Assert.Equal(1, workspace.ObservationCount);

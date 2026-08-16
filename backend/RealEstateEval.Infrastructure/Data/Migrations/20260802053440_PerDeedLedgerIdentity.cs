@@ -5,10 +5,10 @@ using Microsoft.EntityFrameworkCore.Migrations;
 
 namespace RealEstateEval.Infrastructure.Data.Migrations
 {
-    /// <inheritdoc />
+ /// <inheritdoc />
     public partial class PerDeedLedgerIdentity : Migration
     {
-        /// <inheritdoc />
+ /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
             migrationBuilder.DropPrimaryKey(
@@ -45,7 +45,7 @@ namespace RealEstateEval.Infrastructure.Data.Migrations
                 maxLength: 128,
                 nullable: true);
 
-            // Backfill ج٨ identity before enforcing NOT NULL / unique.
+ // Backfill identity before enforcing NOT NULL / unique.
             migrationBuilder.Sql("""
                 UPDATE case_study."InspectorFeeLedgers" AS l
                 SET
@@ -124,7 +124,7 @@ namespace RealEstateEval.Infrastructure.Data.Migrations
                 unique: true);
         }
 
-        /// <inheritdoc />
+ /// <inheritdoc />
         protected override void Down(MigrationBuilder migrationBuilder)
         {
             migrationBuilder.DropPrimaryKey(

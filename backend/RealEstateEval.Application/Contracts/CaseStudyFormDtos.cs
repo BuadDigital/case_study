@@ -11,7 +11,7 @@ public class CaseStudyFormDto
     public string RequestDate { get; set; } = "";
     public string DeedNumber { get; set; } = "";
     public Dictionary<string, object?> Answers { get; set; } = new();
-    /// <summary>Per-answer / remark provenance (server-authored; client may ignore on write).</summary>
+ /// <summary>Per-answer / remark provenance (server-authored; client may ignore on write).</summary>
     public Dictionary<string, AnswerProvenanceEntryDto>? AnswerProvenance { get; set; }
     public string DeedRemarks { get; set; } = "";
     public string SurveyRemarks { get; set; } = "";
@@ -29,7 +29,7 @@ public class CaseStudyFormDto
     public string InfathLinkedAssetsNotes { get; set; } = "";
     public string InfathOtherNotes { get; set; } = "";
     public string InfathClosingNotes { get; set; } = "";
-    /// <summary>matched | differences | impediment | "" — calc/issuance gate for traditional deeds.</summary>
+ /// <summary>matched | differences | impediment | "" — calc/issuance gate for traditional deeds.</summary>
     public string DeedNatureMatchOutcome { get; set; } = "";
     public string DeedNatureMatchNotes { get; set; } = "";
     public string? SavedAtUtc { get; set; }

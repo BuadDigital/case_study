@@ -404,7 +404,7 @@ public class OperationsTaskServiceTests
     [Fact]
     public void ReminderCalculator_high_advances_within_workday_riyadh()
     {
-        // 07:15 UTC = 10:15 Asia/Riyadh (UTC+3) Monday → next work hour 11:00 Riyadh = 08:00 UTC
+ // 07:15 UTC = 10:15 Asia/Riyadh (UTC+3) Monday → next work hour 11:00 Riyadh = 08:00 UTC
         var from = new DateTime(2026, 7, 20, 7, 15, 0, DateTimeKind.Utc);
         var next = OperationsTaskReminderCalculator.NextReminderUtc(
             OperationsTaskPriority.High, from);
@@ -414,13 +414,13 @@ public class OperationsTaskServiceTests
     [Fact]
     public void ReminderCalculator_medium_uses_noon_or_end_riyadh()
     {
-        // 06:00 UTC = 09:00 Riyadh → noon checkpoint 12:00 Riyadh = 09:00 UTC
+ // 06:00 UTC = 09:00 Riyadh → noon checkpoint 12:00 Riyadh = 09:00 UTC
         var morning = new DateTime(2026, 7, 20, 6, 0, 0, DateTimeKind.Utc);
         var noon = OperationsTaskReminderCalculator.NextReminderUtc(
             OperationsTaskPriority.Medium, morning);
         Assert.Equal(new DateTime(2026, 7, 20, 9, 0, 0, DateTimeKind.Utc), noon);
 
-        // 10:00 UTC = 13:00 Riyadh → end of day 17:00 Riyadh = 14:00 UTC
+ // 10:00 UTC = 13:00 Riyadh → end of day 17:00 Riyadh = 14:00 UTC
         var afternoon = new DateTime(2026, 7, 20, 10, 0, 0, DateTimeKind.Utc);
         var end = OperationsTaskReminderCalculator.NextReminderUtc(
             OperationsTaskPriority.Medium, afternoon);
@@ -576,7 +576,7 @@ public class OperationsTaskServiceTests
         Assert.Equal(Guid.Parse(created.Id), visitCharge.OperationsTaskId);
         Assert.Equal("a1", visitCharge.CreditAssigneeId);
         Assert.Equal(350m, visitCharge.AmountSar);
-        // The amount carries its source, so the rate behind a charge stays provable after a rate change.
+ // The amount carries its source, so the rate behind a charge stays provable after a rate change.
         Assert.Equal(pricingTableId, visitCharge.PricingTableId);
         Assert.Equal(CourtVisitFeeStatuses.Open, visitCharge.Status);
         Assert.Empty(db.KeyReceiptFeeCharges);
@@ -643,7 +643,7 @@ public class OperationsTaskServiceTests
 
         Assert.Single(db.CourtVisitFeeCharges);
 
-        // Already completed — second patch with same status should not add another charge.
+ // Already completed — second patch with same status should not add another charge.
         await service.PatchAsync(
             Guid.Parse(created.Id),
             new PatchOperationsTaskRequest
@@ -663,10 +663,10 @@ public class OperationsTaskServiceTests
         Assert.Single(db.CourtVisitFeeCharges);
     }
 
-    /// <summary>
-    /// A cooperator visit fee is decided at create. Without an amount and without a priced table,
-    /// the task must not be created — otherwise complete would invent or skip money silently.
-    /// </summary>
+ /// <summary>
+ /// A cooperator visit fee is decided at create. Without an amount and without a priced table,
+ /// the task must not be created — otherwise complete would invent or skip money silently.
+ /// </summary>
     [Fact]
     public async Task CreateAsync_refuses_cooperator_court_visit_without_a_price()
     {
@@ -704,10 +704,10 @@ public class OperationsTaskServiceTests
         Assert.Empty(db.CourtVisitFeeCharges);
     }
 
-    /// <summary>
-    /// If create left the stamp empty (legacy / API gap) but the cooperator is still priced,
-    /// complete must recover the table amount, stamp it, and open a charge — never stay unpaid silently.
-    /// </summary>
+ /// <summary>
+ /// If create left the stamp empty (legacy / API gap) but the cooperator is still priced,
+ /// complete must recover the table amount, stamp it, and open a charge — never stay unpaid silently.
+ /// </summary>
     [Fact]
     public async Task PatchAsync_complete_recovers_missing_stamp_from_pricing_table()
     {
@@ -744,7 +744,7 @@ public class OperationsTaskServiceTests
         Assert.Null(createError);
         Assert.NotNull(created);
 
-        // Simulate a legacy row: fee never stamped though the assignee is a cooperator.
+ // Simulate a legacy row: fee never stamped though the assignee is a cooperator.
         var row = await ops.OperationsTasks.SingleAsync(t => t.Id == Guid.Parse(created!.Id));
         typeof(OperationsTask)
             .GetProperty(nameof(OperationsTask.AgreedVisitFeeSar))!
@@ -988,10 +988,10 @@ public class OperationsTaskServiceTests
     private static OperationsTaskService CreateService(OperationsDbContext ops, ApplicationDbContext db) =>
         OperationsTaskService.Create(ops, db, new NullNotificationService(), new PartyFeePricingService(TestInspectorFeeServiceFactory.ShareFinancial(db)));
 
-    /// <summary>
-    /// Visit fees have no built-in rate any more, so a test that expects a charge has to put one in
-    /// the table first — the same thing an administrator now has to do.
-    /// </summary>
+ /// <summary>
+ /// Visit fees have no built-in rate any more, so a test that expects a charge has to put one in
+ /// the table first — the same thing an administrator now has to do.
+ /// </summary>
     private static async Task<Guid> SetVisitPriceAsync(ApplicationDbContext db, decimal amountSar)
     {
         var tableId = Guid.NewGuid();

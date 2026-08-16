@@ -3,7 +3,7 @@ using RealEstateEval.Architecture.Tests.Support;
 namespace RealEstateEval.Architecture.Tests;
 
 /// <summary>
-/// Split plan, Phase 0: "static checks that flag new cross-schema SQL/DbSets". The recorded
+///, "static checks that flag new cross-schema SQL/DbSets". The recorded
 /// baseline is a ceiling — losing cross-schema access is always allowed, gaining it is not.
 /// </summary>
 public class SchemaAccessBoundaryTests
@@ -25,7 +25,7 @@ public class SchemaAccessBoundaryTests
                 continue;
             }
 
-            // A new file may own one schema. Spanning two owners needs an approved decision.
+ // A new file may own one schema. Spanning two owners needs an approved decision.
             if (schemas.Count > 1)
                 failures.Add($"{file} (new) spans schemas: {string.Join(", ", schemas)}");
         }
@@ -36,7 +36,7 @@ public class SchemaAccessBoundaryTests
             + string.Join("\n  ", failures)
             + "\nUse the owning service's interface, an integration event plus a local projection, "
             + "or record an approved exception in docs/architecture/boundary-baseline.json "
-            + "(split plan, rule 2).");
+ + ".");
     }
 
     [Fact]
@@ -56,7 +56,7 @@ public class SchemaAccessBoundaryTests
             failures.Count == 0,
             "A service gained access to another owner's schema:\n  "
             + string.Join("\n  ", failures)
-            + "\nSchema-limited database roles (split plan, Phase 3) cannot be granted while this grows.");
+ + "\nSchema-limited database roles cannot be granted while this grows.");
     }
 
     [Fact]
@@ -70,14 +70,14 @@ public class SchemaAccessBoundaryTests
             added.Count == 0,
             "New direct use of ApplicationDbContext outside the Infrastructure project:\n  "
             + string.Join("\n  ", added)
-            + "\nADR 0003 removes the shared context; hosts and tools must not add call sites to it.");
+ + "\nbounded-context split removes the shared context; hosts and tools must not add call sites to it.");
     }
 
-    /// <summary>
-    /// Split plan rule 1: one table has one write owner at every stage. A persistence service
-    /// registered by several APIs means several processes write its tables, so the recorded
-    /// fan-out may shrink but never grow.
-    /// </summary>
+ /// <summary>
+ /// rule 1: one table has one write owner at every stage. A persistence service
+ /// registered by several APIs means several processes write its tables, so the recorded
+ /// fan-out may shrink but never grow.
+ /// </summary>
     [Fact]
     public void PersistenceServicesAreNotRegisteredByMoreApisThanBefore()
     {
@@ -110,18 +110,18 @@ public class SchemaAccessBoundaryTests
             "A data-touching service gained another hosting process:\n  "
             + string.Join("\n  ", failures)
             + "\nGive the non-owner an owner API call or an event-fed projection instead "
-            + "(split plan, rule 1).");
+ + ".");
     }
 
-    /// <summary>Reporting is a read model over upstream HTTP APIs and registers no persistence.</summary>
+ /// <summary>Reporting is a read model over upstream HTTP APIs and registers no persistence.</summary>
     [Fact]
     public void ReportingHasNoDirectDatabaseAccess() =>
         Assert.Empty(SourceFacts.SchemasByApi["reporting"]);
 
-    /// <summary>
-    /// An owner that cannot reach the schema it owns is a catalog mistake: Phase 1 would have
-    /// to move behavior before it can move the write path.
-    /// </summary>
+ /// <summary>
+ /// An owner that cannot reach the schema it owns is a catalog mistake: would have
+ /// to move behavior before it can move the write path.
+ /// </summary>
     [Fact]
     public void EveryOwnerCanReachTheSchemaItOwns()
     {

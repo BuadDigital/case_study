@@ -12,10 +12,10 @@ public static class SupervisingDepartments
     public const string Finance = "finance_dept";
     public const string External = "external";
 
-    /// <summary>
-    /// Sentinel used only for fail-closed filtering when a section supervisor has no department.
-    /// It never appears on a stamped ledger.
-    /// </summary>
+ /// <summary>
+ /// Sentinel used only for fail-closed filtering when a section supervisor has no department.
+ /// It never appears on a stamped ledger.
+ /// </summary>
     public const string Unassigned = "__unassigned__";
 
     public static readonly IReadOnlySet<string> All = new HashSet<string>(StringComparer.Ordinal)
@@ -35,8 +35,8 @@ public static class SupervisingDepartments
 
     public static string ForTaskKind(WorkflowTaskKind taskKind) => taskKind switch
     {
-        // Field inspectors bill through case-study fee ops after study acceptance;
-        // the seeded section supervisor is case-study and owns that party-fees queue.
+ // Field inspectors bill through case-study fee ops after study acceptance;
+ // the seeded section supervisor is case-study and owns that party-fees queue.
         WorkflowTaskKind.FieldInspection => CaseStudy,
         WorkflowTaskKind.EngineeringSurvey
             or WorkflowTaskKind.PropertyAppraisal
@@ -44,7 +44,7 @@ public static class SupervisingDepartments
         _ => CaseStudy,
     };
 
-    /// <summary>Department derived solely from a product role. Supervisors must choose explicitly.</summary>
+ /// <summary>Department derived solely from a product role. Supervisors must choose explicitly.</summary>
     public static string? DeriveForRole(string? roleId) => roleId switch
     {
         "case-specialist" or "government-reviewer" => CaseStudy,
@@ -70,11 +70,11 @@ public static class SupervisingDepartments
         };
     }
 
-    /// <summary>
-    /// Resolves the department a staff profile is allowed to hold. Section supervisors must pick
-    /// <see cref="CaseStudy"/> or <see cref="Valuation"/>; every other role is derived server-side
-    /// so a free-text override cannot invent authority.
-    /// </summary>
+ /// <summary>
+ /// Resolves the department a staff profile is allowed to hold. Section supervisors must pick
+ /// <see cref="CaseStudy"/> or <see cref="Valuation"/>; every other role is derived server-side
+ /// so a free-text override cannot invent authority.
+ /// </summary>
     public static (string? Department, string? Error) ResolveForStaff(
         string roleId,
         string? requestedDepartment,

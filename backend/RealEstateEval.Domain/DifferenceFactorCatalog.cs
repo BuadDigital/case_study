@@ -3,15 +3,14 @@ using System.Text.Json;
 namespace RealEstateEval.Domain;
 
 /// <summary>
-/// Decision 19.2 (Solomon 2026-08-16): difference-factor definitions and their
-/// «ما لا يشمله» limits are admin-managed reference data with a version log —
-/// not code constants. Seeded from حصر v2 ت-5 (fields 36–47).
+/// Difference-factor definitions and their «ما لا يشمله» limits are
+/// admin-managed reference data with a version log — not code constants.
 /// </summary>
 public class DifferenceFactorCatalogConfig
 {
     public Guid Id { get; set; }
     public string CatalogJson { get; set; } = "{}";
-    /// <summary>Monotonic version — bumped on every admin save (سجل نسخ + audit rows).</summary>
+ /// <summary>Monotonic version — bumped on every admin save (سجل نسخ + audit rows).</summary>
     public int Version { get; set; }
     public DateTime UpdatedAtUtc { get; set; }
 }
@@ -57,13 +56,13 @@ public static class DifferenceFactorCatalog
             if (string.IsNullOrWhiteSpace(e.LabelAr))
                 return "تسمية العامل مطلوبة";
             if (string.IsNullOrWhiteSpace(e.DefinitionAr))
-                return "تعريف العامل مطلوب (حصر v2 ت-5)";
+                return "تعريف العامل مطلوب";
         }
 
         return null;
     }
 
-    /// <summary>Seed — the 12 approved definitions with their anti-double-counting limits (ت-5 #36–47).</summary>
+ /// <summary>Seed — the 12 approved definitions with their anti-double-counting limits.</summary>
     public static IReadOnlyList<DifferenceFactorDefinition> Seed() =>
     [
         new(MarketAdjustmentFactorKeys.IdealArea, "المساحة المثالية",

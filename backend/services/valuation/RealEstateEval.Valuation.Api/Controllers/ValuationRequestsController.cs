@@ -84,16 +84,16 @@ public class ValuationRequestsController : ControllerBase
         var (result, error) = await _service.SubmitReportAsync(id, ct);
         if (error is null)
         {
-            // ق-8 — the completed valuation feeds the shared bank («تقييم سابق»).
-            // Best-effort: harvest failure must never fail the submit itself.
+ // the completed valuation feeds the shared bank («تقييم سابق»).
+ // Best-effort: harvest failure must never fail the submit itself.
             try
             {
                 await _bankFeeder.FeedAsync(id, ct);
             }
             catch (Exception)
             {
-                // Missing bank inputs (coords/value/area) skip quietly inside the
-                // feeder; anything else is non-fatal to report submission.
+ // Missing bank inputs (coords/value/area) skip quietly inside the
+ // feeder; anything else is non-fatal to report submission.
             }
         }
 

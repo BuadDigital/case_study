@@ -12,11 +12,11 @@ public class CaseStudyForm
     public string RequestNumber { get; set; } = "";
     public string RequestDate { get; set; } = "";
     public string DeedNumber { get; set; } = "";
-    /// <summary>JSON — answers map.</summary>
+ /// <summary>JSON — answers map.</summary>
     public string AnswersJson { get; set; } = "{}";
-    /// <summary>
-    /// JSON — per-answer / per-remark provenance map keyed by question or remark id.
-    /// </summary>
+ /// <summary>
+ /// JSON — per-answer / per-remark provenance map keyed by question or remark id.
+ /// </summary>
     public string? AnswerProvenanceJson { get; set; }
     public string DeedRemarks { get; set; } = "";
     public string SurveyRemarks { get; set; } = "";
@@ -29,13 +29,13 @@ public class CaseStudyForm
     public string SigApprover { get; set; } = "";
     public string SigDate { get; set; } = "";
     public string? SpecialistReviewApprovedJson { get; set; }
-    /// <summary>Is the asset linked to other assets? — empty | yes | no</summary>
+ /// <summary>Is the asset linked to other assets? — empty | yes | no</summary>
     public string InfathLinkedAssets { get; set; } = "";
     public string InfathLinkedDeedNumbers { get; set; } = "";
     public string InfathLinkedAssetsNotes { get; set; } = "";
     public string InfathOtherNotes { get; set; } = "";
     public string InfathClosingNotes { get; set; } = "";
-    /// <summary>matched | differences | impediment | "" — traditional-deed quality gate.</summary>
+ /// <summary>matched | differences | impediment | "" — traditional-deed quality gate.</summary>
     public string DeedNatureMatchOutcome { get; set; } = "";
     public string DeedNatureMatchNotes { get; set; } = "";
     public DateTime? SavedAtUtc { get; set; }

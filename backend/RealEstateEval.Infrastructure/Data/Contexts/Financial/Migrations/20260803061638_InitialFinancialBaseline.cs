@@ -12,12 +12,12 @@ namespace RealEstateEval.Infrastructure.Data.Contexts.Financial.Migrations;
 /// </summary>
 public partial class InitialFinancialBaseline : Migration
 {
-    /// <inheritdoc />
+ /// <inheritdoc />
     protected override void Up(MigrationBuilder migrationBuilder)
     {
     }
 
-    /// <inheritdoc />
+ /// <inheritdoc />
     protected override void Down(MigrationBuilder migrationBuilder)
     {
     }

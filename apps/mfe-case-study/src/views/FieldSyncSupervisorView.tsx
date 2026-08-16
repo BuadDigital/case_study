@@ -27,7 +27,7 @@ const KIND_LABELS: Record<string, string> = {
 };
 
 /**
- * Supervisor board — «ظروف معلّقة لم تُزامن» (security_offline_spec §6.3).
+ * Supervisor board — «ظروف معلّقة لم تُزامن».
  * Shows field devices with pending offline work older than two hours.
  * Empty state is the healthy/normal case.
  */

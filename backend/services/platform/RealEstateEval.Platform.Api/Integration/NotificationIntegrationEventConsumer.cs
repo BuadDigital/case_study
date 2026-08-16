@@ -13,7 +13,7 @@ public sealed class NotificationIntegrationEventConsumer : BackgroundService
 {
     private const string QueueName = "platform.notification-events";
 
-    /// <summary>Inbox key — distinct from other consumers of the same events.</summary>
+ /// <summary>Inbox key — distinct from other consumers of the same events.</summary>
     private const string ConsumerName = "platform.notifications";
 
     private readonly IServiceScopeFactory _scopeFactory;
@@ -72,8 +72,8 @@ public sealed class NotificationIntegrationEventConsumer : BackgroundService
             _logger,
             stoppingToken);
 
-        // Older deployments bound created events to this shared work queue. Realtime now
-        // uses per-process fan-out queues, so remove the stale durable binding on upgrade.
+ // Older deployments bound created events to this shared work queue. Realtime now
+ // uses per-process fan-out queues, so remove the stale durable binding on upgrade.
         await channel.QueueUnbindAsync(
             QueueName,
             _options.Exchange,
@@ -112,7 +112,7 @@ public sealed class NotificationIntegrationEventConsumer : BackgroundService
         }
         catch (OperationCanceledException)
         {
-            // shutdown
+ // shutdown
         }
     }
 
@@ -125,7 +125,7 @@ public sealed class NotificationIntegrationEventConsumer : BackgroundService
 
         if (!IntegrationEventEnvelopeReader.TryReadMetadata(json, out var eventId, out var eventType))
         {
-            // Unreadable messages will never succeed, so dead-letter instead of looping.
+ // Unreadable messages will never succeed, so dead-letter instead of looping.
             _logger.LogError("Discarding unreadable notification event to the dead-letter queue");
             await channel.BasicNackAsync(args.DeliveryTag, multiple: false, requeue: false, stoppingToken);
             return;
@@ -151,7 +151,7 @@ public sealed class NotificationIntegrationEventConsumer : BackgroundService
         {
             await ReleaseClaimAsync(eventId, stoppingToken);
 
-            // One retry, then the message dead-letters rather than cycling forever.
+ // One retry, then the message dead-letters rather than cycling forever.
             var retry = !args.Redelivered;
             _logger.LogError(
                 ex,
@@ -163,10 +163,10 @@ public sealed class NotificationIntegrationEventConsumer : BackgroundService
         }
     }
 
-    /// <summary>
-    /// Frees the inbox claim in its own scope, because the failed scope's context may still
-    /// hold the changes that could not be saved.
-    /// </summary>
+ /// <summary>
+ /// Frees the inbox claim in its own scope, because the failed scope's context may still
+ /// hold the changes that could not be saved.
+ /// </summary>
     private async Task ReleaseClaimAsync(Guid eventId, CancellationToken stoppingToken)
     {
         try

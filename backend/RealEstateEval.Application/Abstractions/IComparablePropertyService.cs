@@ -24,7 +24,7 @@ public interface IComparablePropertyService
         Guid id,
         CancellationToken cancellationToken = default);
 
-    /// <summary>Rank active bank comps by distance to subject (field inspection or query coords).</summary>
+ /// <summary>Rank active bank comps by distance to subject (field inspection or query coords).</summary>
     Task<ComparableProximitySuggestionListDto> SuggestByProximityAsync(
         ComparableProximityQuery query,
         CancellationToken cancellationToken = default);

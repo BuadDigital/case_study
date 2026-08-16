@@ -15,7 +15,7 @@ public static class OperationsTaskReminderCalculator
     private static readonly TimeZoneInfo RiyadhTz = TimeZoneInfo.FindSystemTimeZoneById(
         OperatingSystem.IsWindows() ? "Arab Standard Time" : "Asia/Riyadh");
 
-    /// <summary>Next reminder instant (UTC) after <paramref name="fromUtc"/> for the given priority.</summary>
+ /// <summary>Next reminder instant (UTC) after <paramref name="fromUtc"/> for the given priority.</summary>
     public static DateTime NextReminderUtc(OperationsTaskPriority priority, DateTime fromUtc)
     {
         var utc = DateTime.SpecifyKind(fromUtc.ToUniversalTime(), DateTimeKind.Utc);
@@ -32,10 +32,10 @@ public static class OperationsTaskReminderCalculator
     }
 
     public static bool IsWorkDay(DateTime d) =>
-        // Sunday–Thursday (Saudi week)
+ // Sunday–Thursday (Saudi week)
         d.DayOfWeek is >= DayOfWeek.Sunday and <= DayOfWeek.Thursday;
 
-    /// <summary>Wall-clock time in the same calendar day as <paramref name="d"/> (unspecified kind).</summary>
+ /// <summary>Wall-clock time in the same calendar day as <paramref name="d"/> (unspecified kind).</summary>
     public static DateTime AtHourLocal(DateTime d, int hour) =>
         new(d.Year, d.Month, d.Day, hour, 0, 0, DateTimeKind.Unspecified);
 
@@ -79,9 +79,9 @@ public static class OperationsTaskReminderCalculator
         return AtHourLocal(nd, WorkStartHour);
     }
 
-    /// <summary>
-    /// Instant (UTC) when a pause exceeds the one-workday limit from <paramref name="pausedAtUtc"/>.
-    /// </summary>
+ /// <summary>
+ /// Instant (UTC) when a pause exceeds the one-workday limit from <paramref name="pausedAtUtc"/>.
+ /// </summary>
     public static DateTime PauseLimitDeadlineUtc(DateTime pausedAtUtc)
     {
         var utc = DateTime.SpecifyKind(pausedAtUtc.ToUniversalTime(), DateTimeKind.Utc);
@@ -92,7 +92,7 @@ public static class OperationsTaskReminderCalculator
             RiyadhTz);
     }
 
-    /// <summary>Same clock time on the next Saudi workday.</summary>
+ /// <summary>Same clock time on the next Saudi workday.</summary>
     public static DateTime NextWorkDaySameTime(DateTime localTs)
     {
         var d = localTs;

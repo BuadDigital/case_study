@@ -7,15 +7,15 @@ namespace RealEstateEval.Infrastructure.Data.Contexts;
 /// The append-only audit ledger. Rows are owned per producer: identity, platform and the legacy
 /// context each append their own and never read or mutate another's, which is why the table sits
 /// in a schema of its own — a writer can be granted INSERT on this one table instead of a whole
-/// owner's schema (split plan, decision D7).
+/// owner's schema.
 /// </summary>
 internal static class AuditModel
 {
-    /// <param name="ownsMigrations">
-    /// True only for the context whose migration stream creates the table. Every other context
-    /// maps it read/append-only and must not scaffold it, or two streams would both try to
-    /// create the same table.
-    /// </param>
+ /// <param name="ownsMigrations">
+ /// True only for the context whose migration stream creates the table. Every other context
+ /// maps it read/append-only and must not scaffold it, or two streams would both try to
+ /// create the same table.
+ /// </param>
     public static ModelBuilder ApplyAuditModel(this ModelBuilder builder, bool ownsMigrations)
     {
         builder.Entity<AuditLog>(e =>

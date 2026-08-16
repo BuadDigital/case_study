@@ -8,7 +8,7 @@ namespace RealEstateEval.Infrastructure.Data.Contexts;
 /// Case Study–owned tables in the <c>case_study</c> schema. Does not map operations tasks (D2)
 /// or inspector-fee tables (D1) — those write paths belong to Operations / Financial while the
 /// rows remain physically here. Applied by <see cref="CaseStudyDbContext"/> and by the legacy
-/// context (transitional cross-boundary reads until Phase 3).
+/// context (transitional cross-boundary reads until owner APIs replace them).
 /// </summary>
 internal static class CaseStudyModel
 {

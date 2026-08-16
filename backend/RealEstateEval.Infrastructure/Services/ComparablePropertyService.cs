@@ -179,7 +179,7 @@ public sealed class ComparablePropertyService(
             q = q.Where(x => x.ComparablePropertyType.Contains(t));
         }
 
-        // Pull a wider pool then rank in memory — Haversine is not trivial in SQL across providers.
+ // Pull a wider pool then rank in memory — Haversine is not trivial in SQL across providers.
         var pool = await q
             .OrderByDescending(x => x.TransactionDate)
             .Take(500)
@@ -328,14 +328,14 @@ public sealed class ComparablePropertyService(
         if (request.Longitude is < -180m or > 180m)
             errors["longitude"] = "خط الطول غير صالح";
 
-        // Coords required for map/proximity later — reject exact 0,0 as empty placeholder.
+ // Coords required for map/proximity later — reject exact 0,0 as empty placeholder.
         if (request.Latitude == 0m && request.Longitude == 0m)
             errors["latitude"] = "الإحداثيات إلزامية";
 
         return errors;
     }
 
-    /// <summary>§1.5 — advisory anomaly note vs the district's active peers.</summary>
+ /// <summary>advisory anomaly note vs the district's active peers.</summary>
     private async Task<string?> ComputeAnomalyNoteAsync(
         ComparableProperty entity,
         CancellationToken cancellationToken)

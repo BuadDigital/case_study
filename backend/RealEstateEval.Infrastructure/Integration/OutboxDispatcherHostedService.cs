@@ -20,22 +20,22 @@ public sealed class OutboxDispatcherOptions
 
 public sealed class OutboxDispatcherHostedService : BackgroundService
 {
-    /// <summary>
-    /// Idle poll cadence. Keep short so assignment notifications (distribution →
-    /// outbox → Platform) reach the assignee within a couple of seconds instead of
-    /// waiting up to half a minute after the dispatcher goes quiet.
-    /// </summary>
+ /// <summary>
+ /// Idle poll cadence. Keep short so assignment notifications (distribution →
+ /// outbox → Platform) reach the assignee within a couple of seconds instead of
+ /// waiting up to half a minute after the dispatcher goes quiet.
+ /// </summary>
     private static readonly int[] EmptyBackoffSeconds = [1, 2, 3, 5];
 
     private const int BatchSize = 25;
 
-    /// <summary>Attempts before a row is parked as a poison message.</summary>
+ /// <summary>Attempts before a row is parked as a poison message.</summary>
     private const int MaxAttempts = 10;
 
-    /// <summary>
-    /// How long a claim is honoured. Long enough for a batch to publish, short enough that a
-    /// dispatcher killed mid-batch has its rows picked up again promptly.
-    /// </summary>
+ /// <summary>
+ /// How long a claim is honoured. Long enough for a batch to publish, short enough that a
+ /// dispatcher killed mid-batch has its rows picked up again promptly.
+ /// </summary>
     private static readonly TimeSpan LeaseDuration = TimeSpan.FromMinutes(2);
 
     private readonly IServiceScopeFactory _scopeFactory;
@@ -60,8 +60,8 @@ public sealed class OutboxDispatcherHostedService : BackgroundService
     {
         if (!_options.Enabled)
         {
-            // Draining the outbox without a broker would discard events, so leave the rows
-            // queued for whenever messaging is turned back on.
+ // Draining the outbox without a broker would discard events, so leave the rows
+ // queued for whenever messaging is turned back on.
             _logger.LogInformation("RabbitMQ disabled; outbox dispatcher idle");
             return;
         }
@@ -93,7 +93,7 @@ public sealed class OutboxDispatcherHostedService : BackgroundService
         }
     }
 
-    /// <returns>Number of outbox rows processed in this batch (0 when idle).</returns>
+ /// <returns>Number of outbox rows processed in this batch (0 when idle).</returns>
     private async Task<int> DispatchBatchAsync(CancellationToken stoppingToken)
     {
         using var scope = _scopeFactory.CreateScope();
@@ -122,8 +122,8 @@ public sealed class OutboxDispatcherHostedService : BackgroundService
                     continue;
                 }
 
-                // Broker unreachable rather than a bad message: release the claim and refund
-                // the attempt so an outage cannot dead-letter healthy events.
+ // Broker unreachable rather than a bad message: release the claim and refund
+ // the attempt so an outage cannot dead-letter healthy events.
                 message.AttemptCount = Math.Max(0, message.AttemptCount - 1);
                 message.LockedUntilUtc = null;
                 message.LockedBy = null;
@@ -182,11 +182,11 @@ public sealed class OutboxDispatcherHostedService : BackgroundService
         return (IOutboxContext)services.GetRequiredService(type);
     }
 
-    /// <summary>
-    /// Takes a lease on a batch of pending rows. On PostgreSQL the candidate select uses
-    /// FOR UPDATE SKIP LOCKED so concurrent dispatchers claim disjoint rows instead of
-    /// publishing the same event twice.
-    /// </summary>
+ /// <summary>
+ /// Takes a lease on a batch of pending rows. On PostgreSQL the candidate select uses
+ /// FOR UPDATE SKIP LOCKED so concurrent dispatchers claim disjoint rows instead of
+ /// publishing the same event twice.
+ /// </summary>
     private async Task<List<OutboxMessage>> ClaimBatchAsync(
         IOutboxContext outbox,
         string owner,
@@ -229,9 +229,9 @@ public sealed class OutboxDispatcherHostedService : BackgroundService
             .ToListAsync(stoppingToken);
     }
 
-    /// <summary>
-    /// Fallback for non-relational providers used in tests, where row locking is unavailable.
-    /// </summary>
+ /// <summary>
+ /// Fallback for non-relational providers used in tests, where row locking is unavailable.
+ /// </summary>
     private static async Task<List<OutboxMessage>> ClaimWithoutLockingAsync(
         IOutboxContext outbox,
         string owner,

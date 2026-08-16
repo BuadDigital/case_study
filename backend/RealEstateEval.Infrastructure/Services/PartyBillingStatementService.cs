@@ -15,7 +15,7 @@ public class PartyBillingStatementService : IPartyBillingStatementService
     private const string RefDept = "FN";
     private const string RefType = "CS";
 
-    /// <summary>ج٩ — ledger-backed party fee kinds (workflow + inspector fee ledger).</summary>
+ /// <summary>ledger-backed party fee kinds (workflow + inspector fee ledger).</summary>
     private static readonly HashSet<WorkflowTaskKind> StatementKinds =
     [
         WorkflowTaskKind.FieldInspection,
@@ -23,7 +23,7 @@ public class PartyBillingStatementService : IPartyBillingStatementService
         WorkflowTaskKind.EngineeringSurvey,
     ];
 
-    /// <summary>Ops court-visit fee charges — individual payee, same statement close path as individuals.</summary>
+ /// <summary>Ops court-visit fee charges — individual payee, same statement close path as individuals.</summary>
     public const string CourtVisitTaskKind = WorkflowTaskKindValues.CourtVisit;
 
     private readonly ApplicationDbContext _db;
@@ -50,7 +50,7 @@ public class PartyBillingStatementService : IPartyBillingStatementService
         string? assigneeId = null,
         CancellationToken cancellationToken = default)
     {
-        // Cooperator visits that completed without a charge become ready on first costs load.
+ // Cooperator visits that completed without a charge become ready on first costs load.
         try
         {
             await _visitFees.BackfillMissingChargesForCompletedVisitsAsync(cancellationToken);
@@ -60,9 +60,9 @@ public class PartyBillingStatementService : IPartyBillingStatementService
             _logger.LogWarning(ex, "Court-visit fee backfill before ready-lines failed");
         }
 
-        // WorkflowTaskId is unique on statement lines — once billed (even paid/cancelled line),
-        // twin reassignment ledgers must not reappear as dues.
-        // Court-visit charges reuse the same column with charge.Id as the line key.
+ // WorkflowTaskId is unique on statement lines — once billed (even paid/cancelled line),
+ // twin reassignment ledgers must not reappear as dues.
+ // Court-visit charges reuse the same column with charge.Id as the line key.
         var claimedTaskIds = await _db.PartyBillingStatementLines.AsNoTracking()
             .Select(l => l.WorkflowTaskId)
             .Distinct()
@@ -84,8 +84,8 @@ public class PartyBillingStatementService : IPartyBillingStatementService
 
         rows = rows.Where(x => !claimed.Contains(x.ledger.WorkflowTaskId)).ToList();
 
-        // Reassignment twins + multi-deed share one statement line (unique WorkflowTaskId).
-        // Surface one ready row per task.
+ // Reassignment twins + multi-deed share one statement line (unique WorkflowTaskId).
+ // Surface one ready row per task.
         var ledgers = CollapseReadyLedgers(rows.Select(x => x.ledger))
             .GroupBy(l => l.WorkflowTaskId)
             .Select(g => g
@@ -204,7 +204,7 @@ public class PartyBillingStatementService : IPartyBillingStatementService
             };
         }
 
-        // Court-visit open charges use charge.Id as the ready-line key (same column as workflow task id).
+ // Court-visit open charges use charge.Id as the ready-line key (same column as workflow task id).
         var openCharges = await _db.CourtVisitFeeCharges
             .Where(c => taskIds.Contains(c.Id)
                 && c.Status == CourtVisitFeeStatuses.Open
@@ -243,7 +243,7 @@ public class PartyBillingStatementService : IPartyBillingStatementService
             };
         }
 
-        // Unique IX on PartyBillingStatementLines.WorkflowTaskId — cannot re-bill a task.
+ // Unique IX on PartyBillingStatementLines.WorkflowTaskId — cannot re-bill a task.
         var alreadyLined = await _db.PartyBillingStatementLines.AsNoTracking()
             .Where(l => taskIds.Contains(l.WorkflowTaskId))
             .Select(l => l.WorkflowTaskId)
@@ -257,8 +257,8 @@ public class PartyBillingStatementService : IPartyBillingStatementService
             };
         }
 
-        // Ready ledgers only; twin reassignments collapse; multi-deed stays one line per task
-        // (unique WorkflowTaskId) with summed net.
+ // Ready ledgers only; twin reassignments collapse; multi-deed stays one line per task
+ // (unique WorkflowTaskId) with summed net.
         var readyForSelected = candidates
             .Where(l =>
                 !l.ExcludedFromBatch
@@ -333,8 +333,8 @@ public class PartyBillingStatementService : IPartyBillingStatementService
         }
         catch (Exception ex)
         {
-            // Reference allocation reads a sequence and can surface storage-level detail.
-            // Keep it in the log; the caller only learns that the attempt failed.
+ // Reference allocation reads a sequence and can surface storage-level detail.
+ // Keep it in the log; the caller only learns that the attempt failed.
             _logger.LogError(
                 ex,
                 "Failed to allocate an engineering billing statement reference for assignee {AssigneeId}",
@@ -399,7 +399,7 @@ public class PartyBillingStatementService : IPartyBillingStatementService
             var unselectedIds = unselected.Select(l => l.WorkflowTaskId).ToList();
             if (unselectedIds.Count > 0)
             {
-                // Defer only same-kind leftovers for this assignee (ج٩).
+ // Defer only same-kind leftovers for this assignee.
                 var sameKindTasks = await _db.WorkflowTasks.AsNoTracking()
                     .Where(t => unselectedIds.Contains(t.Id) && t.Kind == statementKind)
                     .Select(t => new { t.Id, t.Kind })
@@ -512,7 +512,7 @@ public class PartyBillingStatementService : IPartyBillingStatementService
             if (statement.Status != PartyBillingStatementStatus.Issued
                 && statement.Status != PartyBillingStatementStatus.Draft)
                 return (null, "لا يُصرف للفرد إلا من أمر صرف صادر أو مُعد.");
-            // Individual: promote draft to issued implicitly so path is أمر صرف صادر → مدفوع
+ // Individual: promote draft to issued implicitly so path is أمر صرف صادر → مدفوع
             if (statement.Status == PartyBillingStatementStatus.Draft)
             {
                 statement.Status = PartyBillingStatementStatus.Issued;
@@ -969,7 +969,7 @@ public class PartyBillingStatementService : IPartyBillingStatementService
             .ToListAsync(cancellationToken);
         var chargeById = chargeRows.ToDictionary(c => c.Id);
 
-        // Twin ledgers share WorkflowTaskId; pick by statement binding when available.
+ // Twin ledgers share WorkflowTaskId; pick by statement binding when available.
         static InspectorFeeLedger? ResolveLedger(
             Guid statementId,
             Guid workflowTaskId,
@@ -1217,7 +1217,7 @@ public class PartyBillingStatementService : IPartyBillingStatementService
         {
             Id = Guid.NewGuid(),
             StatementId = statementId,
-            // Statement line unique key = charge id (not workflow task id).
+ // Statement line unique key = charge id (not workflow task id).
             WorkflowTaskId = c.Id,
             NetFeeSar = c.AmountSar,
         }).ToList();
@@ -1277,12 +1277,12 @@ public class PartyBillingStatementService : IPartyBillingStatementService
             .Distinct()
             .ToList();
 
-    /// <summary>
-    /// Keeps one ledger per workflow-task + property/deed so legacy reassignment twins
-    /// (same task+property, different <see cref="InspectorFeeLedger.UserId"/>) do not
-    /// duplicate ready lines or break statement creation counts.
-    /// Prefers rows where UserId matches AssigneeId, then newest update.
-    /// </summary>
+ /// <summary>
+ /// Keeps one ledger per workflow-task + property/deed so legacy reassignment twins
+ /// (same task+property, different <see cref="InspectorFeeLedger.UserId"/>) do not
+ /// duplicate ready lines or break statement creation counts.
+ /// Prefers rows where UserId matches AssigneeId, then newest update.
+ /// </summary>
     internal static IEnumerable<InspectorFeeLedger> CollapseReadyLedgers(
         IEnumerable<InspectorFeeLedger> ledgers) =>
         ledgers

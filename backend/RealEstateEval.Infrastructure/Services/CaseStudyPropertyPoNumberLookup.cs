@@ -8,7 +8,7 @@ namespace RealEstateEval.Infrastructure.Services;
 /// Phase-1 bridge for the one Case Study value the Valuation context still needs.
 /// <para>
 /// Read-only against <see cref="CaseStudyDbContext"/> (not the legacy god context). Owner: Case
-/// Study. Removal criterion: Case Study owner API or a Valuation-local projection (Phase 3).
+/// Study. Removal criterion: Case Study owner API or a Valuation-local projection.
 /// </para>
 /// </summary>
 public sealed class CaseStudyPropertyPoNumberLookup : IPropertyPoNumberLookup

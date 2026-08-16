@@ -19,7 +19,7 @@ public enum DetectedFileFormat
 /// </summary>
 public static class FileSignatureInspector
 {
-    /// <summary>Longest signature we need to look at (RIFF/WEBP needs 12 bytes).</summary>
+ /// <summary>Longest signature we need to look at (RIFF/WEBP needs 12 bytes).</summary>
     public const int MinimumInspectableBytes = 12;
 
     private static readonly byte[] PngSignature =
@@ -51,14 +51,14 @@ public static class FileSignatureInspector
             return DetectedFileFormat.Webp;
         }
 
-        // Offset 0 only: tolerating leading junk is what makes PDF polyglots work.
+ // Offset 0 only: tolerating leading junk is what makes PDF polyglots work.
         if (StartsWith(content, PdfSignature))
             return DetectedFileFormat.Pdf;
 
         return DetectedFileFormat.Unknown;
     }
 
-    /// <summary>The single MIME type this platform stores for a verified format.</summary>
+ /// <summary>The single MIME type this platform stores for a verified format.</summary>
     public static string CanonicalMime(DetectedFileFormat format) => format switch
     {
         DetectedFileFormat.Jpeg => "image/jpeg",
@@ -69,7 +69,7 @@ public static class FileSignatureInspector
         _ => "application/octet-stream",
     };
 
-    /// <summary>MIME types a client may legitimately declare for a verified format.</summary>
+ /// <summary>MIME types a client may legitimately declare for a verified format.</summary>
     public static bool MatchesDeclaredMime(DetectedFileFormat format, string declaredMime)
     {
         var mime = declaredMime.Trim();
@@ -86,7 +86,7 @@ public static class FileSignatureInspector
         };
     }
 
-    /// <summary>File-name extensions consistent with a verified format.</summary>
+ /// <summary>File-name extensions consistent with a verified format.</summary>
     public static bool MatchesExtension(DetectedFileFormat format, string extension)
     {
         var ext = extension.Trim();

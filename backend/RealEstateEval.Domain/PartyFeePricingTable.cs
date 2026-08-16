@@ -7,29 +7,29 @@ public class PartyFeePricingTable
 
     public string Name { get; set; } = "";
 
-    /// <see cref="RealEstateEval.Application.PartyFeePricingCategories"/>
+ /// <see cref="RealEstateEval.Application.PartyFeePricingCategories"/>
     public string Category { get; set; } = "";
 
-    /// <summary>tiered | party-rates | flat — see <c>PartyFeePricingKinds</c>.</summary>
+ /// <summary>tiered | party-rates | flat — see <c>PartyFeePricingKinds</c>.</summary>
     public string PricingKind { get; set; } = "party-rates";
 
-    /// <summary>system-admin | supervisor — who may edit the rates.</summary>
+ /// <summary>system-admin | supervisor — who may edit the rates.</summary>
     public string ManagedBy { get; set; } = "system-admin";
 
-    /// <summary>Category default used when the assignee has no explicit assignment.</summary>
+ /// <summary>Category default used when the assignee has no explicit assignment.</summary>
     public bool IsActive { get; set; }
 
-    /// <summary>أتعاب الزيارة — earned on ops <c>court_visit</c> complete (متعاون فرد).</summary>
+ /// <summary>أتعاب الزيارة — earned on ops <c>court_visit</c> complete (متعاون فرد).</summary>
     public decimal CourtVisitFeeSar { get; set; }
 
-    // Key-receipt fees are deliberately absent. They are company revenue billed to إنفاذ, not a rate
-    // owed to a party, and finance enters the amount by hand during enforcement billing. Registering
-    // the envelope only marks the entitlement — see KeyEnvelope.RevenueEntitlementAtUtc.
+ // Key-receipt fees are deliberately absent. They are company revenue billed to إنفاذ, not a rate
+ // owed to a party, and finance enters the amount by hand during enforcement billing. Registering
+ // the envelope only marks the entitlement — see KeyEnvelope.RevenueEntitlementAtUtc.
 
     public decimal FieldInspectorIndividualFeeSar { get; set; }
     public decimal FieldInspectorOrganizationFeeSar { get; set; }
 
-    /// <summary>Single incentive amount when <see cref="PricingKind"/> is flat.</summary>
+ /// <summary>Single incentive amount when <see cref="PricingKind"/> is flat.</summary>
     public decimal FlatAmountSar { get; set; }
 
     public DateTime UpdatedAtUtc { get; set; }

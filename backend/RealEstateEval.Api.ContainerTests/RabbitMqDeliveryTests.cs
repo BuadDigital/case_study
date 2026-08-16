@@ -152,7 +152,7 @@ public class RabbitMqDeliveryTests : IAsyncLifetime
             VirtualHost = options.VirtualHost,
         }.CreateConnectionAsync();
 
-    /// <summary>Polls with <c>BasicGet</c> because delivery and dead-lettering are asynchronous.</summary>
+ /// <summary>Polls with <c>BasicGet</c> because delivery and dead-lettering are asynchronous.</summary>
     private static async Task<BasicGetResult> GetOneAsync(IChannel channel, string queueName)
     {
         while (true)

@@ -8,10 +8,10 @@ public static class AttachmentPrintRules
     public static bool IsPrintable(string? dictionaryTypeKey, bool printInReport) =>
         printInReport && !string.IsNullOrWhiteSpace(dictionaryTypeKey);
 
-    /// <summary>
-    /// Maps dictionary type key → approved report section number (22–25).
-    /// Unknown keys return null (library/print-marked but not routed).
-    /// </summary>
+ /// <summary>
+ /// Maps dictionary type key → approved report section number (22–25).
+ /// Unknown keys return null (library/print-marked but not routed).
+ /// </summary>
     public static int? ReportSectionNumber(string? dictionaryTypeKey)
     {
         var key = (dictionaryTypeKey ?? "").Trim().ToLowerInvariant();

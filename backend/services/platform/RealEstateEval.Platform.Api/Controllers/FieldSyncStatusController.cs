@@ -32,7 +32,7 @@ public sealed class FieldSyncStatusController(IFieldSyncStatusService status) : 
         return NoContent();
     }
 
-    /// <summary>Supervisor board: pending offline work older than two hours.</summary>
+ /// <summary>Supervisor board: pending offline work older than two hours.</summary>
     [HttpGet("stale")]
     [Authorize(Policy = CapabilityPolicyNames.ManageOperations)]
     public async Task<ActionResult<IReadOnlyList<FieldSyncStatusDto>>> ListStale(

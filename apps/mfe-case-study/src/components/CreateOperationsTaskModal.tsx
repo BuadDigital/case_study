@@ -257,7 +257,7 @@ export function CreateOperationsTaskModal({
     [staffUsers, assigneeId],
   );
 
-  /** Cooperator reviewers need a create-time visit fee; employees do not (ج٧). */
+ /** Cooperator reviewers need a create-time visit fee; employees do not. */
   const needsVisitFee =
     type === "court_visit" &&
     Boolean(assigneeId) &&

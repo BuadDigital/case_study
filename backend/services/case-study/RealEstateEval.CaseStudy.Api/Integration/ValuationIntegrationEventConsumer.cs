@@ -13,7 +13,7 @@ public sealed class ValuationIntegrationEventConsumer : BackgroundService
 {
     private const string QueueName = "case-study.valuation-events";
 
-    /// <summary>Inbox key — distinct from other consumers of the same events.</summary>
+ /// <summary>Inbox key — distinct from other consumers of the same events.</summary>
     private const string ConsumerName = "case-study.valuation";
 
     private readonly IServiceScopeFactory _scopeFactory;
@@ -98,7 +98,7 @@ public sealed class ValuationIntegrationEventConsumer : BackgroundService
         }
         catch (OperationCanceledException)
         {
-            // shutdown
+ // shutdown
         }
     }
 
@@ -111,7 +111,7 @@ public sealed class ValuationIntegrationEventConsumer : BackgroundService
 
         if (!IntegrationEventEnvelopeReader.TryReadMetadata(json, out var eventId, out var eventType))
         {
-            // Unreadable messages will never succeed, so dead-letter instead of looping.
+ // Unreadable messages will never succeed, so dead-letter instead of looping.
             _logger.LogError("Discarding unreadable valuation event to the dead-letter queue");
             await channel.BasicNackAsync(args.DeliveryTag, multiple: false, requeue: false, stoppingToken);
             return;
@@ -137,7 +137,7 @@ public sealed class ValuationIntegrationEventConsumer : BackgroundService
         {
             await ReleaseClaimAsync(eventId, stoppingToken);
 
-            // One retry, then the message dead-letters rather than cycling forever.
+ // One retry, then the message dead-letters rather than cycling forever.
             var retry = !args.Redelivered;
             _logger.LogError(
                 ex,
@@ -149,10 +149,10 @@ public sealed class ValuationIntegrationEventConsumer : BackgroundService
         }
     }
 
-    /// <summary>
-    /// Frees the inbox claim in its own scope, because the failed scope's context may still
-    /// hold the changes that could not be saved.
-    /// </summary>
+ /// <summary>
+ /// Frees the inbox claim in its own scope, because the failed scope's context may still
+ /// hold the changes that could not be saved.
+ /// </summary>
     private async Task ReleaseClaimAsync(Guid eventId, CancellationToken stoppingToken)
     {
         try

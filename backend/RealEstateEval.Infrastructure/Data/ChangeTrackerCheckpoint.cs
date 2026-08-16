@@ -46,8 +46,8 @@ public sealed class ChangeTrackerCheckpoint
                 continue;
             }
 
-            // Rows we edited (dedupe refresh) or removed (overflow trim) go back to the
-            // values that were read from the database.
+ // Rows we edited (dedupe refresh) or removed (overflow trim) go back to the
+ // values that were read from the database.
             entry.CurrentValues.SetValues(entry.OriginalValues);
             entry.State = captured;
         }

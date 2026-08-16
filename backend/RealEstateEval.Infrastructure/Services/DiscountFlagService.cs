@@ -136,7 +136,7 @@ public sealed class DiscountFlagService : IDiscountFlagService
         var fromStatus = ledger.BillingStatus;
         ledger.SupervisorDiscountSar = discount;
         ledger.DiscountReason = reason;
-        // Employee path (ج٥): approved flag lands as ready. Cooperator eng-survey keeps office-review.
+ // Employee path: approved flag lands as ready. Cooperator eng-survey keeps office-review.
         if (InspectorFeeRules.IsEmployee(ledger.InspectorType))
             ledger.BillingStatus = InspectorFeeBillingStatus.AtFinance;
         else

@@ -2,7 +2,7 @@ using RealEstateEval.Application.Contracts;
 
 namespace RealEstateEval.Application.Abstractions;
 
-/// <summary>Decision 19.2 — difference-factor definitions as admin reference data.</summary>
+/// <summary>difference-factor definitions as admin reference data.</summary>
 public interface IDifferenceFactorCatalogService
 {
     Task<DifferenceFactorCatalogDto> GetAsync(CancellationToken cancellationToken = default);

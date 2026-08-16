@@ -4,43 +4,43 @@ namespace RealEstateEval.Domain;
 public class KeyEnvelope
 {
     public Guid Id { get; set; }
-    /// <summary>رقم الطلب من إنفاذ — مرجع الظرف.</summary>
+ /// <summary>رقم الطلب من إنفاذ — مرجع الظرف.</summary>
     public string RequestNumber { get; set; } = "";
     public string Court { get; set; } = "";
     public string Circuit { get; set; } = "";
-    /// <summary>العدد المكتوب على الظرف.</summary>
+ /// <summary>العدد المكتوب على الظرف.</summary>
     public int KeysCountLabeled { get; set; }
-    /// <summary>العدد الفعلي بعد العد — المعتمد في النظام.</summary>
+ /// <summary>العدد الفعلي بعد العد — المعتمد في النظام.</summary>
     public int KeysCountActual { get; set; }
     public Guid? ReceiptAttachmentId { get; set; }
     public Guid? PhotoAttachmentId { get; set; }
-    /// <summary>خطاب من حامل المفتاح — سيناريو ج.</summary>
+ /// <summary>خطاب من حامل المفتاح — سيناريو ج.</summary>
     public Guid? ThirdPartyLetterAttachmentId { get; set; }
     public string? ContactPhones { get; set; }
     public string? Notes { get; set; }
-    /// <summary>court | missing | third_party</summary>
+ /// <summary>court | missing | third_party</summary>
     public string ReceiveScenario { get; set; } = KeyReceiveScenarios.Court;
-    /// <summary>reviewer | assessor | external | returned</summary>
+ /// <summary>reviewer | assessor | external | returned</summary>
     public string Status { get; set; } = KeyEnvelopeStatuses.Reviewer;
-    /// <summary>
-    /// Historical only. Key-receipt revenue used to be stamped here from the pricing table; it is now
-    /// billed to إنفاذ by finance, so nothing writes these any more. Kept because financial records are
-    /// never deleted.
-    /// </summary>
+ /// <summary>
+ /// Historical only. Key-receipt revenue used to be stamped here from the pricing table; it is now
+ /// billed to إنفاذ by finance, so nothing writes these any more. Kept because financial records are
+ /// never deleted.
+ /// </summary>
     public bool FeeGenerated { get; set; }
     public decimal? FeeAmountSar { get; set; }
 
-    /// <summary>
-    /// مؤشر استحقاق — set when a court envelope is registered, which is what earns the receipt revenue
-    /// from إنفاذ. It carries no amount: finance enters that during enforcement billing.
-    /// </summary>
+ /// <summary>
+ /// مؤشر استحقاق — set when a court envelope is registered, which is what earns the receipt revenue
+ /// from إنفاذ. It carries no amount: finance enters that during enforcement billing.
+ /// </summary>
     public DateTime? RevenueEntitlementAtUtc { get; set; }
 
     public string CreatedByUserId { get; set; } = "";
     public string CreatedByName { get; set; } = "";
     public DateTime CreatedAtUtc { get; set; }
     public DateTime UpdatedAtUtc { get; set; }
-    /// <summary>Optional link to the court_visit operations task that received this envelope.</summary>
+ /// <summary>Optional link to the court_visit operations task that received this envelope.</summary>
     public Guid? OperationsTaskId { get; set; }
 
     public List<KeyEnvelopeAssignment> Assignments { get; set; } = [];
@@ -94,7 +94,7 @@ public class KeyEnvelope
         UpdatedAtUtc = nowUtc;
     }
 
-    /// <summary>Map a handoff kind onto the envelope custody status (status machine edge).</summary>
+ /// <summary>Map a handoff kind onto the envelope custody status (status machine edge).</summary>
     public void ApplyHandoffKind(string kind)
     {
         Status = kind switch
@@ -155,11 +155,11 @@ public static class KeyEnvelopeStatuses
 
 public static class KeyReceiveScenarios
 {
-    /// <summary>أ — المفاتيح بالمحكمة.</summary>
+ /// <summary>أ — المفاتيح بالمحكمة.</summary>
     public const string Court = "court";
-    /// <summary>ب — المفاتيح غير موجودة.</summary>
+ /// <summary>ب — المفاتيح غير موجودة.</summary>
     public const string Missing = "missing";
-    /// <summary>ج — المفاتيح عند طرف آخر.</summary>
+ /// <summary>ج — المفاتيح عند طرف آخر.</summary>
     public const string ThirdParty = "third_party";
 }
 
@@ -169,7 +169,7 @@ public class KeyEnvelopeAssignment
     public Guid EnvelopeId { get; set; }
     public string DeedNumber { get; set; } = "";
     public Guid? PropertyId { get; set; }
-    /// <summary>pending | matched | partial | unmatched | unmatched_inspected | missing</summary>
+ /// <summary>pending | matched | partial | unmatched | unmatched_inspected | missing</summary>
     public string Status { get; set; } = KeyAssignmentStatuses.Pending;
     public string? Notes { get; set; }
     public string? ConfirmedByUserId { get; set; }
@@ -191,7 +191,7 @@ public static class KeyAssignmentStatuses
     public static bool IsConfirmResult(string status) =>
         status is Matched or Partial or Unmatched or UnmatchedInspected or Missing;
 
-    /// <summary>Statuses that mean the key did not fully open the property.</summary>
+ /// <summary>Statuses that mean the key did not fully open the property.</summary>
     public static bool IsUnmatchedOutcome(string status) =>
         status is Unmatched or UnmatchedInspected or Missing;
 }
@@ -201,7 +201,7 @@ public class KeyEnvelopeHandoff
 {
     public Guid Id { get; set; }
     public Guid EnvelopeId { get; set; }
-    /// <summary>internal | external | receive_back | return_court</summary>
+ /// <summary>internal | external | receive_back | return_court</summary>
     public string Kind { get; set; } = KeyHandoffKinds.Internal;
     public string FromParty { get; set; } = "";
     public string ToParty { get; set; } = "";
@@ -209,7 +209,7 @@ public class KeyEnvelopeHandoff
     public string? LetterNumber { get; set; }
     public Guid? LetterAttachmentId { get; set; }
     public string? Notes { get; set; }
-    /// <summary>pending_confirm | confirmed | completed</summary>
+ /// <summary>pending_confirm | confirmed | completed</summary>
     public string Status { get; set; } = KeyHandoffStatuses.Completed;
     public string? ConfirmedByUserId { get; set; }
     public string? ConfirmedByName { get; set; }
@@ -257,9 +257,9 @@ public static class KeyEnvelopeTimelineEvents
     public const string AssignmentConfirmed = "assignment_confirmed";
     public const string HandoffCreated = "handoff_created";
     public const string HandoffConfirmed = "handoff_confirmed";
-    /// <summary>Historical: a key-receipt amount was stamped from the pricing table.</summary>
+ /// <summary>Historical: a key-receipt amount was stamped from the pricing table.</summary>
     public const string FeeGenerated = "fee_generated";
-    /// <summary>مؤشر استحقاق إيراد استلام المفاتيح — بلا مبلغ.</summary>
+ /// <summary>مؤشر استحقاق إيراد استلام المفاتيح — بلا مبلغ.</summary>
     public const string RevenueEntitlement = "revenue_entitlement";
     public const string StatusChanged = "status_changed";
 }
@@ -276,7 +276,7 @@ public class PropertyCourtAccess
     public Guid? EnablingLetterAttachmentId { get; set; }
     public bool HasEvictionNotice { get; set; }
     public Guid? EvictionNoticeAttachmentId { get; set; }
-    /// <summary>none | enabled_no_key | suspended_eviction</summary>
+ /// <summary>none | enabled_no_key | suspended_eviction</summary>
     public string StudyHoldStatus { get; set; } = PropertyCourtAccessStatuses.None;
     public string? ContactPhones { get; set; }
     public string? Notes { get; set; }

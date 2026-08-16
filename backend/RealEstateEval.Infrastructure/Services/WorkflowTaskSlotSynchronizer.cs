@@ -23,9 +23,9 @@ public sealed class WorkflowTaskSlotSynchronizer : IWorkflowTaskSlotSynchronizer
     public async Task<IReadOnlyList<WorkflowTaskDto>> SyncFromWorkOrdersAsync(
         CancellationToken cancellationToken = default)
     {
-        // Cache warm-up syncs can race each other on the same slot rows (xmin).
-        // The competing sync writes the same derived state, so retry on a fresh
-        // load and, if it still conflicts, return the current list instead of 409.
+ // Cache warm-up syncs can race each other on the same slot rows (xmin).
+ // The competing sync writes the same derived state, so retry on a fresh
+ // load and, if it still conflicts, return the current list instead of 409.
         const int maxAttempts = 3;
         for (var attempt = 1; attempt <= maxAttempts; attempt++)
         {
@@ -102,9 +102,9 @@ public sealed class WorkflowTaskSlotSynchronizer : IWorkflowTaskSlotSynchronizer
             }
             else if (byOrdinal[ord].PropertyId is null)
             {
-                // Only touch the row when something actually changed — unconditional
-                // rewrites made every sync UPDATE every empty slot, so concurrent
-                // syncs kept tripping the xmin concurrency check.
+ // Only touch the row when something actually changed — unconditional
+ // rewrites made every sync UPDATE every empty slot, so concurrent
+ // syncs kept tripping the xmin concurrency check.
                 var existing = byOrdinal[ord];
                 var slotTitle = WorkflowTaskPhaseRules.SlotTaskTitle(poNumber, ord, expected);
                 var slotNow = DateTime.UtcNow;

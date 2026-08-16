@@ -28,7 +28,7 @@ public partial class OperationsTaskReceiptAndCancelReason : Migration
             maxLength: 2000,
             nullable: true);
 
-        // Existing tasks already past «تأكيد الاستلام» keep the confirmed indicator.
+ // Existing tasks already past «تأكيد الاستلام» keep the confirmed indicator.
         migrationBuilder.Sql(
             """
             UPDATE case_study."OperationsTasks"

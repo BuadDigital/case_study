@@ -15,7 +15,7 @@ namespace RealEstateEval.Infrastructure.Data.Contexts.Financial.Migrations
     [Migration("20260803061638_InitialFinancialBaseline")]
     partial class InitialFinancialBaseline
     {
-        /// <inheritdoc />
+ /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618

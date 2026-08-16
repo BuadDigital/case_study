@@ -12,11 +12,11 @@ public static class LocationCatalogStatuses
 public class Region
 {
     public Guid Id { get; set; }
-    /// <summary>المعرّف الإداري 1–13 من الحزمة التأسيسية.</summary>
+ /// <summary>المعرّف الإداري 1–13 من الحزمة التأسيسية.</summary>
     public int OfficialId { get; set; }
-    /// <summary>رمز المنطقة (RD, MK, …).</summary>
+ /// <summary>رمز المنطقة (RD, MK, …).</summary>
     public string Code { get; set; } = "";
-    /// <summary>معرّف المنطقة في المصدر الرسمي (العنوان الوطني).</summary>
+ /// <summary>معرّف المنطقة في المصدر الرسمي (العنوان الوطني).</summary>
     public int AdminAreaId { get; set; }
     public string NameAr { get; set; } = "";
     public string CapitalAr { get; set; } = "";
@@ -30,16 +30,16 @@ public class Region
 public class City
 {
     public Guid Id { get; set; }
-    /// <summary>المعرّف الرسمي كما في العنوان الوطني — null للمسميات المبدئية.</summary>
+ /// <summary>المعرّف الرسمي كما في العنوان الوطني — null للمسميات المبدئية.</summary>
     public int? OfficialId { get; set; }
     public Guid RegionId { get; set; }
     public string NameAr { get; set; } = "";
     public string? NameEn { get; set; }
-    /// <summary>اسم مطبّع للبحث.</summary>
+ /// <summary>اسم مطبّع للبحث.</summary>
     public string NameSearch { get; set; } = "";
     public bool IsGovernorate { get; set; }
     public bool IsCapital { get; set; }
-    /// <summary>approved | pending | merged</summary>
+ /// <summary>approved | pending | merged</summary>
     public string Status { get; set; } = LocationCatalogStatuses.Approved;
     public string? RawInput { get; set; }
     public string? CreatedByUserId { get; set; }
@@ -63,7 +63,7 @@ public class District
     public Guid CityId { get; set; }
     public string NameAr { get; set; } = "";
     public string NameSearch { get; set; } = "";
-    /// <summary>approved | pending | merged</summary>
+ /// <summary>approved | pending | merged</summary>
     public string Status { get; set; } = LocationCatalogStatuses.Pending;
     public string? RawInput { get; set; }
     public string? CreatedByUserId { get; set; }

@@ -7,9 +7,9 @@ using RealEstateEval.Infrastructure.Data.Contexts;
 namespace RealEstateEval.Infrastructure.Data;
 
 /// <summary>
-/// The legacy shared context (ADR 0003). It still holds every slice that Phase 1 has not
+/// The legacy shared context. It still holds every slice that has not
 /// extracted yet, plus the mappings of already-extracted tables that non-owner slices keep
-/// reading until plan Phase 3 replaces those reads with owner APIs and projections. Extracted
+/// reading until owner APIs and projections replace those reads. Extracted
 /// tables are configured from the owner's model definition, so the two mappings cannot drift,
 /// and no new mapping may be added here.
 /// <para>
@@ -102,9 +102,9 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>, IOutboxC
     {
         base.OnModelCreating(builder);
 
-        // Slices already extracted in Phase 1. Their owner context is the write path; these
-        // mappings only keep the remaining cross-boundary reads compiling and are removed
-        // with those reads in Phase 3.
+ // Slices already extracted in. Their owner context is the write path; these
+ // mappings only keep the remaining cross-boundary reads compiling and are removed
+ // with those reads in.
         builder
             .ApplyIdentityModel()
             .ApplyAttachmentsModel()
@@ -134,10 +134,10 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>, IOutboxC
         return base.SaveChangesAsync(acceptAllChangesOnSuccess, cancellationToken);
     }
 
-    /// <summary>
-    /// Fills ج٨ identity columns when callers still construct ledgers with only WorkflowTaskId /
-    /// PropertyId / AssigneeId (tests and transitional paths). Also stamps NetFeeSar / PaidAmountSar.
-    /// </summary>
+ /// <summary>
+ /// Fills identity columns when callers still construct ledgers with only WorkflowTaskId /
+ /// PropertyId / AssigneeId (tests and transitional paths). Also stamps NetFeeSar / PaidAmountSar.
+ /// </summary>
     private void StampInspectorFeeLedgerIdentity()
     {
         foreach (var entry in ChangeTracker.Entries<InspectorFeeLedger>())

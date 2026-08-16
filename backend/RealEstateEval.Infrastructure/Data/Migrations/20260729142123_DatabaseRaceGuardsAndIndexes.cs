@@ -4,10 +4,10 @@
 
 namespace RealEstateEval.Infrastructure.Data.Migrations
 {
-    /// <inheritdoc />
+ /// <inheritdoc />
     public partial class DatabaseRaceGuardsAndIndexes : Migration
     {
-        /// <inheritdoc />
+ /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
             migrationBuilder.DropIndex(
@@ -30,8 +30,8 @@ namespace RealEstateEval.Infrastructure.Data.Migrations
                 schema: "valuation",
                 startValue: 445L);
 
-            // Start past whatever the retired COUNT(*) generator already handed out, so the
-            // first sequence-generated identifier cannot collide with an existing row.
+ // Start past whatever the retired COUNT(*) generator already handed out, so the
+ // first sequence-generated identifier cannot collide with an existing row.
             migrationBuilder.Sql(
                 """
                 SELECT setval(
@@ -45,9 +45,9 @@ namespace RealEstateEval.Infrastructure.Data.Migrations
                 FROM valuation."ValuationRequests";
                 """);
 
-            // That generator could hand the same number to concurrent callers, so an existing
-            // database may already carry duplicates. Keep the oldest row's identifier and
-            // renumber the rest from the sequence, otherwise the unique index cannot be built.
+ // That generator could hand the same number to concurrent callers, so an existing
+ // database may already carry duplicates. Keep the oldest row's identifier and
+ // renumber the rest from the sequence, otherwise the unique index cannot be built.
             migrationBuilder.Sql(
                 """
                 UPDATE valuation."ValuationRequests" AS v
@@ -61,9 +61,9 @@ namespace RealEstateEval.Infrastructure.Data.Migrations
                                AND other."Id" < v."Id")));
                 """);
 
-            // One open request per property becomes a hard rule below. Existing violations
-            // need a business decision, so fail with something actionable instead of the raw
-            // index error.
+ // One open request per property becomes a hard rule below. Existing violations
+ // need a business decision, so fail with something actionable instead of the raw
+ // index error.
             migrationBuilder.Sql(
                 """
                 DO $$
@@ -83,8 +83,8 @@ namespace RealEstateEval.Infrastructure.Data.Migrations
                 END $$;
                 """);
 
-            // Same story for the notification dedupe rule: keep the newest unread copy of a
-            // source event and mark the older duplicates read rather than deleting history.
+ // Same story for the notification dedupe rule: keep the newest unread copy of a
+ // source event and mark the older duplicates read rather than deleting history.
             migrationBuilder.Sql(
                 """
                 UPDATE messaging."UserNotifications" AS n
@@ -151,7 +151,7 @@ namespace RealEstateEval.Infrastructure.Data.Migrations
                 column: "PoNumber");
         }
 
-        /// <inheritdoc />
+ /// <inheritdoc />
         protected override void Down(MigrationBuilder migrationBuilder)
         {
             migrationBuilder.DropIndex(

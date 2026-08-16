@@ -78,12 +78,12 @@ public sealed class WorkflowTaskQueryService : IWorkflowTaskQuery
                 cancellationToken);
     }
 
-    /// <summary>
-    /// Marks engineering-survey and property-appraisal DTOs with whether their sibling
-    /// field-inspection is completed. Populated so EO/appraiser unlock works without
-    /// seeing the inspection task row (party visibility hides it).
-    /// Query is scoped to parent+property pairs present in the page (no full-table scan).
-    /// </summary>
+ /// <summary>
+ /// Marks engineering-survey and property-appraisal DTOs with whether their sibling
+ /// field-inspection is completed. Populated so EO/appraiser unlock works without
+ /// seeing the inspection task row (party visibility hides it).
+ /// Query is scoped to parent+property pairs present in the page (no full-table scan).
+ /// </summary>
     internal async Task EnrichFieldInspectionCompletedAsync(
         IReadOnlyList<WorkflowTaskDto> dtos,
         CancellationToken cancellationToken)

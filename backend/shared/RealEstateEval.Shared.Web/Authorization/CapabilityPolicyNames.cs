@@ -17,43 +17,43 @@ public static class CapabilityPolicyNames
     public const string ManageOperations = "Capability:manage-operations";
     public const string ManageCourts = "Capability:courts.manage";
 
-    /// <summary>Party workspaces raise failures; case staff manage the full queue.</summary>
+ /// <summary>Party workspaces raise failures; case staff manage the full queue.</summary>
     public const string RaiseFailures = "Capability:raise-failures";
 
-    /// <summary>
-    /// Revenue and billing reads. Finance owns the numbers, case staff see them on the PO and
-    /// property views; external parties never do.
-    /// </summary>
+ /// <summary>
+ /// Revenue and billing reads. Finance owns the numbers, case staff see them on the PO and
+ /// property views; external parties never do.
+ /// </summary>
     public const string ReadFinancialData = "Capability:read-financial-data";
 
-    /// <summary>
-    /// Management dashboards and cross-queue aggregates. Cached on a single global key, so this is
-    /// deliberately an all-or-nothing gate rather than per-actor scoping.
-    /// </summary>
+ /// <summary>
+ /// Management dashboards and cross-queue aggregates. Cached on a single global key, so this is
+ /// deliberately an all-or-nothing gate rather than per-actor scoping.
+ /// </summary>
     public const string ReadManagementReports = "Capability:read-management-reports";
 
-    /// <summary>
-    /// Valuation queue and evaluator recalls — coordinators manage, appraisers submit/read own queue.
-    /// </summary>
+ /// <summary>
+ /// Valuation queue and evaluator recalls — coordinators manage, appraisers submit/read own queue.
+ /// </summary>
     public const string ReadValuationQueue = "Capability:read-valuation-queue";
 
-    /// <summary>
-    /// Comparable bank writes — office appraisers and valuation coordinators (Phase 2 scaffold).
-    /// </summary>
+ /// <summary>
+ /// Comparable bank writes — office appraisers and valuation coordinators.
+ /// </summary>
     public const string WriteComparableBank = "Capability:write-comparable-bank";
 
-    /// <summary>Physical-key custody and fee data for operations or finance staff.</summary>
+ /// <summary>Physical-key custody and fee data for operations or finance staff.</summary>
     public const string ReadKeyData = "Capability:read-key-data";
 
-    /// <summary>
-    /// Staff pickers for distribution and internal key handoffs —
-    /// case staff (work orders) or ops parties (keys/gov review).
-    /// </summary>
+ /// <summary>
+ /// Staff pickers for distribution and internal key handoffs —
+ /// case staff (work orders) or ops parties (keys/gov review).
+ /// </summary>
     public const string ListDistributionAssignees = "Capability:list-distribution-assignees";
 
-    /// <summary>
-    /// Edit party-fee pricing tables: system admin, section supervisor (ops), or case specialist.
-    /// </summary>
+ /// <summary>
+ /// Edit party-fee pricing tables: system admin, section supervisor (ops), or case specialist.
+ /// </summary>
     public const string ManagePartyFeePricing = "Capability:manage-party-fee-pricing";
 
     public static string For(string capability) => $"Capability:{capability}";

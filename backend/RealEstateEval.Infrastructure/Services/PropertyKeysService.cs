@@ -66,7 +66,7 @@ public sealed class PropertyKeysService : IPropertyKeysService
         var row = await _ops.PropertyKeyRecords.FirstOrDefaultAsync(x => x.Id == id, cancellationToken);
         if (row is null) return null;
 
-        // Prefer envelope handoff confirmation when a linked envelope exists.
+ // Prefer envelope handoff confirmation when a linked envelope exists.
         if (!string.IsNullOrWhiteSpace(request.Status)
             && string.Equals(request.Status.Trim(), "done", StringComparison.OrdinalIgnoreCase))
         {
@@ -128,7 +128,7 @@ public sealed class PropertyKeysService : IPropertyKeysService
         var existingRows = await _ops.PropertyKeyRecords.ToListAsync(cancellationToken);
         var matchedRowIds = new HashSet<Guid>();
 
-        // 1) Project from envelopes + linked properties / assignments
+ // 1) Project from envelopes + linked properties / assignments
         var envelopes = await _ops.KeyEnvelopes.AsNoTracking()
             .Include(e => e.Assignments)
             .Include(e => e.Handoffs)
@@ -214,7 +214,7 @@ public sealed class PropertyKeysService : IPropertyKeysService
             }
         }
 
-        // 2) Legacy fallback from government-review submissions (properties not covered)
+ // 2) Legacy fallback from government-review submissions (properties not covered)
         await MergeLegacyGovReviewAsync(existingRows, matchedRowIds, now, cancellationToken);
 
         foreach (var row in existingRows.ToList())
@@ -262,7 +262,7 @@ public sealed class PropertyKeysService : IPropertyKeysService
             var po = task.PoNumber.Trim();
             var deedLabel = FormatDeedLabel(property, task.PropertyOrdinal);
 
-            // Skip if already projected from an envelope for same PO+deed
+ // Skip if already projected from an envelope for same PO+deed
             var already = existingRows.Any(x =>
                 matchedRowIds.Contains(x.Id)
                 && x.PoNumber.Trim().Equals(po, StringComparison.OrdinalIgnoreCase)

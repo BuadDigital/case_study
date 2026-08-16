@@ -8,7 +8,7 @@ namespace RealEstateEval.Infrastructure.Data.Contexts;
 /// Financial-owned tables: the <c>financial</c> schema plus inspector-fee ledgers / transitions /
 /// disbursement batches that still live in <c>case_study</c> physically (D1). Applied by
 /// <see cref="FinancialDbContext"/> (write path) and by the legacy context for transitional
-/// cross-boundary reads until Phase 3.
+/// cross-boundary reads until owner APIs replace them.
 /// </summary>
 internal static class FinancialModel
 {
@@ -225,7 +225,7 @@ internal static class FinancialModel
             e.HasIndex(x => new { x.TransactionKey, x.TargetAssigneeId, x.Status });
         });
 
-        // D1: accrual/disbursement lifecycle is financial-owned while rows stay in case_study.
+ // D1: accrual/disbursement lifecycle is financial-owned while rows stay in case_study.
         builder.Entity<InspectorFeeLedger>(e =>
         {
             MapTable(e, "InspectorFeeLedgers", DatabaseSchemas.CaseStudy, ownsMigrations);

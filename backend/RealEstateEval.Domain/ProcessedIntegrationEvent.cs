@@ -7,13 +7,13 @@ namespace RealEstateEval.Domain;
 /// </summary>
 public class ProcessedIntegrationEvent
 {
-    /// <summary>Envelope id of the integration event.</summary>
+ /// <summary>Envelope id of the integration event.</summary>
     public Guid EventId { get; set; }
 
-    /// <summary>
-    /// Logical consumer name. Part of the key so independent consumers each get their own
-    /// chance to handle the same event.
-    /// </summary>
+ /// <summary>
+ /// Logical consumer name. Part of the key so independent consumers each get their own
+ /// chance to handle the same event.
+ /// </summary>
     public string Consumer { get; set; } = "";
 
     public string EventType { get; set; } = "";

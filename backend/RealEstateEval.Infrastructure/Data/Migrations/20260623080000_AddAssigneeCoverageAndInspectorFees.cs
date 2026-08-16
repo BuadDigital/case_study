@@ -12,7 +12,7 @@ namespace RealEstateEval.Infrastructure.Data.Migrations;
 /// <inheritdoc />
 public partial class AddAssigneeCoverageAndInspectorFees : Migration
 {
-    /// <inheritdoc />
+ /// <inheritdoc />
     protected override void Up(MigrationBuilder migrationBuilder)
     {
         migrationBuilder.AddColumn<string>(
@@ -89,7 +89,7 @@ public partial class AddAssigneeCoverageAndInspectorFees : Migration
             """);
     }
 
-    /// <inheritdoc />
+ /// <inheritdoc />
     protected override void Down(MigrationBuilder migrationBuilder)
     {
         migrationBuilder.DropTable(

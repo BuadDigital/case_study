@@ -12,10 +12,10 @@ namespace RealEstateEval.Application.Tests;
 
 internal static class TestInspectorFeeServiceFactory
 {
-    /// <summary>
-    /// Shared in-memory App + Financial + Identity so pricing (Financial) and residual Identity
-    /// profile reads stay in the same store as inspector-fee ledgers on App.
-    /// </summary>
+ /// <summary>
+ /// Shared in-memory App + Financial + Identity so pricing (Financial) and residual Identity
+ /// profile reads stay in the same store as inspector-fee ledgers on App.
+ /// </summary>
     internal sealed class Store : IAsyncDisposable
     {
         private readonly InMemoryDatabaseRoot _root = new();
@@ -86,11 +86,11 @@ internal static class TestInspectorFeeServiceFactory
         return ComposeWorkflow(db, fees, notifications, recipients, timeline);
     }
 
-    /// <summary>
-    /// Companion Financial context sharing the same InMemory store name as <paramref name="db"/>
-    /// so pricing / suspension rows seeded via App remain visible to
-    /// <see cref="PartyFeePricingService"/>.
-    /// </summary>
+ /// <summary>
+ /// Companion Financial context sharing the same InMemory store name as <paramref name="db"/>
+ /// so pricing / suspension rows seeded via App remain visible to
+ /// <see cref="PartyFeePricingService"/>.
+ /// </summary>
     public static FinancialDbContext ShareFinancial(DbContext db) =>
         CreateSibling<FinancialDbContext>(db, options => new FinancialDbContext(options));
 
@@ -137,8 +137,8 @@ internal static class TestInspectorFeeServiceFactory
 
     private static (string StoreName, InMemoryDatabaseRoot? Root) SharedInMemoryIdentity(DbContext db)
     {
-        // InMemory is non-relational — Database.GetDbConnection is unavailable. Reflect the
-        // store name (and optional root) off the provider options extension.
+ // InMemory is non-relational — Database.GetDbConnection is unavailable. Reflect the
+ // store name (and optional root) off the provider options extension.
         var options = db.GetService<IDbContextOptions>();
         string? storeName = null;
         InMemoryDatabaseRoot? root = null;

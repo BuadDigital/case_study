@@ -9,12 +9,12 @@ using RealEstateEval.Shared.Contracts;
 namespace RealEstateEval.Application.Tests;
 
 /// <summary>
-/// Acceptance tests for Phase 1 extraction step 1 of docs/architecture-split-plan.md. They
+/// Acceptance tests for context extraction of architecture docs. They
 /// check the two properties the split has to preserve while one database is shared: a row
 /// written through its owner context is the same row every other context sees, and a business
 /// write still commits atomically with the event that announces it.
 /// </summary>
-public class Phase1ContextSplitTests
+public class ContextSplitTests
 {
     [Fact]
     public async Task Attachment_written_through_its_owner_context_is_the_row_the_legacy_context_reads()
@@ -63,11 +63,11 @@ public class Phase1ContextSplitTests
         Assert.True(await contexts.Legacy.Courts.AsNoTracking().AnyAsync(court => court.Id == id));
     }
 
-    /// <summary>
-    /// D5: the Valuation context maps <c>messaging.OutboxMessages</c> precisely so the request
-    /// and its event are one <c>SaveChanges</c>. If the event were published through another
-    /// context, a crash between the two saves would announce a request that does not exist.
-    /// </summary>
+ /// <summary>
+ /// D5: the Valuation context maps <c>messaging.OutboxMessages</c> precisely so the request
+ /// and its event are one <c>SaveChanges</c>. If the event were published through another
+ /// context, a crash between the two saves would announce a request that does not exist.
+ /// </summary>
     [Fact]
     public async Task Valuation_request_and_its_outbox_event_commit_through_one_context()
     {
@@ -100,20 +100,20 @@ public class Phase1ContextSplitTests
         Assert.Equal(IntegrationEventTypes.ValuationRequestCreated, outbox.EventType);
         Assert.Contains("PO-777", outbox.PayloadJson);
 
-        // Same physical tables, so the central dispatcher still sees the row.
+ // Same physical tables, so the central dispatcher still sees the row.
         Assert.Single(contexts.Legacy.OutboxMessages);
     }
 
-    /// <summary>
-    /// The Valuation context maps no Case Study table, which is what forces the PO number to
-    /// arrive through <c>IPropertyPoNumberLookup</c> rather than a join.
-    /// </summary>
+ /// <summary>
+ /// The Valuation context maps no Case Study table, which is what forces the PO number to
+ /// arrive through <c>IPropertyPoNumberLookup</c> rather than a join.
+ /// </summary>
     [Fact]
     public async Task Valuation_context_cannot_reach_case_study_tables()
     {
         await using var contexts = TestDatabases.Create("phase1-valuation-isolation");
 
-        // An unmapped schema surfaces as "" and fails the comparison rather than disappearing.
+ // An unmapped schema surfaces as "" and fails the comparison rather than disappearing.
         var schemas = contexts.Valuation.Model
             .GetEntityTypes()
             .Select(entity => entity.GetSchema() ?? "")

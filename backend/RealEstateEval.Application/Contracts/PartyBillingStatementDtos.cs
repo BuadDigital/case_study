@@ -7,9 +7,9 @@ public class PartyBillingReadyLineDto
     public string PropertyLabel { get; set; } = "";
     public string PoNumber { get; set; } = "";
     public string? AssigneeId { get; set; }
-    /// <summary>engineering-survey | field-inspection | government-review | court-visit</summary>
+ /// <summary>engineering-survey | field-inspection | government-review | court-visit</summary>
     public string TaskKind { get; set; } = "";
-    /// <summary>vendor | individual</summary>
+ /// <summary>vendor | individual</summary>
     public string PayeeType { get; set; } = "vendor";
     public string PayeeTypeLabel { get; set; } = "";
     public decimal AgreedFeeSar { get; set; }
@@ -80,9 +80,9 @@ public class PartyBillingStatementDto
 public class CreatePartyBillingStatementRequest
 {
     public IReadOnlyList<string> WorkflowTaskIds { get; init; } = [];
-    /// <summary>
-    /// When true, other ready (at-finance) lines for the same payee become deferred.
-    /// </summary>
+ /// <summary>
+ /// When true, other ready (at-finance) lines for the same payee become deferred.
+ /// </summary>
     public bool DeferUnselectedForAssignee { get; init; } = true;
     public string? Notes { get; init; }
 }
@@ -104,15 +104,15 @@ public class CreateMonthPartyBillingStatementsResult
 
 public class ClosePartyBillingStatementRequest
 {
-    /// <summary>سند صرف — required and unique.</summary>
+ /// <summary>سند صرف — required and unique.</summary>
     public required string DisbursementVoucher { get; init; }
-    /// <summary>مرجع التحويل — required.</summary>
+ /// <summary>مرجع التحويل — required.</summary>
     public required string TransferReference { get; init; }
-    /// <summary>إيصال التحويل — attachment id required.</summary>
+ /// <summary>إيصال التحويل — attachment id required.</summary>
     public required string TransferReceiptAttachmentId { get; init; }
-    /// <summary>Optional free-text receipt note.</summary>
+ /// <summary>Optional free-text receipt note.</summary>
     public string? TransferReceiptRef { get; init; }
-    /// <summary>Legacy alias for voucher or external inv; preferred: DisbursementVoucher.</summary>
+ /// <summary>Legacy alias for voucher or external inv; preferred: DisbursementVoucher.</summary>
     public string? ExternalInvoiceNumber { get; init; }
     public DateTime? PaidAtUtc { get; init; }
     public string? Notes { get; init; }

@@ -1,15 +1,15 @@
 namespace RealEstateEval.Domain;
 
 /// <summary>
-/// Decision 20 (Solomon 2026-08-16) — العقار المجمع linking entity: deeds scattered
+/// العقار المجمع linking entity: deeds scattered
 /// across work orders link to one grouped property. Work orders stay administratively
-/// independent; each deed keeps its own rule (decision 18). Comparable/cost/weighting
+/// independent; each deed keeps its own rule. Comparable/cost/weighting
 /// distribution across units belongs to the grouped-property workshop.
 /// </summary>
 public class PropertyGroup
 {
     public Guid Id { get; set; }
-    /// <summary>Optional display name (e.g. مخطط/مالك).</summary>
+ /// <summary>Optional display name (e.g. مخطط/مالك).</summary>
     public string? Name { get; set; }
     public DateTime CreatedAtUtc { get; set; }
 
@@ -22,13 +22,13 @@ public class PropertyGroupMember
     public Guid Id { get; set; }
     public Guid GroupId { get; set; }
     public Guid PropertyId { get; set; }
-    /// <summary>Human confirmation actor (دارس الحالة/المقيّم) — decision 20 stage 1.</summary>
+ /// <summary>Human confirmation actor (دارس الحالة/المقيّم) — stage 1.</summary>
     public string LinkedByUserId { get; set; } = "";
     public DateTime LinkedAtUtc { get; set; }
-    /// <summary>Signals that suggested the link, comma-separated codes (provenance).</summary>
+ /// <summary>Signals that suggested the link, comma-separated codes (provenance).</summary>
     public string? SuggestionSignals { get; set; }
     public bool IsActive { get; set; } = true;
-    /// <summary>Unlink requires a reason (قابل للفك بمبرر).</summary>
+ /// <summary>Unlink requires a reason (قابل للفك بمبرر).</summary>
     public string? UnlinkReason { get; set; }
     public string? UnlinkedByUserId { get; set; }
     public DateTime? UnlinkedAtUtc { get; set; }
@@ -36,7 +36,7 @@ public class PropertyGroupMember
     public PropertyGroup? Group { get; set; }
 }
 
-/// <summary>Decision 20 stage-1 suggestion signals.</summary>
+/// <summary>stage-1 suggestion signals.</summary>
 public static class PropertyGroupSignals
 {
     public const string SameOwner = "same_owner";
@@ -56,7 +56,7 @@ public static class PropertyGroupSignals
 
 public static class PropertyGroupRules
 {
-    /// <summary>Coordinate-proximity threshold for the suggestion signal.</summary>
+ /// <summary>Coordinate-proximity threshold for the suggestion signal.</summary>
     public const decimal ProximityKm = 0.3m;
 
     public sealed record CandidateInput(
@@ -66,7 +66,7 @@ public static class PropertyGroupRules
         decimal? Latitude,
         decimal? Longitude);
 
-    /// <summary>Signals for a candidate pair — empty list = no suggestion.</summary>
+ /// <summary>Signals for a candidate pair — empty list = no suggestion.</summary>
     public static IReadOnlyList<string> EvaluateSignals(CandidateInput subject, CandidateInput candidate)
     {
         var signals = new List<string>();
@@ -100,7 +100,7 @@ public static class PropertyGroupRules
         return signals;
     }
 
-    /// <summary>Adjacent when both plot numbers are numeric and differ by exactly one.</summary>
+ /// <summary>Adjacent when both plot numbers are numeric and differ by exactly one.</summary>
     public static bool ArePlotsAdjacent(string? plotA, string? plotB)
     {
         if (!long.TryParse(Normalize(plotA), out var a)) return false;

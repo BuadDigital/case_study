@@ -15,7 +15,7 @@ namespace RealEstateEval.Infrastructure.Data.Contexts.Platform.Migrations
     [Migration("20260730110223_RelocateAuditLogToAuditSchema")]
     partial class RelocateAuditLogToAuditSchema
     {
-        /// <inheritdoc />
+ /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618

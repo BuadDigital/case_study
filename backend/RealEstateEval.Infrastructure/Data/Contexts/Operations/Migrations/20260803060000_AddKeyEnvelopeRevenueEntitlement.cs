@@ -14,7 +14,7 @@ namespace RealEstateEval.Infrastructure.Data.Contexts.Operations.Migrations;
 [Migration("20260803060000_AddKeyEnvelopeRevenueEntitlement")]
 public class AddKeyEnvelopeRevenueEntitlement : Migration
 {
-    /// <inheritdoc />
+ /// <inheritdoc />
     protected override void Up(MigrationBuilder migrationBuilder)
     {
         migrationBuilder.Sql(
@@ -30,7 +30,7 @@ public class AddKeyEnvelopeRevenueEntitlement : Migration
             """);
     }
 
-    /// <inheritdoc />
+ /// <inheritdoc />
     protected override void Down(MigrationBuilder migrationBuilder)
     {
         migrationBuilder.Sql(

@@ -160,9 +160,9 @@ public sealed class NotificationService : INotificationService
                 DatabaseIndexNames.UserNotificationUnreadSourceEvent)
             && _db.Database.CurrentTransaction is null)
         {
-            // A concurrent delivery of the same event inserted the row first. The failed
-            // statement rolled back, so undo the staged work and redo it: the second pass
-            // reads the winning row and refreshes it instead of inserting a duplicate.
+ // A concurrent delivery of the same event inserted the row first. The failed
+ // statement rolled back, so undo the staged work and redo it: the second pass
+ // reads the winning row and refreshes it instead of inserting a duplicate.
             checkpoint.Rollback();
             return await StageBatchAsync(requestsByUser, cancellationToken);
         }
@@ -187,8 +187,8 @@ public sealed class NotificationService : INotificationService
             UserNotification? row = null;
             if (!string.IsNullOrWhiteSpace(request.SourceEvent))
             {
-                // Must match IX_UserNotifications_UserId_SourceEvent_Unread exactly, or a
-                // resend the probe considers new is rejected by the index instead.
+ // Must match IX_UserNotifications_UserId_SourceEvent_Unread exactly, or a
+ // resend the probe considers new is rejected by the index instead.
                 row = existingRows
                     .Where(n => n.UserId == userId)
                     .Where(n => n.SourceEvent == request.SourceEvent)
@@ -242,9 +242,9 @@ public sealed class NotificationService : INotificationService
 
         await _db.SaveChangesAsync(cancellationToken);
 
-        // Push to SSE clients connected to this Platform process immediately.
-        // Waiting for Messaging outbox → Rabbit → realtime consumer adds seconds
-        // of delay (and feels like "only works after reload", which hits List).
+ // Push to SSE clients connected to this Platform process immediately.
+ // Waiting for Messaging outbox → Rabbit → realtime consumer adds seconds
+ // of delay (and feels like "only works after reload", which hits List).
         foreach (var row in result)
             _realtime.Publish(row.UserId, ToDto(row));
 
