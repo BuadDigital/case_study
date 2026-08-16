@@ -203,6 +203,33 @@ chmod 600 /app/.env
 
 القالب المرجعي: `infra/production.env.example`.
 
+### تفعيل إشعارات Push (اختياري)
+
+الافتراضي في الإنتاج: **مطفأ**. بعد ما الموقع على HTTPS:
+
+```sh
+# من أي جهاز فيه Node — مرة واحدة:
+npx --yes web-push generate-vapid-keys
+```
+
+أضف الناتج إلى `/app/.env` على السيرفر:
+
+```sh
+WEB_PUSH_ENABLED=true
+WEB_PUSH_PUBLIC_KEY=<المفتاح العام>
+WEB_PUSH_PRIVATE_KEY=<المفتاح الخاص>
+WEB_PUSH_SUBJECT=mailto:ops@your-domain.com
+```
+
+ثم أعد تشغيل خدمة platform فقط:
+
+```sh
+cd /app
+docker compose -f docker-compose.prod.yml up -d platform
+```
+
+بدون هذي القيم تظهر في البروفايل: «إشعارات Push غير مفعّلة على الخادم حالياً».
+
 ---
 
 ## 4. مفتاح SSH للنشر
