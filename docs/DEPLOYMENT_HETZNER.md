@@ -205,23 +205,22 @@ chmod 600 /app/.env
 
 ### تفعيل إشعارات Push (اختياري)
 
-الافتراضي في الإنتاج: **مطفأ**. بعد ما الموقع على HTTPS:
+الافتراضي في الإنتاج: **مطفأ**. بعد ما الموقع على HTTPS، ولّد مفاتيح VAPID مرة واحدة:
 
 ```sh
-# من أي جهاز فيه Node — مرة واحدة:
 npx --yes web-push generate-vapid-keys
 ```
 
-أضف الناتج إلى `/app/.env` على السيرفر:
+**الطريقة المفضّلة (CI):** خزّن القيم كـ GitHub Secrets على المستودع:
 
-```sh
-WEB_PUSH_ENABLED=true
-WEB_PUSH_PUBLIC_KEY=<المفتاح العام>
-WEB_PUSH_PRIVATE_KEY=<المفتاح الخاص>
-WEB_PUSH_SUBJECT=mailto:ops@your-domain.com
-```
+- `WEB_PUSH_ENABLED=true`
+- `WEB_PUSH_PUBLIC_KEY`
+- `WEB_PUSH_PRIVATE_KEY`
+- `WEB_PUSH_SUBJECT` (مثلاً `mailto:ops@your-domain.com`)
 
-ثم أعد تشغيل خدمة platform فقط:
+نشر `main` يكتبها إلى `/app/.env` ويعيد تشغيل الـ stack عبر `docker-compose.prod.yml`.
+
+**يدوياً على السيرفر:** أضف نفس المتغيرات إلى `/app/.env` ثم:
 
 ```sh
 cd /app
