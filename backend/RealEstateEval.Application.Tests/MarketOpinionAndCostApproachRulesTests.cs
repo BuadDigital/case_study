@@ -135,7 +135,6 @@ public class MarketOpinionAndCostApproachRulesTests
     [Fact]
     public void Repeated_floor_quantity_derives_from_first_floor_times_count()
     {
- /.
         Assert.Equal(450m, RepeatedFloorRules.DeriveQuantity(150m, 3));
         Assert.Equal(0m, RepeatedFloorRules.DeriveQuantity(150m, 0));
         Assert.Equal(0m, RepeatedFloorRules.DeriveQuantity(-10m, 3));

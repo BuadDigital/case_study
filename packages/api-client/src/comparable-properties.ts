@@ -13,12 +13,16 @@ export type ComparablePropertyDto = {
   id: string;
   referenceCode: string;
   comparablePropertyType: string;
+  /** استخدام المقارن — قائمة مغلقة (ق-3/5). */
+  usage: string;
   transactionKind: string;
   transactionKindLabelAr: string;
   priceDescription: string;
   priceDescriptionLabelAr: string;
   source: string;
   listingNumber?: string | null;
+  /** ق-3/3: مرجع صفقة البورصة للمنفّذ. */
+  transactionReference?: string | null;
   advertiserPhone?: string | null;
   listingImageFileName?: string | null;
   latitude: number;
@@ -38,17 +42,39 @@ export type ComparablePropertyDto = {
   sourceWorkOrderNumber?: string | null;
   sourcePropertyId?: string | null;
   isActive: boolean;
+  /** ق-3: وسوم الجودة البشرية — normal | anomalous | unreliable. */
+  reliabilityTag: string;
+  reliabilityTagLabelAr: string;
+  isDuplicateTagged: boolean;
+  tagRationale?: string | null;
+  taggedByUserId?: string | null;
+  taggedAtUtc?: string | null;
+  /** موسوم فيُستبعد من الاقتراحات ويُميَّز بصرياً. */
+  isExcludedFromSuggestions: boolean;
+  /** اشتباه تكرار آلي (سجل آخر بنفس الموقع) — اقتراح فقط. */
+  duplicateSuspect: boolean;
   createdAtUtc: string;
   updatedAtUtc: string;
   sourceCard: ComparableSourceCardDto;
 };
 
+/** ق-3: وضع/تحديث وسوم الجودة بمبرر — السجل يبقى. */
+export type SaveComparableQualityTagsRequest = {
+  reliabilityTag: string;
+  isDuplicateTagged: boolean;
+  tagRationale?: string | null;
+};
+
 export type UpsertComparablePropertyRequest = {
   comparablePropertyType: string;
+  /** استخدام المقارن — قائمة مغلقة (ق-3/5). */
+  usage?: string | null;
   transactionKind: string;
   priceDescription?: string | null;
   source: string;
   listingNumber?: string | null;
+  /** ق-3/3: مرجع الصفقة — للمنفّذ. */
+  transactionReference?: string | null;
   advertiserPhone?: string | null;
   listingImageFileName?: string | null;
   latitude: number;
@@ -214,6 +240,40 @@ export async function createComparableProperty(
           payload?.errors
             ? Object.values(payload.errors)[0]
             : payload?.error ?? "بيانات غير صالحة",
+        errors: payload?.errors,
+      };
+    }
+    if (!res.ok) return { ok: false, kind: "server" };
+    return { ok: true, data: await parseJson<ComparablePropertyDto>(res) };
+  } catch {
+    return { ok: false, kind: "network" };
+  }
+}
+
+/** ق-3: وسوم الجودة البشرية — يضعها ذو صفة بمبرر، والسجل يبقى موسوماً. */
+export async function setComparableQualityTags(
+  config: ComparablePropertiesApiConfig,
+  id: string,
+  body: SaveComparableQualityTagsRequest,
+): Promise<Result<ComparablePropertyDto>> {
+  const base = config.baseUrl ?? getApiBase();
+  try {
+    const res = await fetch(`${base}/api/comparable-properties/${id}/quality-tags`, {
+      method: "PUT",
+      headers: headers(config.token),
+      body: JSON.stringify(body),
+    });
+    if (res.status === 401) return { ok: false, kind: "auth" };
+    if (res.status === 400) {
+      const payload = (await res.json().catch(() => null)) as {
+        errors?: Record<string, string>;
+      } | null;
+      return {
+        ok: false,
+        kind: "validation",
+        message: payload?.errors
+          ? Object.values(payload.errors)[0]
+          : "بيانات الوسم غير صالحة",
         errors: payload?.errors,
       };
     }

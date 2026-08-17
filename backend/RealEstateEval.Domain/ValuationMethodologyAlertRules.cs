@@ -1,8 +1,9 @@
 namespace RealEstateEval.Domain;
 
 /// <summary>
-/// Field-inventory — 17 methodology alerts.
-/// : 6 hard / 6 require text rationale / 5 require acknowledgement.
+/// Methodology alerts — 21 per package v2 (القرار 16 + 24 + ق-4 + ق-7):
+/// 7 hard / 8 require text rationale / 6 require acknowledgement.
+/// m18/m21 evaluate only once inspection-scope data is captured (حدود المعاينة).
 /// </summary>
 public static class ValuationMethodologyAlertCodes
 {
@@ -23,6 +24,33 @@ public static class ValuationMethodologyAlertCodes
     public const string NoAdoptedComparables = "m15_no_adopted_comparables";
     public const string WeightsNot100 = "m16_weights_not_100";
     public const string LargeAdjustments = "m17_large_adjustments";
+ /// <summary>القرار 24 — معاينة محدودة (خارجية/مكتبية/وحدات غير معاينة) تشرح قيودها.</summary>
+    public const string LimitedInspection = "m18_limited_inspection";
+ /// <summary>ق-4 — أقل من 3 مقارنات معتمدة (الحاجب «صفر» باقٍ في m15).</summary>
+    public const string FewAdoptedComparables = "m19_few_adopted_comparables";
+ /// <summary>ق-4 — فارق زمني كبير بلا تسوية ظروف سوق (العتبة إعداد إداري).</summary>
+    public const string StaleComparableNoTimeAdjustment = "m20_stale_comparable_no_time_adjustment";
+ /// <summary>ق-7 — نطاق «مكتبية عن بُعد» يحتاج اعتماد المقيّم المعتمد (حاجب).</summary>
+    public const string RemoteInspectionUnapproved = "m21_remote_inspection_unapproved";
+}
+
+/// <summary>نطاق المعاينة (القرار 24) — تُستكمل حقوله مع ميزة حدود المعاينة.</summary>
+public static class InspectionScopeKeys
+{
+    public const string Full = "full";
+    public const string ExternalOnly = "external";
+    public const string Desktop = "desktop";
+
+    public static bool IsKnown(string? value) =>
+        (value ?? "").Trim().ToLowerInvariant() is Full or ExternalOnly or Desktop;
+
+    public static string LabelAr(string? value) => (value ?? "").Trim().ToLowerInvariant() switch
+    {
+        ExternalOnly => "خارجية فقط",
+        Desktop => "مكتبية عن بُعد",
+        Full => "كاملة (داخل وخارج)",
+        _ => "",
+    };
 }
 
 public static class ValuationMethodologyAlertSeverityKinds
@@ -57,16 +85,16 @@ public sealed record ValuationMethodologyAlertResolution(
 /// <summary>Alert numbers that block issuance under .</summary>
 public static class ValuationMethodologyAlertSeverity
 {
- /// <summary>حاجبة: 3, 4, 5, 11, 15, 16</summary>
-    public static bool IsHard(int number) => number is 3 or 4 or 5 or 11 or 15 or 16;
+ /// <summary>حاجبة (7): 3, 4, 5, 11, 15, 16 + 21 (ق-7)</summary>
+    public static bool IsHard(int number) => number is 3 or 4 or 5 or 11 or 15 or 16 or 21;
 
- /// <summary>تحذيري بمبرر نصي: 6, 8, 9, 10, 12, 17</summary>
+ /// <summary>تحذيري بمبرر نصي (8): 6, 8, 9, 10, 12, 17 + 18 (القرار 24) + 19 (ق-4)</summary>
     public static bool RequiresRationale(int number) =>
-        number is 6 or 8 or 9 or 10 or 12 or 17;
+        number is 6 or 8 or 9 or 10 or 12 or 17 or 18 or 19;
 
- /// <summary>تحذيري بإقرار: 1, 2, 7, 13, 14</summary>
+ /// <summary>تحذيري بإقرار (6): 1, 2, 7, 13, 14 + 20 (ق-4)</summary>
     public static bool RequiresAcknowledgement(int number) =>
-        number is 1 or 2 or 7 or 13 or 14;
+        number is 1 or 2 or 7 or 13 or 14 or 20;
 
     public static string KindFor(int number) =>
         IsHard(number) ? ValuationMethodologyAlertSeverityKinds.Hard
@@ -89,7 +117,11 @@ public sealed record ValuationMethodologyAlertCostLineInput(
 public sealed record ValuationMethodologyAlertComparableInput(
     string ComparablePropertyType,
     bool ExceedsLargeAdjustmentThreshold,
-    decimal SumIncludedPct);
+    decimal SumIncludedPct,
+ /// <summary>عمر الصفقة بالأشهر عند تاريخ التقييم (m20).</summary>
+    int DealAgeMonths = 0,
+ /// <summary>هل أُدخلت تسوية ظروف سوق غير صفرية مفعَّلة؟ (m20)</summary>
+    bool HasMarketConditionsAdjustment = false);
 
 public sealed record ValuationMethodologyAlertInput(
     bool HasStructuresToValue,
@@ -128,7 +160,15 @@ public sealed record ValuationMethodologyAlertInput(
     decimal ExternalObsolescencePct = 0m,
     string? ExternalObsolescenceRationale = null,
  /// <summary>Soft-alert resolutions (rationale / ack) keyed by alert code.</summary>
-    IReadOnlyList<ValuationMethodologyAlertResolution>? Resolutions = null);
+    IReadOnlyList<ValuationMethodologyAlertResolution>? Resolutions = null,
+ /// <summary>نطاق المعاينة (القرار 24) — null = لم يُلتقط بعد فلا تُقيَّم m18/m21.</summary>
+    string? InspectionScopeKey = null,
+ /// <summary>عدد الوحدات غير المعاينة (القرار 24).</summary>
+    int UninspectedUnitCount = 0,
+ /// <summary>ق-7 — اعتماد المقيّم المعتمد لنطاق «مكتبية عن بُعد».</summary>
+    bool RemoteInspectionApprovedByAccredited = false,
+ /// <summary>ق-4 — عتبة الفارق الزمني بالأشهر (إعداد إداري، الافتراضي 6).</summary>
+    int TimeGapMonthsThreshold = ValuationMethodologyAlertRules.DefaultTimeGapMonths);
 
 /// <summary>Evaluates alerts per three-tier severity.</summary>
 public static class ValuationMethodologyAlertRules
@@ -136,6 +176,10 @@ public static class ValuationMethodologyAlertRules
     public const decimal DeveloperProfitMinPct = 10m;
     public const decimal DeveloperProfitMaxPct = 20m;
     public const decimal IndirectRatesWarnPct = 45m;
+ /// <summary>ق-4: اقتراح الحزمة ~6 أشهر — قابل للضبط من إعدادات المنشأة.</summary>
+    public const int DefaultTimeGapMonths = 6;
+ /// <summary>ق-4: أقل من 3 مقارنات معتمدة تنبيه بمبرر.</summary>
+    public const int MinComparablesWithoutRationale = 3;
 
     public static IReadOnlyList<ValuationMethodologyAlertCheck> Evaluate(
         ValuationMethodologyAlertInput input)
@@ -276,6 +320,47 @@ public static class ValuationMethodologyAlertRules
                                      || MarketApproachRules.ExceedsLargeAdjustmentThreshold(c.SumIncludedPct)),
                 "تجاوز عتبة التسوية الكبيرة — التبرير إلزامي",
                 resolutions),
+
+ // القرار 24 — تُقيَّم فقط بعد التقاط نطاق المعاينة (ميزة حدود المعاينة).
+            Eval(18, ValuationMethodologyAlertCodes.LimitedInspection,
+                "معاينة محدودة تشرح قيودها",
+                InspectionScopeKeys.IsKnown(input.InspectionScopeKey),
+                () => !string.Equals(
+                          (input.InspectionScopeKey ?? "").Trim().ToLowerInvariant(),
+                          InspectionScopeKeys.Full,
+                          StringComparison.Ordinal)
+                      || input.UninspectedUnitCount > 0,
+                "المعاينة خارجية/مكتبية أو فيها وحدات غير معاينة — المبرر إلزامي",
+                resolutions),
+
+            Eval(19, ValuationMethodologyAlertCodes.FewAdoptedComparables,
+                "أقل من ٣ مقارنات معتمدة",
+                true,
+                () => input.AdoptedComparableCount is > 0
+                          and < MinComparablesWithoutRationale,
+                "المقارنات المعتمدة أقل من ٣ — برّر الاكتفاء",
+                resolutions),
+
+            Eval(20, ValuationMethodologyAlertCodes.StaleComparableNoTimeAdjustment,
+                "فارق زمني كبير بلا تسوية زمن",
+                comps.Count > 0,
+                () => comps.Any(c =>
+                    c.DealAgeMonths > Math.Max(1, input.TimeGapMonthsThreshold)
+                    && !c.HasMarketConditionsAdjustment),
+                "مقارن أقدم من العتبة بلا تسوية ظروف سوق — أقرّ بالوعي (لا عمر صلاحية للمقارنات)",
+                resolutions),
+
+ // ق-7 — حاجب اعتماد المقيّم المعتمد لنطاق «مكتبية عن بُعد».
+            Eval(21, ValuationMethodologyAlertCodes.RemoteInspectionUnapproved,
+                "معاينة مكتبية بلا اعتماد المقيّم المعتمد",
+                InspectionScopeKeys.IsKnown(input.InspectionScopeKey),
+                () => string.Equals(
+                          (input.InspectionScopeKey ?? "").Trim().ToLowerInvariant(),
+                          InspectionScopeKeys.Desktop,
+                          StringComparison.Ordinal)
+                      && !input.RemoteInspectionApprovedByAccredited,
+                "نطاق المعاينة «مكتبية عن بُعد» — لا يمر الإصدار حتى يعتمده المقيّم المعتمد",
+                resolutions),
         ];
     }
 
@@ -388,7 +473,7 @@ public static class ValuationMethodologyAlertRules
     private static bool HasRepeatedUnitCostMismatchWithoutRationale(
         IReadOnlyList<ValuationMethodologyAlertCostLineInput> lines)
     {
- / compares the repeated floor against the FIRST floor (its area source).
+        // compares the repeated floor against the FIRST floor (its area source).
         var first = lines.FirstOrDefault(LooksLikeFirstFloor);
         if (first is null) return false;
 

@@ -657,12 +657,19 @@ public sealed class ValuationReportDocumentService(
                     ? null
                     : prop.DeedKind == DeedKind.RegisteredTitle ? "سجل عيني" : "تقليدي";
                 var restrictions = FormatRestrictions(prop);
+                var inspectionReservation = prop is null
+                    ? null
+                    : InspectionLimitsRules.ComposeReservationTextAr(
+                        prop.InspectionScopeKey,
+                        prop.InspectionRestrictionReason,
+                        InspectionLimitsRules.ParseUnits(prop.UninspectedUnitsJson));
                 d["body"] = ValuationReportNarrativeRules.SpecialAssumptionsBody(
                     hasStructures,
                     deedKindAr,
                     basisLabel,
                     premiseLabel,
-                    restrictions);
+                    restrictions,
+                    inspectionReservation);
                 break;
             }
 

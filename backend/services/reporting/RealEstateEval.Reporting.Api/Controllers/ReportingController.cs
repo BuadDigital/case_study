@@ -50,6 +50,7 @@ public class ReportingController : ControllerBase
 
     private async Task<ReportingDashboardDto> BuildDashboardAsync(CancellationToken ct)
     {
+        var opsMetricsTask = _upstream.GetOpsMetricsAsync(ct);
         var allTasks = await _upstream.GetWorkflowTasksAsync(ct);
 
         var valuationRows = BuildRecentValuationRequests(allTasks);
@@ -135,6 +136,7 @@ public class ReportingController : ControllerBase
             RecentRows = feeRows,
         };
 
+        var ops = await opsMetricsTask;
         return new ReportingDashboardDto
         {
             RecentValuationRequests = valuationRows,
@@ -144,6 +146,8 @@ public class ReportingController : ControllerBase
             TeamFieldMembers = teamField,
             SpecialistLoad = specialistLoad,
             FieldInspectionProgress = await _upstream.GetFieldInspectionSummaryAsync(ct),
+            StageDwell = ops.StageDwell,
+            CompletionTrend = ops.CompletionTrend,
         };
     }
 

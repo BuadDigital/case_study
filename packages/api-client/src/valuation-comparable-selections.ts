@@ -279,6 +279,41 @@ export type SaveValuationComparableMarketRequest = {
   areaAdjustmentMethod?: string | null;
 };
 
+/** شاشة 1 — الأساليب المطبَّقة (ق-2/ق-3) + أساس/وحدة التكلفة + صلاحية التسويات. */
+export type ValuationApproachSettingsDto = {
+  valuationRequestId: string;
+  propertyId: string;
+  propertyType: string;
+  /** نوع العقار «أرض» (بأي تصنيف). */
+  isLandPropertyType: boolean;
+  /** سؤال الحصر: هل توجد مبانٍ/إنشاءات يجب تقييمها؟ */
+  hasStructuresToValue: boolean;
+  /** ق-3 المعدَّل: أرض بلا إنشاءات وحدها تعطّل أسلوب التكلفة. */
+  costApproachAllowed: boolean;
+  marketApproachEnabled: boolean;
+  costApproachEnabled: boolean;
+  /** مؤجَّل — يُعرض «قيد الإنشاء» ولا يقبل التفعيل. */
+  incomeApproachEnabled: boolean;
+  /** replacement | reproduction. */
+  costBasisKey: string;
+  costBasisLabelAr: string;
+  /** comparison_unit | quantity_survey | lump_sum | per_item. */
+  costMeasurementUnitKey: string;
+  costMeasurementUnitLabelAr: string;
+  adjustmentsEditUnlocked: boolean;
+  /** false = property-type defaults (no row saved yet). */
+  isSaved: boolean;
+};
+
+export type SaveValuationApproachSettingsRequest = {
+  marketApproachEnabled: boolean;
+  costApproachEnabled: boolean;
+  incomeApproachEnabled?: boolean;
+  costBasisKey?: string | null;
+  costMeasurementUnitKey?: string | null;
+  adjustmentsEditUnlocked?: boolean;
+};
+
 export type ValuationRequestLiteDto = {
   id: string;
   displayId: string;
@@ -529,6 +564,63 @@ export async function saveValuationMarketApproach(
       ok: true,
       data: await parseJson<ValuationComparableSelectionListDto>(res),
     };
+  } catch {
+    return { ok: false, kind: "network" };
+  }
+}
+
+export async function getValuationApproachSettings(
+  config: ValuationSelectionsApiConfig,
+  valuationRequestId: string,
+): Promise<Result<ValuationApproachSettingsDto>> {
+  const base = config.baseUrl ?? getApiBase();
+  try {
+    const res = await fetch(
+      `${base}/api/valuation-requests/${valuationRequestId}/approach-settings`,
+      { headers: headers(config.token) },
+    );
+    if (res.status === 401) return { ok: false, kind: "auth" };
+    if (res.status === 404) return { ok: false, kind: "not_found" };
+    if (!res.ok) return { ok: false, kind: "server" };
+    return { ok: true, data: await parseJson<ValuationApproachSettingsDto>(res) };
+  } catch {
+    return { ok: false, kind: "network" };
+  }
+}
+
+export async function saveValuationApproachSettings(
+  config: ValuationSelectionsApiConfig,
+  valuationRequestId: string,
+  body: SaveValuationApproachSettingsRequest,
+): Promise<Result<ValuationApproachSettingsDto>> {
+  const base = config.baseUrl ?? getApiBase();
+  try {
+    const res = await fetch(
+      `${base}/api/valuation-requests/${valuationRequestId}/approach-settings`,
+      {
+        method: "PUT",
+        headers: headers(config.token),
+        body: JSON.stringify(body),
+      },
+    );
+    if (res.status === 401) return { ok: false, kind: "auth" };
+    if (res.status === 400) {
+      const payload = (await res.json().catch(() => null)) as {
+        errors?: Record<string, string>;
+        message?: string;
+      } | null;
+      return {
+        ok: false,
+        kind: "validation",
+        message:
+          payload?.errors
+            ? Object.values(payload.errors)[0]
+            : payload?.message ?? "بيانات إعدادات التقييم غير صالحة",
+        errors: payload?.errors,
+      };
+    }
+    if (!res.ok) return { ok: false, kind: "server" };
+    return { ok: true, data: await parseJson<ValuationApproachSettingsDto>(res) };
   } catch {
     return { ok: false, kind: "network" };
   }

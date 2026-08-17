@@ -15,15 +15,24 @@ namespace RealEstateEval.CaseStudy.Api.Controllers;
 public class WorkflowTasksController : ControllerBase
 {
     private readonly IWorkflowTaskService _tasks;
+    private readonly IDashboardOpsMetricsQuery _opsMetrics;
     private readonly IPermissionService _permissions;
 
     public WorkflowTasksController(
         IWorkflowTaskService tasks,
+        IDashboardOpsMetricsQuery opsMetrics,
         IPermissionService permissions)
     {
         _tasks = tasks;
+        _opsMetrics = opsMetrics;
         _permissions = permissions;
     }
+
+    [HttpGet("ops-metrics")]
+    [Authorize(Policy = CapabilityPolicyNames.ReadManagementReports)]
+    public async Task<ActionResult<DashboardOpsMetricsDto>> OpsMetrics(
+        CancellationToken cancellationToken) =>
+        Ok(await _opsMetrics.GetAsync(cancellationToken));
 
     [HttpGet]
     public async Task<IActionResult> List(

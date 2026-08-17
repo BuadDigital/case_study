@@ -58,6 +58,9 @@ internal static class CaseStudyModel
             e.Property(x => x.DeedKind)
                 .HasConversion<int>();
             e.Property(x => x.HasStructuresToValue).HasMaxLength(8);
+            e.Property(x => x.InspectionScopeKey).HasMaxLength(16);
+            e.Property(x => x.InspectionRestrictionReason).HasMaxLength(2000);
+            e.Property(x => x.RemoteInspectionApprovedBy).HasMaxLength(128);
             e.Property(x => x.RequestNumber).HasMaxLength(64);
             e.Property(x => x.AssignmentMandateNumber).HasMaxLength(64);
             e.Property(x => x.AssignmentMandateDate).HasMaxLength(32);

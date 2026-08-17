@@ -8,7 +8,8 @@ internal static class ComparablePropertyMapping
     public static ComparablePropertyDto ToDto(
         ComparableProperty row,
         DateOnly today,
-        string? anomalyNoteAr = null)
+        string? anomalyNoteAr = null,
+        bool duplicateSuspect = false)
     {
         var fromPrior = !string.IsNullOrWhiteSpace(row.SourceWorkOrderNumber)
             || row.SourcePropertyId is not null
@@ -19,12 +20,14 @@ internal static class ComparablePropertyMapping
             Id = row.Id,
             ReferenceCode = row.ReferenceCode,
             ComparablePropertyType = row.ComparablePropertyType,
+            Usage = row.Usage,
             TransactionKind = row.TransactionKind,
             TransactionKindLabelAr = ComparableTransactionKinds.LabelAr(row.TransactionKind),
             PriceDescription = row.PriceDescription ?? "",
             PriceDescriptionLabelAr = ComparablePriceDescriptions.LabelAr(row.PriceDescription),
             Source = row.Source,
             ListingNumber = row.ListingNumber,
+            TransactionReference = row.TransactionReference,
             AdvertiserPhone = row.AdvertiserPhone,
             ListingImageFileName = row.ListingImageFileName,
             Latitude = row.Latitude,
@@ -43,6 +46,14 @@ internal static class ComparablePropertyMapping
             SourceWorkOrderNumber = row.SourceWorkOrderNumber,
             SourcePropertyId = row.SourcePropertyId,
             IsActive = row.IsActive,
+            ReliabilityTag = row.ReliabilityTag,
+            ReliabilityTagLabelAr = ComparableReliabilityTags.LabelAr(row.ReliabilityTag),
+            IsDuplicateTagged = row.IsDuplicateTagged,
+            TagRationale = row.TagRationale,
+            TaggedByUserId = row.TaggedByUserId,
+            TaggedAtUtc = row.TaggedAtUtc?.ToString("o"),
+            IsExcludedFromSuggestions = row.IsExcludedFromSuggestions,
+            DuplicateSuspect = duplicateSuspect,
             CreatedAtUtc = row.CreatedAtUtc.ToString("o"),
             UpdatedAtUtc = row.UpdatedAtUtc.ToString("o"),
             SourceCard = new ComparableSourceCardDto

@@ -1,92 +1,127 @@
 "use client";
 
-import { useEffect, useRef, type RefObject } from "react";
-import { cn } from "@platform/design-system";
+import { useMemo } from "react";
+import { Select } from "@platform/design-system";
+import { usePrototype } from "@platform/app-shared/contexts/PrototypeContext";
+import { filterFailureCategoriesForRole, filterFailureProblemTypesForRole } from "../../lib/failure-category-role-visibility";
+import {
+  FAILURE_PROBLEM_TYPES,
+  FAILURE_TYPE_CATEGORIES,
+  type FailureProblemType,
+} from "../../lib/failure-types-data";
+import { useFailureTypesQuery } from "../../query/failure-types-queries";
 
-/** Case Study.html `tf-lbl` */
 const labelClassName =
   "mb-[7px] block text-[12px] font-semibold text-text-2";
 
 /**
- * Case Study.html `INP_STYLE` — no gold focus ring (avoids beige autofocus look).
- */
-const textareaClassName = cn(
-  "box-border w-full min-h-[88px] resize-y rounded-[9px]",
-  "border border-border-2 bg-surface px-3 py-[9px]",
-  "font-[inherit] text-[13px] leading-relaxed text-text",
-  "outline-none transition-[border-color,box-shadow]",
-  "placeholder:text-text-3",
-  "focus:border-ink/35 focus:shadow-[0_0_0_3px_color-mix(in_srgb,var(--ink)_10%,transparent)]",
-  "disabled:cursor-not-allowed disabled:opacity-70",
-);
-
-/**
- * HTML-template failure fields — وصف التعذر only.
+ * Catalog dropdown — نوع التعذر from `/failure-types`, filtered by role.
  */
 export function FailureRaiseFields({
-  description,
-  onDescriptionChange,
+  problemTypeId,
+  onProblemTypeChange,
   idPrefix = "fail",
   invalid = false,
   disabled = false,
   autoFocus = false,
-  textareaRef: externalRef,
 }: {
-  description: string;
-  onDescriptionChange: (value: string) => void;
+  problemTypeId: string;
+  onProblemTypeChange: (value: string) => void;
   idPrefix?: string;
   invalid?: boolean;
   disabled?: boolean;
   autoFocus?: boolean;
-  textareaRef?: RefObject<HTMLTextAreaElement | null>;
 }) {
-  const localRef = useRef<HTMLTextAreaElement>(null);
-  const ref = externalRef ?? localRef;
+  const { role } = usePrototype();
+  const { data: catalog, isPending, isError } = useFailureTypesQuery();
 
-  useEffect(() => {
-    if (autoFocus) ref.current?.focus();
-  }, [autoFocus, ref]);
+  const catalogCategories =
+    catalog?.categories?.length ? catalog.categories : FAILURE_TYPE_CATEGORIES;
+  const catalogTypes =
+    catalog?.problemTypes?.length ? catalog.problemTypes : FAILURE_PROBLEM_TYPES;
+
+  const categories = useMemo(
+    () =>
+      filterFailureCategoriesForRole(role, catalogCategories).sort(
+        (a, b) => a.order - b.order,
+      ),
+    [catalogCategories, role],
+  );
+
+  const problemTypes = useMemo(
+    () =>
+      filterFailureProblemTypesForRole(role, catalogTypes).sort(
+        (a, b) => a.order - b.order,
+      ),
+    [catalogTypes, role],
+  );
+
+  const waiting = isPending && !isError && !catalog;
+
+  const selected = problemTypes.find((t) => t.id === problemTypeId);
 
   return (
     <div className="min-w-0 w-full">
-      <label htmlFor={`${idPrefix}_description`} className={labelClassName}>
-        وصف التعذر{" "}
+      <label htmlFor={`${idPrefix}_problem_type`} className={labelClassName}>
+        نوع التعذر{" "}
         <span className="font-bold text-[#c0553d]" aria-hidden>
           *
         </span>
       </label>
-      <textarea
-        id={`${idPrefix}_description`}
-        ref={ref}
-        rows={3}
-        disabled={disabled}
-        value={description}
-        placeholder="صف التعذر الميداني…"
-        className={cn(
-          textareaClassName,
-          invalid &&
-            "border-[#c0553d] focus:border-[#c0553d] focus:shadow-[0_0_0_3px_rgba(192,85,61,0.14)]",
-        )}
-        onChange={(e) => onDescriptionChange(e.target.value)}
-      />
+      <Select
+        id={`${idPrefix}_problem_type`}
+        value={problemTypeId}
+        disabled={disabled || waiting || problemTypes.length === 0}
+        hasError={invalid}
+        autoFocus={autoFocus}
+        onChange={(e) => onProblemTypeChange(e.target.value)}
+      >
+        <option value="">
+          {waiting ? "جاري تحميل الأنواع…" : "اختر نوع التعذر…"}
+        </option>
+        {categories.map((category) => {
+          const types = problemTypes.filter((t) => t.categoryId === category.id);
+          if (types.length === 0) return null;
+          return (
+            <optgroup key={category.id} label={category.label}>
+              {types.map((type) => (
+                <option key={type.id} value={type.id}>
+                  {type.label}
+                </option>
+              ))}
+            </optgroup>
+          );
+        })}
+      </Select>
+      {selected?.description ? (
+        <p className="mt-1.5 m-0 text-[11.5px] leading-relaxed text-text-3">
+          {selected.description}
+        </p>
+      ) : null}
+      {!waiting && problemTypes.length === 0 ? (
+        <p className="mt-1.5 m-0 text-[11.5px] leading-relaxed text-text-3">
+          لا توجد أنواع تعذر متاحة لدورك. راجع صفحة أنواع التعذرات.
+        </p>
+      ) : null}
     </div>
   );
 }
 
-/** Free-text HTML raise → API payload defaults. */
-export const FAILURE_HTML_DEFAULT_PROBLEM_TYPE_ID = "access-denied";
-
-export function failurePayloadFromDescription(description: string): {
+export function failurePayloadFromProblemType(
+  problemTypeId: string,
+  types: FailureProblemType[],
+): {
   problemTypeId: string;
   title: string;
   severity: "internal";
   internalNote: string;
-} {
-  const trimmed = description.trim();
+} | null {
+  const type = types.find((t) => t.id === problemTypeId);
+  if (!type) return null;
   return {
-    problemTypeId: FAILURE_HTML_DEFAULT_PROBLEM_TYPE_ID,
-    title: trimmed.slice(0, 120),
+    problemTypeId: type.id,
+    title: type.label,
     severity: "internal",
-    internalNote: trimmed,
+    internalNote: type.description?.trim() ?? "",
   };
 }

@@ -116,11 +116,22 @@ public sealed class WorkflowTaskLifecycleCommands : IWorkflowTaskLifecycleComman
         var entity = await _db.WorkflowTasks.FirstOrDefaultAsync(t => t.Id == id, cancellationToken);
         if (entity is null) return null;
 
+        if (entity.Status == WorkflowTaskStatus.Blocked
+            || entity.Phase == WorkflowTaskPhase.Obstruction)
+        {
+            return WorkflowTaskMapper.ToDto(entity);
+        }
+
+        if (entity.Phase != WorkflowTaskPhase.Bourse)
+            return WorkflowTaskMapper.ToDto(entity);
+
         if (entity.PropertyId is Guid boursePropertyId)
         {
             var prop = await _db.WorkOrderProperties.AsNoTracking()
                 .FirstOrDefaultAsync(p => p.Id == boursePropertyId, cancellationToken);
             if (prop is null || prop.IsRemoved) return null;
+            if (!prop.BourseDataCompleted)
+                return WorkflowTaskMapper.ToDto(entity);
         }
 
         var deed = request.DeedNumber.Trim();

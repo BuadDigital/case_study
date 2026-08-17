@@ -973,9 +973,15 @@ export async function completePropertyBourse(
   }
 
   const saved = dtoToProperty(result.data);
-  const advanced = await advanceTaskAfterBourseForProperty(poNumber, propertyId, saved);
-  if (advanced && !advanced.ok) {
-    return { ok: false, error: advanced.error };
+  if (saved.boundariesAvailability !== "no") {
+    const advanced = await advanceTaskAfterBourseForProperty(
+      poNumber,
+      propertyId,
+      saved,
+    );
+    if (advanced && !advanced.ok) {
+      return { ok: false, error: advanced.error };
+    }
   }
   notifyWorkOrdersChanged();
   return { ok: true, data: saved };

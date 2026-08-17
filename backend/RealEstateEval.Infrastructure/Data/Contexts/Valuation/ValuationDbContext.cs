@@ -22,6 +22,7 @@ public sealed class ValuationDbContext(DbContextOptions<ValuationDbContext> opti
     public DbSet<ValuationComparableAdjustmentLine> ValuationComparableAdjustmentLines =>
         Set<ValuationComparableAdjustmentLine>();
     public DbSet<ValuationMarketApproach> ValuationMarketApproaches => Set<ValuationMarketApproach>();
+    public DbSet<ValuationApproachSettings> ValuationApproachSettings => Set<ValuationApproachSettings>();
     public DbSet<ValuationCostApproach> ValuationCostApproaches => Set<ValuationCostApproach>();
     public DbSet<ValuationCostLine> ValuationCostLines => Set<ValuationCostLine>();
     public DbSet<ValuationIndirectCostItem> ValuationIndirectCostItems => Set<ValuationIndirectCostItem>();

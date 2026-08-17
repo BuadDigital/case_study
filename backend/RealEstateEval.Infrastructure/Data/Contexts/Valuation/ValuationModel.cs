@@ -55,6 +55,11 @@ internal static class ValuationModel
             e.ToTable("ComparableProperties", DatabaseSchemas.Valuation);
             e.Property(x => x.ReferenceCode).HasMaxLength(32).IsRequired();
             e.Property(x => x.ComparablePropertyType).HasMaxLength(128).IsRequired();
+            e.Property(x => x.Usage).HasMaxLength(64);
+            e.Property(x => x.TransactionReference).HasMaxLength(64);
+            e.Property(x => x.ReliabilityTag).HasMaxLength(16).IsRequired();
+            e.Property(x => x.TagRationale).HasMaxLength(2000);
+            e.Property(x => x.TaggedByUserId).HasMaxLength(128);
             e.Property(x => x.TransactionKind).HasMaxLength(16).IsRequired();
             e.Property(x => x.PriceDescription).HasMaxLength(16);
             e.Property(x => x.Source).HasMaxLength(32).IsRequired();
@@ -119,6 +124,18 @@ internal static class ValuationModel
             e.Property(x => x.SubjectAreaSqm).HasPrecision(18, 2);
             e.Property(x => x.AdjustmentBasis).HasMaxLength(32).IsRequired();
             e.Property(x => x.AnalysisNotes).HasMaxLength(4000);
+            e.HasIndex(x => x.ValuationRequestId).IsUnique();
+            e.HasOne(x => x.ValuationRequest)
+                .WithMany()
+                .HasForeignKey(x => x.ValuationRequestId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        builder.Entity<ValuationApproachSettings>(e =>
+        {
+            e.ToTable("ValuationApproachSettings", DatabaseSchemas.Valuation);
+            e.Property(x => x.CostBasisKey).HasMaxLength(32).IsRequired();
+            e.Property(x => x.CostMeasurementUnitKey).HasMaxLength(32).IsRequired();
             e.HasIndex(x => x.ValuationRequestId).IsUnique();
             e.HasOne(x => x.ValuationRequest)
                 .WithMany()

@@ -270,13 +270,18 @@ public sealed class WorkOrderPropertyCommands : IWorkOrderPropertyCommands
         existing.WestBoundaryLengthM = IWorkOrderLoader.NormalizeOptionalText(request.WestBoundaryLengthM);
         existing.WestBoundaryType = NormalizeBoundaryType(request.WestBoundaryType);
         existing.WestFacadeFinishing = IWorkOrderLoader.NormalizeOptionalText(request.WestFacadeFinishing);
-        existing.BourseDataCompleted = true;
         var bourseNow = DateTime.UtcNow;
-        existing.BourseCompletedAtUtc = bourseNow;
+        var boundariesUnavailable = DocumentaryWorkflowRules.BoundariesUnavailable(
+            existing.BoundariesAvailability);
+        if (!boundariesUnavailable)
+        {
+            existing.BourseDataCompleted = true;
+            existing.BourseCompletedAtUtc = bourseNow;
+        }
 
         await _db.SaveChangesAsync(cancellationToken);
 
-        if (DocumentaryWorkflowRules.BoundariesUnavailable(existing.BoundariesAvailability))
+        if (boundariesUnavailable)
         {
             var specialist = await PersonLabelResolver.ResolveAsync(
                 _db,

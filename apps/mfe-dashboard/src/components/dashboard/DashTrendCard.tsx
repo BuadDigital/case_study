@@ -1,69 +1,107 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import type { ReportingCompletionYearDto } from "@platform/api-client";
 import { TrendChart } from "../../lib/dash-svg";
-import {
-  TREND_COLORS,
-  TREND_DATA,
-  TREND_QUARTER_LABELS,
-} from "../../lib/dashboard-mock";
 import { dashCard } from "../../lib/dashboard-tw";
 import { cn } from "@platform/design-system";
 
 type Mode = "month" | "quarter";
 
-function seriesFor(year: string, mode: Mode): number[] {
-  const raw = TREND_DATA[year as "2024" | "2025" | "2026"];
-  if (!raw) return [];
-  const a = [...raw];
-  if (mode === "month") return a;
+const MONTH_LABELS = [
+  "ينا",
+  "فبر",
+  "مار",
+  "أبر",
+  "ماي",
+  "يون",
+  "يول",
+  "أغس",
+  "سبت",
+  "أكت",
+  "نوف",
+  "ديس",
+];
+const QUARTER_LABELS = ["ربع 1", "ربع 2", "ربع 3", "ربع 4"];
+
+const YEAR_COLORS = ["#9aa3b2", "var(--ink)", "var(--gold-d)"];
+
+function padMonthly(monthly: number[] | undefined): number[] {
+  const base = [...(monthly ?? [])];
+  while (base.length < 12) base.push(0);
+  return base.slice(0, 12);
+}
+
+function toQuarterly(monthly: number[]): number[] {
   const q = [0, 0, 0, 0];
-  a.forEach((v, i) => {
+  monthly.forEach((v, i) => {
     q[Math.floor(i / 3)] += v;
   });
   return q;
 }
 
-export function DashTrendCard() {
+export function DashTrendCard({
+  years,
+  pending,
+}: {
+  years: ReportingCompletionYearDto[];
+  pending?: boolean;
+}) {
   const [mode, setMode] = useState<Mode>("month");
-  const [years, setYears] = useState<Record<string, boolean>>({
-    "2024": false,
-    "2025": true,
-    "2026": true,
-  });
+  const yearKeys = years.map((y) => String(y.year));
+  const [enabled, setEnabled] = useState<Record<string, boolean>>({});
 
-  const enabled = Object.keys(years).filter((y) => years[y]);
-  const labels = mode === "month" ? [...TREND_DATA.labels] : TREND_QUARTER_LABELS;
+  const activeYears = useMemo(() => {
+    if (yearKeys.length === 0) return [];
+    const selected = yearKeys.filter((y) => enabled[y] !== false);
+    return selected.length ? selected : [yearKeys[yearKeys.length - 1]!];
+  }, [yearKeys, enabled]);
+
+  const labels = mode === "month" ? MONTH_LABELS : QUARTER_LABELS;
+  const colorByYear = useMemo(() => {
+    const map: Record<string, string> = {};
+    yearKeys.forEach((y, i) => {
+      map[y] = YEAR_COLORS[i % YEAR_COLORS.length]!;
+    });
+    return map;
+  }, [yearKeys]);
 
   const series = useMemo(
     () =>
-      enabled.map((year) => ({
-        year,
-        color: TREND_COLORS[year] ?? "var(--ink)",
-        values: seriesFor(year, mode),
-      })),
-    [enabled, mode],
+      activeYears.map((year) => {
+        const row = years.find((y) => String(y.year) === year);
+        const monthly = padMonthly(row?.monthly);
+        return {
+          year,
+          color: colorByYear[year] ?? "var(--ink)",
+          values: mode === "month" ? monthly : toQuarterly(monthly),
+        };
+      }),
+    [activeYears, years, mode, colorByYear],
   );
 
-  const latest = enabled.length
-    ? String(Math.max(...enabled.map(Number)))
+  const latest = activeYears.length
+    ? String(Math.max(...activeYears.map(Number)))
     : null;
   const growth = useMemo(() => {
     if (!latest) return null;
-    const vals = seriesFor(latest, mode);
+    const row = series.find((s) => s.year === latest);
+    const vals = row?.values ?? [];
     if (vals.length < 2) return null;
-    const a = vals[vals.length - 2];
-    const b = vals[vals.length - 1];
-    if (!a) return null;
+    const a = vals[vals.length - 2] ?? 0;
+    const b = vals[vals.length - 1] ?? 0;
+    if (!a) return b ? { pct: 100, up: true } : null;
     const pct = Math.round(((b - a) / a) * 100);
     return { pct, up: pct >= 0 };
-  }, [latest, mode]);
+  }, [latest, series]);
 
   const toggleYear = (y: string) => {
-    const on = Object.keys(years).filter((k) => years[k]);
-    if (years[y] && on.length <= 1) return;
-    setYears((prev) => ({ ...prev, [y]: !prev[y] }));
+    const on = activeYears;
+    if (on.includes(y) && on.length <= 1) return;
+    setEnabled((prev) => ({ ...prev, [y]: prev[y] === false }));
   };
+
+  const empty = !pending && years.every((y) => padMonthly(y.monthly).every((n) => n === 0));
 
   return (
     <div className={dashCard}>
@@ -90,20 +128,23 @@ export function DashTrendCard() {
               {label}
             </button>
           ))}
-          {(["2024", "2025", "2026"] as const).map((y) => (
+          {yearKeys.map((y) => (
             <button
               key={y}
               type="button"
               onClick={() => toggleYear(y)}
               className={cn(
                 "rounded-md border px-2 py-1 text-[11.5px] font-bold transition-colors",
-                years[y]
+                activeYears.includes(y)
                   ? "border-transparent text-white"
                   : "border-border-md bg-surface text-text-3",
               )}
               style={
-                years[y]
-                  ? { background: TREND_COLORS[y], borderColor: TREND_COLORS[y] }
+                activeYears.includes(y)
+                  ? {
+                      background: colorByYear[y],
+                      borderColor: colorByYear[y],
+                    }
                   : undefined
               }
             >
@@ -112,7 +153,7 @@ export function DashTrendCard() {
           ))}
         </div>
       </div>
-      {growth ? (
+      {growth && !empty ? (
         <div className="mb-2 text-[12px] text-text-3">
           آخر فترة مقابل السابقة:{" "}
           <span
@@ -136,7 +177,13 @@ export function DashTrendCard() {
             {growth.pct}%
           </span>
         </div>
-      ) : null}
+      ) : (
+        <div className="mb-2 text-[12px] text-text-3">
+          {pending
+            ? "جاري تحميل الإنجاز الفعلي…"
+            : "عدد العقارات المكتملة حسب شهر إغلاق دراسة الحالة."}
+        </div>
+      )}
       <TrendChart labels={labels} series={series} />
     </div>
   );

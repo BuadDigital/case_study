@@ -9,7 +9,7 @@ import { failureStatusLabel } from "@failures/mfe/lib/failures-labels";
 import type { FailureRecord } from "@failures/mfe";
 import { Button, cn, Tab, TabBar, TabPanel } from "@platform/design-system";
 import { usePrototype } from "@platform/app-shared/contexts/PrototypeContext";
-import { isSuperAdmin } from "@platform/app-shared/prototype/prototype-role-access";
+import { canViewPropertyTimelineRail } from "../../lib/prototype/po-roles";
 import { DetailBadge, EmptyState, FieldBox, FieldsGrid, InfoBox, ltrValueClass, SectionHeader } from "./PropertyDetailFields";
 import { PropertyDetailAppraisalTab } from "./PropertyDetailAppraisalTab";
 import { PropertyDetailPhotosTab } from "./PropertyDetailPhotosTab";
@@ -121,9 +121,7 @@ const FIELD_INSPECTOR_TAB_IDS: readonly TabId[] = [
   "survey-notes",
 ];
 
-const ROLE_PROPERTY_DETAIL_TABS: Readonly<
-  Partial<Record<string, readonly TabId[]>>
-> = {
+const ROLE_PROPERTY_DETAIL_TABS: Readonly< Partial<Record<string, readonly TabId[]>>> = {
   "government-reviewer": GOVERNMENT_REVIEWER_TAB_IDS,
   "real-estate-appraiser": REAL_ESTATE_APPRAISER_TAB_IDS,
   "engineering-office": ENGINEERING_OFFICE_TAB_IDS,
@@ -548,8 +546,7 @@ export function PoPropertyDetailTabs({
   const searchParams = useSearchParams();
   const { role } = usePrototype();
   const visibleTabs = useMemo(() => propertyDetailTabsForRole(role), [role]);
-  /** Timeline + party status rail — system admin (CDO) only. */
-  const showCaseStudySideRail = isSuperAdmin(role);
+  const showCaseStudySideRail = canViewPropertyTimelineRail(role);
   const initialTab = searchParams.get("tab");
   const inspectParam = searchParams.get("inspect");
   const workspaceForced = Boolean(inspectorWorkspace);
@@ -1195,7 +1192,7 @@ export function PoPropertyDetailTabs({
         </div>
 
         {showCaseStudySideRail ? (
-          <div className="sticky top-0 max-lg:hidden">
+          <div className="sticky top-0">
             <PropertyTransactionTimeline record={record} property={property} />
           </div>
         ) : null}

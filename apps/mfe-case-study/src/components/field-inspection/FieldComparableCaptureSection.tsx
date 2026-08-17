@@ -129,7 +129,7 @@ export function FieldComparableCaptureSection({
                 onChange={(e) => setPriceDescription(e.target.value)}
               >
                 <option value="asking">حد</option>
-                <option value="negotiable">قابل للتفاوض</option>
+                <option value="som">سوم</option>
               </select>
             </div>
           ) : null}

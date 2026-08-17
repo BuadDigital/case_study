@@ -28,4 +28,11 @@ public interface IComparablePropertyService
     Task<ComparableProximitySuggestionListDto> SuggestByProximityAsync(
         ComparableProximityQuery query,
         CancellationToken cancellationToken = default);
+
+ /// <summary>ق-3: وضع/تحديث وسوم الجودة البشرية (موثوقية/مكرر) بمبرر — السجل يبقى.</summary>
+    Task<(ComparablePropertyDto? Result, Dictionary<string, string>? Errors)> SetQualityTagsAsync(
+        Guid id,
+        SaveComparableQualityTagsRequest request,
+        string taggedByUserId,
+        CancellationToken cancellationToken = default);
 }

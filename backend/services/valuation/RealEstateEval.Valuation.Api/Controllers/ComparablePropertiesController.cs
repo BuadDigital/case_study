@@ -69,6 +69,20 @@ public class ComparablePropertiesController : ControllerBase
         return Ok(result);
     }
 
+ /// <summary>ق-3 — وسوم الجودة البشرية (موثوقية/مكرر) بمبرر؛ السجل يبقى موسوماً لا يُحذف.</summary>
+    [HttpPut("{id:guid}/quality-tags")]
+    [Authorize(Policy = CapabilityPolicyNames.WriteComparableBank)]
+    public async Task<ActionResult<ComparablePropertyDto>> SetQualityTags(
+        Guid id,
+        [FromBody] SaveComparableQualityTagsRequest request,
+        CancellationToken ct)
+    {
+        var (result, errors) = await _bank.SetQualityTagsAsync(id, request, ActorClaims.Id(User), ct);
+        if (errors is not null)
+            return BadRequest(new FieldErrorsResponseDto { Errors = errors });
+        return Ok(result);
+    }
+
     [HttpPost("{id:guid}/deactivate")]
     [Authorize(Policy = CapabilityPolicyNames.WriteComparableBank)]
     public async Task<IActionResult> Deactivate(Guid id, CancellationToken ct)

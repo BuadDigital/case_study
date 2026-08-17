@@ -16,6 +16,7 @@ import {
   loadPoListRows,
   loadPropertyListItems,
 } from "@platform/app-shared/prototype/work-orders-read";
+import { loadReportingDashboard } from "../lib/dashboard-reporting-api";
 
 const STALE_MS = 60_000;
 const GC_MS = 10 * 60_000;
@@ -72,6 +73,14 @@ export function useDashboardOpenFailuresCountQuery() {
   return useQuery({
     queryKey: ["dashboard", "open-failures-count"],
     queryFn: loadOpenFailuresCount,
+    ...queryDefaults,
+  });
+}
+
+export function useReportingDashboardQuery() {
+  return useQuery({
+    queryKey: ["reporting", "dashboard"],
+    queryFn: loadReportingDashboard,
     ...queryDefaults,
   });
 }

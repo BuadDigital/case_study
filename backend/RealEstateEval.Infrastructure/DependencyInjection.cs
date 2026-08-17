@@ -443,6 +443,7 @@ public static class DependencyInjection
     {
         services.AddScoped<IWorkflowTaskVisibilityFilter, WorkflowTaskVisibilityFilter>();
         services.AddScoped<IWorkflowTaskQuery, WorkflowTaskQueryService>();
+        services.AddScoped<IDashboardOpsMetricsQuery, DashboardOpsMetricsQueryService>();
         services.AddScoped<IWorkflowTaskSlotSynchronizer, WorkflowTaskSlotSynchronizer>();
         services.AddScoped<IWorkflowTaskDistributionCommands, WorkflowTaskDistributionCommands>();
         services.AddScoped<WorkflowTaskCascadeCleanup>();
@@ -669,6 +670,8 @@ public static class DependencyInjection
         services.AddScoped<IEvaluatorRecallsService, EvaluatorRecallsService>();
         services.AddScoped<IComparablePropertyService, ComparablePropertyService>();
         services.AddScoped<IValuationComparableSelectionService, ValuationComparableSelectionService>();
+        services.AddScoped<IValuationApproachSettingsService, ValuationApproachSettingsService>();
+        services.AddScoped<IInspectionLimitsService, InspectionLimitsService>();
         services.AddScoped<IValuationCostApproachService, ValuationCostApproachService>();
         services.AddScoped<IValuationReconciliationService, ValuationReconciliationService>();
         services.AddScoped<IValuationIssuanceGateService, ValuationIssuanceGateService>();

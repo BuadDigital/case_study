@@ -22,8 +22,12 @@ import { formatDateAr } from "@case-study/mfe";
 import { useFailuresQuery } from "../../query/failures-queries";
 import {
   FailureRaiseFields,
-  failurePayloadFromDescription,
+  failurePayloadFromProblemType,
 } from "./FailureRaiseFields";
+import {
+  FAILURE_PROBLEM_TYPES,
+} from "../../lib/failure-types-data";
+import { useFailureTypesQuery } from "../../query/failure-types-queries";
 
 const noteWarnClass = cn(
   "rounded-lg border border-amber border-e-[3px] border-e-amber bg-amber-light px-3.5 py-2.5 text-xs leading-relaxed text-amber-text",
@@ -41,8 +45,7 @@ const sectionClassName =
   "mb-2.5 mt-0 border-b border-border pb-[7px] text-[13px] font-bold text-heading";
 
 /**
- * System-wide failure raise surface — Case Study.html template:
- * تسجيل تعذر (وصف) + رفع التعذر + سجل.
+ * System-wide failure raise surface — نوع التعذر from catalog + سجل.
  */
 export function FailureRaisePanel({
   poNumber,
@@ -63,17 +66,17 @@ export function FailureRaisePanel({
   raisedByRole: string;
   onSubmitted?: () => void;
   autoOpenRaise?: boolean;
-  /** Kept for call-site compatibility — HTML template is free-text only. */
+  /** Pre-select a catalog type (e.g. مفتاح العقار لا يفتح). */
   initialProblemTypeId?: string;
   /** Hide the raise form (view / locked) but keep السجل. */
   raiseDisabled?: boolean;
   raiseDisabledReason?: string;
 }) {
-  void initialProblemTypeId;
   const queryClient = useQueryClient();
   const { showToast } = useToast();
   const { data: failures = [] } = useFailuresQuery();
-  const [description, setDescription] = useState("");
+  const { data: catalog } = useFailureTypesQuery();
+  const [problemTypeId, setProblemTypeId] = useState(initialProblemTypeId);
   const [saving, setSaving] = useState(false);
   const [invalid, setInvalid] = useState(false);
 
@@ -118,14 +121,23 @@ export function FailureRaisePanel({
     if (autoOpenRaise) setInvalid(false);
   }, [autoOpenRaise]);
 
+  useEffect(() => {
+    if (initialProblemTypeId) setProblemTypeId(initialProblemTypeId);
+  }, [initialProblemTypeId]);
+
   function formatFailureDate(iso: string): string {
     const day = iso.slice(0, 10);
     return day ? formatDateAr(day) : "—";
   }
 
   async function handleSubmit() {
-    const trimmed = description.trim();
-    if (!trimmed) {
+    const payload = failurePayloadFromProblemType(
+      problemTypeId,
+      catalog?.problemTypes?.length
+        ? catalog.problemTypes
+        : FAILURE_PROBLEM_TYPES,
+    );
+    if (!payload) {
       setInvalid(true);
       return;
     }
@@ -134,7 +146,6 @@ export function FailureRaisePanel({
     setSaving(true);
     setInvalid(false);
     try {
-      const payload = failurePayloadFromDescription(trimmed);
       await createFailure({
         poNumber,
         propertyId,
@@ -149,7 +160,7 @@ export function FailureRaisePanel({
       await queryClient.invalidateQueries({
         queryKey: prototypeKeys.propertyKeys(),
       });
-      setDescription("");
+      setProblemTypeId("");
       showToast("تم رفع التعذر — سيظهر لأخصائي دراسة الحالة.", "success");
       onSubmitted?.();
     } catch {
@@ -242,9 +253,9 @@ export function FailureRaisePanel({
             <div className="grid max-w-[560px] gap-2.5">
               <FailureRaiseFields
                 idPrefix={`raise-${propertyId}`}
-                description={description}
-                onDescriptionChange={(v) => {
-                  setDescription(v);
+                problemTypeId={problemTypeId}
+                onProblemTypeChange={(v) => {
+                  setProblemTypeId(v);
                   if (invalid) setInvalid(false);
                 }}
                 invalid={invalid}
@@ -256,7 +267,7 @@ export function FailureRaisePanel({
                   variant="primary"
                   size="sm"
                   loading={saving}
-                  disabled={saving}
+                  disabled={saving || !problemTypeId}
                   showActionToast={false}
                   className="!px-[18px] !py-[7px] !text-xs"
                   onClick={() => void handleSubmit()}

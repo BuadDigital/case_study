@@ -32,7 +32,9 @@ public static class ValuationReportNarrativeRules
         string? deedKindLabelAr,
         string? basisLabelAr,
         string? premiseLabelAr,
-        string? restrictionsLine)
+        string? restrictionsLine,
+ // القرار 24 — نص تحفّظ حدود المعاينة المركّب آلياً (فارغ عند معاينة كاملة).
+        string? inspectionReservationLine = null)
     {
         var bits = new List<string>
         {
@@ -56,6 +58,9 @@ public static class ValuationReportNarrativeRules
 
         if (!string.IsNullOrWhiteSpace(restrictionsLine))
             bits.Add($"قيود مدوّنة على العقار: {restrictionsLine.Trim()}.");
+
+        if (!string.IsNullOrWhiteSpace(inspectionReservationLine))
+            bits.Add(inspectionReservationLine.Trim());
 
         return string.Join(" ", bits);
     }

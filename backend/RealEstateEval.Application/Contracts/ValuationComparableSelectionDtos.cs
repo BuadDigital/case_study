@@ -405,6 +405,46 @@ public class SaveValuationComparableAdjustmentLineRequest
     public int SortOrder { get; init; }
 }
 
+/// <summary>شاشة 1 — إعدادات التقييم الحاكمة (ب-2): الأساليب المطبَّقة + أساس/وحدة التكلفة + صلاحية التسويات.</summary>
+public class ValuationApproachSettingsDto
+{
+    public Guid ValuationRequestId { get; init; }
+    public string PropertyId { get; init; } = "";
+    public string PropertyType { get; init; } = "";
+ /// <summary>نوع العقار «أرض» (بأي تصنيف).</summary>
+    public bool IsLandPropertyType { get; init; }
+ /// <summary>سؤال الحصر: هل توجد مبانٍ/إنشاءات يجب تقييمها؟</summary>
+    public bool HasStructuresToValue { get; init; }
+ /// <summary>ق-3 المعدَّل: أرض بلا إنشاءات وحدها تعطّل أسلوب التكلفة.</summary>
+    public bool CostApproachAllowed { get; init; } = true;
+    public bool MarketApproachEnabled { get; init; } = true;
+    public bool CostApproachEnabled { get; init; } = true;
+ /// <summary>مؤجَّل — يُعرض «قيد الإنشاء» ولا يقبل التفعيل.</summary>
+    public bool IncomeApproachEnabled { get; init; }
+    public string CostBasisKey { get; init; } = "replacement";
+    public string CostBasisLabelAr { get; init; } = "";
+    public string CostMeasurementUnitKey { get; init; } = "comparison_unit";
+    public string CostMeasurementUnitLabelAr { get; init; } = "";
+    public bool AdjustmentsEditUnlocked { get; init; } = true;
+ /// <summary>False until a row is saved — the values above are then property-type defaults.</summary>
+    public bool IsSaved { get; init; }
+}
+
+public class SaveValuationApproachSettingsRequest
+{
+    public bool MarketApproachEnabled { get; init; } = true;
+    public bool CostApproachEnabled { get; init; } = true;
+    public bool IncomeApproachEnabled { get; init; }
+
+    [MaxLength(32)]
+    public string? CostBasisKey { get; init; }
+
+    [MaxLength(32)]
+    public string? CostMeasurementUnitKey { get; init; }
+
+    public bool AdjustmentsEditUnlocked { get; init; } = true;
+}
+
 public class SaveValuationComparableMarketRequest
 {
     public IReadOnlyList<SaveValuationComparableAdjustmentLineRequest> AdjustmentLines { get; init; } = [];

@@ -92,6 +92,8 @@ public sealed class OrganizationSettingsService : IOrganizationSettingsService
     {
         if (v.MaxAdoptedComparables is < 1 or > 20)
             throw new ArgumentOutOfRangeException(nameof(v.MaxAdoptedComparables), "الحد الأقصى للمقارنات المعتمدة يجب أن يكون بين 1 و 20.");
+        if (v.ComparableTimeGapMonths is < 1 or > 60)
+            throw new ArgumentOutOfRangeException(nameof(v.ComparableTimeGapMonths), "عتبة الفارق الزمني يجب أن تكون بين 1 و 60 شهراً.");
     }
 
     private static void ValidateCommunications(OrganizationCommunicationsSettingsDto c)

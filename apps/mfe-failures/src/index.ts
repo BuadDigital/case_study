@@ -6,8 +6,7 @@ export { FailureReportForm } from "./components/failures/FailureReportForm";
 export { FailureRaisePanel } from "./components/failures/FailureRaisePanel";
 export {
   FailureRaiseFields,
-  failurePayloadFromDescription,
-  FAILURE_HTML_DEFAULT_PROBLEM_TYPE_ID,
+  failurePayloadFromProblemType,
 } from "./components/failures/FailureRaiseFields";
 export {
   FAILURE_RAISER_SPECIALIST,

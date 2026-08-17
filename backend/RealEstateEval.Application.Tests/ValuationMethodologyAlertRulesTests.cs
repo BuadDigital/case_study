@@ -5,20 +5,87 @@ namespace RealEstateEval.Application.Tests;
 public class ValuationMethodologyAlertRulesTests
 {
     [Fact]
-    public void Evaluate_returns_17_alerts()
+    public void Evaluate_returns_21_alerts()
     {
         var checks = ValuationMethodologyAlertRules.Evaluate(EmptyInput());
-        Assert.Equal(17, checks.Count);
-        Assert.Equal(Enumerable.Range(1, 17), checks.Select(c => c.Number));
+        Assert.Equal(21, checks.Count);
+        Assert.Equal(Enumerable.Range(1, 21), checks.Select(c => c.Number));
     }
 
     [Fact]
-    public void Hard_alerts_are_3_4_5_11_15_16()
+    public void Hard_alerts_are_3_4_5_11_15_16_21()
     {
-        foreach (var n in new[] { 3, 4, 5, 11, 15, 16 })
+        foreach (var n in new[] { 3, 4, 5, 11, 15, 16, 21 })
             Assert.True(ValuationMethodologyAlertSeverity.IsHard(n));
-        foreach (var n in new[] { 1, 2, 6, 7, 8, 9, 10, 12, 13, 14, 17 })
+        foreach (var n in new[] { 1, 2, 6, 7, 8, 9, 10, 12, 13, 14, 17, 18, 19, 20 })
             Assert.False(ValuationMethodologyAlertSeverity.IsHard(n));
+    }
+
+    [Fact]
+    public void Few_adopted_comparables_triggers_between_1_and_2_only()
+    {
+        var one = ValuationMethodologyAlertRules.Evaluate(
+            EmptyInput() with { AdoptedComparableCount = 1 });
+        Assert.True(one.Single(c => c.Number == 19).Triggered);
+
+        var three = ValuationMethodologyAlertRules.Evaluate(
+            EmptyInput() with { AdoptedComparableCount = 3 });
+        Assert.False(three.Single(c => c.Number == 19).Triggered);
+
+        // صفر مقارنات شأن الحاجب m15 لا m19.
+        var zero = ValuationMethodologyAlertRules.Evaluate(
+            EmptyInput() with { AdoptedComparableCount = 0 });
+        Assert.False(zero.Single(c => c.Number == 19).Triggered);
+        Assert.True(zero.Single(c => c.Number == 15).Triggered);
+    }
+
+    [Fact]
+    public void Stale_comparable_without_time_adjustment_needs_ack()
+    {
+        var stale = new ValuationMethodologyAlertComparableInput(
+            "أرض سكنية", false, 0m, DealAgeMonths: 9, HasMarketConditionsAdjustment: false);
+        var adjusted = stale with { HasMarketConditionsAdjustment = true };
+        var fresh = stale with { DealAgeMonths = 2 };
+
+        var triggered = ValuationMethodologyAlertRules.Evaluate(
+            EmptyInput() with { AdoptedComparables = [stale], TimeGapMonthsThreshold = 6 });
+        Assert.True(triggered.Single(c => c.Number == 20).Triggered);
+        Assert.Equal(
+            ValuationMethodologyAlertSeverityKinds.RequireAck,
+            triggered.Single(c => c.Number == 20).SeverityKind);
+
+        var ok = ValuationMethodologyAlertRules.Evaluate(
+            EmptyInput() with { AdoptedComparables = [adjusted, fresh], TimeGapMonthsThreshold = 6 });
+        Assert.False(ok.Single(c => c.Number == 20).Triggered);
+    }
+
+    [Fact]
+    public void Inspection_scope_alerts_stay_unevaluated_until_scope_is_captured()
+    {
+        var checks = ValuationMethodologyAlertRules.Evaluate(EmptyInput());
+        Assert.False(checks.Single(c => c.Number == 18).Evaluated);
+        Assert.False(checks.Single(c => c.Number == 21).Evaluated);
+
+        var desktop = ValuationMethodologyAlertRules.Evaluate(EmptyInput() with
+        {
+            InspectionScopeKey = InspectionScopeKeys.Desktop,
+        });
+        Assert.True(desktop.Single(c => c.Number == 18).Triggered);
+        Assert.True(desktop.Single(c => c.Number == 21).Triggered);
+        Assert.True(desktop.Single(c => c.Number == 21).BlocksIssuance);
+
+        var approved = ValuationMethodologyAlertRules.Evaluate(EmptyInput() with
+        {
+            InspectionScopeKey = InspectionScopeKeys.Desktop,
+            RemoteInspectionApprovedByAccredited = true,
+        });
+        Assert.False(approved.Single(c => c.Number == 21).Triggered);
+
+        var full = ValuationMethodologyAlertRules.Evaluate(EmptyInput() with
+        {
+            InspectionScopeKey = InspectionScopeKeys.Full,
+        });
+        Assert.False(full.Single(c => c.Number == 18).Triggered);
     }
 
     [Fact]

@@ -27,6 +27,7 @@ public interface IReportingUpstreamClient
 {
     Task<IReadOnlyList<ValuationRequestDto>> GetValuationRequestsAsync(CancellationToken cancellationToken);
     Task<IReadOnlyList<WorkflowTaskDto>> GetWorkflowTasksAsync(CancellationToken cancellationToken);
+    Task<DashboardOpsMetricsDto> GetOpsMetricsAsync(CancellationToken cancellationToken);
     Task<FieldInspectionWorkspaceSummaryDto> GetFieldInspectionSummaryAsync(CancellationToken cancellationToken);
     Task<IReadOnlyList<FailureRecordDto>> GetFailuresAsync(CancellationToken cancellationToken);
     Task<InspectorFeesSummaryDto> GetInspectorFeesSummaryAsync(CancellationToken cancellationToken);
@@ -62,6 +63,10 @@ public sealed class ReportingUpstreamClient : IReportingUpstreamClient
     public Task<IReadOnlyList<WorkflowTaskDto>> GetWorkflowTasksAsync(
         CancellationToken cancellationToken) =>
         GetJsonAsync<IReadOnlyList<WorkflowTaskDto>>("/api/workflow-tasks", cancellationToken);
+
+    public Task<DashboardOpsMetricsDto> GetOpsMetricsAsync(
+        CancellationToken cancellationToken) =>
+        GetJsonAsync<DashboardOpsMetricsDto>("/api/workflow-tasks/ops-metrics", cancellationToken);
 
     public Task<FieldInspectionWorkspaceSummaryDto> GetFieldInspectionSummaryAsync(
         CancellationToken cancellationToken) =>

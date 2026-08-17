@@ -20,6 +20,7 @@ import {
   useDashboardOpenFailuresCountQuery,
   useDashboardOpsTasksQuery,
   usePoListRowsQuery,
+  useReportingDashboardQuery,
 } from "../query/dashboard-queries";
 
 /**
@@ -31,6 +32,8 @@ export function DashboardView() {
     useDashboardOpsTasksQuery();
   const { data: failuresOpen = 0, isPending: failPending } =
     useDashboardOpenFailuresCountQuery();
+  const { data: reporting, isPending: reportingPending } =
+    useReportingDashboardQuery();
 
   const rows = poRows ?? [];
   const openTasks = useMemo(
@@ -55,10 +58,16 @@ export function DashboardView() {
         <DashDueSoonOrders orders={activeOrders} />
       </div>
       <div className={cn(dashGrid, "mb-4")}>
-        <DashTrendCard />
+        <DashTrendCard
+          years={reporting?.completionTrend ?? []}
+          pending={reportingPending}
+        />
         <DashCompletionCard model={completion} pending={poPending} />
       </div>
-      <DashDwellSlaCard />
+      <DashDwellSlaCard
+        rows={reporting?.stageDwell ?? []}
+        pending={reportingPending}
+      />
     </ReportPageBody>
   );
 }

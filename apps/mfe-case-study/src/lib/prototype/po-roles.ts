@@ -48,6 +48,11 @@ export function canRaisePropertyFailure(role: RoleId): boolean {
   return canEditProperty(role) || canEditPoHeader(role);
 }
 
+/** الجدول الزمني وحالة الأطراف في تفاصيل العقار — أخصائي دراسة الحالة ومشرف القسم ومسؤول النظام. */
+export function canViewPropertyTimelineRail(role: RoleId): boolean {
+  return canRaisePropertyFailure(role);
+}
+
 /** إعادة إسناد أطراف دراسة الحالة — صلاحية مشرف القسم فأعلى. */
 export function canRedistributeParties(role: RoleId): boolean {
   return (

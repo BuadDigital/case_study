@@ -394,6 +394,8 @@ export {
   type ReportingDashboardDto,
   type ReportingSpecialistLoadDto,
   type ReportingTeamMemberDto,
+  type ReportingStageDwellDto,
+  type ReportingCompletionYearDto,
 } from "./reporting";
 
 export {
@@ -576,6 +578,8 @@ export {
   suggestComparablePropertiesByProximity,
   createComparableProperty,
   deactivateComparableProperty,
+  setComparableQualityTags,
+  type SaveComparableQualityTagsRequest,
   type ComparablePropertiesApiConfig,
   type ComparablePropertyDto,
   type ComparablePropertyListQuery,
@@ -596,6 +600,8 @@ export {
   saveValuationMarketApproach,
   getValuationCostApproach,
   saveValuationCostApproach,
+  getValuationApproachSettings,
+  saveValuationApproachSettings,
   getValuationReconciliation,
   saveValuationReconciliation,
   getValuationIssuanceGates,
@@ -611,6 +617,8 @@ export {
   type ValuationCostApproachDto,
   type ValuationCostLineDto,
   type SaveValuationCostApproachRequest,
+  type ValuationApproachSettingsDto,
+  type SaveValuationApproachSettingsRequest,
   type ValuationReconciliationDto,
   type ValuationReconciliationMethodDto,
   type SaveValuationReconciliationRequest,
@@ -625,6 +633,16 @@ export {
   type ValuationReportFieldPayloadDto,
   type ValuationReportFieldDto,
 } from "./valuation-comparable-selections";
+
+export {
+  getInspectionLimits,
+  saveInspectionLimits,
+  approveRemoteInspection,
+  type InspectionLimitsDto,
+  type InspectionScopeKey,
+  type SaveInspectionLimitsRequest,
+  type UninspectedUnitEntryDto,
+} from "./inspection-limits";
 
 export {
   getBuildingInventory,

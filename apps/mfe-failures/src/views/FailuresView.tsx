@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState, Fragment } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { usePrototype } from "@platform/app-shared/contexts/PrototypeContext";
@@ -177,6 +177,8 @@ export function FailuresView() {
     el.scrollIntoView({ behavior: "smooth", block: "center" });
   }, [highlightId, isFetched, visibleItems]);
 
+  const router = useRouter();
+
   const refresh = useCallback(() => {
     void queryClient.invalidateQueries({ queryKey: prototypeKeys.failures() });
     void queryClient.invalidateQueries({
@@ -184,6 +186,9 @@ export function FailuresView() {
     });
     void queryClient.invalidateQueries({
       queryKey: prototypeKeys.workflowTasks(),
+    });
+    void queryClient.invalidateQueries({
+      queryKey: prototypeKeys.pendingBourseItems(),
     });
     void refetch();
   }, [queryClient, refetch]);
@@ -331,6 +336,7 @@ export function FailuresView() {
   function handleResolve(id: string) {
     const draft = resolveDraft[id] ?? { reason: "", instructions: "" };
     if (!draft.reason.trim() || !draft.instructions.trim()) return;
+    const failure = items.find((f) => f.id === id);
     void runBusy(`${id}:resolve`, async () => {
       try {
         const result = await resolveFailure(id, {
@@ -344,6 +350,9 @@ export function FailuresView() {
         setResolveOpen((o) => ({ ...o, [id]: false }));
         showToast("تم حل التعذر", "success");
         refresh();
+        if (failure?.problemTypeId === "unknown-boundaries") {
+          router.push("/bourse-inquiry");
+        }
       } catch {
         showToast("تعذّر حل التعذر — حاول مرة أخرى", "error");
       }

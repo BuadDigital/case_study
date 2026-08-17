@@ -33,7 +33,35 @@ public sealed class ValuationReconciliationService(
             vr,
             market?.MarketOpinionValue ?? 0m,
             cost?.CostOpinionWithLand ?? 0m,
-            entity);
+            entity,
+            await GetEnabledKindsAsync(vr, cancellationToken));
+    }
+
+ /// <summary>ق-2: الأسلوب غير المفعَّل لا يظهر صفاً ولا يدخل في الوزن.</summary>
+    private async Task<IReadOnlyList<string>> GetEnabledKindsAsync(
+        ValuationRequest vr,
+        CancellationToken cancellationToken)
+    {
+        var settings = await db.ValuationApproachSettings.AsNoTracking()
+            .FirstOrDefaultAsync(x => x.ValuationRequestId == vr.Id, cancellationToken);
+        if (settings is null)
+        {
+            var hasStructures = false;
+            if (Guid.TryParse(vr.PropertyId?.Trim(), out var propertyGuid))
+            {
+                var answer = await caseStudy.WorkOrderProperties.AsNoTracking()
+                    .Where(p => p.Id == propertyGuid)
+                    .Select(p => p.HasStructuresToValue)
+                    .FirstOrDefaultAsync(cancellationToken);
+                hasStructures = string.Equals(answer?.Trim(), "yes", StringComparison.OrdinalIgnoreCase);
+            }
+
+            settings = ValuationApproachSettingsRules.Defaults(vr.Id, vr.PropertyType, hasStructures);
+        }
+
+        return ValuationApproachSettingsRules.EnabledReconciliationKinds(
+            settings.MarketApproachEnabled,
+            settings.CostApproachEnabled);
     }
 
     public async Task<(ValuationReconciliationDto? Result, Dictionary<string, string>? Errors)> SaveAsync(
@@ -125,12 +153,16 @@ public sealed class ValuationReconciliationService(
  // Soft overrides are free-form; hard alerts cannot be overridden via this channel.
         }
 
+        var enabledKinds = await GetEnabledKindsAsync(vr, cancellationToken);
+
         var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         for (var i = 0; i < methods.Count; i++)
         {
             var m = methods[i];
             if (!ValuationApproachKinds.IsKnown(m.ApproachKind))
                 errors[$"methods[{i}].approachKind"] = "أسلوب غير معروف";
+            else if (!enabledKinds.Contains(m.ApproachKind.Trim().ToLowerInvariant(), StringComparer.OrdinalIgnoreCase))
+                errors[$"methods[{i}].approachKind"] = "ق-2: الأسلوب غير مفعَّل في إعدادات التقييم فلا يدخل في الترجيح";
             else if (!seen.Add(m.ApproachKind.Trim().ToLowerInvariant()))
                 errors[$"methods[{i}].approachKind"] = "لا يُكرَّر الأسلوب";
 
@@ -229,9 +261,17 @@ public sealed class ValuationReconciliationService(
         ValuationRequest vr,
         decimal marketValue,
         decimal costValue,
-        ValuationReconciliation? entity)
+        ValuationReconciliation? entity,
+        IReadOnlyList<string> enabledKinds)
     {
-        var suggested = ReconciliationRules.SuggestWeights(marketValue, costValue);
+ // ق-2: a disabled approach neither shows a row nor skews the suggestion split.
+        var marketEnabled = enabledKinds.Contains(
+            ValuationApproachKinds.Market, StringComparer.OrdinalIgnoreCase);
+        var costEnabled = enabledKinds.Contains(
+            ValuationApproachKinds.Cost, StringComparer.OrdinalIgnoreCase);
+        var suggested = ReconciliationRules.SuggestWeights(
+            marketEnabled ? marketValue : 0m,
+            costEnabled ? costValue : 0m);
         var suggestedMap = suggested.ToDictionary(
             x => x.kind,
             x => x.weightPct,
@@ -240,10 +280,10 @@ public sealed class ValuationReconciliationService(
         var saved = (entity?.Methods ?? [])
             .ToDictionary(m => m.ApproachKind, StringComparer.OrdinalIgnoreCase);
 
-        var kinds = new[] { ValuationApproachKinds.Market, ValuationApproachKinds.Cost };
+        var kinds = enabledKinds;
         var methodDtos = new List<ValuationReconciliationMethodDto>();
 
-        for (var i = 0; i < kinds.Length; i++)
+        for (var i = 0; i < kinds.Count; i++)
         {
             var kind = kinds[i];
             var liveValue = kind == ValuationApproachKinds.Cost ? costValue : marketValue;

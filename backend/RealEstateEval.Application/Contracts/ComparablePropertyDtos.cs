@@ -18,12 +18,16 @@ public class ComparablePropertyDto
     public Guid Id { get; init; }
     public required string ReferenceCode { get; init; }
     public required string ComparablePropertyType { get; init; }
+ /// <summary>استخدام المقارن — قائمة مغلقة (ق-3/5).</summary>
+    public string Usage { get; init; } = "";
     public required string TransactionKind { get; init; }
     public string TransactionKindLabelAr { get; init; } = "";
     public string PriceDescription { get; init; } = "";
     public string PriceDescriptionLabelAr { get; init; } = "";
     public required string Source { get; init; }
     public string? ListingNumber { get; init; }
+ /// <summary>ق-3/3: مرجع صفقة البورصة للمنفّذ.</summary>
+    public string? TransactionReference { get; init; }
     public string? AdvertiserPhone { get; init; }
     public string? ListingImageFileName { get; init; }
     public decimal Latitude { get; init; }
@@ -44,15 +48,47 @@ public class ComparablePropertyDto
     public string? SourceWorkOrderNumber { get; init; }
     public Guid? SourcePropertyId { get; init; }
     public bool IsActive { get; init; }
+
+ // ق-3: وسوم الجودة البشرية.
+ /// <summary>normal | anomalous | unreliable.</summary>
+    public string ReliabilityTag { get; init; } = "normal";
+    public string ReliabilityTagLabelAr { get; init; } = "";
+    public bool IsDuplicateTagged { get; init; }
+    public string? TagRationale { get; init; }
+    public string? TaggedByUserId { get; init; }
+    public string? TaggedAtUtc { get; init; }
+ /// <summary>موسوم فيُستبعد من الاقتراحات ويُميَّز بصرياً.</summary>
+    public bool IsExcludedFromSuggestions { get; init; }
+ /// <summary>اشتباه تكرار آلي (سجل آخر بنفس الموقع) — اقتراح فقط، الوسم بشري.</summary>
+    public bool DuplicateSuspect { get; init; }
+
     public string CreatedAtUtc { get; init; } = "";
     public string UpdatedAtUtc { get; init; } = "";
     public ComparableSourceCardDto SourceCard { get; init; } = null!;
+}
+
+/// <summary>ق-3: وضع/تحديث وسوم الجودة — يضعها أي ذي صفة بمبرر، والسجل يبقى.</summary>
+public class SaveComparableQualityTagsRequest
+{
+ /// <summary>normal | anomalous | unreliable.</summary>
+    [Required, MaxLength(16)]
+    public string ReliabilityTag { get; init; } = "normal";
+
+    public bool IsDuplicateTagged { get; init; }
+
+ /// <summary>إلزامي عند أي وسم مفعَّل.</summary>
+    [MaxLength(2000)]
+    public string? TagRationale { get; init; }
 }
 
 public class UpsertComparablePropertyRequest
 {
     [Required, MaxLength(128)]
     public string ComparablePropertyType { get; init; } = "";
+
+ /// <summary>استخدام المقارن — قائمة مغلقة (ق-3/5).</summary>
+    [MaxLength(64)]
+    public string? Usage { get; init; }
 
  /// <summary>offer | executed</summary>
     [Required, MaxLength(16)]
@@ -67,6 +103,10 @@ public class UpsertComparablePropertyRequest
 
     [MaxLength(64)]
     public string? ListingNumber { get; init; }
+
+ /// <summary>ق-3/3: مرجع صفقة البورصة — للمنفّذ، اختياري.</summary>
+    [MaxLength(64)]
+    public string? TransactionReference { get; init; }
 
     [MaxLength(32)]
     public string? AdvertiserPhone { get; init; }

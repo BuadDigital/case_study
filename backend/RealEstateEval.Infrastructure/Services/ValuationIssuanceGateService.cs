@@ -37,6 +37,11 @@ public sealed class ValuationIssuanceGateService(
         string matchOutcome = DeedNatureMatchOutcomes.Unset;
         var hasStructures = false;
         var propertyType = "";
+ // حدود المعاينة (القرار 24 + ق-7) — تغذي m18/m21.
+        string? inspectionScopeKey = null;
+        var uninspectedUnitCount = 0;
+        string? inspectionRestrictionReason = null;
+        var remoteInspectionApproved = false;
 
         if (Guid.TryParse(propertyId, out var propertyGuid))
         {
@@ -50,6 +55,13 @@ public sealed class ValuationIssuanceGateService(
                     prop.HasStructuresToValue?.Trim(),
                     "yes",
                     StringComparison.OrdinalIgnoreCase);
+                inspectionScopeKey = string.IsNullOrWhiteSpace(prop.InspectionScopeKey)
+                    ? null
+                    : prop.InspectionScopeKey;
+                uninspectedUnitCount = InspectionLimitsRules.TotalUninspectedUnits(
+                    InspectionLimitsRules.ParseUnits(prop.UninspectedUnitsJson));
+                inspectionRestrictionReason = prop.InspectionRestrictionReason;
+                remoteInspectionApproved = prop.RemoteInspectionApprovedAtUtc is not null;
             }
 
             var form = await caseStudy.CaseStudyForms.AsNoTracking()
@@ -68,6 +80,13 @@ public sealed class ValuationIssuanceGateService(
 
         var costUsed = (cost?.CostOpinionWithLand ?? 0m) > 0m
             || (cost?.Lines.Count ?? 0) > 0;
+
+ // ق-2/ق-3 المعدَّل: cost alerts are irrelevant when the approach is off
+ // (bare land defaults it off; land with structures keeps it available).
+        var approachSettings = await valuation.ValuationApproachSettings.AsNoTracking()
+            .FirstOrDefaultAsync(x => x.ValuationRequestId == valuationRequestId, cancellationToken);
+        var costApproachEnabled = approachSettings?.CostApproachEnabled
+            ?? ValuationApproachSettingsRules.CanEnableCostApproach(vr.PropertyType, hasStructures);
 
         var checks = new List<ValuationIssuanceGateCheck>
         {
@@ -95,9 +114,22 @@ public sealed class ValuationIssuanceGateService(
                 o.Acknowledged))
             .ToList();
 
+ // القرار 24: سبب التقييد المنظّم هو شرح المقيّم لقيود المعاينة —
+ // يفي بمبرر m18 دون إعادة كتابته في بوابات الإصدار (المصدر الواحد).
+        if (!string.IsNullOrWhiteSpace(inspectionRestrictionReason)
+            && resolutions.All(r => !string.Equals(
+                r.Code,
+                ValuationMethodologyAlertCodes.LimitedInspection,
+                StringComparison.OrdinalIgnoreCase)))
+        {
+            resolutions.Add(new ValuationMethodologyAlertResolution(
+                ValuationMethodologyAlertCodes.LimitedInspection,
+                inspectionRestrictionReason));
+        }
+
         var alertInput = new ValuationMethodologyAlertInput(
             HasStructuresToValue: hasStructures,
-            CostApproachRelevant: costUsed || hasStructures,
+            CostApproachRelevant: costApproachEnabled && (costUsed || hasStructures),
             CostLines: (cost?.Lines ?? [])
                 .Select(l => new ValuationMethodologyAlertCostLineInput(
                     l.StructureKind,
@@ -119,7 +151,12 @@ public sealed class ValuationIssuanceGateService(
                 .Select(i => new ValuationMethodologyAlertComparableInput(
                     i.Comparable.ComparablePropertyType,
                     i.Market?.ExceedsLargeAdjustmentThreshold ?? false,
-                    i.Market?.SumIncludedPct ?? 0m))
+                    i.Market?.SumIncludedPct ?? 0m,
+                    DealAgeMonths: i.Market?.DealAgeMonths ?? 0,
+                    HasMarketConditionsAdjustment: (i.Market?.AdjustmentLines ?? [])
+                        .Any(l => l.FactorKey == MarketAdjustmentFactorKeys.Market
+                                  && l.IsIncluded
+                                  && l.Percent != 0m)))
                 .ToList(),
             UseRestrictionDiscountPct: cost?.UseRestrictionDiscountPct ?? 0m,
             UseRestrictionRationale: cost?.UseRestrictionRationale,
@@ -136,7 +173,11 @@ public sealed class ValuationIssuanceGateService(
             FunctionalObsolescenceRationale: cost?.FunctionalObsolescenceRationale,
             ExternalObsolescencePct: cost?.ExternalObsolescencePct ?? 0m,
             ExternalObsolescenceRationale: cost?.ExternalObsolescenceRationale,
-            Resolutions: resolutions);
+            Resolutions: resolutions,
+            InspectionScopeKey: inspectionScopeKey,
+            UninspectedUnitCount: uninspectedUnitCount,
+            RemoteInspectionApprovedByAccredited: remoteInspectionApproved,
+            TimeGapMonthsThreshold: org.Valuation.ComparableTimeGapMonths);
 
         var alerts = ValuationMethodologyAlertRules.Evaluate(alertInput);
         var overrideByCode = (recon?.MethodologyAlertOverrides ?? [])
@@ -186,7 +227,7 @@ public sealed class ValuationIssuanceGateService(
             }).ToList(),
             MethodologyAlertTriggeredCount = ValuationMethodologyAlertRules.TriggeredCount(alerts),
             MethodologyAlertsNoteAr =
-                "تنبيهات منهجية: 6 حاجبة · 6 بمبرر نصي إلزامي · 5 بإقرار.",
+                "تنبيهات منهجية (21): 7 حاجبة · 8 بمبرر نصي إلزامي · 6 بإقرار.",
         };
     }
 

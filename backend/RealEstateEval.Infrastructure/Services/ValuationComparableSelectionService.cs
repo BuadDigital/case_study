@@ -251,6 +251,17 @@ public sealed class ValuationComparableSelectionService(
         if (row is null)
             return (null, new Dictionary<string, string> { ["_"] = "الاختيار غير موجود" });
 
+ // صلاحية تحرير التسويات (ب-2 §13): absent row = unlocked, matching the defaults.
+        var approachSettings = await db.ValuationApproachSettings.AsNoTracking()
+            .FirstOrDefaultAsync(x => x.ValuationRequestId == valuationRequestId, cancellationToken);
+        if (approachSettings is { AdjustmentsEditUnlocked: false })
+        {
+            return (null, new Dictionary<string, string>
+            {
+                ["_"] = "صلاحية تحرير التسويات معطَّلة — تُفعَّل من إعدادات التقييم (شاشة 1)",
+            });
+        }
+
         var lines = request.AdjustmentLines ?? [];
         var errors = new Dictionary<string, string>();
         for (var i = 0; i < lines.Count; i++)
@@ -434,8 +445,8 @@ public sealed class ValuationComparableSelectionService(
             .Select(r => MarketApproachRules.SumIncludedPercents(
                 r.AdjustmentLines.Where(l => l.IsIncluded).Select(l => l.Percent)))
             .ToList();
- / raw suggestions, then renormalized around manual overrides :
- // partial overrides keep the total at 100 instead of blocking issuance.
+        // raw suggestions, then renormalized around manual overrides:
+        // partial overrides keep the total at 100 instead of blocking issuance.
         var suggested = MarketApproachRules.RenormalizeSuggestions(
             MarketApproachRules.SuggestWeights(sums),
             adoptedRows.Select(r => r.WeightIsManual && r.WeightPct is not null).ToList(),

@@ -116,13 +116,8 @@ public static class WorkOrderValidator
             }
         }
 
- // رقم الطلب مرجع خارجي ولا يجوز أن يساوي رقم الصك (خطأ العينة المكتشف).
-        if (!string.IsNullOrWhiteSpace(dto.RequestNumber)
-            && !string.IsNullOrWhiteSpace(dto.DeedNumber)
-            && string.Equals(dto.RequestNumber.Trim(), dto.DeedNumber.Trim(), StringComparison.Ordinal))
-        {
-            errors["requestNumber"] = "رقم الطلب لا يجوز أن يساوي رقم الصك";
-        }
+ // ق-11: رقم الطلب ≠ رقم الصك تحوّل من قيد منع إلى تحقق تحذيري — التطابق الحرفي
+ // وارد مصادفة وليس دليل خطأ قاطعاً؛ التنبيه في الواجهة والمُدخل يؤكد ويمضي.
 
         if (dto.AssignmentDocFileNames.All(string.IsNullOrWhiteSpace))
         {

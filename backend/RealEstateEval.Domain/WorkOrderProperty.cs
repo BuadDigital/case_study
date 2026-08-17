@@ -103,6 +103,17 @@ public class WorkOrderProperty
  /// <summary>Are there buildings/structures to value? yes | no | ""</summary>
     public string HasStructuresToValue { get; set; } = "";
 
+ // حدود المعاينة (القرار 24 + ق-7) — نمط سؤال الإنشاءات: أعمدة على العقار.
+ /// <summary>نطاق المعاينة: full | external | desktop | "" (لم يُلتقط).</summary>
+    public string InspectionScopeKey { get; set; } = "";
+ /// <summary>سبب تقييد/تعذّر المعاينة — إلزامي عند نطاق غير كامل.</summary>
+    public string? InspectionRestrictionReason { get; set; }
+ /// <summary>JSON — وحدات لم تُعايَن (عدد + سبب لكل حالة).</summary>
+    public string? UninspectedUnitsJson { get; set; }
+ /// <summary>ق-7 — اعتماد المقيّم المعتمد لنطاق «مكتبية عن بُعد».</summary>
+    public string? RemoteInspectionApprovedBy { get; set; }
+    public DateTime? RemoteInspectionApprovedAtUtc { get; set; }
+
  /// <summary>Soft-removed from transaction queues; still listed on the work-order property list.</summary>
     public bool IsRemoved { get; set; }
 

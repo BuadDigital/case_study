@@ -982,6 +982,21 @@
       "note": null
     },
     {
+      "table": "ValuationApproachSettings",
+      "schema": "valuation",
+      "dbSet": "ValuationApproachSettings",
+      "entity": "ValuationApproachSettings",
+      "owner": "valuation",
+      "status": "approved",
+      "ownershipModel": "single-owner",
+      "contexts": [
+        "ValuationDbContext"
+      ],
+      "transactionGroup": "valuation.requests",
+      "decision": null,
+      "note": "Per-valuation applied-approaches settings (spec b-2): approach toggles, cost basis/unit, adjustments-edit permission. Written only via ValuationApproachSettingsService on ValuationDbContext."
+    },
+    {
       "table": "FileAttachments",
       "schema": "attachments",
       "dbSet": "FileAttachments",

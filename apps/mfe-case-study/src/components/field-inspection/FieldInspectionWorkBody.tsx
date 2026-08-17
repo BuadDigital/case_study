@@ -7,6 +7,7 @@ import type { PartyTaskPageDef } from "@platform/app-shared/prototype/party-task
 import { usePrototype } from "@platform/app-shared/contexts/PrototypeContext";
 import { JEDDAH_DEFAULT_LAT, JEDDAH_DEFAULT_LNG } from "@engineering-office/mfe/lib/jeddah-default-coords";
 import { BuildingInventorySection } from "./BuildingInventorySection";
+import { InspectionLimitsSection } from "./InspectionLimitsSection";
 import { FieldComparableCaptureSection } from "./FieldComparableCaptureSection";
 import { InspectorDefinedPhotosSection } from "./InspectorDefinedPhotosSection";
 import { InspectorSubmitFooter } from "./InspectorSubmitFooter";
@@ -1561,6 +1562,12 @@ export function FieldInspectionWorkBody({
             </FormRow>
           )}
           <BuildingInventorySection
+            poNumber={task.poNumber}
+            propertyId={propertyId}
+            disabled={workLocked}
+            mobile={mobile}
+          />
+          <InspectionLimitsSection
             poNumber={task.poNumber}
             propertyId={propertyId}
             disabled={workLocked}

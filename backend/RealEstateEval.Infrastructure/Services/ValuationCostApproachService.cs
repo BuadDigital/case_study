@@ -9,6 +9,7 @@ namespace RealEstateEval.Infrastructure.Services;
 /// <summary>Contractor cost approach scaffold — land from market ; lines priced by appraiser.</summary>
 public sealed class ValuationCostApproachService(
     ValuationDbContext db,
+    CaseStudyDbContext caseStudy,
     IValuationComparableSelectionService selections) : IValuationCostApproachService
 {
     public async Task<ValuationCostApproachDto?> GetAsync(
@@ -38,6 +39,32 @@ public sealed class ValuationCostApproachService(
             return (null, new Dictionary<string, string> { ["_"] = "طلب التقييم غير موجود" });
         if (vr.Status == ValuationRequestStatus.Done)
             return (null, new Dictionary<string, string> { ["_"] = "طلب التقييم مكتمل" });
+
+ // ق-2/ق-3 المعدَّل: cost tab is closed when the approach is off (bare land defaults it off;
+ // land WITH structures opens it for the structure lines only — spec v2 §3).
+        var approachSettings = await db.ValuationApproachSettings.AsNoTracking()
+            .FirstOrDefaultAsync(x => x.ValuationRequestId == valuationRequestId, cancellationToken);
+        var hasStructures = false;
+        if (Guid.TryParse(vr.PropertyId?.Trim(), out var propertyGuid))
+        {
+            var answer = await caseStudy.WorkOrderProperties.AsNoTracking()
+                .Where(p => p.Id == propertyGuid)
+                .Select(p => p.HasStructuresToValue)
+                .FirstOrDefaultAsync(cancellationToken);
+            hasStructures = string.Equals(answer?.Trim(), "yes", StringComparison.OrdinalIgnoreCase);
+        }
+
+        var costEnabled = approachSettings?.CostApproachEnabled
+            ?? ValuationApproachSettingsRules.CanEnableCostApproach(vr.PropertyType, hasStructures);
+        if (!costEnabled)
+        {
+            return (null, new Dictionary<string, string>
+            {
+                ["_"] = !ValuationApproachSettingsRules.CanEnableCostApproach(vr.PropertyType, hasStructures)
+                    ? "ق-3: أرض بلا إنشاءات لا تُقيَّم بالتكلفة — أسلوب التكلفة لا ينطبق"
+                    : "أسلوب التكلفة غير مفعَّل في إعدادات التقييم (شاشة 1)",
+            });
+        }
 
         var lines = request.Lines ?? [];
         var errors = new Dictionary<string, string>();

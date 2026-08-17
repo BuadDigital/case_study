@@ -85,6 +85,9 @@ public sealed class OrganizationValuationSettingsDto
 {
  /// <summary>Max comparables that can be adopted per valuation (1–20).</summary>
     public int MaxAdoptedComparables { get; init; } = 3;
+
+ /// <summary>ق-4: عتبة الفارق الزمني بالأشهر لتنبيه m20 (بيانات إدارية، 1–60).</summary>
+    public int ComparableTimeGapMonths { get; init; } = 6;
 }
 
 public sealed class SaveOrganizationSettingsRequest

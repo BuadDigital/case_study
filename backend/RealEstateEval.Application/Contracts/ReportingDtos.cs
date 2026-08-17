@@ -9,6 +9,30 @@ public class ReportingDashboardDto
     public IReadOnlyList<ReportingTeamMemberDto> TeamFieldMembers { get; init; } = [];
     public IReadOnlyList<ReportingSpecialistLoadDto> SpecialistLoad { get; init; } = [];
     public FieldInspectionWorkspaceSummaryDto? FieldInspectionProgress { get; init; }
+    public IReadOnlyList<ReportingStageDwellDto> StageDwell { get; init; } = [];
+    public IReadOnlyList<ReportingCompletionYearDto> CompletionTrend { get; init; } = [];
+}
+
+public class ReportingStageDwellDto
+{
+    public required string Key { get; init; }
+    public required string LabelAr { get; init; }
+    public decimal AvgDays { get; init; }
+    public decimal SlaDays { get; init; }
+    public int SampleCount { get; init; }
+    public bool ExceedsSla { get; init; }
+}
+
+public class ReportingCompletionYearDto
+{
+    public int Year { get; init; }
+    public IReadOnlyList<int> Monthly { get; init; } = [];
+}
+
+public class DashboardOpsMetricsDto
+{
+    public IReadOnlyList<ReportingStageDwellDto> StageDwell { get; init; } = [];
+    public IReadOnlyList<ReportingCompletionYearDto> CompletionTrend { get; init; } = [];
 }
 
 public class ReportingGovernmentReviewRowDto

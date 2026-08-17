@@ -390,12 +390,16 @@ public class FailureService : IFailureService
         var task = await FindCaseStudyTaskAsync(failure.PoNumber, failure.PropertyId, cancellationToken);
         if (task is null || task.Status == WorkflowTaskStatus.Completed) return;
 
+        var priorPhase = task.Phase == WorkflowTaskPhase.Obstruction
+            ? task.ObstructionPriorPhase?.ToDbValue()
+            : task.Phase.ToDbValue();
+
         await _tasks.PatchAsync(
             task.Id,
             new PatchWorkflowTaskRequest
             {
                 Phase = WorkflowTaskPhaseValues.Obstruction,
-                ObstructionPriorPhase = task.Phase.ToDbValue(),
+                ObstructionPriorPhase = priorPhase,
                 AssigneeRole = "section-supervisor",
                 AssigneeName = "مشرف دراسة الحالة",
                 Status = WorkflowTaskStatusValues.Blocked,
@@ -409,10 +413,11 @@ public class FailureService : IFailureService
         CancellationToken cancellationToken)
     {
         var task = await FindCaseStudyTaskAsync(failure.PoNumber, failure.PropertyId, cancellationToken);
-        if (task is null || task.Phase != WorkflowTaskPhase.Obstruction) return;
+        if (task is null || task.Status == WorkflowTaskStatus.Completed) return;
+        if (!TryGetObstructionResumePhase(task, out var resumePhase)) return;
 
-        var resumePhase = task.ObstructionPriorPhase
-            ?? (task.PropertyId.HasValue ? WorkflowTaskPhase.Bourse : WorkflowTaskPhase.Enfath);
+        if (resumePhase == WorkflowTaskPhase.Bourse && task.PropertyId is Guid propertyId)
+            await ResetBourseCompletionForPropertyAsync(propertyId, cancellationToken);
 
         await _tasks.PatchAsync(
             task.Id,
@@ -426,6 +431,42 @@ public class FailureService : IFailureService
                 ObstructionPriorPhase = "",
             },
             cancellationToken);
+    }
+
+    private static bool TryGetObstructionResumePhase(
+        WorkflowTask task,
+        out WorkflowTaskPhase resumePhase)
+    {
+        if (task.Phase == WorkflowTaskPhase.Obstruction)
+        {
+            resumePhase = task.ObstructionPriorPhase
+                ?? (task.PropertyId.HasValue
+                    ? WorkflowTaskPhase.Bourse
+                    : WorkflowTaskPhase.Enfath);
+            return true;
+        }
+
+        if (task.Status == WorkflowTaskStatus.Blocked && task.ObstructionPriorPhase.HasValue)
+        {
+            resumePhase = task.ObstructionPriorPhase.Value;
+            return true;
+        }
+
+        resumePhase = default;
+        return false;
+    }
+
+    private async Task ResetBourseCompletionForPropertyAsync(
+        Guid propertyId,
+        CancellationToken cancellationToken)
+    {
+        var property = await _caseStudy.WorkOrderProperties
+            .FirstOrDefaultAsync(p => p.Id == propertyId, cancellationToken);
+        if (property is null || !property.BourseDataCompleted) return;
+
+        property.BourseDataCompleted = false;
+        property.BourseCompletedAtUtc = null;
+        await _caseStudy.SaveChangesAsync(cancellationToken);
     }
 
     private async Task BlockPropertyTasksForApprovedFailureAsync(

@@ -64,6 +64,8 @@ export type OrganizationSlaSettings = {
 /** «حد أقصى قابل للضبط» — P2-5 approved 2026-08-16. */
 export type OrganizationValuationSettings = {
   maxAdoptedComparables: number;
+  /** ق-4: عتبة الفارق الزمني بالأشهر لتنبيه تسوية الزمن (m20). */
+  comparableTimeGapMonths: number;
 };
 
 export type OrganizationSettingsDto = {
@@ -220,6 +222,9 @@ function normalizeSettings(raw: Record<string, unknown>): OrganizationSettingsDt
     valuation: {
       maxAdoptedComparables: Number(
         valuation.maxAdoptedComparables ?? valuation.MaxAdoptedComparables ?? 3,
+      ),
+      comparableTimeGapMonths: Number(
+        valuation.comparableTimeGapMonths ?? valuation.ComparableTimeGapMonths ?? 6,
       ),
     },
     updatedAtUtc: String(raw.updatedAtUtc ?? raw.UpdatedAtUtc ?? new Date().toISOString()),

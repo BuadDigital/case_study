@@ -526,6 +526,14 @@ export function PoPropertyEnfathForm({
                       {fieldErrors.requestNumber}
                     </p>
                   ) : null}
+                  {/* ق-11: التطابق الحرفي تحقق تحذيري لا قيد منع — المُدخل يؤكد ويمضي */}
+                  {property.requestNumber.trim() &&
+                  property.requestNumber.trim() === property.deedNumber.trim() ? (
+                    <p className="mt-1 text-[10px] text-amber-text" role="status">
+                      تأكد من الإدخال: رقم الطلب يطابق رقم الصك حرفياً — التطابق وارد
+                      مصادفة، أكمل إن كان صحيحاً
+                    </p>
+                  ) : null}
                 </>
               ) : (
                 <p className="m-0 text-[10px] text-text-3">

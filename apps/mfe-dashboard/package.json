@@ -2,7 +2,7 @@
   "name": "@dashboard/mfe",
   "version": "0.1.0",
   "private": true,
-  "description": "Dashboard microfrontend — لوحة التحكم (PO stats, team snapshot, mock KPIs)",
+  "description": "Dashboard microfrontend — لوحة التحكم (PO stats, live dwell/trend)",
   "sideEffects": false,
   "exports": {
     ".": "./src/index.ts",

@@ -120,7 +120,7 @@ function emptySettings(): OrganizationSettingsDto {
       smtpPasswordConfigured: false,
     },
     sla: { defaultBusinessDays: 4, privateSectorBusinessDays: 10 },
-    valuation: { maxAdoptedComparables: 3 },
+    valuation: { maxAdoptedComparables: 3, comparableTimeGapMonths: 6 },
     updatedAtUtc: new Date().toISOString(),
   };
 }
@@ -1073,6 +1073,30 @@ export function OrganizationSettingsView() {
                         valuation: {
                           ...d.valuation,
                           maxAdoptedComparables: Number(e.target.value) || 1,
+                        },
+                      }))
+                    }
+                  />
+                </div>
+                <div className={opsFld}>
+                  <label htmlFor="org-comp-time-gap" className={opsTfLbl}>
+                    عتبة الفارق الزمني للمقارن (أشهر) — تنبيه تسوية الزمن (ق-4)
+                  </label>
+                  <input
+                    id="org-comp-time-gap"
+                    className={opsFldControl}
+                    type="number"
+                    min={1}
+                    max={60}
+                    dir="ltr"
+                    value={String(draft.valuation.comparableTimeGapMonths ?? 6)}
+                    disabled={!canEdit}
+                    onChange={(e) =>
+                      setDraft((d) => ({
+                        ...d,
+                        valuation: {
+                          ...d.valuation,
+                          comparableTimeGapMonths: Number(e.target.value) || 6,
                         },
                       }))
                     }

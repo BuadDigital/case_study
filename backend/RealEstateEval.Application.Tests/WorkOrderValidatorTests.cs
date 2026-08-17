@@ -60,9 +60,9 @@ public class WorkOrderValidatorTests
     }
 
     [Fact]
-    public void Request_number_must_differ_from_deed_number()
+    public void Request_number_matching_deed_number_is_a_warning_not_a_block()
     {
- // the discovered sample error: رقم الطلب = رقم الصك.
+ // ق-11: التطابق الحرفي وارد مصادفة — تحذير في الواجهة لا قيد منع.
         var dto = ValidDeedProperty();
         dto.RequestNumber = dto.DeedNumber;
 
@@ -73,7 +73,7 @@ public class WorkOrderValidatorTests
             null,
             (_, _) => false);
 
-        Assert.Contains(errors, e => e.Key == "requestNumber");
+        Assert.DoesNotContain(errors, e => e.Key == "requestNumber");
     }
 
     [Fact]

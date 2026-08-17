@@ -35,6 +35,22 @@ export type ReportingDashboardDto = {
   teamFieldMembers: ReportingTeamMemberDto[];
   specialistLoad: ReportingSpecialistLoadDto[];
   fieldInspectionProgress?: FieldInspectionWorkspaceSummaryDto;
+  stageDwell?: ReportingStageDwellDto[];
+  completionTrend?: ReportingCompletionYearDto[];
+};
+
+export type ReportingStageDwellDto = {
+  key: string;
+  labelAr: string;
+  avgDays: number;
+  slaDays: number;
+  sampleCount: number;
+  exceedsSla: boolean;
+};
+
+export type ReportingCompletionYearDto = {
+  year: number;
+  monthly: number[];
 };
 
 export type ReportingGovernmentReviewRowDto = {
@@ -124,6 +140,32 @@ export async function fetchReportingDashboard(
             0,
         ),
       };
+    }
+    const dwellRaw = (raw.stageDwell ?? raw.StageDwell) as
+      | Record<string, unknown>[]
+      | undefined;
+    if (Array.isArray(dwellRaw)) {
+      data.stageDwell = dwellRaw.map((row) => ({
+        key: String(row.key ?? row.Key ?? ""),
+        labelAr: String(row.labelAr ?? row.LabelAr ?? ""),
+        avgDays: Number(row.avgDays ?? row.AvgDays ?? 0),
+        slaDays: Number(row.slaDays ?? row.SlaDays ?? 0),
+        sampleCount: Number(row.sampleCount ?? row.SampleCount ?? 0),
+        exceedsSla: Boolean(row.exceedsSla ?? row.ExceedsSla ?? false),
+      }));
+    }
+    const trendRaw = (raw.completionTrend ?? raw.CompletionTrend) as
+      | Record<string, unknown>[]
+      | undefined;
+    if (Array.isArray(trendRaw)) {
+      data.completionTrend = trendRaw.map((row) => ({
+        year: Number(row.year ?? row.Year ?? 0),
+        monthly: Array.isArray(row.monthly)
+          ? (row.monthly as number[]).map((n) => Number(n) || 0)
+          : Array.isArray(row.Monthly)
+            ? (row.Monthly as number[]).map((n) => Number(n) || 0)
+            : Array(12).fill(0),
+      }));
     }
     return { ok: true, data };
   } catch {

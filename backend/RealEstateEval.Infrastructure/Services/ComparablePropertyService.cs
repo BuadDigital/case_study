@@ -72,8 +72,27 @@ public sealed class ComparablePropertyService(
             .Take(take)
             .ToListAsync(cancellationToken);
 
+ // ق-3/2: النظام يقترح الاشتباه (سجلان بنفس الموقع) ولا يحجب ولا يدمج آلياً.
+        var suspectCoords = await DuplicateSuspectCoordsAsync(cancellationToken);
+
         var today = DateOnly.FromDateTime(DateTime.UtcNow);
-        return rows.Select(r => ToDto(r, today)).ToList();
+        return rows
+            .Select(r => ComparablePropertyMapping.ToDto(
+                r, today, duplicateSuspect: suspectCoords.Contains((r.Latitude, r.Longitude))))
+            .ToList();
+    }
+
+ /// <summary>Coordinate pairs shared by more than one active record — «الموقع هو المميِّز».</summary>
+    private async Task<HashSet<(decimal, decimal)>> DuplicateSuspectCoordsAsync(
+        CancellationToken cancellationToken)
+    {
+        var pairs = await db.ComparableProperties.AsNoTracking()
+            .Where(c => c.IsActive)
+            .GroupBy(c => new { c.Latitude, c.Longitude })
+            .Where(g => g.Count() > 1)
+            .Select(g => new { g.Key.Latitude, g.Key.Longitude })
+            .ToListAsync(cancellationToken);
+        return pairs.Select(p => (p.Latitude, p.Longitude)).ToHashSet();
     }
 
     public async Task<ComparablePropertyDto?> GetAsync(
@@ -132,6 +151,48 @@ public sealed class ComparablePropertyService(
         return (ComparablePropertyMapping.ToDto(entity, DateOnly.FromDateTime(DateTime.UtcNow), updateAnomaly), null);
     }
 
+    public async Task<(ComparablePropertyDto? Result, Dictionary<string, string>? Errors)> SetQualityTagsAsync(
+        Guid id,
+        SaveComparableQualityTagsRequest request,
+        string taggedByUserId,
+        CancellationToken cancellationToken = default)
+    {
+        var errors = new Dictionary<string, string>();
+        if (!ComparableReliabilityTags.IsKnown(request.ReliabilityTag))
+            errors["reliabilityTag"] = "وسم الموثوقية غير معروف (عادي/شاذ/غير موثوق)";
+
+        var tag = ComparableReliabilityTags.Normalize(request.ReliabilityTag);
+        var anyTag = request.IsDuplicateTagged
+            || !string.Equals(tag, ComparableReliabilityTags.Normal, StringComparison.Ordinal);
+ // ق-3: المبرر إلزامي عند أي وسم مفعَّل.
+        if (anyTag && string.IsNullOrWhiteSpace(request.TagRationale))
+            errors["tagRationale"] = "مبرر الوسم إلزامي عند وسم شاذ/غير موثوق/مكرر";
+
+        if (errors.Count > 0) return (null, errors);
+
+        var entity = await db.ComparableProperties
+            .FirstOrDefaultAsync(x => x.Id == id, cancellationToken);
+        if (entity is null)
+            return (null, new Dictionary<string, string> { ["_"] = "المقارن غير موجود" });
+
+        entity.ReliabilityTag = tag;
+        entity.IsDuplicateTagged = request.IsDuplicateTagged;
+        entity.TagRationale = anyTag ? request.TagRationale!.Trim() : null;
+ // الوسم مؤرَّخ باسم واضعه (بطاقة مصدر) — يُمسح عند إزالة كل الوسوم.
+        entity.TaggedByUserId = anyTag
+            ? (string.IsNullOrWhiteSpace(taggedByUserId) ? "unknown" : taggedByUserId.Trim())
+            : null;
+        entity.TaggedAtUtc = anyTag ? DateTime.UtcNow : null;
+        entity.UpdatedAtUtc = DateTime.UtcNow;
+
+        await db.SaveChangesAsync(cancellationToken);
+        var anomaly = await ComputeAnomalyNoteAsync(entity, cancellationToken);
+        return (
+            ComparablePropertyMapping.ToDto(
+                entity, DateOnly.FromDateTime(DateTime.UtcNow), anomaly),
+            null);
+    }
+
     public async Task<(bool Ok, string? Error)> DeactivateAsync(
         Guid id,
         CancellationToken cancellationToken = default)
@@ -163,7 +224,11 @@ public sealed class ComparablePropertyService(
         }
 
         var exclude = ParseExcludeIds(query.ExcludeIds);
-        var q = db.ComparableProperties.AsNoTracking().Where(x => x.IsActive);
+ // ق-3: الموسوم شاذاً/غير موثوق/مكرراً يُستبعد من الاقتراحات (يبقى ظاهراً في البنك مميزاً).
+        var q = db.ComparableProperties.AsNoTracking()
+            .Where(x => x.IsActive
+                && !x.IsDuplicateTagged
+                && x.ReliabilityTag == ComparableReliabilityTags.Normal);
         if (exclude.Count > 0)
             q = q.Where(x => !exclude.Contains(x.Id));
 
@@ -262,10 +327,15 @@ public sealed class ComparablePropertyService(
             : "";
 
         entity.ComparablePropertyType = request.ComparablePropertyType.Trim();
+        entity.Usage = (request.Usage ?? "").Trim();
         entity.TransactionKind = kind;
         entity.PriceDescription = priceDesc;
         entity.Source = request.Source.Trim().ToLowerInvariant();
         entity.ListingNumber = Normalize(request.ListingNumber);
+ // ق-3/3: مرجع الصفقة للمنفّذ — نظير رقم الإعلان للعروض.
+        entity.TransactionReference = kind == ComparableTransactionKinds.Executed
+            ? Normalize(request.TransactionReference)
+            : null;
         entity.AdvertiserPhone = Normalize(request.AdvertiserPhone);
         entity.ListingImageFileName = Normalize(request.ListingImageFileName);
         entity.Latitude = request.Latitude;
@@ -301,7 +371,7 @@ public sealed class ComparablePropertyService(
         {
             var pd = (request.PriceDescription ?? "").Trim().ToLowerInvariant();
             if (string.IsNullOrWhiteSpace(pd) || !ComparablePriceDescriptions.IsKnown(pd))
-                errors["priceDescription"] = "وصف السعر (حد/تفاوض) مطلوب للعروض";
+                errors["priceDescription"] = "وصف السعر (حد/سوم) مطلوب للعروض";
         }
 
         if (!ComparableSources.IsKnown((request.Source ?? "").Trim().ToLowerInvariant()))

@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { getApiBase, getOpenValuationRequestByProperty, listComparableProperties,
+import { getApiBase, approveRemoteInspection, getOpenValuationRequestByProperty, listComparableProperties,
   suggestComparablePropertiesByProximity,
   listValuationComparableSelections,
   removeValuationComparableSelection,
@@ -9,6 +9,8 @@ import { getApiBase, getOpenValuationRequestByProperty, listComparableProperties
   saveValuationCostApproach,
   saveValuationMarketApproach,
   getValuationCostApproach,
+  getValuationApproachSettings,
+  saveValuationApproachSettings,
   getValuationReconciliation,
   saveValuationReconciliation,
   getValuationIssuanceGates,
@@ -22,6 +24,7 @@ import { getApiBase, getOpenValuationRequestByProperty, listComparableProperties
   type ValuationComparableAdjustmentLineDto,
   type ValuationComparableSelectionDto,
   type ValuationComparableSelectionListDto,
+  type ValuationApproachSettingsDto,
   type ValuationCostApproachDto,
   type ValuationCostLineDto,
   type ValuationReconciliationDto,
@@ -499,6 +502,14 @@ export function EvaluatorComparableSelectionPanel({
       setFactorDefinitions(map);
     });
   }, []);
+  // شاشة 1 — الأساليب المطبَّقة (ق-2/ق-3) + أساس/وحدة التكلفة + صلاحية التسويات.
+  const [approachSettings, setApproachSettings] =
+    useState<ValuationApproachSettingsDto | null>(null);
+  const [asMarketEnabled, setAsMarketEnabled] = useState(true);
+  const [asCostEnabled, setAsCostEnabled] = useState(true);
+  const [asCostBasis, setAsCostBasis] = useState("replacement");
+  const [asCostUnit, setAsCostUnit] = useState("comparison_unit");
+  const [asAdjustUnlocked, setAsAdjustUnlocked] = useState(true);
   const [cost, setCost] = useState<ValuationCostApproachDto | null>(null);
   const [costDraft, setCostDraft] = useState<ValuationCostLineDto[]>([]);
   const [useRestrictionPct, setUseRestrictionPct] = useState("0");
@@ -576,7 +587,7 @@ export function EvaluatorComparableSelectionPanel({
     setValuationRequestId(open.data.id);
     setDisplayId(open.data.displayId);
 
-    const [selRes, bankRes, costRes, reconRes, gatesRes, proxRes, fieldsRes] =
+    const [selRes, bankRes, costRes, reconRes, gatesRes, proxRes, fieldsRes, settingsRes] =
       await Promise.all([
       listValuationComparableSelections(config, open.data.id),
       listComparableProperties(config, {
@@ -594,9 +605,21 @@ export function EvaluatorComparableSelectionPanel({
         take: 8,
       }),
       getValuationReportFieldPayload(config, open.data.id),
+      getValuationApproachSettings(config, open.data.id),
     ]);
 
     setLoading(false);
+
+    if (settingsRes.ok) {
+      setApproachSettings(settingsRes.data);
+      setAsMarketEnabled(settingsRes.data.marketApproachEnabled);
+      setAsCostEnabled(settingsRes.data.costApproachEnabled);
+      setAsCostBasis(settingsRes.data.costBasisKey || "replacement");
+      setAsCostUnit(settingsRes.data.costMeasurementUnitKey || "comparison_unit");
+      setAsAdjustUnlocked(settingsRes.data.adjustmentsEditUnlocked);
+    } else {
+      setApproachSettings(null);
+    }
 
     if (!selRes.ok) {
       setError("تعذّر تحميل المقارنات المختارة");
@@ -711,6 +734,13 @@ export function EvaluatorComparableSelectionPanel({
     selection?.items.map((i) => i.comparablePropertyId) ?? [],
   );
 
+  // ق-2: الأسلوب غير المفعَّل لا يظهر تبويبه ولا يدخل في الترجيح.
+  const marketEnabled = approachSettings?.marketApproachEnabled ?? true;
+  const costEnabled = approachSettings?.costApproachEnabled ?? true;
+  const adjustmentsLocked = approachSettings
+    ? !approachSettings.adjustmentsEditUnlocked
+    : false;
+
   async function adopt(compId: string, isAdopted: boolean) {
     const config = apiConfig();
     if (!config || !valuationRequestId) return;
@@ -744,6 +774,48 @@ export function EvaluatorComparableSelectionPanel({
       showToast("تعذّر إزالة المقارن", "error");
       return;
     }
+    await reload();
+  }
+
+  // ق-7: اعتماد المقيّم المعتمد لنطاق «مكتبية عن بُعد» — يفكّ الحاجب m21.
+  async function approveRemoteScope() {
+    const config = apiConfig();
+    if (!config || !poNumber) {
+      showToast("يلزم رقم أمر العمل لاعتماد نطاق المعاينة", "error");
+      return;
+    }
+    setSaving(true);
+    const res = await approveRemoteInspection(config, poNumber, propertyId);
+    setSaving(false);
+    if (!res.ok) {
+      showToast(
+        Object.values(res.errors ?? {})[0] ?? "تعذّر اعتماد نطاق المعاينة",
+        "error",
+      );
+      return;
+    }
+    showToast("اعتُمد نطاق المعاينة المكتبية — سُجّل في التدقيق", "success");
+    await reload();
+  }
+
+  async function saveApproachSettings() {
+    const config = apiConfig();
+    if (!config || !valuationRequestId) return;
+    setSaving(true);
+    const res = await saveValuationApproachSettings(config, valuationRequestId, {
+      marketApproachEnabled: asMarketEnabled,
+      costApproachEnabled: asCostEnabled,
+      incomeApproachEnabled: false,
+      costBasisKey: asCostBasis,
+      costMeasurementUnitKey: asCostUnit,
+      adjustmentsEditUnlocked: asAdjustUnlocked,
+    });
+    setSaving(false);
+    if (!res.ok) {
+      showToast(res.message ?? "تعذّر حفظ إعدادات التقييم", "error");
+      return;
+    }
+    showToast("تم حفظ إعدادات التقييم", "success");
     await reload();
   }
 
@@ -1007,7 +1079,106 @@ export function EvaluatorComparableSelectionPanel({
         </p>
       ) : null}
 
-      {valuationRequestId && selection ? (
+      {valuationRequestId && approachSettings ? (
+        <div className="mt-2 rounded-lg border border-border-md bg-surface-2 px-3 py-2">
+          <EngSection>إعدادات التقييم — الأساليب المطبَّقة (شاشة 1)</EngSection>
+          <p className="mb-2 text-[12px] text-text-muted">
+            ق-2: الأسلوب غير المفعَّل لا يظهر ولا يدخل في الترجيح.
+            {!approachSettings.costApproachAllowed
+              ? " · ق-3: أرض بلا إنشاءات — أسلوب التكلفة لا ينطبق."
+              : approachSettings.isLandPropertyType && approachSettings.hasStructuresToValue
+                ? " · أرض بإنشاءات — التكلفة تفتح لبنود الإنشاءات فقط (ق-3 المعدَّل)."
+                : null}
+          </p>
+          <div className="mb-2 flex flex-wrap items-center gap-4">
+            <label className="flex items-center gap-1.5 text-[12.5px] text-text">
+              <input
+                type="checkbox"
+                checked={asMarketEnabled}
+                disabled={saving}
+                onChange={(e) => setAsMarketEnabled(e.target.checked)}
+              />
+              أسلوب السوق (طريقة المقارنة)
+            </label>
+            <label
+              className={cn(
+                "flex items-center gap-1.5 text-[12.5px]",
+                approachSettings.costApproachAllowed ? "text-text" : "text-text-muted",
+              )}
+            >
+              <input
+                type="checkbox"
+                checked={asCostEnabled && approachSettings.costApproachAllowed}
+                disabled={saving || !approachSettings.costApproachAllowed}
+                onChange={(e) => setAsCostEnabled(e.target.checked)}
+              />
+              أسلوب التكلفة (طريقة المقاول)
+              {!approachSettings.costApproachAllowed ? " — لا ينطبق (ق-3)" : ""}
+            </label>
+            <label className="flex items-center gap-1.5 text-[12.5px] text-text-muted">
+              <input type="checkbox" checked={false} disabled />
+              أسلوب الدخل — قيد الإنشاء ⏸
+            </label>
+          </div>
+          {asCostEnabled && approachSettings.costApproachAllowed ? (
+            <div className="mb-2 grid max-w-xl gap-2 sm:grid-cols-2">
+              <div>
+                <Label className={valLabelClassName}>أساس التكلفة</Label>
+                <select
+                  className={valInputClassName}
+                  value={asCostBasis}
+                  disabled={saving}
+                  onChange={(e) => setAsCostBasis(e.target.value)}
+                >
+                  <option value="replacement">الإحلال</option>
+                  <option value="reproduction">إعادة الإنتاج</option>
+                </select>
+              </div>
+              <div>
+                <Label className={valLabelClassName}>وحدة قياس التكلفة</Label>
+                <select
+                  className={valInputClassName}
+                  value={asCostUnit}
+                  disabled={saving}
+                  onChange={(e) => setAsCostUnit(e.target.value)}
+                >
+                  <option value="comparison_unit">وحدة المقارنة</option>
+                  <option value="quantity_survey">المسح الكمي</option>
+                  <option value="lump_sum">المبلغ المقطوع</option>
+                  <option value="per_item">كل بند على حدة</option>
+                </select>
+              </div>
+            </div>
+          ) : null}
+          <div className="mb-2 flex flex-wrap items-center gap-3">
+            <label className="flex items-center gap-1.5 text-[12.5px] text-text">
+              <input
+                type="checkbox"
+                checked={asAdjustUnlocked}
+                disabled={saving}
+                onChange={(e) => setAsAdjustUnlocked(e.target.checked)}
+              />
+              صلاحية تحرير التسويات (يضبطها مشرف القسم)
+            </label>
+            {adjustmentsLocked ? (
+              <span className="text-[11.5px] text-danger">
+                التسويات مقفلة — الحفظ معطَّل حتى تفعيل الصلاحية
+              </span>
+            ) : null}
+          </div>
+          <Button
+            type="button"
+            size="sm"
+            variant="primary"
+            disabled={saving}
+            onClick={() => void saveApproachSettings()}
+          >
+            حفظ إعدادات التقييم
+          </Button>
+        </div>
+      ) : null}
+
+      {valuationRequestId && selection && marketEnabled ? (
         <div className="mt-2 rounded-lg border border-border-md bg-surface-2 px-3 py-2">
           <EngSection>رأي أسلوب السوق</EngSection>
           <div className="grid max-w-2xl gap-2 sm:grid-cols-[1fr_1fr_auto]">
@@ -1096,7 +1267,7 @@ export function EvaluatorComparableSelectionPanel({
         <p className="mt-2 text-[12.5px] text-text-muted">جاري التحميل…</p>
       ) : null}
 
-      {!loading && selection && selection.items.length > 0 ? (
+      {!loading && selection && marketEnabled && selection.items.length > 0 ? (
         <ul className="mt-3 flex flex-col gap-2">
           {selection.items.map((item) => (
             <li
@@ -1171,7 +1342,7 @@ export function EvaluatorComparableSelectionPanel({
                 <MarketAdjustEditor
                   item={item}
                   valuationRequestId={valuationRequestId}
-                  disabled={saving}
+                  disabled={saving || adjustmentsLocked}
                   onSaved={reload}
                   factorDefinitions={factorDefinitions}
                 />
@@ -1181,7 +1352,7 @@ export function EvaluatorComparableSelectionPanel({
         </ul>
       ) : null}
 
-      {valuationRequestId ? (
+      {valuationRequestId && marketEnabled ? (
         <>
           <EngSection>اقتراح النظام بالقرب الجغرافي</EngSection>
           <p className="mb-2 text-[12px] text-text-muted">
@@ -1251,6 +1422,13 @@ export function EvaluatorComparableSelectionPanel({
                   <div>
                     <div className="text-[13px] text-text">
                       {comp.referenceCode} — {comp.comparablePropertyType}
+                      {/* ق-3: الموسوم يُميَّز بصرياً */}
+                      {comp.isExcludedFromSuggestions ? (
+                        <span className="mr-2 rounded bg-amber-light px-1.5 py-0.5 text-[10px] text-amber-text">
+                          موسوم: {comp.reliabilityTag !== "normal" ? comp.reliabilityTagLabelAr : ""}
+                          {comp.isDuplicateTagged ? " مكرر" : ""}
+                        </span>
+                      ) : null}
                     </div>
                     <div className="mt-0.5 text-[12px] text-text-muted">
                       {comp.district}
@@ -1282,7 +1460,7 @@ export function EvaluatorComparableSelectionPanel({
         </>
       ) : null}
 
-      {valuationRequestId ? (
+      {valuationRequestId && costEnabled ? (
         <div className="mt-3 rounded-lg border border-border-md px-3 py-2">
           <EngSection>أسلوب التكلفة (طريقة المقاول)</EngSection>
           <p className="mb-2 text-[12px] text-text-muted">
@@ -1973,7 +2151,7 @@ export function EvaluatorComparableSelectionPanel({
             <div className="mt-3 border-t border-border-md pt-2">
               <p className="mb-1 text-[12.5px] font-medium text-text">
                 تنبيهات منهجية — مفعّل{" "}
-                {gates.methodologyAlertTriggeredCount ?? 0}/17
+                {gates.methodologyAlertTriggeredCount ?? 0}/21
               </p>
               <p className="mb-2 text-[11.5px] text-text-muted">
                 {gates.methodologyAlertsNoteAr}
@@ -2025,6 +2203,19 @@ export function EvaluatorComparableSelectionPanel({
                               </span>
                             ) : null}
                           </div>
+                          {a.code === "m21_remote_inspection_unapproved" ? (
+                            <div className="mt-1">
+                              <Button
+                                type="button"
+                                size="sm"
+                                variant="primary"
+                                disabled={saving}
+                                onClick={() => void approveRemoteScope()}
+                              >
+                                اعتماد النطاق المكتبي (المقيّم المعتمد)
+                              </Button>
+                            </div>
+                          ) : null}
                           {!a.isHard && severity === "require_rationale" ? (
                             <Input
                               className={`${valInputClassName} mt-1`}

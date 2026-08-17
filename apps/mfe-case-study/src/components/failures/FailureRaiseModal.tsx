@@ -5,7 +5,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { AppModal } from "@case-study/mfe/components/ui/AppModal";
 import { prototypeKeys } from "@platform/app-shared/query/prototype-keys";
 import { Button, useToast } from "@platform/design-system";
-import { FailureRaiseFields, createFailure, failurePayloadFromDescription } from "@failures/mfe";
+import { FailureRaiseFields, createFailure, failurePayloadFromProblemType, FAILURE_PROBLEM_TYPES, useFailureTypesQuery } from "@failures/mfe";
 
 export function FailureRaiseModal({
   open,
@@ -28,13 +28,14 @@ export function FailureRaiseModal({
 }) {
   const queryClient = useQueryClient();
   const { showToast } = useToast();
-  const [description, setDescription] = useState("");
+  const { data: catalog } = useFailureTypesQuery();
+  const [problemTypeId, setProblemTypeId] = useState("");
   const [saving, setSaving] = useState(false);
   const [invalid, setInvalid] = useState(false);
 
   useEffect(() => {
     if (!open) return;
-    setDescription("");
+    setProblemTypeId("");
     setSaving(false);
     setInvalid(false);
   }, [open, propertyId]);
@@ -45,8 +46,13 @@ export function FailureRaiseModal({
   }
 
   async function handleSubmit() {
-    const trimmed = description.trim();
-    if (!trimmed) {
+    const payload = failurePayloadFromProblemType(
+      problemTypeId,
+      catalog?.problemTypes?.length
+        ? catalog.problemTypes
+        : FAILURE_PROBLEM_TYPES,
+    );
+    if (!payload) {
       setInvalid(true);
       return;
     }
@@ -54,7 +60,6 @@ export function FailureRaiseModal({
     setSaving(true);
     setInvalid(false);
     try {
-      const payload = failurePayloadFromDescription(trimmed);
       await createFailure({
         poNumber,
         propertyId,
@@ -106,7 +111,7 @@ export function FailureRaiseModal({
             type="button"
             variant="primary"
             loading={saving}
-            disabled={saving}
+            disabled={saving || !problemTypeId}
             className="min-w-[9.5rem]"
             showActionToast={false}
             onClick={() => void handleSubmit()}
@@ -118,9 +123,9 @@ export function FailureRaiseModal({
     >
       <FailureRaiseFields
         idPrefix={`modal-${propertyId}`}
-        description={description}
-        onDescriptionChange={(v) => {
-          setDescription(v);
+        problemTypeId={problemTypeId}
+        onProblemTypeChange={(v) => {
+          setProblemTypeId(v);
           if (invalid) setInvalid(false);
         }}
         invalid={invalid}

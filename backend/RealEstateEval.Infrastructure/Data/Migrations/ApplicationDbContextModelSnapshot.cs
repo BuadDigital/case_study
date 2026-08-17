@@ -722,6 +722,9 @@ namespace RealEstateEval.Infrastructure.Data.Migrations
                     b.Property<bool>("IsActive")
                         .HasColumnType("boolean");
 
+                    b.Property<bool>("IsDuplicateTagged")
+                        .HasColumnType("boolean");
+
                     b.Property<decimal>("Latitude")
                         .HasPrecision(9, 6)
                         .HasColumnType("numeric(9,6)");
@@ -756,6 +759,11 @@ namespace RealEstateEval.Infrastructure.Data.Migrations
                         .HasMaxLength(32)
                         .HasColumnType("character varying(32)");
 
+                    b.Property<string>("ReliabilityTag")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)");
+
                     b.Property<string>("Source")
                         .IsRequired()
                         .HasMaxLength(32)
@@ -768,6 +776,17 @@ namespace RealEstateEval.Infrastructure.Data.Migrations
                         .HasMaxLength(64)
                         .HasColumnType("character varying(64)");
 
+                    b.Property<string>("TagRationale")
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)");
+
+                    b.Property<DateTime?>("TaggedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("TaggedByUserId")
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)");
+
                     b.Property<DateOnly>("TransactionDate")
                         .HasColumnType("date");
 
@@ -776,8 +795,17 @@ namespace RealEstateEval.Infrastructure.Data.Migrations
                         .HasMaxLength(16)
                         .HasColumnType("character varying(16)");
 
+                    b.Property<string>("TransactionReference")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
                     b.Property<DateTime>("UpdatedAtUtc")
                         .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Usage")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
 
                     b.HasKey("Id");
 
@@ -4070,6 +4098,48 @@ namespace RealEstateEval.Infrastructure.Data.Migrations
                         });
                 });
 
+            modelBuilder.Entity("RealEstateEval.Domain.ValuationApproachSettings", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<bool>("AdjustmentsEditUnlocked")
+                        .HasColumnType("boolean");
+
+                    b.Property<bool>("CostApproachEnabled")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("CostBasisKey")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)");
+
+                    b.Property<string>("CostMeasurementUnitKey")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)");
+
+                    b.Property<bool>("IncomeApproachEnabled")
+                        .HasColumnType("boolean");
+
+                    b.Property<bool>("MarketApproachEnabled")
+                        .HasColumnType("boolean");
+
+                    b.Property<DateTime>("UpdatedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("ValuationRequestId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ValuationRequestId")
+                        .IsUnique();
+
+                    b.ToTable("ValuationApproachSettings", "valuation");
+                });
+
             modelBuilder.Entity("RealEstateEval.Domain.ValuationComparableAdjustmentLine", b =>
                 {
                     b.Property<Guid>("Id")
@@ -4748,6 +4818,15 @@ namespace RealEstateEval.Infrastructure.Data.Migrations
                     b.Property<int>("IdentifierType")
                         .HasColumnType("integer");
 
+                    b.Property<string>("InspectionRestrictionReason")
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)");
+
+                    b.Property<string>("InspectionScopeKey")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)");
+
                     b.Property<bool>("IsRemoved")
                         .HasColumnType("boolean");
 
@@ -4820,6 +4899,13 @@ namespace RealEstateEval.Infrastructure.Data.Migrations
                     b.Property<Guid?>("RegionId")
                         .HasColumnType("uuid");
 
+                    b.Property<DateTime?>("RemoteInspectionApprovedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("RemoteInspectionApprovedBy")
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)");
+
                     b.Property<string>("RemovalReason")
                         .HasMaxLength(500)
                         .HasColumnType("character varying(500)");
@@ -4858,6 +4944,9 @@ namespace RealEstateEval.Infrastructure.Data.Migrations
                     b.Property<string>("SouthFacadeFinishing")
                         .HasMaxLength(128)
                         .HasColumnType("character varying(128)");
+
+                    b.Property<string>("UninspectedUnitsJson")
+                        .HasColumnType("text");
 
                     b.Property<string>("WestBoundary")
                         .HasMaxLength(512)
@@ -5242,6 +5331,17 @@ namespace RealEstateEval.Infrastructure.Data.Migrations
                         .IsRequired();
 
                     b.Navigation("User");
+                });
+
+            modelBuilder.Entity("RealEstateEval.Domain.ValuationApproachSettings", b =>
+                {
+                    b.HasOne("RealEstateEval.Domain.ValuationRequest", "ValuationRequest")
+                        .WithMany()
+                        .HasForeignKey("ValuationRequestId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("ValuationRequest");
                 });
 
             modelBuilder.Entity("RealEstateEval.Domain.ValuationComparableAdjustmentLine", b =>
