@@ -363,6 +363,11 @@ services:
       Jwt__Issuer: RealEstateEval
       Jwt__Audience: RealEstateEval
       Jwt__SigningKey: ${JWT_SIGNING_KEY:?Set JWT_SIGNING_KEY}
+      # Optional: leave WEB_PUSH_ENABLED=false (default) until VAPID keys are in /app/.env.
+      WebPush__Enabled: ${WEB_PUSH_ENABLED:-false}
+      WebPush__PublicKey: ${WEB_PUSH_PUBLIC_KEY:-}
+      WebPush__PrivateKey: ${WEB_PUSH_PRIVATE_KEY:-}
+      WebPush__Subject: ${WEB_PUSH_SUBJECT:-mailto:ops@ejada.local}
     depends_on:
       postgres:
         condition: service_healthy

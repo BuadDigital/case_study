@@ -396,12 +396,31 @@ jobs:
             export TLS_CERTIFICATE_PATH="${{ secrets.TLS_CERTIFICATE_PATH }}"
             export TLS_PRIVATE_KEY_PATH="${{ secrets.TLS_PRIVATE_KEY_PATH }}"
             export PUBLIC_APP_URL="${{ secrets.PUBLIC_APP_URL }}"
+            export WEB_PUSH_ENABLED="${{ secrets.WEB_PUSH_ENABLED }}"
+            export WEB_PUSH_PUBLIC_KEY="${{ secrets.WEB_PUSH_PUBLIC_KEY }}"
+            export WEB_PUSH_PRIVATE_KEY="${{ secrets.WEB_PUSH_PRIVATE_KEY }}"
+            export WEB_PUSH_SUBJECT="${{ secrets.WEB_PUSH_SUBJECT }}"
 
             # TLS is mandatory in Production. Fail before touching the running stack
             # when the host certificate has not been provisioned or renewed correctly.
             test -r "$TLS_CERTIFICATE_PATH"
             test -r "$TLS_PRIVATE_KEY_PATH"
             test -n "$PUBLIC_APP_URL"
+
+            # Persist Web Push VAPID into /app/.env so host restarts keep the same keys.
+            # Compose also picks up the exported vars for this deploy run.
+            if [ -n "${WEB_PUSH_PUBLIC_KEY:-}" ] && [ -n "${WEB_PUSH_PRIVATE_KEY:-}" ]; then
+              touch .env
+              grep -v '^WEB_PUSH_' .env > .env.webpush.tmp || true
+              mv .env.webpush.tmp .env
+              {
+                echo "WEB_PUSH_ENABLED=${WEB_PUSH_ENABLED:-true}"
+                echo "WEB_PUSH_PUBLIC_KEY=${WEB_PUSH_PUBLIC_KEY}"
+                echo "WEB_PUSH_PRIVATE_KEY=${WEB_PUSH_PRIVATE_KEY}"
+                echo "WEB_PUSH_SUBJECT=${WEB_PUSH_SUBJECT:-mailto:ops@ejada.local}"
+              } >> .env
+              chmod 600 .env
+            fi
 
             # Pull images, apply EF migrations (one-shot), then bring the stack up.
             docker compose -f docker-compose.prod.yml pull
