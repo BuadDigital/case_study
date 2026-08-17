@@ -658,8 +658,7 @@ function ComponentCountWithPhotoField({
                   { draft, deedNumber },
                 );
                 if (!result.ok) {
-                  showToast(result.error, "error");
-                  return false;
+                  throw new Error(result.error);
                 }
                 onPatch({
                   componentPhotoAttachments: {
@@ -1322,8 +1321,7 @@ export function PropertyDetailInspectionTab({
                                     },
                                   );
                                 if (!result.ok) {
-                                  showToast(result.error, "error");
-                                  return false;
+                                  throw new Error(result.error);
                                 }
                                 patchDraft({
                                   featurePhotoAttachments: {
@@ -1941,8 +1939,7 @@ export function PropertyDetailInspectionTab({
                               },
                             );
                             if (!result.ok) {
-                              showToast(result.error, "error");
-                              return false;
+                              throw new Error(result.error);
                             }
                             patchDraft({
                               observations: draft.observations.map((o) =>

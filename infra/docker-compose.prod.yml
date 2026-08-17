@@ -392,7 +392,7 @@ services:
       Jwt__Issuer: RealEstateEval
       Jwt__Audience: RealEstateEval
       Jwt__SigningKey: ${JWT_SIGNING_KEY:?Set JWT_SIGNING_KEY}
-      BlobStorage__RootDirectory: /app/attachments-data
+      BlobStorage__LocalRootPath: /app/attachments-data
     volumes:
       - ree_prod_attachments_data:/app/attachments-data
     depends_on:

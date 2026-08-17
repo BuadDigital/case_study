@@ -3,7 +3,15 @@ import {
   uploadAttachment,
 } from "@platform/api-client";
 import { uploadAttachmentWithOfflineFallback } from "@platform/app-shared/offline/offline-write";
-import { prototypeModulesApiConfig } from "@platform/app-shared/prototype/prototype-modules-api-config";
+import {
+  apiErrorMessage,
+  resolveApiError,
+} from "@platform/app-shared/prototype/work-orders-api-config";
+import {
+  freshPrototypeModulesApiConfig,
+  prototypeModulesApiConfig,
+} from "@platform/app-shared/prototype/prototype-modules-api-config";
+import { ensureFreshAuthSession } from "@platform/app-shared/auth/ensure-fresh-session";
 import type {
   InspectorPhotoAttachment,
   InspectorWorkspaceDraft,
@@ -196,6 +204,54 @@ function stampFromContext(
   return options?.stampText?.trim() ?? "";
 }
 
+async function uploadInspectorPhotoOnline(
+  taskId: string,
+  photoRef: string,
+  uploadFile: File,
+  photoMetadata: {
+    latitude: number | null;
+    longitude: number | null;
+    capturedAtUtc: string | null;
+    propertyLatitude: number | null;
+    propertyLongitude: number | null;
+  },
+) {
+  let config = await freshPrototypeModulesApiConfig();
+  if (!config) {
+    throw new Error(apiErrorMessage("auth", "يجب تسجيل الدخول لرفع الصور."));
+  }
+
+  for (let attempt = 0; attempt < 2; attempt += 1) {
+    const upload = await uploadAttachment(config, {
+      scope: SCOPE,
+      scopeKey: `${taskId}:${photoRef}`,
+      fileName: uploadFile.name,
+      contentType: "image/jpeg",
+      contentBase64: await fileToBase64(uploadFile),
+      photoMetadata,
+    });
+    if (upload.ok) return upload.data;
+
+    if (upload.kind === "auth" && attempt === 0) {
+      const renewed = await ensureFreshAuthSession({ force: true });
+      if (!renewed?.token) break;
+      config = { token: renewed.token, baseUrl: config.baseUrl };
+      continue;
+    }
+
+    throw new Error(
+      resolveApiError(
+        upload.kind,
+        upload.errors,
+        "تعذّر رفع الصورة — تحقق من الاتصال وحاول مجدداً.",
+        upload.message,
+      ),
+    );
+  }
+
+  throw new Error(apiErrorMessage("auth", "يجب تسجيل الدخول لرفع الصور."));
+}
+
 export async function uploadInspectorPhotoFromFile(
   taskId: string,
   photoRef: string,
@@ -253,7 +309,6 @@ export async function uploadInspectorPhotoFromFile(
     /* preview optional */
   }
 
-  const config = prototypeModulesApiConfig();
   const bytes = await uploadFile.arrayBuffer();
   const photoMetadata = {
     latitude: exif.latitude ?? null,
@@ -270,25 +325,15 @@ export async function uploadInspectorPhotoFromFile(
       contentType: attachment.mimeType,
       bytes,
       onlineUpload: async () => {
-        if (!config) {
-          throw new Error("تعذّر رفع الصورة — تحقق من الاتصال وحاول مجدداً.");
-        }
-        const upload = await uploadAttachment(config, {
-          scope: SCOPE,
-          scopeKey: `${taskId}:${photoRef}`,
-          fileName: uploadFile.name,
-          contentType: attachment.mimeType,
-          contentBase64: await fileToBase64(uploadFile),
+        const data = await uploadInspectorPhotoOnline(
+          taskId,
+          photoRef,
+          uploadFile,
           photoMetadata,
-        });
-        if (!upload.ok) {
-          throw new Error(
-            "تعذّر رفع الصورة — تحقق من الاتصال وحاول مجدداً.",
-          );
-        }
-        attachment.locationFlag = upload.data.photoMetadata?.flag ?? null;
-        attachment.distanceM = upload.data.photoMetadata?.distanceM ?? null;
-        return upload.data.id;
+        );
+        attachment.locationFlag = data.photoMetadata?.flag ?? null;
+        attachment.distanceM = data.photoMetadata?.distanceM ?? null;
+        return data.id;
       },
     });
     attachment.attachmentId = uploaded.attachmentId;

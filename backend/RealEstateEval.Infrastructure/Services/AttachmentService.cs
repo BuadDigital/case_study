@@ -131,7 +131,7 @@ public sealed class AttachmentService : IAttachmentService
                 PhotoId = id,
                 Latitude = request.PhotoMetadata.Latitude,
                 Longitude = request.PhotoMetadata.Longitude,
-                CapturedAtUtc = request.PhotoMetadata.CapturedAtUtc,
+                CapturedAtUtc = AsUtc(request.PhotoMetadata.CapturedAtUtc),
                 DistanceM = distanceM,
                 Flag = flag,
                 CreatedAtUtc = DateTime.UtcNow,
@@ -256,4 +256,19 @@ public sealed class AttachmentService : IAttachmentService
                 Flag = photo.Flag,
             },
     };
+
+    /// <summary>
+    /// JSON binds ISO timestamps as Unspecified; Npgsql rejects that for timestamptz.
+    /// </summary>
+    private static DateTime? AsUtc(DateTime? value)
+    {
+        if (value is null) return null;
+        var dt = value.Value;
+        return dt.Kind switch
+        {
+            DateTimeKind.Utc => dt,
+            DateTimeKind.Local => dt.ToUniversalTime(),
+            _ => DateTime.SpecifyKind(dt, DateTimeKind.Utc),
+        };
+    }
 }

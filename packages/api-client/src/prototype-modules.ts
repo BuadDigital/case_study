@@ -887,6 +887,7 @@ export async function uploadAttachment(
       body: JSON.stringify(body),
     });
     if (res.status === 401) return { ok: false, kind: "auth" };
+    if (res.status === 403) return { ok: false, kind: "forbidden" };
     if (res.status === 400) {
       // The server rejects on content, not on the declared type — pass the reason through
       // so the user learns which rule fired instead of seeing a generic failure.

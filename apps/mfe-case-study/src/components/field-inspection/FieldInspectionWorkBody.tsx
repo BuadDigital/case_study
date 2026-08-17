@@ -1029,8 +1029,7 @@ export function FieldInspectionWorkBody({
                               },
                             );
                             if (!result.ok) {
-                              showToast(result.error, "error");
-                              return false;
+                              throw new Error(result.error);
                             }
                             persist({
                               featurePhotoAttachments: {
@@ -1165,8 +1164,7 @@ export function FieldInspectionWorkBody({
                               },
                             );
                             if (!result.ok) {
-                              showToast(result.error, "error");
-                              return false;
+                              throw new Error(result.error);
                             }
                             persist({
                               featurePhotoAttachments: {
@@ -1441,8 +1439,7 @@ export function FieldInspectionWorkBody({
                               },
                             );
                             if (!result.ok) {
-                              showToast(result.error, "error");
-                              return false;
+                              throw new Error(result.error);
                             }
                             persist({
                               componentPhotoAttachments: {
@@ -1947,8 +1944,7 @@ export function FieldInspectionWorkBody({
                             },
                           );
                           if (!result.ok) {
-                            showToast(result.error, "error");
-                            return false;
+                            throw new Error(result.error);
                           }
                           persist({
                             observations: draft.observations.map((o) =>
@@ -2066,8 +2062,7 @@ export function FieldInspectionWorkBody({
                         },
                       );
                       if (!result.ok) {
-                        showToast(result.error, "error");
-                        return false;
+                        throw new Error(result.error);
                       }
                       persist({
                         observations: draft.observations.map((o) =>

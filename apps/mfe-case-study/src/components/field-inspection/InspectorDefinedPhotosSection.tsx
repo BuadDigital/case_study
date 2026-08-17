@@ -241,48 +241,53 @@ export function InspectorDefinedPhotosSection({
     setUploading(true);
     let added = 0;
     let workingDraft = draft;
+    let lastError: string | null = null;
 
-    for (const file of files) {
-      const nextId = nextInspectorPhotoId(workingDraft);
-      const ref = slotPhotoRef(slotId, nextId);
-      const result = await uploadInspectorPhotoFromFile(
-        draft.taskId,
-        ref,
-        file,
-        { draft: workingDraft },
-      );
-      if (!result.ok) {
-        showToast(result.error, "error");
-        continue;
+    try {
+      for (const file of files) {
+        const nextId = nextInspectorPhotoId(workingDraft);
+        const ref = slotPhotoRef(slotId, nextId);
+        const result = await uploadInspectorPhotoFromFile(
+          draft.taskId,
+          ref,
+          file,
+          { draft: workingDraft },
+        );
+        if (!result.ok) {
+          lastError = result.error;
+          continue;
+        }
+
+        const slot = workingDraft.definedPhotos[slotId] ?? {
+          none: false,
+          photos: [],
+        };
+        const nextPhoto: InspectorSlotPhoto = {
+          id: nextId,
+          approved: true,
+          ...result.attachment,
+        };
+        workingDraft = {
+          ...workingDraft,
+          definedPhotos: {
+            ...workingDraft.definedPhotos,
+            [slotId]: {
+              none: false,
+              photos: [...slot.photos, nextPhoto],
+            },
+          },
+        };
+        added += 1;
       }
 
-      const slot = workingDraft.definedPhotos[slotId] ?? {
-        none: false,
-        photos: [],
-      };
-      const nextPhoto: InspectorSlotPhoto = {
-        id: nextId,
-        approved: true,
-        ...result.attachment,
-      };
-      workingDraft = {
-        ...workingDraft,
-        definedPhotos: {
-          ...workingDraft.definedPhotos,
-          [slotId]: {
-            none: false,
-            photos: [...slot.photos, nextPhoto],
-          },
-        },
-      };
-      added += 1;
+      if (added > 0) {
+        onPatch({ definedPhotos: workingDraft.definedPhotos });
+      }
+      if (lastError) throw new Error(lastError);
+      return added > 0;
+    } finally {
+      setUploading(false);
     }
-
-    if (added > 0) {
-      onPatch({ definedPhotos: workingDraft.definedPhotos });
-    }
-    setUploading(false);
-    return added > 0;
   }
 
   function deleteSlotPhoto(slotId: string, photoId: number) {
@@ -312,40 +317,45 @@ export function InspectorDefinedPhotosSection({
     setUploading(true);
     let workingDraft = draft;
     let lastId: number | null = null;
+    let lastError: string | null = null;
 
-    for (const file of files) {
-      const nextId = nextInspectorPhotoId(workingDraft);
-      const ref = freePhotoRef(nextId);
-      const result = await uploadInspectorPhotoFromFile(
-        draft.taskId,
-        ref,
-        file,
-        { draft: workingDraft },
-      );
-      if (!result.ok) {
-        showToast(result.error, "error");
-        continue;
+    try {
+      for (const file of files) {
+        const nextId = nextInspectorPhotoId(workingDraft);
+        const ref = freePhotoRef(nextId);
+        const result = await uploadInspectorPhotoFromFile(
+          draft.taskId,
+          ref,
+          file,
+          { draft: workingDraft },
+        );
+        if (!result.ok) {
+          lastError = result.error;
+          continue;
+        }
+
+        const nextPhoto: InspectorFreePhoto = {
+          id: nextId,
+          category: null,
+          approved: false,
+          ...result.attachment,
+        };
+        workingDraft = {
+          ...workingDraft,
+          freePhotos: [...workingDraft.freePhotos, nextPhoto],
+        };
+        lastId = nextId;
       }
 
-      const nextPhoto: InspectorFreePhoto = {
-        id: nextId,
-        category: null,
-        approved: false,
-        ...result.attachment,
-      };
-      workingDraft = {
-        ...workingDraft,
-        freePhotos: [...workingDraft.freePhotos, nextPhoto],
-      };
-      lastId = nextId;
+      if (lastId !== null) {
+        onPatch({ freePhotos: workingDraft.freePhotos });
+        setPickerPhotoId(lastId);
+      }
+      if (lastError) throw new Error(lastError);
+      return lastId !== null;
+    } finally {
+      setUploading(false);
     }
-
-    if (lastId !== null) {
-      onPatch({ freePhotos: workingDraft.freePhotos });
-      setPickerPhotoId(lastId);
-    }
-    setUploading(false);
-    return lastId !== null;
   }
 
   function tagFreePhoto(photoId: number, category: string) {
