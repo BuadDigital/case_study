@@ -6,6 +6,7 @@ export const SCREEN_CATALOG_PAGE_NAMES: Partial<Record<PageId, string>> = {
   dashboard: "لوحة التحكم",
   po: "قائمة أوامر العمل",
   "all-transactions": "جميع المعاملات المسندة",
+  "property-map": "خريطة المواقع المدروسة",
   "active-primary-data": "البيانات الأولية",
   "active-distribution": "توزيع المعاملات على الأطراف",
   "active-case-study": "دراسة حالة العقارات",

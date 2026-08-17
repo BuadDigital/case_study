@@ -80,6 +80,7 @@ public class PlatformPermissionCatalogTests
     [InlineData("section-supervisor", "party-fees")]
     [InlineData("case-specialist", "fee-pricing")]
     [InlineData("case-specialist", "party-fees")]
+    [InlineData("case-specialist", "property-map")]
     [InlineData("financial-officer", "financial")]
     public void Prototype_role_grants_expected_page(string role, string page)
     {

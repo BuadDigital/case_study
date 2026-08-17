@@ -233,6 +233,80 @@ public class WorkflowTaskReadAuthorizationTests
         Assert.Single(rows);
         Assert.Equal("property-appraisal", rows[0].Kind);
         Assert.True(rows[0].FieldInspectionCompleted);
+        Assert.False(rows[0].FieldInspectionAccepted);
+    }
+
+    [Fact]
+    public async Task List_marks_property_appraisal_accepted_when_sibling_inspection_stamped()
+    {
+        await using var db = CreateDb();
+        var parentId = Guid.Parse("12121212-1212-1212-1212-121212121212");
+        var propertyId = Guid.Parse("34343434-3434-3434-3434-343434343434");
+        var now = DateTime.UtcNow;
+        var inspection = WorkflowTask.Create(
+            WorkflowTaskKind.FieldInspection,
+            "PO-accept-fi",
+            now,
+            title: "fi",
+            phase: WorkflowTaskPhase.Done,
+            assigneeRole: "field-inspector",
+            assigneeName: "fi",
+            assigneeId: "fi-1",
+            parentTaskId: parentId,
+            propertyId: propertyId);
+        inspection.Complete(now);
+        db.WorkflowTasks.AddRange(
+            WorkflowTask.Create(
+                WorkflowTaskKind.CaseStudyProperty,
+                "PO-accept-fi",
+                now,
+                title: "parent",
+                phase: WorkflowTaskPhase.Done,
+                assigneeRole: "case-specialist",
+                assigneeName: "cs",
+                assigneeId: "cs-1",
+                id: parentId,
+                propertyId: propertyId),
+            inspection,
+            WorkflowTask.Create(
+                WorkflowTaskKind.PropertyAppraisal,
+                "PO-accept-fi",
+                now,
+                title: "appraisal",
+                phase: WorkflowTaskPhase.Done,
+                assigneeRole: "real-estate-appraiser",
+                assigneeName: "val",
+                assigneeId: "val-1",
+                parentTaskId: parentId,
+                propertyId: propertyId));
+        db.PartyTaskSubmissions.Add(new PartyTaskSubmission
+        {
+            Id = Guid.NewGuid(),
+            WorkflowTaskId = inspection.Id,
+            Kind = "field-inspection",
+            Status = "submitted",
+            PropertyId = propertyId,
+            PoNumber = "PO-accept-fi",
+            PayloadJson = "{}",
+            AcceptedAtUtc = now,
+            AcceptedByName = "أخصائي",
+            CreatedAtUtc = now,
+            UpdatedAtUtc = now,
+        });
+        await db.SaveChangesAsync();
+
+        var service = TestInspectorFeeServiceFactory.CreateWorkflow(db);
+        var rows = await service.ListAsync(new PermissionsDto
+        {
+            UserId = "val-user",
+            PrototypeRole = "real-estate-appraiser",
+            DistributionAssigneeId = "val-1",
+        });
+
+        Assert.Single(rows);
+        Assert.Equal("property-appraisal", rows[0].Kind);
+        Assert.True(rows[0].FieldInspectionCompleted);
+        Assert.True(rows[0].FieldInspectionAccepted);
     }
 
     [Fact]

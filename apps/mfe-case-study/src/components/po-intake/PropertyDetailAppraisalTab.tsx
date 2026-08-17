@@ -42,9 +42,9 @@ export function PropertyDetailAppraisalTab({
         submissionStatus={submission?.packageStatus ?? "draft"}
         acceptedAtUtc={submission?.acceptedAtUtc}
         acceptedByName={submission?.acceptedByName}
-        acceptLabel="اعتماد التقييم"
+        acceptLabel="إقرار الاستلام"
         returnPlaceholder="صف ما يجب تصحيحه في تقرير التقييم…"
-        acceptSuccessToast="تم اعتماد التقييم — يظهر في حزمة إنفاذ"
+        acceptSuccessToast="تم استلام تقرير التقييم — هذا إقرار بالاستلام وليس اعتماداً للقيمة"
         returnSuccessToast="أُعيد التقييم للتصحيح"
         onChanged={onReviewChanged}
       />

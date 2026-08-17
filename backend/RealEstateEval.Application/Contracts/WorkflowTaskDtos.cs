@@ -42,9 +42,15 @@ public class WorkflowTaskDto
 
  /// <summary>
  /// Engineering-survey / property-appraisal: sibling field-inspection workflow task is completed.
- /// Populated on list so EO and appraiser unlock work without seeing the inspection task row.
+ /// Populated on list so EO unlock works without seeing the inspection task row.
  /// </summary>
     public bool? FieldInspectionCompleted { get; set; }
+
+ /// <summary>
+ /// Property-appraisal: sibling field-inspection package is specialist-accepted.
+ /// Appraiser starts valuation only after this stamp — completed-but-unaccepted is monitor-only.
+ /// </summary>
+    public bool? FieldInspectionAccepted { get; set; }
 }
 
 public class PatchWorkflowTaskDistributionRequest

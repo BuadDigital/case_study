@@ -301,6 +301,22 @@ export type ValuationApproachSettingsDto = {
   costMeasurementUnitKey: string;
   costMeasurementUnitLabelAr: string;
   adjustmentsEditUnlocked: boolean;
+  /** الغرض من التقييم (§4ج-5) — judicial_execution | sale_purchase | financing | financial_reporting | litigation | other. */
+  valuationPurposeKey: string;
+  valuationPurposeLabelAr: string;
+  valuationPurposeNote?: string | null;
+  /** بند الأخصائي الخارجي (IVS 101) — ليس أخصائي الإسناد ولا أخصائي دراسة الحالة. */
+  externalSpecialistUsed: boolean;
+  externalSpecialistDetails?: string | null;
+  /** تاريخ التقييم: issue (إصدار القيمة — آلي) | retrospective (أثر رجعي يدوي). */
+  valuationDateMode: string;
+  valuationDateModeLabelAr: string;
+  retrospectiveDate?: string | null;
+  retrospectiveRationale?: string | null;
+  /** بنود الافتراضات المنتقاة/المضافة (نصوص مجمّدة). */
+  selectedAssumptions: string[];
+  /** مكتبة الانتقاء من إعدادات تبويب تقرير التقييم. */
+  assumptionLibrary: string[];
   /** false = property-type defaults (no row saved yet). */
   isSaved: boolean;
 };
@@ -312,6 +328,17 @@ export type SaveValuationApproachSettingsRequest = {
   costBasisKey?: string | null;
   costMeasurementUnitKey?: string | null;
   adjustmentsEditUnlocked?: boolean;
+  /** إلزامي (§4ج-5). */
+  valuationPurposeKey?: string | null;
+  valuationPurposeNote?: string | null;
+  externalSpecialistUsed?: boolean;
+  externalSpecialistDetails?: string | null;
+  /** issue (افتراضي) | retrospective. */
+  valuationDateMode?: string | null;
+  /** yyyy-MM-dd — إلزامي عند retrospective. */
+  retrospectiveDate?: string | null;
+  retrospectiveRationale?: string | null;
+  selectedAssumptions?: string[] | null;
 };
 
 export type ValuationRequestLiteDto = {

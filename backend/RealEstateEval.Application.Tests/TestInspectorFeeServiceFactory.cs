@@ -175,7 +175,8 @@ internal static class TestInspectorFeeServiceFactory
     {
         var query = new WorkflowTaskQueryService(db);
         var slots = new WorkflowTaskSlotSynchronizer(db, query);
-        var distribution = new WorkflowTaskDistributionCommands(db, notifications, recipients, timeline);
+        var distribution = new WorkflowTaskDistributionCommands(
+            db, notifications, recipients, timeline, NoOpValuationDispatch.Instance);
         var cascade = new WorkflowTaskCascadeCleanup(db, fees);
         var lifecycle = new WorkflowTaskLifecycleCommands(
             db, fees, timeline, cascade, slots, notifications, recipients);
@@ -244,6 +245,16 @@ internal static class TestInspectorFeeServiceFactory
             Task.FromResult(false);
 
         public Task ClearForUserAsync(string userId, CancellationToken cancellationToken = default) =>
+            Task.CompletedTask;
+    }
+
+    private sealed class NoOpValuationDispatch : ICaseStudyValuationDispatchService
+    {
+        public static readonly NoOpValuationDispatch Instance = new();
+
+        public Task TryCreateWhenAppraisalSpawnedAsync(
+            Guid parentTaskId,
+            CancellationToken cancellationToken = default) =>
             Task.CompletedTask;
     }
 }

@@ -307,14 +307,45 @@ namespace RealEstateEval.Infrastructure.Data.Contexts.Valuation.Migrations
                         .HasMaxLength(32)
                         .HasColumnType("character varying(32)");
 
+                    b.Property<string>("ExternalSpecialistDetails")
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)");
+
+                    b.Property<bool>("ExternalSpecialistUsed")
+                        .HasColumnType("boolean");
+
                     b.Property<bool>("IncomeApproachEnabled")
                         .HasColumnType("boolean");
 
                     b.Property<bool>("MarketApproachEnabled")
                         .HasColumnType("boolean");
 
+                    b.Property<DateOnly?>("RetrospectiveDate")
+                        .HasColumnType("date");
+
+                    b.Property<string>("RetrospectiveRationale")
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)");
+
+                    b.Property<string>("SelectedAssumptionsJson")
+                        .HasColumnType("text");
+
                     b.Property<DateTime>("UpdatedAtUtc")
                         .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("ValuationDateMode")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)");
+
+                    b.Property<string>("ValuationPurposeKey")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)");
+
+                    b.Property<string>("ValuationPurposeNote")
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)");
 
                     b.Property<Guid>("ValuationRequestId")
                         .HasColumnType("uuid");

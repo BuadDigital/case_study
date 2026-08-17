@@ -30,6 +30,26 @@ public class ValuationReportNarrativeRulesTests
         Assert.Contains("قيمة التصفية", text);
         Assert.Contains("تصفية منظمة", text);
         Assert.Contains("ESG", text);
+ // بند الأخصائي: الافتراضي نفي قياسي.
+        Assert.Contains("لم يستعن المقيّم بأي أخصائي خارجي", text);
+    }
+
+    [Fact]
+    public void Special_assumptions_specialist_details_replace_the_denial()
+    {
+        var text = ValuationReportNarrativeRules.SpecialAssumptionsBody(
+            hasStructures: true,
+            deedKindLabelAr: null,
+            basisLabelAr: null,
+            premiseLabelAr: null,
+            restrictionsLine: null,
+            inspectionReservationLine: null,
+            externalSpecialistUsed: true,
+            externalSpecialistDetails: "خبير إنشائي — تقدير العمر الاقتصادي");
+
+        Assert.Contains("خبير إنشائي", text);
+        Assert.Contains("تقريره مرفق", text);
+        Assert.DoesNotContain("لم يستعن المقيّم", text);
     }
 
     [Fact]

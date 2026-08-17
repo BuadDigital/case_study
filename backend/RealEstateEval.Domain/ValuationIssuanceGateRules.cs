@@ -4,6 +4,7 @@ namespace RealEstateEval.Domain;
 public static class ValuationIssuanceGateCodes
 {
     public const string Credentials = "credentials";
+    public const string ParticipantCredentials = "participant_credentials";
     public const string DeedNatureMatch = "deed_nature_match";
     public const string MinAdoptedComparables = "min_adopted_comparables";
     public const string ComparableWeights = "comparable_weights";
@@ -45,6 +46,61 @@ public static class ValuationIssuanceGateRules
             DetailAr: ok
                 ? (warn ? "تنبيه: أقل من 60 يومًا على انتهاء أحد الاعتمادات" : null)
                 : block,
+            IsWarning: warn);
+    }
+
+    public readonly record struct RosterParticipantCredentials(
+        string NameAr,
+        string? LicenseExpiresAt,
+        string? MembershipExpiresAt);
+
+    /// <summary>
+    /// Active report participants (org roster) use the same dual license+membership
+    /// hard gate as the certified valuer. Empty roster is not a block.
+    /// </summary>
+    public static ValuationIssuanceGateCheck ParticipantCredentials(
+        IReadOnlyList<RosterParticipantCredentials> participants,
+        DateOnly today)
+    {
+        if (participants.Count == 0)
+        {
+            return new ValuationIssuanceGateCheck(
+                ValuationIssuanceGateCodes.ParticipantCredentials,
+                "ترخيص وعضوية المشاركين",
+                Passed: true,
+                IsHard: true,
+                DetailAr: null);
+        }
+
+        var failures = new List<string>();
+        var warn = false;
+        foreach (var p in participants)
+        {
+            var name = string.IsNullOrWhiteSpace(p.NameAr) ? "مشارك" : p.NameAr.Trim();
+            var ok = ValuerCredentialRules.AllowsIssuance(
+                p.LicenseExpiresAt,
+                p.MembershipExpiresAt,
+                today,
+                out var block);
+            if (!ok)
+                failures.Add($"{name}: {block}");
+            else if (
+                ValuerCredentialRules.IsWithinWarningWindow(p.LicenseExpiresAt, today)
+                || ValuerCredentialRules.IsWithinWarningWindow(p.MembershipExpiresAt, today))
+            {
+                warn = true;
+            }
+        }
+
+        var passed = failures.Count == 0;
+        return new ValuationIssuanceGateCheck(
+            ValuationIssuanceGateCodes.ParticipantCredentials,
+            "ترخيص وعضوية المشاركين",
+            passed,
+            IsHard: true,
+            DetailAr: passed
+                ? (warn ? "تنبيه: أقل من 60 يومًا على انتهاء اعتماد أحد المشاركين" : null)
+                : "عضوية/ترخيص مشارك تمنع الإصدار — " + string.Join("؛ ", failures),
             IsWarning: warn);
     }
 

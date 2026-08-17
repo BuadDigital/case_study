@@ -294,7 +294,7 @@ public sealed class AssignmentNotificationRegressionTests
 
         Assert.NotNull(errors);
         Assert.Null(result);
-        Assert.Contains("طرفاً واحداً", errors!["_"]);
+        Assert.Contains("أخصائي", errors!["_"]);
         Assert.Empty(await db.OutboxMessages.ToListAsync());
     }
 

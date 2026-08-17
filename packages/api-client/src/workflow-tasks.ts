@@ -38,6 +38,8 @@ export type WorkflowTaskDto = {
   updatedAt: string;
   /** Engineering-survey / property-appraisal: sibling field-inspection completed (server). */
   fieldInspectionCompleted?: boolean | null;
+  /** Property-appraisal: sibling inspection package specialist-accepted (server). */
+  fieldInspectionAccepted?: boolean | null;
 };
 
 export type ConfirmTaskDistributionResponseDto = {

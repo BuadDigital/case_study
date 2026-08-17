@@ -206,6 +206,7 @@ export const MODULE_PAGES: { id: string; title: string }[] = [
   { id: "active-case-study", title: "دراسة حالة العقارات" },
   { id: "system-upload", title: "الرفع على النظام" },
   { id: "po", title: "أوامر العمل" },
+  { id: "property-map", title: "خريطة العقارات" },
   { id: "bourse-inquiry", title: "استعلام بورصة" },
   { id: "keys", title: "إدارة المفاتيح" },
   { id: "failures", title: "إدارة التعذرات" },
@@ -232,6 +233,7 @@ export const ROLE_MODULE_PAGES: Record<string, string[]> = {
   [RELEASE_USERS.cdo]: MODULE_PAGES.map((p) => p.id),
   [RELEASE_USERS.caseSpecialist]: [
     "po",
+    "property-map",
     "active-primary-data",
     "bourse-inquiry",
     "active-distribution",
@@ -254,6 +256,7 @@ export const ROLE_MODULE_PAGES: Record<string, string[]> = {
   ],
   [RELEASE_USERS.appraiser]: [
     "po",
+    "property-map",
     "property-appraisal",
     "suspended-transactions",
   ],

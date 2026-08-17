@@ -109,6 +109,9 @@ public sealed class ValuationReportDocumentService(
             costUsed,
             incomeUsed);
 
+        var approachSettings = await valuation.ValuationApproachSettings.AsNoTracking()
+            .FirstOrDefaultAsync(x => x.ValuationRequestId == vr.Id, cancellationToken);
+
         var today = DateOnly.FromDateTime(clock.GetUtcNow().UtcDateTime);
         var sections = visible.Select(def =>
         {
@@ -128,7 +131,8 @@ public sealed class ValuationReportDocumentService(
                 clientNameAr,
                 reportUserNames,
                 inspector,
-                complianceRestricted);
+                complianceRestricted,
+                approachSettings);
             return new ValuationReportSectionDto
             {
                 Number = def.Number,
@@ -426,7 +430,8 @@ public sealed class ValuationReportDocumentService(
         string? clientNameAr = null,
         IReadOnlyList<string>? reportUserNames = null,
         InspectorPayloadFacts? inspector = null,
-        bool complianceRestricted = false)
+        bool complianceRestricted = false,
+        ValuationApproachSettings? approachSettings = null)
     {
         inspector ??= new InspectorPayloadFacts();
         var d = new Dictionary<string, string?>(StringComparer.Ordinal);
@@ -475,6 +480,20 @@ public sealed class ValuationReportDocumentService(
                 d["currency"] = "الريال السعودي";
                 d["basis"] = basisLabel;
                 d["premise"] = premiseLabel;
+ // §4ج-5: الغرض يختاره المقيّم من إعدادات تقرير التقييم (شاشة 1).
+                d["purpose"] = approachSettings is null
+                    || string.IsNullOrWhiteSpace(approachSettings.ValuationPurposeKey)
+                    ? null
+                    : ValuationPurposeKeys.LabelAr(approachSettings.ValuationPurposeKey)
+                      + (string.IsNullOrWhiteSpace(approachSettings.ValuationPurposeNote)
+                          ? ""
+                          : $" — {approachSettings.ValuationPurposeNote}");
+ // تاريخ التقييم بنوعيه: إصدار القيمة (آلي = تاريخ التقرير) أو أثر رجعي يدوي.
+                d["valuationDateMode"] = ValuationDateModes.LabelAr(
+                    approachSettings?.ValuationDateMode);
+                d["valuationDate"] = approachSettings?.RetrospectiveDate is { } retro
+                    ? ValuationReportDisplayRules.FormatGregorianDate(retro)
+                    : null;
  // client from the registry + report users + derived usage sentence.
                 d["clientName"] = clientNameAr;
                 d["reportUsers"] = reportUserNames is { Count: > 0 }
@@ -663,13 +682,27 @@ public sealed class ValuationReportDocumentService(
                         prop.InspectionScopeKey,
                         prop.InspectionRestrictionReason,
                         InspectionLimitsRules.ParseUnits(prop.UninspectedUnitsJson));
+                var retrospectiveLine =
+                    approachSettings?.ValuationDateMode == ValuationDateModes.Retrospective
+                    && approachSettings.RetrospectiveDate is { } retroDate
+                        ? "قُيّم العقار بأثر رجعي بتاريخ "
+                          + ValuationReportDisplayRules.FormatGregorianDate(retroDate)
+                          + (string.IsNullOrWhiteSpace(approachSettings.RetrospectiveRationale)
+                              ? "."
+                              : $"؛ المبرر: {approachSettings.RetrospectiveRationale}.")
+                        : null;
                 d["body"] = ValuationReportNarrativeRules.SpecialAssumptionsBody(
                     hasStructures,
                     deedKindAr,
                     basisLabel,
                     premiseLabel,
                     restrictions,
-                    inspectionReservation);
+                    inspectionReservation,
+                    approachSettings?.ExternalSpecialistUsed ?? false,
+                    approachSettings?.ExternalSpecialistDetails,
+                    ValuationApproachSettingsRules.ParseAssumptions(
+                        approachSettings?.SelectedAssumptionsJson),
+                    retrospectiveLine);
                 break;
             }
 

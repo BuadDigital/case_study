@@ -95,6 +95,7 @@ export function prefetchPrototypePage(
       break;
     case "active-primary-data":
     case "all-transactions":
+    case "property-map":
     case "favorites":
     case "active-distribution":
     case "active-case-study":

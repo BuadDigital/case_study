@@ -320,21 +320,8 @@ public class CaseStudyFormReadAuthorizationTests
     private static CaseStudyFormService CreateFormService(TestDatabases.ContextSet contexts)
     {
         var db = contexts.Legacy;
-        var timeline = TestInspectorFeeServiceFactory.CreateTimeline(db);
-        var valuation = new ValuationRequestService(
-            contexts.Valuation,
-            new ValuationOutboxPublisher(
-                contexts.Valuation,
-                NullLogger<ValuationOutboxPublisher>.Instance),
-            new CaseStudyPropertyPoNumberLookup(contexts.CaseStudy));
-        var dispatch = new CaseStudyValuationDispatchService(
-            db,
-            valuation,
-            timeline,
-            NullLogger<CaseStudyValuationDispatchService>.Instance);
         return new CaseStudyFormService(
             db,
-            dispatch,
             TestInspectorFeeServiceFactory.CreateWorkflow(db));
     }
 }

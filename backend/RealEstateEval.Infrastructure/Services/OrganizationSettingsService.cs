@@ -130,6 +130,10 @@ public sealed class OrganizationSettingsService : IOrganizationSettingsService
                 Branding = dto.Branding ?? new OrganizationBrandingSettingsDto(),
                 Communications = NormalizeCommunications(dto.Communications),
                 Sla = NormalizeSla(dto.Sla),
+ // كانتا تسقطان هنا فتضيع القيم المحفوظة عند القراءة — تصحيح.
+                Valuation = dto.Valuation ?? new OrganizationValuationSettingsDto(),
+                ValuationReport = NormalizeValuationReport(
+                    dto.ValuationReport ?? new OrganizationValuationReportSettingsDto()),
                 UpdatedAtUtc = row.UpdatedAtUtc,
             };
         }
@@ -144,6 +148,8 @@ public sealed class OrganizationSettingsService : IOrganizationSettingsService
                 Branding = fallback.Branding,
                 Communications = fallback.Communications,
                 Sla = fallback.Sla,
+                Valuation = fallback.Valuation,
+                ValuationReport = fallback.ValuationReport,
                 UpdatedAtUtc = row.UpdatedAtUtc,
             };
         }
@@ -196,6 +202,8 @@ public sealed class OrganizationSettingsService : IOrganizationSettingsService
                     || dto.Communications.SmtpPasswordConfigured,
             },
             Sla = dto.Sla,
+            Valuation = dto.Valuation,
+            ValuationReport = dto.ValuationReport,
             UpdatedAtUtc = dto.UpdatedAtUtc,
         };
 
@@ -213,6 +221,15 @@ public sealed class OrganizationSettingsService : IOrganizationSettingsService
                 MembershipNumber = string.IsNullOrWhiteSpace(v.MembershipNumber)
                     ? null
                     : v.MembershipNumber.Trim(),
+                MembershipCategory = string.IsNullOrWhiteSpace(v.MembershipCategory)
+                    ? null
+                    : v.MembershipCategory.Trim(),
+                LicenseExpiresAt = string.IsNullOrWhiteSpace(v.LicenseExpiresAt)
+                    ? null
+                    : v.LicenseExpiresAt.Trim(),
+                MembershipExpiresAt = string.IsNullOrWhiteSpace(v.MembershipExpiresAt)
+                    ? null
+                    : v.MembershipExpiresAt.Trim(),
                 Role = NormalizeValuerRole(v.Role),
                 IsActive = v.IsActive,
             })
@@ -250,8 +267,22 @@ public sealed class OrganizationSettingsService : IOrganizationSettingsService
             Communications = MergeCommunications(current.Communications, request.Communications),
             Sla = NormalizeSla(request.Sla ?? current.Sla),
             Valuation = request.Valuation ?? current.Valuation,
+            ValuationReport = NormalizeValuationReport(
+                request.ValuationReport ?? current.ValuationReport),
             UpdatedAtUtc = DateTime.UtcNow,
         };
+
+ /// <summary>مكتبة الافتراضات: قص وإسقاط الفراغات والتكرار (حد 100 بند × 2000 حرف).</summary>
+    private static OrganizationValuationReportSettingsDto NormalizeValuationReport(
+        OrganizationValuationReportSettingsDto dto) => new()
+    {
+        SpecialAssumptionLibrary = dto.SpecialAssumptionLibrary
+            .Select(x => (x ?? "").Trim())
+            .Where(x => x.Length is > 0 and <= 2000)
+            .Distinct(StringComparer.Ordinal)
+            .Take(100)
+            .ToList(),
+    };
 
     private static OrganizationCommunicationsSettingsDto MergeCommunications(
         OrganizationCommunicationsSettingsDto current,

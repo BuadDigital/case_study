@@ -15,6 +15,8 @@ const BREADCRUMB_LABEL_HREF: Record<string, string> = {
   "لوحة التحكم": "/dashboard",
   "أوامر العمل": "/po",
   "جميع المعاملات": "/all-transactions",
+  "خريطة العقارات": "/property-map",
+  "خريطة المواقع المدروسة": "/property-map",
   "البيانات الأولية": "/active-primary-data",
   "استعلام بورصة": "/bourse-inquiry",
   "توزيع المعاملات": "/active-distribution",

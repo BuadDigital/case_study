@@ -23,17 +23,20 @@ public sealed class WorkflowTaskDistributionCommands : IWorkflowTaskDistribution
     private readonly INotificationService _notifications;
     private readonly NotificationRecipientResolver _recipients;
     private readonly IPropertyTimelineService _timeline;
+    private readonly ICaseStudyValuationDispatchService _valuationDispatch;
 
     public WorkflowTaskDistributionCommands(
         ApplicationDbContext db,
         INotificationService notifications,
         NotificationRecipientResolver recipients,
-        IPropertyTimelineService timeline)
+        IPropertyTimelineService timeline,
+        ICaseStudyValuationDispatchService valuationDispatch)
     {
         _db = db;
         _notifications = notifications;
         _recipients = recipients;
         _timeline = timeline;
+        _valuationDispatch = valuationDispatch;
     }
 
     public async Task<WorkflowTaskDto?> PatchDistributionAsync(
@@ -110,22 +113,32 @@ public sealed class WorkflowTaskDistributionCommands : IWorkflowTaskDistribution
         }
 
         var distribution = WorkflowTaskPhaseRules.NormalizeDistribution(request.Distribution);
+        // Inspector + appraiser + specialist are always on the case-study path.
+        // ValuationDepartment remains a stored picker/permissions flag, not a spawn gate.
+        distribution.ValuationDepartment = true;
+        distribution.CaseSpecialist = true;
 
-        if (!distribution.ValuationDepartment &&
-            !distribution.EngineeringOffice &&
-            !distribution.CaseSpecialist)
-        {
-            return (null, new Dictionary<string, string>
-            {
-                ["_"] = "فعّل طرفاً واحداً على الأقل ثم اختر المسؤول من القائمة.",
-            });
-        }
-
-        if (distribution.CaseSpecialist && string.IsNullOrWhiteSpace(distribution.CaseSpecialistId))
+        if (string.IsNullOrWhiteSpace(distribution.CaseSpecialistId))
         {
             return (null, new Dictionary<string, string>
             {
                 ["_"] = "اختر أخصائي دراسة الحالة.",
+            });
+        }
+
+        if (string.IsNullOrWhiteSpace(distribution.InspectorId))
+        {
+            return (null, new Dictionary<string, string>
+            {
+                ["_"] = "اختر المعاين الميداني.",
+            });
+        }
+
+        if (string.IsNullOrWhiteSpace(distribution.ValuatorId))
+        {
+            return (null, new Dictionary<string, string>
+            {
+                ["_"] = "اختر المقيم العقاري.",
             });
         }
 
@@ -135,31 +148,28 @@ public sealed class WorkflowTaskDistributionCommands : IWorkflowTaskDistribution
 
         var names = request.AssigneeNames ?? new Dictionary<string, string>();
 
-        if (distribution.ValuationDepartment)
-        {
-            children.Add(WorkflowTaskPhaseRules.SpawnChild(
-                parent,
+        children.Add(WorkflowTaskPhaseRules.SpawnChild(
+            parent,
+            WorkflowTaskKind.FieldInspection,
+            "field-inspector",
+            WorkflowTaskPhaseRules.ResolveName(
+                names,
                 WorkflowTaskKind.FieldInspection,
-                "field-inspector",
-                WorkflowTaskPhaseRules.ResolveName(
-                    names,
-                    WorkflowTaskKind.FieldInspection,
-                    "معاين ميداني"),
-                distribution.InspectorId,
-                deed,
-                now));
-            children.Add(WorkflowTaskPhaseRules.SpawnChild(
-                parent,
+                "معاين ميداني"),
+            distribution.InspectorId,
+            deed,
+            now));
+        children.Add(WorkflowTaskPhaseRules.SpawnChild(
+            parent,
+            WorkflowTaskKind.PropertyAppraisal,
+            "real-estate-appraiser",
+            WorkflowTaskPhaseRules.ResolveName(
+                names,
                 WorkflowTaskKind.PropertyAppraisal,
-                "real-estate-appraiser",
-                WorkflowTaskPhaseRules.ResolveName(
-                    names,
-                    WorkflowTaskKind.PropertyAppraisal,
-                    "مقيم عقاري"),
-                distribution.ValuatorId,
-                deed,
-                now));
-        }
+                "مقيم عقاري"),
+            distribution.ValuatorId,
+            deed,
+            now));
 
         if (distribution.EngineeringOffice)
         {
@@ -248,6 +258,8 @@ public sealed class WorkflowTaskDistributionCommands : IWorkflowTaskDistribution
         if (distribution.CaseSpecialist)
             await NotifyCaseSpecialistAssignedAsync(parent, deed, cancellationToken);
 
+        await _valuationDispatch.TryCreateWhenAppraisalSpawnedAsync(parent.Id, cancellationToken);
+
         return (new ConfirmTaskDistributionResponseDto
         {
             Parent = WorkflowTaskMapper.ToDto(parent),
@@ -317,9 +329,9 @@ public sealed class WorkflowTaskDistributionCommands : IWorkflowTaskDistribution
         var mappings =
             new (bool Enabled, WorkflowTaskKind Kind, string Role, string AssigneeId, string Fallback)[]
         {
-            (distribution.ValuationDepartment, WorkflowTaskKind.FieldInspection, "field-inspector",
+            (true, WorkflowTaskKind.FieldInspection, "field-inspector",
                 distribution.InspectorId, "معاين ميداني"),
-            (distribution.ValuationDepartment, WorkflowTaskKind.PropertyAppraisal, "real-estate-appraiser",
+            (true, WorkflowTaskKind.PropertyAppraisal, "real-estate-appraiser",
                 distribution.ValuatorId, "مقيم عقاري"),
             (distribution.EngineeringOffice, WorkflowTaskKind.EngineeringSurvey, "engineering-office",
                 distribution.EngineeringOfficeId, "مكتب هندسي"),

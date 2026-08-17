@@ -26,7 +26,7 @@ public sealed class CaseStudyValuationDispatchService : ICaseStudyValuationDispa
         _logger = logger;
     }
 
-    public async Task TryCreateFromCaseStudySubmissionAsync(
+    public async Task TryCreateWhenAppraisalSpawnedAsync(
         Guid parentTaskId,
         CancellationToken cancellationToken = default)
     {
@@ -118,7 +118,7 @@ public sealed class CaseStudyValuationDispatchService : ICaseStudyValuationDispa
             parent.PoNumber,
             propertyId,
             $"valuation-request:{created.Id}:created",
-            "إرسال طلب التقييم",
+            "فتح مسار التقييم",
             appraiser,
             "done",
             DateTime.UtcNow,

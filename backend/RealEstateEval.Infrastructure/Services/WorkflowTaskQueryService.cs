@@ -79,10 +79,11 @@ public sealed class WorkflowTaskQueryService : IWorkflowTaskQuery
     }
 
  /// <summary>
- /// Marks engineering-survey and property-appraisal DTOs with whether their sibling
- /// field-inspection is completed. Populated so EO/appraiser unlock works without
- /// seeing the inspection task row (party visibility hides it).
- /// Query is scoped to parent+property pairs present in the page (no full-table scan).
+ /// Marks engineering-survey DTOs with sibling field-inspection completed, and
+ /// property-appraisal DTOs with completed + specialist-accepted. Populated so
+ /// EO/appraiser unlock works without seeing the inspection task row
+ /// (party visibility hides it). Query is scoped to parent+property pairs
+ /// present in the page (no full-table scan).
  /// </summary>
     internal async Task EnrichFieldInspectionCompletedAsync(
         IReadOnlyList<WorkflowTaskDto> dtos,
@@ -109,7 +110,7 @@ public sealed class WorkflowTaskQueryService : IWorkflowTaskQuery
 
         if (parentIds.Count == 0 || propertyIds.Count == 0) return;
 
-        var completedKeys = await _db.WorkflowTasks.AsNoTracking()
+        var inspectionRows = await _db.WorkflowTasks.AsNoTracking()
             .Where(t =>
                 t.Kind == WorkflowTaskKind.FieldInspection
                 && t.Status == WorkflowTaskStatus.Completed
@@ -117,17 +118,40 @@ public sealed class WorkflowTaskQueryService : IWorkflowTaskQuery
                 && parentIds.Contains(t.ParentTaskId.Value)
                 && t.PropertyId != null
                 && propertyIds.Contains(t.PropertyId.Value))
-            .Select(t => new { ParentId = t.ParentTaskId!.Value, PropertyId = t.PropertyId!.Value })
+            .Select(t => new
+            {
+                t.Id,
+                ParentId = t.ParentTaskId!.Value,
+                PropertyId = t.PropertyId!.Value,
+            })
             .ToListAsync(cancellationToken);
 
-        var completed = completedKeys
+        var completed = inspectionRows
+            .Select(k => (Parent: k.ParentId.ToString(), Prop: k.PropertyId.ToString()))
+            .ToHashSet();
+
+        var inspectionIds = inspectionRows.Select(r => r.Id).ToList();
+        var acceptedInspectionIds = inspectionIds.Count == 0
+            ? new HashSet<Guid>()
+            : (await _db.PartyTaskSubmissions.AsNoTracking()
+                .Where(s =>
+                    inspectionIds.Contains(s.WorkflowTaskId)
+                    && s.AcceptedAtUtc != null)
+                .Select(s => s.WorkflowTaskId)
+                .ToListAsync(cancellationToken))
+                .ToHashSet();
+
+        var accepted = inspectionRows
+            .Where(k => acceptedInspectionIds.Contains(k.Id))
             .Select(k => (Parent: k.ParentId.ToString(), Prop: k.PropertyId.ToString()))
             .ToHashSet();
 
         foreach (var target in targets)
         {
-            target.FieldInspectionCompleted = completed.Contains(
-                (target.ParentTaskId!, target.PropertyId!));
+            var key = (target.ParentTaskId!, target.PropertyId!);
+            target.FieldInspectionCompleted = completed.Contains(key);
+            if (target.Kind == WorkflowTaskKindValues.PropertyAppraisal)
+                target.FieldInspectionAccepted = accepted.Contains(key);
         }
     }
 }

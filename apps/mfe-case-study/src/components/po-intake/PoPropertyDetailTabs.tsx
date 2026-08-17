@@ -300,13 +300,8 @@ function BasicTab({
     len: property[row.lenKey].trim(),
   }));
   const hasBoundaryRows = boundaryRows.some((r) => r.desc || r.len);
-  const boundariesUnavailable = boundariesMarkedUnavailable(
-    property.boundariesAvailability,
-  );
-  const boundariesAwaiting =
-    !boundariesUnavailable &&
-    !hasBoundaryRows &&
-    !property.bourseDataCompleted;
+  const boundariesUnavailable = boundariesMarkedUnavailable( property.boundariesAvailability );
+  const boundariesAwaiting = !boundariesUnavailable && !hasBoundaryRows && !property.bourseDataCompleted;
 
   return (
     <>

@@ -33,6 +33,10 @@ export type InfathOpsContext = {
   keysStatus?: string | null;
   keyAvailable?: boolean;
   envelopeId?: string | null;
+  /** رمز إيداع التقرير في الهيئة — يدخله الأخصائي في سلة إنفاذ. */
+  depositCode?: string | null;
+  /** اسم مرفق شهادة الإيداع. */
+  depositCertificateName?: string | null;
 };
 
 function partyField(
@@ -49,11 +53,22 @@ function partyRemark(
   return party?.remarks.find((r) => r.label === label)?.value?.trim() ?? "";
 }
 
-/** Only specialist-accepted party packages feed إنفاذ; pending/returned stay empty. */
+/** Inspection/survey feed إنفاذ only after specialist accept.
+ *  Appraisal feeds after the valuer submits the report — specialist receive
+ *  stamp is not a value/Infath gate. */
 export function partyPackageFeedsInfath(
   party: PropertyDetailPartySubmission | null | undefined,
 ): PropertyDetailPartySubmission | null {
   if (!party?.hasData) return null;
+  if (party.roleKey === "appraisal") {
+    const status = (party.packageStatus ?? "").toLowerCase();
+    const submitted =
+      Boolean(party.submittedAtUtc?.trim()) ||
+      status === "submitted" ||
+      status === "completed" ||
+      status === "reopened";
+    return submitted ? party : null;
+  }
   const stamp = party.acceptedAtUtc?.trim();
   if (!stamp) return null;
   return party;
@@ -152,6 +167,7 @@ function findDoc(
 function buildAttachments(
   sections: PropertyDetailDocumentSection[],
   keysReceived: boolean,
+  depositCertificateName?: string | null,
 ): InfathUploadAttachment[] {
   const caseStudy = findDoc(sections, (n) => n.includes("دراسة"));
   const appraisal = findDoc(sections, (n) => n.includes("تقييم"));
@@ -187,6 +203,13 @@ function buildAttachments(
       infathTarget: "صورة صك ملكية الأصل",
       status: deed ? "ready" : "missing",
       document: deed,
+    },
+    {
+      id: "deposit-certificate",
+      name: "شهادة إيداع التقرير",
+      infathTarget: "شهادة الإيداع",
+      status: depositCertificateName?.trim() ? "ready" : "missing",
+      document: null,
     },
   ];
 
@@ -356,6 +379,14 @@ export function buildInfathUploadModel(input: {
       title: "نطاق العمل",
       fields: [
         auto("report-no", "رقم التقرير", reportNumber),
+        txt(
+          "deposit-code",
+          L.depositCode,
+          ops?.depositCode?.trim() ?? "",
+          "SP",
+          "text",
+          ops?.depositCode?.trim() ? "" : "ms",
+        ),
         sel(
           "value-basis",
           L.valueBasis,
@@ -674,6 +705,12 @@ export function buildInfathUploadModel(input: {
           partyField(appraisal, "تقرير التقييم"),
           "EV",
         ),
+        file(
+          "deposit-certificate",
+          L.depositCertificate,
+          ops?.depositCertificateName?.trim() ?? "",
+          "SP",
+        ),
       ],
       areas: [],
     },
@@ -707,6 +744,7 @@ export function buildInfathUploadModel(input: {
   const attachments = buildAttachments(
     documentSections,
     keysReceived,
+    ops?.depositCertificateName,
   );
   const stats = computeStats(sections);
 

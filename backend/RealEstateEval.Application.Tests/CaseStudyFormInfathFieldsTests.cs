@@ -1,9 +1,6 @@
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Logging.Abstractions;
 using RealEstateEval.Application.Contracts;
-using RealEstateEval.Domain;
 using RealEstateEval.Infrastructure.Data;
-using RealEstateEval.Infrastructure.Integration;
 using RealEstateEval.Infrastructure.Services;
 
 namespace RealEstateEval.Application.Tests;
@@ -48,19 +45,7 @@ public class CaseStudyFormInfathFieldsTests
     private static CaseStudyFormService CreateFormService(TestDatabases.ContextSet contexts)
     {
         var db = contexts.Legacy;
-        var timeline = TestInspectorFeeServiceFactory.CreateTimeline(db);
-        var valuation = new ValuationRequestService(
-            contexts.Valuation,
-            new ValuationOutboxPublisher(
-                contexts.Valuation,
-                NullLogger<ValuationOutboxPublisher>.Instance),
-            new CaseStudyPropertyPoNumberLookup(contexts.CaseStudy));
-        var dispatch = new CaseStudyValuationDispatchService(
-            db,
-            valuation,
-            timeline,
-            NullLogger<CaseStudyValuationDispatchService>.Instance);
         var workflow = TestInspectorFeeServiceFactory.CreateWorkflow(db);
-        return new CaseStudyFormService(db, dispatch, workflow);
+        return new CaseStudyFormService(db, workflow);
     }
 }

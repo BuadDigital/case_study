@@ -19,16 +19,13 @@ public class CaseStudyFormService : ICaseStudyFormService
     private const string FormStatusSubmitted = "submitted";
 
     private readonly ApplicationDbContext _db;
-    private readonly ICaseStudyValuationDispatchService _valuationDispatch;
     private readonly IWorkflowTaskService _workflowTasks;
 
     public CaseStudyFormService(
         ApplicationDbContext db,
-        ICaseStudyValuationDispatchService valuationDispatch,
         IWorkflowTaskService workflowTasks)
     {
         _db = db;
-        _valuationDispatch = valuationDispatch;
         _workflowTasks = workflowTasks;
     }
 
@@ -228,7 +225,6 @@ public class CaseStudyFormService : ICaseStudyFormService
             && string.Equals(form.Status, FormStatusSubmitted, StringComparison.OrdinalIgnoreCase)
             && !string.Equals(previousStatus, FormStatusSubmitted, StringComparison.OrdinalIgnoreCase))
         {
-            await _valuationDispatch.TryCreateFromCaseStudySubmissionAsync(taskId, cancellationToken);
             await TryCompleteCaseStudyWorkflowTaskAsync(taskId, cancellationToken);
             await LockPartyFormsAsync(taskId, now, cancellationToken);
         }

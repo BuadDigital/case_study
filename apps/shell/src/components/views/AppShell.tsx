@@ -1101,7 +1101,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const contentScrollLocked =
     ((pathParts[0] === "property-inspection" ||
       pathParts[0] === "active-inspection") &&
-      pathParts.length >= 2);
+      pathParts.length >= 2) ||
+    pathParts[0] === "property-map";
 
   const silentRefresh = useCallback(
     () => refresh({ silent: true }),
@@ -1769,7 +1770,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           className={cn(
             /* Block layout so tall list pages scroll on #content; workspaces use flex + inner scroll. */
             "relative min-h-0 min-w-0 flex-1 bg-bg p-0",
-            hideShellTopbar
+            hideShellTopbar || currentPage === "property-map"
               ? /* Party work page owns scroll (back/title card inside). */
                 "flex flex-col overflow-hidden"
               : "overflow-x-hidden overflow-y-auto max-lg:pb-[env(safe-area-inset-bottom)]",

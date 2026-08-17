@@ -6,27 +6,13 @@ import type { WorkflowTask } from "@case-study/mfe";
 import { propertyAppraisalWorkspacePath } from "@case-study/mfe/lib/my-task-routes";
 import { AppraiserUploadTab } from "../components/evaluator/AppraiserUploadTab";
 import { buildAppraiserQueueRowMoreItems } from "../lib/evaluator/appraiser-queue-row-menu";
-import {
-  appraiserTaskStatusBadge,
-  canAppraiserOpenTask,
-  filterAppraiserListedTasks,
-} from "../lib/evaluator/evaluator-queue";
-import {
-  PARTY_TASK_RECALL_CHANGED_EVENT,
-  PARTY_TASK_RECALL_HYDRATED_EVENT,
-  hydratePartyTaskRecalls,
-} from "@platform/app-shared/prototype/party-task-recall-storage";
-import {
-  EVALUATOR_SUBMISSION_CHANGED_EVENT,
-  isEvaluatorFormLocked,
-  loadEvaluatorSubmission,
-  prefetchEvaluatorSubmissions,
-} from "../lib/evaluator/evaluator-submission-storage";
+import { appraiserTaskStatusBadge, canAppraiserOpenTask, filterAppraiserListedTasks } from "../lib/evaluator/evaluator-queue";
+import { PARTY_TASK_RECALL_CHANGED_EVENT, PARTY_TASK_RECALL_HYDRATED_EVENT, hydratePartyTaskRecalls } from "@platform/app-shared/prototype/party-task-recall-storage";
+import { EVALUATOR_SUBMISSION_CHANGED_EVENT, isEvaluatorFormLocked, loadEvaluatorSubmission, prefetchEvaluatorSubmissions } from "../lib/evaluator/evaluator-submission-storage";
 import type { EvaluatorWindowHostRefObject } from "../lib/evaluator/evaluator-window-host";
 
 /** Footer from Case Study.html `renderValOrders`. */
-const APPRAISER_TABLE_HINT =
-  "لا يُفعَّل إدخال التقييم إلا بعد اكتمال المعاينة الميدانية لنفس العقار. مصدر سعر التقييم هو المقيم وحده — ويُعرض للأخصائي للاسترشاد به في دراسة الحالة.";
+const APPRAISER_TABLE_HINT = "راقب تقدم الأطراف من هنا. حساب القيمة يُفعَّل بعد اعتماد الأخصائي لبيانات المعاينة — المقيّم يعتمد القيمة، واستلام الأخصائي ليس اعتماداً للسعر.";
 
 export const partyAppraisalExtensions: PartyAppraisalExtensions = {
   patchQueueConfig(base, _def) {

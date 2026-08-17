@@ -23,10 +23,12 @@ export function AppraiserUploadTab({
   onBack?: () => void;
 }) {
   const { data: tasks } = useWorkflowTasksQuery();
+  const liveTask =
+    tasks?.find((t) => t.id === childTask.id) ?? childTask;
 
   return (
     <EvaluatorWindow
-      task={childTask}
+      task={liveTask}
       tasks={tasks ?? []}
       hostRef={hostRef}
       propertySummary={propertySummary}

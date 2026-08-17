@@ -107,13 +107,14 @@ export function isPoPropertyEditPath(pathname: string): boolean {
 }
 
 /** Party / queue roles that may open property detail without PO list access. */
-const PROPERTY_DETAIL_WITHOUT_PO_LIST: readonly PageId[] = [
+  const PROPERTY_DETAIL_WITHOUT_PO_LIST: readonly PageId[] = [
   "property-inspection",
   "active-inspection",
   "property-appraisal",
   "active-survey",
   /** المعاين يعمل من تفاصيل العقار أو طابور المعاينة الرسمية. */
   "all-transactions",
+  "property-map",
   "favorites",
   "failures",
   "system-upload",

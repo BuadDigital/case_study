@@ -12,7 +12,8 @@ namespace RealEstateEval.Infrastructure.Services;
 /// </summary>
 public sealed class ValuationApproachSettingsService(
     ValuationDbContext db,
-    CaseStudyDbContext caseStudy)
+    CaseStudyDbContext caseStudy,
+    IOrganizationSettingsService organizationSettings)
     : IValuationApproachSettingsService
 {
     public async Task<ValuationApproachSettingsDto?> GetAsync(
@@ -26,7 +27,19 @@ public sealed class ValuationApproachSettingsService(
         var row = await db.ValuationApproachSettings.AsNoTracking()
             .FirstOrDefaultAsync(x => x.ValuationRequestId == valuationRequestId, cancellationToken);
 
-        return ToDto(vr, row, await HasStructuresToValueAsync(vr, cancellationToken));
+        return ToDto(
+            vr,
+            row,
+            await HasStructuresToValueAsync(vr, cancellationToken),
+            await AssumptionLibraryAsync(cancellationToken));
+    }
+
+ /// <summary>مكتبة الافتراضات — تُدار في إعدادات تبويب تقرير التقييم (القرار 25 طبقة ب).</summary>
+    private async Task<IReadOnlyList<string>> AssumptionLibraryAsync(
+        CancellationToken cancellationToken)
+    {
+        var org = await organizationSettings.GetInternalAsync(cancellationToken);
+        return org.ValuationReport.SpecialAssumptionLibrary;
     }
 
     public async Task<(ValuationApproachSettingsDto? Result, Dictionary<string, string>? Errors)> SaveAsync(
@@ -42,6 +55,10 @@ public sealed class ValuationApproachSettingsService(
             return (null, new Dictionary<string, string> { ["_"] = "طلب التقييم مكتمل" });
 
         var hasStructures = await HasStructuresToValueAsync(vr, cancellationToken);
+        DateOnly? retroDate = null;
+        if (DateOnly.TryParse(request.RetrospectiveDate?.Trim(), out var parsedRetro))
+            retroDate = parsedRetro;
+
         var errors = ValuationApproachSettingsRules.Validate(
             request.MarketApproachEnabled,
             request.CostApproachEnabled,
@@ -49,7 +66,14 @@ public sealed class ValuationApproachSettingsService(
             request.CostBasisKey,
             request.CostMeasurementUnitKey,
             vr.PropertyType,
-            hasStructures);
+            hasStructures,
+            request.ValuationPurposeKey,
+            request.ValuationPurposeNote,
+            request.ExternalSpecialistUsed,
+            request.ExternalSpecialistDetails,
+            request.ValuationDateMode,
+            retroDate,
+            request.RetrospectiveRationale);
         if (errors.Count > 0) return (null, errors);
 
         var row = await db.ValuationApproachSettings
@@ -70,10 +94,26 @@ public sealed class ValuationApproachSettingsService(
         row.CostBasisKey = CostBasisKeys.Normalize(request.CostBasisKey);
         row.CostMeasurementUnitKey = CostMeasurementUnitKeys.Normalize(request.CostMeasurementUnitKey);
         row.AdjustmentsEditUnlocked = request.AdjustmentsEditUnlocked;
+        row.ValuationPurposeKey = (request.ValuationPurposeKey ?? "").Trim().ToLowerInvariant();
+        row.ValuationPurposeNote = string.IsNullOrWhiteSpace(request.ValuationPurposeNote)
+            ? null
+            : request.ValuationPurposeNote.Trim();
+        row.ExternalSpecialistUsed = request.ExternalSpecialistUsed;
+        row.ExternalSpecialistDetails = request.ExternalSpecialistUsed
+            ? request.ExternalSpecialistDetails!.Trim()
+            : null;
+        var dateMode = ValuationDateModes.Normalize(request.ValuationDateMode);
+        row.ValuationDateMode = dateMode;
+        row.RetrospectiveDate = dateMode == ValuationDateModes.Retrospective ? retroDate : null;
+        row.RetrospectiveRationale = dateMode == ValuationDateModes.Retrospective
+            ? request.RetrospectiveRationale!.Trim()
+            : null;
+        row.SelectedAssumptionsJson = ValuationApproachSettingsRules.SerializeAssumptions(
+            request.SelectedAssumptions ?? []);
         row.UpdatedAtUtc = DateTime.UtcNow;
 
         await db.SaveChangesAsync(cancellationToken);
-        return (ToDto(vr, row, hasStructures), null);
+        return (ToDto(vr, row, hasStructures, await AssumptionLibraryAsync(cancellationToken)), null);
     }
 
  /// <summary>سؤال الحصر «هل توجد مبانٍ/إنشاءات يجب تقييمها؟» من عقار أمر العمل.</summary>
@@ -92,7 +132,8 @@ public sealed class ValuationApproachSettingsService(
     private static ValuationApproachSettingsDto ToDto(
         ValuationRequest vr,
         ValuationApproachSettings? row,
-        bool hasStructures)
+        bool hasStructures,
+        IReadOnlyList<string> assumptionLibrary)
     {
         var effective = row
             ?? ValuationApproachSettingsRules.Defaults(vr.Id, vr.PropertyType, hasStructures);
@@ -113,6 +154,18 @@ public sealed class ValuationApproachSettingsService(
             CostMeasurementUnitKey = effective.CostMeasurementUnitKey,
             CostMeasurementUnitLabelAr = CostMeasurementUnitKeys.LabelAr(effective.CostMeasurementUnitKey),
             AdjustmentsEditUnlocked = effective.AdjustmentsEditUnlocked,
+            ValuationPurposeKey = effective.ValuationPurposeKey,
+            ValuationPurposeLabelAr = ValuationPurposeKeys.LabelAr(effective.ValuationPurposeKey),
+            ValuationPurposeNote = effective.ValuationPurposeNote,
+            ExternalSpecialistUsed = effective.ExternalSpecialistUsed,
+            ExternalSpecialistDetails = effective.ExternalSpecialistDetails,
+            ValuationDateMode = effective.ValuationDateMode,
+            ValuationDateModeLabelAr = ValuationDateModes.LabelAr(effective.ValuationDateMode),
+            RetrospectiveDate = effective.RetrospectiveDate?.ToString("yyyy-MM-dd"),
+            RetrospectiveRationale = effective.RetrospectiveRationale,
+            SelectedAssumptions = ValuationApproachSettingsRules.ParseAssumptions(
+                effective.SelectedAssumptionsJson),
+            AssumptionLibrary = assumptionLibrary,
             IsSaved = row is not null,
         };
     }

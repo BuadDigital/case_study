@@ -72,6 +72,8 @@ export const INFATH_FIELD_LABELS = {
   otherNotes: "ملاحظات",
   closingNotes: "ملاحظات ختامية",
   signedAppraisal: "مرفق التقييم المعتمد",
+  depositCode: "رمز إيداع التقرير",
+  depositCertificate: "شهادة الإيداع",
   assetDataConfirmed: "مراجعة بيانات الأصل",
   assetDataVarianceNotes: "ملاحظات تباين بيانات الأصل",
   onSiteArea: "المساحة على الطبيعة (م²)",

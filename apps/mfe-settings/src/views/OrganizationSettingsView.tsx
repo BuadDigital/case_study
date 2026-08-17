@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { getOrganizationSettings, saveOrganizationSettings, testOrganizationCommunication, type OrganizationSettingsDto, type OrganizationValuerRosterEntry} from "@platform/api-client";
+import { getOrganizationSettings, saveOrganizationSettings, testOrganizationCommunication, type OrganizationSettingsDto, type OrganizationValuerRosterEntry, VALUER_MEMBERSHIP_CATEGORIES } from "@platform/api-client";
 import { Can, useCapability } from "@platform/app-shared/components/Can";
 import { cn, Note, PageShell, Spinner, useToast } from "@platform/design-system";
 import {
@@ -82,6 +82,9 @@ function emptyValuer(): OrganizationValuerRosterEntry {
     nameAr: "",
     licenseNumber: "",
     membershipNumber: "",
+    membershipCategory: "",
+    licenseExpiresAt: "",
+    membershipExpiresAt: "",
     role: "assistant",
     isActive: true,
   };
@@ -94,6 +97,7 @@ function emptySettings(): OrganizationSettingsDto {
       name: "",
       licenseNumber: "",
       membershipNumber: "",
+      membershipCategory: "",
       licenseExpiresAt: "",
       membershipExpiresAt: "",
     },
@@ -121,6 +125,7 @@ function emptySettings(): OrganizationSettingsDto {
     },
     sla: { defaultBusinessDays: 4, privateSectorBusinessDays: 10 },
     valuation: { maxAdoptedComparables: 3, comparableTimeGapMonths: 6 },
+    valuationReport: { specialAssumptionLibrary: [] },
     updatedAtUtc: new Date().toISOString(),
   };
 }
@@ -191,6 +196,7 @@ export function OrganizationSettingsView() {
         communications: draft.communications,
         sla: draft.sla,
         valuation: draft.valuation,
+        valuationReport: draft.valuationReport,
       });
       if (!result.ok) {
         showToast(
@@ -430,6 +436,33 @@ export function OrganizationSettingsView() {
                 />
               </div>
               <div className={opsFld}>
+                <label htmlFor="org-membership-cat" className={opsTfLbl}>
+                  فئة العضوية
+                </label>
+                <select
+                  id="org-membership-cat"
+                  className={opsFldControl}
+                  value={draft.evaluator.membershipCategory ?? ""}
+                  disabled={!canEdit}
+                  onChange={(e) =>
+                    setDraft((d) => ({
+                      ...d,
+                      evaluator: {
+                        ...d.evaluator,
+                        membershipCategory: e.target.value,
+                      },
+                    }))
+                  }
+                >
+                  <option value="">اختر فئة العضوية…</option>
+                  {VALUER_MEMBERSHIP_CATEGORIES.map((opt) => (
+                    <option key={opt.value} value={opt.value}>
+                      {opt.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div className={opsFld}>
                 <label htmlFor="org-license-expires" className={opsTfLbl}>
                   انتهاء ترخيص المزاولة
                 </label>
@@ -587,6 +620,80 @@ export function OrganizationSettingsView() {
                             valuers: d.valuers.map((v, i) =>
                               i === index
                                 ? { ...v, membershipNumber: e.target.value }
+                                : v,
+                            ),
+                          }))
+                        }
+                      />
+                    </div>
+                    <div className={opsFld}>
+                      <label className={opsTfLbl} htmlFor={`valuer-mem-cat-${index}`}>
+                        فئة العضوية
+                      </label>
+                      <select
+                        id={`valuer-mem-cat-${index}`}
+                        className={opsFldControl}
+                        value={row.membershipCategory ?? ""}
+                        disabled={!canEdit}
+                        onChange={(e) =>
+                          setDraft((d) => ({
+                            ...d,
+                            valuers: d.valuers.map((v, i) =>
+                              i === index
+                                ? { ...v, membershipCategory: e.target.value }
+                                : v,
+                            ),
+                          }))
+                        }
+                      >
+                        <option value="">اختر فئة العضوية…</option>
+                        {VALUER_MEMBERSHIP_CATEGORIES.map((opt) => (
+                          <option key={opt.value} value={opt.value}>
+                            {opt.label}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                    <div className={opsFld}>
+                      <label className={opsTfLbl} htmlFor={`valuer-lic-exp-${index}`}>
+                        انتهاء ترخيص المزاولة
+                      </label>
+                      <input
+                        id={`valuer-lic-exp-${index}`}
+                        className={opsFldControl}
+                        type="date"
+                        dir="ltr"
+                        value={row.licenseExpiresAt ?? ""}
+                        disabled={!canEdit}
+                        onChange={(e) =>
+                          setDraft((d) => ({
+                            ...d,
+                            valuers: d.valuers.map((v, i) =>
+                              i === index
+                                ? { ...v, licenseExpiresAt: e.target.value }
+                                : v,
+                            ),
+                          }))
+                        }
+                      />
+                    </div>
+                    <div className={opsFld}>
+                      <label className={opsTfLbl} htmlFor={`valuer-mem-exp-${index}`}>
+                        انتهاء / سريان العضوية
+                      </label>
+                      <input
+                        id={`valuer-mem-exp-${index}`}
+                        className={opsFldControl}
+                        type="date"
+                        dir="ltr"
+                        value={row.membershipExpiresAt ?? ""}
+                        disabled={!canEdit}
+                        onChange={(e) =>
+                          setDraft((d) => ({
+                            ...d,
+                            valuers: d.valuers.map((v, i) =>
+                              i === index
+                                ? { ...v, membershipExpiresAt: e.target.value }
                                 : v,
                             ),
                           }))
@@ -1101,6 +1208,79 @@ export function OrganizationSettingsView() {
                       }))
                     }
                   />
+                </div>
+              </div>
+
+              {/* تبويب تقرير التقييم (القرار 25 طبقة ب) — مكتبة الافتراضات الخاصة */}
+              <div className="mt-4">
+                <p className="m-0 text-[12px] font-bold text-heading">
+                  تقرير التقييم — مكتبة الافتراضات الخاصة
+                </p>
+                <p className="mt-1 text-[11px] text-text-3">
+                  بنود جاهزة ينتقي منها المقيّم في نافذته (مع إمكان إضافته الحرة).
+                  النص يُجمَّد مع كل تقييم لحظة انتقائه — تعديل المكتبة لا يغيّر ما سبق.
+                </p>
+                <div className="mt-2 space-y-2">
+                  {draft.valuationReport.specialAssumptionLibrary.map(
+                    (item, index) => (
+                      <div key={index} className="flex gap-2">
+                        <input
+                          className={cn(opsFldControl, "flex-1")}
+                          value={item}
+                          disabled={!canEdit}
+                          onChange={(e) =>
+                            setDraft((d) => ({
+                              ...d,
+                              valuationReport: {
+                                specialAssumptionLibrary:
+                                  d.valuationReport.specialAssumptionLibrary.map(
+                                    (x, i) => (i === index ? e.target.value : x),
+                                  ),
+                              },
+                            }))
+                          }
+                        />
+                        {canEdit ? (
+                          <button
+                            type="button"
+                            className="rounded-md border border-border-md px-2 text-[11px] text-text-2"
+                            onClick={() =>
+                              setDraft((d) => ({
+                                ...d,
+                                valuationReport: {
+                                  specialAssumptionLibrary:
+                                    d.valuationReport.specialAssumptionLibrary.filter(
+                                      (_, i) => i !== index,
+                                    ),
+                                },
+                              }))
+                            }
+                          >
+                            حذف
+                          </button>
+                        ) : null}
+                      </div>
+                    ),
+                  )}
+                  {canEdit ? (
+                    <button
+                      type="button"
+                      className="rounded-md border border-border-md px-3 py-1.5 text-[11px] text-text-2"
+                      onClick={() =>
+                        setDraft((d) => ({
+                          ...d,
+                          valuationReport: {
+                            specialAssumptionLibrary: [
+                              ...d.valuationReport.specialAssumptionLibrary,
+                              "",
+                            ],
+                          },
+                        }))
+                      }
+                    >
+                      + إضافة بند افتراض
+                    </button>
+                  ) : null}
                 </div>
               </div>
             </>

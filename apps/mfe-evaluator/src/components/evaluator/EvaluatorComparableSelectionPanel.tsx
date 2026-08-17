@@ -510,6 +510,17 @@ export function EvaluatorComparableSelectionPanel({
   const [asCostBasis, setAsCostBasis] = useState("replacement");
   const [asCostUnit, setAsCostUnit] = useState("comparison_unit");
   const [asAdjustUnlocked, setAsAdjustUnlocked] = useState(true);
+  // إعدادات تقرير التقييم: الغرض (§4ج-5) + بند الأخصائي الخارجي (IVS 101).
+  const [asPurpose, setAsPurpose] = useState("");
+  const [asPurposeNote, setAsPurposeNote] = useState("");
+  const [asSpecialistUsed, setAsSpecialistUsed] = useState(false);
+  const [asSpecialistDetails, setAsSpecialistDetails] = useState("");
+  // تاريخ التقييم بنوعيه + الافتراضات الخاصة (انتقاء من مكتبة الإعدادات + إضافة حرة).
+  const [asDateMode, setAsDateMode] = useState("issue");
+  const [asRetroDate, setAsRetroDate] = useState("");
+  const [asRetroRationale, setAsRetroRationale] = useState("");
+  const [asAssumptions, setAsAssumptions] = useState<string[]>([]);
+  const [asFreeAssumption, setAsFreeAssumption] = useState("");
   const [cost, setCost] = useState<ValuationCostApproachDto | null>(null);
   const [costDraft, setCostDraft] = useState<ValuationCostLineDto[]>([]);
   const [useRestrictionPct, setUseRestrictionPct] = useState("0");
@@ -617,6 +628,14 @@ export function EvaluatorComparableSelectionPanel({
       setAsCostBasis(settingsRes.data.costBasisKey || "replacement");
       setAsCostUnit(settingsRes.data.costMeasurementUnitKey || "comparison_unit");
       setAsAdjustUnlocked(settingsRes.data.adjustmentsEditUnlocked);
+      setAsPurpose(settingsRes.data.valuationPurposeKey || "");
+      setAsPurposeNote(settingsRes.data.valuationPurposeNote ?? "");
+      setAsSpecialistUsed(settingsRes.data.externalSpecialistUsed);
+      setAsSpecialistDetails(settingsRes.data.externalSpecialistDetails ?? "");
+      setAsDateMode(settingsRes.data.valuationDateMode || "issue");
+      setAsRetroDate(settingsRes.data.retrospectiveDate ?? "");
+      setAsRetroRationale(settingsRes.data.retrospectiveRationale ?? "");
+      setAsAssumptions(settingsRes.data.selectedAssumptions ?? []);
     } else {
       setApproachSettings(null);
     }
@@ -734,9 +753,11 @@ export function EvaluatorComparableSelectionPanel({
     selection?.items.map((i) => i.comparablePropertyId) ?? [],
   );
 
+  // شاشة 1 تتحكم بباقي الشاشات: لا تُفتح أقسام العمل حتى تُحفظ إعدادات التقرير.
+  const settingsSaved = approachSettings?.isSaved ?? false;
   // ق-2: الأسلوب غير المفعَّل لا يظهر تبويبه ولا يدخل في الترجيح.
-  const marketEnabled = approachSettings?.marketApproachEnabled ?? true;
-  const costEnabled = approachSettings?.costApproachEnabled ?? true;
+  const marketEnabled = settingsSaved && (approachSettings?.marketApproachEnabled ?? true);
+  const costEnabled = settingsSaved && (approachSettings?.costApproachEnabled ?? true);
   const adjustmentsLocked = approachSettings
     ? !approachSettings.adjustmentsEditUnlocked
     : false;
@@ -809,6 +830,15 @@ export function EvaluatorComparableSelectionPanel({
       costBasisKey: asCostBasis,
       costMeasurementUnitKey: asCostUnit,
       adjustmentsEditUnlocked: asAdjustUnlocked,
+      valuationPurposeKey: asPurpose || null,
+      valuationPurposeNote: asPurposeNote.trim() || null,
+      externalSpecialistUsed: asSpecialistUsed,
+      externalSpecialistDetails: asSpecialistDetails.trim() || null,
+      valuationDateMode: asDateMode,
+      retrospectiveDate: asDateMode === "retrospective" ? asRetroDate || null : null,
+      retrospectiveRationale:
+        asDateMode === "retrospective" ? asRetroRationale.trim() || null : null,
+      selectedAssumptions: asAssumptions,
     });
     setSaving(false);
     if (!res.ok) {
@@ -1081,7 +1111,7 @@ export function EvaluatorComparableSelectionPanel({
 
       {valuationRequestId && approachSettings ? (
         <div className="mt-2 rounded-lg border border-border-md bg-surface-2 px-3 py-2">
-          <EngSection>إعدادات التقييم — الأساليب المطبَّقة (شاشة 1)</EngSection>
+          <EngSection>إعدادات تقرير التقييم — شاشة 1</EngSection>
           <p className="mb-2 text-[12px] text-text-muted">
             ق-2: الأسلوب غير المفعَّل لا يظهر ولا يدخل في الترجيح.
             {!approachSettings.costApproachAllowed
@@ -1150,6 +1180,196 @@ export function EvaluatorComparableSelectionPanel({
               </div>
             </div>
           ) : null}
+          <div className="mb-2 grid max-w-2xl gap-2 sm:grid-cols-2">
+            <div>
+              <Label className={valLabelClassName}>الغرض من التقييم * (يختاره المقيّم — §4ج-5)</Label>
+              <select
+                className={valInputClassName}
+                value={asPurpose}
+                disabled={saving}
+                onChange={(e) => setAsPurpose(e.target.value)}
+              >
+                <option value="">— اختر —</option>
+                <option value="judicial_execution">تنفيذ قضائي</option>
+                <option value="sale_purchase">بيع أو شراء</option>
+                <option value="financing">تمويل ورهن</option>
+                <option value="financial_reporting">قوائم مالية</option>
+                <option value="litigation">نزاع قضائي</option>
+                <option value="other">أخرى</option>
+              </select>
+            </div>
+            <div>
+              <Label className={valLabelClassName}>
+                توضيح الغرض {asPurpose === "other" ? "(إلزامي)" : "(اختياري)"}
+              </Label>
+              <Input
+                className={valInputClassName}
+                value={asPurposeNote}
+                disabled={saving}
+                onChange={(e) => setAsPurposeNote(e.target.value)}
+              />
+            </div>
+          </div>
+
+          <div className="mb-2 rounded-md border border-border-md bg-surface px-2 py-2">
+            <label className="flex items-center gap-1.5 text-[12.5px] text-text">
+              <input
+                type="checkbox"
+                checked={asSpecialistUsed}
+                disabled={saving}
+                onChange={(e) => setAsSpecialistUsed(e.target.checked)}
+              />
+              استُعين بأخصائي خارجي في مهمة التقييم (بند الأخصائي — IVS 101)
+            </label>
+            <p className="mt-1 text-[11px] text-text-muted">
+              المقصود أخصائي خارجي يستعين به المقيّم لبعض مهام تقييم العقار (خبير
+              تكييف/مساحة/إنشائي…) — <strong>لا</strong> أخصائي الإسناد و<strong>لا</strong>{" "}
+              أخصائي دراسة الحالة (دوران داخليان في سير المعاملة). عند «لا» يُطبع بند
+              النفي القياسي في الافتراضات؛ وعند «نعم» يحل التوضيح محله ويُرفق تقرير الأخصائي.
+            </p>
+            {asSpecialistUsed ? (
+              <div className="mt-1.5">
+                <Label className={valLabelClassName}>
+                  التوضيح الإلزامي: الأخصائي، دوره، ونتيجته
+                </Label>
+                <Input
+                  className={valInputClassName}
+                  value={asSpecialistDetails}
+                  disabled={saving}
+                  onChange={(e) => setAsSpecialistDetails(e.target.value)}
+                  placeholder="مثال: م. فلان — خبير إنشائي — تقدير العمر الاقتصادي للمبنى"
+                />
+              </div>
+            ) : null}
+          </div>
+
+          <div className="mb-2 rounded-md border border-border-md bg-surface px-2 py-2">
+            <Label className={valLabelClassName}>تاريخ التقييم — نوعان</Label>
+            <div className="mt-1 flex flex-wrap gap-4">
+              <label className="flex items-center gap-1.5 text-[12.5px] text-text">
+                <input
+                  type="radio"
+                  name="valuation-date-mode"
+                  checked={asDateMode !== "retrospective"}
+                  disabled={saving}
+                  onChange={() => setAsDateMode("issue")}
+                />
+                تاريخ إصدار القيمة (آلي — غالباً تاريخ إصدار التقرير)
+              </label>
+              <label className="flex items-center gap-1.5 text-[12.5px] text-text">
+                <input
+                  type="radio"
+                  name="valuation-date-mode"
+                  checked={asDateMode === "retrospective"}
+                  disabled={saving}
+                  onChange={() => setAsDateMode("retrospective")}
+                />
+                أثر رجعي (يحدده المقيّم يدوياً)
+              </label>
+            </div>
+            {asDateMode === "retrospective" ? (
+              <div className="mt-1.5 grid max-w-xl gap-2 sm:grid-cols-[11rem_1fr]">
+                <div>
+                  <Label className={valLabelClassName}>التاريخ (إلزامي)</Label>
+                  <Input
+                    className={valInputClassName}
+                    type="date"
+                    dir="ltr"
+                    value={asRetroDate}
+                    disabled={saving}
+                    onChange={(e) => setAsRetroDate(e.target.value)}
+                  />
+                </div>
+                <div>
+                  <Label className={valLabelClassName}>مبرر الأثر الرجعي (إلزامي)</Label>
+                  <Input
+                    className={valInputClassName}
+                    value={asRetroRationale}
+                    disabled={saving}
+                    onChange={(e) => setAsRetroRationale(e.target.value)}
+                  />
+                </div>
+              </div>
+            ) : null}
+          </div>
+
+          <div className="mb-2 rounded-md border border-border-md bg-surface px-2 py-2">
+            <Label className={valLabelClassName}>
+              الافتراضات الخاصة — انتقاء من مكتبة الإعدادات + إضافة حرة
+            </Label>
+            {approachSettings.assumptionLibrary.length === 0 ? (
+              <p className="mt-1 text-[11px] text-text-muted">
+                المكتبة فارغة — يضيف الأدمن بنودها من الإعدادات ⟵ تقرير التقييم.
+              </p>
+            ) : (
+              <div className="mt-1 flex flex-col gap-1">
+                {approachSettings.assumptionLibrary.map((clause) => (
+                  <label
+                    key={clause}
+                    className="flex items-start gap-1.5 text-[12px] text-text"
+                  >
+                    <input
+                      type="checkbox"
+                      className="mt-0.5"
+                      checked={asAssumptions.includes(clause)}
+                      disabled={saving}
+                      onChange={(e) =>
+                        setAsAssumptions((prev) =>
+                          e.target.checked
+                            ? [...prev, clause]
+                            : prev.filter((x) => x !== clause),
+                        )
+                      }
+                    />
+                    <span>{clause}</span>
+                  </label>
+                ))}
+              </div>
+            )}
+            {asAssumptions
+              .filter((a) => !approachSettings.assumptionLibrary.includes(a))
+              .map((a) => (
+                <div
+                  key={a}
+                  className="mt-1 flex items-center justify-between gap-2 rounded bg-surface-2 px-2 py-1 text-[12px] text-text"
+                >
+                  <span>{a}</span>
+                  <button
+                    type="button"
+                    className="text-[11px] text-danger"
+                    disabled={saving}
+                    onClick={() =>
+                      setAsAssumptions((prev) => prev.filter((x) => x !== a))
+                    }
+                  >
+                    إزالة
+                  </button>
+                </div>
+              ))}
+            <div className="mt-1.5 flex gap-2">
+              <Input
+                className={valInputClassName}
+                placeholder="بند افتراض إضافي (حر)"
+                value={asFreeAssumption}
+                disabled={saving}
+                onChange={(e) => setAsFreeAssumption(e.target.value)}
+              />
+              <Button
+                type="button"
+                size="sm"
+                disabled={saving || !asFreeAssumption.trim()}
+                onClick={() => {
+                  const t = asFreeAssumption.trim();
+                  if (t && !asAssumptions.includes(t))
+                    setAsAssumptions((prev) => [...prev, t]);
+                  setAsFreeAssumption("");
+                }}
+              >
+                إضافة
+              </Button>
+            </div>
+          </div>
+
           <div className="mb-2 flex flex-wrap items-center gap-3">
             <label className="flex items-center gap-1.5 text-[12.5px] text-text">
               <input
@@ -1175,6 +1395,12 @@ export function EvaluatorComparableSelectionPanel({
           >
             حفظ إعدادات التقييم
           </Button>
+          {!settingsSaved ? (
+            <p className="mt-2 rounded-md bg-amber-light px-2 py-1.5 text-[11.5px] text-amber-text">
+              شاشة 1 تتحكم بباقي الشاشات — احفظ إعدادات تقرير التقييم أولاً لفتح
+              أقسام العمل (السوق، التكلفة، الترجيح، بوابات الإصدار).
+            </p>
+          ) : null}
         </div>
       ) : null}
 
@@ -1922,7 +2148,7 @@ export function EvaluatorComparableSelectionPanel({
         </div>
       ) : null}
 
-      {valuationRequestId ? (
+      {valuationRequestId && settingsSaved ? (
         <div className="mt-3 rounded-lg border border-border-md px-3 py-2">
           <EngSection>رأي القيمة النهائي (ترجيح الأساليب)</EngSection>
           <p className="mb-2 text-[12px] text-text-muted">
@@ -2114,7 +2340,7 @@ export function EvaluatorComparableSelectionPanel({
         </div>
       ) : null}
 
-      {valuationRequestId && gates ? (
+      {valuationRequestId && settingsSaved && gates ? (
         <div className="mt-3 rounded-lg border border-border-md px-3 py-2">
           <EngSection>بوابات الإصدار</EngSection>
           <p className="mb-2 text-[12px] text-text-muted">

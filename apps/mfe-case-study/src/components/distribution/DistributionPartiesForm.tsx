@@ -38,12 +38,17 @@ function PartyBlock({
   title,
   onEnabledChange,
   readOnly,
+  required,
+  hint,
   children,
 }: {
   enabled: boolean;
   title: string;
   onEnabledChange: (checked: boolean) => void;
   readOnly?: boolean;
+  /** Always-on party — no opt-out checkbox. */
+  required?: boolean;
+  hint?: string;
   children: React.ReactNode;
 }) {
   return (
@@ -54,16 +59,25 @@ function PartyBlock({
           "border-primary/45 shadow-[0_0_0_1px_color-mix(in_srgb,var(--color-primary)_12%,transparent)]",
       )}
     >
-      <label className="m-0 flex cursor-pointer items-start gap-3 px-3.5 pb-2.5 pt-3.5">
-        <input
-          type="checkbox"
-          className="mt-0.5 h-[18px] w-[18px] shrink-0 cursor-pointer accent-primary"
-          checked={enabled}
-          disabled={readOnly}
-          onChange={(e) => onEnabledChange(e.target.checked)}
-        />
-        <p className="m-0 text-[13px] font-bold leading-snug text-text">{title}</p>
-      </label>
+      {required ? (
+        <div className="m-0 flex items-start gap-3 px-3.5 pb-2.5 pt-3.5">
+          <p className="m-0 text-[13px] font-bold leading-snug text-text">{title}</p>
+        </div>
+      ) : (
+        <label className="m-0 flex cursor-pointer items-start gap-3 px-3.5 pb-2.5 pt-3.5">
+          <input
+            type="checkbox"
+            className="mt-0.5 h-[18px] w-[18px] shrink-0 cursor-pointer accent-primary"
+            checked={enabled}
+            disabled={readOnly}
+            onChange={(e) => onEnabledChange(e.target.checked)}
+          />
+          <p className="m-0 text-[13px] font-bold leading-snug text-text">{title}</p>
+        </label>
+      )}
+      {hint ? (
+        <p className="m-0 px-3.5 pb-2 text-[11px] leading-relaxed text-text-3">{hint}</p>
+      ) : null}
       <div
         className={cn(
           "px-3.5 pb-3.5",
@@ -125,59 +139,57 @@ export function DistributionPartiesForm({
 
       <PartyBlock
         readOnly={readOnly}
-        enabled={distribution.caseSpecialist}
+        required
+        enabled
         title="أخصائي دراسة الحالة"
-        onEnabledChange={(checked) =>
-          onPatch({
-            caseSpecialist: checked,
-            caseSpecialistId: checked ? distribution.caseSpecialistId : "",
-          })
-        }
+        onEnabledChange={() => undefined}
       >
         <RegSelect
           id="dist_case_specialist"
           label="الأخصائي"
-          required={distribution.caseSpecialist}
-          disabled={readOnly || !distribution.caseSpecialist}
+          required
+          disabled={readOnly}
           options={toOptions(caseSpecialists, loadByAssignee)}
           value={distribution.caseSpecialistId}
           placeholder="اختر أخصائي دراسة الحالة…"
-          onChange={(v) => onPatch({ caseSpecialistId: v })}
+          onChange={(v) =>
+            onPatch({ caseSpecialist: true, caseSpecialistId: v })
+          }
         />
       </PartyBlock>
 
       <PartyBlock
         readOnly={readOnly}
-        enabled={distribution.valuationDepartment}
+        required
+        enabled
         title="قسم التقييم العقاري"
-        onEnabledChange={(checked) =>
-          onPatch({
-            valuationDepartment: checked,
-            inspectorId: checked ? distribution.inspectorId : "",
-            valuatorId: checked ? distribution.valuatorId : "",
-          })
-        }
+        hint="المعاين والمقيّم يُعيَّنان دائماً. اختيار المقيّم من قائمة صلاحيات التقييم."
+        onEnabledChange={() => undefined}
       >
         <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2">
           <RegSelect
             id="dist_val_inspector"
             label="المعاين الميداني"
-            required={distribution.valuationDepartment}
-            disabled={readOnly || !distribution.valuationDepartment}
+            required
+            disabled={readOnly}
             options={toOptions(fieldInspectors, loadByAssignee)}
             value={distribution.inspectorId}
             placeholder="اختر المعاين…"
-            onChange={(v) => onPatch({ inspectorId: v })}
+            onChange={(v) =>
+              onPatch({ valuationDepartment: true, inspectorId: v })
+            }
           />
           <RegSelect
             id="dist_val_appraiser"
             label="المقيم العقاري"
-            required={distribution.valuationDepartment}
-            disabled={readOnly || !distribution.valuationDepartment}
+            required
+            disabled={readOnly}
             options={toOptions(valuators, loadByAssignee)}
             value={distribution.valuatorId}
             placeholder="اختر المقيم…"
-            onChange={(v) => onPatch({ valuatorId: v })}
+            onChange={(v) =>
+              onPatch({ valuationDepartment: true, valuatorId: v })
+            }
           />
         </div>
       </PartyBlock>

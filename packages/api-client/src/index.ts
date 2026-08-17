@@ -520,6 +520,7 @@ export {
   type OrganizationCompanySettings,
   type OrganizationEvaluatorSettings,
   type OrganizationValuerRosterEntry,
+  VALUER_MEMBERSHIP_CATEGORIES,
   type OrganizationSettingsApiConfig,
   type OrganizationSettingsDto,
   type OrganizationSettingsResult,

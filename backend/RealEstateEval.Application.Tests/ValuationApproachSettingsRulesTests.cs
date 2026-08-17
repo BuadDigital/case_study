@@ -32,8 +32,89 @@ public class ValuationApproachSettingsRulesTests
         Assert.True(walledLand.CostApproachEnabled);
 
         var errors = ValuationApproachSettingsRules.Validate(
-            true, true, false, null, null, "أرض", hasStructuresToValue: true);
+            true, true, false, null, null, "أرض",
+            hasStructuresToValue: true,
+            valuationPurposeKey: ValuationPurposeKeys.JudicialExecution);
         Assert.Empty(errors);
+    }
+
+    [Fact]
+    public void Purpose_is_mandatory_and_other_needs_a_note()
+    {
+ // §4ج-5: الغرض يختاره المقيّم — لا يُشتق من نوع الإسناد.
+        var missing = ValuationApproachSettingsRules.Validate(
+            true, true, false, null, null, "فيلا");
+        Assert.Contains("valuationPurposeKey", missing.Keys);
+
+        var unknown = ValuationApproachSettingsRules.Validate(
+            true, true, false, null, null, "فيلا", valuationPurposeKey: "xxx");
+        Assert.Contains("valuationPurposeKey", unknown.Keys);
+
+        var otherNoNote = ValuationApproachSettingsRules.Validate(
+            true, true, false, null, null, "فيلا",
+            valuationPurposeKey: ValuationPurposeKeys.Other);
+        Assert.Contains("valuationPurposeNote", otherNoNote.Keys);
+
+        var ok = ValuationApproachSettingsRules.Validate(
+            true, true, false, null, null, "فيلا",
+            valuationPurposeKey: ValuationPurposeKeys.Other,
+            valuationPurposeNote: "تقييم لأغراض الزكاة");
+        Assert.Empty(ok);
+    }
+
+    [Fact]
+    public void Retrospective_valuation_date_needs_date_and_rationale()
+    {
+ // قرار عمر 2026-08-17: نوعان — إصدار القيمة (آلي) أو أثر رجعي يدوي بمبرر.
+        var missing = ValuationApproachSettingsRules.Validate(
+            true, true, false, null, null, "فيلا",
+            valuationPurposeKey: ValuationPurposeKeys.JudicialExecution,
+            valuationDateMode: ValuationDateModes.Retrospective);
+        Assert.Contains("retrospectiveDate", missing.Keys);
+        Assert.Contains("retrospectiveRationale", missing.Keys);
+
+        var ok = ValuationApproachSettingsRules.Validate(
+            true, true, false, null, null, "فيلا",
+            valuationPurposeKey: ValuationPurposeKeys.JudicialExecution,
+            valuationDateMode: ValuationDateModes.Retrospective,
+            retrospectiveDate: new DateOnly(2026, 6, 1),
+            retrospectiveRationale: "طلب المحكمة قيمة بتاريخ الحجز");
+        Assert.Empty(ok);
+
+ // وضع «إصدار القيمة» لا يطلب شيئاً.
+        var issue = ValuationApproachSettingsRules.Validate(
+            true, true, false, null, null, "فيلا",
+            valuationPurposeKey: ValuationPurposeKeys.JudicialExecution);
+        Assert.Empty(issue);
+    }
+
+    [Fact]
+    public void Assumptions_json_round_trips_frozen_texts()
+    {
+        var json = ValuationApproachSettingsRules.SerializeAssumptions(
+            ["افتراض أول", " ", "افتراض أول", "بند حر"]);
+        var parsed = ValuationApproachSettingsRules.ParseAssumptions(json);
+        Assert.Equal(2, parsed.Count);
+        Assert.Null(ValuationApproachSettingsRules.SerializeAssumptions([]));
+        Assert.Empty(ValuationApproachSettingsRules.ParseAssumptions("garbage"));
+    }
+
+    [Fact]
+    public void External_specialist_yes_requires_details()
+    {
+ // بند الأخصائي الخارجي (IVS 101) — لا أخصائي الإسناد ولا أخصائي دراسة الحالة.
+        var noDetails = ValuationApproachSettingsRules.Validate(
+            true, true, false, null, null, "فيلا",
+            valuationPurposeKey: ValuationPurposeKeys.Financing,
+            externalSpecialistUsed: true);
+        Assert.Contains("externalSpecialistDetails", noDetails.Keys);
+
+        var ok = ValuationApproachSettingsRules.Validate(
+            true, true, false, null, null, "فيلا",
+            valuationPurposeKey: ValuationPurposeKeys.Financing,
+            externalSpecialistUsed: true,
+            externalSpecialistDetails: "خبير إنشائي — تقدير العمر الاقتصادي");
+        Assert.Empty(ok);
     }
 
     [Fact]
@@ -86,7 +167,8 @@ public class ValuationApproachSettingsRulesTests
         Assert.Contains("costMeasurementUnitKey", bad.Keys);
 
         var costOff = ValuationApproachSettingsRules.Validate(
-            true, false, false, "xxx", "yyy", "فيلا");
+            true, false, false, "xxx", "yyy", "فيلا",
+            valuationPurposeKey: ValuationPurposeKeys.SalePurchase);
         Assert.Empty(costOff);
     }
 

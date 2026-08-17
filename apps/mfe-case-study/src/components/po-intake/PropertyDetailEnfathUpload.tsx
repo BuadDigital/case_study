@@ -27,6 +27,10 @@ import {
   resolveEnvelopeIdFromSources,
   usePropertyKeyGateQuery,
 } from "../../query/use-property-key-gate-query";
+import {
+  loadInfathDeposit,
+  saveInfathDeposit,
+} from "../../lib/prototype/infath-deposit-storage";
 
 type CopyKey = string;
 
@@ -446,6 +450,25 @@ export function PropertyDetailEnfathUpload({
     requestNumber: property.requestNumber.trim() || undefined,
   });
 
+  const [depositDraft, setDepositDraft] = useState(() =>
+    loadInfathDeposit(property.id),
+  );
+
+  useEffect(() => {
+    setDepositDraft(loadInfathDeposit(property.id));
+  }, [property.id]);
+
+  const patchDeposit = useCallback(
+    (patch: Partial<typeof depositDraft>) => {
+      setDepositDraft((prev) => {
+        const next = { ...prev, ...patch };
+        saveInfathDeposit(property.id, next);
+        return next;
+      });
+    },
+    [property.id],
+  );
+
   const opsContext = useMemo((): InfathOpsContext => {
     const visit = primaryCourtVisit;
     const envelopeId = resolveEnvelopeIdFromSources(
@@ -460,8 +483,10 @@ export function PropertyDetailEnfathUpload({
       keysStatus: keyGate?.keysStatus ?? null,
       keyAvailable: keyGate?.keyAvailable,
       envelopeId,
+      depositCode: depositDraft.depositCode,
+      depositCertificateName: depositDraft.depositCertificateName,
     };
-  }, [primaryCourtVisit, keyGate]);
+  }, [primaryCourtVisit, keyGate, depositDraft]);
 
   const model = useMemo(
     () =>
@@ -511,18 +536,20 @@ export function PropertyDetailEnfathUpload({
       }
     }
     if (appraisalFeed?.hasData) {
-      if (appraisalFeed.acceptedAtUtc?.trim()) {
+      const appraisalSubmitted =
+        Boolean(appraisalFeed.submittedAtUtc?.trim()) ||
+        appraisalFeed.packageStatus === "submitted" ||
+        appraisalFeed.packageStatus === "completed" ||
+        appraisalFeed.packageStatus === "reopened";
+      if (appraisalSubmitted) {
         lines.push({
           kind: "ok",
-          text: "بيانات التقييم معتمدة — تُعرض ضمن الحزمة.",
+          text: "تقرير التقييم مُرسل — يظهر في حزمة إنفاذ (استلام الأخصائي ليس بوابة للقيمة).",
         });
-      } else if (
-        appraisalFeed.statusLabel?.includes("بانتظار") ||
-        appraisalFeed.statusLabel?.includes("مُرسَل")
-      ) {
+      } else {
         lines.push({
           kind: "await",
-          text: "بيانات التقييم بانتظار اعتماد الأخصائي — حقول المقيم فارغة حتى الاعتماد.",
+          text: "تقرير التقييم لم يُرسل بعد — حقول المقيم فارغة في إنفاذ حتى الإرسال.",
         });
       }
     }
@@ -691,6 +718,46 @@ export function PropertyDetailEnfathUpload({
           {line.text}
         </div>
       ))}
+
+      <section className="rounded-[var(--radius-DEFAULT)] border border-border bg-surface-2 p-3.5">
+        <p className="m-0 mb-2 text-[13px] font-bold text-text">
+          إيداع التقرير في الهيئة
+        </p>
+        <p className="m-0 mb-3 text-[11px] leading-relaxed text-text-3">
+          رمز الإيداع حقل إدخال، وشهادة الإيداع مرفق — مستقلان عن استلام
+          الأخصائي لتقرير التقييم.
+        </p>
+        <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2">
+          <label className="flex flex-col gap-1 text-[12px] font-semibold text-text-2">
+            رمز إيداع التقرير
+            <input
+              className="h-9 rounded-md border border-border bg-surface px-2.5 text-[13px] font-normal"
+              dir="ltr"
+              value={depositDraft.depositCode}
+              onChange={(e) => patchDeposit({ depositCode: e.target.value })}
+              placeholder="أدخل رمز الإيداع…"
+            />
+          </label>
+          <label className="flex flex-col gap-1 text-[12px] font-semibold text-text-2">
+            شهادة الإيداع
+            <input
+              type="file"
+              className="text-[12px] font-normal"
+              onChange={(e) => {
+                const file = e.target.files?.[0];
+                patchDeposit({
+                  depositCertificateName: file?.name ?? "",
+                });
+              }}
+            />
+            {depositDraft.depositCertificateName ? (
+              <span className="text-[11px] font-normal text-text-3" dir="ltr">
+                {depositDraft.depositCertificateName}
+              </span>
+            ) : null}
+          </label>
+        </div>
+      </section>
 
       <div className="flex flex-wrap gap-2">
         <Button type="button" size="sm" onClick={() => setAllCollapsed(false)}>

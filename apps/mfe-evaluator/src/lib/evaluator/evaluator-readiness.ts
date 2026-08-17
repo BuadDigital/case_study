@@ -7,7 +7,7 @@ import { getPartyTaskRecall } from "@platform/app-shared/prototype/party-task-re
 export type AppraiserReadiness =
   | "new"
   | "wait_inspection"
-  | "wait_survey"
+  | "wait_specialist"
   | "ready";
 
 export function findSiblingSurveyTask(
@@ -56,18 +56,25 @@ export function appraiserNeedsSurvey(
   return Boolean(findSiblingSurveyTask(appraisalTask, tasks));
 }
 
+export function appraiserInspectionAccepted(
+  appraisalTask: WorkflowTask,
+  tasks: WorkflowTask[],
+): boolean {
+  if (typeof appraisalTask.fieldInspectionAccepted === "boolean") {
+    return appraisalTask.fieldInspectionAccepted;
+  }
+  return false;
+}
+
 export function appraiserReadiness(
   appraisalTask: WorkflowTask,
   tasks: WorkflowTask[],
 ): AppraiserReadiness {
   const inspected = appraiserInspectionDone(appraisalTask, tasks);
-  const needsSurvey = appraiserNeedsSurvey(appraisalTask, tasks);
-  const surveyed = appraiserSurveyDone(appraisalTask, tasks);
-  if (inspected && surveyed) return "ready";
-  if (inspected) return "wait_survey";
-  if (needsSurvey && surveyed) return "wait_inspection";
-  if (!inspected && !needsSurvey) return "wait_inspection";
-  return "new";
+  const accepted = appraiserInspectionAccepted(appraisalTask, tasks);
+  if (accepted) return "ready";
+  if (inspected) return "wait_specialist";
+  return "wait_inspection";
 }
 
 /**
@@ -98,11 +105,11 @@ export function appraiserQueueStatusBadge(
   }
   const rd = appraiserReadiness(task, tasks);
   if (rd === "ready") return { label: "جاهزة للتقييم", className: "b-gold" };
-  if (rd === "wait_survey") {
-    return { label: "بانتظار الرفع المساحي", className: "b-prog" };
+  if (rd === "wait_specialist") {
+    return { label: "بانتظار اعتماد بيانات المعاينة", className: "b-prog" };
   }
   if (rd === "wait_inspection") {
-    return { label: "بانتظار المعاينة", className: "b-new" };
+    return { label: "تراقب تقدم الأطراف", className: "b-new" };
   }
   return { label: "جديدة", className: "b-new" };
 }

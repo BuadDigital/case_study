@@ -13,6 +13,14 @@ public class ValuationIssuanceGateRulesTests
         var checks = new[]
         {
             ValuationIssuanceGateRules.Credentials("2027-01-01", "2027-06-01", Today),
+            ValuationIssuanceGateRules.ParticipantCredentials(
+                [
+                    new ValuationIssuanceGateRules.RosterParticipantCredentials(
+                        "مساعد",
+                        "2027-01-01",
+                        "2027-06-01"),
+                ],
+                Today),
             ValuationIssuanceGateRules.DeedNatureMatch(DeedKind.RegisteredTitle, ""),
             ValuationIssuanceGateRules.MinAdoptedComparables(1),
             ValuationIssuanceGateRules.ComparableWeights(true, 1),
@@ -28,6 +36,45 @@ public class ValuationIssuanceGateRulesTests
         var check = ValuationIssuanceGateRules.Credentials("2020-01-01", "2027-01-01", Today);
         Assert.False(check.Passed);
         Assert.False(ValuationIssuanceGateRules.AllowsIssuance([check]));
+    }
+
+    [Fact]
+    public void Participant_credentials_pass_when_roster_empty()
+    {
+        var check = ValuationIssuanceGateRules.ParticipantCredentials([], Today);
+        Assert.True(check.Passed);
+    }
+
+    [Fact]
+    public void Blocks_when_participant_membership_expired()
+    {
+        var check = ValuationIssuanceGateRules.ParticipantCredentials(
+            [
+                new ValuationIssuanceGateRules.RosterParticipantCredentials(
+                    "مساعد أحمد",
+                    "2027-01-01",
+                    "2026-01-01"),
+            ],
+            Today);
+        Assert.False(check.Passed);
+        Assert.Contains("مساعد أحمد", check.DetailAr);
+        Assert.Contains("العضوية", check.DetailAr);
+        Assert.False(ValuationIssuanceGateRules.AllowsIssuance([check]));
+    }
+
+    [Fact]
+    public void Blocks_when_participant_membership_date_missing()
+    {
+        var check = ValuationIssuanceGateRules.ParticipantCredentials(
+            [
+                new ValuationIssuanceGateRules.RosterParticipantCredentials(
+                    "مراجع",
+                    "2027-01-01",
+                    null),
+            ],
+            Today);
+        Assert.False(check.Passed);
+        Assert.Contains("العضوية", check.DetailAr);
     }
 
     [Fact]

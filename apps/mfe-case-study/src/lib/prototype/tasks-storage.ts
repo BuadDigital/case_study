@@ -171,6 +171,8 @@ export type WorkflowTask = {
   updatedAt: string;
   /** Server flag on engineering-survey / property-appraisal: sibling field-inspection completed. */
   fieldInspectionCompleted?: boolean;
+  /** Server flag on property-appraisal: sibling inspection package specialist-accepted. */
+  fieldInspectionAccepted?: boolean;
 };
 
 export function notifyTasksChanged(): void {
@@ -205,6 +207,10 @@ function dtoToTask(dto: WorkflowTaskDto): WorkflowTask {
     fieldInspectionCompleted:
       typeof dto.fieldInspectionCompleted === "boolean"
         ? dto.fieldInspectionCompleted
+        : undefined,
+    fieldInspectionAccepted:
+      typeof dto.fieldInspectionAccepted === "boolean"
+        ? dto.fieldInspectionAccepted
         : undefined,
   };
 }
@@ -311,12 +317,12 @@ export function defaultDistribution(): TaskDistributionDraft {
   return {
     governmentAuditor: false,
     governmentAuditorId: "",
-    valuationDepartment: false,
+    valuationDepartment: true,
     inspectorId: "",
     valuatorId: "",
     engineeringOffice: false,
     engineeringOfficeId: "",
-    caseSpecialist: false,
+    caseSpecialist: true,
     caseSpecialistId: "",
   };
 }
@@ -335,25 +341,14 @@ export function distributionValidationError(
     assignmentMandateDate?: string | null;
   },
 ): string | null {
-  const anyParty =
-    distribution.valuationDepartment ||
-    distribution.engineeringOffice ||
-    distribution.caseSpecialist;
-  if (!anyParty) {
-    return "فعّل طرفاً واحداً على الأقل ثم اختر المسؤول من القائمة.";
+  if (!distribution.caseSpecialistId.trim()) {
+    return "اختر أخصائي دراسة الحالة.";
   }
-  if (distribution.caseSpecialist) {
-    if (!distribution.caseSpecialistId.trim()) {
-      return "اختر أخصائي دراسة الحالة.";
-    }
+  if (!distribution.inspectorId.trim()) {
+    return "اختر المعاين الميداني.";
   }
-  if (distribution.valuationDepartment) {
-    if (!distribution.inspectorId.trim()) {
-      return "اختر المعاين الميداني.";
-    }
-    if (!distribution.valuatorId.trim()) {
-      return "اختر المقيم العقاري.";
-    }
+  if (!distribution.valuatorId.trim()) {
+    return "اختر المقيم العقاري.";
   }
   if (distribution.engineeringOffice) {
     if (!engineeringAvailable) {

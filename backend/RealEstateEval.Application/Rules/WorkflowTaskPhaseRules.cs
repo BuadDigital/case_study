@@ -69,11 +69,8 @@ public static class WorkflowTaskPhaseRules
         dto.GovernmentAuditor = false;
         dto.GovernmentAuditorId = "";
         dto.OperationsCoordinatorId = "";
-        if (!dto.ValuationDepartment)
-        {
-            dto.InspectorId = "";
-            dto.ValuatorId = "";
-        }
+        // Inspector + valuator are always spawned. ValuationDepartment is a
+        // permissions / picker flag — never a spawn gate and never wipes assignees.
         if (!dto.EngineeringOffice) dto.EngineeringOfficeId = "";
         if (!dto.CaseSpecialist) dto.CaseSpecialistId = "";
         return dto;

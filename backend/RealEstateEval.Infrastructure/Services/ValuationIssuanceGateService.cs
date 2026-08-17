@@ -94,6 +94,15 @@ public sealed class ValuationIssuanceGateService(
                 eval.LicenseExpiresAt,
                 eval.MembershipExpiresAt,
                 today),
+            ValuationIssuanceGateRules.ParticipantCredentials(
+                org.Valuers
+                    .Where(v => v.IsActive)
+                    .Select(v => new ValuationIssuanceGateRules.RosterParticipantCredentials(
+                        v.NameAr,
+                        v.LicenseExpiresAt,
+                        v.MembershipExpiresAt))
+                    .ToList(),
+                today),
             ValuationIssuanceGateRules.DeedNatureMatch(deedKind, matchOutcome),
             ValuationIssuanceGateRules.MinAdoptedComparables(market?.AdoptedCount ?? 0),
             ValuationIssuanceGateRules.ComparableWeights(

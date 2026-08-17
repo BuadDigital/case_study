@@ -481,7 +481,7 @@ public class PartyTaskSubmissionService : IPartyTaskSubmissionService
         }
         else if (!alreadyAccepted)
         {
- // Field inspection / appraisal: package gate for إنفاذ (no fee accrual on accept).
+ // Field inspection: إنفاذ package gate. Appraisal stamp is receive/acknowledge only.
             StampAcceptance(entity, actorUserId, actor.DisplayName);
             await _db.SaveChangesAsync(cancellationToken);
         }
@@ -489,7 +489,7 @@ public class PartyTaskSubmissionService : IPartyTaskSubmissionService
         var timelineTitle = task.Kind switch
         {
             WorkflowTaskKind.FieldInspection => "اعتماد بيانات المعاينة",
-            WorkflowTaskKind.PropertyAppraisal => "اعتماد بيانات التقييم",
+            WorkflowTaskKind.PropertyAppraisal => "استلام تقرير التقييم",
             _ => "قبول مخرجات الرفع المساحي",
         };
 
@@ -524,18 +524,19 @@ public class PartyTaskSubmissionService : IPartyTaskSubmissionService
                 await NotifyPartyAssigneeAsync(
                     task,
                     title: "اعتماد بيانات المعاينة",
-                    body: "اعتمد الأخصائي بيانات المعاينة. تظهر البيانات المعتمدة في حزمة الرفع على إنفاذ.",
+                    body: "اعتمد الأخصائي بيانات المعاينة. تظهر البيانات المعتمدة في حزمة الرفع على إنفاذ، ويمكن للمقيّم بدء التقييم.",
                     tone: "success",
                     sourceEvent: $"field-inspection-accepted:{taskId}",
                     href: $"/active-inspection/{Uri.EscapeDataString(task.Id.ToString())}",
                     cancellationToken);
+                await NotifySiblingAppraiserInspectionAcceptedAsync(task, cancellationToken);
             }
             else if (task.Kind == WorkflowTaskKind.PropertyAppraisal)
             {
                 await NotifyPartyAssigneeAsync(
                     task,
-                    title: "اعتماد بيانات التقييم",
-                    body: "اعتمد الأخصائي بيانات التقييم. تظهر البيانات المعتمدة في حزمة الرفع على إنفاذ.",
+                    title: "استلام تقرير التقييم",
+                    body: "استلم الأخصائي تقرير التقييم. هذا إقرار بالاستلام وليس اعتماداً للقيمة — حزمة إنفاذ تتغذى من التقرير المُرسل.",
                     tone: "success",
                     sourceEvent: $"property-appraisal-accepted:{taskId}",
                     href: $"/property-appraisal/{Uri.EscapeDataString(task.Id.ToString())}",
@@ -788,12 +789,12 @@ public class PartyTaskSubmissionService : IPartyTaskSubmissionService
     }
 
     private async Task<bool> IsSiblingFieldInspectionCompletedAsync(
-        Guid surveyTaskId,
+        Guid partyTaskId,
         Guid propertyId,
         CancellationToken cancellationToken)
     {
         var parentId = await _db.WorkflowTasks.AsNoTracking()
-            .Where(t => t.Id == surveyTaskId)
+            .Where(t => t.Id == partyTaskId)
             .Select(t => t.ParentTaskId)
             .FirstOrDefaultAsync(cancellationToken);
         if (parentId is not Guid parentTaskId)
@@ -804,6 +805,59 @@ public class PartyTaskSubmissionService : IPartyTaskSubmissionService
                 && t.PropertyId == propertyId
                 && t.Kind == WorkflowTaskKind.FieldInspection
                 && t.Status == WorkflowTaskStatus.Completed,
+            cancellationToken);
+    }
+
+    private async Task<bool> IsSiblingFieldInspectionAcceptedAsync(
+        Guid partyTaskId,
+        Guid propertyId,
+        CancellationToken cancellationToken)
+    {
+        var parentId = await _db.WorkflowTasks.AsNoTracking()
+            .Where(t => t.Id == partyTaskId)
+            .Select(t => t.ParentTaskId)
+            .FirstOrDefaultAsync(cancellationToken);
+        if (parentId is not Guid parentTaskId)
+            return false;
+
+        var inspectionId = await _db.WorkflowTasks.AsNoTracking()
+            .Where(t => t.ParentTaskId == parentTaskId
+                && t.PropertyId == propertyId
+                && t.Kind == WorkflowTaskKind.FieldInspection
+                && t.Status == WorkflowTaskStatus.Completed)
+            .Select(t => (Guid?)t.Id)
+            .FirstOrDefaultAsync(cancellationToken);
+        if (inspectionId is not Guid id)
+            return false;
+
+        return await _db.PartyTaskSubmissions.AsNoTracking().AnyAsync(
+            s => s.WorkflowTaskId == id && s.AcceptedAtUtc != null,
+            cancellationToken);
+    }
+
+    private async Task NotifySiblingAppraiserInspectionAcceptedAsync(
+        WorkflowTask inspectionTask,
+        CancellationToken cancellationToken)
+    {
+        if (inspectionTask.ParentTaskId is not Guid parentId
+            || inspectionTask.PropertyId is not Guid propertyId)
+            return;
+
+        var appraisal = await _db.WorkflowTasks.AsNoTracking()
+            .FirstOrDefaultAsync(
+                t => t.ParentTaskId == parentId
+                    && t.PropertyId == propertyId
+                    && t.Kind == WorkflowTaskKind.PropertyAppraisal,
+                cancellationToken);
+        if (appraisal is null) return;
+
+        await NotifyPartyAssigneeAsync(
+            appraisal,
+            title: "بيانات المعاينة معتمدة — يمكن بدء التقييم",
+            body: "اعتمد الأخصائي بيانات الأطراف. يمكنك الآن حساب القيمة داخل النظام.",
+            tone: "success",
+            sourceEvent: $"field-inspection-accepted-appraiser:{inspectionTask.Id}",
+            href: $"/property-appraisal/{Uri.EscapeDataString(appraisal.Id.ToString())}",
             cancellationToken);
     }
 
@@ -820,10 +874,19 @@ public class PartyTaskSubmissionService : IPartyTaskSubmissionService
                 entity.WorkflowTaskId,
                 propertyId,
                 cancellationToken);
+            if (entity.Kind == "property-appraisal")
+            {
+                dto.FieldInspectionAccepted = await IsSiblingFieldInspectionAcceptedAsync(
+                    entity.WorkflowTaskId,
+                    propertyId,
+                    cancellationToken);
+            }
         }
         else if (needsInspectionFlag)
         {
             dto.FieldInspectionCompleted = false;
+            if (entity.Kind == "property-appraisal")
+                dto.FieldInspectionAccepted = false;
         }
 
         return dto;

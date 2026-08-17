@@ -114,31 +114,29 @@ export function RedistributePartiesModal({
   const roleOptions = useMemo((): RoleOption[] => {
     if (!distribution) return [];
     const roles: RoleOption[] = [];
-    if (distribution.caseSpecialist) {
+    if (distribution.caseSpecialist || distribution.caseSpecialistId) {
       roles.push({
         key: "caseSpecialist",
         label: "أخصائي دراسة الحالة",
         people: getCaseSpecialists(staffUsers),
         currentId: distribution.caseSpecialistId,
-        apply: (id) => ({ caseSpecialistId: id }),
+        apply: (id) => ({ caseSpecialist: true, caseSpecialistId: id }),
       });
     }
-    if (distribution.valuationDepartment) {
-      roles.push({
-        key: "inspector",
-        label: "المعاين الميداني",
-        people: getFieldInspectors(staffUsers),
-        currentId: distribution.inspectorId,
-        apply: (id) => ({ inspectorId: id }),
-      });
-      roles.push({
-        key: "valuator",
-        label: "المقيم العقاري",
-        people: getValuators(staffUsers),
-        currentId: distribution.valuatorId,
-        apply: (id) => ({ valuatorId: id }),
-      });
-    }
+    roles.push({
+      key: "inspector",
+      label: "المعاين الميداني",
+      people: getFieldInspectors(staffUsers),
+      currentId: distribution.inspectorId,
+      apply: (id) => ({ valuationDepartment: true, inspectorId: id }),
+    });
+    roles.push({
+      key: "valuator",
+      label: "المقيم العقاري",
+      people: getValuators(staffUsers),
+      currentId: distribution.valuatorId,
+      apply: (id) => ({ valuationDepartment: true, valuatorId: id }),
+    });
     if (distribution.engineeringOffice) {
       roles.push({
         key: "engineeringOffice",

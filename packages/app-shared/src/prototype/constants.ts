@@ -26,6 +26,7 @@ export const ROLES: Record<RoleId, RoleDef> = {
     tc: "var(--info)",
     pages: [
       "po",
+      "property-map",
       "favorites",
       "active-primary-data",
       "bourse-inquiry",
@@ -53,6 +54,7 @@ export const ROLES: Record<RoleId, RoleDef> = {
     tc: "var(--warning)",
     pages: [
       "po",
+      "property-map",
       "favorites",
       "active-primary-data",
       "bourse-inquiry",
@@ -78,6 +80,7 @@ export const ROLES: Record<RoleId, RoleDef> = {
     // مطابقة صفحات المشرف (يشمل party-fees + التسعيرة) — بلا financial
     pages: [
       "po",
+      "property-map",
       "favorites",
       "active-primary-data",
       "bourse-inquiry",
@@ -102,6 +105,7 @@ export const ROLES: Record<RoleId, RoleDef> = {
     tc: "var(--info)",
     pages: [
       "po",
+      "property-map",
       "favorites",
       "operations-tasks",
       "property-appraisal",
@@ -180,6 +184,12 @@ export const NAV: NavItem[] = [
     grp: "قسم دراسة الحالة",
   },
   {
+    id: "property-map",
+    label: "خريطة العقارات",
+    icon: "M14.106 5.553a2 2 0 0 0 1.788 0l3.659-1.83A1 1 0 0 1 21 4.619v12.764a1 1 0 0 1-.553.894l-3.659 1.83a2 2 0 0 1-1.788 0l-4.212-2.106a2 2 0 0 0-1.788 0l-3.659 1.83A1 1 0 0 1 3 19.382V6.618a1 1 0 0 1 .553-.894l3.659-1.83a2 2 0 0 1 1.788 0zM12 19V5",
+    grp: "قسم دراسة الحالة",
+  },
+  {
     id: "favorites",
     label: "المفضلة",
     icon: "m12 2.8 2.84 5.75 6.35.92-4.6 4.48 1.09 6.33L12 17.3l-5.68 2.98 1.09-6.33-4.6-4.48 6.35-.92L12 2.8Z",
@@ -245,6 +255,7 @@ export const PAGE_TITLES: Record<PageId, string> = {
   "system-upload": "الرفع على النظام",
   po: "أوامر العمل (PO)",
   "all-transactions": "جميع المعاملات",
+  "property-map": "خريطة العقارات",
   favorites: "المفضلة",
   "bourse-inquiry": "استعلام بورصة",
   keys: "محفظة المفاتيح",
@@ -289,6 +300,7 @@ export const PAGE_BREADCRUMB: Record<PageId, string> = {
   "system-upload": "المعاملات النشطة / الرفع على النظام",
   po: "أوامر العمل",
   "all-transactions": "جميع المعاملات",
+  "property-map": "دراسة الحالة / خريطة العقارات",
   favorites: "المفضلة",
   "bourse-inquiry": "المعاملات النشطة / استعلام بورصة",
   keys: "محفظة المفاتيح",

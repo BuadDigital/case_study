@@ -136,6 +136,12 @@ internal static class ValuationModel
             e.ToTable("ValuationApproachSettings", DatabaseSchemas.Valuation);
             e.Property(x => x.CostBasisKey).HasMaxLength(32).IsRequired();
             e.Property(x => x.CostMeasurementUnitKey).HasMaxLength(32).IsRequired();
+            e.Property(x => x.ValuationPurposeKey).HasMaxLength(32);
+            e.Property(x => x.ValuationPurposeNote).HasMaxLength(2000);
+            e.Property(x => x.ExternalSpecialistDetails).HasMaxLength(2000);
+            e.Property(x => x.ValuationDateMode).HasMaxLength(16).IsRequired();
+            e.Property(x => x.RetrospectiveRationale).HasMaxLength(2000);
+            e.Property(x => x.SelectedAssumptionsJson);
             e.HasIndex(x => x.ValuationRequestId).IsUnique();
             e.HasOne(x => x.ValuationRequest)
                 .WithMany()

@@ -20,19 +20,22 @@ export function findSiblingInspectionTask(
 }
 
 /**
- * Prefer server `fieldInspectionCompleted` — party appraiser lists hide sibling
- * inspection tasks (same pattern as EO surveyWorkGate).
+ * Appraiser starts valuation only after the specialist accepts inspection
+ * (party data the valuer uses officially). Prefer server
+ * `fieldInspectionAccepted` — party lists hide the sibling inspection row.
  */
 export function inspectionGateForAppraisal(
   appraisalTask: WorkflowTask,
   tasks: WorkflowTask[],
 ): InspectionGateState {
-  if (typeof appraisalTask.fieldInspectionCompleted === "boolean") {
-    return appraisalTask.fieldInspectionCompleted
+  if (typeof appraisalTask.fieldInspectionAccepted === "boolean") {
+    return appraisalTask.fieldInspectionAccepted
       ? { ready: true }
       : {
           ready: false,
-          reason: "لا يمكن إدخال التقييم قبل اكتمال المعاينة الميدانية.",
+          reason: appraisalTask.fieldInspectionCompleted
+            ? "المعاينة مكتملة — بانتظار اعتماد الأخصائي لبيانات الأطراف."
+            : "راقب تقدم الأطراف. لا يبدأ التقييم إلا بعد اعتماد بيانات المعاينة.",
         };
   }
 
@@ -46,10 +49,13 @@ export function inspectionGateForAppraisal(
   if (inspection.status !== "completed") {
     return {
       ready: false,
-      reason: "لا يمكن إدخال التقييم قبل اكتمال المعاينة الميدانية.",
+      reason: "راقب تقدم الأطراف. لا يبدأ التقييم إلا بعد اعتماد بيانات المعاينة.",
     };
   }
-  return { ready: true };
+  return {
+    ready: false,
+    reason: "المعاينة مكتملة — بانتظار اعتماد الأخصائي لبيانات الأطراف.",
+  };
 }
 
 export function findAppraisalChildForParent(

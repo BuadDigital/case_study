@@ -37,7 +37,7 @@ describe("inspection → إنفاذ acceptance gate", () => {
     expect(partyPackageFeedsInfath(party)).toBe(party);
   });
 
-  it("feeds EN / EV / MA packages only after accept stamp", () => {
+  it("feeds appraisal after report submit without specialist value stamp", () => {
     const inspection = partyPackageFeedsInfath(
       inspectionParty({ acceptedAtUtc: "2026-08-10T10:00:00.000Z" }),
     );
@@ -47,15 +47,25 @@ describe("inspection → إنفاذ acceptance gate", () => {
         acceptedAtUtc: "2026-08-10T10:00:00.000Z",
       }),
     );
-    const appraisal = partyPackageFeedsInfath(
+    const appraisalDraft = partyPackageFeedsInfath(
       inspectionParty({
         roleKey: "appraisal",
         acceptedAtUtc: undefined,
+        packageStatus: "draft",
+      }),
+    );
+    const appraisalSubmitted = partyPackageFeedsInfath(
+      inspectionParty({
+        roleKey: "appraisal",
+        acceptedAtUtc: undefined,
+        packageStatus: "submitted",
+        submittedAtUtc: "2026-08-11T10:00:00.000Z",
       }),
     );
     expect(inspection).not.toBeNull();
     expect(survey).not.toBeNull();
-    expect(appraisal).toBeNull();
+    expect(appraisalDraft).toBeNull();
+    expect(appraisalSubmitted).not.toBeNull();
   });
 
   it("status labels distinguish pending vs accepted submit", () => {

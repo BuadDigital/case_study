@@ -6,6 +6,7 @@ export { PoPropertyDetailPage } from "./views/PoPropertyDetailPage";
 export { BourseInquiryView } from "./views/BourseInquiryView";
 export { MyTasksView } from "./views/MyTasksView";
 export { AllAssignedTransactionsView } from "./views/AllAssignedTransactionsView";
+export { PropertyMapView } from "./views/PropertyMapView";
 export { FavoriteTransactionsView } from "./views/FavoriteTransactionsView";
 export { ActiveDistributionView } from "./views/ActiveDistributionView";
 export { ActiveCaseStudyView } from "./views/ActiveCaseStudyView";

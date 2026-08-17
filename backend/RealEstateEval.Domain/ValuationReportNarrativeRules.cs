@@ -34,7 +34,14 @@ public static class ValuationReportNarrativeRules
         string? premiseLabelAr,
         string? restrictionsLine,
  // القرار 24 — نص تحفّظ حدود المعاينة المركّب آلياً (فارغ عند معاينة كاملة).
-        string? inspectionReservationLine = null)
+        string? inspectionReservationLine = null,
+ // بند الأخصائي (IVS 101 1-20/ل): «لا» ⟵ نفي قياسي · «نعم» ⟵ التوضيح يحل محله.
+        bool externalSpecialistUsed = false,
+        string? externalSpecialistDetails = null,
+ // بنود منتقاة من مكتبة إعدادات تبويب تقرير التقييم + إضافات المقيّم الحرة.
+        IReadOnlyList<string>? selectedAssumptions = null,
+ // سطر الأثر الرجعي عند اختياره (التاريخ + المبرر).
+        string? retrospectiveLine = null)
     {
         var bits = new List<string>
         {
@@ -61,6 +68,22 @@ public static class ValuationReportNarrativeRules
 
         if (!string.IsNullOrWhiteSpace(inspectionReservationLine))
             bits.Add(inspectionReservationLine.Trim());
+
+ // بند الأخصائي — الأخصائي الخارجي الذي استعان به المقيّم لمهمة التقييم حصراً
+ // (لا أخصائي الإسناد ولا أخصائي دراسة الحالة — دوران داخليان في سير المعاملة).
+        bits.Add(externalSpecialistUsed && !string.IsNullOrWhiteSpace(externalSpecialistDetails)
+            ? $"استُعين في هذه المهمة بأخصائي خارجي: {externalSpecialistDetails.Trim()}، وتقريره مرفق بالتقرير."
+            : "لم يستعن المقيّم بأي أخصائي خارجي في أداء مهمة التقييم هذه.");
+
+        if (!string.IsNullOrWhiteSpace(retrospectiveLine))
+            bits.Add(retrospectiveLine.Trim());
+
+        foreach (var a in selectedAssumptions ?? [])
+        {
+            var t = (a ?? "").Trim();
+            if (t.Length == 0) continue;
+            bits.Add(t.EndsWith('.') || t.EndsWith('؟') ? t : t + ".");
+        }
 
         return string.Join(" ", bits);
     }

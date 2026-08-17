@@ -78,7 +78,7 @@ const nextConfig: NextConfig = {
               "default-src 'self'",
               "script-src 'self' 'unsafe-inline' 'unsafe-eval'",
               "style-src 'self' 'unsafe-inline'",
-              "img-src 'self' data: blob: https://*.tile.openstreetmap.org https://tile.openstreetmap.org",
+              "img-src 'self' data: blob: https://*.tile.openstreetmap.org https://tile.openstreetmap.org https://*.basemaps.cartocdn.com https://basemaps.cartocdn.com https://server.arcgisonline.com https://*.arcgisonline.com",
               "font-src 'self' data:",
               "connect-src 'self' https: http: ws: wss:",
               "worker-src 'self' blob:",

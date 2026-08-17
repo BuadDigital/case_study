@@ -426,6 +426,28 @@ public class ValuationApproachSettingsDto
     public string CostMeasurementUnitKey { get; init; } = "comparison_unit";
     public string CostMeasurementUnitLabelAr { get; init; } = "";
     public bool AdjustmentsEditUnlocked { get; init; } = true;
+
+ /// <summary>الغرض من التقييم (§4ج-5) — إعدادات تقرير التقييم.</summary>
+    public string ValuationPurposeKey { get; init; } = "";
+    public string ValuationPurposeLabelAr { get; init; } = "";
+    public string? ValuationPurposeNote { get; init; }
+
+ /// <summary>بند الأخصائي الخارجي (IVS 101) — ليس أخصائي الإسناد ولا أخصائي دراسة الحالة.</summary>
+    public bool ExternalSpecialistUsed { get; init; }
+    public string? ExternalSpecialistDetails { get; init; }
+
+ /// <summary>تاريخ التقييم: issue (آلي — إصدار القيمة) | retrospective (يدوي بمبرر).</summary>
+    public string ValuationDateMode { get; init; } = "issue";
+    public string ValuationDateModeLabelAr { get; init; } = "";
+ /// <summary>yyyy-MM-dd عند الأثر الرجعي.</summary>
+    public string? RetrospectiveDate { get; init; }
+    public string? RetrospectiveRationale { get; init; }
+
+ /// <summary>البنود المنتقاة/المضافة (نصوص مجمّدة مع التقييم).</summary>
+    public IReadOnlyList<string> SelectedAssumptions { get; init; } = [];
+ /// <summary>مكتبة الانتقاء من إعدادات تبويب تقرير التقييم — للعرض في الواجهة.</summary>
+    public IReadOnlyList<string> AssumptionLibrary { get; init; } = [];
+
  /// <summary>False until a row is saved — the values above are then property-type defaults.</summary>
     public bool IsSaved { get; init; }
 }
@@ -443,6 +465,33 @@ public class SaveValuationApproachSettingsRequest
     public string? CostMeasurementUnitKey { get; init; }
 
     public bool AdjustmentsEditUnlocked { get; init; } = true;
+
+ /// <summary>الغرض من التقييم — إلزامي (§4ج-5).</summary>
+    [MaxLength(32)]
+    public string? ValuationPurposeKey { get; init; }
+
+    [MaxLength(2000)]
+    public string? ValuationPurposeNote { get; init; }
+
+ /// <summary>بند الأخصائي الخارجي — «نعم» تستلزم التوضيح.</summary>
+    public bool ExternalSpecialistUsed { get; init; }
+
+    [MaxLength(2000)]
+    public string? ExternalSpecialistDetails { get; init; }
+
+ /// <summary>issue (افتراضي) | retrospective.</summary>
+    [MaxLength(16)]
+    public string? ValuationDateMode { get; init; }
+
+ /// <summary>yyyy-MM-dd — إلزامي عند retrospective.</summary>
+    [MaxLength(16)]
+    public string? RetrospectiveDate { get; init; }
+
+    [MaxLength(2000)]
+    public string? RetrospectiveRationale { get; init; }
+
+ /// <summary>البنود المنتقاة من المكتبة + إضافات حرة (نصوص).</summary>
+    public IReadOnlyList<string>? SelectedAssumptions { get; init; }
 }
 
 public class SaveValuationComparableMarketRequest

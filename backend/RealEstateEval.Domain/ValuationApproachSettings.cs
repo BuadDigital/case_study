@@ -28,6 +28,31 @@ public class ValuationApproachSettings
  /// <summary>صلاحية تحرير التسويات — معطّلة تمنع حفظ بنود التسوية والأوزان.</summary>
     public bool AdjustmentsEditUnlocked { get; set; } = true;
 
+ /// <summary>الغرض من التقييم (§4ج-5) — يختاره المقيّم، لا يفرضه نوع الإسناد. See <see cref="ValuationPurposeKeys"/>.</summary>
+    public string ValuationPurposeKey { get; set; } = "";
+ /// <summary>توضيح اختياري للغرض (إلزامي عند «أخرى»).</summary>
+    public string? ValuationPurposeNote { get; set; }
+
+ /// <summary>
+ /// بند الأخصائي (IVS 101 1-20/ل): الاستعانة بأخصائي **خارجي** في مهمة التقييم —
+ /// لا يُقصد به أخصائي الإسناد ولا أخصائي دراسة الحالة (أدوار داخلية في سير المعاملة).
+ /// «لا» (الافتراضي) ⟵ بند النفي القياسي في الافتراضات؛ «نعم» ⟵ التوضيح الإلزامي يحل محله.
+ /// </summary>
+    public bool ExternalSpecialistUsed { get; set; }
+ /// <summary>الأخصائي ودوره ونتيجته — إلزامي عند «نعم».</summary>
+    public string? ExternalSpecialistDetails { get; set; }
+
+ /// <summary>
+ /// تاريخ التقييم — نوعان (قرار عمر 2026-08-17): «إصدار القيمة» (آلي — غالباً تاريخ
+ /// إصدار التقرير) أو «أثر رجعي» يحدده المقيّم يدوياً بتاريخ ومبرر إلزاميين.
+ /// </summary>
+    public string ValuationDateMode { get; set; } = ValuationDateModes.Issue;
+    public DateOnly? RetrospectiveDate { get; set; }
+    public string? RetrospectiveRationale { get; set; }
+
+ /// <summary>JSON — بنود الافتراضات الخاصة المنتقاة/المضافة (نصوص مجمّدة لا معرفات).</summary>
+    public string? SelectedAssumptionsJson { get; set; }
+
     public DateTime UpdatedAtUtc { get; set; }
 
     public ValuationRequest? ValuationRequest { get; set; }
@@ -77,6 +102,55 @@ public static class CostMeasurementUnitKeys
     };
 }
 
+/// <summary>
+/// الغرض من التقييم (§4ج-5) — قائمة يختارها المقيّم؛ إسناد إنفاذ قد يكون قيمة سوقية.
+/// القائمة قابلة للتوسعة عند اعتماد قائمة رسمية.
+/// </summary>
+public static class ValuationPurposeKeys
+{
+    public const string JudicialExecution = "judicial_execution";
+    public const string SalePurchase = "sale_purchase";
+    public const string Financing = "financing";
+    public const string FinancialReporting = "financial_reporting";
+    public const string Litigation = "litigation";
+    public const string Other = "other";
+
+    public static readonly string[] All =
+        [JudicialExecution, SalePurchase, Financing, FinancialReporting, Litigation, Other];
+
+    public static bool IsKnown(string? value) =>
+        All.Contains((value ?? "").Trim().ToLowerInvariant(), StringComparer.Ordinal);
+
+    public static string LabelAr(string? value) => (value ?? "").Trim().ToLowerInvariant() switch
+    {
+        JudicialExecution => "تنفيذ قضائي",
+        SalePurchase => "بيع أو شراء",
+        Financing => "تمويل ورهن",
+        FinancialReporting => "قوائم مالية",
+        Litigation => "نزاع قضائي",
+        Other => "أخرى",
+        _ => "",
+    };
+}
+
+/// <summary>نوعا تاريخ التقييم — إصدار القيمة (آلي) أو أثر رجعي (يدوي بمبرر).</summary>
+public static class ValuationDateModes
+{
+    public const string Issue = "issue";
+    public const string Retrospective = "retrospective";
+
+    public static bool IsKnown(string? value) =>
+        (value ?? "").Trim().ToLowerInvariant() is Issue or Retrospective;
+
+    public static string Normalize(string? value) =>
+        (value ?? "").Trim().ToLowerInvariant() == Retrospective ? Retrospective : Issue;
+
+    public static string LabelAr(string? value) =>
+        Normalize(value) == Retrospective
+            ? "أثر رجعي (يحدده المقيّم)"
+            : "تاريخ إصدار القيمة";
+}
+
 public static class ValuationApproachSettingsRules
 {
  /// <summary>
@@ -120,9 +194,41 @@ public static class ValuationApproachSettingsRules
         string? costBasisKey,
         string? costMeasurementUnitKey,
         string? propertyType,
-        bool hasStructuresToValue = false)
+        bool hasStructuresToValue = false,
+        string? valuationPurposeKey = null,
+        string? valuationPurposeNote = null,
+        bool externalSpecialistUsed = false,
+        string? externalSpecialistDetails = null,
+        string? valuationDateMode = null,
+        DateOnly? retrospectiveDate = null,
+        string? retrospectiveRationale = null)
     {
         var errors = new Dictionary<string, string>();
+
+ // §4ج-5: الغرض قائمة يختارها المقيّم — إلزامي عند حفظ إعدادات التقرير.
+        var purpose = (valuationPurposeKey ?? "").Trim().ToLowerInvariant();
+        if (purpose.Length == 0)
+            errors["valuationPurposeKey"] = "الغرض من التقييم إلزامي";
+        else if (!ValuationPurposeKeys.IsKnown(purpose))
+            errors["valuationPurposeKey"] = "الغرض من التقييم غير معروف";
+        else if (purpose == ValuationPurposeKeys.Other
+            && string.IsNullOrWhiteSpace(valuationPurposeNote))
+        {
+            errors["valuationPurposeNote"] = "توضيح الغرض إلزامي عند اختيار «أخرى»";
+        }
+
+ // بند الأخصائي: «نعم» تستلزم التوضيح (الأخصائي، دوره، نتيجته) — IVS 101.
+        if (externalSpecialistUsed && string.IsNullOrWhiteSpace(externalSpecialistDetails))
+            errors["externalSpecialistDetails"] = "توضيح الاستعانة بالأخصائي الخارجي إلزامي عند «نعم»";
+
+ // تاريخ التقييم: الأثر الرجعي = تاريخ يدوي + مبرر إلزامي (+ سجل تدقيق).
+        if (ValuationDateModes.Normalize(valuationDateMode) == ValuationDateModes.Retrospective)
+        {
+            if (retrospectiveDate is null)
+                errors["retrospectiveDate"] = "تاريخ التقييم بالأثر الرجعي إلزامي";
+            if (string.IsNullOrWhiteSpace(retrospectiveRationale))
+                errors["retrospectiveRationale"] = "مبرر الأثر الرجعي إلزامي";
+        }
 
         if (!marketEnabled && !costEnabled && !incomeEnabled)
             errors["appliedApproaches"] = "يلزم تفعيل أسلوب واحد على الأقل";
@@ -144,6 +250,39 @@ public static class ValuationApproachSettingsRules
         }
 
         return errors;
+    }
+
+ // ─── الافتراضات الخاصة (مكتبة الانتقاء تُدار في إعدادات تبويب تقرير التقييم) ───
+
+    private static readonly System.Text.Json.JsonSerializerOptions AssumptionsJsonOptions = new()
+    {
+        Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping,
+    };
+
+ /// <summary>النصوص تُجمَّد مع التقييم (لا معرفات) — تعديل المكتبة لاحقاً لا يغيّر المنتقى.</summary>
+    public static string? SerializeAssumptions(IReadOnlyList<string> items)
+    {
+        var clean = items
+            .Select(x => (x ?? "").Trim())
+            .Where(x => x.Length > 0)
+            .Distinct(StringComparer.Ordinal)
+            .ToList();
+        return clean.Count == 0
+            ? null
+            : System.Text.Json.JsonSerializer.Serialize(clean, AssumptionsJsonOptions);
+    }
+
+    public static IReadOnlyList<string> ParseAssumptions(string? json)
+    {
+        if (string.IsNullOrWhiteSpace(json)) return [];
+        try
+        {
+            return System.Text.Json.JsonSerializer.Deserialize<List<string>>(json) ?? [];
+        }
+        catch (System.Text.Json.JsonException)
+        {
+            return [];
+        }
     }
 
  /// <summary>ق-2: صفوف الترجيح تُبنى من الأساليب المفعَّلة فقط (الدخل مؤجَّل فلا يدخل).</summary>

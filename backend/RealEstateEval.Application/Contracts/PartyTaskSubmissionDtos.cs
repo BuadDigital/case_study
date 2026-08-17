@@ -24,9 +24,15 @@ public class PartyTaskSubmissionDto
 
  /// <summary>
  /// Engineering-survey / property-appraisal: sibling field-inspection is completed
- /// (authoritative for EO/appraiser unlock). Also on WorkflowTaskDto list items.
+ /// (authoritative for EO unlock). Also on WorkflowTaskDto list items.
  /// </summary>
     public bool? FieldInspectionCompleted { get; set; }
+
+ /// <summary>
+ /// Property-appraisal: sibling field-inspection package is specialist-accepted
+ /// (authoritative for appraiser start). Also on WorkflowTaskDto list items.
+ /// </summary>
+    public bool? FieldInspectionAccepted { get; set; }
 }
 
 public class SavePartyTaskSubmissionRequest

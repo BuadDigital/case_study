@@ -1,11 +1,12 @@
 namespace RealEstateEval.Application.Abstractions;
 
 /// <summary>
-/// Creates valuation requests when case study sends a property to the valuation department.
+/// Creates the native valuation request as content of the property-appraisal child
+/// (spawned at distribution — not when the parent case-study form is submitted).
 /// </summary>
 public interface ICaseStudyValuationDispatchService
 {
-    Task TryCreateFromCaseStudySubmissionAsync(
+    Task TryCreateWhenAppraisalSpawnedAsync(
         Guid parentTaskId,
         CancellationToken cancellationToken = default);
 }

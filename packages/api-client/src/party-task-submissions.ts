@@ -27,6 +27,8 @@ export type PartyTaskSubmissionDto = {
   updatedAtUtc: string;
   /** Engineering-survey / property-appraisal: sibling field-inspection completed (server). */
   fieldInspectionCompleted?: boolean | null;
+  /** Property-appraisal: sibling inspection package specialist-accepted (server). */
+  fieldInspectionAccepted?: boolean | null;
 };
 
 export type SavePartyTaskSubmissionRequest = {
@@ -96,6 +98,11 @@ function normalizeSubmissionDto(raw: unknown): PartyTaskSubmissionDto {
     updatedAtUtc: String(row.updatedAtUtc ?? row.UpdatedAtUtc ?? ""),
     fieldInspectionCompleted: (() => {
       const raw = row.fieldInspectionCompleted ?? row.FieldInspectionCompleted;
+      if (raw === true || raw === false) return raw;
+      return undefined;
+    })(),
+    fieldInspectionAccepted: (() => {
+      const raw = row.fieldInspectionAccepted ?? row.FieldInspectionAccepted;
       if (raw === true || raw === false) return raw;
       return undefined;
     })(),

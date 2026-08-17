@@ -11,7 +11,16 @@ public sealed class OrganizationSettingsDto
     public OrganizationCommunicationsSettingsDto Communications { get; init; } = new();
     public OrganizationSlaSettingsDto Sla { get; init; } = new();
     public OrganizationValuationSettingsDto Valuation { get; init; } = new();
+ /// <summary>تبويب «تقرير التقييم» (القرار 25 — الطبقة ب): حقول التقرير وحده.</summary>
+    public OrganizationValuationReportSettingsDto ValuationReport { get; init; } = new();
     public DateTime UpdatedAtUtc { get; init; }
+}
+
+/// <summary>تبويب تقرير التقييم — منه مكتبة الافتراضات الخاصة (انتقاء المقيّم).</summary>
+public sealed class OrganizationValuationReportSettingsDto
+{
+ /// <summary>بنود الافتراضات الخاصة الجاهزة — يديرها الأدمن وينتقي منها المقيّم.</summary>
+    public List<string> SpecialAssumptionLibrary { get; init; } = [];
 }
 
 public sealed class OrganizationCompanySettingsDto
@@ -26,6 +35,8 @@ public sealed class OrganizationEvaluatorSettingsDto
     public string? Name { get; init; }
     public string? LicenseNumber { get; init; }
     public string? MembershipNumber { get; init; }
+ /// <summary>fellow | associate | affiliate | student — فئة العضوية.</summary>
+    public string? MembershipCategory { get; init; }
  /// <summary>ISO date (yyyy-MM-dd) — license practice expiry (dual gate).</summary>
     public string? LicenseExpiresAt { get; init; }
  /// <summary>ISO date (yyyy-MM-dd) — membership expiry / effective end.</summary>
@@ -38,6 +49,12 @@ public sealed class OrganizationValuerRosterEntryDto
     public string NameAr { get; init; } = "";
     public string? LicenseNumber { get; init; }
     public string? MembershipNumber { get; init; }
+ /// <summary>fellow | associate | affiliate | student — فئة العضوية.</summary>
+    public string? MembershipCategory { get; init; }
+ /// <summary>ISO date (yyyy-MM-dd) — license practice expiry.</summary>
+    public string? LicenseExpiresAt { get; init; }
+ /// <summary>ISO date (yyyy-MM-dd) — membership expiry / effective end.</summary>
+    public string? MembershipExpiresAt { get; init; }
  /// <summary>certified | assistant | reviewer</summary>
     public string Role { get; init; } = "assistant";
     public bool IsActive { get; init; } = true;
@@ -99,6 +116,7 @@ public sealed class SaveOrganizationSettingsRequest
     public OrganizationCommunicationsSettingsDto? Communications { get; init; }
     public OrganizationSlaSettingsDto? Sla { get; init; }
     public OrganizationValuationSettingsDto? Valuation { get; init; }
+    public OrganizationValuationReportSettingsDto? ValuationReport { get; init; }
 }
 
 public sealed class TestCommunicationRequest

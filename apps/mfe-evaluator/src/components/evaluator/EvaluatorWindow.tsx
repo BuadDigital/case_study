@@ -481,6 +481,11 @@ export function EvaluatorWindow({
     {
       t: "المعاينة الميدانية — المعاين",
       ok: inspected,
+      wait: "تُراقب حتى اكتمالها",
+    },
+    {
+      t: "اعتماد بيانات الأطراف — الأخصائي",
+      ok: !gated,
       wait: "شرط بدء التقييم",
     },
     ...(needsSurvey
@@ -488,7 +493,7 @@ export function EvaluatorWindow({
           {
             t: "الرفع المساحي — المكتب الهندسي",
             ok: surveyed,
-            wait: "تأكيد الحدود — قد يعدَّل التقييم بعده",
+            wait: "وصف إضافي — لا يمنع بدء التقييم",
           },
         ]
       : []),
@@ -518,7 +523,7 @@ export function EvaluatorWindow({
           />
           {gated ? (
             <ValStatusPill
-              label="بانتظار المعاينة"
+              label="تراقب تقدم الأطراف"
               color={VAL_STATUS_COLORS.gated}
             />
           ) : null}
@@ -545,13 +550,14 @@ export function EvaluatorWindow({
 
         {gated ? (
           <EngInfo variant="amber">
-            <strong>⚠ الإدخال معطّل:</strong> لا يُفعَّل إدخال التقييم إلا بعد
-            اكتمال المعاينة الميدانية.
+            <strong>تراقب تقدم الأطراف:</strong>{" "}
+            {!gate.ready ? gate.reason : ""} يمكنك متابعة بيانات العقار
+            والمقارنات دون حساب القيمة حتى اعتماد بيانات المعاينة.
           </EngInfo>
         ) : needsSurvey && !surveyed && !locked ? (
           <EngInfo variant="amber">
-            ℹ يمكنك التقييم الآن (المعاينة مكتملة) — لكن الرفع المساحي لم يصدر
-            بعد: قد يلزم تعديل التقييم بعد تأكيد حدود العقار من المكتب الهندسي.
+            ℹ يمكنك التقييم الآن (بيانات المعاينة معتمدة) — الرفع المساحي وصف
+            إضافي: قد يلزم تعديل التقييم بعد صدوره.
           </EngInfo>
         ) : null}
 

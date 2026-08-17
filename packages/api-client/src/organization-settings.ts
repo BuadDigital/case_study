@@ -17,9 +17,17 @@ export type OrganizationEvaluatorSettings = {
   name?: string | null;
   licenseNumber?: string | null;
   membershipNumber?: string | null;
+  membershipCategory?: string | null;
   licenseExpiresAt?: string | null;
   membershipExpiresAt?: string | null;
 };
+
+export const VALUER_MEMBERSHIP_CATEGORIES = [
+  { value: "fellow", label: "زميل" },
+  { value: "associate", label: "منتسب" },
+  { value: "affiliate", label: "منتسب فني" },
+  { value: "student", label: "طالب" },
+] as const;
 
 /** Additional valuers for report participants — certified singleton stays on `evaluator`. */
 export type OrganizationValuerRosterEntry = {
@@ -27,6 +35,9 @@ export type OrganizationValuerRosterEntry = {
   nameAr: string;
   licenseNumber?: string | null;
   membershipNumber?: string | null;
+  membershipCategory?: string | null;
+  licenseExpiresAt?: string | null;
+  membershipExpiresAt?: string | null;
   /** certified | assistant | reviewer */
   role: string;
   isActive: boolean;
@@ -68,6 +79,11 @@ export type OrganizationValuationSettings = {
   comparableTimeGapMonths: number;
 };
 
+/** تبويب «تقرير التقييم» (القرار 25 طبقة ب) — منه مكتبة الافتراضات الخاصة. */
+export type OrganizationValuationReportSettings = {
+  specialAssumptionLibrary: string[];
+};
+
 export type OrganizationSettingsDto = {
   company: OrganizationCompanySettings;
   evaluator: OrganizationEvaluatorSettings;
@@ -76,6 +92,7 @@ export type OrganizationSettingsDto = {
   communications: OrganizationCommunicationsSettings;
   sla: OrganizationSlaSettings;
   valuation: OrganizationValuationSettings;
+  valuationReport: OrganizationValuationReportSettings;
   updatedAtUtc: string;
 };
 
@@ -87,6 +104,7 @@ export type SaveOrganizationSettingsRequest = {
   communications?: OrganizationCommunicationsSettings;
   sla?: OrganizationSlaSettings;
   valuation?: OrganizationValuationSettings;
+  valuationReport?: OrganizationValuationReportSettings;
 };
 
 export type OrganizationSettingsResult<T> =
@@ -156,6 +174,15 @@ function normalizeValuers(raw: unknown): OrganizationValuerRosterEntry[] {
       membershipNumber: (v.membershipNumber ??
         v.MembershipNumber ??
         null) as string | null,
+      membershipCategory: (v.membershipCategory ??
+        v.MembershipCategory ??
+        null) as string | null,
+      licenseExpiresAt: (v.licenseExpiresAt ?? v.LicenseExpiresAt ?? null) as
+        | string
+        | null,
+      membershipExpiresAt: (v.membershipExpiresAt ??
+        v.MembershipExpiresAt ??
+        null) as string | null,
       role: String(v.role ?? v.Role ?? "assistant").trim() || "assistant",
       isActive: Boolean(v.isActive ?? v.IsActive ?? true),
     });
@@ -186,6 +213,9 @@ function normalizeSettings(raw: Record<string, unknown>): OrganizationSettingsDt
         null) as string | null,
       membershipNumber: (evaluator.membershipNumber ??
         evaluator.MembershipNumber ??
+        null) as string | null,
+      membershipCategory: (evaluator.membershipCategory ??
+        evaluator.MembershipCategory ??
         null) as string | null,
       licenseExpiresAt: (evaluator.licenseExpiresAt ??
         evaluator.LicenseExpiresAt ??
@@ -226,6 +256,15 @@ function normalizeSettings(raw: Record<string, unknown>): OrganizationSettingsDt
       comparableTimeGapMonths: Number(
         valuation.comparableTimeGapMonths ?? valuation.ComparableTimeGapMonths ?? 6,
       ),
+    },
+    valuationReport: {
+      specialAssumptionLibrary: (
+        ((raw.valuationReport ?? raw.ValuationReport ?? {}) as Record<string, unknown>)
+          .specialAssumptionLibrary as string[] | undefined
+        ?? (((raw.valuationReport ?? raw.ValuationReport ?? {}) as Record<string, unknown>)
+          .SpecialAssumptionLibrary as string[] | undefined)
+        ?? []
+      ).filter((x) => typeof x === "string"),
     },
     updatedAtUtc: String(raw.updatedAtUtc ?? raw.UpdatedAtUtc ?? new Date().toISOString()),
   };

@@ -7,7 +7,7 @@ public static class PlatformPermissionCatalog
     [
         "dashboard", "active-primary-data", "active-distribution", "active-case-study",
         "system-upload",
-        "po", "all-transactions", "favorites", "bourse-inquiry", "survey", "keys", "failures", "suspended-transactions",
+        "po", "all-transactions", "property-map", "favorites", "bourse-inquiry", "survey", "keys", "failures", "suspended-transactions",
         "valuation-requests", "comparable-properties", "property-inspection", "active-inspection", "operations-tasks",
         "property-appraisal", "active-survey", "party-fees",
         "system-fields-catalog", "attachment-print-dictionary", "difference-factor-catalog", "system-screen-catalog", "financial",
@@ -49,7 +49,7 @@ public static class PlatformPermissionCatalog
         ["cdo"] = AllPages.ToArray(),
         ["general-manager"] =
         [
-            "po", "favorites", "active-primary-data", "bourse-inquiry", "active-distribution",
+            "po", "property-map", "favorites", "active-primary-data", "bourse-inquiry", "active-distribution",
             "active-case-study", "system-upload", "operations-tasks", "keys", "failures", "suspended-transactions",
             "valuation-requests",
             "comparable-properties",
@@ -57,7 +57,7 @@ public static class PlatformPermissionCatalog
         ],
         ["section-supervisor"] =
         [
-            "po", "favorites", "active-primary-data", "bourse-inquiry", "active-distribution",
+            "po", "property-map", "favorites", "active-primary-data", "bourse-inquiry", "active-distribution",
             "active-case-study", "system-upload", "operations-tasks", "keys", "field-sync-board", "failures", "suspended-transactions", "failure-types",
             "party-fees",
             "fee-pricing",
@@ -65,14 +65,14 @@ public static class PlatformPermissionCatalog
  // مطابقة المشرف (صفحات + أتعاب + تسعيرة) — بلا financial / manage-financial
         ["case-specialist"] =
         [
-            "po", "favorites", "active-primary-data", "bourse-inquiry", "active-distribution",
+            "po", "property-map", "favorites", "active-primary-data", "bourse-inquiry", "active-distribution",
             "active-case-study", "system-upload", "operations-tasks", "keys", "field-sync-board", "failures", "suspended-transactions", "failure-types",
             "party-fees",
             "fee-pricing",
         ],
         ["real-estate-appraiser"] =
         [
-            "po", "favorites", "operations-tasks", "property-appraisal",
+            "po", "property-map", "favorites", "operations-tasks", "property-appraisal",
             "comparable-properties",
             "failures", "suspended-transactions",
         ],

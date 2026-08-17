@@ -17,14 +17,35 @@ public class CaseStudyValuationDispatchTests
     private static readonly Guid WorkOrderId = Guid.Parse("ffffffff-ffff-ffff-ffff-ffffffffffff");
 
     [Fact]
-    public async Task Case_study_form_submission_creates_valuation_request()
+    public async Task Appraisal_spawn_creates_valuation_request()
+    {
+        await using var contexts = TestDatabases.Create("case-study-valuation");
+        var db = contexts.Legacy;
+        SeedWorkflow(db);
+
+        var dispatch = CreateDispatch(contexts);
+        await dispatch.TryCreateWhenAppraisalSpawnedAsync(ParentTaskId);
+
+        var vr = await db.ValuationRequests.SingleAsync();
+        Assert.Equal(PropertyId.ToString(), vr.PropertyId);
+        Assert.Equal(ValuationRequestStatus.Progress, vr.Status);
+        Assert.Equal("جدة", vr.Area);
+        Assert.Equal("فيلا", vr.PropertyType);
+        Assert.Equal("عبدالله الكثيري", vr.Appraiser);
+        Assert.StartsWith("VR-", vr.DisplayId);
+
+        var outbox = await db.OutboxMessages.SingleAsync();
+        Assert.Equal(IntegrationEventTypes.ValuationRequestCreated, outbox.EventType);
+    }
+
+    [Fact]
+    public async Task Case_study_form_submission_does_not_create_valuation_request()
     {
         await using var contexts = TestDatabases.Create("case-study-valuation");
         var db = contexts.Legacy;
         SeedWorkflow(db);
 
         var forms = CreateFormService(contexts);
-
         var (dto, errors) = await forms.SaveAsync(
             ParentTaskId,
             party: false,
@@ -37,17 +58,7 @@ public class CaseStudyValuationDispatchTests
             });
         Assert.Null(errors);
         Assert.NotNull(dto);
-
-        var vr = await db.ValuationRequests.SingleAsync();
-        Assert.Equal(PropertyId.ToString(), vr.PropertyId);
-        Assert.Equal(ValuationRequestStatus.Progress, vr.Status);
-        Assert.Equal("جدة", vr.Area);
-        Assert.Equal("فيلا", vr.PropertyType);
-        Assert.Equal("عبدالله الكثيري", vr.Appraiser);
-        Assert.StartsWith("VR-", vr.DisplayId);
-
-        var outbox = await db.OutboxMessages.SingleAsync();
-        Assert.Equal(IntegrationEventTypes.ValuationRequestCreated, outbox.EventType);
+        Assert.Equal(0, await db.ValuationRequests.CountAsync());
     }
 
     [Fact]
@@ -78,7 +89,7 @@ public class CaseStudyValuationDispatchTests
         var (_, submitErrors) = await forms.SaveAsync(ParentTaskId, party: false, form);
         Assert.NotNull(submitErrors);
 
-        Assert.Equal(1, await db.ValuationRequests.CountAsync());
+        Assert.Equal(0, await db.ValuationRequests.CountAsync());
     }
 
     [Fact]
@@ -111,24 +122,25 @@ public class CaseStudyValuationDispatchTests
     private static CaseStudyFormService CreateFormService(TestDatabases.ContextSet contexts)
     {
         var db = contexts.Legacy;
-        var timeline = TestInspectorFeeServiceFactory.CreateTimeline(db);
+        var workflow = TestInspectorFeeServiceFactory.CreateWorkflow(db);
+        return new CaseStudyFormService(db, workflow);
+    }
 
- // The dispatch adapter runs in the Case Study process but writes valuation rows and
- // their outbox event through the Valuation context, in one SaveChanges.
+    private static CaseStudyValuationDispatchService CreateDispatch(TestDatabases.ContextSet contexts)
+    {
+        var db = contexts.Legacy;
+        var timeline = TestInspectorFeeServiceFactory.CreateTimeline(db);
         var valuation = new ValuationRequestService(
             contexts.Valuation,
             new ValuationOutboxPublisher(
                 contexts.Valuation,
                 NullLogger<ValuationOutboxPublisher>.Instance),
             new CaseStudyPropertyPoNumberLookup(contexts.CaseStudy));
-
-        var dispatch = new CaseStudyValuationDispatchService(
+        return new CaseStudyValuationDispatchService(
             db,
             valuation,
             timeline,
             NullLogger<CaseStudyValuationDispatchService>.Instance);
-        var workflow = TestInspectorFeeServiceFactory.CreateWorkflow(db);
-        return new CaseStudyFormService(db, dispatch, workflow);
     }
 
     private static void SeedWorkflow(ApplicationDbContext db)

@@ -7,6 +7,7 @@ export type PageId =
   | "system-upload"
   | "po"
   | "all-transactions"
+  | "property-map"
   | "favorites"
   | "bourse-inquiry"
   | "keys"
@@ -93,6 +94,7 @@ export function isPageId(value: string): value is PageId {
     value === "system-upload" ||
     value === "po" ||
     value === "all-transactions" ||
+    value === "property-map" ||
     value === "favorites" ||
     value === "bourse-inquiry" ||
     value === "keys" ||

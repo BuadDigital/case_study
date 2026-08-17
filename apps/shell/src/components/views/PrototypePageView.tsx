@@ -28,6 +28,10 @@ const AllAssignedTransactionsView = dynamic(
   () => import("@case-study/mfe").then((m) => m.AllAssignedTransactionsView),
   { ssr: false, loading: MfeLoading },
 );
+const PropertyMapView = dynamic(
+  () => import("@case-study/mfe").then((m) => m.PropertyMapView),
+  { ssr: false, loading: MfeLoading },
+);
 const FavoriteTransactionsView = dynamic(
   () => import("@case-study/mfe").then((m) => m.FavoriteTransactionsView),
   { ssr: false, loading: MfeLoading },
@@ -158,6 +162,7 @@ const VIEWS: Partial<Record<PageId, ComponentType>> = {
   dashboard: DashboardView,
   "active-primary-data": MyTasksView,
   "all-transactions": AllAssignedTransactionsView,
+  "property-map": PropertyMapView,
   favorites: FavoriteTransactionsView,
   "bourse-inquiry": BourseInquiryView,
   "active-distribution": ActiveDistributionView,
@@ -201,7 +206,13 @@ export function PrototypePageView({ page }: { page: PageId }) {
 
   return (
     <Suspense fallback={<PanelSkeleton className="p-4" />}>
-      <View />
+      {page === "property-map" ? (
+        <div className="flex h-full min-h-0 flex-1 flex-col">
+          <View />
+        </div>
+      ) : (
+        <View />
+      )}
     </Suspense>
   );
 }
