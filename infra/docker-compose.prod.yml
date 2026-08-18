@@ -368,8 +368,10 @@ services:
       ASPNETCORE_ENVIRONMENT: Production
       UpstreamServices__AttachmentsBaseUrl: http://attachments:8080
       UpstreamServices__PlatformBaseUrl: http://platform:8080
+      # A9: Case Study reads via HTTP. Deliberately no depends_on case-study —
+      # case-study already depends_on valuation; calls happen at request time.
+      UpstreamServices__CaseStudyBaseUrl: http://case-study:8080
       REAL_ESTATE_EVAL_PG_CONNECTION_STRING_VALUATION: Host=postgres;Port=5432;Database=realestate_eval_prod_valuation;Username=postgres;Password=${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD}
-      REAL_ESTATE_EVAL_PG_CONNECTION_STRING_CASESTUDY: Host=postgres;Port=5432;Database=realestate_eval_prod_case_study;Username=postgres;Password=${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD}
       Jwt__Issuer: RealEstateEval
       Jwt__Audience: RealEstateEval
       Jwt__SigningKey: ${JWT_SIGNING_KEY:?Set JWT_SIGNING_KEY}
@@ -398,8 +400,10 @@ services:
       <<: [*otel-env, *rabbit-env, *redis-env]
       ASPNETCORE_ENVIRONMENT: Production
       UpstreamServices__IdentityBaseUrl: http://identity:8080
+      # A9: Case Study reads/side-effects via HTTP. Deliberately no depends_on case-study —
+      # case-study already depends_on failures; calls happen at request time.
+      UpstreamServices__CaseStudyBaseUrl: http://case-study:8080
       REAL_ESTATE_EVAL_PG_CONNECTION_STRING_FAILURES: Host=postgres;Port=5432;Database=realestate_eval_prod_failures;Username=postgres;Password=${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD}
-      REAL_ESTATE_EVAL_PG_CONNECTION_STRING_CASESTUDY: Host=postgres;Port=5432;Database=realestate_eval_prod_case_study;Username=postgres;Password=${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD}
       REAL_ESTATE_EVAL_PG_CONNECTION_STRING_MESSAGING: Host=postgres;Port=5432;Database=realestate_eval_prod_messaging;Username=postgres;Password=${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD}
       Jwt__Issuer: RealEstateEval
       Jwt__Audience: RealEstateEval
