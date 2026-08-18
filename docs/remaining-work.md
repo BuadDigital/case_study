@@ -163,7 +163,7 @@ Source of truth: [`architecture-split-plan.md`](architecture-split-plan.md).
 | F3 | Production observability Compose | **done** | OTel → Jaeger/Prometheus/Grafana; Fluent Bit → ES |
 | F4 | Compose healthchecks + Docker image hygiene | **done** | |
 | F5 | Testcontainers (Postgres / Rabbit / Redis) | **done** | Opt-out via `REAL_ESTATE_EVAL_CONTAINER_TESTS=0` |
-| F6 | Broader controller-body coverage | **partial** | Added work-orders list, ops create 400, key-envelope / failures create validation |
+| F6 | Broader controller-body coverage | **partial** | Added work-orders list, ops create 400, key-envelope / failures create validation. 2026-08-18: `CaseStudyDispatchPostgresTests` covers the A9 dispatch surface over HTTP against real Postgres — valuation property context (200 + 404), po-numbers-by-assignee, hold block/unblock (task status flips + assignee reported), deed-status by failure identifiers, and timeline-record idempotency |
 | F7 | Coverlet in CI | **done** | Soft floor documented |
 | F8 | Readiness logging + deeper dependency checks | **done** | `/ready` logs DB failures. Soft Rabbit + Redis TCP probes (`Readiness:CheckRabbit` / `CheckRedis`) report in the body and never flip HTTP 503. Blob storage is not probed |
 | F9 | Serilog / structured JSON correlation | **done** | Built-in JSON console (not Serilog) outside Dev with `CorrelationId` + `Service` scopes and trace/span ids. Validated `X-Correlation-Id`; gateway overwrites on proxy; `HttpClient` forwards on owner lookups |
