@@ -46,7 +46,7 @@ dedicated maintenance job). Also note `CreateIdentityMaintenanceProvider` regist
 `IUserRegistrationService` without `IAuthSessionService`/`IAuditLogWriter`, so
 `DeleteAllRegisteredAsync` would fail there — wire those when the reset is redesigned.
 
-Architecture split A9 remains mid-slice; do not start A8.
+~~Architecture split A9 remains mid-slice; do not start A8.~~ **Stale (was the 2026-08-18 handoff note): A9 closed 2026-08-18 and all eight A8 extraction slices landed by 2026-08-19 — see the A8/A9 rows below.**
 
 Local run after the DI fix still needs: nine dedicated DBs + DbMigrate (Failures schema is **not** migrated by CS startup) + upstream APIs CS calls (Identity, Failures, Ops, Financial, Attachments, Platform, Valuation). Do **not** point unsuffixed `REAL_ESTATE_EVAL_PG_CONNECTION_STRING` at leftover `realestate_eval_dev`. Do **not** run `copy-*-data.sh` / `drop-leftover-shared.sh` unless intending to destroy the A7 leftover source.
 
