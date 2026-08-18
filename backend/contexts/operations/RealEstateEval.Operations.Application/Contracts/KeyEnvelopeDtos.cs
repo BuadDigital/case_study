@@ -100,11 +100,8 @@ public class KeyEnvelopeFeeReportRowDto
     public DateTime CreatedAtUtc { get; init; }
 }
 
-public class MarkKeyReceiptFeeCollectedRequest
-{
-    [MaxLength(128)]
-    public string? InvoiceReference { get; init; }
-}
+// MarkKeyReceiptFeeCollectedRequest stays in the global Application Contracts: the
+// financial host binds it and its validator relies on the global FluentValidation scan.
 
 public class KeyEnvelopeAssignmentInput
 {

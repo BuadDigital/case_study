@@ -21,16 +21,6 @@ public sealed class PoEnfazBillingService : IPoEnfazBillingService
     private readonly IAuditLogWriter _audit;
     private readonly TimeProvider _time;
 
-    public PoEnfazBillingService(
-        FinancialDbContext db,
-        CaseStudyDbContext caseStudy,
-        OperationsDbContext ops,
-        IAuditLogWriter audit,
-        TimeProvider? time = null)
-        : this(db, new CaseStudyLookup(caseStudy), new KeyEnvelopeEntitlementLookup(ops), audit, time)
-    {
-    }
-
     [ActivatorUtilitiesConstructor]
     public PoEnfazBillingService(
         FinancialDbContext db,

@@ -9,7 +9,7 @@ using RealEstateEval.Infrastructure.Data.Contexts;
 
 namespace RealEstateEval.Infrastructure.Services;
 
-public sealed class OperationsTaskVisitFeeHelper
+public sealed class OperationsTaskVisitFeeHelper : ICourtVisitFeeBackfill
 {
     private readonly OperationsDbContext _ops;
     private readonly ICourtVisitFeeChargeService _charges;

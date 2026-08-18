@@ -8,17 +8,7 @@ namespace RealEstateEval.Application.Contracts;
 // Failure-types catalog DTOs moved to RealEstateEval.Failures.Application (A8).
 // Evaluator-recall DTOs moved to RealEstateEval.Valuation.Application (A8).
 
-public class SurveyOfficeDto
-{
-    public Guid Id { get; init; }
-    public required string Name { get; init; }
-    public int Active { get; init; }
-    public int DoneMonth { get; init; }
-    public required string AvgDays { get; init; }
-    public required string Contract { get; init; }
-    public bool StatusBusy { get; init; }
-    public int SortOrder { get; init; }
-}
+// Survey-office and property-key DTOs moved to RealEstateEval.Operations.Application (A8).
 
 public class ValuationRequestDto
 {
@@ -54,26 +44,6 @@ public class ValuationImpedimentRequest
 {
     [Required, MaxLength(2000)]
     public string Reason { get; init; } = "";
-}
-
-public class PropertyKeyRecordDto
-{
-    public Guid Id { get; init; }
-    public required string IdProp { get; init; }
-    public required string Po { get; init; }
-    public required string Area { get; init; }
-    public required string Type { get; init; }
-    public bool Key { get; init; }
-    public required string Specialist { get; init; }
-    public required string Status { get; init; }
-    public string DeedStatus { get; init; } = "";
-}
-
-public class UpdatePropertyKeyRequest
-{
-    public bool? Key { get; init; }
-    [MaxLength(32)]
-    public string? Status { get; init; }
 }
 
 // Attachment DTOs moved to RealEstateEval.Attachments.Application (A8).

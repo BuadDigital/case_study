@@ -1,0 +1,16 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <RootNamespace>RealEstateEval.Domain</RootNamespace>
+  </PropertyGroup>
+
+  <!-- PropertyKeyRecord defaults its workflow status from the shared wire-status
+       constants, which stay in the global Domain. -->
+  <ItemGroup>
+    <ProjectReference Include="..\..\..\RealEstateEval.Domain\RealEstateEval.Domain.csproj" />
+  </ItemGroup>
+
+</Project>

@@ -1,0 +1,56 @@
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
+using RealEstateEval.Application.Abstractions;
+using RealEstateEval.Infrastructure.Services;
+
+namespace RealEstateEval.Infrastructure;
+
+/// <summary>
+/// Context-local registration for the Operations bounded context (A8): survey offices,
+/// property keys, key envelopes, and the operations-task collaborators. The shared
+/// persistence/HTTP plumbing still comes from the global Infrastructure extensions.
+/// </summary>
+public static class OperationsDependencyInjection
+{
+    public static IServiceCollection AddOperationsInfrastructure(
+        this IServiceCollection services,
+        IConfiguration configuration,
+        string connectionString,
+        IHostEnvironment environment)
+    {
+        services.AddOperationsPersistence(configuration, connectionString);
+        services.AddRemoteIdentityDirectory(configuration);
+        services.AddRemoteAttachmentLookup(configuration);
+        services.AddRemoteFailures(configuration);
+        services.AddRemoteCaseStudy(configuration);
+        // Pure-host outbox for platform notification requests (mirrors AddFailuresInfrastructure) —
+        // KeyEnvelopesService / PropertyAccessHoldService notify the case specialist and need
+        // INotificationService + NotificationRecipientResolver to be resolvable here.
+        services.AddMessagingPersistence(configuration, connectionString);
+        services.AddNotificationInfrastructure(configuration, environment);
+        services.AddScoped<IKeyEntitlementLookup, KeyEnvelopeEntitlementLookup>();
+        services.AddScoped<ISurveyOfficesService, SurveyOfficesService>();
+        services.AddScoped<IPropertyKeysService, PropertyKeysService>();
+        services.AddScoped<IPropertyKeyGateResolver, PropertyKeyGateResolver>();
+        services.AddScoped<IPropertyAccessHoldService, PropertyAccessHoldService>();
+        services.AddScoped<IKeyEnvelopePeopleResolver, KeyEnvelopePeopleResolver>();
+        services.AddScoped<IKeyEnvelopesService, KeyEnvelopesService>();
+        services.AddOperationsTaskCollaborators();
+        // After collaborators so HTTP court-visit charges win over the EF helper.
+        services.AddRemoteFinancial(configuration);
+        return services;
+    }
+
+    /// <summary>Operations-task façade + query / command / reminder collaborators.</summary>
+    public static IServiceCollection AddOperationsTaskCollaborators(this IServiceCollection services)
+    {
+        services.AddScoped<OperationsTaskNotifier>();
+        services.AddScoped<OperationsTaskVisitFeeHelper>();
+        services.AddScoped<IOperationsTaskQuery, OperationsTaskQueryService>();
+        services.AddScoped<IOperationsTaskCommands, OperationsTaskCommands>();
+        services.AddScoped<IOperationsTaskService, OperationsTaskService>();
+        services.AddHostedService<OperationsTaskReminderHostedService>();
+        return services;
+    }
+}

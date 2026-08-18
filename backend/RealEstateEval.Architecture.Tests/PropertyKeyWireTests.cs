@@ -17,10 +17,13 @@ public class PropertyKeyWireTests
     {
         var files = new[]
         {
+            // A8: property-key services live in the Operations context.
             RepoPaths.Combine(
-                "backend", "RealEstateEval.Infrastructure", "Services", "PropertyKeysService.cs"),
+                "backend", "contexts", "operations", "RealEstateEval.Operations.Infrastructure",
+                "Services", "PropertyKeysService.cs"),
             RepoPaths.Combine(
-                "backend", "RealEstateEval.Infrastructure", "Services", "PropertyKeyGateResolver.cs"),
+                "backend", "contexts", "operations", "RealEstateEval.Operations.Infrastructure",
+                "Services", "PropertyKeyGateResolver.cs"),
         };
 
         var violations = new List<string>();

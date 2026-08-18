@@ -1,4 +1,4 @@
-using Microsoft.EntityFrameworkCore;
+﻿using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using RealEstateEval.Application;
@@ -35,7 +35,7 @@ public class PartyBillingStatementService : IPartyBillingStatementService
     private readonly INotificationService _notifications;
     private readonly NotificationRecipientResolver _recipients;
     private readonly IOperationsTaskService? _opsTasks;
-    private readonly OperationsTaskVisitFeeHelper? _visitFees;
+    private readonly ICourtVisitFeeBackfill? _visitFees;
     private readonly ILogger<PartyBillingStatementService> _logger;
     private readonly TimeProvider _time;
 
@@ -45,7 +45,7 @@ public class PartyBillingStatementService : IPartyBillingStatementService
         IAttachmentLookup attachments,
         INotificationService notifications,
         NotificationRecipientResolver recipients,
-        OperationsTaskVisitFeeHelper visitFees,
+        ICourtVisitFeeBackfill visitFees,
         ILogger<PartyBillingStatementService> logger,
         TimeProvider? time = null)
         : this(
@@ -84,7 +84,7 @@ public class PartyBillingStatementService : IPartyBillingStatementService
         INotificationService notifications,
         NotificationRecipientResolver recipients,
         IOperationsTaskService? opsTasks,
-        OperationsTaskVisitFeeHelper? visitFees,
+        ICourtVisitFeeBackfill? visitFees,
         ILogger<PartyBillingStatementService> logger,
         TimeProvider? time)
     {

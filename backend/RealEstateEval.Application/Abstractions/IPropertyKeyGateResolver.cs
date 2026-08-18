@@ -1,16 +1,7 @@
-using RealEstateEval.Application.Contracts;
-
 namespace RealEstateEval.Application.Abstractions;
 
-public interface IPropertyKeyGateResolver
-{
-    Task<PropertyKeyGateDto> ResolveAsync(
-        Guid? propertyId,
-        string? poNumber,
-        string? deedNumber,
-        string? requestNumber,
-        CancellationToken cancellationToken = default);
-}
+// IPropertyKeyGateResolver moved to RealEstateEval.Operations.Application (A8).
+// IPropertyAccessHoldService stays: the case-study host registers it too.
 
 public interface IPropertyAccessHoldService
 {

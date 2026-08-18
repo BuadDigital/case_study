@@ -1,3 +1,5 @@
+using FluentValidation;
+using RealEstateEval.Application.Validation;
 using RealEstateEval.Infrastructure;
 using RealEstateEval.Infrastructure.Data.Contexts;
 using RealEstateEval.Infrastructure.Web;
@@ -17,6 +19,8 @@ public sealed class ServiceModule : IRealEstateEvalServiceModule
         builder.Services.AddClaimsPermissionService();
         builder.Services.AddOperationsInfrastructure(
             builder.Configuration, connectionString!, builder.Environment);
+        // A8: Operations boundary validators moved out of the globally scanned assembly.
+        builder.Services.AddValidatorsFromAssemblyContaining<CreateOperationsTaskRequestValidator>();
     }
 
     public Task ConfigureAppAsync(WebApplication app, string? connectionString)
