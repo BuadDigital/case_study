@@ -49,6 +49,15 @@ public sealed class CaseStudyDispatchController(ICaseStudyLookup lookup) : Contr
         return dto is null ? NotFound() : Ok(dto);
     }
 
+    [HttpGet("valuation-property-context/{propertyId:guid}")]
+    public async Task<ActionResult<CaseStudyValuationPropertyContextDto>> ValuationPropertyContext(
+        Guid propertyId,
+        CancellationToken cancellationToken)
+    {
+        var dto = await lookup.GetValuationPropertyContextAsync(propertyId, cancellationToken);
+        return dto is null ? NotFound() : Ok(dto);
+    }
+
     [HttpGet("properties")]
     public async Task<ActionResult<CaseStudyPropertySnapshotDto>> GetPropertyByPoAndDeed(
         [FromQuery] string? poNumber,

@@ -10,7 +10,7 @@ namespace RealEstateEval.Infrastructure.Services;
 /// <summary>Contractor cost approach scaffold — land from market ; lines priced by appraiser.</summary>
 public sealed class ValuationCostApproachService(
     ValuationDbContext db,
-    CaseStudyDbContext caseStudy,
+    ICaseStudyLookup caseStudy,
     IValuationComparableSelectionService selections,
     TimeProvider? time = null) : IValuationCostApproachService
 {
@@ -51,11 +51,13 @@ public sealed class ValuationCostApproachService(
         var hasStructures = false;
         if (Guid.TryParse(vr.PropertyId?.Trim(), out var propertyGuid))
         {
-            var answer = await caseStudy.WorkOrderProperties.AsNoTracking()
-                .Where(p => p.Id == propertyGuid)
-                .Select(p => p.HasStructuresToValue)
-                .FirstOrDefaultAsync(cancellationToken);
-            hasStructures = string.Equals(answer?.Trim(), "yes", StringComparison.OrdinalIgnoreCase);
+            var context = await caseStudy.GetValuationPropertyContextAsync(
+                propertyGuid,
+                cancellationToken);
+            hasStructures = string.Equals(
+                context?.HasStructuresToValue.Trim(),
+                "yes",
+                StringComparison.OrdinalIgnoreCase);
         }
 
         var costEnabled = approachSettings?.CostApproachEnabled

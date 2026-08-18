@@ -12,7 +12,7 @@ namespace RealEstateEval.Infrastructure.Services;
 /// </summary>
 public sealed class ValuationReportDocumentService(
     ValuationDbContext valuation,
-    CaseStudyDbContext caseStudy,
+    ICaseStudyLookup caseStudy,
     IAttachmentLookup attachments,
     IOrganizationSettingsService organizationSettings,
     IAttachmentPrintDictionaryService printDictionary,
@@ -38,48 +38,18 @@ public sealed class ValuationReportDocumentService(
         IReadOnlyList<string> reportUserNames = [];
         if (Guid.TryParse(propertyId, out var propertyGuid))
         {
-            prop = await caseStudy.WorkOrderProperties.AsNoTracking()
-                .Include(p => p.BuildingInventoryLines)
-                .FirstOrDefaultAsync(p => p.Id == propertyGuid, cancellationToken);
-            workspace = await caseStudy.FieldInspectionWorkspaces.AsNoTracking()
-                .Where(w => w.PropertyId == propertyGuid)
-                .OrderByDescending(w => w.UpdatedAtUtc)
-                .FirstOrDefaultAsync(cancellationToken);
-
- // Building-mode facts come from the inspector's submission (single source, ).
-            if (workspace is not null)
+            var context = await caseStudy.GetValuationPropertyContextAsync(
+                propertyGuid,
+                cancellationToken);
+            if (context is not null)
             {
-                var payloadJson = await caseStudy.PartyTaskSubmissions.AsNoTracking()
-                    .Where(s => s.Id == workspace.PartyTaskSubmissionId)
-                    .Select(s => s.PayloadJson)
-                    .FirstOrDefaultAsync(cancellationToken);
-                inspector = InspectorPayloadFacts.Parse(payloadJson);
-            }
-
- // client name derives from the registry; report users 0..n.
-            if (prop is not null)
-            {
-                var wo = await caseStudy.WorkOrders.AsNoTracking()
-                    .FirstOrDefaultAsync(w => w.Id == prop.WorkOrderId, cancellationToken);
-                if (wo is not null)
-                {
-                    var reportUserIds = WorkOrderReportUsers.Parse(wo.ReportUserClientIdsJson);
-                    var lookupIds = reportUserIds.ToList();
-                    if (wo.ClientId is { } cid) lookupIds.Add(cid);
-                    if (lookupIds.Count > 0)
-                    {
-                        var names = await caseStudy.Clients.AsNoTracking()
-                            .Where(c => lookupIds.Contains(c.Id))
-                            .ToDictionaryAsync(c => c.Id, c => c.NameAr, cancellationToken);
-                        if (wo.ClientId is { } clientId)
-                            clientNameAr = names.GetValueOrDefault(clientId);
-                        reportUserNames = reportUserIds
-                            .Select(id => names.GetValueOrDefault(id))
-                            .Where(n => !string.IsNullOrWhiteSpace(n))
-                            .Select(n => n!)
-                            .ToList();
-                    }
-                }
+                prop = context.ToProperty();
+                workspace = context.LatestWorkspace?.ToWorkspace();
+                // Building-mode facts come from the inspector's submission (single source).
+                inspector = InspectorPayloadFacts.Parse(context.InspectorPayloadJson);
+                // client name derives from the registry; report users 0..n.
+                clientNameAr = context.ClientNameAr;
+                reportUserNames = context.ReportUserClientNamesAr;
             }
         }
 

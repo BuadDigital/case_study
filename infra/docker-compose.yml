@@ -378,8 +378,10 @@ services:
       Redis__ConnectionString: redis:6379
       UpstreamServices__AttachmentsBaseUrl: http://attachments:8080
       UpstreamServices__PlatformBaseUrl: http://platform:8080
+      # A9: Case Study reads via HTTP. Deliberately no depends_on case-study —
+      # case-study already depends_on valuation; calls happen at request time.
+      UpstreamServices__CaseStudyBaseUrl: http://case-study:8080
       REAL_ESTATE_EVAL_PG_CONNECTION_STRING_VALUATION: Host=postgres;Port=5432;Database=realestate_eval_valuation;Username=postgres;Password=Admin
-      REAL_ESTATE_EVAL_PG_CONNECTION_STRING_CASESTUDY: Host=postgres;Port=5432;Database=realestate_eval_case_study;Username=postgres;Password=Admin
       Jwt__Issuer: RealEstateEval
       Jwt__Audience: RealEstateEval
       Jwt__SigningKey: CHANGE_ME_DEV_ONLY_USE_64_CHARS_MINIMUM_FOR_HMAC_SHA256_SIGNING_KEY_0123456789ABCDEF

@@ -57,6 +57,144 @@ public sealed class CaseStudyLookup(CaseStudyDbContext caseStudy) : ICaseStudyLo
         return property is null ? null : ToSnapshot(property);
     }
 
+    public async Task<CaseStudyValuationPropertyContextDto?> GetValuationPropertyContextAsync(
+        Guid propertyId,
+        CancellationToken cancellationToken = default)
+    {
+        // No IsRemoved filter: report fill / issuance must keep working on soft-removed rows.
+        var property = await caseStudy.WorkOrderProperties.AsNoTracking()
+            .Include(p => p.WorkOrder)
+            .Include(p => p.BuildingInventoryLines)
+            .FirstOrDefaultAsync(p => p.Id == propertyId, cancellationToken);
+        if (property is null)
+            return null;
+
+        var workspace = await caseStudy.FieldInspectionWorkspaces.AsNoTracking()
+            .Where(w => w.PropertyId == propertyId)
+            .OrderByDescending(w => w.UpdatedAtUtc)
+            .FirstOrDefaultAsync(cancellationToken);
+
+        string? inspectorPayloadJson = null;
+        if (workspace is not null)
+        {
+            inspectorPayloadJson = await caseStudy.PartyTaskSubmissions.AsNoTracking()
+                .Where(s => s.Id == workspace.PartyTaskSubmissionId)
+                .Select(s => s.PayloadJson)
+                .FirstOrDefaultAsync(cancellationToken);
+        }
+
+        var deedNatureMatchOutcome = await caseStudy.CaseStudyForms.AsNoTracking()
+            .Where(f => f.PropertyId == propertyId && !f.IsPartyForm)
+            .OrderByDescending(f => f.UpdatedAtUtc)
+            .Select(f => f.DeedNatureMatchOutcome)
+            .FirstOrDefaultAsync(cancellationToken);
+
+        string? clientNameAr = null;
+        string? clientNameEn = null;
+        IReadOnlyList<string> reportUserNames = [];
+        if (property.WorkOrder is { } workOrder)
+        {
+            var reportUserIds = WorkOrderReportUsers.Parse(workOrder.ReportUserClientIdsJson);
+            var lookupIds = reportUserIds.ToList();
+            if (workOrder.ClientId is { } cid)
+                lookupIds.Add(cid);
+            if (lookupIds.Count > 0)
+            {
+                var clients = await caseStudy.Clients.AsNoTracking()
+                    .Where(c => lookupIds.Contains(c.Id))
+                    .ToDictionaryAsync(c => c.Id, cancellationToken);
+                if (workOrder.ClientId is { } clientId
+                    && clients.TryGetValue(clientId, out var client))
+                {
+                    clientNameAr = client.NameAr;
+                    clientNameEn = client.NameEn;
+                }
+
+                reportUserNames = reportUserIds
+                    .Select(id => clients.GetValueOrDefault(id)?.NameAr)
+                    .Where(name => !string.IsNullOrWhiteSpace(name))
+                    .Select(name => name!)
+                    .ToList();
+            }
+        }
+
+        return new CaseStudyValuationPropertyContextDto
+        {
+            Id = property.Id,
+            WorkOrderId = property.WorkOrderId,
+            PoNumber = property.WorkOrder?.PoNumber.Trim() ?? "",
+            DeedKind = property.DeedKind.ToString(),
+            DeedNumber = property.DeedNumber,
+            DeedDate = property.DeedDate,
+            OwnerName = property.OwnerName,
+            DeedOwnersJson = property.DeedOwnersJson,
+            OwnershipType = property.OwnershipType,
+            OwnershipTypeIsManual = property.OwnershipTypeIsManual,
+            RestrictionsPresent = property.RestrictionsPresent,
+            RestrictionType = property.RestrictionType,
+            RestrictionOtherReason = property.RestrictionOtherReason,
+            City = property.City,
+            Region = property.Region,
+            District = property.District,
+            Area = property.Area,
+            Classification = property.Classification,
+            PropertyType = property.PropertyType,
+            PlanNumber = property.PlanNumber,
+            PlanName = property.PlanName,
+            PlotNumber = property.PlotNumber,
+            BlockNumber = property.BlockNumber,
+            NorthBoundary = property.NorthBoundary,
+            NorthBoundaryLengthM = property.NorthBoundaryLengthM,
+            NorthBoundaryType = property.NorthBoundaryType,
+            NorthFacadeFinishing = property.NorthFacadeFinishing,
+            SouthBoundary = property.SouthBoundary,
+            SouthBoundaryLengthM = property.SouthBoundaryLengthM,
+            SouthBoundaryType = property.SouthBoundaryType,
+            SouthFacadeFinishing = property.SouthFacadeFinishing,
+            EastBoundary = property.EastBoundary,
+            EastBoundaryLengthM = property.EastBoundaryLengthM,
+            EastBoundaryType = property.EastBoundaryType,
+            EastFacadeFinishing = property.EastFacadeFinishing,
+            WestBoundary = property.WestBoundary,
+            WestBoundaryLengthM = property.WestBoundaryLengthM,
+            WestBoundaryType = property.WestBoundaryType,
+            WestFacadeFinishing = property.WestFacadeFinishing,
+            FinishingType = property.FinishingType,
+            FinishingStructure = property.FinishingStructure,
+            HasStructuresToValue = property.HasStructuresToValue,
+            InspectionScopeKey = property.InspectionScopeKey,
+            InspectionRestrictionReason = property.InspectionRestrictionReason,
+            UninspectedUnitsJson = property.UninspectedUnitsJson,
+            RemoteInspectionApprovedAtUtc = property.RemoteInspectionApprovedAtUtc,
+            BuildingInventoryLines = property.BuildingInventoryLines
+                .OrderBy(line => line.SortOrder)
+                .Select(line => new CaseStudyBuildingInventoryLineDto
+                {
+                    SortOrder = line.SortOrder,
+                    StructureKind = line.StructureKind,
+                    Label = line.Label,
+                    AreaSqm = line.AreaSqm,
+                })
+                .ToList(),
+            LatestWorkspace = workspace is null
+                ? null
+                : new CaseStudyInspectionWorkspaceDto
+                {
+                    WorkflowTaskId = workspace.WorkflowTaskId,
+                    PartyTaskSubmissionId = workspace.PartyTaskSubmissionId,
+                    InspectionDate = workspace.InspectionDate,
+                    MapLatitude = workspace.MapLatitude,
+                    MapLongitude = workspace.MapLongitude,
+                    UpdatedAtUtc = workspace.UpdatedAtUtc,
+                },
+            InspectorPayloadJson = inspectorPayloadJson,
+            DeedNatureMatchOutcome = deedNatureMatchOutcome,
+            ClientNameAr = clientNameAr,
+            ClientNameEn = clientNameEn,
+            ReportUserClientNamesAr = reportUserNames,
+        };
+    }
+
     public async Task<CaseStudyPropertySnapshotDto?> GetPropertyByPoAndDeedAsync(
         string poNumber,
         string deedNumber,

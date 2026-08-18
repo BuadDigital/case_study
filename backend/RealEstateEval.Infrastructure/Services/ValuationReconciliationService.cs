@@ -10,7 +10,7 @@ namespace RealEstateEval.Infrastructure.Services;
 /// <summary>Method participation + round-once final opinion; liquidation discount when basis allows.</summary>
 public sealed class ValuationReconciliationService(
     ValuationDbContext db,
-    CaseStudyDbContext caseStudy,
+    ICaseStudyLookup caseStudy,
     IAuditLogWriter audit,
     IAuditLogAppend auditLog,
     IValuationComparableSelectionService selections,
@@ -53,11 +53,13 @@ public sealed class ValuationReconciliationService(
             var hasStructures = false;
             if (Guid.TryParse(vr.PropertyId?.Trim(), out var propertyGuid))
             {
-                var answer = await caseStudy.WorkOrderProperties.AsNoTracking()
-                    .Where(p => p.Id == propertyGuid)
-                    .Select(p => p.HasStructuresToValue)
-                    .FirstOrDefaultAsync(cancellationToken);
-                hasStructures = string.Equals(answer?.Trim(), "yes", StringComparison.OrdinalIgnoreCase);
+                var context = await caseStudy.GetValuationPropertyContextAsync(
+                    propertyGuid,
+                    cancellationToken);
+                hasStructures = string.Equals(
+                    context?.HasStructuresToValue.Trim(),
+                    "yes",
+                    StringComparison.OrdinalIgnoreCase);
             }
 
             settings = ValuationApproachSettingsRules.Defaults(vr.Id, vr.PropertyType, hasStructures);
@@ -85,16 +87,14 @@ public sealed class ValuationReconciliationService(
  // the deed↔nature match before the final opinion is computed (registered title skips).
         if (Guid.TryParse(vr.PropertyId?.Trim(), out var propertyGuid))
         {
-            var prop = await caseStudy.WorkOrderProperties.AsNoTracking()
-                .FirstOrDefaultAsync(p => p.Id == propertyGuid, cancellationToken);
-            if (prop is not null && DeedKindRules.RequiresDeedNatureMatchGate(prop.DeedKind))
+            var context = await caseStudy.GetValuationPropertyContextAsync(
+                propertyGuid,
+                cancellationToken);
+            if (context is not null
+                && DeedKindRules.RequiresDeedNatureMatchGate(context.DeedKindValue()))
             {
-                var matchOutcome = await caseStudy.CaseStudyForms.AsNoTracking()
-                    .Where(f => f.PropertyId == propertyGuid && !f.IsPartyForm)
-                    .OrderByDescending(f => f.UpdatedAtUtc)
-                    .Select(f => f.DeedNatureMatchOutcome)
-                    .FirstOrDefaultAsync(cancellationToken) ?? "";
-                if (!DeedKindRules.AllowsValuationCalc(prop.DeedKind, matchOutcome))
+                var matchOutcome = context.DeedNatureMatchOutcome ?? "";
+                if (!DeedKindRules.AllowsValuationCalc(context.DeedKindValue(), matchOutcome))
                 {
                     return (null, new Dictionary<string, string>
                     {

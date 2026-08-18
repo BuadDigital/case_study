@@ -13,7 +13,7 @@ namespace RealEstateEval.Infrastructure.Services;
 /// </summary>
 public sealed class ValuationApproachSettingsService(
     ValuationDbContext db,
-    CaseStudyDbContext caseStudy,
+    ICaseStudyLookup caseStudy,
     IOrganizationSettingsService organizationSettings,
     TimeProvider? time = null)
     : IValuationApproachSettingsService
@@ -126,11 +126,11 @@ public sealed class ValuationApproachSettingsService(
         CancellationToken cancellationToken)
     {
         if (!Guid.TryParse(vr.PropertyId?.Trim(), out var propertyGuid)) return false;
-        var answer = await caseStudy.WorkOrderProperties.AsNoTracking()
-            .Where(p => p.Id == propertyGuid)
-            .Select(p => p.HasStructuresToValue)
-            .FirstOrDefaultAsync(cancellationToken);
-        return string.Equals(answer?.Trim(), "yes", StringComparison.OrdinalIgnoreCase);
+        var context = await caseStudy.GetValuationPropertyContextAsync(propertyGuid, cancellationToken);
+        return string.Equals(
+            context?.HasStructuresToValue.Trim(),
+            "yes",
+            StringComparison.OrdinalIgnoreCase);
     }
 
     private static ValuationApproachSettingsDto ToDto(

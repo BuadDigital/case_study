@@ -11,7 +11,7 @@ namespace RealEstateEval.Infrastructure.Services;
 /// </summary>
 public sealed class ValuationIssuanceGateService(
     ValuationDbContext valuation,
-    CaseStudyDbContext caseStudy,
+    ICaseStudyLookup caseStudy,
     IAttachmentLookup attachments,
     IOrganizationSettingsService organizationSettings,
     IAttachmentPrintDictionaryService printDictionary,
@@ -45,31 +45,26 @@ public sealed class ValuationIssuanceGateService(
 
         if (Guid.TryParse(propertyId, out var propertyGuid))
         {
-            var prop = await caseStudy.WorkOrderProperties.AsNoTracking()
-                .FirstOrDefaultAsync(p => p.Id == propertyGuid, cancellationToken);
-            if (prop is not null)
+            var context = await caseStudy.GetValuationPropertyContextAsync(
+                propertyGuid,
+                cancellationToken);
+            if (context is not null)
             {
-                deedKind = prop.DeedKind;
-                propertyType = prop.PropertyType?.Trim() ?? "";
+                deedKind = context.DeedKindValue();
+                propertyType = context.PropertyType.Trim();
                 hasStructures = string.Equals(
-                    prop.HasStructuresToValue?.Trim(),
+                    context.HasStructuresToValue.Trim(),
                     "yes",
                     StringComparison.OrdinalIgnoreCase);
-                inspectionScopeKey = string.IsNullOrWhiteSpace(prop.InspectionScopeKey)
+                inspectionScopeKey = string.IsNullOrWhiteSpace(context.InspectionScopeKey)
                     ? null
-                    : prop.InspectionScopeKey;
+                    : context.InspectionScopeKey;
                 uninspectedUnitCount = InspectionLimitsRules.TotalUninspectedUnits(
-                    InspectionLimitsRules.ParseUnits(prop.UninspectedUnitsJson));
-                inspectionRestrictionReason = prop.InspectionRestrictionReason;
-                remoteInspectionApproved = prop.RemoteInspectionApprovedAtUtc is not null;
+                    InspectionLimitsRules.ParseUnits(context.UninspectedUnitsJson));
+                inspectionRestrictionReason = context.InspectionRestrictionReason;
+                remoteInspectionApproved = context.RemoteInspectionApprovedAtUtc is not null;
+                matchOutcome = context.DeedNatureMatchOutcome ?? "";
             }
-
-            var form = await caseStudy.CaseStudyForms.AsNoTracking()
-                .Where(f => f.PropertyId == propertyGuid && !f.IsPartyForm)
-                .OrderByDescending(f => f.UpdatedAtUtc)
-                .FirstOrDefaultAsync(cancellationToken);
-            if (form is not null)
-                matchOutcome = form.DeedNatureMatchOutcome ?? "";
         }
 
         var market = await selections.ListAsync(valuationRequestId, cancellationToken);

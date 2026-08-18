@@ -13,7 +13,7 @@ namespace RealEstateEval.Infrastructure.Services;
 /// </summary>
 public sealed class PriorValuationBankFeeder(
     ValuationDbContext valuation,
-    CaseStudyDbContext caseStudy,
+    ICaseStudyLookup caseStudy,
     IValuationReconciliationService reconciliation,
     IValuationComparableSelectionService selections,
     TimeProvider clock) : IPriorValuationBankFeeder
@@ -41,26 +41,19 @@ public sealed class PriorValuationBankFeeder(
         var areaSqm = market?.SubjectAreaSqm ?? 0m;
         if (finalValue <= 0m || areaSqm <= 0m) return false;
 
-        var prop = await caseStudy.WorkOrderProperties.AsNoTracking()
-            .FirstOrDefaultAsync(p => p.Id == propertyGuid, cancellationToken);
-        if (prop is null) return false;
+        var context = await caseStudy.GetValuationPropertyContextAsync(
+            propertyGuid,
+            cancellationToken);
+        if (context is null) return false;
 
-        var coords = await caseStudy.FieldInspectionWorkspaces.AsNoTracking()
-            .Where(w => w.PropertyId == propertyGuid)
-            .OrderByDescending(w => w.UpdatedAtUtc)
-            .Select(w => new { w.MapLatitude, w.MapLongitude })
-            .FirstOrDefaultAsync(cancellationToken);
-        if (coords?.MapLatitude is not { } lat
-            || coords.MapLongitude is not { } lon
+        if (context.LatestWorkspace?.MapLatitude is not { } lat
+            || context.LatestWorkspace.MapLongitude is not { } lon
             || !ComparableProximityRules.HasUsableCoordinates(lat, lon))
         {
             return false;
         }
 
-        var poNumber = await caseStudy.WorkOrders.AsNoTracking()
-            .Where(w => w.Id == prop.WorkOrderId)
-            .Select(w => w.PoNumber)
-            .FirstOrDefaultAsync(cancellationToken);
+        var poNumber = context.PoNumber;
 
         var now = clock.GetUtcNow().UtcDateTime;
         var id = Guid.NewGuid();
@@ -68,9 +61,9 @@ public sealed class PriorValuationBankFeeder(
         {
             Id = id,
             ReferenceCode = $"CMP-{id.ToString("N")[..8].ToUpperInvariant()}",
-            ComparablePropertyType = string.IsNullOrWhiteSpace(prop.PropertyType)
+            ComparablePropertyType = string.IsNullOrWhiteSpace(context.PropertyType)
                 ? vr.PropertyType ?? ""
-                : prop.PropertyType,
+                : context.PropertyType,
             TransactionKind = ComparableTransactionKinds.Executed,
             Source = ComparableSources.PriorValuation,
             Latitude = lat,
@@ -79,8 +72,8 @@ public sealed class PriorValuationBankFeeder(
             TransactionDate = DateOnly.FromDateTime(now),
             Price = finalValue,
             PricePerSqm = ComparablePropertyRules.ComputePricePerSqm(finalValue, areaSqm),
-            City = prop.City,
-            District = prop.District,
+            City = context.City,
+            District = context.District,
             Description = $"قيمة تقييم سابق معتمدة — معاملة {vr.DisplayId}",
             IntakeChannel = ComparableIntakeChannels.Office,
             SourceWorkOrderNumber = poNumber,

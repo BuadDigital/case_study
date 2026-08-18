@@ -9,7 +9,7 @@ namespace RealEstateEval.Infrastructure.Services;
 
 public sealed class ComparablePropertyService(
     ValuationDbContext db,
-    CaseStudyDbContext caseStudy,
+    ICaseStudyLookup caseStudy,
     TimeProvider? time = null) : IComparablePropertyService
 {
     private readonly TimeProvider _time = time ?? TimeProvider.System;
@@ -293,10 +293,10 @@ public sealed class ComparablePropertyService(
         if (!Guid.TryParse(propertyId, out var propertyGuid))
             return (null, null, "none");
 
-        var workspace = await caseStudy.FieldInspectionWorkspaces.AsNoTracking()
-            .Where(w => w.PropertyId == propertyGuid)
-            .OrderByDescending(w => w.UpdatedAtUtc)
-            .FirstOrDefaultAsync(cancellationToken);
+        var context = await caseStudy.GetValuationPropertyContextAsync(
+            propertyGuid,
+            cancellationToken);
+        var workspace = context?.LatestWorkspace;
 
         if (workspace?.MapLatitude is { } wLat
             && workspace.MapLongitude is { } wLon

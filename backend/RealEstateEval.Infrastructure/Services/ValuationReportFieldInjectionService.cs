@@ -13,7 +13,7 @@ namespace RealEstateEval.Infrastructure.Services;
 /// </summary>
 public sealed class ValuationReportFieldInjectionService(
     ValuationDbContext valuation,
-    CaseStudyDbContext caseStudy,
+    ICaseStudyLookup caseStudy,
     IAttachmentLookup attachments,
     IOrganizationSettingsService organizationSettings,
     IValuationComparableSelectionService selections,
@@ -45,28 +45,21 @@ public sealed class ValuationReportFieldInjectionService(
         var deedNatureMatchOutcome = DeedNatureMatchOutcomes.Unset;
         if (Guid.TryParse(propertyId, out var propertyGuid))
         {
-            prop = await caseStudy.WorkOrderProperties.AsNoTracking()
-                .Include(p => p.BuildingInventoryLines)
-                .FirstOrDefaultAsync(p => p.Id == propertyGuid, cancellationToken);
-            workspace = await caseStudy.FieldInspectionWorkspaces.AsNoTracking()
-                .Where(w => w.PropertyId == propertyGuid)
-                .OrderByDescending(w => w.UpdatedAtUtc)
-                .FirstOrDefaultAsync(cancellationToken);
-            var form = await caseStudy.CaseStudyForms.AsNoTracking()
-                .Where(f => f.PropertyId == propertyGuid && !f.IsPartyForm)
-                .OrderByDescending(f => f.UpdatedAtUtc)
-                .FirstOrDefaultAsync(cancellationToken);
-            deedNatureMatchOutcome = form?.DeedNatureMatchOutcome ?? "";
-
-            if (prop is not null)
+            var context = await caseStudy.GetValuationPropertyContextAsync(
+                propertyGuid,
+                cancellationToken);
+            if (context is not null)
             {
-                var wo = await caseStudy.WorkOrders.AsNoTracking()
-                    .FirstOrDefaultAsync(w => w.Id == prop.WorkOrderId, cancellationToken);
-                if (wo?.ClientId is { } clientId)
-                {
-                    client = await caseStudy.Clients.AsNoTracking()
-                        .FirstOrDefaultAsync(c => c.Id == clientId, cancellationToken);
-                }
+                prop = context.ToProperty();
+                workspace = context.LatestWorkspace?.ToWorkspace();
+                deedNatureMatchOutcome = context.DeedNatureMatchOutcome ?? "";
+                client = context.ClientNameAr is null && context.ClientNameEn is null
+                    ? null
+                    : new Client
+                    {
+                        NameAr = context.ClientNameAr ?? "",
+                        NameEn = context.ClientNameEn,
+                    };
             }
         }
 

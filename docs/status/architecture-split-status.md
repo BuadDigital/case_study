@@ -12,7 +12,7 @@ Update this file with every slice; do not summarise a partial slice as a finishe
 | 0 — freeze and measure | Ownership gate **closed**. | [`table-ownership.json`](../architecture/table-ownership.json) |
 | 1 — split EF contexts | **Done (A6).** Hosts no longer call `AddPersistence`. | [`backend/plan/A6_CLOSEOUT.md`](../../backend/plan/A6_CLOSEOUT.md) |
 | 2 — split libraries | Not started. | — |
-| 3 — remove cross-schema access | **In progress.** Lookup residuals that drop a second connection are on owner HTTP APIs. Write residuals still open foreign contexts (Failures CS patches, Valuation report fill, messaging outbox, Identity audit). | — |
+| 3 — remove cross-schema access | **In progress.** Lookup residuals that drop a second connection are on owner HTTP APIs. Valuation report fill moved to Case Study HTTP 2026-08-18. Residuals still opening foreign contexts: Failures CS patches, messaging outbox. | — |
 | 4 — split databases | **Owner databases only.** No leftover shared Postgres. Residual readers still open owner contexts over a second connection. | `BoundedContextConnections`, `infra/postgres/init-*.sql` |
 | 5 — remove shims | Not started. | — |
 
@@ -22,17 +22,18 @@ Update this file with every slice; do not summarise a partial slice as a finishe
 - **Attachments** — `IAttachmentLookup`. Case Study / Operations / Valuation no longer open `AttachmentsDbContext`.
 - **Platform catalogs** — print dictionary and organization settings via Platform HTTP. Attachments, Valuation, and Case Study no longer open `PlatformDbContext`.
 - **Valuation dispatch** — Case Study creates/opens valuation requests via `POST/GET /api/valuation-request-dispatch` (`[Authorize]` only). Case Study no longer opens `ValuationDbContext`.
-- **Identity directory** — labels, compensation, assignee→user maps via `/api/identity/*`. Operations, Financial, Failures, Platform, and Production Case Study no longer open `IdentityDbContext`. Development Case Study still registers Identity for system maintenance/seed.
+- **Identity directory** — labels, compensation, assignee→user maps via `/api/identity/*`. Operations, Financial, Failures, Platform, and Case Study (all environments, since 2026-08-18) no longer open `IdentityDbContext`. Dev seed uses the throwaway `CreateIdentityMaintenanceProvider` only.
 - **Workflow assignees** — Platform notification recipients call Case Study `GET /api/workflow-assignees`. Platform no longer opens `CaseStudyDbContext` or `IdentityDbContext`.
 - **Platform audit append** — `IAuditLogAppend` / `POST /api/audit-log/append`. Identity, Case Study (property groups, inspection limits), and Valuation (reconciliation overrides) no longer open `PlatformDbContext` to write the ledger. Identity seed/reset still uses Platform EF on the throwaway maintenance provider.
 - **Failures commands and gates** — `IFailureLookup` / `IFailureService` via `/api/failure-dispatch` (`[Authorize]` only for system holds and documentary side-effects) and `/api/failures` for the operator queue. Case Study and Operations no longer open `FailuresDbContext`. Failures still opens Case Study for workflow patches and timelines (compose deadlock if Failures also `depends_on` Case Study HTTP).
 - **Operations tasks, keys, and envelopes** — Case Study uses Operations HTTP (`IOperationsTaskService`, `IKeyEntitlementLookup`, `IPropertyKeyGateResolver`). Operator queue is `/api/operations-tasks` (existing policies). CS billing/gates use `/api/key-envelope-dispatch` (`[Authorize]` only). Case Study no longer opens `OperationsDbContext`.
 - **Case Study dispatch** — Operations and Financial call `GET/POST /api/case-study-dispatch` (`[Authorize]` only) via `ICaseStudyLookup` / `ICaseStudyCommands` (`AddRemoteCaseStudy` plus Financial-only `HttpCaseStudyCommands`). Those hosts no longer open `CaseStudyDbContext` and do **not** `depends_on` case-study (Case Study already `depends_on` operations and financial). D4 document-reference allocation and survey-area backfill are Case Study commands.
+- **Valuation property context (2026-08-18)** — Valuation's entire Case Study read surface (report fill, issuance gates, approach settings, reconciliation gate, comparables coords, prior-valuation feed, PO lookup) collapsed into one call: `GET /api/case-study-dispatch/valuation-property-context/{propertyId}` → `CaseStudyValuationPropertyContextDto` (property aggregate + inventory lines + latest inspection workspace + inspector payload + deed↔nature outcome + client names; `ToProperty()`/`ToWorkspace()` materialize domain objects for report fill). `RemotePropertyPoNumberLookup` overrides the EF PO lookup on the Valuation host. Valuation no longer opens `CaseStudyDbContext` and does **not** `depends_on` case-study (Case Study already `depends_on` valuation). All access was read-only — no command channel needed.
 - **Financial dispatch** — Case Study and Operations call `/api/financial-dispatch` (`[Authorize]` only) via `AddRemoteFinancial`. Those hosts no longer open `FinancialDbContext`. Fee writes live on the Financial host, which calls Case Study HTTP for workflow/property lookups and D4 counters (no compose `depends_on` case-study).
 
 Write residuals that still open a second owner connection:
 
-- Case Study: Messaging (and Development Identity).
+- Case Study: Messaging.
 - Operations: Messaging.
 - Failures: Case Study, Messaging.
 - Valuation: Case Study (report fill / issuance still load property/form aggregates; a PO-number-only lookup would not drop this connection).

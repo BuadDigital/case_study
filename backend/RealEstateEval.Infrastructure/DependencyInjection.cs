@@ -848,9 +848,9 @@ public static class DependencyInjection
  /// <summary>
  /// The valuation-request write path only: the Valuation context, its per-producer outbox
  /// publisher, the Case Study PO-number lookup it reads through, and the request service.
- /// Hosts must already register <see cref="AddCaseStudyPersistence"/> (or an InMemory
- /// <see cref="CaseStudyDbContext"/>) so <see cref="CaseStudyPropertyPoNumberLookup"/> can
- /// resolve PO numbers without opening the legacy god context.
+ /// The EF <see cref="CaseStudyPropertyPoNumberLookup"/> registered here suits the Case
+ /// Study host; the Valuation host overrides it with the HTTP-backed
+ /// <see cref="RemotePropertyPoNumberLookup"/> (A9 — no CaseStudyDbContext there).
  /// Case Study registers this rather than the full set because
  /// <see cref="CaseStudyValuationDispatchService"/> creates a valuation request when a
  /// case-study form is submitted; process ownership moves in.
@@ -873,11 +873,15 @@ public static class DependencyInjection
         IConfiguration configuration,
         string connectionString)
     {
-        services.AddCaseStudyPersistence(configuration, connectionString);
+ // A9: Case Study reads go through the owner HTTP API. No CaseStudyDbContext here, and
+ // no compose depends_on case-study (case-study already depends_on valuation).
+        services.AddRemoteCaseStudy(configuration);
         services.AddRemotePlatformCatalogs(configuration);
         services.AddRemoteAttachmentLookup(configuration);
         services.AddRemoteAuditLogAppend(configuration);
         services.AddValuationRequestInfrastructure(configuration, connectionString);
+ // Override the EF PO lookup registered above — this host has no CaseStudyDbContext.
+        services.AddScoped<IPropertyPoNumberLookup, RemotePropertyPoNumberLookup>();
         services.AddScoped<IEvaluatorRecallsService, EvaluatorRecallsService>();
         services.AddScoped<IComparablePropertyService, ComparablePropertyService>();
         services.AddScoped<IValuationComparableSelectionService, ValuationComparableSelectionService>();

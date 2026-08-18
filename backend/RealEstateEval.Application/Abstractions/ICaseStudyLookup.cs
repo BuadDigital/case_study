@@ -22,6 +22,15 @@ public interface ICaseStudyLookup
         Guid propertyId,
         CancellationToken cancellationToken = default);
 
+    /// <summary>
+    /// One-call read of everything Valuation needs for a property: aggregate fields,
+    /// inventory lines, latest inspection workspace + inspector payload, latest
+    /// deed↔nature outcome, and client display names. Includes soft-removed properties.
+    /// </summary>
+    Task<CaseStudyValuationPropertyContextDto?> GetValuationPropertyContextAsync(
+        Guid propertyId,
+        CancellationToken cancellationToken = default);
+
     Task<CaseStudyPropertySnapshotDto?> GetPropertyByPoAndDeedAsync(
         string poNumber,
         string deedNumber,
