@@ -20,26 +20,33 @@ Status values: **todo** · **in progress** · **blocked** · **deferred** · **d
 
 ## Pickup — 2026-08-18 (next device)
 
-**Start here.** Local Case Study does not boot. Architecture split A9 is otherwise mid-slice; do not start A8.
+### ~~Blocker: Case Study DI crash~~ — **fixed 2026-08-18**
 
-### Blocker: Case Study DI crash
+The three DI failures are resolved; the Development Case Study host boots and `/ready` returns
+200 (database ready, 0 pending migrations, rabbit/redis reachable). What was done:
 
-`npm run dev:infra` is fine (postgres `:5432`, rabbit, redis). `npm run dev:api:run` dies at `WebApplication.Build()` in `backend/shared/RealEstateEval.Shared.Web/ServiceProgram.cs` (~line 21) **before** `/ready`. Compose `container_name` on `case-study.build` was already moved to service level.
+1. **Ambiguous constructors** — `NotificationRecipientResolver` and `PropertyAccessHoldService`
+   now have exactly one public constructor (interfaces). The EF-context convenience wiring moved
+   to `NotificationRecipientResolver.ForContexts(...)` (test helper) and the test factories
+   (`TestBoundedContexts.CreateAccessHolds` composes through `CaseStudyLookup` +
+   `CreateFailureService`).
+2. **`AddDevelopmentSystemMaintenance` deleted.** The CS request host no longer registers
+   Identity EF, `IUserRegistrationService`, or `ISystemMaintenanceService`. Dev seed still runs
+   through the throwaway `CreateIdentityMaintenanceProvider` in `ConfigureAppAsync`.
+3. **`ValuationReportWorkflowHandler`** now takes `CaseStudyDbContext`.
+   **`SystemMaintenanceService`** still takes the god context but is registered nowhere;
+   `DELETE /api/system/data` returns **501** with an explanatory ProblemDetails (see new item
+   below). Do **not** re-add `AddPersistence` / `ApplicationDbContext` on the CS request host.
 
-Three DI failures on the Development Case Study host:
+**New follow-up — Dev system reset needs a per-owner design.** The old reset walked the god
+context, which no longer sees live data after the Phase 4 dedicated-DB split. The settings UI
+(`apps/mfe-settings/src/lib/system-maintenance-api.ts`) and `apps/shell/scripts/clear-all-pos.mjs`
+call the endpoint and now get 501. A working reset must fan out to each owner service (or a
+dedicated maintenance job). Also note `CreateIdentityMaintenanceProvider` registers
+`IUserRegistrationService` without `IAuthSessionService`/`IAuditLogWriter`, so
+`DeleteAllRegisteredAsync` would fail there — wire those when the reset is redesigned.
 
-1. **Ambiguous constructors** (two public 2-arg ctors, both fully satisfiable; `[ActivatorUtilitiesConstructor]` is not enough when both graphs resolve):
-   - `NotificationRecipientResolver` — `(CaseStudyDbContext, IdentityDbContext)` vs `(IWorkflowAssigneeLookup, IIdentityDirectory)`
-     (`backend/RealEstateEval.Infrastructure/Notifications/NotificationRecipientResolver.cs`)
-   - `PropertyAccessHoldService` — `(CaseStudyDbContext, IFailureService)` vs `(ICaseStudyLookup, IFailureService)`
-     (`backend/RealEstateEval.Infrastructure/Services/PropertyAccessHoldService.cs`)
-   Why: Development CS registers **both** Identity EF (`AddDevelopmentSystemMaintenance`) **and** HTTP `IIdentityDirectory`, plus **both** `CaseStudyDbContext` and `ICaseStudyLookup`.
-2. **`UserRegistrationService`** needs `IAuthSessionService`. `AddDevelopmentSystemMaintenance` registers the registration service but not `AddIdentityApplicationServices`.
-3. **`SystemMaintenanceService`** and **`ValuationReportWorkflowHandler`** still take leftover `ApplicationDbContext`. CS no longer registers the god context. Do **not** re-add `AddPersistence` / `ApplicationDbContext` on the CS request host.
-
-**Intended fix (not applied — agent was stopped):** one public DI constructor (interfaces) per type; EF wrappers only as test helpers or explicit factories. Wire or drop Dev seed so CS does not need `IAuthSessionService` + god context. Point `ValuationReportWorkflowHandler` at `CaseStudyDbContext` (workflow tasks live there). Search tests for `new NotificationRecipientResolver(` and `new PropertyAccessHoldService(`.
-
-Then `npm run dev:api:run` should get past `waiting for case-study (http://127.0.0.1:5162/ready)`.
+Architecture split A9 remains mid-slice; do not start A8.
 
 Local run after the DI fix still needs: nine dedicated DBs + DbMigrate (Failures schema is **not** migrated by CS startup) + upstream APIs CS calls (Identity, Failures, Ops, Financial, Attachments, Platform, Valuation). Do **not** point unsuffixed `REAL_ESTATE_EVAL_PG_CONNECTION_STRING` at leftover `realestate_eval_dev`. Do **not** run `copy-*-data.sh` / `drop-leftover-shared.sh` unless intending to destroy the A7 leftover source.
 
@@ -177,7 +184,7 @@ Do **not** delete empty baselines or Sync no-ops once they exist in a stream peo
 
 ## G. Suggested order on the next device
 
-1. **Unblock Case Study boot** — see **Pickup — 2026-08-18** above. Fix the three DI failures so `npm run dev:api:run` reaches `/ready`. Do not reintroduce leftover `ApplicationDbContext` on the CS request host.  
+1. ~~**Unblock Case Study boot**~~ — done 2026-08-18; see **Pickup** above. Do not reintroduce leftover `ApplicationDbContext` on the CS request host. Follow-up recorded there: per-owner Dev system reset design.  
 2. **Continue A9** — next residual readers: Failures compose cycle (do not add Failures `depends_on` Case Study), Valuation report fill. Do not open `FailuresDbContext`, `OperationsDbContext`, or `FinancialDbContext` from Case Study. Do not add Operations `depends_on` Case Study. Do not add Financial `depends_on` Case Study. Financial no longer opens Case Study EF.  
 3. **Ops gates still open** — A7 leftover-upgrade evidence is recorded. Remaining: nominate migrator owner, D6 SQL/BI inventory, p95 / connection / outbox metrics.  
 4. **Parallel low-risk slices:** F6 controller-body tests. C10, C11, B1, B8, B10, F8, and F9 are done. B6 still has nested valuation/billing bodies.  

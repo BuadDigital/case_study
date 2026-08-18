@@ -27,10 +27,8 @@ public sealed class ServiceModule : IRealEstateEvalServiceModule
         builder.Services.Configure<OutboxDispatcherOptions>(o => o.ContextType = typeof(MessagingDbContext));
         builder.Services.AddClaimsPermissionService();
         builder.Services.AddCaseStudyInfrastructure(builder.Configuration, builder.Environment);
-        builder.Services.AddDevelopmentSystemMaintenance(
-            builder.Configuration,
-            connectionString!,
-            builder.Environment);
+        // No Identity EF / registration services on the request host — request paths use the
+        // Identity HTTP directory; Dev seed runs through CreateIdentityMaintenanceProvider.
         builder.Services.AddIntegrationEventPublishing(builder.Configuration, builder.Environment);
         builder.Services.AddOutboxDispatcher(builder.Configuration, builder.Environment);
         builder.Services.AddValuationIntegrationHandlers();

@@ -1,4 +1,3 @@
-using Microsoft.Extensions.DependencyInjection;
 using RealEstateEval.Application.Abstractions;
 using RealEstateEval.Domain;
 using RealEstateEval.Infrastructure.Data.Contexts;
@@ -16,12 +15,12 @@ public sealed class NotificationRecipientResolver
     private readonly IWorkflowAssigneeLookup _assignees;
     private readonly IIdentityDirectory _identity;
 
-    public NotificationRecipientResolver(CaseStudyDbContext caseStudy, IdentityDbContext identity)
-        : this(new WorkflowAssigneeLookup(caseStudy), new IdentityDirectory(identity))
-    {
-    }
+    /// <summary>Test helper wiring EF-backed lookups; DI uses the interface constructor.</summary>
+    public static NotificationRecipientResolver ForContexts(
+        CaseStudyDbContext caseStudy,
+        IdentityDbContext identity) =>
+        new(new WorkflowAssigneeLookup(caseStudy), new IdentityDirectory(identity));
 
-    [ActivatorUtilitiesConstructor]
     public NotificationRecipientResolver(
         IWorkflowAssigneeLookup assignees,
         IIdentityDirectory identity)

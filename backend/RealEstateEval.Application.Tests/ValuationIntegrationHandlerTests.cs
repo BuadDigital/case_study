@@ -21,7 +21,7 @@ public class ValuationIntegrationHandlerTests
     SeedOpenAppraisalTask(db);
 
     var handler = new ValuationReportWorkflowHandler(
-      db,
+      TestInspectorFeeServiceFactory.ShareCaseStudy(db),
       TestInspectorFeeServiceFactory.CreateWorkflow(db),
       NullLogger<ValuationReportWorkflowHandler>.Instance);
 
@@ -45,7 +45,7 @@ public class ValuationIntegrationHandlerTests
     SeedOpenAppraisalTask(db);
 
     var handler = new ValuationReportWorkflowHandler(
-      db,
+      TestInspectorFeeServiceFactory.ShareCaseStudy(db),
       TestInspectorFeeServiceFactory.CreateWorkflow(db),
       NullLogger<ValuationReportWorkflowHandler>.Instance);
 

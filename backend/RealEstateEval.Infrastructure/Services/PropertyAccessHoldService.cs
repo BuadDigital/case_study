@@ -1,7 +1,4 @@
-using Microsoft.Extensions.DependencyInjection;
 using RealEstateEval.Application.Abstractions;
-using RealEstateEval.Infrastructure.Data.Contexts;
-using RealEstateEval.Infrastructure.Notifications;
 
 namespace RealEstateEval.Infrastructure.Services;
 
@@ -15,31 +12,6 @@ public sealed class PropertyAccessHoldService : IPropertyAccessHoldService
     private readonly ICaseStudyLookup _caseStudy;
     private readonly IFailureService _failures;
 
-    public PropertyAccessHoldService(
-        CaseStudyDbContext cs,
-        FailuresDbContext failures,
-        IdentityDbContext identity,
-        INotificationService notifications,
-        NotificationRecipientResolver recipients)
-        : this(
-            new CaseStudyLookup(cs),
-            new FailureService(
-                failures,
-                cs,
-                new WorkflowTaskShellPatcher(cs),
-                new PropertyTimelineService(cs, failures),
-                notifications,
-                recipients,
-                new UserLabelLookup(identity)))
-    {
-    }
-
-    public PropertyAccessHoldService(CaseStudyDbContext cs, IFailureService failures)
-        : this(new CaseStudyLookup(cs), failures)
-    {
-    }
-
-    [ActivatorUtilitiesConstructor]
     public PropertyAccessHoldService(ICaseStudyLookup caseStudy, IFailureService failures)
     {
         _caseStudy = caseStudy;

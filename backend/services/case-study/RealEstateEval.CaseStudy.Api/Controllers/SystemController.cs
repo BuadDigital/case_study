@@ -30,7 +30,17 @@ public class SystemController : ControllerBase
         if (!_env.IsDevelopment())
             return NotFound();
 
-        var maintenance = _services.GetRequiredService<ISystemMaintenanceService>();
+        // Not registered since the per-service database split: the reset walked the legacy
+        // god context, which no longer sees live data. Needs a per-owner reset design (A9/A10).
+        var maintenance = _services.GetService<ISystemMaintenanceService>();
+        if (maintenance is null)
+        {
+            return Problem(
+                statusCode: StatusCodes.Status501NotImplemented,
+                title: "System reset is unavailable after the per-service database split.",
+                detail: "Resetting demo data now requires per-owner-service resets; see docs/remaining-work.md.");
+        }
+
         return Ok(await maintenance.ResetAllOperationalDataAsync(cancellationToken));
     }
 }

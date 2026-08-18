@@ -85,7 +85,7 @@ internal static class TestBoundedContexts
         var identity = TestInspectorFeeServiceFactory.ShareIdentity(app);
         timeline ??= new PropertyTimelineService(cs, bundle.Failures);
         notifications ??= new NullNotificationService();
-        recipients ??= new NotificationRecipientResolver(cs, identity);
+        recipients ??= NotificationRecipientResolver.ForContexts(cs, identity);
         tasks ??= new WorkflowTaskShellPatcher(cs);
         labels ??= new UserLabelLookup(identity);
         return new FailureService(
@@ -111,7 +111,7 @@ internal static class TestBoundedContexts
         var identity = TestInspectorFeeServiceFactory.ShareIdentity(app);
         timeline ??= new PropertyTimelineService(cs, failures);
         notifications ??= new NullNotificationService();
-        recipients ??= new NotificationRecipientResolver(cs, identity);
+        recipients ??= NotificationRecipientResolver.ForContexts(cs, identity);
         tasks ??= new WorkflowTaskShellPatcher(cs);
         labels ??= new UserLabelLookup(identity);
         return new FailureService(failures, cs, tasks, timeline, notifications, recipients, labels);
@@ -122,13 +122,7 @@ internal static class TestBoundedContexts
         FailuresDbContext failures)
     {
         var cs = TestInspectorFeeServiceFactory.ShareCaseStudy(app);
-        var identity = TestInspectorFeeServiceFactory.ShareIdentity(app);
-        return new(
-            cs,
-            failures,
-            identity,
-            new NullNotificationService(),
-            new NotificationRecipientResolver(cs, identity));
+        return new(new CaseStudyLookup(cs), CreateFailureService(app, failures));
     }
 
     public static KeyEnvelopesService CreateKeyEnvelopesService(Bundle bundle)
@@ -152,7 +146,7 @@ internal static class TestBoundedContexts
             CreateAccessHolds(app, failures),
             new KeyEnvelopePeopleResolver(identity),
             new NullNotificationService(),
-            new NotificationRecipientResolver(cs, identity));
+            NotificationRecipientResolver.ForContexts(cs, identity));
     }
 
     public static PropertyKeyGateResolver CreateKeyGate(ApplicationDbContext app, OperationsDbContext ops) =>

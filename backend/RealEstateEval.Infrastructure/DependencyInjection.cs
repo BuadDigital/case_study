@@ -442,25 +442,6 @@ public static class DependencyInjection
         return services;
     }
 
- /// <summary>
- /// Development-only reset support for UserManager / seed. Registers the Identity pool
- /// on this host only in Development. Request paths use the Identity HTTP directory.
- /// </summary>
-    public static IServiceCollection AddDevelopmentSystemMaintenance(
-        this IServiceCollection services,
-        IConfiguration configuration,
-        string connectionString,
-        IHostEnvironment environment)
-    {
-        if (!environment.IsDevelopment()) return services;
-
-        services.AddIdentityPersistence(configuration, connectionString);
-        services.AddIdentityStores();
-        services.AddScoped<IUserRegistrationService, UserRegistrationService>();
-        services.AddScoped<ISystemMaintenanceService, SystemMaintenanceService>();
-        return services;
-    }
-
     public static IServiceCollection AddFailuresInfrastructure(
         this IServiceCollection services,
         IConfiguration configuration,

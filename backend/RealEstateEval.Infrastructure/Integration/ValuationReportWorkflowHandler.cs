@@ -4,7 +4,7 @@ using Microsoft.Extensions.Logging;
 using RealEstateEval.Application.Abstractions;
 using RealEstateEval.Application.Contracts;
 using RealEstateEval.Domain;
-using RealEstateEval.Infrastructure.Data;
+using RealEstateEval.Infrastructure.Data.Contexts;
 using RealEstateEval.Shared.Contracts;
 
 namespace RealEstateEval.Infrastructure.Integration;
@@ -16,12 +16,12 @@ public sealed class ValuationReportWorkflowHandler
         PropertyNameCaseInsensitive = true,
     };
 
-    private readonly ApplicationDbContext _db;
+    private readonly CaseStudyDbContext _db;
     private readonly IWorkflowTaskService _tasks;
     private readonly ILogger<ValuationReportWorkflowHandler> _logger;
 
     public ValuationReportWorkflowHandler(
-        ApplicationDbContext db,
+        CaseStudyDbContext db,
         IWorkflowTaskService tasks,
         ILogger<ValuationReportWorkflowHandler> logger)
     {
