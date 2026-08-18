@@ -173,6 +173,7 @@ Source of truth: [`architecture-split-plan.md`](architecture-split-plan.md).
 | F13 | README CI file claim | **done** | |
 | F14 | Empty / “Sync” repair migrations cleanup | **done** | Documented: never delete applied empty baselines; keep as history seeds only |
 | F15 | Integration factories mutate process env | **done** | |
+| F16 | Container-test suite: 6 pre-existing failures | **done** | Found and fixed 2026-08-18 (failures predated that day's work). Causes and fixes: (1) tests applied only the frozen legacy stream, but post-cutover columns (`WorkOrder.ClientId` etc.) live in the per-context streams → new `BoundedContextStreamMigrator` applies every stream like the deploy migrator (migration, readiness, and controller-body setups). (2) The container-test env lacked `RabbitMQ:RequireEnabled=false` for the new Production event-broker guard. (3) A9's HTTP lookups meant Operations/Financial hosts dialed a nonexistent Case Study server → the test factory re-points `ICaseStudyLookup`/`IWorkflowAssigneeLookup`/`IIdentityDirectory` at EF implementations over the shared test DB, with the contexts registered as **keyed** services so the remaining equal-arity EF/interface constructor pairs don't turn ambiguous. Suite: 21/21 green. Residual hazard noted: those dual-constructor pairs (e.g. `PropertyKeysService`) are latent DI ambiguities — remove them like the 2026-08-18 boot fix did |
 
 ---
 

@@ -34,7 +34,12 @@ public class DatabaseMigrationTests
         Assert.Empty(await db.Database.GetPendingMigrationsAsync());
         Assert.True(await db.Database.CanConnectAsync());
 
- // A query per schema proves the migration built tables, not just the history table.
+ // The legacy stream stops at the bounded-context cutover; the deploy migrator applies
+ // the per-context streams on top (post-cutover columns like WorkOrder.ClientId live
+ // there). Apply them all before proving the schema with queries.
+        await BoundedContextStreamMigrator.ApplyAllStreamsAsync(connectionString);
+
+ // A query per schema proves the migrations built tables, not just the history table.
         Assert.Empty(await db.WorkOrders.AsNoTracking().ToListAsync());
         Assert.Empty(await db.WorkflowTasks.AsNoTracking().ToListAsync());
         Assert.Empty(await db.Users.AsNoTracking().ToListAsync());

@@ -6,6 +6,7 @@ using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.EntityFrameworkCore;
 using RealEstateEval.Infrastructure.Data;
+using RealEstateEval.Infrastructure.Data.Contexts;
 
 namespace RealEstateEval.Api.ContainerTests;
 
@@ -37,6 +38,10 @@ public class ServiceReadinessContainerTests
                 .UseNpgsql(connectionString)
                 .Options);
         await db.Database.MigrateAsync();
+
+        // Since the dedicated-DB split, /ready checks the host's own migration stream —
+        // the legacy stream alone stops at the bounded-context cutover.
+        await BoundedContextStreamMigrator.ApplyAllStreamsAsync(connectionString);
 
         var afterMigrating = await client.GetAsync("/ready");
         Assert.Equal(HttpStatusCode.OK, afterMigrating.StatusCode);

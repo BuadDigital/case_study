@@ -19,9 +19,12 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using RealEstateEval.Application.Abstractions;
 using RealEstateEval.Application.Authorization;
 using RealEstateEval.Application.Contracts;
 using RealEstateEval.Infrastructure.Data;
+using RealEstateEval.Infrastructure.Data.Contexts;
+using RealEstateEval.Infrastructure.Services;
 
 using AttachmentsMarker = AttachmentsApi::RealEstateEval.Attachments.Api.Controllers.AttachmentsController;
 using CaseStudyMarker = CaseStudyApi::RealEstateEval.CaseStudy.Api.Controllers.WorkflowTasksController;
@@ -55,6 +58,8 @@ public sealed class ControllerBodyPostgresTests : IAsyncLifetime
                 .UseNpgsql(_connectionString)
                 .Options);
         await db.Database.MigrateAsync();
+        // Post-cutover columns (e.g. WorkOrder.ClientId) live in the per-context streams.
+        await BoundedContextStreamMigrator.ApplyAllStreamsAsync(_connectionString);
     }
 
     public Task DisposeAsync() => Task.CompletedTask;
@@ -261,11 +266,13 @@ internal sealed class RealDatabaseApiFactory<TMarker> : WebApplicationFactory<TM
         "container-test-signing-key-that-is-at-least-sixty-four-characters-long-1234567890";
 
     private readonly string _connectionString;
+    private readonly string _serviceName;
 
     public RealDatabaseApiFactory(string connectionString, string serviceName)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(serviceName);
         _connectionString = connectionString;
+        _serviceName = serviceName;
     }
 
     protected override void ConfigureWebHost(IWebHostBuilder builder)
@@ -277,6 +284,7 @@ internal sealed class RealDatabaseApiFactory<TMarker> : WebApplicationFactory<TM
         builder.UseSetting("Jwt:SigningKey", TestSigningKey);
         builder.UseSetting("Redis:Enabled", "false");
         builder.UseSetting("RabbitMQ:Enabled", "false");
+        builder.UseSetting("RabbitMQ:RequireEnabled", "false");
         builder.UseSetting("Database:MigrateOnStartup", "false");
         builder.UseSetting("Database:SeedDemoData", "false");
         builder.UseSetting(
@@ -293,6 +301,41 @@ internal sealed class RealDatabaseApiFactory<TMarker> : WebApplicationFactory<TM
                 .AddScheme<AuthenticationSchemeOptions, ContainerAuthHandler>(
                     ContainerAuthHandler.SchemeName,
                     _ => { });
+
+            DbContextOptions<TContext> StreamOptions<TContext>() where TContext : DbContext =>
+                new DbContextOptionsBuilder<TContext>()
+                    .UseNpgsql(_connectionString, npgsql => npgsql.MigrationsHistoryTable(
+                        BoundedContextMigrations.HistoryTable,
+                        BoundedContextMigrations.HistorySchemaFor<TContext>()))
+                    .Options;
+
+ // A9 moved cross-context reads to owner HTTP APIs, but this test boots one host at a
+ // time against a single database that holds every schema — re-point the remote
+ // lookups at their EF implementations so bodies still execute real SQL. The contexts
+ // are registered KEYED so they never join constructor resolution (several services
+ // keep equal-arity EF/interface constructor pairs that would turn ambiguous).
+            const string testKey = "container-tests";
+            if (_serviceName != "CaseStudy")
+            {
+                services.AddKeyedScoped(
+                    testKey,
+                    (_, _) => new CaseStudyDbContext(StreamOptions<CaseStudyDbContext>()));
+                services.AddScoped<ICaseStudyLookup>(sp =>
+                    new CaseStudyLookup(sp.GetRequiredKeyedService<CaseStudyDbContext>(testKey)));
+                services.AddScoped<IWorkflowAssigneeLookup>(sp =>
+                    new WorkflowAssigneeLookup(sp.GetRequiredKeyedService<CaseStudyDbContext>(testKey)));
+            }
+
+            if (_serviceName != "Identity")
+            {
+                services.AddKeyedScoped(
+                    testKey,
+                    (_, _) => new IdentityDbContext(StreamOptions<IdentityDbContext>()));
+                services.AddScoped<IIdentityDirectory>(sp =>
+                    new IdentityDirectory(sp.GetRequiredKeyedService<IdentityDbContext>(testKey)));
+                services.AddScoped<IUserLabelLookup>(sp =>
+                    sp.GetRequiredService<IIdentityDirectory>());
+            }
         });
     }
 }
