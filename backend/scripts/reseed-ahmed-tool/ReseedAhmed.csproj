@@ -7,5 +7,6 @@
   </PropertyGroup>
   <ItemGroup>
     <ProjectReference Include="..\..\RealEstateEval.Infrastructure\RealEstateEval.Infrastructure.csproj" />
+    <ProjectReference Include="..\..\contexts\identity\RealEstateEval.Identity.Infrastructure\RealEstateEval.Identity.Infrastructure.csproj" />
   </ItemGroup>
 </Project>

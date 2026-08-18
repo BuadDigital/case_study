@@ -3,6 +3,7 @@
   "projectReferences": {
     "backend/RealEstateEval.Api.ContainerTests/RealEstateEval.Api.ContainerTests.csproj": [
       "backend/RealEstateEval.Infrastructure/RealEstateEval.Infrastructure.csproj",
+      "backend/contexts/identity/RealEstateEval.Identity.Infrastructure/RealEstateEval.Identity.Infrastructure.csproj",
       "backend/services/attachments/RealEstateEval.Attachments.Api/RealEstateEval.Attachments.Api.csproj",
       "backend/services/case-study/RealEstateEval.CaseStudy.Api/RealEstateEval.CaseStudy.Api.csproj",
       "backend/services/failures/RealEstateEval.Failures.Api/RealEstateEval.Failures.Api.csproj",
@@ -31,6 +32,7 @@
       "backend/contexts/attachments/RealEstateEval.Attachments.Infrastructure/RealEstateEval.Attachments.Infrastructure.csproj",
       "backend/contexts/failures/RealEstateEval.Failures.Infrastructure/RealEstateEval.Failures.Infrastructure.csproj",
       "backend/contexts/financial/RealEstateEval.Financial.Infrastructure/RealEstateEval.Financial.Infrastructure.csproj",
+      "backend/contexts/identity/RealEstateEval.Identity.Infrastructure/RealEstateEval.Identity.Infrastructure.csproj",
       "backend/contexts/operations/RealEstateEval.Operations.Infrastructure/RealEstateEval.Operations.Infrastructure.csproj",
       "backend/contexts/platform/RealEstateEval.Platform.Infrastructure/RealEstateEval.Platform.Infrastructure.csproj",
       "backend/contexts/valuation/RealEstateEval.Valuation.Infrastructure/RealEstateEval.Valuation.Infrastructure.csproj",
@@ -55,7 +57,8 @@
       "backend/shared/RealEstateEval.Shared.Web/RealEstateEval.Shared.Web.csproj"
     ],
     "backend/scripts/reseed-ahmed-tool/ReseedAhmed.csproj": [
-      "backend/RealEstateEval.Infrastructure/RealEstateEval.Infrastructure.csproj"
+      "backend/RealEstateEval.Infrastructure/RealEstateEval.Infrastructure.csproj",
+      "backend/contexts/identity/RealEstateEval.Identity.Infrastructure/RealEstateEval.Identity.Infrastructure.csproj"
     ],
     "backend/shared/RealEstateEval.Shared.Contracts/RealEstateEval.Shared.Contracts.csproj": [],
     "backend/shared/RealEstateEval.Shared.Web/RealEstateEval.Shared.Web.csproj": [
@@ -92,6 +95,13 @@
     "backend/contexts/financial/RealEstateEval.Financial.Infrastructure/RealEstateEval.Financial.Infrastructure.csproj": [
       "backend/RealEstateEval.Infrastructure/RealEstateEval.Infrastructure.csproj",
       "backend/contexts/financial/RealEstateEval.Financial.Application/RealEstateEval.Financial.Application.csproj"
+    ],
+    "backend/contexts/identity/RealEstateEval.Identity.Application/RealEstateEval.Identity.Application.csproj": [
+      "backend/RealEstateEval.Application/RealEstateEval.Application.csproj"
+    ],
+    "backend/contexts/identity/RealEstateEval.Identity.Infrastructure/RealEstateEval.Identity.Infrastructure.csproj": [
+      "backend/RealEstateEval.Infrastructure/RealEstateEval.Infrastructure.csproj",
+      "backend/contexts/identity/RealEstateEval.Identity.Application/RealEstateEval.Identity.Application.csproj"
     ],
     "backend/contexts/operations/RealEstateEval.Operations.Application/RealEstateEval.Operations.Application.csproj": [
       "backend/RealEstateEval.Application/RealEstateEval.Application.csproj",
@@ -153,6 +163,7 @@
     "backend/services/identity/RealEstateEval.Identity.Api/RealEstateEval.Identity.Api.csproj": [
       "backend/RealEstateEval.Application/RealEstateEval.Application.csproj",
       "backend/RealEstateEval.Infrastructure/RealEstateEval.Infrastructure.csproj",
+      "backend/contexts/identity/RealEstateEval.Identity.Infrastructure/RealEstateEval.Identity.Infrastructure.csproj",
       "backend/shared/RealEstateEval.Shared.Web/RealEstateEval.Shared.Web.csproj"
     ],
     "backend/services/operations/RealEstateEval.Operations.Api/RealEstateEval.Operations.Api.csproj": [
@@ -235,9 +246,6 @@
     "backend/RealEstateEval.Infrastructure/Integration/ValuationReportWorkflowHandler.cs": [
       "case_study"
     ],
-    "backend/RealEstateEval.Infrastructure/Services/AuthSessionService.cs": [
-      "identity"
-    ],
     "backend/RealEstateEval.Infrastructure/Services/BuildingInventoryService.cs": [
       "case_study"
     ],
@@ -271,9 +279,6 @@
     "backend/RealEstateEval.Infrastructure/Services/PartyTaskSubmissionService.cs": [
       "case_study"
     ],
-    "backend/RealEstateEval.Infrastructure/Services/PermissionService.cs": [
-      "identity"
-    ],
     "backend/RealEstateEval.Infrastructure/Services/PersonLabelResolver.cs": [
       "identity"
     ],
@@ -288,10 +293,6 @@
     ],
     "backend/RealEstateEval.Infrastructure/Services/PropertyTimelineService.cs": [
       "case_study"
-    ],
-    "backend/RealEstateEval.Infrastructure/Services/UserRegistrationService.cs": [
-      "audit",
-      "identity"
     ],
     "backend/RealEstateEval.Infrastructure/Services/WorkOrderLoader.cs": [
       "case_study"
@@ -384,6 +385,16 @@
     ],
     "backend/contexts/financial/RealEstateEval.Financial.Infrastructure/Services/PoEnfazInvoiceLookup.cs": [
       "financial"
+    ],
+    "backend/contexts/identity/RealEstateEval.Identity.Infrastructure/Services/AuthSessionService.cs": [
+      "identity"
+    ],
+    "backend/contexts/identity/RealEstateEval.Identity.Infrastructure/Services/PermissionService.cs": [
+      "identity"
+    ],
+    "backend/contexts/identity/RealEstateEval.Identity.Infrastructure/Services/UserRegistrationService.cs": [
+      "audit",
+      "identity"
     ],
     "backend/contexts/operations/RealEstateEval.Operations.Infrastructure/Services/KeyEnvelopesService.cs": [
       "case_study",

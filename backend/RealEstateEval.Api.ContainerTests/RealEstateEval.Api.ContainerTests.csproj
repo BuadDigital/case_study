@@ -20,6 +20,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\RealEstateEval.Infrastructure\RealEstateEval.Infrastructure.csproj" />
+    <ProjectReference Include="..\contexts\identity\RealEstateEval.Identity.Infrastructure\RealEstateEval.Identity.Infrastructure.csproj" />
     <ProjectReference Include="..\services\attachments\RealEstateEval.Attachments.Api\RealEstateEval.Attachments.Api.csproj" Aliases="AttachmentsApi" />
     <ProjectReference Include="..\services\case-study\RealEstateEval.CaseStudy.Api\RealEstateEval.CaseStudy.Api.csproj" Aliases="CaseStudyApi" />
     <ProjectReference Include="..\services\financial\RealEstateEval.Financial.Api\RealEstateEval.Financial.Api.csproj" Aliases="FinancialApi" />
