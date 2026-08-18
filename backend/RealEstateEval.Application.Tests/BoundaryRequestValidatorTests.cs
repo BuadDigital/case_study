@@ -1,4 +1,4 @@
-using RealEstateEval.Application.Contracts;
+﻿using RealEstateEval.Application.Contracts;
 using RealEstateEval.Application.Validation;
 using RealEstateEval.Domain;
 
@@ -331,5 +331,75 @@ public class BoundaryRequestValidatorTests
 
         Assert.Contains(result.Errors, e => e.PropertyName == "assigneeId");
         Assert.Contains(result.Errors, e => e.PropertyName == "reason");
+    }
+
+    [Fact]
+    public void Close_party_billing_statement_rejects_blank_required_refs()
+    {
+        var result = new ClosePartyBillingStatementRequestValidator().Validate(
+            new ClosePartyBillingStatementRequest
+            {
+                DisbursementVoucher = "",
+                TransferReference = "",
+                TransferReceiptAttachmentId = "",
+            });
+
+        Assert.Contains(result.Errors, e => e.PropertyName == "disbursementVoucher");
+        Assert.Contains(result.Errors, e => e.PropertyName == "transferReference");
+        Assert.Contains(result.Errors, e => e.PropertyName == "transferReceiptAttachmentId");
+    }
+
+    [Fact]
+    public void Create_party_billing_statement_caps_task_id_count_and_length()
+    {
+        var tooMany = new CreatePartyBillingStatementRequestValidator().Validate(
+            new CreatePartyBillingStatementRequest
+            {
+                WorkflowTaskIds = Enumerable.Range(0, 501).Select(i => $"t-{i}").ToList(),
+            });
+        Assert.Contains(tooMany.Errors, e => e.PropertyName == "workflowTaskIds");
+
+        var tooLong = new CreatePartyBillingStatementRequestValidator().Validate(
+            new CreatePartyBillingStatementRequest
+            {
+                WorkflowTaskIds = [new string('x', 65)],
+            });
+        Assert.Contains(tooLong.Errors, e => e.PropertyName.StartsWith("workflowTaskIds"));
+
+        var ok = new CreatePartyBillingStatementRequestValidator().Validate(
+            new CreatePartyBillingStatementRequest { WorkflowTaskIds = ["task-1"] });
+        Assert.Empty(ok.Errors);
+    }
+
+    [Fact]
+    public void Save_po_enfaz_billing_validates_nested_lines()
+    {
+        var result = new SavePoEnfazBillingRequestValidator().Validate(
+            new SavePoEnfazBillingRequest
+            {
+                Lines = [new PoEnfazRevenueLineInput { PropertyId = "" }],
+            });
+
+        Assert.Contains(result.Errors, e => e.PropertyName.Contains("propertyId"));
+
+        var ok = new SavePoEnfazBillingRequestValidator().Validate(
+            new SavePoEnfazBillingRequest
+            {
+                Lines = [new PoEnfazRevenueLineInput { PropertyId = "prop-1" }],
+            });
+        Assert.Empty(ok.Errors);
+    }
+
+    [Fact]
+    public void Cancel_and_reject_billing_require_a_reason()
+    {
+        Assert.Contains(
+            new CancelPartyBillingStatementRequestValidator()
+                .Validate(new CancelPartyBillingStatementRequest { Reason = "" }).Errors,
+            e => e.PropertyName == "reason");
+        Assert.Contains(
+            new RejectVendorInvoiceRequestValidator()
+                .Validate(new RejectVendorInvoiceRequest { Reason = "" }).Errors,
+            e => e.PropertyName == "reason");
     }
 }

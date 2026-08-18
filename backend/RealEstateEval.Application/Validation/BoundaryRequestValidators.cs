@@ -622,3 +622,113 @@ public sealed class TestCommunicationRequestValidator : AbstractValidator<TestCo
             .OverridePropertyName("destination");
     }
 }
+
+// B6 residual closed 2026-08-18 — nested billing bodies. Valuation save bodies already
+// carry DataAnnotations enforced by [ApiController]; billing bodies had no caps at all.
+
+public sealed class CreatePartyBillingStatementRequestValidator
+    : AbstractValidator<CreatePartyBillingStatementRequest>
+{
+    public CreatePartyBillingStatementRequestValidator()
+    {
+        RuleFor(x => x.WorkflowTaskIds)
+            .Must(ids => ids.Count <= 500)
+            .WithMessage("لا يمكن تضمين أكثر من 500 مهمة في كشف واحد")
+            .OverridePropertyName("workflowTaskIds");
+        RuleForEach(x => x.WorkflowTaskIds).NotEmpty().MaximumLength(64)
+            .OverridePropertyName("workflowTaskIds");
+        RuleFor(x => x.Notes!).MaximumLength(4000)
+            .When(x => x.Notes is not null)
+            .OverridePropertyName("notes");
+    }
+}
+
+public sealed class ClosePartyBillingStatementRequestValidator
+    : AbstractValidator<ClosePartyBillingStatementRequest>
+{
+    public ClosePartyBillingStatementRequestValidator()
+    {
+        RuleFor(x => x.DisbursementVoucher).NotEmpty().MaximumLength(128)
+            .OverridePropertyName("disbursementVoucher");
+        RuleFor(x => x.TransferReference).NotEmpty().MaximumLength(128)
+            .OverridePropertyName("transferReference");
+        RuleFor(x => x.TransferReceiptAttachmentId).NotEmpty().MaximumLength(64)
+            .OverridePropertyName("transferReceiptAttachmentId");
+        RuleFor(x => x.TransferReceiptRef!).MaximumLength(256)
+            .When(x => x.TransferReceiptRef is not null)
+            .OverridePropertyName("transferReceiptRef");
+        RuleFor(x => x.ExternalInvoiceNumber!).MaximumLength(128)
+            .When(x => x.ExternalInvoiceNumber is not null)
+            .OverridePropertyName("externalInvoiceNumber");
+        RuleFor(x => x.Notes!).MaximumLength(4000)
+            .When(x => x.Notes is not null)
+            .OverridePropertyName("notes");
+    }
+}
+
+public sealed class SubmitVendorInvoiceRequestValidator : AbstractValidator<SubmitVendorInvoiceRequest>
+{
+    public SubmitVendorInvoiceRequestValidator()
+    {
+        RuleFor(x => x.InvoiceNumber).NotEmpty().MaximumLength(128)
+            .OverridePropertyName("invoiceNumber");
+        RuleFor(x => x.AttachmentId).NotEmpty().MaximumLength(64)
+            .OverridePropertyName("attachmentId");
+    }
+}
+
+public sealed class RejectVendorInvoiceRequestValidator : AbstractValidator<RejectVendorInvoiceRequest>
+{
+    public RejectVendorInvoiceRequestValidator() =>
+        RuleFor(x => x.Reason).NotEmpty().MaximumLength(4000)
+            .OverridePropertyName("reason");
+}
+
+public sealed class CancelPartyBillingStatementRequestValidator
+    : AbstractValidator<CancelPartyBillingStatementRequest>
+{
+    public CancelPartyBillingStatementRequestValidator() =>
+        RuleFor(x => x.Reason).NotEmpty().MaximumLength(4000)
+            .OverridePropertyName("reason");
+}
+
+public sealed class DeferPartyBillingLinesRequestValidator
+    : AbstractValidator<DeferPartyBillingLinesRequest>
+{
+    public DeferPartyBillingLinesRequestValidator()
+    {
+        RuleFor(x => x.WorkflowTaskIds)
+            .Must(ids => ids.Count <= 500)
+            .WithMessage("لا يمكن تأجيل أكثر من 500 مهمة في طلب واحد")
+            .OverridePropertyName("workflowTaskIds");
+        RuleForEach(x => x.WorkflowTaskIds).NotEmpty().MaximumLength(64)
+            .OverridePropertyName("workflowTaskIds");
+    }
+}
+
+public sealed class SavePoEnfazBillingRequestValidator : AbstractValidator<SavePoEnfazBillingRequest>
+{
+    public SavePoEnfazBillingRequestValidator()
+    {
+        RuleFor(x => x.Lines)
+            .Must(lines => lines.Count <= 500)
+            .WithMessage("لا يمكن حفظ أكثر من 500 سطر إيراد في طلب واحد")
+            .OverridePropertyName("lines");
+        RuleForEach(x => x.Lines).ChildRules(line =>
+        {
+            line.RuleFor(l => l.PropertyId).NotEmpty().MaximumLength(64)
+                .OverridePropertyName("propertyId");
+            line.RuleFor(l => l.KeyEntitlementEnvelopeId!).MaximumLength(64)
+                .When(l => l.KeyEntitlementEnvelopeId is not null)
+                .OverridePropertyName("keyEntitlementEnvelopeId");
+        }).OverridePropertyName("lines");
+    }
+}
+
+public sealed class CollectPoEnfazInvoiceRequestValidator : AbstractValidator<CollectPoEnfazInvoiceRequest>
+{
+    public CollectPoEnfazInvoiceRequestValidator() =>
+        RuleFor(x => x.Note!).MaximumLength(4000)
+            .When(x => x.Note is not null)
+            .OverridePropertyName("note");
+}
