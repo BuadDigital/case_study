@@ -1,4 +1,4 @@
-namespace RealEstateEval.Domain;
+﻿namespace RealEstateEval.Domain;
 
 /// <summary>
 /// Methodology alerts — 21 per package v2 (القرار 16 + 24 + ق-4 + ق-7):
@@ -32,25 +32,6 @@ public static class ValuationMethodologyAlertCodes
     public const string StaleComparableNoTimeAdjustment = "m20_stale_comparable_no_time_adjustment";
  /// <summary>ق-7 — نطاق «مكتبية عن بُعد» يحتاج اعتماد المقيّم المعتمد (حاجب).</summary>
     public const string RemoteInspectionUnapproved = "m21_remote_inspection_unapproved";
-}
-
-/// <summary>نطاق المعاينة (القرار 24) — تُستكمل حقوله مع ميزة حدود المعاينة.</summary>
-public static class InspectionScopeKeys
-{
-    public const string Full = "full";
-    public const string ExternalOnly = "external";
-    public const string Desktop = "desktop";
-
-    public static bool IsKnown(string? value) =>
-        (value ?? "").Trim().ToLowerInvariant() is Full or ExternalOnly or Desktop;
-
-    public static string LabelAr(string? value) => (value ?? "").Trim().ToLowerInvariant() switch
-    {
-        ExternalOnly => "خارجية فقط",
-        Desktop => "مكتبية عن بُعد",
-        Full => "كاملة (داخل وخارج)",
-        _ => "",
-    };
 }
 
 public static class ValuationMethodologyAlertSeverityKinds

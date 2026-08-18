@@ -1,4 +1,4 @@
-using System.Text.RegularExpressions;
+﻿using System.Text.RegularExpressions;
 using RealEstateEval.Architecture.Tests.Support;
 
 namespace RealEstateEval.Architecture.Tests;
@@ -20,6 +20,7 @@ public class TimeProviderUsageTests
             RepoPaths.Combine("backend", "RealEstateEval.Application"),
             RepoPaths.Combine("backend", "RealEstateEval.Infrastructure", "Services"),
             RepoPaths.Combine("backend", "RealEstateEval.Infrastructure", "Integration"),
+            RepoPaths.Combine("backend", "contexts"),
             RepoPaths.Combine("backend", "services"),
         };
 

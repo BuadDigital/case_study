@@ -1,4 +1,4 @@
-namespace RealEstateEval.Domain;
+﻿namespace RealEstateEval.Domain;
 
 /// <summary>
 /// A valuation request dispatched for one property. Only one may be open per property, so the
@@ -79,12 +79,7 @@ public class ValuationRequest
     }
 }
 
-public enum ValuationRequestStatus
-{
-    Progress = 0,
-    Done = 1,
-    Failed = 2,
-}
+// ValuationRequestStatus stays in the global Domain (shared by Case Study dispatch, Reporting, EF converters).
 
 /// <summary>Outcome of a <see cref="ValuationRequest"/> transition attempt.</summary>
 public enum ValuationRequestTransition

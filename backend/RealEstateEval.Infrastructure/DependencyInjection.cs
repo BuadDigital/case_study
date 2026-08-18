@@ -758,55 +758,9 @@ public static class DependencyInjection
         return services;
     }
 
- /// <summary>
- /// The valuation-request write path only: the Valuation context, its per-producer outbox
- /// publisher, the Case Study PO-number lookup it reads through, and the request service.
- /// The EF <see cref="CaseStudyPropertyPoNumberLookup"/> registered here suits the Case
- /// Study host; the Valuation host overrides it with the HTTP-backed
- /// <see cref="RemotePropertyPoNumberLookup"/> (A9 — no CaseStudyDbContext there).
- /// Case Study registers this rather than the full set because
- /// <see cref="CaseStudyValuationDispatchService"/> creates a valuation request when a
- /// case-study form is submitted; process ownership moves in.
- /// </summary>
-    public static IServiceCollection AddValuationRequestInfrastructure(
-        this IServiceCollection services,
-        IConfiguration configuration,
-        string connectionString)
-    {
-        services.AddValuationPersistence(configuration, connectionString);
-        services.AddScoped<IValuationEventPublisher, ValuationOutboxPublisher>();
-        services.AddScoped<IPropertyPoNumberLookup, CaseStudyPropertyPoNumberLookup>();
-        services.AddScoped<IValuationRequestService, ValuationRequestService>();
-        return services;
-    }
+ // AddValuationRequestInfrastructure folded into AddValuationInfrastructure (RealEstateEval.Valuation.Infrastructure, A8).
 
- /// <summary>Everything the Valuation host serves, including evaluator recalls.</summary>
-    public static IServiceCollection AddValuationInfrastructure(
-        this IServiceCollection services,
-        IConfiguration configuration,
-        string connectionString)
-    {
- // A9: Case Study reads go through the owner HTTP API. No CaseStudyDbContext here, and
- // no compose depends_on case-study (case-study already depends_on valuation).
-        services.AddRemoteCaseStudy(configuration);
-        services.AddRemotePlatformCatalogs(configuration);
-        services.AddRemoteAttachmentLookup(configuration);
-        services.AddRemoteAuditLogAppend(configuration);
-        services.AddValuationRequestInfrastructure(configuration, connectionString);
- // Override the EF PO lookup registered above — this host has no CaseStudyDbContext.
-        services.AddScoped<IPropertyPoNumberLookup, RemotePropertyPoNumberLookup>();
-        services.AddScoped<IEvaluatorRecallsService, EvaluatorRecallsService>();
-        services.AddScoped<IComparablePropertyService, ComparablePropertyService>();
-        services.AddScoped<IValuationComparableSelectionService, ValuationComparableSelectionService>();
-        services.AddScoped<IValuationApproachSettingsService, ValuationApproachSettingsService>();
-        services.AddScoped<IValuationCostApproachService, ValuationCostApproachService>();
-        services.AddScoped<IValuationReconciliationService, ValuationReconciliationService>();
-        services.AddScoped<IValuationIssuanceGateService, ValuationIssuanceGateService>();
-        services.AddScoped<IValuationReportDocumentService, ValuationReportDocumentService>();
-        services.AddScoped<IValuationReportFieldInjectionService, ValuationReportFieldInjectionService>();
-        services.AddScoped<IPriorValuationBankFeeder, PriorValuationBankFeeder>();
-        return services;
-    }
+ // AddValuationInfrastructure moved to RealEstateEval.Valuation.Infrastructure (A8).
 
  /// <summary>
  /// Transactional outbox writer — use on any service that publishes integration events.

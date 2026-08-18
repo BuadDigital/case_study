@@ -24,6 +24,9 @@
   <Project Path="contexts/failures/RealEstateEval.Failures.Domain/RealEstateEval.Failures.Domain.csproj" />
   <Project Path="contexts/failures/RealEstateEval.Failures.Application/RealEstateEval.Failures.Application.csproj" />
   <Project Path="contexts/failures/RealEstateEval.Failures.Infrastructure/RealEstateEval.Failures.Infrastructure.csproj" />
+  <Project Path="contexts/valuation/RealEstateEval.Valuation.Domain/RealEstateEval.Valuation.Domain.csproj" />
+  <Project Path="contexts/valuation/RealEstateEval.Valuation.Application/RealEstateEval.Valuation.Application.csproj" />
+  <Project Path="contexts/valuation/RealEstateEval.Valuation.Infrastructure/RealEstateEval.Valuation.Infrastructure.csproj" />
   <Project Path="scripts/reseed-ahmed-tool/ReseedAhmed.csproj" />
   <Project Path="tools/DbMigrate/DbMigrate.csproj" />
 </Solution>

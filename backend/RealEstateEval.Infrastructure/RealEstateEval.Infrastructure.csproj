@@ -31,6 +31,7 @@
     <ProjectReference Include="..\RealEstateEval.Application\RealEstateEval.Application.csproj" />
     <ProjectReference Include="..\contexts\attachments\RealEstateEval.Attachments.Application\RealEstateEval.Attachments.Application.csproj" />
     <ProjectReference Include="..\contexts\failures\RealEstateEval.Failures.Application\RealEstateEval.Failures.Application.csproj" />
+    <ProjectReference Include="..\contexts\valuation\RealEstateEval.Valuation.Application\RealEstateEval.Valuation.Application.csproj" />
     <ProjectReference Include="..\RealEstateEval.Domain\RealEstateEval.Domain.csproj" />
     <ProjectReference Include="..\shared\RealEstateEval.Shared.Contracts\RealEstateEval.Shared.Contracts.csproj" />
   </ItemGroup>

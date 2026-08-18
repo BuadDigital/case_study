@@ -1,4 +1,4 @@
-using System.Text.RegularExpressions;
+﻿using System.Text.RegularExpressions;
 using RealEstateEval.Architecture.Tests.Support;
 using RealEstateEval.Infrastructure.Data;
 
@@ -157,6 +157,7 @@ public class BoundedContextBoundaryTests
             new[] { "backend", "RealEstateEval.Infrastructure", "Services" },
             new[] { "backend", "contexts", "attachments", "RealEstateEval.Attachments.Infrastructure", "Services" },
             new[] { "backend", "contexts", "failures", "RealEstateEval.Failures.Infrastructure", "Services" },
+            new[] { "backend", "contexts", "valuation", "RealEstateEval.Valuation.Infrastructure", "Services" },
         };
 
         var failures = new List<string>();

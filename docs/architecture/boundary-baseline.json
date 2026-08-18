@@ -30,6 +30,7 @@
       "backend/RealEstateEval.Infrastructure/RealEstateEval.Infrastructure.csproj",
       "backend/contexts/attachments/RealEstateEval.Attachments.Infrastructure/RealEstateEval.Attachments.Infrastructure.csproj",
       "backend/contexts/failures/RealEstateEval.Failures.Infrastructure/RealEstateEval.Failures.Infrastructure.csproj",
+      "backend/contexts/valuation/RealEstateEval.Valuation.Infrastructure/RealEstateEval.Valuation.Infrastructure.csproj",
       "backend/shared/RealEstateEval.Shared.Web/RealEstateEval.Shared.Web.csproj"
     ],
     "backend/RealEstateEval.Architecture.Tests/RealEstateEval.Architecture.Tests.csproj": [
@@ -41,6 +42,7 @@
       "backend/RealEstateEval.Domain/RealEstateEval.Domain.csproj",
       "backend/contexts/attachments/RealEstateEval.Attachments.Application/RealEstateEval.Attachments.Application.csproj",
       "backend/contexts/failures/RealEstateEval.Failures.Application/RealEstateEval.Failures.Application.csproj",
+      "backend/contexts/valuation/RealEstateEval.Valuation.Application/RealEstateEval.Valuation.Application.csproj",
       "backend/shared/RealEstateEval.Shared.Contracts/RealEstateEval.Shared.Contracts.csproj"
     ],
     "backend/gateway/RealEstateEval.Gateway/RealEstateEval.Gateway.csproj": [
@@ -73,6 +75,17 @@
     "backend/contexts/failures/RealEstateEval.Failures.Infrastructure/RealEstateEval.Failures.Infrastructure.csproj": [
       "backend/RealEstateEval.Infrastructure/RealEstateEval.Infrastructure.csproj",
       "backend/contexts/failures/RealEstateEval.Failures.Application/RealEstateEval.Failures.Application.csproj"
+    ],
+    "backend/contexts/valuation/RealEstateEval.Valuation.Application/RealEstateEval.Valuation.Application.csproj": [
+      "backend/RealEstateEval.Application/RealEstateEval.Application.csproj",
+      "backend/contexts/valuation/RealEstateEval.Valuation.Domain/RealEstateEval.Valuation.Domain.csproj"
+    ],
+    "backend/contexts/valuation/RealEstateEval.Valuation.Domain/RealEstateEval.Valuation.Domain.csproj": [
+      "backend/RealEstateEval.Domain/RealEstateEval.Domain.csproj"
+    ],
+    "backend/contexts/valuation/RealEstateEval.Valuation.Infrastructure/RealEstateEval.Valuation.Infrastructure.csproj": [
+      "backend/RealEstateEval.Infrastructure/RealEstateEval.Infrastructure.csproj",
+      "backend/contexts/valuation/RealEstateEval.Valuation.Application/RealEstateEval.Valuation.Application.csproj"
     ],
     "backend/services/attachments/RealEstateEval.Attachments.Api/RealEstateEval.Attachments.Api.csproj": [
       "backend/RealEstateEval.Application/RealEstateEval.Application.csproj",
@@ -122,6 +135,7 @@
     "backend/services/valuation/RealEstateEval.Valuation.Api/RealEstateEval.Valuation.Api.csproj": [
       "backend/RealEstateEval.Application/RealEstateEval.Application.csproj",
       "backend/RealEstateEval.Infrastructure/RealEstateEval.Infrastructure.csproj",
+      "backend/contexts/valuation/RealEstateEval.Valuation.Infrastructure/RealEstateEval.Valuation.Infrastructure.csproj",
       "backend/shared/RealEstateEval.Shared.Contracts/RealEstateEval.Shared.Contracts.csproj",
       "backend/shared/RealEstateEval.Shared.Web/RealEstateEval.Shared.Web.csproj"
     ]
@@ -158,7 +172,6 @@
     ],
     "reporting": [],
     "valuation": [
-      "case_study",
       "messaging",
       "valuation"
     ]
@@ -210,9 +223,6 @@
     "backend/RealEstateEval.Infrastructure/Services/ClientService.cs": [
       "case_study"
     ],
-    "backend/RealEstateEval.Infrastructure/Services/ComparablePropertyService.cs": [
-      "valuation"
-    ],
     "backend/RealEstateEval.Infrastructure/Services/CourtVisitFeeChargeService.cs": [
       "financial"
     ],
@@ -233,9 +243,6 @@
     "backend/RealEstateEval.Infrastructure/Services/DiscountFlagService.cs": [
       "case_study",
       "financial"
-    ],
-    "backend/RealEstateEval.Infrastructure/Services/EvaluatorRecallsService.cs": [
-      "valuation"
     ],
     "backend/RealEstateEval.Infrastructure/Services/FieldDictionaryService.cs": [
       "audit",
@@ -350,21 +357,6 @@
       "audit",
       "identity"
     ],
-    "backend/RealEstateEval.Infrastructure/Services/ValuationApproachSettingsService.cs": [
-      "valuation"
-    ],
-    "backend/RealEstateEval.Infrastructure/Services/ValuationComparableSelectionService.cs": [
-      "valuation"
-    ],
-    "backend/RealEstateEval.Infrastructure/Services/ValuationCostApproachService.cs": [
-      "valuation"
-    ],
-    "backend/RealEstateEval.Infrastructure/Services/ValuationReconciliationService.cs": [
-      "valuation"
-    ],
-    "backend/RealEstateEval.Infrastructure/Services/ValuationRequestService.cs": [
-      "valuation"
-    ],
     "backend/RealEstateEval.Infrastructure/Services/WebPushDeliveryHandler.cs": [
       "messaging"
     ],
@@ -412,6 +404,27 @@
     ],
     "backend/contexts/failures/RealEstateEval.Failures.Infrastructure/Services/FailureTypesCatalogService.cs": [
       "failures"
+    ],
+    "backend/contexts/valuation/RealEstateEval.Valuation.Infrastructure/Services/ComparablePropertyService.cs": [
+      "valuation"
+    ],
+    "backend/contexts/valuation/RealEstateEval.Valuation.Infrastructure/Services/EvaluatorRecallsService.cs": [
+      "valuation"
+    ],
+    "backend/contexts/valuation/RealEstateEval.Valuation.Infrastructure/Services/ValuationApproachSettingsService.cs": [
+      "valuation"
+    ],
+    "backend/contexts/valuation/RealEstateEval.Valuation.Infrastructure/Services/ValuationComparableSelectionService.cs": [
+      "valuation"
+    ],
+    "backend/contexts/valuation/RealEstateEval.Valuation.Infrastructure/Services/ValuationCostApproachService.cs": [
+      "valuation"
+    ],
+    "backend/contexts/valuation/RealEstateEval.Valuation.Infrastructure/Services/ValuationReconciliationService.cs": [
+      "valuation"
+    ],
+    "backend/contexts/valuation/RealEstateEval.Valuation.Infrastructure/Services/ValuationRequestService.cs": [
+      "valuation"
     ]
   },
   "serviceRegistrationFanOut": {
@@ -444,9 +457,6 @@
     ],
     "CaseStudyInfoRolesConfigService": [
       "platform"
-    ],
-    "CaseStudyPropertyPoNumberLookup": [
-      "valuation"
     ],
     "CaseStudyValuationDispatchService": [
       "case-study"

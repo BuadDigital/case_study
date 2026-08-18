@@ -1,0 +1,17 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <RootNamespace>RealEstateEval.Application</RootNamespace>
+  </PropertyGroup>
+
+  <!-- No FluentValidation: the valuation host runs with AddValidation = false and
+       ships no boundary validators (deliberate deviation from the slice template). -->
+  <ItemGroup>
+    <ProjectReference Include="..\RealEstateEval.Valuation.Domain\RealEstateEval.Valuation.Domain.csproj" />
+    <ProjectReference Include="..\..\..\RealEstateEval.Application\RealEstateEval.Application.csproj" />
+  </ItemGroup>
+
+</Project>

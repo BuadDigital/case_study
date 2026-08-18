@@ -1,0 +1,16 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <RootNamespace>RealEstateEval.Domain</RootNamespace>
+  </PropertyGroup>
+
+  <!-- Unlike Failures/Attachments, the Valuation rules depend on shared Domain types
+       (DeedKind, ValuationRequestStatus, InspectionScopeKeys, MarketAdjustmentFactorKeys). -->
+  <ItemGroup>
+    <ProjectReference Include="..\..\..\RealEstateEval.Domain\RealEstateEval.Domain.csproj" />
+  </ItemGroup>
+
+</Project>
