@@ -50,3 +50,89 @@ public sealed class HttpCaseStudyCommands(
             Setting,
             cancellationToken);
 }
+
+/// <summary>Failures-host HTTP client for the Case Study failure side effects (A9).</summary>
+public sealed class HttpCaseStudyFailureCommands(
+    HttpClient http,
+    IHttpContextAccessor httpContext,
+    IOptions<UpstreamServicesOptions> options) : ICaseStudyFailureCommands
+{
+    private const string Setting = "UpstreamServices:CaseStudyBaseUrl";
+
+    public Task SetFailureDeedStatusAsync(
+        SetCaseStudyDeedStatusRequest request,
+        CancellationToken cancellationToken = default) =>
+        PostCommandAsync("/api/case-study-dispatch/properties/deed-status", request, cancellationToken);
+
+    public Task EscalateObstructionAsync(
+        EscalateCaseStudyObstructionRequest request,
+        CancellationToken cancellationToken = default) =>
+        PostCommandAsync(
+            "/api/case-study-dispatch/case-study-tasks/escalate-obstruction",
+            request,
+            cancellationToken);
+
+    public Task ResolveObstructionAsync(
+        ResolveCaseStudyObstructionRequest request,
+        CancellationToken cancellationToken = default) =>
+        PostCommandAsync(
+            "/api/case-study-dispatch/case-study-tasks/resolve-obstruction",
+            request,
+            cancellationToken);
+
+    public Task BlockPropertyTasksForFailureAsync(
+        BlockCaseStudyTasksForFailureRequest request,
+        CancellationToken cancellationToken = default) =>
+        PostCommandAsync(
+            "/api/case-study-dispatch/case-study-tasks/block-for-approved-failure",
+            request,
+            cancellationToken);
+
+    public async Task<CaseStudyHoldTaskResultDto?> BlockTaskForHoldAsync(
+        CaseStudyHoldTaskRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        var (result, _) = await UpstreamJson.PostForResultAsync<CaseStudyHoldTaskResultDto>(
+            http,
+            httpContext,
+            options.Value.CaseStudyBaseUrl,
+            "/api/case-study-dispatch/case-study-tasks/block-for-hold",
+            request,
+            Setting,
+            cancellationToken);
+        return result;
+    }
+
+    public async Task<CaseStudyHoldTaskResultDto?> UnblockTaskForHoldAsync(
+        CaseStudyHoldTaskRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        var (result, _) = await UpstreamJson.PostForResultAsync<CaseStudyHoldTaskResultDto>(
+            http,
+            httpContext,
+            options.Value.CaseStudyBaseUrl,
+            "/api/case-study-dispatch/case-study-tasks/unblock-for-hold",
+            request,
+            Setting,
+            cancellationToken);
+        return result;
+    }
+
+    public Task RecordPropertyTimelineEventAsync(
+        PropertyTimelineRecordRequest request,
+        CancellationToken cancellationToken = default) =>
+        PostCommandAsync(
+            "/api/case-study-dispatch/property-timeline/record",
+            request,
+            cancellationToken);
+
+    private Task PostCommandAsync(string path, object body, CancellationToken cancellationToken) =>
+        UpstreamJson.PostAsync(
+            http,
+            httpContext,
+            options.Value.CaseStudyBaseUrl,
+            path,
+            body,
+            Setting,
+            cancellationToken);
+}

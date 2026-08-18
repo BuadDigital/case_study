@@ -24,7 +24,6 @@ public sealed class ServiceModule : IRealEstateEvalServiceModule
         app.MapDatabaseReady(
             ServiceName,
             typeof(FailuresDbContext),
-            typeof(CaseStudyDbContext),
             typeof(MessagingDbContext));
         return Task.CompletedTask;
     }

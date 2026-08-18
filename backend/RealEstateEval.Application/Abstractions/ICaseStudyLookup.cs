@@ -18,6 +18,14 @@ public interface ICaseStudyLookup
     Task<IReadOnlyList<CaseStudyWorkOrderSummaryDto>> ListWorkOrderSummariesAsync(
         CancellationToken cancellationToken = default);
 
+    /// <summary>
+    /// Distinct PO numbers of workflow tasks assigned to any of the given assignee/user ids
+    /// (any kind or status). Used as the failures visibility filter.
+    /// </summary>
+    Task<IReadOnlyList<string>> ListPoNumbersByAssigneesAsync(
+        IReadOnlyList<string> assigneeIds,
+        CancellationToken cancellationToken = default);
+
     Task<CaseStudyPropertySnapshotDto?> GetPropertyAsync(
         Guid propertyId,
         CancellationToken cancellationToken = default);

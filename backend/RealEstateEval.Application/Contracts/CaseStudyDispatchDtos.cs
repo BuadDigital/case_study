@@ -148,6 +148,57 @@ public sealed class CaseStudyAssigneeDto
     public string? AssigneeId { get; set; }
 }
 
+/// <summary>Failures→Case Study: set a property's deed status by the failure's identifiers.</summary>
+public sealed class SetCaseStudyDeedStatusRequest
+{
+    public string PoNumber { get; set; } = "";
+    /// <summary>Failure PropertyId — a Guid string OR a deed number.</summary>
+    public string PropertyId { get; set; } = "";
+    public string DeedNumber { get; set; } = "";
+    public string DeedStatus { get; set; } = "";
+}
+
+/// <summary>Failures→Case Study: escalate the case-study task into the obstruction phase.</summary>
+public sealed class EscalateCaseStudyObstructionRequest
+{
+    public string PoNumber { get; set; } = "";
+    /// <summary>Failure PropertyId — a Guid string OR a deed number.</summary>
+    public string PropertyId { get; set; } = "";
+    public string Reason { get; set; } = "";
+}
+
+/// <summary>Failures→Case Study: resume the case-study task from obstruction (resets bourse when resuming there).</summary>
+public sealed class ResolveCaseStudyObstructionRequest
+{
+    public string PoNumber { get; set; } = "";
+    /// <summary>Failure PropertyId — a Guid string OR a deed number.</summary>
+    public string PropertyId { get; set; } = "";
+}
+
+/// <summary>Failures→Case Study: block every open task of the property after a failure is approved.</summary>
+public sealed class BlockCaseStudyTasksForFailureRequest
+{
+    public string PoNumber { get; set; } = "";
+    /// <summary>Failure PropertyId — a Guid string OR a deed number.</summary>
+    public string PropertyId { get; set; } = "";
+    public string Reason { get; set; } = "";
+}
+
+/// <summary>Failures→Case Study: block/unblock the case-study task for an access hold.</summary>
+public sealed class CaseStudyHoldTaskRequest
+{
+    public string PoNumber { get; set; } = "";
+    public Guid PropertyId { get; set; }
+    public string Reason { get; set; } = "";
+}
+
+/// <summary>The task a hold command touched, so the caller can notify its specialist.</summary>
+public sealed class CaseStudyHoldTaskResultDto
+{
+    public Guid TaskId { get; set; }
+    public string? AssigneeId { get; set; }
+}
+
 public sealed class CaseStudyGovReviewKeyStatusDto
 {
     public Guid PropertyId { get; set; }

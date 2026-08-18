@@ -17,9 +17,8 @@ public class FailureService : IFailureService
     private static readonly HashSet<string> ActiveStatuses = PropertyFailureStatus.Active;
 
     private readonly FailuresDbContext _failures;
-    private readonly CaseStudyDbContext _caseStudy;
-    private readonly IWorkflowTaskShellPatcher _tasks;
-    private readonly IPropertyTimelineService _timeline;
+    private readonly ICaseStudyLookup _caseStudyLookup;
+    private readonly ICaseStudyFailureCommands _caseStudy;
     private readonly INotificationService _notifications;
     private readonly NotificationRecipientResolver _recipients;
     private readonly IUserLabelLookup _labels;
@@ -27,9 +26,8 @@ public class FailureService : IFailureService
 
     public FailureService(
         FailuresDbContext failures,
-        CaseStudyDbContext caseStudy,
-        IWorkflowTaskShellPatcher tasks,
-        IPropertyTimelineService timeline,
+        ICaseStudyLookup caseStudyLookup,
+        ICaseStudyFailureCommands caseStudyCommands,
         INotificationService notifications,
         NotificationRecipientResolver recipients,
         IUserLabelLookup labels,
@@ -38,9 +36,8 @@ public class FailureService : IFailureService
         _time = time ?? TimeProvider.System;
 
         _failures = failures;
-        _caseStudy = caseStudy;
-        _tasks = tasks;
-        _timeline = timeline;
+        _caseStudyLookup = caseStudyLookup;
+        _caseStudy = caseStudyCommands;
         _notifications = notifications;
         _recipients = recipients;
         _labels = labels;
@@ -101,24 +98,10 @@ public class FailureService : IFailureService
         if (assigneeId.Length == 0 && userId.Length == 0)
             return new HashSet<string>(StringComparer.Ordinal);
 
-        var query = _caseStudy.WorkflowTasks.AsNoTracking().AsQueryable();
-        if (assigneeId.Length > 0 && userId.Length > 0)
-            query = query.Where(t => t.AssigneeId == assigneeId || t.AssigneeId == userId);
-        else if (assigneeId.Length > 0)
-            query = query.Where(t => t.AssigneeId == assigneeId);
-        else
-            query = query.Where(t => t.AssigneeId == userId);
-
-        var pos = await query
-            .Where(t => t.PoNumber != null && t.PoNumber != "")
-            .Select(t => t.PoNumber)
-            .Distinct()
-            .ToListAsync(cancellationToken);
-
-        return pos
-            .Select(p => p.Trim())
-            .Where(p => p.Length > 0)
-            .ToHashSet(StringComparer.Ordinal);
+        var pos = await _caseStudyLookup.ListPoNumbersByAssigneesAsync(
+            [assigneeId, userId],
+            cancellationToken);
+        return pos.ToHashSet(StringComparer.Ordinal);
     }
 
     private async Task<bool> CanReadPoAsync(
@@ -140,11 +123,12 @@ public class FailureService : IFailureService
 
         if (Guid.TryParse(request.PropertyId.Trim(), out var createPropertyId))
         {
-            var prop = await _caseStudy.WorkOrderProperties.AsNoTracking()
-                .FirstOrDefaultAsync(p => p.Id == createPropertyId, cancellationToken);
-            if (prop is null)
+            var props = await _caseStudyLookup.ListPropertiesByIdsAsync(
+                [createPropertyId],
+                cancellationToken);
+            if (props.Count == 0)
                 return (null, new Dictionary<string, string> { ["propertyId"] = "العقار غير موجود" });
-            if (prop.IsRemoved)
+            if (props[0].IsRemoved)
                 return (null, new Dictionary<string, string> { ["propertyId"] = "لا يمكن تسجيل تعذر على عقار محذوف" });
         }
 
@@ -171,14 +155,15 @@ public class FailureService : IFailureService
 
         if (Guid.TryParse(entity.PropertyId, out var propertyId))
         {
-            await _timeline.RecordAsync(
-                entity.PoNumber,
-                propertyId,
-                $"failure:{entity.Id}:created",
-                "تسجيل تعذر",
-                $"{entity.Title} — {FailureStatusLabel(entity.Status)}",
-                "warn",
-                now,
+            await _caseStudy.RecordPropertyTimelineEventAsync(
+                new PropertyTimelineRecordRequest(
+                    entity.PoNumber,
+                    propertyId,
+                    $"failure:{entity.Id}:created",
+                    "تسجيل تعذر",
+                    $"{entity.Title} — {FailureStatusLabel(entity.Status)}",
+                    "warn",
+                    now),
                 cancellationToken);
         }
 
@@ -301,14 +286,15 @@ public class FailureService : IFailureService
 
         if (Guid.TryParse(entity.PropertyId, out var propertyId))
         {
-            await _timeline.RecordAsync(
-                entity.PoNumber,
-                propertyId,
-                $"failure:{entity.Id}:suspended",
-                "تعليق المعاملة",
-                entity.FinalNote,
-                "warn",
-                entity.SuspendedAtUtc!.Value,
+            await _caseStudy.RecordPropertyTimelineEventAsync(
+                new PropertyTimelineRecordRequest(
+                    entity.PoNumber,
+                    propertyId,
+                    $"failure:{entity.Id}:suspended",
+                    "تعليق المعاملة",
+                    entity.FinalNote,
+                    "warn",
+                    entity.SuspendedAtUtc!.Value),
                 cancellationToken);
         }
 
@@ -535,182 +521,61 @@ public class FailureService : IFailureService
             cancellationToken);
     }
 
-    private async Task EscalateTaskObstructionAsync(
+    private Task EscalateTaskObstructionAsync(
         PropertyFailure failure,
         string reason,
-        CancellationToken cancellationToken)
-    {
-        var task = await FindCaseStudyTaskAsync(failure.PoNumber, failure.PropertyId, cancellationToken);
-        if (task is null || task.Status == WorkflowTaskStatus.Completed) return;
-
-        var priorPhase = task.Phase == WorkflowTaskPhase.Obstruction
-            ? task.ObstructionPriorPhase?.ToDbValue()
-            : task.Phase.ToDbValue();
-
-        await _tasks.PatchAsync(
-            task.Id,
-            new PatchWorkflowTaskRequest
+        CancellationToken cancellationToken) =>
+        _caseStudy.EscalateObstructionAsync(
+            new EscalateCaseStudyObstructionRequest
             {
-                Phase = WorkflowTaskPhaseValues.Obstruction,
-                ObstructionPriorPhase = priorPhase,
-                AssigneeRole = "section-supervisor",
-                AssigneeName = "مشرف دراسة الحالة",
-                Status = WorkflowTaskStatusValues.Blocked,
-                ObstructionReason = reason.Trim(),
+                PoNumber = failure.PoNumber,
+                PropertyId = failure.PropertyId,
+                Reason = reason,
             },
             cancellationToken);
-    }
 
-    private async Task ResolveTaskObstructionAsync(
+    private Task ResolveTaskObstructionAsync(
+        PropertyFailure failure,
+        CancellationToken cancellationToken) =>
+        _caseStudy.ResolveObstructionAsync(
+            new ResolveCaseStudyObstructionRequest
+            {
+                PoNumber = failure.PoNumber,
+                PropertyId = failure.PropertyId,
+            },
+            cancellationToken);
+
+    private Task BlockPropertyTasksForApprovedFailureAsync(
         PropertyFailure failure,
         CancellationToken cancellationToken)
     {
-        var task = await FindCaseStudyTaskAsync(failure.PoNumber, failure.PropertyId, cancellationToken);
-        if (task is null || task.Status == WorkflowTaskStatus.Completed) return;
-        if (!TryGetObstructionResumePhase(task, out var resumePhase)) return;
-
-        if (resumePhase == WorkflowTaskPhase.Bourse && task.PropertyId is Guid propertyId)
-            await ResetBourseCompletionForPropertyAsync(propertyId, cancellationToken);
-
-        await _tasks.PatchAsync(
-            task.Id,
-            new PatchWorkflowTaskRequest
-            {
-                Phase = resumePhase.ToDbValue(),
-                AssigneeRole = "case-specialist",
-                AssigneeName = "أخصائي دراسة الحالة",
-                Status = WorkflowTaskStatusValues.Open,
-                ObstructionReason = "",
-                ObstructionPriorPhase = "",
-            },
-            cancellationToken);
-    }
-
-    private static bool TryGetObstructionResumePhase(
-        WorkflowTask task,
-        out WorkflowTaskPhase resumePhase)
-    {
-        if (task.Phase == WorkflowTaskPhase.Obstruction)
-        {
-            resumePhase = task.ObstructionPriorPhase
-                ?? (task.PropertyId.HasValue
-                    ? WorkflowTaskPhase.Bourse
-                    : WorkflowTaskPhase.Enfath);
-            return true;
-        }
-
-        if (task.Status == WorkflowTaskStatus.Blocked && task.ObstructionPriorPhase.HasValue)
-        {
-            resumePhase = task.ObstructionPriorPhase.Value;
-            return true;
-        }
-
-        resumePhase = default;
-        return false;
-    }
-
-    private async Task ResetBourseCompletionForPropertyAsync(
-        Guid propertyId,
-        CancellationToken cancellationToken)
-    {
-        var property = await _caseStudy.WorkOrderProperties
-            .FirstOrDefaultAsync(p => p.Id == propertyId, cancellationToken);
-        if (property is null || !property.BourseDataCompleted) return;
-
-        property.BourseDataCompleted = false;
-        property.BourseCompletedAtUtc = null;
-        await _caseStudy.SaveChangesAsync(cancellationToken);
-    }
-
-    private async Task BlockPropertyTasksForApprovedFailureAsync(
-        PropertyFailure failure,
-        CancellationToken cancellationToken)
-    {
-        var propertyGuid = await ResolvePropertyGuidAsync(
-            failure.PoNumber,
-            failure.PropertyId,
-            cancellationToken);
-        if (!propertyGuid.HasValue) return;
-
-        var po = failure.PoNumber.Trim();
         var reason = failure.FinalNote.Trim().Length > 0
             ? failure.FinalNote.Trim()
             : (failure.Title.Trim().Length > 0 ? failure.Title.Trim() : "تعذر معتمد");
 
-        var tasks = await _caseStudy.WorkflowTasks
-            .Where(t =>
-                t.PoNumber == po &&
-                t.PropertyId == propertyGuid &&
-                t.Status != WorkflowTaskStatus.Completed)
-            .ToListAsync(cancellationToken);
-
-        foreach (var task in tasks)
-        {
-            await _tasks.PatchAsync(
-                task.Id,
-                new PatchWorkflowTaskRequest
-                {
-                    Status = WorkflowTaskStatusValues.Blocked,
-                    ObstructionReason = reason,
-                },
-                cancellationToken);
-        }
-    }
-
-    private async Task<WorkflowTask?> FindCaseStudyTaskAsync(
-        string poNumber,
-        string propertyId,
-        CancellationToken cancellationToken)
-    {
-        var po = poNumber.Trim();
-        var propertyGuid = await ResolvePropertyGuidAsync(po, propertyId.Trim(), cancellationToken);
-        if (!propertyGuid.HasValue) return null;
-
-        return await _caseStudy.WorkflowTasks.FirstOrDefaultAsync(
-            t =>
-                t.PoNumber == po &&
-                t.Kind == CaseStudyPropertyKind &&
-                t.Status != WorkflowTaskStatus.Completed &&
-                t.PropertyId == propertyGuid,
+        return _caseStudy.BlockPropertyTasksForFailureAsync(
+            new BlockCaseStudyTasksForFailureRequest
+            {
+                PoNumber = failure.PoNumber,
+                PropertyId = failure.PropertyId,
+                Reason = reason,
+            },
             cancellationToken);
     }
 
-    private async Task<Guid?> ResolvePropertyGuidAsync(
-        string poNumber,
-        string propertyId,
-        CancellationToken cancellationToken)
-    {
-        if (Guid.TryParse(propertyId, out var guid)) return guid;
-
-        var order = await _caseStudy.WorkOrders
-            .Include(w => w.Properties)
-            .FirstOrDefaultAsync(w => w.PoNumber == poNumber.Trim(), cancellationToken);
-        var prop = order?.Properties.FirstOrDefault(p =>
-            p.DeedNumber == propertyId || p.Id.ToString() == propertyId);
-        return prop?.Id;
-    }
-
-    private async Task SetPropertyDeedStatusAsync(
+    private Task SetPropertyDeedStatusAsync(
         PropertyFailure failure,
         string deedStatus,
-        CancellationToken cancellationToken)
-    {
-        var order = await _caseStudy.WorkOrders
-            .Include(w => w.Properties)
-            .FirstOrDefaultAsync(w => w.PoNumber == failure.PoNumber.Trim(), cancellationToken);
-        if (order is null) return;
-
-        var prop = order.Properties.FirstOrDefault(p =>
-            p.Id.ToString() == failure.PropertyId.Trim() ||
-            p.DeedNumber == failure.PropertyId.Trim() ||
-            p.DeedNumber == failure.DeedNumber.Trim());
-        if (prop is null && Guid.TryParse(failure.PropertyId, out var gid))
-            prop = order.Properties.FirstOrDefault(p => p.Id == gid);
-        if (prop is null) return;
-
-        prop.DeedStatus = deedStatus;
-        await _caseStudy.SaveChangesAsync(cancellationToken);
-    }
+        CancellationToken cancellationToken) =>
+        _caseStudy.SetFailureDeedStatusAsync(
+            new SetCaseStudyDeedStatusRequest
+            {
+                PoNumber = failure.PoNumber,
+                PropertyId = failure.PropertyId,
+                DeedNumber = failure.DeedNumber,
+                DeedStatus = deedStatus,
+            },
+            cancellationToken);
 
     private async Task<PropertyFailure?> FindActiveForPropertyAsync(
         string poNumber,
@@ -865,26 +730,23 @@ public class FailureService : IFailureService
     {
         if (!Guid.TryParse(propertyIdText, out var propertyId)) return;
 
-        var task = await _caseStudy.WorkflowTasks
-            .FirstOrDefaultAsync(
-                t =>
-                    t.Kind == CaseStudyPropertyKind
-                    && t.PoNumber == poNumber
-                    && t.PropertyId == propertyId
-                    && t.Status != WorkflowTaskStatus.Completed
-                    && t.Status != WorkflowTaskStatus.Cancelled,
-                cancellationToken);
+        var task = await _caseStudy.BlockTaskForHoldAsync(
+            new CaseStudyHoldTaskRequest
+            {
+                PoNumber = poNumber,
+                PropertyId = propertyId,
+                Reason = reason,
+            },
+            cancellationToken);
         if (task is null) return;
 
-        task.Block(reason, _time.UtcNow());
-        await _caseStudy.SaveChangesAsync(cancellationToken);
         await NotifyHoldSpecialistAsync(
-            task.Id,
+            task.TaskId,
             task.AssigneeId,
             "تعليق دراسة الحالة",
             reason,
             "warn",
-            $"case-study-blocked:{task.Id}",
+            $"case-study-blocked:{task.TaskId}",
             cancellationToken);
     }
 
@@ -895,26 +757,22 @@ public class FailureService : IFailureService
     {
         if (!Guid.TryParse(propertyIdText, out var propertyId)) return;
 
-        var task = await _caseStudy.WorkflowTasks
-            .FirstOrDefaultAsync(
-                t =>
-                    t.Kind == CaseStudyPropertyKind
-                    && t.PoNumber == poNumber
-                    && t.PropertyId == propertyId
-                    && t.Status == WorkflowTaskStatus.Blocked
-                    && t.Phase == WorkflowTaskPhase.Obstruction,
-                cancellationToken);
+        var task = await _caseStudy.UnblockTaskForHoldAsync(
+            new CaseStudyHoldTaskRequest
+            {
+                PoNumber = poNumber,
+                PropertyId = propertyId,
+            },
+            cancellationToken);
         if (task is null) return;
 
-        task.Unblock(_time.UtcNow(), WorkflowTaskPhase.Bourse);
-        await _caseStudy.SaveChangesAsync(cancellationToken);
         await NotifyHoldSpecialistAsync(
-            task.Id,
+            task.TaskId,
             task.AssigneeId,
             "استئناف دراسة الحالة",
             "زال سبب التعليق — استؤنفت المعاملة.",
             "success",
-            $"case-study-unblocked:{task.Id}",
+            $"case-study-unblocked:{task.TaskId}",
             cancellationToken);
     }
 

@@ -90,9 +90,8 @@ internal static class TestBoundedContexts
         labels ??= new UserLabelLookup(identity);
         return new FailureService(
             bundle.Failures,
-            cs,
-            tasks,
-            timeline,
+            new CaseStudyLookup(cs),
+            new CaseStudyFailureCommands(cs, tasks, timeline),
             notifications,
             recipients,
             labels);
@@ -114,7 +113,13 @@ internal static class TestBoundedContexts
         recipients ??= NotificationRecipientResolver.ForContexts(cs, identity);
         tasks ??= new WorkflowTaskShellPatcher(cs);
         labels ??= new UserLabelLookup(identity);
-        return new FailureService(failures, cs, tasks, timeline, notifications, recipients, labels);
+        return new FailureService(
+            failures,
+            new CaseStudyLookup(cs),
+            new CaseStudyFailureCommands(cs, tasks, timeline),
+            notifications,
+            recipients,
+            labels);
     }
 
     public static PropertyAccessHoldService CreateAccessHolds(

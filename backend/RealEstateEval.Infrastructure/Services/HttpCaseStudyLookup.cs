@@ -51,6 +51,19 @@ public sealed class HttpCaseStudyLookup(
             $"/api/case-study-dispatch/properties/{propertyId:D}",
             cancellationToken);
 
+    public Task<IReadOnlyList<string>> ListPoNumbersByAssigneesAsync(
+        IReadOnlyList<string> assigneeIds,
+        CancellationToken cancellationToken = default)
+    {
+        var joined = string.Join(",", assigneeIds.Select(id => id.Trim()).Where(id => id.Length > 0));
+        if (joined.Length == 0)
+            return Task.FromResult<IReadOnlyList<string>>([]);
+
+        return GetListAsync<string>(
+            $"/api/case-study-dispatch/po-numbers-by-assignee?ids={Uri.EscapeDataString(joined)}",
+            cancellationToken);
+    }
+
     public Task<CaseStudyValuationPropertyContextDto?> GetValuationPropertyContextAsync(
         Guid propertyId,
         CancellationToken cancellationToken = default) =>

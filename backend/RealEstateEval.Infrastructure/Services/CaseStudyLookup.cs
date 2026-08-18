@@ -47,6 +47,32 @@ public sealed class CaseStudyLookup(CaseStudyDbContext caseStudy) : ICaseStudyLo
             })
             .ToListAsync(cancellationToken);
 
+    public async Task<IReadOnlyList<string>> ListPoNumbersByAssigneesAsync(
+        IReadOnlyList<string> assigneeIds,
+        CancellationToken cancellationToken = default)
+    {
+        var ids = assigneeIds
+            .Select(id => id.Trim())
+            .Where(id => id.Length > 0)
+            .Distinct(StringComparer.Ordinal)
+            .ToList();
+        if (ids.Count == 0)
+            return [];
+
+        var pos = await caseStudy.WorkflowTasks.AsNoTracking()
+            .Where(t => t.AssigneeId != null && ids.Contains(t.AssigneeId))
+            .Where(t => t.PoNumber != null && t.PoNumber != "")
+            .Select(t => t.PoNumber)
+            .Distinct()
+            .ToListAsync(cancellationToken);
+
+        return pos
+            .Select(p => p.Trim())
+            .Where(p => p.Length > 0)
+            .Distinct(StringComparer.Ordinal)
+            .ToList();
+    }
+
     public async Task<CaseStudyPropertySnapshotDto?> GetPropertyAsync(
         Guid propertyId,
         CancellationToken cancellationToken = default)

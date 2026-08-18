@@ -236,6 +236,107 @@ public sealed class CaseStudyDispatchController(ICaseStudyLookup lookup) : Contr
         return NoContent();
     }
 
+    [HttpGet("po-numbers-by-assignee")]
+    public async Task<ActionResult<IReadOnlyList<string>>> PoNumbersByAssignee(
+        [FromQuery] string? ids,
+        CancellationToken cancellationToken) =>
+        Ok(await lookup.ListPoNumbersByAssigneesAsync(ParseCsv(ids), cancellationToken));
+
+    [HttpPost("properties/deed-status")]
+    public async Task<IActionResult> SetFailureDeedStatus(
+        [FromBody] SetCaseStudyDeedStatusRequest request,
+        [FromServices] ICaseStudyFailureCommands commands,
+        CancellationToken cancellationToken)
+    {
+        if (string.IsNullOrWhiteSpace(request.PoNumber) || string.IsNullOrWhiteSpace(request.DeedStatus))
+            return this.BadRequestProblem("poNumber and deedStatus are required");
+
+        await commands.SetFailureDeedStatusAsync(request, cancellationToken);
+        return NoContent();
+    }
+
+    [HttpPost("case-study-tasks/escalate-obstruction")]
+    public async Task<IActionResult> EscalateObstruction(
+        [FromBody] EscalateCaseStudyObstructionRequest request,
+        [FromServices] ICaseStudyFailureCommands commands,
+        CancellationToken cancellationToken)
+    {
+        if (string.IsNullOrWhiteSpace(request.PoNumber) || string.IsNullOrWhiteSpace(request.PropertyId))
+            return this.BadRequestProblem("poNumber and propertyId are required");
+
+        await commands.EscalateObstructionAsync(request, cancellationToken);
+        return NoContent();
+    }
+
+    [HttpPost("case-study-tasks/resolve-obstruction")]
+    public async Task<IActionResult> ResolveObstruction(
+        [FromBody] ResolveCaseStudyObstructionRequest request,
+        [FromServices] ICaseStudyFailureCommands commands,
+        CancellationToken cancellationToken)
+    {
+        if (string.IsNullOrWhiteSpace(request.PoNumber) || string.IsNullOrWhiteSpace(request.PropertyId))
+            return this.BadRequestProblem("poNumber and propertyId are required");
+
+        await commands.ResolveObstructionAsync(request, cancellationToken);
+        return NoContent();
+    }
+
+    [HttpPost("case-study-tasks/block-for-approved-failure")]
+    public async Task<IActionResult> BlockTasksForApprovedFailure(
+        [FromBody] BlockCaseStudyTasksForFailureRequest request,
+        [FromServices] ICaseStudyFailureCommands commands,
+        CancellationToken cancellationToken)
+    {
+        if (string.IsNullOrWhiteSpace(request.PoNumber) || string.IsNullOrWhiteSpace(request.PropertyId))
+            return this.BadRequestProblem("poNumber and propertyId are required");
+
+        await commands.BlockPropertyTasksForFailureAsync(request, cancellationToken);
+        return NoContent();
+    }
+
+    [HttpPost("case-study-tasks/block-for-hold")]
+    public async Task<ActionResult<CaseStudyHoldTaskResultDto>> BlockTaskForHold(
+        [FromBody] CaseStudyHoldTaskRequest request,
+        [FromServices] ICaseStudyFailureCommands commands,
+        CancellationToken cancellationToken)
+    {
+        if (string.IsNullOrWhiteSpace(request.PoNumber) || request.PropertyId == Guid.Empty)
+            return this.BadRequestProblem("poNumber and propertyId are required");
+
+        var result = await commands.BlockTaskForHoldAsync(request, cancellationToken);
+        return result is null ? NotFound() : Ok(result);
+    }
+
+    [HttpPost("case-study-tasks/unblock-for-hold")]
+    public async Task<ActionResult<CaseStudyHoldTaskResultDto>> UnblockTaskForHold(
+        [FromBody] CaseStudyHoldTaskRequest request,
+        [FromServices] ICaseStudyFailureCommands commands,
+        CancellationToken cancellationToken)
+    {
+        if (string.IsNullOrWhiteSpace(request.PoNumber) || request.PropertyId == Guid.Empty)
+            return this.BadRequestProblem("poNumber and propertyId are required");
+
+        var result = await commands.UnblockTaskForHoldAsync(request, cancellationToken);
+        return result is null ? NotFound() : Ok(result);
+    }
+
+    [HttpPost("property-timeline/record")]
+    public async Task<IActionResult> RecordPropertyTimelineEvent(
+        [FromBody] PropertyTimelineRecordRequest request,
+        [FromServices] ICaseStudyFailureCommands commands,
+        CancellationToken cancellationToken)
+    {
+        if (string.IsNullOrWhiteSpace(request.PoNumber)
+            || request.PropertyId == Guid.Empty
+            || string.IsNullOrWhiteSpace(request.EventKey))
+        {
+            return this.BadRequestProblem("poNumber, propertyId, and eventKey are required");
+        }
+
+        await commands.RecordPropertyTimelineEventAsync(request, cancellationToken);
+        return NoContent();
+    }
+
     private static List<Guid> ParseGuids(string? raw)
     {
         var list = new List<Guid>();

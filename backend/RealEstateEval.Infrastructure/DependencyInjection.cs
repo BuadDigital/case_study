@@ -429,6 +429,7 @@ public static class DependencyInjection
         services.AddScoped<IWorkflowAssigneeLookup, WorkflowAssigneeLookup>();
         services.AddScoped<ICaseStudyLookup, CaseStudyLookup>();
         services.AddScoped<ICaseStudyCommands, CaseStudyCommands>();
+        services.AddScoped<ICaseStudyFailureCommands, CaseStudyFailureCommands>();
         services.AddScoped<IInspectionLimitsService, InspectionLimitsService>();
         services.AddRemoteAttachmentLookup(configuration);
         services.AddRemotePlatformCatalogs(configuration);
@@ -449,15 +450,15 @@ public static class DependencyInjection
         IHostEnvironment environment)
     {
         services.AddFailuresPersistence(configuration, connectionString);
- // Residual cross-boundary: WorkOrder/Workflow on Case Study; Identity via HTTP directory.
-        services.AddCaseStudyPersistence(configuration, connectionString);
+ // A9: Case Study reads and workflow/deed/timeline side effects go through the owner
+ // HTTP API. No CaseStudyDbContext here, and no compose depends_on case-study
+ // (case-study already depends_on failures).
+        services.AddRemoteCaseStudy(configuration);
+        services.AddHttpClient<ICaseStudyFailureCommands, HttpCaseStudyFailureCommands>();
         services.AddRemoteIdentityDirectory(configuration);
-        services.AddScoped<IWorkflowAssigneeLookup, WorkflowAssigneeLookup>();
  // Pure-host outbox for platform notification requests (A6 — no ApplicationDbContext).
         services.AddMessagingPersistence(configuration, connectionString);
         services.AddNotificationInfrastructure(configuration, environment);
-        services.AddScoped<IWorkflowTaskShellPatcher, WorkflowTaskShellPatcher>();
-        services.AddScoped<IPropertyTimelineService, PropertyTimelineService>();
         services.AddScoped<IFailureLookup, FailureLookup>();
         services.AddScoped<IFailureService, FailureService>();
         services.AddScoped<IFailureTypesCatalogService, FailureTypesCatalogService>();
