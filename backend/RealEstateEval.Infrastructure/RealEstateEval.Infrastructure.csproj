@@ -12,7 +12,6 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="Lib.Net.Http.WebPush" Version="3.3.1" />
     <PackageReference Include="Microsoft.AspNetCore.Identity.EntityFrameworkCore" Version="10.0.8" />
     <!-- compile is included so the per-context design-time factories (ADR 0003) can be
          declared next to their contexts; PrivateAssets keeps it out of consuming projects. -->
@@ -31,16 +30,10 @@
     <ProjectReference Include="..\RealEstateEval.Application\RealEstateEval.Application.csproj" />
     <ProjectReference Include="..\contexts\attachments\RealEstateEval.Attachments.Application\RealEstateEval.Attachments.Application.csproj" />
     <ProjectReference Include="..\contexts\failures\RealEstateEval.Failures.Application\RealEstateEval.Failures.Application.csproj" />
+    <ProjectReference Include="..\contexts\platform\RealEstateEval.Platform.Application\RealEstateEval.Platform.Application.csproj" />
     <ProjectReference Include="..\contexts\valuation\RealEstateEval.Valuation.Application\RealEstateEval.Valuation.Application.csproj" />
     <ProjectReference Include="..\RealEstateEval.Domain\RealEstateEval.Domain.csproj" />
     <ProjectReference Include="..\shared\RealEstateEval.Shared.Contracts\RealEstateEval.Shared.Contracts.csproj" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <None Include="Data\Seed\regions_cities.json">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </None>
-    <EmbeddedResource Include="Data\Seed\regions_cities.json" />
   </ItemGroup>
 
 </Project>

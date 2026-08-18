@@ -1,4 +1,6 @@
+using FluentValidation;
 using Microsoft.EntityFrameworkCore;
+using RealEstateEval.Application.Validation;
 using RealEstateEval.Infrastructure;
 using RealEstateEval.Infrastructure.Data;
 using RealEstateEval.Infrastructure.Data.Contexts;
@@ -23,6 +25,8 @@ public sealed class ServiceModule : IRealEstateEvalServiceModule
         builder.Services.AddHostSharedInfrastructure(builder.Configuration, builder.Environment);
         builder.Services.AddClaimsPermissionService();
         builder.Services.AddPlatformInfrastructure(builder.Configuration, connectionString!);
+        // A8: Platform boundary validators moved out of the globally scanned assembly.
+        builder.Services.AddValidatorsFromAssemblyContaining<CreateCourtRequestValidator>();
         builder.Services.AddMessagingPersistence(builder.Configuration, connectionString!);
         builder.Services.AddRemoteIdentityDirectory(builder.Configuration);
         builder.Services.AddRemoteWorkflowAssignees(builder.Configuration);

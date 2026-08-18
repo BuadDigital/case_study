@@ -30,6 +30,7 @@
       "backend/RealEstateEval.Infrastructure/RealEstateEval.Infrastructure.csproj",
       "backend/contexts/attachments/RealEstateEval.Attachments.Infrastructure/RealEstateEval.Attachments.Infrastructure.csproj",
       "backend/contexts/failures/RealEstateEval.Failures.Infrastructure/RealEstateEval.Failures.Infrastructure.csproj",
+      "backend/contexts/platform/RealEstateEval.Platform.Infrastructure/RealEstateEval.Platform.Infrastructure.csproj",
       "backend/contexts/valuation/RealEstateEval.Valuation.Infrastructure/RealEstateEval.Valuation.Infrastructure.csproj",
       "backend/shared/RealEstateEval.Shared.Web/RealEstateEval.Shared.Web.csproj"
     ],
@@ -42,6 +43,7 @@
       "backend/RealEstateEval.Domain/RealEstateEval.Domain.csproj",
       "backend/contexts/attachments/RealEstateEval.Attachments.Application/RealEstateEval.Attachments.Application.csproj",
       "backend/contexts/failures/RealEstateEval.Failures.Application/RealEstateEval.Failures.Application.csproj",
+      "backend/contexts/platform/RealEstateEval.Platform.Application/RealEstateEval.Platform.Application.csproj",
       "backend/contexts/valuation/RealEstateEval.Valuation.Application/RealEstateEval.Valuation.Application.csproj",
       "backend/shared/RealEstateEval.Shared.Contracts/RealEstateEval.Shared.Contracts.csproj"
     ],
@@ -75,6 +77,17 @@
     "backend/contexts/failures/RealEstateEval.Failures.Infrastructure/RealEstateEval.Failures.Infrastructure.csproj": [
       "backend/RealEstateEval.Infrastructure/RealEstateEval.Infrastructure.csproj",
       "backend/contexts/failures/RealEstateEval.Failures.Application/RealEstateEval.Failures.Application.csproj"
+    ],
+    "backend/contexts/platform/RealEstateEval.Platform.Application/RealEstateEval.Platform.Application.csproj": [
+      "backend/RealEstateEval.Application/RealEstateEval.Application.csproj",
+      "backend/contexts/platform/RealEstateEval.Platform.Domain/RealEstateEval.Platform.Domain.csproj"
+    ],
+    "backend/contexts/platform/RealEstateEval.Platform.Domain/RealEstateEval.Platform.Domain.csproj": [
+      "backend/RealEstateEval.Domain/RealEstateEval.Domain.csproj"
+    ],
+    "backend/contexts/platform/RealEstateEval.Platform.Infrastructure/RealEstateEval.Platform.Infrastructure.csproj": [
+      "backend/RealEstateEval.Infrastructure/RealEstateEval.Infrastructure.csproj",
+      "backend/contexts/platform/RealEstateEval.Platform.Application/RealEstateEval.Platform.Application.csproj"
     ],
     "backend/contexts/valuation/RealEstateEval.Valuation.Application/RealEstateEval.Valuation.Application.csproj": [
       "backend/RealEstateEval.Application/RealEstateEval.Application.csproj",
@@ -123,6 +136,7 @@
     "backend/services/platform/RealEstateEval.Platform.Api/RealEstateEval.Platform.Api.csproj": [
       "backend/RealEstateEval.Application/RealEstateEval.Application.csproj",
       "backend/RealEstateEval.Infrastructure/RealEstateEval.Infrastructure.csproj",
+      "backend/contexts/platform/RealEstateEval.Platform.Infrastructure/RealEstateEval.Platform.Infrastructure.csproj",
       "backend/shared/RealEstateEval.Shared.Contracts/RealEstateEval.Shared.Contracts.csproj",
       "backend/shared/RealEstateEval.Shared.Web/RealEstateEval.Shared.Web.csproj"
     ],
@@ -192,12 +206,6 @@
     "backend/RealEstateEval.Infrastructure/Integration/ValuationReportWorkflowHandler.cs": [
       "case_study"
     ],
-    "backend/RealEstateEval.Infrastructure/Services/AttachmentPrintDictionaryService.cs": [
-      "platform"
-    ],
-    "backend/RealEstateEval.Infrastructure/Services/AuditLogQueryService.cs": [
-      "audit"
-    ],
     "backend/RealEstateEval.Infrastructure/Services/AuthSessionService.cs": [
       "identity"
     ],
@@ -209,10 +217,6 @@
     ],
     "backend/RealEstateEval.Infrastructure/Services/CaseStudyFormService.cs": [
       "case_study"
-    ],
-    "backend/RealEstateEval.Infrastructure/Services/CaseStudyInfoRolesConfigService.cs": [
-      "audit",
-      "platform"
     ],
     "backend/RealEstateEval.Infrastructure/Services/CaseStudyPropertyPoNumberLookup.cs": [
       "case_study"
@@ -226,27 +230,12 @@
     "backend/RealEstateEval.Infrastructure/Services/CourtVisitFeeChargeService.cs": [
       "financial"
     ],
-    "backend/RealEstateEval.Infrastructure/Services/CourtsCatalogService.cs": [
-      "audit",
-      "platform"
-    ],
-    "backend/RealEstateEval.Infrastructure/Services/CourtsService.cs": [
-      "audit",
-      "platform"
-    ],
     "backend/RealEstateEval.Infrastructure/Services/DashboardOpsMetricsQueryService.cs": [
       "case_study"
-    ],
-    "backend/RealEstateEval.Infrastructure/Services/DifferenceFactorCatalogService.cs": [
-      "audit"
     ],
     "backend/RealEstateEval.Infrastructure/Services/DiscountFlagService.cs": [
       "case_study",
       "financial"
-    ],
-    "backend/RealEstateEval.Infrastructure/Services/FieldDictionaryService.cs": [
-      "audit",
-      "platform"
     ],
     "backend/RealEstateEval.Infrastructure/Services/FieldInspectionWorkspaceService.cs": [
       "case_study"
@@ -286,9 +275,6 @@
     "backend/RealEstateEval.Infrastructure/Services/KeyReceiptFeeChargeService.cs": [
       "financial"
     ],
-    "backend/RealEstateEval.Infrastructure/Services/NotificationService.cs": [
-      "messaging"
-    ],
     "backend/RealEstateEval.Infrastructure/Services/OperationsTaskCommands.cs": [
       "case_study"
     ],
@@ -298,9 +284,6 @@
     ],
     "backend/RealEstateEval.Infrastructure/Services/OperationsTaskVisitFeeHelper.cs": [
       "case_study"
-    ],
-    "backend/RealEstateEval.Infrastructure/Services/OrganizationSettingsService.cs": [
-      "audit"
     ],
     "backend/RealEstateEval.Infrastructure/Services/PartyBillingStatementService.cs": [
       "case_study",
@@ -344,21 +327,12 @@
     "backend/RealEstateEval.Infrastructure/Services/PropertyTimelineService.cs": [
       "case_study"
     ],
-    "backend/RealEstateEval.Infrastructure/Services/PushSubscriptionService.cs": [
-      "messaging"
-    ],
-    "backend/RealEstateEval.Infrastructure/Services/RegionsService.cs": [
-      "platform"
-    ],
     "backend/RealEstateEval.Infrastructure/Services/SurveyOfficesService.cs": [
       "operations"
     ],
     "backend/RealEstateEval.Infrastructure/Services/UserRegistrationService.cs": [
       "audit",
       "identity"
-    ],
-    "backend/RealEstateEval.Infrastructure/Services/WebPushDeliveryHandler.cs": [
-      "messaging"
     ],
     "backend/RealEstateEval.Infrastructure/Services/WorkOrderLoader.cs": [
       "case_study"
@@ -404,6 +378,46 @@
     ],
     "backend/contexts/failures/RealEstateEval.Failures.Infrastructure/Services/FailureTypesCatalogService.cs": [
       "failures"
+    ],
+    "backend/contexts/platform/RealEstateEval.Platform.Infrastructure/Services/AttachmentPrintDictionaryService.cs": [
+      "platform"
+    ],
+    "backend/contexts/platform/RealEstateEval.Platform.Infrastructure/Services/AuditLogQueryService.cs": [
+      "audit"
+    ],
+    "backend/contexts/platform/RealEstateEval.Platform.Infrastructure/Services/CaseStudyInfoRolesConfigService.cs": [
+      "audit",
+      "platform"
+    ],
+    "backend/contexts/platform/RealEstateEval.Platform.Infrastructure/Services/CourtsCatalogService.cs": [
+      "audit",
+      "platform"
+    ],
+    "backend/contexts/platform/RealEstateEval.Platform.Infrastructure/Services/CourtsService.cs": [
+      "audit",
+      "platform"
+    ],
+    "backend/contexts/platform/RealEstateEval.Platform.Infrastructure/Services/DifferenceFactorCatalogService.cs": [
+      "audit"
+    ],
+    "backend/contexts/platform/RealEstateEval.Platform.Infrastructure/Services/FieldDictionaryService.cs": [
+      "audit",
+      "platform"
+    ],
+    "backend/contexts/platform/RealEstateEval.Platform.Infrastructure/Services/NotificationService.cs": [
+      "messaging"
+    ],
+    "backend/contexts/platform/RealEstateEval.Platform.Infrastructure/Services/OrganizationSettingsService.cs": [
+      "audit"
+    ],
+    "backend/contexts/platform/RealEstateEval.Platform.Infrastructure/Services/PushSubscriptionService.cs": [
+      "messaging"
+    ],
+    "backend/contexts/platform/RealEstateEval.Platform.Infrastructure/Services/RegionsService.cs": [
+      "platform"
+    ],
+    "backend/contexts/platform/RealEstateEval.Platform.Infrastructure/Services/WebPushDeliveryHandler.cs": [
+      "messaging"
     ],
     "backend/contexts/valuation/RealEstateEval.Valuation.Infrastructure/Services/ComparablePropertyService.cs": [
       "valuation"

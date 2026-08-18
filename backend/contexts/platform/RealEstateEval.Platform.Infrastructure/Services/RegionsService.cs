@@ -681,7 +681,7 @@ public sealed class RegionsService : IRegionsService
             Path.GetFullPath(Path.Combine(
                 AppContext.BaseDirectory,
                 "..", "..", "..", "..",
-                "RealEstateEval.Infrastructure", "Data", "Seed", "regions_cities.json")),
+                "RealEstateEval.Platform.Infrastructure", "Data", "Seed", "regions_cities.json")),
         };
 
         foreach (var path in paths)

@@ -355,18 +355,7 @@ public class PendingBoursePropertyDto
     public string CreatedAtUtc { get; set; } = "";
 }
 
-public class CourtCatalogEntryDto
-{
-    public Guid Id { get; set; }
-    public string City { get; set; } = "";
-    public string Court { get; set; } = "";
-    public List<string> Circuits { get; set; } = [];
-}
-
-public class SaveCourtsCatalogRequest
-{
-    public List<CourtCatalogEntryDto> Entries { get; set; } = [];
-}
+// Courts-catalog DTOs moved to RealEstateEval.Platform.Application (A8).
 
 /// <summary>One deed owner (الملاك وحصصهم) — share optional for single-owner deeds.</summary>
 public class DeedOwnerDto

@@ -1,0 +1,27 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <RootNamespace>RealEstateEval.Infrastructure</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\RealEstateEval.Platform.Application\RealEstateEval.Platform.Application.csproj" />
+    <ProjectReference Include="..\..\..\RealEstateEval.Infrastructure\RealEstateEval.Infrastructure.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Web-push delivery lives with the Platform notification stack. -->
+    <PackageReference Include="Lib.Net.Http.WebPush" Version="3.3.1" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- The geography seed ships with RegionsService: its embedded-resource fallback reads
+         from typeof(RegionsService).Assembly, so the json must live in this assembly. -->
+    <None Include="Data\Seed\regions_cities.json" CopyToOutputDirectory="PreserveNewest" />
+    <EmbeddedResource Include="Data\Seed\regions_cities.json" />
+  </ItemGroup>
+
+</Project>
