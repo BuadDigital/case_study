@@ -37,9 +37,8 @@ Write residuals that still open a second owner connection (all Messaging, D5 by 
 - Case Study: Messaging.
 - Operations: Messaging.
 - Failures: Messaging.
-- Valuation: Case Study (report fill / issuance still load property/form aggregates; a PO-number-only lookup would not drop this connection).
 
-HTTP lookups that would **not** drop a connection (skipped): Case Study PO number on Valuation. Failures CS HTTP skipped this slice (CS↔Failures compose cycle plus FailureService workflow/timeline/deed writes).
+(2026-08-18: the former Valuation and Failures Case Study residuals are gone — see the Phase 3 bullets above.)
 
 ## What Phase 4 Attachments changed
 

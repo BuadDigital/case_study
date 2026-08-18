@@ -62,7 +62,7 @@ Local run after the DI fix still needs: nine dedicated DBs + DbMigrate (Failures
 
 Messaging outbox on non-Platform hosts is D5 by design.
 
-**A8** (per-context libraries) **in progress** — Failures template slice done. **A10** owner DBs exist; leftover `realestate_eval_dev` still on host Postgres `:5432`; Phase 5 shims not started. Ops gates: migrator owner **closed (Sliman)**, D6 SQL/BI inventory **closed (empty by rule)**; still open: p95 / connection / outbox metrics.
+**A8** (per-context libraries) **in progress** — Failures + Attachments slices done. **A10** owner DBs exist; leftover `realestate_eval_dev` still on host Postgres `:5432`; Phase 5 shims not started. Ops gates: migrator owner **closed (Sliman)**, D6 SQL/BI inventory **closed (empty by rule)**; still open: p95 / connection / outbox metrics.
 
 ---
 
