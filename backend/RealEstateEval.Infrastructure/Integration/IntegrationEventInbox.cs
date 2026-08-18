@@ -10,9 +10,8 @@ namespace RealEstateEval.Infrastructure.Integration;
 
 /// <inheritdoc />
 /// <remarks>
-/// Case Study residual consumers write through <see cref="ApplicationDbContext"/>.
-/// Platform writes through <see cref="MessagingDbContext"/> when that context is registered
-/// (see <see cref="DependencyInjection.AddIntegrationEventInbox"/>).
+/// Consuming hosts write through <see cref="MessagingDbContext"/> (Phase 5 — the legacy
+/// context path is gone).
 /// </remarks>
 public sealed class IntegrationEventInbox : IIntegrationEventInbox
 {
@@ -20,14 +19,6 @@ public sealed class IntegrationEventInbox : IIntegrationEventInbox
     private readonly DbSet<ProcessedIntegrationEvent> _events;
     private readonly ILogger<IntegrationEventInbox> _logger;
     private readonly TimeProvider _time;
-
-    public IntegrationEventInbox(
-        ApplicationDbContext db,
-        ILogger<IntegrationEventInbox> logger,
-        TimeProvider? time = null)
-        : this((DbContext)db, db.ProcessedIntegrationEvents, logger, time)
-    {
-    }
 
     public IntegrationEventInbox(
         MessagingDbContext db,

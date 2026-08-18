@@ -5,6 +5,7 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using RealEstateEval.Domain;
 using RealEstateEval.Infrastructure.Data;
+using RealEstateEval.Infrastructure.Data.Contexts;
 using RealEstateEval.Application;
 
 namespace RealEstateEval.Infrastructure.Integration;
@@ -16,7 +17,7 @@ namespace RealEstateEval.Infrastructure.Integration;
 /// </summary>
 public sealed class OutboxDispatcherOptions
 {
-    public Type ContextType { get; set; } = typeof(ApplicationDbContext);
+    public Type ContextType { get; set; } = typeof(MessagingDbContext);
 }
 
 public sealed class OutboxDispatcherHostedService : BackgroundService

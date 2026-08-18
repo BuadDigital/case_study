@@ -61,11 +61,12 @@ public sealed class NotificationReliabilityTests
     public async Task Non_owner_write_queues_platform_request_without_writing_inbox()
     {
         await using var db = CreateAppDb();
+        await using var messaging = TestInspectorFeeServiceFactory.ShareMessaging(db);
         var service = new PlatformNotificationRequestService(
-            db,
-            new OutboxIntegrationEventPublisher(
-                db,
-                NullLogger<OutboxIntegrationEventPublisher>.Instance));
+            messaging,
+            new MessagingOutboxPublisher(
+                messaging,
+                NullLogger<MessagingOutboxPublisher>.Instance));
 
         var count = await service.CreateForUsersAsync(
             ["user-1", "user-2", "user-1"],

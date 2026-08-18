@@ -132,6 +132,9 @@ internal static class TestInspectorFeeServiceFactory
     public static UserLabelLookup CreateLabels(DbContext db) =>
         new(ShareIdentity(db));
 
+    public static MessagingDbContext ShareMessaging(DbContext db) =>
+        CreateSibling<MessagingDbContext>(db, options => new MessagingDbContext(options));
+
     private static TContext CreateSibling<TContext>(
         DbContext source,
         Func<DbContextOptions<TContext>, TContext> factory)

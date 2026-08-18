@@ -1,4 +1,4 @@
-using System.Text.Json;
+﻿using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging.Abstractions;
 using RealEstateEval.Application.Contracts;
@@ -215,11 +215,12 @@ public sealed class WorkOrderAssignmentNotificationTests
     {
         var db = bundle.App;
         var timeline = TestInspectorFeeServiceFactory.CreateTimeline(db);
+        var messaging = TestInspectorFeeServiceFactory.ShareMessaging(db);
         var notifications = new PlatformNotificationRequestService(
-            db,
-            new OutboxIntegrationEventPublisher(
-                db,
-                NullLogger<OutboxIntegrationEventPublisher>.Instance));
+            messaging,
+            new MessagingOutboxPublisher(
+                messaging,
+                NullLogger<MessagingOutboxPublisher>.Instance));
         var recipients = TestInspectorFeeServiceFactory.CreateRecipients(db);
         var failures = TestBoundedContexts.CreateFailureService(
             bundle,

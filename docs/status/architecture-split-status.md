@@ -14,7 +14,7 @@ Update this file with every slice; do not summarise a partial slice as a finishe
 | 2 — split libraries | **Template slice (Failures) done 2026-08-18.** `backend/contexts/failures/RealEstateEval.Failures.{Domain,Application,Infrastructure}` with context-local DI and host-registered validators; DbContext+migrations stay global pending migration-catalog decomposition; namespaces unchanged until global projects retire. | `docs/remaining-work.md` A8 row |
 | 3 — remove cross-schema access | **Done (A9, 2026-08-18).** Every cross-boundary reader/writer is on owner HTTP APIs; no host outside Case Study opens `CaseStudyDbContext`; D10 Identity reads closed. The only remaining foreign contexts are the messaging outboxes — D5 by design. Migrator owner + D6 consumer inventory recorded; p95/connection/outbox metrics capture is Phase 5 evidence. | `docs/remaining-work.md` A9 row |
 | 4 — split databases | **Owner databases only.** No leftover shared Postgres. Residual readers still open owner contexts over a second connection. | `BoundedContextConnections`, `infra/postgres/init-*.sql` |
-| 5 — remove shims | Not started. | — |
+| 5 — remove shims | **Runtime shims removed 2026-08-18.** No runtime composition registers `ApplicationDbContext`: seeder ported to owner contexts, maintenance provider bounded-context-only, Messaging fallbacks collapsed, dead reset service deleted, `AddPersistence`/`AddLegacyApplicationPersistence` deleted. Remaining: retire the idle leftover database and archive the frozen legacy stream (blocked on the metrics gate + backup decision). | `docs/remaining-work.md` A10 row |
 
 ## What Phase 3 lookup residuals changed
 

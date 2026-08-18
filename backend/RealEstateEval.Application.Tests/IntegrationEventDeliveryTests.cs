@@ -1,7 +1,8 @@
-using System.Text.Json;
+﻿using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging.Abstractions;
 using RealEstateEval.Infrastructure.Data;
+using RealEstateEval.Infrastructure.Data.Contexts;
 using RealEstateEval.Infrastructure.Integration;
 using RealEstateEval.Shared.Contracts;
 
@@ -107,14 +108,14 @@ public class IntegrationEventDeliveryTests
         Assert.False(IntegrationEventEnvelopeReader.TryReadMetadata(json, out _, out _));
     }
 
-    private static IntegrationEventInbox CreateInbox(ApplicationDbContext db) =>
+    private static IntegrationEventInbox CreateInbox(MessagingDbContext db) =>
         new(db, NullLogger<IntegrationEventInbox>.Instance);
 
-    private static ApplicationDbContext CreateDb()
+    private static MessagingDbContext CreateDb()
     {
-        var options = new DbContextOptionsBuilder<ApplicationDbContext>()
+        var options = new DbContextOptionsBuilder<MessagingDbContext>()
             .UseInMemoryDatabase($"event-delivery-{Guid.NewGuid():N}")
             .Options;
-        return new ApplicationDbContext(options);
+        return new MessagingDbContext(options);
     }
 }

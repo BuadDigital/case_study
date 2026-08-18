@@ -1,4 +1,4 @@
-using System.Diagnostics;
+﻿using System.Diagnostics;
 using System.Net.Sockets;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
@@ -125,13 +125,6 @@ public static class RedisTcpEndpoint
 public static class ServiceHealthEndpoints
 {
     private const string LogCategory = "RealEstateEval.Readiness";
-
- /// <summary>
- /// Residual readiness for hosts that still register the legacy
- /// <see cref="ApplicationDbContext"/> pool.
- /// </summary>
-    public static WebApplication MapDatabaseReady(this WebApplication app, string serviceName) =>
-        MapDatabaseReady<ApplicationDbContext>(app, serviceName);
 
  /// <summary>
  /// Maps <c>/ready</c> against one owned write context (A6 pure hosts). Connectivity and

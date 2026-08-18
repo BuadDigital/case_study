@@ -56,13 +56,6 @@ public abstract class OutboxIntegrationEventPublisher<TContext> : IIntegrationEv
     }
 }
 
-/// <summary>Outbox writer for every slice still hosted on the legacy context.</summary>
-public sealed class OutboxIntegrationEventPublisher(
-    ApplicationDbContext db,
-    ILogger<OutboxIntegrationEventPublisher> logger,
-    TimeProvider? time = null)
-    : OutboxIntegrationEventPublisher<ApplicationDbContext>(db, logger, time);
-
 /// <summary>Outbox writer for Platform messaging writes (notifications + same-UoW events).</summary>
 public sealed class MessagingOutboxPublisher(
     MessagingDbContext db,

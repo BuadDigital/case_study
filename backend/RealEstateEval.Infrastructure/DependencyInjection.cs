@@ -43,49 +43,9 @@ public static class DependencyInjection
         return services;
     }
 
- /// <summary>
- /// Residual <see cref="ApplicationDbContext"/> pool for hosts that still write or read through
- /// the transitional god context (Case Study residual writers, dual fee paths, outbox drain).
- /// Registers <see cref="IUserLabelLookup"/> because label resolution still loads Identity tables
- /// via App. Prefer owned contexts; do not call this from pure extracted hosts.
- /// </summary>
-    public static IServiceCollection AddLegacyApplicationPersistence(
-        this IServiceCollection services,
-        IConfiguration configuration,
-        string connectionString)
-    {
-        var dbOptions = configuration.GetSection(DatabaseOptions.SectionName).Get<DatabaseOptions>() ?? new DatabaseOptions();
-        var pooledConnectionString = NpgsqlConfiguration.EnhanceConnectionString(connectionString,configuration);
-
-        services.AddDbContextPool<ApplicationDbContext>(options =>
-            options.UseNpgsql(pooledConnectionString, npgsql =>
-            {
-                npgsql.EnableRetryOnFailure(maxRetryCount: 3);
-                npgsql.CommandTimeout(dbOptions.CommandTimeoutSeconds);
-            }));
-
- // D10 closed: labels always resolve via the Identity owner context. Every remaining
- // AddLegacyApplicationPersistence composition (seed/maintenance provider, reseed tool)
- // also registers IdentityDbContext.
-        services.TryAddScoped<IUserLabelLookup>(sp =>
-            new UserLabelLookup(sp.GetRequiredService<IdentityDbContext>()));
-        return services;
-    }
-
- /// <summary>
- /// Shared host bits + residual god-context pool. Use only while a host still needs
- /// <see cref="ApplicationDbContext"/>. Extracted pure APIs should call
- /// <see cref="AddHostSharedInfrastructure"/> + their owned context registration instead (A6).
- /// </summary>
-    public static IServiceCollection AddPersistence(
-        this IServiceCollection services,
-        IConfiguration configuration,
-        string connectionString)
-    {
-        services.AddHostSharedInfrastructure(configuration);
-        services.AddLegacyApplicationPersistence(configuration, connectionString);
-        return services;
-    }
+ // Phase 5: AddPersistence / AddLegacyApplicationPersistence removed — no runtime
+ // composition registers ApplicationDbContext any more. The class survives only for
+ // the frozen legacy migration stream (DbMigrate, design-time factory, guardrails).
 
  /// <summary>Attachments write context. Prefers a dedicated Attachments connection string.</summary>
     public static IServiceCollection AddAttachmentsPersistence(
@@ -355,12 +315,19 @@ public static class DependencyInjection
         IConfiguration configuration,
         string connectionString)
     {
+ // Phase 5: the seed graph is bounded-context only — no ApplicationDbContext.
+ // DataSeeder.SeedAsync needs all six owner contexts; each resolves its own
+ // connection string, so seeding requires them configured.
         var services = new ServiceCollection();
         services.AddLogging();
         services.AddSingleton(configuration);
-        services.AddPersistence(configuration, connectionString);
+        services.AddHostSharedInfrastructure(configuration);
         services.AddIdentitySeedStores(configuration, connectionString);
-        services.AddScoped<IUserRegistrationService, UserRegistrationService>();
+        services.AddOperationsPersistence(configuration, connectionString);
+        services.AddFinancialPersistence(configuration, connectionString);
+        services.AddCaseStudyPersistence(configuration, connectionString);
+        services.AddValuationPersistence(configuration, connectionString);
+        services.AddFailuresPersistence(configuration, connectionString);
         return services.BuildServiceProvider();
     }
 
@@ -767,33 +734,13 @@ public static class DependencyInjection
         IHostEnvironment environment)
     {
         services.AddValidatedRabbitMqOptions(configuration, environment);
- // Prefer Messaging outbox when the host registered MessagingDbContext (pure A6 hosts).
- // Residual dual-write hosts keep ApplicationDbContext OutboxIntegrationEventPublisher.
-        services.AddScoped<IIntegrationEventPublisher>(sp =>
-        {
-            if (sp.GetService<MessagingDbContext>() is { } messaging)
-            {
-                return new MessagingOutboxPublisher(
-                    messaging,
-                    sp.GetRequiredService<ILogger<MessagingOutboxPublisher>>());
-            }
-
-            return new OutboxIntegrationEventPublisher(
-                sp.GetRequiredService<ApplicationDbContext>(),
-                sp.GetRequiredService<ILogger<OutboxIntegrationEventPublisher>>());
-        });
+ // Phase 5: every calling host registers MessagingDbContext — the legacy
+ // ApplicationDbContext fallback is gone.
+        services.AddScoped<IIntegrationEventPublisher, MessagingOutboxPublisher>();
         services.AddScoped<NotificationRecipientResolver>();
         services.AddScoped<INotificationRecipientResolver>(sp =>
             sp.GetRequiredService<NotificationRecipientResolver>());
-        services.AddScoped<INotificationService>(sp =>
-        {
-            var events = sp.GetRequiredService<IIntegrationEventPublisher>();
-            if (sp.GetService<MessagingDbContext>() is { } messaging)
-                return new PlatformNotificationRequestService(messaging, events);
-            return new PlatformNotificationRequestService(
-                sp.GetRequiredService<ApplicationDbContext>(),
-                events);
-        });
+        services.AddScoped<INotificationService, PlatformNotificationRequestService>();
         return services;
     }
 
@@ -889,40 +836,19 @@ public static class DependencyInjection
         IHostEnvironment environment)
     {
         services.AddValidatedRabbitMqOptions(configuration, environment);
-        services.AddScoped<IIntegrationEventPublisher>(sp =>
-        {
-            if (sp.GetService<MessagingDbContext>() is { } messaging)
-            {
-                return new MessagingOutboxPublisher(
-                    messaging,
-                    sp.GetRequiredService<ILogger<MessagingOutboxPublisher>>());
-            }
-
-            return new OutboxIntegrationEventPublisher(
-                sp.GetRequiredService<ApplicationDbContext>(),
-                sp.GetRequiredService<ILogger<OutboxIntegrationEventPublisher>>());
-        });
+ // Phase 5: publishing hosts register MessagingDbContext (Valuation uses its own
+ // ValuationOutboxPublisher via AddValuationRequestInfrastructure).
+        services.AddScoped<IIntegrationEventPublisher, MessagingOutboxPublisher>();
         return services;
     }
 
  /// <summary>
- /// Deduplication store for services that consume integration events.
- /// Uses a factory so DI never has to pick between the dual public constructors
- /// (Messaging vs Application). Prefers <see cref="MessagingDbContext"/> when registered
- /// so Platform writes share the messaging unit of work; residual hosts use
- /// <see cref="ApplicationDbContext"/>.
+ /// Deduplication store for services that consume integration events. Consuming hosts
+ /// register <see cref="MessagingDbContext"/> (Phase 5 — no legacy fallback).
  /// </summary>
     public static IServiceCollection AddIntegrationEventInbox(this IServiceCollection services)
     {
-        services.AddScoped<IIntegrationEventInbox>(sp =>
-        {
-            var logger = sp.GetRequiredService<ILogger<IntegrationEventInbox>>();
-            if (sp.GetService<MessagingDbContext>() is { } messaging)
-                return new IntegrationEventInbox(messaging, logger);
-            return new IntegrationEventInbox(
-                sp.GetRequiredService<ApplicationDbContext>(),
-                logger);
-        });
+        services.AddScoped<IIntegrationEventInbox, IntegrationEventInbox>();
         return services;
     }
 

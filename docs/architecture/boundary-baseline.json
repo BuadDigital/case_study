@@ -119,10 +119,12 @@
       "attachments"
     ],
     "case-study": [
-      "case_study"
+      "case_study",
+      "messaging"
     ],
     "failures": [
-      "failures"
+      "failures",
+      "messaging"
     ],
     "financial": [
       "audit",
@@ -152,11 +154,9 @@
   "infrastructureFileSchemaAccess": {
     "backend/RealEstateEval.Infrastructure/Data/DataSeeder.cs": [
       "case_study",
-      "failures",
       "financial",
       "identity",
-      "operations",
-      "valuation"
+      "operations"
     ],
     "backend/RealEstateEval.Infrastructure/Integration/IntegrationEventInbox.cs": [
       "messaging"
@@ -340,16 +340,6 @@
     "backend/RealEstateEval.Infrastructure/Services/SurveyOfficesService.cs": [
       "operations"
     ],
-    "backend/RealEstateEval.Infrastructure/Services/SystemMaintenanceService.cs": [
-      "attachments",
-      "case_study",
-      "failures",
-      "financial",
-      "messaging",
-      "operations",
-      "platform",
-      "valuation"
-    ],
     "backend/RealEstateEval.Infrastructure/Services/UserRegistrationService.cs": [
       "audit",
       "identity"
@@ -500,10 +490,16 @@
     "InspectionLimitsService": [
       "case-study"
     ],
+    "IntegrationEventInbox": [
+      "case-study",
+      "platform"
+    ],
     "KeyEnvelopesService": [
       "operations"
     ],
     "MessagingOutboxPublisher": [
+      "case-study",
+      "failures",
       "platform"
     ],
     "NotificationService": [

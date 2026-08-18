@@ -8,9 +8,8 @@ using RealEstateEval.Shared.Contracts;
 namespace RealEstateEval.Infrastructure.Integration;
 
 /// <summary>
-/// Transitional command-side adapter for services that do not own the notification inbox.
-/// Writes requests to a producer outbox (Messaging preferred; residual App until full cutover);
-/// Platform persists inbox rows.
+/// Command-side adapter for services that do not own the notification inbox.
+/// Writes requests to the Messaging producer outbox; Platform persists inbox rows.
 /// </summary>
 public sealed class PlatformNotificationRequestService : INotificationService
 {
@@ -20,14 +19,6 @@ public sealed class PlatformNotificationRequestService : INotificationService
 
     public PlatformNotificationRequestService(
         MessagingDbContext db,
-        IIntegrationEventPublisher events,
-        TimeProvider? time = null)
-        : this((IOutboxContext)db, events, time)
-    {
-    }
-
-    public PlatformNotificationRequestService(
-        ApplicationDbContext db,
         IIntegrationEventPublisher events,
         TimeProvider? time = null)
         : this((IOutboxContext)db, events, time)

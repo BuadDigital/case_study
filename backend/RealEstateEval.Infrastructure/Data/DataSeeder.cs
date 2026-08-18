@@ -1,4 +1,4 @@
-using System.Text.Json;
+﻿using System.Text.Json;
 using System.Text.RegularExpressions;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
@@ -26,88 +26,71 @@ public static class DataSeeder
 
 
     public static async Task SeedAsync(IServiceProvider services, CancellationToken cancellationToken = default)
-
     {
-
         var roleManager = services.GetRequiredService<RoleManager<IdentityRole>>();
-
         var userManager = services.GetRequiredService<UserManager<ApplicationUser>>();
-
-        var db = services.GetRequiredService<ApplicationDbContext>();
-
+        // A10/Phase 5: the seed writes through the owner contexts, never the god context.
+        var identity = services.GetRequiredService<IdentityDbContext>();
+        var operations = services.GetRequiredService<OperationsDbContext>();
+        var financial = services.GetRequiredService<FinancialDbContext>();
+        var caseStudy = services.GetRequiredService<CaseStudyDbContext>();
+        var valuation = services.GetRequiredService<ValuationDbContext>();
+        var failures = services.GetRequiredService<FailuresDbContext>();
         var logger = services.GetService<ILoggerFactory>()?.CreateLogger(LogCategory)
             ?? NullLogger.Instance;
-
-
 
         if (await IsAlreadySeededAsync(services, cancellationToken))
         {
  // Keep seed passwords/profile fields in sync on every demo startup.
             await EnsureLegacyAdminAsync(userManager);
             foreach (var staff in HrStaffSeeds)
-                await EnsureHrStaffAsync(userManager, db, staff, cancellationToken);
+                await EnsureHrStaffAsync(userManager, identity, staff, cancellationToken);
             await EnsureProcProviderAsync(
                 userManager,
-                db,
+                identity,
                 JeddahSurveyOfficeSeed,
                 cancellationToken);
-            await BackfillReviewerCityCoverageAsync(db, userManager, cancellationToken);
-            await BackfillDistributionAssigneeIdsAsync(db, userManager, cancellationToken);
-            await BackfillFieldInspectorEmployeeNumbersAsync(db, userManager, cancellationToken);
+            await BackfillReviewerCityCoverageAsync(identity, userManager, cancellationToken);
+            await BackfillDistributionAssigneeIdsAsync(identity, userManager, cancellationToken);
+            await BackfillFieldInspectorEmployeeNumbersAsync(
+                identity,
+                financial,
+                userManager,
+                cancellationToken);
             try
             {
-                await BackfillPartyChildAssigneeIdsAsync(db, logger, cancellationToken);
+                await BackfillPartyChildAssigneeIdsAsync(caseStudy, logger, cancellationToken);
             }
             catch (Exception ex)
             {
                 logger.LogWarning(ex, "BackfillPartyChildAssigneeIds skipped.");
             }
-            await RemoveDemoPropertyKeyRecordsAsync(db, cancellationToken);
-            await RemoveSeededFinancialReportConfigAsync(db, cancellationToken);
+            await RemoveDemoPropertyKeyRecordsAsync(operations, cancellationToken);
+            await RemoveSeededFinancialReportConfigAsync(financial, cancellationToken);
             await RemoveRetiredOrgAdminUsersAsync(userManager, cancellationToken);
             return;
         }
 
-
-
         foreach (var role in LegacyRoles.Concat(OrgRoles.All).Concat(DepartmentRoles.All))
-
         {
-
             if (!await roleManager.RoleExistsAsync(role))
-
                 await roleManager.CreateAsync(new IdentityRole(role));
-
         }
-
-
 
         await EnsureLegacyAdminAsync(userManager);
 
-
-
         foreach (var staff in HrStaffSeeds)
-
         {
-
-            await EnsureHrStaffAsync(userManager, db, staff, cancellationToken);
-
+            await EnsureHrStaffAsync(userManager, identity, staff, cancellationToken);
         }
 
-
-
         await EnsureProcProviderAsync(
-
             userManager,
-
-            db,
-
+            identity,
             JeddahSurveyOfficeSeed,
-
             cancellationToken);
 
-        await EnsurePrototypeModuleDataAsync(db, cancellationToken);
-
+        await EnsurePrototypeModuleDataAsync(operations, valuation, failures, cancellationToken);
     }
 
  /// <summary>
@@ -118,20 +101,22 @@ public static class DataSeeder
         CancellationToken cancellationToken = default)
     {
         var userManager = services.GetRequiredService<UserManager<ApplicationUser>>();
-        var db = services.GetRequiredService<ApplicationDbContext>();
+        var operations = services.GetRequiredService<OperationsDbContext>();
 
         var markerUser = await userManager.FindByNameAsync("sliman");
         if (markerUser is null)
             return false;
 
-        return await db.SurveyOffices.AnyAsync(cancellationToken);
+        return await operations.SurveyOffices.AnyAsync(cancellationToken);
     }
 
  /// <summary>Re-insert demo survey/valuation rows after a full system reset.</summary>
     public static Task ReseedPrototypeModuleDataAsync(
-        ApplicationDbContext db,
+        OperationsDbContext operations,
+        ValuationDbContext valuation,
+        FailuresDbContext failures,
         CancellationToken cancellationToken = default) =>
-        EnsurePrototypeModuleDataAsync(db, cancellationToken);
+        EnsurePrototypeModuleDataAsync(operations, valuation, failures, cancellationToken);
 
  /// <summary>Re-create all seeded HR staff and proc demo accounts (idempotent).</summary>
     public static async Task ReseedAllDemoUsersAsync(
@@ -140,7 +125,7 @@ public static class DataSeeder
     {
         var roleManager = services.GetRequiredService<RoleManager<IdentityRole>>();
         var userManager = services.GetRequiredService<UserManager<ApplicationUser>>();
-        var db = services.GetRequiredService<ApplicationDbContext>();
+        var identity = services.GetRequiredService<IdentityDbContext>();
 
         foreach (var role in LegacyRoles.Concat(OrgRoles.All).Concat(DepartmentRoles.All))
         {
@@ -153,11 +138,11 @@ public static class DataSeeder
         await RemoveRetiredOrgAdminUsersAsync(userManager, cancellationToken);
 
         foreach (var staff in HrStaffSeeds)
-            await EnsureHrStaffAsync(userManager, db, staff, cancellationToken);
+            await EnsureHrStaffAsync(userManager, identity, staff, cancellationToken);
 
         await EnsureProcProviderAsync(
             userManager,
-            db,
+            identity,
             JeddahSurveyOfficeSeed,
             cancellationToken);
     }
@@ -174,8 +159,8 @@ public static class DataSeeder
             throw new InvalidOperationException("Unknown HR seed login: " + loginUsername);
 
         var userManager = services.GetRequiredService<UserManager<ApplicationUser>>();
-        var db = services.GetRequiredService<ApplicationDbContext>();
-        await EnsureHrStaffAsync(userManager, db, seed, cancellationToken);
+        var identity = services.GetRequiredService<IdentityDbContext>();
+        await EnsureHrStaffAsync(userManager, identity, seed, cancellationToken);
     }
 
     private static readonly Guid[] DemoPropertyKeyIds =
@@ -187,7 +172,7 @@ public static class DataSeeder
 
  /// <summary>Removes legacy demo rows for إدارة المفاتيح (E-440x / seeded GUIDs).</summary>
     public static async Task RemoveDemoPropertyKeyRecordsAsync(
-        ApplicationDbContext db,
+        OperationsDbContext db,
         CancellationToken cancellationToken = default)
     {
         var demoRows = await db.PropertyKeyRecords
@@ -606,7 +591,7 @@ public static class DataSeeder
     }
 
     private static async Task BackfillReviewerCityCoverageAsync(
-        ApplicationDbContext db,
+        IdentityDbContext db,
         UserManager<ApplicationUser> userManager,
         CancellationToken cancellationToken)
     {
@@ -627,7 +612,7 @@ public static class DataSeeder
     }
 
     private static async Task BackfillDistributionAssigneeIdsAsync(
-        ApplicationDbContext db,
+        IdentityDbContext db,
         UserManager<ApplicationUser> userManager,
         CancellationToken cancellationToken)
     {
@@ -706,7 +691,8 @@ public static class DataSeeder
     }
 
     private static async Task BackfillFieldInspectorEmployeeNumbersAsync(
-        ApplicationDbContext db,
+        IdentityDbContext identity,
+        FinancialDbContext financial,
         UserManager<ApplicationUser> userManager,
         CancellationToken cancellationToken)
     {
@@ -715,7 +701,7 @@ public static class DataSeeder
             var user = await userManager.FindByEmailAsync(email.Trim());
             if (user is null) continue;
 
-            var profile = await db.UserProfiles
+            var profile = await identity.UserProfiles
                 .Include(p => p.HrEmployee)
                 .FirstOrDefaultAsync(p => p.UserId == user.Id, cancellationToken);
             if (profile is null) continue;
@@ -731,7 +717,7 @@ public static class DataSeeder
                     Department = profile.Department ?? "إدارة التقييم العقاري",
                     EmployeeNumber = employeeNumber,
                 };
-                db.HrEmployeeProfiles.Add(profile.HrEmployee);
+                identity.HrEmployeeProfiles.Add(profile.HrEmployee);
             }
             else if (!string.Equals(
                          profile.HrEmployee.EmployeeNumber,
@@ -749,8 +735,11 @@ public static class DataSeeder
             }
         }
 
+ // Identity mutations commit before the financial ones — the databases are separate.
+        await identity.SaveChangesAsync(cancellationToken);
+
  // Cooperator fee rates on the active field-inspector pricing table.
-        var fiTable = await db.PartyFeePricingTables
+        var fiTable = await financial.PartyFeePricingTables
             .FirstOrDefaultAsync(
                 t => t.Category == "field-inspector"
                     && t.IsActive
@@ -767,7 +756,7 @@ public static class DataSeeder
 
  // Employee incentives require a flat table (not the cooperator party-rates default).
         const string flatName = "حوافز المعاينين الموظفين";
-        var flatTable = await db.PartyFeePricingTables
+        var flatTable = await financial.PartyFeePricingTables
             .FirstOrDefaultAsync(
                 t => t.Category == "field-inspector"
                     && t.PricingKind == PartyFeePricingKinds.Flat
@@ -786,7 +775,7 @@ public static class DataSeeder
                 FlatAmountSar = 400m,
                 UpdatedAtUtc = DateTime.UtcNow,
             };
-            db.PartyFeePricingTables.Add(flatTable);
+            financial.PartyFeePricingTables.Add(flatTable);
         }
 
  // Assign compensated field inspectors to the employee flat table (never to party-rates).
@@ -795,7 +784,7 @@ public static class DataSeeder
  // inspector lands here as well and the block below adds him a second time — the
  // pending insert is invisible to that query, so a fresh database fails on the
  // (Category, AssigneeId) unique index.
-        var employeeInspectorIds = await db.UserProfiles.AsNoTracking()
+        var employeeInspectorIds = await identity.UserProfiles.AsNoTracking()
             .Where(p =>
                 p.HasCompensation
                 && p.InspectorType == "employee"
@@ -807,13 +796,13 @@ public static class DataSeeder
 
         foreach (var assigneeId in employeeInspectorIds)
         {
-            var existing = await db.PartyFeePricingAssignments
+            var existing = await financial.PartyFeePricingAssignments
                 .FirstOrDefaultAsync(
                     a => a.Category == "field-inspector" && a.AssigneeId == assigneeId,
                     cancellationToken);
             if (existing is null)
             {
-                db.PartyFeePricingAssignments.Add(new PartyFeePricingAssignment
+                financial.PartyFeePricingAssignments.Add(new PartyFeePricingAssignment
                 {
                     Id = Guid.NewGuid(),
                     TableId = flatTable.Id,
@@ -825,7 +814,7 @@ public static class DataSeeder
             else if (existing.TableId != flatTable.Id)
             {
  // Re-point off a party-rates / wrong table so accrual can resolve.
-                var pointed = await db.PartyFeePricingTables.AsNoTracking()
+                var pointed = await financial.PartyFeePricingTables.AsNoTracking()
                     .FirstOrDefaultAsync(t => t.Id == existing.TableId, cancellationToken);
                 if (pointed is null
                     || pointed.PricingKind != PartyFeePricingKinds.Flat
@@ -840,12 +829,12 @@ public static class DataSeeder
  // Cooperator demo assignment (ahmed as cooperator path stays on party-rates when present).
         if (fiTable is not null)
         {
-            var hasAhmed = await db.PartyFeePricingAssignments.AnyAsync(
+            var hasAhmed = await financial.PartyFeePricingAssignments.AnyAsync(
                 a => a.Category == "field-inspector" && a.AssigneeId == "fi-ahmed",
                 cancellationToken);
             if (!hasAhmed)
             {
-                db.PartyFeePricingAssignments.Add(new PartyFeePricingAssignment
+                financial.PartyFeePricingAssignments.Add(new PartyFeePricingAssignment
                 {
                     Id = Guid.NewGuid(),
                     TableId = fiTable.Id,
@@ -856,14 +845,14 @@ public static class DataSeeder
             }
         }
 
-        await db.SaveChangesAsync(cancellationToken);
+        await financial.SaveChangesAsync(cancellationToken);
     }
 
  /// <summary>
  /// Align party child task <c>AssigneeId</c> with parent distribution (fixes empty/stale ids).
  /// </summary>
     private static async Task BackfillPartyChildAssigneeIdsAsync(
-        ApplicationDbContext db,
+        CaseStudyDbContext db,
         ILogger logger,
         CancellationToken cancellationToken)
     {
@@ -954,13 +943,9 @@ public static class DataSeeder
 
 
     private static async Task EnsureHrStaffAsync(
-
         UserManager<ApplicationUser> userManager,
-
-        ApplicationDbContext db,
-
+        IdentityDbContext db,
         HrStaffSeed seed,
-
         CancellationToken cancellationToken)
 
     {
@@ -1220,13 +1205,9 @@ public static class DataSeeder
 
 
     private static async Task EnsureProcProviderAsync(
-
         UserManager<ApplicationUser> userManager,
-
-        ApplicationDbContext db,
-
+        IdentityDbContext db,
         ProcProviderSeed seed,
-
         CancellationToken cancellationToken)
 
     {
@@ -1485,15 +1466,17 @@ public static class DataSeeder
     }
 
     private static async Task EnsurePrototypeModuleDataAsync(
-        ApplicationDbContext db,
+        OperationsDbContext operations,
+        ValuationDbContext valuation,
+        FailuresDbContext failures,
         CancellationToken cancellationToken)
     {
-        await RemoveDemoPropertyKeyRecordsAsync(db, cancellationToken);
+        await RemoveDemoPropertyKeyRecordsAsync(operations, cancellationToken);
 
-        if (!await db.SurveyOffices.AnyAsync(cancellationToken))
+        if (!await operations.SurveyOffices.AnyAsync(cancellationToken))
         {
             var now = DateTime.UtcNow;
-            db.SurveyOffices.AddRange(
+            operations.SurveyOffices.AddRange(
                 new SurveyOffice
                 {
                     Id = Guid.Parse("a1000001-0000-4000-8000-000000000001"),
@@ -1544,10 +1527,12 @@ public static class DataSeeder
                 });
         }
 
-        if (!await db.ValuationRequests.AnyAsync(cancellationToken))
+        await operations.SaveChangesAsync(cancellationToken);
+
+        if (!await valuation.ValuationRequests.AnyAsync(cancellationToken))
         {
             var now = DateTime.UtcNow;
-            db.ValuationRequests.AddRange(
+            valuation.ValuationRequests.AddRange(
                 ValuationRequest.Create(
                     Guid.Parse("b2000001-0000-4000-8000-000000000001"),
                     "VR-441",
@@ -1588,9 +1573,11 @@ public static class DataSeeder
                     now));
         }
 
-        if (!await db.FailureTypesCatalogConfigs.AnyAsync(cancellationToken))
+        await valuation.SaveChangesAsync(cancellationToken);
+
+        if (!await failures.FailureTypesCatalogConfigs.AnyAsync(cancellationToken))
         {
-            db.FailureTypesCatalogConfigs.Add(new FailureTypesCatalogConfig
+            failures.FailureTypesCatalogConfigs.Add(new FailureTypesCatalogConfig
             {
                 Id = FailureTypesCatalogSeed.SingletonId,
                 CatalogJson = FailureTypesCatalogSeed.CatalogJson,
@@ -1598,14 +1585,14 @@ public static class DataSeeder
             });
         }
 
-        await db.SaveChangesAsync(cancellationToken);
+        await failures.SaveChangesAsync(cancellationToken);
     }
 
     private static readonly Guid SeededFinancialReportConfigId =
         Guid.Parse("f1a2b3c4-d5e6-7890-abcd-ef1234567890");
 
     public static async Task RemoveSeededFinancialReportConfigAsync(
-        ApplicationDbContext db,
+        FinancialDbContext db,
         CancellationToken cancellationToken = default)
     {
         await db.FinancialReportConfigs

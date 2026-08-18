@@ -1,4 +1,4 @@
-using System.Text.Json;
+﻿using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging.Abstractions;
 using RealEstateEval.Application.Contracts;
@@ -364,11 +364,12 @@ public sealed class AssignmentNotificationRegressionTests
     private static OperationsTaskService CreateOpsService(TestBoundedContexts.Bundle bundle)
     {
         var db = bundle.App;
+        var messaging = TestInspectorFeeServiceFactory.ShareMessaging(db);
         var notifications = new PlatformNotificationRequestService(
-            db,
-            new OutboxIntegrationEventPublisher(
-                db,
-                NullLogger<OutboxIntegrationEventPublisher>.Instance));
+            messaging,
+            new MessagingOutboxPublisher(
+                messaging,
+                NullLogger<MessagingOutboxPublisher>.Instance));
         return OperationsTaskService.Create(
             bundle.Ops,
             TestInspectorFeeServiceFactory.ShareFinancial(db),
@@ -379,11 +380,12 @@ public sealed class AssignmentNotificationRegressionTests
 
     private static WorkflowTaskService CreateWorkflowService(ApplicationDbContext db)
     {
+        var messaging = TestInspectorFeeServiceFactory.ShareMessaging(db);
         var notifications = new PlatformNotificationRequestService(
-            db,
-            new OutboxIntegrationEventPublisher(
-                db,
-                NullLogger<OutboxIntegrationEventPublisher>.Instance));
+            messaging,
+            new MessagingOutboxPublisher(
+                messaging,
+                NullLogger<MessagingOutboxPublisher>.Instance));
         var recipients = TestInspectorFeeServiceFactory.CreateRecipients(db);
         var fees = TestInspectorFeeServiceFactory.Compose(
             db,
