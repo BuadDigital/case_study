@@ -22,6 +22,7 @@
     <ProjectReference Include="..\RealEstateEval.Domain\RealEstateEval.Domain.csproj" />
     <ProjectReference Include="..\RealEstateEval.Infrastructure\RealEstateEval.Infrastructure.csproj" />
     <ProjectReference Include="..\contexts\attachments\RealEstateEval.Attachments.Infrastructure\RealEstateEval.Attachments.Infrastructure.csproj" />
+    <ProjectReference Include="..\contexts\case-study\RealEstateEval.CaseStudy.Infrastructure\RealEstateEval.CaseStudy.Infrastructure.csproj" />
     <ProjectReference Include="..\contexts\failures\RealEstateEval.Failures.Infrastructure\RealEstateEval.Failures.Infrastructure.csproj" />
     <ProjectReference Include="..\contexts\financial\RealEstateEval.Financial.Infrastructure\RealEstateEval.Financial.Infrastructure.csproj" />
     <ProjectReference Include="..\contexts\identity\RealEstateEval.Identity.Infrastructure\RealEstateEval.Identity.Infrastructure.csproj" />

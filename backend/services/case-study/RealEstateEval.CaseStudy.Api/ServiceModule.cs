@@ -1,5 +1,7 @@
+using FluentValidation;
 using Microsoft.EntityFrameworkCore;
 using RealEstateEval.Application.Abstractions;
+using RealEstateEval.Application.Validation;
 using RealEstateEval.CaseStudy.Api.Integration;
 using RealEstateEval.Infrastructure;
 using RealEstateEval.Infrastructure.Data;
@@ -27,6 +29,8 @@ public sealed class ServiceModule : IRealEstateEvalServiceModule
         builder.Services.Configure<OutboxDispatcherOptions>(o => o.ContextType = typeof(MessagingDbContext));
         builder.Services.AddClaimsPermissionService();
         builder.Services.AddCaseStudyInfrastructure(builder.Configuration, builder.Environment);
+        // A8: Case Study boundary validators moved out of the globally scanned assembly.
+        builder.Services.AddValidatorsFromAssemblyContaining<CreateWorkOrderRequestValidator>();
         // No Identity EF / registration services on the request host — request paths use the
         // Identity HTTP directory; Dev seed runs through CreateIdentityMaintenanceProvider.
         builder.Services.AddIntegrationEventPublishing(builder.Configuration, builder.Environment);

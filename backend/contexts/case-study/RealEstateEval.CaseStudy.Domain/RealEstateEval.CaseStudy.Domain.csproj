@@ -1,0 +1,17 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <RootNamespace>RealEstateEval.Domain</RootNamespace>
+  </PropertyGroup>
+
+  <!-- PropertyGroup members and the ops-metrics rules reference the shared WorkOrder /
+       WorkflowTask entities, which stay in the global Domain until the wire DTOs and
+       cross-context reads are de-typed (see the A8 defer list). -->
+  <ItemGroup>
+    <ProjectReference Include="..\..\..\RealEstateEval.Domain\RealEstateEval.Domain.csproj" />
+  </ItemGroup>
+
+</Project>

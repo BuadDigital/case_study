@@ -156,6 +156,7 @@ public class BoundedContextBoundaryTests
         {
             new[] { "backend", "RealEstateEval.Infrastructure", "Services" },
             new[] { "backend", "contexts", "attachments", "RealEstateEval.Attachments.Infrastructure", "Services" },
+            new[] { "backend", "contexts", "case-study", "RealEstateEval.CaseStudy.Infrastructure", "Services" },
             new[] { "backend", "contexts", "failures", "RealEstateEval.Failures.Infrastructure", "Services" },
             new[] { "backend", "contexts", "financial", "RealEstateEval.Financial.Infrastructure", "Services" },
             new[] { "backend", "contexts", "identity", "RealEstateEval.Identity.Infrastructure", "Services" },

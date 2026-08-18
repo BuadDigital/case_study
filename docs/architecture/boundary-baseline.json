@@ -30,6 +30,7 @@
       "backend/RealEstateEval.Domain/RealEstateEval.Domain.csproj",
       "backend/RealEstateEval.Infrastructure/RealEstateEval.Infrastructure.csproj",
       "backend/contexts/attachments/RealEstateEval.Attachments.Infrastructure/RealEstateEval.Attachments.Infrastructure.csproj",
+      "backend/contexts/case-study/RealEstateEval.CaseStudy.Infrastructure/RealEstateEval.CaseStudy.Infrastructure.csproj",
       "backend/contexts/failures/RealEstateEval.Failures.Infrastructure/RealEstateEval.Failures.Infrastructure.csproj",
       "backend/contexts/financial/RealEstateEval.Financial.Infrastructure/RealEstateEval.Financial.Infrastructure.csproj",
       "backend/contexts/identity/RealEstateEval.Identity.Infrastructure/RealEstateEval.Identity.Infrastructure.csproj",
@@ -46,6 +47,7 @@
       "backend/RealEstateEval.Application/RealEstateEval.Application.csproj",
       "backend/RealEstateEval.Domain/RealEstateEval.Domain.csproj",
       "backend/contexts/attachments/RealEstateEval.Attachments.Application/RealEstateEval.Attachments.Application.csproj",
+      "backend/contexts/case-study/RealEstateEval.CaseStudy.Application/RealEstateEval.CaseStudy.Application.csproj",
       "backend/contexts/failures/RealEstateEval.Failures.Application/RealEstateEval.Failures.Application.csproj",
       "backend/contexts/financial/RealEstateEval.Financial.Application/RealEstateEval.Financial.Application.csproj",
       "backend/contexts/operations/RealEstateEval.Operations.Application/RealEstateEval.Operations.Application.csproj",
@@ -75,6 +77,17 @@
     "backend/contexts/attachments/RealEstateEval.Attachments.Infrastructure/RealEstateEval.Attachments.Infrastructure.csproj": [
       "backend/RealEstateEval.Infrastructure/RealEstateEval.Infrastructure.csproj",
       "backend/contexts/attachments/RealEstateEval.Attachments.Application/RealEstateEval.Attachments.Application.csproj"
+    ],
+    "backend/contexts/case-study/RealEstateEval.CaseStudy.Application/RealEstateEval.CaseStudy.Application.csproj": [
+      "backend/RealEstateEval.Application/RealEstateEval.Application.csproj",
+      "backend/contexts/case-study/RealEstateEval.CaseStudy.Domain/RealEstateEval.CaseStudy.Domain.csproj"
+    ],
+    "backend/contexts/case-study/RealEstateEval.CaseStudy.Domain/RealEstateEval.CaseStudy.Domain.csproj": [
+      "backend/RealEstateEval.Domain/RealEstateEval.Domain.csproj"
+    ],
+    "backend/contexts/case-study/RealEstateEval.CaseStudy.Infrastructure/RealEstateEval.CaseStudy.Infrastructure.csproj": [
+      "backend/RealEstateEval.Infrastructure/RealEstateEval.Infrastructure.csproj",
+      "backend/contexts/case-study/RealEstateEval.CaseStudy.Application/RealEstateEval.CaseStudy.Application.csproj"
     ],
     "backend/contexts/failures/RealEstateEval.Failures.Application/RealEstateEval.Failures.Application.csproj": [
       "backend/RealEstateEval.Application/RealEstateEval.Application.csproj",
@@ -145,6 +158,7 @@
     "backend/services/case-study/RealEstateEval.CaseStudy.Api/RealEstateEval.CaseStudy.Api.csproj": [
       "backend/RealEstateEval.Application/RealEstateEval.Application.csproj",
       "backend/RealEstateEval.Infrastructure/RealEstateEval.Infrastructure.csproj",
+      "backend/contexts/case-study/RealEstateEval.CaseStudy.Infrastructure/RealEstateEval.CaseStudy.Infrastructure.csproj",
       "backend/shared/RealEstateEval.Shared.Contracts/RealEstateEval.Shared.Contracts.csproj",
       "backend/shared/RealEstateEval.Shared.Web/RealEstateEval.Shared.Web.csproj"
     ],
@@ -243,41 +257,14 @@
     "backend/RealEstateEval.Infrastructure/Integration/OutboxIntegrationEventPublisher.cs": [
       "messaging"
     ],
-    "backend/RealEstateEval.Infrastructure/Integration/ValuationReportWorkflowHandler.cs": [
-      "case_study"
-    ],
-    "backend/RealEstateEval.Infrastructure/Services/BuildingInventoryService.cs": [
-      "case_study"
-    ],
     "backend/RealEstateEval.Infrastructure/Services/CaseStudyCommands.cs": [
-      "case_study"
-    ],
-    "backend/RealEstateEval.Infrastructure/Services/CaseStudyFormService.cs": [
       "case_study"
     ],
     "backend/RealEstateEval.Infrastructure/Services/CaseStudyPropertyPoNumberLookup.cs": [
       "case_study"
     ],
-    "backend/RealEstateEval.Infrastructure/Services/CaseStudyValuationDispatchService.cs": [
-      "case_study"
-    ],
-    "backend/RealEstateEval.Infrastructure/Services/ClientService.cs": [
-      "case_study"
-    ],
-    "backend/RealEstateEval.Infrastructure/Services/DashboardOpsMetricsQueryService.cs": [
-      "case_study"
-    ],
-    "backend/RealEstateEval.Infrastructure/Services/FieldInspectionWorkspaceService.cs": [
-      "case_study"
-    ],
     "backend/RealEstateEval.Infrastructure/Services/IdentityDirectory.cs": [
       "identity"
-    ],
-    "backend/RealEstateEval.Infrastructure/Services/InspectionLimitsService.cs": [
-      "case_study"
-    ],
-    "backend/RealEstateEval.Infrastructure/Services/PartyTaskSubmissionService.cs": [
-      "case_study"
     ],
     "backend/RealEstateEval.Infrastructure/Services/PersonLabelResolver.cs": [
       "identity"
@@ -285,50 +272,77 @@
     "backend/RealEstateEval.Infrastructure/Services/PlatformAuditLogAppend.cs": [
       "audit"
     ],
-    "backend/RealEstateEval.Infrastructure/Services/PoIntakeDraftService.cs": [
-      "case_study"
-    ],
-    "backend/RealEstateEval.Infrastructure/Services/PropertyGroupService.cs": [
-      "case_study"
-    ],
-    "backend/RealEstateEval.Infrastructure/Services/PropertyTimelineService.cs": [
-      "case_study"
-    ],
-    "backend/RealEstateEval.Infrastructure/Services/WorkOrderLoader.cs": [
-      "case_study"
-    ],
-    "backend/RealEstateEval.Infrastructure/Services/WorkOrderPropertyCommands.cs": [
-      "case_study"
-    ],
-    "backend/RealEstateEval.Infrastructure/Services/WorkOrderQueryService.cs": [
-      "case_study"
-    ],
-    "backend/RealEstateEval.Infrastructure/Services/WorkOrderService.cs": [
-      "case_study"
-    ],
-    "backend/RealEstateEval.Infrastructure/Services/WorkOrderVisibilityFilter.cs": [
-      "case_study"
-    ],
-    "backend/RealEstateEval.Infrastructure/Services/WorkflowTaskCascadeCleanup.cs": [
-      "case_study"
-    ],
-    "backend/RealEstateEval.Infrastructure/Services/WorkflowTaskDistributionCommands.cs": [
-      "case_study"
-    ],
-    "backend/RealEstateEval.Infrastructure/Services/WorkflowTaskLifecycleCommands.cs": [
-      "case_study"
-    ],
-    "backend/RealEstateEval.Infrastructure/Services/WorkflowTaskQueryService.cs": [
-      "case_study"
-    ],
-    "backend/RealEstateEval.Infrastructure/Services/WorkflowTaskSlotSynchronizer.cs": [
-      "case_study"
-    ],
     "backend/contexts/attachments/RealEstateEval.Attachments.Infrastructure/Services/AttachmentLookup.cs": [
       "attachments"
     ],
     "backend/contexts/attachments/RealEstateEval.Attachments.Infrastructure/Services/AttachmentService.cs": [
       "attachments"
+    ],
+    "backend/contexts/case-study/RealEstateEval.CaseStudy.Infrastructure/Integration/ValuationReportWorkflowHandler.cs": [
+      "case_study"
+    ],
+    "backend/contexts/case-study/RealEstateEval.CaseStudy.Infrastructure/Services/BuildingInventoryService.cs": [
+      "case_study"
+    ],
+    "backend/contexts/case-study/RealEstateEval.CaseStudy.Infrastructure/Services/CaseStudyFormService.cs": [
+      "case_study"
+    ],
+    "backend/contexts/case-study/RealEstateEval.CaseStudy.Infrastructure/Services/CaseStudyValuationDispatchService.cs": [
+      "case_study"
+    ],
+    "backend/contexts/case-study/RealEstateEval.CaseStudy.Infrastructure/Services/ClientService.cs": [
+      "case_study"
+    ],
+    "backend/contexts/case-study/RealEstateEval.CaseStudy.Infrastructure/Services/DashboardOpsMetricsQueryService.cs": [
+      "case_study"
+    ],
+    "backend/contexts/case-study/RealEstateEval.CaseStudy.Infrastructure/Services/FieldInspectionWorkspaceService.cs": [
+      "case_study"
+    ],
+    "backend/contexts/case-study/RealEstateEval.CaseStudy.Infrastructure/Services/InspectionLimitsService.cs": [
+      "case_study"
+    ],
+    "backend/contexts/case-study/RealEstateEval.CaseStudy.Infrastructure/Services/PartyTaskSubmissionService.cs": [
+      "case_study"
+    ],
+    "backend/contexts/case-study/RealEstateEval.CaseStudy.Infrastructure/Services/PoIntakeDraftService.cs": [
+      "case_study"
+    ],
+    "backend/contexts/case-study/RealEstateEval.CaseStudy.Infrastructure/Services/PropertyGroupService.cs": [
+      "case_study"
+    ],
+    "backend/contexts/case-study/RealEstateEval.CaseStudy.Infrastructure/Services/PropertyTimelineService.cs": [
+      "case_study"
+    ],
+    "backend/contexts/case-study/RealEstateEval.CaseStudy.Infrastructure/Services/WorkOrderLoader.cs": [
+      "case_study"
+    ],
+    "backend/contexts/case-study/RealEstateEval.CaseStudy.Infrastructure/Services/WorkOrderPropertyCommands.cs": [
+      "case_study"
+    ],
+    "backend/contexts/case-study/RealEstateEval.CaseStudy.Infrastructure/Services/WorkOrderQueryService.cs": [
+      "case_study"
+    ],
+    "backend/contexts/case-study/RealEstateEval.CaseStudy.Infrastructure/Services/WorkOrderService.cs": [
+      "case_study"
+    ],
+    "backend/contexts/case-study/RealEstateEval.CaseStudy.Infrastructure/Services/WorkOrderVisibilityFilter.cs": [
+      "case_study"
+    ],
+    "backend/contexts/case-study/RealEstateEval.CaseStudy.Infrastructure/Services/WorkflowTaskCascadeCleanup.cs": [
+      "case_study"
+    ],
+    "backend/contexts/case-study/RealEstateEval.CaseStudy.Infrastructure/Services/WorkflowTaskDistributionCommands.cs": [
+      "case_study"
+    ],
+    "backend/contexts/case-study/RealEstateEval.CaseStudy.Infrastructure/Services/WorkflowTaskLifecycleCommands.cs": [
+      "case_study"
+    ],
+    "backend/contexts/case-study/RealEstateEval.CaseStudy.Infrastructure/Services/WorkflowTaskQueryService.cs": [
+      "case_study"
+    ],
+    "backend/contexts/case-study/RealEstateEval.CaseStudy.Infrastructure/Services/WorkflowTaskSlotSynchronizer.cs": [
+      "case_study"
     ],
     "backend/contexts/failures/RealEstateEval.Failures.Infrastructure/Services/FailureLookup.cs": [
       "failures"

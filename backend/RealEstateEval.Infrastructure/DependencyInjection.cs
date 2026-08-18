@@ -297,79 +297,13 @@ public static class DependencyInjection
 
  // AddBlobStorage folded into AddAttachmentsInfrastructure (RealEstateEval.Attachments.Infrastructure, A8).
 
- /// <summary>Work orders, workflow tasks, and case-study / party forms.</summary>
-    public static IServiceCollection AddCaseStudyCoreInfrastructure(this IServiceCollection services)
-    {
-        services.AddScoped<IWorkOrderLoader, WorkOrderLoader>();
-        services.AddScoped<IWorkOrderQuery, WorkOrderQueryService>();
-        services.AddScoped<IWorkOrderPropertyCommands, WorkOrderPropertyCommands>();
-        services.AddScoped<IWorkOrderService, WorkOrderService>();
-        services.AddScoped<IClientService, ClientService>();
-        services.AddScoped<IBuildingInventoryService, BuildingInventoryService>();
-        services.AddScoped<IPropertyGroupService, PropertyGroupService>();
-        services.AddWorkflowTaskCollaborators();
-        services.AddScoped<IWorkOrderVisibilityFilter, WorkOrderVisibilityFilter>();
-        services.AddScoped<ICaseStudyFormService, CaseStudyFormService>();
-        services.AddScoped<ICaseStudyValuationDispatchService, CaseStudyValuationDispatchService>();
-        services.AddScoped<IPartyTaskSubmissionService, PartyTaskSubmissionService>();
-        services.AddScoped<IFieldInspectionWorkspaceService, FieldInspectionWorkspaceService>();
-        services.AddScoped<IFieldInspectionAttachmentVerifier, FieldInspectionAttachmentVerifier>();
-        services.AddScoped<IPropertyTimelineService, PropertyTimelineService>();
-        services.AddScoped<IWorkflowTaskShellPatcher, WorkflowTaskShellPatcher>();
-        services.AddScoped<IPropertyAccessHoldService, PropertyAccessHoldService>();
-        return services;
-    }
-
     // AddInspectorFeeCollaborators moved to RealEstateEval.Financial.Infrastructure (A8).
 
- /// <summary>PO intake drafts, delegation letters, suspended-transaction reads.</summary>
-    public static IServiceCollection AddCaseStudyAuxiliaryInfrastructure(this IServiceCollection services)
-    {
-        services.AddScoped<IPoIntakeDraftService, PoIntakeDraftService>();
-        services.AddScoped<ISuspendedTransactionsService, SuspendedTransactionsService>();
-        return services;
-    }
+    // AddCaseStudyInfrastructure, AddCaseStudyCoreInfrastructure,
+    // AddCaseStudyAuxiliaryInfrastructure, and AddWorkflowTaskCollaborators moved to
+    // RealEstateEval.CaseStudy.Infrastructure (A8).
 
-    public static IServiceCollection AddCaseStudyInfrastructure(
-        this IServiceCollection services,
-        IConfiguration configuration,
-        IHostEnvironment environment)
-    {
- // Hosts that call this must have registered AddCaseStudyPersistence.
-        services.AddCaseStudyCoreInfrastructure();
-        services.AddCaseStudyAuxiliaryInfrastructure();
-        services.AddScoped<IWorkflowAssigneeLookup, WorkflowAssigneeLookup>();
-        services.AddScoped<ICaseStudyLookup, CaseStudyLookup>();
-        services.AddScoped<ICaseStudyCommands, CaseStudyCommands>();
-        services.AddScoped<ICaseStudyFailureCommands, CaseStudyFailureCommands>();
-        services.AddScoped<IInspectionLimitsService, InspectionLimitsService>();
-        services.AddRemoteAttachmentLookup(configuration);
-        services.AddRemotePlatformCatalogs(configuration);
-        services.AddRemoteValuationRequests(configuration);
-        services.AddRemoteIdentityDirectory(configuration);
-        services.AddRemoteAuditLogAppend(configuration);
-        services.AddRemoteFailures(configuration);
-        services.AddRemoteOperations(configuration);
-        services.AddRemoteFinancial(configuration);
-        services.AddNotificationInfrastructure(configuration, environment);
-        return services;
-    }
-
- // AddFailuresInfrastructure moved to RealEstateEval.Failures.Infrastructure (A8).
-
- /// <summary>Workflow task façade + query / distribution / lifecycle collaborators.</summary>
-    public static IServiceCollection AddWorkflowTaskCollaborators(this IServiceCollection services)
-    {
-        services.AddScoped<IWorkflowTaskVisibilityFilter, WorkflowTaskVisibilityFilter>();
-        services.AddScoped<IWorkflowTaskQuery, WorkflowTaskQueryService>();
-        services.AddScoped<IDashboardOpsMetricsQuery, DashboardOpsMetricsQueryService>();
-        services.AddScoped<IWorkflowTaskSlotSynchronizer, WorkflowTaskSlotSynchronizer>();
-        services.AddScoped<IWorkflowTaskDistributionCommands, WorkflowTaskDistributionCommands>();
-        services.AddScoped<WorkflowTaskCascadeCleanup>();
-        services.AddScoped<IWorkflowTaskLifecycleCommands, WorkflowTaskLifecycleCommands>();
-        services.AddScoped<IWorkflowTaskService, WorkflowTaskService>();
-        return services;
-    }
+    // AddFailuresInfrastructure moved to RealEstateEval.Failures.Infrastructure (A8).
 
  // AddAttachmentsInfrastructure moved to RealEstateEval.Attachments.Infrastructure (A8).
 
@@ -670,12 +604,7 @@ public static class DependencyInjection
         return builder;
     }
 
- /// <summary>RabbitMQ event handlers for <c>ValuationIntegrationEventConsumer</c> (case-study).</summary>
-    public static IServiceCollection AddValuationIntegrationHandlers(this IServiceCollection services)
-    {
-        services.AddScoped<ValuationReportWorkflowHandler>();
-        return services;
-    }
+    // AddValuationIntegrationHandlers moved to RealEstateEval.CaseStudy.Infrastructure (A8).
 
  /// <summary>RabbitMQ event handlers for <c>NotificationIntegrationEventConsumer</c> (platform).</summary>
     public static IServiceCollection AddNotificationIntegrationHandlers(this IServiceCollection services)

@@ -46,13 +46,16 @@ public class PropertyKeyWireTests
         var checks = new (string File, Regex Pattern)[]
         {
             (
+                // A8: property list/timeline services live in the Case Study context.
                 RepoPaths.Combine(
-                    "backend", "RealEstateEval.Infrastructure", "Services", "PropertyListRowBuilder.cs"),
+                    "backend", "contexts", "case-study", "RealEstateEval.CaseStudy.Infrastructure",
+                    "Services", "PropertyListRowBuilder.cs"),
                 new Regex(@"""(new|progress|done|fail|incomplete)""", RegexOptions.Compiled)
             ),
             (
                 RepoPaths.Combine(
-                    "backend", "RealEstateEval.Infrastructure", "Services", "PropertyTimelineService.cs"),
+                    "backend", "contexts", "case-study", "RealEstateEval.CaseStudy.Infrastructure",
+                    "Services", "PropertyTimelineService.cs"),
                 new Regex(@"""(done|active|warn|muted)""", RegexOptions.Compiled)
             ),
             (
