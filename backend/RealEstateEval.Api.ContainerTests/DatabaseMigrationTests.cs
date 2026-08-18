@@ -106,7 +106,7 @@ public class DatabaseMigrationTests
         {
             await scope.ServiceProvider.GetRequiredService<ApplicationDbContext>()
                 .Database.MigrateAsync();
-            foreach (var context in BoundedContextMigrations.ApplyOrder)
+            foreach (var context in BoundedContextStreamMigrator.StreamTypes)
             {
                 await ((DbContext)scope.ServiceProvider.GetRequiredService(context))
                     .Database.MigrateAsync();

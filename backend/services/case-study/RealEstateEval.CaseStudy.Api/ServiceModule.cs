@@ -71,11 +71,18 @@ public sealed class ServiceModule : IRealEstateEvalServiceModule
         var sp = scope.ServiceProvider;
         if (migrateOnStartup)
         {
-            // Apply bounded-context migrations in order. The legacy god-context stream
-            // is applied only by the DbMigrate deploy job.
-            foreach (var contextType in BoundedContextMigrations.ApplyOrder)
+            // Apply the registered bounded-context streams in catalog order. The legacy
+            // god-context stream is applied only by the DbMigrate deploy job. (A8: the
+            // catalog is name-keyed; hosts enumerate their own stream registrations.)
+            var streams = sp.GetServices<BoundedContextStreamRegistration>()
+                .DistinctBy(registration => registration.ContextType)
+                .ToList();
+            foreach (var contextName in BoundedContextMigrations.ApplyOrder)
             {
-                if (sp.GetService(contextType) is DbContext stream)
+                var registration = streams.FirstOrDefault(r =>
+                    string.Equals(r.ContextType.Name, contextName, StringComparison.Ordinal));
+                if (registration is not null
+                    && sp.GetService(registration.ContextType) is DbContext stream)
                 {
                     await PostgresDatabaseProvisioner.EnsureExistsAsync(
                         stream.Database.GetConnectionString());

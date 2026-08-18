@@ -231,7 +231,7 @@ public class MigrationStreamTests
     [Fact]
     public void DeployMigratorAppliesEveryExtractedStream()
     {
-        var applyOrder = BoundedContextMigrations.ApplyOrder.Select(type => type.Name).ToList();
+        var applyOrder = BoundedContextMigrations.ApplyOrder.ToList();
         var extracted = Catalog.ExtractedContexts
             .Select(context => context.Name)
             .OrderBy(name => name, StringComparer.Ordinal)

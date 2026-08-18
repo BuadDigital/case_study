@@ -10,9 +10,35 @@ namespace RealEstateEval.Api.ContainerTests;
 /// </summary>
 internal static class BoundedContextStreamMigrator
 {
+    // A8: the catalog's ApplyOrder is name-keyed; this concrete list mirrors the deploy
+    // migrator's and is validated against the catalog so drift fails the suite loudly.
+    public static IReadOnlyList<Type> StreamTypes { get; } =
+    [
+        typeof(AttachmentsDbContext),
+        typeof(PlatformDbContext),
+        typeof(ValuationDbContext),
+        typeof(IdentityDbContext),
+        typeof(FailuresDbContext),
+        typeof(OperationsDbContext),
+        typeof(FinancialDbContext),
+        typeof(CaseStudyDbContext),
+        typeof(MessagingDbContext),
+    ];
+
+    static BoundedContextStreamMigrator()
+    {
+        if (!StreamTypes.Select(type => type.Name)
+                .SequenceEqual(BoundedContextMigrations.ApplyOrder, StringComparer.Ordinal))
+        {
+            throw new InvalidOperationException(
+                "BoundedContextStreamMigrator's stream list is out of sync with "
+                + "BoundedContextMigrations.ApplyOrder.");
+        }
+    }
+
     public static async Task ApplyAllStreamsAsync(string connectionString)
     {
-        foreach (var contextType in BoundedContextMigrations.ApplyOrder)
+        foreach (var contextType in StreamTypes)
         {
             await using var stream = CreateStreamContext(contextType, connectionString);
             await stream.Database.MigrateAsync();

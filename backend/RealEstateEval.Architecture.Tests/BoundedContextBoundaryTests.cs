@@ -36,7 +36,9 @@ public class BoundedContextBoundaryTests
             RegexOptions.Compiled);
 
         var declared = new SortedSet<string>(StringComparer.Ordinal);
-        foreach (var root in new[] { "RealEstateEval.Infrastructure", "services", "shared", "gateway" })
+        // "contexts" included ahead of the physical DbContext moves (A8 migration-catalog
+        // decomposition): a context declaration is catalogued wherever it lives.
+        foreach (var root in new[] { "RealEstateEval.Infrastructure", "services", "shared", "gateway", "contexts" })
         {
             foreach (var file in RepoPaths.CSharpFiles(RepoPaths.Combine("backend", root)))
             {

@@ -115,6 +115,9 @@ public static class DependencyInjection
                     BoundedContextMigrations.HistoryTable,
                     BoundedContextMigrations.HistorySchemaFor<TContext>());
             }));
+        // A8: startup migration loops enumerate registered streams via these markers instead
+        // of the catalog naming concrete context types.
+        services.AddSingleton(new BoundedContextStreamRegistration(typeof(TContext)));
 
         return services;
     }

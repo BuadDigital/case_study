@@ -61,19 +61,24 @@ public static class BoundedContextConnections
             $"Set {EnvVarFor(serviceName)} or ConnectionStrings:{serviceName}. "
             + "Extracted owners do not fall back to a shared database.");
 
-    public static string? ServiceNameFor(Type contextType)
-    {
-        if (contextType == typeof(AttachmentsDbContext)) return ServiceNames.Attachments;
-        if (contextType == typeof(PlatformDbContext)) return ServiceNames.Platform;
-        if (contextType == typeof(ValuationDbContext)) return ServiceNames.Valuation;
-        if (contextType == typeof(IdentityDbContext)) return ServiceNames.Identity;
-        if (contextType == typeof(FailuresDbContext)) return ServiceNames.Failures;
-        if (contextType == typeof(OperationsDbContext)) return ServiceNames.Operations;
-        if (contextType == typeof(FinancialDbContext)) return ServiceNames.Financial;
-        if (contextType == typeof(CaseStudyDbContext)) return ServiceNames.CaseStudy;
-        if (contextType == typeof(MessagingDbContext)) return ServiceNames.Messaging;
-        return null;
-    }
+    // A8 migration-catalog decomposition: keyed by context class name so context types can
+    // move into their context libraries without this file referencing them.
+    private static readonly IReadOnlyDictionary<string, string> ServiceNameByContextName =
+        new Dictionary<string, string>(StringComparer.Ordinal)
+        {
+            ["AttachmentsDbContext"] = ServiceNames.Attachments,
+            ["PlatformDbContext"] = ServiceNames.Platform,
+            ["ValuationDbContext"] = ServiceNames.Valuation,
+            ["IdentityDbContext"] = ServiceNames.Identity,
+            ["FailuresDbContext"] = ServiceNames.Failures,
+            ["OperationsDbContext"] = ServiceNames.Operations,
+            ["FinancialDbContext"] = ServiceNames.Financial,
+            ["CaseStudyDbContext"] = ServiceNames.CaseStudy,
+            ["MessagingDbContext"] = ServiceNames.Messaging,
+        };
+
+    public static string? ServiceNameFor(Type contextType) =>
+        ServiceNameByContextName.TryGetValue(contextType.Name, out var name) ? name : null;
 
     public static string ForContext(
         IConfiguration configuration,

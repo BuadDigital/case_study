@@ -56,10 +56,7 @@ internal static class BoundedContextFacts
 
  /// <summary>The migrations-history schema each extracted context records itself in.</summary>
     public static IReadOnlyDictionary<string, string> HistorySchemaByContext { get; } =
-        BoundedContextMigrations.HistorySchemaByContext.ToDictionary(
-            entry => entry.Key.Name,
-            entry => entry.Value,
-            StringComparer.Ordinal);
+        BoundedContextMigrations.HistorySchemaByContextName;
 
     private static IModel Build<TContext>(Func<DbContextOptions<TContext>, TContext> create)
         where TContext : DbContext

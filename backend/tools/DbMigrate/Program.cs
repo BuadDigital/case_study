@@ -26,8 +26,31 @@ var configuration = new ConfigurationBuilder()
 
 var leftoverConnection = Environment.GetEnvironmentVariable(BoundedContextConnections.SharedEnvVar);
 
+// A8: the catalog's ApplyOrder is name-keyed so context types can leave the global assembly.
+// This migrator keeps the concrete list and fails loudly if it drifts from the catalog —
+// a stream the migrator does not know about would silently never run in production.
+IReadOnlyList<Type> streamTypes =
+[
+    typeof(AttachmentsDbContext),
+    typeof(PlatformDbContext),
+    typeof(ValuationDbContext),
+    typeof(IdentityDbContext),
+    typeof(FailuresDbContext),
+    typeof(OperationsDbContext),
+    typeof(FinancialDbContext),
+    typeof(CaseStudyDbContext),
+    typeof(MessagingDbContext),
+];
+if (!streamTypes.Select(type => type.Name)
+        .SequenceEqual(BoundedContextMigrations.ApplyOrder, StringComparer.Ordinal))
+{
+    throw new InvalidOperationException(
+        "DbMigrate's stream list is out of sync with BoundedContextMigrations.ApplyOrder. "
+        + "Add the missing context stream here before deploying.");
+}
+
 var streamConnections = new Dictionary<Type, string>();
-foreach (var type in BoundedContextMigrations.ApplyOrder)
+foreach (var type in streamTypes)
 {
     streamConnections[type] = BoundedContextConnections.ForContext(configuration, type);
 }
@@ -77,7 +100,7 @@ services.AddDbContext<MessagingDbContext>(options =>
 await using var provider = services.BuildServiceProvider();
 await using var scope = provider.CreateAsyncScope();
 
-var streams = BoundedContextMigrations.ApplyOrder.Select(type =>
+var streams = streamTypes.Select(type =>
     (
         Name: type.Name,
         Db: (DbContext)scope.ServiceProvider.GetRequiredService(type),
