@@ -68,4 +68,12 @@ public static class PlatformDependencyInjection
         services.AddScoped<WebPushDeliveryHandler>();
         return services;
     }
+
+    /// <summary>RabbitMQ event handlers for <c>NotificationIntegrationEventConsumer</c> (platform).</summary>
+    public static IServiceCollection AddNotificationIntegrationHandlers(this IServiceCollection services)
+    {
+        services.AddScoped<NotificationIntegrationEventHandler>();
+        services.AddScoped<NotificationRealtimePushHandler>();
+        return services;
+    }
 }

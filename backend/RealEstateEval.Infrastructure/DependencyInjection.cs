@@ -606,11 +606,5 @@ public static class DependencyInjection
 
     // AddValuationIntegrationHandlers moved to RealEstateEval.CaseStudy.Infrastructure (A8).
 
- /// <summary>RabbitMQ event handlers for <c>NotificationIntegrationEventConsumer</c> (platform).</summary>
-    public static IServiceCollection AddNotificationIntegrationHandlers(this IServiceCollection services)
-    {
-        services.AddScoped<NotificationIntegrationEventHandler>();
-        services.AddScoped<NotificationRealtimePushHandler>();
-        return services;
-    }
+    // AddNotificationIntegrationHandlers moved to RealEstateEval.Platform.Infrastructure (A8).
 }
