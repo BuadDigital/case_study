@@ -10,7 +10,7 @@ namespace RealEstateEval.Infrastructure.Notifications;
 /// (<see cref="IWorkflowAssigneeLookup"/>); profile and email maps come from Identity
 /// (<see cref="IIdentityDirectory"/>).
 /// </summary>
-public sealed class NotificationRecipientResolver
+public sealed class NotificationRecipientResolver : INotificationRecipientResolver
 {
     private readonly IWorkflowAssigneeLookup _assignees;
     private readonly IIdentityDirectory _identity;

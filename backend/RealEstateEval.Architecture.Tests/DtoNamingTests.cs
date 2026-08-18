@@ -20,10 +20,21 @@ public class DtoNamingTests
     [Fact]
     public void Contract_types_use_the_documented_suffixes()
     {
-        var contracts = RepoPaths.Combine("backend", "RealEstateEval.Application", "Contracts");
+        // Global Application contracts plus per-context Contracts folders (A8).
+        var contractRoots = new List<string>
+        {
+            RepoPaths.Combine("backend", "RealEstateEval.Application", "Contracts"),
+        };
+        var contextsRoot = RepoPaths.Combine("backend", "contexts");
+        if (Directory.Exists(contextsRoot))
+        {
+            contractRoots.AddRange(Directory
+                .EnumerateDirectories(contextsRoot, "Contracts", SearchOption.AllDirectories));
+        }
+
         var violations = new List<string>();
 
-        foreach (var file in RepoPaths.CSharpFiles(contracts))
+        foreach (var file in contractRoots.SelectMany(RepoPaths.CSharpFiles))
         {
             var text = File.ReadAllText(file);
             foreach (Match match in PublicType.Matches(text))

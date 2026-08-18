@@ -1,4 +1,4 @@
-<Solution>
+﻿<Solution>
   <Project Path="gateway/RealEstateEval.Gateway/RealEstateEval.Gateway.csproj" />
   <Project Path="services/identity/RealEstateEval.Identity.Api/RealEstateEval.Identity.Api.csproj" />
   <Project Path="services/case-study/RealEstateEval.CaseStudy.Api/RealEstateEval.CaseStudy.Api.csproj" />
@@ -18,6 +18,9 @@
   <Project Path="RealEstateEval.Application/RealEstateEval.Application.csproj" />
   <Project Path="RealEstateEval.Domain/RealEstateEval.Domain.csproj" />
   <Project Path="RealEstateEval.Infrastructure/RealEstateEval.Infrastructure.csproj" />
+  <Project Path="contexts/failures/RealEstateEval.Failures.Domain/RealEstateEval.Failures.Domain.csproj" />
+  <Project Path="contexts/failures/RealEstateEval.Failures.Application/RealEstateEval.Failures.Application.csproj" />
+  <Project Path="contexts/failures/RealEstateEval.Failures.Infrastructure/RealEstateEval.Failures.Infrastructure.csproj" />
   <Project Path="scripts/reseed-ahmed-tool/ReseedAhmed.csproj" />
   <Project Path="tools/DbMigrate/DbMigrate.csproj" />
 </Solution>

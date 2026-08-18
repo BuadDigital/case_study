@@ -1,4 +1,4 @@
-using Microsoft.AspNetCore.Identity;
+﻿using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -440,27 +440,7 @@ public static class DependencyInjection
         return services;
     }
 
-    public static IServiceCollection AddFailuresInfrastructure(
-        this IServiceCollection services,
-        IConfiguration configuration,
-        string connectionString,
-        IHostEnvironment environment)
-    {
-        services.AddFailuresPersistence(configuration, connectionString);
- // A9: Case Study reads and workflow/deed/timeline side effects go through the owner
- // HTTP API. No CaseStudyDbContext here, and no compose depends_on case-study
- // (case-study already depends_on failures).
-        services.AddRemoteCaseStudy(configuration);
-        services.AddHttpClient<ICaseStudyFailureCommands, HttpCaseStudyFailureCommands>();
-        services.AddRemoteIdentityDirectory(configuration);
- // Pure-host outbox for platform notification requests (A6 — no ApplicationDbContext).
-        services.AddMessagingPersistence(configuration, connectionString);
-        services.AddNotificationInfrastructure(configuration, environment);
-        services.AddScoped<IFailureLookup, FailureLookup>();
-        services.AddScoped<IFailureService, FailureService>();
-        services.AddScoped<IFailureTypesCatalogService, FailureTypesCatalogService>();
-        return services;
-    }
+ // AddFailuresInfrastructure moved to RealEstateEval.Failures.Infrastructure (A8).
 
  /// <summary>Workflow task façade + query / distribution / lifecycle collaborators.</summary>
     public static IServiceCollection AddWorkflowTaskCollaborators(this IServiceCollection services)
@@ -655,6 +635,8 @@ public static class DependencyInjection
         services.AddHttpClient<IKeyEntitlementLookup, HttpKeyEntitlementLookup>();
         services.AddScoped<INotificationService, NullNotificationService>();
         services.AddScoped<NotificationRecipientResolver>();
+        services.AddScoped<INotificationRecipientResolver>(sp =>
+            sp.GetRequiredService<NotificationRecipientResolver>());
         services.AddInspectorFeeCollaborators();
         services.AddScoped<ICourtVisitFeeChargeService, CourtVisitFeeChargeService>();
         services.AddScoped<IKeyReceiptFeeChargeService, KeyReceiptFeeChargeService>();
@@ -801,6 +783,8 @@ public static class DependencyInjection
                 sp.GetRequiredService<ILogger<OutboxIntegrationEventPublisher>>());
         });
         services.AddScoped<NotificationRecipientResolver>();
+        services.AddScoped<INotificationRecipientResolver>(sp =>
+            sp.GetRequiredService<NotificationRecipientResolver>());
         services.AddScoped<INotificationService>(sp =>
         {
             var events = sp.GetRequiredService<IIntegrationEventPublisher>();
@@ -827,6 +811,8 @@ public static class DependencyInjection
         services.AddSingleton<INotificationRealtimePublisher>(sp =>
             sp.GetRequiredService<NotificationRealtimeHub>());
         services.AddScoped<NotificationRecipientResolver>();
+        services.AddScoped<INotificationRecipientResolver>(sp =>
+            sp.GetRequiredService<NotificationRecipientResolver>());
         services.AddScoped<INotificationService, NotificationService>();
         services.AddOptions<WebPushOptions>()
             .Bind(configuration.GetSection(WebPushOptions.SectionName))

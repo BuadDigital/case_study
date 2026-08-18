@@ -1,0 +1,15 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <RootNamespace>RealEstateEval.Infrastructure</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\RealEstateEval.Failures.Application\RealEstateEval.Failures.Application.csproj" />
+    <ProjectReference Include="..\..\..\RealEstateEval.Infrastructure\RealEstateEval.Infrastructure.csproj" />
+  </ItemGroup>
+
+</Project>

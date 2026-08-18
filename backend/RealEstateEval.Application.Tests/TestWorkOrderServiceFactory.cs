@@ -1,4 +1,4 @@
-using RealEstateEval.Application.Abstractions;
+﻿using RealEstateEval.Application.Abstractions;
 using RealEstateEval.Infrastructure.Data;
 using RealEstateEval.Infrastructure.Data.Contexts;
 using RealEstateEval.Infrastructure.Notifications;
@@ -41,8 +41,8 @@ internal static class TestWorkOrderServiceFactory
         var identity = TestInspectorFeeServiceFactory.ShareIdentity(db);
         var loader = new WorkOrderLoader(caseStudy);
         var visibility = new WorkOrderVisibilityFilter(caseStudy);
-        var query = new WorkOrderQueryService(caseStudy, failuresCtx, financial, identity, loader, visibility, dbOptions);
-        var properties = new WorkOrderPropertyCommands(caseStudy, failuresCtx, identity, loader, timeline, failures);
+        var query = new WorkOrderQueryService(caseStudy, new FailureLookup(failuresCtx), new PoEnfazInvoiceLookup(financial), new UserLabelLookup(identity), loader, visibility, dbOptions);
+        var properties = new WorkOrderPropertyCommands(caseStudy, new FailureLookup(failuresCtx), new UserLabelLookup(identity), loader, timeline, failures);
         return new WorkOrderService(
             caseStudy,
             timeline,

@@ -1,4 +1,4 @@
-using System.Text.Json;
+﻿using System.Text.Json;
 using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
@@ -46,33 +46,6 @@ public class PartyTaskSubmissionService : IPartyTaskSubmissionService
     private readonly INotificationService _notifications;
     private readonly NotificationRecipientResolver _recipients;
     private readonly TimeProvider _time;
-
-    public PartyTaskSubmissionService(
-        CaseStudyDbContext db,
-        FailuresDbContext failuresDb,
-        IWorkflowTaskService tasks,
-        IFieldInspectionAttachmentVerifier fieldInspectionAttachments,
-        IPropertyTimelineService timeline,
-        IHttpContextAccessor httpContextAccessor,
-        IPermissionService permissions,
-        IInspectorFeeService inspectorFees,
-        INotificationService notifications,
-        NotificationRecipientResolver recipients,
-        TimeProvider? time = null)
-        : this(
-            db,
-            new FailureLookup(failuresDb),
-            tasks,
-            fieldInspectionAttachments,
-            timeline,
-            httpContextAccessor,
-            permissions,
-            inspectorFees,
-            notifications,
-            recipients,
-            time)
-    {
-    }
 
     [ActivatorUtilitiesConstructor]
     public PartyTaskSubmissionService(

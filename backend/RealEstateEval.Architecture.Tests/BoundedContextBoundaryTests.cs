@@ -151,18 +151,23 @@ public class BoundedContextBoundaryTests
             "PermissionService",
         };
 
+        // A8: extracted bounded-context services live under backend/contexts.
+        var serviceRoots = new[]
+        {
+            new[] { "backend", "RealEstateEval.Infrastructure", "Services" },
+            new[] { "backend", "contexts", "failures", "RealEstateEval.Failures.Infrastructure", "Services" },
+        };
+
         var failures = new List<string>();
         foreach (var service in owningServices)
         {
-            var file = RepoPaths.Combine(
-                "backend",
-                "RealEstateEval.Infrastructure",
-                "Services",
-                service + ".cs");
+            var file = serviceRoots
+                .Select(parts => RepoPaths.Combine(parts.Append(service + ".cs").ToArray()))
+                .FirstOrDefault(File.Exists);
 
-            Assert.True(File.Exists(file), $"{service} moved; update this guardrail.");
+            Assert.True(file is not null, $"{service} moved; update this guardrail.");
 
-            if (File.ReadAllText(file).Contains(nameof(ApplicationDbContext), StringComparison.Ordinal))
+            if (File.ReadAllText(file!).Contains(nameof(ApplicationDbContext), StringComparison.Ordinal))
                 failures.Add($"{service} still takes the legacy context");
         }
 

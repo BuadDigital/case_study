@@ -28,6 +28,7 @@
       "backend/RealEstateEval.Application/RealEstateEval.Application.csproj",
       "backend/RealEstateEval.Domain/RealEstateEval.Domain.csproj",
       "backend/RealEstateEval.Infrastructure/RealEstateEval.Infrastructure.csproj",
+      "backend/contexts/failures/RealEstateEval.Failures.Infrastructure/RealEstateEval.Failures.Infrastructure.csproj",
       "backend/shared/RealEstateEval.Shared.Web/RealEstateEval.Shared.Web.csproj"
     ],
     "backend/RealEstateEval.Architecture.Tests/RealEstateEval.Architecture.Tests.csproj": [
@@ -37,6 +38,7 @@
     "backend/RealEstateEval.Infrastructure/RealEstateEval.Infrastructure.csproj": [
       "backend/RealEstateEval.Application/RealEstateEval.Application.csproj",
       "backend/RealEstateEval.Domain/RealEstateEval.Domain.csproj",
+      "backend/contexts/failures/RealEstateEval.Failures.Application/RealEstateEval.Failures.Application.csproj",
       "backend/shared/RealEstateEval.Shared.Contracts/RealEstateEval.Shared.Contracts.csproj"
     ],
     "backend/gateway/RealEstateEval.Gateway/RealEstateEval.Gateway.csproj": [
@@ -52,6 +54,15 @@
     "backend/tools/DbMigrate/DbMigrate.csproj": [
       "backend/RealEstateEval.Infrastructure/RealEstateEval.Infrastructure.csproj"
     ],
+    "backend/contexts/failures/RealEstateEval.Failures.Application/RealEstateEval.Failures.Application.csproj": [
+      "backend/RealEstateEval.Application/RealEstateEval.Application.csproj",
+      "backend/contexts/failures/RealEstateEval.Failures.Domain/RealEstateEval.Failures.Domain.csproj"
+    ],
+    "backend/contexts/failures/RealEstateEval.Failures.Domain/RealEstateEval.Failures.Domain.csproj": [],
+    "backend/contexts/failures/RealEstateEval.Failures.Infrastructure/RealEstateEval.Failures.Infrastructure.csproj": [
+      "backend/RealEstateEval.Infrastructure/RealEstateEval.Infrastructure.csproj",
+      "backend/contexts/failures/RealEstateEval.Failures.Application/RealEstateEval.Failures.Application.csproj"
+    ],
     "backend/services/attachments/RealEstateEval.Attachments.Api/RealEstateEval.Attachments.Api.csproj": [
       "backend/RealEstateEval.Application/RealEstateEval.Application.csproj",
       "backend/RealEstateEval.Infrastructure/RealEstateEval.Infrastructure.csproj",
@@ -66,6 +77,7 @@
     "backend/services/failures/RealEstateEval.Failures.Api/RealEstateEval.Failures.Api.csproj": [
       "backend/RealEstateEval.Application/RealEstateEval.Application.csproj",
       "backend/RealEstateEval.Infrastructure/RealEstateEval.Infrastructure.csproj",
+      "backend/contexts/failures/RealEstateEval.Failures.Infrastructure/RealEstateEval.Failures.Infrastructure.csproj",
       "backend/shared/RealEstateEval.Shared.Web/RealEstateEval.Shared.Web.csproj"
     ],
     "backend/services/financial/RealEstateEval.Financial.Api/RealEstateEval.Financial.Api.csproj": [
@@ -92,6 +104,7 @@
     "backend/services/reporting/RealEstateEval.Reporting.Api/RealEstateEval.Reporting.Api.csproj": [
       "backend/RealEstateEval.Application/RealEstateEval.Application.csproj",
       "backend/RealEstateEval.Infrastructure/RealEstateEval.Infrastructure.csproj",
+      "backend/contexts/failures/RealEstateEval.Failures.Application/RealEstateEval.Failures.Application.csproj",
       "backend/shared/RealEstateEval.Shared.Web/RealEstateEval.Shared.Web.csproj"
     ],
     "backend/services/valuation/RealEstateEval.Valuation.Api/RealEstateEval.Valuation.Api.csproj": [
@@ -106,19 +119,9 @@
       "attachments"
     ],
     "case-study": [
-      "attachments",
-      "audit",
-      "case_study",
-      "failures",
-      "financial",
-      "identity",
-      "messaging",
-      "operations",
-      "platform",
-      "valuation"
+      "case_study"
     ],
     "failures": [
-      "case_study",
       "failures"
     ],
     "financial": [
@@ -182,6 +185,9 @@
     "backend/RealEstateEval.Infrastructure/Services/BuildingInventoryService.cs": [
       "case_study"
     ],
+    "backend/RealEstateEval.Infrastructure/Services/CaseStudyCommands.cs": [
+      "case_study"
+    ],
     "backend/RealEstateEval.Infrastructure/Services/CaseStudyFormService.cs": [
       "case_study"
     ],
@@ -225,16 +231,6 @@
     "backend/RealEstateEval.Infrastructure/Services/EvaluatorRecallsService.cs": [
       "valuation"
     ],
-    "backend/RealEstateEval.Infrastructure/Services/FailureLookup.cs": [
-      "failures"
-    ],
-    "backend/RealEstateEval.Infrastructure/Services/FailureService.cs": [
-      "case_study",
-      "failures"
-    ],
-    "backend/RealEstateEval.Infrastructure/Services/FailureTypesCatalogService.cs": [
-      "failures"
-    ],
     "backend/RealEstateEval.Infrastructure/Services/FieldDictionaryService.cs": [
       "audit",
       "platform"
@@ -254,9 +250,6 @@
       "financial"
     ],
     "backend/RealEstateEval.Infrastructure/Services/InspectionLimitsService.cs": [
-      "case_study"
-    ],
-    "backend/RealEstateEval.Infrastructure/Services/InspectorFeeLedgerResolver.cs": [
       "case_study"
     ],
     "backend/RealEstateEval.Infrastructure/Services/InspectorFeeLedgerWriter.cs": [
@@ -318,7 +311,6 @@
     ],
     "backend/RealEstateEval.Infrastructure/Services/PoEnfazBillingService.cs": [
       "audit",
-      "case_study",
       "financial"
     ],
     "backend/RealEstateEval.Infrastructure/Services/PoEnfazInvoiceLookup.cs": [
@@ -409,6 +401,15 @@
     ],
     "backend/RealEstateEval.Infrastructure/Services/WorkflowTaskSlotSynchronizer.cs": [
       "case_study"
+    ],
+    "backend/contexts/failures/RealEstateEval.Failures.Infrastructure/Services/FailureLookup.cs": [
+      "failures"
+    ],
+    "backend/contexts/failures/RealEstateEval.Failures.Infrastructure/Services/FailureService.cs": [
+      "failures"
+    ],
+    "backend/contexts/failures/RealEstateEval.Failures.Infrastructure/Services/FailureTypesCatalogService.cs": [
+      "failures"
     ]
   },
   "serviceRegistrationFanOut": {
@@ -428,6 +429,12 @@
       "identity"
     ],
     "BuildingInventoryService": [
+      "case-study"
+    ],
+    "CaseStudyCommands": [
+      "case-study"
+    ],
+    "CaseStudyFailureCommands": [
       "case-study"
     ],
     "CaseStudyFormService": [
@@ -539,8 +546,7 @@
       "operations"
     ],
     "PropertyTimelineService": [
-      "case-study",
-      "failures"
+      "case-study"
     ],
     "PushSubscriptionService": [
       "platform"
@@ -551,11 +557,7 @@
     "SurveyOfficesService": [
       "operations"
     ],
-    "SystemMaintenanceService": [
-      "case-study"
-    ],
     "UserRegistrationService": [
-      "case-study",
       "identity"
     ],
     "ValuationApproachSettingsService": [

@@ -20,7 +20,7 @@ public class FailureService : IFailureService
     private readonly ICaseStudyLookup _caseStudyLookup;
     private readonly ICaseStudyFailureCommands _caseStudy;
     private readonly INotificationService _notifications;
-    private readonly NotificationRecipientResolver _recipients;
+    private readonly INotificationRecipientResolver _recipients;
     private readonly IUserLabelLookup _labels;
     private readonly TimeProvider _time;
 
@@ -29,7 +29,7 @@ public class FailureService : IFailureService
         ICaseStudyLookup caseStudyLookup,
         ICaseStudyFailureCommands caseStudyCommands,
         INotificationService notifications,
-        NotificationRecipientResolver recipients,
+        INotificationRecipientResolver recipients,
         IUserLabelLookup labels,
         TimeProvider? time = null)
     {

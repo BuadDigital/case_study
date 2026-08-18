@@ -1,4 +1,4 @@
-using Microsoft.EntityFrameworkCore;
+﻿using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using RealEstateEval.Application;
 using RealEstateEval.Application.Abstractions;
@@ -28,25 +28,6 @@ public sealed class WorkflowTaskDistributionCommands : IWorkflowTaskDistribution
     private readonly IPropertyTimelineService _timeline;
     private readonly ICaseStudyValuationDispatchService _valuationDispatch;
     private readonly TimeProvider _time;
-
-    public WorkflowTaskDistributionCommands(
-        CaseStudyDbContext caseStudy,
-        FailuresDbContext failures,
-        INotificationService notifications,
-        NotificationRecipientResolver recipients,
-        IPropertyTimelineService timeline,
-        ICaseStudyValuationDispatchService valuationDispatch,
-        TimeProvider? time = null)
-        : this(
-            caseStudy,
-            new FailureLookup(failures),
-            notifications,
-            recipients,
-            timeline,
-            valuationDispatch,
-            time)
-    {
-    }
 
     [ActivatorUtilitiesConstructor]
     public WorkflowTaskDistributionCommands(

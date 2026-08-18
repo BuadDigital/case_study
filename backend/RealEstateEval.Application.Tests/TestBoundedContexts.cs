@@ -1,4 +1,4 @@
-using Microsoft.EntityFrameworkCore;
+﻿using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.EntityFrameworkCore.Storage;
 using RealEstateEval.Infrastructure.Data;
@@ -83,7 +83,7 @@ internal static class TestBoundedContexts
         var app = bundle.App;
         var cs = TestInspectorFeeServiceFactory.ShareCaseStudy(app);
         var identity = TestInspectorFeeServiceFactory.ShareIdentity(app);
-        timeline ??= new PropertyTimelineService(cs, bundle.Failures);
+        timeline ??= new PropertyTimelineService(cs, new FailureLookup(bundle.Failures));
         notifications ??= new NullNotificationService();
         recipients ??= NotificationRecipientResolver.ForContexts(cs, identity);
         tasks ??= new WorkflowTaskShellPatcher(cs);
@@ -108,7 +108,7 @@ internal static class TestBoundedContexts
     {
         var cs = TestInspectorFeeServiceFactory.ShareCaseStudy(app);
         var identity = TestInspectorFeeServiceFactory.ShareIdentity(app);
-        timeline ??= new PropertyTimelineService(cs, failures);
+        timeline ??= new PropertyTimelineService(cs, new FailureLookup(failures));
         notifications ??= new NullNotificationService();
         recipients ??= NotificationRecipientResolver.ForContexts(cs, identity);
         tasks ??= new WorkflowTaskShellPatcher(cs);

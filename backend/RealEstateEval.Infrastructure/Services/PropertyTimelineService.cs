@@ -1,4 +1,4 @@
-using Microsoft.EntityFrameworkCore;
+﻿using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using RealEstateEval.Application;
 using RealEstateEval.Application.Abstractions;
@@ -15,14 +15,6 @@ public sealed class PropertyTimelineService : IPropertyTimelineService
     private readonly CaseStudyDbContext _caseStudy;
     private readonly IFailureLookup _failureLookup;
     private readonly TimeProvider _time;
-
-    public PropertyTimelineService(
-        CaseStudyDbContext caseStudy,
-        FailuresDbContext failures,
-        TimeProvider? time = null)
-        : this(caseStudy, new FailureLookup(failures), time)
-    {
-    }
 
     [ActivatorUtilitiesConstructor]
     public PropertyTimelineService(

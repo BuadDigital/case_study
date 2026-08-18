@@ -53,9 +53,12 @@ internal static class SourceFacts
     public static IReadOnlyDictionary<string, IReadOnlyList<string>> ProjectReferences { get; } =
         BuildProjectReferences();
 
- /// <summary>Infrastructure source file (repo-relative) to the schemas it reaches.</summary>
+ /// <summary>Infrastructure source file (repo-relative) to the schemas it reaches — the
+ /// global Infrastructure project plus the per-context libraries under backend/contexts (A8).</summary>
     public static IReadOnlyDictionary<string, IReadOnlyList<string>> SchemasByInfrastructureFile { get; } =
-        BuildSchemasByFile(RepoPaths.Combine("backend", "RealEstateEval.Infrastructure"));
+        BuildSchemasByFile(
+            RepoPaths.Combine("backend", "RealEstateEval.Infrastructure"),
+            RepoPaths.Combine("backend", "contexts"));
 
  /// <summary>Service name (folder under backend/services) to the schemas its registrations reach.</summary>
     public static IReadOnlyDictionary<string, IReadOnlyList<string>> SchemasByApi { get; } =
@@ -151,17 +154,20 @@ internal static class SourceFacts
         return result;
     }
 
-    private static Dictionary<string, IReadOnlyList<string>> BuildSchemasByFile(string root)
+    private static Dictionary<string, IReadOnlyList<string>> BuildSchemasByFile(params string[] roots)
     {
         var result = new Dictionary<string, IReadOnlyList<string>>(StringComparer.Ordinal);
-        foreach (var file in RepoPaths.CSharpFiles(root))
+        foreach (var root in roots)
         {
-            if (file.Replace('\\', '/').Contains("/Data/Migrations/", StringComparison.Ordinal))
-                continue;
+            foreach (var file in RepoPaths.CSharpFiles(root))
+            {
+                if (file.Replace('\\', '/').Contains("/Data/Migrations/", StringComparison.Ordinal))
+                    continue;
 
-            var schemas = SchemasInFile(file);
-            if (schemas.Count > 0)
-                result[RepoPaths.Relative(file)] = schemas;
+                var schemas = SchemasInFile(file);
+                if (schemas.Count > 0)
+                    result[RepoPaths.Relative(file)] = schemas;
+            }
         }
 
         return result;
@@ -267,12 +273,25 @@ internal static class SourceFacts
 
     private static Dictionary<string, string> ReadRegistrationBodies()
     {
-        var path = RepoPaths.Combine(
-            "backend",
-            "RealEstateEval.Infrastructure",
-            "DependencyInjection.cs");
-        var text = File.ReadAllText(path);
         var bodies = new Dictionary<string, string>(StringComparer.Ordinal);
+        var sources = new List<string>
+        {
+            RepoPaths.Combine("backend", "RealEstateEval.Infrastructure", "DependencyInjection.cs"),
+        };
+        // Per-context registration files (A8) — e.g. FailuresDependencyInjection.cs.
+        sources.AddRange(RepoPaths
+            .CSharpFiles(RepoPaths.Combine("backend", "contexts"))
+            .Where(file => Path.GetFileName(file).EndsWith("DependencyInjection.cs", StringComparison.Ordinal)));
+
+        foreach (var source in sources)
+            ReadRegistrationBodiesFrom(source, bodies);
+
+        return bodies;
+    }
+
+    private static void ReadRegistrationBodiesFrom(string path, Dictionary<string, string> bodies)
+    {
+        var text = File.ReadAllText(path);
 
         foreach (Match match in RegistrationMethod.Matches(text))
         {
@@ -293,8 +312,6 @@ internal static class SourceFacts
 
             bodies[match.Groups[1].Value] = text[bodyStart..Math.Min(end + 1, text.Length)];
         }
-
-        return bodies;
     }
 
     private static Dictionary<string, string> BuildFilesByType()
@@ -304,6 +321,7 @@ internal static class SourceFacts
         {
             RepoPaths.Combine("backend", "RealEstateEval.Infrastructure"),
             RepoPaths.Combine("backend", "RealEstateEval.Application"),
+            RepoPaths.Combine("backend", "contexts"),
         };
 
         foreach (var root in roots)

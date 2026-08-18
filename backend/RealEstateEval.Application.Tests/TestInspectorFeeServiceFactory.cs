@@ -1,4 +1,4 @@
-using Microsoft.EntityFrameworkCore;
+﻿using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Storage;
 using RealEstateEval.Application.Abstractions;
@@ -121,10 +121,10 @@ internal static class TestInspectorFeeServiceFactory
         NotificationRecipientResolver.ForContexts(ShareCaseStudy(db), ShareIdentity(db));
 
     public static PropertyTimelineService CreateTimeline(DbContext db) =>
-        new(ShareCaseStudy(db), ShareFailures(db));
+        new(ShareCaseStudy(db), new FailureLookup(ShareFailures(db)));
 
     public static PropertyTimelineService CreateTimeline(DbContext db, FailuresDbContext failures) =>
-        new(ShareCaseStudy(db), failures);
+        new(ShareCaseStudy(db), new FailureLookup(failures));
 
     public static WorkflowTaskShellPatcher CreateShellPatcher(DbContext db) =>
         new(ShareCaseStudy(db));
@@ -210,7 +210,12 @@ internal static class TestInspectorFeeServiceFactory
         var query = new WorkflowTaskQueryService(caseStudy);
         var slots = new WorkflowTaskSlotSynchronizer(caseStudy, query);
         var distribution = new WorkflowTaskDistributionCommands(
-            caseStudy, failures, notifications, recipients, timeline, NoOpValuationDispatch.Instance);
+            caseStudy,
+            new FailureLookup(failures),
+            notifications,
+            recipients,
+            timeline,
+            NoOpValuationDispatch.Instance);
         var cascade = new WorkflowTaskCascadeCleanup(caseStudy, fees);
         var lifecycle = new WorkflowTaskLifecycleCommands(
             caseStudy, fees, timeline, cascade, slots, notifications, recipients);

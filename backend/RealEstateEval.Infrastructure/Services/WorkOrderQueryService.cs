@@ -1,4 +1,4 @@
-using Microsoft.EntityFrameworkCore;
+﻿using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
 using RealEstateEval.Application.Abstractions;
@@ -22,18 +22,6 @@ public sealed class WorkOrderQueryService : IWorkOrderQuery
     private readonly IWorkOrderVisibilityFilter _visibility;
     private readonly IWorkOrderLoader _loader;
     private readonly DatabaseOptions _dbOptions;
-
-    public WorkOrderQueryService(
-        CaseStudyDbContext db,
-        FailuresDbContext failures,
-        FinancialDbContext financial,
-        IdentityDbContext identity,
-        IWorkOrderLoader loader,
-        IWorkOrderVisibilityFilter? visibility = null,
-        IOptions<DatabaseOptions>? dbOptions = null)
-        : this(db, new FailureLookup(failures), new PoEnfazInvoiceLookup(financial), new UserLabelLookup(identity), loader, visibility, dbOptions)
-    {
-    }
 
     [ActivatorUtilitiesConstructor]
     public WorkOrderQueryService(

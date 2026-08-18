@@ -1,3 +1,5 @@
+using FluentValidation;
+using RealEstateEval.Application.Validation;
 using RealEstateEval.Infrastructure;
 using RealEstateEval.Infrastructure.Data.Contexts;
 using RealEstateEval.Infrastructure.Web;
@@ -17,6 +19,9 @@ public sealed class ServiceModule : IRealEstateEvalServiceModule
         builder.Services.AddClaimsPermissionService();
         builder.Services.AddFailuresInfrastructure(
             builder.Configuration, connectionString!, builder.Environment);
+        // A8: the failure request validators live in the Failures context assembly, outside
+        // the global-Application scan in AddRealEstateEvalValidation.
+        builder.Services.AddValidatorsFromAssemblyContaining<CreateFailureRequestValidator>();
     }
 
     public Task ConfigureAppAsync(WebApplication app, string? connectionString)

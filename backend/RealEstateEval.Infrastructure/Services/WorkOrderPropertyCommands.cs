@@ -1,4 +1,4 @@
-using Microsoft.EntityFrameworkCore;
+﻿using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using RealEstateEval.Application;
 using RealEstateEval.Application.Abstractions;
@@ -19,18 +19,6 @@ public sealed class WorkOrderPropertyCommands : IWorkOrderPropertyCommands
     private readonly IPropertyTimelineService _timeline;
     private readonly IFailureService _failures;
     private readonly TimeProvider _time;
-
-    public WorkOrderPropertyCommands(
-        CaseStudyDbContext db,
-        FailuresDbContext failuresDb,
-        IdentityDbContext identity,
-        IWorkOrderLoader loader,
-        IPropertyTimelineService timeline,
-        IFailureService failures,
-        TimeProvider? time = null)
-        : this(db, new FailureLookup(failuresDb), new UserLabelLookup(identity), loader, timeline, failures, time)
-    {
-    }
 
     [ActivatorUtilitiesConstructor]
     public WorkOrderPropertyCommands(

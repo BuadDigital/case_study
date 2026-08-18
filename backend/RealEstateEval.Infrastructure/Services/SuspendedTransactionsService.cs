@@ -1,4 +1,4 @@
-using Microsoft.Extensions.DependencyInjection;
+﻿using Microsoft.Extensions.DependencyInjection;
 using RealEstateEval.Application.Abstractions;
 using RealEstateEval.Application.Contracts;
 using RealEstateEval.Infrastructure.Data.Contexts;
@@ -9,11 +9,6 @@ public sealed class SuspendedTransactionsService : ISuspendedTransactionsService
 {
     private readonly IFailureLookup _failureLookup;
     private readonly IUserLabelLookup _labels;
-
-    public SuspendedTransactionsService(FailuresDbContext failures, IdentityDbContext identity)
-        : this(new FailureLookup(failures), new UserLabelLookup(identity))
-    {
-    }
 
     [ActivatorUtilitiesConstructor]
     public SuspendedTransactionsService(IFailureLookup failureLookup, IUserLabelLookup labels)

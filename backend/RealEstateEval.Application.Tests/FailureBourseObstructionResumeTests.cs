@@ -1,4 +1,4 @@
-using Microsoft.EntityFrameworkCore;
+﻿using Microsoft.EntityFrameworkCore;
 using RealEstateEval.Application.Contracts;
 using RealEstateEval.Domain;
 using RealEstateEval.Infrastructure.Services;
@@ -186,7 +186,7 @@ public class FailureBourseObstructionResumeTests
         var financial = TestInspectorFeeServiceFactory.ShareFinancial(bundle.App);
         var identity = TestInspectorFeeServiceFactory.ShareIdentity(bundle.App);
         var loader = new WorkOrderLoader(caseStudy);
-        var query = new WorkOrderQueryService(caseStudy, failures, financial, identity, loader);
+        var query = new WorkOrderQueryService(caseStudy, new FailureLookup(failures), new PoEnfazInvoiceLookup(financial), new UserLabelLookup(identity), loader);
         return await query.ListPendingBourseAsync(CancellationToken.None);
     }
 
