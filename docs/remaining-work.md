@@ -62,7 +62,7 @@ Local run after the DI fix still needs: nine dedicated DBs + DbMigrate (Failures
 
 Messaging outbox on non-Platform hosts is D5 by design.
 
-**A8** (per-context libraries) **todo**. **A10** owner DBs exist; leftover `realestate_eval_dev` still on host Postgres `:5432`; Phase 5 shims not started. Ops gates: migrator owner, D6 SQL/BI inventory, p95 / connection / outbox metrics.
+**A8** (per-context libraries) **in progress** — Failures template slice done. **A10** owner DBs exist; leftover `realestate_eval_dev` still on host Postgres `:5432`; Phase 5 shims not started. Ops gates: migrator owner **closed (Sliman)**, D6 SQL/BI inventory **closed (empty by rule)**; still open: p95 / connection / outbox metrics.
 
 ---
 
@@ -83,7 +83,11 @@ Source of truth: [`architecture-split-plan.md`](architecture-split-plan.md).
 | A9 | Phase 3 — remove cross-boundary DB access (owner APIs + events/projections) | **in progress** | Lookup residuals that drop a second connection plus Platform audit append, Failures HTTP, Operations HTTP, Financial HTTP (`AddRemoteFinancial` / `/api/financial-dispatch`), and Case Study HTTP for Operations and **Financial** (`ICaseStudyLookup` / `ICaseStudyCommands` / `/api/case-study-dispatch`). Case Study and Operations no longer open `FinancialDbContext`. Operations and **Financial** no longer open `CaseStudyDbContext` (no compose `depends_on` case-study; CS already `depends_on` financial). **Failures** dropped CS EF 2026-08-18: reads go through `ICaseStudyLookup` (incl. new `po-numbers-by-assignee`), and the workflow/deed/timeline side effects moved server-side onto `ICaseStudyFailureCommands` (`CaseStudyFailureCommands` EF on the CS host, `HttpCaseStudyFailureCommands` on Failures; POST `/api/case-study-dispatch/{properties/deed-status, case-study-tasks/*, property-timeline/record}`). The old flow was already non-atomic across contexts (Failures commit first, CS side effects after), so HTTP loses nothing transactionally; hold block/unblock returns `{TaskId, AssigneeId}` so Failures still notifies. No compose `depends_on` case-study. **Valuation** dropped CS EF 2026-08-18: all reads were read-only and now go through the one-call `valuation-property-context` dispatch endpoint (`CaseStudyValuationPropertyContextDto` materializes the property/workspace for report fill); `RemotePropertyPoNumberLookup` replaces the EF PO lookup on that host. Write residuals: CS Messaging; Ops Messaging; Failures Messaging. Gates: D6 consumers |
 | A10 | Phase 4–5 — schema/DB physical separation | **in progress** | Owner databases are wired; compose apps no longer use the leftover. Idle `realestate_eval_dev` still exists on host Postgres `:5432` (A7 restore source; not dropped). Remaining work is Phase 3 residual readers and Phase 5 shims |
 
-**Operations gates still outstanding (block remaining A9 / Phase 5, not A6):** nominate API/migrator owners; D6 production SQL/BI/role inventory; capture p95 / connection / outbox metrics; measure multi-context pool growth.
+**Operations gates (updated 2026-08-18):**
+
+- **Migrator owner: closed.** Owner is **Sliman (سليمان)**. Migrations apply via the DbMigrate compose job before rollout; services `depends_on` the migrate job, so a failed migration halts the deploy by construction. On failure: read the `ree-migrate` container logs, fix **forward** with a new migration — never edit or roll back an applied migration in production — and redeploy. Recovery path: Postgres volume backup / point-in-time restore per the deploy guide. Locally the same tool runs as `dotnet run --project backend/tools/DbMigrate -- update` with the nine `REAL_ESTATE_EVAL_PG_CONNECTION_STRING_{SERVICE}` env vars.
+- **D6 production SQL/BI consumer inventory: closed as empty.** Nothing reads production Postgres directly: Grafana reads Prometheus, Kibana reads Elasticsearch, and all product reads go through the service APIs. **Rule:** any future dashboard, script, or tool that wants direct SQL access must be added to this inventory *before* it connects — otherwise database splits and schema changes may silently break it.
+- **Still open:** capture p95 / connection-pool / outbox metrics; measure multi-context pool growth. These need a production observation window, not a decision.
 
 ---
 
@@ -187,7 +191,7 @@ Do **not** delete empty baselines or Sync no-ops once they exist in a stream peo
 
 1. ~~**Unblock Case Study boot**~~ — done 2026-08-18; see **Pickup** above. Do not reintroduce leftover `ApplicationDbContext` on the CS request host. Follow-up recorded there: per-owner Dev system reset design.  
 2. **Continue A9** — Valuation report fill AND the Failures compose cycle both done 2026-08-18 (CS EF dropped from both hosts). No host outside Case Study opens `CaseStudyDbContext` any more; remaining second connections are Messaging outboxes (D5 by design). Next A9 work is the ops gates (D6 consumers) and D10 Identity read residuals. Do not open `FailuresDbContext`, `OperationsDbContext`, or `FinancialDbContext` from Case Study. Do not add Operations `depends_on` Case Study. Do not add Financial `depends_on` Case Study. Financial no longer opens Case Study EF.  
-3. **Ops gates still open** — A7 leftover-upgrade evidence is recorded. Remaining: nominate migrator owner, D6 SQL/BI inventory, p95 / connection / outbox metrics.  
+3. **Ops gates** — migrator owner and D6 SQL/BI inventory closed 2026-08-18 (see the gates block under section A). Remaining: p95 / connection / outbox metrics — needs a production observation window.  
 4. **Parallel low-risk slices:** F6 controller-body tests. C10, C11, B1, B8, B10, F8, and F9 are done. B6 still has nested valuation/billing bodies.  
 5. **A10 leftover shared DB is gone for apps.** Do not reintroduce a shared connection. Remaining A10 work is Phase 5 shims. Full D10 cutover and E6 still wait on product/ops gates.  
 6. **E6** only after product defines deadline/escalation rules.  
