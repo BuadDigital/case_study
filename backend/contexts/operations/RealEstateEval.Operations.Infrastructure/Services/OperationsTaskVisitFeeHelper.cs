@@ -17,16 +17,6 @@ public sealed class OperationsTaskVisitFeeHelper : ICourtVisitFeeBackfill
     private readonly IPartyFeePricingService _pricing;
     private readonly TimeProvider _time;
 
-    public OperationsTaskVisitFeeHelper(
-        OperationsDbContext ops,
-        FinancialDbContext financial,
-        IdentityDbContext identity,
-        IPartyFeePricingService pricing,
-        TimeProvider? time = null)
-        : this(ops, new CourtVisitFeeChargeService(financial, time), new IdentityDirectory(identity), pricing, time)
-    {
-    }
-
     [ActivatorUtilitiesConstructor]
     public OperationsTaskVisitFeeHelper(
         OperationsDbContext ops,

@@ -372,7 +372,7 @@ public sealed class AssignmentNotificationRegressionTests
                 NullLogger<MessagingOutboxPublisher>.Instance));
         return OperationsTaskService.Create(
             bundle.Ops,
-            TestInspectorFeeServiceFactory.ShareFinancial(db),
+            new CourtVisitFeeChargeService(TestInspectorFeeServiceFactory.ShareFinancial(db)),
             TestInspectorFeeServiceFactory.ShareIdentity(db),
             notifications,
             new PartyFeePricingService(TestInspectorFeeServiceFactory.ShareFinancial(db)));

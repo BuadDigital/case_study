@@ -30,6 +30,7 @@
       "backend/RealEstateEval.Infrastructure/RealEstateEval.Infrastructure.csproj",
       "backend/contexts/attachments/RealEstateEval.Attachments.Infrastructure/RealEstateEval.Attachments.Infrastructure.csproj",
       "backend/contexts/failures/RealEstateEval.Failures.Infrastructure/RealEstateEval.Failures.Infrastructure.csproj",
+      "backend/contexts/financial/RealEstateEval.Financial.Infrastructure/RealEstateEval.Financial.Infrastructure.csproj",
       "backend/contexts/operations/RealEstateEval.Operations.Infrastructure/RealEstateEval.Operations.Infrastructure.csproj",
       "backend/contexts/platform/RealEstateEval.Platform.Infrastructure/RealEstateEval.Platform.Infrastructure.csproj",
       "backend/contexts/valuation/RealEstateEval.Valuation.Infrastructure/RealEstateEval.Valuation.Infrastructure.csproj",
@@ -44,6 +45,7 @@
       "backend/RealEstateEval.Domain/RealEstateEval.Domain.csproj",
       "backend/contexts/attachments/RealEstateEval.Attachments.Application/RealEstateEval.Attachments.Application.csproj",
       "backend/contexts/failures/RealEstateEval.Failures.Application/RealEstateEval.Failures.Application.csproj",
+      "backend/contexts/financial/RealEstateEval.Financial.Application/RealEstateEval.Financial.Application.csproj",
       "backend/contexts/operations/RealEstateEval.Operations.Application/RealEstateEval.Operations.Application.csproj",
       "backend/contexts/platform/RealEstateEval.Platform.Application/RealEstateEval.Platform.Application.csproj",
       "backend/contexts/valuation/RealEstateEval.Valuation.Application/RealEstateEval.Valuation.Application.csproj",
@@ -79,6 +81,17 @@
     "backend/contexts/failures/RealEstateEval.Failures.Infrastructure/RealEstateEval.Failures.Infrastructure.csproj": [
       "backend/RealEstateEval.Infrastructure/RealEstateEval.Infrastructure.csproj",
       "backend/contexts/failures/RealEstateEval.Failures.Application/RealEstateEval.Failures.Application.csproj"
+    ],
+    "backend/contexts/financial/RealEstateEval.Financial.Application/RealEstateEval.Financial.Application.csproj": [
+      "backend/RealEstateEval.Application/RealEstateEval.Application.csproj",
+      "backend/contexts/financial/RealEstateEval.Financial.Domain/RealEstateEval.Financial.Domain.csproj"
+    ],
+    "backend/contexts/financial/RealEstateEval.Financial.Domain/RealEstateEval.Financial.Domain.csproj": [
+      "backend/RealEstateEval.Domain/RealEstateEval.Domain.csproj"
+    ],
+    "backend/contexts/financial/RealEstateEval.Financial.Infrastructure/RealEstateEval.Financial.Infrastructure.csproj": [
+      "backend/RealEstateEval.Infrastructure/RealEstateEval.Infrastructure.csproj",
+      "backend/contexts/financial/RealEstateEval.Financial.Application/RealEstateEval.Financial.Application.csproj"
     ],
     "backend/contexts/operations/RealEstateEval.Operations.Application/RealEstateEval.Operations.Application.csproj": [
       "backend/RealEstateEval.Application/RealEstateEval.Application.csproj",
@@ -134,6 +147,7 @@
     "backend/services/financial/RealEstateEval.Financial.Api/RealEstateEval.Financial.Api.csproj": [
       "backend/RealEstateEval.Application/RealEstateEval.Application.csproj",
       "backend/RealEstateEval.Infrastructure/RealEstateEval.Infrastructure.csproj",
+      "backend/contexts/financial/RealEstateEval.Financial.Infrastructure/RealEstateEval.Financial.Infrastructure.csproj",
       "backend/shared/RealEstateEval.Shared.Web/RealEstateEval.Shared.Web.csproj"
     ],
     "backend/services/identity/RealEstateEval.Identity.Api/RealEstateEval.Identity.Api.csproj": [
@@ -242,57 +256,17 @@
     "backend/RealEstateEval.Infrastructure/Services/ClientService.cs": [
       "case_study"
     ],
-    "backend/RealEstateEval.Infrastructure/Services/CourtVisitFeeChargeService.cs": [
-      "financial"
-    ],
     "backend/RealEstateEval.Infrastructure/Services/DashboardOpsMetricsQueryService.cs": [
       "case_study"
-    ],
-    "backend/RealEstateEval.Infrastructure/Services/DiscountFlagService.cs": [
-      "case_study",
-      "financial"
     ],
     "backend/RealEstateEval.Infrastructure/Services/FieldInspectionWorkspaceService.cs": [
       "case_study"
     ],
-    "backend/RealEstateEval.Infrastructure/Services/FinancialReportService.cs": [
-      "case_study",
-      "financial"
-    ],
     "backend/RealEstateEval.Infrastructure/Services/IdentityDirectory.cs": [
       "identity"
     ],
-    "backend/RealEstateEval.Infrastructure/Services/IncentiveSuspensionService.cs": [
-      "case_study",
-      "financial"
-    ],
     "backend/RealEstateEval.Infrastructure/Services/InspectionLimitsService.cs": [
       "case_study"
-    ],
-    "backend/RealEstateEval.Infrastructure/Services/InspectorFeeLedgerWriter.cs": [
-      "case_study",
-      "financial"
-    ],
-    "backend/RealEstateEval.Infrastructure/Services/InspectorFeeService.cs": [
-      "case_study"
-    ],
-    "backend/RealEstateEval.Infrastructure/Services/InspectorFeeSummaryQuery.cs": [
-      "case_study"
-    ],
-    "backend/RealEstateEval.Infrastructure/Services/InspectorFeeTransitionApplier.cs": [
-      "audit",
-      "case_study"
-    ],
-    "backend/RealEstateEval.Infrastructure/Services/KeyReceiptFeeChargeService.cs": [
-      "financial"
-    ],
-    "backend/RealEstateEval.Infrastructure/Services/PartyBillingStatementService.cs": [
-      "case_study",
-      "financial"
-    ],
-    "backend/RealEstateEval.Infrastructure/Services/PartyFeePricingService.cs": [
-      "audit",
-      "financial"
     ],
     "backend/RealEstateEval.Infrastructure/Services/PartyTaskSubmissionService.cs": [
       "case_study"
@@ -305,13 +279,6 @@
     ],
     "backend/RealEstateEval.Infrastructure/Services/PlatformAuditLogAppend.cs": [
       "audit"
-    ],
-    "backend/RealEstateEval.Infrastructure/Services/PoEnfazBillingService.cs": [
-      "audit",
-      "financial"
-    ],
-    "backend/RealEstateEval.Infrastructure/Services/PoEnfazInvoiceLookup.cs": [
-      "financial"
     ],
     "backend/RealEstateEval.Infrastructure/Services/PoIntakeDraftService.cs": [
       "case_study"
@@ -370,6 +337,53 @@
     ],
     "backend/contexts/failures/RealEstateEval.Failures.Infrastructure/Services/FailureTypesCatalogService.cs": [
       "failures"
+    ],
+    "backend/contexts/financial/RealEstateEval.Financial.Infrastructure/Services/CourtVisitFeeChargeService.cs": [
+      "financial"
+    ],
+    "backend/contexts/financial/RealEstateEval.Financial.Infrastructure/Services/DiscountFlagService.cs": [
+      "case_study",
+      "financial"
+    ],
+    "backend/contexts/financial/RealEstateEval.Financial.Infrastructure/Services/FinancialReportService.cs": [
+      "case_study",
+      "financial"
+    ],
+    "backend/contexts/financial/RealEstateEval.Financial.Infrastructure/Services/IncentiveSuspensionService.cs": [
+      "case_study",
+      "financial"
+    ],
+    "backend/contexts/financial/RealEstateEval.Financial.Infrastructure/Services/InspectorFeeLedgerWriter.cs": [
+      "case_study",
+      "financial"
+    ],
+    "backend/contexts/financial/RealEstateEval.Financial.Infrastructure/Services/InspectorFeeService.cs": [
+      "case_study"
+    ],
+    "backend/contexts/financial/RealEstateEval.Financial.Infrastructure/Services/InspectorFeeSummaryQuery.cs": [
+      "case_study"
+    ],
+    "backend/contexts/financial/RealEstateEval.Financial.Infrastructure/Services/InspectorFeeTransitionApplier.cs": [
+      "audit",
+      "case_study"
+    ],
+    "backend/contexts/financial/RealEstateEval.Financial.Infrastructure/Services/KeyReceiptFeeChargeService.cs": [
+      "financial"
+    ],
+    "backend/contexts/financial/RealEstateEval.Financial.Infrastructure/Services/PartyBillingStatementService.cs": [
+      "case_study",
+      "financial"
+    ],
+    "backend/contexts/financial/RealEstateEval.Financial.Infrastructure/Services/PartyFeePricingService.cs": [
+      "audit",
+      "financial"
+    ],
+    "backend/contexts/financial/RealEstateEval.Financial.Infrastructure/Services/PoEnfazBillingService.cs": [
+      "audit",
+      "financial"
+    ],
+    "backend/contexts/financial/RealEstateEval.Financial.Infrastructure/Services/PoEnfazInvoiceLookup.cs": [
+      "financial"
     ],
     "backend/contexts/operations/RealEstateEval.Operations.Infrastructure/Services/KeyEnvelopesService.cs": [
       "case_study",
@@ -496,6 +510,9 @@
     "ComparablePropertyService": [
       "valuation"
     ],
+    "CourtVisitFeeChargeService": [
+      "financial"
+    ],
     "CourtsCatalogService": [
       "platform"
     ],
@@ -541,12 +558,27 @@
     "InspectionLimitsService": [
       "case-study"
     ],
+    "InspectorFeeLedgerWriter": [
+      "financial"
+    ],
+    "InspectorFeeService": [
+      "financial"
+    ],
+    "InspectorFeeSummaryQuery": [
+      "financial"
+    ],
+    "InspectorFeeTransitionApplier": [
+      "financial"
+    ],
     "IntegrationEventInbox": [
       "case-study",
       "platform"
     ],
     "KeyEnvelopesService": [
       "operations"
+    ],
+    "KeyReceiptFeeChargeService": [
+      "financial"
     ],
     "MessagingOutboxPublisher": [
       "case-study",
@@ -569,6 +601,9 @@
     "OrganizationSettingsService": [
       "platform"
     ],
+    "PartyBillingStatementService": [
+      "financial"
+    ],
     "PartyFeePricingService": [
       "financial"
     ],
@@ -580,6 +615,12 @@
     ],
     "PlatformAuditLogAppend": [
       "platform"
+    ],
+    "PoEnfazBillingService": [
+      "financial"
+    ],
+    "PoEnfazInvoiceLookup": [
+      "financial"
     ],
     "PoIntakeDraftService": [
       "case-study"

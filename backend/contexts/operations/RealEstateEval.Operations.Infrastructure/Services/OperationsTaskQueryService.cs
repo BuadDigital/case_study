@@ -16,15 +16,6 @@ public sealed class OperationsTaskQueryService : IOperationsTaskQuery
     private readonly ICourtVisitFeeChargeService _charges;
     private readonly IUserLabelLookup _labels;
 
-    public OperationsTaskQueryService(
-        OperationsDbContext ops,
-        FinancialDbContext financial,
-        IdentityDbContext db,
-        IUserLabelLookup? labels = null)
-        : this(ops, new CourtVisitFeeChargeService(financial), labels ?? new UserLabelLookup(db))
-    {
-    }
-
     [ActivatorUtilitiesConstructor]
     public OperationsTaskQueryService(
         OperationsDbContext ops,

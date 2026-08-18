@@ -1,4 +1,4 @@
-using Microsoft.EntityFrameworkCore;
+﻿using Microsoft.EntityFrameworkCore;
 using RealEstateEval.Application.Abstractions;
 using RealEstateEval.Application.Contracts;
 using RealEstateEval.Application.Rules;
@@ -1001,7 +1001,7 @@ public class OperationsTaskServiceTests
         IdentityDbContext identity) =>
         OperationsTaskService.Create(
             ops,
-            fin,
+            new CourtVisitFeeChargeService(fin),
             identity,
             new NullNotificationService(),
             new PartyFeePricingService(fin));

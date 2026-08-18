@@ -145,8 +145,8 @@ internal static class TestBoundedContexts
         var identity = TestInspectorFeeServiceFactory.ShareIdentity(app);
         return new(
             ops,
-            cs,
-            TestInspectorFeeServiceFactory.ShareFinancial(app),
+            new CaseStudyLookup(cs),
+            new KeyReceiptFeeChargeService(TestInspectorFeeServiceFactory.ShareFinancial(app)),
             TestInspectorFeeServiceFactory.ShareAttachmentLookup(app),
             CreateAccessHolds(app, failures),
             new KeyEnvelopePeopleResolver(identity),
@@ -169,7 +169,7 @@ internal static class TestBoundedContexts
         IPartyFeePricingService? pricing = null) =>
         OperationsTaskService.Create(
             bundle.Ops,
-            TestInspectorFeeServiceFactory.ShareFinancial(bundle.App),
+            new CourtVisitFeeChargeService(TestInspectorFeeServiceFactory.ShareFinancial(bundle.App)),
             TestInspectorFeeServiceFactory.ShareIdentity(bundle.App),
             notifications ?? new NullNotificationService(),
             pricing ?? new PartyFeePricingService(

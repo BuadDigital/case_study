@@ -24,6 +24,9 @@
   <Project Path="contexts/failures/RealEstateEval.Failures.Domain/RealEstateEval.Failures.Domain.csproj" />
   <Project Path="contexts/failures/RealEstateEval.Failures.Application/RealEstateEval.Failures.Application.csproj" />
   <Project Path="contexts/failures/RealEstateEval.Failures.Infrastructure/RealEstateEval.Failures.Infrastructure.csproj" />
+  <Project Path="contexts/financial/RealEstateEval.Financial.Domain/RealEstateEval.Financial.Domain.csproj" />
+  <Project Path="contexts/financial/RealEstateEval.Financial.Application/RealEstateEval.Financial.Application.csproj" />
+  <Project Path="contexts/financial/RealEstateEval.Financial.Infrastructure/RealEstateEval.Financial.Infrastructure.csproj" />
   <Project Path="contexts/operations/RealEstateEval.Operations.Domain/RealEstateEval.Operations.Domain.csproj" />
   <Project Path="contexts/operations/RealEstateEval.Operations.Application/RealEstateEval.Operations.Application.csproj" />
   <Project Path="contexts/operations/RealEstateEval.Operations.Infrastructure/RealEstateEval.Operations.Infrastructure.csproj" />

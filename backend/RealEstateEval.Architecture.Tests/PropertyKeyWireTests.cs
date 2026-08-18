@@ -56,8 +56,10 @@ public class PropertyKeyWireTests
                 new Regex(@"""(done|active|warn|muted)""", RegexOptions.Compiled)
             ),
             (
+                // A8: the financial report service lives in the Financial context.
                 RepoPaths.Combine(
-                    "backend", "RealEstateEval.Infrastructure", "Services", "FinancialReportService.cs"),
+                    "backend", "contexts", "financial", "RealEstateEval.Financial.Infrastructure",
+                    "Services", "FinancialReportService.cs"),
                 new Regex(@"""(done|progress)""", RegexOptions.Compiled)
             ),
         };

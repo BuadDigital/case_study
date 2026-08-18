@@ -409,8 +409,8 @@ public class GeneralizedBillingStatementTests
         var ops = TestInspectorFeeServiceFactory.ShareOps(db);
         var visitFees = new OperationsTaskVisitFeeHelper(
             ops,
-            financial,
-            identity,
+            new CourtVisitFeeChargeService(financial),
+            new IdentityDirectory(identity),
             new PartyFeePricingService(financial));
         return new(
             financial,

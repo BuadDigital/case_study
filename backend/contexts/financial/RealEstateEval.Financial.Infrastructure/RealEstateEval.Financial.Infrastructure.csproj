@@ -1,0 +1,21 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <RootNamespace>RealEstateEval.Infrastructure</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\RealEstateEval.Financial.Application\RealEstateEval.Financial.Application.csproj" />
+    <ProjectReference Include="..\..\..\RealEstateEval.Infrastructure\RealEstateEval.Infrastructure.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Enfaz invoice PDF generation lives with the Financial slice; this is the
+         repo's only QuestPDF consumer. -->
+    <PackageReference Include="QuestPDF" Version="2025.7.3" />
+  </ItemGroup>
+
+</Project>

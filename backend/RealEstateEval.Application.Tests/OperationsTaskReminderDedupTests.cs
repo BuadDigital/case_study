@@ -131,14 +131,15 @@ public sealed class OperationsTaskReminderDedupTests
         var financial = TestInspectorFeeServiceFactory.ShareFinancial(app);
         var identity = TestInspectorFeeServiceFactory.ShareIdentity(app);
         var notifier = new OperationsTaskNotifier(ops, identity, notifications);
+        var charges = new CourtVisitFeeChargeService(financial);
         var commands = new OperationsTaskCommands(
             ops,
-            new OperationsTaskQueryService(ops, financial, identity),
+            new OperationsTaskQueryService(ops, charges, new UserLabelLookup(identity)),
             notifier,
             new OperationsTaskVisitFeeHelper(
                 ops,
-                financial,
-                identity,
+                charges,
+                new IdentityDirectory(identity),
                 new PartyFeePricingService(financial)),
             time);
 

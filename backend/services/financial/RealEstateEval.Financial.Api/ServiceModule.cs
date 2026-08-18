@@ -1,3 +1,5 @@
+using FluentValidation;
+using RealEstateEval.Application.Validation;
 using RealEstateEval.Infrastructure;
 using RealEstateEval.Infrastructure.Data.Contexts;
 using RealEstateEval.Infrastructure.Web;
@@ -16,6 +18,8 @@ public sealed class ServiceModule : IRealEstateEvalServiceModule
         builder.Services.AddHostSharedInfrastructure(builder.Configuration, builder.Environment);
         builder.Services.AddClaimsPermissionService();
         builder.Services.AddFinancialInfrastructure(builder.Configuration, connectionString!);
+        // A8: Financial boundary validators moved out of the globally scanned assembly.
+        builder.Services.AddValidatorsFromAssemblyContaining<CreatePartyFeePricingTableRequestValidator>();
     }
 
     public Task ConfigureAppAsync(WebApplication app, string? connectionString)

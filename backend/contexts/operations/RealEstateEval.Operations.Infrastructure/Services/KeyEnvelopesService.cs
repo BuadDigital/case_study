@@ -31,29 +31,6 @@ public sealed class KeyEnvelopesService : IKeyEnvelopesService
     private readonly NotificationRecipientResolver _recipients;
     private readonly TimeProvider _time;
 
-    public KeyEnvelopesService(
-        OperationsDbContext ops,
-        CaseStudyDbContext caseStudy,
-        FinancialDbContext financial,
-        IAttachmentLookup attachments,
-        IPropertyAccessHoldService holds,
-        IKeyEnvelopePeopleResolver people,
-        INotificationService notifications,
-        NotificationRecipientResolver recipients,
-        TimeProvider? time = null)
-        : this(
-            ops,
-            new CaseStudyLookup(caseStudy),
-            new KeyReceiptFeeChargeService(financial, time),
-            attachments,
-            holds,
-            people,
-            notifications,
-            recipients,
-            time)
-    {
-    }
-
     [ActivatorUtilitiesConstructor]
     public KeyEnvelopesService(
         OperationsDbContext ops,

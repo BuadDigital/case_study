@@ -21,7 +21,6 @@
     </PackageReference>
     <PackageReference Include="Microsoft.Extensions.Caching.StackExchangeRedis" Version="10.0.0" />
     <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="10.0.1" />
-    <PackageReference Include="QuestPDF" Version="2025.7.3" />
     <PackageReference Include="RabbitMQ.Client" Version="7.2.1" />
     <PackageReference Include="System.IdentityModel.Tokens.Jwt" Version="8.22.0" />
   </ItemGroup>
@@ -30,6 +29,7 @@
     <ProjectReference Include="..\RealEstateEval.Application\RealEstateEval.Application.csproj" />
     <ProjectReference Include="..\contexts\attachments\RealEstateEval.Attachments.Application\RealEstateEval.Attachments.Application.csproj" />
     <ProjectReference Include="..\contexts\failures\RealEstateEval.Failures.Application\RealEstateEval.Failures.Application.csproj" />
+    <ProjectReference Include="..\contexts\financial\RealEstateEval.Financial.Application\RealEstateEval.Financial.Application.csproj" />
     <ProjectReference Include="..\contexts\operations\RealEstateEval.Operations.Application\RealEstateEval.Operations.Application.csproj" />
     <ProjectReference Include="..\contexts\platform\RealEstateEval.Platform.Application\RealEstateEval.Platform.Application.csproj" />
     <ProjectReference Include="..\contexts\valuation\RealEstateEval.Valuation.Application\RealEstateEval.Valuation.Application.csproj" />

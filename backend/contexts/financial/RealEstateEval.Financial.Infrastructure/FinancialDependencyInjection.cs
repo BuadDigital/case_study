@@ -1,0 +1,59 @@
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
+using RealEstateEval.Application.Abstractions;
+using RealEstateEval.Infrastructure.Notifications;
+using RealEstateEval.Infrastructure.Services;
+
+namespace RealEstateEval.Infrastructure;
+
+/// <summary>
+/// Context-local registration for the Financial bounded context (A8): inspector fees,
+/// party billing statements, Enfaz billing, fee pricing, charges, and financial reports.
+/// The shared persistence/HTTP plumbing still comes from the global Infrastructure extensions.
+/// </summary>
+public static class FinancialDependencyInjection
+{
+    public static IServiceCollection AddFinancialInfrastructure(
+        this IServiceCollection services,
+        IConfiguration configuration,
+        string connectionString)
+    {
+        services.AddFinancialPersistence(configuration, connectionString);
+        // Case Study reads/writes go through /api/case-study-dispatch. Do not
+        // AddCaseStudyPersistence here (compose cycle: Case Study already depends_on financial).
+        // AddRemoteCaseStudy also wires the upstream HTTP options, so the private
+        // AddUpstreamHttp call that lived in the global body is redundant here.
+        services.AddRemoteCaseStudy(configuration);
+        services.AddHttpClient<ICaseStudyCommands, HttpCaseStudyCommands>();
+        services.AddRemoteIdentityDirectory(configuration);
+        services.AddRemoteAttachmentLookup(configuration);
+        services.AddHttpClient<IKeyEntitlementLookup, HttpKeyEntitlementLookup>();
+        services.AddScoped<INotificationService, NullNotificationService>();
+        services.AddScoped<NotificationRecipientResolver>();
+        services.AddScoped<INotificationRecipientResolver>(sp =>
+            sp.GetRequiredService<NotificationRecipientResolver>());
+        services.AddInspectorFeeCollaborators();
+        services.AddScoped<ICourtVisitFeeChargeService, CourtVisitFeeChargeService>();
+        services.AddScoped<IKeyReceiptFeeChargeService, KeyReceiptFeeChargeService>();
+        services.AddScoped<IPoEnfazInvoiceLookup, PoEnfazInvoiceLookup>();
+        services.AddScoped<IPoEnfazBillingService, PoEnfazBillingService>();
+        services.AddScoped<IPartyBillingStatementService, PartyBillingStatementService>();
+        services.AddHostedService<PartyBillingMonthVendorHostedService>();
+        services.AddScoped<IFinancialReportService, FinancialReportService>();
+        services.AddScoped<IPartyFeePricingService, PartyFeePricingService>();
+        services.AddScoped<IIncentiveSuspensionService, IncentiveSuspensionService>();
+        services.AddScoped<IDiscountFlagService, DiscountFlagService>();
+        return services;
+    }
+
+    /// <summary>Inspector-fee façade + ledger/transition/summary collaborators.</summary>
+    public static IServiceCollection AddInspectorFeeCollaborators(this IServiceCollection services)
+    {
+        services.AddScoped<IInspectorFeeLedgerResolver, InspectorFeeLedgerResolver>();
+        services.AddScoped<IInspectorFeeLedgerWriter, InspectorFeeLedgerWriter>();
+        services.AddScoped<IInspectorFeeTransitionApplier, InspectorFeeTransitionApplier>();
+        services.AddScoped<IInspectorFeeSummaryQuery, InspectorFeeSummaryQuery>();
+        services.AddScoped<IInspectorFeeService, InspectorFeeService>();
+        return services;
+    }
+}

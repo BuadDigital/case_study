@@ -355,16 +355,7 @@ public static class DependencyInjection
         return services;
     }
 
- /// <summary>Inspector-fee façade + ledger/transition/summary collaborators.</summary>
-    public static IServiceCollection AddInspectorFeeCollaborators(this IServiceCollection services)
-    {
-        services.AddScoped<IInspectorFeeLedgerResolver, InspectorFeeLedgerResolver>();
-        services.AddScoped<IInspectorFeeLedgerWriter, InspectorFeeLedgerWriter>();
-        services.AddScoped<IInspectorFeeTransitionApplier, InspectorFeeTransitionApplier>();
-        services.AddScoped<IInspectorFeeSummaryQuery, InspectorFeeSummaryQuery>();
-        services.AddScoped<IInspectorFeeService, InspectorFeeService>();
-        return services;
-    }
+    // AddInspectorFeeCollaborators moved to RealEstateEval.Financial.Infrastructure (A8).
 
  /// <summary>PO intake drafts, delegation letters, suspended-transaction reads.</summary>
     public static IServiceCollection AddCaseStudyAuxiliaryInfrastructure(this IServiceCollection services)
@@ -568,47 +559,8 @@ public static class DependencyInjection
         return services;
     }
 
-    public static IServiceCollection AddFinancialInfrastructure(
-        this IServiceCollection services,
-        IConfiguration configuration,
-        string connectionString)
-    {
-        services.AddFinancialPersistence(configuration, connectionString);
-        // Case Study reads/writes go through /api/case-study-dispatch. Do not
-        // AddCaseStudyPersistence here (compose cycle: Case Study already depends_on financial).
-        services.AddRemoteCaseStudy(configuration);
-        services.AddHttpClient<ICaseStudyCommands, HttpCaseStudyCommands>();
-        services.AddRemoteIdentityDirectory(configuration);
-        services.AddRemoteAttachmentLookup(configuration);
-        services.AddUpstreamHttp(configuration);
-        services.AddHttpClient<IKeyEntitlementLookup, HttpKeyEntitlementLookup>();
-        services.AddScoped<INotificationService, NullNotificationService>();
-        services.AddScoped<NotificationRecipientResolver>();
-        services.AddScoped<INotificationRecipientResolver>(sp =>
-            sp.GetRequiredService<NotificationRecipientResolver>());
-        services.AddInspectorFeeCollaborators();
-        services.AddScoped<ICourtVisitFeeChargeService, CourtVisitFeeChargeService>();
-        services.AddScoped<IKeyReceiptFeeChargeService, KeyReceiptFeeChargeService>();
-        services.AddScoped<IPoEnfazInvoiceLookup, PoEnfazInvoiceLookup>();
-        services.AddScoped<IPoEnfazBillingService, PoEnfazBillingService>();
-        services.AddScoped<IPartyBillingStatementService, PartyBillingStatementService>();
-        services.AddHostedService<PartyBillingMonthVendorHostedService>();
-        services.AddScoped<IFinancialReportService, FinancialReportService>();
-        services.AddScoped<IPartyFeePricingService, PartyFeePricingService>();
-        services.AddScoped<IIncentiveSuspensionService, IncentiveSuspensionService>();
-        services.AddScoped<IDiscountFlagService, DiscountFlagService>();
-        return services;
-    }
-
- /// <summary>Financial services when financial persistence is already registered.</summary>
-    public static IServiceCollection AddFinancialInfrastructure(this IServiceCollection services)
-    {
-        services.AddScoped<IFinancialReportService, FinancialReportService>();
-        services.AddScoped<IPartyFeePricingService, PartyFeePricingService>();
-        services.AddScoped<IIncentiveSuspensionService, IncentiveSuspensionService>();
-        services.AddScoped<IDiscountFlagService, DiscountFlagService>();
-        return services;
-    }
+    // AddFinancialInfrastructure moved to RealEstateEval.Financial.Infrastructure (A8);
+    // the dead parameterless overload was dropped.
 
     // AddOperationsInfrastructure and AddOperationsTaskCollaborators moved to
     // RealEstateEval.Operations.Infrastructure (A8); the dead parameterless
