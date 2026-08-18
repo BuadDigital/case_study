@@ -1,17 +1,18 @@
 import { getApiBase } from "./index";
 import { repositoryFetch as fetch } from "./write-repository";
 import type { PrototypeModulesApiConfig, PrototypeModulesResult } from "./prototype-modules";
+import type { FinancialRevenueRowStatus } from "./property-list-wire";
 
-export type FinancialRevenueRowDto = {
+type FinancialRevenueRowDto = {
   po: string;
   billed: number;
   excluded: number;
   value: string;
-  status: string;
+  status: FinancialRevenueRowStatus;
   invoiceNumber?: string | null;
 };
 
-export type FinancialCostRowDto = {
+type FinancialCostRowDto = {
   name: string;
   type: string;
   cost: string;
@@ -80,23 +81,6 @@ export type CreatePartyFeePricingTableRequest = {
   managedBy?: PartyFeePricingManagedBy;
   flatAmountSar?: number;
   copyFromTableId?: string | null;
-};
-
-export type IncentiveSuspensionDto = {
-  id: string;
-  userId: string;
-  assigneeId: string;
-  transactionKey: string;
-  reason: string;
-  isActive: boolean;
-  createdAtUtc: string;
-  liftedAtUtc?: string | null;
-};
-
-export type CreateIncentiveSuspensionRequest = {
-  assigneeId: string;
-  transactionKey: string;
-  reason: string;
 };
 
 export type SetPartyFeePricingAssignmentsRequest = {
@@ -273,112 +257,4 @@ export async function deletePartyFeePricing(
   } catch {
     return { ok: false, kind: "network" };
   }
-}
-
-export type DiscountFlagDto = {
-  id: string;
-  transactionKey: string;
-  workflowTaskId?: string | null;
-  targetAssigneeId: string;
-  flaggedByUserId: string;
-  reason: string;
-  proposedDiscountSar: number;
-  status: string;
-  approvedByUserId?: string | null;
-  resolvedAtUtc?: string | null;
-  resolutionNote?: string | null;
-  createdAtUtc: string;
-};
-
-export type CreateDiscountFlagRequest = {
-  transactionKey: string;
-  workflowTaskId?: string | null;
-  targetAssigneeId: string;
-  reason: string;
-  proposedDiscountSar: number;
-};
-
-export type ResolveDiscountFlagRequest = {
-  discountSar?: number | null;
-  discountReason?: string | null;
-  note?: string | null;
-};
-
-export async function listDiscountFlags(
-  config: PrototypeModulesApiConfig,
-  opts?: { transactionKey?: string; status?: string },
-): Promise<PrototypeModulesResult<DiscountFlagDto[]>> {
-  try {
-    const params = new URLSearchParams();
-    if (opts?.transactionKey) params.set("transactionKey", opts.transactionKey);
-    if (opts?.status) params.set("status", opts.status);
-    const qs = params.toString() ? `?${params}` : "";
-    const res = await fetch(
-      `${baseUrl(config)}/api/financial/v1/discount-flags${qs}`,
-      { headers: headers(config.token) },
-    );
-    return readResult<DiscountFlagDto[]>(res);
-  } catch {
-    return { ok: false, kind: "network" };
-  }
-}
-
-export async function createDiscountFlag(
-  config: PrototypeModulesApiConfig,
-  body: CreateDiscountFlagRequest,
-): Promise<PrototypeModulesResult<DiscountFlagDto>> {
-  try {
-    const res = await fetch(`${baseUrl(config)}/api/financial/v1/discount-flags`, {
-      method: "POST",
-      headers: headers(config.token),
-      body: JSON.stringify(body),
-    });
-    return readResult<DiscountFlagDto>(res);
-  } catch {
-    return { ok: false, kind: "network" };
-  }
-}
-
-export async function approveDiscountFlag(
-  config: PrototypeModulesApiConfig,
-  id: string,
-  body?: ResolveDiscountFlagRequest,
-): Promise<PrototypeModulesResult<DiscountFlagDto>> {
-  try {
-    const res = await fetch(
-      `${baseUrl(config)}/api/financial/v1/discount-flags/${id}/approve`,
-      {
-        method: "POST",
-        headers: headers(config.token),
-        body: JSON.stringify(body ?? {}),
-      },
-    );
-    return readResult<DiscountFlagDto>(res);
-  } catch {
-    return { ok: false, kind: "network" };
-  }
-}
-
-export async function rejectDiscountFlag(
-  config: PrototypeModulesApiConfig,
-  id: string,
-  body?: ResolveDiscountFlagRequest,
-): Promise<PrototypeModulesResult<DiscountFlagDto>> {
-  try {
-    const res = await fetch(
-      `${baseUrl(config)}/api/financial/v1/discount-flags/${id}/reject`,
-      {
-        method: "POST",
-        headers: headers(config.token),
-        body: JSON.stringify(body ?? {}),
-      },
-    );
-    return readResult<DiscountFlagDto>(res);
-  } catch {
-    return { ok: false, kind: "network" };
-  }
-}
-
-export function financialApiEnabled(config: PrototypeModulesApiConfig | null): boolean {
-  return config !== null;
 }

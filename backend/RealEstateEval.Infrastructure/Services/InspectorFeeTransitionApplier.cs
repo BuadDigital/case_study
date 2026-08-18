@@ -1,9 +1,10 @@
-using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
+using RealEstateEval.Application;
 using RealEstateEval.Application.Abstractions;
 using RealEstateEval.Application.Contracts;
 using RealEstateEval.Application.Rules;
 using RealEstateEval.Domain;
-using RealEstateEval.Infrastructure.Data;
+using RealEstateEval.Infrastructure.Data.Contexts;
 
 namespace RealEstateEval.Infrastructure.Services;
 
@@ -12,19 +13,37 @@ public sealed class InspectorFeeTransitionApplier : IInspectorFeeTransitionAppli
     private const string FeeBillingTransitionAction = "FEE_BILLING_TRANSITION";
     private const string FeeLedgerEntityType = "inspector_fee_ledger";
 
-    private readonly ApplicationDbContext _db;
+    private readonly FinancialDbContext _financial;
+    private readonly ICaseStudyLookup _lookup;
     private readonly IAuditLogWriter _audit;
+    private readonly TimeProvider _time;
 
-    public InspectorFeeTransitionApplier(ApplicationDbContext db)
-        : this(db, new AuditLogWriter())
+    public InspectorFeeTransitionApplier(FinancialDbContext financial, CaseStudyDbContext caseStudy,
+        TimeProvider? time = null)
+        : this(financial, new CaseStudyLookup(caseStudy), new AuditLogWriter(time), time)
     {
     }
 
-    public InspectorFeeTransitionApplier(ApplicationDbContext db, IAuditLogWriter audit)
+    public InspectorFeeTransitionApplier(FinancialDbContext financial, CaseStudyDbContext caseStudy, IAuditLogWriter audit,
+        TimeProvider? time = null)
+        : this(financial, new CaseStudyLookup(caseStudy), audit, time)
     {
-        _db = db;
+    }
+
+    [ActivatorUtilitiesConstructor]
+    public InspectorFeeTransitionApplier(
+        FinancialDbContext financial,
+        ICaseStudyLookup lookup,
+        IAuditLogWriter audit,
+        TimeProvider? time = null)
+    {
+        _time = time ?? TimeProvider.System;
+
+        _financial = financial;
+        _lookup = lookup;
         _audit = audit;
     }
+
 
     public async Task<string?> ApplyAsync(
         InspectorFeeLedger ledger,
@@ -68,11 +87,11 @@ public sealed class InspectorFeeTransitionApplier : IInspectorFeeTransitionAppli
 
         if (action == InspectorFeeActions.SubmitToSupervisor)
         {
-            var taskKind = await _db.WorkflowTasks.AsNoTracking()
-                .Where(t => t.Id == ledger.WorkflowTaskId)
-                .Select(t => t.Kind)
-                .FirstOrDefaultAsync(cancellationToken);
-            if (taskKind == WorkflowTaskKind.EngineeringSurvey)
+            var kinds = await _lookup.GetWorkflowTaskKindsAsync(
+                [ledger.WorkflowTaskId],
+                cancellationToken);
+            if (kinds.TryGetValue(ledger.WorkflowTaskId, out var taskKind)
+                && taskKind == WorkflowTaskKind.EngineeringSurvey)
             {
                 return "مسار المكتب الهندسي لا يدعم رفع الأتعاب للمشرف — استخدم موافقة الحسم أو الاعتراض من الكشف المبدئي.";
             }
@@ -215,7 +234,7 @@ public sealed class InspectorFeeTransitionApplier : IInspectorFeeTransitionAppli
         if (action == InspectorFeeActions.Disburse)
         {
             var voucher = string.IsNullOrWhiteSpace(request.DisbursementVoucher)
-                ? $"SND-{DateTime.UtcNow:yyyyMMddHHmmss}"
+                ? $"SND-{_time.UtcNow():yyyyMMddHHmmss}"
                 : request.DisbursementVoucher.Trim();
             ledger.DisbursementVoucher = voucher;
         }
@@ -224,9 +243,9 @@ public sealed class InspectorFeeTransitionApplier : IInspectorFeeTransitionAppli
 
         ledger.BillingStatus = nextStatus;
         ledger.ReturnTo = nextReturnTo;
-        ledger.UpdatedAtUtc = DateTime.UtcNow;
+        ledger.UpdatedAtUtc = _time.UtcNow();
 
-        _db.InspectorFeeTransitions.Add(new InspectorFeeTransition
+        _financial.InspectorFeeTransitions.Add(new InspectorFeeTransition
         {
             Id = Guid.NewGuid(),
             WorkflowTaskId = ledger.WorkflowTaskId,
@@ -234,10 +253,10 @@ public sealed class InspectorFeeTransitionApplier : IInspectorFeeTransitionAppli
             ToStatus = nextStatus,
             Reason = string.IsNullOrWhiteSpace(request.Reason) ? null : request.Reason.Trim(),
             ActorUserId = actorUserId,
-            CreatedAtUtc = DateTime.UtcNow,
+            CreatedAtUtc = _time.UtcNow(),
         });
 
-        _db.AuditLogs.Add(_audit.Create(
+        _financial.AuditLogs.Add(_audit.Create(
             string.IsNullOrWhiteSpace(actorUserId) ? "system" : actorUserId,
             FeeBillingTransitionAction,
             FeeLedgerEntityType,
@@ -272,16 +291,18 @@ public sealed class InspectorFeeTransitionApplier : IInspectorFeeTransitionAppli
         Guid workflowTaskId,
         CancellationToken cancellationToken)
     {
-        var task = await _db.WorkflowTasks.AsNoTracking()
-            .FirstOrDefaultAsync(t => t.Id == workflowTaskId, cancellationToken);
-        if (task is null) return false;
+        var snapshot = await _lookup.GetWorkflowTaskAsync(workflowTaskId, cancellationToken);
+        if (snapshot is null) return false;
+        var task = snapshot.ToWorkflowTask();
 
-        var workspaces = await _db.FieldInspectionWorkspaces.AsNoTracking()
-            .Where(w => w.WorkflowTaskId == workflowTaskId)
-            .ToDictionaryAsync(w => w.WorkflowTaskId, cancellationToken);
-        var submissions = await _db.PartyTaskSubmissions.AsNoTracking()
-            .Where(s => s.WorkflowTaskId == workflowTaskId)
-            .ToDictionaryAsync(s => s.WorkflowTaskId, cancellationToken);
+        var workspaceRows = await _lookup.ListFieldInspectionWorkspacesByTaskIdsAsync(
+            [workflowTaskId],
+            cancellationToken);
+        var submissionRows = await _lookup.ListPartyTaskSubmissionsByTaskIdsAsync(
+            [workflowTaskId],
+            cancellationToken);
+        var workspaces = workspaceRows.ToDictionary(w => w.WorkflowTaskId, w => w.ToWorkspace());
+        var submissions = submissionRows.ToDictionary(s => s.WorkflowTaskId, s => s.ToSubmission());
 
         return InspectorFeeWorkStatusRules.IsWorkSubmitted(
             workflowTaskId,

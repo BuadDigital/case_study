@@ -1,4 +1,3 @@
-using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using RealEstateEval.Application.Abstractions;
@@ -10,7 +9,6 @@ namespace RealEstateEval.CaseStudy.Api.Controllers;
 
 [ApiController]
 [Route("api/workflow-tasks")]
-[Route("api/workflow-tasks/v1")]
 [Authorize]
 public class WorkflowTasksController : ControllerBase
 {
@@ -225,9 +223,7 @@ public class WorkflowTasksController : ControllerBase
         if (!string.IsNullOrWhiteSpace(resolved))
             return resolved;
 
-        return User.FindFirstValue("role")?.Trim()
-            ?? User.FindFirstValue(ClaimTypes.Role)?.Trim()
-            ?? "";
+        return ActorClaims.Role(User) ?? "";
     }
 
     private string ActorId() => ActorClaims.Id(User);

@@ -10,6 +10,7 @@ import {
   listPropertyListItems,
   listWorkOrders,
   listWorkOrdersWithDetails,
+  PropertyListRowStatuses,
 } from "@platform/api-client";
 import {
   requireWorkOrdersApiConfig,
@@ -43,8 +44,8 @@ function apiPropertyListItemToPropertyListItem(
   const failure = getPropertyFailure(item.poNumber, item.propertyId);
   const row = item.row;
   const status =
-    failure?.status === "approved" && row.status !== "fail"
-      ? "fail"
+    failure?.status === "approved" && row.status !== PropertyListRowStatuses.Fail
+      ? PropertyListRowStatuses.Fail
       : (row.status as PropertyRow["status"]);
 
   return {

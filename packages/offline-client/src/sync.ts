@@ -151,7 +151,7 @@ function envelopeMapKey(userId: string, clientId: string): string {
   return `envelope-map:${userId}:${clientId}`;
 }
 
-export async function rememberEnvelopeIdMap(
+async function rememberEnvelopeIdMap(
   userId: string,
   clientId: string,
   serverId: string,
@@ -160,7 +160,7 @@ export async function rememberEnvelopeIdMap(
   await setMeta(envelopeMapKey(userId, clientId), { serverId });
 }
 
-export async function resolveEnvelopeId(
+async function resolveEnvelopeId(
   userId: string,
   envelopeId: string,
 ): Promise<string | null> {
@@ -185,7 +185,7 @@ export function rewriteLocalAttachmentIds(
   return next;
 }
 
-export async function buildLocalAttachmentMap(
+async function buildLocalAttachmentMap(
   userId: string,
 ): Promise<Map<string, string>> {
   const map = new Map<string, string>();

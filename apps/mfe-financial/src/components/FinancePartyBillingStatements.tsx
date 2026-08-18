@@ -17,7 +17,7 @@ import {
 } from "@platform/app-shared/prototype/party-billing-statements-api";
 import { resolvePartyName } from "@platform/app-shared/fees/party-fee-meta";
 import { useStaffUsersQuery } from "@settings/mfe/query/settings-queries";
-import { Input, cn, useToast } from "@platform/design-system";
+import { Input, cn, useToast } from "@platform/ui-kit";
 import type {
   PartyBillingReadyLineDto,
   PartyBillingStatementDto,

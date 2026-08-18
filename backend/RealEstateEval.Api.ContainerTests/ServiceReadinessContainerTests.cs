@@ -76,7 +76,9 @@ public sealed class ReadinessCheckedFinancialApiFactory
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
         builder.UseEnvironment("Development");
-        builder.UseSetting("ConnectionStrings:Financial", _connectionString);
+        BoundedContextConnections.ApplyDedicatedSettings(
+            (key, value) => builder.UseSetting(key, value),
+            _connectionString);
         builder.UseSetting("Redis:Enabled", "false");
 
  // Development defaults the migration check off; these tests are about the strict mode

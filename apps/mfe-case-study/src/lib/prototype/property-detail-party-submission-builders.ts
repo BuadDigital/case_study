@@ -33,7 +33,6 @@ import {
   isEvaluatorChecklistQuestionAssignedToAppraiser,
   type EvaluatorChecklistBooleanKey,
 } from "@evaluator/mfe/lib/evaluator/evaluator-checklist-case-study-sync";
-import type { EvaluatorChecklistAnswers } from "@evaluator/mfe/lib/evaluator/evaluator-window-data";
 import type { CaseStudyInfoRolesMatrix } from "@settings/mfe";
 import type {
   EngineeringSurveyChecklistAnswer,

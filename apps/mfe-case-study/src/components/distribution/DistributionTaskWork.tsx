@@ -33,7 +33,7 @@ import {
   type WorkflowTask,
 } from "../../lib/prototype/tasks-storage";
 import { usePoRecordQuery } from "../../query/case-study-queries";
-import { Button, InlineLoadingSkeleton, Note, useToast } from "@platform/design-system";
+import { Button, InlineLoadingSkeleton, Note, useToast } from "@platform/ui-kit";
 import { useStaffUsersQuery } from "@settings/mfe/query/settings-queries";
 
 const LOADING_TEXT = "text-xs text-text-3";

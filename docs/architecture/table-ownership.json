@@ -1,7 +1,7 @@
 {
   "$schemaNote": "Ownership catalog for docs/architecture-split-plan.md. Machine-readable source of truth enforced by backend/RealEstateEval.Architecture.Tests. 'owner' is the approved write owner of the table; 'contexts' names the EF DbContext(s) that hold its write path today. Phase 1 moves a table's write path from ApplicationDbContext to its owner context one vertical slice at a time; a table may not appear in a context that is not listed here.",
   "version": 2,
-  "capturedOn": "2026-08-03",
+  "capturedOn": "2026-08-18",
   "approvedOn": "2026-07-30",
   "phase": "phase-1",
   "ownershipStatus": "approved",
@@ -97,7 +97,7 @@
       ],
       "migrations": "backend/RealEstateEval.Infrastructure/Data/Contexts/Failures/Migrations",
       "migrationsHistorySchema": "failures",
-      "note": "Phase 1 extraction order, step 3. Transitional Case Study reads of PropertyFailures still use ApplicationDbContext; write path is FailuresDbContext."
+      "note": "Phase 1 extraction order, step 3. Write path is FailuresDbContext. After the Phase 4 cutover the failures schema lives on a dedicated database. Case Study and Operations call the Failures HTTP API instead of a second connection."
     },
     {
       "name": "OperationsDbContext",
@@ -109,7 +109,7 @@
       ],
       "migrations": "backend/RealEstateEval.Infrastructure/Data/Contexts/Operations/Migrations",
       "migrationsHistorySchema": "operations",
-      "note": "Phase 1 extraction order, step 3. Operations schema tables plus write path for OperationsTasks/Sequences (D2) still physically in case_study — case_study is not listed here so the legacy stream can keep shaping other case_study tables. History lives in operations.__EFMigrationsHistory."
+      "note": "Phase 1 extraction order, step 3. Operations schema tables plus write path for OperationsTasks/Sequences (D2) still physically named in case_study. After the Phase 4 cutover those D2 tables live on the dedicated operations database, still in the case_study schema until a later relocate."
     },
     {
       "name": "FinancialDbContext",
@@ -121,7 +121,7 @@
       ],
       "migrations": "backend/RealEstateEval.Infrastructure/Data/Contexts/Financial/Migrations",
       "migrationsHistorySchema": "financial",
-      "note": "Phase 1 extraction order, step 4. financial schema plus D1 inspector-fee tables still physically in case_study — case_study is not listed here so Operations/Case Study ownership of other case_study tables stays clear. History in financial.__EFMigrationsHistory."
+      "note": "Phase 1 extraction order, step 4. financial schema plus D1 inspector-fee tables still physically named in case_study. After the Phase 4 cutover those D1 tables live on the dedicated financial database, still in the case_study schema until a later relocate."
     },
     {
       "name": "CaseStudyDbContext",
@@ -145,7 +145,7 @@
       ],
       "migrations": "backend/RealEstateEval.Infrastructure/Data/Contexts/Messaging/Migrations",
       "migrationsHistorySchema": "messaging",
-      "note": "Phase 1 extraction order, step 5. Platform-owned notifications/push (D3) and migration stream for messaging tables. Outbox/inbox also mapped so Platform writes share one SaveChanges; Case Study dispatcher still claims via ApplicationDbContext; Valuation remains a per-producer outbox writer (D5)."
+      "note": "Phase 1 extraction order, step 5. Platform-owned notifications/push (D3) and migration stream for messaging tables. Outbox/inbox also mapped so Platform writes share one SaveChanges. After the Phase 4 cutover Case Study drains the dedicated messaging database via MessagingDbContext; Valuation drains its dedicated outbox from the valuation database (D5)."
     }
   ],
   "decisions": [
@@ -175,7 +175,7 @@
       "decidedOn": "2026-07-30",
       "outcome": "operations owns OperationsTasks and OperationsTaskSequences; financial owns CourtVisitFeeCharges",
       "rationale": "The task lifecycle (court visits, letters, key handover) is operations work; the charge it produces is a financial artefact priced and collected by Financial. Charge creation moves behind a Financial command in Phase 3; the OperationsTasks rows stay in the case_study schema until Phase 4.",
-      "note": "OperationsTasks/OperationsTaskSequences live in case_study and are written by OperationsTaskService, which is registered only by Case Study today; the same service writes financial.CourtVisitFeeCharges."
+      "note": "OperationsTasks/OperationsTaskSequences live in case_study and are written by OperationsTaskService on the Operations host; the same service writes financial.CourtVisitFeeCharges."
     },
     {
       "id": "D3",
@@ -427,6 +427,21 @@
       "note": "Read by failures, financial reporting, and inspector-fee code. Write path CaseStudyDbContext (A4)."
     },
     {
+      "table": "Clients",
+      "schema": "case_study",
+      "dbSet": "Clients",
+      "entity": "Client",
+      "owner": "case-study",
+      "status": "approved",
+      "ownershipModel": "single-owner",
+      "contexts": [
+        "CaseStudyDbContext"
+      ],
+      "transactionGroup": "case-study.work-order",
+      "decision": null,
+      "note": "Work-order client records; write path CaseStudyDbContext (A4)."
+    },
+    {
       "table": "WorkOrderProperties",
       "schema": "case_study",
       "dbSet": "WorkOrderProperties",
@@ -442,6 +457,21 @@
       "note": "Read by failures, operations key services, valuation dispatch, and billing. Write path CaseStudyDbContext (A4)."
     },
     {
+      "table": "BuildingInventoryLines",
+      "schema": "case_study",
+      "dbSet": "BuildingInventoryLines",
+      "entity": "BuildingInventoryLine",
+      "owner": "case-study",
+      "status": "approved",
+      "ownershipModel": "single-owner",
+      "contexts": [
+        "CaseStudyDbContext"
+      ],
+      "transactionGroup": "case-study.work-order",
+      "decision": null,
+      "note": "Per-property building inventory; read by valuation report generation. Write path CaseStudyDbContext (A4)."
+    },
+    {
       "table": "PropertyContacts",
       "schema": "case_study",
       "dbSet": "PropertyContacts",
@@ -455,6 +485,36 @@
       "transactionGroup": "case-study.work-order",
       "decision": null,
       "note": "Write path CaseStudyDbContext (A4)."
+    },
+    {
+      "table": "PropertyGroups",
+      "schema": "case_study",
+      "dbSet": "PropertyGroups",
+      "entity": "PropertyGroup",
+      "owner": "case-study",
+      "status": "approved",
+      "ownershipModel": "single-owner",
+      "contexts": [
+        "CaseStudyDbContext"
+      ],
+      "transactionGroup": "case-study.work-order",
+      "decision": null,
+      "note": "Groups multiple properties under one work order; write path CaseStudyDbContext (A4)."
+    },
+    {
+      "table": "PropertyGroupMembers",
+      "schema": "case_study",
+      "dbSet": "PropertyGroupMembers",
+      "entity": "PropertyGroupMember",
+      "owner": "case-study",
+      "status": "approved",
+      "ownershipModel": "single-owner",
+      "contexts": [
+        "CaseStudyDbContext"
+      ],
+      "transactionGroup": "case-study.work-order",
+      "decision": null,
+      "note": "Membership rows linking properties to PropertyGroups; write path CaseStudyDbContext (A4)."
     },
     {
       "table": "PropertyTimelineEntries",
@@ -772,6 +832,36 @@
       "note": null
     },
     {
+      "table": "AttachmentPrintDictionaryConfigs",
+      "schema": "platform",
+      "dbSet": "AttachmentPrintDictionaryConfigs",
+      "entity": "AttachmentPrintDictionaryConfig",
+      "owner": "platform",
+      "status": "approved",
+      "ownershipModel": "single-owner",
+      "contexts": [
+        "PlatformDbContext"
+      ],
+      "transactionGroup": "platform.config",
+      "decision": null,
+      "note": "Print-label dictionary for attachment types; consumed by attachments and valuation report generation."
+    },
+    {
+      "table": "DifferenceFactorCatalogConfigs",
+      "schema": "platform",
+      "dbSet": "DifferenceFactorCatalogConfigs",
+      "entity": "DifferenceFactorCatalogConfig",
+      "owner": "platform",
+      "status": "approved",
+      "ownershipModel": "single-owner",
+      "contexts": [
+        "PlatformDbContext"
+      ],
+      "transactionGroup": "platform.config",
+      "decision": null,
+      "note": "Valuation comparable adjustment factor catalog; consumed by valuation services."
+    },
+    {
       "table": "CaseStudyInfoRolesConfigs",
       "schema": "platform",
       "dbSet": "CaseStudyInfoRolesConfigs",
@@ -829,7 +919,7 @@
       ],
       "transactionGroup": "failures.lifecycle",
       "decision": null,
-      "note": "Write path on FailuresDbContext. FailureService is still registered by case-study and failures; Case Study/legacy reads use ApplicationDbContext until Phase 3."
+      "note": "Write path on FailuresDbContext. FailureService is registered by the Failures host; Case Study and Operations call owner HTTP commands/lookups."
     },
     {
       "table": "FailureTypesCatalogConfigs",
@@ -997,6 +1087,141 @@
       "note": "Per-valuation applied-approaches settings (spec b-2): approach toggles, cost basis/unit, adjustments-edit permission. Written only via ValuationApproachSettingsService on ValuationDbContext."
     },
     {
+      "table": "ComparableProperties",
+      "schema": "valuation",
+      "dbSet": "ComparableProperties",
+      "entity": "ComparableProperty",
+      "owner": "valuation",
+      "status": "approved",
+      "ownershipModel": "single-owner",
+      "contexts": [
+        "ValuationDbContext"
+      ],
+      "transactionGroup": "valuation.requests",
+      "decision": null,
+      "note": "Comparable-sale records referenced by market approach selections."
+    },
+    {
+      "table": "ValuationComparableSelections",
+      "schema": "valuation",
+      "dbSet": "ValuationComparableSelections",
+      "entity": "ValuationComparableSelection",
+      "owner": "valuation",
+      "status": "approved",
+      "ownershipModel": "single-owner",
+      "contexts": [
+        "ValuationDbContext"
+      ],
+      "transactionGroup": "valuation.requests",
+      "decision": null,
+      "note": "Links a valuation request to chosen comparables for the market approach."
+    },
+    {
+      "table": "ValuationComparableAdjustmentLines",
+      "schema": "valuation",
+      "dbSet": "ValuationComparableAdjustmentLines",
+      "entity": "ValuationComparableAdjustmentLine",
+      "owner": "valuation",
+      "status": "approved",
+      "ownershipModel": "single-owner",
+      "contexts": [
+        "ValuationDbContext"
+      ],
+      "transactionGroup": "valuation.requests",
+      "decision": null,
+      "note": "Per-comparable adjustment lines for the market approach."
+    },
+    {
+      "table": "ValuationMarketApproaches",
+      "schema": "valuation",
+      "dbSet": "ValuationMarketApproaches",
+      "entity": "ValuationMarketApproach",
+      "owner": "valuation",
+      "status": "approved",
+      "ownershipModel": "single-owner",
+      "contexts": [
+        "ValuationDbContext"
+      ],
+      "transactionGroup": "valuation.requests",
+      "decision": null,
+      "note": "Market approach summary for a valuation request."
+    },
+    {
+      "table": "ValuationCostApproaches",
+      "schema": "valuation",
+      "dbSet": "ValuationCostApproaches",
+      "entity": "ValuationCostApproach",
+      "owner": "valuation",
+      "status": "approved",
+      "ownershipModel": "single-owner",
+      "contexts": [
+        "ValuationDbContext"
+      ],
+      "transactionGroup": "valuation.requests",
+      "decision": null,
+      "note": "Cost approach header for a valuation request."
+    },
+    {
+      "table": "ValuationCostLines",
+      "schema": "valuation",
+      "dbSet": "ValuationCostLines",
+      "entity": "ValuationCostLine",
+      "owner": "valuation",
+      "status": "approved",
+      "ownershipModel": "single-owner",
+      "contexts": [
+        "ValuationDbContext"
+      ],
+      "transactionGroup": "valuation.requests",
+      "decision": null,
+      "note": "Direct cost line items under a cost approach."
+    },
+    {
+      "table": "ValuationIndirectCostItems",
+      "schema": "valuation",
+      "dbSet": "ValuationIndirectCostItems",
+      "entity": "ValuationIndirectCostItem",
+      "owner": "valuation",
+      "status": "approved",
+      "ownershipModel": "single-owner",
+      "contexts": [
+        "ValuationDbContext"
+      ],
+      "transactionGroup": "valuation.requests",
+      "decision": null,
+      "note": "Indirect cost items under a cost approach."
+    },
+    {
+      "table": "ValuationReconciliations",
+      "schema": "valuation",
+      "dbSet": "ValuationReconciliations",
+      "entity": "ValuationReconciliation",
+      "owner": "valuation",
+      "status": "approved",
+      "ownershipModel": "single-owner",
+      "contexts": [
+        "ValuationDbContext"
+      ],
+      "transactionGroup": "valuation.requests",
+      "decision": null,
+      "note": "Final reconciliation of approach values for a valuation request."
+    },
+    {
+      "table": "ValuationReconciliationMethodLines",
+      "schema": "valuation",
+      "dbSet": "ValuationReconciliationMethodLines",
+      "entity": "ValuationReconciliationMethodLine",
+      "owner": "valuation",
+      "status": "approved",
+      "ownershipModel": "single-owner",
+      "contexts": [
+        "ValuationDbContext"
+      ],
+      "transactionGroup": "valuation.requests",
+      "decision": null,
+      "note": "Per-approach weighting lines under a reconciliation."
+    },
+    {
       "table": "FileAttachments",
       "schema": "attachments",
       "dbSet": "FileAttachments",
@@ -1099,7 +1324,7 @@
       ],
       "transactionGroup": "financial.party-billing",
       "decision": null,
-      "note": "Renamed from EngineeringBillingStatements. Written by PartyBillingStatementService, registered by case-study and failures; the same transaction still touches case_study and attachments. Write path FinancialDbContext (A4)."
+      "note": "Renamed from EngineeringBillingStatements. Written by PartyBillingStatementService, registered by case-study and failures. Attachment existence is an Attachments API lookup. Write path FinancialDbContext (A4)."
     },
     {
       "table": "PartyBillingStatementLines",
@@ -1251,7 +1476,7 @@
       ],
       "transactionGroup": "messaging.outbox",
       "decision": "D5",
-      "note": "Each producing context owns the rows it inserts (D5). Platform uses MessagingDbContext; Case Study residual uses ApplicationDbContext; Valuation uses ValuationDbContext. Dispatcher claims via ApplicationDbContext until a dedicated claim host."
+      "note": "Each producing context owns the rows it inserts (D5). Platform uses MessagingDbContext; Case Study residual uses MessagingDbContext on the dedicated messaging database; Valuation uses ValuationDbContext on the dedicated valuation database and hosts its own dispatcher after the Phase 4 cutover."
     },
     {
       "table": "ProcessedIntegrationEvents",

@@ -1,7 +1,7 @@
 "use client";
 
 import type { ReactNode } from "react";
-import { Badge, cn, emptyStateClassName } from "@platform/design-system";
+import { Badge, cn, emptyStateClassName } from "@platform/ui-kit";
 
 /** LTR-isolated value display for deeds, dates, phones, etc. */
 export const ltrValueClass = "inline [direction:ltr] [unicode-bidi:isolate]";
@@ -218,39 +218,6 @@ export function ProgressBar({
         />
       </div>
     </div>
-  );
-}
-
-export function DocIconButton({
-  label,
-  danger,
-  disabled,
-  onClick,
-}: {
-  label: string;
-  danger?: boolean;
-  disabled?: boolean;
-  onClick?: () => void;
-}) {
-  return (
-    <button
-      type="button"
-      className={cn(
-        "flex h-[30px] w-[30px] items-center justify-center rounded-[var(--radius-DEFAULT)] border border-border bg-surface p-0 text-sm text-text-2 outline-none transition-colors hover:bg-border hover:text-text",
-        "max-lg:h-11 max-lg:min-w-11 max-lg:gap-1.5 max-lg:px-3 max-lg:w-auto max-lg:text-[12px] max-lg:font-semibold",
-        danger && "text-danger-text",
-        disabled && "cursor-not-allowed opacity-45",
-      )}
-      title={label}
-      aria-label={label}
-      disabled={disabled}
-      onClick={onClick}
-    >
-      <span aria-hidden>
-        {label === "معاينة" ? "👁" : label === "تحميل" ? "⬇" : "🗑"}
-      </span>
-      <span className="hidden max-lg:inline">{label}</span>
-    </button>
   );
 }
 

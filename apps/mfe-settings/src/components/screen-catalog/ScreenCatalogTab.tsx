@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { Badge, Input, PageShellHeader, cn, pageGutterClassName } from "@platform/design-system";
+import { Badge, Input, PageShellHeader, cn, pageGutterClassName } from "@platform/ui-kit";
 import {
   SCREEN_CATALOG_KIND_LABELS,
   SCREEN_CATALOG_STATUS_LABELS,

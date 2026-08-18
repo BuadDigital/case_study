@@ -76,7 +76,7 @@ export function historicalFailuresForProperty(
   );
 }
 
-export function isKeyRelatedFailure(failure: FailureRecord): boolean {
+function isKeyRelatedFailure(failure: FailureRecord): boolean {
   const type = getFailureProblemType(failure.problemTypeId);
   return type?.categoryId === "access";
 }

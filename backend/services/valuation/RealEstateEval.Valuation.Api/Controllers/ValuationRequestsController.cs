@@ -2,13 +2,13 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using RealEstateEval.Application.Abstractions;
 using RealEstateEval.Application.Contracts;
+using RealEstateEval.Shared.Web;
 using RealEstateEval.Shared.Web.Authorization;
 
 namespace RealEstateEval.Valuation.Api.Controllers;
 
 [ApiController]
 [Route("api/valuation-requests")]
-[Route("api/valuation-requests/v1")]
 [Authorize]
 public class ValuationRequestsController : ControllerBase
 {
@@ -58,9 +58,9 @@ public class ValuationRequestsController : ControllerBase
         var (dto, error) = await _service.CreateAsync(request, ct);
         return error switch
         {
-            "valuation_already_open" => Conflict(
-                new { error = "an open valuation request already exists for this property" }),
-            "duplicate_display_id" => Conflict(new { error = "display id already in use" }),
+            "valuation_already_open" => this.ConflictProblem(
+                "an open valuation request already exists for this property"),
+            "duplicate_display_id" => this.ConflictProblem("display id already in use"),
             _ => CreatedAtAction(nameof(Get), new { id = dto!.Id }, dto),
         };
     }
@@ -70,15 +70,12 @@ public class ValuationRequestsController : ControllerBase
     public async Task<ActionResult<ValuationRequestDto>> SubmitReport(Guid id, CancellationToken ct)
     {
         var gates = await _issuanceGates.EvaluateAsync(id, ct);
-        if (gates is null) return NotFound();
+        if (gates is null) return this.NotFoundProblem("طلب التقييم غير موجود.");
         if (!gates.AllowsIssuance)
         {
-            return BadRequest(new
-            {
-                error = "issuance_blocked",
-                message = "تعذّر إصدار التقرير — بوابات الإصدار غير مكتملة",
-                blockingReasons = gates.BlockingReasonsAr,
-            });
+            return this.BadRequestProblem("تعذّر إصدار التقرير — بوابات الإصدار غير مكتملة")
+                .WithProblemExtension("code", "issuance_blocked")
+                .WithProblemExtension("blockingReasons", gates.BlockingReasonsAr);
         }
 
         var (result, error) = await _service.SubmitReportAsync(id, ct);
@@ -99,8 +96,8 @@ public class ValuationRequestsController : ControllerBase
 
         return error switch
         {
-            "not_found" => NotFound(),
-            "already_submitted" => BadRequest(new { error = "report already submitted" }),
+            "not_found" => this.NotFoundProblem("طلب التقييم غير موجود."),
+            "already_submitted" => this.BadRequestProblem("report already submitted"),
             _ => Ok(result),
         };
     }
@@ -125,10 +122,10 @@ public class ValuationRequestsController : ControllerBase
         var (result, error) = await _service.RecordImpedimentAsync(id, request, ct);
         return error switch
         {
-            "not_found" => NotFound(),
-            "already_submitted" => BadRequest(new { error = "report already submitted" }),
-            "already_impeded" => BadRequest(new { error = "impediment already recorded" }),
-            "reason_required" => BadRequest(new { error = "reason is required" }),
+            "not_found" => this.NotFoundProblem("طلب التقييم غير موجود."),
+            "already_submitted" => this.BadRequestProblem("report already submitted"),
+            "already_impeded" => this.BadRequestProblem("impediment already recorded"),
+            "reason_required" => this.BadRequestProblem("reason is required"),
             _ => Ok(result),
         };
     }

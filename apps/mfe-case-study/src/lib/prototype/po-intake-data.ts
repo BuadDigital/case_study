@@ -1,22 +1,17 @@
 /** PO intake wizard — steps and reference lists (from system requirements v1.2). */
 
 import { getCachedOrganizationSla } from "@platform/app-shared/organization/organization-settings-cache";
+import {
+  PropertyListRowStatuses,
+  type PropertyListRowStatus,
+} from "@platform/api-client";
 
-export const PO_INTAKE_FLOW = {
-  flowClass: "reg-flow-po",
-  dept: "قسم دراسة الحالة",
-  title: "استلام أمر عمل جديد",
-} as const;
-
-/** PO label without duplicating prefix (e.g. PO-2025-0001, not PO PO-2025-0001). */
 export function formatPoDisplay(poNumber: string): string {
   const n = poNumber.trim();
   if (!n) return "";
   if (/^PO[-\s]/i.test(n)) return n;
   return `PO-${n}`;
 }
-
-export const PO_INTAKE_STEPS = ["بيانات أمر العمل"] as const;
 
 export const ASSIGNMENT_TYPE_OPTIONS = [
   "تنفيذ",
@@ -205,67 +200,6 @@ export const COURTS_BY_CITY: Record<
   ],
 };
 
-/** 5 classifications — 47 types (requirements). */
-export const PROPERTY_CLASSIFICATIONS: Record<string, string[]> = {
-  أرض: ["سكنية", "تجارية", "صناعية", "زراعية", "مختلطة"],
-  "مبنى مفرد": [
-    "فيلا",
-    "عمارة",
-    "منزل",
-    "بيت شعبي",
-    "قصر",
-    "برج",
-    "مستودع",
-    "مصنع",
-    "ورشة",
-    "فندق",
-    "محطة بنزين",
-    "مزرعة",
-    "شاليه",
-    "منتجع",
-    "عيادة",
-    "مواقف سيارات",
-  ],
-  مجمع: [
-    "سكني",
-    "تجاري",
-    "فلل",
-    "تعليمي",
-    "حكومي",
-    "عيادات",
-    "ترفيهي",
-    "رياضي",
-    "متعدد الاستخدامات",
-  ],
-  "وحدة داخل مبنى": ["شقة سكنية", "محل تجاري", "معرض", "مكتب", "دور"],
-  "مرفق عام": [
-    "مستشفى",
-    "مركز صحي",
-    "مركز شرطة",
-    "استراحة",
-    "قاعة أفراح",
-    "سوق",
-    "مسجد",
-    "مقبرة",
-    "محطة تحلية",
-    "محطة كهرباء",
-    "برج اتصالات",
-    "مطار",
-  ],
-};
-
-export const CLASSIFICATION_OPTIONS = Object.keys(PROPERTY_CLASSIFICATIONS);
-
-export const CITY_OPTIONS = [
-  "مكة المكرمة",
-  "جدة",
-  "الرياض",
-  "الطائف",
-  "المدينة المنورة",
-  "الدمام",
-  "أخرى",
-] as const;
-
 /** Demo deed number — shows incomplete status on the property list. */
 export const INCOMPLETE_CONTACT_MARKER_PHONE = "0500000000";
 
@@ -431,21 +365,6 @@ export function restrictionsPresentLabel(value: string): string {
   );
 }
 
-export function restrictionTypeLabel(value: string): string {
-  const types = parseRestrictionTypes(value);
-  if (types.length === 0) {
-    const v = value.trim().toLowerCase();
-    if (!v) return "";
-    return RESTRICTION_TYPE_OPTIONS.find((o) => o.value === v)?.label ?? v;
-  }
-  return types
-    .map(
-      (t) =>
-        RESTRICTION_TYPE_OPTIONS.find((o) => o.value === t)?.label ?? t,
-    )
-    .join(" · ");
-}
-
 /** Unified display for restrictions + type + other reason. */
 export function formatPropertyRestrictionsLine(
   property: Pick<
@@ -580,111 +499,6 @@ export function clearPropertyBoundaryFields(): Pick<
   };
 }
 
-function formatBoundaryRow(
-  property: Pick<PoPropertyIntake, PropertyBoundaryDescKey | PropertyBoundaryLenKey>,
-  descKey: PropertyBoundaryDescKey,
-  lenKey: PropertyBoundaryLenKey,
-  label: string,
-): string {
-  const desc = property[descKey].trim();
-  const len = property[lenKey].trim();
-  if (!desc && !len) return "";
-  const lenPart = len ? `${len} م` : "";
-  if (desc && lenPart) return `${label}: ${desc} (${lenPart})`;
-  if (desc) return `${label}: ${desc}`;
-  return `${label}: ${lenPart}`;
-}
-
-/** Lengths and dimensions — from boundary fields in bourse data. */
-export function formatPropertyBoundaryDimensions(
-  property: Pick<PoPropertyIntake, PropertyBoundaryDescKey | PropertyBoundaryLenKey>,
-): string {
-  return PROPERTY_BOUNDARY_ROWS.map((row) =>
-    formatBoundaryRow(property, row.descKey, row.lenKey, row.label),
-  )
-    .filter(Boolean)
-    .join(" · ");
-}
-
-/** Land frontages — boundary descriptions when available. */
-export function formatPropertyLandFrontages(
-  property: Pick<PoPropertyIntake, PropertyBoundaryDescKey>,
-): string {
-  return PROPERTY_BOUNDARY_ROWS.map((row) => {
-    const desc = property[row.descKey].trim();
-    return desc ? `${row.label}: ${desc}` : "";
-  })
-    .filter(Boolean)
-    .join(" · ");
-}
-
-/** Plot / plan number. */
-export function formatPropertyPlotPlanNumber(
-  property: Pick<PoPropertyIntake, "plotNumber" | "planNumber">,
-): string {
-  const parts = [
-    property.planNumber.trim()
-      ? `المخطط: ${property.planNumber.trim()}`
-      : "",
-    property.plotNumber.trim()
-      ? `القطعة: ${property.plotNumber.trim()}`
-      : "",
-  ].filter(Boolean);
-  return parts.join(" · ");
-}
-
-type PropertyBoundarySurveyFields = Pick<
-  PoPropertyIntake,
-  | PropertyBoundaryDescKey
-  | PropertyBoundaryLenKey
-  | "boundariesAvailability"
-  | "boundariesExternalDocName"
-  | "bourseDataCompleted"
->;
-
-/** Empty-state label for survey fields on property detail. */
-export function propertySurveyEmptyLabel(
-  property: Pick<PoPropertyIntake, "bourseDataCompleted" | "boundariesAvailability">,
-  field: "dimensions" | "frontages" | "plot",
-): string {
-  if (field === "plot") {
-    return property.bourseDataCompleted
-      ? "لم يُسجّل في البورصة"
-      : "غير محدد";
-  }
-  if (property.boundariesAvailability === "no") return "غير متوفرة";
-  return property.bourseDataCompleted
-    ? "لم تُدخل التفاصيل بعد"
-    : "غير محدد";
-}
-
-/** Lengths and dimensions — hint when boundaries exist without detail entry. */
-export function formatPropertyBoundaryDimensionsDisplay(
-  property: PropertyBoundarySurveyFields,
-): string {
-  const dims = formatPropertyBoundaryDimensions(property);
-  if (dims) return dims;
-  const avail = property.boundariesAvailability.trim();
-  if (avail === "no") return "غير متوفرة";
-  if (avail === "doc" && property.boundariesExternalDocName.trim()) {
-    return `مستند خارجي: ${property.boundariesExternalDocName.trim()}`;
-  }
-  if (avail) return `حسب «${boundariesAvailabilityLabel(avail)}»`;
-  return "";
-}
-
-/** Land frontages — hint when boundaries exist without descriptions. */
-export function formatPropertyLandFrontagesDisplay(
-  property: PropertyBoundarySurveyFields,
-): string {
-  const frontages = formatPropertyLandFrontages(property);
-  if (frontages) return frontages;
-  const avail = property.boundariesAvailability.trim();
-  if (avail === "no") return "غير متوفرة";
-  if (avail) return `حسب «${boundariesAvailabilityLabel(avail)}»`;
-  return "";
-}
-
 /** Approximate map link from city and district (until a precise site URL is provided). */
 export function approximatePropertyMapSearchUrl(
   property: Pick<PoPropertyIntake, "city" | "district">,
@@ -783,22 +597,17 @@ export function buildPropertyDescriptionLine(
 }
 
 /** Case Study.html PSTATUS labels for the property hero. */
-export type PropertyUiStatus =
-  | "new"
-  | "progress"
-  | "done"
-  | "fail"
-  | "incomplete";
+export type PropertyUiStatus = PropertyListRowStatus;
 
 export function propertyUiStatusLabel(status: PropertyUiStatus): string {
   switch (status) {
-    case "progress":
+    case PropertyListRowStatuses.Progress:
       return "قيد العمل";
-    case "done":
+    case PropertyListRowStatuses.Done:
       return "مكتمل";
-    case "fail":
+    case PropertyListRowStatuses.Fail:
       return "متعذر";
-    case "incomplete":
+    case PropertyListRowStatuses.Incomplete:
       return "ناقص";
     default:
       return "جديد";
@@ -808,17 +617,14 @@ export function propertyUiStatusLabel(status: PropertyUiStatus): string {
 export function propertyUiStatusTone(
   status: PropertyUiStatus,
 ): "teal" | "amber" | "red" | "gray" {
-  if (status === "done") return "teal";
-  if (status === "fail") return "red";
-  if (status === "progress" || status === "incomplete") return "amber";
+  if (status === PropertyListRowStatuses.Done) return "teal";
+  if (status === PropertyListRowStatuses.Fail) return "red";
+  if (
+    status === PropertyListRowStatuses.Progress ||
+    status === PropertyListRowStatuses.Incomplete
+  )
+    return "amber";
   return "gray";
-}
-
-/** @deprecated use approximatePropertyMapSearchUrl */
-export function propertyLocationMapUrl(
-  property: Pick<PoPropertyIntake, "city" | "district">,
-): string | null {
-  return approximatePropertyMapSearchUrl(property);
 }
 
 /** Ownership status — derived temporarily until a dedicated API field exists. */
@@ -1192,11 +998,4 @@ export function formatDateAr(iso: string): string {
   const mm = String(parsed.getMonth() + 1).padStart(2, "0");
   const y = parsed.getFullYear();
   return `${dd}/${mm}/${y}`;
-}
-
-export function assignmentTypeBadgeClass(type: string): string {
-  if (type === "تنفيذ") return "b-survey";
-  if (type === "تركات") return "b-prog";
-  if (type === "قطاع خاص") return "b-key";
-  return "b-cancel";
 }

@@ -1,7 +1,6 @@
 import { shouldUseJeddahDefaultCoords } from "@engineering-office/mfe/lib/jeddah-default-coords";
 import {
   invalidControlClass,
-  resolveAllErrorMessages,
   resolveFirstErrorMessage,
   scheduleScrollToFormField,
   scrollToFormField,
@@ -216,15 +215,6 @@ export function firstInspectorWorkspaceError(
   errors: InspectorWorkspaceFieldErrors,
 ): string | null {
   return resolveFirstErrorMessage(
-    errors as Record<string, unknown>,
-    INSPECTOR_ERROR_KEYS,
-  );
-}
-
-export function allInspectorWorkspaceErrors(
-  errors: InspectorWorkspaceFieldErrors,
-): string[] {
-  return resolveAllErrorMessages(
     errors as Record<string, unknown>,
     INSPECTOR_ERROR_KEYS,
   );

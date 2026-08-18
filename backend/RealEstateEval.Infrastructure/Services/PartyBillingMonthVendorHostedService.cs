@@ -1,6 +1,7 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
+using RealEstateEval.Application;
 using RealEstateEval.Application.Abstractions;
 
 namespace RealEstateEval.Infrastructure.Services;
@@ -14,11 +15,15 @@ public sealed class PartyBillingMonthVendorHostedService : BackgroundService
     private static readonly TimeSpan Interval = TimeSpan.FromHours(6);
     private readonly IServiceScopeFactory _scopeFactory;
     private readonly ILogger<PartyBillingMonthVendorHostedService> _logger;
+    private readonly TimeProvider _time;
 
     public PartyBillingMonthVendorHostedService(
         IServiceScopeFactory scopeFactory,
-        ILogger<PartyBillingMonthVendorHostedService> logger)
+        ILogger<PartyBillingMonthVendorHostedService> logger,
+        TimeProvider? time = null)
     {
+        _time = time ?? TimeProvider.System;
+
         _scopeFactory = scopeFactory;
         _logger = logger;
     }
@@ -38,7 +43,7 @@ public sealed class PartyBillingMonthVendorHostedService : BackgroundService
         {
             try
             {
-                var day = DateTime.UtcNow.Day;
+                var day = _time.UtcNow().Day;
                 if (day is >= 1 and <= 3)
                 {
                     using var scope = _scopeFactory.CreateScope();

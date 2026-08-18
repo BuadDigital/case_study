@@ -1,7 +1,8 @@
 "use client";
 
 import type { MouseEvent, ReactNode } from "react";
-import { StatusPill, cn, type StatusPillStyle } from "@platform/design-system";
+import { StatusPill, cn, type StatusPillStyle } from "@platform/ui-kit";
+import { PropertyListRowStatuses } from "@platform/api-client";
 
 /**
  * Case Study.html `renderProperties` primitives
@@ -27,32 +28,32 @@ export function propertyWorkflowStatusStyle(
   status: string,
 ): StatusPillStyle & { label: string } {
   switch (status) {
-    case "done":
+    case PropertyListRowStatuses.Done:
       return { label: "مكتمل", base: "#3f8f5f", fg: "#2f7a4d" };
-    case "fail":
+    case PropertyListRowStatuses.Fail:
     case "removed":
       return {
         label: status === "removed" ? "محذوف" : "متعذر",
         base: "#d9694f",
         fg: "#c0553d",
       };
-    case "progress":
+    case PropertyListRowStatuses.Progress:
     case "under_study":
     case "review":
-    case "incomplete":
+    case PropertyListRowStatuses.Incomplete:
       return {
         label:
           status === "under_study"
             ? "قيد الدراسة"
             : status === "review"
               ? "قيد المراجعة"
-              : status === "incomplete"
+              : status === PropertyListRowStatuses.Incomplete
                 ? "ناقص"
                 : "قيد العمل",
         base: "#a4906f",
         fg: "#8c7857",
       };
-    case "new":
+    case PropertyListRowStatuses.New:
     case "pending":
     default:
       return {

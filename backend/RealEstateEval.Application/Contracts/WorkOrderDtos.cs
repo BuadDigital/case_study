@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using RealEstateEval.Domain;
 
 namespace RealEstateEval.Application.Contracts;
 
@@ -224,10 +225,10 @@ public class PropertyListRowDto
     public string Area { get; set; } = "";
     public string Type { get; set; } = "";
     public bool Key { get; set; }
-    public string Survey { get; set; } = "new";
-    public string Val { get; set; } = "new";
-    public string Study { get; set; } = "new";
-    public string Status { get; set; } = "new";
+    public string Survey { get; set; } = PropertyListRowStatuses.New;
+    public string Val { get; set; } = PropertyListRowStatuses.New;
+    public string Study { get; set; } = PropertyListRowStatuses.New;
+    public string Status { get; set; } = PropertyListRowStatuses.New;
     public string Specialist { get; set; } = "";
 }
 
@@ -247,7 +248,7 @@ public class WorkOrderListItemDto
  /// <summary>Property count from Infath at promulgation.</summary>
     public int ExpectedPropertyCount { get; set; }
     public int CompletedCount { get; set; }
-    public string Status { get; set; } = "progress";
+    public string Status { get; set; } = WorkOrderListStatus.New;
     public string PromulgationDate { get; set; } = "";
     public string ReceivedFromEnfathAt { get; set; } = "";
     public string DueDateAt { get; set; } = "";

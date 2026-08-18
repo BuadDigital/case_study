@@ -115,7 +115,7 @@ public class InspectorFeesController : ControllerBase
             ctx.Department,
             ctx.CanManageAllDepartments);
         return row is null
-            ? BadRequest(new { error = "تعذر حفظ الأتعاب — تحقق من الحالة والحسم والاستبعاد." })
+            ? this.BadRequestProblem("تعذر حفظ الأتعاب — تحقق من الحالة والحسم والاستبعاد.")
             : Ok(row);
     }
 
@@ -142,12 +142,12 @@ public class InspectorFeesController : ControllerBase
             ctx.Department,
             ctx.CanManageAllDepartments);
         if (error is not null)
-            return BadRequest(new { error });
+            return this.BadRequestProblem(error);
         return row is null ? NotFound() : Ok(row);
     }
 
     [HttpPost("batch-transition")]
-    public async Task<ActionResult<BatchInspectorFeeTransitionResult>> BatchTransition(
+    public async Task<ActionResult<BatchInspectorFeeTransitionResponseDto>> BatchTransition(
         [FromBody] BatchInspectorFeeTransitionRequest request,
         CancellationToken ct)
     {
@@ -173,12 +173,7 @@ public class InspectorFeesController : ControllerBase
     public ActionResult CreateDisbursementBatch([FromBody] CreateDisbursementBatchRequest? request)
     {
  //path retired — party fees bill through statements.
-        return StatusCode(
-            StatusCodes.Status410Gone,
-            new
-            {
-                error = "إنشاء طلب صرف متوقف — البنود الجاهزة تُفوتر عبر كشف الأطراف.",
-            });
+        return this.GoneProblem("إنشاء طلب صرف متوقف — البنود الجاهزة تُفوتر عبر كشف الأطراف.");
     }
 
     private static bool IsAuthorizedForAction(string action, ActorContext ctx)

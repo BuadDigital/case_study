@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import { cn } from "@platform/design-system";
+import { cn } from "@platform/ui-kit";
 
 /** Case Study.html `lbl` — field caption on mobile inspect form. */
 export function MobileFieldLabel({

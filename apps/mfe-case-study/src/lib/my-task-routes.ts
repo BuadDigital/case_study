@@ -50,24 +50,9 @@ export function activeSurveyEntryPath(taskId: string): string {
   return `/active-survey/${encodeURIComponent(taskId)}/entry`;
 }
 
-export function isActiveSurveyWorkspacePath(pathname: string): boolean {
-  const parts = pathname.split("/").filter(Boolean);
-  return parts[0] === "active-survey" && parts.length >= 2 && parts[2] !== "entry";
-}
-
-export function isActiveSurveyEntryPath(pathname: string): boolean {
-  const parts = pathname.split("/").filter(Boolean);
-  return parts[0] === "active-survey" && parts.length >= 3 && parts[2] === "entry";
-}
-
 /** Full-page workspace for المقيم العقاري (تقييم العقار). */
 export function propertyAppraisalWorkspacePath(taskId: string): string {
   return `/property-appraisal/${encodeURIComponent(taskId)}`;
-}
-
-export function isPropertyAppraisalWorkspacePath(pathname: string): boolean {
-  const parts = pathname.split("/").filter(Boolean);
-  return parts[0] === "property-appraisal" && parts.length >= 2;
 }
 
 /** Full-page workspace for المعاين الميداني — المسار الرسمي تحت المعاملات النشطة. */
@@ -75,19 +60,9 @@ export function activeInspectionWorkspacePath(taskId: string): string {
   return `/active-inspection/${encodeURIComponent(taskId)}`;
 }
 
-export function isActiveInspectionWorkspacePath(pathname: string): boolean {
-  const parts = pathname.split("/").filter(Boolean);
-  return parts[0] === "active-inspection" && parts.length >= 2;
-}
-
 /** Full-page workspace for المعاين الميداني (معاينة العقار — شاشة يتيمة). */
 export function propertyInspectionWorkspacePath(taskId: string): string {
   return `/property-inspection/${encodeURIComponent(taskId)}`;
-}
-
-export function isPropertyInspectionWorkspacePath(pathname: string): boolean {
-  const parts = pathname.split("/").filter(Boolean);
-  return parts[0] === "property-inspection" && parts.length >= 2;
 }
 
 /** Resolve full-page inspection workspace from party task page id. */
@@ -98,11 +73,6 @@ export function fieldInspectionWorkspacePath(
   return pageId === "property-inspection"
     ? propertyInspectionWorkspacePath(taskId)
     : activeInspectionWorkspacePath(taskId);
-}
-
-/** Operations tasks hub (court visits / reviewer work). */
-export function operationsTasksPath(): string {
-  return "/operations-tasks";
 }
 
 export function operationsTaskPath(taskId: string): string {

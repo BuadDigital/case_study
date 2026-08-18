@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { InlineLoadingSkeleton, Spinner, cn, useToast } from "@platform/design-system";
+import { InlineLoadingSkeleton, Spinner, cn, useToast } from "@platform/ui-kit";
 import type { PartyTaskPageDef } from "@platform/app-shared/prototype/party-task-pages";
 import type { WorkflowTask } from "@case-study/mfe";
 import { activeSurveyEntryPath } from "@case-study/mfe/lib/my-task-routes";

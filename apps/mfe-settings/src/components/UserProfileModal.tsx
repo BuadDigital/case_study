@@ -10,7 +10,7 @@ import {
   ModalHeader,
   ModalOverlay,
   ModalTitle,
-} from "@platform/design-system";
+} from "@platform/ui-kit";
 import { UserProfileContent } from "./UserProfileContent";
 
 export function UserProfileModal({

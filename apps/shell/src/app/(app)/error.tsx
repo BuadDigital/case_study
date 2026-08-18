@@ -1,6 +1,6 @@
 "use client";
 
-import { Button, Note } from "@platform/design-system";
+import { Button, Note } from "@platform/ui-kit";
 
 export default function AppError({
   error,

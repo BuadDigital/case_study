@@ -27,8 +27,8 @@
       "@platform/app-shared/*": ["./app-shared/src/*"],
       "@platform/auth-client": ["./auth-client/src/index.ts"],
       "@platform/auth-client/*": ["./auth-client/src/*"],
-      "@platform/design-system": ["./design-system/src/index.ts"],
-      "@platform/design-system/*": ["./design-system/src/*"],
+      "@platform/ui-kit": ["./ui-kit/src/index.ts"],
+      "@platform/ui-kit/*": ["./ui-kit/src/*"],
       "@platform/types": ["./types/src/index.ts"],
       "@platform/types/*": ["./types/src/*"]
     }

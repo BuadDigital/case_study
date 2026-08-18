@@ -1,7 +1,7 @@
 import { getApiBase, repositoryFetch as fetch } from "@platform/api-client";
 import { getAuthSession } from "@platform/auth-client";
 
-export type SystemResetResult = {
+type SystemResetResult = {
   workOrdersDeleted: number;
   workflowTasksDeleted: number;
   caseStudyFormsDeleted: number;

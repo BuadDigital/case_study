@@ -1,26 +1,52 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
+using RealEstateEval.Application;
 using RealEstateEval.Application.Abstractions;
 using RealEstateEval.Application.Contracts;
 using RealEstateEval.Application.Rules;
 using RealEstateEval.Domain;
 using RealEstateEval.Infrastructure.Data;
+using RealEstateEval.Infrastructure.Data.Contexts;
 
 namespace RealEstateEval.Infrastructure.Services;
 
 public sealed class WorkOrderPropertyCommands : IWorkOrderPropertyCommands
 {
-    private readonly ApplicationDbContext _db;
+    private readonly CaseStudyDbContext _db;
+    private readonly IFailureLookup _failureLookup;
+    private readonly IUserLabelLookup _labels;
     private readonly IWorkOrderLoader _loader;
     private readonly IPropertyTimelineService _timeline;
     private readonly IFailureService _failures;
+    private readonly TimeProvider _time;
 
     public WorkOrderPropertyCommands(
-        ApplicationDbContext db,
+        CaseStudyDbContext db,
+        FailuresDbContext failuresDb,
+        IdentityDbContext identity,
         IWorkOrderLoader loader,
         IPropertyTimelineService timeline,
-        IFailureService failures)
+        IFailureService failures,
+        TimeProvider? time = null)
+        : this(db, new FailureLookup(failuresDb), new UserLabelLookup(identity), loader, timeline, failures, time)
     {
+    }
+
+    [ActivatorUtilitiesConstructor]
+    public WorkOrderPropertyCommands(
+        CaseStudyDbContext db,
+        IFailureLookup failureLookup,
+        IUserLabelLookup labels,
+        IWorkOrderLoader loader,
+        IPropertyTimelineService timeline,
+        IFailureService failures,
+        TimeProvider? time = null)
+    {
+        _time = time ?? TimeProvider.System;
+
         _db = db;
+        _failureLookup = failureLookup;
+        _labels = labels;
         _loader = loader;
         _timeline = timeline;
         _failures = failures;
@@ -104,7 +130,7 @@ public sealed class WorkOrderPropertyCommands : IWorkOrderPropertyCommands
             ApplyPropertyEnfath(existing, property);
             ApplyPropertyBourse(existing, property);
             existing.BourseDataCompleted = true;
-            existing.BourseCompletedAtUtc = DateTime.UtcNow;
+            existing.BourseCompletedAtUtc = _time.UtcNow();
         }
         else
         {
@@ -270,7 +296,7 @@ public sealed class WorkOrderPropertyCommands : IWorkOrderPropertyCommands
         existing.WestBoundaryLengthM = IWorkOrderLoader.NormalizeOptionalText(request.WestBoundaryLengthM);
         existing.WestBoundaryType = NormalizeBoundaryType(request.WestBoundaryType);
         existing.WestFacadeFinishing = IWorkOrderLoader.NormalizeOptionalText(request.WestFacadeFinishing);
-        var bourseNow = DateTime.UtcNow;
+        var bourseNow = _time.UtcNow();
         var boundariesUnavailable = DocumentaryWorkflowRules.BoundariesUnavailable(
             existing.BoundariesAvailability);
         if (!boundariesUnavailable)
@@ -283,8 +309,7 @@ public sealed class WorkOrderPropertyCommands : IWorkOrderPropertyCommands
 
         if (boundariesUnavailable)
         {
-            var specialist = await PersonLabelResolver.ResolveAsync(
-                _db,
+            var specialist = await _labels.ResolveAsync(
                 entity.AssignmentSpecialist ?? DocumentaryWorkflowRules.SystemRaiserRole,
                 cancellationToken);
             await _failures.EnsureSystemInternalFailureAsync(
@@ -337,7 +362,7 @@ public sealed class WorkOrderPropertyCommands : IWorkOrderPropertyCommands
 
         prop.IsRemoved = true;
         prop.RemovalReason = trimmedReason;
-        prop.RemovedAtUtc = DateTime.UtcNow;
+        prop.RemovedAtUtc = _time.UtcNow();
         entity.ExpectedPropertyCount = Math.Max(1, entity.ExpectedPropertyCount - 1);
 
         await _db.SaveChangesAsync(cancellationToken);
@@ -583,8 +608,7 @@ public sealed class WorkOrderPropertyCommands : IWorkOrderPropertyCommands
         string? previousLocationMapUrl,
         CancellationToken cancellationToken)
     {
-        var specialist = await PersonLabelResolver.ResolveAsync(
-            _db,
+            var specialist = await _labels.ResolveAsync(
             workOrder.AssignmentSpecialist ?? DocumentaryWorkflowRules.SystemRaiserRole,
             cancellationToken);
         var propertyId = property.Id.ToString();
@@ -636,15 +660,12 @@ public sealed class WorkOrderPropertyCommands : IWorkOrderPropertyCommands
         string propertyId,
         CancellationToken cancellationToken)
     {
-        var active = await _db.PropertyFailures
-            .Where(f =>
-                f.PoNumber == poNumber
-                && f.PropertyId == propertyId
-                && f.ProblemTypeId == "unknown-location"
-                && f.RaisedByRole == DocumentaryWorkflowRules.SystemRaiserRole
-                && PropertyFailureStatus.Active.Contains(f.Status))
-            .Select(f => f.Id)
-            .ToListAsync(cancellationToken);
+        var active = await _failureLookup.ListActiveIdsByProblemAsync(
+            poNumber,
+            propertyId,
+            "unknown-location",
+            DocumentaryWorkflowRules.SystemRaiserRole,
+            cancellationToken);
 
         foreach (var id in active)
         {

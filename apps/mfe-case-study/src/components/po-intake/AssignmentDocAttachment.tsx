@@ -24,7 +24,7 @@ import {
 
 } from "../../lib/prototype/assignment-doc-attachments";
 
-import { Button, cn } from "@platform/design-system";
+import { Button, cn } from "@platform/ui-kit";
 
 
 

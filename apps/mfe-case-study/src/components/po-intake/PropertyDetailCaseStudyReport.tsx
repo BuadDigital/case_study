@@ -12,7 +12,7 @@ import {
   ModalOverlay,
   ModalTitle,
   useToast,
-} from "@platform/design-system";
+} from "@platform/ui-kit";
 import { CaseStudyReportDocument } from "../case-study/CaseStudyReportDocument";
 import { buildCaseStudyReportModel } from "../../lib/prototype/case-study-report-model";
 import type { CaseStudyReportSection } from "../../lib/prototype/case-study-report-model";

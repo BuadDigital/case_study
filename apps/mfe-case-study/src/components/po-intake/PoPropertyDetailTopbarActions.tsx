@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useMemo } from "react";
-import { Button, cn, useToast } from "@platform/design-system";
+import { Button, cn, useToast } from "@platform/ui-kit";
 import { usePrototype } from "@platform/app-shared/contexts/PrototypeContext";
 import { canEditProperty } from "../../lib/prototype/po-roles";
 import {

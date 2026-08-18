@@ -6,7 +6,7 @@ import {
   computeForcedSaleValue,
   parseEvaluatorAmount,
 } from "../../lib/evaluator/value-estimation";
-import { cn } from "@platform/design-system";
+import { cn } from "@platform/ui-kit";
 import { evaluatorInvalidControlClass } from "../../lib/evaluator/evaluator-validation";
 
 type ValueEstimationSectionProps = {

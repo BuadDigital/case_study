@@ -154,7 +154,7 @@ public sealed class ControllerBodyPostgresTests : IAsyncLifetime
     }
 
     [DockerFact]
-    public async Task Workflow_and_operations_task_lists_execute_against_postgres()
+    public async Task Workflow_task_list_executes_against_postgres()
     {
         using var factory = Factory<CaseStudyMarker>("CaseStudy");
         using var client = factory.CreateClient();
@@ -162,6 +162,13 @@ public sealed class ControllerBodyPostgresTests : IAsyncLifetime
         using var workflowRequest = AuthorizedGet("/api/workflow-tasks");
         var workflow = await client.SendAsync(workflowRequest);
         Assert.Equal(HttpStatusCode.OK, workflow.StatusCode);
+    }
+
+    [DockerFact]
+    public async Task Operations_task_list_executes_against_postgres()
+    {
+        using var factory = Factory<OperationsMarker>("Operations");
+        using var client = factory.CreateClient();
 
         using var operationsRequest = AuthorizedGet("/api/operations-tasks");
         var operations = await client.SendAsync(operationsRequest);
@@ -169,7 +176,7 @@ public sealed class ControllerBodyPostgresTests : IAsyncLifetime
     }
 
     [DockerFact]
-    public async Task Case_study_work_order_list_and_ops_create_validation_execute()
+    public async Task Case_study_work_order_list_executes_against_postgres()
     {
         using var factory = Factory<CaseStudyMarker>("CaseStudy");
         using var client = factory.CreateClient();
@@ -177,6 +184,13 @@ public sealed class ControllerBodyPostgresTests : IAsyncLifetime
         using var listRequest = AuthorizedGet("/api/work-orders?page=1&pageSize=20");
         var list = await client.SendAsync(listRequest);
         Assert.Equal(HttpStatusCode.OK, list.StatusCode);
+    }
+
+    [DockerFact]
+    public async Task Operations_create_task_validation_executes()
+    {
+        using var factory = Factory<OperationsMarker>("Operations");
+        using var client = factory.CreateClient();
 
         using var createRequest = AuthorizedPost("/api/operations-tasks", new CreateOperationsTaskRequest());
         var create = await client.SendAsync(createRequest);
@@ -247,18 +261,19 @@ internal sealed class RealDatabaseApiFactory<TMarker> : WebApplicationFactory<TM
         "container-test-signing-key-that-is-at-least-sixty-four-characters-long-1234567890";
 
     private readonly string _connectionString;
-    private readonly string _serviceName;
 
     public RealDatabaseApiFactory(string connectionString, string serviceName)
     {
+        ArgumentException.ThrowIfNullOrWhiteSpace(serviceName);
         _connectionString = connectionString;
-        _serviceName = serviceName;
     }
 
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
         builder.UseEnvironment("Production");
-        builder.UseSetting($"ConnectionStrings:{_serviceName}", _connectionString);
+        BoundedContextConnections.ApplyDedicatedSettings(
+            (key, value) => builder.UseSetting(key, value),
+            _connectionString);
         builder.UseSetting("Jwt:SigningKey", TestSigningKey);
         builder.UseSetting("Redis:Enabled", "false");
         builder.UseSetting("RabbitMQ:Enabled", "false");

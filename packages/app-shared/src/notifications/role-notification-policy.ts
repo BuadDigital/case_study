@@ -5,7 +5,7 @@ import {
 } from "../prototype/party-workflow-events";
 import type { AppNotification } from "./notification-store";
 
-export const ENGINEERING_OFFICE_ROLE = "engineering-office";
+const ENGINEERING_OFFICE_ROLE = "engineering-office";
 
 export function isEngineeringOfficeRole(
   role: string | null | undefined,
@@ -27,7 +27,7 @@ function isEngineeringSurveyLifecycleEvent(
 }
 
 /** مكتب الهندسي — يسمح فقط بإشعارات الرفع المساحي وإسناد المهام الخاصة به. */
-export function isAllowedEngineeringOfficeNotification(
+function isAllowedEngineeringOfficeNotification(
   sourceEvent: string | undefined,
 ): boolean {
   return (

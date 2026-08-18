@@ -51,6 +51,9 @@ public interface IOperationsTaskService
  /// <summary>Daily creator+assignee reminders for pauses past the one-workday limit.</summary>
     Task<int> ProcessOverLimitPauseRemindersAsync(CancellationToken cancellationToken = default);
 
+ /// <summary>Idempotent court-visit fee charges for completed cooperator visits missing a stamp.</summary>
+    Task<int> BackfillMissingCourtVisitChargesAsync(CancellationToken cancellationToken = default);
+
     Task<(OperationsTaskDto? Result, string? Error)> AddCommentAsync(
         Guid id,
         AddOperationsTaskCommentRequest request,

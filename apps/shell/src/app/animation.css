@@ -8,13 +8,6 @@
   }
 }
 
-@keyframes login-pop {
-  from {
-    transform: scale(0.5);
-    opacity: 0;
-  }
-}
-
 /* Fee pricing panel enter */
 @keyframes pricing-panel-in {
   from {

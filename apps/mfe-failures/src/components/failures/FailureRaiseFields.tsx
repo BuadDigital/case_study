@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo } from "react";
-import { Select } from "@platform/design-system";
+import { Select } from "@platform/ui-kit";
 import { usePrototype } from "@platform/app-shared/contexts/PrototypeContext";
 import { filterFailureCategoriesForRole, filterFailureProblemTypesForRole } from "../../lib/failure-category-role-visibility";
 import {

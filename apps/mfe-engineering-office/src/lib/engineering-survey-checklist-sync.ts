@@ -1,16 +1,12 @@
 import type { CaseStudyFormAnswer } from "@case-study/mfe";
-import {
-  CASE_STUDY_SURVEY_QUESTIONS,
-  caseStudyAnswerKey,
-} from "@case-study/mfe/lib/prototype/case-study-form-data";
-import {
-  ENGINEERING_SURVEY_CHECKLIST_ITEMS,
-  type ChecklistAnswer,
-  type EngineeringSurveyChecklistRow,
+import { caseStudyAnswerKey } from "@case-study/mfe/lib/prototype/case-study-form-data";
+import type {
+  ChecklistAnswer,
+  EngineeringSurveyChecklistRow,
 } from "./engineering-survey-data";
 
 /** Overlapping questions: checklist (above) ↔ الرفع المساحي والطبيعة (below). */
-export type ChecklistCaseStudyLink = {
+type ChecklistCaseStudyLink = {
   checklistIndex: number;
   caseStudyKey: string;
   /** checklist «نعم» → case study column A */
@@ -22,7 +18,7 @@ function surveyKey(index: number): string {
 }
 
 /** Shared wording between the 13-item checklist and survey step questions. */
-export const CHECKLIST_CASE_STUDY_LINKS: ChecklistCaseStudyLink[] = [
+const CHECKLIST_CASE_STUDY_LINKS: ChecklistCaseStudyLink[] = [
   {
     checklistIndex: 0,
     caseStudyKey: surveyKey(0),
@@ -55,7 +51,7 @@ export const CHECKLIST_CASE_STUDY_LINKS: ChecklistCaseStudyLink[] = [
   },
 ];
 
-export function checklistAnswerToCaseStudy(
+function checklistAnswerToCaseStudy(
   answer: ChecklistAnswer,
   yesMapsToA: boolean,
 ): CaseStudyFormAnswer | null {
@@ -102,27 +98,4 @@ export function caseStudyAnswersChanged(
     if (before[link.caseStudyKey] !== after[link.caseStudyKey]) return true;
   }
   return false;
-}
-
-/** Human-readable pairs for debugging / docs. */
-export function overlappingChecklistCaseStudyPairs(): {
-  checklist: string;
-  caseStudy: string;
-}[] {
-  const seen = new Set<string>();
-  const pairs: { checklist: string; caseStudy: string }[] = [];
-
-  for (const link of CHECKLIST_CASE_STUDY_LINKS) {
-    const dedupe = `${link.checklistIndex}:${link.caseStudyKey}`;
-    if (seen.has(dedupe)) continue;
-    seen.add(dedupe);
-
-    const surveyIndex = Number(link.caseStudyKey.split("_")[1]);
-    pairs.push({
-      checklist: ENGINEERING_SURVEY_CHECKLIST_ITEMS[link.checklistIndex] ?? "",
-      caseStudy: CASE_STUDY_SURVEY_QUESTIONS[surveyIndex] ?? "",
-    });
-  }
-
-  return pairs;
 }

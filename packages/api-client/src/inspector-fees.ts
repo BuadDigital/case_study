@@ -149,21 +149,14 @@ export type BatchInspectorFeeTransitionRequest = {
   disbursementBatchId?: string;
 };
 
-export type BatchInspectorFeeTransitionResult = {
+export type BatchInspectorFeeTransitionResponseDto = {
   succeeded: InspectorFeeRowDto[];
   failed: { workflowTaskId: string; error: string }[];
   disbursementBatchId?: string | null;
 };
 
-export type CreateDisbursementBatchRequest = {
-  workflowTaskIds: string[];
-};
-
-export type CreateDisbursementBatchResult = {
-  disbursementBatchId: string;
-  rows: InspectorFeeRowDto[];
-  failed: { workflowTaskId: string; error: string }[];
-};
+/** @deprecated Use BatchInspectorFeeTransitionResponseDto */
+export type BatchInspectorFeeTransitionResult = BatchInspectorFeeTransitionResponseDto;
 
 export type InspectorFeeAuditEntryDto = {
   id: string;
@@ -382,7 +375,7 @@ export async function transitionInspectorFee(
 export async function batchTransitionInspectorFees(
   config: InspectorFeesApiConfig,
   body: BatchInspectorFeeTransitionRequest,
-): Promise<ApiOk<BatchInspectorFeeTransitionResult> | ApiErr> {
+): Promise<ApiOk<BatchInspectorFeeTransitionResponseDto> | ApiErr> {
   const base = config.baseUrl ?? getApiBase();
   try {
     const res = await fetch(`${base}/api/inspector-fees/batch-transition`, {
@@ -417,54 +410,6 @@ export async function batchTransitionInspectorFees(
         disbursementBatchId: (raw.disbursementBatchId ??
           raw.DisbursementBatchId ??
           null) as string | null,
-      },
-    };
-  } catch {
-    return { ok: false, kind: "network" };
-  }
-}
-
-/** @deprecated— endpoint returns 410; use party billing statements. */
-export async function createDisbursementBatch(
-  config: InspectorFeesApiConfig,
-  body: CreateDisbursementBatchRequest,
-): Promise<ApiOk<CreateDisbursementBatchResult> | ApiErr> {
-  const base = config.baseUrl ?? getApiBase();
-  try {
-    const res = await fetch(`${base}/api/inspector-fees/disbursement-batch`, {
-      method: "POST",
-      headers: headers(config.token),
-      body: JSON.stringify(body),
-    });
-    if (res.status === 401) return { ok: false, kind: "auth" };
-    if (res.status === 403) return { ok: false, kind: "auth" };
-    if (res.status === 410) {
-      return {
-        ok: false,
-        kind: "validation",
-        message: "إنشاء طلب صرف متوقف — البنود الجاهزة تُفوتر عبر كشف الأطراف.",
-      };
-    }
-    if (!res.ok) return { ok: false, kind: "server" };
-    const raw = (await res.json()) as Record<string, unknown>;
-    const rowsRaw = (raw.rows ?? raw.Rows ?? []) as Record<string, unknown>[];
-    const failedRaw = (raw.failed ?? raw.Failed ?? []) as Record<
-      string,
-      unknown
-    >[];
-    return {
-      ok: true,
-      data: {
-        disbursementBatchId: String(
-          raw.disbursementBatchId ?? raw.DisbursementBatchId ?? "",
-        ),
-        rows: rowsRaw.map(normalizeRow),
-        failed: failedRaw.map((item) => ({
-          workflowTaskId: String(
-            item.workflowTaskId ?? item.WorkflowTaskId ?? "",
-          ),
-          error: String(item.error ?? item.Error ?? ""),
-        })),
       },
     };
   } catch {

@@ -24,7 +24,7 @@ import {
   ModalHeader,
   ModalOverlay,
   ModalTitle,
-} from "@platform/design-system";
+} from "@platform/ui-kit";
 import { regionsApiConfig } from "@settings/mfe/lib/settings-api-config";
 import type { PoPropertyIntake } from "../../lib/prototype/po-intake-data";
 

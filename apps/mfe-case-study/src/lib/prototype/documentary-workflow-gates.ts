@@ -2,8 +2,6 @@ import type { RoleId } from "@platform/types";
 import { isSuperAdmin } from "@platform/app-shared/prototype/prototype-role-access";
 import type { WorkflowTask } from "./tasks-storage";
 
-export const DOCUMENTARY_SYSTEM_RAISER = "النظام";
-
 export function roleBypassesDocumentaryGates(role: RoleId): boolean {
   return isSuperAdmin(role) || role === "section-supervisor";
 }
@@ -24,17 +22,6 @@ export function isInformalSettlement(
   plotNumber: string | null | undefined,
 ): boolean {
   return !String(planNumber ?? "").trim() && !String(plotNumber ?? "").trim();
-}
-
-export function hasLocationMapUrl(url: string | null | undefined): boolean {
-  const value = String(url ?? "").trim();
-  if (!value) return false;
-  try {
-    const parsed = new URL(value);
-    return parsed.protocol === "http:" || parsed.protocol === "https:";
-  } catch {
-    return false;
-  }
 }
 
 export function hasAnyPartyPhone(

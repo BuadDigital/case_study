@@ -196,6 +196,13 @@ public class PropertyCourtAccessDto
     public DateTime UpdatedAtUtc { get; init; }
 }
 
+public class KeyEnvelopeEntitlementDto
+{
+    public Guid PropertyId { get; init; }
+    public Guid EnvelopeId { get; init; }
+    public IReadOnlyList<string> AttachmentIds { get; init; } = [];
+}
+
 public class UpsertPropertyCourtAccessRequest
 {
     [Required]

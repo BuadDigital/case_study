@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using RealEstateEval.Application;
 using RealEstateEval.Application.Abstractions;
 using RealEstateEval.Application.Contracts;
 using RealEstateEval.Domain;
@@ -14,12 +15,16 @@ public sealed class ValuationRequestService : IValuationRequestService
     private readonly ValuationDbContext _db;
     private readonly IValuationEventPublisher _events;
     private readonly IPropertyPoNumberLookup _poNumbers;
+    private readonly TimeProvider _time;
 
     public ValuationRequestService(
         ValuationDbContext db,
         IValuationEventPublisher events,
-        IPropertyPoNumberLookup poNumbers)
+        IPropertyPoNumberLookup poNumbers,
+        TimeProvider? time = null)
     {
+        _time = time ?? TimeProvider.System;
+
         _db = db;
         _events = events;
         _poNumbers = poNumbers;
@@ -76,7 +81,7 @@ public sealed class ValuationRequestService : IValuationRequestService
             request.Type,
             request.Appraiser,
             request.Date,
-            DateTime.UtcNow,
+            _time.UtcNow(),
             ValuationRequestStatuses.Parse(request.Status));
         _db.ValuationRequests.Add(row);
 
@@ -108,7 +113,7 @@ public sealed class ValuationRequestService : IValuationRequestService
     {
         var row = await _db.ValuationRequests.FirstOrDefaultAsync(x => x.Id == id, cancellationToken);
         if (row is null) return (null, "not_found");
-        if (row.SubmitReport(DateTime.UtcNow) == ValuationRequestTransition.AlreadySubmitted)
+        if (row.SubmitReport(_time.UtcNow()) == ValuationRequestTransition.AlreadySubmitted)
             return (null, "already_submitted");
 
         await _events.PublishAsync(
@@ -135,7 +140,7 @@ public sealed class ValuationRequestService : IValuationRequestService
         if (string.IsNullOrWhiteSpace(request.Reason) && row.Status == ValuationRequestStatus.Progress)
             return (null, "reason_required");
 
-        switch (row.RecordImpediment(DateTime.UtcNow))
+        switch (row.RecordImpediment(_time.UtcNow()))
         {
             case ValuationRequestTransition.AlreadySubmitted:
                 return (null, "already_submitted");

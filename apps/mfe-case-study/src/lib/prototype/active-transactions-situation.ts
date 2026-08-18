@@ -1,7 +1,5 @@
 const RIYADH_TZ = "Asia/Riyadh";
 
-export const RIYADH_TIME_ZONE = RIYADH_TZ;
-
 function calendarDayInRiyadh(date: Date): string {
   return date.toLocaleDateString("en-CA", { timeZone: RIYADH_TZ });
 }

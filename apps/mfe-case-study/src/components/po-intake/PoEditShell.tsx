@@ -3,7 +3,7 @@
 import type { ReactNode } from "react";
 import { REG_BACK } from "@platform/app-shared/registration/registration-labels";
 import { UNSAVED_CONFIRM_MSG } from "@platform/app-shared/registration/registration-utils";
-import { Button, cn } from "@platform/design-system";
+import { Button, cn } from "@platform/ui-kit";
 
 export function PoEditShell({
   title,

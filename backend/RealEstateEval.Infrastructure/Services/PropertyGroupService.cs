@@ -1,4 +1,6 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
+using RealEstateEval.Application;
 using RealEstateEval.Application.Abstractions;
 using RealEstateEval.Application.Contracts;
 using RealEstateEval.Domain;
@@ -12,12 +14,36 @@ namespace RealEstateEval.Infrastructure.Services;
 /// the confirmation is audited, and the link is reversible with a reason. Work orders
 /// stay administratively independent.
 /// </summary>
-public sealed class PropertyGroupService(
-    CaseStudyDbContext db,
-    PlatformDbContext platformDb,
-    IAuditLogWriter audit) : IPropertyGroupService
+public sealed class PropertyGroupService : IPropertyGroupService
 {
     private const int MaxSuggestions = 10;
+    private readonly CaseStudyDbContext db;
+    private readonly IAuditLogWriter audit;
+    private readonly IAuditLogAppend _auditLog;
+    private readonly TimeProvider _time;
+
+    public PropertyGroupService(
+        CaseStudyDbContext db,
+        PlatformDbContext platformDb,
+        IAuditLogWriter audit,
+        TimeProvider? time = null)
+        : this(db, audit, new PlatformAuditLogAppend(platformDb), time)
+    {
+    }
+
+    [ActivatorUtilitiesConstructor]
+    public PropertyGroupService(
+        CaseStudyDbContext db,
+        IAuditLogWriter audit,
+        IAuditLogAppend auditLog,
+        TimeProvider? time = null)
+    {
+        _time = time ?? TimeProvider.System;
+
+        this.db = db;
+        this.audit = audit;
+        _auditLog = auditLog;
+    }
 
     public async Task<PropertyGroupDto?> GetForPropertyAsync(
         Guid propertyId,
@@ -121,7 +147,7 @@ public sealed class PropertyGroupService(
                 : (null, "العقاران في مجمعين مختلفين — فُكّ أحدهما أولًا بمبرر");
         }
 
-        var now = DateTime.UtcNow;
+        var now = _time.UtcNow();
         var groupId = subjectMember?.GroupId ?? targetMember?.GroupId ?? Guid.Empty;
         if (groupId == Guid.Empty)
         {
@@ -167,15 +193,13 @@ public sealed class PropertyGroupService(
         await db.SaveChangesAsync(cancellationToken);
 
  // التأكيد بشري مسجَّل بالتدقيق ( stage 1).
-        platformDb.AuditLogs.Add(audit.Create(
+        await _auditLog.AppendAsync(audit.Create(
             actor,
             "PROPERTY_GROUP_LINK_CONFIRMED",
             "property_group",
             groupId.ToString("D"),
             null,
-            new { propertyId, targetPropertyId, signals }));
-        await platformDb.SaveChangesAsync(cancellationToken);
-
+            new { propertyId, targetPropertyId, signals }), cancellationToken);
         return (await BuildGroupDtoAsync(groupId, cancellationToken), null);
     }
 
@@ -197,17 +221,16 @@ public sealed class PropertyGroupService(
         member.IsActive = false;
         member.UnlinkReason = reason.Trim();
         member.UnlinkedByUserId = actor;
-        member.UnlinkedAtUtc = DateTime.UtcNow;
+        member.UnlinkedAtUtc = _time.UtcNow();
         await db.SaveChangesAsync(cancellationToken);
 
-        platformDb.AuditLogs.Add(audit.Create(
+        await _auditLog.AppendAsync(audit.Create(
             actor,
             "PROPERTY_GROUP_UNLINKED",
             "property_group",
             member.GroupId.ToString("D"),
             new { propertyId },
-            new { reason = member.UnlinkReason }));
-        await platformDb.SaveChangesAsync(cancellationToken);
+            new { reason = member.UnlinkReason }), cancellationToken);
 
         return (await BuildGroupDtoAsync(member.GroupId, cancellationToken), null);
     }

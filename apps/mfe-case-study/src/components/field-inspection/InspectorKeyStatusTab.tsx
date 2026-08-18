@@ -7,13 +7,17 @@ import {
   getPropertyKeyGate,
   type PropertyKeyGateDto,
 } from "@platform/api-client";
-import { Button, Note, cn } from "@platform/design-system";
+import { Button, Note, cn } from "@platform/ui-kit";
 import { prototypeModulesApiConfig } from "@platform/app-shared/prototype/prototype-modules-api-config";
 import {
   FieldBox,
   FieldsGrid,
   SectionHeader,
 } from "../po-intake/PropertyDetailFields";
+import {
+  keyHandedLabelAr,
+  keysStatusLabelAr,
+} from "../../query/use-property-key-gate-query";
 import type { WorkflowTask } from "../../lib/prototype/tasks-storage";
 
 export type InspectorKeyAvailability = {
@@ -28,21 +32,6 @@ export type InspectorKeyAvailability = {
   pendingHandoffId?: string | null;
   studyHoldStatus?: string;
 };
-
-function keyHandedLabel(value: string): string {
-  if (value === "yes") return "تم التسليم";
-  if (value === "no") return "لم يُسلَّم";
-  if (value === "not_required") return "غير مطلوب";
-  return value || "لم تُحدَّد بعد";
-}
-
-function keysStatusLabel(value: string): string {
-  if (value === "received") return "مستلَمة";
-  if (value === "not_required") return "غير مطلوبة";
-  if (value === "pending") return "بانتظار";
-  if (value === "blocked") return "متعذّر";
-  return value || "لم تُحدَّد بعد";
-}
 
 function mapGate(gate: PropertyKeyGateDto): InspectorKeyAvailability {
   return {
@@ -161,10 +150,10 @@ export function InspectorKeyStatusTab({
     setLocal(availability);
   }, [availability]);
 
-  const handedLabel = keyHandedLabel(
+  const handedLabel = keyHandedLabelAr(
     local.keyHandedToInspector || keyHandedToInspector,
   );
-  const keysLabel = keysStatusLabel(local.keysStatus || keysStatus);
+  const keysLabel = keysStatusLabelAr(local.keysStatus || keysStatus);
   const available = local.keyAvailable || keyAvailable;
   const keyNotOnHand = !vacantLand && !available;
   const status = local.assignmentStatus || assignmentStatus;

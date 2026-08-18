@@ -23,11 +23,11 @@ import {
 } from "@case-study/mfe";
 import type { PoIntakeRecord, WorkflowTask } from "@case-study/mfe";
 import {
+  useFailuresQuery,
   usePendingBourseItemsQuery,
   usePoRecordsQuery,
   useWorkflowTasksQuery,
 } from "@/lib/query/prototype-queries";
-import { useFailuresQuery } from "@/lib/query/prototype-queries";
 import { filterActionablePendingBourseItems } from "@case-study/mfe/lib/prototype/pending-bourse-queue";
 import { useStaffUsersQuery } from "@settings/mfe/query/settings-queries";
 import { loadInspectorFeesSummary } from "@platform/app-shared/prototype/inspector-fees-api";
@@ -38,7 +38,7 @@ function poRecordsMap(records: PoIntakeRecord[] | undefined) {
   return map;
 }
 
-export type ActiveTransactionNavIndicators = {
+type ActiveTransactionNavIndicators = {
   /** Red count badges (open work). */
   badges: Partial<Record<PageId, number>>;
 };

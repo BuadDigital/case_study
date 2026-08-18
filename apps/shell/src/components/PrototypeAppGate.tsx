@@ -9,7 +9,7 @@ import {
   type AuthSession,
 } from "@platform/auth-client";
 import { ensureFreshAuthSession } from "@platform/app-shared";
-import { PanelSkeleton } from "@platform/design-system";
+import { PanelSkeleton } from "@platform/ui-kit";
 
 /**
  * App gate: requires a valid JWT from the login page.

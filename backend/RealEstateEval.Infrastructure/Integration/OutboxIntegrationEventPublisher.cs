@@ -1,5 +1,6 @@
 using System.Text.Json;
 using Microsoft.Extensions.Logging;
+using RealEstateEval.Application;
 using RealEstateEval.Application.Abstractions;
 using RealEstateEval.Domain;
 using RealEstateEval.Infrastructure.Data;
@@ -21,11 +22,13 @@ public abstract class OutboxIntegrationEventPublisher<TContext> : IIntegrationEv
 {
     private readonly TContext _db;
     private readonly ILogger _logger;
+    private readonly TimeProvider _time;
 
-    protected OutboxIntegrationEventPublisher(TContext db, ILogger logger)
+    protected OutboxIntegrationEventPublisher(TContext db, ILogger logger, TimeProvider? time = null)
     {
         _db = db;
         _logger = logger;
+        _time = time ?? TimeProvider.System;
     }
 
     public Task PublishAsync<TPayload>(
@@ -36,7 +39,7 @@ public abstract class OutboxIntegrationEventPublisher<TContext> : IIntegrationEv
         var envelope = new IntegrationEventEnvelope<TPayload>(
             Guid.NewGuid(),
             eventType,
-            DateTimeOffset.UtcNow,
+            _time.GetUtcNow(),
             payload);
 
         var json = JsonSerializer.Serialize(envelope);
@@ -45,7 +48,7 @@ public abstract class OutboxIntegrationEventPublisher<TContext> : IIntegrationEv
             Id = envelope.EventId,
             EventType = eventType,
             PayloadJson = json,
-            CreatedAtUtc = DateTime.UtcNow,
+            CreatedAtUtc = _time.UtcNow(),
         });
 
         _logger.LogDebug("Queued outbox event {EventType}", eventType);
@@ -56,17 +59,20 @@ public abstract class OutboxIntegrationEventPublisher<TContext> : IIntegrationEv
 /// <summary>Outbox writer for every slice still hosted on the legacy context.</summary>
 public sealed class OutboxIntegrationEventPublisher(
     ApplicationDbContext db,
-    ILogger<OutboxIntegrationEventPublisher> logger)
-    : OutboxIntegrationEventPublisher<ApplicationDbContext>(db, logger);
+    ILogger<OutboxIntegrationEventPublisher> logger,
+    TimeProvider? time = null)
+    : OutboxIntegrationEventPublisher<ApplicationDbContext>(db, logger, time);
 
 /// <summary>Outbox writer for Platform messaging writes (notifications + same-UoW events).</summary>
 public sealed class MessagingOutboxPublisher(
     MessagingDbContext db,
-    ILogger<MessagingOutboxPublisher> logger)
-    : OutboxIntegrationEventPublisher<MessagingDbContext>(db, logger);
+    ILogger<MessagingOutboxPublisher> logger,
+    TimeProvider? time = null)
+    : OutboxIntegrationEventPublisher<MessagingDbContext>(db, logger, time);
 
 /// <summary>Outbox writer owned by the Valuation context.</summary>
 public sealed class ValuationOutboxPublisher(
     ValuationDbContext db,
-    ILogger<ValuationOutboxPublisher> logger)
-    : OutboxIntegrationEventPublisher<ValuationDbContext>(db, logger), IValuationEventPublisher;
+    ILogger<ValuationOutboxPublisher> logger,
+    TimeProvider? time = null)
+    : OutboxIntegrationEventPublisher<ValuationDbContext>(db, logger, time), IValuationEventPublisher;

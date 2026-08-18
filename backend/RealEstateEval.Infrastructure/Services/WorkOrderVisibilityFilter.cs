@@ -2,15 +2,15 @@ using Microsoft.EntityFrameworkCore;
 using RealEstateEval.Application.Abstractions;
 using RealEstateEval.Application.Contracts;
 using RealEstateEval.Application.Rules;
-using RealEstateEval.Infrastructure.Data;
+using RealEstateEval.Infrastructure.Data.Contexts;
 
 namespace RealEstateEval.Infrastructure.Services;
 
 public sealed class WorkOrderVisibilityFilter : IWorkOrderVisibilityFilter
 {
-    private readonly ApplicationDbContext _db;
+    private readonly CaseStudyDbContext _db;
 
-    public WorkOrderVisibilityFilter(ApplicationDbContext db)
+    public WorkOrderVisibilityFilter(CaseStudyDbContext db)
     {
         _db = db;
     }

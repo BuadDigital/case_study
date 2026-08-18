@@ -22,7 +22,7 @@ import {
   PageShell,
   cn,
   useToast,
-} from "@platform/design-system";
+} from "@platform/ui-kit";
 import {
   ActiveQueueMobileCards,
   type ActiveQueueMobileCardItem,

@@ -1,4 +1,6 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
+using RealEstateEval.Application;
 using RealEstateEval.Application.Abstractions;
 using RealEstateEval.Application.Contracts;
 using RealEstateEval.Application.Rules;
@@ -10,10 +12,15 @@ namespace RealEstateEval.Infrastructure.Services;
 public sealed class DiscountFlagService : IDiscountFlagService
 {
     private readonly FinancialDbContext _db;
-    private readonly CaseStudyDbContext _caseStudy;
+    private readonly ICaseStudyLookup _caseStudy;
+    private readonly TimeProvider _time;
 
-    public DiscountFlagService(FinancialDbContext db, CaseStudyDbContext caseStudy)
+    [ActivatorUtilitiesConstructor]
+    public DiscountFlagService(FinancialDbContext db, ICaseStudyLookup caseStudy,
+        TimeProvider? time = null)
     {
+        _time = time ?? TimeProvider.System;
+
         _db = db;
         _caseStudy = caseStudy;
     }
@@ -88,7 +95,7 @@ public sealed class DiscountFlagService : IDiscountFlagService
             Reason = reason,
             ProposedDiscountSar = request.ProposedDiscountSar,
             Status = DiscountFlagStatuses.Pending,
-            CreatedAtUtc = DateTime.UtcNow,
+            CreatedAtUtc = _time.UtcNow(),
         };
         _db.DiscountFlags.Add(row);
         await _db.SaveChangesAsync(cancellationToken);
@@ -141,15 +148,16 @@ public sealed class DiscountFlagService : IDiscountFlagService
             ledger.BillingStatus = InspectorFeeBillingStatus.AtFinance;
         else
         {
-            var taskKind = await _caseStudy.WorkflowTasks.AsNoTracking()
-                .Where(t => t.Id == ledger.WorkflowTaskId)
-                .Select(t => (WorkflowTaskKind?)t.Kind)
-                .FirstOrDefaultAsync(cancellationToken);
-            if (taskKind == WorkflowTaskKind.EngineeringSurvey && ledger.AccruedAtUtc is not null)
+            var kinds = await _caseStudy.GetWorkflowTaskKindsAsync(
+                [ledger.WorkflowTaskId],
+                cancellationToken);
+            if (kinds.TryGetValue(ledger.WorkflowTaskId, out var taskKind)
+                && taskKind == WorkflowTaskKind.EngineeringSurvey
+                && ledger.AccruedAtUtc is not null)
                 ledger.BillingStatus = InspectorFeeBillingStatus.OfficeReview;
         }
 
-        ledger.UpdatedAtUtc = DateTime.UtcNow;
+        ledger.UpdatedAtUtc = _time.UtcNow();
         if (fromStatus != ledger.BillingStatus)
         {
             _db.InspectorFeeTransitions.Add(new InspectorFeeTransition
@@ -160,13 +168,13 @@ public sealed class DiscountFlagService : IDiscountFlagService
                 ToStatus = ledger.BillingStatus,
                 Reason = reason,
                 ActorUserId = actorUserId,
-                CreatedAtUtc = DateTime.UtcNow,
+                CreatedAtUtc = _time.UtcNow(),
             });
         }
 
         flag.Status = DiscountFlagStatuses.Approved;
         flag.ApprovedByUserId = actorUserId;
-        flag.ResolvedAtUtc = DateTime.UtcNow;
+        flag.ResolvedAtUtc = _time.UtcNow();
         flag.ResolutionNote = string.IsNullOrWhiteSpace(request.Note) ? null : request.Note.Trim();
         await _db.SaveChangesAsync(cancellationToken);
         return (ToDto(flag), null);
@@ -199,7 +207,7 @@ public sealed class DiscountFlagService : IDiscountFlagService
 
         flag.Status = DiscountFlagStatuses.Rejected;
         flag.ApprovedByUserId = actorUserId;
-        flag.ResolvedAtUtc = DateTime.UtcNow;
+        flag.ResolvedAtUtc = _time.UtcNow();
         flag.ResolutionNote = string.IsNullOrWhiteSpace(request.Note) ? null : request.Note.Trim();
         await _db.SaveChangesAsync(cancellationToken);
         return (ToDto(flag), null);

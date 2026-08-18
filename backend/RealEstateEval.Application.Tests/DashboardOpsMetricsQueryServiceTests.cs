@@ -35,7 +35,7 @@ public class DashboardOpsMetricsQueryServiceTests
             updatedAtUtc: now.AddDays(-1)));
         await db.SaveChangesAsync();
 
-        var dto = await new DashboardOpsMetricsQueryService(db).GetAsync();
+        var dto = await new DashboardOpsMetricsQueryService(TestInspectorFeeServiceFactory.ShareCaseStudy(db)).GetAsync();
 
         var bourse = dto.StageDwell.Single(s => s.Key == DashboardOpsMetricsRules.StageBourse);
         Assert.Equal(1, bourse.SampleCount);

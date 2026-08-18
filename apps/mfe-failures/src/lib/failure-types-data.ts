@@ -107,12 +107,6 @@ export function getFailureProblemType(
   return FAILURE_PROBLEM_TYPES.find((t) => t.id === id);
 }
 
-export function getFailureCategory(
-  categoryId: string,
-): FailureTypeCategory | undefined {
-  return FAILURE_TYPE_CATEGORIES.find((c) => c.id === categoryId);
-}
-
 export function failureProblemTypeLabel(
   problemTypeId: string,
   fallbackTitle?: string,
@@ -124,6 +118,3 @@ export function failureProblemTypeLabel(
 
 export const DEED_INACTIVE_RESOLVED_LABEL =
   "الصك كان غير فعال سابقاً لكن تم حل المشكلة";
-
-/** Free-text problems entered by the user instead of catalog pickers. */
-export const FREE_TEXT_FAILURE_PROBLEM_TYPE_ID = "free-text";

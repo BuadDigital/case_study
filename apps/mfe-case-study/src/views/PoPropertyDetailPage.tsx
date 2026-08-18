@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { Button, Note, PageGutter, PageShell, PanelSkeleton } from "@platform/design-system";
+import { Button, Note, PageGutter, PageShell, PanelSkeleton } from "@platform/ui-kit";
 import { PoDetailPropertyCard } from "@case-study/mfe/components/po-intake/PoDetailPropertyCard";
 import { PropertyDetailHero } from "@case-study/mfe/components/po-intake/PropertyDetailHero";
 import {

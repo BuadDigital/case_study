@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { Note, Spinner, cn } from "@platform/design-system";
+import { Note, Spinner, cn } from "@platform/ui-kit";
 import {
   fetchPartyFeePricingById,
   fetchPartyFeePricingTables,

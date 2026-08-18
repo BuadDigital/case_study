@@ -1,4 +1,4 @@
-import { cn } from "@platform/design-system";
+import { cn } from "@platform/ui-kit";
 
 /** Outlook-style "unread" dot for queue rows — lit until the row is opened. */
 export function RowAttentionDot({ className }: { className?: string }) {

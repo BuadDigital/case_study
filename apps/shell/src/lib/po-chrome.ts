@@ -7,7 +7,7 @@ import {
 } from "@case-study/mfe";
 import type { BreadcrumbSegment } from "./breadcrumb";
 
-export type PoChrome = {
+type PoChrome = {
   segments: BreadcrumbSegment[];
   title: string;
   /** When set, top bar renders `title` + isolated LTR PO number (RTL-safe). */
@@ -25,7 +25,7 @@ function poTrailBase(poNumber: string): BreadcrumbSegment[] {
 }
 
 /** Property detail: list → properties → current. */
-export function buildPoPropertyDetailSegments(
+function buildPoPropertyDetailSegments(
   poNumber: string,
 ): BreadcrumbSegment[] {
   return [

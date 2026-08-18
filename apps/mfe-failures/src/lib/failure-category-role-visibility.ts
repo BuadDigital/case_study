@@ -25,7 +25,7 @@ const CATEGORY_AUDIENCE: Record<string, CategoryAudience> = {
   parties: ["field-inspector", "engineering-office"],
 };
 
-export function roleSeesAllFailureCategories(role: RoleId): boolean {
+function roleSeesAllFailureCategories(role: RoleId): boolean {
   return isSuperAdmin(role) || role === "section-supervisor";
 }
 

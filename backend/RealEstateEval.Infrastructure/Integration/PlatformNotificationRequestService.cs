@@ -1,3 +1,4 @@
+using RealEstateEval.Application;
 using RealEstateEval.Application.Abstractions;
 using RealEstateEval.Application.Contracts;
 using RealEstateEval.Infrastructure.Data;
@@ -15,27 +16,32 @@ public sealed class PlatformNotificationRequestService : INotificationService
 {
     private readonly IOutboxContext _outbox;
     private readonly IIntegrationEventPublisher _events;
+    private readonly TimeProvider _time;
 
     public PlatformNotificationRequestService(
         MessagingDbContext db,
-        IIntegrationEventPublisher events)
-        : this((IOutboxContext)db, events)
+        IIntegrationEventPublisher events,
+        TimeProvider? time = null)
+        : this((IOutboxContext)db, events, time)
     {
     }
 
     public PlatformNotificationRequestService(
         ApplicationDbContext db,
-        IIntegrationEventPublisher events)
-        : this((IOutboxContext)db, events)
+        IIntegrationEventPublisher events,
+        TimeProvider? time = null)
+        : this((IOutboxContext)db, events, time)
     {
     }
 
     private PlatformNotificationRequestService(
         IOutboxContext outbox,
-        IIntegrationEventPublisher events)
+        IIntegrationEventPublisher events,
+        TimeProvider? time)
     {
         _outbox = outbox;
         _events = events;
+        _time = time ?? TimeProvider.System;
     }
 
     public Task<IReadOnlyList<UserNotificationDto>> ListForUserAsync(
@@ -142,7 +148,7 @@ public sealed class PlatformNotificationRequestService : INotificationService
             .Distinct(StringComparer.Ordinal)
             .ToList();
 
-    private static UserNotificationDto ToProvisionalDto(CreateUserNotificationRequest request) =>
+    private UserNotificationDto ToProvisionalDto(CreateUserNotificationRequest request) =>
         new()
         {
             Id = Guid.Empty,
@@ -155,7 +161,7 @@ public sealed class PlatformNotificationRequestService : INotificationService
             EntityId = request.EntityId,
             Actor = request.Actor,
             SourceEvent = request.SourceEvent,
-            CreatedAtUtc = DateTime.UtcNow,
+            CreatedAtUtc = _time.UtcNow(),
             Read = false,
         };
 

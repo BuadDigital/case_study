@@ -1,6 +1,6 @@
 "use client";
 import type { ReactNode } from "react";
-import { PageShell, cn } from "@platform/design-system";
+import { PageShell, cn } from "@platform/ui-kit";
 import type { PageId } from "@platform/types";
 import { ActiveTransactionsSituationBar } from "./ActiveTransactionsSituationBar";
 

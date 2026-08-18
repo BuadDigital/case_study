@@ -22,11 +22,16 @@ public sealed class CorrelationIdMiddleware
 
     private readonly RequestDelegate _next;
     private readonly ILogger<CorrelationIdMiddleware> _logger;
+    private readonly ObservabilityLabels _labels;
 
-    public CorrelationIdMiddleware(RequestDelegate next, ILogger<CorrelationIdMiddleware> logger)
+    public CorrelationIdMiddleware(
+        RequestDelegate next,
+        ILogger<CorrelationIdMiddleware> logger,
+        ObservabilityLabels labels)
     {
         _next = next;
         _logger = logger;
+        _labels = labels;
     }
 
     public async Task InvokeAsync(HttpContext context)
@@ -53,7 +58,11 @@ public sealed class CorrelationIdMiddleware
         Activity.Current?.SetTag(ActivityTagName, correlationId);
 
         using (_logger.BeginScope(
-            new Dictionary<string, object> { [LogScopeKey] = correlationId }))
+            new Dictionary<string, object>
+            {
+                [LogScopeKey] = correlationId,
+                ["Service"] = _labels.ServiceName,
+            }))
         {
             await _next(context);
         }

@@ -15,7 +15,7 @@ import {
   OperationalPanel,
   cn,
   useToast,
-} from "@platform/design-system";
+} from "@platform/ui-kit";
 import { resetAllOperationalData } from "../lib/system-maintenance-api";
 import { apiErrorMessage } from "../lib/settings-api-config";
 

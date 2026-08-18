@@ -14,7 +14,7 @@ It is grounded in:
 
 | Layer | Today | Gap |
 |--------|--------|-----|
-| **Frontend** | Monorepo: `apps/shell` (host) + `packages/*` (design-system, auth-client, api-client, types); pages under `apps/shell/src/app/(app)/[page]`; mock data in `constants.ts` | No federated remotes yet; no independent MFE deploys |
+| **Frontend** | Monorepo: `apps/shell` (host) + `packages/*` (ui-kit, auth-client, api-client, types); pages under `apps/shell/src/app/(app)/[page]`; mock data in `constants.ts` | No federated remotes yet; no independent MFE deploys |
 | **Backend** | One API project; `AuthController` + PostgreSQL Identity | No domain services; no API gateway; no async integration |
 | **Auth** | JWT in `sessionStorage`; prototype role switcher separate from API roles | No centralized policy across MFEs/services |
 | **Data** | `MOCK_*` arrays | No service-owned databases |
@@ -102,7 +102,7 @@ For this stack, prefer **Module Federation** (e.g. `@module-federation/nextjs-mf
 
 **Shared packages (not MFEs):**
 
-- `@platform/design-system` — CSS variables, `prototype.css` tokens, buttons, tables, badges
+- `@platform/ui-kit` — CSS variables, `prototype.css` tokens, buttons, tables, badges
 - `@platform/api-client` — typed HTTP client, auth header injection, error handling
 - `@platform/types` — DTOs shared with OpenAPI-generated clients
 - `@platform/i18n` — Arabic RTL helpers if needed later
@@ -139,7 +139,7 @@ For **each** remote MFE:
 │   ├── mfe-financial/
 │   └── mfe-platform/
 ├── packages/
-│   ├── design-system/
+│   ├── ui-kit/
 │   ├── api-client/
 │   ├── auth-client/
 │   └── types/
@@ -151,7 +151,7 @@ For **each** remote MFE:
 | Phase | Action |
 |-------|--------|
 | **F0** | Create `apps/shell` + `packages/*`; move existing `src/` into `apps/shell` or keep root as shell temporarily |
-| **F1** | Extract `design-system` + `api-client`; wire one page (e.g. `properties`) to real API |
+| **F1** | Extract `ui-kit` + `api-client`; wire one page (e.g. `properties`) to real API |
 | **F2** | Split **valuation** MFE first (clear boundary vs case study in prototype) |
 | **F3** | Split **case-study** MFE (largest: PO, properties, assignment, failures) |
 | **F4** | Split **operations**, **financial**, **platform** |
@@ -585,7 +585,7 @@ See **[LOCAL_INFRA.md](./LOCAL_INFRA.md)** for URLs, credentials, and how to con
 
 **Frontend**
 
-- [ ] Monorepo: `packages/design-system`, `packages/api-client`
+- [ ] Monorepo: `packages/ui-kit`, `packages/api-client`
 - [ ] Properties list + detail calling Case Study API
 - [ ] Keep single deploy; no federation yet
 
@@ -697,7 +697,7 @@ The migration is **architecturally complete** when:
 | Shell app | `apps/shell/` |
 | Current pages map | `apps/shell/src/app/(app)/[page]/page.tsx` |
 | Nav / roles / mocks | `packages/app-shared/src/prototype/constants.ts` |
-| Shared packages | `packages/design-system`, `packages/auth-client`, `packages/api-client`, `packages/types` |
+| Shared packages | `packages/ui-kit`, `packages/auth-client`, `packages/api-client`, `packages/types` |
 | Current API | `backend/gateway/` + `backend/services/*/` |
 
 ---

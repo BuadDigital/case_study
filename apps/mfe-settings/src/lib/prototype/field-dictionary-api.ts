@@ -54,38 +54,7 @@ function toStateDto(
   };
 }
 
-export function notifyFieldDictionaryChanged(): void {
-  if (typeof window !== "undefined") {
-    window.dispatchEvent(new Event(FIELD_DICTIONARY_CHANGED_EVENT));
-  }
-}
-
 /** يبني فهرس القاموس من حقول النظام + المحفوظ. */
-export async function buildSyncedFieldDictionaryState(): Promise<FieldDictionaryState> {
-  const baseline = emptyFieldDictionaryState();
-  let stored: FieldDictionaryState | null = null;
-
-  const config = prototypeModulesApiConfig();
-  if (config) {
-    const result = await getFieldDictionary(config);
-    if (!result.ok) {
-      throw new Error(apiErrorMessage(result.kind, "تعذّر تحميل قاموس الحقول"));
-    }
-    if (result.data.fields.length > 0 || result.data.tags.length > 0) {
-      stored = {
-        fields: result.data.fields as FieldDictionaryState["fields"],
-        tags: result.data.tags,
-      };
-    }
-  }
-
-  return syncFieldDictionaryState({
-    catalogFields: baseline.fields,
-    stored,
-    defaultTags: baseline.tags,
-  });
-}
-
 export async function loadFieldDictionaryFromApi(): Promise<FieldDictionaryState> {
   const baseline = emptyFieldDictionaryState();
   let stored: FieldDictionaryState | null = null;
@@ -126,14 +95,10 @@ export async function loadFieldDictionaryFromApi(): Promise<FieldDictionaryState
   return saved;
 }
 
-export async function syncFieldDictionaryFromSystem(): Promise<FieldDictionaryState> {
-  const synced = await buildSyncedFieldDictionaryState();
-  const saved = await saveFieldDictionaryToApi(synced);
-  if (!saved) {
-    throw new Error("تعذّر مزامنة قاموس الحقول — تحقق من الاتصال وحاول مجدداً.");
+function notifyFieldDictionaryChanged(): void {
+  if (typeof window !== "undefined") {
+    window.dispatchEvent(new Event(FIELD_DICTIONARY_CHANGED_EVENT));
   }
-  notifyFieldDictionaryChanged();
-  return saved;
 }
 
 export async function saveFieldDictionaryToApi(

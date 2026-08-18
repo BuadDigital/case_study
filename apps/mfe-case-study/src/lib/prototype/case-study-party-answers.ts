@@ -129,9 +129,3 @@ export async function collectPartyAnswersByQuestion(
 
   return byKey;
 }
-
-export function countPartyContributions(
-  byKey: Record<string, PartyQuestionContribution[]>,
-): number {
-  return Object.values(byKey).reduce((n, list) => n + list.length, 0);
-}

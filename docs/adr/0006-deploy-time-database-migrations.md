@@ -2,7 +2,7 @@
 
 - **Status:** Proposed — implementation in flight
 - **Date:** 2026-07-29
-- **Progress last reviewed:** 2026-07-30
+- **Progress last reviewed:** 2026-08-18
 
 ## Context
 
@@ -58,20 +58,24 @@ its cutover migration, then each context-specific stream in a fixed, documented 
   type: "xid", rowVersion: true)` for PostgreSQL system columns; compatibility must be
   proven against the deployed Npgsql/PostgreSQL versions before release.
 
-## Implementation progress (2026-07-30)
+## Implementation progress (2026-08-18)
 
 The decision above is unchanged; this section records only how far it has been carried out.
 
-- `backend/tools/DbMigrate` now applies the frozen legacy stream first and then each
-  bounded-context stream in `BoundedContextMigrations.ApplyOrder`, as this ADR requires. Its
-  `list` and `rollback` commands are per-stream. An architecture test fails if a catalogued
+- `backend/tools/DbMigrate` applies each bounded-context stream in
+  `BoundedContextMigrations.ApplyOrder` to that owner's dedicated database. Production
+  compose does not set the unsuffixed leftover variable. If
+  `REAL_ESTATE_EVAL_PG_CONNECTION_STRING` is set, the migrator applies the frozen legacy
+  `ApplicationDbContext` stream first (this ADR, including `xmin`), then the context
+  streams. `list` and `rollback` are per-stream. An architecture test fails if a catalogued
   stream is missing from that order.
-- Migration SQL is still verified only against a blank database. The production-like upgrade
-  test, including the `xmin` migration, remains outstanding and blocks the remaining ADR 0003
-  extraction steps.
-- The development-only Case Study startup path applies the same streams in the same order,
-  limited to the contexts that process registers. Production still refuses
-  `Database:MigrateOnStartup`.
+- Blank-database half: done (2026-07-29). Production-like upgrade half: done (2026-08-18)
+  against a copy of the idle leftover shared database `realestate_eval_dev` on host
+  Postgres 17.9 (`realestate_eval_a7_scratch`). `20260729104156_AddOptimisticConcurrencyTokens`
+  applied; Npgsql/PostgreSQL 17 treat `xmin` as DDL-neutral (no user column; system `xmin`
+  readable on preserved rows).
+- The development-only Case Study startup path applies bounded-context streams only.
+  Production still refuses `Database:MigrateOnStartup`.
 
 ## Alternatives considered
 

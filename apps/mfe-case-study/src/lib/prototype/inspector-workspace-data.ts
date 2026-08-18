@@ -243,18 +243,6 @@ export function isServiceAmenityPhotoSlotComplete(
   return slot.photos.some((photo) => photo.approved && photo.fileName.trim());
 }
 
-/** @deprecated Legacy fixed slot shape — photos now come from services/amenities. */
-export type InspectorDefinedPhotoDef = {
-  id: string;
-  name: string;
-  icon: string;
-  required: boolean;
-  annexOnly?: boolean;
-};
-
-/** Empty: photo slots attach only to selected services/amenities. */
-export const INSPECTOR_DEFINED_PHOTOS: InspectorDefinedPhotoDef[] = [];
-
 export type InspectorFreePhotoCategory = {
   key: string;
   label: string;

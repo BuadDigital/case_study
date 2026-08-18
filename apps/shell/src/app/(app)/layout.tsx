@@ -16,7 +16,7 @@ import { AppShell } from "@/components/views/AppShell";
 import { PrototypeProvider } from "@platform/app-shared/contexts/PrototypeContext";
 import { NotificationProvider } from "@platform/app-shared/notifications/NotificationProvider";
 import { QueryProvider } from "@/providers/QueryProvider";
-import { ErrorBoundary, PanelSkeleton } from "@platform/design-system";
+import { ErrorBoundary, PanelSkeleton } from "@platform/ui-kit";
 
 export default function AppSectionLayout({
   children,

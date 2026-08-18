@@ -19,13 +19,8 @@ import {
 } from "@platform/api-client";
 import { getAuthSession } from "@platform/auth-client";
 import type { StaffUser } from "@platform/app-shared/prototype/constants";
-import {
-  contractTypeToStaffType,
-  userListItemToStaff,
-} from "@platform/app-shared/users/user-mappers";
+import { userListItemToStaff } from "@platform/app-shared/users/user-mappers";
 import { hasRuntimeCapability } from "@platform/app-shared/prototype/runtime-access";
-
-export { contractTypeToStaffType, userListItemToStaff };
 
 function apiConfig(): UsersApiConfig | null {
   const session = getAuthSession();
@@ -33,13 +28,13 @@ function apiConfig(): UsersApiConfig | null {
   return { token: session.token, baseUrl: getApiBase() };
 }
 
-export type FetchStaffUsersResult = {
+type FetchStaffUsersResult = {
   users: StaffUser[];
   /** Set only when the API call failed — not when the list is simply empty. */
   loadError: string | null;
 };
 
-export type FetchStaffUsersOptions = {
+type FetchStaffUsersOptions = {
   /** Prefer explicit flags — module capability cache may lag one frame after login. */
   canManageUsers?: boolean;
   canListDistributionAssignees?: boolean;

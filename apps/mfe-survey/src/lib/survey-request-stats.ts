@@ -1,7 +1,7 @@
 import { listWorkflowTasks } from "@platform/api-client";
 import { workOrdersApiConfig } from "@platform/app-shared/prototype/work-orders-api-config";
 
-export type SurveyRequestStats = {
+type SurveyRequestStats = {
   total: number;
   completed: number;
   inProgress: number;
@@ -15,7 +15,7 @@ const EMPTY_STATS: SurveyRequestStats = {
   unassigned: 0,
 };
 
-export function computeSurveyRequestStats(
+function computeSurveyRequestStats(
   tasks: { kind: string; status: string; assigneeId?: string }[],
 ): SurveyRequestStats {
   const surveyTasks = tasks.filter((t) => t.kind === "engineering-survey");

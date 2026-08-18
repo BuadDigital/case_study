@@ -2,7 +2,6 @@
 
 import { useState } from "react";
 import {
-  Badge,
   Button,
   Input,
   Label,
@@ -14,7 +13,7 @@ import {
   Select,
   cn,
   useToast,
-} from "@platform/design-system";
+} from "@platform/ui-kit";
 import {
   FIELD_TYPE_GROUPS,
   FIELD_TYPE_LABELS,

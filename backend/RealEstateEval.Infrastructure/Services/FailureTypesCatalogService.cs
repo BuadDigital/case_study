@@ -1,5 +1,6 @@
 using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
+using RealEstateEval.Application;
 using RealEstateEval.Application.Abstractions;
 using RealEstateEval.Application.Contracts;
 using RealEstateEval.Domain;
@@ -18,8 +19,13 @@ public sealed class FailureTypesCatalogService : IFailureTypesCatalogService
     };
 
     private readonly FailuresDbContext _db;
+    private readonly TimeProvider _time;
 
-    public FailureTypesCatalogService(FailuresDbContext db) => _db = db;
+    public FailureTypesCatalogService(FailuresDbContext db, TimeProvider? time = null)
+    {
+        _db = db;
+        _time = time ?? TimeProvider.System;
+    }
 
     public async Task<FailureTypesCatalogDto> GetAsync(CancellationToken cancellationToken = default)
     {
@@ -39,7 +45,7 @@ public sealed class FailureTypesCatalogService : IFailureTypesCatalogService
         }, JsonOptions);
 
         var row = await _db.FailureTypesCatalogConfigs.FirstOrDefaultAsync(cancellationToken);
-        var now = DateTime.UtcNow;
+        var now = _time.UtcNow();
         if (row is null)
         {
             row = new FailureTypesCatalogConfig
@@ -60,11 +66,11 @@ public sealed class FailureTypesCatalogService : IFailureTypesCatalogService
         return ToDto(row);
     }
 
-    private static FailureTypesCatalogDto Empty() => new()
+    private FailureTypesCatalogDto Empty() => new()
     {
         Categories = [],
         ProblemTypes = [],
-        UpdatedAtUtc = DateTime.UtcNow,
+        UpdatedAtUtc = _time.UtcNow(),
     };
 
     private static FailureTypesCatalogDto ToDto(FailureTypesCatalogConfig row)

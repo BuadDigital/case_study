@@ -33,7 +33,7 @@ import { getApiBase, approveRemoteInspection, getOpenValuationRequestByProperty,
   type ValuationReportFieldPayloadDto,
 } from "@platform/api-client";
 import { getAuthSession } from "@platform/auth-client";
-import { Button, Input, Label, Note, cn, useToast } from "@platform/design-system";
+import { Button, Input, Label, Note, cn, useToast } from "@platform/ui-kit";
 import { amountWordsOrZero } from "../../lib/evaluator/value-estimation";
 import { openValuationReportPreview } from "../../lib/evaluator/valuation-report-preview";
 import {

@@ -24,6 +24,10 @@ public static class GatewayClientAddressForwarding
             if (clientAddress is not null)
                 transform.ProxyRequest.Headers.TryAddWithoutValidation(headerName, clientAddress);
 
+            CorrelationIdForwarding.Overwrite(
+                transform.ProxyRequest.Headers,
+                transform.HttpContext.TraceIdentifier);
+
             return default;
         }));
 }

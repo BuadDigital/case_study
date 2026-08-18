@@ -1,9 +1,10 @@
 using Microsoft.EntityFrameworkCore;
+using RealEstateEval.Application;
 using RealEstateEval.Application.Abstractions;
 using RealEstateEval.Application.Contracts;
 using RealEstateEval.Application.Rules;
 using RealEstateEval.Domain;
-using RealEstateEval.Infrastructure.Data;
+using RealEstateEval.Infrastructure.Data.Contexts;
 using RealEstateEval.Infrastructure.Notifications;
 
 namespace RealEstateEval.Infrastructure.Services;
@@ -13,7 +14,7 @@ namespace RealEstateEval.Infrastructure.Services;
 /// </summary>
 public class WorkOrderService : IWorkOrderService
 {
-    private readonly ApplicationDbContext _db;
+    private readonly CaseStudyDbContext _db;
     private readonly IPropertyTimelineService _timeline;
     private readonly INotificationService _notifications;
     private readonly NotificationRecipientResolver _recipients;
@@ -21,17 +22,21 @@ public class WorkOrderService : IWorkOrderService
     private readonly IWorkOrderQuery _query;
     private readonly IWorkOrderPropertyCommands _properties;
     private readonly IOrganizationSettingsService? _organizationSettings;
+    private readonly TimeProvider _time;
 
     public WorkOrderService(
-        ApplicationDbContext db,
+        CaseStudyDbContext db,
         IPropertyTimelineService timeline,
         INotificationService notifications,
         NotificationRecipientResolver recipients,
         IWorkOrderLoader loader,
         IWorkOrderQuery query,
         IWorkOrderPropertyCommands properties,
-        IOrganizationSettingsService? organizationSettings = null)
+        IOrganizationSettingsService? organizationSettings = null,
+        TimeProvider? time = null)
     {
+        _time = time ?? TimeProvider.System;
+
         _db = db;
         _timeline = timeline;
         _notifications = notifications;
@@ -152,7 +157,7 @@ public class WorkOrderService : IWorkOrderService
                 promulgation,
                 request.ReceivedFromEnfathTime,
                 await ResolveBusinessDaysAsync(assignmentType, cancellationToken)),
-            CreatedAtUtc = DateTime.UtcNow,
+            CreatedAtUtc = _time.UtcNow(),
         };
 
         foreach (var propDto in request.Properties)

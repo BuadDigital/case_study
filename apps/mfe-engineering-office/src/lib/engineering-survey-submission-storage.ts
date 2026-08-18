@@ -14,7 +14,6 @@ import {
   prefetchPartySubmissionsForTasks,
   acceptPartySubmission,
   reopenPartySubmission,
-  setCachedPartySubmission,
   submitPartySubmission,
   type PartyWorkMutationResult,
 } from "@platform/app-shared/prototype/party-submission-api";
@@ -363,25 +362,4 @@ export function isEngineeringSurveyOutputsAccepted(
 ): boolean {
   const stamp = submission?.acceptedAtUtc;
   return typeof stamp === "string" && stamp.trim().length > 0;
-}
-
-/** Seed cache without API (tests / migration). */
-export function seedEngineeringSurveySubmissionCache(
-  submission: EngineeringSurveySubmission,
-): void {
-  setCachedPartySubmission(
-    {
-      taskId: submission.taskId,
-      kind: "engineering-survey",
-      status: submission.status,
-      propertyId: submission.propertyId,
-      poNumber: submission.poNumber,
-      payload: submissionToPayload(submission),
-      returnNote: submission.returnNote,
-      submittedAtUtc: submission.submittedAtUtc,
-      acceptedAtUtc: submission.acceptedAtUtc,
-      updatedAtUtc: submission.updatedAtUtc,
-    },
-    submission.taskId,
-  );
 }

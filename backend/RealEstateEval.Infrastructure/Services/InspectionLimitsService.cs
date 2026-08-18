@@ -1,4 +1,6 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
+using RealEstateEval.Application;
 using RealEstateEval.Application.Abstractions;
 using RealEstateEval.Application.Contracts;
 using RealEstateEval.Domain;
@@ -10,11 +12,35 @@ namespace RealEstateEval.Infrastructure.Services;
 /// حدود المعاينة (القرار 24 + ق-7): يعبّئها المعاين، وتغذي تنبيهي m18/m21
 /// ونص التحفّظ المركّب ضمن الافتراضات الخاصة.
 /// </summary>
-public sealed class InspectionLimitsService(
-    CaseStudyDbContext db,
-    PlatformDbContext platformDb,
-    IAuditLogWriter audit) : IInspectionLimitsService
+public sealed class InspectionLimitsService : IInspectionLimitsService
 {
+    private readonly CaseStudyDbContext db;
+    private readonly IAuditLogWriter audit;
+    private readonly IAuditLogAppend _auditLog;
+    private readonly TimeProvider _time;
+
+    public InspectionLimitsService(
+        CaseStudyDbContext db,
+        PlatformDbContext platformDb,
+        IAuditLogWriter audit,
+        TimeProvider? time = null)
+        : this(db, audit, new PlatformAuditLogAppend(platformDb), time)
+    {
+    }
+
+    [ActivatorUtilitiesConstructor]
+    public InspectionLimitsService(
+        CaseStudyDbContext db,
+        IAuditLogWriter audit,
+        IAuditLogAppend auditLog,
+        TimeProvider? time = null)
+    {
+        _time = time ?? TimeProvider.System;
+
+        this.db = db;
+        this.audit = audit;
+        _auditLog = auditLog;
+    }
     public async Task<InspectionLimitsDto?> GetAsync(
         string poNumber,
         Guid propertyId,
@@ -84,11 +110,11 @@ public sealed class InspectionLimitsService(
             return (ToDto(prop), null);
 
         prop.RemoteInspectionApprovedBy = string.IsNullOrWhiteSpace(actorId) ? "unknown" : actorId;
-        prop.RemoteInspectionApprovedAtUtc = DateTime.UtcNow;
+        prop.RemoteInspectionApprovedAtUtc = _time.UtcNow();
         await db.SaveChangesAsync(cancellationToken);
 
  // ق-7: اعتماد مسجَّل في التدقيق.
-        platformDb.AuditLogs.Add(audit.Create(
+        await _auditLog.AppendAsync(audit.Create(
             actorId: prop.RemoteInspectionApprovedBy!,
             action: "inspection.remote-scope.approved",
             entityType: "WorkOrderProperty",
@@ -98,8 +124,7 @@ public sealed class InspectionLimitsService(
             {
                 scope = prop.InspectionScopeKey,
                 approvedAtUtc = prop.RemoteInspectionApprovedAtUtc,
-            }));
-        await platformDb.SaveChangesAsync(cancellationToken);
+            }), cancellationToken);
 
         return (ToDto(prop), null);
     }

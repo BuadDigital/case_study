@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using RealEstateEval.Application.Abstractions;
 using RealEstateEval.Application.Contracts;
+using RealEstateEval.Shared.Web;
 using RealEstateEval.Shared.Web.Authorization;
 
 namespace RealEstateEval.CaseStudy.Api.Controllers;
@@ -42,7 +43,7 @@ public class BuildingInventoryController : ControllerBase
             request,
             cancellationToken);
         if (errors is not null)
-            return BadRequest(new FieldErrorsResponseDto { Errors = errors });
+            return this.FieldErrorsProblem(errors);
         return Ok(result);
     }
 }

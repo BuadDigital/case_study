@@ -19,8 +19,8 @@ import {
   StatusPill,
   cn,
   useToast,
-} from "@platform/design-system";
-import type { StatusPillStyle } from "@platform/design-system";
+} from "@platform/ui-kit";
+import type { StatusPillStyle } from "@platform/ui-kit";
 import {
   type InspectorFeeAction,
   type InspectorFeeRowDto,

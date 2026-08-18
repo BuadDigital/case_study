@@ -31,7 +31,9 @@ public class GeneralizedBillingStatementTests
 
         Assert.Null(result.Error);
         Assert.NotNull(result.Statement);
-        var ledger = await db.InspectorFeeLedgers.SingleAsync();
+        var ledger = await TestInspectorFeeServiceFactory.ShareFinancial(db)
+            .InspectorFeeLedgers.AsNoTracking()
+            .SingleAsync();
         Assert.Equal(InspectorFeeBillingStatus.InStatement, ledger.BillingStatus);
         Assert.NotNull(ledger.PartyBillingStatementId);
     }
@@ -101,7 +103,8 @@ public class GeneralizedBillingStatementTests
         Assert.Null(result.Error);
         Assert.NotNull(result.Statement);
         Assert.Single(result.Statement!.Lines);
-        var inStatement = await db.InspectorFeeLedgers
+        var inStatement = await TestInspectorFeeServiceFactory.ShareFinancial(db)
+            .InspectorFeeLedgers.AsNoTracking()
             .Where(l => l.BillingStatus == InspectorFeeBillingStatus.InStatement)
             .ToListAsync();
         Assert.Single(inStatement);
@@ -301,7 +304,9 @@ public class GeneralizedBillingStatementTests
         Assert.NotNull(closed);
         Assert.Equal(PartyBillingStatementStatus.Closed, closed!.Status);
 
-        var charge = await db.CourtVisitFeeCharges.SingleAsync(c => c.Id == chargeId);
+        var charge = await TestInspectorFeeServiceFactory.ShareFinancial(db)
+            .CourtVisitFeeCharges.AsNoTracking()
+            .SingleAsync(c => c.Id == chargeId);
         Assert.Equal(CourtVisitFeeStatuses.Settled, charge.Status);
     }
 
@@ -395,17 +400,33 @@ public class GeneralizedBillingStatementTests
         return taskId;
     }
 
-    private static PartyBillingStatementService CreateStatementService(ApplicationDbContext db) =>
-        new(
-            db,
+    private static PartyBillingStatementService CreateStatementService(ApplicationDbContext db)
+    {
+        var financial = TestInspectorFeeServiceFactory.ShareFinancial(db);
+        var caseStudy = TestInspectorFeeServiceFactory.ShareCaseStudy(db);
+        var attachments = TestInspectorFeeServiceFactory.ShareAttachmentLookup(db);
+        var identity = TestInspectorFeeServiceFactory.ShareIdentity(db);
+        var ops = TestInspectorFeeServiceFactory.ShareOps(db);
+        var visitFees = new OperationsTaskVisitFeeHelper(
+            ops,
+            financial,
+            identity,
+            new PartyFeePricingService(financial));
+        return new(
+            financial,
+            caseStudy,
+            attachments,
             new NullNotificationService(),
             TestInspectorFeeServiceFactory.CreateRecipients(db),
-            new OperationsTaskVisitFeeHelper(db, new PartyFeePricingService(TestInspectorFeeServiceFactory.ShareFinancial(db))),
+            visitFees,
             NullLogger<PartyBillingStatementService>.Instance);
+    }
 
     private static ApplicationDbContext CreateDb() =>
         new(new DbContextOptionsBuilder<ApplicationDbContext>()
-            .UseInMemoryDatabase($"stmt-gen-{Guid.NewGuid():N}")
+            .UseInMemoryDatabase(
+                $"stmt-gen-{Guid.NewGuid():N}",
+                new Microsoft.EntityFrameworkCore.Storage.InMemoryDatabaseRoot())
             .ConfigureWarnings(w =>
                 w.Ignore(Microsoft.EntityFrameworkCore.Diagnostics.InMemoryEventId.TransactionIgnoredWarning))
             .Options);

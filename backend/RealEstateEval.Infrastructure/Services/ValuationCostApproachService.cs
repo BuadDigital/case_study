@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using RealEstateEval.Application;
 using RealEstateEval.Application.Abstractions;
 using RealEstateEval.Application.Contracts;
 using RealEstateEval.Domain;
@@ -10,8 +11,11 @@ namespace RealEstateEval.Infrastructure.Services;
 public sealed class ValuationCostApproachService(
     ValuationDbContext db,
     CaseStudyDbContext caseStudy,
-    IValuationComparableSelectionService selections) : IValuationCostApproachService
+    IValuationComparableSelectionService selections,
+    TimeProvider? time = null) : IValuationCostApproachService
 {
+    private readonly TimeProvider _time = time ?? TimeProvider.System;
+
     public async Task<ValuationCostApproachDto?> GetAsync(
         Guid valuationRequestId,
         CancellationToken cancellationToken = default)
@@ -154,7 +158,7 @@ public sealed class ValuationCostApproachService(
  // otherwise the building would be counted twice in the contractor method.
             entity.LandUnitRateFromMarket = market?.WeightedPricePerSqm ?? 0m;
             entity.LandAreaSqm = market?.SubjectAreaSqm ?? 0m;
-            entity.LandImportedAtUtc = DateTime.UtcNow;
+            entity.LandImportedAtUtc = _time.UtcNow();
         }
 
         entity.UseRestrictionDiscountPct = request.UseRestrictionDiscountPct;
@@ -248,7 +252,7 @@ public sealed class ValuationCostApproachService(
         entity.AnalysisNotes = string.IsNullOrWhiteSpace(request.AnalysisNotes)
             ? null
             : request.AnalysisNotes.Trim();
-        entity.UpdatedAtUtc = DateTime.UtcNow;
+        entity.UpdatedAtUtc = _time.UtcNow();
         await db.SaveChangesAsync(cancellationToken);
 
         return (await GetAsync(valuationRequestId, cancellationToken), null);

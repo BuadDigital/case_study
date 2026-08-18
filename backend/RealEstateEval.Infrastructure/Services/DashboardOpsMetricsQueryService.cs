@@ -1,8 +1,9 @@
 using Microsoft.EntityFrameworkCore;
+using RealEstateEval.Application;
 using RealEstateEval.Application.Abstractions;
 using RealEstateEval.Application.Contracts;
 using RealEstateEval.Domain;
-using RealEstateEval.Infrastructure.Data;
+using RealEstateEval.Infrastructure.Data.Contexts;
 
 namespace RealEstateEval.Infrastructure.Services;
 
@@ -12,16 +13,20 @@ namespace RealEstateEval.Infrastructure.Services;
 /// </summary>
 public sealed class DashboardOpsMetricsQueryService : IDashboardOpsMetricsQuery
 {
-    private readonly ApplicationDbContext _db;
+    private readonly CaseStudyDbContext _db;
+    private readonly TimeProvider _time;
 
-    public DashboardOpsMetricsQueryService(ApplicationDbContext db)
+    public DashboardOpsMetricsQueryService(CaseStudyDbContext db,
+        TimeProvider? time = null)
     {
+        _time = time ?? TimeProvider.System;
+
         _db = db;
     }
 
     public async Task<DashboardOpsMetricsDto> GetAsync(CancellationToken cancellationToken = default)
     {
-        var now = DateTime.UtcNow;
+        var now = _time.UtcNow();
         var startUtc = new DateTime(now.Year - 2, 1, 1, 0, 0, 0, DateTimeKind.Utc);
 
         var rows = await _db.WorkflowTasks.AsNoTracking()

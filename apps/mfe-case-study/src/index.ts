@@ -48,7 +48,6 @@ export * from "./lib/prototype/transaction-filters";
 export * from "./lib/prototype/favorite-properties";
 export * from "./lib/prototype/distribution-parties";
 export * from "./lib/prototype/my-task-row";
-export * from "./lib/prototype/po-primary-data-readiness";
 export * from "./lib/prototype/active-transaction-page-situation";
 export * from "./lib/prototype/active-transactions-situation";
 export * from "./lib/prototype/case-study-form-data";

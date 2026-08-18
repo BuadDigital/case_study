@@ -148,7 +148,7 @@ internal static class TestBoundedContexts
             ops,
             cs,
             TestInspectorFeeServiceFactory.ShareFinancial(app),
-            TestInspectorFeeServiceFactory.ShareAttachments(app),
+            TestInspectorFeeServiceFactory.ShareAttachmentLookup(app),
             CreateAccessHolds(app, failures),
             new KeyEnvelopePeopleResolver(identity),
             new NullNotificationService(),
@@ -170,7 +170,8 @@ internal static class TestBoundedContexts
         IPartyFeePricingService? pricing = null) =>
         OperationsTaskService.Create(
             bundle.Ops,
-            bundle.App,
+            TestInspectorFeeServiceFactory.ShareFinancial(bundle.App),
+            TestInspectorFeeServiceFactory.ShareIdentity(bundle.App),
             notifications ?? new NullNotificationService(),
             pricing ?? new PartyFeePricingService(
                 TestInspectorFeeServiceFactory.ShareFinancial(bundle.App)));

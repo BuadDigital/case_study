@@ -7,10 +7,9 @@ import {
   Tab,
   TabBar,
   TabPanel,
-} from "@platform/design-system";
+} from "@platform/ui-kit";
 import {
   inspectorFeeStatusLabel,
-  inspectorFeeStatusTone,
   inspectorFeeWorkStatusTone,
 } from "@platform/api-client";
 import { loadPropertyEnfazRevenue } from "@platform/app-shared/prototype/enfaz-billing-api";

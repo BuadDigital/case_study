@@ -1,9 +1,9 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
 using RealEstateEval.Application.Abstractions;
 using RealEstateEval.Application.Contracts;
 using RealEstateEval.Application.Rules;
 using RealEstateEval.Domain;
-using RealEstateEval.Infrastructure.Data;
 using RealEstateEval.Infrastructure.Data.Contexts;
 
 namespace RealEstateEval.Infrastructure.Services;
@@ -13,17 +13,27 @@ public sealed class OperationsTaskQueryService : IOperationsTaskQuery
     private const int MaxListRows = 500;
 
     private readonly OperationsDbContext _ops;
-    private readonly ApplicationDbContext _db;
+    private readonly ICourtVisitFeeChargeService _charges;
     private readonly IUserLabelLookup _labels;
 
     public OperationsTaskQueryService(
         OperationsDbContext ops,
-        ApplicationDbContext db,
+        FinancialDbContext financial,
+        IdentityDbContext db,
         IUserLabelLookup? labels = null)
+        : this(ops, new CourtVisitFeeChargeService(financial), labels ?? new UserLabelLookup(db))
+    {
+    }
+
+    [ActivatorUtilitiesConstructor]
+    public OperationsTaskQueryService(
+        OperationsDbContext ops,
+        ICourtVisitFeeChargeService charges,
+        IUserLabelLookup labels)
     {
         _ops = ops;
-        _db = db;
-        _labels = labels ?? new UserLabelLookup(db);
+        _charges = charges;
+        _labels = labels;
     }
 
     public async Task<IReadOnlyList<OperationsTaskDto>> ListAsync(
@@ -92,27 +102,7 @@ public sealed class OperationsTaskQueryService : IOperationsTaskQuery
         string? creditAssigneeId = null,
         CancellationToken cancellationToken = default)
     {
-        var query = _db.CourtVisitFeeCharges.AsNoTracking();
-        var assignee = creditAssigneeId?.Trim();
-        if (!string.IsNullOrEmpty(assignee))
-            query = query.Where(c => c.CreditAssigneeId == assignee);
-
-        return await query
-            .OrderByDescending(c => c.CreatedAtUtc)
-            .Select(c => new CourtVisitFeeReportRowDto
-            {
-                Id = c.Id,
-                OperationsTaskId = c.OperationsTaskId,
-                TaskDisplayId = c.TaskDisplayId,
-                PoNumber = c.PoNumber,
-                CreditAssigneeId = c.CreditAssigneeId,
-                CreditAssigneeName = c.CreditAssigneeName,
-                AmountSar = c.AmountSar,
-                Status = c.Status,
-                CreatedAtUtc = c.CreatedAtUtc,
-            })
-            .Take(MaxListRows)
-            .ToListAsync(cancellationToken);
+        return await _charges.ListAsync(creditAssigneeId, cancellationToken);
     }
 
     public async Task<OperationsTaskDto> MapAsync(OperationsTask row, CancellationToken cancellationToken = default)
@@ -153,12 +143,8 @@ public sealed class OperationsTaskQueryService : IOperationsTaskQuery
         var ids = taskIds.Distinct().ToList();
         if (ids.Count == 0) return new Dictionary<Guid, decimal?>();
 
-        var rows = await _db.CourtVisitFeeCharges.AsNoTracking()
-            .Where(c => ids.Contains(c.OperationsTaskId))
-            .Select(c => new { c.OperationsTaskId, c.AmountSar })
-            .ToListAsync(cancellationToken);
-
-        return rows.ToDictionary(x => x.OperationsTaskId, x => (decimal?)x.AmountSar);
+        var amounts = await _charges.GetAmountsByTaskIdsAsync(ids, cancellationToken);
+        return amounts.ToDictionary(entry => entry.Key, entry => entry.Value);
     }
 
     private async Task<Dictionary<Guid, Guid>> LoadLinkedEnvelopeIdsAsync(
@@ -178,3 +164,5 @@ public sealed class OperationsTaskQueryService : IOperationsTaskQuery
             .ToDictionary(g => g.Key, g => g.OrderByDescending(x => x.CreatedAtUtc).First().Id);
     }
 }
+
+

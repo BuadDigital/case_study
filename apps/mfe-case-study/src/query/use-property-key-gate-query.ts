@@ -3,6 +3,9 @@
 import { useQuery } from "@tanstack/react-query";
 import {
   getPropertyKeyGate,
+  PropertyKeyGateSources,
+  PropertyKeyHandedValues,
+  PropertyKeysStatuses,
   type PropertyKeyGateDto,
 } from "@platform/api-client";
 import { prototypeKeys } from "@platform/app-shared/query/prototype-keys";
@@ -43,25 +46,25 @@ export function usePropertyKeyGateQuery(params: {
 }
 
 export function keysStatusLabelAr(value: string): string {
-  if (value === "received") return "مستلَمة";
-  if (value === "not_required") return "غير مطلوبة";
-  if (value === "pending") return "بانتظار";
-  if (value === "blocked") return "متعذّر";
+  if (value === PropertyKeysStatuses.Received) return "مستلَمة";
+  if (value === PropertyKeysStatuses.NotRequired) return "غير مطلوبة";
+  if (value === PropertyKeysStatuses.Pending) return "بانتظار";
+  if (value === PropertyKeysStatuses.Blocked) return "متعذّر";
   return value?.trim() || "لم تُحدَّد بعد";
 }
 
 export function keyHandedLabelAr(value: string): string {
-  if (value === "yes") return "تم التسليم";
-  if (value === "no") return "لم يُسلَّم";
-  if (value === "not_required") return "غير مطلوب";
+  if (value === PropertyKeyHandedValues.Yes) return "تم التسليم";
+  if (value === PropertyKeyHandedValues.No) return "لم يُسلَّم";
+  if (value === PropertyKeysStatuses.NotRequired) return "غير مطلوب";
   return value?.trim() || "لم تُحدَّد بعد";
 }
 
 export function keyGateSourceLabelAr(source: string): string {
-  if (source === "envelope") return "ظرف مفاتيح";
-  if (source === "court_access") return "تمكين / محظر محكمة";
-  if (source === "legacy") return "سجل قديم";
-  if (source === "none" || !source.trim()) return "لا يوجد مصدر";
+  if (source === PropertyKeyGateSources.Envelope) return "ظرف مفاتيح";
+  if (source === PropertyKeyGateSources.CourtAccess) return "تمكين / محظر محكمة";
+  if (source === PropertyKeyGateSources.Legacy) return "سجل قديم";
+  if (source === PropertyKeyGateSources.None || !source.trim()) return "لا يوجد مصدر";
   return source;
 }
 

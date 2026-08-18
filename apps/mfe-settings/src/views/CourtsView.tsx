@@ -40,7 +40,7 @@ import {
   THead,
   Tr,
   useToast,
-} from "@platform/design-system";
+} from "@platform/ui-kit";
 import { courtsApiConfig } from "../lib/settings-api-config";
 
 const REGION_CITIES: Record<string, string[]> = {

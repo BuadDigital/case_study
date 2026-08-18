@@ -48,7 +48,7 @@ import {
   Tr,
   cn,
   useToast,
-} from "@platform/design-system";
+} from "@platform/ui-kit";
 import { getAuthSession } from "@platform/auth-client";
 import type { StaffUser } from "@platform/app-shared/prototype/constants";
 import { DevSystemResetPanel } from "../../components/DevSystemResetPanel";

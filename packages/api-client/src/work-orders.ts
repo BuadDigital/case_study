@@ -304,8 +304,9 @@ export type ApiErr = {
 async function parseForbidden(res: Response): Promise<ApiErr> {
   let message = "ليس لديك صلاحية لهذا الإجراء";
   try {
-    const body = (await res.json()) as { message?: string };
-    const trimmed = body.message?.trim();
+    const body = (await res.json()) as { message?: string; detail?: string; error?: string };
+    const trimmed =
+      body.message?.trim() || body.detail?.trim() || body.error?.trim();
     if (trimmed) message = trimmed;
   } catch {
     // Status alone is enough when the body is empty (policy Forbid).

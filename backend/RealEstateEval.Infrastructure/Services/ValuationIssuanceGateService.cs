@@ -12,7 +12,7 @@ namespace RealEstateEval.Infrastructure.Services;
 public sealed class ValuationIssuanceGateService(
     ValuationDbContext valuation,
     CaseStudyDbContext caseStudy,
-    AttachmentsDbContext attachments,
+    IAttachmentLookup attachments,
     IOrganizationSettingsService organizationSettings,
     IAttachmentPrintDictionaryService printDictionary,
     IValuationComparableSelectionService selections,
@@ -260,11 +260,11 @@ public sealed class ValuationIssuanceGateService(
             .ToList();
         if (required.Count == 0) return [];
 
-        var printableKeys = await attachments.FileAttachments.AsNoTracking()
-            .Where(a => a.PrintInReport && a.ScopeKey.Contains(propertyId))
+        var printableKeys = (await attachments.ListForPropertyAsync(propertyId, cancellationToken))
+            .Where(a => a.PrintInReport)
             .Select(a => a.DictionaryTypeKey)
             .Distinct()
-            .ToListAsync(cancellationToken);
+            .ToList();
         var have = printableKeys
             .Select(k => (k ?? "").Trim().ToLowerInvariant())
             .ToHashSet(StringComparer.Ordinal);

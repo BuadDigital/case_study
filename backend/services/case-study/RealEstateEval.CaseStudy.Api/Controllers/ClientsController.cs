@@ -9,7 +9,6 @@ namespace RealEstateEval.CaseStudy.Api.Controllers;
 
 [ApiController]
 [Route("api/clients")]
-[Route("api/clients/v1")]
 [Authorize(Policy = CapabilityPolicyNames.ManageWorkOrders)]
 public class ClientsController : ControllerBase
 {
@@ -42,7 +41,7 @@ public class ClientsController : ControllerBase
     {
         var (result, errors) = await _clients.CreateAsync(request, cancellationToken);
         if (errors is not null)
-            return BadRequest(new FieldErrorsResponseDto { Errors = errors });
+            return this.FieldErrorsProblem(errors);
         return CreatedAtAction(nameof(Get), new { id = result!.Id }, result);
     }
 
@@ -54,7 +53,7 @@ public class ClientsController : ControllerBase
     {
         var (result, errors) = await _clients.UpdateAsync(id, request, cancellationToken);
         if (errors is not null)
-            return BadRequest(new FieldErrorsResponseDto { Errors = errors });
+            return this.FieldErrorsProblem(errors);
         return Ok(result);
     }
 
@@ -62,7 +61,7 @@ public class ClientsController : ControllerBase
     public async Task<IActionResult> Deactivate(Guid id, CancellationToken cancellationToken)
     {
         var (ok, error) = await _clients.DeactivateAsync(id, cancellationToken);
-        if (!ok) return BadRequest(new { message = error });
+        if (!ok) return this.BadRequestProblem(error ?? "تعذر تنفيذ العملية.");
         return NoContent();
     }
 }

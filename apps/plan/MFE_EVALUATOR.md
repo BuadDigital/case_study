@@ -61,7 +61,7 @@
 |------|------|
 | `@valuation/mfe` → `ValuationRequestsView` | `real-estate-appraiser` role filter — wired in shell `[page]/page.tsx` |
 | `lib/query/prototype-queries.ts` | Shared task/PO queries — shell or `api-client`, not evaluator-owned |
-| `packages/design-system/.../prototype.css` | `.evaluator-*`, `.appraiser-*` styles (~56 rules) — keep in design-system until F5 |
+| `packages/ui-kit/.../prototype.css` | `.evaluator-*`, `.appraiser-*` styles (~56 rules) — keep in ui-kit until F5 |
 
 ---
 
@@ -162,7 +162,7 @@ apps/mfe-evaluator/
 |------|------|------|
 | **E0** | Scaffold `apps/mfe-evaluator`: `package.json`, `tsconfig`, shell path alias, `typecheck:mfe-evaluator` | Low |
 | **E1** | Move leaf `lib/` (window-data, storage, validation, report-attachments, recall, queue, menus, window-host) | Low — no UI |
-| **E2** | Move `EvaluatorWindow` + `AppraiserUploadTab` + `EvaluatorAdvisoryPanel` | Medium — CSS classes in design-system |
+| **E2** | Move `EvaluatorWindow` + `AppraiserUploadTab` + `EvaluatorAdvisoryPanel` | Medium — CSS classes in ui-kit |
 | **E3** | Move `party-appraisal-extensions.tsx`; wire `PartyActiveTaskViewHost` to `@evaluator/mfe` | Medium — party queue regression |
 | **E4** | Export `renderCaseStudyEvaluatorExtras`; update `case-study/[taskId]/page.tsx` | Low |
 | **E5** | Export PO recall builder; slim `PoPropertiesPageClient` | Low |
@@ -184,7 +184,7 @@ Do **after** E3–E6: optional collapse of `PartyActiveTaskViewHost` into a gene
 | `GovernmentReviewView` party path | Different party kind; unchanged |
 | Nav / `PAGE_LABELS` / role → pages in `@platform/app-shared` | Host config |
 | `prototype-queries.ts` | Shell-wide until per-domain API hooks exist |
-| `prototype.css` evaluator styles | Keep in `@platform/design-system` until split theming (F5) or evaluator ships standalone CSS module |
+| `prototype.css` evaluator styles | Keep in `@platform/ui-kit` until split theming (F5) or evaluator ships standalone CSS module |
 | Inspection gate **enforcement** (commented TODO) | Product decision tied to field-inspection rollout — do not enable during MFE split |
 
 ---

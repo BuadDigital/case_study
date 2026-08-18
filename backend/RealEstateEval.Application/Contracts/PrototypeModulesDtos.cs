@@ -106,7 +106,7 @@ public class SaveValuationRequestRequest
     [Required, MaxLength(256)]
     public string Appraiser { get; init; } = "";
     [Required, MaxLength(32)]
-    public string Status { get; init; } = "progress";
+    public string Status { get; init; } = ValuationRequestStatuses.Progress;
     [MaxLength(32)]
     public string Date { get; init; } = "";
 }
@@ -151,6 +151,49 @@ public class FileAttachmentMetaDto
     public string DictionaryTypeKey { get; init; } = "";
  /// <summary>When true with a type key, attachment is eligible for report –25.</summary>
     public bool PrintInReport { get; init; }
+}
+
+public sealed class AttachmentRefDto
+{
+    public Guid Id { get; init; }
+    public required string Scope { get; init; }
+    public required string ScopeKey { get; init; }
+}
+
+public sealed class AttachmentExistsDto
+{
+    public bool Exists { get; init; }
+}
+
+public sealed class UserLabelDto
+{
+    public required string Id { get; init; }
+    public required string DisplayName { get; init; }
+}
+
+public sealed class IdentityCompensationProfileDto
+{
+    public required string AssigneeId { get; init; }
+    public required string UserId { get; init; }
+    public bool HasCompensation { get; init; }
+    public ContractType? ContractType { get; init; }
+    public ProcProviderKind? ProviderKind { get; init; }
+    public string? EmploymentType { get; init; }
+}
+
+public sealed class IdentityUserIdDto
+{
+    public string? UserId { get; init; }
+}
+
+public sealed class IdentityUserIdsDto
+{
+    public IReadOnlyList<string> UserIds { get; init; } = [];
+}
+
+public sealed class WorkflowAssigneeIdsDto
+{
+    public IReadOnlyList<string> AssigneeIds { get; init; } = [];
 }
 
 public class UploadAttachmentRequest

@@ -1,10 +1,12 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
 using RealEstateEval.Application.Abstractions;
 using RealEstateEval.Application.Contracts;
 using RealEstateEval.Application.Rules;
 using RealEstateEval.Domain;
 using RealEstateEval.Infrastructure.Data;
+using RealEstateEval.Infrastructure.Data.Contexts;
 
 namespace RealEstateEval.Infrastructure.Services;
 
@@ -13,18 +15,40 @@ public sealed class WorkOrderQueryService : IWorkOrderQuery
     private const WorkflowTaskKind CaseStudyPropertyKind = WorkflowTaskKind.CaseStudyProperty;
     private const int MaxDetailRows = 500;
 
-    private readonly ApplicationDbContext _db;
+    private readonly CaseStudyDbContext _db;
+    private readonly IFailureLookup _failureLookup;
+    private readonly IPoEnfazInvoiceLookup _enfazInvoices;
+    private readonly IUserLabelLookup _labels;
     private readonly IWorkOrderVisibilityFilter _visibility;
     private readonly IWorkOrderLoader _loader;
     private readonly DatabaseOptions _dbOptions;
 
     public WorkOrderQueryService(
-        ApplicationDbContext db,
+        CaseStudyDbContext db,
+        FailuresDbContext failures,
+        FinancialDbContext financial,
+        IdentityDbContext identity,
+        IWorkOrderLoader loader,
+        IWorkOrderVisibilityFilter? visibility = null,
+        IOptions<DatabaseOptions>? dbOptions = null)
+        : this(db, new FailureLookup(failures), new PoEnfazInvoiceLookup(financial), new UserLabelLookup(identity), loader, visibility, dbOptions)
+    {
+    }
+
+    [ActivatorUtilitiesConstructor]
+    public WorkOrderQueryService(
+        CaseStudyDbContext db,
+        IFailureLookup failureLookup,
+        IPoEnfazInvoiceLookup enfazInvoices,
+        IUserLabelLookup labels,
         IWorkOrderLoader loader,
         IWorkOrderVisibilityFilter? visibility = null,
         IOptions<DatabaseOptions>? dbOptions = null)
     {
         _db = db;
+        _failureLookup = failureLookup;
+        _enfazInvoices = enfazInvoices;
+        _labels = labels;
         _loader = loader;
         _visibility = visibility ?? new WorkOrderVisibilityFilter(db);
         _dbOptions = dbOptions?.Value ?? new DatabaseOptions();
@@ -108,14 +132,7 @@ public sealed class WorkOrderQueryService : IWorkOrderQuery
 
         var list = await query.Take(MaxDetailRows).ToListAsync(cancellationToken);
 
-        var approvedFailures = await _db.PropertyFailures
-            .AsNoTracking()
-            .Where(f => f.Status == PropertyFailureStatus.Approved)
-            .Select(f => new { f.PoNumber, f.PropertyId })
-            .ToListAsync(cancellationToken);
-
-        var failureKeys = approvedFailures
-            .Select(f => $"{f.PoNumber.Trim()}|{f.PropertyId.Trim()}")
+        var failureKeys = (await _failureLookup.ListApprovedPropertyKeysAsync(cancellationToken))
             .ToHashSet(StringComparer.Ordinal);
 
         var propertyIds = list.SelectMany(w => w.Properties.Select(p => p.Id)).ToList();
@@ -250,8 +267,7 @@ public sealed class WorkOrderQueryService : IWorkOrderQuery
         WorkOrderDto dto,
         CancellationToken cancellationToken = default)
     {
-        dto.AssignmentSpecialist = await PersonLabelResolver.ResolveAsync(
-            _db,
+        dto.AssignmentSpecialist = await _labels.ResolveAsync(
             dto.AssignmentSpecialist,
             cancellationToken);
         return dto;
@@ -310,15 +326,10 @@ public sealed class WorkOrderQueryService : IWorkOrderQuery
 
         var billedPos = poNumbers.Count == 0
             ? new HashSet<string>(StringComparer.Ordinal)
-            : (await _db.PoEnfazInvoices.AsNoTracking()
-                .Where(i => poNumbers.Contains(i.PoNumber))
-                .Select(i => i.PoNumber)
-                .ToListAsync(cancellationToken))
-                .Select(p => p.Trim())
+            : (await _enfazInvoices.ListBilledPoNumbersAsync(poNumbers, cancellationToken))
                 .ToHashSet(StringComparer.Ordinal);
 
-        var specialistNames = await PersonLabelResolver.ResolveManyAsync(
-            _db,
+        var specialistNames = await _labels.ResolveManyAsync(
             orders.Select(w => w.AssignmentSpecialist),
             cancellationToken);
 
@@ -341,8 +352,7 @@ public sealed class WorkOrderQueryService : IWorkOrderQuery
         IReadOnlyList<WorkOrderDto> rows,
         CancellationToken cancellationToken)
     {
-        var names = await PersonLabelResolver.ResolveManyAsync(
-            _db,
+        var names = await _labels.ResolveManyAsync(
             rows.Select(r => r.AssignmentSpecialist),
             cancellationToken);
         foreach (var row in rows)
@@ -359,8 +369,7 @@ public sealed class WorkOrderQueryService : IWorkOrderQuery
         IReadOnlyList<PropertyListItemDto> rows,
         CancellationToken cancellationToken)
     {
-        var names = await PersonLabelResolver.ResolveManyAsync(
-            _db,
+        var names = await _labels.ResolveManyAsync(
             rows.Select(r => r.Row.Specialist),
             cancellationToken);
         foreach (var row in rows)

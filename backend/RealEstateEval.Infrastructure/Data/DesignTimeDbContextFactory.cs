@@ -17,10 +17,10 @@ public class DesignTimeDbContextFactory : IDesignTimeDbContextFactory<Applicatio
             .Build();
 
         var connectionString =
-            Environment.GetEnvironmentVariable("REAL_ESTATE_EVAL_PG_CONNECTION_STRING")
-            ?? configuration.GetConnectionString("DefaultConnection")
-            ?? throw new InvalidOperationException(
-                "Database connection missing for design-time migrations.");
+            Environment.GetEnvironmentVariable(
+                BoundedContextConnections.EnvVarFor(BoundedContextConnections.ServiceNames.CaseStudy))
+            ?? configuration.GetConnectionString(BoundedContextConnections.ServiceNames.CaseStudy)
+            ?? "Host=localhost;Database=realestate_eval_design_time;Username=postgres;Password=postgres";
 
         var options = new DbContextOptionsBuilder<ApplicationDbContext>()
             .UseNpgsql(connectionString)

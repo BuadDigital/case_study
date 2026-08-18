@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef, type ChangeEvent } from "react";
-import { Spinner, cn, useToast } from "@platform/design-system";
+import { Spinner, cn, useToast } from "@platform/ui-kit";
 import {
   INSPECTOR_PHOTO_ACCEPT,
   filterInspectorPhotoFiles,

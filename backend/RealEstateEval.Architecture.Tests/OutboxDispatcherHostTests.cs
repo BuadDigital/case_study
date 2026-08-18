@@ -3,29 +3,26 @@ using RealEstateEval.Architecture.Tests.Support;
 namespace RealEstateEval.Architecture.Tests;
 
 /// <summary>
-/// E7 residual: while messaging shares one DB, only Case Study may host the outbox
-/// publisher. Competing hosts would double-publish under SKIP LOCKED races or leave
-/// stranded rows when a second database cuts over without its own dispatcher.
+/// Each physical outbox database needs exactly one dispatcher. Case Study drains the
+/// dedicated messaging database; Valuation drains its dedicated database after the Phase 4
+/// cutover. A third host would double-publish or leave stranded rows.
 /// </summary>
 public class OutboxDispatcherHostTests
 {
     [Fact]
-    public void Only_case_study_registers_AddOutboxDispatcher()
+    public void Case_study_and_valuation_register_AddOutboxDispatcher()
     {
         var servicesRoot = RepoPaths.Combine("backend", "services");
         var hosts = new List<string>();
 
-        foreach (var program in Directory.EnumerateFiles(
-                     servicesRoot,
-                     "Program.cs",
-                     SearchOption.AllDirectories))
+        foreach (var file in RepoPaths.CSharpFiles(servicesRoot))
         {
-            var text = File.ReadAllText(program);
+            var text = File.ReadAllText(file);
             if (!text.Contains("AddOutboxDispatcher", StringComparison.Ordinal))
                 continue;
 
-            var relative = program.Replace('\\', '/');
-            var marker = "/services/";
+            var relative = RepoPaths.Relative(file);
+            var marker = "backend/services/";
             var idx = relative.IndexOf(marker, StringComparison.OrdinalIgnoreCase);
             var service = idx < 0
                 ? relative
@@ -33,6 +30,20 @@ public class OutboxDispatcherHostTests
             hosts.Add(service);
         }
 
-        Assert.Equal(["case-study"], hosts.OrderBy(x => x, StringComparer.Ordinal).ToArray());
+        Assert.Equal(["case-study", "valuation"], hosts.OrderBy(x => x, StringComparer.Ordinal).ToArray());
+    }
+
+    [Fact]
+    public void Each_dispatcher_binds_its_own_outbox_context()
+    {
+        var caseStudy = File.ReadAllText(
+            RepoPaths.Combine("backend", "services", "case-study", "RealEstateEval.CaseStudy.Api", "ServiceModule.cs"));
+        var valuation = File.ReadAllText(
+            RepoPaths.Combine("backend", "services", "valuation", "RealEstateEval.Valuation.Api", "ServiceModule.cs"));
+
+        Assert.Contains("typeof(MessagingDbContext)", caseStudy, StringComparison.Ordinal);
+        Assert.Contains("typeof(ValuationDbContext)", valuation, StringComparison.Ordinal);
+        Assert.DoesNotContain("typeof(ValuationDbContext)", caseStudy, StringComparison.Ordinal);
+        Assert.DoesNotContain("typeof(MessagingDbContext)", valuation, StringComparison.Ordinal);
     }
 }

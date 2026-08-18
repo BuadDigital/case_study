@@ -12,7 +12,7 @@ public sealed class PasswordAuthenticationService(
     SignInManager<ApplicationUser> signInManager,
     IAuthSessionService sessions) : IPasswordAuthenticationService
 {
-    public async Task<LoginResponse?> AuthenticateAsync(
+    public async Task<LoginResponseDto?> AuthenticateAsync(
         string usernameOrEmail,
         string password,
         CancellationToken cancellationToken = default)

@@ -9,7 +9,7 @@ import {
   StatGrid,
   StatLabel,
   StatValue,
-} from "@platform/design-system";
+} from "@platform/ui-kit";
 import { usePrototype } from "@platform/app-shared/contexts/PrototypeContext";
 import { sortInspectorFeeRowsNewestFirst } from "@platform/app-shared/fees/party-fee-meta";
 import { useInspectorFeesQuery } from "../../query/inspector-fees-queries";

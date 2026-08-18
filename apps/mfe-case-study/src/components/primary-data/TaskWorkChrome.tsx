@@ -1,6 +1,6 @@
 "use client";
 import type { ReactNode } from "react";
-import { Button, Card, CardBody } from "@platform/design-system";
+import { Button, Card, CardBody } from "@platform/ui-kit";
 import { PoEditShell } from "@case-study/mfe/components/po-intake/PoEditShell";
 
 export function TaskWorkChrome({

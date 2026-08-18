@@ -1,4 +1,4 @@
-﻿namespace RealEstateEval.Application.Contracts;
+namespace RealEstateEval.Application.Contracts;
 
 public class PartyBillingReadyLineDto
 {
@@ -87,14 +87,14 @@ public class CreatePartyBillingStatementRequest
     public string? Notes { get; init; }
 }
 
-public class CreatePartyBillingStatementResult
+public class CreatePartyBillingStatementResponseDto
 {
     public PartyBillingStatementDto? Statement { get; set; }
     public IReadOnlyList<PartyBillingReadyLineDto> DeferredLines { get; set; } = [];
     public string? Error { get; set; }
 }
 
-public class CreateMonthPartyBillingStatementsResult
+public class CreateMonthPartyBillingStatementsResponseDto
 {
     public IReadOnlyList<PartyBillingStatementDto> Created { get; set; } = [];
     public int AssigneesCovered { get; set; }
@@ -140,7 +140,7 @@ public class DeferPartyBillingLinesRequest
     public IReadOnlyList<string> WorkflowTaskIds { get; init; } = [];
 }
 
-public class DeferPartyBillingLinesResult
+public class DeferPartyBillingLinesResponseDto
 {
     public IReadOnlyList<PartyBillingReadyLineDto> Deferred { get; set; } = [];
     public IReadOnlyList<InspectorFeeTransitionErrorDto> Failed { get; set; } = [];

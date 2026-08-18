@@ -1,8 +1,8 @@
-export type ContractType = "Internal" | "Freelance" | "ServiceProvider";
-export type RegistrationSourceApi = "Hr" | "Proc";
+type ContractType = "Internal" | "Freelance" | "ServiceProvider";
+type RegistrationSourceApi = "Hr" | "Proc";
 export type UserStatusApi = "Active" | "Disabled" | "PendingActivation" | "Locked";
 
-export type UserDetailField = {
+type UserDetailField = {
   section: string;
   label: string;
   value: string;
@@ -37,8 +37,4 @@ export type UserListItem = {
   lastLoginAtUtc?: string | null;
   systemRoles?: string[];
   details?: UserDetailField[];
-};
-
-export type FieldErrorsResponse = {
-  errors: Record<string, string>;
 };

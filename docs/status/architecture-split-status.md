@@ -3,20 +3,55 @@
 Honest running status of [`docs/architecture-split-plan.md`](../architecture-split-plan.md).
 Update this file with every slice; do not summarise a partial slice as a finished phase.
 
-## Where the split is (2026-08-03)
+## Where the split is (2026-08-18)
 
 | Phase | State | Evidence |
 | --- | --- | --- |
-| 0 — freeze and measure | Ownership gate **closed**. All 60 table rows are `approved`; D1–D5 have recorded outcomes and rationale; D6 is `accepted-with-residual-risk`, not answered. Owner nomination, the production-consumer inventory, and production metrics are still outstanding and now gate Phase 3/4. | [`table-ownership.json`](../architecture/table-ownership.json), [`table-ownership-catalog.md`](../architecture/table-ownership-catalog.md) |
-| 1 — split EF contexts | **In progress — extraction steps 1–5 of 5 complete.** Attachments, Platform, Valuation, Identity, Failures, Operations, Financial, Case Study, and Messaging have contexts and migration streams. | `backend/RealEstateEval.Infrastructure/Data/Contexts` |
-| 2–5 | Phase 1 extraction complete; **A6 partial**: pure hosts dropped `AddPersistence`; residual dual-write hosts keep App pool. | — |
+| 0 — freeze and measure | Ownership gate **closed**. | [`table-ownership.json`](../architecture/table-ownership.json) |
+| 1 — split EF contexts | **Done (A6).** Hosts no longer call `AddPersistence`. | [`backend/plan/A6_CLOSEOUT.md`](../../backend/plan/A6_CLOSEOUT.md) |
+| 2 — split libraries | Not started. | — |
+| 3 — remove cross-schema access | **In progress.** Lookup residuals that drop a second connection are on owner HTTP APIs. Write residuals still open foreign contexts (Failures CS patches, Valuation report fill, messaging outbox, Identity audit). | — |
+| 4 — split databases | **Owner databases only.** No leftover shared Postgres. Residual readers still open owner contexts over a second connection. | `BoundedContextConnections`, `infra/postgres/init-*.sql` |
+| 5 — remove shims | Not started. | — |
 
-Phase 1's **context-extraction** steps are done. Full Phase 1 exit still needs residual hosts to
-stop calling `AddPersistence` (case-study residual writers,
-outbox drain). Pure extracted APIs (`attachments`, `identity`, `platform`, `valuation`,
-`financial`, `operations`, `failures`) no longer register the legacy pool; readiness probes owned/residual-read
-context streams instead.
+## What Phase 3 lookup residuals changed
 
+- Shared `UpstreamServices` + authenticated JSON helper. Hosts forward the inbound `Authorization` header.
+- **Attachments** — `IAttachmentLookup`. Case Study / Operations / Valuation no longer open `AttachmentsDbContext`.
+- **Platform catalogs** — print dictionary and organization settings via Platform HTTP. Attachments, Valuation, and Case Study no longer open `PlatformDbContext`.
+- **Valuation dispatch** — Case Study creates/opens valuation requests via `POST/GET /api/valuation-request-dispatch` (`[Authorize]` only). Case Study no longer opens `ValuationDbContext`.
+- **Identity directory** — labels, compensation, assignee→user maps via `/api/identity/*`. Operations, Financial, Failures, Platform, and Production Case Study no longer open `IdentityDbContext`. Development Case Study still registers Identity for system maintenance/seed.
+- **Workflow assignees** — Platform notification recipients call Case Study `GET /api/workflow-assignees`. Platform no longer opens `CaseStudyDbContext` or `IdentityDbContext`.
+- **Platform audit append** — `IAuditLogAppend` / `POST /api/audit-log/append`. Identity, Case Study (property groups, inspection limits), and Valuation (reconciliation overrides) no longer open `PlatformDbContext` to write the ledger. Identity seed/reset still uses Platform EF on the throwaway maintenance provider.
+- **Failures commands and gates** — `IFailureLookup` / `IFailureService` via `/api/failure-dispatch` (`[Authorize]` only for system holds and documentary side-effects) and `/api/failures` for the operator queue. Case Study and Operations no longer open `FailuresDbContext`. Failures still opens Case Study for workflow patches and timelines (compose deadlock if Failures also `depends_on` Case Study HTTP).
+- **Operations tasks, keys, and envelopes** — Case Study uses Operations HTTP (`IOperationsTaskService`, `IKeyEntitlementLookup`, `IPropertyKeyGateResolver`). Operator queue is `/api/operations-tasks` (existing policies). CS billing/gates use `/api/key-envelope-dispatch` (`[Authorize]` only). Case Study no longer opens `OperationsDbContext`.
+- **Case Study dispatch** — Operations and Financial call `GET/POST /api/case-study-dispatch` (`[Authorize]` only) via `ICaseStudyLookup` / `ICaseStudyCommands` (`AddRemoteCaseStudy` plus Financial-only `HttpCaseStudyCommands`). Those hosts no longer open `CaseStudyDbContext` and do **not** `depends_on` case-study (Case Study already `depends_on` operations and financial). D4 document-reference allocation and survey-area backfill are Case Study commands.
+- **Financial dispatch** — Case Study and Operations call `/api/financial-dispatch` (`[Authorize]` only) via `AddRemoteFinancial`. Those hosts no longer open `FinancialDbContext`. Fee writes live on the Financial host, which calls Case Study HTTP for workflow/property lookups and D4 counters (no compose `depends_on` case-study).
+
+Write residuals that still open a second owner connection:
+
+- Case Study: Messaging (and Development Identity).
+- Operations: Messaging.
+- Failures: Case Study, Messaging.
+- Valuation: Case Study (report fill / issuance still load property/form aggregates; a PO-number-only lookup would not drop this connection).
+
+HTTP lookups that would **not** drop a connection (skipped): Case Study PO number on Valuation. Failures CS HTTP skipped this slice (CS↔Failures compose cycle plus FailureService workflow/timeline/deed writes).
+
+## What Phase 4 Attachments changed
+
+- Postgres init creates `realestate_eval_attachments` (dev) / `realestate_eval_prod_attachments` (prod), plus empty placeholder databases for later owners.
+- `AddAttachmentsPersistence` prefers `REAL_ESTATE_EVAL_PG_CONNECTION_STRING_ATTACHMENTS` / `ConnectionStrings:Attachments`.
+- `DbMigrate` applies the Attachments stream to that database and `CREATE DATABASE` if the volume already existed.
+- `EnsureFileAttachmentsForStandalone` materializes `FileAttachments` with `IF NOT EXISTS` so a dedicated database (no legacy stream) still builds.
+- Residual Case Study / Operations / Valuation **request paths** call the Attachments HTTP API (`IAttachmentLookup`). Those hosts no longer open `AttachmentsDbContext`. Development seed/reset (`DataSeeder` / `SystemMaintenanceService`) may still count attachments through the transitional god context.
+- Identity and Platform now use dedicated databases (`realestate_eval_identity` / `realestate_eval_platform`). Identity audit rows are written through `PlatformDbContext` so the append-only ledger stays on Platform.
+- Valuation now uses a dedicated database (`realestate_eval_valuation`). Case Study still writes valuation requests through `ValuationDbContext` on a second connection. Valuation hosts its own outbox dispatcher so those rows are not stranded on the new database.
+- Failures now uses a dedicated database (`realestate_eval_failures`). Case Study and Operations call the Failures HTTP API for gates, timelines, and access holds; they no longer open `FailuresDbContext`. Failures schema migrations are applied by DbMigrate (not Case Study startup).
+- Operations now uses a dedicated database (`realestate_eval_operations`), including D2 `case_study.OperationsTasks` / `OperationsTaskSequences` which `OperationsDbContext` maps. Copy those task tables with the operations schema.
+- Financial now uses a dedicated database (`realestate_eval_financial`), including D1 inspector-fee tables still physically named in `case_study`. Fee/enfaz audit rows written through `FinancialDbContext` land on that database's `audit.AuditLogs` (the Platform ledger stays on Platform).
+- Case Study now uses a dedicated database (`realestate_eval_case_study`) for Case Study–owned tables only. Residual readers (Failures, Valuation) still open `CaseStudyDbContext` on a second connection. Operations and Financial call Case Study HTTP.
+- Messaging now uses a dedicated database (`realestate_eval_messaging`). Case Study drains that outbox; Platform / Failures / Operations write notification and inbox rows there. Valuation still drains `valuation.%` outbox rows from the valuation database. Copy messaging **after** Valuation so those rows are not double-published.
+- One-time row copy: `infra/postgres/copy-*-data.sh` for each owner (if leftover still has rows). Copy Case Study **after** Operations and Financial so D1/D2 rows are already claimed by those owners; the Case Study script excludes those tables. Then drop leftover databases with `infra/postgres/drop-leftover-shared.sh`. There is no shared-database fallback.
 
 ## What extraction step 5 changed
 
@@ -25,8 +60,9 @@ context streams instead.
 - Platform: `AddMessagingPersistence` + `MessagingOutboxPublisher` (notif + outbox one UoW);
   `NotificationService` / `PushSubscriptionService` / web-push delivery use Messaging only;
   Platform `IIntegrationEventInbox` resolved onto Messaging.
-- Valuation still maps its own outbox (D5). Case Study residual produces outbox via App;
-  the outbox dispatcher still claims rows through `ApplicationDbContext` against the same table.
+- Valuation still maps its own outbox (D5). After the Phase 4 valuation cutover, Valuation
+  drains that table from `ValuationDbContext` on the dedicated database; Case Study continues
+  to drain the dedicated messaging outbox via `MessagingDbContext`.
 - Catalog / architecture: Messaging extracted; owning-service guard covers notification + push
   services (no `ApplicationDbContext`).
 
@@ -54,14 +90,16 @@ context streams instead.
 - Deploy migrator applies legacy first, then context streams in
   `BoundedContextMigrations.ApplyOrder` (now including Identity).
 
-## Runtime and rollback
+## Runtime (dedicated databases)
 
-Nothing about the deployed topology changed. One database, same tables/schemas. Extracted
-services open an additional pooled context against the same connection string.
+Every extracted owner has its own Postgres database. Hosts and residual readers require
+`REAL_ESTATE_EVAL_PG_CONNECTION_STRING_{SERVICE}` / `ConnectionStrings:{Service}` — there is no
+leftover shared database and no fallback. Residual readers still open owner contexts over a
+second dedicated connection until Phase 3 replaces those reads with owner APIs.
 
-Rollback for Identity: re-point Identity stores at `ApplicationDbContext` and restore
-`AddIdentityInfrastructure` on other APIs; tables are untouched and the Identity stream is an
-empty baseline.
+Drop leftover `realestate_eval_dev` / `realestate_eval_prod` after copy with
+`infra/postgres/drop-leftover-shared.sh`. Existing Docker volumes keep those databases until
+that script (or `down -v`) runs.
 
 ## What extraction step 3 changed
 
@@ -69,8 +107,7 @@ empty baseline.
   `operations` history schemas). Ops tasks still live physically in `case_study`; ownership is
   Operations. Idempotent follow-up: key-envelope revenue entitlement on Operations.
 - Writers use own context (or dual App + owned for financial / case-study cross-writes).
-- Hosts: Failures / Operations APIs; Case Study registers both; Operations also registers Failures
-  for access holds.
+- Hosts: Failures API owns `FailuresDbContext`. Case Study and Operations call Failures HTTP for gates and access holds.
 
 ## What extraction step 4 changed
 
@@ -80,7 +117,7 @@ empty baseline.
 - Legacy cutover advanced to `20260802093148_SyncLocationCatalogModelOnLegacy` so post-cutover
   fee/pricing migrations already applied on the legacy stream stay valid after extraction.
 - Hosts register `AddFinancialPersistence` / `AddCaseStudyPersistence` (Case Study + Failures +
-  Financial API + DbMigrate).
+  Valuation API + DbMigrate). Financial no longer registers Case Study persistence.
 - **Residual:** most Financial/Case Study business writers still inject `ApplicationDbContext`
   (dual transitional path). Pure service rewire is a follow-up; ownership catalog write contexts
   already name the extracted DbContexts.
@@ -91,7 +128,7 @@ empty baseline.
 | --- | --- |
 | `RealEstateEval.Architecture.Tests` | **Passed** — 39/39. |
 | `RealEstateEval.Application.Tests` | **Passed** — 536/536. |
-| ADR 0006 against a restored production-like database | **Not done** — still a residual gate. |
+| ADR 0006 against a restored production-like database | **Done (2026-08-18).** Idle leftover `realestate_eval_dev` on host Postgres 17.9 `:5432` (no `ServiceModule` uses `DefaultConnection` / leftover shared CS; compose apps use dedicated `realestate_eval_*` on Docker `:5433`). `CREATE DATABASE realestate_eval_a7_scratch WITH TEMPLATE realestate_eval_dev`, then `dotnet run --project backend/tools/DbMigrate -- update` with `REAL_ESTATE_EVAL_PG_CONNECTION_STRING` plus all nine dedicated env vars pointed at the scratch copy. Legacy applied 67 pending migrations including `20260729104156_AddOptimisticConcurrencyTokens`; then all nine context streams. `xmin` is DDL-neutral (0 user `xmin` columns; system `xmin` readable on preserved rows: 15 users / 1 work order / 25 workflow tasks). Source leftover left at 30 history rows, idle. Operations leftover gap fixed: `EnsureOperationsTablesForStandalone` now `ADD COLUMN IF NOT EXISTS "RevenueEntitlementAtUtc"` before indexing, because leftover `KeyEnvelopes` predates the column and the legacy dual-write was moved off that stream. |
 
 ## Gates before Phase 1 exit (A6) / Phase 2
 
@@ -99,7 +136,7 @@ empty baseline.
 | --- | --- | --- |
 | Drop or minimize legacy `AddPersistence` write registration (A6) | API owners | **Partial** — pure hosts include financial + operations + **failures**; residual dual-write: **case-study** only |
 | Nominate a service owner per API and a deploy-migrator owner | engineering management | Formal sign-off |
-| Validate ADR 0006's deploy path against a restored production-like database | migrator owner | Plan prerequisite for later phases |
+| Validate ADR 0006's deploy path against a restored production-like database | migrator owner | **Met (2026-08-18)** — leftover `realestate_eval_dev` copy, not a Hetzner dump. See Verification. |
 | Inventory production-only SQL/BI consumers (D6) | operations / data platform | Phase 3/4 |
 | Capture production metrics baseline | operations | Comparison baseline |
 | Measure pooled-connection counts with multiple contexts | operations | Connection-growth risk |

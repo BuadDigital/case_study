@@ -6,9 +6,6 @@ export const dashGrid =
 export const dashCard =
   "rounded-[14px] border border-border bg-surface px-5 py-[18px] shadow-card";
 
-export const dashCardTitle =
-  "m-0 mb-3.5 text-[14px] font-bold text-heading";
-
 export const dashKpi =
   "w-full cursor-pointer rounded-[14px] border border-border bg-surface px-[18px] py-[15px] text-start font-[inherit] text-inherit shadow-card transition-[border-color,box-shadow,transform] duration-150 hover:border-border-md hover:shadow-[0_4px_14px_rgba(15,52,96,0.09)] active:translate-y-px";
 

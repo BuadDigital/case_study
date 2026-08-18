@@ -1,9 +1,10 @@
 using Microsoft.EntityFrameworkCore;
+using RealEstateEval.Application;
 using RealEstateEval.Application.Abstractions;
 using RealEstateEval.Application.Contracts;
 using RealEstateEval.Application.Rules;
 using RealEstateEval.Domain;
-using RealEstateEval.Infrastructure.Data;
+using RealEstateEval.Infrastructure.Data.Contexts;
 
 namespace RealEstateEval.Infrastructure.Services;
 
@@ -11,12 +12,16 @@ public sealed class WorkflowTaskSlotSynchronizer : IWorkflowTaskSlotSynchronizer
 {
     private const WorkflowTaskKind CaseStudyPropertyKind = WorkflowTaskKind.CaseStudyProperty;
 
-    private readonly ApplicationDbContext _db;
+    private readonly CaseStudyDbContext _caseStudy;
     private readonly IWorkflowTaskQuery _query;
+    private readonly TimeProvider _time;
 
-    public WorkflowTaskSlotSynchronizer(ApplicationDbContext db, IWorkflowTaskQuery query)
+    public WorkflowTaskSlotSynchronizer(CaseStudyDbContext caseStudy, IWorkflowTaskQuery query,
+        TimeProvider? time = null)
     {
-        _db = db;
+        _time = time ?? TimeProvider.System;
+
+        _caseStudy = caseStudy;
         _query = query;
     }
 
@@ -35,7 +40,7 @@ public sealed class WorkflowTaskSlotSynchronizer : IWorkflowTaskSlotSynchronizer
             }
             catch (DbUpdateConcurrencyException)
             {
-                _db.ChangeTracker.Clear();
+                _caseStudy.ChangeTracker.Clear();
             }
         }
 
@@ -45,20 +50,20 @@ public sealed class WorkflowTaskSlotSynchronizer : IWorkflowTaskSlotSynchronizer
     private async Task<IReadOnlyList<WorkflowTaskDto>> SyncOnceAsync(
         CancellationToken cancellationToken)
     {
-        var orders = await _db.WorkOrders
+        var orders = await _caseStudy.WorkOrders
             .Include(w => w.Properties)
             .AsNoTracking()
             .ToListAsync(cancellationToken);
 
         var poNumbers = orders.Select(o => o.PoNumber).Distinct().ToList();
-        var tracked = await _db.WorkflowTasks
+        var tracked = await _caseStudy.WorkflowTasks
             .Where(t => poNumbers.Contains(t.PoNumber))
             .ToListAsync(cancellationToken);
 
         foreach (var order in orders)
             SyncPoSlots(order, tracked);
 
-        await _db.SaveChangesAsync(cancellationToken);
+        await _caseStudy.SaveChangesAsync(cancellationToken);
         return await _query.ListAsync(cancellationToken: cancellationToken);
     }
 
@@ -95,9 +100,10 @@ public sealed class WorkflowTaskSlotSynchronizer : IWorkflowTaskSlotSynchronizer
                     ord,
                     expected,
                     assignmentLabel,
-                    WorkflowTaskMapper.SerializeDistribution(WorkflowTaskMapper.DefaultDistribution()));
+                    WorkflowTaskMapper.SerializeDistribution(WorkflowTaskMapper.DefaultDistribution()),
+                    _time.UtcNow());
                 allTasks.Add(task);
-                _db.WorkflowTasks.Add(task);
+                _caseStudy.WorkflowTasks.Add(task);
                 byOrdinal[ord] = task;
             }
             else if (byOrdinal[ord].PropertyId is null)
@@ -107,7 +113,7 @@ public sealed class WorkflowTaskSlotSynchronizer : IWorkflowTaskSlotSynchronizer
  // syncs kept tripping the xmin concurrency check.
                 var existing = byOrdinal[ord];
                 var slotTitle = WorkflowTaskPhaseRules.SlotTaskTitle(poNumber, ord, expected);
-                var slotNow = DateTime.UtcNow;
+                var slotNow = _time.UtcNow();
                 if (existing.Title != slotTitle)
                     existing.Retitle(slotTitle, slotNow);
                 if (existing.AssignmentType != assignmentLabel)
@@ -129,7 +135,7 @@ public sealed class WorkflowTaskSlotSynchronizer : IWorkflowTaskSlotSynchronizer
             orphan.ResetToEmptySlot(
                 WorkflowTaskPhaseRules.SlotTaskTitle(poNumber, orphan.PropertyOrdinal, expected),
                 WorkflowTaskMapper.SerializeDistribution(WorkflowTaskMapper.DefaultDistribution()),
-                DateTime.UtcNow);
+                _time.UtcNow());
         }
 
         var linkedIds = tasks
@@ -160,7 +166,7 @@ public sealed class WorkflowTaskSlotSynchronizer : IWorkflowTaskSlotSynchronizer
                             targetPhase == WorkflowTaskPhase.Distribution
                                 ? $"توزيع الأطراف — {WorkflowTaskPhaseRules.FormatDeedDisplay(prop)}"
                                 : WorkflowTaskPhaseRules.PropertyTaskTitle(prop.DeedNumber, poNumber),
-                            DateTime.UtcNow);
+                            _time.UtcNow());
                     }
                 }
                 continue;
@@ -174,7 +180,7 @@ public sealed class WorkflowTaskSlotSynchronizer : IWorkflowTaskSlotSynchronizer
                 .FirstOrDefault();
             if (slot is null) continue;
 
-            var linkNow = DateTime.UtcNow;
+            var linkNow = _time.UtcNow();
             slot.LinkProperty(
                 prop.Id,
                 WorkflowTaskPhaseRules.PhaseAfterEnfath(

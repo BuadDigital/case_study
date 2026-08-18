@@ -1,6 +1,6 @@
 "use client";
 
-import { cn } from "@platform/design-system";
+import { cn } from "@platform/ui-kit";
 import type { CaseStudyPartyAssignee } from "../../lib/prototype/case-study-tracks";
 import { INSPECTION_TABLE_TYPE } from "../../lib/prototype/queue-table-type";
 

@@ -12,7 +12,7 @@ function prefersReducedMotion(): boolean {
 /** CSS: dashChartFade 0.8s ease 0.3s / 0.4s ease — opacity 0 → 1 */
 /** SMIL donut: 1.1s cubic-bezier(0.4, 0, 0.2, 1) */
 
-export function MiniDonut({
+function MiniDonut({
   pct,
   color,
 }: {

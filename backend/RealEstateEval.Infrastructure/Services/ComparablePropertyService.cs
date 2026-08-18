@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using RealEstateEval.Application;
 using RealEstateEval.Application.Abstractions;
 using RealEstateEval.Application.Contracts;
 using RealEstateEval.Domain;
@@ -8,8 +9,11 @@ namespace RealEstateEval.Infrastructure.Services;
 
 public sealed class ComparablePropertyService(
     ValuationDbContext db,
-    CaseStudyDbContext caseStudy) : IComparablePropertyService
+    CaseStudyDbContext caseStudy,
+    TimeProvider? time = null) : IComparablePropertyService
 {
+    private readonly TimeProvider _time = time ?? TimeProvider.System;
+
     private const int MaxTake = 200;
 
     public async Task<IReadOnlyList<ComparablePropertyDto>> ListAsync(
@@ -75,7 +79,7 @@ public sealed class ComparablePropertyService(
  // ق-3/2: النظام يقترح الاشتباه (سجلان بنفس الموقع) ولا يحجب ولا يدمج آلياً.
         var suspectCoords = await DuplicateSuspectCoordsAsync(cancellationToken);
 
-        var today = DateOnly.FromDateTime(DateTime.UtcNow);
+        var today = DateOnly.FromDateTime(_time.UtcNow());
         return rows
             .Select(r => ComparablePropertyMapping.ToDto(
                 r, today, duplicateSuspect: suspectCoords.Contains((r.Latitude, r.Longitude))))
@@ -103,7 +107,7 @@ public sealed class ComparablePropertyService(
             .FirstOrDefaultAsync(x => x.Id == id, cancellationToken);
         if (row is null) return null;
         var getAnomaly = await ComputeAnomalyNoteAsync(row, cancellationToken);
-        return ComparablePropertyMapping.ToDto(row, DateOnly.FromDateTime(DateTime.UtcNow), getAnomaly);
+        return ComparablePropertyMapping.ToDto(row, DateOnly.FromDateTime(_time.UtcNow()), getAnomaly);
     }
 
     public async Task<(ComparablePropertyDto? Result, Dictionary<string, string>? Errors)> CreateAsync(
@@ -114,7 +118,7 @@ public sealed class ComparablePropertyService(
         var errors = Validate(request);
         if (errors.Count > 0) return (null, errors);
 
-        var now = DateTime.UtcNow;
+        var now = _time.UtcNow();
         var id = Guid.NewGuid();
         var entity = MapToEntity(new ComparableProperty { Id = id }, request);
         entity.ReferenceCode = BuildReferenceCode(id);
@@ -145,10 +149,10 @@ public sealed class ComparablePropertyService(
             return (null, new Dictionary<string, string> { ["_"] = "المقارن غير موجود" });
 
         MapToEntity(entity, request);
-        entity.UpdatedAtUtc = DateTime.UtcNow;
+        entity.UpdatedAtUtc = _time.UtcNow();
         await db.SaveChangesAsync(cancellationToken);
         var updateAnomaly = await ComputeAnomalyNoteAsync(entity, cancellationToken);
-        return (ComparablePropertyMapping.ToDto(entity, DateOnly.FromDateTime(DateTime.UtcNow), updateAnomaly), null);
+        return (ComparablePropertyMapping.ToDto(entity, DateOnly.FromDateTime(_time.UtcNow()), updateAnomaly), null);
     }
 
     public async Task<(ComparablePropertyDto? Result, Dictionary<string, string>? Errors)> SetQualityTagsAsync(
@@ -182,14 +186,14 @@ public sealed class ComparablePropertyService(
         entity.TaggedByUserId = anyTag
             ? (string.IsNullOrWhiteSpace(taggedByUserId) ? "unknown" : taggedByUserId.Trim())
             : null;
-        entity.TaggedAtUtc = anyTag ? DateTime.UtcNow : null;
-        entity.UpdatedAtUtc = DateTime.UtcNow;
+        entity.TaggedAtUtc = anyTag ? _time.UtcNow() : null;
+        entity.UpdatedAtUtc = _time.UtcNow();
 
         await db.SaveChangesAsync(cancellationToken);
         var anomaly = await ComputeAnomalyNoteAsync(entity, cancellationToken);
         return (
             ComparablePropertyMapping.ToDto(
-                entity, DateOnly.FromDateTime(DateTime.UtcNow), anomaly),
+                entity, DateOnly.FromDateTime(_time.UtcNow()), anomaly),
             null);
     }
 
@@ -201,7 +205,7 @@ public sealed class ComparablePropertyService(
             .FirstOrDefaultAsync(x => x.Id == id, cancellationToken);
         if (entity is null) return (false, "المقارن غير موجود");
         entity.IsActive = false;
-        entity.UpdatedAtUtc = DateTime.UtcNow;
+        entity.UpdatedAtUtc = _time.UtcNow();
         await db.SaveChangesAsync(cancellationToken);
         return (true, null);
     }
@@ -250,7 +254,7 @@ public sealed class ComparablePropertyService(
             .Take(500)
             .ToListAsync(cancellationToken);
 
-        var today = DateOnly.FromDateTime(DateTime.UtcNow);
+        var today = DateOnly.FromDateTime(_time.UtcNow());
         var ranked = ComparableProximityRules.RankByDistance(
             lat.Value,
             lon.Value,

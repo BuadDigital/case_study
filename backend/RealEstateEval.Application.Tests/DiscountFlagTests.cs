@@ -19,7 +19,7 @@ public class DiscountFlagTests
         await using var store = CreateStore();
         var taskId = SeedLedger(store);
         await store.SaveAsync();
-        var service = new DiscountFlagService(store.Fin, store.CaseStudy);
+        var service = new DiscountFlagService(store.Fin, new CaseStudyLookup(store.CaseStudy));
 
         var (created, createError) = await service.CreateAsync(
             new CreateDiscountFlagRequest
@@ -56,7 +56,7 @@ public class DiscountFlagTests
         var taskId = SeedLedger(store);
         await store.SaveAsync();
 
-        await new DiscountFlagService(store.Fin, store.CaseStudy).CreateAsync(
+        await new DiscountFlagService(store.Fin, new CaseStudyLookup(store.CaseStudy)).CreateAsync(
             new CreateDiscountFlagRequest
             {
                 TransactionKey = "PO-FLAG",
@@ -79,7 +79,7 @@ public class DiscountFlagTests
         await using var store = CreateStore();
         var taskId = SeedLedger(store);
         await store.SaveAsync();
-        var service = new DiscountFlagService(store.Fin, store.CaseStudy);
+        var service = new DiscountFlagService(store.Fin, new CaseStudyLookup(store.CaseStudy));
 
         var (created, _) = await service.CreateAsync(
             new CreateDiscountFlagRequest

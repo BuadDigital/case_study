@@ -3,8 +3,9 @@
 import { useEffect, useMemo, type ReactNode } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { prototypeKeys } from "@platform/app-shared/query/prototype-keys";
-import { cn } from "@platform/design-system";
+import { cn } from "@platform/ui-kit";
 import { useStaffUsersQuery } from "@settings/mfe/query/settings-queries";
+import { PropertyTimelineTones } from "@platform/api-client";
 import {
   buildPropertyDetailTimeline,
   formatTimelineDate,
@@ -22,9 +23,9 @@ import { FAILURES_CHANGED_EVENT } from "@failures/mfe/lib/failures-events";
 import { DetailBadge, ltrValueClass } from "./PropertyDetailFields";
 
 function toneToDotClass(tone: PropertyTimelineTone): string {
-  if (tone === "done") return "bg-ink";
-  if (tone === "active") return "bg-[#8c7857]";
-  if (tone === "warn") return "bg-danger";
+  if (tone === PropertyTimelineTones.Done) return "bg-ink";
+  if (tone === PropertyTimelineTones.Active) return "bg-[#8c7857]";
+  if (tone === PropertyTimelineTones.Warn) return "bg-danger";
   return "bg-[#8c7857]";
 }
 

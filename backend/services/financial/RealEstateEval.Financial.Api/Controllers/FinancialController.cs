@@ -10,7 +10,6 @@ namespace RealEstateEval.Financial.Api.Controllers;
 
 [ApiController]
 [Route("api/financial")]
-[Route("api/financial/v1")]
 [Authorize]
 public class FinancialController : ControllerBase
 {

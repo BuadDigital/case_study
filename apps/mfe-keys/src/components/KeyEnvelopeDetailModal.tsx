@@ -17,7 +17,7 @@ import {
   Spinner,
   cn,
   useToast,
-} from "@platform/design-system";
+} from "@platform/ui-kit";
 import { useDistributionAssigneesQuery } from "@settings/mfe/query/settings-queries";
 import { displayPersonName as sharedDisplayPersonName } from "@platform/app-shared/prototype/person-display-name";
 import { PROPERTY_IDENTIFIER_COLUMN_LABEL } from "@case-study/mfe";

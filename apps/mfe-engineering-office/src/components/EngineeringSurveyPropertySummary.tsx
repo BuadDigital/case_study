@@ -8,7 +8,7 @@ import {
   showsCourtFields,
   type PoIntakeRecord,
 } from "@case-study/mfe";
-import { InlineLoadingSkeleton } from "@platform/design-system";
+import { InlineLoadingSkeleton } from "@platform/ui-kit";
 import {
   EngField,
   EngSection,

@@ -1,4 +1,6 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
+using RealEstateEval.Application;
 using RealEstateEval.Application.Abstractions;
 using RealEstateEval.Application.Contracts;
 using RealEstateEval.Domain;
@@ -9,10 +11,21 @@ namespace RealEstateEval.Infrastructure.Services;
 public sealed class IncentiveSuspensionService : IIncentiveSuspensionService
 {
     private readonly FinancialDbContext _db;
-    private readonly IdentityDbContext _identity;
+    private readonly IIdentityDirectory _identity;
+    private readonly TimeProvider _time;
 
-    public IncentiveSuspensionService(FinancialDbContext db, IdentityDbContext identity)
+    public IncentiveSuspensionService(FinancialDbContext db, IdentityDbContext identity,
+        TimeProvider? time = null)
+        : this(db, new IdentityDirectory(identity), time)
     {
+    }
+
+    [ActivatorUtilitiesConstructor]
+    public IncentiveSuspensionService(FinancialDbContext db, IIdentityDirectory identity,
+        TimeProvider? time = null)
+    {
+        _time = time ?? TimeProvider.System;
+
         _db = db;
         _identity = identity;
     }
@@ -71,8 +84,7 @@ public sealed class IncentiveSuspensionService : IIncentiveSuspensionService
         if (string.IsNullOrEmpty(reason))
             return (null, "سبب إيقاف الحوافز مطلوب.");
 
-        var profile = await _identity.UserProfiles.AsNoTracking()
-            .FirstOrDefaultAsync(p => p.DistributionAssigneeId == assigneeId, cancellationToken);
+        var profile = await _identity.GetCompensationByAssigneeAsync(assigneeId, cancellationToken);
         if (profile is null)
             return (null, "الطرف غير موجود.");
         if (!profile.HasCompensation)
@@ -87,7 +99,7 @@ public sealed class IncentiveSuspensionService : IIncentiveSuspensionService
         if (existing is not null)
             return (null, "يوجد إيقاف حوافز فعّال على هذه المعاملة لهذا الطرف.");
 
-        var now = DateTime.UtcNow;
+        var now = _time.UtcNow();
         var row = new IncentiveSuspension
         {
             Id = Guid.NewGuid(),
@@ -148,7 +160,7 @@ public sealed class IncentiveSuspensionService : IIncentiveSuspensionService
         if (row.LiftedAtUtc is not null)
             return (null, "تم رفع هذا الإيقاف مسبقاً.");
 
-        var now = DateTime.UtcNow;
+        var now = _time.UtcNow();
         row.LiftedAtUtc = now;
         row.LiftedByUserId = actorUserId;
 

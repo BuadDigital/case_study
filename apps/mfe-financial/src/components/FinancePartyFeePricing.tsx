@@ -16,7 +16,7 @@ import {
   Spinner,
   cn,
   useToast,
-} from "@platform/design-system";
+} from "@platform/ui-kit";
 import { useCapability } from "@platform/app-shared/components/Can";
 import type {
   PartyFeePricingCategory,

@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { Button, cn, useToast } from "@platform/design-system";
+import { Button, cn, useToast } from "@platform/ui-kit";
 import { prototypeKeys } from "@platform/app-shared/query/prototype-keys";
 import {
   activeFailureForProperty,

@@ -151,7 +151,7 @@ public class AuthSessionServiceTests
         Assert.Equal(64, stored.TokenHash.Length);
     }
 
-    private static async Task<Contracts.LoginResponse> LoginAsync(IServiceProvider provider)
+    private static async Task<Contracts.LoginResponseDto> LoginAsync(IServiceProvider provider)
     {
         var sessions = provider.GetRequiredService<IAuthSessionService>();
         var userManager = provider.GetRequiredService<UserManager<ApplicationUser>>();

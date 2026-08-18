@@ -181,9 +181,12 @@ public class FailureBourseObstructionResumeTests
     private static async Task<IReadOnlyList<PendingBoursePropertyDto>> ListPendingBourseAsync(
         TestBoundedContexts.Bundle bundle)
     {
-        var query = new WorkOrderQueryService(
-            bundle.App,
-            new WorkOrderLoader(bundle.App));
+        var caseStudy = TestInspectorFeeServiceFactory.ShareCaseStudy(bundle.App);
+        var failures = bundle.Failures;
+        var financial = TestInspectorFeeServiceFactory.ShareFinancial(bundle.App);
+        var identity = TestInspectorFeeServiceFactory.ShareIdentity(bundle.App);
+        var loader = new WorkOrderLoader(caseStudy);
+        var query = new WorkOrderQueryService(caseStudy, failures, financial, identity, loader);
         return await query.ListPendingBourseAsync(CancellationToken.None);
     }
 

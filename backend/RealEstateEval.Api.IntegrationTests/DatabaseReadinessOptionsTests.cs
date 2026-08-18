@@ -15,6 +15,8 @@ public class DatabaseReadinessOptionsTests
 
         Assert.True(options.CheckMigrations);
         Assert.Equal(5, options.CacheSeconds);
+        Assert.False(options.CheckRabbit);
+        Assert.False(options.CheckRedis);
     }
 
  /// <summary>
@@ -39,11 +41,15 @@ public class DatabaseReadinessOptionsTests
             {
                 ["Readiness:CheckMigrations"] = "true",
                 ["Readiness:CacheSeconds"] = "30",
+                ["Readiness:CheckRabbit"] = "true",
+                ["Readiness:CheckRedis"] = "true",
             }),
             Environment("Development"));
 
         Assert.True(options.CheckMigrations);
         Assert.Equal(30, options.CacheSeconds);
+        Assert.True(options.CheckRabbit);
+        Assert.True(options.CheckRedis);
     }
 
     [Theory]
@@ -58,6 +64,27 @@ public class DatabaseReadinessOptionsTests
 
         Assert.Throws<InvalidOperationException>(
             () => DatabaseReadinessOptions.FromConfiguration(configuration, Environment("Production")));
+    }
+
+    [Theory]
+    [InlineData("localhost:6379", "localhost", 6379)]
+    [InlineData("redis:6379,abortConnect=false", "redis", 6379)]
+    [InlineData("localhost", "localhost", 6379)]
+    [InlineData("[::1]:6380", "::1", 6380)]
+    public void Redis_connection_strings_yield_a_tcp_endpoint(string input, string host, int port)
+    {
+        Assert.True(RedisTcpEndpoint.TryParse(input, out var parsedHost, out var parsedPort));
+        Assert.Equal(host, parsedHost);
+        Assert.Equal(port, parsedPort);
+    }
+
+    [Theory]
+    [InlineData("")]
+    [InlineData("localhost:abc")]
+    [InlineData("[]:6379")]
+    public void Invalid_redis_connection_strings_are_rejected(string input)
+    {
+        Assert.False(RedisTcpEndpoint.TryParse(input, out _, out _));
     }
 
     private static IConfiguration Configuration(Dictionary<string, string?> values) =>

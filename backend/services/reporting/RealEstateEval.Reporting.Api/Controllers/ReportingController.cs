@@ -10,7 +10,6 @@ namespace RealEstateEval.Reporting.Api.Controllers;
 
 [ApiController]
 [Route("api/reporting")]
-[Route("api/reporting/v1")]
 [Authorize]
 public class ReportingController : ControllerBase
 {
@@ -180,7 +179,9 @@ public class ReportingController : ControllerBase
             Area = "",
             Type = "",
             Appraiser = task.AssigneeName,
-            Status = WorkflowTaskStatusValues.IsTerminalValue(task.Status) ? "done" : "progress",
+            Status = WorkflowTaskStatusValues.IsTerminalValue(task.Status)
+                ? ValuationRequestStatuses.Done
+                : ValuationRequestStatuses.Progress,
             Date = task.UpdatedAt,
         };
     }

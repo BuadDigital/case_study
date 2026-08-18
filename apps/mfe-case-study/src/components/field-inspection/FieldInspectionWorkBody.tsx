@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState, type ReactNode, type RefObject } from "react";
-import { Button, FormRow, InlineLoadingSkeleton, Input, Label, Note, Select, Textarea, cn, formControlClassName, useToast } from "@platform/design-system";
+import { Button, FormRow, InlineLoadingSkeleton, Input, Label, Note, Select, Textarea, cn, formControlClassName, useToast } from "@platform/ui-kit";
 import { RegField, RegTextarea} from "@platform/app-shared/registration/FormFields";
 import type { PartyTaskPageDef } from "@platform/app-shared/prototype/party-task-pages";
 import { usePrototype } from "@platform/app-shared/contexts/PrototypeContext";

@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { AppModal } from "@case-study/mfe/components/ui/AppModal";
 import { prototypeKeys } from "@platform/app-shared/query/prototype-keys";
-import { Button, useToast } from "@platform/design-system";
+import { Button, useToast } from "@platform/ui-kit";
 import { FailureRaiseFields, createFailure, failurePayloadFromProblemType, FAILURE_PROBLEM_TYPES, useFailureTypesQuery } from "@failures/mfe";
 
 export function FailureRaiseModal({

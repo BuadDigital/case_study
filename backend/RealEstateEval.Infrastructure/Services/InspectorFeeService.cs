@@ -1,9 +1,11 @@
-﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
+using RealEstateEval.Application;
 using RealEstateEval.Application.Abstractions;
 using RealEstateEval.Application.Contracts;
 using RealEstateEval.Application.Rules;
 using RealEstateEval.Domain;
-using RealEstateEval.Infrastructure.Data;
+using RealEstateEval.Infrastructure.Data.Contexts;
 using RealEstateEval.Infrastructure.Notifications;
 
 namespace RealEstateEval.Infrastructure.Services;
@@ -13,7 +15,9 @@ namespace RealEstateEval.Infrastructure.Services;
 /// </summary>
 public class InspectorFeeService : IInspectorFeeService
 {
-    private readonly ApplicationDbContext _db;
+    private readonly ICaseStudyLookup _lookup;
+    private readonly ICaseStudyCommands _commands;
+    private readonly FinancialDbContext _financial;
     private readonly INotificationService _notifications;
     private readonly NotificationRecipientResolver _recipients;
     private readonly IPartyFeePricingService _pricing;
@@ -21,18 +25,53 @@ public class InspectorFeeService : IInspectorFeeService
     private readonly IInspectorFeeLedgerWriter _writer;
     private readonly IInspectorFeeSummaryQuery _summary;
     private readonly IInspectorFeeTransitionApplier _transitions;
+    private readonly TimeProvider _time;
 
     public InspectorFeeService(
-        ApplicationDbContext db,
+        CaseStudyDbContext caseStudy,
+        FinancialDbContext financial,
         INotificationService notifications,
         NotificationRecipientResolver recipients,
         IPartyFeePricingService pricing,
         IInspectorFeeLedgerResolver resolver,
         IInspectorFeeLedgerWriter writer,
         IInspectorFeeSummaryQuery summary,
-        IInspectorFeeTransitionApplier transitions)
+        IInspectorFeeTransitionApplier transitions,
+        TimeProvider? time = null)
+        : this(
+            new CaseStudyLookup(caseStudy),
+            new CaseStudyCommands(caseStudy, time),
+            financial,
+            notifications,
+            recipients,
+            pricing,
+            resolver,
+            writer,
+            summary,
+            transitions,
+            time)
     {
-        _db = db;
+    }
+
+    [ActivatorUtilitiesConstructor]
+    public InspectorFeeService(
+        ICaseStudyLookup lookup,
+        ICaseStudyCommands commands,
+        FinancialDbContext financial,
+        INotificationService notifications,
+        NotificationRecipientResolver recipients,
+        IPartyFeePricingService pricing,
+        IInspectorFeeLedgerResolver resolver,
+        IInspectorFeeLedgerWriter writer,
+        IInspectorFeeSummaryQuery summary,
+        IInspectorFeeTransitionApplier transitions,
+        TimeProvider? time = null)
+    {
+        _time = time ?? TimeProvider.System;
+
+        _lookup = lookup;
+        _commands = commands;
+        _financial = financial;
         _notifications = notifications;
         _recipients = recipients;
         _pricing = pricing;
@@ -41,6 +80,7 @@ public class InspectorFeeService : IInspectorFeeService
         _summary = summary;
         _transitions = transitions;
     }
+
 
     public Task EnsureLedgersForTasksAsync(
         IEnumerable<WorkflowTask> tasks,
@@ -51,12 +91,12 @@ public class InspectorFeeService : IInspectorFeeService
         Guid propertyId,
         CancellationToken cancellationToken = default)
     {
-        var feeTasks = await _db.WorkflowTasks.AsNoTracking()
-            .Where(t =>
-                t.PropertyId == propertyId
-                && (t.Kind == WorkflowTaskKind.FieldInspection
-                    || t.Kind == WorkflowTaskKind.GovernmentReview))
-            .ToListAsync(cancellationToken);
+        var feeTasks = (await _lookup.ListWorkflowTasksByPropertyAsync(
+                propertyId,
+                [WorkflowTaskKind.FieldInspection, WorkflowTaskKind.GovernmentReview],
+                cancellationToken))
+            .Select(s => s.ToWorkflowTask())
+            .ToList();
         if (feeTasks.Count == 0) return;
 
         await _writer.EnsureLedgersForTasksAsync(feeTasks, cancellationToken);
@@ -67,16 +107,17 @@ public class InspectorFeeService : IInspectorFeeService
         string actorUserId,
         CancellationToken cancellationToken = default)
     {
-        var task = await _db.WorkflowTasks.AsNoTracking()
-            .FirstOrDefaultAsync(t => t.Id == workflowTaskId, cancellationToken);
-        if (task is null)
+        var snapshot = await _lookup.GetWorkflowTaskAsync(workflowTaskId, cancellationToken);
+        if (snapshot is null)
             return (null, "المهمة غير موجودة.");
+        var task = snapshot.ToWorkflowTask();
 
         if (task.Kind != WorkflowTaskKind.EngineeringSurvey)
             return (null, "الاستحقاق خاص بمهام الرفع المساحي فقط.");
 
-        var submission = await _db.PartyTaskSubmissions.AsNoTracking()
-            .FirstOrDefaultAsync(s => s.WorkflowTaskId == workflowTaskId, cancellationToken);
+        var submissions = await _lookup.ListPartyTaskSubmissionsByTaskIdsAsync(
+            [workflowTaskId], cancellationToken);
+        var submission = submissions.FirstOrDefault()?.ToSubmission();
         if (submission is null || submission.Status != PartyTaskSubmissionStatus.Submitted)
             return (null, "لا يمكن الاستحقاق قبل إرسال المخرجات وقبولها.");
 
@@ -84,7 +125,7 @@ public class InspectorFeeService : IInspectorFeeService
             return (null, "مهمة الرفع المساحي غير مكتملة.");
 
         var deeds = await _resolver.ResolveDeedTargetsAsync(task, cancellationToken);
-        var existingForTask = await _db.InspectorFeeLedgers
+        var existingForTask = await _financial.InspectorFeeLedgers
             .Where(x => x.WorkflowTaskId == workflowTaskId)
             .ToListAsync(cancellationToken);
 
@@ -98,7 +139,7 @@ public class InspectorFeeService : IInspectorFeeService
 
         var partyType = existingForTask.FirstOrDefault()?.InspectorType
             ?? await _resolver.ResolvePartyTypeAsync(task, cancellationToken);
-        var now = DateTime.UtcNow;
+        var now = _time.UtcNow();
         InspectorFeeLedger? lastLedger = null;
         var ordinal = 0;
         foreach (var deed in deeds)
@@ -133,7 +174,7 @@ public class InspectorFeeService : IInspectorFeeService
             var identity = await _resolver.ResolveLedgerIdentityAsync(
                 task, cancellationToken, deed.DeedId);
             var ledger = existingForTask.FirstOrDefault(l => l.DeedId == identity.DeedId)
-                ?? await _db.InspectorFeeLedgers.FirstOrDefaultAsync(
+                ?? await _financial.InspectorFeeLedgers.FirstOrDefaultAsync(
                     x => x.TransactionId == identity.TransactionId
                         && x.DeedId == identity.DeedId
                         && x.UserId == identity.UserId,
@@ -176,7 +217,7 @@ public class InspectorFeeService : IInspectorFeeService
                     CreatedAtUtc = now,
                     UpdatedAtUtc = now,
                 };
-                _db.InspectorFeeLedgers.Add(ledger);
+                _financial.InspectorFeeLedgers.Add(ledger);
                 existingForTask.Add(ledger);
             }
             else
@@ -209,7 +250,7 @@ public class InspectorFeeService : IInspectorFeeService
                 ledger.UpdatedAtUtc = now;
             }
 
-            _db.InspectorFeeTransitions.Add(new InspectorFeeTransition
+            _financial.InspectorFeeTransitions.Add(new InspectorFeeTransition
             {
                 Id = Guid.NewGuid(),
                 WorkflowTaskId = ledger.WorkflowTaskId,
@@ -225,7 +266,7 @@ public class InspectorFeeService : IInspectorFeeService
         if (lastLedger is null)
             return (null, PricingErrors.FeeUnresolved);
 
-        await _db.SaveChangesAsync(cancellationToken);
+        await _financial.SaveChangesAsync(cancellationToken);
         return (await GetByWorkflowTaskIdAsync(workflowTaskId, cancellationToken), null);
     }
 
@@ -262,7 +303,7 @@ public class InspectorFeeService : IInspectorFeeService
         string? actorDepartment = null,
         bool canManageAllDepartments = false)
     {
-        var ledger = await _db.InspectorFeeLedgers
+        var ledger = await _financial.InspectorFeeLedgers
             .FirstOrDefaultAsync(x => x.WorkflowTaskId == workflowTaskId, cancellationToken);
         if (ledger is null) return null;
         if (!SupervisingDepartments.CanManage(
@@ -322,10 +363,9 @@ public class InspectorFeeService : IInspectorFeeService
         }
 
         var fromStatus = ledger.BillingStatus;
-        var taskKind = await _db.WorkflowTasks.AsNoTracking()
-            .Where(t => t.Id == workflowTaskId)
-            .Select(t => t.Kind)
-            .FirstOrDefaultAsync(cancellationToken);
+        var kinds = await _lookup.GetWorkflowTaskKindsAsync(
+            [workflowTaskId], cancellationToken);
+        var taskKind = kinds.GetValueOrDefault(workflowTaskId);
         var isEmployee = InspectorFeeRules.IsEmployee(ledger.InspectorType);
         var discountApplied = request.SupervisorDiscountSar.HasValue
             && ledger.SupervisorDiscountSar > 0m;
@@ -362,10 +402,10 @@ public class InspectorFeeService : IInspectorFeeService
                 ledger.BillingStatus = InspectorFeeBillingStatus.AtFinance;
         }
 
-        ledger.UpdatedAtUtc = DateTime.UtcNow;
+        ledger.UpdatedAtUtc = _time.UtcNow();
         if (fromStatus != ledger.BillingStatus)
         {
-            _db.InspectorFeeTransitions.Add(new InspectorFeeTransition
+            _financial.InspectorFeeTransitions.Add(new InspectorFeeTransition
             {
                 Id = Guid.NewGuid(),
                 WorkflowTaskId = ledger.WorkflowTaskId,
@@ -373,11 +413,11 @@ public class InspectorFeeService : IInspectorFeeService
                 ToStatus = ledger.BillingStatus,
                 Reason = ledger.DiscountReason,
                 ActorUserId = "system",
-                CreatedAtUtc = DateTime.UtcNow,
+                CreatedAtUtc = _time.UtcNow(),
             });
         }
 
-        await _db.SaveChangesAsync(cancellationToken);
+        await _financial.SaveChangesAsync(cancellationToken);
 
         if (isEmployee && discountApplied)
             await NotifyEmployeeDiscountAppliedAsync(ledger, cancellationToken);
@@ -396,7 +436,7 @@ public class InspectorFeeService : IInspectorFeeService
         string? actorDepartment = null,
         bool canManageAllDepartments = false)
     {
-        var candidates = await _db.InspectorFeeLedgers
+        var candidates = await _financial.InspectorFeeLedgers
             .Where(x => x.WorkflowTaskId == workflowTaskId)
             .OrderByDescending(x => x.UpdatedAtUtc)
             .ThenByDescending(x => x.CreatedAtUtc)
@@ -421,8 +461,8 @@ public class InspectorFeeService : IInspectorFeeService
         if (error is not null)
             return (null, error);
 
-        await _db.SaveChangesAsync(cancellationToken);
- // Return the row for the ledger we just transitioned (not an arbitrary FirstOrDefault).
+        await _financial.SaveChangesAsync(cancellationToken);
+// Return the row for the ledger we just transitioned (not an arbitrary FirstOrDefault).
         var row = await GetByWorkflowTaskIdAsync(workflowTaskId, cancellationToken);
         return (row, null);
     }
@@ -486,7 +526,7 @@ public class InspectorFeeService : IInspectorFeeService
         return candidates.FirstOrDefault(Actionable);
     }
 
-    public async Task<BatchInspectorFeeTransitionResult> BatchTransitionAsync(
+    public async Task<BatchInspectorFeeTransitionResponseDto> BatchTransitionAsync(
         BatchInspectorFeeTransitionRequest request,
         string actorUserId,
         string? actorAssigneeId,
@@ -511,7 +551,7 @@ public class InspectorFeeService : IInspectorFeeService
                 continue;
             }
 
-            var ledger = await _db.InspectorFeeLedgers
+            var ledger = await _financial.InspectorFeeLedgers
                 .FirstOrDefaultAsync(x => x.WorkflowTaskId == taskId, cancellationToken);
             if (ledger is null)
             {
@@ -554,7 +594,7 @@ public class InspectorFeeService : IInspectorFeeService
         }
 
         if (succeeded.Count > 0)
-            await _db.SaveChangesAsync(cancellationToken);
+            await _financial.SaveChangesAsync(cancellationToken);
 
         if (string.Equals(request.Action.Trim(), InspectorFeeActions.Disburse, StringComparison.OrdinalIgnoreCase)
             && succeeded.Count > 0)
@@ -562,7 +602,7 @@ public class InspectorFeeService : IInspectorFeeService
             await NotifyPartiesFeesDisbursedAsync(succeeded, cancellationToken);
         }
 
-        return new BatchInspectorFeeTransitionResult
+        return new BatchInspectorFeeTransitionResponseDto
         {
             Succeeded = succeeded,
             Failed = failed,
@@ -570,14 +610,14 @@ public class InspectorFeeService : IInspectorFeeService
         };
     }
 
-    public Task<CreateDisbursementBatchResult> CreateDisbursementBatchAsync(
+    public Task<CreateDisbursementBatchResponseDto> CreateDisbursementBatchAsync(
         CreateDisbursementBatchRequest request,
         string actorUserId,
         string? actorAssigneeId,
         CancellationToken cancellationToken = default)
     {
  //new disbursement batches are retired — use party billing statements.
-        return Task.FromResult(new CreateDisbursementBatchResult
+        return Task.FromResult(new CreateDisbursementBatchResponseDto
         {
             Failed =
             [
@@ -597,11 +637,11 @@ public class InspectorFeeService : IInspectorFeeService
         var ids = workflowTaskIds.ToList();
         if (ids.Count == 0) return;
 
-        await _db.InspectorFeeTransitions
+        await _financial.InspectorFeeTransitions
             .Where(x => ids.Contains(x.WorkflowTaskId))
             .ExecuteDeleteAsync(cancellationToken);
 
-        await _db.InspectorFeeLedgers
+        await _financial.InspectorFeeLedgers
             .Where(x => ids.Contains(x.WorkflowTaskId))
             .ExecuteDeleteAsync(cancellationToken);
     }
@@ -706,13 +746,6 @@ public class InspectorFeeService : IInspectorFeeService
         decimal areaM2,
         CancellationToken cancellationToken)
     {
-        var property = await _db.WorkOrderProperties
-            .FirstOrDefaultAsync(p => p.Id == propertyId, cancellationToken);
-        if (property is null) return;
-        if (EngineeringSurveyFeeRules.TryParseAreaM2(property.Area, out _))
-            return;
-
-        property.Area = areaM2.ToString(
-            System.Globalization.CultureInfo.InvariantCulture);
+        await _commands.BackfillPropertyAreaIfEmptyAsync(propertyId, areaM2, cancellationToken);
     }
 }

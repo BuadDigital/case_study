@@ -724,8 +724,3 @@ export async function loadInspectorWorkspaceSnapshot(
 ): Promise<InspectorWorkspaceSnapshot | null> {
   return fetchInspectorWorkspace(taskId);
 }
-
-export const loadFieldInspectionSubmission = loadInspectorWorkspace;
-export const fetchFieldInspectionSubmission = fetchInspectorWorkspace;
-export const loadFieldInspectionSubmissionSnapshot =
-  loadInspectorWorkspaceSnapshot;

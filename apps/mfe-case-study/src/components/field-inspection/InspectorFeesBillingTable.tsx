@@ -18,12 +18,11 @@ import {
   pageToolbarClassName,
   queueTableWrapClassName,
   useToast,
-} from "@platform/design-system";
+} from "@platform/ui-kit";
 import { prototypeKeys } from "@platform/app-shared/query/prototype-keys";
 import {
   inspectorFeeStatusLabel,
   inspectorFeeStatusTone,
-  type InspectorFeeBillingStatus,
   type InspectorFeeRowDto,
 } from "@platform/api-client";
 import { PoNumber } from "../ui/PoNumber";
@@ -685,11 +684,4 @@ export function InspectorFeesBillingTable({
       />
     </div>
   );
-}
-
-export function feesStatusFilter(
-  mode: FeesBillingMode,
-): InspectorFeeBillingStatus | undefined {
-  if (mode === "finance") return "disb-req";
-  return undefined;
 }

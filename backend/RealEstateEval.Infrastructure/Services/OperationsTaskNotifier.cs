@@ -1,9 +1,10 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
+using RealEstateEval.Application;
 using RealEstateEval.Application.Abstractions;
 using RealEstateEval.Application.Contracts;
 using RealEstateEval.Application.Rules;
 using RealEstateEval.Domain;
-using RealEstateEval.Infrastructure.Data;
 using RealEstateEval.Infrastructure.Data.Contexts;
 
 namespace RealEstateEval.Infrastructure.Services;
@@ -18,20 +19,34 @@ public sealed class OperationsTaskNotifier
     ];
 
     private readonly OperationsDbContext _ops;
-    private readonly ApplicationDbContext _db;
+    private readonly IIdentityDirectory _identity;
     private readonly INotificationService _notifications;
     private readonly IUserLabelLookup _labels;
+    private readonly TimeProvider _time;
 
     public OperationsTaskNotifier(
         OperationsDbContext ops,
-        ApplicationDbContext db,
+        IdentityDbContext db,
         INotificationService notifications,
-        IUserLabelLookup? labels = null)
+        IUserLabelLookup? labels = null,
+        TimeProvider? time = null)
+        : this(ops, new IdentityDirectory(db), notifications, labels ?? new UserLabelLookup(db), time)
+    {
+    }
+
+    [ActivatorUtilitiesConstructor]
+    public OperationsTaskNotifier(
+        OperationsDbContext ops,
+        IIdentityDirectory identity,
+        INotificationService notifications,
+        IUserLabelLookup labels,
+        TimeProvider? time = null)
     {
         _ops = ops;
-        _db = db;
+        _identity = identity;
         _notifications = notifications;
-        _labels = labels ?? new UserLabelLookup(db);
+        _labels = labels;
+        _time = time ?? TimeProvider.System;
     }
 
     public async Task NotifyAssigneeAsync(OperationsTask entity, CancellationToken cancellationToken)
@@ -139,7 +154,7 @@ public sealed class OperationsTaskNotifier
             title: "تحديث على المهمة",
             body: $"حدّث {who} المهمة {entity.DisplayId}: {string.Join(" و ", parts)}.",
             tone: "info",
-            sourceEvent: $"ops-task-schedule:{entity.Id}:{DateTimeOffset.UtcNow.ToUnixTimeSeconds()}",
+            sourceEvent: $"ops-task-schedule:{entity.Id}:{_time.GetUtcNow().ToUnixTimeSeconds()}",
             excludeUserId,
             cancellationToken);
     }
@@ -177,7 +192,7 @@ public sealed class OperationsTaskNotifier
                     EntityType = "operations-task",
                     EntityId = entity.Id.ToString(),
                     SourceEvent =
-                        $"ops-task-comment:{entity.Id}:{DateTimeOffset.UtcNow.ToUnixTimeSeconds()}:creator",
+                        $"ops-task-comment:{entity.Id}:{_time.GetUtcNow().ToUnixTimeSeconds()}:creator",
                 },
                 cancellationToken);
             return;
@@ -190,7 +205,7 @@ public sealed class OperationsTaskNotifier
             body: $"علّق {who} على المهمة {entity.DisplayId}{bodyTail}",
             tone: "info",
             sourceEvent:
-                $"ops-task-comment:{entity.Id}:{DateTimeOffset.UtcNow.ToUnixTimeSeconds()}:assignee",
+                $"ops-task-comment:{entity.Id}:{_time.GetUtcNow().ToUnixTimeSeconds()}:assignee",
             excludeUserId: null,
             cancellationToken);
     }
@@ -307,14 +322,9 @@ public sealed class OperationsTaskNotifier
         CancellationToken cancellationToken)
     {
  // Notify active government-reviewers by role (court visits), not legacy GR workflow assignees.
-        var userIds = await _db.UserProfiles.AsNoTracking()
-            .Where(p =>
-                p.Status == UserStatus.Active
-                && p.RoleId == "government-reviewer")
-            .Select(p => p.UserId)
-            .Where(id => id != null && id != "")
-            .Distinct()
-            .ToListAsync(cancellationToken);
+        var userIds = await _identity.ResolveUserIdsWithPrototypeRoleAsync(
+            "government-reviewer",
+            cancellationToken);
         if (userIds.Count == 0) return;
 
         var pos = new HashSet<string>(StringComparer.Ordinal);
@@ -431,12 +441,9 @@ public sealed class OperationsTaskNotifier
 
         foreach (var role in StakeholderRoles)
         {
-            var roleUsers = await _db.UserProfiles.AsNoTracking()
-                .Where(p =>
-                    p.Status == UserStatus.Active
-                    && p.RoleId == role)
-                .Select(p => p.UserId)
-                .ToListAsync(cancellationToken);
+            var roleUsers = await _identity.ResolveUserIdsWithPrototypeRoleAsync(
+                role,
+                cancellationToken);
             foreach (var id in roleUsers)
             {
                 if (!string.IsNullOrWhiteSpace(id))
@@ -458,13 +465,13 @@ public sealed class OperationsTaskNotifier
         var id = assigneeId?.Trim() ?? "";
         if (id.Length == 0) return null;
 
-        var userId = await _db.UserProfiles.AsNoTracking()
-            .Where(p => p.DistributionAssigneeId == id)
-            .Select(p => p.UserId)
-            .FirstOrDefaultAsync(cancellationToken);
+        var userId = await _identity.ResolveUserIdForDistributionAssigneeAsync(
+            id,
+            cancellationToken);
 
         return string.IsNullOrWhiteSpace(userId) ? null : userId;
     }
 
     private static string OperationsTaskHref(Guid id) => $"/operations-tasks?task={id}";
 }
+

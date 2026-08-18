@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using RealEstateEval.Application;
 using RealEstateEval.Application.Abstractions;
 using RealEstateEval.Application.Contracts;
 using RealEstateEval.Domain;
@@ -10,11 +11,14 @@ namespace RealEstateEval.Infrastructure.Services;
 public sealed class ValuationReconciliationService(
     ValuationDbContext db,
     CaseStudyDbContext caseStudy,
-    PlatformDbContext platformDb,
     IAuditLogWriter audit,
+    IAuditLogAppend auditLog,
     IValuationComparableSelectionService selections,
-    IValuationCostApproachService costApproach) : IValuationReconciliationService
+    IValuationCostApproachService costApproach,
+    TimeProvider? time = null) : IValuationReconciliationService
 {
+    private readonly TimeProvider _time = time ?? TimeProvider.System;
+
     public async Task<ValuationReconciliationDto?> GetAsync(
         Guid valuationRequestId,
         CancellationToken cancellationToken = default)
@@ -236,7 +240,7 @@ public sealed class ValuationReconciliationService(
         entity.MethodologyAlertOverridesJson = alertOverrides.Count == 0
             ? null
             : System.Text.Json.JsonSerializer.Serialize(alertOverrides, AlertOverridesJsonOptions);
-        entity.UpdatedAtUtc = DateTime.UtcNow;
+        entity.UpdatedAtUtc = _time.UtcNow();
 
         await db.SaveChangesAsync(cancellationToken);
 
@@ -244,14 +248,13 @@ public sealed class ValuationReconciliationService(
  // leaves an audit trail. Logged best-effort after the main save.
         if (!string.Equals(previousOverridesJson, entity.MethodologyAlertOverridesJson, StringComparison.Ordinal))
         {
-            platformDb.AuditLogs.Add(audit.Create(
+            await auditLog.AppendAsync(audit.Create(
                 actorId: string.IsNullOrWhiteSpace(actorId) ? "unknown" : actorId,
                 action: "valuation.alert-overrides.updated",
                 entityType: "ValuationReconciliation",
                 entityId: valuationRequestId.ToString("D"),
                 before: ParseAlertOverrides(previousOverridesJson),
-                after: alertOverrides));
-            await platformDb.SaveChangesAsync(cancellationToken);
+                after: alertOverrides), cancellationToken);
         }
 
         return (await GetAsync(valuationRequestId, cancellationToken), null);

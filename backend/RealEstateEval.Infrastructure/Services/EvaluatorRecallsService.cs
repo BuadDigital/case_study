@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using RealEstateEval.Application;
 using RealEstateEval.Application.Abstractions;
 using RealEstateEval.Application.Contracts;
 using RealEstateEval.Domain;
@@ -10,8 +11,13 @@ public sealed class EvaluatorRecallsService : IEvaluatorRecallsService
 {
     private const int MaxListRows = 500;
     private readonly ValuationDbContext _db;
+    private readonly TimeProvider _time;
 
-    public EvaluatorRecallsService(ValuationDbContext db) => _db = db;
+    public EvaluatorRecallsService(ValuationDbContext db, TimeProvider? time = null)
+    {
+        _db = db;
+        _time = time ?? TimeProvider.System;
+    }
 
     public async Task<IReadOnlyList<EvaluatorRecallDto>> ListAsync(
         CancellationToken cancellationToken = default)
@@ -42,7 +48,7 @@ public sealed class EvaluatorRecallsService : IEvaluatorRecallsService
         if (existing?.Status == EvaluatorRecallStatus.Pending)
             return ToDto(existing);
 
-        var now = DateTime.UtcNow;
+        var now = _time.UtcNow();
         if (existing is null)
         {
             existing = new EvaluatorRecallRecord
@@ -83,7 +89,7 @@ public sealed class EvaluatorRecallsService : IEvaluatorRecallsService
         if (row.Status != EvaluatorRecallStatus.Pending) return ToDto(row);
 
         row.Status = EvaluatorRecallStatus.Approved;
-        row.ResolvedAtUtc = DateTime.UtcNow;
+        row.ResolvedAtUtc = _time.UtcNow();
         await _db.SaveChangesAsync(cancellationToken);
         return ToDto(row);
     }
@@ -100,7 +106,7 @@ public sealed class EvaluatorRecallsService : IEvaluatorRecallsService
 
         row.Status = EvaluatorRecallStatus.Rejected;
         row.SpecialistNote = request.SpecialistNote?.Trim() ?? "";
-        row.ResolvedAtUtc = DateTime.UtcNow;
+        row.ResolvedAtUtc = _time.UtcNow();
         await _db.SaveChangesAsync(cancellationToken);
         return ToDto(row);
     }

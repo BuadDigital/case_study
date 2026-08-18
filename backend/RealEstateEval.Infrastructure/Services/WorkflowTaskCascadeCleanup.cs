@@ -1,20 +1,20 @@
 using Microsoft.EntityFrameworkCore;
 using RealEstateEval.Application.Abstractions;
-using RealEstateEval.Infrastructure.Data;
+using RealEstateEval.Infrastructure.Data.Contexts;
 
 namespace RealEstateEval.Infrastructure.Services;
 
 /// <summary>Removes party submissions, fee ledgers, and inspection workspaces for workflow tasks.</summary>
 public sealed class WorkflowTaskCascadeCleanup
 {
-    private readonly ApplicationDbContext _db;
+    private readonly CaseStudyDbContext _caseStudy;
     private readonly IInspectorFeeService _inspectorFees;
 
     public WorkflowTaskCascadeCleanup(
-        ApplicationDbContext db,
+        CaseStudyDbContext caseStudy,
         IInspectorFeeService inspectorFees)
     {
-        _db = db;
+        _caseStudy = caseStudy;
         _inspectorFees = inspectorFees;
     }
 
@@ -24,13 +24,13 @@ public sealed class WorkflowTaskCascadeCleanup
     {
         if (taskIds.Count == 0) return;
         await _inspectorFees.DeleteForWorkflowTaskIdsAsync(taskIds, cancellationToken);
-        await _db.FieldInspectionWorkspaces
+        await _caseStudy.FieldInspectionWorkspaces
             .Where(w => taskIds.Contains(w.WorkflowTaskId))
             .ExecuteDeleteAsync(cancellationToken);
-        var subs = await _db.PartyTaskSubmissions
+        var subs = await _caseStudy.PartyTaskSubmissions
             .Where(s => taskIds.Contains(s.WorkflowTaskId))
             .ToListAsync(cancellationToken);
         if (subs.Count > 0)
-            _db.PartyTaskSubmissions.RemoveRange(subs);
+            _caseStudy.PartyTaskSubmissions.RemoveRange(subs);
     }
 }

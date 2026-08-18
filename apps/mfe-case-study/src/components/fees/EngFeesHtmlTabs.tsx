@@ -1,7 +1,7 @@
 "use client";
 
 import type { ReactNode } from "react";
-import { cn } from "@platform/design-system";
+import { cn } from "@platform/ui-kit";
 
 /** Case Study.html `renderEngFees` / `renderEngSurvey` gold underline tabs. */
 export function EngFeesHtmlTabs({

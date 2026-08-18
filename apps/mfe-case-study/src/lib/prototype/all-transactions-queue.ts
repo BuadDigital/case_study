@@ -1,4 +1,4 @@
-import type { StatusPillStyle } from "@platform/design-system";
+import type { StatusPillStyle } from "@platform/ui-kit";
 import type { RowMoreMenuItem } from "@case-study/mfe/components/ui/RowMoreMenu";
 import { isSuperAdmin } from "@platform/app-shared/prototype/prototype-role-access";
 import type { RoleId } from "@platform/types";

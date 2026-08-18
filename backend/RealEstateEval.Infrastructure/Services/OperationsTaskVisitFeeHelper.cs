@@ -1,21 +1,45 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
+using RealEstateEval.Application;
 using RealEstateEval.Application.Abstractions;
 using RealEstateEval.Application.Contracts;
 using RealEstateEval.Application.Rules;
 using RealEstateEval.Domain;
-using RealEstateEval.Infrastructure.Data;
+using RealEstateEval.Infrastructure.Data.Contexts;
 
 namespace RealEstateEval.Infrastructure.Services;
 
 public sealed class OperationsTaskVisitFeeHelper
 {
-    private readonly ApplicationDbContext _db;
+    private readonly OperationsDbContext _ops;
+    private readonly ICourtVisitFeeChargeService _charges;
+    private readonly IIdentityDirectory _identity;
     private readonly IPartyFeePricingService _pricing;
+    private readonly TimeProvider _time;
 
-    public OperationsTaskVisitFeeHelper(ApplicationDbContext db, IPartyFeePricingService pricing)
+    public OperationsTaskVisitFeeHelper(
+        OperationsDbContext ops,
+        FinancialDbContext financial,
+        IdentityDbContext identity,
+        IPartyFeePricingService pricing,
+        TimeProvider? time = null)
+        : this(ops, new CourtVisitFeeChargeService(financial, time), new IdentityDirectory(identity), pricing, time)
     {
-        _db = db;
+    }
+
+    [ActivatorUtilitiesConstructor]
+    public OperationsTaskVisitFeeHelper(
+        OperationsDbContext ops,
+        ICourtVisitFeeChargeService charges,
+        IIdentityDirectory identity,
+        IPartyFeePricingService pricing,
+        TimeProvider? time = null)
+    {
+        _ops = ops;
+        _charges = charges;
+        _identity = identity;
         _pricing = pricing;
+        _time = time ?? TimeProvider.System;
     }
 
  /// <summary>
@@ -72,8 +96,7 @@ public sealed class OperationsTaskVisitFeeHelper
         OperationsTask entity,
         CancellationToken cancellationToken)
     {
-        var alreadyCharged = await _db.CourtVisitFeeCharges
-            .AnyAsync(c => c.OperationsTaskId == entity.Id, cancellationToken);
+        var alreadyCharged = await _charges.ExistsForTaskAsync(entity.Id, cancellationToken);
         if (alreadyCharged) return (ResolvedPartyFee.Unresolved, null);
 
         var payeeId = (entity.CreditAssigneeId ?? entity.AssigneeId).Trim();
@@ -110,31 +133,29 @@ public sealed class OperationsTaskVisitFeeHelper
         entity.StampAgreedVisitFee(
             fromTable.FeeSar!.Value,
             fromTable.PricingTableId,
-            DateTime.UtcNow);
+            _time.UtcNow());
 
         return (fromTable, null);
     }
 
-    public void AddCourtVisitFeeCharge(OperationsTask entity, ResolvedPartyFee fee)
-    {
-        var now = DateTime.UtcNow;
-        _db.CourtVisitFeeCharges.Add(new CourtVisitFeeCharge
-        {
-            Id = Guid.NewGuid(),
-            OperationsTaskId = entity.Id,
-            TaskDisplayId = entity.DisplayId,
-            PoNumber = OperationsTaskSerialization.NullIfBlank(entity.PoNumber),
-            CreditAssigneeId = (entity.CreditAssigneeId ?? entity.AssigneeId).Trim(),
-            CreditAssigneeName = string.IsNullOrWhiteSpace(entity.CreditAssigneeName)
-                ? entity.AssigneeName
-                : entity.CreditAssigneeName.Trim(),
-            AmountSar = fee.FeeSar!.Value,
-            PricingTableId = fee.PricingTableId,
-            Status = CourtVisitFeeStatuses.Open,
-            CreatedAtUtc = now,
-            UpdatedAtUtc = now,
-        });
-    }
+    public Task AddCourtVisitFeeChargeAsync(
+        OperationsTask entity,
+        ResolvedPartyFee fee,
+        CancellationToken cancellationToken = default) =>
+        _charges.AddChargeAsync(
+            new CreateCourtVisitFeeChargeRequest
+            {
+                OperationsTaskId = entity.Id,
+                TaskDisplayId = entity.DisplayId,
+                PoNumber = OperationsTaskSerialization.NullIfBlank(entity.PoNumber),
+                CreditAssigneeId = (entity.CreditAssigneeId ?? entity.AssigneeId).Trim(),
+                CreditAssigneeName = string.IsNullOrWhiteSpace(entity.CreditAssigneeName)
+                    ? entity.AssigneeName
+                    : entity.CreditAssigneeName.Trim(),
+                AmountSar = fee.FeeSar!.Value,
+                PricingTableId = fee.PricingTableId,
+            },
+            cancellationToken);
 
  /// <summary>
  /// Opens charges for completed cooperator court visits that finished without a stamp
@@ -143,12 +164,10 @@ public sealed class OperationsTaskVisitFeeHelper
     public async Task<int> BackfillMissingChargesForCompletedVisitsAsync(
         CancellationToken cancellationToken = default)
     {
-        var chargedTaskIds = await _db.CourtVisitFeeCharges.AsNoTracking()
-            .Select(c => c.OperationsTaskId)
-            .ToListAsync(cancellationToken);
+        var chargedTaskIds = await _charges.ListChargedTaskIdsAsync(cancellationToken);
         var charged = chargedTaskIds.ToHashSet();
 
-        var orphans = await _db.OperationsTasks
+        var orphans = await _ops.OperationsTasks
             .Where(t => t.Type == OperationsTaskType.CourtVisit
                 && t.Status == OperationsTaskStatus.Completed
                 && !charged.Contains(t.Id))
@@ -166,29 +185,28 @@ public sealed class OperationsTaskVisitFeeHelper
             if (error is not null || !fee.IsResolved)
                 continue;
 
-            AddCourtVisitFeeCharge(task, fee);
+            await AddCourtVisitFeeChargeAsync(task, fee, cancellationToken);
             added++;
         }
 
-        if (added > 0)
-            await _db.SaveChangesAsync(cancellationToken);
-
         return added;
     }
+
+    public Task SaveChargesAsync(CancellationToken cancellationToken = default) =>
+        Task.CompletedTask;
 
     private async Task<string> ResolveReviewerTypeAsync(
         string assigneeId,
         CancellationToken cancellationToken)
     {
-        var profile = await _db.UserProfiles.AsNoTracking()
-            .Include(p => p.HrEmployee)
-            .Include(p => p.ProcProvider)
-            .FirstOrDefaultAsync(p => p.DistributionAssigneeId == assigneeId, cancellationToken);
+        var profile = await _identity.GetCompensationByAssigneeAsync(assigneeId, cancellationToken);
 
         return CourtVisitFeeRules.ResolveReviewerType(
             profile?.ContractType,
-            profile?.ProcProvider?.ProviderKind,
-            profile?.HrEmployee?.EmploymentType,
+            profile?.ProviderKind,
+            profile?.EmploymentType,
             assigneeId);
     }
 }
+
+

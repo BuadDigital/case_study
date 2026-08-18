@@ -6,7 +6,7 @@ import {
 } from "./case-study-info-roles-data";
 import type { CaseStudyInfoRolesConfig } from "./case-study-info-roles-storage";
 
-export function formatCaseStudyInfoRolesMarkdown(
+function formatCaseStudyInfoRolesMarkdown(
   config: CaseStudyInfoRolesConfig,
   sourceUrl?: string,
 ): string {

@@ -1,6 +1,5 @@
 import { listSurveyOffices } from "@platform/api-client";
 import {
-  prototypeModulesApiConfig,
   requirePrototypeModulesApiConfig,
   unwrapApiResult,
 } from "@platform/app-shared/prototype/prototype-modules-api-config";
@@ -18,8 +17,4 @@ export async function loadSurveyOffices(): Promise<SurveyOfficeListRow[]> {
     contract: row.contract,
     statusBusy: row.statusBusy,
   }));
-}
-
-export function surveyApiEnabled(): boolean {
-  return prototypeModulesApiConfig() !== null;
 }

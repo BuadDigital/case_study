@@ -6,7 +6,6 @@ import {
   encryptBytes,
   encryptJson,
   isWebCryptoAvailable,
-  type EncryptedPayload,
 } from "./crypto";
 import {
   OFFLINE_CHANNEL,
@@ -357,12 +356,6 @@ export async function getOfflineDraft(
   return getEncrypted<OfflineDraftRecord>("drafts", userId, id);
 }
 
-export async function listOfflineDrafts(
-  userId: string,
-): Promise<OfflineDraftRecord[]> {
-  return listEncrypted<OfflineDraftRecord>("drafts", userId);
-}
-
 export async function saveOfflineBlob(
   blob: OfflineBlobRecord,
 ): Promise<void> {
@@ -508,13 +501,6 @@ export async function saveOutboxItem(item: OfflineOutboxItem): Promise<void> {
   await publishPendingCount(item.userId);
 }
 
-export async function getOutboxItem(
-  userId: string,
-  id: string,
-): Promise<OfflineOutboxItem | null> {
-  return getEncrypted<OfflineOutboxItem>("outbox", userId, id);
-}
-
 export async function listOutboxItems(
   userId: string,
 ): Promise<OfflineOutboxItem[]> {
@@ -563,19 +549,6 @@ export async function savePrefetch(
   });
 }
 
-export async function getPrefetch(
-  userId: string,
-  id: string,
-): Promise<OfflinePrefetchRecord | null> {
-  return getEncrypted<OfflinePrefetchRecord>("prefetch", userId, id);
-}
-
-export async function listPrefetch(
-  userId: string,
-): Promise<OfflinePrefetchRecord[]> {
-  return listEncrypted<OfflinePrefetchRecord>("prefetch", userId);
-}
-
 export async function setMeta(key: string, value: unknown): Promise<void> {
   await withDb((db) =>
     db.put("meta", { key, valueJson: JSON.stringify(value) }),
@@ -611,24 +584,6 @@ export async function requestPersistentStorage(): Promise<boolean> {
     return await navigator.storage.persist();
   } catch {
     return false;
-  }
-}
-
-export async function estimateStorage(): Promise<{
-  usage: number;
-  quota: number;
-} | null> {
-  if (typeof navigator === "undefined" || !navigator.storage?.estimate) {
-    return null;
-  }
-  try {
-    const est = await navigator.storage.estimate();
-    return {
-      usage: est.usage ?? 0,
-      quota: est.quota ?? 0,
-    };
-  } catch {
-    return null;
   }
 }
 
@@ -693,5 +648,3 @@ async function forceCloseOfflineDb(): Promise<void> {
 export async function closeOfflineDb(): Promise<void> {
   await forceCloseOfflineDb();
 }
-
-export type { EncryptedPayload };

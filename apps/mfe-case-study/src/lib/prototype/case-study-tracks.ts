@@ -1,3 +1,4 @@
+import { PropertyListRowStatuses } from "@platform/api-client";
 import type { StaffUser } from "@platform/app-shared/prototype/constants";
 import { resolveAssigneeDisplayName } from "@platform/app-shared/fees/party-fee-meta";
 import type { CaseStudyInfoPartyId } from "@settings/mfe/lib/prototype/case-study-info-roles-data";
@@ -15,7 +16,10 @@ import {
   type WorkflowTaskKind,
 } from "./tasks-storage";
 
-export type CaseStudyTrackState = "new" | "progress" | "done";
+export type CaseStudyTrackState =
+  | typeof PropertyListRowStatuses.New
+  | typeof PropertyListRowStatuses.Progress
+  | typeof PropertyListRowStatuses.Done;
 
 export type CaseStudyTrack = {
   id: string;
@@ -39,14 +43,14 @@ export function trackStateFromTask(
   child: WorkflowTask | undefined,
   spawned: boolean,
 ): CaseStudyTrackState {
-  if (!spawned) return "new";
-  if (!child) return "new";
-  if (child.status === "completed") return "done";
-  return "progress";
+  if (!spawned) return PropertyListRowStatuses.New;
+  if (!child) return PropertyListRowStatuses.New;
+  if (child.status === "completed") return PropertyListRowStatuses.Done;
+  return PropertyListRowStatuses.Progress;
 }
 
 function progressPctForState(state: CaseStudyTrackState): number {
-  if (state === "done") return 100;
+  if (state === PropertyListRowStatuses.Done) return 100;
   // Open / assigned ≠ half complete without form or submission evidence.
   return 0;
 }
@@ -131,10 +135,10 @@ export function buildCaseStudyTracks(
     const state =
       kind === "parent"
         ? parent.status === "completed" || parent.phase === "done"
-          ? "done"
+          ? PropertyListRowStatuses.Done
           : parent.phase === "case-study"
-            ? "progress"
-            : "new"
+            ? PropertyListRowStatuses.Progress
+            : PropertyListRowStatuses.New
         : trackStateFromTask(child, spawned);
     const distName = distributionAssignee(distribution, id, staffUsers);
     const assigneeName = resolveAssigneeDisplayName({
@@ -152,18 +156,6 @@ export function buildCaseStudyTracks(
       assigneeName,
     };
   });
-}
-
-export function caseStudyTrackBadgeClass(state: CaseStudyTrackState): string {
-  if (state === "done") return "b-done";
-  if (state === "progress") return "b-prog";
-  return "b-new";
-}
-
-export function caseStudyTrackBadgeLabel(state: CaseStudyTrackState): string {
-  if (state === "done") return "مكتمل";
-  if (state === "progress") return "قيد التنفيذ";
-  return "جديد";
 }
 
 export type CaseStudyPartyAssignee = {
@@ -200,7 +192,7 @@ export function buildCaseStudyPartyAssignees(
 
   return CASE_STUDY_PARTY_DEFS.map((def) => {
     const track = tracks.find((t) => t.id === def.trackId);
-    const state = track?.state ?? "new";
+    const state = track?.state ?? PropertyListRowStatuses.New;
     const enabled =
       def.trackId === "inspection" || def.trackId === "appraisal"
         ? distribution.valuationDepartment
@@ -211,7 +203,7 @@ export function buildCaseStudyPartyAssignees(
         ? undefined
         : (progressByParty[def.partyId] ?? 0);
     const progressPct =
-      state === "done"
+      state === PropertyListRowStatuses.Done
         ? 100
         : formPct !== undefined
           ? formPct

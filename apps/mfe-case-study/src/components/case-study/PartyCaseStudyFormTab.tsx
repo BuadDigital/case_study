@@ -1,6 +1,6 @@
 "use client";
 
-import { InlineLoadingSkeleton, Note } from "@platform/design-system";
+import { InlineLoadingSkeleton, Note } from "@platform/ui-kit";
 import { useMemo } from "react";
 import { CaseStudyForm } from "./CaseStudyForm";
 import { partyIdForRoleId } from "@settings/mfe";

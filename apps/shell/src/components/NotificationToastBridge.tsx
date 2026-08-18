@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
-import { useOptionalToast, type ToastTone } from "@platform/design-system";
+import { useOptionalToast, type ToastTone } from "@platform/ui-kit";
 import { useAuth } from "@platform/app-shared/hooks/useAuth";
 import {
   NOTIFICATION_PUSHED_EVENT,

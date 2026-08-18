@@ -7,7 +7,6 @@ import {
 import { prototypeKeys } from "@platform/app-shared/query/prototype-keys";
 import { getAuthSession } from "@platform/auth-client";
 import { usePrototype } from "@platform/app-shared/contexts/PrototypeContext";
-import { loadCourtsCatalog } from "../lib/prototype/courts-storage";
 import {
   loadCaseStudyInfoRolesConfig,
   type CaseStudyInfoRolesConfig,
@@ -20,14 +19,6 @@ import {
 const STALE_MS = 60_000;
 const GC_MS = 10 * 60_000;
 const queryDefaults = { staleTime: STALE_MS, gcTime: GC_MS };
-
-export function useCourtsCatalogQuery() {
-  return useQuery({
-    queryKey: prototypeKeys.courtsCatalog(),
-    queryFn: loadCourtsCatalog,
-    ...queryDefaults,
-  });
-}
 
 export function useCaseStudyInfoRolesQuery() {
   return useQuery({

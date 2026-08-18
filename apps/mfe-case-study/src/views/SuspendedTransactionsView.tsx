@@ -24,7 +24,7 @@ import {
   cn,
   queueTableRowClassName,
   queueTableWrapClassName,
-} from "@platform/design-system";
+} from "@platform/ui-kit";
 import { getAuthSession } from "@platform/auth-client";
 import { usePrototype } from "@platform/app-shared/contexts/PrototypeContext";
 import { useStaffUsersQuery } from "@settings/mfe/query/settings-queries";

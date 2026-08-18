@@ -10,7 +10,7 @@ import {
   type ReactNode,
 } from "react";
 import { createPortal } from "react-dom";
-import { cn } from "@platform/design-system";
+import { cn } from "@platform/ui-kit";
 
 export type RowMoreMenuItem = {
   id: string;

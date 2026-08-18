@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Button, useToast } from "@platform/design-system";
+import { Button, useToast } from "@platform/ui-kit";
 import {
   approvePartyTaskRecall,
   getPartyTaskRecall,

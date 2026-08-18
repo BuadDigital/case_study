@@ -1,23 +1,27 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Design;
+using RealEstateEval.Infrastructure.Data;
 
 namespace RealEstateEval.Infrastructure.Data.Contexts;
 
 /// <summary>
 /// Lets <c>dotnet ef</c> build a bounded-context model without a host. Generating or scripting
-/// a migration never opens the connection, so the placeholder is only used when
-/// <c>REAL_ESTATE_EVAL_PG_CONNECTION_STRING</c> is unset and the command needs a database.
+/// a migration never opens the connection, so the placeholder is only used when the
+/// dedicated <c>REAL_ESTATE_EVAL_PG_CONNECTION_STRING_{SERVICE}</c> is unset.
 /// </summary>
 public abstract class BoundedContextDesignTimeFactory<TContext> : IDesignTimeDbContextFactory<TContext>
     where TContext : DbContext
 {
     private const string PlaceholderConnectionString =
-        "Host=localhost;Database=realestate_eval_dev;Username=postgres;Password=postgres";
+        "Host=localhost;Database=realestate_eval_design_time;Username=postgres;Password=postgres";
 
     public TContext CreateDbContext(string[] args)
     {
+        var serviceName = BoundedContextConnections.ServiceNameFor(typeof(TContext));
         var connectionString =
-            Environment.GetEnvironmentVariable("REAL_ESTATE_EVAL_PG_CONNECTION_STRING")
+            (serviceName is null
+                ? null
+                : Environment.GetEnvironmentVariable(BoundedContextConnections.EnvVarFor(serviceName)))
             ?? PlaceholderConnectionString;
 
         var options = new DbContextOptionsBuilder<TContext>()

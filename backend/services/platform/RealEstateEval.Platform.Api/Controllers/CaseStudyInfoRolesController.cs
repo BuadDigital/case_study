@@ -39,7 +39,7 @@ public class CaseStudyInfoRolesController : ControllerBase
         }
         catch (ArgumentException ex)
         {
-            return BadRequest(new { error = ex.Message });
+            return this.BadRequestProblem(ex.Message);
         }
     }
 }

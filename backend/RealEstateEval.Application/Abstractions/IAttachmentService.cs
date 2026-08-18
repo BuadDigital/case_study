@@ -11,6 +11,7 @@ public interface IAttachmentService
 
     Task<(byte[]? Content, FileAttachmentMetaDto? Meta)> GetContentAsync(
         Guid id,
+        PermissionsDto? actor,
         CancellationToken cancellationToken = default);
 
     Task<(FileAttachmentMetaDto? Meta, string? Error)> UploadAsync(
@@ -20,6 +21,7 @@ public interface IAttachmentService
 
     Task<FileAttachmentMetaDto?> GetMetaAsync(
         Guid id,
+        PermissionsDto? actor,
         CancellationToken cancellationToken = default);
 
     Task<(FileAttachmentMetaDto? Meta, string? Error)> ClassifyAsync(
@@ -27,5 +29,8 @@ public interface IAttachmentService
         ClassifyAttachmentRequest request,
         CancellationToken cancellationToken = default);
 
-    Task<bool> DeleteAsync(Guid id, CancellationToken cancellationToken = default);
+    Task<bool> DeleteAsync(
+        Guid id,
+        PermissionsDto? actor,
+        CancellationToken cancellationToken = default);
 }

@@ -24,7 +24,7 @@ import {
   queueTableRowClassName,
   queueTableWrapClassName,
   useToast,
-} from "@platform/design-system";
+} from "@platform/ui-kit";
 import { usePrototype } from "@platform/app-shared/contexts/PrototypeContext";
 import { ROLES } from "@platform/app-shared/prototype/constants";
 import {

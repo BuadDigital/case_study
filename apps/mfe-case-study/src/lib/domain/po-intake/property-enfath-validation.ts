@@ -174,17 +174,4 @@ export function firstEnfathValidationMessage(errors: FieldErrors): string {
   );
 }
 
-export function findInvalidEnfathPropertyIndex(
-  properties: PoPropertyIntake[],
-  assignmentType: AssignmentType,
-): { index: number; errors: FieldErrors } | null {
-  for (let i = 0; i < properties.length; i++) {
-    const errors = mergePropertyEnfathValidation(properties[i], assignmentType);
-    if (Object.keys(errors).length > 0) {
-      return { index: i, errors };
-    }
-  }
-  return null;
-}
-
 export { isValidContactEntry } from "./property-validation";

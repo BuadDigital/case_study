@@ -1,5 +1,7 @@
 using System.Globalization;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
+using RealEstateEval.Application;
 using RealEstateEval.Application.Abstractions;
 using RealEstateEval.Application.Contracts;
 using RealEstateEval.Application.Rules;
@@ -11,8 +13,8 @@ namespace RealEstateEval.Infrastructure.Services;
 
 /// <summary>
 /// Financial summary. Owned fee/config tables live on <see cref="FinancialDbContext"/>;
-/// completed case-study property filters use <see cref="CaseStudyDbContext"/> reads;
-/// assignee display names use <see cref="IdentityDbContext"/> (residual until owner APIs replace them).
+/// completed case-study property filters use <see cref="ICaseStudyLookup"/>;
+/// assignee display names use <see cref="IIdentityDirectory"/>.
 /// </summary>
 public sealed class FinancialReportService : IFinancialReportService
 {
@@ -20,16 +22,30 @@ public sealed class FinancialReportService : IFinancialReportService
     private static readonly CultureInfo ArCulture = CultureInfo.GetCultureInfo("ar-SA");
 
     private readonly FinancialDbContext _fin;
-    private readonly CaseStudyDbContext _caseStudy;
-    private readonly IdentityDbContext _identity;
+    private readonly ICaseStudyLookup _caseStudy;
+    private readonly IIdentityDirectory _identity;
     private readonly ApiResponseCache _cache;
+    private readonly TimeProvider _time;
 
     public FinancialReportService(
         FinancialDbContext fin,
         CaseStudyDbContext caseStudy,
         IdentityDbContext identity,
         ApiResponseCache cache)
+        : this(fin, new CaseStudyLookup(caseStudy), new IdentityDirectory(identity), cache, null)
     {
+    }
+
+    [ActivatorUtilitiesConstructor]
+    public FinancialReportService(
+        FinancialDbContext fin,
+        ICaseStudyLookup caseStudy,
+        IIdentityDirectory identity,
+        ApiResponseCache cache,
+        TimeProvider? time = null)
+    {
+        _time = time ?? TimeProvider.System;
+
         _fin = fin;
         _caseStudy = caseStudy;
         _identity = identity;
@@ -52,7 +68,7 @@ public sealed class FinancialReportService : IFinancialReportService
         var payload = System.Text.Json.JsonSerializer.Serialize(request);
         var row = await _fin.FinancialReportConfigs
             .FirstOrDefaultAsync(x => x.Id == SingletonId, cancellationToken);
-        var now = DateTime.UtcNow;
+        var now = _time.UtcNow();
 
         if (row is null)
         {
@@ -176,8 +192,8 @@ public sealed class FinancialReportService : IFinancialReportService
                 Excluded = invoices.Count(i => i.Status != PoEnfazInvoiceStatus.Collected),
                 Value = FormatSar(enfazCoreCollected),
                 Status = invoices.All(i => i.Status == PoEnfazInvoiceStatus.Collected)
-                    ? "done"
-                    : "progress",
+                    ? FinancialRevenueRowStatuses.Done
+                    : FinancialRevenueRowStatuses.Progress,
                 InvoiceNumber = null,
             });
         }
@@ -190,7 +206,7 @@ public sealed class FinancialReportService : IFinancialReportService
                 Billed = collectedLines.Count(l => l.KeyFeeSar > 0),
                 Excluded = 0,
                 Value = FormatSar(keyViaEnfazCollected),
-                Status = "done",
+                Status = FinancialRevenueRowStatuses.Done,
                 InvoiceNumber = null,
             });
         }
@@ -204,8 +220,8 @@ public sealed class FinancialReportService : IFinancialReportService
                 Excluded = keyReceiptSummary.Count - keyReceiptSummary.Collected,
                 Value = FormatSar(keyReceiptTotal),
                 Status = keyReceiptSummary.Collected == keyReceiptSummary.Count
-                    ? "done"
-                    : "progress",
+                    ? FinancialRevenueRowStatuses.Done
+                    : FinancialRevenueRowStatuses.Progress,
                 InvoiceNumber = null,
             });
         }
@@ -227,15 +243,8 @@ public sealed class FinancialReportService : IFinancialReportService
     private async Task<IQueryable<InspectorFeeLedger>> CompletedCaseStudyLedgersAsync(
         CancellationToken cancellationToken)
     {
- // Cross-context filter: load completed case-study property ids, then filter financial ledgers.
-        var completedPropertyIds = await _caseStudy.WorkflowTasks.AsNoTracking()
-            .Where(task =>
-                task.Kind == WorkflowTaskKind.CaseStudyProperty
-                && task.Status == WorkflowTaskStatus.Completed
-                && task.PropertyId != null)
-            .Select(task => task.PropertyId!.Value)
-            .Distinct()
-            .ToListAsync(cancellationToken);
+ // Cross-context filter: property ids must be materialized from Case Study before filtering Financial.
+        var completedPropertyIds = await _caseStudy.ListCompletedCaseStudyPropertyIdsAsync(cancellationToken);
 
         return _fin.InspectorFeeLedgers.AsNoTracking()
  // Disputed lines have no agreed amount yet and suspended ones are withheld, so neither is
@@ -256,19 +265,8 @@ public sealed class FinancialReportService : IFinancialReportService
         if (assigneeIds.Count == 0)
             return new Dictionary<string, string>(StringComparer.Ordinal);
 
-        var profiles = await (
-            from profile in _identity.UserProfiles.AsNoTracking()
-            join user in _identity.Users.AsNoTracking() on profile.UserId equals user.Id
-            where profile.DistributionAssigneeId != null
-                && assigneeIds.Contains(profile.DistributionAssigneeId)
-            select new
-            {
-                AssigneeId = profile.DistributionAssigneeId!,
-                user.DisplayName,
-            }).ToListAsync(cancellationToken);
-
-        var map = profiles
-            .ToDictionary(p => p.AssigneeId, p => p.DisplayName, StringComparer.Ordinal);
+        var loaded = await _identity.ResolveDisplayNamesByAssigneeIdsAsync(assigneeIds, cancellationToken);
+        var map = loaded.ToDictionary(kv => kv.Key, kv => kv.Value, StringComparer.Ordinal);
 
         foreach (var id in assigneeIds)
         {
@@ -299,9 +297,8 @@ public sealed class FinancialReportService : IFinancialReportService
         var taskIds = ledgerSlices.Select(row => row.WorkflowTaskId).Distinct().ToList();
         var kindByTask = taskIds.Count == 0
             ? new Dictionary<Guid, WorkflowTaskKind>()
-            : await _caseStudy.WorkflowTasks.AsNoTracking()
-                .Where(task => taskIds.Contains(task.Id))
-                .ToDictionaryAsync(task => task.Id, task => task.Kind, cancellationToken);
+            : (await _caseStudy.GetWorkflowTaskKindsAsync(taskIds, cancellationToken))
+                .ToDictionary(kv => kv.Key, kv => kv.Value);
 
         var aggregates = ledgerSlices
             .GroupBy(row => new
@@ -363,15 +360,7 @@ public sealed class FinancialReportService : IFinancialReportService
         IQueryable<InspectorFeeLedger> completedLedgers,
         CancellationToken cancellationToken)
     {
-        var orders = await _caseStudy.WorkOrders.AsNoTracking()
-            .OrderByDescending(w => w.CreatedAtUtc)
-            .ThenBy(w => w.PoNumber)
-            .Select(w => new
-            {
-                PoNumber = w.PoNumber.Trim(),
-                PropertyCount = w.Properties.Count,
-            })
-            .ToListAsync(cancellationToken);
+        var orders = await _caseStudy.ListWorkOrderSummariesAsync(cancellationToken);
 
         if (orders.Count == 0)
             return [];
@@ -423,12 +412,8 @@ public sealed class FinancialReportService : IFinancialReportService
             var enfazTotal = Math.Round((enfaz?.Total ?? 0m) * ratio, 2, MidpointRounding.AwayFromZero);
             var enfazFilled = enfaz?.Filled ?? 0;
             var status = invoice?.Status == PoEnfazInvoiceStatus.Collected
-                ? "done"
-                : invoice is not null && invoice.CollectedAmountSar > 0
-                    ? "progress"
-                    : enfazFilled > 0
-                        ? "progress"
-                        : "progress";
+                ? FinancialRevenueRowStatuses.Done
+                : FinancialRevenueRowStatuses.Progress;
 
             rows.Add(new FinancialRevenueRowDto
             {
@@ -474,9 +459,9 @@ public sealed class FinancialReportService : IFinancialReportService
         return $"{pct}% من الإيرادات";
     }
 
-    private static string CurrentPeriodLabel()
+    private string CurrentPeriodLabel()
     {
-        var now = DateTime.UtcNow;
+        var now = _time.UtcNow();
         return now.ToString("MMMM yyyy", ArCulture);
     }
 }

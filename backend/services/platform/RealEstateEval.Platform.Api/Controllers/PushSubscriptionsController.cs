@@ -46,7 +46,7 @@ public sealed class PushSubscriptionsController : ControllerBase
         }
         catch (ArgumentException ex)
         {
-            return BadRequest(ex.Message);
+            return this.BadRequestProblem(ex.Message);
         }
     }
 
@@ -57,7 +57,7 @@ public sealed class PushSubscriptionsController : ControllerBase
     {
         var userId = CurrentUserId();
         if (userId is null) return Unauthorized();
-        if (string.IsNullOrWhiteSpace(request.Endpoint)) return BadRequest("endpoint required");
+        if (string.IsNullOrWhiteSpace(request.Endpoint)) return this.BadRequestProblem("endpoint required");
         return await _push.DeleteAsync(userId, request.Endpoint, ct) ? NoContent() : NotFound();
     }
 

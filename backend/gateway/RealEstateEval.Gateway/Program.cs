@@ -15,5 +15,3 @@ app.MapServiceHealth("gateway");
 app.MapGatewayUpstreamReady("gateway");
 app.MapReverseProxy();
 app.Run();
-
-public partial class Program;

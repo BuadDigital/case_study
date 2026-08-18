@@ -17,7 +17,6 @@ import {
   syncTaskSlotsForPo,
   type WorkflowTask,
 } from "./tasks-storage";
-import type { PropertyRow } from "@platform/app-shared/prototype/constants";
 import type { PendingBoursePropertyDto,PriorDeedRegistrationDto,UpdatePropertyBourseRequest,WorkOrderDto,WorkOrderPropertyDto} from "@platform/api-client";
 import {
   addWorkOrderProperty,
@@ -36,7 +35,6 @@ import {
   stopWorkOrder,
   updateWorkOrderHeader,
   updateWorkOrderProperty,
-  updateWorkOrderPropertyLocationMapUrl,
   workOrderExists,
 } from "@platform/api-client";
 import { normalizeDeedNumber } from "./deed-number";
@@ -987,11 +985,6 @@ export async function completePropertyBourse(
   return { ok: true, data: saved };
 }
 
-export async function loadPropertyRows(): Promise<PropertyRow[]> {
-  const items = await loadPropertyListItems();
-  return items.map(({ row }) => row);
-}
-
 export async function getPoRecord(
   poNumber: string,
 ): Promise<PoIntakeRecord | null> {
@@ -1291,33 +1284,6 @@ export async function updatePropertyInPo(
   return { ok: true, data: dtoToProperty(result.data) };
 }
 
-/** Informal unlock — inspector/specialist without full property edit rights. */
-export async function updatePropertyLocationMapUrlInPo(
-  poNumber: string,
-  propertyId: string,
-  locationMapUrl: string,
-): Promise<StorageOk<PoPropertyIntake> | StorageError> {
-  const config = workOrdersApiConfig();
-  if (!config) return { ok: false, error: apiErrorMessage("auth") };
-
-  const result = await updateWorkOrderPropertyLocationMapUrl(
-    config,
-    poNumber,
-    propertyId,
-    locationMapUrl,
-  );
-  if (!result.ok) {
-    return {
-      ok: false,
-      error: resolveApiError(result.kind, result.errors),
-      errors: result.errors,
-    };
-  }
-
-  notifyWorkOrdersChanged();
-  return { ok: true, data: dtoToProperty(result.data) };
-}
-
 export type PoIntakeDraftPayload = {
   step: number;
   poNumber: string;
@@ -1400,11 +1366,6 @@ function notifyPoDraftSaveFailed(error: string): void {
   );
 }
 
-/** Load draft from in-memory cache (call hydratePoDraft first). */
-export function loadPoDraft(): PoIntakeDraftPayload | null {
-  return memoryDraft;
-}
-
 /** Fetch server draft into in-memory cache. */
 export async function hydratePoDraft(): Promise<PoIntakeDraftPayload | null> {
   if (hydratePromise) return hydratePromise;
@@ -1456,15 +1417,6 @@ export async function clearPoDraft(): Promise<void> {
 
   const config = prototypeModulesApiConfig();
   if (config) await deletePoIntakeDraft(config);
-}
-
-export function resetPoIntakeDraftClientCache(): void {
-  memoryDraft = null;
-  hydratePromise = null;
-  if (saveTimer) {
-    clearTimeout(saveTimer);
-    saveTimer = null;
-  }
 }
 
 export function buildPoRecord(

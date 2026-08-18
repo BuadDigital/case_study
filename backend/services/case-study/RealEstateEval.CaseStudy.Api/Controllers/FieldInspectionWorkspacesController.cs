@@ -38,6 +38,10 @@ public class FieldInspectionWorkspacesController : ControllerBase
     [Authorize(Policy = CapabilityPolicyNames.ReadManagementReports)]
     public async Task<ActionResult<FieldInspectionWorkspaceSummaryDto>> Summary(CancellationToken ct)
     {
-        return Ok(await _workspaces.GetSummaryAsync(ct));
+        var actor = await _permissions.GetForUserIdAsync(ActorClaims.Id(User), ct);
+        if (actor is null)
+            return Forbid();
+
+        return Ok(await _workspaces.GetSummaryAsync(actor, ct));
     }
 }

@@ -33,7 +33,7 @@ import {
   THead,
   Tr,
   useToast,
-} from "@platform/design-system";
+} from "@platform/ui-kit";
 import { organizationSettingsApiConfig } from "../lib/settings-api-config";
 
 type Draft = UpsertClientRequest & { id?: string };

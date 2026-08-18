@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using RealEstateEval.Application;
 using RealEstateEval.Application.Abstractions;
 using RealEstateEval.Application.Contracts;
 using RealEstateEval.Domain;
@@ -12,9 +13,12 @@ namespace RealEstateEval.Infrastructure.Services;
 /// </summary>
 public sealed class ValuationComparableSelectionService(
     ValuationDbContext db,
-    IOrganizationSettingsService organizationSettings)
+    IOrganizationSettingsService organizationSettings,
+    TimeProvider? time = null)
     : IValuationComparableSelectionService
 {
+    private readonly TimeProvider _time = time ?? TimeProvider.System;
+
     public async Task<ValuationComparableSelectionListDto?> ListAsync(
         Guid valuationRequestId,
         CancellationToken cancellationToken = default)
@@ -35,7 +39,7 @@ public sealed class ValuationComparableSelectionService(
             .Where(c => compIds.Contains(c.Id))
             .ToDictionaryAsync(c => c.Id, cancellationToken);
 
-        var today = DateOnly.FromDateTime(DateTime.UtcNow);
+        var today = DateOnly.FromDateTime(_time.UtcNow());
         var header = await db.ValuationMarketApproaches.AsNoTracking()
             .FirstOrDefaultAsync(x => x.ValuationRequestId == valuationRequestId, cancellationToken);
         return BuildList(request, rows, comps, today, header);
@@ -93,7 +97,7 @@ public sealed class ValuationComparableSelectionService(
             .ToListAsync(cancellationToken);
         db.ValuationComparableSelections.RemoveRange(existing);
 
-        var now = DateTime.UtcNow;
+        var now = _time.UtcNow();
         var ordered = items
             .Select((it, idx) => new { it, idx })
             .OrderBy(x => x.it.SortOrder)
@@ -157,7 +161,7 @@ public sealed class ValuationComparableSelectionService(
                 return (null, $"بلغت الحد الأقصى للمقارنات المعتمدة ({cap}) — عدّله من إعدادات المؤسسة أو ألغِ اعتماد مقارن آخر");
         }
 
-        var now = DateTime.UtcNow;
+        var now = _time.UtcNow();
         if (row is null)
         {
             var comp = await db.ComparableProperties.AsNoTracking()
@@ -387,7 +391,7 @@ public sealed class ValuationComparableSelectionService(
             request,
             all,
             comps,
-            DateOnly.FromDateTime(DateTime.UtcNow),
+            DateOnly.FromDateTime(_time.UtcNow()),
             await db.ValuationMarketApproaches.AsNoTracking().FirstOrDefaultAsync(x => x.ValuationRequestId == row.ValuationRequestId, cancellationToken));
         return list.Items.FirstOrDefault(i => i.Id == selectionId);
     }
@@ -428,7 +432,7 @@ public sealed class ValuationComparableSelectionService(
         header.AnalysisNotes = string.IsNullOrWhiteSpace(request.AnalysisNotes)
             ? null
             : request.AnalysisNotes.Trim();
-        header.UpdatedAtUtc = DateTime.UtcNow;
+        header.UpdatedAtUtc = _time.UtcNow();
         await db.SaveChangesAsync(cancellationToken);
         return (await ListAsync(valuationRequestId, cancellationToken), null);
     }

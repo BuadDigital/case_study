@@ -5,7 +5,7 @@ import dynamic from "next/dynamic";
 import { Suspense } from "react";
 import type { PageId } from "@platform/types";
 import { PARTY_TASK_PAGE_IDS } from "@platform/app-shared/prototype/party-task-pages";
-import { PanelSkeleton } from "@platform/design-system";
+import { PanelSkeleton } from "@platform/ui-kit";
 
 /**
  * next/dynamic renders its `loading` component (default: null) while the MFE

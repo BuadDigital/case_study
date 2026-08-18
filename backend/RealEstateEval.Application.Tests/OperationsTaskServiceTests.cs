@@ -14,8 +14,8 @@ public class OperationsTaskServiceTests
     [Fact]
     public async Task CreateAsync_writes_system_comment_and_display_id()
     {
-        var (ops, db) = CreateDbPair();
-        var service = CreateService(ops, db);
+        var (ops, db, fin, identity) = CreateDbPair();
+        var service = CreateService(ops, fin, identity);
 
         var (task, error) = await service.CreateAsync(
             new CreateOperationsTaskRequest
@@ -40,8 +40,8 @@ public class OperationsTaskServiceTests
     [Fact]
     public async Task ReassignAsync_requires_reason()
     {
-        var (ops, db) = CreateDbPair();
-        var service = CreateService(ops, db);
+        var (ops, db, fin, identity) = CreateDbPair();
+        var service = CreateService(ops, fin, identity);
         var (created, _) = await service.CreateAsync(
             new CreateOperationsTaskRequest
             {
@@ -73,8 +73,8 @@ public class OperationsTaskServiceTests
     [Fact]
     public async Task ReassignAsync_updates_assignee_and_logs_comment()
     {
-        var (ops, db) = CreateDbPair();
-        var service = CreateService(ops, db);
+        var (ops, db, fin, identity) = CreateDbPair();
+        var service = CreateService(ops, fin, identity);
         var (created, _) = await service.CreateAsync(
             new CreateOperationsTaskRequest
             {
@@ -113,8 +113,8 @@ public class OperationsTaskServiceTests
     [Fact]
     public async Task PatchAsync_cancel_requires_reason_and_persists()
     {
-        var (ops, db) = CreateDbPair();
-        var service = CreateService(ops, db);
+        var (ops, db, fin, identity) = CreateDbPair();
+        var service = CreateService(ops, fin, identity);
         var (created, _) = await service.CreateAsync(
             new CreateOperationsTaskRequest
             {
@@ -159,8 +159,8 @@ public class OperationsTaskServiceTests
     [Fact]
     public async Task PatchAsync_confirm_receipt_sets_receipt_confirmed_at()
     {
-        var (ops, db) = CreateDbPair();
-        var service = CreateService(ops, db);
+        var (ops, db, fin, identity) = CreateDbPair();
+        var service = CreateService(ops, fin, identity);
         var (created, _) = await service.CreateAsync(
             new CreateOperationsTaskRequest
             {
@@ -193,8 +193,8 @@ public class OperationsTaskServiceTests
     [Fact]
     public async Task PatchAsync_pause_requires_reason_and_persists()
     {
-        var (ops, db) = CreateDbPair();
-        var service = CreateService(ops, db);
+        var (ops, db, fin, identity) = CreateDbPair();
+        var service = CreateService(ops, fin, identity);
         var (created, _) = await service.CreateAsync(
             new CreateOperationsTaskRequest
             {
@@ -240,8 +240,8 @@ public class OperationsTaskServiceTests
     [Fact]
     public async Task PatchAsync_resume_after_pause_from_created_goes_in_progress()
     {
-        var (ops, db) = CreateDbPair();
-        var service = CreateService(ops, db);
+        var (ops, db, fin, identity) = CreateDbPair();
+        var service = CreateService(ops, fin, identity);
         var (created, _) = await service.CreateAsync(
             new CreateOperationsTaskRequest
             {
@@ -288,8 +288,8 @@ public class OperationsTaskServiceTests
     [Fact]
     public async Task PatchAsync_complete_after_reassign_records_execution_credit()
     {
-        var (ops, db) = CreateDbPair();
-        var service = CreateService(ops, db);
+        var (ops, db, fin, identity) = CreateDbPair();
+        var service = CreateService(ops, fin, identity);
         var (created, _) = await service.CreateAsync(
             new CreateOperationsTaskRequest
             {
@@ -345,8 +345,8 @@ public class OperationsTaskServiceTests
     [Fact]
     public async Task RemindAsync_appends_reminder_and_comment()
     {
-        var (ops, db) = CreateDbPair();
-        var service = CreateService(ops, db);
+        var (ops, db, fin, identity) = CreateDbPair();
+        var service = CreateService(ops, fin, identity);
         var (created, _) = await service.CreateAsync(
             new CreateOperationsTaskRequest
             {
@@ -375,8 +375,8 @@ public class OperationsTaskServiceTests
     [Fact]
     public async Task PatchAsync_rejects_invalid_status_transition()
     {
-        var (ops, db) = CreateDbPair();
-        var service = CreateService(ops, db);
+        var (ops, db, fin, identity) = CreateDbPair();
+        var service = CreateService(ops, fin, identity);
         var (created, _) = await service.CreateAsync(
             new CreateOperationsTaskRequest
             {
@@ -430,8 +430,8 @@ public class OperationsTaskServiceTests
     [Fact]
     public async Task RemindAsync_rejects_non_manager()
     {
-        var (ops, db) = CreateDbPair();
-        var service = CreateService(ops, db);
+        var (ops, db, fin, identity) = CreateDbPair();
+        var service = CreateService(ops, fin, identity);
         var (created, _) = await service.CreateAsync(
             new CreateOperationsTaskRequest
             {
@@ -457,8 +457,8 @@ public class OperationsTaskServiceTests
     [Fact]
     public async Task PatchAsync_complete_court_visit_requires_outcome()
     {
-        var (ops, db) = CreateDbPair();
-        var service = CreateService(ops, db);
+        var (ops, db, fin, identity) = CreateDbPair();
+        var service = CreateService(ops, fin, identity);
         var (created, _) = await service.CreateAsync(
             new CreateOperationsTaskRequest
             {
@@ -507,10 +507,10 @@ public class OperationsTaskServiceTests
     [Fact]
     public async Task PatchAsync_complete_court_visit_persists_outcome()
     {
-        var (ops, db) = CreateDbPair();
-        await SeedCooperatorAsync(db, "a1");
-        var pricingTableId = await SetVisitPriceAsync(db, 350m);
-        var service = CreateService(ops, db);
+        var (ops, db, fin, identity) = CreateDbPair();
+        await SeedCooperatorAsync(identity, "a1");
+        var pricingTableId = await SetVisitPriceAsync(fin, 350m);
+        var service = CreateService(ops, fin, identity);
         var (created, _) = await service.CreateAsync(
             new CreateOperationsTaskRequest
             {
@@ -571,24 +571,24 @@ public class OperationsTaskServiceTests
             done.Comments,
             c => c.Text.Contains("استُلم ظرف مفاتيح", StringComparison.Ordinal));
         Assert.Equal(350m, done.VisitFeeAmountSar);
-        Assert.Single(db.CourtVisitFeeCharges);
-        var visitCharge = await db.CourtVisitFeeCharges.SingleAsync();
+        Assert.Single(fin.CourtVisitFeeCharges);
+        var visitCharge = await fin.CourtVisitFeeCharges.SingleAsync();
         Assert.Equal(Guid.Parse(created.Id), visitCharge.OperationsTaskId);
         Assert.Equal("a1", visitCharge.CreditAssigneeId);
         Assert.Equal(350m, visitCharge.AmountSar);
  // The amount carries its source, so the rate behind a charge stays provable after a rate change.
         Assert.Equal(pricingTableId, visitCharge.PricingTableId);
         Assert.Equal(CourtVisitFeeStatuses.Open, visitCharge.Status);
-        Assert.Empty(db.KeyReceiptFeeCharges);
+        Assert.Empty(fin.KeyReceiptFeeCharges);
     }
 
     [Fact]
     public async Task PatchAsync_complete_court_visit_is_idempotent_for_visit_fee()
     {
-        var (ops, db) = CreateDbPair();
-        await SeedCooperatorAsync(db, "a1");
-        await SetVisitPriceAsync(db, 350m);
-        var service = CreateService(ops, db);
+        var (ops, db, fin, identity) = CreateDbPair();
+        await SeedCooperatorAsync(identity, "a1");
+        await SetVisitPriceAsync(fin, 350m);
+        var service = CreateService(ops, fin, identity);
         var (created, _) = await service.CreateAsync(
             new CreateOperationsTaskRequest
             {
@@ -641,7 +641,7 @@ public class OperationsTaskServiceTests
             "government-reviewer",
             "user-1");
 
-        Assert.Single(db.CourtVisitFeeCharges);
+        Assert.Single(fin.CourtVisitFeeCharges);
 
  // Already completed — second patch with same status should not add another charge.
         await service.PatchAsync(
@@ -660,7 +660,7 @@ public class OperationsTaskServiceTests
             "government-reviewer",
             "user-1");
 
-        Assert.Single(db.CourtVisitFeeCharges);
+        Assert.Single(fin.CourtVisitFeeCharges);
     }
 
  /// <summary>
@@ -670,9 +670,9 @@ public class OperationsTaskServiceTests
     [Fact]
     public async Task CreateAsync_refuses_cooperator_court_visit_without_a_price()
     {
-        var (ops, db) = CreateDbPair();
-        await SeedCooperatorAsync(db, "a1");
-        var service = CreateService(ops, db);
+        var (ops, db, fin, identity) = CreateDbPair();
+        await SeedCooperatorAsync(identity, "a1");
+        var service = CreateService(ops, fin, identity);
         var (created, error) = await service.CreateAsync(
             new CreateOperationsTaskRequest
             {
@@ -701,7 +701,7 @@ public class OperationsTaskServiceTests
         Assert.Null(created);
         Assert.Equal(PricingErrors.FeeUnresolved, error);
         Assert.Empty(db.OperationsTasks);
-        Assert.Empty(db.CourtVisitFeeCharges);
+        Assert.Empty(fin.CourtVisitFeeCharges);
     }
 
  /// <summary>
@@ -711,10 +711,10 @@ public class OperationsTaskServiceTests
     [Fact]
     public async Task PatchAsync_complete_recovers_missing_stamp_from_pricing_table()
     {
-        var (ops, db) = CreateDbPair();
-        await SeedCooperatorAsync(db, "a1");
-        var pricingTableId = await SetVisitPriceAsync(db, 350m);
-        var service = CreateService(ops, db);
+        var (ops, db, fin, identity) = CreateDbPair();
+        await SeedCooperatorAsync(identity, "a1");
+        var pricingTableId = await SetVisitPriceAsync(fin, 350m);
+        var service = CreateService(ops, fin, identity);
         var (created, createError) = await service.CreateAsync(
             new CreateOperationsTaskRequest
             {
@@ -781,8 +781,8 @@ public class OperationsTaskServiceTests
 
         Assert.Null(error);
         Assert.Equal(350m, done!.VisitFeeAmountSar);
-        Assert.Single(db.CourtVisitFeeCharges);
-        var charge = await db.CourtVisitFeeCharges.SingleAsync();
+        Assert.Single(fin.CourtVisitFeeCharges);
+        var charge = await fin.CourtVisitFeeCharges.SingleAsync();
         Assert.Equal(350m, charge.AmountSar);
         Assert.Equal(pricingTableId, charge.PricingTableId);
     }
@@ -790,9 +790,9 @@ public class OperationsTaskServiceTests
     [Fact]
     public async Task Employee_court_visit_completes_without_a_visit_charge()
     {
-        var (ops, db) = CreateDbPair();
-        await SeedEmployeeAsync(db, "emp-1");
-        var service = CreateService(ops, db);
+        var (ops, db, fin, identity) = CreateDbPair();
+        await SeedEmployeeAsync(identity, "emp-1");
+        var service = CreateService(ops, fin, identity);
         var (created, createError) = await service.CreateAsync(
             new CreateOperationsTaskRequest
             {
@@ -848,15 +848,15 @@ public class OperationsTaskServiceTests
         Assert.Null(error);
         Assert.Equal("completed", done!.Status);
         Assert.Null(done.VisitFeeAmountSar);
-        Assert.Empty(db.CourtVisitFeeCharges);
+        Assert.Empty(fin.CourtVisitFeeCharges);
     }
 
     [Fact]
     public async Task CreateAsync_rejects_visit_fee_for_employee_reviewer()
     {
-        var (ops, db) = CreateDbPair();
-        await SeedEmployeeAsync(db, "emp-1");
-        var service = CreateService(ops, db);
+        var (ops, db, fin, identity) = CreateDbPair();
+        await SeedEmployeeAsync(identity, "emp-1");
+        var service = CreateService(ops, fin, identity);
         var (created, error) = await service.CreateAsync(
             new CreateOperationsTaskRequest
             {
@@ -890,11 +890,11 @@ public class OperationsTaskServiceTests
     [Fact]
     public async Task PatchAsync_complete_court_visit_credits_execution_assignee()
     {
-        var (ops, db) = CreateDbPair();
-        await SeedCooperatorAsync(db, "original-1");
-        await SeedCooperatorAsync(db, "new-1");
-        await SetVisitPriceAsync(db, 350m);
-        var service = CreateService(ops, db);
+        var (ops, db, fin, identity) = CreateDbPair();
+        await SeedCooperatorAsync(identity, "original-1");
+        await SeedCooperatorAsync(identity, "new-1");
+        await SetVisitPriceAsync(fin, 350m);
+        var service = CreateService(ops, fin, identity);
         var (created, _) = await service.CreateAsync(
             new CreateOperationsTaskRequest
             {
@@ -963,12 +963,12 @@ public class OperationsTaskServiceTests
 
         Assert.Null(error);
         Assert.NotNull(done);
-        var charge = await db.CourtVisitFeeCharges.SingleAsync();
+        var charge = await fin.CourtVisitFeeCharges.SingleAsync();
         Assert.Equal("new-1", charge.CreditAssigneeId);
         Assert.Equal("جديد", charge.CreditAssigneeName);
     }
 
-    private static (OperationsDbContext Ops, ApplicationDbContext Db) CreateDbPair()
+    private static (OperationsDbContext Ops, ApplicationDbContext Db, FinancialDbContext Fin, IdentityDbContext Identity) CreateDbPair()
     {
         var name = $"ops-tasks-{Guid.NewGuid():N}";
         var root = new Microsoft.EntityFrameworkCore.Storage.InMemoryDatabaseRoot();
@@ -982,17 +982,35 @@ public class OperationsTaskServiceTests
             .ConfigureWarnings(w =>
                 w.Ignore(Microsoft.EntityFrameworkCore.Diagnostics.InMemoryEventId.TransactionIgnoredWarning))
             .Options);
-        return (ops, app);
+        var fin = new FinancialDbContext(new DbContextOptionsBuilder<FinancialDbContext>()
+            .UseInMemoryDatabase(name, root)
+            .ConfigureWarnings(w =>
+                w.Ignore(Microsoft.EntityFrameworkCore.Diagnostics.InMemoryEventId.TransactionIgnoredWarning))
+            .Options);
+        var identity = new IdentityDbContext(new DbContextOptionsBuilder<IdentityDbContext>()
+            .UseInMemoryDatabase(name, root)
+            .ConfigureWarnings(w =>
+                w.Ignore(Microsoft.EntityFrameworkCore.Diagnostics.InMemoryEventId.TransactionIgnoredWarning))
+            .Options);
+        return (ops, app, fin, identity);
     }
 
-    private static OperationsTaskService CreateService(OperationsDbContext ops, ApplicationDbContext db) =>
-        OperationsTaskService.Create(ops, db, new NullNotificationService(), new PartyFeePricingService(TestInspectorFeeServiceFactory.ShareFinancial(db)));
+    private static OperationsTaskService CreateService(
+        OperationsDbContext ops,
+        FinancialDbContext fin,
+        IdentityDbContext identity) =>
+        OperationsTaskService.Create(
+            ops,
+            fin,
+            identity,
+            new NullNotificationService(),
+            new PartyFeePricingService(fin));
 
  /// <summary>
  /// Visit fees have no built-in rate any more, so a test that expects a charge has to put one in
  /// the table first — the same thing an administrator now has to do.
  /// </summary>
-    private static async Task<Guid> SetVisitPriceAsync(ApplicationDbContext db, decimal amountSar)
+    private static async Task<Guid> SetVisitPriceAsync(FinancialDbContext db, decimal amountSar)
     {
         var tableId = Guid.NewGuid();
         db.PartyFeePricingTables.Add(new PartyFeePricingTable
@@ -1008,7 +1026,7 @@ public class OperationsTaskServiceTests
         return tableId;
     }
 
-    private static async Task SeedCooperatorAsync(ApplicationDbContext db, string assigneeId)
+    private static async Task SeedCooperatorAsync(IdentityDbContext db, string assigneeId)
     {
         db.UserProfiles.Add(new UserProfile
         {
@@ -1022,7 +1040,7 @@ public class OperationsTaskServiceTests
         await db.SaveChangesAsync();
     }
 
-    private static async Task SeedEmployeeAsync(ApplicationDbContext db, string assigneeId)
+    private static async Task SeedEmployeeAsync(IdentityDbContext db, string assigneeId)
     {
         db.UserProfiles.Add(new UserProfile
         {

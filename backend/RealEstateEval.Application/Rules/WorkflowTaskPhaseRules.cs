@@ -81,14 +81,15 @@ public static class WorkflowTaskPhaseRules
         int ordinal,
         int total,
         string? assignmentType,
-        string distributionJson) =>
+        string distributionJson,
+        DateTime now) =>
         WorkflowTask.CreateCaseStudySlot(
             poNumber,
             ordinal,
             SlotTaskTitle(poNumber, ordinal, total),
             distributionJson,
             assignmentType,
-            DateTime.UtcNow);
+            now);
 
     public static WorkflowTask SpawnChild(
         WorkflowTask parent,

@@ -11,7 +11,7 @@ import {
   startOfLocalDay,
 } from "../../lib/dashboard-metrics";
 import { dashCard, dashLine } from "../../lib/dashboard-tw";
-import { cn } from "@platform/design-system";
+import { cn } from "@platform/ui-kit";
 
 export function DashDueSoonOrders({ orders }: { orders: PoRow[] }) {
   const router = useRouter();

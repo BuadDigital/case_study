@@ -1,6 +1,6 @@
 "use client";
 
-import { PageGutter, cn } from "@platform/design-system";
+import { PageGutter, cn } from "@platform/ui-kit";
 import { FailureRaisePanel } from "./FailureRaisePanel";
 
 /**

@@ -10,10 +10,6 @@ export const finShell =
 export const finContent =
   "flex min-h-0 flex-1 flex-col overflow-x-hidden overflow-y-auto px-[30px] py-[26px] pb-11";
 
-export const finSub = "m-0 mb-3 text-[12.5px] leading-[1.55] text-text-2";
-
-export const finHint = "mt-3 mb-0 text-[13px] leading-[1.55] text-text-3";
-
 export const finNote =
   "m-0 mb-3.5 rounded-[10px] border border-dashed border-border-md bg-surface-2 px-[15px] py-[11px] text-[12.5px] leading-[1.7] text-text-3";
 
@@ -35,10 +31,6 @@ export const finStageCountOn =
   "inline-grid h-[18px] min-w-[18px] shrink-0 place-items-center rounded-full bg-white/[0.22] px-[5px] text-[10.5px] font-bold leading-none tabular-nums text-white";
 
 /* —— toolbar / filters —— */
-/** .toolbar { margin-bottom:14px; gap:16px } */
-export const finToolbar =
-  "mb-3.5 flex flex-wrap items-center justify-between gap-4";
-
 /**
  * فلاتر الإيرادات HTML:
  * بحث (flex:1 min 240) · مدينة · فترة — gap 10px
@@ -77,9 +69,6 @@ export const finGhost =
 /** .card { border-radius:12px; shadow } */
 export const finCard =
   "overflow-hidden rounded-[12px] border border-border bg-surface shadow-[0_1px_2px_rgba(18,40,76,0.03),0_6px_16px_-18px_rgba(18,40,76,0.10)]";
-
-export const finCardPad =
-  "rounded-[12px] border border-border bg-surface p-3.5 shadow-[0_1px_2px_rgba(18,40,76,0.03),0_6px_16px_-18px_rgba(18,40,76,0.10)]";
 
 export const finScroll = "overflow-x-auto rounded-[12px]";
 
@@ -129,9 +118,6 @@ export const finGridRevCollected =
 export const finGridRevStopped =
   "min-w-[820px] grid-cols-[minmax(105px,0.9fr)_minmax(125px,1fr)_minmax(72px,0.58fr)_minmax(105px,0.82fr)_minmax(210px,1.5fr)_minmax(150px,1fr)]";
 
-/** توافق خلفي */
-export const finGridRev = finGridRevEligible;
-
 /** group head for PO / invoice — min-height ~46–48 */
 export const finGroupRow =
   "grid min-h-[48px] cursor-pointer items-center border-b border-border bg-surface-2 px-4 py-[11px] transition-colors hover:bg-[color-mix(in_srgb,var(--ink)_4%,var(--surface-2))]";
@@ -141,9 +127,6 @@ export const finTotRow =
 
 export const finGridExcluded =
   "min-w-full grid-cols-[minmax(120px,1.3fr)_minmax(100px,1fr)_minmax(110px,1fr)_100px_minmax(140px,1.2fr)]";
-
-export const finGridTasks =
-  "min-w-full grid-cols-[minmax(150px,1.4fr)_minmax(160px,1.6fr)_88px_88px_minmax(120px,1fr)]";
 
 export const finGridDues =
   "min-w-[720px] grid-cols-[50px_minmax(150px,1.5fr)_minmax(98px,0.75fr)_minmax(125px,1fr)_minmax(85px,0.72fr)]";
@@ -164,12 +147,6 @@ export const finMuted = "truncate text-[13px] text-text-2";
 /** .num { font-size:14px; font-weight:800 } */
 export const finNum =
   "text-[14px] font-extrabold tabular-nums text-heading [direction:ltr] [unicode-bidi:isolate]";
-
-/** .date { font-size:13px } */
-export const finDate =
-  "whitespace-nowrap text-[13px] text-text-2 [direction:ltr] [unicode-bidi:isolate]";
-
-export const finTitle = "font-bold text-heading";
 
 export const finEmpty = "px-5 py-[54px] text-center text-text-3";
 
@@ -237,51 +214,10 @@ export const finGroupTitle = "m-0 text-[13.5px] font-bold text-heading";
 
 export const finSectionTitle = "m-0 text-[14.5px] font-extrabold text-heading";
 
-export const finActionsRow = "mb-3.5 flex flex-wrap items-center gap-2.5";
-
 export const finCheck = "m-0 h-[17px] w-[17px] cursor-pointer accent-gold-d";
-
-export const finCheckLbl =
-  "inline-flex cursor-pointer items-center gap-2 text-[12.5px] text-text-2";
 
 export const finFld = "flex flex-col gap-1.5";
 
 export const finFldLbl = "text-[12px] font-semibold text-text-2";
 
 export const finFormGrid = "grid grid-cols-1 gap-3.5 min-[561px]:grid-cols-2";
-
-export const finPanelTitle = "mb-2 text-[12.5px] font-bold text-heading";
-
-export const finAgeOver =
-  "text-sm font-extrabold tabular-nums text-[#a5432e] [direction:ltr]";
-
-/* —— KPI band —— */
-export const finKpi =
-  "mb-6 flex flex-wrap overflow-hidden rounded-[12px] border border-border bg-surface shadow-[0_1px_2px_rgba(18,40,76,0.03),0_6px_16px_-18px_rgba(18,40,76,0.10)]";
-
-export const finKpiCell =
-  "relative min-w-[140px] flex-1 border-e border-border px-6 py-5 last:border-e-0";
-
-export const finKpiCellFirst =
-  "relative min-w-[140px] flex-1 border-e border-border px-6 py-5 last:border-e-0 before:absolute before:inset-y-0 before:start-0 before:w-[3px] before:bg-gold before:content-['']";
-
-export const finKpiLbl = "mb-3.5 text-[12.5px] font-medium text-text-2";
-
-export const finKpiNum =
-  "text-[32px] font-extrabold leading-none text-heading [direction:ltr] [unicode-bidi:isolate]";
-
-/** KPI رقم أصغر — فوترة الأتعاب / HTML style font-size:20px */
-export const finKpiNumSm =
-  "text-[20px] font-extrabold leading-none text-heading [direction:ltr] [unicode-bidi:isolate]";
-
-export const finKpiSub = "mt-2 flex items-center gap-1.5 text-xs text-text-3";
-
-export const finKpiDot = "inline-block h-1.5 w-1.5 shrink-0 rounded-full bg-gold";
-
-export const finKpiHead = "mb-3.5 flex items-center gap-2.5";
-
-export const finKpiIco =
-  "grid h-[30px] w-[30px] place-items-center rounded-[7px] bg-gold-soft text-gold-d";
-
-export const finKpiIcoTint =
-  "grid h-[30px] w-[30px] place-items-center rounded-[7px]";

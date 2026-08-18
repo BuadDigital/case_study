@@ -78,13 +78,6 @@ const DIR_TOKEN_BY_DIR: Record<DirKey, string> = {
   west: "(?:الحد\\s*)?(?:الغربي|الغرب|غربا|غرب|جهة\\s*الغرب)",
 };
 
-const DIR_WORD: Record<DirKey, string> = {
-  north: "شمال",
-  south: "جنوب",
-  east: "شرق",
-  west: "غرب",
-};
-
 function emptyBlock(): SketchBoundaryBlock {
   return {
     areaSqm: "",
@@ -960,38 +953,6 @@ function lengthAfterDescriptionInText(
   }
 
   return "";
-}
-
-/** Prefer the stronger side (paired desc+len beats incomplete). */
-function mergePreferPairedSides(
-  primary: SketchBoundaryBlock,
-  secondary: SketchBoundaryBlock,
-): SketchBoundaryBlock {
-  const out = {
-    areaSqm: primary.areaSqm || secondary.areaSqm,
-    north: { ...primary.north },
-    south: { ...primary.south },
-    east: { ...primary.east },
-    west: { ...primary.west },
-  };
-  for (const dir of DIR_ORDER) {
-    const p = primary[dir];
-    const s = secondary[dir];
-    const pPaired = Boolean(p.description && p.lengthM);
-    const sPaired = Boolean(s.description && s.lengthM);
-    if (sPaired && !pPaired) {
-      out[dir] = { ...s };
-      continue;
-    }
-    if (!out[dir].description && s.description) {
-      out[dir].description = s.description;
-    }
-    if (!out[dir].lengthM && s.lengthM) {
-      out[dir].lengthM = s.lengthM;
-    }
-  }
-  if (!out.areaSqm) out.areaSqm = secondary.areaSqm;
-  return out;
 }
 
 /**
@@ -2338,5 +2299,3 @@ export async function extractSurveySketchFromPdf(
     };
   }
 }
-
-export const SKETCH_DIR_WORDS = DIR_WORD;

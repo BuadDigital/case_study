@@ -1,4 +1,4 @@
-﻿using RealEstateEval.Application.Contracts;
+using RealEstateEval.Application.Contracts;
 
 namespace RealEstateEval.Application.Abstractions;
 
@@ -18,7 +18,7 @@ public interface IPartyBillingStatementService
         Guid statementId,
         CancellationToken cancellationToken = default);
 
-    Task<CreatePartyBillingStatementResult> CreateStatementAsync(
+    Task<CreatePartyBillingStatementResponseDto> CreateStatementAsync(
         CreatePartyBillingStatementRequest request,
         string actorUserId,
         CancellationToken cancellationToken = default);
@@ -27,7 +27,7 @@ public interface IPartyBillingStatementService
  /// Auto-create one draft vendor statement per engineering office with ready lines (month-end sweep).
  /// Skips assignees that already have an open draft this calendar month.
  /// </summary>
-    Task<CreateMonthPartyBillingStatementsResult> CreateMonthVendorStatementsAsync(
+    Task<CreateMonthPartyBillingStatementsResponseDto> CreateMonthVendorStatementsAsync(
         string actorUserId,
         CancellationToken cancellationToken = default);
 
@@ -65,7 +65,7 @@ public interface IPartyBillingStatementService
         string actorUserId,
         CancellationToken cancellationToken = default);
 
-    Task<DeferPartyBillingLinesResult> DeferLinesAsync(
+    Task<DeferPartyBillingLinesResponseDto> DeferLinesAsync(
         DeferPartyBillingLinesRequest request,
         string actorUserId,
         CancellationToken cancellationToken = default);

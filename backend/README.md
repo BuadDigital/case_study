@@ -55,17 +55,35 @@ backend/
 The public API uses a compatibility-first URL convention:
 
 - Unversioned `/api/...` routes are the canonical current contract and mean **v1**.
-- Existing explicit `/v1` routes remain supported aliases. Currently this applies to
-  `/api/financial/v1/...` and `/api/reporting/v1/...`; their canonical equivalents are
-  `/api/financial/...` and `/api/reporting/...`.
+- Controllers declare only the canonical template. `CanonicalV1AliasConvention` (wired
+  in `AddRealEstateEvalApiHost`) registers a `/v1` compatibility alias for every
+  unversioned `api/...` MVC route — for example `/api/financial/summary` and
+  `/api/financial/v1/summary`, or `/api/valuation-requests/{id}/...` and
+  `/api/valuation-requests/v1/{id}/...`.
 - The gateway forwards both forms to the same service, and clients may migrate to the
   canonical form independently. Existing frontend callers are not forced to change.
-- A breaking v2 must use an explicit `/v2` route (or adopt `Asp.Versioning` across the
-  affected service) while leaving the unversioned v1 contract and existing `/v1` aliases
-  operational for the documented compatibility window.
+- Do **not** add Asp.Versioning for v1, and do not put a `/v1` segment on new controller
+  `[Route]` / `[Http*]` attributes. A breaking v2 must use an explicit `/v2` route (or
+  adopt `Asp.Versioning` across the affected service) while leaving the unversioned v1
+  contract and `/v1` aliases operational for the documented compatibility window.
 
-There is no header or query-string version negotiation. Do not add one-off version
-segments to new v1 endpoints.
+There is no header or query-string version negotiation.
+
+### Contract type names
+
+JSON property names are the public contract. C# (and mirrored TypeScript) type names are
+not. New types in `RealEstateEval.Application.Contracts` use:
+
+| Kind | Suffix | Example |
+|------|--------|---------|
+| Read / response model | `Dto` | `WorkOrderDto`, `LoginResponseDto` |
+| Command body | `Request` | `CreateWorkOrderRequest` |
+| GET query object | `Query` | `ComparablePropertyListQuery` |
+| Nested write fragment | `Input` | `PhotoMetadataInput` |
+| Internal actor (not HTTP) | `Actor` | `CaseStudyFormActor` |
+
+Do not introduce a bare `Response` or `Result` suffix for HTTP payloads — use `ResponseDto`.
+Do not rename JSON properties to finish a C# rename; that would be a v2.
 
 ## Local development
 
@@ -284,15 +302,15 @@ Failures answer with RFC 7807 `application/problem+json` (`type`, `title`, `stat
 `detail`, `traceId`) — from model binding, from the rate limiter, from the global
 exception handler, and from hand-written controller failures via
 `ApiProblemExtensions` (`BadRequestProblem`, `NotFoundProblem`, `ConflictProblem`,
-`FieldErrorsProblem`). Those helpers also copy the message into an `error` (or `errors`)
-extension member, which serializes as a top-level property, so front-end callers written
-against the older `{ error }` / `{ errors }` shapes keep working.
+`UnauthorizedProblem`, `ForbiddenProblem`, `GoneProblem`, `FieldErrorsProblem`). Those
+helpers also copy the message into `error` and `message` extension members (and field
+maps into `errors`), which serialize as top-level properties, so front-end callers
+written against the older `{ error }` / `{ message }` / `{ errors }` shapes keep working.
 
 `detail` is always a message written for the caller. Exception text stays in the log:
 handled failures log the exception and answer with a fixed sentence, and the global
-handler only echoes `ex.Message` in Development. Attachments, engineering billing, Enfaz
-billing, party-fee pricing and user management are converted; other controllers still
-return their original ad-hoc shapes and can be migrated as they are touched.
+handler only echoes `ex.Message` in Development. Hand-written controller failures go
+through the helpers; do not return anonymous `{ error }` / `{ message }` bodies.
 
 ### Rate limiting (`RateLimiting`)
 
@@ -400,15 +418,20 @@ names the reason so an orchestrator's logs are enough to tell the two apart.
 | Key | Development | Other environments | Meaning |
 | --- | --- | --- | --- |
 | `Readiness:CheckMigrations` | `false` | `true` | Report not-ready while migrations are pending |
+| `Readiness:CheckRabbit` | `false` | `false` | Soft TCP to RabbitMQ; body `rabbit`; never flips HTTP 503 |
+| `Readiness:CheckRedis` | `false` | `false` | Soft TCP to Redis; body `redis`; never flips HTTP 503 |
 | `Readiness:CacheSeconds` | `5` | `5` | Result reuse, so frequent probes do not query per request (0–300) |
 
 ```json
 { "status": "not_ready", "service": "financial", "database": "migrations_pending", "pendingMigrations": 3 }
 ```
 
-`database` is `ready`, `unreachable`, or `migrations_pending`. The migration check is off in
-Development because the shared dev database is migrated by whichever service starts first,
-so `npm run dev:api` would otherwise wait on a condition that never applies to a deployment
+`database` is `ready`, `unreachable`, or `migrations_pending`. Soft `rabbit` / `redis` values are
+`reachable`, `unreachable`, `disabled`, `not_configured`, or omitted (`null`) when the check is
+off. Case Study and Platform Development turn both probes on; Financial and Operations
+Development turn Redis on. The migration check is off in Development because each dedicated
+owner database is migrated by DbMigrate or the first host that owns that stream, so
+`npm run dev:api` would otherwise wait on a condition that never applies to a deployment
 — the deploy workflow runs the `migrate` job before app containers start.
 
 Reporting holds no schema of its own, so it maps `MapStatelessReady`: it is ready once it is
@@ -416,7 +439,7 @@ listening, and its upstreams are covered by the gateway's readiness probe.
 
 ## Remaining toward full microservices
 
-- Separate physical databases per service in production (per-service connection strings are wired; dev still shares one DB)
+- Phase 3 residual readers still open owner contexts over a second connection
 - Contract tests + load tests on gateway
 - Decommission remaining frontend prototype storage/constants
 
@@ -443,18 +466,17 @@ REE_ARCH_BASELINE=update dotnet test backend/RealEstateEval.Architecture.Tests
 
 ## Per-service connection strings
 
-Each service resolves `ConnectionStrings:{ServiceName}` first, then `REAL_ESTATE_EVAL_PG_CONNECTION_STRING_{SERVICENAME}`, then the shared default.
-
+Each service requires `ConnectionStrings:{ServiceName}` or `REAL_ESTATE_EVAL_PG_CONNECTION_STRING_{SERVICENAME}`. There is no leftover shared default.
 
 | Service    | Key                                                       |
 | ---------- | --------------------------------------------------------- |
 | Identity   | `ConnectionStrings:Identity`                              |
 | Case Study | `ConnectionStrings:CaseStudy`                             |
 | Operations | `ConnectionStrings:Operations`                            |
+| Attachments | `ConnectionStrings:Attachments` / `REAL_ESTATE_EVAL_PG_CONNECTION_STRING_ATTACHMENTS` |
 | …          | See `ServiceDatabaseNames` in `RealEstateEval.Shared.Web` |
 
-
-In dev, all keys may point at `realestate_eval_dev`. In prod, point each at its own database.
+**Phase 4:** dedicated databases for every extracted owner (`realestate_eval_attachments`, `_identity`, `_platform`, `_valuation`, `_failures`, `_operations`, `_financial`, `_case_study`, `_messaging`; prod names are `realestate_eval_prod_*`). Residual readers still open those owner contexts over a second connection string. There is no leftover shared database. Copy existing rows once with the scripts in `infra/postgres/copy-*-data.sh` after `DbMigrate` has created the schema, then drop leftover databases with `infra/postgres/drop-leftover-shared.sh`. Valuation keeps its own outbox on the valuation database.
 
 ## OpenAPI (Swagger)
 
@@ -495,7 +517,7 @@ Shell loads `GET /api/permissions` after login. Sidebar `pages` and `hasCapabili
 
 ## Schema-per-service (PostgreSQL)
 
-One database (`realestate_eval_dev`) with **domain schemas** as a stepping stone to DB-per-service:
+Dedicated owner databases (`realestate_eval_attachments`, `realestate_eval_identity`, `realestate_eval_platform`, `realestate_eval_valuation`, `realestate_eval_failures`, `realestate_eval_operations`, `realestate_eval_financial`, `realestate_eval_case_study`, `realestate_eval_messaging`) keep **domain schemas** as the logical slice:
 
 
 | Schema        | Tables                                   |
@@ -631,16 +653,21 @@ logs into Elasticsearch (`fluentbit-*` in Kibana).
 ### Correlation ids and log format
 
 A caller may supply `X-Correlation-Id`; the value is echoed back, written into every log
-line for the request, and tagged on the current span. Because it is echoed and logged, it
-is only trusted when it looks like an id — up to 128 characters of letters, digits, `-`,
-`_`, `.`, or `:`. Anything else (control characters, whitespace, quotes, or a repeated
-header) is replaced with a fresh id and logged as ignored, which keeps header injection and
-log forging out of the pipeline. A GUID, a W3C `traceparent`, and a caller's own request id
-all pass unchanged.
+line for the request (with the emitting `Service` name), and tagged on the current span.
+Because it is echoed and logged, it is only trusted when it looks like an id — up to 128
+characters of letters, digits, `-`, `_`, `.`, or `:`. Anything else (control characters,
+whitespace, quotes, or a repeated header) is replaced with a fresh id and logged as
+ignored, which keeps header injection and log forging out of the pipeline. A GUID, a W3C
+`traceparent`, and a caller's own request id all pass unchanged.
 
-Outside Development, logs are one JSON object per line, including the `CorrelationId` scope
-and the current trace and span ids, so shipped logs can be filtered and joined to traces.
-Development keeps the readable console writer. Override with
-`Observability:JsonConsoleLogging`.
+The gateway overwrites `X-Correlation-Id` on every proxied request with the id it just
+issued or accepted, so a forged inbound header cannot leak to owner APIs. Outbound
+`HttpClient` calls from those APIs (owner HTTP lookups) add the same header when it is
+missing, using the request's `TraceIdentifier`.
+
+Outside Development, logs are one JSON object per line (`AddJsonConsole`, not Serilog),
+including the `CorrelationId` and `Service` scopes and the current trace and span ids, so
+shipped logs can be filtered and joined to traces. Development keeps the readable console
+writer. Override with `Observability:JsonConsoleLogging`.
 
 Requires `docker compose … rabbitmq` for integration events; both **valuation** + **case-study** must be running.

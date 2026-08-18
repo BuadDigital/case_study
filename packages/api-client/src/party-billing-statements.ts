@@ -93,18 +93,25 @@ export type CreatePartyBillingStatementRequest = {
   notes?: string;
 };
 
-export type CreatePartyBillingStatementResult = {
+export type CreatePartyBillingStatementResponseDto = {
   statement: PartyBillingStatementDto | null;
   deferredLines: PartyBillingReadyLineDto[];
   error?: string | null;
 };
 
-export type CreateMonthPartyBillingStatementsResult = {
+/** @deprecated Use CreatePartyBillingStatementResponseDto */
+export type CreatePartyBillingStatementResult = CreatePartyBillingStatementResponseDto;
+
+export type CreateMonthPartyBillingStatementsResponseDto = {
   created: PartyBillingStatementDto[];
   assigneesCovered: number;
   linesIncluded: number;
   error?: string | null;
 };
+
+/** @deprecated Use CreateMonthPartyBillingStatementsResponseDto */
+export type CreateMonthPartyBillingStatementsResult =
+  CreateMonthPartyBillingStatementsResponseDto;
 
 export type ClosePartyBillingStatementRequest = {
   disbursementVoucher: string;
@@ -134,10 +141,13 @@ export type DeferPartyBillingLinesRequest = {
   workflowTaskIds: string[];
 };
 
-export type DeferPartyBillingLinesResult = {
+export type DeferPartyBillingLinesResponseDto = {
   deferred: PartyBillingReadyLineDto[];
   failed: { workflowTaskId: string; error: string }[];
 };
+
+/** @deprecated Use DeferPartyBillingLinesResponseDto */
+export type DeferPartyBillingLinesResult = DeferPartyBillingLinesResponseDto;
 
 function headers(token: string): HeadersInit {
   return {
@@ -358,7 +368,7 @@ export async function listPartyBillingStatements(
 export async function createPartyBillingStatement(
   config: PartyBillingStatementsApiConfig,
   body: CreatePartyBillingStatementRequest,
-): Promise<ApiOk<CreatePartyBillingStatementResult> | ApiErr> {
+): Promise<ApiOk<CreatePartyBillingStatementResponseDto> | ApiErr> {
   const base = config.baseUrl ?? getApiBase();
   try {
     const res = await fetch(`${base}/api/party-billing-statements`, {
@@ -392,7 +402,7 @@ export async function createPartyBillingStatement(
 
 export async function createMonthVendorStatements(
   config: PartyBillingStatementsApiConfig,
-): Promise<ApiOk<CreateMonthPartyBillingStatementsResult> | ApiErr> {
+): Promise<ApiOk<CreateMonthPartyBillingStatementsResponseDto> | ApiErr> {
   const base = config.baseUrl ?? getApiBase();
   try {
     const res = await fetch(
@@ -496,7 +506,7 @@ export async function closePartyBillingStatement(
 export async function deferPartyBillingLines(
   config: PartyBillingStatementsApiConfig,
   body: DeferPartyBillingLinesRequest,
-): Promise<ApiOk<DeferPartyBillingLinesResult> | ApiErr> {
+): Promise<ApiOk<DeferPartyBillingLinesResponseDto> | ApiErr> {
   const base = config.baseUrl ?? getApiBase();
   try {
     const res = await fetch(`${base}/api/party-billing-statements/defer-lines`, {

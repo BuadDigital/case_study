@@ -29,7 +29,7 @@ public class FinancialReportServiceTests
         var revenue = Assert.Single(summary.RevenueRows, row => row.Po == "PO-100");
         Assert.Equal(1, revenue.Billed);
         Assert.Equal(1, revenue.Excluded);
-        Assert.Equal("progress", revenue.Status);
+        Assert.Equal(FinancialRevenueRowStatuses.Progress, revenue.Status);
         Assert.Equal("INV-100", revenue.InvoiceNumber);
 
         var keyRevenue = Assert.Single(

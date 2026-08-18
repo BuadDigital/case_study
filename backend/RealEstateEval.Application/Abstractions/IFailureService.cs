@@ -36,6 +36,26 @@ public interface IFailureService
         string specialist,
         CancellationToken cancellationToken = default);
 
+    Task ApplyEvictionHoldAsync(
+        string poNumber,
+        string propertyId,
+        string deedNumber,
+        string specialist,
+        CancellationToken cancellationToken = default);
+
+    Task ResolveEvictionHoldsAsync(
+        string poNumber,
+        string propertyId,
+        string actor,
+        CancellationToken cancellationToken = default);
+
+    Task EnsureKeyUnmatchedFailureAsync(
+        string poNumber,
+        string propertyId,
+        string deedNumber,
+        string specialist,
+        CancellationToken cancellationToken = default);
+
     Task<FailureRecordDto?> UpgradeToInternalAsync(
         Guid id,
         CancellationToken cancellationToken = default);

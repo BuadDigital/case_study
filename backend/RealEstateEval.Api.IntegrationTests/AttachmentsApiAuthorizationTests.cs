@@ -9,6 +9,7 @@ using Microsoft.Extensions.DependencyInjection.Extensions;
 using RealEstateEval.Application.Abstractions;
 using RealEstateEval.Application.Contracts;
 using RealEstateEval.Application.Rules;
+using RealEstateEval.Infrastructure.Data;
 
 namespace RealEstateEval.Api.IntegrationTests;
 
@@ -69,8 +70,8 @@ public sealed class AttachmentsApiWebApplicationFactory
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
         builder.UseEnvironment("Production");
-        builder.UseSetting(
-            "ConnectionStrings:Attachments",
+        BoundedContextConnections.ApplyDedicatedSettings(
+            (key, value) => builder.UseSetting(key, value),
             "Host=localhost;Database=attachments_integration_test");
         builder.UseSetting(
             "Jwt:SigningKey",
@@ -106,6 +107,7 @@ internal sealed class StubAttachmentService : IAttachmentService
 
     public Task<(byte[]? Content, FileAttachmentMetaDto? Meta)> GetContentAsync(
         Guid id,
+        PermissionsDto? actor,
         CancellationToken cancellationToken = default)
         => Task.FromResult<(byte[]?, FileAttachmentMetaDto?)>((null, null));
 
@@ -148,6 +150,7 @@ internal sealed class StubAttachmentService : IAttachmentService
 
     public Task<FileAttachmentMetaDto?> GetMetaAsync(
         Guid id,
+        PermissionsDto? actor,
         CancellationToken cancellationToken = default)
         => Task.FromResult<FileAttachmentMetaDto?>(null);
 
@@ -159,6 +162,7 @@ internal sealed class StubAttachmentService : IAttachmentService
 
     public Task<bool> DeleteAsync(
         Guid id,
+        PermissionsDto? actor,
         CancellationToken cancellationToken = default)
         => Task.FromResult(false);
 }

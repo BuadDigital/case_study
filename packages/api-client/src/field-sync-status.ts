@@ -60,25 +60,6 @@ export async function upsertFieldSyncStatus(
   }
 }
 
-export async function clearFieldSyncStatus(
-  config: FieldSyncApiConfig,
-): Promise<Result<null>> {
-  const base = config.baseUrl ?? getApiBase();
-  try {
-    const res = await fetch(`${base}/api/field-sync-status`, {
-      method: "DELETE",
-      headers: headers(config.token),
-    });
-    if (res.status === 401) return { ok: false, kind: "auth" };
-    if (res.status === 403) return { ok: false, kind: "forbidden" };
-    if (!res.ok) return { ok: false, kind: "server" };
-    return { ok: true, data: null };
-  } catch (err) {
-    if (err instanceof ApiAuthError) return { ok: false, kind: "auth" };
-    return { ok: false, kind: "network" };
-  }
-}
-
 export async function listStaleFieldSyncStatuses(
   config: FieldSyncApiConfig,
 ): Promise<Result<FieldSyncStatusDto[]>> {

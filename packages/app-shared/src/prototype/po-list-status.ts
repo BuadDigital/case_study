@@ -1,4 +1,4 @@
-import type { BadgeTone } from "@platform/design-system";
+import type { BadgeTone } from "@platform/ui-kit";
 
 export type PoListStatus =
   | "new"

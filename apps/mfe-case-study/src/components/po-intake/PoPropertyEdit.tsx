@@ -20,7 +20,7 @@ import {
   mergeFieldErrors,
   type FieldErrors,
 } from "@platform/app-shared/registration/registration-utils";
-import { Button, InlineLoadingSkeleton, Note, useToast } from "@platform/design-system";
+import { Button, InlineLoadingSkeleton, Note, useToast } from "@platform/ui-kit";
 import { PoEditShell } from "./PoEditShell";
 import { PoPropertyBourseForm } from "./PoPropertyBourseForm";
 import { PoPropertyEnfathForm } from "./PoPropertyEnfathForm";

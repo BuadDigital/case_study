@@ -2,6 +2,7 @@ import type { FailureRecord } from "@failures/mfe";
 import { failuresForProperty } from "@failures/mfe";
 import type { PoPropertyIntake } from "./po-intake-data";
 import type { PropertyUiStatus } from "./po-intake-data";
+import { PropertyListRowStatuses } from "@platform/api-client";
 import { childTasksForCaseStudyParent } from "./case-study-party-answers";
 import {
   caseStudyTaskForProperty,
@@ -32,21 +33,23 @@ export function derivePropertyUiStatus(input: {
     ) ||
     property.deedStatus.trim() === "موقوف"
   ) {
-    return "fail";
+    return PropertyListRowStatuses.Fail;
   }
 
   const parent = caseStudyTaskForProperty(poNumber, property.id, tasks);
   if (!parent) {
-    return property.bourseDataCompleted ? "new" : "incomplete";
+    return property.bourseDataCompleted
+      ? PropertyListRowStatuses.New
+      : PropertyListRowStatuses.Incomplete;
   }
 
   if (parent.status === "completed" || parent.phase === "done") {
-    return "done";
+    return PropertyListRowStatuses.Done;
   }
 
   const children = childTasksForCaseStudyParent(parent.id, tasks);
   const blocked = children.some((c) => c.status === "blocked");
-  if (blocked) return "incomplete";
+  if (blocked) return PropertyListRowStatuses.Incomplete;
 
   const started =
     parent.phase === "distribution" ||
@@ -56,6 +59,8 @@ export function derivePropertyUiStatus(input: {
       (c) => c.status === "open" || c.status === "completed",
     );
 
-  if (started) return "progress";
-  return property.bourseDataCompleted ? "new" : "incomplete";
+  if (started) return PropertyListRowStatuses.Progress;
+  return property.bourseDataCompleted
+    ? PropertyListRowStatuses.New
+    : PropertyListRowStatuses.Incomplete;
 }

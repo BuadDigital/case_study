@@ -1,6 +1,6 @@
 "use client";
 
-import { cn } from "@platform/design-system";
+import { cn } from "@platform/ui-kit";
 import type { PoPropertyIntake } from "@case-study/mfe/lib/prototype/po-intake-data";
 import {
   downloadPropertyDetailDocument,

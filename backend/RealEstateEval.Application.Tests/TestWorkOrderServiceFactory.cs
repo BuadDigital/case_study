@@ -35,12 +35,16 @@ internal static class TestWorkOrderServiceFactory
                 recipients: recipients);
         }
 
-        var loader = new WorkOrderLoader(db);
-        var visibility = new WorkOrderVisibilityFilter(db);
-        var query = new WorkOrderQueryService(db, loader, visibility, dbOptions);
-        var properties = new WorkOrderPropertyCommands(db, loader, timeline, failures);
+        var caseStudy = TestInspectorFeeServiceFactory.ShareCaseStudy(db);
+        var failuresCtx = failuresDb ?? TestInspectorFeeServiceFactory.ShareFailures(db);
+        var financial = TestInspectorFeeServiceFactory.ShareFinancial(db);
+        var identity = TestInspectorFeeServiceFactory.ShareIdentity(db);
+        var loader = new WorkOrderLoader(caseStudy);
+        var visibility = new WorkOrderVisibilityFilter(caseStudy);
+        var query = new WorkOrderQueryService(caseStudy, failuresCtx, financial, identity, loader, visibility, dbOptions);
+        var properties = new WorkOrderPropertyCommands(caseStudy, failuresCtx, identity, loader, timeline, failures);
         return new WorkOrderService(
-            db,
+            caseStudy,
             timeline,
             notifications,
             recipients,

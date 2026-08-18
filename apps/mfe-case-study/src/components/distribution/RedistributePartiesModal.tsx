@@ -14,7 +14,7 @@ import {
   ModalTitle,
   Note,
   Textarea,
-} from "@platform/design-system";
+} from "@platform/ui-kit";
 import {
   getCaseSpecialists,
   getEngineeringOffices,

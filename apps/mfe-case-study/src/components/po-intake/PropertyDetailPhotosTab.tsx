@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { Spinner, cn, useToast } from "@platform/design-system";
+import { Spinner, cn, useToast } from "@platform/ui-kit";
 import { InfoBox } from "./PropertyDetailFields";
 import {
   openPropertyDetailDocumentPreview,

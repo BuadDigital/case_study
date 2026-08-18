@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Badge, Button, Input, PageShellHeader, Skeleton, cn, pageGutterClassName, useToast } from "@platform/design-system";
+import { Badge, Button, Input, PageShellHeader, Skeleton, cn, pageGutterClassName, useToast } from "@platform/ui-kit";
 import {
   FIELD_TYPE_LABELS,
   FIELD_DICTIONARY_LAYER_LABELS,

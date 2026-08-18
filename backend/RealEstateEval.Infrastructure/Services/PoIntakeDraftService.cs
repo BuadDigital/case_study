@@ -1,17 +1,23 @@
 using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
+using RealEstateEval.Application;
 using RealEstateEval.Application.Abstractions;
 using RealEstateEval.Application.Contracts;
 using RealEstateEval.Domain;
-using RealEstateEval.Infrastructure.Data;
+using RealEstateEval.Infrastructure.Data.Contexts;
 
 namespace RealEstateEval.Infrastructure.Services;
 
 public sealed class PoIntakeDraftService : IPoIntakeDraftService
 {
-    private readonly ApplicationDbContext _db;
+    private readonly CaseStudyDbContext _db;
+    private readonly TimeProvider _time;
 
-    public PoIntakeDraftService(ApplicationDbContext db) => _db = db;
+    public PoIntakeDraftService(CaseStudyDbContext db, TimeProvider? time = null)
+    {
+        _db = db;
+        _time = time ?? TimeProvider.System;
+    }
 
     public async Task<PoIntakeDraftDto?> GetForUserAsync(
         string userId,
@@ -30,7 +36,7 @@ public sealed class PoIntakeDraftService : IPoIntakeDraftService
         var payload = JsonSerializer.Serialize(request);
         var row = await _db.PoIntakeDrafts
             .FirstOrDefaultAsync(x => x.UserId == userId, cancellationToken);
-        var now = DateTime.UtcNow;
+        var now = _time.UtcNow();
 
         if (row is null)
         {

@@ -13,7 +13,7 @@ public interface IAuthSessionService
  /// Starts a new session for an already-authenticated user id. Returns null when
  /// the account is unknown or inactive.
  /// </summary>
-    Task<LoginResponse?> IssueForUserIdAsync(
+    Task<LoginResponseDto?> IssueForUserIdAsync(
         string userId,
         CancellationToken cancellationToken = default);
 
@@ -21,7 +21,7 @@ public interface IAuthSessionService
  /// Starts a development session by username without exposing identity persistence
  /// to the API layer. Returns null for unknown or inactive accounts.
  /// </summary>
-    Task<LoginResponse?> IssueForUsernameAsync(
+    Task<LoginResponseDto?> IssueForUsernameAsync(
         string username,
         CancellationToken cancellationToken = default);
 
@@ -30,7 +30,7 @@ public interface IAuthSessionService
  /// Returns null for unknown, expired, revoked, or already-rotated tokens, and for
  /// accounts that are no longer active.
  /// </summary>
-    Task<LoginResponse?> RefreshAsync(
+    Task<LoginResponseDto?> RefreshAsync(
         string refreshToken,
         CancellationToken cancellationToken = default);
 

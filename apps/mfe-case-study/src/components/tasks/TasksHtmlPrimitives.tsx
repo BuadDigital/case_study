@@ -1,7 +1,7 @@
 "use client";
 
 import type { ReactNode } from "react";
-import { StatusPill, type StatusPillStyle, cn } from "@platform/design-system";
+import { cn } from "@platform/ui-kit";
 
 /**
  * HTML primitives for المهام — Case Study.html `renderTasks` / `renderTaskDetail` /
@@ -18,17 +18,6 @@ export const TASKS_LIST_COLS =
 /** Case Study.html `.card` footer note under the grid. */
 export const TASKS_LIST_FOOTER =
   "اضغط الصف لعرض تفاصيل المهمة. المراجعة الحكومية وخطاب التفويض حالتان من هذه الطبقة.";
-
-export function TasksStatusPill({
-  label,
-  color,
-}: {
-  label: string;
-  color: string;
-}) {
-  const style: StatusPillStyle = { base: color, fg: color };
-  return <StatusPill label={label} style={style} />;
-}
 
 /** Case Study.html `#tkShowAll` eye (static — no blink). */
 export function TasksShowAllEye() {

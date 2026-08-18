@@ -1,6 +1,6 @@
 "use client";
 
-import { cn } from "@platform/design-system";
+import { cn } from "@platform/ui-kit";
 
 /** iOS-style toggle — matches docs/المعاين/inspector_screen 1.html (.sw / .sl) */
 export function InspectorToggleSwitch({

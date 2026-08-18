@@ -1,7 +1,7 @@
 "use client";
 
 import type { FieldErrors } from "@platform/app-shared/registration/registration-utils";
-import { Input, Label } from "@platform/design-system";
+import { Input, Label } from "@platform/ui-kit";
 import {
   PROPERTY_BOUNDARY_ROWS,
   PROPERTY_BOUNDARY_TYPE_OPTIONS,

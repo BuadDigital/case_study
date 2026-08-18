@@ -1,4 +1,4 @@
-import { cn } from "@platform/design-system";
+import { cn } from "@platform/ui-kit";
 import {
   finStageCount,
   finStageCountOn,

@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { getOrganizationSettings, saveOrganizationSettings, testOrganizationCommunication, type OrganizationSettingsDto, type OrganizationValuerRosterEntry, VALUER_MEMBERSHIP_CATEGORIES } from "@platform/api-client";
 import { Can, useCapability } from "@platform/app-shared/components/Can";
-import { cn, Note, PageShell, Spinner, useToast } from "@platform/design-system";
+import { cn, Note, PageShell, Spinner, useToast } from "@platform/ui-kit";
 import {
   opsBtnGhost,
   opsBtnPrimary,

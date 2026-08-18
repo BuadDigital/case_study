@@ -1,3 +1,8 @@
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Options;
+using RealEstateEval.Infrastructure;
 using RealEstateEval.Infrastructure.Data;
 
 namespace RealEstateEval.Application.Tests;
@@ -43,13 +48,17 @@ public class ListPagingSafetyTests
     }
 
     [Fact]
-    public void Extreme_page_number_does_not_overflow_to_negative_skip()
+    public void Zero_unpaginated_cap_is_rejected_outside_development()
     {
-        var options = new DatabaseOptions();
+        var builder = Host.CreateApplicationBuilder();
+        builder.Configuration.AddInMemoryCollection(new Dictionary<string, string?>
+        {
+            [$"{DatabaseOptions.SectionName}:{nameof(DatabaseOptions.UnpaginatedListCap)}"] = "0",
+        });
+        builder.Environment.EnvironmentName = Environments.Production;
+        builder.Services.AddHostSharedInfrastructure(builder.Configuration, builder.Environment);
 
-        var (skip, _, _, _) =
-            NpgsqlConfiguration.ResolveListPaging(int.MaxValue, 500, options);
-
-        Assert.Equal(int.MaxValue, skip);
+        var ex = Assert.Throws<OptionsValidationException>(() => builder.Build().Start());
+        Assert.Contains("UnpaginatedListCap", ex.Message, StringComparison.Ordinal);
     }
 }

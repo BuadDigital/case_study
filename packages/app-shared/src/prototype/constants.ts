@@ -1,4 +1,5 @@
 import type { NavItem, PageId, RoleDef, RoleId } from "@platform/types";
+import type { PropertyListRowStatus } from "@platform/api-client";
 import { ACTIVE_TRANSACTIONS_NAV } from "./active-transactions";
 import { SETTINGS_NAV } from "@platform/app-shared/prototype/settings-nav";
 import { SYSTEM_FIELDS_NAV } from "@platform/app-shared/prototype/system-fields-nav";
@@ -370,12 +371,7 @@ export type VrRow = {
   date: string;
 };
 
-export type PropertyWorkflowStage =
-  | "new"
-  | "progress"
-  | "done"
-  | "fail"
-  | "incomplete";
+export type PropertyWorkflowStage = PropertyListRowStatus;
 
 export type PropertyRow = {
   id: string;

@@ -7,9 +7,8 @@ import {
 import { notifyAuthExpired } from "@platform/auth-client";
 import { ensureFreshAuthSession } from "../auth/ensure-fresh-session";
 
-export { ApiAuthError };
 
-export const permissionsKeys = {
+const permissionsKeys = {
   all: ["permissions"] as const,
   current: () => [...permissionsKeys.all, "current"] as const,
 };

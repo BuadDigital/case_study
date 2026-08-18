@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Button, Input, Label, useToast } from "@platform/design-system";
+import { Button, Input, Label, useToast } from "@platform/ui-kit";
 import { createComparableProperty } from "@platform/api-client";
 import { workOrdersApiConfig } from "../../lib/work-orders-api-config";
 

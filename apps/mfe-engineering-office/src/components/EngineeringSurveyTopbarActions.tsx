@@ -1,7 +1,7 @@
 "use client";
 
 import { useSyncExternalStore } from "react";
-import { Button } from "@platform/design-system";
+import { Button } from "@platform/ui-kit";
 import {
   getSurveyWorkTopbarState,
   subscribeSurveyWorkTopbar,

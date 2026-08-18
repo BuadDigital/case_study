@@ -1,9 +1,11 @@
 using Microsoft.EntityFrameworkCore;
+using RealEstateEval.Application;
 using RealEstateEval.Application.Abstractions;
 using RealEstateEval.Application.Contracts;
 using RealEstateEval.Application.Rules;
 using RealEstateEval.Domain;
 using RealEstateEval.Infrastructure.Data;
+using RealEstateEval.Infrastructure.Data.Contexts;
 using RealEstateEval.Infrastructure.Notifications;
 
 namespace RealEstateEval.Infrastructure.Services;
@@ -19,23 +21,27 @@ public sealed class WorkflowTaskLifecycleCommands : IWorkflowTaskLifecycleComman
         "cdo",
     };
 
-    private readonly ApplicationDbContext _db;
+    private readonly CaseStudyDbContext _db;
     private readonly IInspectorFeeService _inspectorFees;
     private readonly IPropertyTimelineService _timeline;
     private readonly WorkflowTaskCascadeCleanup _cascade;
     private readonly IWorkflowTaskSlotSynchronizer _slots;
     private readonly INotificationService _notifications;
     private readonly NotificationRecipientResolver _recipients;
+    private readonly TimeProvider _time;
 
     public WorkflowTaskLifecycleCommands(
-        ApplicationDbContext db,
+        CaseStudyDbContext db,
         IInspectorFeeService inspectorFees,
         IPropertyTimelineService timeline,
         WorkflowTaskCascadeCleanup cascade,
         IWorkflowTaskSlotSynchronizer slots,
         INotificationService notifications,
-        NotificationRecipientResolver recipients)
+        NotificationRecipientResolver recipients,
+        TimeProvider? time = null)
     {
+        _time = time ?? TimeProvider.System;
+
         _db = db;
         _inspectorFees = inspectorFees;
         _timeline = timeline;
@@ -103,7 +109,7 @@ public sealed class WorkflowTaskLifecycleCommands : IWorkflowTaskLifecycleComman
             phase == WorkflowTaskPhase.Distribution
                 ? $"توزيع الأطراف — {(string.IsNullOrEmpty(deed) ? po : deed)}"
                 : WorkflowTaskPhaseRules.PropertyTaskTitle(deed, po),
-            DateTime.UtcNow);
+            _time.UtcNow());
         await _db.SaveChangesAsync(cancellationToken);
         return WorkflowTaskMapper.ToDto(entity);
     }
@@ -138,7 +144,7 @@ public sealed class WorkflowTaskLifecycleCommands : IWorkflowTaskLifecycleComman
         var po = entity.PoNumber.Trim();
         entity.AdvanceAfterBourse(
             $"توزيع الأطراف — {(string.IsNullOrEmpty(deed) ? po : deed)}",
-            DateTime.UtcNow);
+            _time.UtcNow());
         await _db.SaveChangesAsync(cancellationToken);
 
         if (entity.PropertyId is Guid propertyId)
@@ -222,7 +228,7 @@ public sealed class WorkflowTaskLifecycleCommands : IWorkflowTaskLifecycleComman
         {
             entity.SetDistribution(
                 WorkflowTaskMapper.SerializeDistribution(WorkflowTaskMapper.DefaultDistribution()),
-                DateTime.UtcNow);
+                _time.UtcNow());
 
             var children = await _db.WorkflowTasks
                 .Where(t => t.ParentTaskId == entity.Id)
@@ -254,7 +260,7 @@ public sealed class WorkflowTaskLifecycleCommands : IWorkflowTaskLifecycleComman
         entity.RevertToPhase(
             target,
             WorkflowTaskPhaseRules.PropertyTaskTitle(deed, po),
-            DateTime.UtcNow);
+            _time.UtcNow());
         await _db.SaveChangesAsync(cancellationToken);
 
         if (entity.PropertyId is Guid timelinePropertyId)
@@ -336,7 +342,7 @@ public sealed class WorkflowTaskLifecycleCommands : IWorkflowTaskLifecycleComman
                 ? null
                 : WorkflowTaskMapper.SerializeDistribution(
                     WorkflowTaskPhaseRules.NormalizeDistribution(request.Distribution)),
-            nowUtc: DateTime.UtcNow);
+            nowUtc: _time.UtcNow());
         await _db.SaveChangesAsync(cancellationToken);
 
         var nowCaseStudyCompleted =
@@ -434,7 +440,7 @@ public sealed class WorkflowTaskLifecycleCommands : IWorkflowTaskLifecycleComman
 
                     prop.IsRemoved = true;
                     prop.RemovalReason = reason;
-                    prop.RemovedAtUtc = DateTime.UtcNow;
+                    prop.RemovedAtUtc = _time.UtcNow();
                 }
             }
         }
@@ -563,23 +569,27 @@ public sealed class WorkflowTaskLifecycleCommands : IWorkflowTaskLifecycleComman
             });
         }
 
-        entity.Reopen(DateTime.UtcNow);
-        await _db.SaveChangesAsync(cancellationToken);
+        entity.Reopen(_time.UtcNow());
 
         var detail = string.IsNullOrWhiteSpace(actorName) ? reason : $"{actorName}: {reason}";
 
-        if (entity.PropertyId is Guid propertyId)
+        await DbContextTransaction.ExecuteInTransactionAsync(_db, async ct =>
         {
-            await _timeline.RecordAsync(
-                entity.PoNumber,
-                propertyId,
-                $"task:{entity.Id}:reopened",
-                "إعادة فتح المعاملة",
-                detail,
-                "active",
-                entity.UpdatedAtUtc,
-                cancellationToken);
-        }
+            await _db.SaveChangesAsync(ct);
+
+            if (entity.PropertyId is Guid propertyId)
+            {
+                await _timeline.RecordAsync(
+                    entity.PoNumber,
+                    propertyId,
+                    $"task:{entity.Id}:reopened",
+                    "إعادة فتح المعاملة",
+                    detail,
+                    "active",
+                    entity.UpdatedAtUtc,
+                    ct);
+            }
+        }, cancellationToken);
 
         await NotifyAssigneeAsync(
             entity.Id,
@@ -661,7 +671,7 @@ public sealed class WorkflowTaskLifecycleCommands : IWorkflowTaskLifecycleComman
                     linked.PropertyOrdinal,
                     Math.Max(1, expectedPropertyCount)),
                 WorkflowTaskMapper.SerializeDistribution(WorkflowTaskMapper.DefaultDistribution()),
-                DateTime.UtcNow);
+                _time.UtcNow());
         }
         else
         {

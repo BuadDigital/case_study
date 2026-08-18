@@ -1,6 +1,6 @@
 "use client";
 
-import { Note, Spinner } from "@platform/design-system";
+import { Note, Spinner } from "@platform/ui-kit";
 import { AppModal } from "../ui/AppModal";
 import {
   opsBtnGhost,

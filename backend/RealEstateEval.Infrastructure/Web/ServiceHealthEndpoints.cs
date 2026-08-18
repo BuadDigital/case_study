@@ -8,6 +8,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using RealEstateEval.Infrastructure.Caching;
 using RealEstateEval.Infrastructure.Data;
 using RealEstateEval.Infrastructure.Integration;
 
@@ -22,8 +23,8 @@ public sealed class DatabaseReadinessOptions
 
  /// <summary>
  /// Connectivity alone cannot tell a migrated schema from an empty one, so a service with
- /// pending migrations reports not-ready. Off in Development, where the shared dev database
- /// is migrated by whichever service starts first.
+ /// pending migrations reports not-ready. Off in Development, where each dedicated owner
+ /// database is migrated by DbMigrate or the first host that owns that stream.
  /// </summary>
     public bool CheckMigrations { get; init; }
 
@@ -33,6 +34,13 @@ public sealed class DatabaseReadinessOptions
  /// <b>not</b> flip the HTTP 503 (broker flap must not take traffic offline).
  /// </summary>
     public bool CheckRabbit { get; init; }
+
+ /// <summary>
+ /// Soft Redis TCP reachability for hosts that register <c>AddRedisCaching</c>. When true and
+ /// <c>Redis:Enabled</c>, the probe reports <c>redis</c> status in the body but does
+ /// <b>not</b> flip the HTTP 503 (cache flap must not take traffic offline).
+ /// </summary>
+    public bool CheckRedis { get; init; }
 
  /// <summary>Container healthchecks poll frequently; results are reused for this long.</summary>
     public int CacheSeconds { get; init; } = 5;
@@ -47,6 +55,7 @@ public sealed class DatabaseReadinessOptions
         {
             CheckMigrations = section.GetValue("CheckMigrations", !environment.IsDevelopment()),
             CheckRabbit = section.GetValue("CheckRabbit", false),
+            CheckRedis = section.GetValue("CheckRedis", false),
             CacheSeconds = section.GetValue("CacheSeconds", 5),
         };
 
@@ -68,7 +77,50 @@ public sealed record DatabaseReadinessSnapshot(
     bool IsReady,
     string Database,
     int PendingMigrations,
-    string? Rabbit);
+    string? Rabbit,
+    string? Redis = null);
+
+/// <summary>
+/// First <c>host:port</c> from a StackExchange.Redis configuration string (options after a
+/// comma are ignored). Used only by the soft readiness TCP probe.
+/// </summary>
+public static class RedisTcpEndpoint
+{
+    public static bool TryParse(string? connectionString, out string host, out int port)
+    {
+        host = "";
+        port = 6379;
+        var first = (connectionString ?? "").Split(',', 2)[0].Trim();
+        if (first.Length == 0)
+            return false;
+
+        if (first.StartsWith('['))
+        {
+            var close = first.IndexOf(']');
+            if (close <= 1)
+                return false;
+            host = first[1..close];
+            var rest = first[(close + 1)..];
+            if (rest.Length == 0)
+                return host.Length > 0;
+            if (rest[0] != ':' || !int.TryParse(rest[1..], out port) || port is < 1 or > 65535)
+                return false;
+            return host.Length > 0;
+        }
+
+        var colon = first.LastIndexOf(':');
+        if (colon <= 0)
+        {
+            host = first;
+            return host.Length > 0;
+        }
+
+        host = first[..colon];
+        if (!int.TryParse(first[(colon + 1)..], out port) || port is < 1 or > 65535)
+            return false;
+        return host.Length > 0;
+    }
+}
 
 public static class ServiceHealthEndpoints
 {
@@ -139,6 +191,7 @@ public static class ServiceHealthEndpoints
                 database = snapshot.Database,
                 pendingMigrations = snapshot.PendingMigrations,
                 rabbit = snapshot.Rabbit,
+                redis = snapshot.Redis,
             };
 
             return snapshot.IsReady
@@ -231,8 +284,14 @@ public static class ServiceHealthEndpoints
                 serviceName,
                 logger,
                 cancellationToken);
+            var redis = await ProbeRedisSoftAsync(
+                services,
+                options,
+                serviceName,
+                logger,
+                cancellationToken);
 
-            return new DatabaseReadinessSnapshot(true, "ready", 0, rabbit);
+            return new DatabaseReadinessSnapshot(true, "ready", 0, rabbit, redis);
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
         {
@@ -278,6 +337,46 @@ public static class ServiceHealthEndpoints
                 serviceName,
                 rabbit.Host,
                 rabbit.Port);
+            return "unreachable";
+        }
+    }
+
+    private static async Task<string?> ProbeRedisSoftAsync(
+        IServiceProvider services,
+        DatabaseReadinessOptions options,
+        string serviceName,
+        ILogger logger,
+        CancellationToken cancellationToken)
+    {
+        if (!options.CheckRedis)
+            return null;
+
+        var monitor = services.GetService<IOptionsMonitor<RedisCacheOptions>>();
+        if (monitor is null)
+            return "not_configured";
+
+        var redis = monitor.CurrentValue;
+        if (!redis.Enabled)
+            return "disabled";
+
+        if (!RedisTcpEndpoint.TryParse(redis.ConnectionString, out var host, out var port))
+            return "not_configured";
+
+        try
+        {
+            using var client = new TcpClient();
+            using var reg = cancellationToken.Register(() => client.Dispose());
+            await client.ConnectAsync(host, port, cancellationToken);
+            return "reachable";
+        }
+        catch (Exception ex)
+        {
+            logger.LogWarning(
+                ex,
+                "Readiness for {Service}: Redis soft-check failed ({Host}:{Port}).",
+                serviceName,
+                host,
+                port);
             return "unreachable";
         }
     }

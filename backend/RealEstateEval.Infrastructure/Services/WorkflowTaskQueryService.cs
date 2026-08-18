@@ -4,21 +4,22 @@ using RealEstateEval.Application.Abstractions;
 using RealEstateEval.Application.Contracts;
 using RealEstateEval.Domain;
 using RealEstateEval.Infrastructure.Data;
+using RealEstateEval.Infrastructure.Data.Contexts;
 
 namespace RealEstateEval.Infrastructure.Services;
 
 public sealed class WorkflowTaskQueryService : IWorkflowTaskQuery
 {
-    private readonly ApplicationDbContext _db;
+    private readonly CaseStudyDbContext _caseStudy;
     private readonly IWorkflowTaskVisibilityFilter _visibility;
     private readonly DatabaseOptions _dbOptions;
 
     public WorkflowTaskQueryService(
-        ApplicationDbContext db,
+        CaseStudyDbContext caseStudy,
         IWorkflowTaskVisibilityFilter? visibility = null,
         IOptions<DatabaseOptions>? dbOptions = null)
     {
-        _db = db;
+        _caseStudy = caseStudy;
         _visibility = visibility ?? new WorkflowTaskVisibilityFilter();
         _dbOptions = dbOptions?.Value ?? new DatabaseOptions();
     }
@@ -28,7 +29,7 @@ public sealed class WorkflowTaskQueryService : IWorkflowTaskQuery
         CancellationToken cancellationToken = default)
     {
         var (_, take, _, _) = NpgsqlConfiguration.ResolveListPaging(null, null, _dbOptions);
-        var list = await _visibility.VisibleTaskQuery(_db.WorkflowTasks.AsNoTracking(), actor)
+        var list = await _visibility.VisibleTaskQuery(_caseStudy.WorkflowTasks.AsNoTracking(), actor)
             .Take(take)
             .ToListAsync(cancellationToken);
         var dtos = list.Select(WorkflowTaskMapper.ToDto).ToList();
@@ -46,7 +47,7 @@ public sealed class WorkflowTaskQueryService : IWorkflowTaskQuery
             page,
             pageSize,
             _dbOptions);
-        var query = _visibility.VisibleTaskQuery(_db.WorkflowTasks.AsNoTracking(), actor);
+        var query = _visibility.VisibleTaskQuery(_caseStudy.WorkflowTasks.AsNoTracking(), actor);
         var total = await query.CountAsync(cancellationToken);
         var list = await query
             .Skip(skip)
@@ -71,7 +72,7 @@ public sealed class WorkflowTaskQueryService : IWorkflowTaskQuery
         CancellationToken cancellationToken = default)
     {
         var normalizedAssigneeId = assigneeId.Trim();
-        return _db.WorkflowTasks
+        return _caseStudy.WorkflowTasks
             .AsNoTracking()
             .AnyAsync(
                 task => task.Id == id && task.AssigneeId == normalizedAssigneeId,
@@ -110,7 +111,7 @@ public sealed class WorkflowTaskQueryService : IWorkflowTaskQuery
 
         if (parentIds.Count == 0 || propertyIds.Count == 0) return;
 
-        var inspectionRows = await _db.WorkflowTasks.AsNoTracking()
+        var inspectionRows = await _caseStudy.WorkflowTasks.AsNoTracking()
             .Where(t =>
                 t.Kind == WorkflowTaskKind.FieldInspection
                 && t.Status == WorkflowTaskStatus.Completed
@@ -133,7 +134,7 @@ public sealed class WorkflowTaskQueryService : IWorkflowTaskQuery
         var inspectionIds = inspectionRows.Select(r => r.Id).ToList();
         var acceptedInspectionIds = inspectionIds.Count == 0
             ? new HashSet<Guid>()
-            : (await _db.PartyTaskSubmissions.AsNoTracking()
+            : (await _caseStudy.PartyTaskSubmissions.AsNoTracking()
                 .Where(s =>
                     inspectionIds.Contains(s.WorkflowTaskId)
                     && s.AcceptedAtUtc != null)

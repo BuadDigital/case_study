@@ -24,12 +24,8 @@ export {
 } from "./media/process-evidence-photo";
 export {
   evaluatePhotoLocation,
-  haversineMeters,
   parseCoord,
   photoLocationFlagLabel,
-  PHOTO_LOCATION_FLAGS,
-  PHOTO_LOCATION_MAX_MATCH_M,
-  type PhotoLocationFlag,
 } from "./media/photo-location";
 export {
   useAuthSession,
@@ -49,9 +45,7 @@ export {
 } from "./notifications/notification-store";
 export { formatNotificationTime } from "./notifications/format-notification-time";
 export {
-  ENGINEERING_OFFICE_ROLE,
   filterNotificationsForRole,
-  isAllowedEngineeringOfficeNotification,
   isEngineeringOfficeRole,
   shouldDeliverDomainNotification,
   shouldShowNotificationToast,
@@ -82,4 +76,4 @@ export * from "./prototype/party-task-recall-storage";
 export * from "./prototype/party-workflow-events";
 export * from "./prototype/screen-catalog";
 export { prototypeKeys } from "./query/prototype-keys";
-export { permissionsKeys, usePermissionsQuery } from "./query/permissions-queries";
+export { usePermissionsQuery } from "./query/permissions-queries";

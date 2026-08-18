@@ -7,7 +7,7 @@ import {
   cn,
   formControlClassName,
   useToast,
-} from "@platform/design-system";
+} from "@platform/ui-kit";
 import {
   acceptPartySubmission,
   reopenPartySubmission,

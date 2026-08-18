@@ -25,7 +25,7 @@ import {
   Th,
   THead,
   Tr,
-} from "@platform/design-system";
+} from "@platform/ui-kit";
 
 type DueSt = "due" | "instmt" | "paid";
 

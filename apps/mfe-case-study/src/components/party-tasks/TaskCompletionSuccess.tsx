@@ -1,6 +1,6 @@
 "use client";
 
-import { cn } from "@platform/design-system";
+import { cn } from "@platform/ui-kit";
 
 function SuccessCheckIcon({ className }: { className?: string }) {
   return (

@@ -11,6 +11,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using RealEstateEval.Application.Abstractions;
 using RealEstateEval.Application.Contracts;
+using RealEstateEval.Infrastructure.Data;
 
 namespace RealEstateEval.Api.IntegrationTests;
 
@@ -224,8 +225,8 @@ public sealed class HardenedIdentityApiWebApplicationFactory
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
         builder.UseEnvironment("Production");
-        builder.UseSetting(
-            "ConnectionStrings:Identity",
+        BoundedContextConnections.ApplyDedicatedSettings(
+            (key, value) => builder.UseSetting(key, value),
             "Host=localhost;Database=identity_security_test");
         builder.UseSetting(
             "Jwt:SigningKey",

@@ -23,7 +23,7 @@ import type {
 import { useStaffUsersQuery } from "@settings/mfe/query/settings-queries";
 import type { StaffUser } from "@platform/app-shared/prototype/constants";
 import { getFieldInspectors } from "@case-study/mfe/lib/distribution-assignees";
-import { cn } from "@platform/design-system";
+import { cn } from "@platform/ui-kit";
 import {
   finCard,
   finEmpty,

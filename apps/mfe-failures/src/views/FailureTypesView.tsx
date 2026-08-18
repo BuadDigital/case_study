@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { usePrototype } from "@platform/app-shared/contexts/PrototypeContext";
-import { cn, InlineLoadingSkeleton, PageShell, Spinner, useToast } from "@platform/design-system";
+import { cn, InlineLoadingSkeleton, PageShell, Spinner, useToast } from "@platform/ui-kit";
 import { prototypeKeys } from "@platform/app-shared/query/prototype-keys";
 import { isSuperAdmin } from "@platform/app-shared/prototype/prototype-role-access";
 import type { RoleId } from "@platform/types";

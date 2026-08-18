@@ -87,11 +87,3 @@ export const INFATH_YES_NO_OPTIONS = [
   { value: "yes", label: "نعم" },
   { value: "no", label: "لا" },
 ] as const;
-
-export type InfathYesNo = (typeof INFATH_YES_NO_OPTIONS)[number]["value"] | "";
-
-export function infathYesNoLabel(value: InfathYesNo | boolean | null): string {
-  if (value === true || value === "yes") return "نعم";
-  if (value === false || value === "no") return "لا";
-  return "";
-}

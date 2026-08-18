@@ -2,7 +2,7 @@
 
 import type { ReactNode } from "react";
 import { useRef, useState } from "react";
-import { StatusPill, type StatusPillStyle, cn } from "@platform/design-system";
+import { StatusPill, type StatusPillStyle, cn } from "@platform/ui-kit";
 
 /** Case Study.html `ENG_BOX` */
 export const engBoxClassName =

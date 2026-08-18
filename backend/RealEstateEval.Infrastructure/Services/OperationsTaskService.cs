@@ -1,7 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using RealEstateEval.Application.Abstractions;
 using RealEstateEval.Application.Contracts;
-using RealEstateEval.Infrastructure.Data;
 using RealEstateEval.Infrastructure.Data.Contexts;
 
 namespace RealEstateEval.Infrastructure.Services;
@@ -13,27 +12,40 @@ public sealed class OperationsTaskService : IOperationsTaskService
 {
     private readonly IOperationsTaskQuery _query;
     private readonly IOperationsTaskCommands _commands;
+    private readonly OperationsTaskVisitFeeHelper _visitFees;
+
+    public OperationsTaskService(
+        IOperationsTaskQuery query,
+        IOperationsTaskCommands commands,
+        OperationsTaskVisitFeeHelper visitFees)
+    {
+        _query = query;
+        _commands = commands;
+        _visitFees = visitFees;
+    }
 
     public OperationsTaskService(
         IOperationsTaskQuery query,
         IOperationsTaskCommands commands)
+        : this(query, commands, visitFees: null!)
     {
-        _query = query;
-        _commands = commands;
     }
 
- /// <summary>Test-friendly compose from a shared legacy + operations pair.</summary>
+ /// <summary>Test-friendly compose from shared bounded-context pair.</summary>
     public static OperationsTaskService Create(
         OperationsDbContext ops,
-        ApplicationDbContext db,
+        FinancialDbContext financial,
+        IdentityDbContext identity,
         INotificationService notifications,
-        IPartyFeePricingService pricing)
+        IPartyFeePricingService pricing,
+        TimeProvider? time = null)
     {
-        var query = new OperationsTaskQueryService(ops, db);
-        var notifier = new OperationsTaskNotifier(ops, db, notifications);
-        var visitFees = new OperationsTaskVisitFeeHelper(db, pricing);
-        var commands = new OperationsTaskCommands(ops, db, query, notifier, visitFees);
-        return new OperationsTaskService(query, commands);
+        var clock = time ?? TimeProvider.System;
+        var query = new OperationsTaskQueryService(ops, financial, identity);
+        var notifier = new OperationsTaskNotifier(ops, identity, notifications, time: clock);
+        var visitFees = new OperationsTaskVisitFeeHelper(ops, financial, identity, pricing, clock);
+        var commands = new OperationsTaskCommands(ops, query, notifier, visitFees, clock);
+        return new OperationsTaskService(query, commands, visitFees);
     }
 
     public Task<IReadOnlyList<OperationsTaskDto>> ListAsync(
@@ -97,6 +109,13 @@ public sealed class OperationsTaskService : IOperationsTaskService
     public Task<int> ProcessOverLimitPauseRemindersAsync(CancellationToken cancellationToken = default) =>
         _commands.ProcessOverLimitPauseRemindersAsync(cancellationToken);
 
+    public Task<int> BackfillMissingCourtVisitChargesAsync(CancellationToken cancellationToken = default)
+    {
+        if (_visitFees is null)
+            throw new InvalidOperationException("Court-visit fee backfill requires OperationsTaskVisitFeeHelper.");
+        return _visitFees.BackfillMissingChargesForCompletedVisitsAsync(cancellationToken);
+    }
+
     public Task<(OperationsTaskDto? Result, string? Error)> AddCommentAsync(
         Guid id,
         AddOperationsTaskCommentRequest request,
@@ -111,3 +130,4 @@ public sealed class OperationsTaskService : IOperationsTaskService
         CancellationToken cancellationToken = default) =>
         _query.ListCourtVisitFeesAsync(creditAssigneeId, cancellationToken);
 }
+

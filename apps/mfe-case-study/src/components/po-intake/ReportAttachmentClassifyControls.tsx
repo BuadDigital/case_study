@@ -6,7 +6,7 @@ import {
   Select,
   cn,
   useToast,
-} from "@platform/design-system";
+} from "@platform/ui-kit";
 import {
   classifyAttachment,
   getAttachmentMeta,

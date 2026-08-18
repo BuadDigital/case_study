@@ -1,4 +1,6 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
+using RealEstateEval.Application;
 using RealEstateEval.Application.Abstractions;
 using RealEstateEval.Application.Contracts;
 using RealEstateEval.Domain;
@@ -11,12 +13,27 @@ public sealed class PropertyTimelineService : IPropertyTimelineService
     private const int MaxTimelineRows = 500;
 
     private readonly CaseStudyDbContext _caseStudy;
-    private readonly FailuresDbContext _failures;
+    private readonly IFailureLookup _failureLookup;
+    private readonly TimeProvider _time;
 
-    public PropertyTimelineService(CaseStudyDbContext caseStudy, FailuresDbContext failures)
+    public PropertyTimelineService(
+        CaseStudyDbContext caseStudy,
+        FailuresDbContext failures,
+        TimeProvider? time = null)
+        : this(caseStudy, new FailureLookup(failures), time)
     {
+    }
+
+    [ActivatorUtilitiesConstructor]
+    public PropertyTimelineService(
+        CaseStudyDbContext caseStudy,
+        IFailureLookup failureLookup,
+        TimeProvider? time = null)
+    {
+        _time = time ?? TimeProvider.System;
+
         _caseStudy = caseStudy;
-        _failures = failures;
+        _failureLookup = failureLookup;
     }
 
     public async Task<IReadOnlyList<PropertyTimelineEventDto>> GetForPropertyAsync(
@@ -84,24 +101,26 @@ public sealed class PropertyTimelineService : IPropertyTimelineService
                 var child = children.FirstOrDefault(c => c.Id == taskId);
                 if (child is not null)
                 {
-                    entry.Tone = child.Status == WorkflowTaskStatus.Completed ? "done" : "active";
+                    entry.Tone = child.Status == WorkflowTaskStatus.Completed
+                        ? PropertyTimelineTones.Done
+                        : PropertyTimelineTones.Active;
                 }
             }
         }
         else if (entry.EventKey.Contains(":distribution", StringComparison.Ordinal) && children.Count > 0)
         {
             entry.Tone = children.All(c => c.Status == WorkflowTaskStatus.Completed)
-                ? "done"
-                : "active";
+                ? PropertyTimelineTones.Done
+                : PropertyTimelineTones.Active;
         }
         else if (entry.EventKey.StartsWith("failure:", StringComparison.Ordinal) &&
                  entry.EventKey.EndsWith(":created", StringComparison.Ordinal))
         {
-            entry.Tone = "warn";
+            entry.Tone = PropertyTimelineTones.Warn;
         }
         else if (entry.EventKey.EndsWith(":case-study", StringComparison.Ordinal) && parent is not null)
         {
-            entry.Tone = IsCaseStudyComplete(parent) ? "done" : "active";
+            entry.Tone = IsCaseStudyComplete(parent) ? PropertyTimelineTones.Done : PropertyTimelineTones.Active;
         }
 
         return entry;
@@ -129,7 +148,7 @@ public sealed class PropertyTimelineService : IPropertyTimelineService
             cancellationToken);
         if (exists) return;
 
-        var now = DateTime.UtcNow;
+        var now = _time.UtcNow();
         _caseStudy.PropertyTimelineEntries.Add(new PropertyTimelineEntry
         {
             Id = Guid.NewGuid(),
@@ -177,7 +196,7 @@ public sealed class PropertyTimelineService : IPropertyTimelineService
             .Select(e => (e.PoNumber, e.PropertyId, e.EventKey))
             .ToHashSet();
 
-        var now = DateTime.UtcNow;
+        var now = _time.UtcNow();
         foreach (var entry in normalized)
         {
             if (existing.Contains((entry.Po, entry.PropertyId, entry.Key)))
@@ -207,7 +226,7 @@ public sealed class PropertyTimelineService : IPropertyTimelineService
         CancellationToken cancellationToken)
     {
         var events = new List<PropertyTimelineEntry>();
-        var recordedAt = DateTime.UtcNow;
+        var recordedAt = _time.UtcNow();
 
         var order = await _caseStudy.WorkOrders
             .AsNoTracking()
@@ -227,7 +246,7 @@ public sealed class PropertyTimelineService : IPropertyTimelineService
             string.IsNullOrWhiteSpace(order.AssignmentSpecialist)
                 ? null
                 : $"أخصائي الإسناد: {order.AssignmentSpecialist.Trim()}",
-            "done",
+            PropertyTimelineTones.Done,
             DateOnlyToUtc(order.ReceivedFromEnfathAt),
             recordedAt);
 
@@ -238,7 +257,7 @@ public sealed class PropertyTimelineService : IPropertyTimelineService
             "due",
             "موعد الاستحقاق",
             null,
-            "muted",
+            PropertyTimelineTones.Muted,
             DateOnlyToUtc(order.DueDateAt),
             recordedAt);
 
@@ -258,7 +277,7 @@ public sealed class PropertyTimelineService : IPropertyTimelineService
                 $"task:{parent.Id}:created",
                 "إنشاء مهمة العقار",
                 TaskPhaseLabel(parent.Phase),
-                parent.Status == WorkflowTaskStatus.Completed ? "done" : "active",
+                parent.Status == WorkflowTaskStatus.Completed ? PropertyTimelineTones.Done : PropertyTimelineTones.Active,
                 parent.CreatedAtUtc,
                 recordedAt);
 
@@ -277,7 +296,7 @@ public sealed class PropertyTimelineService : IPropertyTimelineService
                     "property-bourse",
                     "بيانات البورصة للعقار",
                     string.IsNullOrEmpty(location) ? null : location,
-                    "done",
+                    PropertyTimelineTones.Done,
                     bourseAt,
                     recordedAt);
 
@@ -290,7 +309,7 @@ public sealed class PropertyTimelineService : IPropertyTimelineService
                         $"task:{parent.Id}:bourse-complete",
                         "اكتمال استعلام البورصة",
                         null,
-                        "done",
+                        PropertyTimelineTones.Done,
                         bourseAt,
                         recordedAt);
                 }
@@ -310,7 +329,7 @@ public sealed class PropertyTimelineService : IPropertyTimelineService
                     $"task:{parent.Id}:distribution",
                     "توزيع المعاملة",
                     null,
-                    distributionDone ? "done" : "active",
+                    distributionDone ? PropertyTimelineTones.Done : PropertyTimelineTones.Active,
                     distributionAt,
                     recordedAt);
 
@@ -323,7 +342,7 @@ public sealed class PropertyTimelineService : IPropertyTimelineService
                         $"party:{child.Id}:assigned",
                         PartyAssignedTitle(child.Kind),
                         child.AssigneeName,
-                        child.Status == WorkflowTaskStatus.Completed ? "done" : "active",
+                        child.Status == WorkflowTaskStatus.Completed ? PropertyTimelineTones.Done : PropertyTimelineTones.Active,
                         child.CreatedAtUtc,
                         recordedAt);
                 }
@@ -341,7 +360,7 @@ public sealed class PropertyTimelineService : IPropertyTimelineService
                     $"task:{parent.Id}:case-study",
                     "دراسة حالة العقار",
                     parent.AssigneeName,
-                    IsCaseStudyComplete(parent) ? "done" : "active",
+                    IsCaseStudyComplete(parent) ? PropertyTimelineTones.Done : PropertyTimelineTones.Active,
                     caseStudyAt,
                     recordedAt);
             }
@@ -356,7 +375,7 @@ public sealed class PropertyTimelineService : IPropertyTimelineService
                     $"task:{parent.Id}:blocked",
                     "تعذر / إيقاف",
                     parent.ObstructionReason,
-                    "warn",
+                    PropertyTimelineTones.Warn,
                     parent.UpdatedAtUtc,
                     recordedAt);
             }
@@ -385,7 +404,7 @@ public sealed class PropertyTimelineService : IPropertyTimelineService
                         $"party:{submission.WorkflowTaskId}:submitted",
                         PartySubmittedTitle(submission.Kind),
                         child?.AssigneeName,
-                        "done",
+                        PropertyTimelineTones.Done,
                         submission.SubmittedAtUtc.Value,
                         recordedAt);
                 }
@@ -407,30 +426,29 @@ public sealed class PropertyTimelineService : IPropertyTimelineService
                     $"case-study-form:{parent.Id}",
                     "إرسال نموذج دراسة الحالة",
                     null,
-                    "done",
+                    PropertyTimelineTones.Done,
                     formAt,
                     recordedAt);
             }
         }
 
         var propertyKey = propertyId.ToString();
-        var failures = await _failures.PropertyFailures
-            .AsNoTracking()
-            .Where(f => f.PoNumber == poNumber && f.PropertyId == propertyKey)
-            .OrderBy(f => f.CreatedAtUtc)
-            .ToListAsync(cancellationToken);
+        var failures = await _failureLookup.ListForPropertyAsync(poNumber, propertyKey, cancellationToken);
 
         foreach (var failure in failures)
         {
+            var createdAt = ParseUtc(failure.CreatedAt) ?? recordedAt;
+            var updatedAt = ParseUtc(failure.UpdatedAt) ?? createdAt;
+            var failureId = Guid.TryParse(failure.Id, out var parsedId) ? parsedId : Guid.Empty;
             AddEvent(
                 events,
                 poNumber,
                 propertyId,
-                $"failure:{failure.Id}:created",
+                $"failure:{failureId}:created",
                 "تسجيل تعذر",
                 $"{failure.Title} — {FailureStatusLabel(failure.Status)}",
-                "warn",
-                failure.CreatedAtUtc,
+                PropertyTimelineTones.Warn,
+                createdAt,
                 recordedAt);
 
             if (failure.Status == PropertyFailureStatus.Suspended)
@@ -439,13 +457,13 @@ public sealed class PropertyTimelineService : IPropertyTimelineService
                     events,
                     poNumber,
                     propertyId,
-                    $"failure:{failure.Id}:suspended",
+                    $"failure:{failureId}:suspended",
                     "تعليق المعاملة",
                     string.IsNullOrWhiteSpace(failure.FinalNote)
                         ? failure.Specialist
                         : failure.FinalNote.Trim(),
-                    "warn",
-                    failure.UpdatedAtUtc,
+                    PropertyTimelineTones.Warn,
+                    updatedAt,
                     recordedAt);
             }
         }
@@ -490,14 +508,21 @@ public sealed class PropertyTimelineService : IPropertyTimelineService
     private static DateTime DateOnlyToUtc(DateOnly date) =>
         date.ToDateTime(TimeOnly.MinValue, DateTimeKind.Utc);
 
-    private static string NormalizeTone(string tone) =>
-        tone.Trim().ToLowerInvariant() switch
+    private static DateTime? ParseUtc(string? value)
+    {
+        if (!DateTime.TryParse(
+                value,
+                null,
+                System.Globalization.DateTimeStyles.RoundtripKind,
+                out var parsed))
         {
-            "active" => "active",
-            "warn" => "warn",
-            "muted" => "muted",
-            _ => "done",
-        };
+            return null;
+        }
+
+        return parsed.Kind == DateTimeKind.Utc ? parsed : DateTime.SpecifyKind(parsed, DateTimeKind.Unspecified);
+    }
+
+    private static string NormalizeTone(string tone) => PropertyTimelineTones.Normalize(tone);
 
     private static string TaskPhaseLabel(WorkflowTaskPhase phase) => phase switch
     {

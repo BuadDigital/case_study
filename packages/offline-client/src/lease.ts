@@ -93,7 +93,3 @@ export async function tickOfflineLease(
 
   return { lease: next, warn1h, warn2h, lockedNow };
 }
-
-export function isOfflineLeaseLocked(lease: OfflineLease | null): boolean {
-  return Boolean(lease?.locked);
-}

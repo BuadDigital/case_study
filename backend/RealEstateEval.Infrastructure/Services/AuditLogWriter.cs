@@ -1,4 +1,5 @@
 using System.Text.Json;
+using RealEstateEval.Application;
 using RealEstateEval.Application.Abstractions;
 using RealEstateEval.Domain;
 
@@ -7,6 +8,12 @@ namespace RealEstateEval.Infrastructure.Services;
 public sealed class AuditLogWriter : IAuditLogWriter
 {
     private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web);
+    private readonly TimeProvider _time;
+
+    public AuditLogWriter(TimeProvider? time = null)
+    {
+        _time = time ?? TimeProvider.System;
+    }
 
     public AuditLog Create(
         string actorId,
@@ -30,7 +37,7 @@ public sealed class AuditLogWriter : IAuditLogWriter
             EntityId = entityId.Trim(),
             BeforeJson = JsonSerializer.Serialize(before, JsonOptions),
             AfterJson = JsonSerializer.Serialize(after, JsonOptions),
-            CreatedAtUtc = DateTime.UtcNow,
+            CreatedAtUtc = _time.UtcNow(),
         };
     }
 

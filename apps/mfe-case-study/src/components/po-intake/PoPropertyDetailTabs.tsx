@@ -7,7 +7,7 @@ import { useMemo, useState, useEffect } from "react";
 import { failuresForProperty, useFailuresQuery } from "@failures/mfe";
 import { failureStatusLabel } from "@failures/mfe/lib/failures-labels";
 import type { FailureRecord } from "@failures/mfe";
-import { Button, cn, Tab, TabBar, TabPanel } from "@platform/design-system";
+import { Button, cn, Tab, TabBar, TabPanel } from "@platform/ui-kit";
 import { usePrototype } from "@platform/app-shared/contexts/PrototypeContext";
 import { canViewPropertyTimelineRail } from "../../lib/prototype/po-roles";
 import { DetailBadge, EmptyState, FieldBox, FieldsGrid, InfoBox, ltrValueClass, SectionHeader } from "./PropertyDetailFields";
@@ -257,18 +257,12 @@ function DocumentsTab({
 }
 
 /** Case Study.html logPanel — always green ✓ circle. */
-function logIconGlyph(_tone: string): string {
+function logIconGlyph(): string {
   return "✓";
 }
 
-function logIconClass(_tone: string): string {
+function logIconClass(): string {
   return "bg-[color-mix(in_srgb,#3f8f5f_10%,transparent)] text-[#2f7a4d]";
-}
-
-function partyDotClass(dotClass: string): string {
-  if (dotClass.includes("teal")) return "bg-success";
-  if (dotClass.includes("amber")) return "bg-warning";
-  return "bg-text-3";
 }
 
 function BasicTab({
@@ -1123,11 +1117,11 @@ export function PoPropertyDetailTabs({
                       <div
                         className={cn(
                           "flex h-[30px] w-[30px] shrink-0 items-center justify-center rounded-full text-sm",
-                          logIconClass(event.tone),
+                          logIconClass(),
                         )}
                         aria-hidden
                       >
-                        {logIconGlyph(event.tone)}
+                        {logIconGlyph()}
                       </div>
                       <div className="min-w-0 flex-1">
                         <div className="mb-0.5 text-[13px] text-text">

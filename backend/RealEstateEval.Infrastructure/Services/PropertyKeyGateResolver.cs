@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
 using RealEstateEval.Application.Abstractions;
 using RealEstateEval.Application.Contracts;
 using RealEstateEval.Domain;
@@ -9,9 +10,15 @@ namespace RealEstateEval.Infrastructure.Services;
 public sealed class PropertyKeyGateResolver : IPropertyKeyGateResolver
 {
     private readonly OperationsDbContext _ops;
-    private readonly CaseStudyDbContext _caseStudy;
+    private readonly ICaseStudyLookup _caseStudy;
 
     public PropertyKeyGateResolver(OperationsDbContext ops, CaseStudyDbContext caseStudy)
+        : this(ops, new CaseStudyLookup(caseStudy))
+    {
+    }
+
+    [ActivatorUtilitiesConstructor]
+    public PropertyKeyGateResolver(OperationsDbContext ops, ICaseStudyLookup caseStudy)
     {
         _ops = ops;
         _caseStudy = caseStudy;
@@ -24,34 +31,24 @@ public sealed class PropertyKeyGateResolver : IPropertyKeyGateResolver
         string? requestNumber,
         CancellationToken cancellationToken = default)
     {
-        WorkOrderProperty? property = null;
+        CaseStudyPropertySnapshotDto? property = null;
         if (propertyId is Guid pid)
-        {
-            property = await _caseStudy.WorkOrderProperties.AsNoTracking()
-                .Include(p => p.WorkOrder)
-                .FirstOrDefaultAsync(p => p.Id == pid && !p.IsRemoved, cancellationToken);
-        }
+            property = await _caseStudy.GetPropertyAsync(pid, cancellationToken);
         else if (!string.IsNullOrWhiteSpace(poNumber) && !string.IsNullOrWhiteSpace(deedNumber))
         {
-            var po = poNumber.Trim();
-            var deed = deedNumber.Trim();
-            property = await _caseStudy.WorkOrderProperties.AsNoTracking()
-                .Include(p => p.WorkOrder)
-                .FirstOrDefaultAsync(
-                    p => !p.IsRemoved
-                         && p.WorkOrder != null
-                         && p.WorkOrder.PoNumber == po
-                         && p.DeedNumber == deed,
-                    cancellationToken);
+            property = await _caseStudy.GetPropertyByPoAndDeedAsync(
+                poNumber,
+                deedNumber,
+                cancellationToken);
         }
 
-        var resolvedPo = property?.WorkOrder?.PoNumber?.Trim()
+        var resolvedPo = property?.PoNumber
             ?? poNumber?.Trim()
             ?? "";
-        var resolvedDeed = property?.DeedNumber?.Trim()
+        var resolvedDeed = property?.DeedNumber
             ?? deedNumber?.Trim()
             ?? "";
-        var resolvedRequest = property?.RequestNumber?.Trim()
+        var resolvedRequest = property?.RequestNumber
             ?? requestNumber?.Trim()
             ?? "";
         var resolvedPropertyId = property?.Id ?? propertyId;
@@ -71,10 +68,10 @@ public sealed class PropertyKeyGateResolver : IPropertyKeyGateResolver
                 PoNumber = resolvedPo,
                 DeedNumber = resolvedDeed,
                 RequestNumber = resolvedRequest,
-                KeysStatus = "not_required",
-                KeyHandedToInspector = "yes",
+                KeysStatus = PropertyKeysStatuses.NotRequired,
+                KeyHandedToInspector = PropertyKeyHandedValues.Yes,
                 KeyAvailable = true,
-                Source = "court_access",
+                Source = PropertyKeyGateSources.CourtAccess,
                 StudyHoldStatus = access.StudyHoldStatus,
             };
         }
@@ -127,12 +124,10 @@ public sealed class PropertyKeyGateResolver : IPropertyKeyGateResolver
                     h.Kind == KeyHandoffKinds.Internal
                     && h.Status is KeyHandoffStatuses.Confirmed or KeyHandoffStatuses.Completed);
 
-            var keysStatus = envelope.ReceiveScenario == KeyReceiveScenarios.Missing
-                ? "pending"
-                : envelope.ReceiveScenario == KeyReceiveScenarios.Court
-                    || envelope.ReceiveScenario == KeyReceiveScenarios.ThirdParty
-                    ? "received"
-                    : "pending";
+            var keysStatus = envelope.ReceiveScenario is KeyReceiveScenarios.Court
+                or KeyReceiveScenarios.ThirdParty
+                ? PropertyKeysStatuses.Received
+                : PropertyKeysStatuses.Pending;
 
             if (assignment?.Status == KeyAssignmentStatuses.Matched)
                 handed = true;
@@ -141,7 +136,7 @@ public sealed class PropertyKeyGateResolver : IPropertyKeyGateResolver
                 access?.StudyHoldStatus == PropertyCourtAccessStatuses.EnabledNoKey
                 || handed
                 || assignment?.Status == KeyAssignmentStatuses.Matched
-                || keysStatus == "not_required";
+                || keysStatus == PropertyKeysStatuses.NotRequired;
 
             return new PropertyKeyGateDto
             {
@@ -150,9 +145,11 @@ public sealed class PropertyKeyGateResolver : IPropertyKeyGateResolver
                 DeedNumber = resolvedDeed,
                 RequestNumber = envelope.RequestNumber,
                 KeysStatus = keysStatus,
-                KeyHandedToInspector = handed ? "yes" : (pendingHandoff is not null ? "no" : ""),
+                KeyHandedToInspector = handed
+                    ? PropertyKeyHandedValues.Yes
+                    : (pendingHandoff is not null ? PropertyKeyHandedValues.No : ""),
                 KeyAvailable = available,
-                Source = "envelope",
+                Source = PropertyKeyGateSources.Envelope,
                 EnvelopeId = envelope.Id,
                 AssignmentId = assignment?.Id,
                 AssignmentStatus = assignment?.Status,
@@ -168,7 +165,7 @@ public sealed class PropertyKeyGateResolver : IPropertyKeyGateResolver
             PoNumber = resolvedPo,
             DeedNumber = resolvedDeed,
             RequestNumber = resolvedRequest,
-            Source = "none",
+            Source = PropertyKeyGateSources.None,
             StudyHoldStatus = access?.StudyHoldStatus ?? PropertyCourtAccessStatuses.None,
             EnvelopeMissingWarning = false,
         };

@@ -8,7 +8,7 @@ import {
   loadPartyBillingStatements,
 } from "@platform/app-shared/prototype/party-billing-statements-api";
 import { useStaffUsersQuery } from "@settings/mfe/query/settings-queries";
-import { cn } from "@platform/design-system";
+import { cn } from "@platform/ui-kit";
 import {
   buildFinanceCostParties,
   type FinanceCostParty,

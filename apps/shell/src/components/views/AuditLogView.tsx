@@ -9,7 +9,7 @@ import { exportRowsToCsv } from "@platform/app-shared/export/export-csv";
 import { isFeatureEnabled } from "@platform/app-shared/feature-flags";
 import { Can } from "@platform/app-shared/components/Can";
 import { useAuth } from "@platform/app-shared/hooks/useAuth";
-import { cn, InlineLoadingSkeleton, PageShell, Spinner } from "@platform/design-system";
+import { cn, InlineLoadingSkeleton, PageShell, Spinner } from "@platform/ui-kit";
 import {
   opsBtnGhost,
   opsEmptyHint,

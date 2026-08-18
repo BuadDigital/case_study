@@ -140,12 +140,6 @@ export const EVALUATOR_CONDITIONAL_QUESTIONS: EvaluatorBooleanQuestion[] = [
 
 export const MAX_EVALUATOR_PDF_BYTES = 20 * 1024 * 1024;
 
-export const EVALUATOR_WORKER_ROLES: EvaluatorReportWorkerRole[] = [
-  "معد",
-  "مراجع",
-  "معتمد",
-];
-
 export function createEmptyReportWorker(
   role: EvaluatorReportWorkerRole | "" = "معد",
 ): EvaluatorReportWorker {

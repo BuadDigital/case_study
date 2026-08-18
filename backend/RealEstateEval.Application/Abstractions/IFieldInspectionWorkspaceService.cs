@@ -5,9 +5,10 @@ namespace RealEstateEval.Application.Abstractions;
 public interface IFieldInspectionWorkspaceService
 {
     Task<IReadOnlyList<FieldInspectionWorkspaceListItemDto>> ListAsync(
-        PermissionsDto actor,
+        PermissionsDto? actor,
         CancellationToken cancellationToken = default);
 
     Task<FieldInspectionWorkspaceSummaryDto> GetSummaryAsync(
+        PermissionsDto? actor,
         CancellationToken cancellationToken = default);
 }

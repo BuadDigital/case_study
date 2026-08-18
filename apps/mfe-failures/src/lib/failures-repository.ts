@@ -4,7 +4,6 @@ import {
   deleteFailuresForPoAsync,
   getPropertyFailureFromCache,
   loadFailuresForQuery,
-  loadFailuresFromBackend,
   reportBourseObstructionAsync,
   resolveFailureAsync,
   returnFailureAsync,
@@ -21,10 +20,6 @@ import type {
 } from "./failures-types";
 
 export type { FailureMutationResult } from "./failures-api";
-
-export async function loadFailures(): Promise<FailureRecord[]> {
-  return loadFailuresFromBackend();
-}
 
 export async function loadFailuresQuery(): Promise<FailureRecord[]> {
   return loadFailuresForQuery();

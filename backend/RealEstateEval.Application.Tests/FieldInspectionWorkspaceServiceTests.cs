@@ -18,7 +18,7 @@ public class FieldInspectionWorkspaceServiceTests
     {
         await using var db = CreateDb();
         Seed(db);
-        var service = new FieldInspectionWorkspaceService(db);
+        var service = new FieldInspectionWorkspaceService(TestInspectorFeeServiceFactory.ShareCaseStudy(db));
 
         var rows = await service.ListAsync(new PermissionsDto
         {
@@ -36,7 +36,7 @@ public class FieldInspectionWorkspaceServiceTests
     {
         await using var db = CreateDb();
         Seed(db);
-        var service = new FieldInspectionWorkspaceService(db);
+        var service = new FieldInspectionWorkspaceService(TestInspectorFeeServiceFactory.ShareCaseStudy(db));
 
         var rows = await service.ListAsync(new PermissionsDto
         {
@@ -48,13 +48,64 @@ public class FieldInspectionWorkspaceServiceTests
     }
 
     [Fact]
+    public async Task List_returns_no_workspaces_when_actor_is_null()
+    {
+        await using var db = CreateDb();
+        Seed(db);
+        var service = new FieldInspectionWorkspaceService(TestInspectorFeeServiceFactory.ShareCaseStudy(db));
+
+        var rows = await service.ListAsync(actor: null);
+
+        Assert.Empty(rows);
+    }
+
+    [Fact]
+    public async Task Summary_scopes_party_actor_to_assigned_workspaces()
+    {
+        await using var db = CreateDb();
+        Seed(db);
+        var service = new FieldInspectionWorkspaceService(TestInspectorFeeServiceFactory.ShareCaseStudy(db));
+
+        var summary = await service.GetSummaryAsync(new PermissionsDto
+        {
+            UserId = "party-user",
+            PrototypeRole = "field-inspector",
+            DistributionAssigneeId = "assigned-party",
+        });
+
+        Assert.Equal(1, summary.Total);
+        Assert.Equal(1, summary.Draft);
+        Assert.Equal(0, summary.Submitted);
+        Assert.Equal(1, summary.PhotosPendingApproval);
+        Assert.Equal(2, summary.IncompleteRequiredPhotos);
+    }
+
+    [Fact]
+    public async Task Summary_returns_zeros_when_actor_is_null()
+    {
+        await using var db = CreateDb();
+        Seed(db);
+        var service = new FieldInspectionWorkspaceService(TestInspectorFeeServiceFactory.ShareCaseStudy(db));
+
+        var summary = await service.GetSummaryAsync(actor: null);
+
+        Assert.Equal(0, summary.Total);
+        Assert.Equal(0, summary.Draft);
+        Assert.Equal(0, summary.Submitted);
+    }
+
+    [Fact]
     public async Task Summary_preserves_workspace_aggregates()
     {
         await using var db = CreateDb();
         Seed(db);
-        var service = new FieldInspectionWorkspaceService(db);
+        var service = new FieldInspectionWorkspaceService(TestInspectorFeeServiceFactory.ShareCaseStudy(db));
 
-        var summary = await service.GetSummaryAsync();
+        var summary = await service.GetSummaryAsync(new PermissionsDto
+        {
+            UserId = "case-staff",
+            PrototypeRole = "case-specialist",
+        });
 
         Assert.Equal(2, summary.Total);
         Assert.Equal(1, summary.Draft);

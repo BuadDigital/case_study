@@ -22,9 +22,7 @@ public sealed class ClaimsPermissionService(IHttpContextAccessor httpContextAcce
         if (principal?.Identity?.IsAuthenticated != true)
             return Task.FromResult<PermissionsDto?>(null);
 
-        var authenticatedUserId =
-            principal.FindFirstValue(ClaimTypes.NameIdentifier)
-            ?? principal.FindFirstValue("sub");
+        var authenticatedUserId = ActorIdentity.TryUserId(principal);
         if (string.IsNullOrWhiteSpace(authenticatedUserId)
             || !string.Equals(authenticatedUserId, userId, StringComparison.Ordinal))
         {

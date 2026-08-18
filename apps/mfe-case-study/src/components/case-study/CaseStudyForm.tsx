@@ -14,7 +14,7 @@ import {
   cn,
   progressMessageForActionLabel,
   useToast,
-} from "@platform/design-system";
+} from "@platform/ui-kit";
 import { RegField } from "@platform/app-shared/registration/FormFields";
 import { CASE_STUDY_FORM_STEPS, caseStudyAnswerKey,type CaseStudyFormAnswer,type CaseStudyQuestionSection} from "../../lib/prototype/case-study-form-data";
 import { CaseStudyReportActions } from "./CaseStudyReportActions";

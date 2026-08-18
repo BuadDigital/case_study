@@ -10,7 +10,6 @@ namespace RealEstateEval.Valuation.Api.Controllers;
 /// <summary>شاشة 1 — الأساليب المطبَّقة (ق-2/ق-3) + أساس ووحدة التكلفة + صلاحية التسويات.</summary>
 [ApiController]
 [Route("api/valuation-requests/{valuationRequestId:guid}/approach-settings")]
-[Route("api/valuation-requests/v1/{valuationRequestId:guid}/approach-settings")]
 [Authorize]
 public class ValuationApproachSettingsController : ControllerBase
 {
@@ -38,7 +37,7 @@ public class ValuationApproachSettingsController : ControllerBase
     {
         var (result, errors) = await _settings.SaveAsync(valuationRequestId, request, ct);
         if (errors is not null)
-            return BadRequest(new FieldErrorsResponseDto { Errors = errors });
+            return this.FieldErrorsProblem(errors);
         return Ok(result);
     }
 }

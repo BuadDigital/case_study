@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { Button, Input, Note, useToast } from "@platform/design-system";
+import { Button, Input, Note, useToast } from "@platform/ui-kit";
 import {
   confirmPropertyGroupLink,
   getPropertyGroup,

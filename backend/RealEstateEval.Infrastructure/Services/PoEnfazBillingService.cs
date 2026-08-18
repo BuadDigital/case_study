@@ -1,9 +1,11 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
+using RealEstateEval.Application;
 using RealEstateEval.Application.Abstractions;
 using RealEstateEval.Application.Contracts;
 using RealEstateEval.Application.Rules;
 using RealEstateEval.Domain;
-using RealEstateEval.Infrastructure.Data;
+using RealEstateEval.Infrastructure.Data.Contexts;
 
 namespace RealEstateEval.Infrastructure.Services;
 
@@ -13,29 +15,45 @@ public sealed class PoEnfazBillingService : IPoEnfazBillingService
     private const int MaxOrderRows = 500;
     private const int MaxTrackingRows = 2000;
     private static readonly TimeSpan OverdueAfter = TimeSpan.FromDays(30);
-    private readonly ApplicationDbContext _db;
+    private readonly FinancialDbContext _db;
+    private readonly ICaseStudyLookup _lookup;
+    private readonly IKeyEntitlementLookup _keyEntitlements;
     private readonly IAuditLogWriter _audit;
+    private readonly TimeProvider _time;
 
-    public PoEnfazBillingService(ApplicationDbContext db, IAuditLogWriter audit)
+    public PoEnfazBillingService(
+        FinancialDbContext db,
+        CaseStudyDbContext caseStudy,
+        OperationsDbContext ops,
+        IAuditLogWriter audit,
+        TimeProvider? time = null)
+        : this(db, new CaseStudyLookup(caseStudy), new KeyEnvelopeEntitlementLookup(ops), audit, time)
     {
+    }
+
+    [ActivatorUtilitiesConstructor]
+    public PoEnfazBillingService(
+        FinancialDbContext db,
+        ICaseStudyLookup lookup,
+        IKeyEntitlementLookup keyEntitlements,
+        IAuditLogWriter audit,
+        TimeProvider? time = null)
+    {
+        _time = time ?? TimeProvider.System;
+
         _db = db;
+        _lookup = lookup;
+        _keyEntitlements = keyEntitlements;
         _audit = audit;
     }
 
     public async Task<IReadOnlyList<EnfazReadyPoSummaryDto>> ListReadyPoSummariesAsync(
         CancellationToken cancellationToken = default)
     {
-        var orders = await _db.WorkOrders.AsNoTracking()
-            .Include(w => w.Properties)
-            .OrderByDescending(w => w.CreatedAtUtc)
-            .ThenBy(w => w.PoNumber)
-            .Take(MaxOrderRows)
-            .ToListAsync(cancellationToken);
-
+        var orders = await _lookup.ListWorkOrdersForBillingAsync(MaxOrderRows, cancellationToken);
         var poNumbers = orders.Select(o => o.PoNumber.Trim()).Distinct().ToList();
-        var tasks = await _db.WorkflowTasks.AsNoTracking()
-            .Where(t => poNumbers.Contains(t.PoNumber))
-            .ToListAsync(cancellationToken);
+        var taskSnapshots = await _lookup.ListWorkflowTasksByPoNumbersAsync(poNumbers, cancellationToken);
+        var tasks = taskSnapshots.Select(s => s.ToWorkflowTask()).ToList();
         var tasksByPo = tasks.GroupBy(t => t.PoNumber.Trim(), StringComparer.Ordinal)
             .ToDictionary(g => g.Key, g => g.ToList(), StringComparer.Ordinal);
 
@@ -44,7 +62,7 @@ public sealed class PoEnfazBillingService : IPoEnfazBillingService
         {
             var po = order.PoNumber.Trim();
             var poTasks = tasksByPo.GetValueOrDefault(po, []);
-            if (!IsPoReadyForEnfazBilling(order, poTasks))
+            if (!IsPoReadyForEnfazBilling(order.Properties, poTasks))
                 continue;
 
             var done = 0;
@@ -77,14 +95,12 @@ public sealed class PoEnfazBillingService : IPoEnfazBillingService
         CancellationToken cancellationToken = default)
     {
         var normalized = poNumber.Trim();
-        var order = await _db.WorkOrders.AsNoTracking()
-            .Include(w => w.Properties)
-            .FirstOrDefaultAsync(w => w.PoNumber == normalized, cancellationToken);
+        var order = await _lookup.GetWorkOrderForBillingAsync(normalized, cancellationToken);
         if (order is null) return null;
 
-        var tasks = await _db.WorkflowTasks.AsNoTracking()
-            .Where(t => t.PoNumber == normalized)
-            .ToListAsync(cancellationToken);
+        var tasks = (await _lookup.ListWorkflowTasksByPoNumbersAsync([normalized], cancellationToken))
+            .Select(s => s.ToWorkflowTask())
+            .ToList();
 
         var propertyIds = order.Properties.Select(p => p.Id).ToList();
         var existing = await _db.PoEnfazRevenueLines.AsNoTracking()
@@ -101,7 +117,9 @@ public sealed class PoEnfazBillingService : IPoEnfazBillingService
             .OrderBy(p => p.RequestNumber ?? p.DeedNumber, StringComparer.Ordinal)
             .Select(p =>
             {
-                var work = taskStatuses.GetValueOrDefault(p.Id, ("in_progress", "قيد التنفيذ"));
+                var work = taskStatuses.GetValueOrDefault(
+                    p.Id,
+                    (InspectorFeeWorkStatuses.InProgress, InspectorFeeBillingRules.WorkStatusLabel(InspectorFeeWorkStatuses.InProgress)));
                 existing.TryGetValue(p.Id, out var row);
                 var label = string.IsNullOrWhiteSpace(p.RequestNumber)
                     ? p.DeedNumber.Trim()
@@ -131,7 +149,7 @@ public sealed class PoEnfazBillingService : IPoEnfazBillingService
                     KeyAttachmentIds = keyAttachments,
                     EnfazFeeSar = row?.TotalFeeSar
                         ?? ((row?.CaseStudyFeeSar ?? 0m) + (row?.SurveyFeeSar ?? 0m) + (row?.KeyFeeSar ?? 0m)),
-                    IncludedInBilling = row?.IncludedInBilling ?? work.Item1 != "cancelled",
+                    IncludedInBilling = row?.IncludedInBilling ?? work.Item1 != InspectorFeeWorkStatuses.Cancelled,
                 };
             })
             .ToList();
@@ -141,9 +159,10 @@ public sealed class PoEnfazBillingService : IPoEnfazBillingService
 
         return BuildDto(
             normalized,
-            IsPoReadyForEnfazBilling(order, tasks),
+            IsPoReadyForEnfazBilling(order.Properties, tasks),
             lines,
-            invoice);
+            invoice,
+            _time.UtcNow());
     }
 
     public async Task<PoEnfazBillingDto?> SavePoBillingAsync(
@@ -152,19 +171,17 @@ public sealed class PoEnfazBillingService : IPoEnfazBillingService
         CancellationToken cancellationToken = default)
     {
         var normalized = poNumber.Trim();
-        var order = await _db.WorkOrders.AsNoTracking()
-            .Include(w => w.Properties)
-            .FirstOrDefaultAsync(w => w.PoNumber == normalized, cancellationToken);
+        var order = await _lookup.GetWorkOrderForBillingAsync(normalized, cancellationToken);
         if (order is null) return null;
 
-        var tasks = await _db.WorkflowTasks.AsNoTracking()
-            .Where(t => t.PoNumber == normalized)
-            .ToListAsync(cancellationToken);
-        if (!IsPoReadyForEnfazBilling(order, tasks))
+        var tasks = (await _lookup.ListWorkflowTasksByPoNumbersAsync([normalized], cancellationToken))
+            .Select(s => s.ToWorkflowTask())
+            .ToList();
+        if (!IsPoReadyForEnfazBilling(order.Properties, tasks))
             return null;
 
         var validPropertyIds = order.Properties.Select(p => p.Id).ToHashSet();
-        var now = DateTime.UtcNow;
+        var now = _time.UtcNow();
 
         var existingRows = await _db.PoEnfazRevenueLines
             .Where(x => x.PoNumber == normalized && validPropertyIds.Contains(x.PropertyId))
@@ -255,12 +272,7 @@ public sealed class PoEnfazBillingService : IPoEnfazBillingService
     public async Task<IReadOnlyList<EnfazTrackingRowDto>> ListTrackingAsync(
         CancellationToken cancellationToken = default)
     {
-        var orders = await _db.WorkOrders.AsNoTracking()
-            .Include(w => w.Properties)
-            .OrderByDescending(w => w.CreatedAtUtc)
-            .ThenBy(w => w.PoNumber)
-            .Take(MaxOrderRows)
-            .ToListAsync(cancellationToken);
+        var orders = await _lookup.ListWorkOrdersForBillingAsync(MaxOrderRows, cancellationToken);
 
         if (orders.Count == 0) return [];
 
@@ -290,11 +302,10 @@ public sealed class PoEnfazBillingService : IPoEnfazBillingService
             StringComparer.Ordinal);
 
         var allPropertyIds = orders.SelectMany(o => o.Properties.Select(p => p.Id)).ToList();
-        var allTasks = await _db.WorkflowTasks.AsNoTracking()
-            .Where(t => poNumbers.Contains(t.PoNumber)
-                && t.PropertyId != null
-                && allPropertyIds.Contains(t.PropertyId.Value))
-            .ToListAsync(cancellationToken);
+        var allTasks = (await _lookup.ListWorkflowTasksByPoNumbersAsync(poNumbers, cancellationToken))
+            .Select(s => s.ToWorkflowTask())
+            .Where(t => t.PropertyId != null && allPropertyIds.Contains(t.PropertyId.Value))
+            .ToList();
         var taskStatusesByPo = BuildPropertyWorkStatusesByPo(allTasks);
         var completedAtByProperty = BuildPropertyCompletedAtById(allTasks);
 
@@ -306,17 +317,21 @@ public sealed class PoEnfazBillingService : IPoEnfazBillingService
             invoicesByPo.TryGetValue(po, out var invoice);
             var overdue = invoice is not null
                 && invoice.Status != PoEnfazInvoiceStatus.Collected
-                && DateTime.UtcNow - invoice.IssuedAtUtc > OverdueAfter;
+                && _time.UtcNow() - invoice.IssuedAtUtc > OverdueAfter;
             var followupCount = followupCountByPo.GetValueOrDefault(po, 0);
             var poFlags = flags.Where(f =>
                 string.Equals(f.PoNumber.Trim(), po, StringComparison.Ordinal)).ToList();
 
-            foreach (var property in order.Properties.OrderBy(p => p.RequestNumber ?? p.DeedNumber, StringComparer.Ordinal))
+            foreach (var property in order.Properties.OrderBy(
+                p => string.IsNullOrWhiteSpace(p.RequestNumber) ? p.DeedNumber : p.RequestNumber,
+                StringComparer.Ordinal))
             {
-                var work = taskStatuses.GetValueOrDefault(property.Id, ("in_progress", "قيد التنفيذ"));
+                var work = taskStatuses.GetValueOrDefault(
+                    property.Id,
+                    (InspectorFeeWorkStatuses.InProgress, InspectorFeeBillingRules.WorkStatusLabel(InspectorFeeWorkStatuses.InProgress)));
                 enfazByKey.TryGetValue((po, property.Id), out var enfaz);
                 var label = string.IsNullOrWhiteSpace(property.RequestNumber)
-                    ? property.DeedNumber.Trim()
+                    ? (property.DeedNumber ?? "").Trim()
                     : property.RequestNumber.Trim();
                 if (!string.IsNullOrWhiteSpace(property.District))
                     label = $"{label} — {property.District.Trim()}";
@@ -324,7 +339,7 @@ public sealed class PoEnfazBillingService : IPoEnfazBillingService
                 var filled = enfaz is not null && enfaz.IncludedInBilling && enfaz.TotalFeeSar > 0;
                 completedAtByProperty.TryGetValue(property.Id, out var taskCompletedAt);
                 var completedAt = property.BourseCompletedAtUtc ?? taskCompletedAt;
-                if (work.Item1 != "done")
+                if (work.Item1 != InspectorFeeWorkStatuses.Done)
                     completedAt = null;
 
                 var deed = (property.DeedNumber ?? string.Empty).Trim();
@@ -381,11 +396,11 @@ public sealed class PoEnfazBillingService : IPoEnfazBillingService
         if (billing is null || !billing.PoReadyForBilling || billing.SubtotalSar <= 0)
             return null;
 
-        var invoiceNumber = $"INV-{normalized}-{DateTime.UtcNow:yyyyMMddHHmmss}";
-        var now = DateTime.UtcNow;
+        var invoiceNumber = $"INV-{normalized}-{_time.UtcNow():yyyyMMddHHmmss}";
+        var now = _time.UtcNow();
         var attachmentIdsJson = SerializeAttachmentIds(
             billing.Lines
-                .Where(l => l.IncludedInBilling && l.WorkStatus == "done")
+                .Where(l => l.IncludedInBilling && l.WorkStatus == InspectorFeeWorkStatuses.Done)
                 .SelectMany(l => l.KeyAttachmentIds)
                 .Concat(billing.AttachmentIds)
                 .Distinct(StringComparer.OrdinalIgnoreCase));
@@ -449,7 +464,7 @@ public sealed class PoEnfazBillingService : IPoEnfazBillingService
 
         var previousCollected = invoice.CollectedAmountSar;
         invoice.CollectedAmountSar = nextCollected;
-        invoice.CollectedAtUtc = DateTime.UtcNow;
+        invoice.CollectedAtUtc = _time.UtcNow();
         invoice.Status = nextCollected + 0.009m >= invoice.TotalSar
             ? PoEnfazInvoiceStatus.Collected
             : PoEnfazInvoiceStatus.PartiallyCollected;
@@ -474,7 +489,7 @@ public sealed class PoEnfazBillingService : IPoEnfazBillingService
     public async Task<EnfazAgingReportDto> GetAgingReportAsync(
         CancellationToken cancellationToken = default)
     {
-        var asOf = DateTime.UtcNow;
+        var asOf = _time.UtcNow();
         var invoices = await _db.PoEnfazInvoices.AsNoTracking()
             .Where(i => i.Status != PoEnfazInvoiceStatus.Collected
                 && i.CollectedAmountSar + 0.009m < i.TotalSar)
@@ -562,9 +577,10 @@ public sealed class PoEnfazBillingService : IPoEnfazBillingService
         IReadOnlyList<Guid> propertyIds,
         CancellationToken cancellationToken)
     {
-        var tasks = await _db.WorkflowTasks.AsNoTracking()
-            .Where(t => t.PoNumber == poNumber && t.PropertyId != null && propertyIds.Contains(t.PropertyId.Value))
-            .ToListAsync(cancellationToken);
+        var tasks = (await _lookup.ListWorkflowTasksByPoNumbersAsync([poNumber], cancellationToken))
+            .Select(s => s.ToWorkflowTask())
+            .Where(t => t.PropertyId != null && propertyIds.Contains(t.PropertyId.Value))
+            .ToList();
 
         return ComputePropertyWorkStatuses(propertyIds, tasks);
     }
@@ -615,30 +631,36 @@ public sealed class PoEnfazBillingService : IPoEnfazBillingService
             var propertyTasks = tasks.Where(t => t.PropertyId == propertyId).ToList();
             if (propertyTasks.Count == 0)
             {
-                result[propertyId] = ("in_progress", InspectorFeeBillingRules.WorkStatusLabel("in_progress"));
+                result[propertyId] = (
+                    InspectorFeeWorkStatuses.InProgress,
+                    InspectorFeeBillingRules.WorkStatusLabel(InspectorFeeWorkStatuses.InProgress));
                 continue;
             }
 
             if (propertyTasks.All(t => t.Status == WorkflowTaskStatus.Cancelled))
             {
-                result[propertyId] = ("cancelled", InspectorFeeBillingRules.WorkStatusLabel("cancelled"));
+                result[propertyId] = (
+                    InspectorFeeWorkStatuses.Cancelled,
+                    InspectorFeeBillingRules.WorkStatusLabel(InspectorFeeWorkStatuses.Cancelled));
                 continue;
             }
 
             var active = propertyTasks.Where(t => t.Status != WorkflowTaskStatus.Cancelled).ToList();
             var allDone = active.Count > 0 && active.All(t => t.Status == WorkflowTaskStatus.Completed);
-            var status = allDone ? "done" : "in_progress";
+            var status = allDone ? InspectorFeeWorkStatuses.Done : InspectorFeeWorkStatuses.InProgress;
             result[propertyId] = (status, InspectorFeeBillingRules.WorkStatusLabel(status));
         }
 
         return result;
     }
 
-    private static bool IsPoReadyForEnfazBilling(WorkOrder order, IReadOnlyList<WorkflowTask> poTasks)
+    private static bool IsPoReadyForEnfazBilling(
+        IReadOnlyList<CaseStudyPropertySnapshotDto> properties,
+        IReadOnlyList<WorkflowTask> poTasks)
     {
-        if (order.Properties.Count == 0) return false;
+        if (properties.Count == 0) return false;
 
-        foreach (var property in order.Properties)
+        foreach (var property in properties)
         {
             var propertyTasks = poTasks
                 .Where(t => t.PropertyId == property.Id)
@@ -666,43 +688,17 @@ public sealed class PoEnfazBillingService : IPoEnfazBillingService
         IReadOnlyList<Guid> propertyIds,
         CancellationToken cancellationToken)
     {
-        _ = poNumber;
         if (propertyIds.Count == 0)
             return new Dictionary<Guid, KeyEntitlementInfo>();
 
- // Entitled court envelopes linked to PO properties via assignments.
-        var rows = await (
-            from a in _db.KeyEnvelopeAssignments.AsNoTracking()
-            join e in _db.KeyEnvelopes.AsNoTracking() on a.EnvelopeId equals e.Id
-            where e.RevenueEntitlementAtUtc != null
-                  && a.PropertyId != null
-                  && propertyIds.Contains(a.PropertyId.Value)
-            orderby e.RevenueEntitlementAtUtc
-            select new
-            {
-                EnvelopeId = e.Id,
-                PropertyId = a.PropertyId!.Value,
-                e.PhotoAttachmentId,
-                e.ReceiptAttachmentId,
-                e.ThirdPartyLetterAttachmentId,
-            })
-            .ToListAsync(cancellationToken);
-
+        var rows = await _keyEntitlements.ListByPropertyIdsAsync(propertyIds, cancellationToken);
         var map = new Dictionary<Guid, KeyEntitlementInfo>();
         foreach (var row in rows)
         {
             if (map.ContainsKey(row.PropertyId))
                 continue;
 
-            var ids = new List<string>(3);
-            if (row.PhotoAttachmentId is Guid photo)
-                ids.Add(photo.ToString());
-            if (row.ReceiptAttachmentId is Guid receipt)
-                ids.Add(receipt.ToString());
-            if (row.ThirdPartyLetterAttachmentId is Guid letter)
-                ids.Add(letter.ToString());
-
-            map[row.PropertyId] = new KeyEntitlementInfo(row.EnvelopeId, ids);
+            map[row.PropertyId] = new KeyEntitlementInfo(row.EnvelopeId, row.AttachmentIds);
         }
 
         return map;
@@ -712,10 +708,11 @@ public sealed class PoEnfazBillingService : IPoEnfazBillingService
         string poNumber,
         bool poReady,
         IReadOnlyList<PoEnfazRevenueLineDto> lines,
-        PoEnfazInvoice? invoice = null)
+        PoEnfazInvoice? invoice,
+        DateTime utcNow)
     {
         var billable = lines
-            .Where(l => l.WorkStatus == "done" && l.IncludedInBilling)
+            .Where(l => l.WorkStatus == InspectorFeeWorkStatuses.Done && l.IncludedInBilling)
             .ToList();
  // ضريبة 15٪ على (تقييم + رفع) فقط — أتعاب المفاتيح شاملة الضريبة
         var taxable = billable.Sum(l => l.CaseStudyFeeSar + l.SurveyFeeSar);
@@ -730,7 +727,7 @@ public sealed class PoEnfazBillingService : IPoEnfazBillingService
         var overdue = invoice is not null
             && status != PoEnfazInvoiceStatus.Collected
             && issuedAt.HasValue
-            && DateTime.UtcNow - issuedAt.Value > OverdueAfter;
+            && utcNow - issuedAt.Value > OverdueAfter;
 
         var invoiceAttachments = ParseAttachmentIds(invoice?.AttachmentIdsJson);
         var lineAttachments = lines
@@ -822,7 +819,7 @@ public sealed class PoEnfazBillingService : IPoEnfazBillingService
             return (null, "ملاحظات المتابعة إلزامية.");
 
         var channel = NormalizeChannel(request.Channel);
-        var now = DateTime.UtcNow;
+        var now = _time.UtcNow();
         var followedAt = request.FollowedAtUtc?.ToUniversalTime() ?? now;
         var entity = new PoEnfazFollowup
         {
@@ -868,7 +865,7 @@ public sealed class PoEnfazBillingService : IPoEnfazBillingService
         var match = existing.FirstOrDefault(f => f.PropertyId == propertyId)
             ?? existing.FirstOrDefault(f => propertyId is null && f.PropertyId is null);
 
-        var now = DateTime.UtcNow;
+        var now = _time.UtcNow();
         var note = string.IsNullOrWhiteSpace(request.Note)
             ? null
             : request.Note.Trim();
@@ -962,3 +959,4 @@ public sealed class PoEnfazBillingService : IPoEnfazBillingService
         _ => "اتصال",
     };
 }
+

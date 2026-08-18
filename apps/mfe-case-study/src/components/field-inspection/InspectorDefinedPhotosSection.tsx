@@ -14,7 +14,7 @@ import {
   ModalTitle,
   cn,
   useToast,
-} from "@platform/design-system";
+} from "@platform/ui-kit";
 import {
   INSPECTOR_FREE_PHOTO_CATEGORIES,
   inspectorPhotoCoverageLabel,

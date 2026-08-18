@@ -20,7 +20,7 @@ import {
   PO_HEADER_EDIT_FIELD_IDS,
   scheduleScrollToFirstPoHeaderError,
 } from "../../lib/domain/po-intake/po-field-error-targets";
-import { Label, Note } from "@platform/design-system";
+import { Label, Note } from "@platform/ui-kit";
 import { listClients, type ClientDto } from "@platform/api-client";
 import { workOrdersApiConfig } from "../../lib/work-orders-api-config";
 import { AssignmentTypeFields } from "./AssignmentTypeFields";

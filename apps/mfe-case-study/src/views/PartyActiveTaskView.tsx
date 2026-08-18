@@ -2,7 +2,7 @@
 
 import { useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { PanelSkeleton } from "@platform/design-system";
+import { PanelSkeleton } from "@platform/ui-kit";
 import { ActiveTransactionQueueView, type ActiveTransactionQueueConfig } from "./ActiveTransactionQueueView";
 import { PartyActiveTaskWorkPanel } from "./PartyActiveTaskWorkPanel";
 import { filterTasksForPartyKind } from "@platform/app-shared/prototype/party-task-pages";

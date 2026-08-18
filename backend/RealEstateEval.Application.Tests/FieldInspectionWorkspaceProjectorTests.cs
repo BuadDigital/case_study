@@ -74,7 +74,8 @@ public class FieldInspectionWorkspaceProjectorTests
             }
             """);
 
-        var workspace = FieldInspectionWorkspaceProjector.Project(submission, doc.RootElement);
+        var workspace = FieldInspectionWorkspaceProjector.Project(
+            submission, doc.RootElement, submission.UpdatedAtUtc);
 
         Assert.Equal(taskId, workspace.WorkflowTaskId);
         Assert.Equal(submissionId, workspace.PartyTaskSubmissionId);

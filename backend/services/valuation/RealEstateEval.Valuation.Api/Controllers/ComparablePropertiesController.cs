@@ -13,7 +13,6 @@ namespace RealEstateEval.Valuation.Api.Controllers;
 /// </summary>
 [ApiController]
 [Route("api/comparable-properties")]
-[Route("api/comparable-properties/v1")]
 [Authorize]
 public class ComparablePropertiesController : ControllerBase
 {
@@ -52,7 +51,7 @@ public class ComparablePropertiesController : ControllerBase
     {
         var (result, errors) = await _bank.CreateAsync(request, ActorClaims.Id(User), ct);
         if (errors is not null)
-            return BadRequest(new FieldErrorsResponseDto { Errors = errors });
+            return this.FieldErrorsProblem(errors);
         return CreatedAtAction(nameof(Get), new { id = result!.Id }, result);
     }
 
@@ -65,7 +64,7 @@ public class ComparablePropertiesController : ControllerBase
     {
         var (result, errors) = await _bank.UpdateAsync(id, request, ct);
         if (errors is not null)
-            return BadRequest(new FieldErrorsResponseDto { Errors = errors });
+            return this.FieldErrorsProblem(errors);
         return Ok(result);
     }
 
@@ -79,7 +78,7 @@ public class ComparablePropertiesController : ControllerBase
     {
         var (result, errors) = await _bank.SetQualityTagsAsync(id, request, ActorClaims.Id(User), ct);
         if (errors is not null)
-            return BadRequest(new FieldErrorsResponseDto { Errors = errors });
+            return this.FieldErrorsProblem(errors);
         return Ok(result);
     }
 
@@ -88,7 +87,7 @@ public class ComparablePropertiesController : ControllerBase
     public async Task<IActionResult> Deactivate(Guid id, CancellationToken ct)
     {
         var (ok, error) = await _bank.DeactivateAsync(id, ct);
-        if (!ok) return BadRequest(new { message = error });
+        if (!ok) return this.BadRequestProblem(error ?? "تعذر تنفيذ العملية.");
         return NoContent();
     }
 }

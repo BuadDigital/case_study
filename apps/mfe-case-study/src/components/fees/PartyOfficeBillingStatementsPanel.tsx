@@ -26,7 +26,7 @@ import {
   queueTableWrapClassName,
   useToast,
   type StatusPillStyle,
-} from "@platform/design-system";
+} from "@platform/ui-kit";
 import type { PartyBillingStatementDto } from "@platform/api-client";
 import { EngFeesSectionTitle } from "./EngFeesHtmlTabs";
 import { VendorInvoicePdfField } from "./VendorInvoicePdfField";

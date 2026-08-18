@@ -10,7 +10,7 @@ import {
   PageShell,
   PageShellHeader,
   useToast,
-} from "@platform/design-system";
+} from "@platform/ui-kit";
 import {
   getDifferenceFactorCatalog,
   saveDifferenceFactorCatalog,

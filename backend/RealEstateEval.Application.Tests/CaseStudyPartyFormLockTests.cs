@@ -44,7 +44,8 @@ public class CaseStudyPartyFormLockTests
             });
 
         Assert.Null(errors);
-        var partyForm = await db.CaseStudyForms.SingleAsync(f => f.IsPartyForm);
+        var partyForm = await contexts.CaseStudy.CaseStudyForms.AsNoTracking()
+            .SingleAsync(f => f.IsPartyForm);
         Assert.Equal("submitted", partyForm.Status);
     }
 
@@ -157,7 +158,7 @@ public class CaseStudyPartyFormLockTests
     {
         var db = contexts.Legacy;
         var workflow = TestInspectorFeeServiceFactory.CreateWorkflow(db);
-        return new CaseStudyFormService(db, workflow);
+        return new CaseStudyFormService(contexts.CaseStudy, workflow);
     }
 
     private static TestDatabases.ContextSet CreateContexts() =>

@@ -6,7 +6,7 @@ import {
   Note,
   Textarea,
   cn,
-} from "@platform/design-system";
+} from "@platform/ui-kit";
 import type { CaseStudyFormDraft } from "../../lib/prototype/case-study-form-storage";
 
 const MATCH_OPTIONS = [

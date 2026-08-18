@@ -24,6 +24,7 @@ import {
   INFAZ_UPLOAD_UNRESOLVED_POINTS,
 } from "./infath-upload-types";
 import { INFATH_FIELD_LABELS as L } from "./infath-field-labels";
+import { PropertyKeysStatuses } from "@platform/api-client";
 
 /** Court visit + key envelope inputs for إنفاذ (from المهام / keys gate). */
 export type InfathOpsContext = {
@@ -305,12 +306,12 @@ export function buildInfathUploadModel(input: {
   const workerName = partyField(appraisal, "المقيم العقاري") || partyField(appraisal, "اسم المقيّم");
   const appraisalNotes = partyRemark(appraisal, "ملاحظات المقيّم");
   const keysReceived =
-    ops?.keysStatus === "received" ||
+    ops?.keysStatus === PropertyKeysStatuses.Received ||
     ops?.courtVisitResultKind === "received" ||
     Boolean(ops?.keyAvailable);
   const keysReceivedSel = keysReceived
     ? "نعم"
-    : ops?.keysStatus === "not_required"
+    : ops?.keysStatus === PropertyKeysStatuses.NotRequired
       ? "لا"
       : ops?.keysStatus
         ? "لا"

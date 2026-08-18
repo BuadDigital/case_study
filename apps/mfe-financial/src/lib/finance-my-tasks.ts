@@ -104,7 +104,7 @@ const REVENUE_META: Record<
   },
 };
 
-export function buildRevenueMyTasks(
+function buildRevenueMyTasks(
   tracking: EnfazTrackingRowDto[],
 ): FinanceMyTask[] {
   const actionable = tracking.filter((r) => {
@@ -181,7 +181,7 @@ export function buildRevenueMyTasks(
   return tasks;
 }
 
-export function buildCostMyTasks(input: {
+function buildCostMyTasks(input: {
   readyLines: PartyBillingReadyLineDto[];
   statements: PartyBillingStatementDto[];
 }): FinanceMyTask[] {

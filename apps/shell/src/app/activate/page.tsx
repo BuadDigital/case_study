@@ -3,7 +3,7 @@
 import { FormEvent, useState } from "react";
 import { useRouter } from "next/navigation";
 import { activateAccount, getApiBase } from "@platform/api-client";
-import { Button, Card, Input, Label, useToast } from "@platform/design-system";
+import { Button, Card, Input, Label, useToast } from "@platform/ui-kit";
 import { EjadaLogo } from "@/components/views/EjadaLogo";
 
 export default function ActivateAccountPage() {

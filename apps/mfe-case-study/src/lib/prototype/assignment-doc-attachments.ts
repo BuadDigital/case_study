@@ -359,16 +359,6 @@ export async function cacheDelegationDoc(
   });
 }
 
-export async function cacheKeysProofDoc(
-  poNumber: string,
-  propertyId: string,
-  file: File,
-): Promise<DocCacheResult> {
-  return writeCachedDoc("keys-proof", poNumber, propertyId, file, {
-    replaceAll: true,
-  });
-}
-
 export async function cacheRegistryDoc(
   poNumber: string,
   propertyId: string,
@@ -399,16 +389,6 @@ export async function cacheBourseDeedImageDoc(
   });
 }
 
-export async function cacheBoundariesDoc(
-  poNumber: string,
-  propertyId: string,
-  file: File,
-): Promise<DocCacheResult> {
-  return writeCachedDoc("boundaries", poNumber, propertyId, file, {
-    replaceAll: true,
-  });
-}
-
 export async function cacheOtherPropertyDoc(
   poNumber: string,
   propertyId: string,
@@ -426,35 +406,6 @@ function readCachedDocs(
 ): CachedAssignmentDoc[] {
   if (!poNumber.trim() || !propertyId) return [];
   return docCache.get(cacheKey(kind, poNumber, propertyId)) ?? [];
-}
-
-function readCachedDoc(
-  kind: PropertyDocKind,
-  poNumber: string,
-  propertyId: string,
-): CachedAssignmentDoc | null {
-  return readCachedDocs(kind, poNumber, propertyId)[0] ?? null;
-}
-
-export function getCachedAssignmentDoc(
-  poNumber: string,
-  propertyId: string,
-): CachedAssignmentDoc | null {
-  return readCachedDoc("decree", poNumber, propertyId);
-}
-
-export function getCachedDelegationDoc(
-  poNumber: string,
-  propertyId: string,
-): CachedAssignmentDoc | null {
-  return readCachedDoc("delegation", poNumber, propertyId);
-}
-
-export function getCachedKeysProofDoc(
-  poNumber: string,
-  propertyId: string,
-): CachedAssignmentDoc | null {
-  return readCachedDoc("keys-proof", poNumber, propertyId);
 }
 
 export function getCachedPropertyDocMatching(

@@ -8,7 +8,8 @@ public static class FieldInspectionWorkspaceProjector
 {
     public static FieldInspectionWorkspace Project(
         PartyTaskSubmission submission,
-        JsonElement root)
+        JsonElement root,
+        DateTime utcNow)
     {
         var (requiredTotal, requiredDone, pendingApproval) = ComputePhotoCoverage(root);
         var observationCount = CountObservations(root);
@@ -21,7 +22,7 @@ public static class FieldInspectionWorkspaceProjector
         if (DateOnly.TryParse(ReadString(root, "inspectionDate"), out var parsedDate))
             inspectionDate = parsedDate;
 
-        var now = DateTime.UtcNow;
+        var now = utcNow;
         return new FieldInspectionWorkspace
         {
             WorkflowTaskId = submission.WorkflowTaskId,

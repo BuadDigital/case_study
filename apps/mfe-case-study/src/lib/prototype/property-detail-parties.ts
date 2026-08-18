@@ -1,7 +1,6 @@
 import type { StaffUser } from "@platform/app-shared/prototype/constants";
 import {
   buildCaseStudyPartyAssignees,
-  caseStudyTrackBadgeLabel,
   type CaseStudyTrackState,
 } from "./case-study-tracks";
 import type { WorkflowTask } from "./tasks-storage";
@@ -130,23 +129,4 @@ export function buildPropertyDetailTimelinePartyRows(input: {
       ...timelineBadgeForParty(enabled, state, def.key),
     };
   });
-}
-
-export function partyCardStatusLabel(card: PropertyDetailPartyCard): string {
-  if (card.unassigned) {
-    if (card.role === "المعاين" && card.enabled) return "انتظار التعيين";
-    return "لم يُعيَّن";
-  }
-  return caseStudyTrackBadgeLabel(card.state);
-}
-
-export function partyCardDotClass(card: PropertyDetailPartyCard): string {
-  if (card.unassigned) {
-    if (card.role === "المعاين" && card.enabled) return "pd-status-dot--amber";
-    return "pd-status-dot--gray";
-  }
-  if (card.state === "done") return "pd-status-dot--teal";
-  if (card.state === "progress") return "pd-status-dot--teal";
-  if (card.role === "المعاين") return "pd-status-dot--amber";
-  return "pd-status-dot--gray";
 }

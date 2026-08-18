@@ -152,7 +152,7 @@ property_study/
 │ ├── app-shared/ # PrototypeContext, registration, party-submission-api cache, work-orders-read
 │ ├── api-client/ # auth, users, work-orders, courts, workflow-tasks, case-study-forms, party-task-submissions, …
 │ ├── auth-client/ # JWT session + AppAuthGate
-│ ├── design-system/ # prototype.css, registration.css, StatusBadge
+│ ├── ui-kit/ # shared React chrome, tokens, StatusBadge
 │ └── types/ # PageId, RoleId, user/org DTO types, CASE_STUDY_READY_NAV
 ├── infra/ # docker-compose (Postgres + observability stack)
 ├── docs/ # This file + DATABASE_OVERVIEW + PM review + credentials
@@ -388,9 +388,9 @@ npm run dev # Next.js http://localhost:3000 (LAN)
 npm run dev:stop # free ports 3000 + 5160
 ```
 
-**Postgres (Docker):** `localhost:5432`, database `realestate_eval_dev`, user `postgres`, password `Admin` (see `infra/docker-compose.yml` and `appsettings.Development.json`).
+**Postgres (Docker):** host `localhost:5433` (container `5432`), dedicated owner databases (`realestate_eval_attachments`, `_identity`, `_platform`, `_valuation`, `_failures`, `_operations`, `_financial`, `_case_study`, `_messaging`), user `postgres`, password `Admin`.
 
-**API connection override:** env `REAL_ESTATE_EVAL_PG_CONNECTION_STRING` or `ConnectionStrings:DefaultConnection`.
+**API connection override:** env `REAL_ESTATE_EVAL_PG_CONNECTION_STRING_{SERVICE}` or `ConnectionStrings:{Service}`. There is no leftover shared database.
 
 **Frontend API base:** configured for local API port **5160** (see `packages/api-client` / shell env).
 
@@ -1015,7 +1015,7 @@ Each party queue row opens a dedicated full-page task (mirrors engineering patte
 | `@platform/app-shared` | `PrototypeContext`, registration, nav/constants, `prototypeKeys`, `active-transactions` |
 | `@platform/api-client` | `auth`, `users`, `permissions`, `work-orders`, `courts`, `workflow-tasks`, `case-study-forms`, `party-task-submissions`, `failures`, `reporting`, `financial`, `prototype-modules`, `custom-assigned-screens`, … |
 | `@platform/auth-client` | Session + `AppAuthGate` |
-| `@platform/design-system` | CSS + `StatusBadge` |
+| `@platform/ui-kit` | CSS + `StatusBadge` |
 | `@platform/types` | `PageId`, `RoleId`, `CASE_STUDY_READY_NAV`, users, organization types |
 
 

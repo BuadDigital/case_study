@@ -1,7 +1,7 @@
 "use client";
 
 import type { ReactNode } from "react";
-import { Button, cn } from "@platform/design-system";
+import { Button, cn } from "@platform/ui-kit";
 import {
   CASE_STUDY_SECTION_QUESTIONS,
   caseStudyAnswerKey,

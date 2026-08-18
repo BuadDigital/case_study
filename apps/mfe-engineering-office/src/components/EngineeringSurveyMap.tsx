@@ -7,7 +7,7 @@ import {
   loadGoogleMapsApi,
   parseCoord,
 } from "../lib/google-maps-loader";
-import { Skeleton, Button } from "@platform/design-system";
+import { Skeleton, Button } from "@platform/ui-kit";
 import { JEDDAH_DEFAULT_CENTER } from "../lib/jeddah-default-coords";
 
 const DEFAULT_CENTER = JEDDAH_DEFAULT_CENTER;

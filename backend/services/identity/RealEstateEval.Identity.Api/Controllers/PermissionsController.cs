@@ -1,9 +1,8 @@
-using System.IdentityModel.Tokens.Jwt;
-using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using RealEstateEval.Application.Abstractions;
 using RealEstateEval.Application.Contracts;
+using RealEstateEval.Shared.Web;
 
 namespace RealEstateEval.Identity.Api.Controllers;
 
@@ -30,7 +29,5 @@ public class PermissionsController : ControllerBase
         return Ok(dto);
     }
 
-    private string? CurrentUserId() =>
-        User.FindFirstValue(ClaimTypes.NameIdentifier)
-        ?? User.FindFirstValue(JwtRegisteredClaimNames.Sub);
+    private string? CurrentUserId() => ActorClaims.TryId(User);
 }

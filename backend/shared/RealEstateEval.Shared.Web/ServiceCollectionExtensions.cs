@@ -229,30 +229,25 @@ public static class ServiceCollectionExtensions
     public static string RequireConnectionString(
         IConfiguration configuration,
         string? serviceName = null,
-        string envVarName = "REAL_ESTATE_EVAL_PG_CONNECTION_STRING")
+        string envVarName = "REAL_ESTATE_EVAL_PG_CONNECTION_STRING",
+        IHostEnvironment? environment = null)
     {
-        string? connectionString = null;
-
-        if (!string.IsNullOrWhiteSpace(serviceName))
+        if (string.IsNullOrWhiteSpace(serviceName))
         {
-            var serviceEnv = $"REAL_ESTATE_EVAL_PG_CONNECTION_STRING_{serviceName.ToUpperInvariant()}";
-            connectionString =
-                Environment.GetEnvironmentVariable(serviceEnv)
-                ?? configuration.GetConnectionString(serviceName);
+            throw new InvalidOperationException(
+                "A service-scoped database name is required. The leftover shared connection is not used.");
         }
 
-        connectionString ??=
-            Environment.GetEnvironmentVariable(envVarName)
-            ?? configuration.GetConnectionString("DefaultConnection");
+        var serviceEnv = $"REAL_ESTATE_EVAL_PG_CONNECTION_STRING_{serviceName.ToUpperInvariant()}";
+        var fromEnv = Environment.GetEnvironmentVariable(serviceEnv);
+        if (!string.IsNullOrWhiteSpace(fromEnv))
+            return fromEnv;
 
-        if (string.IsNullOrWhiteSpace(connectionString))
-        {
-            var hint = string.IsNullOrWhiteSpace(serviceName)
-                ? $"Set {envVarName}, or ConnectionStrings:DefaultConnection."
-                : $"Set REAL_ESTATE_EVAL_PG_CONNECTION_STRING_{serviceName!.ToUpperInvariant()}, ConnectionStrings:{serviceName}, {envVarName}, or ConnectionStrings:DefaultConnection.";
-            throw new InvalidOperationException($"Database connection missing. {hint}");
-        }
+        var fromConfig = configuration.GetConnectionString(serviceName);
+        if (!string.IsNullOrWhiteSpace(fromConfig))
+            return fromConfig;
 
-        return connectionString;
+        throw new InvalidOperationException(
+            $"Database connection missing. Set {serviceEnv} or ConnectionStrings:{serviceName}.");
     }
 }

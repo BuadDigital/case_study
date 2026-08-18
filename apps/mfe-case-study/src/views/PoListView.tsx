@@ -45,7 +45,7 @@ import {
   cn,
   queueTableRowClassName,
   useToast,
-} from "@platform/design-system";
+} from "@platform/ui-kit";
 import { PoNumber } from "@case-study/mfe/components/ui/PoNumber";
 import { RowMoreMenu } from "@case-study/mfe/components/ui/RowMoreMenu";
 import { buildPoListRowMoreItems } from "../lib/prototype/po-list-row-menu";
@@ -65,13 +65,12 @@ import {
   deletePoRecord,
   stopPoRecord,
 } from "../lib/prototype/po-intake-storage";
-import { poHeaderEditPath, poPropertiesPath, poPropertyPath } from "../lib/po-routes";
+import { poPropertiesPath, poPropertyPath } from "../lib/po-routes";
 import {
   buildPoDeedIndex,
   buildPoListDisplay,
   classifyPoListSearch,
   poListSearchModeLabel,
-  type PoDeedIndexEntry,
 } from "../lib/prototype/po-list-search";
 import { PoIntakeModal } from "@case-study/mfe/components/po-intake/PoIntakeModal";
 import { prototypeKeys } from "@platform/app-shared/query/prototype-keys";
@@ -354,41 +353,6 @@ function KpiCheckIcon() {
 }
 
 
-function ListIcon() {
-  return (
-    <svg
-      width="15"
-      height="15"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      aria-hidden
-    >
-      <path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01" />
-    </svg>
-  );
-}
-
-function GridIcon() {
-  return (
-    <svg
-      width="14"
-      height="14"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      aria-hidden
-    >
-      <rect x="3" y="3" width="7" height="7" />
-      <rect x="14" y="3" width="7" height="7" />
-      <rect x="3" y="14" width="7" height="7" />
-      <rect x="14" y="14" width="7" height="7" />
-    </svg>
-  );
-}
-
 function PlusIcon() {
   return (
     <svg
@@ -418,22 +382,6 @@ function SortIcon() {
       aria-hidden
     >
       <path d="M8 9l4-4 4 4M8 15l4 4 4-4" />
-    </svg>
-  );
-}
-
-function EditIcon() {
-  return (
-    <svg
-      width="15"
-      height="15"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      aria-hidden
-    >
-      <path d="M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4 12.5-12.5z" />
     </svg>
   );
 }

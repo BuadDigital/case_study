@@ -4,7 +4,7 @@ import { useCallback, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
 import { prototypeKeys } from "@platform/app-shared/query/prototype-keys";
-import { useOptionalToast } from "@platform/design-system";
+import { useOptionalToast } from "@platform/ui-kit";
 
 /** Invalidate prototype data + soft-refresh the Next.js RSC tree (PWA-friendly). */
 export function useAppDataRefresh() {

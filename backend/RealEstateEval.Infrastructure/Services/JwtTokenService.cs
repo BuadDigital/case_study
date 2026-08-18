@@ -1,5 +1,6 @@
 using Microsoft.Extensions.Configuration;
 using Microsoft.IdentityModel.Tokens;
+using RealEstateEval.Application;
 using RealEstateEval.Application.Abstractions;
 using RealEstateEval.Application.Authorization;
 using System.IdentityModel.Tokens.Jwt;
@@ -15,9 +16,13 @@ public class JwtTokenService : IJwtTokenService
     private const int MaxAccessTokenMinutes = 480;
 
     private readonly IConfiguration _configuration;
+    private readonly TimeProvider _time;
 
-    public JwtTokenService(IConfiguration configuration)
+    public JwtTokenService(IConfiguration configuration,
+        TimeProvider? time = null)
     {
+        _time = time ?? TimeProvider.System;
+
         _configuration = configuration;
     }
 
@@ -38,7 +43,7 @@ public class JwtTokenService : IJwtTokenService
             _configuration.GetValue("Jwt:AccessTokenMinutes", DefaultAccessTokenMinutes),
             1,
             MaxAccessTokenMinutes);
-        var expiresAtUtc = DateTime.UtcNow.AddMinutes(lifetimeMinutes);
+        var expiresAtUtc = _time.UtcNow().AddMinutes(lifetimeMinutes);
         var claims = new List<Claim>
         {
             new(JwtRegisteredClaimNames.Sub, subject.Id),

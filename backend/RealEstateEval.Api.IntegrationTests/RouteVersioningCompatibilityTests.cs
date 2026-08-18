@@ -74,9 +74,52 @@ public sealed class RouteVersioningCompatibilityTests
     [Theory]
     [InlineData("/api/notifications")]
     [InlineData("/api/notifications/v1")]
-    public async Task Notifications_canonical_and_v1_alias_routes_resolve(string path)
+    [InlineData("/api/courts")]
+    [InlineData("/api/courts/v1")]
+    public async Task Notifications_and_courts_canonical_and_v1_alias_routes_resolve(string path)
     {
         using var factory = new PlatformRouteFactory();
+        using var client = factory.CreateClient();
+
+        var response = await client.GetAsync(path);
+
+        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+    }
+
+    [Theory]
+    [InlineData("/api/failure-types-catalog")]
+    [InlineData("/api/failure-types-catalog/v1")]
+    public async Task Failure_types_catalog_canonical_and_v1_alias_routes_resolve(string path)
+    {
+        using var factory = new FailuresRouteFactory();
+        using var client = factory.CreateClient();
+
+        var response = await client.GetAsync(path);
+
+        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+    }
+
+    [Theory]
+    [InlineData("/api/survey-offices")]
+    [InlineData("/api/survey-offices/v1")]
+    [InlineData("/api/operations-tasks")]
+    [InlineData("/api/operations-tasks/v1")]
+    public async Task Survey_offices_and_operations_tasks_canonical_and_v1_alias_routes_resolve(string path)
+    {
+        using var factory = new OperationsRouteFactory();
+        using var client = factory.CreateClient();
+
+        var response = await client.GetAsync(path);
+
+        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+    }
+
+    [Theory]
+    [InlineData("/api/attachments?scope=test&scopeKey=one")]
+    [InlineData("/api/attachments/v1?scope=test&scopeKey=one")]
+    public async Task Attachments_canonical_and_v1_alias_routes_resolve(string path)
+    {
+        using var factory = new AttachmentsApiWebApplicationFactory();
         using var client = factory.CreateClient();
 
         var response = await client.GetAsync(path);

@@ -1,5 +1,4 @@
 import {
-  addKeyEnvelopeAssignment,
   confirmKeyEnvelopeAssignment,
   confirmKeyEnvelopeHandoff,
   createKeyEnvelope,
@@ -380,65 +379,6 @@ export async function registerKeyEnvelope(
     return {
       ok: false,
       error: err instanceof Error ? err.message : "تعذّر تسجيل الظرف",
-    };
-  }
-}
-
-export async function addEnvelopeAssignment(
-  envelopeId: string,
-  deedNumber: string,
-  propertyId?: string,
-): Promise<MutationResult<KeyEnvelopeRow>> {
-  const config = prototypeModulesApiConfig();
-  const body = { deedNumber, propertyId: propertyId ?? null };
-  const userId = currentOfflineUserId();
-  if ((!config || isBrowserOffline()) && userId) {
-    await enqueueKeyEnvelopeWrite("key-envelope-assignment-add", envelopeId, body);
-    return {
-      ok: true,
-      data: {
-        ...pendingEnvelopeStub(
-          {
-            requestNumber: "",
-            court: "",
-            circuit: "",
-            keysCountLabeled: 0,
-            keysCountActual: 0,
-            receiveScenario: "court",
-          },
-          envelopeId,
-        ),
-        id: envelopeId,
-        assignments: [
-          {
-            id: `local-pending:${crypto.randomUUID()}`,
-            deedNumber,
-            propertyId: propertyId ?? null,
-            status: "pending",
-          },
-        ],
-      },
-    };
-  }
-  if (!config) return { ok: false, error: apiErrorMessage("auth") };
-  try {
-    const result = await addKeyEnvelopeAssignment(config, envelopeId, body);
-    if (!result.ok) {
-      if (result.kind === "network" && userId) {
-        await enqueueKeyEnvelopeWrite("key-envelope-assignment-add", envelopeId, body);
-        return { ok: true, data: { id: envelopeId } as KeyEnvelopeRow };
-      }
-      return fail(result, "تعذّر إضافة الإسناد");
-    }
-    return { ok: true, data: mapEnvelope(result.data) };
-  } catch (err) {
-    if (userId) {
-      await enqueueKeyEnvelopeWrite("key-envelope-assignment-add", envelopeId, body);
-      return { ok: true, data: { id: envelopeId } as KeyEnvelopeRow };
-    }
-    return {
-      ok: false,
-      error: err instanceof Error ? err.message : "تعذّر إضافة الإسناد",
     };
   }
 }

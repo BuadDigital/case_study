@@ -11,7 +11,7 @@ import {
   Tr,
   cn,
   useToast,
-} from "@platform/design-system";
+} from "@platform/ui-kit";
 import type { EvaluatorChecklistAnswers } from "../../lib/evaluator/evaluator-window-data";
 import {
   EVALUATOR_CONDITIONAL_QUESTIONS,

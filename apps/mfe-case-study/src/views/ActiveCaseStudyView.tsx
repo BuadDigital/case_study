@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { filterTasksForCaseStudy } from "@platform/app-shared/prototype/active-transactions";
-import { PanelSkeleton, useToast } from "@platform/design-system";
+import { PanelSkeleton, useToast } from "@platform/ui-kit";
 import {
   ActiveTransactionQueueView,
   type ActiveTransactionQueueConfig,

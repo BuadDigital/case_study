@@ -1,6 +1,6 @@
 "use client";
 
-import { InlineLoadingSkeleton } from "@platform/design-system";
+import { InlineLoadingSkeleton } from "@platform/ui-kit";
 import { EmptyState } from "./PropertyDetailFields";
 import {
   EngineeringPartyNotesSection,

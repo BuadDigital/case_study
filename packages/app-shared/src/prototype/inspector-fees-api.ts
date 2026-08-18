@@ -5,7 +5,7 @@ import {
   patchInspectorFee,
   transitionInspectorFee,
   type BatchInspectorFeeTransitionRequest,
-  type BatchInspectorFeeTransitionResult,
+  type BatchInspectorFeeTransitionResponseDto,
   type InspectorFeeRowDto,
   type InspectorFeesSummaryDto,
   type InspectorFeeAuditEntryDto,
@@ -56,7 +56,7 @@ export async function runInspectorFeeTransition(
 
 export async function runInspectorFeeBatchTransition(
   body: BatchInspectorFeeTransitionRequest,
-): Promise<InspectorFeeMutationResult<BatchInspectorFeeTransitionResult>> {
+): Promise<InspectorFeeMutationResult<BatchInspectorFeeTransitionResponseDto>> {
   const config = workOrdersApiConfig();
   if (!config) return { ok: false, error: apiErrorMessage("auth") };
 

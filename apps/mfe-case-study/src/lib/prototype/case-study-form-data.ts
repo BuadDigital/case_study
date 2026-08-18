@@ -30,8 +30,6 @@ export function caseStudyProviderName(): string {
   return getCachedOrganizationCompanyName(DEFAULT_PROVIDER_NAME);
 }
 
-/** @deprecated Prefer caseStudyProviderName() — kept for existing static imports. */
-export const CASE_STUDY_PROVIDER_NAME = DEFAULT_PROVIDER_NAME;
 export const CASE_STUDY_REPORT_TITLE = "نموذج دراسة الحالة";
 export const CASE_STUDY_REPORT_SUBTITLE = "منصة إدارة التقييم العقاري";
 /** معتمد التقرير — ثابت في التقرير (ليس أخصائي الإسناد من أمر العمل). */

@@ -371,7 +371,8 @@ public sealed class AssignmentNotificationRegressionTests
                 NullLogger<OutboxIntegrationEventPublisher>.Instance));
         return OperationsTaskService.Create(
             bundle.Ops,
-            db,
+            TestInspectorFeeServiceFactory.ShareFinancial(db),
+            TestInspectorFeeServiceFactory.ShareIdentity(db),
             notifications,
             new PartyFeePricingService(TestInspectorFeeServiceFactory.ShareFinancial(db)));
     }

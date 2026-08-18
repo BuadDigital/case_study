@@ -4,8 +4,6 @@ import {
   payloadFromDto,
   persistPartySubmissionPayload,
   prefetchPartySubmissionsForTasks,
-  reopenPartySubmission,
-  setCachedPartySubmission,
   submitPartySubmission,
 } from "@platform/app-shared/prototype/party-submission-api";
 import { notifyTasksChanged } from "@case-study/mfe/lib/prototype/tasks-storage";
@@ -168,14 +166,6 @@ export async function saveEvaluatorSubmission(
   return dtoToSubmission(saved.data);
 }
 
-export async function getOrCreateEvaluatorDraft(input: {
-  taskId: string;
-  propertyId: string;
-  poNumber: string;
-}): Promise<EvaluatorSubmission> {
-  return hydrateEvaluatorSubmission(input);
-}
-
 type EvaluatorDraftPatch = Partial<
   Omit<
     EvaluatorSubmission,
@@ -246,49 +236,6 @@ export async function submitEvaluatorSubmission(
   return { ok: true, submission };
 }
 
-export async function reopenEvaluatorSubmission(
-  taskId: string,
-): Promise<EvaluatorSubmission | null> {
-  const current = loadEvaluatorSubmission(taskId);
-  if (!current) return null;
-  if (current.status !== "submitted" && current.status !== "completed") {
-    return current;
-  }
-  const next: EvaluatorSubmission = {
-    ...current,
-    status: "reopened",
-    submittedAtUtc: null,
-    updatedAtUtc: new Date().toISOString(),
-  };
-  const saved = await saveEvaluatorSubmission(next);
-  if (saved) notifyEvaluatorSubmissionChanged();
-  return saved;
-}
-
-export async function reopenEvaluatorSubmissionViaApi(
-  taskId: string,
-  returnNote = "",
-): Promise<EvaluatorSubmission | null> {
-  const reopened = await reopenPartySubmission(taskId, returnNote);
-  if (!reopened.ok) return reopenEvaluatorSubmission(taskId);
-  notifyEvaluatorSubmissionChanged();
-  notifyTasksChanged();
-  return dtoToSubmission(reopened.data);
-}
-
-export async function completeEvaluatorSubmission(
-  taskId: string,
-): Promise<EvaluatorSubmission | null> {
-  const current = loadEvaluatorSubmission(taskId);
-  if (!current) return null;
-  const next: EvaluatorSubmission = {
-    ...current,
-    status: "completed",
-    updatedAtUtc: new Date().toISOString(),
-  };
-  return saveEvaluatorSubmission(next);
-}
-
 export async function prefetchEvaluatorSubmissions(
   taskIds: string[],
 ): Promise<void> {
@@ -308,22 +255,4 @@ export function isVisibleInAppraiserQueue(
 
 export function isEvaluatorFormLocked(status: EvaluatorSubmissionStatus): boolean {
   return status === "submitted" || status === "completed";
-}
-
-export function seedEvaluatorSubmissionCache(
-  submission: EvaluatorSubmission,
-): void {
-  setCachedPartySubmission(
-    {
-      taskId: submission.taskId,
-      kind: "property-appraisal",
-      status: submission.status,
-      propertyId: submission.propertyId,
-      poNumber: submission.poNumber,
-      payload: { ...submission },
-      submittedAtUtc: submission.submittedAtUtc ?? undefined,
-      updatedAtUtc: submission.updatedAtUtc,
-    },
-    submission.taskId,
-  );
 }

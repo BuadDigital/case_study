@@ -32,7 +32,7 @@ import {
   Tr,
   queueTableRowClassName,
   useToast,
-} from "@platform/design-system";
+} from "@platform/ui-kit";
 import { formatPoDisplay, PROPERTY_IDENTIFIER_COLUMN_LABEL } from "@case-study/mfe";
 import { poPropertyPath } from "@case-study/mfe/lib/po-routes";
 import { suspendPropertyTransaction } from "@case-study/mfe/lib/prototype/suspend-property-transaction";

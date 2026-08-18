@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { usePrototype } from "@platform/app-shared/contexts/PrototypeContext";
 import { isPartyWorkflowRole } from "@platform/app-shared/prototype/party-task-pages";
-import { PanelSkeleton, useToast } from "@platform/design-system";
+import { PanelSkeleton, useToast } from "@platform/ui-kit";
 import { CaseStudyTaskWork } from "./MyTaskWorkView";
 import {
   ActiveTransactionQueueView,

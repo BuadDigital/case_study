@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { cn } from "@platform/design-system";
+import { cn } from "@platform/ui-kit";
 import type { BreadcrumbSegment } from "@/lib/breadcrumb";
 
 function BreadcrumbChevron() {

@@ -49,7 +49,6 @@
   }
 }
 @media (prefers-reduced-motion: reduce) {
-  .show-all-btn-motion,
   .show-all-eye .show-all-eye-ball,
   .show-all-eye .show-all-eye-pupil,
   .show-all-eye .show-all-eye-lid {

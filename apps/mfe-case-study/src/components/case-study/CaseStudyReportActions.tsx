@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { Button, ModalBody, ModalHeader, ModalOverlay, ModalTitle, useToast } from "@platform/design-system";
+import { Button, ModalBody, ModalHeader, ModalOverlay, ModalTitle, useToast } from "@platform/ui-kit";
 import { CaseStudyReportDocument } from "./CaseStudyReportDocument";
 import { buildCaseStudyReportPrintHtml } from "../../lib/prototype/case-study-report-html";
 import { openHtmlDocumentInNewTab } from "../../lib/open-html-document";

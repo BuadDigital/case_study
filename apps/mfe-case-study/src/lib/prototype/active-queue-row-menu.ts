@@ -6,7 +6,6 @@ import {
   poPropertyFailurePath,
   poPropertyPath,
 } from "../po-routes";
-import { skipsBourseForIdentifier } from "./po-intake-data";
 import {
   deletePrimaryDataTransaction,
   revertTaskToPhase,
@@ -203,26 +202,6 @@ export function buildActiveQueueRowMoreItems(
   }
 
   return items;
-}
-
-export function buildDistributionQueueRowMoreItems(
-  options: ActiveQueueRowMoreOptions & {
-    identifierType?: string;
-  },
-): RowMoreMenuItem[] {
-  return buildActiveQueueRowMoreItems({
-    ...options,
-    allowPhaseRevert: true,
-    skipsBourse:
-      options.skipsBourse ??
-      (options.identifierType
-        ? skipsBourseForIdentifier(
-            options.identifierType as Parameters<
-              typeof skipsBourseForIdentifier
-            >[0],
-          )
-        : false),
-  });
 }
 
 export function buildBourseQueueRowMoreItems(

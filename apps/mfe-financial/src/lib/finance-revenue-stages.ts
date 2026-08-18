@@ -2,9 +2,9 @@ import type { EnfazTrackingRowDto } from "@platform/api-client";
 import type { RevenueStage } from "./finance-nav";
 
 /** أيام قبل اعتبار المعاملة «متوقفة» (فاتورة متأخرة أو جاهزة ولم تُرفع). */
-export const REVENUE_STALL_DAYS = 30;
+const REVENUE_STALL_DAYS = 30;
 
-export function daysSinceIso(iso: string | null | undefined): number | null {
+function daysSinceIso(iso: string | null | undefined): number | null {
   if (!iso) return null;
   const t = Date.parse(iso);
   if (Number.isNaN(t)) return null;
@@ -51,7 +51,7 @@ export function resolveRevenueStage(row: EnfazTrackingRowDto): RevenueStage {
   return "eligible";
 }
 
-export type RevenueStageBuckets = Record<RevenueStage, EnfazTrackingRowDto[]>;
+type RevenueStageBuckets = Record<RevenueStage, EnfazTrackingRowDto[]>;
 
 export function bucketRevenueRows(
   rows: EnfazTrackingRowDto[],
@@ -70,21 +70,6 @@ export function bucketRevenueRows(
     buckets[resolveRevenueStage(row)].push(row);
   }
   return buckets;
-}
-
-export function revenueStageActionLabel(stage: RevenueStage): string | null {
-  switch (stage) {
-    case "eligible":
-      return "تحديث حالة إنفاذ";
-    case "billing_assistant":
-      return "تسجيل الفاتورة";
-    case "awaiting_collection":
-      return "تسجيل التحويل";
-    case "stopped":
-      return "استدعاء ومتابعة";
-    default:
-      return null;
-  }
 }
 
 export function revenueStageEmptyHint(stage: RevenueStage): string | null {
@@ -162,7 +147,7 @@ export function uniqueCities(rows: EnfazTrackingRowDto[]): string[] {
   return [...set].sort((a, b) => a.localeCompare(b, "ar"));
 }
 
-export function taxableFeesSar(row: {
+function taxableFeesSar(row: {
   caseStudyFeeSar: number;
   surveyFeeSar: number;
 }): number {
@@ -170,7 +155,7 @@ export function taxableFeesSar(row: {
 }
 
 /** (تقييم+رفع) + ضريبة 15٪ على مجموعهما + مفاتيح شاملة الضريبة */
-export function computeEnfazLineTotals(input: {
+function computeEnfazLineTotals(input: {
   caseStudyFeeSar: number;
   surveyFeeSar: number;
   keyFeeSar: number;

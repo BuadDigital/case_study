@@ -1,9 +1,9 @@
 import type { ApiErr, ApiOk, WorkOrdersApiConfig } from "./work-orders";
 import { getApiBase } from "./index";
 
-export const DEFAULT_LIST_PAGE_SIZE = 500;
+const DEFAULT_LIST_PAGE_SIZE = 500;
 
-export type PagedResultDto<T> = {
+type PagedResultDto<T> = {
   items: T[];
   totalCount: number;
   page: number;
@@ -27,7 +27,7 @@ function isPagedResult<T>(data: unknown): data is PagedResultDto<T> {
   );
 }
 
-export type FetchListPageOptions = {
+type FetchListPageOptions = {
   pageSize?: number;
 };
 

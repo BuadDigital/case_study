@@ -28,7 +28,7 @@ import {
   ModalTitle,
   cn,
   useToast,
-} from "@platform/design-system";
+} from "@platform/ui-kit";
 import { statementDisplayTotal } from "../lib/finance-cost-parties";
 import { buildFinanceHref } from "../lib/finance-nav";
 import {

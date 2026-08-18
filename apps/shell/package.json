@@ -25,7 +25,7 @@
     "@platform/app-shared": "*",
     "@platform/api-client": "*",
     "@platform/auth-client": "*",
-    "@platform/design-system": "*",
+    "@platform/ui-kit": "*",
     "@platform/offline-client": "*",
     "@platform/types": "*",
     "@tanstack/react-query": "^5.100.11",

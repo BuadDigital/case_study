@@ -53,7 +53,7 @@ import {
   InlineLoadingSkeleton,
   Note,
   useToast,
-} from "@platform/design-system";
+} from "@platform/ui-kit";
 import { FailureRaisePanel } from "@failures/mfe";
 import { failureRaiserRoleForParty } from "@failures/mfe/lib/failure-party-roles";
 

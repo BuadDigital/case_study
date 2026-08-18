@@ -227,7 +227,7 @@ Report vulnerabilities to the project owner / security contact internally — do
 | :--- | :--- |
 | **Web app (host)** | `Next.js 16`, `React 19`, `TypeScript 5`, Tailwind CSS 4 |
 | **Monorepo** | npm workspaces — `apps/shell`, `packages/*` |
-| **Shared packages** | `@platform/design-system`, `@platform/auth-client`, `@platform/api-client`, `@platform/types` |
+| **Shared packages** | `@platform/ui-kit`, `@platform/auth-client`, `@platform/api-client`, `@platform/types` |
 | **Backend** | `ASP.NET Core 10`, `Entity Framework Core`, `ASP.NET Identity` |
 | **Auth** | JWT Bearer, session storage (frontend), planned role claims |
 | **Database** | `PostgreSQL 17` |
@@ -263,7 +263,7 @@ property_study/
 │   ├── mfe-valuation/         # @valuation/mfe — طلبات التقييم
 ├── packages/
 │   ├── app-shared/            # PrototypeContext, registration, nav/constants
-│   ├── design-system/         # prototype.css, badges
+│   ├── ui-kit/                # shared React chrome, tokens, badges
 │   ├── auth-client/           # sessionStorage helpers (JWT session)
 │   ├── api-client/            # users, work-orders, courts, workflow-tasks, …
 │   └── types/                 # PageId, RoleId, nav types
@@ -573,7 +573,7 @@ docker compose -f infra/docker-compose.yml down
 | Login page | `apps/shell/src/app/login/page.tsx` |
 | Sidebar / layout / logout | `apps/shell/src/components/views/AppShell.tsx` |
 | Role switcher behavior | `packages/app-shared/src/contexts/PrototypeContext.tsx` |
-| Shared styles / badges | `packages/design-system/` |
+| Shared styles / badges | `packages/ui-kit/` |
 | Auth session helpers | `packages/auth-client/` |
 | API base URL | `packages/api-client/` + `NEXT_PUBLIC_API_URL` |
 | User registration / staff list | `@settings/mfe` + `@platform/app-shared/registration/` |

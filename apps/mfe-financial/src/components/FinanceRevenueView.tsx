@@ -5,7 +5,7 @@ import { useQuery } from "@tanstack/react-query";
 import { prototypeKeys } from "@platform/app-shared/query/prototype-keys";
 import { loadEnfazTracking } from "@platform/app-shared/prototype/enfaz-billing-api";
 import type { EnfazTrackingRowDto } from "@platform/api-client";
-import { cn } from "@platform/design-system";
+import { cn } from "@platform/ui-kit";
 import { REVENUE_STAGES, type RevenueStage } from "../lib/finance-nav";
 import {
   formatDateEn,

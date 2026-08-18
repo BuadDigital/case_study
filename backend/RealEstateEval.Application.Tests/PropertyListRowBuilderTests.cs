@@ -33,8 +33,8 @@ public class PropertyListRowBuilderTests
 
     var row = Assert.Single(items).Row;
     Assert.Equal("بانتظار البورصة", row.Area);
-    Assert.Equal("progress", row.Status);
-    Assert.Equal("new", row.Survey);
+    Assert.Equal(PropertyListRowStatuses.Progress, row.Status);
+    Assert.Equal(PropertyListRowStatuses.New, row.Survey);
   }
 
   [Fact]
@@ -68,7 +68,7 @@ public class PropertyListRowBuilderTests
       [order],
       failureKeys);
 
-    Assert.Equal("fail", Assert.Single(items).Row.Status);
+    Assert.Equal(PropertyListRowStatuses.Fail, Assert.Single(items).Row.Status);
   }
 
   [Fact]
@@ -112,8 +112,8 @@ public class PropertyListRowBuilderTests
       tasksByProperty);
 
     var row = Assert.Single(items).Row;
-    Assert.Equal("done", row.Status);
-    Assert.Equal("done", row.Study);
+    Assert.Equal(PropertyListRowStatuses.Done, row.Status);
+    Assert.Equal(PropertyListRowStatuses.Done, row.Study);
   }
 
   [Fact]
@@ -173,8 +173,8 @@ public class PropertyListRowBuilderTests
       tasksByProperty);
 
     var row = Assert.Single(items).Row;
-    Assert.Equal("progress", row.Status);
-    Assert.Equal("progress", row.Study);
+    Assert.Equal(PropertyListRowStatuses.Progress, row.Status);
+    Assert.Equal(PropertyListRowStatuses.Progress, row.Study);
   }
 
   private static WorkflowTask Task(

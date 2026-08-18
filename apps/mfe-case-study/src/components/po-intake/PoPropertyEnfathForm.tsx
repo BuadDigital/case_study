@@ -39,7 +39,7 @@ import {
   Label,
   Note,
   useToast,
-} from "@platform/design-system";
+} from "@platform/ui-kit";
 import { PropertyFileUploadField } from "./PropertyFileUploadField";
 import { PoContactEditor } from "./PoContactEditor";
 import { CourtCircuitSelects } from "./CourtCircuitSelects";

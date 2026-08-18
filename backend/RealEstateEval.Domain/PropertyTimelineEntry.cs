@@ -11,7 +11,7 @@ public class PropertyTimelineEntry
     public string Title { get; set; } = "";
     public string? Detail { get; set; }
  /// <summary>done | active | warn | muted</summary>
-    public string Tone { get; set; } = "done";
+    public string Tone { get; set; } = PropertyTimelineTones.Done;
     public DateTime OccurredAtUtc { get; set; }
     public DateTime RecordedAtUtc { get; set; }
 }

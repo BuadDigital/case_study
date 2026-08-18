@@ -29,13 +29,13 @@ Source of truth: [`architecture-split-plan.md`](architecture-split-plan.md).
 | A3 | Phase 1 step 3 — Failures + Operations contexts; replace Case Study / Identity / Financial reads | **done** | `FailuresDbContext` / `OperationsDbContext` + empty baselines; writers dual with legacy for financial/case-study cross-writes; pure services on own context |
 | A4 | Phase 1 step 4 — Financial + Case Study contexts | **done** | `FinancialDbContext` / `CaseStudyDbContext` + empty baselines; legacy cutover advanced to tip of post-cutover fee/pricing migrations; dual writers still use ApplicationDbContext until pure service moves (A3 pattern residual); hosts register both streams |
 | A5 | Phase 1 step 5 — Messaging (per-producer outbox / per-consumer inbox shape) | **done** | `MessagingDbContext` + empty baseline; Platform notifications/push/outbox/inbox on Messaging; Valuation still maps own outbox (D5); Case Study dispatcher claims via legacy App against same table |
-| A6 | Phase 1 exit — every API stops registering legacy `AddPersistence` write path | **partial** | Pure: attachments, identity, platform, valuation, financial, operations, **failures**. Residual dual-write: **case-study** only |
-| A7 | ADR 0006 deploy migrator vs restored production-like DB (incl. `xmin` SQL) | **blocked** | Needs a production restore; blank-DB half is done |
-| A8 | Phase 2 — split Domain / Application / Infrastructure into per-context libraries | **todo** | After Phase 1 exit for a slice |
-| A9 | Phase 3 — remove cross-boundary DB access (owner APIs + events/projections) | **todo** | Gates: A7 inventory metrics; D6 consumers |
-| A10 | Phase 4–5 — schema/DB physical separation when ready | **todo** | Do not start until Phase 3 exit |
+| A6 | Phase 1 exit — every API stops registering legacy `AddPersistence` write path | **done** | Hosts use `AddHostSharedInfrastructure` + owned persistence; no service `ServiceModule` calls `AddPersistence`. Closeout: [`backend/plan/A6_CLOSEOUT.md`](../backend/plan/A6_CLOSEOUT.md). Transitional `ApplicationDbContext` shims in Infrastructure remain until A9 |
+| A7 | ADR 0006 deploy migrator vs restored production-like DB (incl. `xmin` SQL) | **done** | Idle leftover `realestate_eval_dev` on host Postgres 17.9 `:5432` (apps no longer use it after the Phase 4 dedicated-DB split). Copied to `realestate_eval_a7_scratch`; `DbMigrate` applied legacy then bounded-context streams including `20260729104156_AddOptimisticConcurrencyTokens`. `xmin` is DDL-neutral (no user column; system `xmin` readable). Source leftover left untouched. |
+| A8 | Phase 2 — split Domain / Application / Infrastructure into per-context libraries | **todo** | Phase 1 host wiring is done; start a slice after A9 pressure eases |
+| A9 | Phase 3 — remove cross-boundary DB access (owner APIs + events/projections) | **in progress** | Lookup residuals that drop a second connection plus Platform audit append, Failures HTTP, Operations HTTP, Financial HTTP (`AddRemoteFinancial` / `/api/financial-dispatch`), and Case Study HTTP for Operations and **Financial** (`ICaseStudyLookup` / `ICaseStudyCommands` / `/api/case-study-dispatch`). Case Study and Operations no longer open `FinancialDbContext`. Operations and **Financial** no longer open `CaseStudyDbContext` (no compose `depends_on` case-study; CS already `depends_on` financial). **Failures** keeps CS EF (compose cycle with CS→Failures HTTP plus FailureService workflow/timeline/deed patches). **Valuation** keeps CS EF (report fill/issuance still load property/form aggregates). Write residuals: CS Messaging (+ Dev Identity); Ops Messaging; Failures Case Study + Messaging; Valuation Case Study. Gates: D6 consumers |
+| A10 | Phase 4–5 — schema/DB physical separation | **in progress** | Owner databases are wired; compose apps no longer use the leftover. Idle `realestate_eval_dev` still exists on host Postgres `:5432` (A7 restore source; not dropped). Remaining work is Phase 3 residual readers and Phase 5 shims |
 
-**Operations gates still outstanding (block Phase 3/4, not A3):** nominate API/migrator owners; D6 production SQL/BI/role inventory; capture p95 / connection / outbox metrics; measure multi-context pool growth.
+**Operations gates still outstanding (block remaining A9 / Phase 5, not A6):** nominate API/migrator owners; D6 production SQL/BI/role inventory; capture p95 / connection / outbox metrics; measure multi-context pool growth.
 
 ---
 
@@ -43,16 +43,16 @@ Source of truth: [`architecture-split-plan.md`](architecture-split-plan.md).
 
 | # | Item | Status | Notes |
 | --- | --- | --- | --- |
-| B1 | Stringly-typed statuses/kinds on hot paths | **partial** | Fee work / case-study form / gov-review visit constants added; more wire strings remain |
+| B1 | Stringly-typed statuses/kinds on hot paths | **done** | Fee work / case-study form / gov-review visit / property-key workflow+gate / property-list row states / timeline tones / financial revenue-row chips. Prototype-only UI strings (queue card tones, HTML aliases like `removed`) remain |
 | B2 | Anemic domain (public setters, thin aggregates) | **partial** | `PropertyFailure` + fee `ApplyBillingStatus`; `KeyEnvelope` create/handoff/assignment; `WorkOrder` create/lifecycle; more aggregates still open |
 | B3 | God services (~1k+ line Infrastructure services) | **done** | InspectorFee / WorkOrder / WorkflowTask / OperationsTask façades + collaborators |
 | B4 | Domain depends on ASP.NET Identity | **done** | Types moved to Infrastructure; Domain has zero package refs |
-| B5 | CQRS / MediatR | **deferred** | Intentional; introduce one vertical slice only after Identity + Phase 1 stabilize |
-| B6 | Full FluentValidation adoption | **partial** | Ops create/patch, key envelope, failures validators; wired on Ops/Failures/Financial/Platform hosts |
+| B5 | CQRS / MediatR | **deferred** | Identity + Phase 1 are done. Wait until A9 lookup/host wiring settles; a first MediatR slice would collide with DI, ServiceModule, and HTTP lookups still in motion |
+| B6 | Full FluentValidation adoption | **partial** | Boundary validators cover identity, attachments, work-order headers, ops create/patch/reassign/comment, key envelope create/assign/confirm/handoff, failures create/note/resolve/bourse, courts catalog, org settings, clients, inspection limits, fee-table create. Residual: nested valuation/billing bodies |
 | B7 | Repository boundary | **deferred** | Style choice; not required while EF + services remain the pattern |
-| B8 | `DateTime.UtcNow` testability | **partial** | `TimeProvider` registered; ops task commands use it for due defaults and stamps |
-| B9 | Duplicated `Program.cs` / claim extraction | **partial** | More controllers use `ActorClaims`; residual identity/auth sites remain |
-| B10 | DTO naming inconsistency | **deferred** | Shared with frontend; rename only with contract version |
+| B8 | `DateTime.UtcNow` testability | **done** | Production clocks go through injected `TimeProvider` (`time.UtcNow()` / `GetUtcNow()`). Architecture test covers Application, Infrastructure Services/Integration, and service controllers. Seeder, migrations, and tests keep wall-clock `DateTime.UtcNow` |
+| B9 | Duplicated `Program.cs` / claim extraction | **done** | One shared `ServiceProgram.cs` linked into all nine APIs; each host keeps a `ServiceModule`. Actor id/role go through `ActorIdentity` / `ActorClaims` |
+| B10 | DTO naming inconsistency | **done** | Convention: `Dto` / `Request` / `Query` / `Input` / `Actor`. Outliers renamed (`LoginResponseDto`, `*ResponseDto`). JSON properties unchanged; TS keeps deprecated aliases |
 
 ---
 
@@ -69,8 +69,8 @@ Source of truth: [`architecture-split-plan.md`](architecture-split-plan.md).
 | C7 | Attachment MIME trusts client | **done** | Magic-byte inspector |
 | C8 | Billing / pricing leak exception messages | **done** | ProblemDetails + logging |
 | C9 | JWT package outdated | **done** | 8.22.0 |
-| C10 | API versioning inconsistency | **partial** | Dual `[Route]` + `/v1` on financial, reporting, failures, key-envelopes, notifications, work-orders, workflow/ops tasks, valuation; no Asp.Versioning package |
-| C11 | Inconsistent error shapes (all controllers) | **partial** | Ops tasks, workflow tasks, key envelopes, regions now use ApiProblem helpers; residual controllers remain |
+| C10 | API versioning inconsistency | **done** | Unversioned `/api/...` is canonical v1; `CanonicalV1AliasConvention` adds `/v1` aliases. Controllers declare one template. No Asp.Versioning for v1 |
+| C11 | Inconsistent error shapes (all controllers) | **done** | Hand-written failures use `ApiProblemExtensions` (RFC 7807 + legacy `error`/`message`/`errors`). Architecture test forbids ad-hoc anonymous bodies |
 
 ---
 
@@ -102,7 +102,7 @@ Source of truth: [`architecture-split-plan.md`](architecture-split-plan.md).
 | E4 | Multi-instance SSE | **done** | Rabbit fan-out + poll fallback |
 | E5 | Browser storage user-namespaced | **done** | |
 | E6 | Billing negotiation deadline notifications | **blocked** | Product policy still undefined — freeze documented in notification reliability doc |
-| E7 | Physical notification DB separation | **partial** | Dispatcher `ContextType` + arch guard single case-study host; physical multi-DB remaining (A10) |
+| E7 | Physical notification DB separation | **partial** | Dedicated `realestate_eval_messaging`; Case Study drains that outbox. Seed/maintenance may still count notifications through the god context until A9/A10 shims go |
 
 ---
 
@@ -117,8 +117,8 @@ Source of truth: [`architecture-split-plan.md`](architecture-split-plan.md).
 | F5 | Testcontainers (Postgres / Rabbit / Redis) | **done** | Opt-out via `REAL_ESTATE_EVAL_CONTAINER_TESTS=0` |
 | F6 | Broader controller-body coverage | **partial** | Added work-orders list, ops create 400, key-envelope / failures create validation |
 | F7 | Coverlet in CI | **done** | Soft floor documented |
-| F8 | Readiness logging + deeper dependency checks | **partial** | Soft Rabbit TCP probe via `Readiness:CheckRabbit` (case-study/platform Dev on) |
-| F9 | Serilog / structured JSON correlation | **partial** | JSON logs + validated correlation IDs outside Dev |
+| F8 | Readiness logging + deeper dependency checks | **done** | `/ready` logs DB failures. Soft Rabbit + Redis TCP probes (`Readiness:CheckRabbit` / `CheckRedis`) report in the body and never flip HTTP 503. Blob storage is not probed |
+| F9 | Serilog / structured JSON correlation | **done** | Built-in JSON console (not Serilog) outside Dev with `CorrelationId` + `Service` scopes and trace/span ids. Validated `X-Correlation-Id`; gateway overwrites on proxy; `HttpClient` forwards on owner lookups |
 | F10 | Seeder uses ILogger | **done** | |
 | F11 | Dead `AddInfrastructure` registration | **done** | |
 | F12 | Reseed tool in solution | **done** | |
@@ -136,10 +136,10 @@ Do **not** delete empty baselines or Sync no-ops once they exist in a stream peo
 
 ## G. Suggested order on the next device
 
-1. **Close Phase 1** — A6 (drop/minimize legacy `AddPersistence` write path per API where residual allows).  
-2. **Keep A7 / ops gates visible** — do not invent a production restore; mark progress when available.  
-3. **Parallel low-risk slices** after A6 pressure eases: more C11 controllers, B1 property-keys strings, F8 Redis soft probe.  
-4. **Do not start** A8–A10, full D10 cutover, E6 invent, or E7 multi-DB until product/ops gates allow.  
+1. **Continue A9** — next residual readers: Failures compose cycle (do not add Failures `depends_on` Case Study), Valuation report fill. Do not open `FailuresDbContext`, `OperationsDbContext`, or `FinancialDbContext` from Case Study. Do not add Operations `depends_on` Case Study. Do not add Financial `depends_on` Case Study. Financial no longer opens Case Study EF.  
+2. **Ops gates still open** — A7 leftover-upgrade evidence is recorded. Remaining: nominate migrator owner, D6 SQL/BI inventory, p95 / connection / outbox metrics.  
+3. **Parallel low-risk slices:** F6 controller-body tests. C10, C11, B1, B8, B10, F8, and F9 are done. B6 still has nested valuation/billing bodies.  
+4. **A10 leftover shared DB is gone.** Do not reintroduce a shared connection. Remaining A10 work is Phase 5 shims. Full D10 cutover and E6 still wait on product/ops gates.  
 5. **E6** only after product defines deadline/escalation rules.
 
 ---

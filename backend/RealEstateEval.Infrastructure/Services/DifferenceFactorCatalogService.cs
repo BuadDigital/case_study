@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using RealEstateEval.Application;
 using RealEstateEval.Application.Abstractions;
 using RealEstateEval.Application.Contracts;
 using RealEstateEval.Domain;
@@ -12,8 +13,11 @@ namespace RealEstateEval.Infrastructure.Services;
 /// </summary>
 public sealed class DifferenceFactorCatalogService(
     PlatformDbContext db,
-    IAuditLogWriter audit) : IDifferenceFactorCatalogService
+    IAuditLogWriter audit,
+    TimeProvider? time = null) : IDifferenceFactorCatalogService
 {
+    private readonly TimeProvider _time = time ?? TimeProvider.System;
+
     private static readonly Guid SingletonId = Guid.Parse("6f1a3c60-19b2-4c8e-9d55-000000000019");
 
     public async Task<DifferenceFactorCatalogDto> GetAsync(
@@ -23,7 +27,7 @@ public sealed class DifferenceFactorCatalogService(
             .FirstOrDefaultAsync(cancellationToken);
         if (row is null)
         {
-            return ToDto(DifferenceFactorCatalog.Seed(), version: 0, DateTime.UtcNow);
+            return ToDto(DifferenceFactorCatalog.Seed(), version: 0, _time.UtcNow());
         }
 
         var entries = DifferenceFactorCatalog.Parse(row.CatalogJson);
@@ -50,7 +54,7 @@ public sealed class DifferenceFactorCatalogService(
 
         var row = await db.DifferenceFactorCatalogConfigs
             .FirstOrDefaultAsync(cancellationToken);
-        var now = DateTime.UtcNow;
+        var now = _time.UtcNow();
         var previousJson = row?.CatalogJson;
         if (row is null)
         {

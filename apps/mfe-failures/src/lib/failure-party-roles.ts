@@ -12,10 +12,8 @@ export const FAILURE_RAISER_LABEL_BY_KIND: Partial<
 
 export const GOVERNMENT_REVIEWER_FAILURE_RAISER = "المراجع الحكومي";
 
-const RAISER_LABEL_BY_KIND = FAILURE_RAISER_LABEL_BY_KIND;
-
 export function failureRaiserRoleForParty(def: PartyTaskPageDef): string {
-  return RAISER_LABEL_BY_KIND[def.kind] ?? def.assigneeSubtitle;
+  return FAILURE_RAISER_LABEL_BY_KIND[def.kind] ?? def.assigneeSubtitle;
 }
 
 export const FAILURE_RAISER_SUPERVISOR = "المشرف";

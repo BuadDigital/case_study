@@ -249,68 +249,6 @@ export async function submitValuationImpediment(
   }
 }
 
-// --- Property keys ---
-
-export type PropertyKeyRecordDto = {
-  id: string;
-  idProp: string;
-  po: string;
-  area: string;
-  type: string;
-  key: boolean;
-  specialist: string;
-  status: string;
-  deedStatus?: string;
-};
-
-export type UpdatePropertyKeyRequest = {
-  key?: boolean;
-  status?: string;
-};
-
-export async function listPropertyKeys(
-  config: PrototypeModulesApiConfig,
-  hasKey?: boolean,
-): Promise<PrototypeModulesResult<PropertyKeyRecordDto[]>> {
-  const base = config.baseUrl ?? getApiBase();
-  const qs =
-    hasKey === undefined ? "" : `?hasKey=${hasKey ? "true" : "false"}`;
-  try {
-    const res = await fetch(`${base}/api/property-keys${qs}`, {
-      headers: headers(config.token),
-    });
-    if (res.status === 401) return { ok: false, kind: "auth" };
-    if (!res.ok) return { ok: false, kind: "server" };
-    const data = await parseJson<PropertyKeyRecordDto[]>(res);
-    return { ok: true, data: Array.isArray(data) ? data : [] };
-  } catch {
-    return { ok: false, kind: "network" };
-  }
-}
-
-export async function patchPropertyKey(
-  config: PrototypeModulesApiConfig,
-  id: string,
-  body: UpdatePropertyKeyRequest,
-): Promise<PrototypeModulesResult<PropertyKeyRecordDto>> {
-  const base = config.baseUrl ?? getApiBase();
-  try {
-    const res = await fetch(`${base}/api/property-keys/${id}`, {
-      method: "PATCH",
-      headers: headers(config.token),
-      body: JSON.stringify(body),
-    });
-    if (res.status === 401) return { ok: false, kind: "auth" };
-    if (res.status === 404) return { ok: false, kind: "not_found" };
-    if (!res.ok) return { ok: false, kind: "server" };
-    return { ok: true, data: await parseJson<PropertyKeyRecordDto>(res) };
-  } catch {
-    return { ok: false, kind: "network" };
-  }
-}
-
-// --- Key envelopes ---
-
 export type KeyEnvelopeLinkedPropertyDto = {
   propertyId: string;
   poNumber: string;
@@ -829,7 +767,7 @@ export type ClassifyAttachmentRequest = {
   printInReport?: boolean | null;
 };
 
-export type PhotoMetadataDto = {
+type PhotoMetadataDto = {
   latitude?: number | null;
   longitude?: number | null;
   capturedAtUtc?: string | null;
@@ -837,7 +775,7 @@ export type PhotoMetadataDto = {
   flag?: string | null;
 };
 
-export type PhotoMetadataInput = {
+type PhotoMetadataInput = {
   latitude?: number | null;
   longitude?: number | null;
   capturedAtUtc?: string | null;

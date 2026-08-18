@@ -43,7 +43,7 @@ public class PropertyGroupsController : ControllerBase
     {
         var (result, error) = await _groups.ConfirmLinkAsync(
             propertyId, request.TargetPropertyId, ActorClaims.Id(User), ct);
-        if (error is not null) return BadRequest(new { error });
+        if (error is not null) return this.BadRequestProblem(error);
         return Ok(result);
     }
 
@@ -56,7 +56,7 @@ public class PropertyGroupsController : ControllerBase
     {
         var (result, error) = await _groups.UnlinkAsync(
             propertyId, request.Reason, ActorClaims.Id(User), ct);
-        if (error is not null) return BadRequest(new { error });
+        if (error is not null) return this.BadRequestProblem(error);
         return Ok(result);
     }
 }

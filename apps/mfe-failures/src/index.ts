@@ -31,8 +31,6 @@ export type { GroupedFailureRow } from "./lib/failures-labels";
 export * from "./lib/failure-types-data";
 export * from "./lib/failure-category-role-visibility";
 export * from "./lib/failure-property-match";
-export * from "./lib/failures-government-reviewer-scope";
-export * from "./lib/failures-engineering-office-scope";
 export * from "./lib/failures-party-raiser-scope";
 export * from "./lib/failure-types-storage";
 export * from "./lib/failures-api";

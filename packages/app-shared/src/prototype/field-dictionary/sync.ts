@@ -55,7 +55,7 @@ function mergeFieldPair(
 }
 
 /** يدمج طبقات الحقول — الطبقة الأخيرة تفوز على الاسم/النوع عند التعارض. */
-export function mergeFieldDictionaryIndex(
+function mergeFieldDictionaryIndex(
   ...layers: FieldDictionaryField[][]
 ): FieldDictionaryField[] {
   const byKey = new Map<string, FieldDictionaryField>();

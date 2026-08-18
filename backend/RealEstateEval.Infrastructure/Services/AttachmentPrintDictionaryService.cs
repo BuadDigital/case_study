@@ -1,5 +1,6 @@
 using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
+using RealEstateEval.Application;
 using RealEstateEval.Application.Abstractions;
 using RealEstateEval.Application.Contracts;
 using RealEstateEval.Domain;
@@ -19,8 +20,13 @@ public sealed class AttachmentPrintDictionaryService : IAttachmentPrintDictionar
     };
 
     private readonly PlatformDbContext _db;
+    private readonly TimeProvider _time;
 
-    public AttachmentPrintDictionaryService(PlatformDbContext db) => _db = db;
+    public AttachmentPrintDictionaryService(PlatformDbContext db, TimeProvider? time = null)
+    {
+        _db = db;
+        _time = time ?? TimeProvider.System;
+    }
 
     public async Task<AttachmentPrintDictionaryDto> GetAsync(
         CancellationToken cancellationToken = default)
@@ -33,7 +39,7 @@ public sealed class AttachmentPrintDictionaryService : IAttachmentPrintDictionar
             {
                 Id = SingletonId,
                 CatalogJson = AttachmentPrintDictionarySeed.CatalogJson,
-                UpdatedAtUtc = DateTime.UtcNow,
+                UpdatedAtUtc = _time.UtcNow(),
             });
         }
 
@@ -49,7 +55,7 @@ public sealed class AttachmentPrintDictionaryService : IAttachmentPrintDictionar
 
         var row = await _db.AttachmentPrintDictionaryConfigs
             .FirstOrDefaultAsync(cancellationToken);
-        var now = DateTime.UtcNow;
+        var now = _time.UtcNow();
         if (row is null)
         {
             row = new AttachmentPrintDictionaryConfig

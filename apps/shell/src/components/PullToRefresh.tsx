@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState, type RefObject } from "react";
-import { cn } from "@platform/design-system";
+import { cn } from "@platform/ui-kit";
 
 const PULL_THRESHOLD = 72;
 const MAX_PULL = 112;

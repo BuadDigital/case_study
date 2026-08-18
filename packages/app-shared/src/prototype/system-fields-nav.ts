@@ -53,7 +53,3 @@ export function systemFieldsNavForRole(
     available: rolePages.includes(item.id),
   }));
 }
-
-export function isInSystemFieldsSection(page: PageId): boolean {
-  return SYSTEM_FIELDS_PAGE_IDS.includes(page);
-}

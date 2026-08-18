@@ -103,7 +103,7 @@ const SECTION_LABELS: Record<CaseStudyQuestionSection, string> = {
   extra: "ملاحظات إضافية",
 };
 
-export function buildCaseStudyQuestionCatalog(): CaseStudyQuestionCatalogItem[] {
+function buildCaseStudyQuestionCatalog(): CaseStudyQuestionCatalogItem[] {
   const items: CaseStudyQuestionCatalogItem[] = [];
   (
     Object.keys(CASE_STUDY_SECTION_QUESTIONS) as CaseStudyQuestionSection[]

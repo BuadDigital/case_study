@@ -20,7 +20,7 @@ import {
   cn,
   useToast,
   Spinner,
-} from "@platform/design-system";
+} from "@platform/ui-kit";
 import { usePrototype } from "@platform/app-shared/contexts/PrototypeContext";
 import type { StaffUser } from "@platform/app-shared/prototype/constants";
 import { displayPersonName } from "@platform/app-shared/prototype/person-display-name";

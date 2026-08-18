@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using RealEstateEval.Application;
 using RealEstateEval.Application.Abstractions;
 using RealEstateEval.Application.Contracts;
 using RealEstateEval.Domain;
@@ -17,13 +18,17 @@ public sealed class CourtsCatalogService : ICourtsCatalogService
     private readonly ApiResponseCache _cache;
     private readonly ICourtsService _courts;
     private readonly IAuditLogWriter _audit;
+    private readonly TimeProvider _time;
 
     public CourtsCatalogService(
         PlatformDbContext db,
         ApiResponseCache cache,
         ICourtsService courts,
-        IAuditLogWriter audit)
+        IAuditLogWriter audit,
+        TimeProvider? time = null)
     {
+        _time = time ?? TimeProvider.System;
+
         _db = db;
         _cache = cache;
         _courts = courts;
@@ -102,7 +107,7 @@ public sealed class CourtsCatalogService : ICourtsCatalogService
                         City = dto.City.Trim(),
                         IsActive = true,
                         CreatedBy = "system",
-                        CreatedAtUtc = DateTime.UtcNow,
+                        CreatedAtUtc = _time.UtcNow(),
                     };
                     _db.Courts.Add(court);
                     foreach (var circuitNo in dto.Circuits
@@ -117,7 +122,7 @@ public sealed class CourtsCatalogService : ICourtsCatalogService
                             CircuitNo = circuitNo,
                             IsActive = true,
                             CreatedBy = "system",
-                            CreatedAtUtc = DateTime.UtcNow,
+                            CreatedAtUtc = _time.UtcNow(),
                         });
                     }
                 }

@@ -1,7 +1,7 @@
 import type { PageId } from "./navigation";
 
 /** API-ready case-study transaction sidebar entries (shared by shell + MFE). */
-export type CaseStudyReadyNavItem = {
+type CaseStudyReadyNavItem = {
   id: PageId;
   label: string;
   icon: string;

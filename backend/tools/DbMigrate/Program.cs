@@ -1,55 +1,87 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Npgsql;
 using RealEstateEval.Infrastructure.Data;
 using RealEstateEval.Infrastructure.Data.Contexts;
 
 // Deploy-time EF migrator. Production apps must not run MigrateAsync at startup.
 //
-// Applies the frozen legacy stream first, then each bounded-context stream in
-// BoundedContextMigrations.ApplyOrder. Every stream records itself in its own
-// migrations-history table, so they cannot claim each other's migrations (bounded-context split).
+// Optional leftover shared database: if REAL_ESTATE_EVAL_PG_CONNECTION_STRING is set,
+// apply the frozen legacy ApplicationDbContext stream first (ADR 0006, including xmin).
+// Dedicated owner databases still require their own connection strings; production
+// compose does not set the unsuffixed leftover variable.
+// Then apply each bounded-context stream in BoundedContextMigrations.ApplyOrder.
 //
 // Usage:
 // RealEstateEval.DbMigrate apply all pending migrations, all streams
 // RealEstateEval.DbMigrate update same as above
 // RealEstateEval.DbMigrate list show applied and pending, all streams
-// RealEstateEval.DbMigrate rollback <name> migrate the legacy stream down to a migration
 // RealEstateEval.DbMigrate rollback <name> <stream> roll back one context stream
-// RealEstateEval.DbMigrate rollback 0 remove all migrations (empty DB schema target)
+// RealEstateEval.DbMigrate rollback 0 <stream> remove all migrations (empty DB schema target)
 
-var connectionString =
-    Environment.GetEnvironmentVariable("REAL_ESTATE_EVAL_PG_CONNECTION_STRING")
-    ?? new ConfigurationBuilder()
-        .AddEnvironmentVariables()
-        .Build()
-        .GetConnectionString("DefaultConnection")
-    ?? throw new InvalidOperationException(
-        "Set REAL_ESTATE_EVAL_PG_CONNECTION_STRING (or ConnectionStrings__DefaultConnection).");
+var configuration = new ConfigurationBuilder()
+    .AddEnvironmentVariables()
+    .Build();
+
+var leftoverConnection = Environment.GetEnvironmentVariable(BoundedContextConnections.SharedEnvVar);
+
+var streamConnections = new Dictionary<Type, string>();
+foreach (var type in BoundedContextMigrations.ApplyOrder)
+{
+    streamConnections[type] = BoundedContextConnections.ForContext(configuration, type);
+}
+
+if (!string.IsNullOrWhiteSpace(leftoverConnection))
+{
+    Console.WriteLine(
+        $"[migrate] ApplicationDbContext uses leftover database '{DatabaseName(leftoverConnection)}'.");
+    await PostgresDatabaseProvisioner.EnsureExistsAsync(leftoverConnection);
+}
+
+foreach (var connection in streamConnections.Values.Distinct(StringComparer.Ordinal))
+    await PostgresDatabaseProvisioner.EnsureExistsAsync(connection);
+
+foreach (var (type, connection) in streamConnections)
+{
+    Console.WriteLine(
+        $"[migrate] {type.Name} uses dedicated database '{DatabaseName(connection)}'.");
+}
 
 var services = new ServiceCollection();
 services.AddLogging();
-services.AddDbContext<ApplicationDbContext>(options => options.UseNpgsql(connectionString));
-services.AddDbContext<AttachmentsDbContext>(options => UseStream<AttachmentsDbContext>(options));
-services.AddDbContext<PlatformDbContext>(options => UseStream<PlatformDbContext>(options));
-services.AddDbContext<ValuationDbContext>(options => UseStream<ValuationDbContext>(options));
-services.AddDbContext<IdentityDbContext>(options => UseStream<IdentityDbContext>(options));
-services.AddDbContext<FailuresDbContext>(options => UseStream<FailuresDbContext>(options));
-services.AddDbContext<OperationsDbContext>(options => UseStream<OperationsDbContext>(options));
-services.AddDbContext<FinancialDbContext>(options => UseStream<FinancialDbContext>(options));
-services.AddDbContext<CaseStudyDbContext>(options => UseStream<CaseStudyDbContext>(options));
-services.AddDbContext<MessagingDbContext>(options => UseStream<MessagingDbContext>(options));
+if (!string.IsNullOrWhiteSpace(leftoverConnection))
+{
+    services.AddDbContext<ApplicationDbContext>(options =>
+        options.UseNpgsql(leftoverConnection));
+}
+services.AddDbContext<AttachmentsDbContext>(options =>
+    UseStream<AttachmentsDbContext>(options, streamConnections[typeof(AttachmentsDbContext)]));
+services.AddDbContext<PlatformDbContext>(options =>
+    UseStream<PlatformDbContext>(options, streamConnections[typeof(PlatformDbContext)]));
+services.AddDbContext<ValuationDbContext>(options =>
+    UseStream<ValuationDbContext>(options, streamConnections[typeof(ValuationDbContext)]));
+services.AddDbContext<IdentityDbContext>(options =>
+    UseStream<IdentityDbContext>(options, streamConnections[typeof(IdentityDbContext)]));
+services.AddDbContext<FailuresDbContext>(options =>
+    UseStream<FailuresDbContext>(options, streamConnections[typeof(FailuresDbContext)]));
+services.AddDbContext<OperationsDbContext>(options =>
+    UseStream<OperationsDbContext>(options, streamConnections[typeof(OperationsDbContext)]));
+services.AddDbContext<FinancialDbContext>(options =>
+    UseStream<FinancialDbContext>(options, streamConnections[typeof(FinancialDbContext)]));
+services.AddDbContext<CaseStudyDbContext>(options =>
+    UseStream<CaseStudyDbContext>(options, streamConnections[typeof(CaseStudyDbContext)]));
+services.AddDbContext<MessagingDbContext>(options =>
+    UseStream<MessagingDbContext>(options, streamConnections[typeof(MessagingDbContext)]));
 
 await using var provider = services.BuildServiceProvider();
 await using var scope = provider.CreateAsyncScope();
 
-// Legacy first: it is the baseline that created every table the context streams inherit.
-var streams = new List<(string Name, DbContext Db)>
-{
-    (nameof(ApplicationDbContext), scope.ServiceProvider.GetRequiredService<ApplicationDbContext>()),
-};
-streams.AddRange(BoundedContextMigrations.ApplyOrder.Select(type =>
-    (type.Name, (DbContext)scope.ServiceProvider.GetRequiredService(type))));
+var streams = BoundedContextMigrations.ApplyOrder.Select(type =>
+    (
+        Name: type.Name,
+        Db: (DbContext)scope.ServiceProvider.GetRequiredService(type),
+        Connection: streamConnections[type])).ToList();
 
 var command = args.Length > 0 ? args[0].ToLowerInvariant() : "update";
 
@@ -57,43 +89,35 @@ switch (command)
 {
     case "update":
     case "migrate":
-        foreach (var (name, db) in streams)
+        if (!string.IsNullOrWhiteSpace(leftoverConnection))
         {
-            var pending = (await db.Database.GetPendingMigrationsAsync()).ToList();
-            if (pending.Count == 0)
-            {
-                Console.WriteLine($"[migrate] {name}: up to date.");
-                continue;
-            }
-
-            Console.WriteLine($"[migrate] {name}: applying {pending.Count} migration(s):");
-            foreach (var migration in pending)
-                Console.WriteLine($"  + {migration}");
-
-            await db.Database.MigrateAsync();
+            var legacy = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+            await ApplyPendingAsync("ApplicationDbContext", leftoverConnection, legacy);
         }
+
+        foreach (var (name, db, connection) in streams)
+            await ApplyPendingAsync(name, connection, db);
 
         Console.WriteLine("[migrate] done.");
         break;
 
     case "list":
-        foreach (var (name, db) in streams)
+        if (!string.IsNullOrWhiteSpace(leftoverConnection))
         {
-            Console.WriteLine($"[migrate] {name} applied:");
-            foreach (var migration in await db.Database.GetAppliedMigrationsAsync())
-                Console.WriteLine($"  * {migration}");
-            Console.WriteLine($"[migrate] {name} pending:");
-            foreach (var migration in await db.Database.GetPendingMigrationsAsync())
-                Console.WriteLine($"  + {migration}");
+            var legacy = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+            await ListStreamAsync("ApplicationDbContext", leftoverConnection, legacy);
         }
+
+        foreach (var (name, db, connection) in streams)
+            await ListStreamAsync(name, connection, db);
 
         break;
 
     case "rollback":
-        if (args.Length < 2)
+        if (args.Length < 3)
         {
             Console.Error.WriteLine(
-                "Usage: RealEstateEval.DbMigrate rollback <MigrationName|0> [ContextName]");
+                "Usage: RealEstateEval.DbMigrate rollback <MigrationName|0> <ContextName>");
             Console.Error.WriteLine(
                 "  Target is the migration to keep (EF migrates down to that point). Use 0 for empty.");
             Console.Error.WriteLine(
@@ -101,7 +125,7 @@ switch (command)
             return 1;
         }
 
-        var streamName = args.Length > 2 ? args[2] : nameof(ApplicationDbContext);
+        var streamName = args[2];
         var selected = streams.FirstOrDefault(stream =>
             string.Equals(stream.Name, streamName, StringComparison.OrdinalIgnoreCase));
         if (selected.Db is null)
@@ -126,8 +150,38 @@ switch (command)
 
 return 0;
 
-void UseStream<TContext>(DbContextOptionsBuilder options)
+async Task ApplyPendingAsync(string name, string connection, DbContext db)
+{
+    var database = DatabaseName(connection);
+    var pending = (await db.Database.GetPendingMigrationsAsync()).ToList();
+    if (pending.Count == 0)
+    {
+        Console.WriteLine($"[migrate] {name} ({database}): up to date.");
+        return;
+    }
+
+    Console.WriteLine($"[migrate] {name} ({database}): applying {pending.Count} migration(s):");
+    foreach (var migration in pending)
+        Console.WriteLine($"  + {migration}");
+
+    await db.Database.MigrateAsync();
+}
+
+async Task ListStreamAsync(string name, string connection, DbContext db)
+{
+    Console.WriteLine($"[migrate] {name} ({DatabaseName(connection)}) applied:");
+    foreach (var migration in await db.Database.GetAppliedMigrationsAsync())
+        Console.WriteLine($"  * {migration}");
+    Console.WriteLine($"[migrate] {name} pending:");
+    foreach (var migration in await db.Database.GetPendingMigrationsAsync())
+        Console.WriteLine($"  + {migration}");
+}
+
+void UseStream<TContext>(DbContextOptionsBuilder options, string connectionString)
     where TContext : DbContext =>
     options.UseNpgsql(connectionString, npgsql => npgsql.MigrationsHistoryTable(
         BoundedContextMigrations.HistoryTable,
         BoundedContextMigrations.HistorySchemaFor<TContext>()));
+
+static string DatabaseName(string connectionString) =>
+    new NpgsqlConnectionStringBuilder(connectionString).Database ?? "(unknown)";

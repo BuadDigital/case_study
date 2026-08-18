@@ -3,7 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useRef } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { Button, PageGutter, PageShell, PanelSkeleton } from "@platform/design-system";
+import { Button, PageGutter, PageShell, PanelSkeleton } from "@platform/ui-kit";
 import { partyTaskPageDef } from "@platform/app-shared/prototype/party-task-pages";
 import type { PageId } from "@platform/types";
 import type { PartyAppraisalExtensions } from "../lib/party-appraisal-extensions";

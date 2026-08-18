@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using RealEstateEval.Application;
 using RealEstateEval.Application.Abstractions;
 using RealEstateEval.Application.Contracts;
 using RealEstateEval.Domain;
@@ -15,12 +16,16 @@ public sealed class NotificationService : INotificationService
     private readonly MessagingDbContext _db;
     private readonly IIntegrationEventPublisher _events;
     private readonly INotificationRealtimePublisher _realtime;
+    private readonly TimeProvider _time;
 
     public NotificationService(
         MessagingDbContext db,
         IIntegrationEventPublisher events,
-        INotificationRealtimePublisher realtime)
+        INotificationRealtimePublisher realtime,
+        TimeProvider? time = null)
     {
+        _time = time ?? TimeProvider.System;
+
         _db = db;
         _events = events;
         _realtime = realtime;
@@ -110,7 +115,7 @@ public sealed class NotificationService : INotificationService
 
         if (row.ReadAtUtc is null)
         {
-            row.ReadAtUtc = DateTime.UtcNow;
+            row.ReadAtUtc = _time.UtcNow();
             await _db.SaveChangesAsync(cancellationToken);
         }
 
@@ -119,7 +124,7 @@ public sealed class NotificationService : INotificationService
 
     public async Task MarkAllReadAsync(string userId, CancellationToken cancellationToken = default)
     {
-        var now = DateTime.UtcNow;
+        var now = _time.UtcNow();
         await _db.UserNotifications
             .Where(n => n.UserId == userId && n.ReadAtUtc == null)
             .ExecuteUpdateAsync(
@@ -172,7 +177,7 @@ public sealed class NotificationService : INotificationService
         IReadOnlyCollection<KeyValuePair<string, CreateUserNotificationRequest>> requestsByUser,
         CancellationToken cancellationToken)
     {
-        var now = DateTime.UtcNow;
+        var now = _time.UtcNow();
         var userIds = requestsByUser
             .Select(entry => entry.Key)
             .Distinct(StringComparer.Ordinal)

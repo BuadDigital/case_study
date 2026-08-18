@@ -8,7 +8,8 @@ import {
   SectionHeader,
   DetailBadge,
 } from "./PropertyDetailFields";
-import { Badge, InlineLoadingSkeleton, type BadgeTone } from "@platform/design-system";
+import { Badge, InlineLoadingSkeleton, type BadgeTone } from "@platform/ui-kit";
+import { PropertyKeyGateSources, PropertyKeysStatuses } from "@platform/api-client";
 import {
   formatPropertyDeedDisplay,
   type PoPropertyIntake,
@@ -32,9 +33,10 @@ import { usePrototype } from "@platform/app-shared/contexts/PrototypeContext";
 import Link from "next/link";
 
 function keysBadgeTone(status: string): BadgeTone {
-  if (status === "received") return "primary";
-  if (status === "pending" || status === "blocked") return "warning";
-  if (status === "not_required") return "default";
+  if (status === PropertyKeysStatuses.Received) return "primary";
+  if (status === PropertyKeysStatuses.Pending || status === PropertyKeysStatuses.Blocked)
+    return "warning";
+  if (status === PropertyKeysStatuses.NotRequired) return "default";
   return "default";
 }
 
@@ -107,7 +109,7 @@ export function PropertyDetailPropertyKeys({
     Boolean(keysStatus) ||
     Boolean(envelopeId) ||
     Boolean(primaryVisit) ||
-    gate?.source === "court_access";
+    gate?.source === PropertyKeyGateSources.CourtAccess;
 
   if (!hasAny) {
     return (

@@ -59,7 +59,7 @@ public interface IInspectorFeeService
         string? actorDepartment = null,
         bool canManageAllDepartments = false);
 
-    Task<BatchInspectorFeeTransitionResult> BatchTransitionAsync(
+    Task<BatchInspectorFeeTransitionResponseDto> BatchTransitionAsync(
         BatchInspectorFeeTransitionRequest request,
         string actorUserId,
         string? actorAssigneeId,
@@ -69,7 +69,7 @@ public interface IInspectorFeeService
         string? actorDepartment = null,
         bool canManageAllDepartments = false);
 
-    Task<CreateDisbursementBatchResult> CreateDisbursementBatchAsync(
+    Task<CreateDisbursementBatchResponseDto> CreateDisbursementBatchAsync(
         CreateDisbursementBatchRequest request,
         string actorUserId,
         string? actorAssigneeId,

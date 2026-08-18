@@ -3,7 +3,7 @@
 import { useMemo } from "react";
 import { RegSelect } from "@platform/app-shared/registration/FormFields";
 import { useDistributionAssigneesQuery } from "@settings/mfe/query/settings-queries";
-import { Card, Note, cn } from "@platform/design-system";
+import { Card, Note, cn } from "@platform/ui-kit";
 import {
   getCaseSpecialists,
   getEngineeringOffices,

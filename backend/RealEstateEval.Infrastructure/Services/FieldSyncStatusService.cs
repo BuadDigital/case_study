@@ -1,5 +1,6 @@
 using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
+using RealEstateEval.Application;
 using RealEstateEval.Application.Abstractions;
 using RealEstateEval.Application.Contracts;
 using RealEstateEval.Domain;
@@ -7,8 +8,11 @@ using RealEstateEval.Infrastructure.Data.Contexts;
 
 namespace RealEstateEval.Infrastructure.Services;
 
-public sealed class FieldSyncStatusService(PlatformDbContext db) : IFieldSyncStatusService
+public sealed class FieldSyncStatusService(PlatformDbContext db,
+    TimeProvider? time = null) : IFieldSyncStatusService
 {
+    private readonly TimeProvider _time = time ?? TimeProvider.System;
+
     private static readonly TimeSpan StaleAfter = TimeSpan.FromHours(2);
     private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web);
 
@@ -25,7 +29,7 @@ public sealed class FieldSyncStatusService(PlatformDbContext db) : IFieldSyncSta
             return;
         }
 
-        var now = DateTime.UtcNow;
+        var now = _time.UtcNow();
         var row = await db.FieldSyncStatuses
             .FirstOrDefaultAsync(x => x.UserId == userId, cancellationToken);
 
@@ -77,7 +81,7 @@ public sealed class FieldSyncStatusService(PlatformDbContext db) : IFieldSyncSta
     public async Task<IReadOnlyList<FieldSyncStatusDto>> ListStaleAsync(
         CancellationToken cancellationToken = default)
     {
-        var cutoff = DateTime.UtcNow - StaleAfter;
+        var cutoff = _time.UtcNow() - StaleAfter;
         var rows = await db.FieldSyncStatuses.AsNoTracking()
             .Where(x => x.PendingCount > 0 && x.OldestPendingAtUtc != null && x.OldestPendingAtUtc < cutoff)
             .OrderBy(x => x.OldestPendingAtUtc)
@@ -86,12 +90,12 @@ public sealed class FieldSyncStatusService(PlatformDbContext db) : IFieldSyncSta
         return rows.Select(ToDto).ToList();
     }
 
-    private static FieldSyncStatusDto ToDto(FieldSyncStatus row)
+    private FieldSyncStatusDto ToDto(FieldSyncStatus row)
     {
         var kinds = ParseKinds(row.KindsJson);
         double? ageHours = null;
         if (row.OldestPendingAtUtc is { } oldest)
-            ageHours = Math.Round((DateTime.UtcNow - oldest).TotalHours, 1);
+            ageHours = Math.Round((_time.UtcNow() - oldest).TotalHours, 1);
 
         return new FieldSyncStatusDto
         {

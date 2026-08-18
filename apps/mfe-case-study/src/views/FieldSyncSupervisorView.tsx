@@ -13,7 +13,7 @@ import {
   PageShell,
   PageShellHeader,
   Spinner,
-} from "@platform/design-system";
+} from "@platform/ui-kit";
 
 const KIND_LABELS: Record<string, string> = {
   "attachment-upload": "رفع مرفق",

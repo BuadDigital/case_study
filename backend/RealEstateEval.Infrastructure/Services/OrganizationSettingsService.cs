@@ -1,5 +1,6 @@
 using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
+using RealEstateEval.Application;
 using RealEstateEval.Application.Abstractions;
 using RealEstateEval.Application.Contracts;
 using RealEstateEval.Domain;
@@ -15,9 +16,13 @@ public sealed class OrganizationSettingsService : IOrganizationSettingsService
 
     private readonly PlatformDbContext _db;
     private readonly IAuditLogWriter _audit;
+    private readonly TimeProvider _time;
 
-    public OrganizationSettingsService(PlatformDbContext db, IAuditLogWriter audit)
+    public OrganizationSettingsService(PlatformDbContext db, IAuditLogWriter audit,
+        TimeProvider? time = null)
     {
+        _time = time ?? TimeProvider.System;
+
         _db = db;
         _audit = audit;
     }
@@ -48,7 +53,7 @@ public sealed class OrganizationSettingsService : IOrganizationSettingsService
         ValidateValuation(next.Valuation);
 
         var row = await _db.OrganizationSettings.FirstOrDefaultAsync(cancellationToken);
-        var now = DateTime.UtcNow;
+        var now = _time.UtcNow();
         var payload = JsonSerializer.Serialize(next, JsonOptions);
 
         if (row is null)
@@ -105,7 +110,7 @@ public sealed class OrganizationSettingsService : IOrganizationSettingsService
             throw new ArgumentOutOfRangeException(nameof(c.SmtpPort), "منفذ SMTP غير صالح.");
     }
 
-    private static OrganizationSettingsDto Defaults() => new()
+    private OrganizationSettingsDto Defaults() => new()
     {
         Company = new OrganizationCompanySettingsDto(),
         Evaluator = new OrganizationEvaluatorSettingsDto(),
@@ -113,10 +118,10 @@ public sealed class OrganizationSettingsService : IOrganizationSettingsService
         Branding = new OrganizationBrandingSettingsDto(),
         Communications = new OrganizationCommunicationsSettingsDto(),
         Sla = new OrganizationSlaSettingsDto(),
-        UpdatedAtUtc = DateTime.UtcNow,
+        UpdatedAtUtc = _time.UtcNow(),
     };
 
-    private static OrganizationSettingsDto FromRow(OrganizationSettings row)
+    private OrganizationSettingsDto FromRow(OrganizationSettings row)
     {
         try
         {
@@ -253,7 +258,7 @@ public sealed class OrganizationSettingsService : IOrganizationSettingsService
                 : sla.PrivateSectorBusinessDays,
         };
 
-    private static OrganizationSettingsDto Merge(
+    private OrganizationSettingsDto Merge(
         OrganizationSettingsDto current,
         SaveOrganizationSettingsRequest request) =>
         new()
@@ -269,7 +274,7 @@ public sealed class OrganizationSettingsService : IOrganizationSettingsService
             Valuation = request.Valuation ?? current.Valuation,
             ValuationReport = NormalizeValuationReport(
                 request.ValuationReport ?? current.ValuationReport),
-            UpdatedAtUtc = DateTime.UtcNow,
+            UpdatedAtUtc = _time.UtcNow(),
         };
 
  /// <summary>مكتبة الافتراضات: قص وإسقاط الفراغات والتكرار (حد 100 بند × 2000 حرف).</summary>

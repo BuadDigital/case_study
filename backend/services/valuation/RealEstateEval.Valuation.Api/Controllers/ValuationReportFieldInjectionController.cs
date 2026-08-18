@@ -9,9 +9,7 @@ namespace RealEstateEval.Valuation.Api.Controllers;
 /// <summary>Valuation report field payload (legacy template codes ⟵ Ejada field_key). Not printed as extra sections.</summary>
 [ApiController]
 [Route("api/valuation-requests/{valuationRequestId:guid}/valuation-report-fields")]
-[Route("api/valuation-requests/v1/{valuationRequestId:guid}/valuation-report-fields")]
 [Route("api/valuation-requests/{valuationRequestId:guid}/mikyas-injection")]
-[Route("api/valuation-requests/v1/{valuationRequestId:guid}/mikyas-injection")]
 [Authorize]
 public class ValuationReportFieldInjectionController : ControllerBase
 {

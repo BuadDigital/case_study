@@ -43,10 +43,3 @@ export async function finalizeAppraiserSubmission(
 
   return result;
 }
-
-export function hasSubmittedAppraisalForChild(
-  appraisalTaskId: string,
-): boolean {
-  const sub = loadEvaluatorSubmission(appraisalTaskId);
-  return sub?.status === "submitted" || sub?.status === "completed";
-}

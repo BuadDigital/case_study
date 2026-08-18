@@ -9,6 +9,6 @@ public class PropertyKeyRecord
     public string PropertyType { get; set; } = "";
     public bool HasKey { get; set; }
     public string Specialist { get; set; } = "";
-    public string WorkflowStatus { get; set; } = "progress";
+    public string WorkflowStatus { get; set; } = PropertyKeyWorkflowStatuses.Progress;
     public DateTime UpdatedAtUtc { get; set; }
 }

@@ -45,7 +45,7 @@ public class FieldInspectionAttachmentVerifierTests
             }
             """);
 
-        var verifier = new FieldInspectionAttachmentVerifier(db);
+        var verifier = new FieldInspectionAttachmentVerifier(TestInspectorFeeServiceFactory.ShareAttachmentLookup(db));
         var errors = await verifier.VerifyAsync(taskId, payload.RootElement);
 
         Assert.Empty(errors);
@@ -88,7 +88,7 @@ public class FieldInspectionAttachmentVerifierTests
             }
             """);
 
-        var verifier = new FieldInspectionAttachmentVerifier(db);
+        var verifier = new FieldInspectionAttachmentVerifier(TestInspectorFeeServiceFactory.ShareAttachmentLookup(db));
         var errors = await verifier.VerifyAsync(taskId, payload.RootElement);
 
         Assert.Contains("definedPhotos", errors.Keys);

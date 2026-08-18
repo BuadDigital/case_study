@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using RealEstateEval.Application;
 using RealEstateEval.Application.Abstractions;
 using RealEstateEval.Application.Contracts;
 using RealEstateEval.Domain;
@@ -6,8 +7,11 @@ using RealEstateEval.Infrastructure.Data.Contexts;
 
 namespace RealEstateEval.Infrastructure.Services;
 
-public class BuildingInventoryService(CaseStudyDbContext db) : IBuildingInventoryService
+public class BuildingInventoryService(CaseStudyDbContext db,
+    TimeProvider? time = null) : IBuildingInventoryService
 {
+    private readonly TimeProvider _time = time ?? TimeProvider.System;
+
     public async Task<BuildingInventoryDto?> GetAsync(
         string poNumber,
         Guid propertyId,
@@ -69,7 +73,7 @@ public class BuildingInventoryService(CaseStudyDbContext db) : IBuildingInventor
         db.BuildingInventoryLines.RemoveRange(prop.BuildingInventoryLines);
         prop.BuildingInventoryLines.Clear();
 
-        var now = DateTime.UtcNow;
+        var now = _time.UtcNow();
         if (answer == HasStructuresToValueValues.Yes)
         {
             var order = 0;

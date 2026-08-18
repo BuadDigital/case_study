@@ -1,6 +1,6 @@
 namespace RealEstateEval.Infrastructure.Data;
 
-/// <summary>PostgreSQL schema-per-service (shared database stepping stone).</summary>
+/// <summary>PostgreSQL schema names on dedicated owner databases.</summary>
 public static class DatabaseSchemas
 {
     public const string Identity = "identity";

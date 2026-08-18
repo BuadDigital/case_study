@@ -1,19 +1,26 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
+using RealEstateEval.Application;
 using RealEstateEval.Application.Abstractions;
 using RealEstateEval.Application.Contracts;
 using RealEstateEval.Domain;
+using RealEstateEval.Infrastructure.Data;
 using RealEstateEval.Infrastructure.Data.Contexts;
 
 namespace RealEstateEval.Infrastructure.Services;
 
-public class ClientService(CaseStudyDbContext db) : IClientService
+public class ClientService(CaseStudyDbContext db, IOptions<DatabaseOptions>? dbOptions = null,
+    TimeProvider? time = null) : IClientService
 {
+    private readonly TimeProvider _time = time ?? TimeProvider.System;
+
+    private readonly DatabaseOptions _dbOptions = dbOptions?.Value ?? new DatabaseOptions();
     public async Task EnsureSeedClientsAsync(CancellationToken cancellationToken)
     {
         if (await db.Clients.AnyAsync(c => c.Id == SeedClientIds.InfathAssignmentCenter, cancellationToken))
             return;
 
-        var now = DateTime.UtcNow;
+        var now = _time.UtcNow();
         db.Clients.Add(new Client
         {
             Id = SeedClientIds.InfathAssignmentCenter,
@@ -34,7 +41,8 @@ public class ClientService(CaseStudyDbContext db) : IClientService
         var q = db.Clients.AsNoTracking().AsQueryable();
         if (!includeInactive)
             q = q.Where(c => c.IsActive);
-        var rows = await q.OrderBy(c => c.NameAr).ToListAsync(cancellationToken);
+        var (_, take, _, _) = NpgsqlConfiguration.ResolveListPaging(null, null, _dbOptions);
+        var rows = await q.OrderBy(c => c.NameAr).Take(take).ToListAsync(cancellationToken);
         return rows.Select(ToDto).ToList();
     }
 
@@ -52,7 +60,7 @@ public class ClientService(CaseStudyDbContext db) : IClientService
         var errors = Validate(request);
         if (errors.Count > 0) return (null, errors);
 
-        var now = DateTime.UtcNow;
+        var now = _time.UtcNow();
         var entity = new Client
         {
             Id = Guid.NewGuid(),
@@ -88,7 +96,7 @@ public class ClientService(CaseStudyDbContext db) : IClientService
         entity.Phone = Normalize(request.Phone);
         entity.Email = Normalize(request.Email);
         entity.IsActive = request.IsActive;
-        entity.UpdatedAtUtc = DateTime.UtcNow;
+        entity.UpdatedAtUtc = _time.UtcNow();
         await db.SaveChangesAsync(cancellationToken);
         return (ToDto(entity), null);
     }
@@ -103,7 +111,7 @@ public class ClientService(CaseStudyDbContext db) : IClientService
         var entity = await db.Clients.FirstOrDefaultAsync(c => c.Id == id, cancellationToken);
         if (entity is null) return (false, "العميل غير موجود");
         entity.IsActive = false;
-        entity.UpdatedAtUtc = DateTime.UtcNow;
+        entity.UpdatedAtUtc = _time.UtcNow();
         await db.SaveChangesAsync(cancellationToken);
         return (true, null);
     }

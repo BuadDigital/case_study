@@ -63,7 +63,9 @@ public class FailureSuspendAttributionTests
         await db.SaveChangesAsync();
         await bundle.Failures.SaveChangesAsync();
 
-        var list = await new SuspendedTransactionsService(db).ListAsync();
+        var list = await new SuspendedTransactionsService(
+            bundle.Failures,
+            TestInspectorFeeServiceFactory.ShareIdentity(db)).ListAsync();
 
         var row = Assert.Single(list);
         Assert.Equal(suspendedAt, row.SuspendedAt);
@@ -98,7 +100,9 @@ public class FailureSuspendAttributionTests
         await db.SaveChangesAsync();
         await bundle.Failures.SaveChangesAsync();
 
-        var list = await new SuspendedTransactionsService(db).ListAsync();
+        var list = await new SuspendedTransactionsService(
+            bundle.Failures,
+            TestInspectorFeeServiceFactory.ShareIdentity(db)).ListAsync();
 
         var row = Assert.Single(list);
         Assert.Equal("", row.SuspendedBy);

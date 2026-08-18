@@ -10,7 +10,6 @@ namespace RealEstateEval.CaseStudy.Api.Controllers;
 
 [ApiController]
 [Route("api/work-orders")]
-[Route("api/work-orders/v1")]
 [Authorize]
 public class WorkOrdersController : ControllerBase
 {
@@ -156,7 +155,7 @@ public class WorkOrdersController : ControllerBase
             request,
             cancellationToken);
         if (errors is { Count: > 0 })
-            return BadRequest(new FieldErrorsResponseDto { Errors = errors });
+            return this.FieldErrorsProblem(errors);
         return CreatedAtAction(nameof(Get), new { poNumber = result!.PoNumber }, result);
     }
 
@@ -175,7 +174,7 @@ public class WorkOrdersController : ControllerBase
             request,
             cancellationToken);
         if (errors is { Count: > 0 })
-            return BadRequest(new FieldErrorsResponseDto { Errors = errors });
+            return this.FieldErrorsProblem(errors);
         if (result is null) return NotFound();
         return Ok(result);
     }
@@ -188,7 +187,7 @@ public class WorkOrdersController : ControllerBase
         if (forbidden is not null) return forbidden;
 
         var (ok, error) = await _workOrders.DeleteAsync(poNumber, cancellationToken);
-        if (!ok) return BadRequest(new { message = error });
+        if (!ok) return this.BadRequestProblem(error ?? "تعذر تنفيذ العملية.");
         return NoContent();
     }
 
@@ -200,7 +199,7 @@ public class WorkOrdersController : ControllerBase
         if (forbidden is not null) return forbidden;
 
         var (ok, error) = await _workOrders.CancelAsync(poNumber, cancellationToken);
-        if (!ok) return BadRequest(new { message = error });
+        if (!ok) return this.BadRequestProblem(error ?? "تعذر تنفيذ العملية.");
         return NoContent();
     }
 
@@ -212,7 +211,7 @@ public class WorkOrdersController : ControllerBase
         if (forbidden is not null) return forbidden;
 
         var (ok, error) = await _workOrders.StopAsync(poNumber, cancellationToken);
-        if (!ok) return BadRequest(new { message = error });
+        if (!ok) return this.BadRequestProblem(error ?? "تعذر تنفيذ العملية.");
         return NoContent();
     }
 
@@ -231,7 +230,7 @@ public class WorkOrdersController : ControllerBase
             property,
             cancellationToken);
         if (errors is { Count: > 0 })
-            return BadRequest(new FieldErrorsResponseDto { Errors = errors });
+            return this.FieldErrorsProblem(errors);
         if (result is null) return NotFound();
         return Ok(result);
     }
@@ -253,7 +252,7 @@ public class WorkOrdersController : ControllerBase
             request,
             cancellationToken);
         if (errors is { Count: > 0 })
-            return BadRequest(new FieldErrorsResponseDto { Errors = errors });
+            return this.FieldErrorsProblem(errors);
         if (result is null) return NotFound();
         return Ok(result);
     }
@@ -275,7 +274,7 @@ public class WorkOrdersController : ControllerBase
             property,
             cancellationToken);
         if (errors is { Count: > 0 })
-            return BadRequest(new FieldErrorsResponseDto { Errors = errors });
+            return this.FieldErrorsProblem(errors);
         if (result is null) return NotFound();
         return Ok(result);
     }
@@ -303,7 +302,7 @@ public class WorkOrdersController : ControllerBase
             request.LocationMapUrl,
             cancellationToken);
         if (errors is { Count: > 0 })
-            return BadRequest(new FieldErrorsResponseDto { Errors = errors });
+            return this.FieldErrorsProblem(errors);
         if (result is null) return NotFound();
         return Ok(result);
     }
@@ -324,7 +323,7 @@ public class WorkOrdersController : ControllerBase
             propertyId,
             request?.Reason ?? "",
             cancellationToken);
-        if (!ok) return BadRequest(new { message = error });
+        if (!ok) return this.BadRequestProblem(error ?? "تعذر تنفيذ العملية.");
         return NoContent();
     }
 
@@ -345,11 +344,7 @@ public class WorkOrdersController : ControllerBase
         if (string.IsNullOrWhiteSpace(userId) || userId == "unknown") return Forbid();
         var perms = await _permissions.GetForUserIdAsync(userId, cancellationToken);
         if (!allow(perms?.PrototypeRole))
-        {
-            return StatusCode(
-                StatusCodes.Status403Forbidden,
-                new { message = forbiddenMessage ?? "ليس لديك صلاحية لهذا الإجراء" });
-        }
+            return this.ForbiddenProblem(forbiddenMessage ?? "ليس لديك صلاحية لهذا الإجراء");
         return null;
     }
 }

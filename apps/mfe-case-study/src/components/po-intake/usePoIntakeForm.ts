@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { useToast } from "@platform/design-system";
+import { useToast } from "@platform/ui-kit";
 import {
   INFATH_SEED_CLIENT_ID,
   listClients,

@@ -10,7 +10,7 @@ import {
   loadPartyBillingStatements,
 } from "@platform/app-shared/prototype/party-billing-statements-api";
 import type { PartyBillingStatementDto } from "@platform/api-client";
-import { cn } from "@platform/design-system";
+import { cn } from "@platform/ui-kit";
 import {
   buildFinanceMyTasks,
   buildFinanceMyTasksKpis,

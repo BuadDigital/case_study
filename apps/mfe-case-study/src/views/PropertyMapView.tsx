@@ -10,7 +10,7 @@ import {
   OperationalToolbarSelect,
   cn,
   useToast,
-} from "@platform/design-system";
+} from "@platform/ui-kit";
 import { usePoRecordsQuery } from "../query/case-study-queries";
 import { poPropertyPath } from "../lib/po-routes";
 import { findPropertyPathByDeed } from "../lib/prototype/map-open-property";

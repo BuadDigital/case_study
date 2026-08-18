@@ -29,7 +29,7 @@ import { PropertyFileUploadField } from "./PropertyFileUploadField";
 import { RegionCitySelects } from "./RegionCitySelects";
 import { RegField, RegSelect } from "@platform/app-shared/registration/FormFields";
 import type { FieldErrors } from "@platform/app-shared/registration/registration-utils";
-import { cn, FormRow, Label, Note, useToast } from "@platform/design-system";
+import { cn, FormRow, Label, Note, useToast } from "@platform/ui-kit";
 
 type Props = {
   property: PoPropertyIntake;

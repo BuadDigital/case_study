@@ -46,6 +46,6 @@ public class CaseStudyFormInfathFieldsTests
     {
         var db = contexts.Legacy;
         var workflow = TestInspectorFeeServiceFactory.CreateWorkflow(db);
-        return new CaseStudyFormService(db, workflow);
+        return new CaseStudyFormService(TestInspectorFeeServiceFactory.ShareCaseStudy(db), workflow);
     }
 }

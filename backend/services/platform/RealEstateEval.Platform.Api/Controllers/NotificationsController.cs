@@ -12,7 +12,6 @@ namespace RealEstateEval.Platform.Api.Controllers;
 
 [ApiController]
 [Route("api/notifications")]
-[Route("api/notifications/v1")]
 [Authorize]
 public sealed class NotificationsController : ControllerBase
 {
@@ -105,7 +104,7 @@ public sealed class NotificationsController : ControllerBase
     {
         var userId = CurrentUserId();
         if (userId is null) return Unauthorized();
-        if (string.IsNullOrWhiteSpace(request.Title)) return BadRequest("title required");
+        if (string.IsNullOrWhiteSpace(request.Title)) return this.BadRequestProblem("title required");
 
         return Ok(await _notifications.CreateForUserAsync(userId, request, ct));
     }

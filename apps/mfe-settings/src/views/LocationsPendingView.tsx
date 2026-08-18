@@ -21,7 +21,7 @@ import {
   THead,
   Tr,
   useToast,
-} from "@platform/design-system";
+} from "@platform/ui-kit";
 import { regionsApiConfig } from "../lib/settings-api-config";
 
 function kindLabel(kind: string): string {

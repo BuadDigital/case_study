@@ -1,4 +1,4 @@
-﻿namespace RealEstateEval.Application.Contracts;
+namespace RealEstateEval.Application.Contracts;
 
 public class InspectorFeeRowDto
 {
@@ -82,7 +82,7 @@ public class BatchInspectorFeeTransitionRequest
     public string? DisbursementBatchId { get; init; }
 }
 
-public class BatchInspectorFeeTransitionResult
+public class BatchInspectorFeeTransitionResponseDto
 {
     public IReadOnlyList<InspectorFeeRowDto> Succeeded { get; init; } = [];
     public IReadOnlyList<InspectorFeeTransitionErrorDto> Failed { get; init; } = [];
@@ -113,7 +113,7 @@ public class CreateDisbursementBatchRequest
     public IReadOnlyList<string> WorkflowTaskIds { get; init; } = [];
 }
 
-public class CreateDisbursementBatchResult
+public class CreateDisbursementBatchResponseDto
 {
     public string DisbursementBatchId { get; init; } = "";
     public IReadOnlyList<InspectorFeeRowDto> Rows { get; init; } = [];

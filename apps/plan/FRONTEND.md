@@ -58,7 +58,7 @@ Shared UI and auth live in **`packages/`** at the repo root (not inside `apps/`)
 | Package | Role |
 |---------|------|
 | `@platform/app-shared` | PrototypeContext, registration flows, shared nav/constants |
-| `@platform/design-system` | Styles (`prototype.css`), badges, shared look-and-feel |
+| `@platform/ui-kit` | Styles (`prototype.css`), badges, shared look-and-feel |
 | `@platform/auth-client` | Session storage, auth gate |
 | `@platform/api-client` | API base URL (placeholder for real services) |
 | `@platform/types` | `PageId`, `RoleId`, navigation types, `CASE_STUDY_READY_NAV` |

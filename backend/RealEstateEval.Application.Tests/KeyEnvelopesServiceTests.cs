@@ -430,7 +430,7 @@ public class KeyEnvelopesServiceTests
         var row = Assert.Single(
             rows,
             r => r.IdProp == property.DeedNumber || r.IdProp == property.Id.ToString());
-        Assert.Equal("done", row.Status);
+        Assert.Equal(PropertyKeyWorkflowStatuses.Done, row.Status);
         Assert.True(row.Key);
     }
 

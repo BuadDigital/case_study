@@ -14,7 +14,7 @@ import {
   Textarea,
   cn,
   useToast,
-} from "@platform/design-system";
+} from "@platform/ui-kit";
 import { CASE_STUDY_INFO_PARTIES,
   CASE_STUDY_INFO_ROLE_TYPES,
   CASE_STUDY_INFO_SECTIONS,

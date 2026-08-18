@@ -1,6 +1,6 @@
 "use client";
 
-import { PageShell } from "@platform/design-system";
+import { PageShell } from "@platform/ui-kit";
 import { FinanceWorkspace } from "../components/FinanceWorkspace";
 import { useFinancialSummaryQuery } from "../query/financial-queries";
 import {
@@ -12,8 +12,7 @@ import {
 } from "../lib/finance-tw";
 
 export function FinancialView() {
-  const { data: summary, isPending, isError } = useFinancialSummaryQuery();
-  const ready = !isPending && summary != null;
+  const { isError } = useFinancialSummaryQuery();
 
   return (
     <PageShell variant="canvas" className={finShell}>
@@ -26,7 +25,7 @@ export function FinancialView() {
             </div>
           </div>
         ) : (
-          <FinanceWorkspace summary={summary} ready={ready} />
+          <FinanceWorkspace />
         )}
       </div>
     </PageShell>

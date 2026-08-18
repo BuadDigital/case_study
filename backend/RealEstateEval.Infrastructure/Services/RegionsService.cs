@@ -1,5 +1,6 @@
 using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
+using RealEstateEval.Application;
 using RealEstateEval.Application.Abstractions;
 using RealEstateEval.Application.Contracts;
 using RealEstateEval.Domain;
@@ -18,9 +19,13 @@ public sealed class RegionsService : IRegionsService
 
     private readonly PlatformDbContext _db;
     private readonly ApiResponseCache _cache;
+    private readonly TimeProvider _time;
 
-    public RegionsService(PlatformDbContext db, ApiResponseCache cache)
+    public RegionsService(PlatformDbContext db, ApiResponseCache cache,
+        TimeProvider? time = null)
     {
+        _time = time ?? TimeProvider.System;
+
         _db = db;
         _cache = cache;
     }
@@ -40,7 +45,7 @@ public sealed class RegionsService : IRegionsService
         if (activeRegions >= payload.Regions.Count && officialActive >= expectedActiveCities)
             return;
 
-        var now = DateTime.UtcNow;
+        var now = _time.UtcNow();
         var existingRegions = await _db.Regions.ToListAsync(cancellationToken);
         var regionsByOfficial = existingRegions.ToDictionary(r => r.OfficialId);
         var regionsByCode = existingRegions
@@ -395,7 +400,7 @@ public sealed class RegionsService : IRegionsService
                 Status = LocationCatalogStatuses.Pending,
                 RawInput = raw,
                 CreatedByUserId = userId,
-                CreatedAtUtc = DateTime.UtcNow,
+                CreatedAtUtc = _time.UtcNow(),
                 UsageCount = 1,
                 IsActive = true,
             };
@@ -473,7 +478,7 @@ public sealed class RegionsService : IRegionsService
             Status = LocationCatalogStatuses.Pending,
             RawInput = raw,
             CreatedByUserId = userId,
-            CreatedAtUtc = DateTime.UtcNow,
+            CreatedAtUtc = _time.UtcNow(),
             UsageCount = 1,
             IsActive = true,
             IsGovernorate = false,
@@ -543,7 +548,7 @@ public sealed class RegionsService : IRegionsService
             throw new InvalidOperationException("السجل ليس بانتظار المراجعة.");
 
         var action = (request.Action ?? "").Trim().ToLowerInvariant();
-        var now = DateTime.UtcNow;
+        var now = _time.UtcNow();
         if (action == "approve" || action == "rename")
         {
             if (!string.IsNullOrWhiteSpace(request.NameAr))
@@ -598,7 +603,7 @@ public sealed class RegionsService : IRegionsService
             throw new InvalidOperationException("السجل ليس بانتظار المراجعة.");
 
         var action = (request.Action ?? "").Trim().ToLowerInvariant();
-        var now = DateTime.UtcNow;
+        var now = _time.UtcNow();
         if (action is "approve" or "rename")
         {
             if (!string.IsNullOrWhiteSpace(request.NameAr))

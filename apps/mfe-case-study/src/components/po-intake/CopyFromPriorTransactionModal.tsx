@@ -8,7 +8,7 @@ import {
   Note,
   cn,
   useToast,
-} from "@platform/design-system";
+} from "@platform/ui-kit";
 import type { PriorDeedRegistrationDto } from "@platform/api-client";
 import { PoNumber } from "@case-study/mfe/components/ui/PoNumber";
 import {

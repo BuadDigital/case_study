@@ -9,7 +9,6 @@ namespace RealEstateEval.Valuation.Api.Controllers;
 /// <summary>Native valuation report document preview.</summary>
 [ApiController]
 [Route("api/valuation-requests/{valuationRequestId:guid}/report-document")]
-[Route("api/valuation-requests/v1/{valuationRequestId:guid}/report-document")]
 [Authorize]
 public class ValuationReportDocumentController : ControllerBase
 {

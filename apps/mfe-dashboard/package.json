@@ -18,7 +18,7 @@
     "@platform/api-client": "*",
     "@platform/app-shared": "*",
     "@platform/auth-client": "*",
-    "@platform/design-system": "*",
+    "@platform/ui-kit": "*",
     "@platform/types": "*",
     "@tanstack/react-query": "^5.100.11",
     "animejs": "^4.5.0"

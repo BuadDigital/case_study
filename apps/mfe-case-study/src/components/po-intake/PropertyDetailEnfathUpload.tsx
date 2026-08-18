@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Badge, Button, cn, InlineLoadingSkeleton, useToast } from "@platform/design-system";
+import { Badge, Button, cn, InlineLoadingSkeleton, useToast } from "@platform/ui-kit";
 import { EmptyState, ltrValueClass, SectionHeader } from "./PropertyDetailFields";
 import {
   buildInfathUploadModel,

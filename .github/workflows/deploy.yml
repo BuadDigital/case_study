@@ -53,10 +53,10 @@ jobs:
         run: npm run test:unit
 
   # ----------------------------------------------------
-  # Job 1b: Backend build & tests (PRs and nightly only — never gate a deploy)
+  # Job 1b: Backend build & tests (gates deploy on push to main)
   # ----------------------------------------------------
   test:
-    if: github.event_name != 'push'
+    if: github.event_name != 'schedule'
     runs-on: ubuntu-latest
     timeout-minutes: 30
     env:
@@ -154,6 +154,7 @@ jobs:
   # ----------------------------------------------------
   build-and-push:
     if: github.event_name != 'pull_request' && github.event_name != 'schedule'
+    needs: test
     runs-on: ubuntu-latest
     # A newer commit makes these images pointless; drop them and let the new run build.
     concurrency:
@@ -400,12 +401,77 @@ jobs:
             export WEB_PUSH_PUBLIC_KEY="${{ secrets.WEB_PUSH_PUBLIC_KEY }}"
             export WEB_PUSH_PRIVATE_KEY="${{ secrets.WEB_PUSH_PRIVATE_KEY }}"
             export WEB_PUSH_SUBJECT="${{ secrets.WEB_PUSH_SUBJECT }}"
+            export JWT_SIGNING_KEY="${{ secrets.JWT_SIGNING_KEY }}"
+            export POSTGRES_PASSWORD="${{ secrets.POSTGRES_PASSWORD }}"
+            export RABBITMQ_USER="${{ secrets.RABBITMQ_USER }}"
+            export RABBITMQ_PASSWORD="${{ secrets.RABBITMQ_PASSWORD }}"
+            export GRAFANA_ADMIN_USER="${{ secrets.GRAFANA_ADMIN_USER }}"
+            export GRAFANA_ADMIN_PASSWORD="${{ secrets.GRAFANA_ADMIN_PASSWORD }}"
 
             # TLS is mandatory in Production. Fail before touching the running stack
             # when the host certificate has not been provisioned or renewed correctly.
             test -r "$TLS_CERTIFICATE_PATH"
             test -r "$TLS_PRIVATE_KEY_PATH"
             test -n "$PUBLIC_APP_URL"
+
+            # Mandatory production secrets must be present and non-placeholder.
+            required_secret() {
+              name="$1"
+              value="$2"
+              if [ -z "${value:-}" ]; then
+                echo "::error::$name is required for production deploy"
+                exit 1
+              fi
+            }
+
+            deny_value() {
+              name="$1"
+              value="$2"
+              denied="$3"
+              if [ "$value" = "$denied" ]; then
+                echo "::error::$name must not use insecure default '$denied'"
+                exit 1
+              fi
+            }
+
+            required_secret "JWT_SIGNING_KEY" "${JWT_SIGNING_KEY:-}"
+            required_secret "POSTGRES_PASSWORD" "${POSTGRES_PASSWORD:-}"
+            required_secret "RABBITMQ_USER" "${RABBITMQ_USER:-}"
+            required_secret "RABBITMQ_PASSWORD" "${RABBITMQ_PASSWORD:-}"
+            required_secret "GRAFANA_ADMIN_USER" "${GRAFANA_ADMIN_USER:-}"
+            required_secret "GRAFANA_ADMIN_PASSWORD" "${GRAFANA_ADMIN_PASSWORD:-}"
+
+            if [ "${#JWT_SIGNING_KEY}" -lt 64 ]; then
+              echo "::error::JWT_SIGNING_KEY must be at least 64 characters"
+              exit 1
+            fi
+            case "$JWT_SIGNING_KEY" in
+              *CHANGE_ME*|*DEV_ONLY*|*change_me*|*dev_only*)
+                echo "::error::JWT_SIGNING_KEY contains a known placeholder token"
+                exit 1
+                ;;
+            esac
+
+            deny_value "RABBITMQ_USER" "$RABBITMQ_USER" "dev"
+            deny_value "RABBITMQ_PASSWORD" "$RABBITMQ_PASSWORD" "dev"
+            deny_value "GRAFANA_ADMIN_USER" "$GRAFANA_ADMIN_USER" "admin"
+            deny_value "POSTGRES_PASSWORD" "$POSTGRES_PASSWORD" "Admin"
+
+            PREVIOUS_TAG=""
+            if [ -f .deploy-tag ]; then
+              PREVIOUS_TAG="$(cat .deploy-tag)"
+            fi
+
+            rollback_to_previous() {
+              if [ -z "$PREVIOUS_TAG" ] || [ "$PREVIOUS_TAG" = "$TAG" ]; then
+                echo "No previous deploy tag recorded; manual rollback required"
+                return 1
+              fi
+              echo "Rolling back to tag $PREVIOUS_TAG"
+              export TAG="$PREVIOUS_TAG"
+              docker compose -f docker-compose.prod.yml pull
+              docker compose -f docker-compose.prod.yml up -d --remove-orphans
+            }
 
             # Persist Web Push VAPID into /app/.env so host restarts keep the same keys.
             # Compose also picks up the exported vars for this deploy run.
@@ -449,16 +515,24 @@ jobs:
               return 1
             }
 
-            check_endpoint "Gateway health" "http://gateway:5160/health"
-            check_endpoint "Identity health" "http://identity:8080/health"
-            check_endpoint "Identity readiness" "http://identity:8080/ready"
-            check_endpoint "Case Study health" "http://case-study:8080/health"
-            check_endpoint "Case Study readiness" "http://case-study:8080/ready"
+            SMOKE_FAILED=0
+            check_endpoint "Gateway health" "http://gateway:5160/health" || SMOKE_FAILED=1
+            check_endpoint "Identity health" "http://identity:8080/health" || SMOKE_FAILED=1
+            check_endpoint "Identity readiness" "http://identity:8080/ready" || SMOKE_FAILED=1
+            check_endpoint "Case Study health" "http://case-study:8080/health" || SMOKE_FAILED=1
+            check_endpoint "Case Study readiness" "http://case-study:8080/ready" || SMOKE_FAILED=1
 
-            # Validate the public certificate chain and HTTPS ingress, not just the
-            # private container network.
-            curl --fail --silent --show-error --max-time 20 \
-              "${PUBLIC_APP_URL%/}/" >/dev/null
+            if ! curl --fail --silent --show-error --max-time 20 \
+              "${PUBLIC_APP_URL%/}/" >/dev/null; then
+              SMOKE_FAILED=1
+            fi
+
+            if [ "$SMOKE_FAILED" -ne 0 ]; then
+              rollback_to_previous || true
+              exit 1
+            fi
+
+            echo "$TAG" > .deploy-tag
 
             # Preserve SHA-tagged releases for rollback; remove dangling images only.
             docker image prune -f

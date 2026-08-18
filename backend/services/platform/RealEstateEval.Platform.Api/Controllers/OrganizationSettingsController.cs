@@ -30,7 +30,7 @@ public sealed class OrganizationSettingsController(
         }
         catch (ArgumentOutOfRangeException ex)
         {
-            return BadRequest(new { error = ex.Message });
+            return this.BadRequestProblem(ex.Message);
         }
     }
 
@@ -41,7 +41,7 @@ public sealed class OrganizationSettingsController(
         CancellationToken ct)
     {
         if (string.IsNullOrWhiteSpace(request.Destination))
-            return BadRequest(new { error = "أدخل وجهة الاختبار (جوال أو بريد)." });
+            return this.BadRequestProblem("أدخل وجهة الاختبار (جوال أو بريد).");
 
         var result = await otpDelivery.SendTestAsync(
             request.Channel,

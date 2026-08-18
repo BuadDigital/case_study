@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { cn, useToast } from "@platform/design-system";
+import { cn, useToast } from "@platform/ui-kit";
 import {
   approximatePropertyGeo,
   approximatePropertyMapSearchUrl,

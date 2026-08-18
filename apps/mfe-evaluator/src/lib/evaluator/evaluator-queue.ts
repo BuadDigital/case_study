@@ -1,29 +1,6 @@
 import type { WorkflowTask } from "@case-study/mfe";
-import {
-  isVisibleInAppraiserQueue,
-  loadEvaluatorSubmission,
-} from "./evaluator-submission-storage";
+import { isVisibleInAppraiserQueue } from "./evaluator-submission-storage";
 import { appraiserQueueStatusBadge } from "./evaluator-readiness";
-
-export function filterAppraiserQueueTasks(tasks: WorkflowTask[]): WorkflowTask[] {
-  return tasks.filter(
-    (t) =>
-      t.kind === "property-appraisal" &&
-      isVisibleInAppraiserQueue(t.id, t.status),
-  );
-}
-
-/** مُرسَلة للأخصائي ولم تُكتمل بعد (مهمة مفتوحة + حالة submitted). */
-export function filterAppraiserSubmittedTasks(
-  tasks: WorkflowTask[],
-): WorkflowTask[] {
-  return tasks.filter((t) => {
-    if (t.kind !== "property-appraisal") return false;
-    if (t.status === "completed") return false;
-    const sub = loadEvaluatorSubmission(t.id);
-    return sub?.status === "submitted";
-  });
-}
 
 /**
  * قائمة المقيم — Case Study.html `renderValOrders`:

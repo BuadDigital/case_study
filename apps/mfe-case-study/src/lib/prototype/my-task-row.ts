@@ -110,30 +110,6 @@ export function formatRemainingDuration(
   };
 }
 
-/** أيام متبقية ليوم التسليم — للشريط الوصفي (أرقام غربية). */
-export function formatDeliveryRemainingLabel(
-  dueIso: string,
-  now: Date = new Date(),
-): string {
-  const day = dueIso.trim().slice(0, 10);
-  if (!day) return "—";
-
-  const due = new Date(`${day}T12:00:00`);
-  if (Number.isNaN(due.getTime())) return "—";
-
-  const today = new Date(now);
-  today.setHours(12, 0, 0, 0);
-  const diffDays = Math.round((due.getTime() - today.getTime()) / 86_400_000);
-
-  if (diffDays > 0) {
-    return `${diffDays} ${diffDays === 1 ? "يوم" : "أيام"}`;
-  }
-  if (diffDays < 0) {
-    return `متأخر ${Math.abs(diffDays)} يوم`;
-  }
-  return "0 أيام";
-}
-
 /** Unregistered / bourse-inquiry slot — e.g. «قيد الدراسة 1». */
 export function formatPropertySlotOnPo(
   task: WorkflowTask,

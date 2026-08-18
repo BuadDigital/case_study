@@ -54,7 +54,7 @@ function normalizeMatrixFromSaved(
   return matrix;
 }
 
-export function isStoredCaseStudyInfoRolesMatrixEmpty(
+function isStoredCaseStudyInfoRolesMatrixEmpty(
   saved: CaseStudyInfoRolesMatrix | undefined,
 ): boolean {
   if (!saved || Object.keys(saved).length === 0) return true;
@@ -100,7 +100,7 @@ async function seedDefaultsIfEmpty(): Promise<void> {
   }
 }
 
-export function notifyCaseStudyInfoRolesChanged(): void {
+function notifyCaseStudyInfoRolesChanged(): void {
   if (typeof window !== "undefined") {
     window.dispatchEvent(new Event(CASE_STUDY_INFO_ROLES_CHANGED_EVENT));
   }

@@ -121,9 +121,9 @@ public class PartyTaskSubmissionsController : ControllerBase
             if (errors.TryGetValue("_", out var msg)
                 && msg.Contains("صلاحية", StringComparison.Ordinal))
             {
-                return StatusCode(StatusCodes.Status403Forbidden, new { errors });
+                return this.FieldErrorsProblem(errors, StatusCodes.Status403Forbidden, "Forbidden");
             }
-            return BadRequest(new { errors });
+            return this.FieldErrorsProblem(errors);
         }
         return Ok(result);
     }

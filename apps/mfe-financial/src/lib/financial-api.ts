@@ -5,7 +5,6 @@ import {
   fetchFinancialSummary,
   fetchPartyFeePricingById,
   fetchPartyFeePricingTables,
-  financialApiEnabled as apiEnabled,
   revisePartyFeePricing,
   savePartyFeePricing,
   setPartyFeePricingAssignments,
@@ -16,7 +15,6 @@ import {
 } from "@platform/api-client";
 import {
   requirePrototypeModulesApiConfig,
-  prototypeModulesApiConfig,
   unwrapApiResult,
 } from "@platform/app-shared/prototype/prototype-modules-api-config";
 
@@ -120,8 +118,4 @@ export async function deletePartyFeePricingTable(id: string): Promise<void> {
   const config = requirePrototypeModulesApiConfig();
   const result = await deletePartyFeePricing(config, id);
   unwrapApiResult(result, "تعذّر حذف جدول التسعير");
-}
-
-export function financialApiEnabled(): boolean {
-  return apiEnabled(prototypeModulesApiConfig());
 }

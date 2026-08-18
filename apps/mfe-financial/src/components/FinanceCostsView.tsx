@@ -116,11 +116,6 @@ export function FinanceCostsView({
   ) => void;
   /** يثبت party في الرابط عند فتح statement بدون party أو بقيمة خاطئة */
   onEnsureParty?: (partyId: string) => void;
-  /** متوافق مع الاستدعاء السابق — غير مستخدم (التقارير أُزيلت) */
-  summary?: unknown;
-  summaryReady?: boolean;
-  duesCount?: number;
-  statementsCount?: number;
   excludedCount?: number;
 }) {
   const { data: staffResult } = useStaffUsersQuery();

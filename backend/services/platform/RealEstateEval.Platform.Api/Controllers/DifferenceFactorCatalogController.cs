@@ -29,7 +29,7 @@ public class DifferenceFactorCatalogController : ControllerBase
         CancellationToken ct)
     {
         var (result, error) = await _catalog.SaveAsync(request, ActorClaims.Id(User), ct);
-        if (error is not null) return BadRequest(new { error });
+        if (error is not null) return this.BadRequestProblem(error);
         return Ok(result);
     }
 }

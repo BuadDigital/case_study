@@ -13,8 +13,8 @@ var config = new ConfigurationBuilder()
     .AddJsonFile("appsettings.Development.json", optional: true)
     .Build();
 
-var connectionString = config.GetConnectionString("DefaultConnection")
-    ?? throw new InvalidOperationException("Missing DefaultConnection");
+var connectionString = config.GetConnectionString("Identity")
+    ?? throw new InvalidOperationException("Missing ConnectionStrings:Identity");
 
 var services = new ServiceCollection();
 services.AddLogging();

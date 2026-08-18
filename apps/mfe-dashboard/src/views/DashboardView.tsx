@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo } from "react";
-import { cn, ReportPageBody } from "@platform/design-system";
+import { cn, ReportPageBody } from "@platform/ui-kit";
 import { DashActionQueue } from "../components/dashboard/DashActionQueue";
 import { DashActivityFeed } from "../components/dashboard/DashActivityFeed";
 import { DashCompletionCard } from "../components/dashboard/DashCompletionCard";

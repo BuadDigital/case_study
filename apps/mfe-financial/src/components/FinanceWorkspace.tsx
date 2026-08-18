@@ -2,7 +2,6 @@
 
 import { useCallback } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import type { FinancialSummaryDto } from "../lib/financial-api";
 import {
   parseCostsSection,
   parseFinanceArea,
@@ -18,13 +17,7 @@ import { FinanceEngOfficePortal } from "./FinanceEngOfficePortal";
 import { FinanceInspectorPortal } from "./FinanceInspectorPortal";
 import { useFinanceTabCounts } from "../query/finance-tab-counts";
 
-export function FinanceWorkspace({
-  summary,
-  ready,
-}: {
-  summary: FinancialSummaryDto | null | undefined;
-  ready: boolean;
-}) {
+export function FinanceWorkspace() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const counts = useFinanceTabCounts();
@@ -125,10 +118,6 @@ export function FinanceWorkspace({
               statement: focusStatement,
             });
           }}
-          summary={summary}
-          summaryReady={ready}
-          duesCount={counts.duesReady}
-          statementsCount={counts.statementsOpen}
           excludedCount={counts.excludedCount}
         />
       ) : null}

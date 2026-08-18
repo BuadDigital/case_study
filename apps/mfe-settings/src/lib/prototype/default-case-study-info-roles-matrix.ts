@@ -5,7 +5,7 @@ import type {
 
 type Row = Partial<Record<CaseStudyInfoPartyId, CaseStudyInfoRoleType>>;
 
-export type DefaultCaseStudyInfoRolesMatrix = Record<string, Row>;
+type DefaultCaseStudyInfoRolesMatrix = Record<string, Row>;
 
 function row(...entries: [CaseStudyInfoPartyId, CaseStudyInfoRoleType][]): Row {
   return Object.fromEntries(entries) as Row;

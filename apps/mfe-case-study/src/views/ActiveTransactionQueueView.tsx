@@ -39,7 +39,7 @@ import {
   queueTableWrapClassName,
   useToast,
   type StatusPillStyle,
-} from "@platform/design-system";
+} from "@platform/ui-kit";
 import { PoNumber } from "@case-study/mfe/components/ui/PoNumber";
 import { RemainingTimeCell } from "@case-study/mfe/components/ui/RemainingTimeCell";
 import { RowMoreMenu } from "@case-study/mfe/components/ui/RowMoreMenu";

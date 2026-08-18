@@ -101,23 +101,29 @@ public static class PropertyListRowBuilder
         var studyFromTasks = ResolveStudyStage(propertyTasks);
 
         var survey = boursePending
-            ? "new"
+            ? PropertyListRowStatuses.New
             : surveyFromTasks
-                ?? (PriorSurveyWaived(prop, order.PoNumber, priorByDeed) ? "done" : "new");
+                ?? (PriorSurveyWaived(prop, order.PoNumber, priorByDeed)
+                    ? PropertyListRowStatuses.Done
+                    : PropertyListRowStatuses.New);
 
         var study = boursePending
-            ? "progress"
+            ? PropertyListRowStatuses.Progress
             : studyFromTasks
-                ?? (underVerification ? "progress" : "new");
+                ?? (underVerification
+                    ? PropertyListRowStatuses.Progress
+                    : PropertyListRowStatuses.New);
 
         var status = boursePending
-            ? "progress"
+            ? PropertyListRowStatuses.Progress
             : isFailed
-                ? "fail"
+                ? PropertyListRowStatuses.Fail
                 : incomplete
-                    ? "incomplete"
+                    ? PropertyListRowStatuses.Incomplete
                     : fromTasks
-                        ?? (underVerification ? "progress" : "new");
+                        ?? (underVerification
+                            ? PropertyListRowStatuses.Progress
+                            : PropertyListRowStatuses.New);
 
         return new PropertyListItemDto
         {
@@ -133,7 +139,7 @@ public static class PropertyListRowBuilder
                     : FirstNonEmpty(prop.PropertyType, prop.Classification, "—"),
                 Key = false,
                 Survey = survey,
-                Val = valFromTasks ?? "new",
+                Val = valFromTasks ?? PropertyListRowStatuses.New,
                 Study = study,
                 Status = status,
                 Specialist = order.AssignmentSpecialist ?? "",
@@ -148,14 +154,14 @@ public static class PropertyListRowBuilder
         var active = propertyTasks
             .Where(t => t.Status != WorkflowTaskStatus.Cancelled)
             .ToList();
-        if (active.Count == 0) return "fail";
+        if (active.Count == 0) return PropertyListRowStatuses.Fail;
 
  // «مكتمل» فقط عند رفع نموذج الدراسة للنظام (اكتمال مهمة دراسة الحالة).
         var parent = active.FirstOrDefault(t => t.Kind == WorkflowTaskKind.CaseStudyProperty);
         if (parent is not null &&
             (parent.Status == WorkflowTaskStatus.Completed || parent.Phase == WorkflowTaskPhase.Done))
         {
-            return "done";
+            return PropertyListRowStatuses.Done;
         }
 
         var started = active.Any(t =>
@@ -165,7 +171,7 @@ public static class PropertyListRowBuilder
                 or WorkflowTaskPhase.Done ||
             t.Kind != WorkflowTaskKind.CaseStudyProperty);
 
-        return started ? "progress" : "new";
+        return started ? PropertyListRowStatuses.Progress : PropertyListRowStatuses.New;
     }
 
     private static string? ResolveKindStage(
@@ -174,9 +180,9 @@ public static class PropertyListRowBuilder
     {
         var task = propertyTasks.FirstOrDefault(t => t.Kind == kind);
         if (task is null) return null;
-        if (task.Status == WorkflowTaskStatus.Cancelled) return "new";
-        if (task.Status == WorkflowTaskStatus.Completed) return "done";
-        return "progress";
+        if (task.Status == WorkflowTaskStatus.Cancelled) return PropertyListRowStatuses.New;
+        if (task.Status == WorkflowTaskStatus.Completed) return PropertyListRowStatuses.Done;
+        return PropertyListRowStatuses.Progress;
     }
 
     private static string? ResolveStudyStage(IReadOnlyList<WorkflowTask> propertyTasks)
@@ -184,11 +190,11 @@ public static class PropertyListRowBuilder
         var parent = propertyTasks.FirstOrDefault(t => t.Kind == WorkflowTaskKind.CaseStudyProperty);
         if (parent is null) return null;
         if (parent.Status == WorkflowTaskStatus.Completed || parent.Phase == WorkflowTaskPhase.Done)
-            return "done";
+            return PropertyListRowStatuses.Done;
         if (parent.Phase is WorkflowTaskPhase.CaseStudy or WorkflowTaskPhase.Distribution ||
             parent.Status is WorkflowTaskStatus.Open or WorkflowTaskStatus.Blocked)
-            return "progress";
-        return "new";
+            return PropertyListRowStatuses.Progress;
+        return PropertyListRowStatuses.New;
     }
 
     private static string PropertyRowId(string poNumber, WorkOrderProperty prop)

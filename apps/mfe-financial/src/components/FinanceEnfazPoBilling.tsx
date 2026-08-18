@@ -16,7 +16,7 @@ import {
   Input,
   cn,
   useToast,
-} from "@platform/design-system";
+} from "@platform/ui-kit";
 import {
   type PoEnfazRevenueLineDto,
 } from "@platform/api-client";

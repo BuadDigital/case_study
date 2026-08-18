@@ -124,7 +124,7 @@ apps/mfe-{domain}/
 
 **Peer dependencies:** `react`, `react-dom`, `next` (host provides runtime).
 
-**Shared dependencies:** `@platform/app-shared`, `@platform/design-system`, `@platform/types`, `@platform/auth-client`, `@platform/api-client`, `@tanstack/react-query`.
+**Shared dependencies:** `@platform/app-shared`, `@platform/ui-kit`, `@platform/types`, `@platform/auth-client`, `@platform/api-client`, `@tanstack/react-query`.
 
 ---
 
@@ -145,7 +145,7 @@ apps/mfe-{domain}/
               ┌──────────────┴──────────────┐
               ▼                             ▼
     @platform/app-shared            @platform/api-client
-    @platform/design-system         (future domain APIs)
+    @platform/ui-kit         (future domain APIs)
     @platform/types
 ```
 

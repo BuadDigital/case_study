@@ -22,7 +22,7 @@ import {
   ModalTitle,
   cn,
   useToast,
-} from "@platform/design-system";
+} from "@platform/ui-kit";
 import { statementDisplayTotal } from "../lib/finance-cost-parties";
 import { finGhost, finNote, finPrimary } from "../lib/finance-tw";
 

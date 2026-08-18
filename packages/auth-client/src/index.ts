@@ -1,14 +1,7 @@
 export {
-  AUTH_CHANGED_EVENT,
-  AUTH_COOKIE_NAME,
-  AUTH_EXPIRED_EVENT,
-  AUTH_STORAGE_KEY,
-  SESSION_REFRESH_LEAD_MS,
   clearAuthSession,
-  getAuthDisplayName,
   getAuthSession,
   getValidAuthSession,
-  hasAuthSession,
   isRefreshTokenExpired,
   isSessionExpired,
   notifyAuthExpired,
@@ -17,5 +10,4 @@ export {
   subscribeAuthExpired,
   subscribeAuthSession,
   type AuthSession,
-  type AuthUser,
 } from "./session";

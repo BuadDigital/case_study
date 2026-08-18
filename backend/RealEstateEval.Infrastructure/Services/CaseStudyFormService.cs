@@ -1,9 +1,10 @@
 using Microsoft.EntityFrameworkCore;
+using RealEstateEval.Application;
 using RealEstateEval.Application.Abstractions;
 using RealEstateEval.Application.Contracts;
 using RealEstateEval.Application.Rules;
 using RealEstateEval.Domain;
-using RealEstateEval.Infrastructure.Data;
+using RealEstateEval.Infrastructure.Data.Contexts;
 using System.Text.Json;
 
 namespace RealEstateEval.Infrastructure.Services;
@@ -18,13 +19,17 @@ public class CaseStudyFormService : ICaseStudyFormService
     private const WorkflowTaskKind CaseStudyPropertyKind = WorkflowTaskKind.CaseStudyProperty;
     private const string FormStatusSubmitted = "submitted";
 
-    private readonly ApplicationDbContext _db;
+    private readonly CaseStudyDbContext _db;
     private readonly IWorkflowTaskService _workflowTasks;
+    private readonly TimeProvider _time;
 
     public CaseStudyFormService(
-        ApplicationDbContext db,
-        IWorkflowTaskService workflowTasks)
+        CaseStudyDbContext db,
+        IWorkflowTaskService workflowTasks,
+        TimeProvider? time = null)
     {
+        _time = time ?? TimeProvider.System;
+
         _db = db;
         _workflowTasks = workflowTasks;
     }
@@ -173,7 +178,7 @@ public class CaseStudyFormService : ICaseStudyFormService
         var previousAnswers = ParseAnswers(entity?.AnswersJson);
         var previousRemarks = ReadRemarkMap(entity);
         var previousProvenance = CaseStudyAnswerProvenance.Parse(entity?.AnswerProvenanceJson);
-        var now = DateTime.UtcNow;
+        var now = _time.UtcNow();
         if (entity is null)
         {
             entity = new CaseStudyForm

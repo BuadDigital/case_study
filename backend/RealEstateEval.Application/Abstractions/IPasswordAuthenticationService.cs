@@ -4,7 +4,7 @@ namespace RealEstateEval.Application.Abstractions;
 
 public interface IPasswordAuthenticationService
 {
-    Task<LoginResponse?> AuthenticateAsync(
+    Task<LoginResponseDto?> AuthenticateAsync(
         string usernameOrEmail,
         string password,
         CancellationToken cancellationToken = default);

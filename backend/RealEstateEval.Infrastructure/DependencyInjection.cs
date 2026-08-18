@@ -26,9 +26,17 @@ public static class DependencyInjection
  /// </summary>
     public static IServiceCollection AddHostSharedInfrastructure(
         this IServiceCollection services,
-        IConfiguration configuration)
+        IConfiguration configuration,
+        IHostEnvironment? environment = null)
     {
-        services.Configure<DatabaseOptions>(configuration.GetSection(DatabaseOptions.SectionName));
+        services.AddOptions<DatabaseOptions>()
+            .Bind(configuration.GetSection(DatabaseOptions.SectionName))
+            .Validate(
+                o => environment is null
+                    || environment.IsDevelopment()
+                    || o.UnpaginatedListCap > 0,
+                "Database:UnpaginatedListCap must be greater than zero outside Development.")
+            .ValidateOnStart();
         services.TryAddSingleton(TimeProvider.System);
         services.TryAddSingleton<IAuditLogWriter, AuditLogWriter>();
         services.AddRedisCaching(configuration);
@@ -82,14 +90,20 @@ public static class DependencyInjection
         return services;
     }
 
- /// <summary>Attachments write context.</summary>
+ /// <summary>Attachments write context. Prefers a dedicated Attachments connection string.</summary>
     public static IServiceCollection AddAttachmentsPersistence(
         this IServiceCollection services,
         IConfiguration configuration,
         string connectionString)
     {
  // Block body (not expression-bodied): architecture fan-out scans method braces.
-        return services.AddBoundedContextPersistence<AttachmentsDbContext>(configuration, connectionString);
+        var attachmentsConnection = BoundedContextConnections.Resolve(
+            configuration,
+            BoundedContextConnections.ServiceNames.Attachments,
+            connectionString);
+        return services.AddBoundedContextPersistence<AttachmentsDbContext>(
+            configuration,
+            attachmentsConnection);
     }
 
  /// <summary>Platform catalog write context.</summary>
@@ -101,19 +115,25 @@ public static class DependencyInjection
         return services.AddBoundedContextPersistence<PlatformDbContext>(configuration, connectionString);
     }
 
- /// <summary>Valuation write context, including its own outbox rows.</summary>
+ /// <summary>Valuation write context, including its own outbox rows. Prefers a dedicated Valuation connection string.</summary>
     public static IServiceCollection AddValuationPersistence(
         this IServiceCollection services,
         IConfiguration configuration,
         string connectionString)
     {
-        return services.AddBoundedContextPersistence<ValuationDbContext>(configuration, connectionString);
+        var valuationConnection = BoundedContextConnections.Resolve(
+            configuration,
+            BoundedContextConnections.ServiceNames.Valuation,
+            connectionString);
+        return services.AddBoundedContextPersistence<ValuationDbContext>(
+            configuration,
+            valuationConnection);
     }
 
  /// <summary>
- /// Registers one bounded-context pool against the same physical database as the legacy
- /// context. separates models and migration streams, not connections: only the
- /// migrations-history table differs, so each stream records itself in the schema it owns.
+ /// Registers one bounded-context pool. Phase 1 used one physical database; Phase 4
+ /// may point an extracted context at a dedicated database via
+ /// <see cref="BoundedContextConnections"/>.
  /// </summary>
     private static IServiceCollection AddBoundedContextPersistence<TContext>(
         this IServiceCollection services,
@@ -121,10 +141,13 @@ public static class DependencyInjection
         string connectionString)
         where TContext : DbContext
     {
+        var resolvedConnection = BoundedContextConnections.ForContext<TContext>(
+            configuration,
+            connectionString);
         var dbOptions = configuration.GetSection(DatabaseOptions.SectionName).Get<DatabaseOptions>()
             ?? new DatabaseOptions();
         var pooledConnectionString = NpgsqlConfiguration.EnhanceConnectionString(
-            connectionString,
+            resolvedConnection,
             configuration);
 
         services.AddDbContextPool<TContext>(options =>
@@ -175,40 +198,64 @@ public static class DependencyInjection
         return services.AddBoundedContextPersistence<IdentityDbContext>(configuration, connectionString);
     }
 
- /// <summary>Failures write context.</summary>
+ /// <summary>Failures write context. Prefers a dedicated Failures connection string.</summary>
     public static IServiceCollection AddFailuresPersistence(
         this IServiceCollection services,
         IConfiguration configuration,
         string connectionString)
     {
-        return services.AddBoundedContextPersistence<FailuresDbContext>(configuration, connectionString);
+        var failuresConnection = BoundedContextConnections.Resolve(
+            configuration,
+            BoundedContextConnections.ServiceNames.Failures,
+            connectionString);
+        return services.AddBoundedContextPersistence<FailuresDbContext>(
+            configuration,
+            failuresConnection);
     }
 
- /// <summary>Operations write context.</summary>
+ /// <summary>Operations write context. Prefers a dedicated Operations connection string.</summary>
     public static IServiceCollection AddOperationsPersistence(
         this IServiceCollection services,
         IConfiguration configuration,
         string connectionString)
     {
-        return services.AddBoundedContextPersistence<OperationsDbContext>(configuration, connectionString);
+        var operationsConnection = BoundedContextConnections.Resolve(
+            configuration,
+            BoundedContextConnections.ServiceNames.Operations,
+            connectionString);
+        return services.AddBoundedContextPersistence<OperationsDbContext>(
+            configuration,
+            operationsConnection);
     }
 
- /// <summary>Financial write context.</summary>
+ /// <summary>Financial write context. Prefers a dedicated Financial connection string.</summary>
     public static IServiceCollection AddFinancialPersistence(
         this IServiceCollection services,
         IConfiguration configuration,
         string connectionString)
     {
-        return services.AddBoundedContextPersistence<FinancialDbContext>(configuration, connectionString);
+        var financialConnection = BoundedContextConnections.Resolve(
+            configuration,
+            BoundedContextConnections.ServiceNames.Financial,
+            connectionString);
+        return services.AddBoundedContextPersistence<FinancialDbContext>(
+            configuration,
+            financialConnection);
     }
 
- /// <summary>Case Study write context.</summary>
+ /// <summary>Case Study write context. Prefers a dedicated Case Study connection string.</summary>
     public static IServiceCollection AddCaseStudyPersistence(
         this IServiceCollection services,
         IConfiguration configuration,
         string connectionString)
     {
-        return services.AddBoundedContextPersistence<CaseStudyDbContext>(configuration, connectionString);
+        var caseStudyConnection = BoundedContextConnections.Resolve(
+            configuration,
+            BoundedContextConnections.ServiceNames.CaseStudy,
+            connectionString);
+        return services.AddBoundedContextPersistence<CaseStudyDbContext>(
+            configuration,
+            caseStudyConnection);
     }
 
  /// <summary>
@@ -223,6 +270,8 @@ public static class DependencyInjection
  // No IUserLabelLookup: Identity uses IdentityDbContext stores; label resolution that still
  // needs residual App lives only on hosts that call AddLegacyApplicationPersistence.
         services.AddIdentityStores();
+        services.AddScoped<IIdentityDirectory, IdentityDirectory>();
+        services.AddScoped<IUserLabelLookup>(sp => sp.GetRequiredService<IIdentityDirectory>());
         services.AddScoped<IJwtTokenService, JwtTokenService>();
         services.AddScoped<IAuthSessionService, AuthSessionService>();
         services.AddScoped<IPasswordAuthenticationService, PasswordAuthenticationService>();
@@ -242,6 +291,7 @@ public static class DependencyInjection
         string connectionString)
     {
         services.AddIdentityPersistence(configuration, connectionString);
+        services.AddRemoteAuditLogAppend(configuration);
         services.AddIdentityApplicationServices();
         return services;
     }
@@ -295,6 +345,7 @@ public static class DependencyInjection
         string connectionString)
     {
         services.AddIdentityPersistence(configuration, connectionString);
+        services.AddPlatformPersistence(configuration, connectionString);
         services.AddIdentityStores();
         return services;
     }
@@ -341,20 +392,10 @@ public static class DependencyInjection
         services.AddScoped<ICaseStudyValuationDispatchService, CaseStudyValuationDispatchService>();
         services.AddScoped<IPartyTaskSubmissionService, PartyTaskSubmissionService>();
         services.AddScoped<IFieldInspectionWorkspaceService, FieldInspectionWorkspaceService>();
-        services.AddInspectorFeeCollaborators();
-        services.AddScoped<IPartyFeePricingService, PartyFeePricingService>();
-        services.AddScoped<IIncentiveSuspensionService, IncentiveSuspensionService>();
-        services.AddScoped<IDiscountFlagService, DiscountFlagService>();
-        services.AddScoped<IPoEnfazBillingService, PoEnfazBillingService>();
-        services.AddScoped<IPartyBillingStatementService, PartyBillingStatementService>();
         services.AddScoped<IFieldInspectionAttachmentVerifier, FieldInspectionAttachmentVerifier>();
         services.AddScoped<IPropertyTimelineService, PropertyTimelineService>();
         services.AddScoped<IWorkflowTaskShellPatcher, WorkflowTaskShellPatcher>();
-        services.AddScoped<IFailureService, FailureService>();
-        services.AddScoped<IPropertyKeyGateResolver, PropertyKeyGateResolver>();
         services.AddScoped<IPropertyAccessHoldService, PropertyAccessHoldService>();
-        services.AddScoped<IKeyEnvelopePeopleResolver, KeyEnvelopePeopleResolver>();
-        services.AddScoped<IKeyEnvelopesService, KeyEnvelopesService>();
         return services;
     }
 
@@ -373,13 +414,6 @@ public static class DependencyInjection
     public static IServiceCollection AddCaseStudyAuxiliaryInfrastructure(this IServiceCollection services)
     {
         services.AddScoped<IPoIntakeDraftService, PoIntakeDraftService>();
-        services.AddScoped<OperationsTaskNotifier>();
-        services.AddScoped<OperationsTaskVisitFeeHelper>();
-        services.AddScoped<IOperationsTaskQuery, OperationsTaskQueryService>();
-        services.AddScoped<IOperationsTaskCommands, OperationsTaskCommands>();
-        services.AddScoped<IOperationsTaskService, OperationsTaskService>();
-        services.AddHostedService<OperationsTaskReminderHostedService>();
-        services.AddHostedService<PartyBillingMonthVendorHostedService>();
         services.AddScoped<ISuspendedTransactionsService, SuspendedTransactionsService>();
         return services;
     }
@@ -389,18 +423,28 @@ public static class DependencyInjection
         IConfiguration configuration,
         IHostEnvironment environment)
     {
- // Hosts that call this must have registered AddCaseStudyPersistence /
- // AddFinancialPersistence (and failures/ops as needed) against the same connection.
+ // Hosts that call this must have registered AddCaseStudyPersistence.
         services.AddCaseStudyCoreInfrastructure();
         services.AddCaseStudyAuxiliaryInfrastructure();
+        services.AddScoped<IWorkflowAssigneeLookup, WorkflowAssigneeLookup>();
+        services.AddScoped<ICaseStudyLookup, CaseStudyLookup>();
+        services.AddScoped<ICaseStudyCommands, CaseStudyCommands>();
+        services.AddScoped<IInspectionLimitsService, InspectionLimitsService>();
+        services.AddRemoteAttachmentLookup(configuration);
+        services.AddRemotePlatformCatalogs(configuration);
+        services.AddRemoteValuationRequests(configuration);
+        services.AddRemoteIdentityDirectory(configuration);
+        services.AddRemoteAuditLogAppend(configuration);
+        services.AddRemoteFailures(configuration);
+        services.AddRemoteOperations(configuration);
+        services.AddRemoteFinancial(configuration);
         services.AddNotificationInfrastructure(configuration, environment);
         return services;
     }
 
  /// <summary>
- /// Development-only reset support for UserManager / seed. Hosts must already register
- /// <see cref="AddIdentityPersistence"/> (fee residual paths on Case Study / Failures).
- /// Does not re-register the Identity pool.
+ /// Development-only reset support for UserManager / seed. Registers the Identity pool
+ /// on this host only in Development. Request paths use the Identity HTTP directory.
  /// </summary>
     public static IServiceCollection AddDevelopmentSystemMaintenance(
         this IServiceCollection services,
@@ -410,6 +454,7 @@ public static class DependencyInjection
     {
         if (!environment.IsDevelopment()) return services;
 
+        services.AddIdentityPersistence(configuration, connectionString);
         services.AddIdentityStores();
         services.AddScoped<IUserRegistrationService, UserRegistrationService>();
         services.AddScoped<ISystemMaintenanceService, SystemMaintenanceService>();
@@ -423,16 +468,16 @@ public static class DependencyInjection
         IHostEnvironment environment)
     {
         services.AddFailuresPersistence(configuration, connectionString);
- // Residual cross-boundary: WorkOrder/Workflow on Case Study; Identity labels/recipients.
+ // Residual cross-boundary: WorkOrder/Workflow on Case Study; Identity via HTTP directory.
         services.AddCaseStudyPersistence(configuration, connectionString);
-        services.AddIdentityPersistence(configuration, connectionString);
+        services.AddRemoteIdentityDirectory(configuration);
+        services.AddScoped<IWorkflowAssigneeLookup, WorkflowAssigneeLookup>();
  // Pure-host outbox for platform notification requests (A6 — no ApplicationDbContext).
         services.AddMessagingPersistence(configuration, connectionString);
         services.AddNotificationInfrastructure(configuration, environment);
-        services.TryAddScoped<IUserLabelLookup>(sp =>
-            new UserLabelLookup(sp.GetRequiredService<IdentityDbContext>()));
         services.AddScoped<IWorkflowTaskShellPatcher, WorkflowTaskShellPatcher>();
         services.AddScoped<IPropertyTimelineService, PropertyTimelineService>();
+        services.AddScoped<IFailureLookup, FailureLookup>();
         services.AddScoped<IFailureService, FailureService>();
         services.AddScoped<IFailureTypesCatalogService, FailureTypesCatalogService>();
         return services;
@@ -458,10 +503,160 @@ public static class DependencyInjection
         string connectionString)
     {
         services.AddAttachmentsPersistence(configuration, connectionString);
- // classification validates keys against the admin print dictionary.
-        services.AddPlatformPersistence(configuration, connectionString);
-        services.AddScoped<IAttachmentPrintDictionaryService, AttachmentPrintDictionaryService>();
+        services.AddRemotePlatformCatalogs(configuration);
+        services.AddScoped<IAttachmentLookup, AttachmentLookup>();
         services.AddScoped<IAttachmentService, AttachmentService>();
+        return services;
+    }
+
+    /// <summary>
+    /// Attachment existence and report lookups via the Attachments HTTP API.
+    /// Forwards the caller's Authorization header. Do not combine with
+    /// <see cref="AddAttachmentsPersistence"/> on the same host.
+    /// </summary>
+    public static IServiceCollection AddRemoteAttachmentLookup(
+        this IServiceCollection services,
+        IConfiguration configuration)
+    {
+        services.AddUpstreamHttp(configuration);
+        services.AddHttpClient<IAttachmentLookup, HttpAttachmentLookup>();
+        return services;
+    }
+
+    /// <summary>
+    /// Print dictionary and organization settings via the Platform HTTP API.
+    /// Do not combine with <see cref="AddPlatformPersistence"/> on the same host.
+    /// </summary>
+    public static IServiceCollection AddRemotePlatformCatalogs(
+        this IServiceCollection services,
+        IConfiguration configuration)
+    {
+        services.AddUpstreamHttp(configuration);
+        services.AddHttpClient<IAttachmentPrintDictionaryService, HttpAttachmentPrintDictionaryService>();
+        services.AddHttpClient<IOrganizationSettingsService, HttpOrganizationSettingsService>();
+        return services;
+    }
+
+    /// <summary>
+    /// Create/open valuation requests via the Valuation HTTP API (Case Study dispatch).
+    /// Do not combine with <see cref="AddValuationRequestInfrastructure"/> on the same host.
+    /// </summary>
+    public static IServiceCollection AddRemoteValuationRequests(
+        this IServiceCollection services,
+        IConfiguration configuration)
+    {
+        services.AddUpstreamHttp(configuration);
+        services.AddHttpClient<IValuationRequestService, HttpValuationRequestService>();
+        return services;
+    }
+
+    /// <summary>
+    /// Inspector fees, billing, Enfaz, pricing, and charges via the Financial HTTP API.
+    /// Do not combine with <see cref="AddFinancialPersistence"/> on the same host.
+    /// </summary>
+    public static IServiceCollection AddRemoteFinancial(
+        this IServiceCollection services,
+        IConfiguration configuration)
+    {
+        services.AddUpstreamHttp(configuration);
+        services.AddHttpClient<IInspectorFeeService, HttpInspectorFeeService>();
+        services.AddHttpClient<IPartyBillingStatementService, HttpPartyBillingStatementService>();
+        services.AddHttpClient<IPoEnfazBillingService, HttpPoEnfazBillingService>();
+        services.AddHttpClient<IPartyFeePricingService, HttpPartyFeePricingService>();
+        services.AddHttpClient<ICourtVisitFeeChargeService, HttpCourtVisitFeeChargeService>();
+        services.AddHttpClient<IKeyReceiptFeeChargeService, HttpKeyReceiptFeeChargeService>();
+        services.AddHttpClient<IPoEnfazInvoiceLookup, HttpPoEnfazInvoiceLookup>();
+        return services;
+    }
+
+    /// <summary>
+    /// Failure commands and gates via the Failures HTTP API. Do not combine with
+    /// <see cref="AddFailuresPersistence"/> on the same host.
+    /// </summary>
+    public static IServiceCollection AddRemoteFailures(
+        this IServiceCollection services,
+        IConfiguration configuration)
+    {
+        services.AddUpstreamHttp(configuration);
+        services.AddHttpClient<IFailureService, HttpFailureService>();
+        services.AddHttpClient<IFailureLookup, HttpFailureLookup>();
+        return services;
+    }
+
+    /// <summary>
+    /// Case Study lookups via the Case Study HTTP API. Do not combine with
+    /// <see cref="AddCaseStudyPersistence"/> on the same host.
+    /// </summary>
+    public static IServiceCollection AddRemoteCaseStudy(
+        this IServiceCollection services,
+        IConfiguration configuration)
+    {
+        services.AddUpstreamHttp(configuration);
+        services.AddHttpClient<ICaseStudyLookup, HttpCaseStudyLookup>();
+        services.AddHttpClient<IWorkflowAssigneeLookup, HttpWorkflowAssigneeLookup>();
+        return services;
+    }
+
+    /// <summary>
+    /// Operations tasks, keys, envelopes, and survey offices via the Operations HTTP API.
+    /// Do not combine with <see cref="AddOperationsPersistence"/> on the same host.
+    /// </summary>
+    public static IServiceCollection AddRemoteOperations(
+        this IServiceCollection services,
+        IConfiguration configuration)
+    {
+        services.AddUpstreamHttp(configuration);
+        services.AddHttpClient<IOperationsTaskService, HttpOperationsTaskService>();
+        services.AddHttpClient<IKeyEntitlementLookup, HttpKeyEntitlementLookup>();
+        services.AddHttpClient<IPropertyKeyGateResolver, HttpPropertyKeyGateResolver>();
+        services.AddHttpClient<IPropertyKeysService, HttpPropertyKeysService>();
+        services.AddHttpClient<ISurveyOfficesService, HttpSurveyOfficesService>();
+        return services;
+    }
+
+    /// <summary>
+    /// Display-name lookup via the Identity HTTP API.
+    /// </summary>
+    public static IServiceCollection AddRemoteAuditLogAppend(
+        this IServiceCollection services,
+        IConfiguration configuration)
+    {
+        services.AddUpstreamHttp(configuration);
+        services.AddHttpClient<IAuditLogAppend, HttpAuditLogAppend>();
+        return services;
+    }
+
+    public static IServiceCollection AddRemoteIdentityDirectory(
+        this IServiceCollection services,
+        IConfiguration configuration)
+    {
+        services.AddUpstreamHttp(configuration);
+        services.AddHttpClient<IIdentityDirectory, HttpIdentityDirectory>();
+        services.AddScoped<IUserLabelLookup>(sp => sp.GetRequiredService<IIdentityDirectory>());
+        return services;
+    }
+
+    public static IServiceCollection AddRemoteWorkflowAssignees(
+        this IServiceCollection services,
+        IConfiguration configuration)
+    {
+        services.AddUpstreamHttp(configuration);
+        services.AddHttpClient<IWorkflowAssigneeLookup, HttpWorkflowAssigneeLookup>();
+        return services;
+    }
+
+    public static IServiceCollection AddRemoteUserLabelLookup(
+        this IServiceCollection services,
+        IConfiguration configuration) =>
+        services.AddRemoteIdentityDirectory(configuration);
+
+    private static IServiceCollection AddUpstreamHttp(
+        this IServiceCollection services,
+        IConfiguration configuration)
+    {
+        services.AddHttpContextAccessor();
+        services.AddOptions<UpstreamServicesOptions>()
+            .Bind(configuration.GetSection(UpstreamServicesOptions.SectionName));
         return services;
     }
 
@@ -471,9 +666,23 @@ public static class DependencyInjection
         string connectionString)
     {
         services.AddFinancialPersistence(configuration, connectionString);
- // Report / discount / incentive residual reads.
-        services.AddCaseStudyPersistence(configuration, connectionString);
-        services.AddIdentityPersistence(configuration, connectionString);
+        // Case Study reads/writes go through /api/case-study-dispatch. Do not
+        // AddCaseStudyPersistence here (compose cycle: Case Study already depends_on financial).
+        services.AddRemoteCaseStudy(configuration);
+        services.AddHttpClient<ICaseStudyCommands, HttpCaseStudyCommands>();
+        services.AddRemoteIdentityDirectory(configuration);
+        services.AddRemoteAttachmentLookup(configuration);
+        services.AddUpstreamHttp(configuration);
+        services.AddHttpClient<IKeyEntitlementLookup, HttpKeyEntitlementLookup>();
+        services.AddScoped<INotificationService, NullNotificationService>();
+        services.AddScoped<NotificationRecipientResolver>();
+        services.AddInspectorFeeCollaborators();
+        services.AddScoped<ICourtVisitFeeChargeService, CourtVisitFeeChargeService>();
+        services.AddScoped<IKeyReceiptFeeChargeService, KeyReceiptFeeChargeService>();
+        services.AddScoped<IPoEnfazInvoiceLookup, PoEnfazInvoiceLookup>();
+        services.AddScoped<IPoEnfazBillingService, PoEnfazBillingService>();
+        services.AddScoped<IPartyBillingStatementService, PartyBillingStatementService>();
+        services.AddHostedService<PartyBillingMonthVendorHostedService>();
         services.AddScoped<IFinancialReportService, FinancialReportService>();
         services.AddScoped<IPartyFeePricingService, PartyFeePricingService>();
         services.AddScoped<IIncentiveSuspensionService, IncentiveSuspensionService>();
@@ -481,7 +690,7 @@ public static class DependencyInjection
         return services;
     }
 
- /// <summary>Financial services when financial (+ residual CS/identity) persistence is already registered.</summary>
+ /// <summary>Financial services when financial persistence is already registered.</summary>
     public static IServiceCollection AddFinancialInfrastructure(this IServiceCollection services)
     {
         services.AddScoped<IFinancialReportService, FinancialReportService>();
@@ -498,23 +707,25 @@ public static class DependencyInjection
         IHostEnvironment environment)
     {
         services.AddOperationsPersistence(configuration, connectionString);
- // Residual cross-boundary reads: property rows, fee charges, attachment checks, identity labels.
-        services.AddFailuresPersistence(configuration, connectionString);
-        services.AddCaseStudyPersistence(configuration, connectionString);
-        services.AddFinancialPersistence(configuration, connectionString);
-        services.AddIdentityPersistence(configuration, connectionString);
-        services.AddAttachmentsPersistence(configuration, connectionString);
+        services.AddRemoteIdentityDirectory(configuration);
+        services.AddRemoteAttachmentLookup(configuration);
+        services.AddRemoteFailures(configuration);
+        services.AddRemoteCaseStudy(configuration);
  // Pure-host outbox for platform notification requests (mirrors AddFailuresInfrastructure) —
  // KeyEnvelopesService / PropertyAccessHoldService notify the case specialist and need
  // INotificationService + NotificationRecipientResolver to be resolvable here.
         services.AddMessagingPersistence(configuration, connectionString);
         services.AddNotificationInfrastructure(configuration, environment);
+        services.AddScoped<IKeyEntitlementLookup, KeyEnvelopeEntitlementLookup>();
         services.AddScoped<ISurveyOfficesService, SurveyOfficesService>();
         services.AddScoped<IPropertyKeysService, PropertyKeysService>();
         services.AddScoped<IPropertyKeyGateResolver, PropertyKeyGateResolver>();
         services.AddScoped<IPropertyAccessHoldService, PropertyAccessHoldService>();
         services.AddScoped<IKeyEnvelopePeopleResolver, KeyEnvelopePeopleResolver>();
         services.AddScoped<IKeyEnvelopesService, KeyEnvelopesService>();
+        services.AddOperationsTaskCollaborators();
+        // After collaborators so HTTP court-visit charges win over the EF helper.
+        services.AddRemoteFinancial(configuration);
         return services;
     }
 
@@ -524,12 +735,26 @@ public static class DependencyInjection
  /// </summary>
     public static IServiceCollection AddOperationsInfrastructure(this IServiceCollection services)
     {
+        services.AddScoped<IKeyEntitlementLookup, KeyEnvelopeEntitlementLookup>();
         services.AddScoped<ISurveyOfficesService, SurveyOfficesService>();
         services.AddScoped<IPropertyKeysService, PropertyKeysService>();
         services.AddScoped<IPropertyKeyGateResolver, PropertyKeyGateResolver>();
         services.AddScoped<IPropertyAccessHoldService, PropertyAccessHoldService>();
         services.AddScoped<IKeyEnvelopePeopleResolver, KeyEnvelopePeopleResolver>();
         services.AddScoped<IKeyEnvelopesService, KeyEnvelopesService>();
+        services.AddOperationsTaskCollaborators();
+        return services;
+    }
+
+    /// <summary>Operations-task façade + query / command / reminder collaborators.</summary>
+    public static IServiceCollection AddOperationsTaskCollaborators(this IServiceCollection services)
+    {
+        services.AddScoped<OperationsTaskNotifier>();
+        services.AddScoped<OperationsTaskVisitFeeHelper>();
+        services.AddScoped<IOperationsTaskQuery, OperationsTaskQueryService>();
+        services.AddScoped<IOperationsTaskCommands, OperationsTaskCommands>();
+        services.AddScoped<IOperationsTaskService, OperationsTaskService>();
+        services.AddHostedService<OperationsTaskReminderHostedService>();
         return services;
     }
 
@@ -539,6 +764,7 @@ public static class DependencyInjection
         string connectionString)
     {
         services.AddPlatformPersistence(configuration, connectionString);
+        services.AddScoped<IAuditLogAppend, PlatformAuditLogAppend>();
         services.AddScoped<IFieldDictionaryService, FieldDictionaryService>();
         services.AddScoped<IAttachmentPrintDictionaryService, AttachmentPrintDictionaryService>();
         services.AddScoped<IDifferenceFactorCatalogService, DifferenceFactorCatalogService>();
@@ -553,13 +779,21 @@ public static class DependencyInjection
         return services;
     }
 
- /// <summary>Messaging write context.</summary>
+ /// <summary>
+ /// Messaging write context. Requires a dedicated Messaging connection string.
+ /// Valuation keeps its own outbox on the valuation database (D5).
+ /// </summary>
     public static IServiceCollection AddMessagingPersistence(
         this IServiceCollection services,
         IConfiguration configuration,
         string connectionString)
     {
-        return services.AddBoundedContextPersistence<MessagingDbContext>(configuration, connectionString);
+        var messagingConnection = BoundedContextConnections.Resolve(
+            configuration,
+            BoundedContextConnections.ServiceNames.Messaging);
+        return services.AddBoundedContextPersistence<MessagingDbContext>(
+            configuration,
+            messagingConnection);
     }
 
  /// <summary>
@@ -658,20 +892,15 @@ public static class DependencyInjection
         IConfiguration configuration,
         string connectionString)
     {
- // Residual cross-boundary PO read for event payloads.
         services.AddCaseStudyPersistence(configuration, connectionString);
-        services.AddPlatformPersistence(configuration, connectionString);
- // Report document + attachments gate read printable attachments.
-        services.AddAttachmentsPersistence(configuration, connectionString);
-        services.AddScoped<IAttachmentPrintDictionaryService, AttachmentPrintDictionaryService>();
+        services.AddRemotePlatformCatalogs(configuration);
+        services.AddRemoteAttachmentLookup(configuration);
+        services.AddRemoteAuditLogAppend(configuration);
         services.AddValuationRequestInfrastructure(configuration, connectionString);
-        services.TryAddSingleton<IAuditLogWriter, AuditLogWriter>();
-        services.AddScoped<IOrganizationSettingsService, OrganizationSettingsService>();
         services.AddScoped<IEvaluatorRecallsService, EvaluatorRecallsService>();
         services.AddScoped<IComparablePropertyService, ComparablePropertyService>();
         services.AddScoped<IValuationComparableSelectionService, ValuationComparableSelectionService>();
         services.AddScoped<IValuationApproachSettingsService, ValuationApproachSettingsService>();
-        services.AddScoped<IInspectionLimitsService, InspectionLimitsService>();
         services.AddScoped<IValuationCostApproachService, ValuationCostApproachService>();
         services.AddScoped<IValuationReconciliationService, ValuationReconciliationService>();
         services.AddScoped<IValuationIssuanceGateService, ValuationIssuanceGateService>();
@@ -691,7 +920,19 @@ public static class DependencyInjection
         IHostEnvironment environment)
     {
         services.AddValidatedRabbitMqOptions(configuration, environment);
-        services.AddScoped<IIntegrationEventPublisher, OutboxIntegrationEventPublisher>();
+        services.AddScoped<IIntegrationEventPublisher>(sp =>
+        {
+            if (sp.GetService<MessagingDbContext>() is { } messaging)
+            {
+                return new MessagingOutboxPublisher(
+                    messaging,
+                    sp.GetRequiredService<ILogger<MessagingOutboxPublisher>>());
+            }
+
+            return new OutboxIntegrationEventPublisher(
+                sp.GetRequiredService<ApplicationDbContext>(),
+                sp.GetRequiredService<ILogger<OutboxIntegrationEventPublisher>>());
+        });
         return services;
     }
 
@@ -717,7 +958,9 @@ public static class DependencyInjection
     }
 
  /// <summary>
- /// Polls <c>OutboxMessages</c> and publishes to RabbitMQ. Register on <b>one</b> service only (case-study).
+ /// Polls <c>OutboxMessages</c> and publishes to RabbitMQ. Register once per physical
+ /// outbox database (Case Study drains the dedicated messaging database; Valuation drains
+ /// its dedicated database after the Phase 4 cutover).
  /// </summary>
     public static IServiceCollection AddOutboxDispatcher(
         this IServiceCollection services,
@@ -725,8 +968,6 @@ public static class DependencyInjection
         IHostEnvironment environment)
     {
         services.AddValidatedRabbitMqOptions(configuration, environment);
- // Residual single host: Case Study drains via ApplicationDbContext against the shared
- // messaging.OutboxMessages table (E7 — rebind ContextType when multi-dispatcher lands).
         services.AddOptions<OutboxDispatcherOptions>();
         services.AddSingleton<RabbitMqMessagePublisher>();
         services.AddHostedService<OutboxDispatcherHostedService>();
@@ -760,6 +1001,28 @@ public static class DependencyInjection
             .ValidateOnStart();
 
         return services;
+    }
+
+ /// <summary>
+ /// Event-owning hosts (case-study / valuation outbox drain, platform consumers) fail fast in Production
+ /// when the broker is disabled. Set <c>RabbitMQ:RequireEnabled=false</c> only in tests.
+ /// </summary>
+    public static IHostApplicationBuilder RequireEventBrokerInProduction(
+        this IHostApplicationBuilder builder)
+    {
+        if (!builder.Environment.IsProduction())
+            return builder;
+
+        var requireEnabled = builder.Configuration.GetValue("RabbitMQ:RequireEnabled", true);
+        var enabled = builder.Configuration.GetValue("RabbitMQ:Enabled", false);
+        if (requireEnabled && !enabled)
+        {
+            throw new InvalidOperationException(
+                "RabbitMQ must be enabled in Production for event-owning services. "
+                + "Set RabbitMQ:Enabled=true or disable RabbitMQ:RequireEnabled only in tests.");
+        }
+
+        return builder;
     }
 
  /// <summary>RabbitMQ event handlers for <c>ValuationIntegrationEventConsumer</c> (case-study).</summary>

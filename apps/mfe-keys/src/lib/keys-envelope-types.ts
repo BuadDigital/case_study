@@ -1,11 +1,25 @@
+export const KeyEnvelopeStatusValues = {
+  Reviewer: "reviewer",
+  Assessor: "assessor",
+  External: "external",
+  Returned: "returned",
+  Cancelled: "cancelled",
+} as const;
+
 export type KeyEnvelopeStatus =
-  | "reviewer"
-  | "assessor"
-  | "external"
-  | "returned"
+  | (typeof KeyEnvelopeStatusValues)[keyof typeof KeyEnvelopeStatusValues]
   | string;
 
-export type KeyReceiveScenario = "court" | "missing" | "third_party" | string;
+export const KeyReceiveScenarioValues = {
+  Court: "court",
+  Missing: "missing",
+  ThirdParty: "third_party",
+  Party: "party",
+} as const;
+
+export type KeyReceiveScenario =
+  | (typeof KeyReceiveScenarioValues)[keyof typeof KeyReceiveScenarioValues]
+  | string;
 
 export type KeyEnvelopeLinkedProperty = {
   propertyId: string;
@@ -95,16 +109,6 @@ export type KeyEnvelopeFeeReportRow = {
   createdAtUtc: string;
 };
 
-export function feeCollectionStatusLabel(status?: string): string {
-  switch (status) {
-    case "collected":
-      return "محصّل";
-    case "open":
-    default:
-      return "مفتوح";
-  }
-}
-
 export type PropertyCourtAccessRow = {
   id: string;
   propertyId: string;
@@ -124,15 +128,15 @@ export type PropertyCourtAccessRow = {
 
 export function envelopeStatusLabel(status: string): string {
   switch (status) {
-    case "reviewer":
+    case KeyEnvelopeStatusValues.Reviewer:
       return "بعهدة المراجع";
-    case "assessor":
+    case KeyEnvelopeStatusValues.Assessor:
       return "بعهدة المعاين";
-    case "external":
+    case KeyEnvelopeStatusValues.External:
       return "بعهدة طرف خارجي";
-    case "returned":
+    case KeyEnvelopeStatusValues.Returned:
       return "مُرجَع للمحكمة";
-    case "cancelled":
+    case KeyEnvelopeStatusValues.Cancelled:
       return "ملغى";
     default:
       return status || "—";
@@ -142,46 +146,29 @@ export function envelopeStatusLabel(status: string): string {
 /** HTML Case Study.html `keyStat` colors. */
 export function envelopeStatusColor(status: string): string {
   switch (status) {
-    case "reviewer":
+    case KeyEnvelopeStatusValues.Reviewer:
       return "#378add";
-    case "assessor":
+    case KeyEnvelopeStatusValues.Assessor:
       return "#2f7a4d";
-    case "external":
+    case KeyEnvelopeStatusValues.External:
       return "#b58a3c";
-    case "returned":
-    case "cancelled":
+    case KeyEnvelopeStatusValues.Returned:
+    case KeyEnvelopeStatusValues.Cancelled:
       return "#8a8d96";
     default:
       return "#8a8d96";
-  }
-}
-
-export function envelopeStatusTone(
-  status: string,
-): "success" | "warning" | "danger" | "default" | "info" {
-  switch (status) {
-    case "reviewer":
-      return "info";
-    case "assessor":
-      return "success";
-    case "external":
-      return "warning";
-    case "returned":
-      return "default";
-    default:
-      return "default";
   }
 }
 
 /** HTML Case Study.html `keyScen` labels. */
 export function scenarioLabel(scenario: string): string {
   switch (scenario) {
-    case "missing":
+    case KeyReceiveScenarioValues.Missing:
       return "مفقودة (ميدانياً)";
-    case "party":
-    case "third_party":
+    case KeyReceiveScenarioValues.Party:
+    case KeyReceiveScenarioValues.ThirdParty:
       return "استلام من طرف آخر";
-    case "court":
+    case KeyReceiveScenarioValues.Court:
     default:
       return "استلام من المحكمة";
   }
@@ -189,12 +176,12 @@ export function scenarioLabel(scenario: string): string {
 
 export function scenarioColor(scenario: string): string {
   switch (scenario) {
-    case "missing":
+    case KeyReceiveScenarioValues.Missing:
       return "#d9694f";
-    case "third_party":
-    case "party":
+    case KeyReceiveScenarioValues.ThirdParty:
+    case KeyReceiveScenarioValues.Party:
       return "#b58a3c";
-    case "court":
+    case KeyReceiveScenarioValues.Court:
     default:
       return "#2f7a4d";
   }
@@ -211,31 +198,43 @@ export function envelopeDisplayRef(id: string, createdAtUtc?: string): string {
 }
 
 export function isEnvelopeOutOfCustody(status: string): boolean {
-  return status === "returned" || status === "external";
+  return (
+    status === KeyEnvelopeStatusValues.Returned
+    || status === KeyEnvelopeStatusValues.External
+  );
 }
+
+export const KeyAssignmentStatusValues = {
+  Matched: "matched",
+  Partial: "partial",
+  Unmatched: "unmatched",
+  UnmatchedInspected: "unmatched_inspected",
+  Missing: "missing",
+  Pending: "pending",
+} as const;
 
 /** Field match result statuses from HTML `openKeyResult` / `keyAssign`. */
 export type KeyAssignmentMatchStatus =
-  | "matched"
-  | "partial"
-  | "unmatched"
-  | "unmatched_inspected"
-  | "missing";
+  | typeof KeyAssignmentStatusValues.Matched
+  | typeof KeyAssignmentStatusValues.Partial
+  | typeof KeyAssignmentStatusValues.Unmatched
+  | typeof KeyAssignmentStatusValues.UnmatchedInspected
+  | typeof KeyAssignmentStatusValues.Missing;
 
 /** HTML Case Study.html `keyAssign` labels. */
 export function assignmentStatusLabel(status: string): string {
   switch (status) {
-    case "matched":
+    case KeyAssignmentStatusValues.Matched:
       return "مطابق";
-    case "partial":
+    case KeyAssignmentStatusValues.Partial:
       return "مطابقة جزئية";
-    case "unmatched":
+    case KeyAssignmentStatusValues.Unmatched:
       return "غير مطابق";
-    case "unmatched_inspected":
+    case KeyAssignmentStatusValues.UnmatchedInspected:
       return "غير مطابق — تمت المعاينة";
-    case "missing":
+    case KeyAssignmentStatusValues.Missing:
       return "مفقود";
-    case "pending":
+    case KeyAssignmentStatusValues.Pending:
     default:
       return "لم تتم التجربة";
   }
@@ -243,32 +242,50 @@ export function assignmentStatusLabel(status: string): string {
 
 export function assignmentStatusColor(status: string): string {
   switch (status) {
-    case "matched":
+    case KeyAssignmentStatusValues.Matched:
       return "#2f7a4d";
-    case "partial":
+    case KeyAssignmentStatusValues.Partial:
       return "#b58a3c";
-    case "unmatched":
+    case KeyAssignmentStatusValues.Unmatched:
       return "#d9694f";
-    case "unmatched_inspected":
+    case KeyAssignmentStatusValues.UnmatchedInspected:
       return "#8a5e14";
-    case "missing":
+    case KeyAssignmentStatusValues.Missing:
       return "#c0553d";
-    case "pending":
+    case KeyAssignmentStatusValues.Pending:
     default:
       return "#d9a441";
   }
 }
 
+export const KeyHandoffKindValues = {
+  Internal: "internal",
+  External: "external",
+  ReceiveBack: "receive_back",
+  ReturnCourt: "return_court",
+} as const;
+
+export const KeyHandoffStatusValues = {
+  PendingConfirm: "pending_confirm",
+  Confirmed: "confirmed",
+  Completed: "completed",
+} as const;
+
+export const PropertyCourtAccessStatusValues = {
+  EnabledNoKey: "enabled_no_key",
+  SuspendedEviction: "suspended_eviction",
+} as const;
+
 /** HTML Case Study.html `keyHoType` labels. */
 export function handoffKindLabel(kind: string): string {
   switch (kind) {
-    case "internal":
+    case KeyHandoffKindValues.Internal:
       return "تسليم داخلي";
-    case "external":
+    case KeyHandoffKindValues.External:
       return "تسليم خارجي";
-    case "receive_back":
+    case KeyHandoffKindValues.ReceiveBack:
       return "استرداد الظرف";
-    case "return_court":
+    case KeyHandoffKindValues.ReturnCourt:
       return "إرجاع للمحكمة";
     default:
       return kind;
@@ -277,13 +294,13 @@ export function handoffKindLabel(kind: string): string {
 
 export function handoffKindColor(kind: string): string {
   switch (kind) {
-    case "internal":
+    case KeyHandoffKindValues.Internal:
       return "#2f7a4d";
-    case "external":
+    case KeyHandoffKindValues.External:
       return "#b58a3c";
-    case "receive_back":
+    case KeyHandoffKindValues.ReceiveBack:
       return "#378add";
-    case "return_court":
+    case KeyHandoffKindValues.ReturnCourt:
       return "#8a8d96";
     default:
       return "#8a8d96";
@@ -292,11 +309,11 @@ export function handoffKindColor(kind: string): string {
 
 export function handoffStateLabel(status: string): string {
   switch (status) {
-    case "pending_confirm":
+    case KeyHandoffStatusValues.PendingConfirm:
       return "بانتظار التأكيد";
-    case "confirmed":
+    case KeyHandoffStatusValues.Confirmed:
       return "مؤكّد";
-    case "completed":
+    case KeyHandoffStatusValues.Completed:
       return "منجز";
     default:
       return status || "—";
@@ -305,10 +322,10 @@ export function handoffStateLabel(status: string): string {
 
 export function handoffStateColor(status: string): string {
   switch (status) {
-    case "pending_confirm":
+    case KeyHandoffStatusValues.PendingConfirm:
       return "#d9a441";
-    case "completed":
-    case "confirmed":
+    case KeyHandoffStatusValues.Completed:
+    case KeyHandoffStatusValues.Confirmed:
       return "#2f7a4d";
     default:
       return "#8a8d96";
@@ -317,9 +334,9 @@ export function handoffStateColor(status: string): string {
 
 export function studyHoldLabel(status: string): string {
   switch (status) {
-    case "enabled_no_key":
+    case PropertyCourtAccessStatusValues.EnabledNoKey:
       return "تمكين بدون مفتاح";
-    case "suspended_eviction":
+    case PropertyCourtAccessStatusValues.SuspendedEviction:
       return "معلّق — محظر إخلاء";
     default:
       return "بدون قيد";

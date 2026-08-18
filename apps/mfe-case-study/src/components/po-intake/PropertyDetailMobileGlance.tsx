@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useMemo } from "react";
-import { cn } from "@platform/design-system";
+import { cn } from "@platform/ui-kit";
 import { useOperationsTasksQuery } from "../../query/operations-tasks-queries";
 import {
   operationsTaskStatusLabel,

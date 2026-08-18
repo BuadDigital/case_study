@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useQueryClient } from "@tanstack/react-query";
-import { cn } from "@platform/design-system";
+import { cn } from "@platform/ui-kit";
 import { formatPoDisplay } from "@case-study/mfe";
 import { poPropertiesPath } from "@case-study/mfe";
 import { prefetchPoRecord } from "../../query/case-study-queries";

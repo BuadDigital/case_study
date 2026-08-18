@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef, useState, type ReactNode } from "react";
-import { Button, Label, cn } from "@platform/design-system";
+import { Button, Label, cn } from "@platform/ui-kit";
 import {
   clearCachedPropertyDoc,
   type PropertyDocKind,

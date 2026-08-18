@@ -15,13 +15,19 @@ namespace RealEstateEval.Attachments.Api.Controllers;
 public class AttachmentsController : ControllerBase
 {
     private readonly IAttachmentService _attachments;
+    private readonly IAttachmentLookup _lookup;
+    private readonly IPermissionService _permissions;
     private readonly ILogger<AttachmentsController> _logger;
 
     public AttachmentsController(
         IAttachmentService attachments,
+        IAttachmentLookup lookup,
+        IPermissionService permissions,
         ILogger<AttachmentsController> logger)
     {
         _attachments = attachments;
+        _lookup = lookup;
+        _permissions = permissions;
         _logger = logger;
     }
 
@@ -39,19 +45,19 @@ public class AttachmentsController : ControllerBase
     }
 
     [HttpGet("{id:guid}")]
-    [Authorize(Policy = CapabilityPolicyNames.ManageAttachments)]
     public async Task<IActionResult> Download(Guid id, CancellationToken ct)
     {
-        var (content, meta) = await _attachments.GetContentAsync(id, ct);
+        var actor = await _permissions.GetForUserIdAsync(ActorClaims.Id(User), ct);
+        var (content, meta) = await _attachments.GetContentAsync(id, actor, ct);
         if (content is null || meta is null) return NotFound();
         return File(content, meta.ContentType, meta.FileName);
     }
 
     [HttpGet("{id:guid}/meta")]
-    [Authorize(Policy = CapabilityPolicyNames.ManageAttachments)]
     public async Task<ActionResult<FileAttachmentMetaDto>> GetMeta(Guid id, CancellationToken ct)
     {
-        var meta = await _attachments.GetMetaAsync(id, ct);
+        var actor = await _permissions.GetForUserIdAsync(ActorClaims.Id(User), ct);
+        var meta = await _attachments.GetMetaAsync(id, actor, ct);
         return meta is null ? NotFound() : Ok(meta);
     }
 
@@ -78,6 +84,30 @@ public class AttachmentsController : ControllerBase
         return CreatedAtAction(nameof(Download), new { id = meta!.Id }, meta);
     }
 
+    [HttpGet("lookup")]
+    public async Task<ActionResult<IReadOnlyList<AttachmentRefDto>>> Lookup(
+        [FromQuery] string ids,
+        CancellationToken ct)
+    {
+        var parsed = ParseIds(ids);
+        return Ok(await _lookup.GetRefsAsync(parsed, ct));
+    }
+
+    [HttpGet("for-property")]
+    public async Task<ActionResult<IReadOnlyList<FileAttachmentMetaDto>>> ForProperty(
+        [FromQuery] string propertyId,
+        CancellationToken ct)
+    {
+        if (string.IsNullOrWhiteSpace(propertyId))
+            return this.BadRequestProblem("propertyId is required");
+
+        return Ok(await _lookup.ListForPropertyAsync(propertyId, ct));
+    }
+
+    [HttpGet("{id:guid}/exists")]
+    public async Task<ActionResult<AttachmentExistsDto>> Exists(Guid id, CancellationToken ct) =>
+        Ok(new AttachmentExistsDto { Exists = await _lookup.ExistsAsync(id, ct) });
+
     [HttpPatch("{id:guid}/classify")]
     [Authorize(Policy = CapabilityPolicyNames.ManageAttachments)]
     public async Task<ActionResult<FileAttachmentMetaDto>> Classify(
@@ -94,5 +124,22 @@ public class AttachmentsController : ControllerBase
     [HttpDelete("{id:guid}")]
     [Authorize(Policy = CapabilityPolicyNames.ManageAttachments)]
     public async Task<IActionResult> Delete(Guid id, CancellationToken ct)
-        => await _attachments.DeleteAsync(id, ct) ? NoContent() : NotFound();
+    {
+        var actor = await _permissions.GetForUserIdAsync(ActorClaims.Id(User), ct);
+        return await _attachments.DeleteAsync(id, actor, ct) ? NoContent() : NotFound();
+    }
+
+    private static IReadOnlyList<Guid> ParseIds(string? ids)
+    {
+        if (string.IsNullOrWhiteSpace(ids))
+            return [];
+
+        return ids.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            .Select(part => Guid.TryParse(part, out var id) ? id : (Guid?)null)
+            .Where(id => id is not null)
+            .Select(id => id!.Value)
+            .Distinct()
+            .Take(200)
+            .ToList();
+    }
 }

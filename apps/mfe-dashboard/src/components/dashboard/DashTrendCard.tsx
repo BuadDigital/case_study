@@ -4,7 +4,7 @@ import { useMemo, useState } from "react";
 import type { ReportingCompletionYearDto } from "@platform/api-client";
 import { TrendChart } from "../../lib/dash-svg";
 import { dashCard } from "../../lib/dashboard-tw";
-import { cn } from "@platform/design-system";
+import { cn } from "@platform/ui-kit";
 
 type Mode = "month" | "quarter";
 

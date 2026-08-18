@@ -41,13 +41,6 @@ export function failuresForPartyRole(
   return failuresForRaiserLabel(items, label);
 }
 
-export function countOpenFailuresForRaiserLabel(
-  items: FailureRecord[],
-  label: string,
-): number {
-  return countOpenFailures(failuresForRaiserLabel(items, label));
-}
-
 export function countOpenFailuresForPartyRole(
   role: RoleId,
   items: FailureRecord[],

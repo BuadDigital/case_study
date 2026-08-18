@@ -1,6 +1,6 @@
 "use client";
 
-import { Badge, cn } from "@platform/design-system";
+import { Badge, cn } from "@platform/ui-kit";
 import {
   SCREEN_CATALOG_KIND_LABELS,
   SCREEN_CATALOG_STATUS_LABELS,

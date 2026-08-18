@@ -6,7 +6,7 @@ import {
   Label,
   Textarea,
   cn,
-} from "@platform/design-system";
+} from "@platform/ui-kit";
 import type { CaseStudyFormDraft } from "../../lib/prototype/case-study-form-storage";
 import {
   INFATH_FIELD_LABELS,

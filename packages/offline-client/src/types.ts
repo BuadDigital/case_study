@@ -96,11 +96,7 @@ export const OFFLINE_WARN_2H_MS = 2 * 60 * 60 * 1000;
 /** Service Worker Background Sync tag (must match apps/shell/public/sw.js). */
 export const OFFLINE_BACKGROUND_SYNC_TAG = "ejada-offline-sync";
 
-export const LOCAL_ATTACHMENT_PREFIX = "local:";
-
-export function isLocalAttachmentId(id: string | null | undefined): boolean {
-  return Boolean(id && id.startsWith(LOCAL_ATTACHMENT_PREFIX));
-}
+const LOCAL_ATTACHMENT_PREFIX = "local:";
 
 export function makeLocalAttachmentId(): string {
   return `${LOCAL_ATTACHMENT_PREFIX}${crypto.randomUUID()}`;

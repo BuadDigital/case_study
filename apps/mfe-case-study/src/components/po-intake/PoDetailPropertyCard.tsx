@@ -1,6 +1,6 @@
 "use client";
 
-import { Badge } from "@platform/design-system";
+import { Badge } from "@platform/ui-kit";
 import {
   boundariesAvailabilityLabel,
   formatPropertyDeedDisplay,

@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import type { OperationsTaskDto } from "@platform/api-client";
 import { opsTaskScopeText, opsTaskTypeLabel, taskCountdown } from "../../lib/dashboard-metrics";
 import { dashCard, dashIco, dashLine } from "../../lib/dashboard-tw";
-import { cn } from "@platform/design-system";
+import { cn } from "@platform/ui-kit";
 import { TaskTypeIcon } from "./DashIcons";
 
 export function DashActionQueue({

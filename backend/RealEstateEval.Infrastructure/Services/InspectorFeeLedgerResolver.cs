@@ -1,18 +1,27 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
 using RealEstateEval.Application.Abstractions;
 using RealEstateEval.Application.Rules;
 using RealEstateEval.Domain;
-using RealEstateEval.Infrastructure.Data;
+using RealEstateEval.Infrastructure.Data.Contexts;
 
 namespace RealEstateEval.Infrastructure.Services;
 
 public sealed class InspectorFeeLedgerResolver : IInspectorFeeLedgerResolver
 {
-    private readonly ApplicationDbContext _db;
+    private readonly ICaseStudyLookup _lookup;
+    private readonly IIdentityDirectory _identity;
 
-    public InspectorFeeLedgerResolver(ApplicationDbContext db)
+    public InspectorFeeLedgerResolver(CaseStudyDbContext caseStudy, IdentityDbContext identity)
+        : this(new CaseStudyLookup(caseStudy), new IdentityDirectory(identity))
     {
-        _db = db;
+    }
+
+    [ActivatorUtilitiesConstructor]
+    public InspectorFeeLedgerResolver(ICaseStudyLookup lookup, IIdentityDirectory identity)
+    {
+        _lookup = lookup;
+        _identity = identity;
     }
 
  /// <summary>
@@ -30,18 +39,16 @@ public sealed class InspectorFeeLedgerResolver : IInspectorFeeLedgerResolver
         if (string.IsNullOrEmpty(po))
             return [new InspectorFeeDeedTarget(task.Id, null)];
 
-        var workOrderId = await _db.WorkOrders.AsNoTracking()
-            .Where(w => w.PoNumber == po)
-            .Select(w => (Guid?)w.Id)
-            .FirstOrDefaultAsync(cancellationToken);
+        var workOrderId = await _lookup.GetWorkOrderIdByPoNumberAsync(po, cancellationToken);
         if (workOrderId is null)
             return [new InspectorFeeDeedTarget(task.Id, null)];
 
-        var propertyIds = await _db.WorkOrderProperties.AsNoTracking()
+        var properties = await _lookup.ListPropertiesByPoNumbersAsync([po], cancellationToken);
+        var propertyIds = properties
             .Where(p => p.WorkOrderId == workOrderId.Value)
             .OrderBy(p => p.Id)
             .Select(p => p.Id)
-            .ToListAsync(cancellationToken);
+            .ToList();
         if (propertyIds.Count == 0)
             return [new InspectorFeeDeedTarget(task.Id, null)];
 
@@ -56,10 +63,7 @@ public sealed class InspectorFeeLedgerResolver : IInspectorFeeLedgerResolver
         var po = task.PoNumber.Trim();
         var workOrderId = string.IsNullOrEmpty(po)
             ? null
-            : await _db.WorkOrders.AsNoTracking()
-                .Where(w => w.PoNumber == po)
-                .Select(w => (Guid?)w.Id)
-                .FirstOrDefaultAsync(cancellationToken);
+            : await _lookup.GetWorkOrderIdByPoNumberAsync(po, cancellationToken);
 
  // Orphan PO strings still need a stable transaction key for the unique index.
         var transactionId = workOrderId ?? StableGuidFromKey($"tx:{po}");
@@ -76,11 +80,9 @@ public sealed class InspectorFeeLedgerResolver : IInspectorFeeLedgerResolver
         var propertyId = propertyIdOverride ?? task.PropertyId;
         if (propertyId is Guid linkedId)
         {
-            var linked = await _db.WorkOrderProperties.AsNoTracking()
-                .Where(p => p.Id == linkedId)
-                .Select(p => p.Area)
-                .FirstOrDefaultAsync(cancellationToken);
-            if (EngineeringSurveyFeeRules.TryParseAreaM2(linked, out var linkedArea))
+            var linked = (await _lookup.ListPropertiesByIdsAsync([linkedId], cancellationToken))
+                .FirstOrDefault();
+            if (EngineeringSurveyFeeRules.TryParseAreaM2(linked?.Area, out var linkedArea))
                 return linkedArea;
             return null;
         }
@@ -89,20 +91,11 @@ public sealed class InspectorFeeLedgerResolver : IInspectorFeeLedgerResolver
         var po = task.PoNumber.Trim();
         if (string.IsNullOrEmpty(po)) return null;
 
-        var workOrderId = await _db.WorkOrders.AsNoTracking()
-            .Where(w => w.PoNumber == po)
-            .Select(w => (Guid?)w.Id)
-            .FirstOrDefaultAsync(cancellationToken);
-        if (workOrderId is null) return null;
+        var properties = await _lookup.ListPropertiesByPoNumbersAsync([po], cancellationToken);
+        if (properties.Count == 0) return null;
 
-        var areas = await _db.WorkOrderProperties.AsNoTracking()
-            .Where(p => p.WorkOrderId == workOrderId.Value)
-            .Select(p => p.Area)
-            .ToListAsync(cancellationToken);
-        if (areas.Count == 0) return null;
-
-        var parsed = areas
-            .Select(a => EngineeringSurveyFeeRules.TryParseAreaM2(a, out var m2) ? m2 : (decimal?)null)
+        var parsed = properties
+            .Select(p => EngineeringSurveyFeeRules.TryParseAreaM2(p.Area, out var m2) ? m2 : (decimal?)null)
             .Where(m => m is > 0m)
             .Select(m => m!.Value)
             .ToList();
@@ -124,31 +117,28 @@ public sealed class InspectorFeeLedgerResolver : IInspectorFeeLedgerResolver
             return InspectorFeeRules.TypeEmployee;
 
         var aid = task.AssigneeId.Trim();
-        var profile = await _db.UserProfiles.AsNoTracking()
-            .Include(p => p.HrEmployee)
-            .Include(p => p.ProcProvider)
-            .FirstOrDefaultAsync(p => p.DistributionAssigneeId == aid, cancellationToken);
+        var profile = await _identity.GetCompensationByAssigneeAsync(aid, cancellationToken);
 
         if (task.Kind == WorkflowTaskKind.GovernmentReview)
         {
             return CourtVisitFeeRules.ResolveReviewerType(
                 profile?.ContractType,
-                profile?.ProcProvider?.ProviderKind,
-                profile?.HrEmployee?.EmploymentType,
+                profile?.ProviderKind,
+                profile?.EmploymentType,
                 aid);
         }
 
         if (profile is not null)
         {
             if (profile.ContractType == ContractType.ServiceProvider
-                || profile.ProcProvider?.ProviderKind == ProcProviderKind.Organization)
+                || profile.ProviderKind == ProcProviderKind.Organization)
             {
                 return InspectorFeeRules.TypeCooperatorOrganization;
             }
 
             if (profile.ContractType == ContractType.Freelance
-                || profile.ProcProvider?.ProviderKind == ProcProviderKind.Individual
-                || profile.HrEmployee?.EmploymentType?.Contains("متعاون", StringComparison.Ordinal) == true)
+                || profile.ProviderKind == ProcProviderKind.Individual
+                || profile.EmploymentType?.Contains("متعاون", StringComparison.Ordinal) == true)
             {
                 return InspectorFeeRules.TypeCooperatorIndividual;
             }
@@ -165,10 +155,8 @@ public sealed class InspectorFeeLedgerResolver : IInspectorFeeLedgerResolver
     {
         if (string.IsNullOrWhiteSpace(assigneeId)) return false;
         var aid = assigneeId.Trim();
-        return await _db.UserProfiles.AsNoTracking()
-            .AnyAsync(
-                p => p.DistributionAssigneeId == aid && p.HasCompensation,
-                cancellationToken);
+        var profile = await _identity.GetCompensationByAssigneeAsync(aid, cancellationToken);
+        return profile?.HasCompensation == true;
     }
 
     public static Guid StableGuidFromKey(string key)

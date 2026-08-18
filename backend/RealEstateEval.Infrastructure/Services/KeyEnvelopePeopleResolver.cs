@@ -1,4 +1,4 @@
-using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
 using RealEstateEval.Application.Abstractions;
 using RealEstateEval.Application.Contracts;
 using RealEstateEval.Infrastructure.Data.Contexts;
@@ -7,11 +7,17 @@ namespace RealEstateEval.Infrastructure.Services;
 
 public sealed class KeyEnvelopePeopleResolver : IKeyEnvelopePeopleResolver
 {
-    private readonly IdentityDbContext _db;
+    private readonly IUserLabelLookup _labels;
 
     public KeyEnvelopePeopleResolver(IdentityDbContext db)
+        : this(new UserLabelLookup(db))
     {
-        _db = db;
+    }
+
+    [ActivatorUtilitiesConstructor]
+    public KeyEnvelopePeopleResolver(IUserLabelLookup labels)
+    {
+        _labels = labels;
     }
 
     public async Task<string> ResolveActorDisplayNameAsync(
@@ -26,11 +32,8 @@ public sealed class KeyEnvelopePeopleResolver : IKeyEnvelopePeopleResolver
         if (string.IsNullOrWhiteSpace(actorUserId) || actorUserId == "unknown")
             return trimmed;
 
-        var name = await _db.Users.AsNoTracking()
-            .Where(u => u.Id == actorUserId)
-            .Select(u => u.DisplayName)
-            .FirstOrDefaultAsync(cancellationToken);
-        return string.IsNullOrWhiteSpace(name) ? trimmed : name.Trim();
+        var name = await _labels.ResolveAsync(actorUserId, cancellationToken);
+        return string.IsNullOrWhiteSpace(name) || name == actorUserId.Trim() ? trimmed : name;
     }
 
     public async Task<string> ResolvePartyLabelAsync(
@@ -48,11 +51,8 @@ public sealed class KeyEnvelopePeopleResolver : IKeyEnvelopePeopleResolver
         if (string.IsNullOrWhiteSpace(lookupId))
             return trimmed;
 
-        var name = await _db.Users.AsNoTracking()
-            .Where(u => u.Id == lookupId)
-            .Select(u => u.DisplayName)
-            .FirstOrDefaultAsync(cancellationToken);
-        return string.IsNullOrWhiteSpace(name) ? trimmed : name.Trim();
+        var name = await _labels.ResolveAsync(lookupId, cancellationToken);
+        return string.IsNullOrWhiteSpace(name) || name == lookupId ? trimmed : name;
     }
 
     public async Task<KeyEnvelopeDto> WithResolvedPeopleAsync(
@@ -88,14 +88,7 @@ public sealed class KeyEnvelopePeopleResolver : IKeyEnvelopePeopleResolver
 
         if (ids.Count == 0) return rows;
 
-        var names = await _db.Users.AsNoTracking()
-            .Where(u => ids.Contains(u.Id))
-            .Select(u => new { u.Id, u.DisplayName })
-            .ToDictionaryAsync(
-                x => x.Id,
-                x => x.DisplayName,
-                StringComparer.OrdinalIgnoreCase,
-                cancellationToken);
+        var names = await _labels.ResolveManyAsync(ids, cancellationToken);
 
         string Fix(string? value, string? userId = null)
         {

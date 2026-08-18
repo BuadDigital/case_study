@@ -9,7 +9,7 @@ import {
   PageGutter,
   cn,
   PanelSkeleton,
-} from "@platform/design-system";
+} from "@platform/ui-kit";
 import { RowMoreMenu } from "@case-study/mfe/components/ui/RowMoreMenu";
 import type { RowMoreMenuItem } from "@case-study/mfe/components/ui/RowMoreMenu";
 import { PoNumber } from "@case-study/mfe/components/ui/PoNumber";
@@ -65,6 +65,7 @@ import {
 import { usePrototype } from "@platform/app-shared/contexts/PrototypeContext";
 import { prototypeKeys } from "@platform/app-shared/query/prototype-keys";
 import type { PropertyWorkflowStage } from "@platform/app-shared/prototype/constants";
+import { PropertyListRowStatuses } from "@platform/api-client";
 import type { PoPropertyIntake } from "../lib/prototype/po-intake-data";
 
 function deedLabel(property: PoPropertyIntake): string {
@@ -312,7 +313,8 @@ export function PoPropertiesPage({
                 <PpTh center />
               </PpThead>
               {visibleProperties.map((prop, index) => {
-                const serverStatus = statusByPropertyId.get(prop.id) ?? "new";
+                const serverStatus =
+                  statusByPropertyId.get(prop.id) ?? PropertyListRowStatuses.New;
                 const boursePending = !prop.bourseDataCompleted && !prop.isRemoved;
                 const locRaw = formatPropertyLocation(prop);
                 const location =

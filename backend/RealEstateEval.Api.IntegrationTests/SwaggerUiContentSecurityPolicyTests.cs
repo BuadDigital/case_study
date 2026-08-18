@@ -5,6 +5,7 @@ using System.Text.RegularExpressions;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.Configuration;
+using RealEstateEval.Infrastructure.Data;
 
 namespace RealEstateEval.Api.IntegrationTests;
 
@@ -100,10 +101,11 @@ public sealed class SwaggerEnabledIdentityApiWebApplicationFactory
 {
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
- // Swagger UI is only mapped in Development and Docker.
-        builder.UseEnvironment("Development");
-        builder.UseSetting(
-            "ConnectionStrings:Identity",
+ // Swagger UI is mapped in Development and Docker. Docker avoids Identity's
+ // Development-only Postgres provisioner, which these pipeline tests never need.
+        builder.UseEnvironment("Docker");
+        BoundedContextConnections.ApplyDedicatedSettings(
+            (key, value) => builder.UseSetting(key, value),
             "Host=localhost;Database=identity_swagger_test");
         builder.UseSetting(
             "Jwt:SigningKey",

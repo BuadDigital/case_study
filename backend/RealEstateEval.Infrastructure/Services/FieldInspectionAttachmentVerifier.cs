@@ -1,19 +1,17 @@
 using System.Text.Json;
-using Microsoft.EntityFrameworkCore;
 using RealEstateEval.Application.Abstractions;
 using RealEstateEval.Application.Rules;
 using RealEstateEval.Domain;
-using RealEstateEval.Infrastructure.Data;
 
 namespace RealEstateEval.Infrastructure.Services;
 
 public sealed class FieldInspectionAttachmentVerifier : IFieldInspectionAttachmentVerifier
 {
-    private readonly ApplicationDbContext _db;
+    private readonly IAttachmentLookup _lookup;
 
-    public FieldInspectionAttachmentVerifier(ApplicationDbContext db)
+    public FieldInspectionAttachmentVerifier(IAttachmentLookup lookup)
     {
-        _db = db;
+        _lookup = lookup;
     }
 
     public async Task<Dictionary<string, string>> VerifyAsync(
@@ -27,9 +25,8 @@ public sealed class FieldInspectionAttachmentVerifier : IFieldInspectionAttachme
             return errors;
 
         var ids = refs.Select(r => r.AttachmentId).Distinct().ToArray();
-        var rows = await _db.FileAttachments.AsNoTracking()
-            .Where(x => ids.Contains(x.Id))
-            .ToDictionaryAsync(x => x.Id, cancellationToken);
+        var rows = (await _lookup.GetRefsAsync(ids, cancellationToken))
+            .ToDictionary(x => x.Id);
 
         var taskPrefix = $"{workflowTaskId}:";
         foreach (var reference in refs)

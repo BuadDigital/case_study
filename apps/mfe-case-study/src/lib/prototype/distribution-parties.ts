@@ -8,7 +8,6 @@ import {
   getCaseSpecialists as apiCaseSpecialists,
   getPrototypeRoleAssigneeId as apiPrototypeRoleAssigneeId,
   getValuators as apiValuators,
-  partyRoleForStaffUser,
   staffUserForViewer,
   type DistributionAssignee,
 } from "../distribution-assignees";
@@ -59,32 +58,6 @@ export function getPrototypeRoleAssigneeId(
   users: StaffUser[] = [],
 ): Partial<Record<RoleId, string>> {
   return apiPrototypeRoleAssigneeId(users);
-}
-
-export function partyAccountByAssigneeId(
-  assigneeId: string,
-  users: StaffUser[] = [],
-): DistributionPartyAccount | undefined {
-  const id = assigneeId.trim();
-  if (!id) return undefined;
-  const staff = users.find((u) => u.distributionAssigneeId?.trim() === id);
-  if (!staff) return undefined;
-  const roleId = partyRoleForStaffUser(staff);
-  if (!roleId) return undefined;
-  return staffToPartyAccount(staff, roleId);
-}
-
-export function partyAccountByEmail(
-  email: string,
-  users: StaffUser[] = [],
-): DistributionPartyAccount | undefined {
-  const key = email.trim().toLowerCase();
-  if (!key) return undefined;
-  const staff = users.find((u) => u.email.trim().toLowerCase() === key);
-  if (!staff?.distributionAssigneeId?.trim()) return undefined;
-  const roleId = partyRoleForStaffUser(staff);
-  if (!roleId) return undefined;
-  return staffToPartyAccount(staff, roleId);
 }
 
 function staffToPartyAccount(

@@ -1,5 +1,6 @@
 using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
+using RealEstateEval.Application;
 using RealEstateEval.Application.Abstractions;
 using RealEstateEval.Application.Contracts;
 using RealEstateEval.Domain;
@@ -70,12 +71,16 @@ public sealed class CourtsService : ICourtsService
     private readonly PlatformDbContext _db;
     private readonly ApiResponseCache _cache;
     private readonly IAuditLogWriter _audit;
+    private readonly TimeProvider _time;
 
     public CourtsService(
         PlatformDbContext db,
         ApiResponseCache cache,
-        IAuditLogWriter audit)
+        IAuditLogWriter audit,
+        TimeProvider? time = null)
     {
+        _time = time ?? TimeProvider.System;
+
         _db = db;
         _cache = cache;
         _audit = audit;
@@ -96,7 +101,7 @@ public sealed class CourtsService : ICourtsService
                     City = row.City.Trim(),
                     IsActive = true,
                     CreatedBy = "system",
-                    CreatedAtUtc = DateTime.UtcNow,
+                    CreatedAtUtc = _time.UtcNow(),
                 };
                 _db.Courts.Add(court);
                 var circuits = ParseCircuits(row.CircuitsJson);
@@ -109,7 +114,7 @@ public sealed class CourtsService : ICourtsService
                         CircuitNo = circuitNo.Trim(),
                         IsActive = true,
                         CreatedBy = "system",
-                        CreatedAtUtc = DateTime.UtcNow,
+                        CreatedAtUtc = _time.UtcNow(),
                     });
                 }
             }
@@ -123,7 +128,7 @@ public sealed class CourtsService : ICourtsService
         var courts = await _db.Courts
             .Include(c => c.Circuits)
             .ToListAsync(cancellationToken);
-        var now = DateTime.UtcNow;
+        var now = _time.UtcNow();
 
         foreach (var seed in ExecutionCourtSeeds)
         {
@@ -286,7 +291,7 @@ public sealed class CourtsService : ICourtsService
             City = city,
             IsActive = request.IsActive,
             CreatedBy = actorId,
-            CreatedAtUtc = DateTime.UtcNow,
+            CreatedAtUtc = _time.UtcNow(),
         };
         _db.Courts.Add(entity);
         AddAudit(
@@ -337,7 +342,7 @@ public sealed class CourtsService : ICourtsService
         entity.City = city;
         if (request.IsActive.HasValue) entity.IsActive = request.IsActive.Value;
         entity.UpdatedBy = actorId;
-        entity.UpdatedAtUtc = DateTime.UtcNow;
+        entity.UpdatedAtUtc = _time.UtcNow();
 
         var changes = new Dictionary<string, AuditValueChange>();
         if (!string.Equals(beforeName, entity.Name, StringComparison.Ordinal))
@@ -378,7 +383,7 @@ public sealed class CourtsService : ICourtsService
         var before = entity.IsActive;
         entity.IsActive = isActive;
         entity.UpdatedBy = actorId;
-        entity.UpdatedAtUtc = DateTime.UtcNow;
+        entity.UpdatedAtUtc = _time.UtcNow();
         AddAudit(
             isActive ? CourtAuditActions.CourtActivated : CourtAuditActions.CourtDeactivated,
             CourtAuditEntityTypes.Court,
@@ -414,7 +419,7 @@ public sealed class CourtsService : ICourtsService
             CircuitName = string.IsNullOrWhiteSpace(request.CircuitName) ? null : request.CircuitName.Trim(),
             IsActive = request.IsActive,
             CreatedBy = actorId,
-            CreatedAtUtc = DateTime.UtcNow,
+            CreatedAtUtc = _time.UtcNow(),
         };
         _db.CourtCircuits.Add(entity);
         AddAudit(
@@ -464,7 +469,7 @@ public sealed class CourtsService : ICourtsService
                 : request.CircuitName.Trim();
         if (request.IsActive.HasValue) entity.IsActive = request.IsActive.Value;
         entity.UpdatedBy = actorId;
-        entity.UpdatedAtUtc = DateTime.UtcNow;
+        entity.UpdatedAtUtc = _time.UtcNow();
 
         var changes = new Dictionary<string, AuditValueChange>();
         if (!string.Equals(beforeNo, entity.CircuitNo, StringComparison.Ordinal))
@@ -506,7 +511,7 @@ public sealed class CourtsService : ICourtsService
         var before = entity.IsActive;
         entity.IsActive = isActive;
         entity.UpdatedBy = actorId;
-        entity.UpdatedAtUtc = DateTime.UtcNow;
+        entity.UpdatedAtUtc = _time.UtcNow();
         AddAudit(
             isActive ? CourtAuditActions.CircuitActivated : CourtAuditActions.CircuitDeactivated,
             CourtAuditEntityTypes.Circuit,

@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
+using RealEstateEval.Application;
 using RealEstateEval.Application.Abstractions;
 using RealEstateEval.Domain;
 using RealEstateEval.Infrastructure.Data;
@@ -18,25 +19,34 @@ public sealed class IntegrationEventInbox : IIntegrationEventInbox
     private readonly DbContext _db;
     private readonly DbSet<ProcessedIntegrationEvent> _events;
     private readonly ILogger<IntegrationEventInbox> _logger;
+    private readonly TimeProvider _time;
 
-    public IntegrationEventInbox(ApplicationDbContext db, ILogger<IntegrationEventInbox> logger)
-        : this((DbContext)db, db.ProcessedIntegrationEvents, logger)
+    public IntegrationEventInbox(
+        ApplicationDbContext db,
+        ILogger<IntegrationEventInbox> logger,
+        TimeProvider? time = null)
+        : this((DbContext)db, db.ProcessedIntegrationEvents, logger, time)
     {
     }
 
-    public IntegrationEventInbox(MessagingDbContext db, ILogger<IntegrationEventInbox> logger)
-        : this(db, db.ProcessedIntegrationEvents, logger)
+    public IntegrationEventInbox(
+        MessagingDbContext db,
+        ILogger<IntegrationEventInbox> logger,
+        TimeProvider? time = null)
+        : this(db, db.ProcessedIntegrationEvents, logger, time)
     {
     }
 
     private IntegrationEventInbox(
         DbContext db,
         DbSet<ProcessedIntegrationEvent> events,
-        ILogger<IntegrationEventInbox> logger)
+        ILogger<IntegrationEventInbox> logger,
+        TimeProvider? time)
     {
         _db = db;
         _events = events;
         _logger = logger;
+        _time = time ?? TimeProvider.System;
     }
 
     public async Task<bool> TryBeginAsync(
@@ -58,7 +68,7 @@ public sealed class IntegrationEventInbox : IIntegrationEventInbox
             Consumer = consumer,
             EventId = eventId,
             EventType = eventType,
-            ProcessedAtUtc = DateTime.UtcNow,
+            ProcessedAtUtc = _time.UtcNow(),
         });
 
         try

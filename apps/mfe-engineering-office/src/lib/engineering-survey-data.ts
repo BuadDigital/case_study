@@ -84,7 +84,7 @@ export type EngineeringSurveySubmission = {
   fieldInspectionCompleted?: boolean;
 };
 
-export function emptyChecklistRows(): EngineeringSurveyChecklistRow[] {
+function emptyChecklistRows(): EngineeringSurveyChecklistRow[] {
   return ENGINEERING_SURVEY_CHECKLIST_ITEMS.map(() => ({
     answer: null,
     note: "",

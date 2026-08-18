@@ -6,12 +6,11 @@ import {
 } from "@platform/app-shared/form-ux";
 import { getCachedEvaluatorReport } from "./evaluator-report-attachments";
 import { parseEvaluatorAmount } from "./value-estimation";
-import type { EvaluatorReportWorker } from "./evaluator-window-data";
 
 export type EvaluatorValidationErrors = Record<string, string>;
 
 /** Document order on the valuation tab for scroll + first message. */
-export const EVALUATOR_ERROR_TARGETS: readonly FormErrorTarget[] = [
+const EVALUATOR_ERROR_TARGETS: readonly FormErrorTarget[] = [
   { key: "report_no", targetId: "val-report-no" },
   { key: "evaluator_report_file", targetId: "val-report-file" },
   { key: "land_value", targetId: "inf-land" },
@@ -36,9 +35,6 @@ export function validateEvaluatorSubmission(input: {
   landValue?: string;
   buildingValue?: string;
   forcedSaleDiscountPct?: string;
-  /** Legacy fields retained in persisted payloads; not part of the HTML form. */
-  independenceDeclared?: boolean;
-  reportWorkers?: EvaluatorReportWorker[];
   assetDataConfirmed?: boolean;
   assetDataVarianceNotes?: string;
 }): EvaluatorValidationErrors {

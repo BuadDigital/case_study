@@ -11,11 +11,9 @@ import {
 } from "@platform/app-shared/prototype/party-workflow-events";
 import type { PushNotificationInput } from "@platform/app-shared/notifications/notification-store";
 
-export type DomainNotificationRule = {
+type DomainNotificationRule = {
   event: string;
   notification: PushNotificationInput;
-  auditAction: string;
-  auditEntity: string;
 };
 
 /** Inbox + toast rules — workflow submits use dedicated *-submitted events only. */
@@ -35,8 +33,6 @@ export const DOMAIN_NOTIFICATION_RULES: DomainNotificationRule[] = [
       category: "system",
       sourceEvent: FAILURE_TYPES_CHANGED_EVENT,
     },
-    auditAction: "تحديث أنواع التعذر",
-    auditEntity: "failure-types",
   },
   {
     event: FIELD_INSPECTION_SUBMITTED_EVENT,
@@ -49,8 +45,6 @@ export const DOMAIN_NOTIFICATION_RULES: DomainNotificationRule[] = [
       entityType: "task",
       sourceEvent: FIELD_INSPECTION_SUBMITTED_EVENT,
     },
-    auditAction: "إرسال معاينة ميدانية",
-    auditEntity: "field-inspection",
   },
   // ENGINEERING_SURVEY_SUBMITTED_EVENT is intentionally omitted: it only fires
   // in the submitter's browser, and PartyActiveTaskWork already shows the
@@ -68,8 +62,6 @@ export const DOMAIN_NOTIFICATION_RULES: DomainNotificationRule[] = [
       entityType: "task",
       sourceEvent: ENGINEERING_SURVEY_RETURNED_EVENT,
     },
-    auditAction: "إعادة الرفع المساحي للتصحيح",
-    auditEntity: "active-survey",
   },
   {
     event: ENGINEERING_SURVEY_ACCEPTED_EVENT,
@@ -82,8 +74,6 @@ export const DOMAIN_NOTIFICATION_RULES: DomainNotificationRule[] = [
       entityType: "task",
       sourceEvent: ENGINEERING_SURVEY_ACCEPTED_EVENT,
     },
-    auditAction: "قبول مخرجات الرفع المساحي",
-    auditEntity: "active-survey",
   },
   {
     event: EVALUATOR_SUBMITTED_EVENT,
@@ -96,8 +86,6 @@ export const DOMAIN_NOTIFICATION_RULES: DomainNotificationRule[] = [
       entityType: "task",
       sourceEvent: EVALUATOR_SUBMITTED_EVENT,
     },
-    auditAction: "إرسال تقرير مقيم",
-    auditEntity: "property-appraisal",
   },
   {
     event: PARTY_TASK_RECALL_REQUESTED_EVENT,
@@ -110,8 +98,6 @@ export const DOMAIN_NOTIFICATION_RULES: DomainNotificationRule[] = [
       entityType: "task",
       sourceEvent: PARTY_TASK_RECALL_REQUESTED_EVENT,
     },
-    auditAction: "طلب استرجاع معاملة",
-    auditEntity: "party-task",
   },
   {
     event: SUSPENDED_TRANSACTIONS_CHANGED_EVENT,
@@ -124,8 +110,5 @@ export const DOMAIN_NOTIFICATION_RULES: DomainNotificationRule[] = [
       entityType: "property",
       sourceEvent: SUSPENDED_TRANSACTIONS_CHANGED_EVENT,
     },
-    auditAction: "تحديث معاملات معلّقة",
-    auditEntity: "suspended-transactions",
   },
 ];
-

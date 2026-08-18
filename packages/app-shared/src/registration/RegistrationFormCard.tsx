@@ -1,7 +1,7 @@
 ﻿"use client";
 
 import type { ReactNode } from "react";
-import { Card, CardBody, CardHeader } from "@platform/design-system";
+import { Card, CardBody, CardHeader } from "@platform/ui-kit";
 
 export function RegistrationFormCard({
   title,

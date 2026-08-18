@@ -4,7 +4,9 @@ using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Http;
 using Microsoft.Extensions.Logging;
 using OpenTelemetry.Metrics;
 using OpenTelemetry.Resources;
@@ -13,13 +15,28 @@ using RealEstateEval.Shared.Web.Middleware;
 
 namespace RealEstateEval.Shared.Web;
 
+/// <summary>Process-wide labels written into every request log scope (JSON <c>Service</c>).</summary>
+public sealed class ObservabilityLabels
+{
+    public required string ServiceName { get; init; }
+}
+
+public static class StructuredLogging
+{
+    public const string JsonConsoleLoggingKey = "Observability:JsonConsoleLogging";
+
+    public static bool UseJsonConsole(IConfiguration configuration, IHostEnvironment environment) =>
+        configuration.GetValue<bool?>(JsonConsoleLoggingKey) ?? !environment.IsDevelopment();
+}
+
 public static class ObservabilityExtensions
 {
  /// <summary>
- /// One JSON object per log line, including the <c>CorrelationId</c> scope and the current
- /// trace/span ids, so shipped logs can be filtered and joined to traces. Development keeps
- /// the readable console writer. Override with <c>Observability:JsonConsoleLogging</c>.
- /// The emitting service is identified by the container/process the line came from.
+ /// One JSON object per log line, including the <c>CorrelationId</c> and <c>Service</c> scopes
+ /// and the current trace/span ids, so shipped logs can be filtered and joined to traces.
+ /// Development keeps the readable console writer. Override with
+ /// <c>Observability:JsonConsoleLogging</c>. Built-in JSON console (not Serilog) is the
+ /// production formatter — Fluent Bit tails stdout.
  /// </summary>
     public static WebApplicationBuilder AddRealEstateEvalStructuredLogging(
         this WebApplicationBuilder builder)
@@ -29,11 +46,7 @@ public static class ObservabilityExtensions
             | ActivityTrackingOptions.SpanId
             | ActivityTrackingOptions.ParentId);
 
-        var useJsonConsole =
-            builder.Configuration.GetValue<bool?>("Observability:JsonConsoleLogging")
-            ?? !builder.Environment.IsDevelopment();
-
-        if (!useJsonConsole)
+        if (!StructuredLogging.UseJsonConsole(builder.Configuration, builder.Environment))
             return builder;
 
         builder.Logging.ClearProviders();
@@ -50,6 +63,8 @@ public static class ObservabilityExtensions
         this WebApplicationBuilder builder,
         string serviceName)
     {
+        builder.Services.TryAddSingleton(new ObservabilityLabels { ServiceName = serviceName });
+        builder.Services.AddCorrelationIdForwarding();
         builder.AddRealEstateEvalStructuredLogging();
 
         var otlpEndpoint = builder.Configuration["OpenTelemetry:OtlpEndpoint"]
@@ -68,6 +83,21 @@ public static class ObservabilityExtensions
                 .AddOtlpExporter(options => options.Endpoint = new Uri(otlpEndpoint)));
 
         return builder;
+    }
+
+    public static IServiceCollection AddCorrelationIdForwarding(this IServiceCollection services)
+    {
+        services.AddHttpContextAccessor();
+        services.TryAddTransient<CorrelationIdDelegatingHandler>();
+        services.ConfigureAll<HttpClientFactoryOptions>(options =>
+        {
+            options.HttpMessageHandlerBuilderActions.Add(builder =>
+            {
+                builder.AdditionalHandlers.Add(
+                    builder.Services.GetRequiredService<CorrelationIdDelegatingHandler>());
+            });
+        });
+        return services;
     }
 }
 

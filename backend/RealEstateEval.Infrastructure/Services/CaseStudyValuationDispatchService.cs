@@ -1,25 +1,30 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
+using RealEstateEval.Application;
 using RealEstateEval.Application.Abstractions;
 using RealEstateEval.Application.Contracts;
 using RealEstateEval.Domain;
-using RealEstateEval.Infrastructure.Data;
+using RealEstateEval.Infrastructure.Data.Contexts;
 
 namespace RealEstateEval.Infrastructure.Services;
 
 public sealed class CaseStudyValuationDispatchService : ICaseStudyValuationDispatchService
 {
-    private readonly ApplicationDbContext _db;
+    private readonly CaseStudyDbContext _db;
     private readonly IValuationRequestService _valuationRequests;
     private readonly IPropertyTimelineService _timeline;
     private readonly ILogger<CaseStudyValuationDispatchService> _logger;
+    private readonly TimeProvider _time;
 
     public CaseStudyValuationDispatchService(
-        ApplicationDbContext db,
+        CaseStudyDbContext db,
         IValuationRequestService valuationRequests,
         IPropertyTimelineService timeline,
-        ILogger<CaseStudyValuationDispatchService> logger)
+        ILogger<CaseStudyValuationDispatchService> logger,
+        TimeProvider? time = null)
     {
+        _time = time ?? TimeProvider.System;
+
         _db = db;
         _valuationRequests = valuationRequests;
         _timeline = timeline;
@@ -55,12 +60,8 @@ public sealed class CaseStudyValuationDispatchService : ICaseStudyValuationDispa
         }
 
         var propertyKey = propertyId.ToString();
-        var alreadyOpen = await _db.ValuationRequests.AsNoTracking()
-            .AnyAsync(
-                v => v.PropertyId == propertyKey
-                     && v.Status != ValuationRequestStatus.Done,
-                cancellationToken);
-        if (alreadyOpen)
+        var alreadyOpen = await _valuationRequests.GetOpenByPropertyAsync(propertyKey, cancellationToken);
+        if (alreadyOpen is not null)
         {
             _logger.LogInformation(
                 "CaseStudyValuationDispatch: open valuation request already exists for property {PropertyId}",
@@ -93,7 +94,7 @@ public sealed class CaseStudyValuationDispatchService : ICaseStudyValuationDispa
                 Type = type,
                 Appraiser = appraiser,
                 Status = ValuationRequestStatuses.Progress,
-                Date = DateTime.UtcNow.ToString("yyyy-MM-dd"),
+                Date = _time.UtcNow().ToString("yyyy-MM-dd"),
             },
             cancellationToken);
 
@@ -121,7 +122,7 @@ public sealed class CaseStudyValuationDispatchService : ICaseStudyValuationDispa
             "فتح مسار التقييم",
             appraiser,
             "done",
-            DateTime.UtcNow,
+            _time.UtcNow(),
             cancellationToken);
     }
 

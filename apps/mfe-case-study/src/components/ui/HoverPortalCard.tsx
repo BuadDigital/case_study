@@ -9,7 +9,7 @@ import {
   type ReactNode,
 } from "react";
 import { createPortal } from "react-dom";
-import { cn } from "@platform/design-system";
+import { cn } from "@platform/ui-kit";
 
 const TOOLTIP_GAP = 8;
 const VIEWPORT_MARGIN = 8;

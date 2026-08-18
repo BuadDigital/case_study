@@ -53,7 +53,7 @@ packages/api-client/      HTTP client boundary
 | `@platform/types` | Shared navigation & role types |
 | `@platform/api-client` | REST DTOs & fetch helpers |
 | `@platform/auth-client` | Session |
-| `@platform/design-system` | Shared CSS & UI tokens |
+| `@platform/ui-kit` | Shared CSS & UI tokens |
 
 ## Next steps
 

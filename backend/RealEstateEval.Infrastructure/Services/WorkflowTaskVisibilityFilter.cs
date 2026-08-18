@@ -16,7 +16,10 @@ public sealed class WorkflowTaskVisibilityFilter : IWorkflowTaskVisibilityFilter
     public IQueryable<WorkflowTask> VisibleTaskQuery(IQueryable<WorkflowTask> source, PermissionsDto? actor)
     {
         var query = OrderedTaskQuery(source);
-        if (actor is null || PoRoleMatrixRules.CanManagePartySubmissions(actor.PrototypeRole))
+        if (actor is null)
+            return query.Where(_ => false);
+
+        if (PoRoleMatrixRules.CanManagePartySubmissions(actor.PrototypeRole))
             return query;
 
         var role = actor.PrototypeRole?.Trim().ToLower() ?? "";

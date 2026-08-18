@@ -10,6 +10,7 @@ using RealEstateEval.Infrastructure.Data.Contexts;
 using RealEstateEval.Infrastructure.Notifications;
 using RealEstateEval.Shared.Contracts;
 using PushSub = RealEstateEval.Domain.PushSubscription;
+using RealEstateEval.Application;
 
 namespace RealEstateEval.Infrastructure.Services;
 
@@ -25,13 +26,17 @@ public sealed class WebPushDeliveryHandler
     private readonly WebPushOptions _options;
     private readonly IHttpClientFactory _httpClientFactory;
     private readonly ILogger<WebPushDeliveryHandler> _logger;
+    private readonly TimeProvider _time;
 
     public WebPushDeliveryHandler(
         MessagingDbContext db,
         IOptions<WebPushOptions> options,
         IHttpClientFactory httpClientFactory,
-        ILogger<WebPushDeliveryHandler> logger)
+        ILogger<WebPushDeliveryHandler> logger,
+        TimeProvider? time = null)
     {
+        _time = time ?? TimeProvider.System;
+
         _db = db;
         _options = options.Value;
         _httpClientFactory = httpClientFactory;
@@ -133,13 +138,13 @@ public sealed class WebPushDeliveryHandler
                 Urgency = PushMessageUrgency.Normal,
             };
             await client.RequestPushMessageDeliveryAsync(pushSubscription, message, cancellationToken);
-            sub.LastSuccessAtUtc = DateTime.UtcNow;
+            sub.LastSuccessAtUtc = _time.UtcNow();
             sub.ConsecutiveFailures = 0;
         }
         catch (PushServiceClientException ex) when (
             ex.StatusCode is HttpStatusCode.NotFound or HttpStatusCode.Gone)
         {
-            sub.DisabledAtUtc = DateTime.UtcNow;
+            sub.DisabledAtUtc = _time.UtcNow();
             sub.DisabledReason = $"http:{(int)ex.StatusCode}";
             _logger.LogInformation(
                 "Disabled expired push subscription {SubscriptionId} for user {UserId}",
@@ -151,7 +156,7 @@ public sealed class WebPushDeliveryHandler
             sub.ConsecutiveFailures += 1;
             if (sub.ConsecutiveFailures >= 5)
             {
-                sub.DisabledAtUtc = DateTime.UtcNow;
+                sub.DisabledAtUtc = _time.UtcNow();
                 sub.DisabledReason = "consecutive-failures";
             }
 

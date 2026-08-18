@@ -35,7 +35,7 @@ const TASK_KIND_AR: Record<string, string> = {
   valuation: "المقيّم",
 };
 
-export function costTaxFactor(payeeType: "vendor" | "individual" | null): number {
+function costTaxFactor(payeeType: "vendor" | "individual" | null): number {
   return payeeType === "vendor" ? 1.15 : 1;
 }
 
@@ -46,7 +46,7 @@ export function applyCostTax(
   return Math.round(net * costTaxFactor(payeeType) * 100) / 100;
 }
 
-export function costTaskKindLabel(kind: string | null | undefined): string {
+function costTaskKindLabel(kind: string | null | undefined): string {
   if (!kind?.trim()) return "—";
   return TASK_KIND_AR[kind] ?? kind;
 }

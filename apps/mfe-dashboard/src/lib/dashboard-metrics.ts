@@ -3,7 +3,7 @@ import { normalizePoListStatus } from "@platform/app-shared/prototype/po-list-st
 import type { OperationsTaskDto } from "@platform/api-client";
 
 /** HTML DONE_ST — completed / fully billed / cancelled. */
-export function isDashPoDone(status: string): boolean {
+function isDashPoDone(status: string): boolean {
   const s = normalizePoListStatus(status);
   return s === "completed" || s === "fully_billed" || s === "cancelled";
 }

@@ -3,6 +3,7 @@ using System.Text;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
+using RealEstateEval.Application;
 using RealEstateEval.Application.Abstractions;
 using RealEstateEval.Application.Contracts;
 using RealEstateEval.Domain;
@@ -15,8 +16,11 @@ public sealed class AuthSessionService(
     IdentityDbContext db,
     IPermissionService permissions,
     IJwtTokenService jwtTokenService,
-    IConfiguration configuration) : IAuthSessionService
+    IConfiguration configuration,
+    TimeProvider? time = null) : IAuthSessionService
 {
+    private readonly TimeProvider _time = time ?? TimeProvider.System;
+
     public const int DefaultRefreshTokenHours = 12;
     private const int MaxRefreshTokenHours = 24 * 30;
     private const int TokenBytes = 32;
@@ -33,7 +37,7 @@ public sealed class AuthSessionService(
  /// </summary>
     private static readonly TimeSpan RotationGrace = TimeSpan.FromSeconds(60);
 
-    private async Task<LoginResponse?> IssueAsync(
+    private async Task<LoginResponseDto?> IssueAsync(
         ApplicationUser user,
         CancellationToken cancellationToken = default)
     {
@@ -43,7 +47,7 @@ public sealed class AuthSessionService(
         return await IssueForSessionAsync(user, Guid.NewGuid(), cancellationToken);
     }
 
-    public async Task<LoginResponse?> IssueForUserIdAsync(
+    public async Task<LoginResponseDto?> IssueForUserIdAsync(
         string userId,
         CancellationToken cancellationToken = default)
     {
@@ -56,7 +60,7 @@ public sealed class AuthSessionService(
             : await IssueAsync(user, cancellationToken);
     }
 
-    public async Task<LoginResponse?> IssueForUsernameAsync(
+    public async Task<LoginResponseDto?> IssueForUsernameAsync(
         string username,
         CancellationToken cancellationToken = default)
     {
@@ -69,7 +73,7 @@ public sealed class AuthSessionService(
             : await IssueAsync(user, cancellationToken);
     }
 
-    public async Task<LoginResponse?> RefreshAsync(
+    public async Task<LoginResponseDto?> RefreshAsync(
         string refreshToken,
         CancellationToken cancellationToken = default)
     {
@@ -82,7 +86,7 @@ public sealed class AuthSessionService(
         if (stored is null)
             return null;
 
-        var nowUtc = DateTime.UtcNow;
+        var nowUtc = _time.UtcNow();
         if (stored.ExpiresAtUtc <= nowUtc)
             return null;
 
@@ -139,7 +143,7 @@ public sealed class AuthSessionService(
         string reason,
         CancellationToken cancellationToken = default)
     {
-        var nowUtc = DateTime.UtcNow;
+        var nowUtc = _time.UtcNow();
         var active = await db.RefreshTokens
             .Where(t => t.UserId == userId && t.RevokedAtUtc == null)
             .ToListAsync(cancellationToken);
@@ -153,7 +157,7 @@ public sealed class AuthSessionService(
         return active.Count;
     }
 
-    private async Task<LoginResponse> IssueForSessionAsync(
+    private async Task<LoginResponseDto> IssueForSessionAsync(
         ApplicationUser user,
         Guid sessionId,
         CancellationToken cancellationToken,
@@ -170,7 +174,7 @@ public sealed class AuthSessionService(
             userPermissions?.Pages,
             userPermissions?.Department);
 
-        var nowUtc = DateTime.UtcNow;
+        var nowUtc = _time.UtcNow();
         var refreshToken = CreateTokenValue();
         var refreshExpiresAtUtc = sessionExpiresAtUtc ?? nowUtc.AddHours(RefreshTokenHours());
         db.RefreshTokens.Add(new RefreshToken
@@ -194,7 +198,7 @@ public sealed class AuthSessionService(
         await PruneAsync(user.Id, nowUtc, cancellationToken);
         await db.SaveChangesAsync(cancellationToken);
 
-        return new LoginResponse
+        return new LoginResponseDto
         {
             Token = accessToken,
             ExpiresAtUtc = accessExpiresAtUtc,
@@ -214,7 +218,7 @@ public sealed class AuthSessionService(
         string reason,
         CancellationToken cancellationToken)
     {
-        var nowUtc = DateTime.UtcNow;
+        var nowUtc = _time.UtcNow();
         var family = await db.RefreshTokens
             .Where(t => t.SessionId == sessionId && t.RevokedAtUtc == null)
             .ToListAsync(cancellationToken);

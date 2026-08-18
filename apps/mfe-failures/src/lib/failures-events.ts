@@ -1,5 +1,4 @@
-/** @deprecated Failures persist via `/api/failures`; kept for cross-tab event compatibility. */
-export const FAILURES_STORAGE_KEY = "evalFailureRecords";
+/** Failures persist via `/api/failures`. */
 
 export const FAILURES_CHANGED_EVENT = "failures-changed";
 

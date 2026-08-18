@@ -9,7 +9,7 @@ import {
 } from "./PropertyDetailFields";
 import type { PropertyDetailPartySubmission } from "../../lib/prototype/property-detail-party-submissions";
 import type { PropertyDetailPartyCard } from "../../lib/prototype/property-detail-parties";
-import { cn, InlineLoadingSkeleton } from "@platform/design-system";
+import { cn, InlineLoadingSkeleton } from "@platform/ui-kit";
 
 export function PartyRoleDetailPanel({
   card,

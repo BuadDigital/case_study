@@ -59,13 +59,6 @@ export async function loadFailureTypesCatalog(): Promise<FailureTypesCatalog> {
   };
 }
 
-export async function saveFailureTypesCatalogState(
-  catalog: FailureTypesCatalog,
-): Promise<void> {
-  await persistCatalog(catalog);
-  notifyFailureTypesChanged();
-}
-
 export async function resetFailureTypesCatalog(): Promise<FailureTypesCatalog> {
   const seeded = seedCatalog();
   await persistCatalog(seeded);

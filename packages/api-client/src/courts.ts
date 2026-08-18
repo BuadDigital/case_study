@@ -236,26 +236,6 @@ export async function listCourts(
   }
 }
 
-export async function replaceCourtsCatalog(
-  config: CourtsApiConfig,
-  entries: CourtCatalogEntryDto[],
-): Promise<CourtsListResult> {
-  const base = config.baseUrl ?? getApiBase();
-  try {
-    const res = await fetch(`${base}/api/courts`, {
-      method: "PUT",
-      headers: headers(config.token),
-      body: JSON.stringify({ entries }),
-    });
-    if (res.status === 401) return { ok: false, kind: "auth" };
-    if (!res.ok) return { ok: false, kind: "server" };
-    const list = (await res.json()) as CourtCatalogEntryDto[];
-    return { ok: true, entries: Array.isArray(list) ? list : [] };
-  } catch {
-    return { ok: false, kind: "network" };
-  }
-}
-
 export type SelectableCourtsResult =
   | { ok: true; courts: SelectableCourtDto[] }
   | { ok: false; kind: "auth" | "network" | "server" };

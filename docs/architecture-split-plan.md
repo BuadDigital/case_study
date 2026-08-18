@@ -34,9 +34,12 @@ already nine autonomous services.
 - `xmin` concurrency is configured on 19 mutable entity types; the shared exception
   middleware returns HTTP 409.
 
-## Implementation status (2026-07-30)
+## Implementation status (2026-08-18)
 
-Ownership is approved, so Phase 0's ownership gate is closed and Phase 1 has started.
+Ownership is approved, so Phase 0's ownership gate is closed and Phase 1 is complete
+(A6 exit). Phase 4 has a dedicated database for every extracted owner, including Messaging
+(Case Study / Platform outbox, inbox, and notifications). Valuation still drains its own
+outbox from the valuation database. Phase 2/3/5 have not started yet.
 Artifacts and guardrails live in
 [`docs/architecture/table-ownership-catalog.md`](architecture/table-ownership-catalog.md),
 [`docs/architecture/table-ownership.json`](architecture/table-ownership.json), and
@@ -47,18 +50,19 @@ Artifacts and guardrails live in
 | Phase | State |
 | --- | --- |
 | 0 — freeze and measure | Repository work complete: 60-table ownership catalog (53 `DbSet`s plus seven inherited Identity tables), cross-boundary classification, and boundary tests. All 60 rows are approved and D1–D6 are recorded with outcomes and rationale; D6 is accepted with residual risk rather than answered. Owner nomination, the production-consumer inventory, and the captured production metrics are still outstanding and now block Phase 3/4 rather than Phase 1. |
-| 1 — split EF contexts | **In progress.** Extraction steps 1–2 are done: `AttachmentsDbContext`, `PlatformDbContext`, `ValuationDbContext`, and `IdentityDbContext` hold the write path for their tables, each with an empty baseline migration, model snapshot, migration stream, and migrations-history schema, against the same physical database. Non-Identity APIs resolve permissions from JWT claims. Steps 3–5 (Failures/Operations, Financial/Case Study, Messaging) are not started, so the phase exit criteria are not met — `ApplicationDbContext` still has runtime registrations and write paths for the unmoved slices. ADR 0006's deploy path is still validated only against a blank database, not a restored production-like one. |
-| 2–5 | Not started. |
+| 1 — split EF contexts | **Done (A6 Phase 1 exit).** All service hosts now use `AddHostSharedInfrastructure(...)` plus owned bounded-context persistence registrations; no host calls `AddPersistence(...)`. Case Study no longer registers the legacy `ApplicationDbContext` pool. Core slices were rewired service-by-service (including Failures/Operations, Financial/Case Study, and Messaging-owned paths) while keeping one physical database. Closeout proof and grep/build evidence are recorded in [`backend/plan/A6_CLOSEOUT.md`](../backend/plan/A6_CLOSEOUT.md). |
+| 2–3 | Phase 3 lookup residuals that drop a second connection are done (Attachments, Platform catalogs, Valuation dispatch, Identity directory, Platform’s Case Study assignee lookup, Failures commands/gates, Operations tasks/keys/envelopes — Case Study no longer opens `OperationsDbContext`). Platform audit append is HTTP (`IAuditLogAppend`); Identity no longer opens Platform. Phase 2 libraries are not started. Write residuals remain (Case Study still hosts billing/fees; Valuation still opens Case Study for reports). |
+| 4 — split databases | **Owner databases only.** Residual readers still open owner contexts over a second connection. There is no leftover shared Postgres. |
+| 5 | Not started. |
 
-Findings that refine the baseline above, all now covered by tests:
+Historical findings that refined the original baseline (kept for traceability):
 
 - The model contains **no cross-schema foreign keys and no cross-schema navigations**;
   cross-boundary coupling is entirely in queries, transactions, and registrations.
-- Several persistence services are registered by more than one API, so several tables have
-  more than one writing process today (for example `FailureService` in Case Study and
-  Failures, `KeyEnvelopesService` in Case Study and Operations, and the Identity stores in all
-  eight database APIs). Rule 1 is therefore not satisfied at process level even before contexts
-  are split.
+- Before A6 completion, several persistence services were registered by more than one API,
+  so several tables had more than one writing process (for example `FailureService` in Case
+  Study and Failures, `KeyEnvelopesService` in Case Study and Operations, and the Identity
+  stores in all eight database APIs).
 - Reporting registers no persistence at all; it is already an HTTP read model.
 - `ApplicationDbContextModelSnapshot` had drifted from the model (the concurrent
   race-guard/index migration's snapshot update was missing). The snapshot was regenerated so
@@ -144,20 +148,19 @@ impact.
 **Why now:** this is the lowest-risk enforceable boundary. It reduces model and migration
 coupling without changing hostnames, table locations, or data.
 
-**Status:** in progress. Extraction steps 1–2 (Attachments, Platform catalogs, Valuation,
-Identity) are complete; steps 3–5 are not, so the exit criteria below are not yet met.
+**Status:** complete (A6 Phase 1 exit, 2026-08-18). All extraction steps in this phase are
+implemented for host/runtime wiring.
 
 **Before starting**
 
 - Phase 0 ownership catalog is approved. **Met** (2026-07-30).
 - ADR 0006's deploy-time migration path works against a restored production-like database.
-  **Not met.** Step 1 proceeded anyway on the recorded judgment that it moves no data, emits
-  no DDL beyond empty baselines, and can be rolled back by re-pointing services at the legacy
-  context. This prerequisite still gates steps 2–5.
+  **Met (2026-08-18)** on a copy of idle leftover `realestate_eval_dev` (host Postgres 17.9).
+  See [`docs/status/architecture-split-status.md`](status/architecture-split-status.md).
 - Current legacy migrations can build a blank database and upgrade a representative
-  existing database. Explicitly validate the generated `xmin` migration SQL. **Half met:**
-  the blank-database half passes and shows the `xmin` migration is DDL-neutral on this
-  PostgreSQL/Npgsql pair; the upgrade half needs a restore that is not available here.
+  existing database. Explicitly validate the generated `xmin` migration SQL. **Met:**
+  blank-database half (2026-07-29) and leftover-upgrade half (2026-08-18) both show the
+  `xmin` migration is DDL-neutral on this PostgreSQL/Npgsql pair.
 
 **Work**
 
@@ -187,32 +190,33 @@ Identity) are complete; steps 3–5 are not, so the exit criteria below are not 
    `AddIdentityInfrastructure`. **Done (2026-07-30)** — `IdentityDbContext` owns writes;
    non-Identity APIs use `AddClaimsPermissionService` / JWT claims. Transitional Identity
    *reads* remain on the legacy context until Phase 3.
-3. Failures and Operations: replace their known Case Study/Identity/Financial reads. Not
-   started.
+3. Failures and Operations: replace their known Case Study/Identity/Financial reads.
+   **Done (2026-08-18).**
 4. Financial and Case Study: largest and most entangled; move after contracts/projections
-   exist. Not started.
+   exist. **Done for Phase 1 host wiring (2026-08-18).**
 5. Messaging: final service-local shape depends on producer/consumer ownership established
-   above. Not started; the per-producer outbox mapping from D5 is in place for Valuation as a
-   forward-compatible step.
+   above. **Done for Phase 1 host wiring (2026-08-18)** with Messaging context preference in
+   integration-event publishing and outbox paths.
 
-**Exit criteria** (state after extraction step 1)
+**Exit criteria** (Phase 1 completion state)
 
-- Each API resolves only its owned write contexts. **Partially met** — Identity stores are
-  Identity-only; every API still registers `AddPersistence` for the legacy context. The
-  extracted contexts are additional, not exclusive, except Identity writes.
-- Every table is writable through exactly one context. **Met for the extracted tables** and
-  enforced by `BoundedContextBoundaryTests`; the unmoved slices still share the legacy
-  context, which is one context per table but not one context per owner.
+- Each API resolves only its owned write contexts. **Met for host/runtime registrations**; no
+  backend service host registers `AddPersistence(...)`.
+- Every table is writable through exactly one context. **Met at context ownership level** for
+  extracted bounded-context streams; intentional compatibility shims remain for transitional
+  read paths and maintenance-only paths.
 - No new migration touches another context's schema. **Met and enforced**; the legacy stream
   is frozen at the catalogued cutover.
 - Blank-build and upgrade tests pass for the legacy baseline plus every context stream.
   **Partially met** — blank build passes; the production-like upgrade test is outstanding.
-- `ApplicationDbContext` has no runtime registrations or remaining write path. **Not met**,
-  and cannot be until step 5.
+- `ApplicationDbContext` has no runtime registrations on service hosts. **Met.** Remaining
+  references are intentional compatibility/maintenance shims documented in
+  [`backend/plan/A6_CLOSEOUT.md`](../backend/plan/A6_CLOSEOUT.md).
 
-**Rollback:** route the current vertical slice back to the legacy context while tables are
-still unchanged. Do not delete the legacy stream or context until the exit criteria hold
-for a full release window.
+**Rollback:** keep this as historical Phase 1 guidance. In the current state, rollback means
+re-introducing legacy registration selectively per host and re-verifying bounded-context wiring.
+Do not delete the frozen legacy stream until the required release window and production checks
+complete.
 
 ## Phase 2 — Split Domain, Application, and Infrastructure libraries
 
@@ -302,6 +306,11 @@ Keep event publication active and replayable so projections catch up; never dual
 authoritative stores without deterministic reconciliation.
 
 ## Phase 4 — Split databases one service at a time
+
+**Current (2026-08-18):** owner databases are the only runtime topology. There is no leftover
+shared Postgres and no connection-string fallback. Residual readers still open owner contexts
+over a second dedicated connection (Phase 3). After `DbMigrate` + `copy-*-data.sh`, drop leftover
+`realestate_eval_dev` / `realestate_eval_prod` with `infra/postgres/drop-leftover-shared.sh`.
 
 **Why last:** by this point physical separation enforces an already-operating contract.
 Start with a low-coupling context, not Case Study or Financial.

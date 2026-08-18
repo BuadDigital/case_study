@@ -6,7 +6,7 @@ import {
   cn,
   queueLegacyStatusStyle,
   type StatusPillStyle,
-} from "@platform/design-system";
+} from "@platform/ui-kit";
 import {
   RowMoreMenu,
   type RowMoreMenuItem,

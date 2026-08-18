@@ -142,13 +142,15 @@ public class PartyTaskSubmissionReadAuthorizationTests
     private static TestBoundedContexts.Bundle CreateDb() =>
         TestBoundedContexts.Create($"party-read-{Guid.NewGuid():N}");
 
-    private static PartyTaskSubmissionService CreateService(ApplicationDbContext db, FailuresDbContext _, OperationsDbContext __)
+    private static PartyTaskSubmissionService CreateService(ApplicationDbContext db, FailuresDbContext failures, OperationsDbContext __)
     {
+        var caseStudy = TestInspectorFeeServiceFactory.ShareCaseStudy(db);
         var (notifications, recipients) = TestInspectorFeeServiceFactory.CreateNotificationDeps(db);
         return new(
-            db,
+            caseStudy,
+            failures,
             TestInspectorFeeServiceFactory.CreateWorkflow(db),
-            new FieldInspectionAttachmentVerifier(db),
+            new FieldInspectionAttachmentVerifier(TestInspectorFeeServiceFactory.ShareAttachmentLookup(db)),
             TestInspectorFeeServiceFactory.CreateTimeline(db),
             new NullHttpContextAccessor(),
             new NullPermissionService(),
@@ -321,7 +323,7 @@ public class CaseStudyFormReadAuthorizationTests
     {
         var db = contexts.Legacy;
         return new CaseStudyFormService(
-            db,
+            TestInspectorFeeServiceFactory.ShareCaseStudy(db),
             TestInspectorFeeServiceFactory.CreateWorkflow(db));
     }
 }

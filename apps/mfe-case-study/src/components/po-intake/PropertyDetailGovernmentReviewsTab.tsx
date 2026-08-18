@@ -9,7 +9,7 @@ import {
   InfoBox,
   SectionHeader,
 } from "./PropertyDetailFields";
-import { Badge, InlineLoadingSkeleton } from "@platform/design-system";
+import { Badge, InlineLoadingSkeleton } from "@platform/ui-kit";
 import {
   formatDateAr,
   formatPropertyDeedDisplay,

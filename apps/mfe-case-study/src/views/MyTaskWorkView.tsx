@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { DistributionPartiesForm } from "@case-study/mfe/components/distribution/DistributionPartiesForm";
 import { RegistrationFormCard } from "@platform/app-shared/registration/RegistrationFormCard";
@@ -56,7 +56,6 @@ import {
   advanceTaskAfterBourse,
   advanceTaskAfterEnfath,
   confirmTaskDistribution,
-  defaultDistribution,
   distributionValidationError,
   engineeringOfficeAvailable,
   migrateDistribution,
@@ -69,7 +68,7 @@ import {
 import {
   usePoRecordQuery,
 } from "@case-study/mfe/query/case-study-queries";
-import { Button, InlineLoadingSkeleton, Note, cn, useToast } from "@platform/design-system";
+import { Button, InlineLoadingSkeleton, Note, useToast } from "@platform/ui-kit";
 import { useQueryClient } from "@tanstack/react-query";
 import { prototypeKeys } from "@platform/app-shared/query/prototype-keys";
 import { useStaffUsersQuery } from "@settings/mfe/query/settings-queries";

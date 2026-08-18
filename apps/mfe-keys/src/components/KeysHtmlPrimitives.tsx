@@ -1,7 +1,7 @@
 "use client";
 
 import type { CSSProperties, MouseEvent, ReactNode } from "react";
-import { StatusPill, type StatusPillStyle, cn } from "@platform/design-system";
+import { StatusPill, type StatusPillStyle, cn } from "@platform/ui-kit";
 
 /** Case Study.html `.chip` */
 export const keysChipClassName =

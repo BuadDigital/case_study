@@ -1,5 +1,6 @@
 using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
+using RealEstateEval.Application;
 using RealEstateEval.Application.Abstractions;
 using RealEstateEval.Application.Contracts;
 using RealEstateEval.Domain;
@@ -12,9 +13,13 @@ public sealed class FieldDictionaryService : IFieldDictionaryService
     private static readonly Guid SingletonId = Guid.Parse("b1c2d3e4-f5a6-7890-abcd-ef1234567891");
     private readonly PlatformDbContext _db;
     private readonly IAuditLogWriter _audit;
+    private readonly TimeProvider _time;
 
-    public FieldDictionaryService(PlatformDbContext db, IAuditLogWriter audit)
+    public FieldDictionaryService(PlatformDbContext db, IAuditLogWriter audit,
+        TimeProvider? time = null)
     {
+        _time = time ?? TimeProvider.System;
+
         _db = db;
         _audit = audit;
     }
@@ -39,7 +44,7 @@ public sealed class FieldDictionaryService : IFieldDictionaryService
 
         var row = await _db.FieldDictionaryConfigs.FirstOrDefaultAsync(cancellationToken);
         var before = row is null ? null : ToDto(row);
-        var now = DateTime.UtcNow;
+        var now = _time.UtcNow();
         if (row is null)
         {
             row = new FieldDictionaryConfig
@@ -68,11 +73,11 @@ public sealed class FieldDictionaryService : IFieldDictionaryService
         return after;
     }
 
-    private static FieldDictionaryStateDto Empty() => new()
+    private FieldDictionaryStateDto Empty() => new()
     {
         Fields = [],
         Tags = [],
-        UpdatedAtUtc = DateTime.UtcNow,
+        UpdatedAtUtc = _time.UtcNow(),
     };
 
     private static FieldDictionaryStateDto ToDto(FieldDictionaryConfig row)

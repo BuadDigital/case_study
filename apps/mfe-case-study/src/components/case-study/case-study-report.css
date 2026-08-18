@@ -1,4 +1,4 @@
-/* Case study report — designer layout (csrd-*) + form approval (cs-form-*) */
+/* Case study report — designer layout (csrd-*) */
 
 .csrd-root {
   --navy: #0f2a4e;
@@ -414,59 +414,6 @@
 
 .cs-report-preview-shell .csrd-root {
   box-shadow: 0 4px 28px rgba(0, 0, 0, 0.15);
-}
-
-/* ── Form step approval (CaseStudyForm) ── */
-.cs-form-approval-note {
-  margin-bottom: 12px;
-}
-
-.cs-form-sig-table-wrap {
-  overflow-x: auto;
-}
-
-.cs-form-sig-table {
-  width: 100%;
-  border-collapse: collapse;
-  font-size: 12px;
-}
-
-.cs-form-sig-table th {
-  font-size: 11px;
-  font-weight: 600;
-  color: var(--text-2, #4a6272);
-  padding: 8px 12px;
-  background: var(--surface-3, #eef3f9);
-  border: 1px solid var(--border, #d5e3f0);
-  text-align: center;
-}
-
-.cs-form-sig-table td {
-  padding: 14px 10px;
-  border: 1px solid var(--border, #d5e3f0);
-  text-align: center;
-  vertical-align: middle;
-}
-
-.cs-form-sig-value {
-  font-weight: 600;
-  display: block;
-}
-
-.cs-form-sig-img {
-  display: block;
-  margin: 0 auto;
-  object-fit: contain;
-}
-
-.cs-form-sig-img--signature {
-  max-width: 120px;
-  max-height: 56px;
-}
-
-.cs-form-sig-img--stamp {
-  max-width: 96px;
-  max-height: 96px;
 }
 
 @media print {

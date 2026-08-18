@@ -1,6 +1,6 @@
 "use client";
 
-import { Button } from "@platform/design-system";
+import { Button } from "@platform/ui-kit";
 
 export function InspectorSubmitFooter({
   disabled,

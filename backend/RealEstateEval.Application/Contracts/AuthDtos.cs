@@ -31,7 +31,7 @@ public class RefreshTokenRequest
     public string RefreshToken { get; set; } = string.Empty;
 }
 
-public class LoginResponse
+public class LoginResponseDto
 {
     public string Token { get; set; } = string.Empty;
     public DateTime ExpiresAtUtc { get; set; }

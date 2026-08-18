@@ -2,7 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
-import { Note, PanelSkeleton } from "@platform/design-system";
+import { Note, PanelSkeleton } from "@platform/ui-kit";
 import { PoHeaderEdit } from "@case-study/mfe/components/po-intake/PoHeaderEdit";
 import { poListPath } from "../../lib/po-routes";
 import { prototypeKeys } from "@platform/app-shared/query/prototype-keys";

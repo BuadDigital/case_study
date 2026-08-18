@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Badge, Button, cn, useToast } from "@platform/design-system";
+import { Badge, Button, cn, useToast } from "@platform/ui-kit";
 import {
   FIELD_DICTIONARY_SCREENS,
   FIELD_TYPE_LABELS,

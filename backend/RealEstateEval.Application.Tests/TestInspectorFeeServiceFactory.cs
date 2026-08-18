@@ -39,15 +39,17 @@ internal static class TestInspectorFeeServiceFactory
 
         public IncentiveSuspensionService IncentiveSuspensions() => new(Fin, Identity);
 
-        public DiscountFlagService DiscountFlags() => new(Fin, CaseStudy);
+        public DiscountFlagService DiscountFlags() => new(Fin, new CaseStudyLookup(CaseStudy));
 
         public InspectorFeeService Fees(
             INotificationService? notifications = null,
             NotificationRecipientResolver? recipients = null) =>
             Compose(
-                App,
+                CaseStudy,
+                Fin,
+                Identity,
                 notifications ?? new NullNotificationService(),
-                recipients ?? CreateRecipients(App),
+                recipients ?? new NotificationRecipientResolver(CaseStudy, Identity),
                 Pricing());
 
         public async ValueTask DisposeAsync()
@@ -100,6 +102,15 @@ internal static class TestInspectorFeeServiceFactory
     public static AttachmentsDbContext ShareAttachments(DbContext db) =>
         CreateSibling<AttachmentsDbContext>(db, options => new AttachmentsDbContext(options));
 
+    public static IAttachmentLookup ShareAttachmentLookup(DbContext db) =>
+        new AttachmentLookup(ShareAttachments(db));
+
+    public static ValuationDbContext ShareValuation(DbContext db) =>
+        CreateSibling<ValuationDbContext>(db, options => new ValuationDbContext(options));
+
+    public static OperationsDbContext ShareOps(DbContext db) =>
+        CreateSibling<OperationsDbContext>(db, options => new OperationsDbContext(options));
+
     public static CaseStudyDbContext ShareCaseStudy(DbContext db) =>
         CreateSibling<CaseStudyDbContext>(db, options => new CaseStudyDbContext(options));
 
@@ -142,19 +153,40 @@ internal static class TestInspectorFeeServiceFactory
         var options = db.GetService<IDbContextOptions>();
         string? storeName = null;
         InMemoryDatabaseRoot? root = null;
+        const System.Reflection.BindingFlags flags =
+            System.Reflection.BindingFlags.Instance
+            | System.Reflection.BindingFlags.Public
+            | System.Reflection.BindingFlags.NonPublic;
 
         foreach (var extension in options.Extensions)
         {
             var type = extension.GetType();
-            if (!type.Name.Contains("InMemory", StringComparison.Ordinal))
+            if (type.FullName?.Contains("InMemory", StringComparison.Ordinal) != true)
                 continue;
 
-            storeName = type.GetProperty("StoreName")?.GetValue(extension) as string
-                ?? type.GetProperty("DatabaseName")?.GetValue(extension) as string
-                ?? type.GetProperty("Name")?.GetValue(extension) as string;
+            foreach (var prop in type.GetProperties(flags))
+            {
+                if (prop.GetIndexParameters().Length > 0)
+                    continue;
+                if (prop.PropertyType == typeof(InMemoryDatabaseRoot))
+                    root ??= prop.GetValue(extension) as InMemoryDatabaseRoot;
+                else if (storeName is null
+                    && prop.PropertyType == typeof(string)
+                    && (prop.Name.Contains("Store", StringComparison.Ordinal)
+                        || prop.Name.Contains("Database", StringComparison.Ordinal)
+                        || prop.Name.Equals("Name", StringComparison.Ordinal)))
+                {
+                    var value = prop.GetValue(extension) as string;
+                    if (!string.IsNullOrWhiteSpace(value))
+                        storeName = value;
+                }
+            }
 
-            root = type.GetProperty("DatabaseRoot")?.GetValue(extension) as InMemoryDatabaseRoot
-                ?? type.GetProperty("Root")?.GetValue(extension) as InMemoryDatabaseRoot;
+            foreach (var field in type.GetFields(flags))
+            {
+                if (field.FieldType == typeof(InMemoryDatabaseRoot))
+                    root ??= field.GetValue(extension) as InMemoryDatabaseRoot;
+            }
         }
 
         if (string.IsNullOrWhiteSpace(storeName))
@@ -173,13 +205,15 @@ internal static class TestInspectorFeeServiceFactory
         NotificationRecipientResolver recipients,
         IPropertyTimelineService timeline)
     {
-        var query = new WorkflowTaskQueryService(db);
-        var slots = new WorkflowTaskSlotSynchronizer(db, query);
+        var caseStudy = ShareCaseStudy(db);
+        var failures = ShareFailures(db);
+        var query = new WorkflowTaskQueryService(caseStudy);
+        var slots = new WorkflowTaskSlotSynchronizer(caseStudy, query);
         var distribution = new WorkflowTaskDistributionCommands(
-            db, notifications, recipients, timeline, NoOpValuationDispatch.Instance);
-        var cascade = new WorkflowTaskCascadeCleanup(db, fees);
+            caseStudy, failures, notifications, recipients, timeline, NoOpValuationDispatch.Instance);
+        var cascade = new WorkflowTaskCascadeCleanup(caseStudy, fees);
         var lifecycle = new WorkflowTaskLifecycleCommands(
-            db, fees, timeline, cascade, slots, notifications, recipients);
+            caseStudy, fees, timeline, cascade, slots, notifications, recipients);
         return new WorkflowTaskService(query, slots, distribution, lifecycle);
     }
 
@@ -195,12 +229,27 @@ internal static class TestInspectorFeeServiceFactory
         NotificationRecipientResolver recipients,
         IPartyFeePricingService pricing)
     {
-        var resolver = new InspectorFeeLedgerResolver(db);
-        var writer = new InspectorFeeLedgerWriter(db, pricing, resolver);
-        var summary = new InspectorFeeSummaryQuery(db, writer);
-        var transitions = new InspectorFeeTransitionApplier(db);
+        var caseStudy = ShareCaseStudy(db);
+        var financial = ShareFinancial(db);
+        var identity = ShareIdentity(db);
+        return Compose(caseStudy, financial, identity, notifications, recipients, pricing);
+    }
+
+    public static InspectorFeeService Compose(
+        CaseStudyDbContext caseStudy,
+        FinancialDbContext financial,
+        IdentityDbContext identity,
+        INotificationService notifications,
+        NotificationRecipientResolver recipients,
+        IPartyFeePricingService pricing)
+    {
+        var resolver = new InspectorFeeLedgerResolver(caseStudy, identity);
+        var writer = new InspectorFeeLedgerWriter(financial, caseStudy, pricing, resolver);
+        var summary = new InspectorFeeSummaryQuery(financial, caseStudy, identity, writer);
+        var transitions = new InspectorFeeTransitionApplier(financial, caseStudy);
         return new InspectorFeeService(
-            db,
+            caseStudy,
+            financial,
             notifications,
             recipients,
             pricing,

@@ -49,7 +49,7 @@ coupling is entirely in queries and transactions, not in referential constraints
 
 | Id | Question | Outcome | Note |
 | --- | --- | --- | --- |
-| D1 | Inspector-fee ledgers, transitions, disbursement batches | **financial** | Accrual/discount/exclusion/batching are financial lifecycle states, and financial reporting and engineering billing already read the ledger. Rows stay in `case_study`; relocation is Phase 4. |
+| D1 | Inspector-fee ledgers, transitions, disbursement batches | **financial** | Accrual/discount/exclusion/batching are financial lifecycle states, and financial reporting and engineering billing already read the ledger. Rows stay named in `case_study`; after the Phase 4 cutover they live on the dedicated financial database until a later relocate. |
 | D2 | Operations tasks, their sequences, court-visit charges | **operations** owns `OperationsTasks`/`OperationsTaskSequences`; **financial** owns `CourtVisitFeeCharges` | The task lifecycle is operations work; the charge it produces is priced and collected by Financial. Charge creation moves behind a Financial command in Phase 3. |
 | D3 | Notification inbox rows and recipient resolution | **platform** | Platform already owns the list/mutation endpoints and non-owners already request notifications through the outbox. Recipient resolution becomes a Platform projection or an owner contract in Phase 3. |
 | D4 | Document-reference counters | **case-study** | The counter is the correspondence-numbering sequence of the case-study document set; engineering billing is a consumer and gets numbers through a Case Study command in Phase 3. |
@@ -65,8 +65,9 @@ Judgment calls made while approving, beyond the catalog's proposed owners:
   in exactly one context, `per-producer`/`per-consumer` tables own rows rather than the table.
   The guardrail enforces that distinction rather than the blanket rule.
 - **Ownership is behavioural, not physical.** `InspectorFee*`, `DisbursementBatches`, and
-  `OperationsTasks` are owned by Financial and Operations while their rows stay in the
-  `case_study` schema. Approving an owner is not approving a table move; relocation is Phase 4.
+  `OperationsTasks` are owned by Financial and Operations while their rows stay named in the
+  `case_study` schema. After the Phase 4 cutover those tables live on the owner databases;
+  renaming them out of `case_study` is a later relocate.
 - **A table can be owned by a context that is not yet extracted.** `UserNotifications` is
   Platform-owned (D3) but stays on the legacy context until the messaging slice, because
   extracting it separately would split notification writes from the outbox that carries them.
@@ -109,7 +110,7 @@ Judgment calls made while approving, beyond the catalog's proposed owners:
 
 | Table | Owner | Context | Transaction group |
 | --- | --- | --- | --- |
-| `PropertyFailures` | failures | `ApplicationDbContext` | `failures.lifecycle` |
+| `PropertyFailures` | failures | `FailuresDbContext` | `failures.lifecycle` |
 | `FailureTypesCatalogConfigs` | failures | `ApplicationDbContext` | `failures.catalog` |
 | `SurveyOffices` | operations | `ApplicationDbContext` | `operations.reference` |
 | `PropertyKeyRecords`, `KeyEnvelopes`, `KeyEnvelopeAssignments`, `KeyEnvelopeHandoffs`, `KeyEnvelopeTimelineEntries`, `PropertyCourtAccesses` | operations | `ApplicationDbContext` | `operations.keys` |
@@ -163,15 +164,16 @@ gives each of these tables one *context*; reducing them to one *process* is Phas
 | --- | --- | --- |
 | `AuthSessionService`, `PermissionService`, `UserRegistrationService` (plus the ASP.NET Identity stores) | all eight database APIs | `identity.*` |
 | `WorkflowTaskService` | case-study, failures | `case_study.WorkflowTasks` |
-| `FailureService` | case-study, failures | `failures.PropertyFailures`, `case_study.WorkflowTasks` |
+| `FailureService` | failures | `failures.PropertyFailures`, `case_study.WorkflowTasks` |
 | `PropertyTimelineService` | case-study, failures | `case_study.PropertyTimelineEntries` |
 | `InspectorFeeService` | case-study, failures | `case_study.InspectorFee*`, `DisbursementBatches` |
 | `PoEnfazBillingService` | case-study, failures | `financial.PoEnfazInvoices`, `PoEnfazRevenueLines` |
 | `EngineeringBillingStatementService` | case-study, failures | `financial.EngineeringBillingStatement*`, `case_study.DocumentReferenceCounters` |
 | `PartyFeePricingService` | case-study, failures, financial | `financial.PartyFeePricing*` |
-| `KeyEnvelopesService` | case-study, operations | `operations.KeyEnvelope*`, `financial.KeyReceiptFeeCharges` |
-| `KeyEnvelopePeopleResolver` | case-study, operations | reads `identity.Users` for envelope people names |
-| `PropertyKeyGateResolver`, `PropertyAccessHoldService` | case-study, operations | `case_study`, `operations`, `failures` reads and holds |
+| `KeyEnvelopesService` | operations | `operations.KeyEnvelope*`, `financial.KeyReceiptFeeCharges` |
+| `KeyEnvelopePeopleResolver` | operations | reads `identity.Users` for envelope people names |
+| `PropertyKeyGateResolver` | operations | `case_study`, `operations` |
+| `PropertyAccessHoldService` | case-study, operations | `case_study`; access holds call Failures HTTP |
 | `ValuationRequestService` | case-study, valuation | `valuation.ValuationRequests` (now through `ValuationDbContext` in both processes; Case Study writes it from `CaseStudyValuationDispatchService`) |
 | `OutboxIntegrationEventPublisher` | case-study, failures, platform | `messaging.OutboxMessages` |
 | `ValuationOutboxPublisher` | case-study, valuation | `messaging.OutboxMessages` (valuation rows only) |
@@ -209,11 +211,11 @@ use. The Phase-1 column records what changed in extraction step 1.
 | Work-order and workflow gating on `failures.PropertyFailures` | `WorkOrderService`, `WorkflowTaskService`, `PropertyAccessHoldService` | synchronous invariant | Failures owner API for authoritative status; projection only where staleness is acceptable | unchanged |
 | `FailureService` writing Case Study workflow tasks, work orders, properties | `FailureService` | command | Case Study command endpoint or integration event | unchanged |
 | Financial reports joining Case Study ledgers/tasks/work orders and Identity users | `FinancialReportService` | reporting projection | Financial/Reporting read model from events plus reconciliation | unchanged |
-| Engineering billing reading Case Study ledgers, tasks, properties, document counters, and `attachments.FileAttachments` | `EngineeringBillingStatementService` | command plus reference lookup | Case Study command for counters; Attachments API for existence checks | attachment reads still use the legacy read-only mapping |
+| Engineering billing reading Case Study ledgers, tasks, properties, document counters, and attachment IDs | `PartyBillingStatementService` | command plus reference lookup | Case Study command for counters; Attachments API for existence checks | existence checks go through `IAttachmentLookup` |
 | Operations tasks reading/writing `case_study.OperationsTasks`, `financial.CourtVisitFeeCharges`, `identity.UserProfiles`, `operations.KeyEnvelopes` | `OperationsTaskService` | synchronous invariant plus command | own `OperationsTasks` after D2; Financial command for charges; Identity projection for labels | unchanged |
-| Party submissions reading Failures, Attachments, and Operations key state | `PartyTaskSubmissionService` | reference lookup plus invariant | owner APIs (Failures, Attachments, Operations) | unchanged |
+| Party submissions reading Failures, Attachments, and Operations key state | `PartyTaskSubmissionService` | reference lookup plus invariant | owner APIs (Failures, Attachments, Operations) | field-inspection photos verified via `IAttachmentLookup` |
 | Inspector fees reading Case Study ledgers/tasks/properties and Identity profiles | `InspectorFeeService` | command plus invariant | after D1, Financial owns the ledger and consumes task-completion events | unchanged |
-| Key envelopes creating `financial.KeyReceiptFeeCharges` and reading Attachments | `KeyEnvelopesService` | command | Financial charge command; Attachments API | unchanged |
+| Key envelopes creating `financial.KeyReceiptFeeCharges` and reading Attachments | `KeyEnvelopesService` | command | Financial charge command; Attachments API | attachment existence via `IAttachmentLookup` |
 | Notification recipient resolution reading `identity.UserProfiles` and `case_study.WorkflowTasks` | `NotificationRecipientResolver` | reference lookup | Platform projection or owner contract (D3) | unchanged |
 | Display-name lookup on `identity.Users` from Case Study, Operations, and Financial code | `PersonLabelResolver` | reference lookup | Identity contract or projected label | unchanged |
 | Every API registering the ASP.NET Identity stores and session/permission services | `AddIdentityInfrastructure` in all eight database APIs | write-ownership violation | validate JWT claims; only Identity registers the stores | extraction step 2 |
@@ -221,7 +223,7 @@ use. The Phase-1 column records what changed in extraction step 1.
 | `SystemMaintenanceService` touching eight schemas | `SystemMaintenanceService` | maintenance tooling | per-owner maintenance endpoints with explicit grants | unchanged — see [Known deviations](#known-deviations) |
 | Valuation reading a property's PO number for its event payload | `ValuationRequestService` | reference lookup | Case Study owner API or a Valuation-local projection | **replaced** by `IPropertyPoNumberLookup`; the LINQ left the Valuation context |
 | Valuation dispatch writing `valuation.ValuationRequests` from Case Study | `CaseStudyValuationDispatchService` | command | Valuation command or integration event (the event path already exists) | now writes through `ValuationDbContext`, not the legacy context |
-| One shared `messaging` schema with a single Case Study dispatcher | `AddOutboxDispatcher` | infrastructure ownership | per-producer outbox and per-consumer inbox (D5) | Valuation now writes its own outbox rows; dispatch is still central |
+| One shared `messaging` schema with a single Case Study dispatcher | `AddOutboxDispatcher` | infrastructure ownership | per-producer outbox and per-consumer inbox (D5) | Valuation writes its own outbox rows and, after the Phase 4 cutover, drains them from the dedicated valuation database |
 
 ## Known deviations
 
@@ -231,7 +233,7 @@ and a removal criterion, as plan rule 5 requires.
 | Deviation | Why it is accepted | Owner | Removal criterion |
 | --- | --- | --- | --- |
 | `SystemMaintenanceService` and `DataSeeder` still write extracted tables through the legacy context | Both are development/maintenance tooling, not request-path code, and Phase 1 changed neither. Extracting the primary write path first is the point of the slice. | case-study | Phase 3, when per-owner maintenance endpoints and explicit grants replace them |
-| Extracted tables keep a read-only mapping on `ApplicationDbContext` | Non-owner slices (billing, party submissions, key envelopes, the field-inspection verifier) still query `FileAttachments`, and the case-study dispatcher still reads `ValuationRequests`. Removing the mapping before the owner API exists would break them. | case-study | Phase 3, when those reads move to owner APIs |
+| Extracted tables keep a read-only mapping on `ApplicationDbContext` | Development seed/reset still counts `FileAttachments` through the god context. Request-path billing, party submissions, key envelopes, and the field-inspection verifier use `IAttachmentLookup`. The case-study dispatcher still reads `ValuationRequests`. | case-study | Remaining god-context mappings leave when seed/reset and the valuation dispatcher move to owner APIs |
 | `IPropertyPoNumberLookup` reads `case_study.WorkOrderProperties` from the Valuation process | The value is only a display string in a notification body. The read is now behind an owner interface, read-only, and outside the Valuation transaction. | case-study | Phase 3, when Case Study exposes it as an owner API or Valuation projects it locally |
 | `ValuationRequestService` is registered by both Case Study and Valuation | Pre-existing; Case Study needs it for the dispatch adapter. Both processes now write through the same `ValuationDbContext`, so the table has one context even though it has two writing processes. | valuation | Phase 3, when dispatch becomes a Valuation command or event |
 
@@ -240,7 +242,7 @@ and a removal criterion, as plan rule 5 requires.
 | Check | Result |
 | --- | --- |
 | Legacy migration stream against a blank database (2026-07-29) | `DbMigrate update` applied the whole stream to an empty PostgreSQL 17 database. Resulting table counts match the catalog exactly (identity 11, case_study 16, platform 8, failures 2, operations 7, valuation 2, attachments 1, financial 10, messaging 3, plus the migrations history table). No user table received a physical `xmin` column, so `20260729104156_AddOptimisticConcurrencyTokens` is DDL-neutral on this PostgreSQL/Npgsql pair. The scratch database was dropped. |
-| Legacy stream against a restored production-like database | **Not done.** Requires a production restore, which is not available here. Still a Phase 1 prerequisite; see [Remaining gates](#remaining-gates). |
+| Legacy stream against a restored production-like database (2026-08-18) | **Done** against a copy of idle leftover `realestate_eval_dev` (host Postgres 17.9 `:5432`; 30 applied migrations, frozen before `xmin`; 15 users). Scratch `realestate_eval_a7_scratch` received 67 leftover-pending legacy migrations including `20260729104156_AddOptimisticConcurrencyTokens`, then all nine context streams. No user table received a physical `xmin` column (DDL-neutral on this PostgreSQL/Npgsql pair); system `xmin` is readable on preserved rows. Source leftover was not migrated. |
 | Phase 1 build and test run (2026-07-30) | See [`docs/status`](../status). |
 
 ## Remaining gates
@@ -253,5 +255,5 @@ repository and must be delivered by the named owners.
 | Nominate a service owner per API and an owner for the deploy-time migrator | engineering management | formal sign-off of the approvals recorded here |
 | Inventory production-only SQL clients, BI jobs, database roles, backup/restore procedures, and cross-schema database objects (D6) | operations / data platform | Phase 3 grant changes; hard stop for Phase 4 |
 | Capture p95 latency, error rate, connection counts, outbox backlog age, dead-letter count, consumer redeliveries, and key row counts | operations | comparison baseline for the rest of Phase 1 |
-| Validate ADR 0006 deploy-time migration against a restored production-like database, including the `xmin` migration SQL (the blank-database half is done) | migrator owner | remaining Phase 1 extraction steps |
+| Validate ADR 0006 deploy-time migration against a restored production-like database, including the `xmin` migration SQL (the blank-database half is done) | migrator owner | **Met (2026-08-18)** on leftover `realestate_eval_dev` copy. Not a Hetzner production dump. |
 | Measure connection-pool counts per process now that each service opens a second pooled context | operations | extraction steps 2–5 (the plan's connection-growth risk) |

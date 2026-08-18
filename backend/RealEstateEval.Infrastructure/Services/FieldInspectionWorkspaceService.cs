@@ -3,42 +3,26 @@ using RealEstateEval.Application.Abstractions;
 using RealEstateEval.Application.Contracts;
 using RealEstateEval.Application.Rules;
 using RealEstateEval.Domain;
-using RealEstateEval.Infrastructure.Data;
+using RealEstateEval.Infrastructure.Data.Contexts;
 
 namespace RealEstateEval.Infrastructure.Services;
 
 public sealed class FieldInspectionWorkspaceService : IFieldInspectionWorkspaceService
 {
-    private readonly ApplicationDbContext _db;
+    private readonly CaseStudyDbContext _db;
 
-    public FieldInspectionWorkspaceService(ApplicationDbContext db)
+    public FieldInspectionWorkspaceService(CaseStudyDbContext db)
     {
         _db = db;
     }
 
     public async Task<IReadOnlyList<FieldInspectionWorkspaceListItemDto>> ListAsync(
-        PermissionsDto actor,
+        PermissionsDto? actor,
         CancellationToken cancellationToken = default)
     {
-        var query =
-            from workspace in _db.FieldInspectionWorkspaces.AsNoTracking()
-            join task in _db.WorkflowTasks.AsNoTracking()
-                on workspace.WorkflowTaskId equals task.Id
-            select new { Workspace = workspace, Task = task };
-
-        if (!PoRoleMatrixRules.CanManagePartySubmissions(actor.PrototypeRole))
-        {
-            var role = actor.PrototypeRole?.Trim().ToLower() ?? "";
-            var userId = actor.UserId.Trim();
-            var assigneeId = actor.DistributionAssigneeId?.Trim() ?? "";
-            if (role.Length == 0 || (userId.Length == 0 && assigneeId.Length == 0))
-                return [];
-
-            query = query.Where(row =>
-                row.Task.AssigneeRole.ToLower() == role
-                && ((assigneeId.Length > 0 && row.Task.AssigneeId == assigneeId)
-                    || (userId.Length > 0 && row.Task.AssigneeId == userId)));
-        }
+        var query = VisibleWorkspaceQuery(actor);
+        if (query is null)
+            return [];
 
         return await query
             .OrderByDescending(x => x.Workspace.UpdatedAtUtc)
@@ -69,9 +53,16 @@ public sealed class FieldInspectionWorkspaceService : IFieldInspectionWorkspaceS
     }
 
     public async Task<FieldInspectionWorkspaceSummaryDto> GetSummaryAsync(
+        PermissionsDto? actor,
         CancellationToken cancellationToken = default)
     {
-        var rows = _db.FieldInspectionWorkspaces.AsNoTracking();
+        var query = VisibleWorkspaceQuery(actor);
+        if (query is null)
+        {
+            return new FieldInspectionWorkspaceSummaryDto();
+        }
+
+        var rows = query.Select(x => x.Workspace);
         return new FieldInspectionWorkspaceSummaryDto
         {
             Total = await rows.CountAsync(cancellationToken),
@@ -93,5 +84,37 @@ public sealed class FieldInspectionWorkspaceService : IFieldInspectionWorkspaceS
                     : 0,
                 cancellationToken),
         };
+    }
+
+    private IQueryable<WorkspaceTaskRow>? VisibleWorkspaceQuery(PermissionsDto? actor)
+    {
+        var query =
+            from workspace in _db.FieldInspectionWorkspaces.AsNoTracking()
+            join task in _db.WorkflowTasks.AsNoTracking()
+                on workspace.WorkflowTaskId equals task.Id
+            select new WorkspaceTaskRow { Workspace = workspace, Task = task };
+
+        if (actor is null)
+            return null;
+
+        if (PoRoleMatrixRules.CanManagePartySubmissions(actor.PrototypeRole))
+            return query;
+
+        var role = actor.PrototypeRole?.Trim().ToLower() ?? "";
+        var userId = actor.UserId.Trim();
+        var assigneeId = actor.DistributionAssigneeId?.Trim() ?? "";
+        if (role.Length == 0 || (userId.Length == 0 && assigneeId.Length == 0))
+            return null;
+
+        return query.Where(row =>
+            row.Task.AssigneeRole.ToLower() == role
+            && ((assigneeId.Length > 0 && row.Task.AssigneeId == assigneeId)
+                || (userId.Length > 0 && row.Task.AssigneeId == userId)));
+    }
+
+    private sealed class WorkspaceTaskRow
+    {
+        public required FieldInspectionWorkspace Workspace { get; init; }
+        public required WorkflowTask Task { get; init; }
     }
 }

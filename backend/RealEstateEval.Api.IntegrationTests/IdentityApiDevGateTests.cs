@@ -10,6 +10,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using RealEstateEval.Application.Abstractions;
 using RealEstateEval.Application.Contracts;
+using RealEstateEval.Infrastructure.Data;
 
 namespace RealEstateEval.Api.IntegrationTests;
 
@@ -20,6 +21,14 @@ public class IdentityApiDevGateTests : IClassFixture<IdentityApiWebApplicationFa
     public IdentityApiDevGateTests(IdentityApiWebApplicationFactory factory)
     {
         _client = factory.CreateClient();
+    }
+
+    [Fact]
+    public void Startup_fails_in_production_when_dev_login_is_enabled()
+    {
+        using var factory = IdentityApiWebApplicationFactory.CreateWithDevLoginEnabled();
+        var ex = Assert.Throws<InvalidOperationException>(() => factory.CreateClient());
+        Assert.Contains("Auth:EnableDevLogin is only allowed in Development.", ex.Message);
     }
 
     [Fact]
@@ -51,7 +60,7 @@ public class IdentityApiDevGateTests : IClassFixture<IdentityApiWebApplicationFa
             });
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-        var body = await response.Content.ReadFromJsonAsync<LoginResponse>();
+        var body = await response.Content.ReadFromJsonAsync<LoginResponseDto>();
         Assert.Equal("integration-test-token", body?.Token);
     }
 
@@ -87,7 +96,7 @@ public class IdentityApiDevGateTests : IClassFixture<IdentityApiWebApplicationFa
             new RefreshTokenRequest { RefreshToken = StubAuthSessionService.ValidToken });
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-        var body = await response.Content.ReadFromJsonAsync<LoginResponse>();
+        var body = await response.Content.ReadFromJsonAsync<LoginResponseDto>();
         Assert.Equal("refreshed-access-token", body?.Token);
         Assert.Equal("refreshed-refresh-token", body?.RefreshToken);
     }
@@ -144,20 +153,38 @@ public class IdentityApiDevGateTests : IClassFixture<IdentityApiWebApplicationFa
 public sealed class IdentityApiWebApplicationFactory
     : WebApplicationFactory<IdentityApi::Program>
 {
+    private readonly bool _enableDevLoginInProduction;
+
+    public IdentityApiWebApplicationFactory()
+    {
+    }
+
+    private IdentityApiWebApplicationFactory(bool enableDevLoginInProduction)
+    {
+        _enableDevLoginInProduction = enableDevLoginInProduction;
+    }
+
+    public static IdentityApiWebApplicationFactory CreateWithDevLoginEnabled() =>
+        new(enableDevLoginInProduction: true);
+
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
         builder.UseEnvironment("Production");
-        builder.UseSetting(
-            "ConnectionStrings:Identity",
+        BoundedContextConnections.ApplyDedicatedSettings(
+            (key, value) => builder.UseSetting(key, value),
             "Host=localhost;Database=identity_integration_test");
         builder.UseSetting(
             "Jwt:SigningKey",
             "integration-test-signing-key-that-is-at-least-sixty-four-characters-long-1234567890");
+        builder.UseSetting(
+            "Auth:EnableDevLogin",
+            _enableDevLoginInProduction ? "true" : "false");
         builder.ConfigureAppConfiguration((_, config) =>
         {
             config.AddInMemoryCollection(new Dictionary<string, string?>
             {
                 ["Redis:Enabled"] = "false",
+                ["Auth:EnableDevLogin"] = _enableDevLoginInProduction ? "true" : "false",
             });
         });
         builder.ConfigureTestServices(services =>
@@ -172,15 +199,15 @@ public sealed class IdentityApiWebApplicationFactory
 
 internal sealed class StubPasswordAuthenticationService : IPasswordAuthenticationService
 {
-    public Task<LoginResponse?> AuthenticateAsync(
+    public Task<LoginResponseDto?> AuthenticateAsync(
         string username,
         string password,
         CancellationToken cancellationToken = default)
     {
         if (username != "valid-user" || password != "valid-password")
-            return Task.FromResult<LoginResponse?>(null);
+            return Task.FromResult<LoginResponseDto?>(null);
 
-        return Task.FromResult<LoginResponse?>(new LoginResponse
+        return Task.FromResult<LoginResponseDto?>(new LoginResponseDto
         {
             Token = "integration-test-token",
             ExpiresAtUtc = DateTime.UtcNow.AddMinutes(5),
@@ -200,24 +227,24 @@ internal sealed class StubAuthSessionService : IAuthSessionService
 {
     public const string ValidToken = "valid-refresh-token";
 
-    public Task<LoginResponse?> IssueForUserIdAsync(
+    public Task<LoginResponseDto?> IssueForUserIdAsync(
         string userId,
         CancellationToken cancellationToken = default) =>
-        Task.FromResult<LoginResponse?>(null);
+        Task.FromResult<LoginResponseDto?>(null);
 
-    public Task<LoginResponse?> IssueForUsernameAsync(
+    public Task<LoginResponseDto?> IssueForUsernameAsync(
         string username,
         CancellationToken cancellationToken = default) =>
-        Task.FromResult<LoginResponse?>(null);
+        Task.FromResult<LoginResponseDto?>(null);
 
-    public Task<LoginResponse?> RefreshAsync(
+    public Task<LoginResponseDto?> RefreshAsync(
         string refreshToken,
         CancellationToken cancellationToken = default)
     {
         if (refreshToken != ValidToken)
-            return Task.FromResult<LoginResponse?>(null);
+            return Task.FromResult<LoginResponseDto?>(null);
 
-        return Task.FromResult<LoginResponse?>(new LoginResponse
+        return Task.FromResult<LoginResponseDto?>(new LoginResponseDto
         {
             Token = "refreshed-access-token",
             ExpiresAtUtc = DateTime.UtcNow.AddMinutes(15),

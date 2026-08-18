@@ -361,14 +361,6 @@ export function distributionValidationError(
   return null;
 }
 
-export function slotTaskTitle(
-  poNumber: string,
-  ordinal: number,
-  total: number,
-): string {
-  return `تسجيل عقار ${ordinal} من ${total} — ${poNumber}`;
-}
-
 export function caseStudyTaskForProperty(
   poNumber: string,
   propertyId: string,
@@ -722,37 +714,6 @@ export async function redistributeTaskParties(
   return { ok: true, task: dtoToTask(result.data) };
 }
 
-export async function escalateTaskForObstruction(
-  poNumber: string,
-  propertyId: string,
-  reason: string,
-  tasks?: WorkflowTask[],
-): Promise<WorkflowTask | null> {
-  const list = tasks ?? (await loadWorkflowTasks());
-  const task = list.find(
-    (t) =>
-      t.kind === "case-study-property" &&
-      t.poNumber === poNumber &&
-      t.propertyId === propertyId &&
-      t.status !== "completed",
-  );
-  if (!task) return null;
-
-  const config = workOrdersApiConfig();
-  if (!config) return null;
-  const result = await patchWorkflowTask(config, task.id, {
-    phase: "obstruction",
-    obstructionPriorPhase: task.phase,
-    assigneeRole: "section-supervisor",
-    assigneeName: "مشرف دراسة الحالة",
-    status: "blocked",
-    obstructionReason: reason.trim(),
-  });
-  if (!result.ok) return null;
-  notifyTasksChanged();
-  return dtoToTask(result.data);
-}
-
 /** Pause all open work on a property — SLA timer keeps running elsewhere. */
 export async function suspendWorkflowTasksForProperty(
   poNumber: string,
@@ -785,22 +746,6 @@ export async function suspendWorkflowTasksForProperty(
   }
   if (related.length > 0) notifyTasksChanged();
   return allOk;
-}
-
-export async function resolveObstructionForProperty(
-  poNumber: string,
-  propertyId: string,
-): Promise<WorkflowTask | null> {
-  const list = await loadWorkflowTasks();
-  const task = list.find(
-    (t) =>
-      t.kind === "case-study-property" &&
-      t.poNumber === poNumber &&
-      t.propertyId === propertyId &&
-      t.phase === "obstruction",
-  );
-  if (!task) return null;
-  return resolveTaskObstruction(task.id, task);
 }
 
 export async function resolveTaskObstruction(

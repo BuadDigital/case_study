@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
-import { Button, Note } from "@platform/design-system";
+import { Button, Note } from "@platform/ui-kit";
 
 export default function GlobalError({
   error,

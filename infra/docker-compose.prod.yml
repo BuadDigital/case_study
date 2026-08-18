@@ -24,6 +24,8 @@ x-rabbit-env: &rabbit-env
   # helpers rather than in their own Program.cs.
   RabbitMQ__Host: rabbitmq
   RabbitMQ__Port: 5672
+  RabbitMQ__Enabled: "true"
+  RabbitMQ__RequireEnabled: "true"
   RabbitMQ__UserName: ${RABBITMQ_USER:?Set RABBITMQ_USER}
   RabbitMQ__Password: ${RABBITMQ_PASSWORD:?Set RABBITMQ_PASSWORD}
 
@@ -41,11 +43,12 @@ services:
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD}
-      POSTGRES_DB: realestate_eval_prod
+      POSTGRES_DB: postgres
     volumes:
       - ree_prod_pgdata:/var/lib/postgresql/data
+      - ./postgres/init-prod.sql:/docker-entrypoint-initdb.d/01-create-service-databases.sql:ro
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres -d realestate_eval_prod"]
+      test: ["CMD-SHELL", "pg_isready -U postgres -d postgres"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -119,7 +122,7 @@ services:
     container_name: ree-prod-grafana
     restart: always
     environment:
-      GF_SECURITY_ADMIN_USER: ${GRAFANA_ADMIN_USER:-admin}
+      GF_SECURITY_ADMIN_USER: ${GRAFANA_ADMIN_USER:?Set GRAFANA_ADMIN_USER}
       GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:?Set GRAFANA_ADMIN_PASSWORD}
       GF_USERS_ALLOW_SIGN_UP: "false"
     volumes:
@@ -173,7 +176,15 @@ services:
     container_name: ree-prod-migrate
     restart: "no"
     environment:
-      REAL_ESTATE_EVAL_PG_CONNECTION_STRING: Host=postgres;Port=5432;Database=realestate_eval_prod;Username=postgres;Password=${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD}
+      REAL_ESTATE_EVAL_PG_CONNECTION_STRING_ATTACHMENTS: Host=postgres;Port=5432;Database=realestate_eval_prod_attachments;Username=postgres;Password=${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD}
+      REAL_ESTATE_EVAL_PG_CONNECTION_STRING_IDENTITY: Host=postgres;Port=5432;Database=realestate_eval_prod_identity;Username=postgres;Password=${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD}
+      REAL_ESTATE_EVAL_PG_CONNECTION_STRING_PLATFORM: Host=postgres;Port=5432;Database=realestate_eval_prod_platform;Username=postgres;Password=${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD}
+      REAL_ESTATE_EVAL_PG_CONNECTION_STRING_VALUATION: Host=postgres;Port=5432;Database=realestate_eval_prod_valuation;Username=postgres;Password=${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD}
+      REAL_ESTATE_EVAL_PG_CONNECTION_STRING_FAILURES: Host=postgres;Port=5432;Database=realestate_eval_prod_failures;Username=postgres;Password=${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD}
+      REAL_ESTATE_EVAL_PG_CONNECTION_STRING_OPERATIONS: Host=postgres;Port=5432;Database=realestate_eval_prod_operations;Username=postgres;Password=${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD}
+      REAL_ESTATE_EVAL_PG_CONNECTION_STRING_FINANCIAL: Host=postgres;Port=5432;Database=realestate_eval_prod_financial;Username=postgres;Password=${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD}
+      REAL_ESTATE_EVAL_PG_CONNECTION_STRING_CASESTUDY: Host=postgres;Port=5432;Database=realestate_eval_prod_case_study;Username=postgres;Password=${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD}
+      REAL_ESTATE_EVAL_PG_CONNECTION_STRING_MESSAGING: Host=postgres;Port=5432;Database=realestate_eval_prod_messaging;Username=postgres;Password=${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD}
     depends_on:
       postgres:
         condition: service_healthy
@@ -186,7 +197,8 @@ services:
       <<: [*otel-env, *rabbit-env, *redis-env]
       ASPNETCORE_ENVIRONMENT: Production
       Database__MigrateOnStartup: "false"
-      REAL_ESTATE_EVAL_PG_CONNECTION_STRING: Host=postgres;Port=5432;Database=realestate_eval_prod;Username=postgres;Password=${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD}
+      UpstreamServices__PlatformBaseUrl: http://platform:8080
+      REAL_ESTATE_EVAL_PG_CONNECTION_STRING_IDENTITY: Host=postgres;Port=5432;Database=realestate_eval_prod_identity;Username=postgres;Password=${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD}
       Jwt__Issuer: RealEstateEval
       Jwt__Audience: RealEstateEval
       Jwt__SigningKey: ${JWT_SIGNING_KEY:?Set JWT_SIGNING_KEY}
@@ -212,7 +224,15 @@ services:
       ASPNETCORE_ENVIRONMENT: Production
       Database__MigrateOnStartup: "false"
       Database__SeedDemoData: "false"
-      REAL_ESTATE_EVAL_PG_CONNECTION_STRING: Host=postgres;Port=5432;Database=realestate_eval_prod;Username=postgres;Password=${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD}
+      UpstreamServices__AttachmentsBaseUrl: http://attachments:8080
+      UpstreamServices__PlatformBaseUrl: http://platform:8080
+      UpstreamServices__ValuationBaseUrl: http://valuation:8080
+      UpstreamServices__IdentityBaseUrl: http://identity:8080
+      UpstreamServices__FailuresBaseUrl: http://failures:8080
+      UpstreamServices__OperationsBaseUrl: http://operations:8080
+      UpstreamServices__FinancialBaseUrl: http://financial:8080
+      REAL_ESTATE_EVAL_PG_CONNECTION_STRING_CASESTUDY: Host=postgres;Port=5432;Database=realestate_eval_prod_case_study;Username=postgres;Password=${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD}
+      REAL_ESTATE_EVAL_PG_CONNECTION_STRING_MESSAGING: Host=postgres;Port=5432;Database=realestate_eval_prod_messaging;Username=postgres;Password=${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD}
       Jwt__Issuer: RealEstateEval
       Jwt__Audience: RealEstateEval
       Jwt__SigningKey: ${JWT_SIGNING_KEY:?Set JWT_SIGNING_KEY}
@@ -225,6 +245,20 @@ services:
         condition: service_healthy
       migrate:
         condition: service_completed_successfully
+      attachments:
+        condition: service_healthy
+      platform:
+        condition: service_healthy
+      valuation:
+        condition: service_healthy
+      identity:
+        condition: service_healthy
+      failures:
+        condition: service_healthy
+      operations:
+        condition: service_healthy
+      financial:
+        condition: service_healthy
       otel-collector:
         condition: service_started
     healthcheck: *app-healthcheck
@@ -236,7 +270,13 @@ services:
     environment:
       <<: [*otel-env, *rabbit-env, *redis-env]
       ASPNETCORE_ENVIRONMENT: Production
-      REAL_ESTATE_EVAL_PG_CONNECTION_STRING: Host=postgres;Port=5432;Database=realestate_eval_prod;Username=postgres;Password=${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD}
+      UpstreamServices__AttachmentsBaseUrl: http://attachments:8080
+      UpstreamServices__IdentityBaseUrl: http://identity:8080
+      UpstreamServices__FailuresBaseUrl: http://failures:8080
+      UpstreamServices__CaseStudyBaseUrl: http://case-study:8080
+      UpstreamServices__FinancialBaseUrl: http://financial:8080
+      REAL_ESTATE_EVAL_PG_CONNECTION_STRING_OPERATIONS: Host=postgres;Port=5432;Database=realestate_eval_prod_operations;Username=postgres;Password=${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD}
+      REAL_ESTATE_EVAL_PG_CONNECTION_STRING_MESSAGING: Host=postgres;Port=5432;Database=realestate_eval_prod_messaging;Username=postgres;Password=${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD}
       Jwt__Issuer: RealEstateEval
       Jwt__Audience: RealEstateEval
       Jwt__SigningKey: ${JWT_SIGNING_KEY:?Set JWT_SIGNING_KEY}
@@ -249,6 +289,14 @@ services:
         condition: service_healthy
       migrate:
         condition: service_completed_successfully
+      attachments:
+        condition: service_healthy
+      identity:
+        condition: service_healthy
+      failures:
+        condition: service_healthy
+      financial:
+        condition: service_healthy
       otel-collector:
         condition: service_started
     healthcheck: *app-healthcheck
@@ -260,7 +308,6 @@ services:
     environment:
       <<: [*otel-env, *rabbit-env, *redis-env]
       ASPNETCORE_ENVIRONMENT: Production
-      REAL_ESTATE_EVAL_PG_CONNECTION_STRING: Host=postgres;Port=5432;Database=realestate_eval_prod;Username=postgres;Password=${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD}
       Jwt__Issuer: RealEstateEval
       Jwt__Audience: RealEstateEval
       Jwt__SigningKey: ${JWT_SIGNING_KEY:?Set JWT_SIGNING_KEY}
@@ -287,7 +334,11 @@ services:
     environment:
       <<: [*otel-env, *rabbit-env, *redis-env]
       ASPNETCORE_ENVIRONMENT: Production
-      REAL_ESTATE_EVAL_PG_CONNECTION_STRING: Host=postgres;Port=5432;Database=realestate_eval_prod;Username=postgres;Password=${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD}
+      UpstreamServices__IdentityBaseUrl: http://identity:8080
+      UpstreamServices__AttachmentsBaseUrl: http://attachments:8080
+      UpstreamServices__OperationsBaseUrl: http://operations:8080
+      UpstreamServices__CaseStudyBaseUrl: http://case-study:8080
+      REAL_ESTATE_EVAL_PG_CONNECTION_STRING_FINANCIAL: Host=postgres;Port=5432;Database=realestate_eval_prod_financial;Username=postgres;Password=${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD}
       Jwt__Issuer: RealEstateEval
       Jwt__Audience: RealEstateEval
       Jwt__SigningKey: ${JWT_SIGNING_KEY:?Set JWT_SIGNING_KEY}
@@ -300,6 +351,10 @@ services:
         condition: service_healthy
       migrate:
         condition: service_completed_successfully
+      identity:
+        condition: service_healthy
+      attachments:
+        condition: service_healthy
       otel-collector:
         condition: service_started
     healthcheck: *app-healthcheck
@@ -311,7 +366,10 @@ services:
     environment:
       <<: [*otel-env, *rabbit-env, *redis-env]
       ASPNETCORE_ENVIRONMENT: Production
-      REAL_ESTATE_EVAL_PG_CONNECTION_STRING: Host=postgres;Port=5432;Database=realestate_eval_prod;Username=postgres;Password=${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD}
+      UpstreamServices__AttachmentsBaseUrl: http://attachments:8080
+      UpstreamServices__PlatformBaseUrl: http://platform:8080
+      REAL_ESTATE_EVAL_PG_CONNECTION_STRING_VALUATION: Host=postgres;Port=5432;Database=realestate_eval_prod_valuation;Username=postgres;Password=${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD}
+      REAL_ESTATE_EVAL_PG_CONNECTION_STRING_CASESTUDY: Host=postgres;Port=5432;Database=realestate_eval_prod_case_study;Username=postgres;Password=${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD}
       Jwt__Issuer: RealEstateEval
       Jwt__Audience: RealEstateEval
       Jwt__SigningKey: ${JWT_SIGNING_KEY:?Set JWT_SIGNING_KEY}
@@ -324,6 +382,10 @@ services:
         condition: service_healthy
       migrate:
         condition: service_completed_successfully
+      attachments:
+        condition: service_healthy
+      platform:
+        condition: service_healthy
       otel-collector:
         condition: service_started
     healthcheck: *app-healthcheck
@@ -335,7 +397,10 @@ services:
     environment:
       <<: [*otel-env, *rabbit-env, *redis-env]
       ASPNETCORE_ENVIRONMENT: Production
-      REAL_ESTATE_EVAL_PG_CONNECTION_STRING: Host=postgres;Port=5432;Database=realestate_eval_prod;Username=postgres;Password=${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD}
+      UpstreamServices__IdentityBaseUrl: http://identity:8080
+      REAL_ESTATE_EVAL_PG_CONNECTION_STRING_FAILURES: Host=postgres;Port=5432;Database=realestate_eval_prod_failures;Username=postgres;Password=${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD}
+      REAL_ESTATE_EVAL_PG_CONNECTION_STRING_CASESTUDY: Host=postgres;Port=5432;Database=realestate_eval_prod_case_study;Username=postgres;Password=${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD}
+      REAL_ESTATE_EVAL_PG_CONNECTION_STRING_MESSAGING: Host=postgres;Port=5432;Database=realestate_eval_prod_messaging;Username=postgres;Password=${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD}
       Jwt__Issuer: RealEstateEval
       Jwt__Audience: RealEstateEval
       Jwt__SigningKey: ${JWT_SIGNING_KEY:?Set JWT_SIGNING_KEY}
@@ -348,6 +413,8 @@ services:
         condition: service_healthy
       migrate:
         condition: service_completed_successfully
+      identity:
+        condition: service_healthy
       otel-collector:
         condition: service_started
     healthcheck: *app-healthcheck
@@ -359,7 +426,10 @@ services:
     environment:
       <<: [*otel-env, *rabbit-env, *redis-env]
       ASPNETCORE_ENVIRONMENT: Production
-      REAL_ESTATE_EVAL_PG_CONNECTION_STRING: Host=postgres;Port=5432;Database=realestate_eval_prod;Username=postgres;Password=${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD}
+      UpstreamServices__IdentityBaseUrl: http://identity:8080
+      UpstreamServices__CaseStudyBaseUrl: http://case-study:8080
+      REAL_ESTATE_EVAL_PG_CONNECTION_STRING_PLATFORM: Host=postgres;Port=5432;Database=realestate_eval_prod_platform;Username=postgres;Password=${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD}
+      REAL_ESTATE_EVAL_PG_CONNECTION_STRING_MESSAGING: Host=postgres;Port=5432;Database=realestate_eval_prod_messaging;Username=postgres;Password=${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD}
       Jwt__Issuer: RealEstateEval
       Jwt__Audience: RealEstateEval
       Jwt__SigningKey: ${JWT_SIGNING_KEY:?Set JWT_SIGNING_KEY}
@@ -377,6 +447,8 @@ services:
         condition: service_healthy
       migrate:
         condition: service_completed_successfully
+      identity:
+        condition: service_healthy
       otel-collector:
         condition: service_started
     healthcheck: *app-healthcheck
@@ -388,7 +460,8 @@ services:
     environment:
       <<: [*otel-env, *rabbit-env, *redis-env]
       ASPNETCORE_ENVIRONMENT: Production
-      REAL_ESTATE_EVAL_PG_CONNECTION_STRING: Host=postgres;Port=5432;Database=realestate_eval_prod;Username=postgres;Password=${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD}
+      UpstreamServices__PlatformBaseUrl: http://platform:8080
+      REAL_ESTATE_EVAL_PG_CONNECTION_STRING_ATTACHMENTS: Host=postgres;Port=5432;Database=realestate_eval_prod_attachments;Username=postgres;Password=${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD}
       Jwt__Issuer: RealEstateEval
       Jwt__Audience: RealEstateEval
       Jwt__SigningKey: ${JWT_SIGNING_KEY:?Set JWT_SIGNING_KEY}
@@ -404,6 +477,8 @@ services:
         condition: service_healthy
       migrate:
         condition: service_completed_successfully
+      platform:
+        condition: service_healthy
       otel-collector:
         condition: service_started
     healthcheck: *app-healthcheck

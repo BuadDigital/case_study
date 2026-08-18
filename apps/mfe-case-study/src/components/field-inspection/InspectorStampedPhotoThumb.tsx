@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { cn } from "@platform/design-system";
+import { cn } from "@platform/ui-kit";
 import type { InspectorPhotoAttachment } from "../../lib/prototype/inspector-workspace-data";
 import {
   getInspectorPhotoDataUrl,

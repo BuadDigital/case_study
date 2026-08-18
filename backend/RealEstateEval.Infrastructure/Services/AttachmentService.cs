@@ -1,5 +1,7 @@
 using Microsoft.EntityFrameworkCore;
+using RealEstateEval.Application;
 using RealEstateEval.Application.Abstractions;
+using RealEstateEval.Application.Authorization;
 using RealEstateEval.Application.Contracts;
 using RealEstateEval.Application.Rules;
 using RealEstateEval.Domain;
@@ -18,12 +20,16 @@ public sealed class AttachmentService : IAttachmentService
     private readonly AttachmentsDbContext _db;
     private readonly IBlobStorage _blobs;
     private readonly IAttachmentPrintDictionaryService? _printDictionary;
+    private readonly TimeProvider _time;
 
     public AttachmentService(
         AttachmentsDbContext db,
         IBlobStorage blobs,
-        IAttachmentPrintDictionaryService? printDictionary = null)
+        IAttachmentPrintDictionaryService? printDictionary = null,
+        TimeProvider? time = null)
     {
+        _time = time ?? TimeProvider.System;
+
         _db = db;
         _blobs = blobs;
         _printDictionary = printDictionary;
@@ -50,11 +56,12 @@ public sealed class AttachmentService : IAttachmentService
 
     public async Task<(byte[]? Content, FileAttachmentMetaDto? Meta)> GetContentAsync(
         Guid id,
+        PermissionsDto? actor,
         CancellationToken cancellationToken = default)
     {
         var row = await _db.FileAttachments.AsNoTracking()
             .FirstOrDefaultAsync(x => x.Id == id, cancellationToken);
-        if (row is null) return (null, null);
+        if (row is null || !CanAccess(row, actor)) return (null, null);
 
         var content = await ReadContentAsync(row, cancellationToken);
         if (content is null) return (null, null);
@@ -113,7 +120,7 @@ public sealed class AttachmentService : IAttachmentService
             Content = null,
             SizeBytes = content.LongLength,
             UploadedByUserId = uploadedByUserId,
-            CreatedAtUtc = DateTime.UtcNow,
+            CreatedAtUtc = _time.UtcNow(),
         };
         _db.FileAttachments.Add(row);
 
@@ -134,7 +141,7 @@ public sealed class AttachmentService : IAttachmentService
                 CapturedAtUtc = AsUtc(request.PhotoMetadata.CapturedAtUtc),
                 DistanceM = distanceM,
                 Flag = flag,
-                CreatedAtUtc = DateTime.UtcNow,
+                CreatedAtUtc = _time.UtcNow(),
             };
             _db.PhotoMetadata.Add(photoMeta);
             await _db.SaveChangesAsync(cancellationToken);
@@ -152,11 +159,12 @@ public sealed class AttachmentService : IAttachmentService
 
     public async Task<FileAttachmentMetaDto?> GetMetaAsync(
         Guid id,
+        PermissionsDto? actor,
         CancellationToken cancellationToken = default)
     {
         var row = await _db.FileAttachments.AsNoTracking()
             .FirstOrDefaultAsync(x => x.Id == id, cancellationToken);
-        if (row is null) return null;
+        if (row is null || !CanAccess(row, actor)) return null;
 
         var photo = await _db.PhotoMetadata.AsNoTracking()
             .FirstOrDefaultAsync(p => p.PhotoId == id, cancellationToken);
@@ -207,10 +215,13 @@ public sealed class AttachmentService : IAttachmentService
         return (ToMeta(row, photo), null);
     }
 
-    public async Task<bool> DeleteAsync(Guid id, CancellationToken cancellationToken = default)
+    public async Task<bool> DeleteAsync(
+        Guid id,
+        PermissionsDto? actor,
+        CancellationToken cancellationToken = default)
     {
         var row = await _db.FileAttachments.FirstOrDefaultAsync(x => x.Id == id, cancellationToken);
-        if (row is null) return false;
+        if (row is null || !CanAccess(row, actor)) return false;
 
         if (!string.IsNullOrWhiteSpace(row.StorageKey))
             await _blobs.DeleteAsync(row.StorageKey, cancellationToken);
@@ -221,6 +232,21 @@ public sealed class AttachmentService : IAttachmentService
         _db.FileAttachments.Remove(row);
         await _db.SaveChangesAsync(cancellationToken);
         return true;
+    }
+
+    private static bool CanAccess(FileAttachment row, PermissionsDto? actor)
+    {
+        if (actor is null)
+            return false;
+
+        if (PoRoleMatrixRules.CanManagePartySubmissions(actor.PrototypeRole))
+            return true;
+
+        if (actor.Capabilities.Contains(PlatformCapabilities.ManageAttachments, StringComparer.Ordinal))
+            return true;
+
+        return !string.IsNullOrWhiteSpace(actor.UserId)
+            && string.Equals(row.UploadedByUserId, actor.UserId, StringComparison.Ordinal);
     }
 
     private async Task<byte[]?> ReadContentAsync(FileAttachment row, CancellationToken ct)

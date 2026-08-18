@@ -14,7 +14,7 @@ namespace RealEstateEval.Infrastructure.Services;
 public sealed class ValuationReportFieldInjectionService(
     ValuationDbContext valuation,
     CaseStudyDbContext caseStudy,
-    AttachmentsDbContext attachments,
+    IAttachmentLookup attachments,
     IOrganizationSettingsService organizationSettings,
     IValuationComparableSelectionService selections,
     IValuationCostApproachService costApproach,
@@ -145,28 +145,27 @@ public sealed class ValuationReportFieldInjectionService(
         };
     }
 
-    private async Task<IReadOnlyList<FileAttachment>> LoadPrintableAttachmentsAsync(
+    private async Task<IReadOnlyList<FileAttachmentMetaDto>> LoadPrintableAttachmentsAsync(
         string propertyId,
         CancellationToken cancellationToken)
     {
         if (string.IsNullOrWhiteSpace(propertyId)) return [];
 
+        var all = await attachments.ListForPropertyAsync(propertyId, cancellationToken);
+
  // Prefer classified print-in-report rows; fall back to images scoped to this property id.
-        var classified = await attachments.FileAttachments.AsNoTracking()
-            .Where(a => a.PrintInReport
-                        && a.ScopeKey.Contains(propertyId))
+        var classified = all
+            .Where(a => a.PrintInReport)
             .OrderBy(a => a.CreatedAtUtc)
             .Take(40)
-            .ToListAsync(cancellationToken);
-
+            .ToList();
         if (classified.Count > 0) return classified;
 
-        return await attachments.FileAttachments.AsNoTracking()
-            .Where(a => a.ScopeKey.Contains(propertyId)
-                        && a.ContentType.StartsWith("image/"))
+        return all
+            .Where(a => a.ContentType.StartsWith("image/", StringComparison.OrdinalIgnoreCase))
             .OrderBy(a => a.CreatedAtUtc)
             .Take(40)
-            .ToListAsync(cancellationToken);
+            .ToList();
     }
 
     private static Dictionary<string, string?> BuildValueBag(
@@ -178,7 +177,7 @@ public sealed class ValuationReportFieldInjectionService(
         ValuationComparableSelectionListDto? market,
         ValuationCostApproachDto? cost,
         ValuationReconciliationDto? recon,
-        IReadOnlyList<FileAttachment> printable,
+        IReadOnlyList<FileAttachmentMetaDto> printable,
         bool hasStructures,
         string deedNatureMatchOutcome,
         DateOnly today)

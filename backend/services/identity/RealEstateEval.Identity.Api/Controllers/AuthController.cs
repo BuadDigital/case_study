@@ -1,5 +1,3 @@
-using System.IdentityModel.Tokens.Jwt;
-using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using RealEstateEval.Application.Abstractions;
@@ -37,7 +35,7 @@ public class AuthController : ControllerBase
 
     [HttpPost("login")]
     [AllowAnonymous]
-    public async Task<ActionResult<LoginResponse>> Login(
+    public async Task<ActionResult<LoginResponseDto>> Login(
         [FromBody] PasswordLoginRequest request,
         CancellationToken cancellationToken)
     {
@@ -50,7 +48,7 @@ public class AuthController : ControllerBase
             cancellationToken);
 
         return result is null
-            ? Unauthorized(new { message = "اسم المستخدم أو كلمة المرور غير صحيحة" })
+            ? this.UnauthorizedProblem("اسم المستخدم أو كلمة المرور غير صحيحة")
             : Ok(result);
     }
 
@@ -86,7 +84,7 @@ public class AuthController : ControllerBase
 
     [HttpPost("login-username")]
     [AllowAnonymous]
-    public async Task<ActionResult<LoginResponse>> LoginByUsername(
+    public async Task<ActionResult<LoginResponseDto>> LoginByUsername(
         [FromBody] UsernameLoginRequest request,
         CancellationToken cancellationToken)
     {
@@ -99,7 +97,7 @@ public class AuthController : ControllerBase
  // Same message for missing/disabled users — do not confirm usernames.
         var session = await _sessions.IssueForUsernameAsync(username, cancellationToken);
         return session is null
-            ? Unauthorized(new { message = "تعذر تسجيل الدخول" })
+            ? this.UnauthorizedProblem("تعذر تسجيل الدخول")
             : Ok(session);
     }
 
@@ -109,7 +107,7 @@ public class AuthController : ControllerBase
  /// </summary>
     [HttpPost("refresh")]
     [AllowAnonymous]
-    public async Task<ActionResult<LoginResponse>> Refresh(
+    public async Task<ActionResult<LoginResponseDto>> Refresh(
         [FromBody] RefreshTokenRequest request,
         CancellationToken cancellationToken)
     {
@@ -118,7 +116,7 @@ public class AuthController : ControllerBase
 
         var session = await _sessions.RefreshAsync(request.RefreshToken, cancellationToken);
         return session is null
-            ? Unauthorized(new { message = "انتهت الجلسة، يرجى تسجيل الدخول مرة أخرى" })
+            ? this.UnauthorizedProblem("انتهت الجلسة، يرجى تسجيل الدخول مرة أخرى")
             : Ok(session);
     }
 
@@ -146,9 +144,7 @@ public class AuthController : ControllerBase
         [FromQuery] bool includePermissions = true,
         CancellationToken cancellationToken = default)
     {
-        var userId =
-            User.FindFirstValue(ClaimTypes.NameIdentifier)
-            ?? User.FindFirstValue(JwtRegisteredClaimNames.Sub);
+        var userId = ActorClaims.TryId(User);
         if (string.IsNullOrEmpty(userId))
             return Unauthorized();
 
@@ -175,9 +171,7 @@ public class AuthController : ControllerBase
     public async Task<ActionResult<UserListItemDto>> Profile(
         CancellationToken cancellationToken = default)
     {
-        var userId =
-            User.FindFirstValue(ClaimTypes.NameIdentifier)
-            ?? User.FindFirstValue(JwtRegisteredClaimNames.Sub);
+        var userId = ActorClaims.TryId(User);
         if (string.IsNullOrEmpty(userId))
             return Unauthorized();
 

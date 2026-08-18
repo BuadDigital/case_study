@@ -30,10 +30,14 @@ export async function parseFieldErrorsFromResponse(
       errors?: Record<string, string | string[]>;
       detail?: string;
       message?: string;
+      error?: string;
     };
     const normalized = normalizeFieldErrors(body.errors);
     if (!normalized._) {
-      const detail = body.detail?.trim() || body.message?.trim();
+      const detail =
+        body.detail?.trim() ||
+        body.message?.trim() ||
+        (typeof body.error === "string" ? body.error.trim() : undefined);
       if (detail) normalized._ = detail;
     }
     return normalized;

@@ -348,3 +348,334 @@ public sealed class CreateFailureRequestValidator : AbstractValidator<CreateFail
             .OverridePropertyName("internalNote");
     }
 }
+
+public sealed class BourseObstructionRequestValidator : AbstractValidator<BourseObstructionRequest>
+{
+    public BourseObstructionRequestValidator()
+    {
+        RuleFor(x => x.PoNumber).NotEmpty().MaximumLength(64)
+            .OverridePropertyName("poNumber");
+        RuleFor(x => x.PropertyId).NotEmpty().MaximumLength(64)
+            .OverridePropertyName("propertyId");
+        RuleFor(x => x.Reason).NotEmpty().MaximumLength(4000)
+            .OverridePropertyName("reason");
+        RuleFor(x => x.Specialist).NotEmpty().MaximumLength(256)
+            .OverridePropertyName("specialist");
+    }
+}
+
+public sealed class ResolveFailureRequestValidator : AbstractValidator<ResolveFailureRequest>
+{
+    public ResolveFailureRequestValidator()
+    {
+        RuleFor(x => x.ResolutionReason).NotEmpty().MaximumLength(2000)
+            .OverridePropertyName("resolutionReason");
+        RuleFor(x => x.ContinueInstructions!).MaximumLength(4000)
+            .When(x => x.ContinueInstructions is not null)
+            .OverridePropertyName("continueInstructions");
+    }
+}
+
+public sealed class FailureNoteRequestValidator : AbstractValidator<FailureNoteRequest>
+{
+    public FailureNoteRequestValidator() =>
+        RuleFor(x => x.Note).NotEmpty().MaximumLength(4000)
+            .OverridePropertyName("note");
+}
+
+public sealed class CreateCourtRequestValidator : AbstractValidator<CreateCourtRequest>
+{
+    public CreateCourtRequestValidator()
+    {
+        RuleFor(x => x.Name).NotEmpty().MaximumLength(256)
+            .OverridePropertyName("name");
+        RuleFor(x => x.Region).NotEmpty().MaximumLength(128)
+            .OverridePropertyName("region");
+        RuleFor(x => x.City).NotEmpty().MaximumLength(128)
+            .OverridePropertyName("city");
+    }
+}
+
+public sealed class UpdateCourtRequestValidator : AbstractValidator<UpdateCourtRequest>
+{
+    public UpdateCourtRequestValidator()
+    {
+        RuleFor(x => x.Name!).NotEmpty().MaximumLength(256)
+            .When(x => x.Name is not null)
+            .OverridePropertyName("name");
+        RuleFor(x => x.Region!).NotEmpty().MaximumLength(128)
+            .When(x => x.Region is not null)
+            .OverridePropertyName("region");
+        RuleFor(x => x.City!).NotEmpty().MaximumLength(128)
+            .When(x => x.City is not null)
+            .OverridePropertyName("city");
+    }
+}
+
+public sealed class CreateCourtCircuitRequestValidator : AbstractValidator<CreateCourtCircuitRequest>
+{
+    public CreateCourtCircuitRequestValidator()
+    {
+        RuleFor(x => x.CircuitNo).NotEmpty().MaximumLength(64)
+            .OverridePropertyName("circuitNo");
+        RuleFor(x => x.CircuitName!).MaximumLength(256)
+            .When(x => x.CircuitName is not null)
+            .OverridePropertyName("circuitName");
+    }
+}
+
+public sealed class UpdateCourtCircuitRequestValidator : AbstractValidator<UpdateCourtCircuitRequest>
+{
+    public UpdateCourtCircuitRequestValidator()
+    {
+        RuleFor(x => x.CircuitNo!).NotEmpty().MaximumLength(64)
+            .When(x => x.CircuitNo is not null)
+            .OverridePropertyName("circuitNo");
+        RuleFor(x => x.CircuitName!).MaximumLength(256)
+            .When(x => x.CircuitName is not null)
+            .OverridePropertyName("circuitName");
+    }
+}
+
+public sealed class SaveCourtsCatalogRequestValidator : AbstractValidator<SaveCourtsCatalogRequest>
+{
+    public SaveCourtsCatalogRequestValidator() =>
+        RuleForEach(x => x.Entries).SetValidator(new CourtCatalogEntryDtoValidator());
+}
+
+public sealed class CourtCatalogEntryDtoValidator : AbstractValidator<CourtCatalogEntryDto>
+{
+    public CourtCatalogEntryDtoValidator()
+    {
+        RuleFor(x => x.City).NotEmpty().MaximumLength(128)
+            .OverridePropertyName("city");
+        RuleFor(x => x.Court).NotEmpty().MaximumLength(256)
+            .OverridePropertyName("court");
+        RuleForEach(x => x.Circuits)
+            .NotEmpty()
+            .MaximumLength(64)
+            .OverridePropertyName("circuits");
+    }
+}
+
+public sealed class ReassignOperationsTaskRequestValidator
+    : AbstractValidator<ReassignOperationsTaskRequest>
+{
+    public ReassignOperationsTaskRequestValidator()
+    {
+        RuleFor(x => x.AssigneeId).NotEmpty().MaximumLength(450)
+            .OverridePropertyName("assigneeId");
+        RuleFor(x => x.Reason).NotEmpty().MaximumLength(2000)
+            .OverridePropertyName("reason");
+    }
+}
+
+public sealed class AddOperationsTaskCommentRequestValidator
+    : AbstractValidator<AddOperationsTaskCommentRequest>
+{
+    public AddOperationsTaskCommentRequestValidator()
+    {
+        RuleFor(x => x.Text).MaximumLength(4000)
+            .OverridePropertyName("text");
+        RuleFor(x => x)
+            .Must(x => !string.IsNullOrWhiteSpace(x.Text) || (x.Files?.Count ?? 0) > 0)
+            .WithMessage("التعليق يحتاج نصاً أو مرفقاً.")
+            .OverridePropertyName("text");
+        RuleFor(x => x.Kind!).MaximumLength(64)
+            .When(x => x.Kind is not null)
+            .OverridePropertyName("kind");
+    }
+}
+
+public sealed class AddKeyEnvelopeAssignmentRequestValidator
+    : AbstractValidator<AddKeyEnvelopeAssignmentRequest>
+{
+    public AddKeyEnvelopeAssignmentRequestValidator()
+    {
+        RuleFor(x => x.DeedNumber).NotEmpty().MaximumLength(128)
+            .OverridePropertyName("deedNumber");
+        RuleFor(x => x.Notes!).MaximumLength(2000)
+            .When(x => x.Notes is not null)
+            .OverridePropertyName("notes");
+    }
+}
+
+public sealed class ConfirmKeyAssignmentRequestValidator
+    : AbstractValidator<ConfirmKeyAssignmentRequest>
+{
+    public ConfirmKeyAssignmentRequestValidator()
+    {
+        RuleFor(x => x.Status)
+            .NotEmpty()
+            .Must(KeyAssignmentStatuses.IsConfirmResult)
+            .WithMessage("حالة المطابقة غير مدعومة")
+            .OverridePropertyName("status");
+        RuleFor(x => x.Notes!).MaximumLength(2000)
+            .When(x => x.Notes is not null)
+            .OverridePropertyName("notes");
+    }
+}
+
+public sealed class CreateKeyEnvelopeHandoffRequestValidator
+    : AbstractValidator<CreateKeyEnvelopeHandoffRequest>
+{
+    public CreateKeyEnvelopeHandoffRequestValidator()
+    {
+        RuleFor(x => x.Kind)
+            .Must(v => v is KeyHandoffKinds.Internal
+                or KeyHandoffKinds.External
+                or KeyHandoffKinds.ReceiveBack
+                or KeyHandoffKinds.ReturnCourt)
+            .WithMessage("نوع المناولة غير مدعوم")
+            .OverridePropertyName("kind");
+        RuleFor(x => x.FromParty).NotEmpty().MaximumLength(256)
+            .OverridePropertyName("fromParty");
+        RuleFor(x => x.ToParty).NotEmpty().MaximumLength(256)
+            .OverridePropertyName("toParty");
+        RuleFor(x => x.Notes!).MaximumLength(2000)
+            .When(x => x.Notes is not null)
+            .OverridePropertyName("notes");
+    }
+}
+
+public sealed class MarkKeyReceiptFeeCollectedRequestValidator
+    : AbstractValidator<MarkKeyReceiptFeeCollectedRequest>
+{
+    public MarkKeyReceiptFeeCollectedRequestValidator() =>
+        RuleFor(x => x.InvoiceReference!).MaximumLength(128)
+            .When(x => x.InvoiceReference is not null)
+            .OverridePropertyName("invoiceReference");
+}
+
+public sealed class UpsertClientRequestValidator : AbstractValidator<UpsertClientRequest>
+{
+    public UpsertClientRequestValidator()
+    {
+        RuleFor(x => x.NameAr).NotEmpty().MaximumLength(256)
+            .OverridePropertyName("nameAr");
+        RuleFor(x => x.NameEn!).MaximumLength(256)
+            .When(x => x.NameEn is not null)
+            .OverridePropertyName("nameEn");
+        RuleFor(x => x.IdentityNumber!).MaximumLength(64)
+            .When(x => x.IdentityNumber is not null)
+            .OverridePropertyName("identityNumber");
+        RuleFor(x => x.Phone!).MaximumLength(32)
+            .When(x => x.Phone is not null)
+            .OverridePropertyName("phone");
+        RuleFor(x => x.Email!)
+            .MaximumLength(256)
+            .Must(value => string.IsNullOrWhiteSpace(value) || FieldFormats.IsEmail(value))
+            .WithMessage("صيغة البريد الإلكتروني غير صالحة.")
+            .When(x => x.Email is not null)
+            .OverridePropertyName("email");
+    }
+}
+
+public sealed class SaveInspectionLimitsRequestValidator
+    : AbstractValidator<SaveInspectionLimitsRequest>
+{
+    public SaveInspectionLimitsRequestValidator()
+    {
+        RuleFor(x => x.InspectionScopeKey)
+            .Must(InspectionScopeKeys.IsKnown)
+            .WithMessage("نطاق المعاينة غير مدعوم")
+            .OverridePropertyName("inspectionScopeKey");
+        RuleFor(x => x.InspectionRestrictionReason!).MaximumLength(2000)
+            .When(x => x.InspectionRestrictionReason is not null)
+            .OverridePropertyName("inspectionRestrictionReason");
+        RuleForEach(x => x.UninspectedUnits).ChildRules(unit =>
+        {
+            unit.RuleFor(u => u.Count).GreaterThanOrEqualTo(0)
+                .OverridePropertyName("count");
+            unit.RuleFor(u => u.Reason).NotEmpty().MaximumLength(500)
+                .OverridePropertyName("reason");
+        });
+    }
+}
+
+public sealed class CreatePartyFeePricingTableRequestValidator
+    : AbstractValidator<CreatePartyFeePricingTableRequest>
+{
+    public CreatePartyFeePricingTableRequestValidator()
+    {
+        RuleFor(x => x.Category)
+            .Must(PartyFeePricingCategories.IsValid)
+            .WithMessage(x => PartyFeePricingCategories.InvalidMessage(x.Category))
+            .OverridePropertyName("category");
+        RuleFor(x => x.Name).NotEmpty().MaximumLength(256)
+            .OverridePropertyName("name");
+        RuleFor(x => x.PricingKind!)
+            .Must(PartyFeePricingKinds.IsValid)
+            .When(x => !string.IsNullOrWhiteSpace(x.PricingKind))
+            .WithMessage(x => PartyFeePricingKinds.InvalidMessage(x.PricingKind))
+            .OverridePropertyName("pricingKind");
+        RuleFor(x => x.ManagedBy!)
+            .Must(PartyFeePricingManagers.IsValid)
+            .When(x => !string.IsNullOrWhiteSpace(x.ManagedBy))
+            .WithMessage(x => PartyFeePricingManagers.InvalidMessage(x.ManagedBy))
+            .OverridePropertyName("managedBy");
+        RuleFor(x => x.FlatAmountSar!).GreaterThanOrEqualTo(0)
+            .When(x => x.FlatAmountSar.HasValue)
+            .OverridePropertyName("flatAmountSar");
+    }
+}
+
+public sealed class SetPartyFeePricingAssignmentsRequestValidator
+    : AbstractValidator<SetPartyFeePricingAssignmentsRequest>
+{
+    public SetPartyFeePricingAssignmentsRequestValidator() =>
+        RuleForEach(x => x.AssigneeIds)
+            .NotEmpty()
+            .MaximumLength(450)
+            .OverridePropertyName("assigneeIds");
+}
+
+public sealed class SaveOrganizationSettingsRequestValidator
+    : AbstractValidator<SaveOrganizationSettingsRequest>
+{
+    public SaveOrganizationSettingsRequestValidator()
+    {
+        RuleFor(x => x.Sla!.DefaultBusinessDays).InclusiveBetween(1, 90)
+            .When(x => x.Sla is not null)
+            .OverridePropertyName("sla.defaultBusinessDays");
+        RuleFor(x => x.Sla!.PrivateSectorBusinessDays).InclusiveBetween(1, 90)
+            .When(x => x.Sla is not null)
+            .OverridePropertyName("sla.privateSectorBusinessDays");
+        RuleFor(x => x.Valuation!.MaxAdoptedComparables).InclusiveBetween(1, 20)
+            .When(x => x.Valuation is not null)
+            .OverridePropertyName("valuation.maxAdoptedComparables");
+        RuleFor(x => x.Valuation!.ComparableTimeGapMonths).InclusiveBetween(1, 60)
+            .When(x => x.Valuation is not null)
+            .OverridePropertyName("valuation.comparableTimeGapMonths");
+        RuleFor(x => x.Communications!.OtpProvider!)
+            .Must(v => v is "dev-log" or "sms" or "email")
+            .When(x => x.Communications is not null && !string.IsNullOrWhiteSpace(x.Communications.OtpProvider))
+            .OverridePropertyName("communications.otpProvider");
+        RuleFor(x => x.Communications!.EmailFrom!)
+            .Must(value => string.IsNullOrWhiteSpace(value) || FieldFormats.IsEmail(value))
+            .When(x => x.Communications?.EmailFrom is not null)
+            .WithMessage("صيغة البريد الإلكتروني غير صالحة.")
+            .OverridePropertyName("communications.emailFrom");
+        RuleFor(x => x.Communications!.SmtpPort).InclusiveBetween(1, 65535)
+            .When(x => x.Communications is not null)
+            .OverridePropertyName("communications.smtpPort");
+    }
+}
+
+public sealed class TestCommunicationRequestValidator : AbstractValidator<TestCommunicationRequest>
+{
+    public TestCommunicationRequestValidator()
+    {
+        RuleFor(x => x.Channel)
+            .Must(v => v is "sms" or "email")
+            .WithMessage("قناة الاختبار غير مدعومة")
+            .OverridePropertyName("channel");
+        RuleFor(x => x.Destination).NotEmpty().MaximumLength(256)
+            .OverridePropertyName("destination");
+        RuleFor(x => x.Destination)
+            .Must(FieldFormats.IsEmail)
+            .When(x => x.Channel == "email")
+            .WithMessage("صيغة البريد الإلكتروني غير صالحة.")
+            .OverridePropertyName("destination");
+    }
+}

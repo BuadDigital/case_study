@@ -75,7 +75,7 @@ import { useFinanceNavBadges } from "@/lib/query/use-finance-nav-badges";
 import { useActiveTransactionNavBadges } from "@/lib/query/use-active-transaction-nav-badges";
 import { useFailuresNavBadge } from "@/lib/query/use-failures-nav-badge";
 import { PoNumber } from "@case-study/mfe/components/ui/PoNumber";
-import { cn } from "@platform/design-system";
+import { cn } from "@platform/ui-kit";
 import { clearAuthSession, getAuthSession } from "@platform/auth-client";
 import { revokeAuthSession } from "@platform/api-client";
 import {

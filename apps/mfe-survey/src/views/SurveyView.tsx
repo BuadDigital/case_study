@@ -15,7 +15,7 @@ import {
   Th,
   THead,
   Tr,
-} from "@platform/design-system";
+} from "@platform/ui-kit";
 import {
   useSurveyOfficesQuery,
   useSurveyRequestStatsQuery,

@@ -1,9 +1,11 @@
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
+using RealEstateEval.Application;
 using RealEstateEval.Application.Abstractions;
 using RealEstateEval.Application.Contracts;
 using RealEstateEval.Domain;
+using RealEstateEval.Infrastructure.Data;
 using RealEstateEval.Infrastructure.Data.Contexts;
 using RealEstateEval.Infrastructure.Permissions;
 using System.Text.RegularExpressions;
@@ -13,20 +15,37 @@ namespace RealEstateEval.Infrastructure.Services;
 public class UserRegistrationService : IUserRegistrationService
 {
     private readonly IdentityDbContext _db;
+    private readonly PlatformDbContext? _platform;
+    private readonly IAuditLogAppend? _auditAppend;
+    private readonly List<AuditLog> _pendingRemoteAudit = [];
     private readonly UserManager<ApplicationUser> _userManager;
     private readonly IOptions<DataProtectionTokenProviderOptions> _activationTokenOptions;
     private readonly IAuditLogWriter _audit;
+    private readonly IAuthSessionService _sessions;
+    private readonly DatabaseOptions _dbOptions;
+    private readonly TimeProvider _time;
 
     public UserRegistrationService(
         IdentityDbContext db,
         UserManager<ApplicationUser> userManager,
         IOptions<DataProtectionTokenProviderOptions> activationTokenOptions,
-        IAuditLogWriter audit)
+        IAuditLogWriter audit,
+        IAuthSessionService sessions,
+        IOptions<DatabaseOptions>? dbOptions = null,
+        PlatformDbContext? platform = null,
+        IAuditLogAppend? auditAppend = null,
+        TimeProvider? time = null)
     {
+        _time = time ?? TimeProvider.System;
+
         _db = db;
+        _platform = platform;
+        _auditAppend = auditAppend;
         _userManager = userManager;
         _activationTokenOptions = activationTokenOptions;
         _audit = audit;
+        _sessions = sessions;
+        _dbOptions = dbOptions?.Value ?? new DatabaseOptions();
     }
 
     public async Task<IReadOnlyList<DevLoginUserDto>> ListDevLoginUsersAsync(
@@ -69,12 +88,14 @@ public class UserRegistrationService : IUserRegistrationService
         RegistrationSource? sourceScope = null,
         CancellationToken cancellationToken = default)
     {
+        var (_, take, _, _) = NpgsqlConfiguration.ResolveListPaging(null, null, _dbOptions);
         var rows = await _db.UserProfiles
             .AsNoTracking()
             .Include(p => p.User)
             .Include(p => p.HrEmployee)
             .Include(p => p.ProcProvider)
             .OrderByDescending(p => p.CreatedAtUtc)
+            .Take(take)
             .ToListAsync(cancellationToken);
 
         var userIds = rows.Select(p => p.UserId).ToList();
@@ -138,7 +159,7 @@ public class UserRegistrationService : IUserRegistrationService
                 Status = UserStatus.Active,
                 RegistrationSource = RegistrationSource.Hr,
                 PhoneNumber = user.PhoneNumber,
-                CreatedAtUtc = DateTime.UtcNow,
+                CreatedAtUtc = _time.UtcNow(),
                 SystemRoles = roles,
                 Details = [],
             };
@@ -388,13 +409,13 @@ public class UserRegistrationService : IUserRegistrationService
             DistributionAssigneeId = BuildDistributionAssigneeId(roleId, userName),
             PermissionLevel = defaults.PermissionLevel,
             Status = UserStatus.PendingActivation,
-            CreatedAtUtc = DateTime.UtcNow,
+            CreatedAtUtc = _time.UtcNow(),
         };
         if (roleId == "engineering-office")
             profile.RegistrationSource = RegistrationSource.Proc;
 
         _db.UserProfiles.Add(profile);
-        _db.AuditLogs.Add(_audit.Create(
+        AddAudit(_audit.Create(
             actorId,
             "USER_CREATED",
             "user",
@@ -410,7 +431,7 @@ public class UserRegistrationService : IUserRegistrationService
                 profile.ContractType,
                 profile.Status,
             }));
-        await _db.SaveChangesAsync(cancellationToken);
+        await SaveIdentityAsync(cancellationToken);
         if (transaction is not null)
             await transaction.CommitAsync(cancellationToken);
 
@@ -565,8 +586,8 @@ public class UserRegistrationService : IUserRegistrationService
 
         if (changes.Count > 0)
         {
-            profile.UpdatedAtUtc = DateTime.UtcNow;
-            _db.AuditLogs.Add(_audit.CreateFromChanges(
+            profile.UpdatedAtUtc = _time.UtcNow();
+            AddAudit(_audit.CreateFromChanges(
                 actorId,
                 "USER_UPDATED",
                 "user",
@@ -592,7 +613,7 @@ public class UserRegistrationService : IUserRegistrationService
         }
         else
         {
-            await _db.SaveChangesAsync(cancellationToken);
+            await SaveIdentityAsync(cancellationToken);
         }
 
         if (transaction is not null)
@@ -624,17 +645,17 @@ public class UserRegistrationService : IUserRegistrationService
         if (profile is not null && profile.Status == UserStatus.Locked)
         {
             profile.Status = UserStatus.Active;
-            profile.UpdatedAtUtc = DateTime.UtcNow;
+            profile.UpdatedAtUtc = _time.UtcNow();
         }
 
-        _db.AuditLogs.Add(_audit.Create(
+        AddAudit(_audit.Create(
             actorId,
             "USER_UNLOCKED",
             "user",
             userId,
             new { locked = true },
             new { locked = false }));
-        await _db.SaveChangesAsync(cancellationToken);
+        await SaveIdentityAsync(cancellationToken);
         return (true, null);
     }
 
@@ -682,6 +703,8 @@ public class UserRegistrationService : IUserRegistrationService
             await _userManager.RemoveFromRoleAsync(user, role);
         foreach (var role in target.Where(role => !currentRoles.Contains(role)))
             await _userManager.AddToRoleAsync(user, role);
+
+        await _sessions.RevokeAllForUserAsync(user.Id, "roles-changed");
     }
 
     private async Task ApplyStatusChangeAsync(
@@ -693,7 +716,7 @@ public class UserRegistrationService : IUserRegistrationService
     {
         var previous = profile.Status;
         profile.Status = status;
-        profile.UpdatedAtUtc = DateTime.UtcNow;
+        profile.UpdatedAtUtc = _time.UtcNow();
 
         if (status == UserStatus.Disabled)
         {
@@ -702,7 +725,7 @@ public class UserRegistrationService : IUserRegistrationService
                 .ToListAsync(cancellationToken);
             foreach (var token in activeTokens)
             {
-                token.RevokedAtUtc = DateTime.UtcNow;
+                token.RevokedAtUtc = _time.UtcNow();
                 token.RevokedReason = "user-disabled";
             }
 
@@ -714,7 +737,7 @@ public class UserRegistrationService : IUserRegistrationService
             await _userManager.ResetAccessFailedCountAsync(user);
         }
 
-        _db.AuditLogs.Add(_audit.Create(
+        AddAudit(_audit.Create(
             actorId,
             status == UserStatus.Disabled ? "USER_DISABLED" : "USER_REACTIVATED",
             "user",
@@ -825,19 +848,19 @@ public class UserRegistrationService : IUserRegistrationService
             return (null, "المستخدم غير موجود.");
 
         var token = await _userManager.GeneratePasswordResetTokenAsync(user);
-        _db.AuditLogs.Add(_audit.Create(
+        AddAudit(_audit.Create(
             actorId,
             "USER_ACTIVATION_TICKET_ISSUED",
             "user",
             user.Id,
             null,
             new { issued = true }));
-        await _db.SaveChangesAsync(cancellationToken);
+        await SaveIdentityAsync(cancellationToken);
         return (new ActivationTicketDto
         {
             UserName = user.UserName,
             Token = token,
-            ExpiresAtUtc = DateTime.UtcNow.Add(_activationTokenOptions.Value.TokenLifespan),
+            ExpiresAtUtc = _time.UtcNow().Add(_activationTokenOptions.Value.TokenLifespan),
         }, null);
     }
 
@@ -887,15 +910,15 @@ public class UserRegistrationService : IUserRegistrationService
         {
             var beforeStatus = profile.Status;
             profile.Status = UserStatus.Active;
-            profile.UpdatedAtUtc = DateTime.UtcNow;
-            _db.AuditLogs.Add(_audit.Create(
+            profile.UpdatedAtUtc = _time.UtcNow();
+            AddAudit(_audit.Create(
                 user.Id,
                 "USER_ACTIVATED",
                 "user",
                 user.Id,
                 new { status = beforeStatus },
                 new { status = profile.Status }));
-            await _db.SaveChangesAsync(cancellationToken);
+            await SaveIdentityAsync(cancellationToken);
         }
         return (true, null);
     }
@@ -923,8 +946,8 @@ public class UserRegistrationService : IUserRegistrationService
 
         var previousStatus = profile.Status;
         profile.Status = UserStatus.Disabled;
-        profile.UpdatedAtUtc = DateTime.UtcNow;
-        _db.AuditLogs.Add(_audit.Create(
+        profile.UpdatedAtUtc = _time.UtcNow();
+        AddAudit(_audit.Create(
             requestingUserId ?? "system",
             "USER_DISABLED",
             "user",
@@ -936,12 +959,12 @@ public class UserRegistrationService : IUserRegistrationService
             .ToListAsync(cancellationToken);
         foreach (var token in activeTokens)
         {
-            token.RevokedAtUtc = DateTime.UtcNow;
+            token.RevokedAtUtc = _time.UtcNow();
             token.RevokedReason = "user-disabled";
         }
 
         await _userManager.SetLockoutEndDateAsync(user, DateTimeOffset.MaxValue);
-        await _db.SaveChangesAsync(cancellationToken);
+        await SaveIdentityAsync(cancellationToken);
 
         return (true, null);
     }
@@ -1133,5 +1156,28 @@ public class UserRegistrationService : IUserRegistrationService
                     [DepartmentRoles.Proc]),
                 _ => throw new ArgumentOutOfRangeException(nameof(roleId), roleId, null),
             };
+    }
+
+    private void AddAudit(AuditLog entry)
+    {
+        if (_platform is not null)
+            _platform.AuditLogs.Add(entry);
+        else if (_auditAppend is not null)
+            _pendingRemoteAudit.Add(entry);
+        else
+            _db.AuditLogs.Add(entry);
+    }
+
+    private async Task SaveIdentityAsync(CancellationToken cancellationToken)
+    {
+        await _db.SaveChangesAsync(cancellationToken);
+        if (_platform is not null)
+            await _platform.SaveChangesAsync(cancellationToken);
+        if (_auditAppend is not null && _pendingRemoteAudit.Count > 0)
+        {
+            foreach (var entry in _pendingRemoteAudit)
+                await _auditAppend.AppendAsync(entry, cancellationToken);
+            _pendingRemoteAudit.Clear();
+        }
     }
 }

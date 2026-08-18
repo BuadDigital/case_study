@@ -8,7 +8,7 @@ import {
 import type { StaffUser } from "@platform/app-shared/prototype/constants";
 import { supervisingDepartmentLabel } from "@platform/app-shared/users/admin-staff-roles";
 import { getAuthSession } from "@platform/auth-client";
-import { Badge, Spinner, Table, TBody, Td, Th, THead, Tr } from "@platform/design-system";
+import { Badge, Spinner, Table, TBody, Td, Th, THead, Tr } from "@platform/ui-kit";
 import { PartyOfficeBillingStatementsPanel } from "@case-study/mfe/components/fees/PartyOfficeBillingStatementsPanel";
 import { ProfileInspectorDuesPanel } from "./ProfileInspectorDuesPanel";
 

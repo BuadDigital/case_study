@@ -113,8 +113,8 @@ public class CaseStudyValuationDispatchTests
         Assert.Null(errors);
         Assert.NotNull(dto);
 
-        var task = await db.WorkflowTasks.FindAsync(ParentTaskId);
-        Assert.NotNull(task);
+        var task = await contexts.CaseStudy.WorkflowTasks.AsNoTracking()
+            .SingleAsync(row => row.Id == ParentTaskId);
         Assert.Equal(WorkflowTaskStatus.Completed, task.Status);
         Assert.Equal(WorkflowTaskPhase.Done, task.Phase);
     }
@@ -123,7 +123,7 @@ public class CaseStudyValuationDispatchTests
     {
         var db = contexts.Legacy;
         var workflow = TestInspectorFeeServiceFactory.CreateWorkflow(db);
-        return new CaseStudyFormService(db, workflow);
+        return new CaseStudyFormService(contexts.CaseStudy, workflow);
     }
 
     private static CaseStudyValuationDispatchService CreateDispatch(TestDatabases.ContextSet contexts)
@@ -137,7 +137,7 @@ public class CaseStudyValuationDispatchTests
                 NullLogger<ValuationOutboxPublisher>.Instance),
             new CaseStudyPropertyPoNumberLookup(contexts.CaseStudy));
         return new CaseStudyValuationDispatchService(
-            db,
+            contexts.CaseStudy,
             valuation,
             timeline,
             NullLogger<CaseStudyValuationDispatchService>.Instance);

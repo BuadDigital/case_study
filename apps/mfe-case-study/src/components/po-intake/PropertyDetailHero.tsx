@@ -2,7 +2,7 @@
 
 import type { ReactNode } from "react";
 import { useMemo } from "react";
-import { cn } from "@platform/design-system";
+import { cn } from "@platform/ui-kit";
 import { PoNumber } from "../ui/PoNumber";
 import { DetailBadge, ltrValueClass } from "./PropertyDetailFields";
 import {

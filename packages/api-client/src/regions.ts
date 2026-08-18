@@ -106,24 +106,6 @@ export type SelectableCitiesResult =
   | { ok: true; cities: SelectableCityDto[] }
   | { ok: false; kind: "auth" | "network" | "server" };
 
-/** كل المدن النشطة (مع regionId) — لاختيار المدينة أولاً. */
-export async function listAllSelectableCities(
-  config: RegionsApiConfig,
-): Promise<SelectableCitiesResult> {
-  const base = config.baseUrl ?? getApiBase();
-  try {
-    const res = await fetch(`${base}/api/regions/cities/selectable`, {
-      headers: headers(config.token),
-    });
-    if (res.status === 401) return { ok: false, kind: "auth" };
-    if (!res.ok) return { ok: false, kind: "server" };
-    const cities = (await res.json()) as SelectableCityDto[];
-    return { ok: true, cities: Array.isArray(cities) ? cities : [] };
-  } catch {
-    return { ok: false, kind: "network" };
-  }
-}
-
 export async function listSelectableCities(
   config: RegionsApiConfig,
   regionId: string,

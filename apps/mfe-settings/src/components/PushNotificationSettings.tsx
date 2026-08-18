@@ -19,7 +19,7 @@ import {
   subscribeToPush,
   unsubscribeFromPush,
 } from "@platform/app-shared/notifications/web-push";
-import { Note, Spinner } from "@platform/design-system";
+import { Note, Spinner } from "@platform/ui-kit";
 
 export function PushNotificationSettings() {
   const [loading, setLoading] = useState(true);

@@ -5,13 +5,14 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using RealEstateEval.Domain;
 using RealEstateEval.Infrastructure.Data;
+using RealEstateEval.Application;
 
 namespace RealEstateEval.Infrastructure.Integration;
 
 /// <summary>
-/// Which <see cref="IOutboxContext"/> the single shared dispatcher drains. Residual default is
-/// the legacy app context (same physical <c>messaging.OutboxMessages</c> table as other producers).
-/// Physical multi-dispatcher cutover (E7/A10) rebinds this type only.
+/// Which <see cref="IOutboxContext"/> this dispatcher drains. Case Study binds
+/// <c>MessagingDbContext</c> (dedicated messaging database after Phase 4). Valuation binds
+/// <c>ValuationDbContext</c> so its dedicated outbox is not left stranded.
 /// </summary>
 public sealed class OutboxDispatcherOptions
 {
@@ -42,18 +43,21 @@ public sealed class OutboxDispatcherHostedService : BackgroundService
     private readonly RabbitMqOptions _options;
     private readonly OutboxDispatcherOptions _dispatcherOptions;
     private readonly ILogger<OutboxDispatcherHostedService> _logger;
+    private readonly TimeProvider _time;
     private int _emptyBackoffIndex;
 
     public OutboxDispatcherHostedService(
         IServiceScopeFactory scopeFactory,
         IOptions<RabbitMqOptions> options,
         IOptions<OutboxDispatcherOptions> dispatcherOptions,
-        ILogger<OutboxDispatcherHostedService> logger)
+        ILogger<OutboxDispatcherHostedService> logger,
+        TimeProvider? time = null)
     {
         _scopeFactory = scopeFactory;
         _options = options.Value;
         _dispatcherOptions = dispatcherOptions.Value;
         _logger = logger;
+        _time = time ?? TimeProvider.System;
     }
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
@@ -114,7 +118,7 @@ public sealed class OutboxDispatcherHostedService : BackgroundService
             {
                 if (await rabbit.PublishAsync(message.EventType, message.PayloadJson, stoppingToken))
                 {
-                    message.ProcessedAtUtc = DateTime.UtcNow;
+                    message.ProcessedAtUtc = _time.UtcNow();
                     message.Error = null;
                     message.LockedUntilUtc = null;
                     message.LockedBy = null;
@@ -137,7 +141,7 @@ public sealed class OutboxDispatcherHostedService : BackgroundService
 
                 if (message.AttemptCount >= MaxAttempts)
                 {
-                    message.DeadLetteredAtUtc = DateTime.UtcNow;
+                    message.DeadLetteredAtUtc = _time.UtcNow();
                     _logger.LogError(
                         ex,
                         "Outbox message {MessageId} dead-lettered after {Attempts} attempts",
@@ -192,7 +196,7 @@ public sealed class OutboxDispatcherHostedService : BackgroundService
         string owner,
         CancellationToken stoppingToken)
     {
-        var now = DateTime.UtcNow;
+        var now = _time.UtcNow();
         var lease = now.Add(LeaseDuration);
 
         if (outbox is not DbContext db)

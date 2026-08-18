@@ -1,4 +1,3 @@
-import type { RoleId } from "@platform/types";
 import type { WorkflowTask } from "./tasks-storage";
 
 /** Open queue statuses — same idea as reporting team-load / active queues. */
@@ -66,12 +65,3 @@ export function withOpenLoadLabel(
 ): string {
   return `${baseLabel} · ${formatOpenPropertyLoadLabel(count)}`;
 }
-
-/** Optional capacity ceilings from reporting dashboard (for tone/badges later). */
-export const DISTRIBUTION_LOAD_CAPACITY: Partial<Record<RoleId, number>> = {
-  "case-specialist": 20,
-  "field-inspector": 12,
-  "engineering-office": 10,
-  "government-reviewer": 15,
-  "real-estate-appraiser": 15,
-};

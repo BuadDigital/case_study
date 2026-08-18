@@ -10,7 +10,6 @@ namespace RealEstateEval.Operations.Api.Controllers;
 
 [ApiController]
 [Route("api/key-envelopes")]
-[Route("api/key-envelopes/v1")]
 [Authorize(Policy = CapabilityPolicyNames.ReadKeyData)]
 public class KeyEnvelopesController : ControllerBase
 {
@@ -80,7 +79,7 @@ public class KeyEnvelopesController : ControllerBase
 
     [HttpGet("linked-properties")]
     public async Task<ActionResult<IReadOnlyList<KeyEnvelopeLinkedPropertyDto>>> LinkedProperties(
-        [FromQuery] string requestNumber,
+        [FromQuery] string? requestNumber,
         CancellationToken ct)
     {
         if (string.IsNullOrWhiteSpace(requestNumber))

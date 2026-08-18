@@ -130,7 +130,3 @@ export function getSuspendedTransaction(
 export function notifySuspendedTransactionsChanged(): void {
   notifyChanged();
 }
-
-export function countSuspendedTransactions(): number {
-  return memoryList.length;
-}

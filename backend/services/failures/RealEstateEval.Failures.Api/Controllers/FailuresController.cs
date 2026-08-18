@@ -9,7 +9,6 @@ namespace RealEstateEval.Failures.Api.Controllers;
 
 [ApiController]
 [Route("api/failures")]
-[Route("api/failures/v1")]
 [Authorize]
 public class FailuresController : ControllerBase
 {
@@ -51,7 +50,7 @@ public class FailuresController : ControllerBase
         CancellationToken cancellationToken)
     {
         var (result, errors) = await _failures.CreateAsync(request, cancellationToken);
-        if (errors is not null) return BadRequest(new { errors });
+        if (errors is not null) return this.FieldErrorsProblem(errors);
         return Ok(result);
     }
 
@@ -62,7 +61,7 @@ public class FailuresController : ControllerBase
         CancellationToken cancellationToken)
     {
         var (result, errors) = await _failures.ReportBourseObstructionAsync(request, cancellationToken);
-        if (errors is not null) return BadRequest(new { errors });
+        if (errors is not null) return this.FieldErrorsProblem(errors);
         return Ok(result);
     }
 
@@ -73,7 +72,7 @@ public class FailuresController : ControllerBase
         CancellationToken cancellationToken)
     {
         var dto = await _failures.UpgradeToInternalAsync(id, cancellationToken);
-        if (dto is null) return BadRequest(new { errors = new { _ = "لا يمكن ترقية هذا التعذر" } });
+        if (dto is null) return this.BadRequestProblem("لا يمكن ترقية هذا التعذر");
         return Ok(dto);
     }
 
@@ -84,7 +83,7 @@ public class FailuresController : ControllerBase
         CancellationToken cancellationToken)
     {
         var dto = await _failures.SubmitForReviewAsync(id, cancellationToken);
-        if (dto is null) return BadRequest(new { errors = new { _ = "لا يمكن إرسال هذا التعذر للمراجعة" } });
+        if (dto is null) return this.BadRequestProblem("لا يمكن إرسال هذا التعذر للمراجعة");
         return Ok(dto);
     }
 
@@ -96,7 +95,7 @@ public class FailuresController : ControllerBase
         CancellationToken cancellationToken)
     {
         var dto = await _failures.SuspendAsync(id, request.Note, ActorClaims.Id(User), cancellationToken);
-        if (dto is null) return BadRequest(new { errors = new { _ = "لا يمكن تعليق هذا التعذر" } });
+        if (dto is null) return this.BadRequestProblem("لا يمكن تعليق هذا التعذر");
         return Ok(dto);
     }
 
@@ -108,7 +107,7 @@ public class FailuresController : ControllerBase
         CancellationToken cancellationToken)
     {
         var dto = await _failures.ResolveAsync(id, request, cancellationToken);
-        if (dto is null) return BadRequest(new { errors = new { _ = "لا يمكن حل هذا التعذر" } });
+        if (dto is null) return this.BadRequestProblem("لا يمكن حل هذا التعذر");
         return Ok(dto);
     }
 
@@ -120,7 +119,7 @@ public class FailuresController : ControllerBase
         CancellationToken cancellationToken)
     {
         var dto = await _failures.ApproveAsync(id, request.Note, cancellationToken);
-        if (dto is null) return BadRequest(new { errors = new { _ = "لا يمكن اعتماد هذا التعذر" } });
+        if (dto is null) return this.BadRequestProblem("لا يمكن اعتماد هذا التعذر");
         return Ok(dto);
     }
 
@@ -132,7 +131,7 @@ public class FailuresController : ControllerBase
         CancellationToken cancellationToken)
     {
         var dto = await _failures.ReturnAsync(id, request.Note, cancellationToken);
-        if (dto is null) return BadRequest(new { errors = new { _ = "لا يمكن إعادة هذا التعذر" } });
+        if (dto is null) return this.BadRequestProblem("لا يمكن إعادة هذا التعذر");
         return Ok(dto);
     }
 

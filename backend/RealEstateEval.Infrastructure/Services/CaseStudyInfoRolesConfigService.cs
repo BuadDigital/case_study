@@ -1,5 +1,6 @@
 using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
+using RealEstateEval.Application;
 using RealEstateEval.Application.Abstractions;
 using RealEstateEval.Application.Contracts;
 using RealEstateEval.Domain;
@@ -23,11 +24,15 @@ public sealed class CaseStudyInfoRolesConfigService : ICaseStudyInfoRolesConfigS
 
     private readonly PlatformDbContext _db;
     private readonly IAuditLogWriter _audit;
+    private readonly TimeProvider _time;
 
     public CaseStudyInfoRolesConfigService(
         PlatformDbContext db,
-        IAuditLogWriter audit)
+        IAuditLogWriter audit,
+        TimeProvider? time = null)
     {
+        _time = time ?? TimeProvider.System;
+
         _db = db;
         _audit = audit;
     }
@@ -57,7 +62,7 @@ public sealed class CaseStudyInfoRolesConfigService : ICaseStudyInfoRolesConfigS
             .FirstOrDefaultAsync(cancellationToken);
         var before = row is null ? null : ToDto(row);
 
-        var now = DateTime.UtcNow;
+        var now = _time.UtcNow();
         if (row is null)
         {
             row = new CaseStudyInfoRolesConfig
@@ -131,10 +136,10 @@ public sealed class CaseStudyInfoRolesConfigService : ICaseStudyInfoRolesConfigS
         };
     }
 
-    private static CaseStudyInfoRolesConfigDto EmptyDto() => new()
+    private CaseStudyInfoRolesConfigDto EmptyDto() => new()
     {
         Matrix = new Dictionary<string, Dictionary<string, string>>(),
         Notes = new Dictionary<string, string>(),
-        UpdatedAt = DateTime.UtcNow,
+        UpdatedAt = _time.UtcNow(),
     };
 }

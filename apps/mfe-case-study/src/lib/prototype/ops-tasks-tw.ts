@@ -77,9 +77,6 @@ export const opsFilters =
 export const opsListCount =
   "inline-flex shrink-0 items-center gap-1 rounded-[6px] bg-gold-soft px-2.5 py-[3px] text-[12px] font-bold text-gold-d max-lg:ms-0 lg:ms-auto";
 
-export const opsBackLink =
-  "mb-2 inline-flex cursor-pointer items-center gap-[7px] border-none bg-transparent py-1.5 font-[inherit] text-[12.5px] font-semibold text-text-2 transition-colors hover:text-gold-d [&_svg]:-scale-x-100";
-
 export const opsPpHead =
   "mb-[18px] rounded-[14px] border border-border bg-surface px-4 py-4 shadow-card sm:px-[22px] sm:py-[18px]";
 
@@ -162,11 +159,6 @@ export const opsCmtEvent = "flex items-center gap-[11px] border-t border-border 
 export const opsHeadRow =
   "flex items-center gap-[11px]";
 
-export const opsCellMuted = "text-[12.5px] text-text-2";
-
-export const opsTaskDesc =
-  "mt-4 rounded-xl border border-border bg-surface-2 px-4 py-3.5 text-[13px] leading-[1.7] text-text";
-
 export const opsRemindCard =
   "mt-4 flex flex-wrap items-center justify-between gap-3.5 rounded-xl border border-border bg-surface px-3.5 py-3.5 shadow-card max-lg:flex-col max-lg:items-stretch sm:px-[18px]";
 
@@ -231,8 +223,6 @@ export const opsTkCheckInput = "m-0 h-[17px] w-[17px] shrink-0 cursor-pointer ac
 
 export const opsGridRow = "grid min-h-[58px] cursor-pointer items-center border-b border-border transition-colors duration-[120ms] hover:bg-row-hover";
 
-export const opsGridRowOn = "bg-[color-mix(in_srgb,var(--gold)_10%,transparent)]";
-
 export const opsTd = "flex min-w-0 items-center overflow-visible px-4 py-3.5";
 
 export const opsTdC = "justify-center";
@@ -263,13 +253,7 @@ export const opsRowMeta = "inline-flex flex-wrap items-center gap-1.5 text-[11.5
 
 export const opsLetterRow = "grid min-h-12 cursor-default items-center border-b border-border text-[13px]";
 
-export const opsTdPo = "flex min-w-0 items-center overflow-visible px-4 py-3.5 text-[13px] font-semibold text-text-2";
-
-export const opsTdDeed = "flex min-w-0 items-center overflow-visible px-4 py-3.5 text-[13px] font-bold text-gold-d";
-
 export const opsTdPlain = "flex min-w-0 items-center overflow-visible px-4 py-3.5 text-[13px]";
-
-export const opsTdCourt = "flex min-w-0 items-center overflow-visible px-4 py-3.5 text-[12.5px]";
 
 export const opsThStart = "flex items-center justify-start whitespace-nowrap px-4 py-3.5 text-start text-xs font-bold text-heading";
 

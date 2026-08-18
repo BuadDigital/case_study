@@ -88,7 +88,7 @@ function attachmentFromPayload(
   return { fileName, mimeType: "application/pdf" };
 }
 
-export function getEngineeringSurveyAttachment(
+function getEngineeringSurveyAttachment(
   taskId: string,
   field: EngineeringSurveyDocField,
 ): CachedEngineeringSurveyFile | null {
@@ -117,7 +117,7 @@ export function getEngineeringSurveyAttachment(
   return { fileName, mimeType: "application/pdf" };
 }
 
-export async function prefetchEngineeringSurveyAttachment(
+async function prefetchEngineeringSurveyAttachment(
   taskId: string,
   field: EngineeringSurveyDocField,
 ): Promise<CachedEngineeringSurveyFile | null> {

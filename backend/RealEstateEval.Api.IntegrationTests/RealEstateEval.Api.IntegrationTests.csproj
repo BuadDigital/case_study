@@ -25,6 +25,7 @@
     <ProjectReference Include="..\services\platform\RealEstateEval.Platform.Api\RealEstateEval.Platform.Api.csproj" Aliases="PlatformApi" />
     <ProjectReference Include="..\services\failures\RealEstateEval.Failures.Api\RealEstateEval.Failures.Api.csproj" Aliases="FailuresApi" />
     <ProjectReference Include="..\services\reporting\RealEstateEval.Reporting.Api\RealEstateEval.Reporting.Api.csproj" Aliases="ReportingApi" />
+    <ProjectReference Include="..\shared\RealEstateEval.Shared.Web\RealEstateEval.Shared.Web.csproj" />
   </ItemGroup>
 
   <ItemGroup>

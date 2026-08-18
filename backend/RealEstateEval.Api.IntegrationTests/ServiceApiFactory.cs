@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.AspNetCore.TestHost;
 using Microsoft.Extensions.DependencyInjection;
+using RealEstateEval.Infrastructure.Data;
 
 namespace RealEstateEval.Api.IntegrationTests;
 
@@ -32,12 +33,21 @@ public abstract class ServiceApiFactory<TEntryPoint> : WebApplicationFactory<TEn
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
         builder.UseEnvironment("Production");
-        builder.UseSetting(
-            $"ConnectionStrings:{ServiceName}",
+        BoundedContextConnections.ApplyDedicatedSettings(
+            (key, value) => builder.UseSetting(key, value),
             $"Host=localhost;Database={ServiceName.ToLowerInvariant()}_integration_test");
         builder.UseSetting("Jwt:SigningKey", TestSigningKey);
         builder.UseSetting("Redis:Enabled", "false");
         builder.UseSetting("RabbitMQ:Enabled", "false");
+        builder.UseSetting("RabbitMQ:RequireEnabled", "false");
+        builder.UseSetting("UpstreamServices:AttachmentsBaseUrl", "http://attachments-test");
+        builder.UseSetting("UpstreamServices:PlatformBaseUrl", "http://platform-test");
+        builder.UseSetting("UpstreamServices:ValuationBaseUrl", "http://valuation-test");
+        builder.UseSetting("UpstreamServices:IdentityBaseUrl", "http://identity-test");
+        builder.UseSetting("UpstreamServices:CaseStudyBaseUrl", "http://case-study-test");
+        builder.UseSetting("UpstreamServices:FailuresBaseUrl", "http://failures-test");
+        builder.UseSetting("UpstreamServices:OperationsBaseUrl", "http://operations-test");
+        builder.UseSetting("UpstreamServices:FinancialBaseUrl", "http://financial-test");
 
         builder.ConfigureTestServices(services =>
         {

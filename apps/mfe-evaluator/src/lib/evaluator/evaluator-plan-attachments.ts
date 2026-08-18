@@ -1,8 +1,6 @@
 import {
   clearTaskScopedAttachments,
   getCachedTaskAttachment,
-  openTaskAttachmentPreview,
-  prefetchTaskAttachment,
   uploadTaskScopedAttachment,
 } from "@platform/app-shared/prototype/task-attachments-api";
 import { getCachedPartySubmission } from "@platform/app-shared/prototype/party-submission-api";
@@ -62,13 +60,6 @@ export function getCachedEvaluatorPlanImage(
   return null;
 }
 
-export async function prefetchEvaluatorPlanImage(
-  taskId: string,
-): Promise<CachedEvaluatorPlanImage | null> {
-  if (!taskId) return null;
-  return prefetchTaskAttachment(EVALUATOR_PLAN_SCOPE, taskId);
-}
-
 export async function cacheEvaluatorPlanImage(
   taskId: string,
   file: File,
@@ -115,26 +106,6 @@ export async function cacheEvaluatorPlanImage(
     planImageMetadata,
   );
   return { ok: true };
-}
-
-export async function openEvaluatorPlanImagePreview(
-  taskId: string,
-): Promise<boolean> {
-  const cached = getCachedEvaluatorPlanImage(taskId);
-  if (cached?.dataUrl) {
-    openTaskAttachmentPreview(cached);
-    return true;
-  }
-  try {
-    const preview = await prefetchEvaluatorPlanImage(taskId);
-    if (preview?.dataUrl) {
-      openTaskAttachmentPreview(preview);
-      return true;
-    }
-  } catch (err: unknown) {
-    console.warn("Evaluator plan image prefetch failed:", err);
-  }
-  return false;
 }
 
 export async function clearCachedEvaluatorPlanImage(taskId: string): Promise<void> {

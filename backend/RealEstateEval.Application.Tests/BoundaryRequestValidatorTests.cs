@@ -219,4 +219,117 @@ public class BoundaryRequestValidatorTests
         Assert.Contains(result.Errors, e => e.PropertyName == "propertyId");
         Assert.Contains(result.Errors, e => e.PropertyName == "problemTypeId");
     }
+
+    [Fact]
+    public void Bourse_obstruction_rejects_blank_core_fields()
+    {
+        var result = new BourseObstructionRequestValidator().Validate(new BourseObstructionRequest());
+
+        Assert.Contains(result.Errors, e => e.PropertyName == "poNumber");
+        Assert.Contains(result.Errors, e => e.PropertyName == "propertyId");
+        Assert.Contains(result.Errors, e => e.PropertyName == "reason");
+    }
+
+    [Fact]
+    public void Court_create_rejects_blank_name_and_city()
+    {
+        var result = new CreateCourtRequestValidator().Validate(new CreateCourtRequest());
+
+        Assert.Contains(result.Errors, e => e.PropertyName == "name");
+        Assert.Contains(result.Errors, e => e.PropertyName == "region");
+        Assert.Contains(result.Errors, e => e.PropertyName == "city");
+    }
+
+    [Fact]
+    public void Confirm_key_assignment_rejects_unknown_status()
+    {
+        var result = new ConfirmKeyAssignmentRequestValidator().Validate(
+            new ConfirmKeyAssignmentRequest { Status = "pending" });
+
+        Assert.Contains(result.Errors, e => e.PropertyName == "status");
+    }
+
+    [Fact]
+    public void Key_handoff_rejects_unknown_kind()
+    {
+        var result = new CreateKeyEnvelopeHandoffRequestValidator().Validate(
+            new CreateKeyEnvelopeHandoffRequest
+            {
+                Kind = "lost",
+                FromParty = "court",
+                ToParty = "reviewer",
+            });
+
+        Assert.Contains(result.Errors, e => e.PropertyName == "kind");
+    }
+
+    [Fact]
+    public void Client_upsert_rejects_invalid_email()
+    {
+        var result = new UpsertClientRequestValidator().Validate(new UpsertClientRequest
+        {
+            NameAr = "عميل",
+            Email = "not-an-email",
+        });
+
+        Assert.Contains(result.Errors, e => e.PropertyName == "email");
+    }
+
+    [Fact]
+    public void Inspection_limits_reject_unknown_scope()
+    {
+        var result = new SaveInspectionLimitsRequestValidator().Validate(
+            new SaveInspectionLimitsRequest { InspectionScopeKey = "drive-by" });
+
+        Assert.Contains(result.Errors, e => e.PropertyName == "inspectionScopeKey");
+    }
+
+    [Fact]
+    public void Fee_pricing_create_rejects_unknown_category()
+    {
+        var result = new CreatePartyFeePricingTableRequestValidator().Validate(
+            new CreatePartyFeePricingTableRequest { Category = "unknown", Name = "جدول" });
+
+        Assert.Contains(result.Errors, e => e.PropertyName == "category");
+    }
+
+    [Fact]
+    public void Organization_settings_reject_out_of_range_sla()
+    {
+        var result = new SaveOrganizationSettingsRequestValidator().Validate(
+            new SaveOrganizationSettingsRequest
+            {
+                Sla = new OrganizationSlaSettingsDto { DefaultBusinessDays = 0 },
+            });
+
+        Assert.Contains(result.Errors, e => e.PropertyName == "sla.defaultBusinessDays");
+    }
+
+    [Fact]
+    public void Test_communication_rejects_unknown_channel()
+    {
+        var result = new TestCommunicationRequestValidator().Validate(
+            new TestCommunicationRequest { Channel = "pigeon", Destination = "0500000011" });
+
+        Assert.Contains(result.Errors, e => e.PropertyName == "channel");
+    }
+
+    [Fact]
+    public void Ops_comment_rejects_empty_text_without_files()
+    {
+        var result = new AddOperationsTaskCommentRequestValidator()
+            .Validate(new AddOperationsTaskCommentRequest());
+
+        Assert.Contains(result.Errors, e => e.PropertyName == "text");
+    }
+
+    [Fact]
+    public void Reassign_ops_task_requires_assignee_and_reason()
+    {
+        var result = new ReassignOperationsTaskRequestValidator()
+            .Validate(new ReassignOperationsTaskRequest());
+
+        Assert.Contains(result.Errors, e => e.PropertyName == "assigneeId");
+        Assert.Contains(result.Errors, e => e.PropertyName == "reason");
+    }
 }

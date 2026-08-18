@@ -57,17 +57,6 @@ export type InfathUploadModel = {
   unresolvedPoints: string[];
 };
 
-export const INFAZ_UPLOAD_ROLE_LABELS: Record<InfathRoleKey, string> = {
-  MA: "معاين",
-  EN: "مكتب هندسي",
-  EV: "مقيم",
-  GR: "مراجع حكومي",
-  BR: "البورصة",
-  SP: "أخصائي",
-  SY: "النظام",
-  UN: "غير محسوم",
-};
-
 export const INFAZ_UPLOAD_UNRESOLVED_POINTS = [
   "مصدر «تاريخ المعاينة/التقييم» في بيانات التقرير",
   "هل «المعاين» هو الأصيل لقسم وصف الأصل؟",

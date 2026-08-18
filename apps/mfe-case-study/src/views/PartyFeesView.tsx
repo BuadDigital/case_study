@@ -1,6 +1,6 @@
 "use client";
 
-import { OperationalPanel } from "@platform/design-system";
+import { OperationalPanel } from "@platform/ui-kit";
 import { usePrototype } from "@platform/app-shared/contexts/PrototypeContext";
 import type { RoleId } from "@platform/types";
 import { ActiveTransactionPageLayout } from "../components/active-transactions/ActiveTransactionPageLayout";

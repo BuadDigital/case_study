@@ -149,12 +149,15 @@ public class PartyTaskSubmissionAuthorizationTests
 
     private static PartyTaskSubmissionService CreateService(ApplicationDbContext db)
     {
+        var caseStudy = TestInspectorFeeServiceFactory.ShareCaseStudy(db);
+        var failures = TestInspectorFeeServiceFactory.ShareFailures(db);
         var timeline = TestInspectorFeeServiceFactory.CreateTimeline(db);
         var (notifications, recipients) = TestInspectorFeeServiceFactory.CreateNotificationDeps(db);
         return new(
-            db,
+            caseStudy,
+            failures,
             TestInspectorFeeServiceFactory.CreateWorkflow(db),
-            new FieldInspectionAttachmentVerifier(db),
+            new FieldInspectionAttachmentVerifier(TestInspectorFeeServiceFactory.ShareAttachmentLookup(db)),
             timeline,
             new NullHttpContextAccessor(),
             new NullPermissionService(),

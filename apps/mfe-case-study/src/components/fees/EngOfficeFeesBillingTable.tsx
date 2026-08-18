@@ -19,7 +19,7 @@ import {
   queueTableWrapClassName,
   useToast,
   type StatusPillStyle,
-} from "@platform/design-system";
+} from "@platform/ui-kit";
 import { prototypeKeys } from "@platform/app-shared/query/prototype-keys";
 import {
   type InspectorFeeAction,

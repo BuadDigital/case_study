@@ -23,7 +23,7 @@ export type EngineeringSurveyFieldErrors = Partial<
 >;
 
 /** Document order for scroll + first error message. */
-export const ENGINEERING_SURVEY_ERROR_TARGETS: readonly FormErrorTarget[] = [
+const ENGINEERING_SURVEY_ERROR_TARGETS: readonly FormErrorTarget[] = [
   { key: "latitude", targetId: "eng-lat" },
   { key: "longitude", targetId: "eng-lng" },
   { key: "survey_report", targetId: "eng-survey-report" },

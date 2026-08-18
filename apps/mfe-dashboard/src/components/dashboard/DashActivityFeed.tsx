@@ -13,7 +13,7 @@ import {
   dashLine,
   dashLineNew,
 } from "../../lib/dashboard-tw";
-import { cn } from "@platform/design-system";
+import { cn } from "@platform/ui-kit";
 import {
   DashActivityIconSvg,
   type DashActivityIcon,

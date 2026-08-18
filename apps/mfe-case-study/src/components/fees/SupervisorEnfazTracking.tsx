@@ -12,7 +12,7 @@ import {
   Th,
   THead,
   Tr,
-} from "@platform/design-system";
+} from "@platform/ui-kit";
 import { inspectorFeeWorkStatusTone } from "@platform/api-client";
 import type { EnfazTrackingRowDto } from "@platform/api-client";
 

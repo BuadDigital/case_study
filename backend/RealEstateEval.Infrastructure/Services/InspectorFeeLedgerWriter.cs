@@ -1,26 +1,47 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
+using RealEstateEval.Application;
 using RealEstateEval.Application.Abstractions;
 using RealEstateEval.Application.Rules;
 using RealEstateEval.Domain;
-using RealEstateEval.Infrastructure.Data;
+using RealEstateEval.Infrastructure.Data.Contexts;
 
 namespace RealEstateEval.Infrastructure.Services;
 
 public sealed class InspectorFeeLedgerWriter : IInspectorFeeLedgerWriter
 {
-    private readonly ApplicationDbContext _db;
+    private readonly FinancialDbContext _financial;
+    private readonly ICaseStudyLookup _lookup;
     private readonly IPartyFeePricingService _pricing;
     private readonly IInspectorFeeLedgerResolver _resolver;
+    private readonly TimeProvider _time;
 
     public InspectorFeeLedgerWriter(
-        ApplicationDbContext db,
+        FinancialDbContext financial,
+        CaseStudyDbContext caseStudy,
         IPartyFeePricingService pricing,
-        IInspectorFeeLedgerResolver resolver)
+        IInspectorFeeLedgerResolver resolver,
+        TimeProvider? time = null)
+        : this(financial, new CaseStudyLookup(caseStudy), pricing, resolver, time)
     {
-        _db = db;
+    }
+
+    [ActivatorUtilitiesConstructor]
+    public InspectorFeeLedgerWriter(
+        FinancialDbContext financial,
+        ICaseStudyLookup lookup,
+        IPartyFeePricingService pricing,
+        IInspectorFeeLedgerResolver resolver,
+        TimeProvider? time = null)
+    {
+        _time = time ?? TimeProvider.System;
+
+        _financial = financial;
+        _lookup = lookup;
         _pricing = pricing;
         _resolver = resolver;
     }
+
 
     public async Task EnsureLedgersForTasksAsync(
         IEnumerable<WorkflowTask> tasks,
@@ -33,7 +54,7 @@ public sealed class InspectorFeeLedgerWriter : IInspectorFeeLedgerWriter
             .ToList();
         if (feeTasks.Count == 0) return;
 
-        var now = DateTime.UtcNow;
+        var now = _time.UtcNow();
         var pendingTriples = new HashSet<(Guid TransactionId, Guid DeedId, string UserId)>();
         foreach (var task in feeTasks)
         {
@@ -75,7 +96,7 @@ public sealed class InspectorFeeLedgerWriter : IInspectorFeeLedgerWriter
  // same (transaction, deed, user) must not open a second line — even via another task.
                 var tripleKey = (identity.TransactionId, identity.DeedId, identity.UserId);
                 if (!pendingTriples.Add(tripleKey)) continue;
-                var tripleExists = await _db.InspectorFeeLedgers.AnyAsync(
+                var tripleExists = await _financial.InspectorFeeLedgers.AnyAsync(
                     x => x.TransactionId == identity.TransactionId
                         && x.DeedId == identity.DeedId
                         && x.UserId == identity.UserId,
@@ -87,7 +108,7 @@ public sealed class InspectorFeeLedgerWriter : IInspectorFeeLedgerWriter
                 string? suspensionReason = null;
                 if (isEmployee && !string.IsNullOrWhiteSpace(task.AssigneeId))
                 {
-                    var withhold = await _db.IncentiveSuspensions.AsNoTracking()
+                    var withhold = await _financial.IncentiveSuspensions.AsNoTracking()
                         .Where(x =>
                             x.AssigneeId == task.AssigneeId.Trim()
                             && x.TransactionKey == po
@@ -102,7 +123,7 @@ public sealed class InspectorFeeLedgerWriter : IInspectorFeeLedgerWriter
                     }
                 }
 
-                _db.InspectorFeeLedgers.Add(new InspectorFeeLedger
+                _financial.InspectorFeeLedgers.Add(new InspectorFeeLedger
                 {
                     Id = Guid.NewGuid(),
                     TransactionId = identity.TransactionId,
@@ -136,17 +157,17 @@ public sealed class InspectorFeeLedgerWriter : IInspectorFeeLedgerWriter
             }
         }
 
-        await _db.SaveChangesAsync(cancellationToken);
+        await _financial.SaveChangesAsync(cancellationToken);
     }
 
     public async Task BackfillMissingLedgersAsync(CancellationToken cancellationToken = default)
     {
  // Engineering-survey ledgers are created only via AccrueEngineeringSurveyFeeAsync.
-        var feeTasks = await _db.WorkflowTasks.AsNoTracking()
-            .Where(t =>
-                t.Kind == WorkflowTaskKind.FieldInspection
-                || t.Kind == WorkflowTaskKind.GovernmentReview)
-            .ToListAsync(cancellationToken);
+        var feeTasks = (await _lookup.ListWorkflowTasksByKindsAsync(
+                [WorkflowTaskKind.FieldInspection, WorkflowTaskKind.GovernmentReview],
+                cancellationToken))
+            .Select(s => s.ToWorkflowTask())
+            .ToList();
         if (feeTasks.Count == 0) return;
 
         var readyPropertyIds = await GetCompletedCaseStudyPropertyIdsAsync(
@@ -176,15 +197,7 @@ public sealed class InspectorFeeLedgerWriter : IInspectorFeeLedgerWriter
             .ToList();
         if (ids.Count == 0) return [];
 
-        var ready = await _db.WorkflowTasks.AsNoTracking()
-            .Where(t =>
-                t.Kind == WorkflowTaskKind.CaseStudyProperty
-                && t.PropertyId != null
-                && ids.Contains(t.PropertyId.Value)
-                && t.Status == WorkflowTaskStatus.Completed)
-            .Select(t => t.PropertyId!.Value)
-            .Distinct()
-            .ToListAsync(cancellationToken);
-        return ready.ToHashSet();
+        var ready = await _lookup.ListCompletedCaseStudyPropertyIdsAsync(cancellationToken);
+        return ready.Where(ids.Contains).ToHashSet();
     }
 }

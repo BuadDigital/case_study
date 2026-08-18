@@ -1,4 +1,5 @@
 using System.Security.Claims;
+using RealEstateEval.Application.Authorization;
 
 namespace RealEstateEval.Shared.Web;
 
@@ -8,10 +9,11 @@ namespace RealEstateEval.Shared.Web;
 /// </summary>
 public static class ActorClaims
 {
-    public static string Id(ClaimsPrincipal user) =>
-        user.FindFirstValue(ClaimTypes.NameIdentifier)
-        ?? user.FindFirstValue("sub")
-        ?? "unknown";
+    public static string? TryId(ClaimsPrincipal user) => ActorIdentity.TryUserId(user);
+
+    public static string Id(ClaimsPrincipal user) => ActorIdentity.TryUserId(user) ?? "unknown";
+
+    public static string? Role(ClaimsPrincipal user) => ActorIdentity.TryRole(user);
 
     public static string DisplayName(ClaimsPrincipal user)
     {

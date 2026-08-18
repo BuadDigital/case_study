@@ -124,7 +124,7 @@ const nextConfig: NextConfig = {
     "@platform/api-client",
     "@platform/auth-client",
     "@platform/offline-client",
-    "@platform/design-system",
+    "@platform/ui-kit",
     "@platform/types",
   ],
 };

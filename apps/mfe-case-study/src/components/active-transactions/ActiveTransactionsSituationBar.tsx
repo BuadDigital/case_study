@@ -2,7 +2,7 @@
 
 import type { ReactNode } from "react";
 import Link from "next/link";
-import { KpiBand, KpiCell, cn } from "@platform/design-system";
+import { KpiBand, KpiCell, cn } from "@platform/ui-kit";
 import type { PageId } from "@platform/types";
 import { useActiveTransactionPageSituation } from "@case-study/mfe/query/use-active-transaction-page-situation";
 import type { PageSituationCardDef, SituationIconKind, SituationTone } from "@case-study/mfe/lib/prototype/active-transaction-page-situation";

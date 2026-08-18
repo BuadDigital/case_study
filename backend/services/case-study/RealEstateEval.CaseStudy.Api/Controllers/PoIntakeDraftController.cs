@@ -1,9 +1,8 @@
-using System.IdentityModel.Tokens.Jwt;
-using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using RealEstateEval.Application.Abstractions;
 using RealEstateEval.Application.Contracts;
+using RealEstateEval.Shared.Web;
 using RealEstateEval.Shared.Web.Authorization;
 
 namespace RealEstateEval.CaseStudy.Api.Controllers;
@@ -50,7 +49,5 @@ public class PoIntakeDraftController : ControllerBase
         return NoContent();
     }
 
-    private string? CurrentUserId() =>
-        User.FindFirstValue(ClaimTypes.NameIdentifier)
-        ?? User.FindFirstValue(JwtRegisteredClaimNames.Sub);
+    private string? CurrentUserId() => ActorClaims.TryId(User);
 }

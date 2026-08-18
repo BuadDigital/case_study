@@ -9,7 +9,7 @@ import {
   THead,
   Tr,
   cn,
-} from "@platform/design-system";
+} from "@platform/ui-kit";
 import { ENGINEERING_SURVEY_CHECKLIST_ITEMS } from "../lib/engineering-survey-data";
 import type { EngineeringSurveyChecklistRow } from "../lib/engineering-survey-data";
 import { patchChecklistRow } from "../lib/engineering-survey-submission-storage";

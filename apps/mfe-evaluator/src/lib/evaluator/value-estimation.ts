@@ -1,4 +1,4 @@
-import { amountToArabicWords, formatAmountNumberDisplay } from "./arabic-amount-words";
+import { amountToArabicWords } from "./arabic-amount-words";
 
 export function parseEvaluatorAmount(raw: string): number | null {
   const cleaned = raw.replace(/,/g, "").trim();
@@ -33,8 +33,4 @@ export function amountWordsOrZero(value: number | string): string {
   if (n == null) return "صفر";
   if (n === 0) return "صفر";
   return amountToArabicWords(n);
-}
-
-export function amountFigureOrDash(value: number): string {
-  return formatAmountNumberDisplay(value);
 }

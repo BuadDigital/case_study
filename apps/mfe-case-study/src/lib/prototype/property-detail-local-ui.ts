@@ -1,70 +1,7 @@
-const STORAGE_PREFIX = "pd-notes:";
-
-export function propertyNotesStorageKey(
-  poNumber: string,
-  propertyId: string,
-): string {
-  return `${STORAGE_PREFIX}${poNumber.trim()}:${propertyId}`;
-}
-
-export type PropertyNoteReply = {
-  id: string;
-  text: string;
-  at: string;
-  author: string;
-};
-
-export type PropertyNoteEntry = {
-  id: string;
-  text: string;
-  at: string;
-  author: string;
-  replies?: PropertyNoteReply[];
-};
-
-export function loadPropertyNotes(
-  poNumber: string,
-  propertyId: string,
-): PropertyNoteEntry[] {
-  if (typeof window === "undefined") return [];
-  try {
-    const raw = window.localStorage.getItem(
-      propertyNotesStorageKey(poNumber, propertyId),
-    );
-    if (!raw) return [];
-    const parsed = JSON.parse(raw) as PropertyNoteEntry[];
-    return Array.isArray(parsed) ? parsed : [];
-  } catch {
-    return [];
-  }
-}
-
-export function savePropertyNotes(
-  poNumber: string,
-  propertyId: string,
-  notes: PropertyNoteEntry[],
-): void {
-  if (typeof window === "undefined") return;
-  window.localStorage.setItem(
-    propertyNotesStorageKey(poNumber, propertyId),
-    JSON.stringify(notes),
-  );
-}
-
 const SEEN_PREFIX = "pd-seen-tabs:";
 
 /** tabId → activity fingerprint last dismissed by opening the tab. */
 export type SeenPropertyTabMap = Record<string, string>;
-
-/**
- * @deprecated Static seed is no longer used — activity is event-driven.
- * Kept for any external imports during transition.
- */
-export const PROPERTY_DETAIL_NEW_TAB_SEED = [
-  "documents",
-  "appraisal",
-  "log",
-] as const;
 
 export function loadSeenPropertyTabFingerprints(
   propertyId: string,
@@ -87,11 +24,6 @@ export function loadSeenPropertyTabFingerprints(
   } catch {
     return {};
   }
-}
-
-/** @deprecated Prefer loadSeenPropertyTabFingerprints. */
-export function loadSeenPropertyTabs(propertyId: string): Set<string> {
-  return new Set(Object.keys(loadSeenPropertyTabFingerprints(propertyId)));
 }
 
 export function markPropertyTabSeen(

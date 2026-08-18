@@ -1,4 +1,3 @@
-using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using RealEstateEval.Application.Abstractions;
@@ -61,11 +60,6 @@ public class AdminCourtsController : ControllerBase
 
     public AdminCourtsController(ICourtsService courts) => _courts = courts;
 
-    private static string ActorId(ClaimsPrincipal user) =>
-        user.FindFirstValue(ClaimTypes.NameIdentifier)
-        ?? user.FindFirstValue("sub")
-        ?? "unknown";
-
     [HttpGet]
     public async Task<ActionResult<CourtListResponseDto>> List(
         [FromQuery] string? search,
@@ -89,8 +83,8 @@ public class AdminCourtsController : ControllerBase
         [FromBody] CreateCourtRequest request,
         CancellationToken cancellationToken)
     {
-        var (court, error) = await _courts.CreateAsync(request, ActorId(User), cancellationToken);
-        if (error is not null) return BadRequest(new { message = error });
+        var (court, error) = await _courts.CreateAsync(request, ActorClaims.Id(User), cancellationToken);
+        if (error is not null) return this.BadRequestProblem(error);
         return CreatedAtAction(nameof(Get), new { id = court!.Id }, court);
     }
 
@@ -100,8 +94,8 @@ public class AdminCourtsController : ControllerBase
         [FromBody] UpdateCourtRequest request,
         CancellationToken cancellationToken)
     {
-        var (court, error) = await _courts.UpdateAsync(id, request, ActorId(User), cancellationToken);
-        if (error is not null) return BadRequest(new { message = error });
+        var (court, error) = await _courts.UpdateAsync(id, request, ActorClaims.Id(User), cancellationToken);
+        if (error is not null) return this.BadRequestProblem(error);
         return Ok(court);
     }
 
@@ -114,9 +108,9 @@ public class AdminCourtsController : ControllerBase
         var (court, error) = await _courts.SetCourtStatusAsync(
             id,
             request.IsActive,
-            ActorId(User),
+            ActorClaims.Id(User),
             cancellationToken);
-        if (error is not null) return BadRequest(new { message = error });
+        if (error is not null) return this.BadRequestProblem(error);
         return Ok(new { id = court!.Id, isActive = court.IsActive });
     }
 
@@ -129,9 +123,9 @@ public class AdminCourtsController : ControllerBase
         var (circuit, error) = await _courts.CreateCircuitAsync(
             courtId,
             request,
-            ActorId(User),
+            ActorClaims.Id(User),
             cancellationToken);
-        if (error is not null) return BadRequest(new { message = error });
+        if (error is not null) return this.BadRequestProblem(error);
         return StatusCode(StatusCodes.Status201Created, circuit);
     }
 
@@ -146,9 +140,9 @@ public class AdminCourtsController : ControllerBase
             courtId,
             id,
             request,
-            ActorId(User),
+            ActorClaims.Id(User),
             cancellationToken);
-        if (error is not null) return BadRequest(new { message = error });
+        if (error is not null) return this.BadRequestProblem(error);
         return Ok(circuit);
     }
 
@@ -163,9 +157,9 @@ public class AdminCourtsController : ControllerBase
             courtId,
             id,
             request.IsActive,
-            ActorId(User),
+            ActorClaims.Id(User),
             cancellationToken);
-        if (error is not null) return BadRequest(new { message = error });
+        if (error is not null) return this.BadRequestProblem(error);
         return Ok(new { id = circuit!.Id, isActive = circuit.IsActive });
     }
 }

@@ -192,30 +192,3 @@ export function mergeEvaluatorChecklistFromCaseStudy(
 
   return next;
 }
-
-/** يبني قائمة الفحص من إجابات الدراسة فقط (للعرض قبل إرسال التقييم). */
-export function evaluatorChecklistFromCaseStudyAnswers(
-  answers: Record<string, CaseStudyFormAnswer | null | undefined>,
-  remarks: CaseStudyChecklistRemarks = {},
-): EvaluatorChecklistAnswers {
-  const empty: EvaluatorChecklistAnswers = {
-    q_plan_match: null,
-    q_excess_zoning: null,
-    q_land_waqf: null,
-    q_property_waqf: null,
-    q_expropriation: null,
-    q_property_use_verified: null,
-    q_agriculture_inquiry: null,    q_overlap: null,
-    q_shared_building: null,
-    q_environmental_factors: null,
-    q_unregistered_additions: null,
-    q_shared_deed: null,
-    shared_deed_scope: null,
-    shared_deed_percentage: "",
-    q_lease_exists: null,
-    q_lease_active: null,
-    q_technical_notes_exists: null,
-    technical_notes_text: "",
-  };
-  return mergeEvaluatorChecklistFromCaseStudy(empty, answers, remarks);
-}

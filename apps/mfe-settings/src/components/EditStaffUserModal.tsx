@@ -27,7 +27,7 @@ import {
   ModalOverlay,
   ModalTitle,
   Note,
-} from "@platform/design-system";
+} from "@platform/ui-kit";
 
 const ROLE_OPTIONS = adminStaffRoleOptions();
 

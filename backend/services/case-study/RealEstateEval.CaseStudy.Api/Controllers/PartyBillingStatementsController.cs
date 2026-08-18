@@ -1,4 +1,4 @@
-﻿using System.IdentityModel.Tokens.Jwt;
+using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -69,7 +69,7 @@ public class PartyBillingStatementsController : ControllerBase
 
     [HttpPost]
     [Authorize(Policy = CapabilityPolicyNames.ManageFinancial)]
-    public async Task<ActionResult<CreatePartyBillingStatementResult>> Create(
+    public async Task<ActionResult<CreatePartyBillingStatementResponseDto>> Create(
         [FromBody] CreatePartyBillingStatementRequest request,
         CancellationToken ct)
     {
@@ -173,7 +173,7 @@ public class PartyBillingStatementsController : ControllerBase
 
     [HttpPost("auto-month-vendor")]
     [Authorize(Policy = CapabilityPolicyNames.ManageFinancial)]
-    public async Task<ActionResult<CreateMonthPartyBillingStatementsResult>> CreateMonthVendor(
+    public async Task<ActionResult<CreateMonthPartyBillingStatementsResponseDto>> CreateMonthVendor(
         CancellationToken ct)
     {
         var userId = CurrentUserId();
@@ -203,7 +203,7 @@ public class PartyBillingStatementsController : ControllerBase
 
     [HttpPost("defer-lines")]
     [Authorize(Policy = CapabilityPolicyNames.ManageFinancial)]
-    public async Task<ActionResult<DeferPartyBillingLinesResult>> DeferLines(
+    public async Task<ActionResult<DeferPartyBillingLinesResponseDto>> DeferLines(
         [FromBody] DeferPartyBillingLinesRequest request,
         CancellationToken ct)
     {

@@ -7,7 +7,7 @@ import { loadInspectorFeesSummary } from "@platform/app-shared/prototype/inspect
 import { loadPartyBillingStatements } from "@platform/app-shared/prototype/party-billing-statements-api";
 import { resolvePartyName } from "@platform/app-shared/fees/party-fee-meta";
 import { useStaffUsersQuery } from "@settings/mfe/query/settings-queries";
-import { cn } from "@platform/design-system";
+import { cn } from "@platform/ui-kit";
 import {
   finCard,
   finEmpty,

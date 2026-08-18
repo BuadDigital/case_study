@@ -7,7 +7,7 @@ import {
   useState,
   type ReactNode,
 } from "react";
-import { Button, Spinner, cn, useToast } from "@platform/design-system";
+import { Button, Spinner, cn, useToast } from "@platform/ui-kit";
 import { loadWorkOrderDtos } from "@platform/app-shared/prototype/work-orders-read";
 import {
   fetchLinkedPropertiesByRequestNumber,
@@ -29,7 +29,7 @@ type RequestSuggestion = {
 
 type FilePick = { file: File; attachmentId?: string };
 
-/** Exact HTML `.fld input/textarea` tokens — avoid design-system formControlClassName conflicts. */
+/** Exact HTML `.fld input/textarea` tokens — avoid ui-kit formControlClassName conflicts. */
 const fldControlClassName =
   "box-border w-full rounded-[9px] border border-border-md bg-surface-2 px-3 py-[9px] font-[inherit] text-[13px] text-text outline-none transition-[border-color,box-shadow] duration-150 focus:border-[var(--gold)] focus:shadow-[0_0_0_3px_color-mix(in_srgb,var(--gold)_20%,transparent)]";
 

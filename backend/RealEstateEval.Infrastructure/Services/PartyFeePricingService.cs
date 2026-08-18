@@ -4,6 +4,7 @@ using RealEstateEval.Application.Abstractions;
 using RealEstateEval.Application.Contracts;
 using RealEstateEval.Application.Rules;
 using RealEstateEval.Domain;
+using RealEstateEval.Infrastructure.Data;
 using RealEstateEval.Infrastructure.Data.Contexts;
 
 namespace RealEstateEval.Infrastructure.Services;
@@ -22,14 +23,19 @@ public sealed class PartyFeePricingService : IPartyFeePricingService
 
     private readonly FinancialDbContext _db;
     private readonly IAuditLogWriter _audit;
+    private readonly TimeProvider _time;
 
-    public PartyFeePricingService(FinancialDbContext db)
-        : this(db, new AuditLogWriter())
+    public PartyFeePricingService(FinancialDbContext db,
+        TimeProvider? time = null)
+        : this(db, new AuditLogWriter(time), time)
     {
     }
 
-    public PartyFeePricingService(FinancialDbContext db, IAuditLogWriter audit)
+    public PartyFeePricingService(FinancialDbContext db, IAuditLogWriter audit,
+        TimeProvider? time = null)
     {
+        _time = time ?? TimeProvider.System;
+
         _db = db;
         _audit = audit;
     }
@@ -170,7 +176,7 @@ public sealed class PartyFeePricingService : IPartyFeePricingService
             FlatAmountSar = pricingKind == PartyFeePricingKinds.Flat
                 ? Math.Max(0m, request.FlatAmountSar ?? 0m)
                 : 0m,
-            UpdatedAtUtc = DateTime.UtcNow,
+            UpdatedAtUtc = _time.UtcNow(),
         };
 
         if (pricingKind == PartyFeePricingKinds.Tiered
@@ -213,7 +219,7 @@ public sealed class PartyFeePricingService : IPartyFeePricingService
         var before = Snapshot(table);
 
         table.Name = NormalizeName(request.Name, table.Category);
-        table.UpdatedAtUtc = DateTime.UtcNow;
+        table.UpdatedAtUtc = _time.UtcNow();
         await ApplyRatesFromRequestAsync(table, request, cancellationToken);
 
         AddAudit(
@@ -247,7 +253,7 @@ public sealed class PartyFeePricingService : IPartyFeePricingService
                 "الجدول غير مرتبط بأطراف ويمكن تعديله مباشرة دون إنشاء نسخة.");
         }
 
-        var now = DateTime.UtcNow;
+        var now = _time.UtcNow();
         var sourceBefore = Snapshot(source);
         var wasSourceActive = source.IsActive;
  // Insert the revision inactive first. Postgres rejects an INSERT of an active row while
@@ -323,7 +329,7 @@ public sealed class PartyFeePricingService : IPartyFeePricingService
         {
             var revisionBeforeActivate = Snapshot(revision);
             revision.IsActive = true;
-            revision.UpdatedAtUtc = DateTime.UtcNow;
+            revision.UpdatedAtUtc = _time.UtcNow();
             AddAudit(
                 actorId,
                 "PRICING_TABLE_ACTIVATED",
@@ -363,40 +369,43 @@ public sealed class PartyFeePricingService : IPartyFeePricingService
             .ToListAsync(cancellationToken);
 
  // Postgres filtered unique index IX_PartyFeePricingTables_Category_OneActive is checked
- // per statement. Activating before demoting the previous default in the same SaveChanges
- // batch briefly leaves two active rows and fails with 23505.
-        var now = DateTime.UtcNow;
-        foreach (var other in others)
+ // per statement. Deactivate others in one SaveChanges, then activate in a second pass,
+ // inside one transaction so a failed activation rolls back the demotions too.
+        var now = _time.UtcNow();
+        await DbContextTransaction.ExecuteInTransactionAsync(_db, async ct =>
         {
-            var before = Snapshot(other);
-            other.IsActive = false;
-            other.UpdatedAtUtc = now;
-            AddAudit(
-                actorId,
-                "PRICING_TABLE_DEACTIVATED",
-                nameof(PartyFeePricingTable),
-                other.Id,
-                before,
-                Snapshot(other));
-        }
+            foreach (var other in others)
+            {
+                var before = Snapshot(other);
+                other.IsActive = false;
+                other.UpdatedAtUtc = now;
+                AddAudit(
+                    actorId,
+                    "PRICING_TABLE_DEACTIVATED",
+                    nameof(PartyFeePricingTable),
+                    other.Id,
+                    before,
+                    Snapshot(other));
+            }
 
-        if (others.Count > 0)
-            await _db.SaveChangesAsync(cancellationToken);
+            if (others.Count > 0)
+                await _db.SaveChangesAsync(ct);
 
-        if (!table.IsActive)
-        {
-            var targetBefore = Snapshot(table);
-            table.IsActive = true;
-            table.UpdatedAtUtc = now;
-            AddAudit(
-                actorId,
-                "PRICING_TABLE_ACTIVATED",
-                nameof(PartyFeePricingTable),
-                table.Id,
-                targetBefore,
-                Snapshot(table));
-            await _db.SaveChangesAsync(cancellationToken);
-        }
+            if (!table.IsActive)
+            {
+                var targetBefore = Snapshot(table);
+                table.IsActive = true;
+                table.UpdatedAtUtc = now;
+                AddAudit(
+                    actorId,
+                    "PRICING_TABLE_ACTIVATED",
+                    nameof(PartyFeePricingTable),
+                    table.Id,
+                    targetBefore,
+                    Snapshot(table));
+                await _db.SaveChangesAsync(ct);
+            }
+        }, cancellationToken);
 
         return await ToDtoAsync(table, cancellationToken);
     }
@@ -437,7 +446,7 @@ public sealed class PartyFeePricingService : IPartyFeePricingService
                 .FirstAsync(cancellationToken);
             var nextBefore = Snapshot(next);
             next.IsActive = true;
-            next.UpdatedAtUtc = DateTime.UtcNow;
+            next.UpdatedAtUtc = _time.UtcNow();
             AddAudit(
                 actorId,
                 "PRICING_TABLE_ACTIVATED",
@@ -491,7 +500,7 @@ public sealed class PartyFeePricingService : IPartyFeePricingService
             .Select(a => new PricingAssignmentSnapshot(a.TableId, a.AssigneeId))
             .ToListAsync(cancellationToken);
 
-        var now = DateTime.UtcNow;
+        var now = _time.UtcNow();
 
         if (normalized.Count > 0)
         {
@@ -755,7 +764,7 @@ public sealed class PartyFeePricingService : IPartyFeePricingService
         {
             var before = Snapshot(any);
             any.IsActive = true;
-            any.UpdatedAtUtc = DateTime.UtcNow;
+            any.UpdatedAtUtc = _time.UtcNow();
             AddAudit(
                 "system",
                 "PRICING_TABLE_ACTIVATED",
@@ -780,7 +789,7 @@ public sealed class PartyFeePricingService : IPartyFeePricingService
             PricingKind = PartyFeePricingKinds.DefaultForCategory(category),
             ManagedBy = PartyFeePricingManagers.SystemAdmin,
             IsActive = true,
-            UpdatedAtUtc = DateTime.UtcNow,
+            UpdatedAtUtc = _time.UtcNow(),
         };
 
         _db.PartyFeePricingTables.Add(table);

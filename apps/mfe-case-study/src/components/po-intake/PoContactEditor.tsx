@@ -12,7 +12,7 @@ import {
   cn,
   formControlClassName,
   formControlErrorClassName,
-} from "@platform/design-system";
+} from "@platform/ui-kit";
 import {
   joinContactPhones,
   normalizePhoneInput,

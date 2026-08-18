@@ -37,7 +37,7 @@ docker compose -f infra/docker-compose.yml ps
 
 | Service | URL | Credentials |
 |---------|-----|-------------|
-| **PostgreSQL** | `localhost:5432` | user `postgres`, password `Admin`, db `realestate_eval_dev` |
+| **PostgreSQL** | `localhost:5433` | user `postgres`, password `Admin`, dedicated per-owner databases |
 | **RabbitMQ AMQP** | `localhost:5672` | user `dev`, password `dev` |
 | **RabbitMQ UI** | http://localhost:15672 | `dev` / `dev` |
 | **Redis** | `localhost:6379` | (no auth in dev) |
@@ -50,9 +50,11 @@ docker compose -f infra/docker-compose.yml ps
 
 ## Connect the backend services
 
-Docker Postgres credentials match `infra/docker-compose.yml` (`postgres` / `Admin`, db `realestate_eval_dev`).
+Docker Postgres credentials match `infra/docker-compose.yml` (`postgres` / `Admin`).
+Dedicated databases: `realestate_eval_attachments`, `realestate_eval_identity`, `realestate_eval_platform`, `realestate_eval_valuation`, `realestate_eval_failures`, `realestate_eval_operations`, `realestate_eval_financial`, `realestate_eval_case_study`, `realestate_eval_messaging` via
+`REAL_ESTATE_EVAL_PG_CONNECTION_STRING_{ATTACHMENTS|IDENTITY|PLATFORM|VALUATION|FAILURES|OPERATIONS|FINANCIAL|CASESTUDY|MESSAGING}`. There is no leftover shared database.
 
-Override in each service via `REAL_ESTATE_EVAL_PG_CONNECTION_STRING`, or edit:
+Override in each service via `REAL_ESTATE_EVAL_PG_CONNECTION_STRING_{SERVICE}`, or edit:
 
 - `backend/services/identity/RealEstateEval.Identity.Api/appsettings.Development.json`
 - `backend/services/case-study/RealEstateEval.CaseStudy.Api/appsettings.Development.json`

@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef, useState } from "react";
-import { cn } from "@platform/design-system";
+import { cn } from "@platform/ui-kit";
 
 function isAcceptedFile(file: File): boolean {
   const type = (file.type || "").toLowerCase();

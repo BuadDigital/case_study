@@ -1,5 +1,3 @@
-using System.IdentityModel.Tokens.Jwt;
-using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc;
@@ -149,9 +147,7 @@ public class UsersController : ControllerBase
         string id,
         CancellationToken cancellationToken)
     {
-        var requestingUserId =
-            User.FindFirstValue(ClaimTypes.NameIdentifier)
-            ?? User.FindFirstValue(JwtRegisteredClaimNames.Sub);
+        var requestingUserId = ActorClaims.TryId(User);
 
         var (ok, error) = await _users.DeleteStaffAsync(
             id,

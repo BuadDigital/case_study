@@ -5,7 +5,7 @@ import type { PageId } from "@platform/types";
 import { loadPendingBourseItems } from "@case-study/mfe";
 import { loadPoListRows, loadPropertyListItems } from "@platform/app-shared/prototype/work-orders-read";
 import { FAILURES_CHANGED_EVENT, loadFailuresQuery } from "@failures/mfe";
-import { CASE_STUDY_INFO_ROLES_CHANGED_EVENT, loadCaseStudyInfoRolesConfig, loadCourtsCatalog } from "@settings/mfe";
+import { CASE_STUDY_INFO_ROLES_CHANGED_EVENT, loadCaseStudyInfoRolesConfig } from "@settings/mfe";
 import { loadPoRecordsWithTaskSync, loadWorkflowTasksForQuery, TASKS_CHANGED_EVENT, WORK_ORDERS_CHANGED_EVENT } from "@case-study/mfe/query/case-study-queries";
 import { loadSuspendedTransactions } from "@case-study/mfe/lib/prototype/suspended-transactions-storage";
 import { loadFailureTypesCatalog } from "@failures/mfe/lib/failure-types-storage";
@@ -113,13 +113,6 @@ export function prefetchPrototypePage(
       void queryClient.prefetchQuery({
         queryKey: prototypeKeys.pendingBourseItems(),
         queryFn: loadPendingBourseItems,
-        ...opts,
-      });
-      break;
-    case "courts":
-      void queryClient.prefetchQuery({
-        queryKey: prototypeKeys.courtsCatalog(),
-        queryFn: loadCourtsCatalog,
         ...opts,
       });
       break;
@@ -274,26 +267,12 @@ export function usePrototypeDataSync(): void {
 }
 
 export {
-  loadPoRecordsWithTaskSync,
   prefetchPoRecord,
-  TASKS_CHANGED_EVENT,
-  TASKS_STORAGE_KEY,
-  WORK_ORDERS_CHANGED_EVENT,
   usePendingBourseItemsQuery,
-  usePoListRowsQuery,
   usePoRecordQuery,
   usePoRecordsQuery,
   useWorkflowTasksQuery,
 } from "@case-study/mfe/query/case-study-queries";
-
-export { usePropertyListItemsQuery } from "@dashboard/mfe/query/dashboard-queries";
-
-export {
-  useCourtsCatalogQuery,
-  useCaseStudyInfoRolesQuery,
-  useStaffUsersQuery,
-  setCaseStudyInfoRolesCache,
-} from "@settings/mfe/query/settings-queries";
 
 export { useFailuresQuery } from "@failures/mfe/query/failures-queries";
 

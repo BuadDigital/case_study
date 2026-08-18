@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using RealEstateEval.Application;
 using RealEstateEval.Application.Abstractions;
 using RealEstateEval.Application.Contracts;
 using RealEstateEval.Application.Rules;
@@ -11,8 +12,11 @@ namespace RealEstateEval.Infrastructure.Services;
 /// Case-study stream shell patch (no inspector-fee side effects). Failures pure host uses this
 /// instead of the full <see cref="IWorkflowTaskService"/> graph, which still needs residual App fees.
 /// </summary>
-public sealed class WorkflowTaskShellPatcher(CaseStudyDbContext caseStudy) : IWorkflowTaskShellPatcher
+public sealed class WorkflowTaskShellPatcher(CaseStudyDbContext caseStudy,
+    TimeProvider? time = null) : IWorkflowTaskShellPatcher
 {
+    private readonly TimeProvider _time = time ?? TimeProvider.System;
+
     public async Task<WorkflowTaskDto?> PatchAsync(
         Guid id,
         PatchWorkflowTaskRequest request,
@@ -43,7 +47,7 @@ public sealed class WorkflowTaskShellPatcher(CaseStudyDbContext caseStudy) : IWo
                 ? null
                 : WorkflowTaskMapper.SerializeDistribution(
                     WorkflowTaskPhaseRules.NormalizeDistribution(request.Distribution)),
-            nowUtc: DateTime.UtcNow);
+            nowUtc: _time.UtcNow());
         await caseStudy.SaveChangesAsync(cancellationToken);
         return WorkflowTaskMapper.ToDto(entity);
     }

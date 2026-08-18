@@ -9,7 +9,7 @@ import {
   markEnfazFinanceFlag,
   unmarkEnfazFinanceFlag,
 } from "@platform/app-shared/prototype/enfaz-billing-api";
-import { useToast } from "@platform/design-system";
+import { useToast } from "@platform/ui-kit";
 import {
   finEmpty,
   finEmptyS,

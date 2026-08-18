@@ -10,7 +10,6 @@ namespace RealEstateEval.Valuation.Api.Controllers;
 /// <summary>Reconciliation + round-once final opinion.</summary>
 [ApiController]
 [Route("api/valuation-requests/{valuationRequestId:guid}/reconciliation")]
-[Route("api/valuation-requests/v1/{valuationRequestId:guid}/reconciliation")]
 [Authorize]
 public class ValuationReconciliationController : ControllerBase
 {
@@ -39,7 +38,7 @@ public class ValuationReconciliationController : ControllerBase
         var (result, errors) = await _reconciliation.SaveAsync(
             valuationRequestId, request, ActorClaims.Id(User), ct);
         if (errors is not null)
-            return BadRequest(new FieldErrorsResponseDto { Errors = errors });
+            return this.FieldErrorsProblem(errors);
         return Ok(result);
     }
 }

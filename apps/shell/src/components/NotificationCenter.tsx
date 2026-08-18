@@ -8,7 +8,7 @@ import { filterNotificationsForRole } from "@platform/app-shared/notifications/r
 import { formatNotificationTime } from "@platform/app-shared/notifications/format-notification-time";
 import type { NotificationCategory } from "@platform/app-shared/notifications/notification-store";
 import { isFeatureEnabled } from "@platform/app-shared/feature-flags";
-import { cn, Button } from "@platform/design-system";
+import { cn, Button } from "@platform/ui-kit";
 
 function BellIcon() {
   return (

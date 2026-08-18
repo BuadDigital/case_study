@@ -47,6 +47,18 @@ public class WorkflowTaskReadAuthorizationTests
     }
 
     [Fact]
+    public async Task List_returns_no_tasks_when_actor_is_null()
+    {
+        await using var db = CreateDb();
+        Seed(db);
+        var service = TestInspectorFeeServiceFactory.CreateWorkflow(db);
+
+        var rows = await service.ListAsync(actor: null);
+
+        Assert.Empty(rows);
+    }
+
+    [Fact]
     public async Task List_returns_all_tasks_for_case_staff()
     {
         await using var db = CreateDb();

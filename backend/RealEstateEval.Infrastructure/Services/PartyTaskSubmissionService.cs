@@ -1,12 +1,15 @@
-using System.Security.Claims;
 using System.Text.Json;
 using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
+using RealEstateEval.Application;
 using RealEstateEval.Application.Abstractions;
+using RealEstateEval.Application.Authorization;
 using RealEstateEval.Application.Contracts;
 using RealEstateEval.Application.Rules;
 using RealEstateEval.Domain;
 using RealEstateEval.Infrastructure.Data;
+using RealEstateEval.Infrastructure.Data.Contexts;
 using RealEstateEval.Infrastructure.Notifications;
 
 namespace RealEstateEval.Infrastructure.Services;
@@ -32,7 +35,8 @@ public class PartyTaskSubmissionService : IPartyTaskSubmissionService
             ("إرسال تقرير التقييم", "أرسل المقيم تقرير التقييم العقاري للمراجعة"),
     };
 
-    private readonly ApplicationDbContext _db;
+    private readonly CaseStudyDbContext _db;
+    private readonly IFailureLookup _failureLookup;
     private readonly IWorkflowTaskService _tasks;
     private readonly IFieldInspectionAttachmentVerifier _fieldInspectionAttachments;
     private readonly IPropertyTimelineService _timeline;
@@ -41,9 +45,11 @@ public class PartyTaskSubmissionService : IPartyTaskSubmissionService
     private readonly IInspectorFeeService _inspectorFees;
     private readonly INotificationService _notifications;
     private readonly NotificationRecipientResolver _recipients;
+    private readonly TimeProvider _time;
 
     public PartyTaskSubmissionService(
-        ApplicationDbContext db,
+        CaseStudyDbContext db,
+        FailuresDbContext failuresDb,
         IWorkflowTaskService tasks,
         IFieldInspectionAttachmentVerifier fieldInspectionAttachments,
         IPropertyTimelineService timeline,
@@ -51,9 +57,41 @@ public class PartyTaskSubmissionService : IPartyTaskSubmissionService
         IPermissionService permissions,
         IInspectorFeeService inspectorFees,
         INotificationService notifications,
-        NotificationRecipientResolver recipients)
+        NotificationRecipientResolver recipients,
+        TimeProvider? time = null)
+        : this(
+            db,
+            new FailureLookup(failuresDb),
+            tasks,
+            fieldInspectionAttachments,
+            timeline,
+            httpContextAccessor,
+            permissions,
+            inspectorFees,
+            notifications,
+            recipients,
+            time)
     {
+    }
+
+    [ActivatorUtilitiesConstructor]
+    public PartyTaskSubmissionService(
+        CaseStudyDbContext db,
+        IFailureLookup failureLookup,
+        IWorkflowTaskService tasks,
+        IFieldInspectionAttachmentVerifier fieldInspectionAttachments,
+        IPropertyTimelineService timeline,
+        IHttpContextAccessor httpContextAccessor,
+        IPermissionService permissions,
+        IInspectorFeeService inspectorFees,
+        INotificationService notifications,
+        NotificationRecipientResolver recipients,
+        TimeProvider? time = null)
+    {
+        _time = time ?? TimeProvider.System;
+
         _db = db;
+        _failureLookup = failureLookup;
         _tasks = tasks;
         _fieldInspectionAttachments = fieldInspectionAttachments;
         _timeline = timeline;
@@ -177,7 +215,7 @@ public class PartyTaskSubmissionService : IPartyTaskSubmissionService
         if (entity is not null && entity.Status is PartyTaskSubmissionStatus.Submitted)
             return (null, new Dictionary<string, string> { ["_"] = "لا يمكن تعديل إرسال مُكتمل" });
 
-        var now = DateTime.UtcNow;
+        var now = _time.UtcNow();
         if (entity is null)
         {
             entity = new PartyTaskSubmission
@@ -253,7 +291,7 @@ public class PartyTaskSubmissionService : IPartyTaskSubmissionService
         if (validationErrors.Count > 0)
             return (null, validationErrors);
 
-        var now = DateTime.UtcNow;
+        var now = _time.UtcNow();
         entity.Status = PartyTaskSubmissionStatus.Submitted;
         entity.SubmittedAtUtc = now;
         entity.UpdatedAtUtc = now;
@@ -344,7 +382,7 @@ public class PartyTaskSubmissionService : IPartyTaskSubmissionService
         if (entity is null || entity.Status != PartyTaskSubmissionStatus.Submitted)
             return (null, new Dictionary<string, string> { ["_"] = "لا يوجد إرسال مُكتمل لإعادته" });
 
-        var now = DateTime.UtcNow;
+        var now = _time.UtcNow();
         entity.Status = PartyTaskSubmissionStatus.Reopened;
         entity.ReturnNote = returnNote;
         entity.SubmittedAtUtc = null;
@@ -502,7 +540,7 @@ public class PartyTaskSubmissionService : IPartyTaskSubmissionService
                 timelineTitle,
                 entity.AcceptedByName ?? task.AssigneeName,
                 "done",
-                DateTime.UtcNow,
+                _time.UtcNow(),
                 cancellationToken);
         }
 
@@ -547,12 +585,12 @@ public class PartyTaskSubmissionService : IPartyTaskSubmissionService
         return (await ToDtoAsync(entity, cancellationToken), null);
     }
 
-    private static void StampAcceptance(
+    private void StampAcceptance(
         PartyTaskSubmission entity,
         string actorUserId,
         string? displayName)
     {
-        entity.AcceptedAtUtc = DateTime.UtcNow;
+        entity.AcceptedAtUtc = _time.UtcNow();
         entity.AcceptedByUserId = actorUserId;
         entity.AcceptedByName = string.IsNullOrWhiteSpace(displayName)
             ? null
@@ -699,10 +737,9 @@ public class PartyTaskSubmissionService : IPartyTaskSubmissionService
         }
 
         var propertyIdStr = entity.PropertyId?.ToString() ?? "";
-        var hasActiveFailure = await _db.PropertyFailures.AsNoTracking().AnyAsync(
-            f => f.PoNumber == entity.PoNumber
-                && f.PropertyId == propertyIdStr
-                && PropertyFailureStatus.Active.Contains(f.Status),
+        var hasActiveFailure = await _failureLookup.HasActiveAsync(
+            entity.PoNumber ?? "",
+            propertyIdStr,
             cancellationToken);
 
         using var doc = JsonDocument.Parse(entity.PayloadJson);
@@ -762,7 +799,7 @@ public class PartyTaskSubmissionService : IPartyTaskSubmissionService
 
     private async Task<bool> CurrentUserBypassesAsync(CancellationToken cancellationToken)
     {
-        var userId = _httpContextAccessor.HttpContext?.User?.FindFirstValue(ClaimTypes.NameIdentifier);
+        var userId = ActorIdentity.TryUserId(_httpContextAccessor.HttpContext?.User);
         if (string.IsNullOrWhiteSpace(userId)) return false;
         var perms = await _permissions.GetForUserIdAsync(userId, cancellationToken);
         return DocumentaryWorkflowRules.RoleBypassesDocumentaryGates(perms?.PrototypeRole);
@@ -773,7 +810,8 @@ public class PartyTaskSubmissionService : IPartyTaskSubmissionService
         CancellationToken cancellationToken)
     {
         using var doc = JsonDocument.Parse(entity.PayloadJson);
-        var projected = FieldInspectionWorkspaceProjector.Project(entity, doc.RootElement);
+        var projected = FieldInspectionWorkspaceProjector.Project(
+            entity, doc.RootElement, _time.UtcNow());
         var existing = await _db.FieldInspectionWorkspaces
             .FirstOrDefaultAsync(x => x.WorkflowTaskId == entity.WorkflowTaskId, cancellationToken);
 

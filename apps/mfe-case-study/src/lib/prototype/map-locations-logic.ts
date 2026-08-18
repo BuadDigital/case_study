@@ -5,8 +5,6 @@ export const POINT_FAMILIES = {
   comparable: "مقارنات السوق",
 } as const;
 
-export type PointFamily = keyof typeof POINT_FAMILIES;
-
 export const LAYERS = {
   active: {
     key: "active",
@@ -134,10 +132,6 @@ export const REPORT_VALIDITY_DAYS = 90;
 
 export function isActive(r: Pick<MapPropertyRecord, "closedDate">): boolean {
   return !r.closedDate;
-}
-
-export function emphasisFlag(r: Pick<MapPropertyRecord, "closedDate">): boolean {
-  return isActive(r);
 }
 
 export function isReportExpired(

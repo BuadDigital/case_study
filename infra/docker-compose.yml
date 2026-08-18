@@ -18,14 +18,15 @@ services:
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: Admin
-      POSTGRES_DB: realestate_eval_dev
+      POSTGRES_DB: postgres
     ports:
       # Host 5433 avoids conflict with a local PostgreSQL install on 5432 (Windows).
       - "5433:5432"
     volumes:
       - ree_pgdata:/var/lib/postgresql/data
+      - ./postgres/init-dev.sql:/docker-entrypoint-initdb.d/01-create-service-databases.sql:ro
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres -d realestate_eval_dev"]
+      test: ["CMD-SHELL", "pg_isready -U postgres -d postgres"]
       interval: 5s
       timeout: 5s
       retries: 10
@@ -177,7 +178,15 @@ services:
       dockerfile: backend/tools/DbMigrate/Dockerfile
     container_name: ree-migrate
     environment:
-      REAL_ESTATE_EVAL_PG_CONNECTION_STRING: Host=postgres;Port=5432;Database=realestate_eval_dev;Username=postgres;Password=Admin
+      REAL_ESTATE_EVAL_PG_CONNECTION_STRING_ATTACHMENTS: Host=postgres;Port=5432;Database=realestate_eval_attachments;Username=postgres;Password=Admin
+      REAL_ESTATE_EVAL_PG_CONNECTION_STRING_IDENTITY: Host=postgres;Port=5432;Database=realestate_eval_identity;Username=postgres;Password=Admin
+      REAL_ESTATE_EVAL_PG_CONNECTION_STRING_PLATFORM: Host=postgres;Port=5432;Database=realestate_eval_platform;Username=postgres;Password=Admin
+      REAL_ESTATE_EVAL_PG_CONNECTION_STRING_VALUATION: Host=postgres;Port=5432;Database=realestate_eval_valuation;Username=postgres;Password=Admin
+      REAL_ESTATE_EVAL_PG_CONNECTION_STRING_FAILURES: Host=postgres;Port=5432;Database=realestate_eval_failures;Username=postgres;Password=Admin
+      REAL_ESTATE_EVAL_PG_CONNECTION_STRING_OPERATIONS: Host=postgres;Port=5432;Database=realestate_eval_operations;Username=postgres;Password=Admin
+      REAL_ESTATE_EVAL_PG_CONNECTION_STRING_FINANCIAL: Host=postgres;Port=5432;Database=realestate_eval_financial;Username=postgres;Password=Admin
+      REAL_ESTATE_EVAL_PG_CONNECTION_STRING_CASESTUDY: Host=postgres;Port=5432;Database=realestate_eval_case_study;Username=postgres;Password=Admin
+      REAL_ESTATE_EVAL_PG_CONNECTION_STRING_MESSAGING: Host=postgres;Port=5432;Database=realestate_eval_messaging;Username=postgres;Password=Admin
     depends_on:
       postgres:
         condition: service_healthy
@@ -193,7 +202,8 @@ services:
       ASPNETCORE_ENVIRONMENT: Development
       OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4317
       Redis__ConnectionString: redis:6379
-      REAL_ESTATE_EVAL_PG_CONNECTION_STRING: Host=postgres;Port=5432;Database=realestate_eval_dev;Username=postgres;Password=Admin
+      UpstreamServices__PlatformBaseUrl: http://platform:8080
+      REAL_ESTATE_EVAL_PG_CONNECTION_STRING_IDENTITY: Host=postgres;Port=5432;Database=realestate_eval_identity;Username=postgres;Password=Admin
       Jwt__Issuer: RealEstateEval
       Jwt__Audience: RealEstateEval
       Jwt__SigningKey: CHANGE_ME_DEV_ONLY_USE_64_CHARS_MINIMUM_FOR_HMAC_SHA256_SIGNING_KEY_0123456789ABCDEF
@@ -216,11 +226,20 @@ services:
     container_name: ree-case-study
     environment:
       ASPNETCORE_ENVIRONMENT: Development
-      Database__SeedDemoData: "true"
+      Database__SeedDemoData: "false"
       Database__MigrateOnStartup: "true"
       OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4317
       Redis__ConnectionString: redis:6379
-      REAL_ESTATE_EVAL_PG_CONNECTION_STRING: Host=postgres;Port=5432;Database=realestate_eval_dev;Username=postgres;Password=Admin
+      UpstreamServices__AttachmentsBaseUrl: http://attachments:8080
+      UpstreamServices__PlatformBaseUrl: http://platform:8080
+      UpstreamServices__ValuationBaseUrl: http://valuation:8080
+      UpstreamServices__IdentityBaseUrl: http://identity:8080
+      UpstreamServices__FailuresBaseUrl: http://failures:8080
+      UpstreamServices__OperationsBaseUrl: http://operations:8080
+      UpstreamServices__FinancialBaseUrl: http://financial:8080
+      REAL_ESTATE_EVAL_PG_CONNECTION_STRING_IDENTITY: Host=postgres;Port=5432;Database=realestate_eval_identity;Username=postgres;Password=Admin
+      REAL_ESTATE_EVAL_PG_CONNECTION_STRING_CASESTUDY: Host=postgres;Port=5432;Database=realestate_eval_case_study;Username=postgres;Password=Admin
+      REAL_ESTATE_EVAL_PG_CONNECTION_STRING_MESSAGING: Host=postgres;Port=5432;Database=realestate_eval_messaging;Username=postgres;Password=Admin
       Jwt__Issuer: RealEstateEval
       Jwt__Audience: RealEstateEval
       Jwt__SigningKey: CHANGE_ME_DEV_ONLY_USE_64_CHARS_MINIMUM_FOR_HMAC_SHA256_SIGNING_KEY_0123456789ABCDEF
@@ -232,6 +251,20 @@ services:
       postgres:
         condition: service_healthy
       rabbitmq:
+        condition: service_healthy
+      attachments:
+        condition: service_healthy
+      platform:
+        condition: service_healthy
+      valuation:
+        condition: service_healthy
+      identity:
+        condition: service_healthy
+      failures:
+        condition: service_healthy
+      operations:
+        condition: service_healthy
+      financial:
         condition: service_healthy
       otel-collector:
         condition: service_started
@@ -248,12 +281,26 @@ services:
       ASPNETCORE_ENVIRONMENT: Development
       OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4317
       Redis__ConnectionString: redis:6379
-      REAL_ESTATE_EVAL_PG_CONNECTION_STRING: Host=postgres;Port=5432;Database=realestate_eval_dev;Username=postgres;Password=Admin
+      UpstreamServices__AttachmentsBaseUrl: http://attachments:8080
+      UpstreamServices__IdentityBaseUrl: http://identity:8080
+      UpstreamServices__FailuresBaseUrl: http://failures:8080
+      UpstreamServices__CaseStudyBaseUrl: http://case-study:8080
+      UpstreamServices__FinancialBaseUrl: http://financial:8080
+      REAL_ESTATE_EVAL_PG_CONNECTION_STRING_OPERATIONS: Host=postgres;Port=5432;Database=realestate_eval_operations;Username=postgres;Password=Admin
+      REAL_ESTATE_EVAL_PG_CONNECTION_STRING_MESSAGING: Host=postgres;Port=5432;Database=realestate_eval_messaging;Username=postgres;Password=Admin
       Jwt__Issuer: RealEstateEval
       Jwt__Audience: RealEstateEval
       Jwt__SigningKey: CHANGE_ME_DEV_ONLY_USE_64_CHARS_MINIMUM_FOR_HMAC_SHA256_SIGNING_KEY_0123456789ABCDEF
     depends_on:
       postgres:
+        condition: service_healthy
+      attachments:
+        condition: service_healthy
+      identity:
+        condition: service_healthy
+      failures:
+        condition: service_healthy
+      financial:
         condition: service_healthy
       otel-collector:
         condition: service_started
@@ -274,7 +321,6 @@ services:
       UpstreamServices__CaseStudyBaseUrl: http://case-study:8080
       UpstreamServices__ValuationBaseUrl: http://valuation:8080
       UpstreamServices__FailuresBaseUrl: http://failures:8080
-      REAL_ESTATE_EVAL_PG_CONNECTION_STRING: Host=postgres;Port=5432;Database=realestate_eval_dev;Username=postgres;Password=Admin
       Jwt__Issuer: RealEstateEval
       Jwt__Audience: RealEstateEval
       Jwt__SigningKey: CHANGE_ME_DEV_ONLY_USE_64_CHARS_MINIMUM_FOR_HMAC_SHA256_SIGNING_KEY_0123456789ABCDEF
@@ -300,12 +346,20 @@ services:
       ASPNETCORE_ENVIRONMENT: Development
       OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4317
       Redis__ConnectionString: redis:6379
-      REAL_ESTATE_EVAL_PG_CONNECTION_STRING: Host=postgres;Port=5432;Database=realestate_eval_dev;Username=postgres;Password=Admin
+      UpstreamServices__IdentityBaseUrl: http://identity:8080
+      UpstreamServices__AttachmentsBaseUrl: http://attachments:8080
+      UpstreamServices__OperationsBaseUrl: http://operations:8080
+      UpstreamServices__CaseStudyBaseUrl: http://case-study:8080
+      REAL_ESTATE_EVAL_PG_CONNECTION_STRING_FINANCIAL: Host=postgres;Port=5432;Database=realestate_eval_financial;Username=postgres;Password=Admin
       Jwt__Issuer: RealEstateEval
       Jwt__Audience: RealEstateEval
       Jwt__SigningKey: CHANGE_ME_DEV_ONLY_USE_64_CHARS_MINIMUM_FOR_HMAC_SHA256_SIGNING_KEY_0123456789ABCDEF
     depends_on:
       postgres:
+        condition: service_healthy
+      identity:
+        condition: service_healthy
+      attachments:
         condition: service_healthy
       otel-collector:
         condition: service_started
@@ -322,12 +376,25 @@ services:
       ASPNETCORE_ENVIRONMENT: Development
       OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4317
       Redis__ConnectionString: redis:6379
-      REAL_ESTATE_EVAL_PG_CONNECTION_STRING: Host=postgres;Port=5432;Database=realestate_eval_dev;Username=postgres;Password=Admin
+      UpstreamServices__AttachmentsBaseUrl: http://attachments:8080
+      UpstreamServices__PlatformBaseUrl: http://platform:8080
+      REAL_ESTATE_EVAL_PG_CONNECTION_STRING_VALUATION: Host=postgres;Port=5432;Database=realestate_eval_valuation;Username=postgres;Password=Admin
+      REAL_ESTATE_EVAL_PG_CONNECTION_STRING_CASESTUDY: Host=postgres;Port=5432;Database=realestate_eval_case_study;Username=postgres;Password=Admin
       Jwt__Issuer: RealEstateEval
       Jwt__Audience: RealEstateEval
       Jwt__SigningKey: CHANGE_ME_DEV_ONLY_USE_64_CHARS_MINIMUM_FOR_HMAC_SHA256_SIGNING_KEY_0123456789ABCDEF
+      RabbitMQ__Host: rabbitmq
+      RabbitMQ__Port: 5672
+      RabbitMQ__UserName: dev
+      RabbitMQ__Password: dev
     depends_on:
       postgres:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+      attachments:
+        condition: service_healthy
+      platform:
         condition: service_healthy
       otel-collector:
         condition: service_started
@@ -344,12 +411,17 @@ services:
       ASPNETCORE_ENVIRONMENT: Development
       OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4317
       Redis__ConnectionString: redis:6379
-      REAL_ESTATE_EVAL_PG_CONNECTION_STRING: Host=postgres;Port=5432;Database=realestate_eval_dev;Username=postgres;Password=Admin
+      UpstreamServices__IdentityBaseUrl: http://identity:8080
+      REAL_ESTATE_EVAL_PG_CONNECTION_STRING_FAILURES: Host=postgres;Port=5432;Database=realestate_eval_failures;Username=postgres;Password=Admin
+      REAL_ESTATE_EVAL_PG_CONNECTION_STRING_CASESTUDY: Host=postgres;Port=5432;Database=realestate_eval_case_study;Username=postgres;Password=Admin
+      REAL_ESTATE_EVAL_PG_CONNECTION_STRING_MESSAGING: Host=postgres;Port=5432;Database=realestate_eval_messaging;Username=postgres;Password=Admin
       Jwt__Issuer: RealEstateEval
       Jwt__Audience: RealEstateEval
       Jwt__SigningKey: CHANGE_ME_DEV_ONLY_USE_64_CHARS_MINIMUM_FOR_HMAC_SHA256_SIGNING_KEY_0123456789ABCDEF
     depends_on:
       postgres:
+        condition: service_healthy
+      identity:
         condition: service_healthy
       otel-collector:
         condition: service_started
@@ -366,12 +438,17 @@ services:
       ASPNETCORE_ENVIRONMENT: Development
       OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4317
       Redis__ConnectionString: redis:6379
-      REAL_ESTATE_EVAL_PG_CONNECTION_STRING: Host=postgres;Port=5432;Database=realestate_eval_dev;Username=postgres;Password=Admin
+      UpstreamServices__IdentityBaseUrl: http://identity:8080
+      UpstreamServices__CaseStudyBaseUrl: http://case-study:8080
+      REAL_ESTATE_EVAL_PG_CONNECTION_STRING_PLATFORM: Host=postgres;Port=5432;Database=realestate_eval_platform;Username=postgres;Password=Admin
+      REAL_ESTATE_EVAL_PG_CONNECTION_STRING_MESSAGING: Host=postgres;Port=5432;Database=realestate_eval_messaging;Username=postgres;Password=Admin
       Jwt__Issuer: RealEstateEval
       Jwt__Audience: RealEstateEval
       Jwt__SigningKey: CHANGE_ME_DEV_ONLY_USE_64_CHARS_MINIMUM_FOR_HMAC_SHA256_SIGNING_KEY_0123456789ABCDEF
     depends_on:
       postgres:
+        condition: service_healthy
+      identity:
         condition: service_healthy
       otel-collector:
         condition: service_started
@@ -388,12 +465,15 @@ services:
       ASPNETCORE_ENVIRONMENT: Development
       OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4317
       Redis__ConnectionString: redis:6379
-      REAL_ESTATE_EVAL_PG_CONNECTION_STRING: Host=postgres;Port=5432;Database=realestate_eval_dev;Username=postgres;Password=Admin
+      UpstreamServices__PlatformBaseUrl: http://platform:8080
+      REAL_ESTATE_EVAL_PG_CONNECTION_STRING_ATTACHMENTS: Host=postgres;Port=5432;Database=realestate_eval_attachments;Username=postgres;Password=Admin
       Jwt__Issuer: RealEstateEval
       Jwt__Audience: RealEstateEval
       Jwt__SigningKey: CHANGE_ME_DEV_ONLY_USE_64_CHARS_MINIMUM_FOR_HMAC_SHA256_SIGNING_KEY_0123456789ABCDEF
     depends_on:
       postgres:
+        condition: service_healthy
+      platform:
         condition: service_healthy
       otel-collector:
         condition: service_started

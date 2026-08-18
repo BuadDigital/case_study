@@ -1,7 +1,7 @@
 "use client";
 
 import type { RoleId } from "@platform/types";
-import { Button, Select, cn, useToast } from "@platform/design-system";
+import { Button, Select, cn, useToast } from "@platform/ui-kit";
 import {
   assignmentMode,
   fieldDictionaryRoleIds,

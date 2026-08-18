@@ -36,6 +36,7 @@ public class OperationsApiAuthorizationTests : IClassFixture<OperationsApiFactor
     [InlineData("/api/key-envelopes")]
     [InlineData("/api/key-envelopes/fee-report")]
     [InlineData("/api/survey-offices")]
+    [InlineData("/api/operations-tasks")]
     public async Task Anonymous_requests_are_rejected(string path)
     {
         var response = await _client.GetAsync(path);

@@ -4,7 +4,6 @@ using RealEstateEval.Application.Abstractions;
 using RealEstateEval.Application.Contracts;
 using RealEstateEval.Application.Rules;
 using RealEstateEval.Domain;
-using RealEstateEval.Infrastructure.Data;
 using RealEstateEval.Infrastructure.Data.Contexts;
 
 namespace RealEstateEval.Infrastructure.Services;
@@ -12,7 +11,6 @@ namespace RealEstateEval.Infrastructure.Services;
 public sealed class OperationsTaskCommands : IOperationsTaskCommands
 {
     private readonly OperationsDbContext _ops;
-    private readonly ApplicationDbContext _db;
     private readonly IOperationsTaskQuery _query;
     private readonly OperationsTaskNotifier _notifier;
     private readonly OperationsTaskVisitFeeHelper _visitFees;
@@ -20,14 +18,12 @@ public sealed class OperationsTaskCommands : IOperationsTaskCommands
 
     public OperationsTaskCommands(
         OperationsDbContext ops,
-        ApplicationDbContext db,
         IOperationsTaskQuery query,
         OperationsTaskNotifier notifier,
         OperationsTaskVisitFeeHelper visitFees,
         TimeProvider? time = null)
     {
         _ops = ops;
-        _db = db;
         _query = query;
         _notifier = notifier;
         _visitFees = visitFees;
@@ -146,7 +142,6 @@ public sealed class OperationsTaskCommands : IOperationsTaskCommands
 
             _ops.OperationsTasks.Add(entity);
             await _ops.SaveChangesAsync(cancellationToken);
-        await _db.SaveChangesAsync(cancellationToken);
             await tx.CommitAsync(cancellationToken);
             await _notifier.NotifyAssigneeAsync(entity, cancellationToken);
             return ((OperationsTaskDto?)await _query.MapAsync(entity, cancellationToken), (string?)null);
@@ -334,11 +329,9 @@ public sealed class OperationsTaskCommands : IOperationsTaskCommands
 
         entity.ReplaceComments(JsonSerializer.Serialize(comments, jsonOpts), now);
 
-        if (becameCompletedCourtVisit && courtVisitFee.IsResolved)
-            _visitFees.AddCourtVisitFeeCharge(entity, courtVisitFee);
-
         await _ops.SaveChangesAsync(cancellationToken);
-        await _db.SaveChangesAsync(cancellationToken);
+        if (becameCompletedCourtVisit && courtVisitFee.IsResolved)
+            await _visitFees.AddCourtVisitFeeChargeAsync(entity, courtVisitFee, cancellationToken);
 
         if (becameReceiptConfirmed)
         {
@@ -425,7 +418,6 @@ public sealed class OperationsTaskCommands : IOperationsTaskCommands
 
         entity.ReplaceComments(JsonSerializer.Serialize(comments, OperationsTaskSerialization.JsonOpts), now);
         await _ops.SaveChangesAsync(cancellationToken);
-        await _db.SaveChangesAsync(cancellationToken);
 
         await _notifier.NotifyAssigneeAsync(entity, cancellationToken);
         return (await _query.MapAsync(entity, cancellationToken), null);
@@ -502,7 +494,6 @@ public sealed class OperationsTaskCommands : IOperationsTaskCommands
                 JsonSerializer.Serialize(comments, OperationsTaskSerialization.JsonOpts), now);
             entity.MarkPauseOverLimitReminded(now);
             await _ops.SaveChangesAsync(cancellationToken);
-        await _db.SaveChangesAsync(cancellationToken);
             await _notifier.NotifyPauseOverLimitAsync(entity, cancellationToken);
             successes++;
         }
@@ -565,7 +556,6 @@ public sealed class OperationsTaskCommands : IOperationsTaskCommands
             JsonSerializer.Serialize(comments, OperationsTaskSerialization.JsonOpts),
             _time.GetUtcNow().UtcDateTime);
         await _ops.SaveChangesAsync(cancellationToken);
-        await _db.SaveChangesAsync(cancellationToken);
 
         var kind = request.Kind?.Trim() ?? "comment";
  // Human thread only — system updates / reminders are not counterparty chatter.
@@ -614,7 +604,6 @@ public sealed class OperationsTaskCommands : IOperationsTaskCommands
         entity.ReplaceComments(
             JsonSerializer.Serialize(comments, OperationsTaskSerialization.JsonOpts), now);
         await _ops.SaveChangesAsync(cancellationToken);
-        await _db.SaveChangesAsync(cancellationToken);
 
         await _notifier.NotifyReminderAsync(entity, auto, cancellationToken);
         return (await _query.MapAsync(entity, cancellationToken), null);
@@ -686,3 +675,5 @@ public sealed class OperationsTaskCommands : IOperationsTaskCommands
         return allocated;
     }
 }
+
+

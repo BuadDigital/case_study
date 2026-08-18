@@ -1,7 +1,7 @@
 @import "tailwindcss";
-@import "@platform/design-system/tokens.css";
-@import "@platform/design-system/animations.css";
-@import "@platform/design-system/operational-toolbar.css";
+@import "@platform/ui-kit/tokens.css";
+@import "@platform/ui-kit/animations.css";
+@import "@platform/ui-kit/operational-toolbar.css";
 @import "./animation.css";
 @source "../../../../apps/**/*.{ts,tsx}";
 @source "../../../../packages/**/*.{ts,tsx}";

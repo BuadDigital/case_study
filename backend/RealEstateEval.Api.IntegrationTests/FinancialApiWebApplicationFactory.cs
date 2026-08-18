@@ -9,6 +9,7 @@ using Microsoft.Extensions.DependencyInjection.Extensions;
 using RealEstateEval.Application.Abstractions;
 using RealEstateEval.Application.Contracts;
 using RealEstateEval.Domain;
+using RealEstateEval.Infrastructure.Data;
 
 namespace RealEstateEval.Api.IntegrationTests;
 
@@ -18,9 +19,12 @@ public sealed class FinancialApiWebApplicationFactory
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
         builder.UseEnvironment("Development");
-        builder.UseSetting(
-            "ConnectionStrings:Financial",
+        BoundedContextConnections.ApplyDedicatedSettings(
+            (key, value) => builder.UseSetting(key, value),
             "Host=localhost;Database=financial_integration_test");
+        builder.UseSetting("UpstreamServices:IdentityBaseUrl", "http://identity-test");
+        builder.UseSetting("UpstreamServices:CaseStudyBaseUrl", "http://case-study-test");
+        builder.UseSetting("UpstreamServices:AttachmentsBaseUrl", "http://attachments-test");
         builder.ConfigureAppConfiguration((_, config) =>
         {
             config.AddInMemoryCollection(new Dictionary<string, string?>

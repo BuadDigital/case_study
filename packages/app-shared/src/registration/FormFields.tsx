@@ -1,6 +1,6 @@
 ﻿"use client";
 
-import { Input, Label, Select, Textarea, cn } from "@platform/design-system";
+import { Input, Label, Select, Textarea, cn } from "@platform/ui-kit";
 
 function FieldWrap({
   label,

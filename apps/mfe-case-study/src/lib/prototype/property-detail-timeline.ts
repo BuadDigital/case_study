@@ -12,9 +12,14 @@ import {
   type WorkflowTask,
 } from "./tasks-storage";
 
-import type { PropertyTimelineEventDto } from "@platform/api-client";
+import {
+  normalizePropertyTimelineTone,
+  PropertyTimelineTones,
+  type PropertyTimelineEventDto,
+  type PropertyTimelineTone,
+} from "@platform/api-client";
 
-export type PropertyTimelineTone = "done" | "active" | "warn" | "muted";
+export type { PropertyTimelineTone };
 
 export type PropertyTimelineEvent = {
   id: string;
@@ -79,7 +84,7 @@ export function collapseFailureRegistrationEvents(
         : uniqueDetails.length === 1
           ? uniqueDetails[0]
           : `${failures.length} تعذرات — أحدثها: ${uniqueDetails[uniqueDetails.length - 1]}`,
-    tone: "warn",
+    tone: PropertyTimelineTones.Warn,
   });
 
   return rest
@@ -97,14 +102,9 @@ export function mapPropertyTimelineDtos(
       at: e.at,
       title: e.title,
       detail: e.detail?.trim() || undefined,
-      tone: normalizeTimelineTone(e.tone),
+      tone: normalizePropertyTimelineTone(e.tone),
     }));
   return collapseFailureRegistrationEvents(mapped);
-}
-
-function normalizeTimelineTone(tone: string): PropertyTimelineTone {
-  if (tone === "active" || tone === "warn" || tone === "muted") return tone;
-  return "done";
 }
 
 export function buildPropertyDetailTimeline(input: {
@@ -124,7 +124,7 @@ export function buildPropertyDetailTimeline(input: {
       detail: record.assignmentSpecialist
         ? `أخصائي الإسناد: ${record.assignmentSpecialist}`
         : undefined,
-      tone: "done",
+      tone: PropertyTimelineTones.Done,
     });
   }
 
@@ -138,7 +138,7 @@ export function buildPropertyDetailTimeline(input: {
       at: taskCreatedAt || record.receivedFromEnfathAt || "",
       title: "إنشاء مهمة العقار",
       detail: taskPhaseLabel(task.phase),
-      tone: task.status === "completed" ? "done" : "active",
+        tone: task.status === "completed" ? PropertyTimelineTones.Done : PropertyTimelineTones.Active,
     });
 
     if (task.phase !== "enfath" && task.phase !== "bourse") {
@@ -148,7 +148,7 @@ export function buildPropertyDetailTimeline(input: {
           ? record.receivedFromEnfathAt || taskUpdatedAt
           : taskUpdatedAt,
         title: "اكتمال استعلام البورصة",
-        tone: "done",
+        tone: PropertyTimelineTones.Done,
       });
     }
 
@@ -165,7 +165,7 @@ export function buildPropertyDetailTimeline(input: {
         id: "distribution",
         at: taskUpdatedAt,
         title: "توزيع المعاملة",
-        tone: distributionDone ? "done" : "active",
+        tone: distributionDone ? PropertyTimelineTones.Done : PropertyTimelineTones.Active,
       });
     }
 
@@ -177,8 +177,8 @@ export function buildPropertyDetailTimeline(input: {
         detail: task.assigneeName,
         tone:
           task.status === "completed" || task.phase === "done"
-            ? "done"
-            : "active",
+            ? PropertyTimelineTones.Done
+            : PropertyTimelineTones.Active,
       });
     }
 
@@ -188,7 +188,7 @@ export function buildPropertyDetailTimeline(input: {
         at: task.updatedAt ?? "",
         title: "تعذر / إيقاف",
         detail: task.obstructionReason,
-        tone: "warn",
+        tone: PropertyTimelineTones.Warn,
       });
     }
   }
@@ -199,7 +199,7 @@ export function buildPropertyDetailTimeline(input: {
       at: record.receivedFromEnfathAt ?? "",
       title: "بيانات البورصة للعقار",
       detail: [property.city, property.district].filter(Boolean).join(" · "),
-      tone: "done",
+      tone: PropertyTimelineTones.Done,
     });
   }
 
@@ -214,7 +214,7 @@ export function buildPropertyDetailTimeline(input: {
       at: failure.createdAt || failure.updatedAt,
       title: FAILURE_REGISTRATION_TITLE,
       detail: `${failure.title} — ${failureStatusLabel(failure.status)}`,
-      tone: "warn",
+      tone: PropertyTimelineTones.Warn,
     });
   }
 
@@ -229,7 +229,7 @@ export function buildPropertyDetailTimeline(input: {
       at: suspended.suspendedAt,
       title: "تعليق المعاملة",
       detail: suspendDetail || undefined,
-      tone: "warn",
+      tone: PropertyTimelineTones.Warn,
     });
   }
 
@@ -238,7 +238,7 @@ export function buildPropertyDetailTimeline(input: {
       id: "due",
       at: record.dueDateAt,
       title: "موعد الاستحقاق",
-      tone: "muted",
+      tone: PropertyTimelineTones.Muted,
     });
   }
 

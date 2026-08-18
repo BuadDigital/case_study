@@ -1,9 +1,11 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
+using RealEstateEval.Application;
 using RealEstateEval.Application.Abstractions;
 using RealEstateEval.Application.Contracts;
 using RealEstateEval.Application.Rules;
 using RealEstateEval.Domain;
-using RealEstateEval.Infrastructure.Data;
+using RealEstateEval.Infrastructure.Data.Contexts;
 using RealEstateEval.Infrastructure.Notifications;
 
 namespace RealEstateEval.Infrastructure.Services;
@@ -19,20 +21,47 @@ public sealed class WorkflowTaskDistributionCommands : IWorkflowTaskDistribution
         "cdo",
     };
 
-    private readonly ApplicationDbContext _db;
+    private readonly CaseStudyDbContext _caseStudy;
+    private readonly IFailureLookup _failureLookup;
     private readonly INotificationService _notifications;
     private readonly NotificationRecipientResolver _recipients;
     private readonly IPropertyTimelineService _timeline;
     private readonly ICaseStudyValuationDispatchService _valuationDispatch;
+    private readonly TimeProvider _time;
 
     public WorkflowTaskDistributionCommands(
-        ApplicationDbContext db,
+        CaseStudyDbContext caseStudy,
+        FailuresDbContext failures,
         INotificationService notifications,
         NotificationRecipientResolver recipients,
         IPropertyTimelineService timeline,
-        ICaseStudyValuationDispatchService valuationDispatch)
+        ICaseStudyValuationDispatchService valuationDispatch,
+        TimeProvider? time = null)
+        : this(
+            caseStudy,
+            new FailureLookup(failures),
+            notifications,
+            recipients,
+            timeline,
+            valuationDispatch,
+            time)
     {
-        _db = db;
+    }
+
+    [ActivatorUtilitiesConstructor]
+    public WorkflowTaskDistributionCommands(
+        CaseStudyDbContext caseStudy,
+        IFailureLookup failureLookup,
+        INotificationService notifications,
+        NotificationRecipientResolver recipients,
+        IPropertyTimelineService timeline,
+        ICaseStudyValuationDispatchService valuationDispatch,
+        TimeProvider? time = null)
+    {
+        _time = time ?? TimeProvider.System;
+
+        _caseStudy = caseStudy;
+        _failureLookup = failureLookup;
         _notifications = notifications;
         _recipients = recipients;
         _timeline = timeline;
@@ -44,14 +73,14 @@ public sealed class WorkflowTaskDistributionCommands : IWorkflowTaskDistribution
         TaskDistributionDraftDto distribution,
         CancellationToken cancellationToken = default)
     {
-        var entity = await _db.WorkflowTasks.FirstOrDefaultAsync(t => t.Id == id, cancellationToken);
+        var entity = await _caseStudy.WorkflowTasks.FirstOrDefaultAsync(t => t.Id == id, cancellationToken);
         if (entity is null) return null;
 
         var normalized = WorkflowTaskPhaseRules.NormalizeDistribution(distribution);
         entity.SetDistribution(
             WorkflowTaskMapper.SerializeDistribution(normalized),
-            DateTime.UtcNow);
-        await _db.SaveChangesAsync(cancellationToken);
+            _time.UtcNow());
+        await _caseStudy.SaveChangesAsync(cancellationToken);
         return WorkflowTaskMapper.ToDto(entity);
     }
 
@@ -61,7 +90,7 @@ public sealed class WorkflowTaskDistributionCommands : IWorkflowTaskDistribution
             ConfirmTaskDistributionRequest request,
             CancellationToken cancellationToken = default)
     {
-        var parent = await _db.WorkflowTasks.FirstOrDefaultAsync(t => t.Id == id, cancellationToken);
+        var parent = await _caseStudy.WorkflowTasks.FirstOrDefaultAsync(t => t.Id == id, cancellationToken);
         if (parent is null)
         {
             return (null, new Dictionary<string, string>
@@ -86,7 +115,7 @@ public sealed class WorkflowTaskDistributionCommands : IWorkflowTaskDistribution
             });
         }
 
-        var confirmProperty = await _db.WorkOrderProperties
+        var confirmProperty = await _caseStudy.WorkOrderProperties
             .AsNoTracking()
             .FirstOrDefaultAsync(p => p.Id == parent.PropertyId.Value, cancellationToken);
         if (confirmProperty is null || confirmProperty.IsRemoved)
@@ -98,11 +127,9 @@ public sealed class WorkflowTaskDistributionCommands : IWorkflowTaskDistribution
         }
 
         var propertyIdText = parent.PropertyId.Value.ToString();
-        var hasBlockingFailure = await _db.PropertyFailures.AnyAsync(
-            f => f.PoNumber == parent.PoNumber
-                && f.PropertyId == propertyIdText
-                && f.Status != PropertyFailureStatus.Resolved
-                && f.Status != PropertyFailureStatus.Suspended,
+        var hasBlockingFailure = await _failureLookup.HasBlockingAsync(
+            parent.PoNumber,
+            propertyIdText,
             cancellationToken);
         if (hasBlockingFailure)
         {
@@ -142,7 +169,7 @@ public sealed class WorkflowTaskDistributionCommands : IWorkflowTaskDistribution
             });
         }
 
-        var now = DateTime.UtcNow;
+        var now = _time.UtcNow();
         var deed = request.DeedNumber.Trim();
         var children = new List<WorkflowTask>();
 
@@ -208,8 +235,8 @@ public sealed class WorkflowTaskDistributionCommands : IWorkflowTaskDistribution
             WorkflowTaskMapper.SerializeDistribution(distribution),
             now);
 
-        _db.WorkflowTasks.AddRange(children);
-        await _db.SaveChangesAsync(cancellationToken);
+        _caseStudy.WorkflowTasks.AddRange(children);
+        await _caseStudy.SaveChangesAsync(cancellationToken);
 
         if (parent.PropertyId is Guid propertyId)
         {
@@ -282,7 +309,7 @@ public sealed class WorkflowTaskDistributionCommands : IWorkflowTaskDistribution
             });
         }
 
-        var parent = await _db.WorkflowTasks.FirstOrDefaultAsync(t => t.Id == id, cancellationToken);
+        var parent = await _caseStudy.WorkflowTasks.FirstOrDefaultAsync(t => t.Id == id, cancellationToken);
         if (parent is null) return (null, null);
 
         if (parent.Kind != CaseStudyPropertyKind)
@@ -321,7 +348,7 @@ public sealed class WorkflowTaskDistributionCommands : IWorkflowTaskDistribution
         var distribution = WorkflowTaskPhaseRules.NormalizeDistribution(request.Distribution);
         var names = request.AssigneeNames ?? new Dictionary<string, string>();
 
-        var children = await _db.WorkflowTasks
+        var children = await _caseStudy.WorkflowTasks
             .Where(t => t.ParentTaskId == parent.Id)
             .ToListAsync(cancellationToken);
 
@@ -337,7 +364,7 @@ public sealed class WorkflowTaskDistributionCommands : IWorkflowTaskDistribution
                 distribution.EngineeringOfficeId, "مكتب هندسي"),
         };
 
-        var now = DateTime.UtcNow;
+        var now = _time.UtcNow();
         var changed = new List<WorkflowTask>();
         var timelineEvents = new List<PropertyTimelineRecordRequest>();
 
@@ -407,7 +434,7 @@ public sealed class WorkflowTaskDistributionCommands : IWorkflowTaskDistribution
         }
 
         parent.SetDistribution(WorkflowTaskMapper.SerializeDistribution(distribution), now);
-        await _db.SaveChangesAsync(cancellationToken);
+        await _caseStudy.SaveChangesAsync(cancellationToken);
 
         if (timelineEvents.Count > 0)
             await _timeline.RecordManyAsync(timelineEvents, cancellationToken);
@@ -417,7 +444,7 @@ public sealed class WorkflowTaskDistributionCommands : IWorkflowTaskDistribution
             var deed = "";
             if (parent.PropertyId is Guid deedPropertyId)
             {
-                var prop = await _db.WorkOrderProperties.AsNoTracking()
+                var prop = await _caseStudy.WorkOrderProperties.AsNoTracking()
                     .FirstOrDefaultAsync(p => p.Id == deedPropertyId, cancellationToken);
                 deed = prop?.DeedNumber?.Trim() ?? "";
             }
@@ -430,7 +457,7 @@ public sealed class WorkflowTaskDistributionCommands : IWorkflowTaskDistribution
             var deed = "";
             if (parent.PropertyId is Guid deedPropertyId)
             {
-                var prop = await _db.WorkOrderProperties.AsNoTracking()
+                var prop = await _caseStudy.WorkOrderProperties.AsNoTracking()
                     .FirstOrDefaultAsync(p => p.Id == deedPropertyId, cancellationToken);
                 deed = prop?.DeedNumber?.Trim() ?? "";
             }

@@ -7,7 +7,7 @@ import {
   Note,
   PageShell,
   PanelSkeleton,
-} from "@platform/design-system";
+} from "@platform/ui-kit";
 import { CaseStudyForm } from "../components/case-study/CaseStudyForm";
 import { PropertyDetailHero } from "../components/po-intake/PropertyDetailHero";
 import { PropertyTransactionTimeline } from "../components/po-intake/PropertyTransactionTimeline";

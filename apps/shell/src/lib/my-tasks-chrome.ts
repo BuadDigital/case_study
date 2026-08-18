@@ -2,12 +2,12 @@ import { decodeTaskParam } from "@case-study/mfe";
 import { partyTaskPageDef } from "@platform/app-shared/prototype/party-task-pages";
 import type { PageId } from "@platform/types";
 
-export type MyTasksChrome = {
+type MyTasksChrome = {
   breadcrumb: string;
   title: string;
 };
 
-export type MyTasksChromeOptions = {
+type MyTasksChromeOptions = {
   /** Appended after breadcrumb on `/case-study/[taskId]` (e.g. رقم الصك). */
   deedLabel?: string;
   /** Operations task title for `/operations-tasks?task=` (HTML `t.title`). */
@@ -27,7 +27,6 @@ export function resolveMyTasksChrome(
   const page = parts[0] as PageId | undefined;
 
   if (page === "active-survey" && parts[1]) {
-    decodeTaskParam(parts[1]);
     const isEntry = parts[2] === "entry";
     if (isEntry) {
       return {
@@ -42,7 +41,6 @@ export function resolveMyTasksChrome(
   }
 
   if (page === "property-appraisal" && parts[1]) {
-    decodeTaskParam(parts[1]);
     return {
       breadcrumb: "نافذة التقييم",
       title: "المقيم العقاري — نافذة التقييم",
@@ -50,7 +48,6 @@ export function resolveMyTasksChrome(
   }
 
   if (page === "active-inspection" && parts[1]) {
-    decodeTaskParam(parts[1]);
     return {
       breadcrumb: "مساحة العمل",
       title: "معاينة العقار",
@@ -58,7 +55,6 @@ export function resolveMyTasksChrome(
   }
 
   if (page === "property-inspection" && parts[1]) {
-    decodeTaskParam(parts[1]);
     return {
       breadcrumb: "مساحة العمل",
       title: "معاينة العقار",
@@ -77,7 +73,6 @@ export function resolveMyTasksChrome(
   if (page && taskId) {
     const party = partyTaskPageDef(page);
     if (party) {
-      decodeTaskParam(taskId);
       if (page === "property-appraisal") {
         return {
           breadcrumb: "نافذة التقييم",
@@ -105,28 +100,24 @@ export function resolveMyTasksChrome(
   }
 
   if (parts[0] === "active-primary-data" && taskId) {
-    decodeTaskParam(taskId);
     return {
       breadcrumb: "المعاملات النشطة / البيانات الأولية / تنفيذ المعاملة",
       title: "تنفيذ المعاملة",
     };
   }
   if (parts[0] === "active-distribution" && taskId) {
-    decodeTaskParam(taskId);
     return {
       breadcrumb: "المعاملات النشطة / توزيع المعاملات / توزيع المعاملة",
       title: "توزيع المعاملة",
     };
   }
   if (parts[0] === "active-case-study" && taskId) {
-    decodeTaskParam(taskId);
     return {
       breadcrumb: "المعاملات النشطة / دراسة حالة العقارات / دراسة حالة العقار",
       title: "دراسة حالة العقار",
     };
   }
   if (parts[0] === "case-study" && parts[1]) {
-    decodeTaskParam(parts[1]);
     const deed = options?.deedLabel?.trim();
     return {
       breadcrumb: deed || "دراسة حالة العقار",

@@ -1,6 +1,6 @@
 "use client";
 
-import { Button, InlineLoadingSkeleton, Spinner, cn, useToast } from "@platform/design-system";
+import { Button, InlineLoadingSkeleton, Spinner, cn, useToast } from "@platform/ui-kit";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { WorkflowTask } from "@case-study/mfe";
 import { inspectionGateForAppraisal } from "../../lib/evaluator/evaluator-inspection-gate";

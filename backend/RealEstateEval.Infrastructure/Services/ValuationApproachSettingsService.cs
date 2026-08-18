@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using RealEstateEval.Application;
 using RealEstateEval.Application.Abstractions;
 using RealEstateEval.Application.Contracts;
 using RealEstateEval.Domain;
@@ -13,9 +14,12 @@ namespace RealEstateEval.Infrastructure.Services;
 public sealed class ValuationApproachSettingsService(
     ValuationDbContext db,
     CaseStudyDbContext caseStudy,
-    IOrganizationSettingsService organizationSettings)
+    IOrganizationSettingsService organizationSettings,
+    TimeProvider? time = null)
     : IValuationApproachSettingsService
 {
+    private readonly TimeProvider _time = time ?? TimeProvider.System;
+
     public async Task<ValuationApproachSettingsDto?> GetAsync(
         Guid valuationRequestId,
         CancellationToken cancellationToken = default)
@@ -110,7 +114,7 @@ public sealed class ValuationApproachSettingsService(
             : null;
         row.SelectedAssumptionsJson = ValuationApproachSettingsRules.SerializeAssumptions(
             request.SelectedAssumptions ?? []);
-        row.UpdatedAtUtc = DateTime.UtcNow;
+        row.UpdatedAtUtc = _time.UtcNow();
 
         await db.SaveChangesAsync(cancellationToken);
         return (ToDto(vr, row, hasStructures, await AssumptionLibraryAsync(cancellationToken)), null);

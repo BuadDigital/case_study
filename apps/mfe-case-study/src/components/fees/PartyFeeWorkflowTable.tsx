@@ -15,7 +15,7 @@ import {
   cn,
   queueTableWrapClassName,
   useToast,
-} from "@platform/design-system";
+} from "@platform/ui-kit";
 import { prototypeKeys } from "@platform/app-shared/query/prototype-keys";
 import {
   inspectorFeeStatusLabel,

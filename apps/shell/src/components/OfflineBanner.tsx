@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Note } from "@platform/design-system";
+import { Note } from "@platform/ui-kit";
 import { useOnlineStatus } from "@platform/app-shared/hooks/useOnlineStatus";
 import { isFeatureEnabled } from "@platform/app-shared/feature-flags";
 import { isOfflineCapableRole } from "@platform/app-shared";

@@ -1,15 +1,15 @@
 using Microsoft.EntityFrameworkCore;
 using RealEstateEval.Application.Abstractions;
 using RealEstateEval.Domain;
-using RealEstateEval.Infrastructure.Data;
+using RealEstateEval.Infrastructure.Data.Contexts;
 
 namespace RealEstateEval.Infrastructure.Services;
 
 public sealed class WorkOrderLoader : IWorkOrderLoader
 {
-    private readonly ApplicationDbContext _db;
+    private readonly CaseStudyDbContext _db;
 
-    public WorkOrderLoader(ApplicationDbContext db)
+    public WorkOrderLoader(CaseStudyDbContext db)
     {
         _db = db;
     }

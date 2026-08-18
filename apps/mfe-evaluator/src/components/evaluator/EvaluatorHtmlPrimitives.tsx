@@ -1,7 +1,7 @@
 "use client";
 
 import type { ReactNode } from "react";
-import { cn, StatusPill, type StatusPillStyle } from "@platform/design-system";
+import { cn, StatusPill, type StatusPillStyle } from "@platform/ui-kit";
 
 /** Case Study.html `ENG_BOX` — soft surface field cell. */
 export const engBoxClassName =
@@ -26,10 +26,6 @@ export const valPpHeadClassName =
 /** Case Study.html `.chip`. */
 export const valChipClassName =
   "inline-flex items-center gap-1 rounded-md bg-gold-soft px-2.5 py-[3px] text-[12px] font-bold text-gold-d";
-
-/** Case Study.html `.panel-note`. */
-export const panelNoteClassName =
-  "rounded-xl border border-dashed border-border-md bg-surface px-[26px] py-[26px] text-center text-[13px] leading-relaxed text-text-3";
 
 /** Case Study.html `.primary` compact. */
 export const valPrimaryBtnClassName =

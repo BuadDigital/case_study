@@ -8,7 +8,7 @@ import {
   Label,
   cn,
   formControlClassName,
-} from "@platform/design-system";
+} from "@platform/ui-kit";
 import { PartyRecallAdvisorySection } from "../party-tasks/PartyRecallAdvisorySection";
 import { PARTY_TASK_RECALL_CHANGED_EVENT } from "@platform/app-shared/prototype/party-task-recall-storage";
 import type { WorkflowTask } from "../../lib/prototype/tasks-storage";

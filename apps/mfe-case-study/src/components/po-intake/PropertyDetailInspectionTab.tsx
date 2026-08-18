@@ -8,7 +8,7 @@ import {
   cn,
   formControlClassName,
   useToast,
-} from "@platform/design-system";
+} from "@platform/ui-kit";
 import { DetailBadge, EmptyState } from "./PropertyDetailFields";
 import {
   PROPERTY_BOUNDARY_ROWS,
@@ -37,7 +37,6 @@ import {
   inspectorPhotoStampText,
   isInspectorWorkspaceAccepted,
   isInspectorWorkspaceLocked,
-  isServiceAmenityPhotoSlotComplete,
   listServiceAmenityPhotoSlots,
   newObservationId,
   parseInspectorCount,

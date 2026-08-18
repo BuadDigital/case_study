@@ -26,7 +26,7 @@
     "@platform/api-client": "*",
     "@platform/app-shared": "*",
     "@platform/auth-client": "*",
-    "@platform/design-system": "*",
+    "@platform/ui-kit": "*",
     "@platform/offline-client": "*",
     "@platform/types": "*",
     "@settings/mfe": "*",

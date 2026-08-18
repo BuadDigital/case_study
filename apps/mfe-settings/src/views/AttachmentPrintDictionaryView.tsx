@@ -13,7 +13,7 @@ import {
   Select,
   cn,
   useToast,
-} from "@platform/design-system";
+} from "@platform/ui-kit";
 import { getAttachmentPrintDictionary, saveAttachmentPrintDictionary, type AttachmentPrintTypeDto } from "@platform/api-client";
 import { organizationSettingsApiConfig } from "../lib/settings-api-config";
 

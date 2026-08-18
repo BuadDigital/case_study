@@ -37,7 +37,7 @@ public class InspectionLimitsController : ControllerBase
     {
         var (result, errors) = await _limits.SaveAsync(poNumber, propertyId, request, ct);
         if (errors is not null)
-            return BadRequest(new FieldErrorsResponseDto { Errors = errors });
+            return this.FieldErrorsProblem(errors);
         return Ok(result);
     }
 
@@ -52,7 +52,7 @@ public class InspectionLimitsController : ControllerBase
         var (result, error) = await _limits.ApproveRemoteAsync(
             poNumber, propertyId, ActorClaims.Id(User), ct);
         if (error is not null)
-            return BadRequest(new { message = error });
+            return this.BadRequestProblem(error);
         return Ok(result);
     }
 }

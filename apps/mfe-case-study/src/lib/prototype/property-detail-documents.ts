@@ -384,19 +384,6 @@ export function collectFieldInspectionDocumentsFromSubmission(
   return docs;
 }
 
-export function collectAllPropertyDetailDocuments(input: {
-  property: PoPropertyIntake;
-  showDecree: boolean;
-  poNumber: string;
-  surveyTaskId?: string | null;
-  appraisalTaskId?: string | null;
-  inspectionTaskId?: string | null;
-}): PropertyDetailDocumentEntry[] {
-  return collectPropertyDetailDocumentSections(input).flatMap(
-    (section) => section.documents,
-  );
-}
-
 export type PropertyDetailDocumentSection = {
   id: string;
   title: string;
@@ -413,10 +400,6 @@ export const PROPERTY_DETAIL_DOCUMENT_SECTIONS: {
   { id: "appraisal", title: "المقيّم العقاري" },
   { id: "inspection", title: "المعاين الميداني" },
 ];
-
-const SECTION_TITLE_BY_ID = Object.fromEntries(
-  PROPERTY_DETAIL_DOCUMENT_SECTIONS.map((s) => [s.id, s.title]),
-) as Record<string, string>;
 
 function sectionIdForSource(source: string): string {
   if (source === "البيانات الأولية") return "intake";
@@ -460,28 +443,12 @@ export function collectPropertyDetailDocumentSections(input: {
   })).filter((section) => section.documents.length > 0);
 }
 
-export function countPropertyDetailDocuments(
-  sections: PropertyDetailDocumentSection[],
-): number {
-  return sections.reduce((total, section) => total + section.documents.length, 0);
-}
-
 export function listPropertyDetailPhotos(
   sections: PropertyDetailDocumentSection[],
 ): PropertyDetailDocumentEntry[] {
   return sections
     .flatMap((section) => section.documents)
     .filter((doc) => doc.kind === "image");
-}
-
-export function countPropertyDetailPhotos(
-  sections: PropertyDetailDocumentSection[],
-): number {
-  return listPropertyDetailPhotos(sections).length;
-}
-
-export function sectionTitleForPreviewHint(source: string): boolean {
-  return source === SECTION_TITLE_BY_ID.engineering || source === SECTION_TITLE_BY_ID.appraisal;
 }
 
 export function openPropertyDetailDocumentPreview(

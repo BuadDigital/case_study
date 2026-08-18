@@ -9,7 +9,7 @@ import {
   useState,
   type HTMLAttributes,
 } from "react";
-import { Input, cn } from "@platform/design-system";
+import { Input, cn } from "@platform/ui-kit";
 
 export type RegSearchSelectOption = {
   value: string;

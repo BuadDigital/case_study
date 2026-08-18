@@ -128,15 +128,18 @@ public sealed class OperationsTaskReminderDedupTests
         await app.SaveChangesAsync();
 
         var time = new FakeTime(SundayMorningUtc);
-        var notifier = new OperationsTaskNotifier(ops, app, notifications);
+        var financial = TestInspectorFeeServiceFactory.ShareFinancial(app);
+        var identity = TestInspectorFeeServiceFactory.ShareIdentity(app);
+        var notifier = new OperationsTaskNotifier(ops, identity, notifications);
         var commands = new OperationsTaskCommands(
             ops,
-            app,
-            new OperationsTaskQueryService(ops, app),
+            new OperationsTaskQueryService(ops, financial, identity),
             notifier,
             new OperationsTaskVisitFeeHelper(
-                app,
-                new PartyFeePricingService(TestInspectorFeeServiceFactory.ShareFinancial(app))),
+                ops,
+                financial,
+                identity,
+                new PartyFeePricingService(financial)),
             time);
 
         return new Fixture(ops, messaging, notifications, notifier, commands, time);

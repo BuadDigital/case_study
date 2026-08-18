@@ -13,7 +13,7 @@ namespace RealEstateEval.Infrastructure.Services;
 public sealed class ValuationReportDocumentService(
     ValuationDbContext valuation,
     CaseStudyDbContext caseStudy,
-    AttachmentsDbContext attachments,
+    IAttachmentLookup attachments,
     IOrganizationSettingsService organizationSettings,
     IAttachmentPrintDictionaryService printDictionary,
     IValuationComparableSelectionService selections,
@@ -314,19 +314,13 @@ public sealed class ValuationReportDocumentService(
         if (string.IsNullOrWhiteSpace(propertyId))
             return (siteMaps, photos, survey, deed);
 
-        var rows = await attachments.FileAttachments.AsNoTracking()
-            .Where(a => a.PrintInReport && a.ScopeKey.Contains(propertyId))
+        var rows = (await attachments.ListForPropertyAsync(propertyId, cancellationToken))
+            .Where(a => a.PrintInReport)
             .OrderBy(a => a.CreatedAtUtc)
             .Take(60)
-            .ToListAsync(cancellationToken);
+            .ToList();
 
         var photoBudget = AttachmentPrintRules.PhotoBudget(hasStructures);
-
- // 11س — photos are auto-dated at capture; the caption prints the date.
-        var rowIds = rows.Select(r => r.Id).ToList();
-        var capturedAt = await attachments.PhotoMetadata.AsNoTracking()
-            .Where(m => rowIds.Contains(m.PhotoId) && m.CapturedAtUtc != null)
-            .ToDictionaryAsync(m => m.PhotoId, m => m.CapturedAtUtc, cancellationToken);
 
  // freely-defined dictionary types must not be silently dropped: any
  // active custom type routes to the appendix bucket (section 25) with its
@@ -365,7 +359,7 @@ public sealed class ValuationReportDocumentService(
                 FileName = a.FileName,
                 ReportSectionNumber = section.Value,
                 IsImage = isImage,
-                CapturedAtDisplay = capturedAt.TryGetValue(a.Id, out var cap) && cap is { } capUtc
+                CapturedAtDisplay = a.PhotoMetadata?.CapturedAtUtc is { } capUtc
                     ? ValuationReportDisplayRules.FormatGregorianDate(DateOnly.FromDateTime(capUtc))
                     : null,
             };

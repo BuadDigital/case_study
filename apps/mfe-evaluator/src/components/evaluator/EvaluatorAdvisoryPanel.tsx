@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { RegistrationFormCard } from "@platform/app-shared/registration/RegistrationFormCard";
-import { Button, cn, InlineLoadingSkeleton } from "@platform/design-system";
+import { Button, cn, InlineLoadingSkeleton } from "@platform/ui-kit";
 import { emptyCaseStudyInfoRolesConfig } from "@settings/mfe";
 import { useCaseStudyInfoRolesQuery } from "@settings/mfe/query/settings-queries";
 import type { WorkflowTask } from "@case-study/mfe";

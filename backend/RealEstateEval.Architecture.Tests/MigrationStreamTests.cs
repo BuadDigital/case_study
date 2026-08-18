@@ -207,7 +207,7 @@ public class MigrationStreamTests
 
                 var relative = RepoPaths.Relative(file);
                 if (!relative.Equals(
-                    "backend/services/case-study/RealEstateEval.CaseStudy.Api/Program.cs",
+                    "backend/services/case-study/RealEstateEval.CaseStudy.Api/ServiceModule.cs",
                     StringComparison.Ordinal))
                 {
                     offenders.Add(relative);
@@ -223,11 +223,13 @@ public class MigrationStreamTests
     }
 
  /// <summary>
- /// The deploy migrator must apply every catalogued stream; a stream it does not know about
- /// silently never runs in production.
+ /// The deploy migrator must apply every catalogued extracted stream; a stream it does not
+ /// know about silently never runs in production. Dedicated streams do not fall back to a
+ /// leftover shared database (`TryGetShared` is forbidden). An optional unsuffixed
+ /// <c>REAL_ESTATE_EVAL_PG_CONNECTION_STRING</c> still applies the frozen legacy stream first.
  /// </summary>
     [Fact]
-    public void DeployMigratorAppliesTheLegacyStreamThenEveryContextStream()
+    public void DeployMigratorAppliesEveryExtractedStream()
     {
         var applyOrder = BoundedContextMigrations.ApplyOrder.Select(type => type.Name).ToList();
         var extracted = Catalog.ExtractedContexts
@@ -240,7 +242,11 @@ public class MigrationStreamTests
         var migrator = File.ReadAllText(
             RepoPaths.Combine("backend", "tools", "DbMigrate", "Program.cs"));
 
-        Assert.Contains(nameof(ApplicationDbContext), migrator, StringComparison.Ordinal);
+        Assert.DoesNotContain("TryGetShared", migrator, StringComparison.Ordinal);
         Assert.Contains(nameof(BoundedContextMigrations.ApplyOrder), migrator, StringComparison.Ordinal);
+        Assert.Contains(nameof(BoundedContextConnections), migrator, StringComparison.Ordinal);
+        Assert.Contains(nameof(PostgresDatabaseProvisioner), migrator, StringComparison.Ordinal);
+        foreach (var name in extracted)
+            Assert.Contains(name, migrator, StringComparison.Ordinal);
     }
 }

@@ -11,7 +11,7 @@ import {
   ModalHeader,
   ModalOverlay,
   ModalTitle,
-} from "@platform/design-system";
+} from "@platform/ui-kit";
 
 export function FeeActionReasonModal({
   open,

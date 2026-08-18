@@ -9,15 +9,18 @@ namespace RealEstateEval.Shared.Web;
 /// handler emit.
 /// </summary>
 /// <remarks>
-/// Each helper also copies the message into a legacy extension member
-/// (<c>error</c> or <c>errors</c>). Extensions serialize as top-level JSON properties,
-/// so existing clients reading <c>payload.error</c> keep working while new clients can
+/// Each helper also copies the message into legacy extension members
+/// (<c>error</c>, <c>message</c>, and for field maps <c>errors</c>). Extensions serialize
+/// as top-level JSON properties, so existing clients keep working while new clients can
 /// read the standard <c>detail</c>/<c>title</c>/<c>status</c> fields.
 /// </remarks>
 public static class ApiProblemExtensions
 {
  /// <summary>Legacy single-message member kept for existing front-end callers.</summary>
     public const string LegacyErrorMember = "error";
+
+ /// <summary>Older callers read <c>message</c> instead of <c>error</c> or <c>detail</c>.</summary>
+    public const string LegacyMessageMember = "message";
 
  /// <summary>Legacy per-field member kept for existing front-end callers.</summary>
     public const string LegacyErrorsMember = "errors";
@@ -40,6 +43,34 @@ public static class ApiProblemExtensions
         string title = "Conflict") =>
         BuildProblem(controller, StatusCodes.Status409Conflict, title, detail);
 
+    public static ObjectResult UnauthorizedProblem(
+        this ControllerBase controller,
+        string detail,
+        string title = "Unauthorized") =>
+        BuildProblem(controller, StatusCodes.Status401Unauthorized, title, detail);
+
+    public static ObjectResult ForbiddenProblem(
+        this ControllerBase controller,
+        string detail,
+        string title = "Forbidden") =>
+        BuildProblem(controller, StatusCodes.Status403Forbidden, title, detail);
+
+    public static ObjectResult GoneProblem(
+        this ControllerBase controller,
+        string detail,
+        string title = "Gone") =>
+        BuildProblem(controller, StatusCodes.Status410Gone, title, detail);
+
+    public static ObjectResult WithProblemExtension(
+        this ObjectResult result,
+        string key,
+        object? value)
+    {
+        if (result.Value is ProblemDetails problem)
+            problem.Extensions[key] = value;
+        return result;
+    }
+
  /// <summary>
  /// Per-field validation failure. <paramref name="errors"/> is surfaced both as the
  /// legacy <c>errors</c> map and as the standard problem <c>detail</c>.
@@ -54,7 +85,7 @@ public static class ApiProblemExtensions
             ? string.Join(" ", errors.Values)
             : "الطلب غير صالح.";
 
-        var result = BuildProblem(controller, statusCode, title, detail, includeLegacyError: false);
+        var result = BuildProblem(controller, statusCode, title, detail);
         ((ProblemDetails)result.Value!).Extensions[LegacyErrorsMember] =
             errors.ToDictionary(pair => pair.Key, pair => pair.Value);
         return result;
@@ -64,16 +95,18 @@ public static class ApiProblemExtensions
         ControllerBase controller,
         int statusCode,
         string title,
-        string detail,
-        bool includeLegacyError = true)
+        string detail)
     {
         var result = controller.Problem(
             detail: detail,
             statusCode: statusCode,
             title: title);
 
-        if (includeLegacyError && result.Value is ProblemDetails problem)
+        if (result.Value is ProblemDetails problem)
+        {
             problem.Extensions[LegacyErrorMember] = detail;
+            problem.Extensions[LegacyMessageMember] = detail;
+        }
 
         return result;
     }

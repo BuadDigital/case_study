@@ -58,7 +58,3 @@ export async function submitValuationRequestImpediment(
   if (result.kind === "not_found") return { ok: false, message: "طلب التقييم غير موجود" };
   return { ok: false, message: "تعذّر تسجيل التعذّر — حاول لاحقاً" };
 }
-
-export function valuationApiEnabled(): boolean {
-  return prototypeModulesApiConfig() !== null;
-}

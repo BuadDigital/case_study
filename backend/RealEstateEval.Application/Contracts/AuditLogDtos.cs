@@ -14,6 +14,17 @@ public sealed class AuditLogDto
     public DateTime CreatedAtUtc { get; init; }
 }
 
+public sealed class AppendAuditLogRequest
+{
+    public required string ActorId { get; init; }
+    public required string Action { get; init; }
+    public required string EntityType { get; init; }
+    public required string EntityId { get; init; }
+    public string BeforeJson { get; init; } = "null";
+    public string AfterJson { get; init; } = "null";
+    public DateTime? CreatedAtUtc { get; init; }
+}
+
 public sealed class AuditLogPageDto
 {
     public IReadOnlyList<AuditLogDto> Items { get; init; } = [];

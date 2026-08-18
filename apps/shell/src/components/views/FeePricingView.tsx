@@ -1,7 +1,7 @@
 "use client";
 
 import { FinancePartyFeePricing } from "@financial/mfe";
-import { PageShell } from "@platform/design-system";
+import { PageShell } from "@platform/ui-kit";
 
 export function FeePricingView() {
   // Single scroll surface is `#content` in AppShell — do not nest overflow-y here

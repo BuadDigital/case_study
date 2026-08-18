@@ -1,5 +1,6 @@
-using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
+using RealEstateEval.Application;
 using RealEstateEval.Application.Abstractions;
 using RealEstateEval.Application.Contracts;
 using RealEstateEval.Domain;
@@ -11,10 +12,21 @@ public sealed class PropertyKeysService : IPropertyKeysService
 {
     private const int MaxListRows = 500;
     private readonly OperationsDbContext _ops;
-    private readonly CaseStudyDbContext _caseStudy;
+    private readonly ICaseStudyLookup _caseStudy;
+    private readonly TimeProvider _time;
 
-    public PropertyKeysService(OperationsDbContext ops, CaseStudyDbContext caseStudy)
+    public PropertyKeysService(OperationsDbContext ops, CaseStudyDbContext caseStudy,
+        TimeProvider? time = null)
+        : this(ops, new CaseStudyLookup(caseStudy), time)
     {
+    }
+
+    [ActivatorUtilitiesConstructor]
+    public PropertyKeysService(OperationsDbContext ops, ICaseStudyLookup caseStudy,
+        TimeProvider? time = null)
+    {
+        _time = time ?? TimeProvider.System;
+
         _ops = ops;
         _caseStudy = caseStudy;
     }
@@ -39,12 +51,7 @@ public sealed class PropertyKeysService : IPropertyKeysService
             .ToListAsync(cancellationToken);
 
         var poNumbers = rows.Select(r => r.PoNumber.Trim()).Distinct().ToList();
-        var properties = poNumbers.Count == 0
-            ? []
-            : await _caseStudy.WorkOrderProperties.AsNoTracking()
-                .Include(p => p.WorkOrder)
-                .Where(p => p.WorkOrder != null && poNumbers.Contains(p.WorkOrder!.PoNumber))
-                .ToListAsync(cancellationToken);
+        var properties = await _caseStudy.ListPropertiesByPoNumbersAsync(poNumbers, cancellationToken);
 
         return rows.Select(row => ToDto(row, properties)).ToList();
     }
@@ -68,7 +75,7 @@ public sealed class PropertyKeysService : IPropertyKeysService
 
  // Prefer envelope handoff confirmation when a linked envelope exists.
         if (!string.IsNullOrWhiteSpace(request.Status)
-            && string.Equals(request.Status.Trim(), "done", StringComparison.OrdinalIgnoreCase))
+            && PropertyKeyWorkflowStatuses.IsDone(request.Status.Trim()))
         {
             var linked = await FindLinkedEnvelopeAsync(row, cancellationToken);
             if (linked is not null)
@@ -81,10 +88,10 @@ public sealed class PropertyKeysService : IPropertyKeysService
                 if (pending is not null)
                 {
                     pending.Status = KeyHandoffStatuses.Confirmed;
-                    pending.ConfirmedAtUtc = DateTime.UtcNow;
+                    pending.ConfirmedAtUtc = _time.UtcNow();
                     pending.ConfirmedByName = "compat-patch";
                     linked.Status = KeyEnvelopeStatuses.Assessor;
-                    linked.UpdatedAtUtc = DateTime.UtcNow;
+                    linked.UpdatedAtUtc = _time.UtcNow();
                 }
             }
         }
@@ -92,9 +99,8 @@ public sealed class PropertyKeysService : IPropertyKeysService
         if (request.Key is not null) row.HasKey = request.Key.Value;
         if (!string.IsNullOrWhiteSpace(request.Status))
             row.WorkflowStatus = request.Status.Trim();
-        row.UpdatedAtUtc = DateTime.UtcNow;
+        row.UpdatedAtUtc = _time.UtcNow();
         await _ops.SaveChangesAsync(cancellationToken);
-        await _caseStudy.SaveChangesAsync(cancellationToken);
         return ToDto(row, []);
     }
 
@@ -104,14 +110,7 @@ public sealed class PropertyKeysService : IPropertyKeysService
     {
         var po = row.PoNumber.Trim();
         var deed = row.PropertyId.Trim();
-        var property = await _caseStudy.WorkOrderProperties.AsNoTracking()
-            .Include(p => p.WorkOrder)
-            .FirstOrDefaultAsync(
-                p => !p.IsRemoved
-                     && p.WorkOrder != null
-                     && p.WorkOrder.PoNumber == po
-                     && (p.DeedNumber == deed || p.Id.ToString() == deed),
-                cancellationToken);
+        var property = await _caseStudy.GetPropertyByPoAndDeedAsync(po, deed, cancellationToken);
         var requestNumber = property?.RequestNumber?.Trim() ?? "";
         if (requestNumber.Length == 0) return null;
 
@@ -124,7 +123,7 @@ public sealed class PropertyKeysService : IPropertyKeysService
 
     private async Task SyncFromEnvelopesAndLegacyAsync(CancellationToken cancellationToken)
     {
-        var now = DateTime.UtcNow;
+        var now = _time.UtcNow();
         var existingRows = await _ops.PropertyKeyRecords.ToListAsync(cancellationToken);
         var matchedRowIds = new HashSet<Guid>();
 
@@ -142,15 +141,9 @@ public sealed class PropertyKeysService : IPropertyKeysService
             .Distinct()
             .ToList();
 
-        var linkedProperties = requestNumbers.Count == 0
-            ? []
-            : await _caseStudy.WorkOrderProperties.AsNoTracking()
-                .Include(p => p.WorkOrder)
-                .Where(p =>
-                    !p.IsRemoved
-                    && p.RequestNumber != null
-                    && requestNumbers.Contains(p.RequestNumber))
-                .ToListAsync(cancellationToken);
+        var linkedProperties = await _caseStudy.ListPropertiesByRequestNumbersAsync(
+            requestNumbers,
+            cancellationToken);
 
         var enabledNoKey = await _ops.PropertyCourtAccesses.AsNoTracking()
             .Where(a => a.StudyHoldStatus == PropertyCourtAccessStatuses.EnabledNoKey)
@@ -204,10 +197,10 @@ public sealed class PropertyKeysService : IPropertyKeysService
                 UpsertProjectedRow(
                     existingRows,
                     matchedRowIds,
-                    po: property.WorkOrder?.PoNumber?.Trim() ?? "",
+                    po: property.PoNumber,
                     deedLabel: deedLabel,
-                    area: property.City?.Trim() ?? "",
-                    propertyType: property.PropertyType?.Trim() ?? "",
+                    area: property.City,
+                    propertyType: property.PropertyType,
                     specialist: envelope.CreatedByName,
                     workflowStatus: DeriveStatus(envelope, assignment),
                     now);
@@ -224,7 +217,6 @@ public sealed class PropertyKeysService : IPropertyKeysService
         }
 
         await _ops.SaveChangesAsync(cancellationToken);
-        await _caseStudy.SaveChangesAsync(cancellationToken);
     }
 
     private async Task MergeLegacyGovReviewAsync(
@@ -233,52 +225,33 @@ public sealed class PropertyKeysService : IPropertyKeysService
         DateTime now,
         CancellationToken cancellationToken)
     {
-        var govTasks = await _caseStudy.WorkflowTasks.AsNoTracking()
-            .Where(t => t.Kind == WorkflowTaskKind.GovernmentReview && t.PropertyId != null)
-            .ToListAsync(cancellationToken);
-        if (govTasks.Count == 0) return;
+        var govRows = await _caseStudy.ListGovReviewKeyStatusesAsync(cancellationToken);
+        if (govRows.Count == 0) return;
 
-        var taskIds = govTasks.Select(t => t.Id).ToList();
-        var submissions = await _caseStudy.PartyTaskSubmissions.AsNoTracking()
-            .Where(s => s.Kind == "government-review" && taskIds.Contains(s.WorkflowTaskId))
-            .ToListAsync(cancellationToken);
-
-        var poNumbers = govTasks.Select(t => t.PoNumber.Trim()).Distinct().ToList();
-        var properties = await _caseStudy.WorkOrderProperties.AsNoTracking()
-            .Include(p => p.WorkOrder)
-            .Where(p => p.WorkOrder != null && poNumbers.Contains(p.WorkOrder!.PoNumber))
-            .ToListAsync(cancellationToken);
-        var propertyById = properties.ToDictionary(p => p.Id);
-
-        foreach (var task in govTasks)
+        foreach (var row in govRows)
         {
-            var submission = submissions.FirstOrDefault(s => s.WorkflowTaskId == task.Id);
-            if (submission is null) continue;
-            var keysStatus = ParseKeysStatus(submission.PayloadJson);
-            if (keysStatus is not ("pending" or "received")) continue;
-
-            var propertyId = task.PropertyId!.Value;
-            propertyById.TryGetValue(propertyId, out var property);
-            var po = task.PoNumber.Trim();
-            var deedLabel = FormatDeedLabel(property, task.PropertyOrdinal);
+            var po = row.PoNumber.Trim();
+            var deedLabel = FormatDeedLabel(row.DeedNumber, row.PropertyId, row.PropertyOrdinal);
 
  // Skip if already projected from an envelope for same PO+deed
             var already = existingRows.Any(x =>
                 matchedRowIds.Contains(x.Id)
                 && x.PoNumber.Trim().Equals(po, StringComparison.OrdinalIgnoreCase)
                 && (string.Equals(x.PropertyId, deedLabel, StringComparison.OrdinalIgnoreCase)
-                    || string.Equals(x.PropertyId, propertyId.ToString(), StringComparison.OrdinalIgnoreCase)));
+                    || string.Equals(x.PropertyId, row.PropertyId.ToString(), StringComparison.OrdinalIgnoreCase)));
             if (already) continue;
 
-            var workflowStatus = keysStatus == "received" ? "done" : "progress";
+            var workflowStatus = row.KeysStatus == PropertyKeysStatuses.Received
+                ? PropertyKeyWorkflowStatuses.Done
+                : PropertyKeyWorkflowStatuses.Progress;
             UpsertProjectedRow(
                 existingRows,
                 matchedRowIds,
                 po,
                 deedLabel,
-                area: property?.City?.Trim() ?? "",
-                propertyType: property?.PropertyType?.Trim() ?? "",
-                specialist: task.AssigneeName?.Trim() ?? "",
+                area: row.City,
+                propertyType: row.PropertyType,
+                specialist: row.AssigneeName,
                 workflowStatus,
                 now);
         }
@@ -327,8 +300,8 @@ public sealed class PropertyKeysService : IPropertyKeysService
         existing.PropertyType = propertyType.Length > 0 ? propertyType : existing.PropertyType;
         existing.HasKey = true;
         existing.Specialist = specialist.Length > 0 ? specialist : existing.Specialist;
-        if (!string.Equals(existing.WorkflowStatus, "done", StringComparison.OrdinalIgnoreCase)
-            || string.Equals(workflowStatus, "done", StringComparison.OrdinalIgnoreCase))
+        if (!PropertyKeyWorkflowStatuses.IsDone(existing.WorkflowStatus)
+            || PropertyKeyWorkflowStatuses.IsDone(workflowStatus))
             existing.WorkflowStatus = workflowStatus;
         existing.UpdatedAtUtc = now;
         matchedRowIds.Add(existing.Id);
@@ -336,25 +309,25 @@ public sealed class PropertyKeysService : IPropertyKeysService
 
     private static string DeriveStatus(KeyEnvelope envelope, KeyEnvelopeAssignment? assignment)
     {
-        if (assignment?.Status == KeyAssignmentStatuses.Matched) return "done";
+        if (assignment?.Status == KeyAssignmentStatuses.Matched) return PropertyKeyWorkflowStatuses.Done;
         if (envelope.Handoffs.Any(h =>
                 h.Kind == KeyHandoffKinds.Internal
                 && h.Status is KeyHandoffStatuses.Confirmed or KeyHandoffStatuses.Completed))
-            return "done";
+            return PropertyKeyWorkflowStatuses.Done;
         if (envelope.Status is KeyEnvelopeStatuses.Assessor or KeyEnvelopeStatuses.External)
-            return "done";
-        return "progress";
+            return PropertyKeyWorkflowStatuses.Done;
+        return PropertyKeyWorkflowStatuses.Progress;
     }
 
     private static string ResolveDeedStatus(
         PropertyKeyRecord row,
-        IReadOnlyList<WorkOrderProperty> properties)
+        IReadOnlyList<CaseStudyPropertySnapshotDto> properties)
     {
         var po = row.PoNumber.Trim();
         var key = row.PropertyId.Trim();
         var match = properties.FirstOrDefault(p =>
-            p.WorkOrder?.PoNumber.Trim().Equals(po, StringComparison.OrdinalIgnoreCase) == true &&
-            (string.Equals(p.DeedNumber?.Trim(), key, StringComparison.OrdinalIgnoreCase) ||
+            p.PoNumber.Trim().Equals(po, StringComparison.OrdinalIgnoreCase) &&
+            (string.Equals(p.DeedNumber, key, StringComparison.OrdinalIgnoreCase) ||
              string.Equals(p.Id.ToString(), key, StringComparison.OrdinalIgnoreCase)));
         var status = match?.DeedStatus?.Trim();
         return string.IsNullOrWhiteSpace(status) ? "—" : status;
@@ -362,7 +335,7 @@ public sealed class PropertyKeysService : IPropertyKeysService
 
     private static PropertyKeyRecordDto ToDto(
         PropertyKeyRecord row,
-        IReadOnlyList<WorkOrderProperty> properties) => new()
+        IReadOnlyList<CaseStudyPropertySnapshotDto> properties) => new()
     {
         Id = row.Id,
         IdProp = row.PropertyId,
@@ -375,26 +348,11 @@ public sealed class PropertyKeysService : IPropertyKeysService
         DeedStatus = ResolveDeedStatus(row, properties),
     };
 
-    private static string? ParseKeysStatus(string payloadJson)
+    private static string FormatDeedLabel(string? deedNumber, Guid propertyId, int propertyOrdinal)
     {
-        try
-        {
-            using var doc = JsonDocument.Parse(payloadJson);
-            if (!doc.RootElement.TryGetProperty("keysStatus", out var prop)) return null;
-            var value = prop.GetString()?.Trim();
-            return string.IsNullOrWhiteSpace(value) ? null : value;
-        }
-        catch
-        {
-            return null;
-        }
-    }
-
-    private static string FormatDeedLabel(WorkOrderProperty? property, int propertyOrdinal)
-    {
-        var deed = property?.DeedNumber?.Trim();
+        var deed = deedNumber?.Trim();
         if (!string.IsNullOrWhiteSpace(deed)) return deed;
         if (propertyOrdinal > 0) return propertyOrdinal.ToString("000");
-        return property?.Id.ToString() ?? "—";
+        return propertyId.ToString();
     }
 }

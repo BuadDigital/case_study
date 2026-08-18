@@ -1,13 +1,6 @@
 import type { InspectorFeeRowDto } from "@platform/api-client";
 import type { StaffUser } from "../prototype/constants";
 
-const TASK_KIND_CATEGORY: Record<string, string> = {
-  "field-inspection": "المعاينون",
-  "engineering-survey": "المكاتب الهندسية",
-  "court-visit": "أتعاب زيارة المحكمة",
-  "government-review": "أتعاب زيارة المحكمة",
-};
-
 /** Seed / distribution assignee ids → Arabic display when staff lookup is empty. */
 const ASSIGNEE_DISPLAY_FALLBACKS: Record<string, string> = {
   "fi-abdullah-abdulmane": "عبدالله عبدالمانع",
@@ -27,17 +20,6 @@ function looksLikeAssigneeIdCode(name: string): boolean {
   // Pure latin technical tokens without Arabic letters
   if (/^[a-z0-9._-]+$/i.test(t) && !/[\u0600-\u06FF]/.test(t)) return true;
   return false;
-}
-
-export type PartyFeeGroup = {
-  assigneeId: string;
-  name: string;
-  category: string;
-  rows: InspectorFeeRowDto[];
-};
-
-export function partyCategoryFromRow(row: InspectorFeeRowDto): string {
-  return TASK_KIND_CATEGORY[row.taskKind] ?? row.taskKind;
 }
 
 export function buildAssigneeStaffIndex(
@@ -125,21 +107,7 @@ export function resolveAssigneeDisplayName(input: {
   return fb || "—";
 }
 
-export function resolvePartyCategory(
-  assigneeId: string,
-  rows: InspectorFeeRowDto[],
-  staffUsers: StaffUser[],
-): string {
-  const row = rows.find((r) => r.assigneeId?.trim() === assigneeId.trim());
-  if (row) return partyCategoryFromRow(row);
-  const user = buildAssigneeStaffIndex(staffUsers).get(assigneeId.trim());
-  if (user?.type === "external") return "المكاتب الهندسية";
-  if (user?.role === "field-inspector") return "المعاينون";
-  if (user?.role === "government-reviewer") return "المراجعون الحكوميون";
-  return "—";
-}
-
-export function compareInspectorFeeRowsNewestFirst(
+function compareInspectorFeeRowsNewestFirst(
   a: InspectorFeeRowDto,
   b: InspectorFeeRowDto,
 ): number {
@@ -163,34 +131,6 @@ export function sortInspectorFeeRowsNewestFirst(
   rows: InspectorFeeRowDto[],
 ): InspectorFeeRowDto[] {
   return [...rows].sort(compareInspectorFeeRowsNewestFirst);
-}
-
-export function groupInspectorFeesByParty(
-  rows: InspectorFeeRowDto[],
-  staffUsers: StaffUser[],
-): PartyFeeGroup[] {
-  const map = new Map<string, InspectorFeeRowDto[]>();
-  for (const row of rows) {
-    const key = row.assigneeId?.trim() || "—";
-    const list = map.get(key) ?? [];
-    list.push(row);
-    map.set(key, list);
-  }
-  return [...map.entries()]
-    .map(([assigneeId, partyRows]) => ({
-      assigneeId,
-      name: resolvePartyName(assigneeId, staffUsers),
-      category: resolvePartyCategory(assigneeId, partyRows, staffUsers),
-      rows: sortInspectorFeeRowsNewestFirst(partyRows),
-    }))
-    .sort((a, b) => a.name.localeCompare(b.name, "ar"));
-}
-
-export function formatFeeDate(iso: string | null | undefined): string {
-  if (!iso) return "—";
-  const date = new Date(iso);
-  if (Number.isNaN(date.getTime())) return "—";
-  return date.toLocaleDateString("ar-SA");
 }
 
 export const DISCOUNT_REASONS = [

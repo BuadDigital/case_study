@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
+using RealEstateEval.Application;
 using RealEstateEval.Application.Abstractions;
 using RealEstateEval.Application.Contracts;
 using RealEstateEval.Domain;
@@ -12,11 +13,15 @@ public sealed class PushSubscriptionService : IPushSubscriptionService
 {
     private readonly MessagingDbContext _db;
     private readonly WebPushOptions _options;
+    private readonly TimeProvider _time;
 
     public PushSubscriptionService(
         MessagingDbContext db,
-        IOptions<WebPushOptions> options)
+        IOptions<WebPushOptions> options,
+        TimeProvider? time = null)
     {
+        _time = time ?? TimeProvider.System;
+
         _db = db;
         _options = options.Value;
     }
@@ -53,7 +58,7 @@ public sealed class PushSubscriptionService : IPushSubscriptionService
             throw new ArgumentException("endpoint, p256dh, and auth are required");
         }
 
-        var now = DateTime.UtcNow;
+        var now = _time.UtcNow();
         var existing = await _db.PushSubscriptions
             .FirstOrDefaultAsync(x => x.Endpoint == endpoint, cancellationToken);
 
@@ -128,14 +133,14 @@ public sealed class PushSubscriptionService : IPushSubscriptionService
             {
                 UserId = userId,
                 PushEnabled = enabled,
-                UpdatedAtUtc = DateTime.UtcNow,
+                UpdatedAtUtc = _time.UtcNow(),
             };
             _db.PushPreferences.Add(row);
         }
         else
         {
             row.PushEnabled = enabled;
-            row.UpdatedAtUtc = DateTime.UtcNow;
+            row.UpdatedAtUtc = _time.UtcNow();
         }
 
         await _db.SaveChangesAsync(cancellationToken);
@@ -145,9 +150,10 @@ public sealed class PushSubscriptionService : IPushSubscriptionService
  /// <summary>Prune soft-disabled subscriptions older than 30 days.</summary>
     public static async Task PruneDisabledAsync(
         MessagingDbContext db,
+        TimeProvider? time = null,
         CancellationToken cancellationToken = default)
     {
-        var cutoff = DateTime.UtcNow.AddDays(-30);
+        var cutoff = (time ?? TimeProvider.System).UtcNow().AddDays(-30);
         await db.PushSubscriptions
             .Where(x => x.DisabledAtUtc != null && x.DisabledAtUtc < cutoff)
             .ExecuteDeleteAsync(cancellationToken);

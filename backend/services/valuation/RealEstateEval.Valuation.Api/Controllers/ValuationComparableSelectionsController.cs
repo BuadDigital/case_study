@@ -12,7 +12,6 @@ namespace RealEstateEval.Valuation.Api.Controllers;
 /// </summary>
 [ApiController]
 [Route("api/valuation-requests/{valuationRequestId:guid}/comparable-selections")]
-[Route("api/valuation-requests/v1/{valuationRequestId:guid}/comparable-selections")]
 [Authorize]
 public class ValuationComparableSelectionsController : ControllerBase
 {
@@ -43,7 +42,7 @@ public class ValuationComparableSelectionsController : ControllerBase
             ActorClaims.Id(User),
             ct);
         if (errors is not null)
-            return BadRequest(new FieldErrorsResponseDto { Errors = errors });
+            return this.FieldErrorsProblem(errors);
         return Ok(result);
     }
 
@@ -61,12 +60,11 @@ public class ValuationComparableSelectionsController : ControllerBase
             request,
             ct);
         if (errors is not null)
-            return BadRequest(new FieldErrorsResponseDto { Errors = errors });
+            return this.FieldErrorsProblem(errors);
         return Ok(result);
     }
 
     [HttpPut("~/api/valuation-requests/{valuationRequestId:guid}/market-approach")]
-    [HttpPut("~/api/valuation-requests/v1/{valuationRequestId:guid}/market-approach")]
     [Authorize(Policy = CapabilityPolicyNames.SubmitValuationReport)]
     public async Task<ActionResult<ValuationComparableSelectionListDto>> SaveMarketApproach(
         Guid valuationRequestId,
@@ -78,7 +76,7 @@ public class ValuationComparableSelectionsController : ControllerBase
             request,
             ct);
         if (errors is not null)
-            return BadRequest(new FieldErrorsResponseDto { Errors = errors });
+            return this.FieldErrorsProblem(errors);
         return Ok(result);
     }
 
@@ -97,7 +95,7 @@ public class ValuationComparableSelectionsController : ControllerBase
             ActorClaims.Id(User),
             ct);
         if (error is not null)
-            return BadRequest(new { message = error });
+            return this.BadRequestProblem(error);
         return Ok(result);
     }
 
@@ -112,7 +110,7 @@ public class ValuationComparableSelectionsController : ControllerBase
             valuationRequestId,
             comparablePropertyId,
             ct);
-        if (!ok) return BadRequest(new { message = error });
+        if (!ok) return this.BadRequestProblem(error ?? "تعذر تنفيذ العملية.");
         return NoContent();
     }
 }

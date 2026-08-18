@@ -1,9 +1,11 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
+using RealEstateEval.Application;
 using RealEstateEval.Application.Abstractions;
 using RealEstateEval.Application.Contracts;
 using RealEstateEval.Application.Rules;
 using RealEstateEval.Domain;
-using RealEstateEval.Infrastructure.Data;
+using RealEstateEval.Infrastructure.Data.Contexts;
 
 namespace RealEstateEval.Infrastructure.Services;
 
@@ -11,16 +13,38 @@ public sealed class InspectorFeeSummaryQuery : IInspectorFeeSummaryQuery
 {
     private const int MaxSummaryRows = 2000;
 
-    private readonly ApplicationDbContext _db;
+    private readonly FinancialDbContext _financial;
+    private readonly ICaseStudyLookup _lookup;
+    private readonly IIdentityDirectory _identity;
     private readonly IInspectorFeeLedgerWriter _writer;
+    private readonly TimeProvider _time;
 
     public InspectorFeeSummaryQuery(
-        ApplicationDbContext db,
-        IInspectorFeeLedgerWriter writer)
+        FinancialDbContext financial,
+        CaseStudyDbContext caseStudy,
+        IdentityDbContext identity,
+        IInspectorFeeLedgerWriter writer,
+        TimeProvider? time = null)
+        : this(financial, new CaseStudyLookup(caseStudy), new IdentityDirectory(identity), writer, time)
     {
-        _db = db;
+    }
+
+    [ActivatorUtilitiesConstructor]
+    public InspectorFeeSummaryQuery(
+        FinancialDbContext financial,
+        ICaseStudyLookup lookup,
+        IIdentityDirectory identity,
+        IInspectorFeeLedgerWriter writer,
+        TimeProvider? time = null)
+    {
+        _time = time ?? TimeProvider.System;
+
+        _financial = financial;
+        _lookup = lookup;
+        _identity = identity;
         _writer = writer;
     }
+
 
     public async Task<InspectorFeesSummaryDto> GetSummaryAsync(
         string? assigneeId,
@@ -36,7 +60,7 @@ public sealed class InspectorFeeSummaryQuery : IInspectorFeeSummaryQuery
         await _writer.BackfillMissingLedgersAsync(cancellationToken);
         await SyncLedgerSnapshotsFromTasksAsync(cancellationToken);
 
-        var query = _db.InspectorFeeLedgers.AsNoTracking();
+        var query = _financial.InspectorFeeLedgers.AsNoTracking();
 
  // Applied to the query itself, before any row cap or projection, so a disputed line cannot
  // reach finance through the list, the totals, or the queue counts derived from them.
@@ -90,9 +114,8 @@ public sealed class InspectorFeeSummaryQuery : IInspectorFeeSummaryQuery
         if (ledgers.Count == 0) return InspectorFeeRowMapper.EmptySummary();
 
         var taskIds = ledgers.Select(x => x.WorkflowTaskId).ToList();
-        var tasks = await _db.WorkflowTasks.AsNoTracking()
-            .Where(t => taskIds.Contains(t.Id))
-            .ToDictionaryAsync(t => t.Id, cancellationToken);
+        var taskSnapshots = await _lookup.ListWorkflowTasksByIdsAsync(taskIds, cancellationToken);
+        var tasks = taskSnapshots.ToDictionary(t => t.Id, t => t.ToWorkflowTask());
 
  // An unrecognised filter value must match nothing rather than everything.
         if (!string.IsNullOrWhiteSpace(taskKind))
@@ -107,17 +130,17 @@ public sealed class InspectorFeeSummaryQuery : IInspectorFeeSummaryQuery
             taskIds = ledgers.Select(x => x.WorkflowTaskId).ToList();
         }
 
-        var workspaces = await _db.FieldInspectionWorkspaces.AsNoTracking()
-            .Where(w => taskIds.Contains(w.WorkflowTaskId))
-            .ToDictionaryAsync(w => w.WorkflowTaskId, cancellationToken);
+        var workspaceRows = await _lookup.ListFieldInspectionWorkspacesByTaskIdsAsync(
+            taskIds, cancellationToken);
+        var workspaces = workspaceRows.ToDictionary(w => w.WorkflowTaskId, w => w.ToWorkspace());
 
-        var submissions = await _db.PartyTaskSubmissions.AsNoTracking()
-            .Where(s => taskIds.Contains(s.WorkflowTaskId))
-            .ToDictionaryAsync(s => s.WorkflowTaskId, cancellationToken);
+        var submissionRows = await _lookup.ListPartyTaskSubmissionsByTaskIdsAsync(
+            taskIds, cancellationToken);
+        var submissions = submissionRows.ToDictionary(s => s.WorkflowTaskId, s => s.ToSubmission());
 
         var propertyLabels = await BuildPropertyLabelsAsync(ledgers, cancellationToken);
 
-        var transitions = await _db.InspectorFeeTransitions.AsNoTracking()
+        var transitions = await _financial.InspectorFeeTransitions.AsNoTracking()
             .Where(t => taskIds.Contains(t.WorkflowTaskId))
             .OrderByDescending(t => t.CreatedAtUtc)
             .ToListAsync(cancellationToken);
@@ -126,13 +149,8 @@ public sealed class InspectorFeeSummaryQuery : IInspectorFeeSummaryQuery
             .ToDictionary(g => g.Key, g => g.First().Reason);
 
         var poNumbers = ledgers.Select(l => l.PoNumber.Trim()).Distinct().ToList();
-        var poReceivedByNumber = await _db.WorkOrders.AsNoTracking()
-            .Where(w => poNumbers.Contains(w.PoNumber))
-            .ToDictionaryAsync(
-                w => w.PoNumber.Trim(),
-                w => (DateTime?)w.ReceivedFromEnfathAt.ToDateTime(TimeOnly.MinValue),
-                StringComparer.Ordinal,
-                cancellationToken);
+        var poReceivedByNumber = await _lookup.GetWorkOrderReceivedAtByPoNumbersAsync(
+            poNumbers, cancellationToken);
 
         var rows = new List<InspectorFeeRowDto>();
         foreach (var ledger in ledgers
@@ -171,23 +189,23 @@ public sealed class InspectorFeeSummaryQuery : IInspectorFeeSummaryQuery
         await _writer.BackfillMissingLedgersAsync(cancellationToken);
         await SyncLedgerSnapshotsFromTasksAsync(cancellationToken);
 
-        var ledger = await _db.InspectorFeeLedgers.AsNoTracking()
+        var ledger = await _financial.InspectorFeeLedgers.AsNoTracking()
             .FirstOrDefaultAsync(x => x.WorkflowTaskId == workflowTaskId, cancellationToken);
         if (ledger is null) return null;
 
         var visible = await FilterLedgersWithCompletedCaseStudyAsync([ledger], cancellationToken);
         if (visible.Count == 0) return null;
 
-        var task = await _db.WorkflowTasks.AsNoTracking()
-            .FirstOrDefaultAsync(t => t.Id == workflowTaskId, cancellationToken);
-        if (task is null) return null;
+        var snapshot = await _lookup.GetWorkflowTaskAsync(workflowTaskId, cancellationToken);
+        if (snapshot is null) return null;
+        var task = snapshot.ToWorkflowTask();
 
-        var workspaces = await _db.FieldInspectionWorkspaces.AsNoTracking()
-            .Where(w => w.WorkflowTaskId == workflowTaskId)
-            .ToDictionaryAsync(w => w.WorkflowTaskId, cancellationToken);
-        var submissions = await _db.PartyTaskSubmissions.AsNoTracking()
-            .Where(s => s.WorkflowTaskId == workflowTaskId)
-            .ToDictionaryAsync(s => s.WorkflowTaskId, cancellationToken);
+        var workspaceRows = await _lookup.ListFieldInspectionWorkspacesByTaskIdsAsync(
+            [workflowTaskId], cancellationToken);
+        var workspaces = workspaceRows.ToDictionary(w => w.WorkflowTaskId, w => w.ToWorkspace());
+        var submissionRows = await _lookup.ListPartyTaskSubmissionsByTaskIdsAsync(
+            [workflowTaskId], cancellationToken);
+        var submissions = submissionRows.ToDictionary(s => s.WorkflowTaskId, s => s.ToSubmission());
 
         var labels = await BuildPropertyLabelsAsync([ledger], cancellationToken);
         var workSubmitted = InspectorFeeWorkStatusRules.IsWorkSubmitted(
@@ -210,7 +228,7 @@ public sealed class InspectorFeeSummaryQuery : IInspectorFeeSummaryQuery
         Guid workflowTaskId,
         CancellationToken cancellationToken = default)
     {
-        var transitions = await _db.InspectorFeeTransitions.AsNoTracking()
+        var transitions = await _financial.InspectorFeeTransitions.AsNoTracking()
             .Where(t => t.WorkflowTaskId == workflowTaskId)
             .OrderByDescending(t => t.CreatedAtUtc)
             .ToListAsync(cancellationToken);
@@ -226,13 +244,7 @@ public sealed class InspectorFeeSummaryQuery : IInspectorFeeSummaryQuery
 
         var actorNames = actorIds.Count == 0
             ? new Dictionary<string, string>(StringComparer.Ordinal)
-            : await _db.Users.AsNoTracking()
-                .Where(u => actorIds.Contains(u.Id))
-                .ToDictionaryAsync(
-                    u => u.Id,
-                    u => string.IsNullOrWhiteSpace(u.DisplayName) ? u.UserName ?? u.Id : u.DisplayName,
-                    StringComparer.Ordinal,
-                    cancellationToken);
+            : await _identity.ResolveDisplayNamesByUserIdsAsync(actorIds, cancellationToken);
 
         return transitions.Select(t => new InspectorFeeAuditEntryDto
         {
@@ -250,16 +262,15 @@ public sealed class InspectorFeeSummaryQuery : IInspectorFeeSummaryQuery
 
     private async Task SyncLedgerSnapshotsFromTasksAsync(CancellationToken cancellationToken)
     {
-        var ledgers = await _db.InspectorFeeLedgers.ToListAsync(cancellationToken);
+        var ledgers = await _financial.InspectorFeeLedgers.ToListAsync(cancellationToken);
         if (ledgers.Count == 0) return;
 
         var taskIds = ledgers.Select(l => l.WorkflowTaskId).Distinct().ToList();
-        var tasks = await _db.WorkflowTasks.AsNoTracking()
-            .Where(t => taskIds.Contains(t.Id))
-            .ToDictionaryAsync(t => t.Id, cancellationToken);
+        var taskSnapshots = await _lookup.ListWorkflowTasksByIdsAsync(taskIds, cancellationToken);
+        var tasks = taskSnapshots.ToDictionary(t => t.Id, t => t.ToWorkflowTask());
 
         var anyChanged = false;
-        var now = DateTime.UtcNow;
+        var now = _time.UtcNow();
         foreach (var ledger in ledgers)
         {
             if (!tasks.TryGetValue(ledger.WorkflowTaskId, out var task))
@@ -294,7 +305,7 @@ public sealed class InspectorFeeSummaryQuery : IInspectorFeeSummaryQuery
         }
 
         if (anyChanged)
-            await _db.SaveChangesAsync(cancellationToken);
+            await _financial.SaveChangesAsync(cancellationToken);
     }
 
     private async Task<List<InspectorFeeLedger>> FilterLedgersWithCompletedCaseStudyAsync(
@@ -304,10 +315,11 @@ public sealed class InspectorFeeSummaryQuery : IInspectorFeeSummaryQuery
         if (ledgers.Count == 0) return ledgers;
 
         var taskIds = ledgers.Select(l => l.WorkflowTaskId).Distinct().ToList();
-        var engSurveyIds = await _db.WorkflowTasks.AsNoTracking()
-            .Where(t => taskIds.Contains(t.Id) && t.Kind == WorkflowTaskKind.EngineeringSurvey)
-            .Select(t => t.Id)
-            .ToListAsync(cancellationToken);
+        var kinds = await _lookup.GetWorkflowTaskKindsAsync(taskIds, cancellationToken);
+        var engSurveyIds = kinds
+            .Where(kv => kv.Value == WorkflowTaskKind.EngineeringSurvey)
+            .Select(kv => kv.Key)
+            .ToList();
         var engSet = engSurveyIds.ToHashSet();
 
  // Engineering-survey: visible after specialist acceptance (AccruedAtUtc).
@@ -340,16 +352,8 @@ public sealed class InspectorFeeSummaryQuery : IInspectorFeeSummaryQuery
             .ToList();
         if (ids.Count == 0) return [];
 
-        var ready = await _db.WorkflowTasks.AsNoTracking()
-            .Where(t =>
-                t.Kind == WorkflowTaskKind.CaseStudyProperty
-                && t.PropertyId != null
-                && ids.Contains(t.PropertyId.Value)
-                && t.Status == WorkflowTaskStatus.Completed)
-            .Select(t => t.PropertyId!.Value)
-            .Distinct()
-            .ToListAsync(cancellationToken);
-        return ready.ToHashSet();
+        var ready = await _lookup.ListCompletedCaseStudyPropertyIdsAsync(cancellationToken);
+        return ready.Where(ids.Contains).ToHashSet();
     }
 
     private async Task<Dictionary<Guid, string>> BuildPropertyLabelsAsync(
@@ -362,11 +366,10 @@ public sealed class InspectorFeeSummaryQuery : IInspectorFeeSummaryQuery
             .Distinct()
             .ToList();
 
-        var properties = propertyIds.Count == 0
+        var snapshots = propertyIds.Count == 0
             ? []
-            : await _db.WorkOrderProperties.AsNoTracking()
-                .Where(p => propertyIds.Contains(p.Id))
-                .ToDictionaryAsync(p => p.Id, cancellationToken);
+            : await _lookup.ListPropertiesByIdsAsync(propertyIds, cancellationToken);
+        var properties = snapshots.ToDictionary(p => p.Id);
 
         var result = new Dictionary<Guid, string>();
         foreach (var ledger in ledgers)

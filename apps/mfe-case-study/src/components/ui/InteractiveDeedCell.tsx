@@ -1,7 +1,7 @@
 "use client";
 
 import type { ReactNode } from "react";
-import { cn } from "@platform/design-system";
+import { cn } from "@platform/ui-kit";
 
 const TONE_CLASS = {
   primary: "text-primary",

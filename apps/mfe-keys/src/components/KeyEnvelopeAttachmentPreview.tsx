@@ -4,7 +4,7 @@ import { useEffect, useState, type ReactNode } from "react";
 import { downloadAttachmentBlob } from "@platform/api-client";
 import { prototypeModulesApiConfig } from "@platform/app-shared/prototype/prototype-modules-api-config";
 import { openTaskAttachmentPreview, type TaskAttachmentPreview } from "@platform/app-shared/prototype/task-attachments-api";
-import { cn } from "@platform/design-system";
+import { cn } from "@platform/ui-kit";
 
 type PreviewState =
   | { status: "idle" }
@@ -70,7 +70,7 @@ function ImageIcon() {
 }
 
 /** HTML `keyAtt` colors. */
-export const KEY_ATT_COLORS = {
+const KEY_ATT_COLORS = {
   receipt: "#2f7a4d",
   photo: "#378add",
   letter: "#b58a3c",

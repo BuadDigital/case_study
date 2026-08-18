@@ -128,14 +128,6 @@ export function clearAuthSession(): void {
   emitAuthChanged();
 }
 
-export function hasAuthSession(): boolean {
-  return getValidAuthSession() !== null;
-}
-
-export function getAuthDisplayName(): string | null {
-  return getValidAuthSession()?.user.displayName ?? null;
-}
-
 export function notifyAuthExpired(): void {
   clearAuthSession();
   if (typeof window !== "undefined") {
