@@ -155,6 +155,7 @@ public class BoundedContextBoundaryTests
         var serviceRoots = new[]
         {
             new[] { "backend", "RealEstateEval.Infrastructure", "Services" },
+            new[] { "backend", "contexts", "attachments", "RealEstateEval.Attachments.Infrastructure", "Services" },
             new[] { "backend", "contexts", "failures", "RealEstateEval.Failures.Infrastructure", "Services" },
         };
 

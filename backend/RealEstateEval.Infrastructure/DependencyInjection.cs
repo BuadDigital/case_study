@@ -13,7 +13,6 @@ using RealEstateEval.Infrastructure.Data.Contexts;
 using RealEstateEval.Infrastructure.Integration;
 using RealEstateEval.Infrastructure.Notifications;
 using RealEstateEval.Infrastructure.Services;
-using RealEstateEval.Infrastructure.Storage;
 
 namespace RealEstateEval.Infrastructure;
 
@@ -331,14 +330,7 @@ public static class DependencyInjection
         return services.BuildServiceProvider();
     }
 
-    public static IServiceCollection AddBlobStorage(
-        this IServiceCollection services,
-        IConfiguration configuration)
-    {
-        services.Configure<BlobStorageOptions>(configuration.GetSection("BlobStorage"));
-        services.AddSingleton<IBlobStorage, LocalFileBlobStorage>();
-        return services;
-    }
+ // AddBlobStorage folded into AddAttachmentsInfrastructure (RealEstateEval.Attachments.Infrastructure, A8).
 
  /// <summary>Work orders, workflow tasks, and case-study / party forms.</summary>
     public static IServiceCollection AddCaseStudyCoreInfrastructure(this IServiceCollection services)
@@ -423,17 +415,7 @@ public static class DependencyInjection
         return services;
     }
 
-    public static IServiceCollection AddAttachmentsInfrastructure(
-        this IServiceCollection services,
-        IConfiguration configuration,
-        string connectionString)
-    {
-        services.AddAttachmentsPersistence(configuration, connectionString);
-        services.AddRemotePlatformCatalogs(configuration);
-        services.AddScoped<IAttachmentLookup, AttachmentLookup>();
-        services.AddScoped<IAttachmentService, AttachmentService>();
-        return services;
-    }
+ // AddAttachmentsInfrastructure moved to RealEstateEval.Attachments.Infrastructure (A8).
 
     /// <summary>
     /// Attachment existence and report lookups via the Attachments HTTP API.

@@ -28,6 +28,7 @@
       "backend/RealEstateEval.Application/RealEstateEval.Application.csproj",
       "backend/RealEstateEval.Domain/RealEstateEval.Domain.csproj",
       "backend/RealEstateEval.Infrastructure/RealEstateEval.Infrastructure.csproj",
+      "backend/contexts/attachments/RealEstateEval.Attachments.Infrastructure/RealEstateEval.Attachments.Infrastructure.csproj",
       "backend/contexts/failures/RealEstateEval.Failures.Infrastructure/RealEstateEval.Failures.Infrastructure.csproj",
       "backend/shared/RealEstateEval.Shared.Web/RealEstateEval.Shared.Web.csproj"
     ],
@@ -38,6 +39,7 @@
     "backend/RealEstateEval.Infrastructure/RealEstateEval.Infrastructure.csproj": [
       "backend/RealEstateEval.Application/RealEstateEval.Application.csproj",
       "backend/RealEstateEval.Domain/RealEstateEval.Domain.csproj",
+      "backend/contexts/attachments/RealEstateEval.Attachments.Application/RealEstateEval.Attachments.Application.csproj",
       "backend/contexts/failures/RealEstateEval.Failures.Application/RealEstateEval.Failures.Application.csproj",
       "backend/shared/RealEstateEval.Shared.Contracts/RealEstateEval.Shared.Contracts.csproj"
     ],
@@ -54,6 +56,15 @@
     "backend/tools/DbMigrate/DbMigrate.csproj": [
       "backend/RealEstateEval.Infrastructure/RealEstateEval.Infrastructure.csproj"
     ],
+    "backend/contexts/attachments/RealEstateEval.Attachments.Application/RealEstateEval.Attachments.Application.csproj": [
+      "backend/RealEstateEval.Application/RealEstateEval.Application.csproj",
+      "backend/contexts/attachments/RealEstateEval.Attachments.Domain/RealEstateEval.Attachments.Domain.csproj"
+    ],
+    "backend/contexts/attachments/RealEstateEval.Attachments.Domain/RealEstateEval.Attachments.Domain.csproj": [],
+    "backend/contexts/attachments/RealEstateEval.Attachments.Infrastructure/RealEstateEval.Attachments.Infrastructure.csproj": [
+      "backend/RealEstateEval.Infrastructure/RealEstateEval.Infrastructure.csproj",
+      "backend/contexts/attachments/RealEstateEval.Attachments.Application/RealEstateEval.Attachments.Application.csproj"
+    ],
     "backend/contexts/failures/RealEstateEval.Failures.Application/RealEstateEval.Failures.Application.csproj": [
       "backend/RealEstateEval.Application/RealEstateEval.Application.csproj",
       "backend/contexts/failures/RealEstateEval.Failures.Domain/RealEstateEval.Failures.Domain.csproj"
@@ -66,6 +77,7 @@
     "backend/services/attachments/RealEstateEval.Attachments.Api/RealEstateEval.Attachments.Api.csproj": [
       "backend/RealEstateEval.Application/RealEstateEval.Application.csproj",
       "backend/RealEstateEval.Infrastructure/RealEstateEval.Infrastructure.csproj",
+      "backend/contexts/attachments/RealEstateEval.Attachments.Infrastructure/RealEstateEval.Attachments.Infrastructure.csproj",
       "backend/shared/RealEstateEval.Shared.Web/RealEstateEval.Shared.Web.csproj"
     ],
     "backend/services/case-study/RealEstateEval.CaseStudy.Api/RealEstateEval.CaseStudy.Api.csproj": [
@@ -167,14 +179,8 @@
     "backend/RealEstateEval.Infrastructure/Integration/ValuationReportWorkflowHandler.cs": [
       "case_study"
     ],
-    "backend/RealEstateEval.Infrastructure/Services/AttachmentLookup.cs": [
-      "attachments"
-    ],
     "backend/RealEstateEval.Infrastructure/Services/AttachmentPrintDictionaryService.cs": [
       "platform"
-    ],
-    "backend/RealEstateEval.Infrastructure/Services/AttachmentService.cs": [
-      "attachments"
     ],
     "backend/RealEstateEval.Infrastructure/Services/AuditLogQueryService.cs": [
       "audit"
@@ -391,6 +397,12 @@
     ],
     "backend/RealEstateEval.Infrastructure/Services/WorkflowTaskSlotSynchronizer.cs": [
       "case_study"
+    ],
+    "backend/contexts/attachments/RealEstateEval.Attachments.Infrastructure/Services/AttachmentLookup.cs": [
+      "attachments"
+    ],
+    "backend/contexts/attachments/RealEstateEval.Attachments.Infrastructure/Services/AttachmentService.cs": [
+      "attachments"
     ],
     "backend/contexts/failures/RealEstateEval.Failures.Infrastructure/Services/FailureLookup.cs": [
       "failures"

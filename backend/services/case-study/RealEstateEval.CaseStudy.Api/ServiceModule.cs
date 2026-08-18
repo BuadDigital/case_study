@@ -33,7 +33,7 @@ public sealed class ServiceModule : IRealEstateEvalServiceModule
         builder.Services.AddOutboxDispatcher(builder.Configuration, builder.Environment);
         builder.Services.AddValuationIntegrationHandlers();
         builder.Services.AddIntegrationEventInbox();
-        builder.Services.AddBlobStorage(builder.Configuration);
+        // A8: dead AddBlobStorage registration removed — nothing on this host resolves IBlobStorage.
         builder.Services.AddHostedService<ValuationIntegrationEventConsumer>();
     }
 

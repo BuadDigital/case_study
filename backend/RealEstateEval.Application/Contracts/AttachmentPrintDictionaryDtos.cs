@@ -1,4 +1,4 @@
-using System.ComponentModel.DataAnnotations;
+﻿using System.ComponentModel.DataAnnotations;
 
 namespace RealEstateEval.Application.Contracts;
 
@@ -26,11 +26,4 @@ public class SaveAttachmentPrintDictionaryRequest
     public IReadOnlyList<AttachmentPrintTypeDto>? Types { get; init; }
 }
 
-public class ClassifyAttachmentRequest
-{
- /// <summary>Dictionary type key; empty clears classification.</summary>
-    [MaxLength(64)]
-    public string? DictionaryTypeKey { get; init; }
-
-    public bool? PrintInReport { get; init; }
-}
+// ClassifyAttachmentRequest moved to RealEstateEval.Attachments.Application (A8).

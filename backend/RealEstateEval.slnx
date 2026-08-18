@@ -18,6 +18,9 @@
   <Project Path="RealEstateEval.Application/RealEstateEval.Application.csproj" />
   <Project Path="RealEstateEval.Domain/RealEstateEval.Domain.csproj" />
   <Project Path="RealEstateEval.Infrastructure/RealEstateEval.Infrastructure.csproj" />
+  <Project Path="contexts/attachments/RealEstateEval.Attachments.Domain/RealEstateEval.Attachments.Domain.csproj" />
+  <Project Path="contexts/attachments/RealEstateEval.Attachments.Application/RealEstateEval.Attachments.Application.csproj" />
+  <Project Path="contexts/attachments/RealEstateEval.Attachments.Infrastructure/RealEstateEval.Attachments.Infrastructure.csproj" />
   <Project Path="contexts/failures/RealEstateEval.Failures.Domain/RealEstateEval.Failures.Domain.csproj" />
   <Project Path="contexts/failures/RealEstateEval.Failures.Application/RealEstateEval.Failures.Application.csproj" />
   <Project Path="contexts/failures/RealEstateEval.Failures.Infrastructure/RealEstateEval.Failures.Infrastructure.csproj" />
