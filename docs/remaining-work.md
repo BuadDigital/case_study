@@ -135,7 +135,7 @@ Source of truth: [`architecture-split-plan.md`](architecture-split-plan.md).
 | D7 | Missing indexes + race conditions | **done** | Sequence, partial unique indexes, migration |
 | D8 | Cache stampede | **done** | Per-process single-flight |
 | D9 | Reporting HTTP resilience | **done** | Timeout / retry / circuit breaker |
-| D10 | Cross-boundary Identity *reads* still on legacy context | **partial** | `IUserLabelLookup` on failures, work-order query/property cmds, ops task query/notifier; fee/profile/report residual App reads until A9 |
+| D10 | Cross-boundary Identity *reads* still on legacy context | **done** | 2026-08-18: every request path resolves labels via `IdentityDbContext` (Identity host) or the HTTP identity directory (all other hosts). The `ApplicationDbContext` leg of `UserLabelLookup`/`PersonLabelResolver` was removed; `AddLegacyApplicationPersistence` requires Identity for labels. The god context itself survives only in the seed/maintenance provider and reseed tool (Phase 5 scope) |
 | D11 | Notification uniqueness index race ownership | **done** | Filtered unique index + conflict handling |
 
 ---

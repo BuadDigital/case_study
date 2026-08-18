@@ -64,14 +64,11 @@ public static class DependencyInjection
                 npgsql.CommandTimeout(dbOptions.CommandTimeoutSeconds);
             }));
 
- // Factory: dual ctors on UserLabelLookup are ambiguous when both Identity and App
- // pools are registered (case-study). Prefer IdentityDbContext (D10 / A6).
+ // D10 closed: labels always resolve via the Identity owner context. Every remaining
+ // AddLegacyApplicationPersistence composition (seed/maintenance provider, reseed tool)
+ // also registers IdentityDbContext.
         services.TryAddScoped<IUserLabelLookup>(sp =>
-        {
-            if (sp.GetService<IdentityDbContext>() is { } identity)
-                return new UserLabelLookup(identity);
-            return new UserLabelLookup(sp.GetRequiredService<ApplicationDbContext>());
-        });
+            new UserLabelLookup(sp.GetRequiredService<IdentityDbContext>()));
         return services;
     }
 

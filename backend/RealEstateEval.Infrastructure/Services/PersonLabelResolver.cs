@@ -46,22 +46,10 @@ public static class PersonLabelResolver
     }
 
     public static Task<string> ResolveAsync(
-        ApplicationDbContext db,
-        string? raw,
-        CancellationToken cancellationToken = default) =>
-        ResolveFromUsersAsync(db.Users.AsNoTracking(), raw, cancellationToken);
-
-    public static Task<string> ResolveAsync(
         IdentityDbContext db,
         string? raw,
         CancellationToken cancellationToken = default) =>
         ResolveFromUsersAsync(db.Users.AsNoTracking(), raw, cancellationToken);
-
-    public static Task<IReadOnlyDictionary<string, string>> ResolveManyAsync(
-        ApplicationDbContext db,
-        IEnumerable<string?> raws,
-        CancellationToken cancellationToken = default) =>
-        ResolveManyFromUsersAsync(db.Users.AsNoTracking(), raws, cancellationToken);
 
     public static Task<IReadOnlyDictionary<string, string>> ResolveManyAsync(
         IdentityDbContext db,
