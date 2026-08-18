@@ -3,6 +3,8 @@
 Honest running status of [`docs/architecture-split-plan.md`](../architecture-split-plan.md).
 Update this file with every slice; do not summarise a partial slice as a finished phase.
 
+**Next device (2026-08-18):** Case Study Development host does not boot (`npm run dev:api:run` dies at DI validation). Fix that before more A9 HTTP. Details and intended constructors: [`docs/remaining-work.md`](../remaining-work.md) § Pickup.
+
 ## Where the split is (2026-08-18)
 
 | Phase | State | Evidence |

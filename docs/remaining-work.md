@@ -18,6 +18,47 @@ Status values: **todo** · **in progress** · **blocked** · **deferred** · **d
 
 ---
 
+## Pickup — 2026-08-18 (next device)
+
+**Start here.** Local Case Study does not boot. Architecture split A9 is otherwise mid-slice; do not start A8.
+
+### Blocker: Case Study DI crash
+
+`npm run dev:infra` is fine (postgres `:5432`, rabbit, redis). `npm run dev:api:run` dies at `WebApplication.Build()` in `backend/shared/RealEstateEval.Shared.Web/ServiceProgram.cs` (~line 21) **before** `/ready`. Compose `container_name` on `case-study.build` was already moved to service level.
+
+Three DI failures on the Development Case Study host:
+
+1. **Ambiguous constructors** (two public 2-arg ctors, both fully satisfiable; `[ActivatorUtilitiesConstructor]` is not enough when both graphs resolve):
+   - `NotificationRecipientResolver` — `(CaseStudyDbContext, IdentityDbContext)` vs `(IWorkflowAssigneeLookup, IIdentityDirectory)`
+     (`backend/RealEstateEval.Infrastructure/Notifications/NotificationRecipientResolver.cs`)
+   - `PropertyAccessHoldService` — `(CaseStudyDbContext, IFailureService)` vs `(ICaseStudyLookup, IFailureService)`
+     (`backend/RealEstateEval.Infrastructure/Services/PropertyAccessHoldService.cs`)
+   Why: Development CS registers **both** Identity EF (`AddDevelopmentSystemMaintenance`) **and** HTTP `IIdentityDirectory`, plus **both** `CaseStudyDbContext` and `ICaseStudyLookup`.
+2. **`UserRegistrationService`** needs `IAuthSessionService`. `AddDevelopmentSystemMaintenance` registers the registration service but not `AddIdentityApplicationServices`.
+3. **`SystemMaintenanceService`** and **`ValuationReportWorkflowHandler`** still take leftover `ApplicationDbContext`. CS no longer registers the god context. Do **not** re-add `AddPersistence` / `ApplicationDbContext` on the CS request host.
+
+**Intended fix (not applied — agent was stopped):** one public DI constructor (interfaces) per type; EF wrappers only as test helpers or explicit factories. Wire or drop Dev seed so CS does not need `IAuthSessionService` + god context. Point `ValuationReportWorkflowHandler` at `CaseStudyDbContext` (workflow tasks live there). Search tests for `new NotificationRecipientResolver(` and `new PropertyAccessHoldService(`.
+
+Then `npm run dev:api:run` should get past `waiting for case-study (http://127.0.0.1:5162/ready)`.
+
+Local run after the DI fix still needs: nine dedicated DBs + DbMigrate (Failures schema is **not** migrated by CS startup) + upstream APIs CS calls (Identity, Failures, Ops, Financial, Attachments, Platform, Valuation). Do **not** point unsuffixed `REAL_ESTATE_EVAL_PG_CONNECTION_STRING` at leftover `realestate_eval_dev`. Do **not** run `copy-*-data.sh` / `drop-leftover-shared.sh` unless intending to destroy the A7 leftover source.
+
+### After Case Study boots — remaining A9 second connections
+
+| Host | Still opens (second connection) | Do not |
+| --- | --- | --- |
+| Case Study | Messaging (+ Dev Identity seed) | `FailuresDbContext`, `OperationsDbContext`, `FinancialDbContext`; no leftover shared CS |
+| Operations | Messaging | `CaseStudyDbContext`; no `depends_on` case-study |
+| Financial | none of CS EF | no `depends_on` case-study (CS already `depends_on` financial) |
+| Failures | Case Study + Messaging | no `depends_on` case-study (CS already `depends_on` failures) |
+| Valuation | Case Study (report fill / issuance aggregates) | a PO-number-only lookup will not drop this |
+
+Messaging outbox on non-Platform hosts is D5 by design.
+
+**A8** (per-context libraries) **todo**. **A10** owner DBs exist; leftover `realestate_eval_dev` still on host Postgres `:5432`; Phase 5 shims not started. Ops gates: migrator owner, D6 SQL/BI inventory, p95 / connection / outbox metrics.
+
+---
+
 ## A. Architecture split (High — plan-driven)
 
 Source of truth: [`architecture-split-plan.md`](architecture-split-plan.md).
@@ -136,11 +177,13 @@ Do **not** delete empty baselines or Sync no-ops once they exist in a stream peo
 
 ## G. Suggested order on the next device
 
-1. **Continue A9** — next residual readers: Failures compose cycle (do not add Failures `depends_on` Case Study), Valuation report fill. Do not open `FailuresDbContext`, `OperationsDbContext`, or `FinancialDbContext` from Case Study. Do not add Operations `depends_on` Case Study. Do not add Financial `depends_on` Case Study. Financial no longer opens Case Study EF.  
-2. **Ops gates still open** — A7 leftover-upgrade evidence is recorded. Remaining: nominate migrator owner, D6 SQL/BI inventory, p95 / connection / outbox metrics.  
-3. **Parallel low-risk slices:** F6 controller-body tests. C10, C11, B1, B8, B10, F8, and F9 are done. B6 still has nested valuation/billing bodies.  
-4. **A10 leftover shared DB is gone.** Do not reintroduce a shared connection. Remaining A10 work is Phase 5 shims. Full D10 cutover and E6 still wait on product/ops gates.  
-5. **E6** only after product defines deadline/escalation rules.
+1. **Unblock Case Study boot** — see **Pickup — 2026-08-18** above. Fix the three DI failures so `npm run dev:api:run` reaches `/ready`. Do not reintroduce leftover `ApplicationDbContext` on the CS request host.  
+2. **Continue A9** — next residual readers: Failures compose cycle (do not add Failures `depends_on` Case Study), Valuation report fill. Do not open `FailuresDbContext`, `OperationsDbContext`, or `FinancialDbContext` from Case Study. Do not add Operations `depends_on` Case Study. Do not add Financial `depends_on` Case Study. Financial no longer opens Case Study EF.  
+3. **Ops gates still open** — A7 leftover-upgrade evidence is recorded. Remaining: nominate migrator owner, D6 SQL/BI inventory, p95 / connection / outbox metrics.  
+4. **Parallel low-risk slices:** F6 controller-body tests. C10, C11, B1, B8, B10, F8, and F9 are done. B6 still has nested valuation/billing bodies.  
+5. **A10 leftover shared DB is gone for apps.** Do not reintroduce a shared connection. Remaining A10 work is Phase 5 shims. Full D10 cutover and E6 still wait on product/ops gates.  
+6. **E6** only after product defines deadline/escalation rules.  
+7. **A8** only after A9 pressure eases.
 
 ---
 
@@ -151,7 +194,7 @@ git clone https://github.com/BuadDigital/case_study.git
 cd case_study
 git pull
 # Read these first:
-#   docs/remaining-work.md          (this file)
+#   docs/remaining-work.md          (this file — Pickup 2026-08-18 first)
 #   docs/status/architecture-split-status.md
 #   docs/architecture-split-plan.md
 ```
