@@ -16,6 +16,17 @@ describe("validateEvaluatorSubmission", () => {
     landValue: "1000",
     buildingValue: "0",
     forcedSaleDiscountPct: "20",
+    independenceDeclared: true,
+    reportWorkers: [
+      {
+        id: "w1",
+        role: "معد" as const,
+        name: "أحمد",
+        licenseNumber: "",
+        licenseDate: "",
+        licenseFileName: null,
+      },
+    ],
   };
 
   it("requires report number", () => {
@@ -52,5 +63,32 @@ describe("validateEvaluatorSubmission", () => {
       assetDataVarianceNotes: "فرق في مساحة البناء عن المعاينة الميدانية.",
     });
     expect(errors.asset_data_confirmed).toBeUndefined();
+  });
+
+  it("requires independence declaration", () => {
+    const errors = validateEvaluatorSubmission({
+      ...base,
+      assetDataConfirmed: true,
+      independenceDeclared: false,
+    });
+    expect(errors.independence_declared).toBeTruthy();
+  });
+
+  it("requires a named report worker", () => {
+    const errors = validateEvaluatorSubmission({
+      ...base,
+      assetDataConfirmed: true,
+      reportWorkers: [
+        {
+          id: "w1",
+          role: "معد",
+          name: "  ",
+          licenseNumber: "",
+          licenseDate: "",
+          licenseFileName: null,
+        },
+      ],
+    });
+    expect(errors.report_workers).toBeTruthy();
   });
 });

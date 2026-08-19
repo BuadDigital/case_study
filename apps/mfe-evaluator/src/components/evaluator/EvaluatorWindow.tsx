@@ -29,6 +29,7 @@ import type { EvaluatorSubmission } from "../../lib/evaluator/evaluator-window-d
 import { scheduleScrollToFormField } from "@platform/app-shared/form-ux";
 import {
   evaluatorInvalidControlClass,
+  EVALUATOR_INFATH_ERROR_KEYS,
   firstEvaluatorError,
   firstEvaluatorErrorTarget,
   validateEvaluatorSubmission,
@@ -39,14 +40,27 @@ import type { EvaluatorWindowHostRefObject } from "../../lib/evaluator/evaluator
 import { ValueEstimationSection } from "./ValueEstimationSection";
 import {
   InfathSection,
+  InfathSelectField,
   InfathTextAreaField,
   InfathTextField,
 } from "./InfathFormFields";
-import type { EvaluatorChecklistAnswers } from "../../lib/evaluator/evaluator-window-data";
+import { EvaluatorReportWorkersSection } from "./EvaluatorReportWorkersSection";
+import type {
+  EvaluatorChecklistAnswers,
+  EvaluatorReportWorker,
+} from "../../lib/evaluator/evaluator-window-data";
 import {
   DEFAULT_APPRAISER_ADDRESS,
   DEFAULT_APPRAISER_PHONE,
+  EVALUATOR_DEMAND_LEVEL_OPTIONS,
+  EVALUATOR_VALUATION_METHODS,
+  EVALUATOR_VALUE_BASIS_OPTIONS,
+  MAX_EVALUATOR_PDF_BYTES,
 } from "../../lib/evaluator/evaluator-window-data";
+import {
+  clearTaskScopedAttachments,
+  uploadTaskScopedAttachment,
+} from "@platform/app-shared/prototype/task-attachments-api";
 import { EvaluatorChecklistTab } from "./EvaluatorChecklistTab";
 import {
   EvaluatorPropertyTab,
@@ -90,6 +104,14 @@ const VAL_TABS: { id: EvaluatorWindowTab; label: string }[] = [
   { id: "checklist", label: "قائمة الفحص" },
 ];
 
+const EVALUATOR_SIGNED_SCOPE = "evaluator-signed-appraisal";
+
+function extraSelectOption(options: readonly string[], current: string) {
+  const trimmed = current.trim();
+  if (!trimmed || (options as readonly string[]).includes(trimmed)) return null;
+  return <option value={trimmed}>{trimmed}</option>;
+}
+
 export function EvaluatorWindow({
   task,
   tasks,
@@ -113,6 +135,7 @@ export function EvaluatorWindow({
   const { showToast, runWithUploadToast } = useToast();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const planFileInputRef = useRef<HTMLInputElement>(null);
+  const signedFileInputRef = useRef<HTMLInputElement>(null);
 
   const [draft, setDraft] = useState<EvaluatorSubmission>(() =>
     createEvaluatorDraft({
@@ -134,6 +157,10 @@ export function EvaluatorWindow({
   );
   const [uploading, setUploading] = useState(false);
   const [planUploading, setPlanUploading] = useState(false);
+  const [signedUploading, setSignedUploading] = useState(false);
+  const [signedUploadError, setSignedUploadError] = useState<string | null>(
+    null,
+  );
   const [submitting, setSubmitting] = useState(false);
   const [planName, setPlanName] = useState<string | null>(() => {
     const cached = getCachedEvaluatorPlanImage(task.id);
@@ -152,6 +179,7 @@ export function EvaluatorWindow({
       draft.planImageFileName ||
       getCachedEvaluatorPlanImage(task.id)?.dataUrl,
   );
+  const hasSigned = Boolean(draft.signedAppraisalFileName?.trim());
 
   const persistDraft = useCallback(
     (
@@ -175,6 +203,9 @@ export function EvaluatorWindow({
         checklist: EvaluatorChecklistAnswers;
         assetDataConfirmed: boolean;
         assetDataVarianceNotes: string;
+        independenceDeclared: boolean;
+        reportWorkers: EvaluatorReportWorker[];
+        signedAppraisalFileName: string | null;
       }>,
       reportMetadata?: EvaluatorReportMetadata,
       planImageMetadata?: EvaluatorPlanImageMetadata,
@@ -270,6 +301,8 @@ export function EvaluatorWindow({
       forcedSaleDiscountPct: draft.forcedSaleDiscountPct,
       assetDataConfirmed: draft.assetDataConfirmed,
       assetDataVarianceNotes: draft.assetDataVarianceNotes,
+      independenceDeclared: draft.independenceDeclared,
+      reportWorkers: draft.reportWorkers,
     });
     setFieldErrors(errors);
     if (Object.keys(errors).length > 0) {
@@ -277,7 +310,10 @@ export function EvaluatorWindow({
         firstEvaluatorError(errors) ?? "تحقق من الحقول المطلوبة";
       setFormError(message);
       showToast(message, "error");
-      setActiveTab("valuation");
+      const infathError = EVALUATOR_INFATH_ERROR_KEYS.some(
+        (key) => errors[key],
+      );
+      setActiveTab(infathError ? "infath" : "valuation");
       scheduleScrollToFormField(firstEvaluatorErrorTarget(errors), 120);
       return false;
     }
@@ -300,6 +336,12 @@ export function EvaluatorWindow({
           evaluatorPrice: draft.evaluatorPrice,
           assetDataConfirmed: draft.assetDataConfirmed,
           assetDataVarianceNotes: draft.assetDataVarianceNotes,
+          independenceDeclared: draft.independenceDeclared,
+          reportWorkers: draft.reportWorkers,
+          signedAppraisalFileName: draft.signedAppraisalFileName,
+          valuationMethod: draft.valuationMethod,
+          valueBasis: draft.valueBasis,
+          demandLevel: draft.demandLevel,
         });
         if (updated) setDraft(updated);
       } catch (err: unknown) {
@@ -340,6 +382,12 @@ export function EvaluatorWindow({
     draft.forcedSaleDiscountPct,
     draft.assetDataConfirmed,
     draft.assetDataVarianceNotes,
+    draft.independenceDeclared,
+    draft.reportWorkers,
+    draft.signedAppraisalFileName,
+    draft.valuationMethod,
+    draft.valueBasis,
+    draft.demandLevel,
     hostRef,
     showToast,
   ]);
@@ -439,6 +487,60 @@ export function EvaluatorWindow({
       setPlanName(null);
       setDraft((prev) => ({ ...prev, planImageFileName: null }));
       if (planFileInputRef.current) planFileInputRef.current.value = "";
+    } catch (err: unknown) {
+      showToast(
+        err instanceof Error ? err.message : "تعذّر حذف الملف — حاول مرة أخرى",
+        "error",
+      );
+    }
+  }
+
+  async function onSignedSelected(file: File | null) {
+    if (!file || formDisabled) return;
+    setSignedUploadError(null);
+    await runWithUploadToast(async () => {
+      setSignedUploading(true);
+      try {
+        const lower = file.name.toLowerCase();
+        if (file.type !== "application/pdf" && !lower.endsWith(".pdf")) {
+          const error = "يُقبل ملف PDF فقط.";
+          setSignedUploadError(error);
+          throw new Error(error);
+        }
+        if (file.size > MAX_EVALUATOR_PDF_BYTES) {
+          const error = "الحجم الأقصى 20 ميجابايت.";
+          setSignedUploadError(error);
+          throw new Error(error);
+        }
+        const uploaded = await uploadTaskScopedAttachment(
+          EVALUATOR_SIGNED_SCOPE,
+          task.id,
+          file,
+        );
+        if (!uploaded) {
+          const error = "تعذّر حفظ الملف.";
+          setSignedUploadError(error);
+          throw new Error(error);
+        }
+        setDraft((prev) => ({
+          ...prev,
+          signedAppraisalFileName: file.name,
+        }));
+        persistDraft({ signedAppraisalFileName: file.name });
+        return true;
+      } finally {
+        setSignedUploading(false);
+      }
+    });
+  }
+
+  async function clearSigned() {
+    if (formDisabled) return;
+    try {
+      await clearTaskScopedAttachments(EVALUATOR_SIGNED_SCOPE, task.id);
+      setDraft((prev) => ({ ...prev, signedAppraisalFileName: null }));
+      persistDraft({ signedAppraisalFileName: null });
+      if (signedFileInputRef.current) signedFileInputRef.current.value = "";
     } catch (err: unknown) {
       showToast(
         err instanceof Error ? err.message : "تعذّر حذف الملف — حاول مرة أخرى",
@@ -946,10 +1048,9 @@ export function EvaluatorWindow({
                       scheduleAutosave({ reportIssueDate });
                     }}
                   />
-                  <InfathTextField
+                  <InfathSelectField
                     id="inf-method"
                     label="الأسلوب المستخدم"
-                    autoComplete="off"
                     disabled={formDisabled}
                     value={draft.valuationMethod}
                     onChange={(e) => {
@@ -957,11 +1058,20 @@ export function EvaluatorWindow({
                       setDraft((prev) => ({ ...prev, valuationMethod }));
                       scheduleAutosave({ valuationMethod });
                     }}
-                  />
-                  <InfathTextField
+                  >
+                    {extraSelectOption(
+                      EVALUATOR_VALUATION_METHODS,
+                      draft.valuationMethod,
+                    )}
+                    {EVALUATOR_VALUATION_METHODS.map((method) => (
+                      <option key={method} value={method}>
+                        {method}
+                      </option>
+                    ))}
+                  </InfathSelectField>
+                  <InfathSelectField
                     id="inf-basis"
                     label="أساس القيمة"
-                    autoComplete="off"
                     disabled={formDisabled}
                     value={draft.valueBasis}
                     onChange={(e) => {
@@ -969,17 +1079,26 @@ export function EvaluatorWindow({
                       setDraft((prev) => ({ ...prev, valueBasis }));
                       scheduleAutosave({ valueBasis });
                     }}
-                  />
+                  >
+                    {extraSelectOption(
+                      EVALUATOR_VALUE_BASIS_OPTIONS,
+                      draft.valueBasis,
+                    )}
+                    {EVALUATOR_VALUE_BASIS_OPTIONS.map((basis) => (
+                      <option key={basis} value={basis}>
+                        {basis}
+                      </option>
+                    ))}
+                  </InfathSelectField>
                 </div>
                 <p className="mt-3 rounded-lg border border-[color-mix(in_srgb,#d9a441_28%,transparent)] bg-[color-mix(in_srgb,#d9a441_8%,transparent)] px-3 py-2 text-[11.5px] leading-relaxed text-[#7a5b12]">
                   قيم الأرض والمباني ونسبة خصم البيع القسري تُدخل في تبويب
                   «التقييم» — قسم تقدير القيمة.
                 </p>
                 <div className="mt-3">
-                  <InfathTextField
+                  <InfathSelectField
                     id="inf-demand"
                     label="حجم الطلب على العقار"
-                    autoComplete="off"
                     disabled={formDisabled}
                     value={draft.demandLevel}
                     onChange={(e) => {
@@ -987,7 +1106,18 @@ export function EvaluatorWindow({
                       setDraft((prev) => ({ ...prev, demandLevel }));
                       scheduleAutosave({ demandLevel });
                     }}
-                  />
+                  >
+                    <option value="">اختر</option>
+                    {extraSelectOption(
+                      EVALUATOR_DEMAND_LEVEL_OPTIONS,
+                      draft.demandLevel,
+                    )}
+                    {EVALUATOR_DEMAND_LEVEL_OPTIONS.map((level) => (
+                      <option key={level} value={level}>
+                        {level}
+                      </option>
+                    ))}
+                  </InfathSelectField>
                 </div>
                 <div className="mt-3">
                   <InfathTextAreaField
@@ -1019,6 +1149,71 @@ export function EvaluatorWindow({
                     ltr
                   />
                 </div>
+              </InfathSection>
+
+              <InfathSection title="نطاق العمل">
+                <div
+                  id="inf-independence"
+                  className={cn(
+                    "flex flex-col gap-2 rounded-[10px] border border-border bg-surface-2/60 p-3",
+                    fieldErrors.independence_declared &&
+                      evaluatorInvalidControlClass,
+                  )}
+                >
+                  <label
+                    className={cn(
+                      "flex cursor-pointer items-start gap-2.5 text-[13px] font-medium text-text",
+                      formDisabled && "cursor-not-allowed opacity-65",
+                    )}
+                  >
+                    <input
+                      id="inf-independence-check"
+                      type="checkbox"
+                      className="mt-0.5 size-4 shrink-0 accent-primary"
+                      disabled={formDisabled}
+                      checked={draft.independenceDeclared}
+                      onChange={(e) => {
+                        const independenceDeclared = e.target.checked;
+                        setDraft((prev) => ({
+                          ...prev,
+                          independenceDeclared,
+                        }));
+                        scheduleAutosave({ independenceDeclared });
+                        setFieldErrors((prev) => {
+                          const next = { ...prev };
+                          delete next.independence_declared;
+                          return next;
+                        });
+                      }}
+                    />
+                    <span>
+                      أقر بالاستقلالية وعدم تضارب المصالح
+                      <span className="text-[#a5432e]"> *</span>
+                    </span>
+                  </label>
+                  {fieldErrors.independence_declared ? (
+                    <span className="text-[11px] text-danger-text">
+                      {fieldErrors.independence_declared}
+                    </span>
+                  ) : null}
+                </div>
+              </InfathSection>
+
+              <InfathSection title="العاملون على التقرير">
+                <EvaluatorReportWorkersSection
+                  workers={draft.reportWorkers}
+                  disabled={formDisabled}
+                  error={fieldErrors.report_workers}
+                  onChange={(reportWorkers) => {
+                    setDraft((prev) => ({ ...prev, reportWorkers }));
+                    scheduleAutosave({ reportWorkers });
+                    setFieldErrors((prev) => {
+                      const next = { ...prev };
+                      delete next.report_workers;
+                      return next;
+                    });
+                  }}
+                />
               </InfathSection>
 
               <InfathSection title="صورة الأصل من المخطط">
@@ -1082,6 +1277,69 @@ export function EvaluatorWindow({
                 {planUploadError ? (
                   <span className="mt-1 block text-[11px] text-danger-text">
                     {planUploadError}
+                  </span>
+                ) : null}
+              </InfathSection>
+
+              <InfathSection title="مرفق التقييم المعتمد">
+                <div
+                  className={cn(
+                    "file-zone rounded-[10px] border-2 border-dashed border-border-md bg-surface-2 p-4 text-center",
+                    hasSigned && "border-solid border-[#a9dfbf] bg-[#d5f5ef]",
+                    formDisabled && "cursor-not-allowed opacity-65",
+                  )}
+                >
+                  <input
+                    ref={signedFileInputRef}
+                    type="file"
+                    accept="application/pdf,.pdf"
+                    disabled={formDisabled || signedUploading}
+                    className="pointer-events-none absolute size-0 opacity-0"
+                    onChange={(e) =>
+                      void onSignedSelected(e.target.files?.[0] ?? null)
+                    }
+                  />
+                  {!hasSigned ? (
+                    <>
+                      <div className="mb-1 text-[12px] font-bold text-text-2">
+                        رفع التقرير الموقع والمختوم
+                      </div>
+                      <div className="mb-2.5 text-[11px] text-text-3">
+                        PDF · حتى 20 ميجابايت · اختياري إن رُفع تقرير التقييم
+                      </div>
+                      {!formDisabled ? (
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="primary"
+                          loading={signedUploading}
+                          disabled={signedUploading}
+                          showActionToast={false}
+                          onClick={() => signedFileInputRef.current?.click()}
+                        >
+                          اختيار ملف
+                        </Button>
+                      ) : null}
+                    </>
+                  ) : (
+                    <div className="flex items-center justify-between gap-2 text-[12px]">
+                      <span>📎 {draft.signedAppraisalFileName}</span>
+                      {!formDisabled ? (
+                        <button
+                          type="button"
+                          aria-label="حذف مرفق التقييم المعتمد"
+                          className="cursor-pointer border-0 bg-transparent p-1 text-[14px] text-text-3"
+                          onClick={() => void clearSigned()}
+                        >
+                          ✕
+                        </button>
+                      ) : null}
+                    </div>
+                  )}
+                </div>
+                {signedUploadError ? (
+                  <span className="mt-1 block text-[11px] text-danger-text">
+                    {signedUploadError}
                   </span>
                 ) : null}
               </InfathSection>

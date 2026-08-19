@@ -22,8 +22,7 @@ export const partyAppraisalExtensions: PartyAppraisalExtensions = {
       ...base,
       hidePageTitle: true,
       tableLayout: "property-appraisal",
-      emptyHint:
-        "بعد الإرسال للأخصائي تختفي المعاملة من هنا — لاستدعائها افتح «عقارات أمر العمل» ثم ⋮ على الصك، أو فعّل «إظهار الكل».",
+      emptyHint: "بعد الإرسال للأخصائي تختفي المعاملة من هنا — لاستدعائها افتح «عقارات أمر العمل» ثم ⋮ على الصك، أو فعّل «إظهار الكل».",
       tableHint: APPRAISER_TABLE_HINT,
       fullPageTaskPath: propertyAppraisalWorkspacePath,
       statusColumnLabel: "الحالة",

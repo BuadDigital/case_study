@@ -29,6 +29,37 @@ export type EvaluatorChecklistAnswers = {
 
 export type EvaluatorReportWorkerRole = "معد" | "مراجع" | "معتمد";
 
+export const EVALUATOR_WORKER_ROLES: readonly EvaluatorReportWorkerRole[] = [
+  "معد",
+  "مراجع",
+  "معتمد",
+];
+
+/** الأسلوب المستخدم — قائمة مغلقة وفق infath_case_study_fields.md §١ */
+export const EVALUATOR_VALUATION_METHODS = [
+  "طريقة البيوع المقارنة",
+  "طريقة التكلفة (طريقة المقاول)",
+  "رسملة الدخل",
+] as const;
+
+/** أساس القيمة — قائمة مغلقة وفق حصر الحقول v2 */
+export const EVALUATOR_VALUE_BASIS_OPTIONS = [
+  "القيمة السوقية",
+  "قيمة التصفية",
+  "القيمة الاستثمارية",
+  "القيمة المنصفة",
+  "القيمة التكاملية",
+  "الإيجار السوقي",
+  "القيمة العادلة",
+] as const;
+
+/** حجم الطلب على العقار — infath_case_study_fields.md §٣.٢ */
+export const EVALUATOR_DEMAND_LEVEL_OPTIONS = [
+  "مرتفع",
+  "متوسط",
+  "منخفض",
+] as const;
+
 export type EvaluatorReportWorker = {
   id: string;
   role: EvaluatorReportWorkerRole | "";

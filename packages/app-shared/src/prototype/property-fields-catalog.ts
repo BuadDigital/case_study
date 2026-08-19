@@ -119,6 +119,7 @@ const inspectorInfathFields: PropertyFieldCatalogEntry[] = [
   { key: "facade", label: "الواجهة" },
   { key: "streetWidth", label: "عرض الشارع (م)" },
   { key: "builtArea", label: "مساحة البناء (م²)" },
+  { key: "buildLicenseNumber", label: "رقم رخصة البناء" },
   { key: "propertyUsage", label: "استخدام العقار" },
   { key: "streetName", label: "اسم الشارع" },
   { key: "mainStreet", label: "اسم أقرب شارع رئيسي" },
@@ -279,6 +280,7 @@ const evaluatorInfathFields: PropertyFieldCatalogEntry[] = [
   { key: "appraiserAddress", label: "عنوان المقيم" },
   { key: "appraiserPhone", label: "رقم تواصل المقيّم" },
   { key: "reportIssueDate", label: "تاريخ إصدار التقرير" },
+  { key: "independenceDeclared", label: "إقرار الاستقلالية وعدم تضارب المصالح" },
   { key: "signedAppraisal", label: "مرفق التقييم المعتمد" },
 ];
 
@@ -383,8 +385,9 @@ const systemAutoFields: PropertyFieldCatalogEntry[] = [
   { key: "deedPhoto", label: "صك ملكية الأصل (PDF)" },
 ];
 
-/** القسم ٨ — بيانات العاملين (مواصفة إنفاذ؛ غير مُنفَّذة بعد). */
+/** القسم ٨ — بيانات العاملين على التقرير (شاشة المقيّم). */
 const infathWorkerLicenseFields: PropertyFieldCatalogEntry[] = [
+  { key: "workerRole", label: "دور العامل على التقرير" },
   { key: "workerName", label: "اسم العامل على التقرير" },
   { key: "workerLicenseNumber", label: "رقم ترخيص العامل" },
   { key: "workerLicenseDate", label: "تاريخ الترخيص" },
@@ -467,6 +470,37 @@ const keysTabFields: PropertyFieldCatalogEntry[] = [
   { key: "keysTabHanded", label: "تسليم للمُعاين" },
   { key: "keysTabVisitKind", label: "نتيجة زيارة المحكمة" },
   { key: "keysTabAssignee", label: "منفّذ الزيارة (مهام)" },
+];
+
+const governmentReviewerFields: PropertyFieldCatalogEntry[] = [
+  { key: "court", label: "المحكمة" },
+  { key: "circuit", label: "الدائرة" },
+  { key: "visitKind", label: "نتيجة زيارة المحكمة" },
+  { key: "keysReceived", label: "هل تم استلام المفتاح من الدائرة؟" },
+  { key: "keysProof", label: "إثبات استلام المفتاح" },
+  { key: "envelopeId", label: "رقم الظرف" },
+  { key: "keysStatus", label: "حالة المفاتيح" },
+  { key: "handedToInspector", label: "تسليم المفاتيح للمعاين" },
+  { key: "visitAssignee", label: "منفّذ الزيارة" },
+  { key: "accessBlockFollowUp", label: "سبب التعذر / المتابعة" },
+];
+
+const financeFields: PropertyFieldCatalogEntry[] = [
+  { key: "agreedFeeSar", label: "الأتعاب المتفق عليها" },
+  { key: "supervisorDiscountSar", label: "حسم المشرف" },
+  { key: "discountReason", label: "سبب الحسم" },
+  { key: "netFeeSar", label: "صافي الأتعاب" },
+  { key: "billingStatus", label: "حالة الفوترة" },
+  { key: "workStatus", label: "حالة العمل" },
+  { key: "inspectorType", label: "نوع الطرف (فرد / شركة / موظف)" },
+  { key: "statementReference", label: "رقم المسير / أمر الصرف" },
+  { key: "vendorInvoiceNumber", label: "رقم فاتورة المورد" },
+  { key: "vendorInvoiceDate", label: "تاريخ فاتورة المورد" },
+  { key: "transferReceiptRef", label: "مرجع التحويل" },
+  { key: "disbursementVoucher", label: "سند الصرف" },
+  { key: "paidAtUtc", label: "تاريخ الصرف" },
+  { key: "financeFlag", label: "علامة المالية" },
+  { key: "financeFlagNote", label: "ملاحظة علامة المالية" },
 ];
 
 const backendApiFields: PropertyFieldCatalogEntry[] = [
@@ -624,6 +658,12 @@ export const PROPERTY_FIELDS_CATALOG: PropertyFieldCatalogGroup[] = [
     fields: keysTabFields,
   },
   {
+    id: "government-reviewer",
+    sourceRole: "مراجع حكومي",
+    screen: "المراجع الحكومي — المحكمة والمفاتيح",
+    fields: governmentReviewerFields,
+  },
+  {
     id: "case-study-meta",
     sourceRole: "أخصائي",
     screen: "نموذج دراسة الحالة — بيانات عامة",
@@ -703,8 +743,8 @@ export const PROPERTY_FIELDS_CATALOG: PropertyFieldCatalogGroup[] = [
   },
   {
     id: "infath-worker-license",
-    sourceRole: "نظام",
-    screen: "بيانات العاملين على التقرير (مواصفة)",
+    sourceRole: "مقيّم",
+    screen: "بيانات الرفع لإنفاذ — العاملون على التقرير",
     fields: infathWorkerLicenseFields,
   },
   {
@@ -712,6 +752,12 @@ export const PROPERTY_FIELDS_CATALOG: PropertyFieldCatalogGroup[] = [
     sourceRole: "نظام",
     screen: "كيان العقار — API / قاعدة البيانات",
     fields: backendApiFields,
+  },
+  {
+    id: "finance",
+    sourceRole: "مالية",
+    screen: "المالية — الأتعاب والصرف",
+    fields: financeFields,
   },
 ];
 
@@ -726,3 +772,92 @@ export function propertyFieldsCatalogTotalCount(): number {
 export const PROPERTY_FIELDS_SOURCE_ROLES = [
   ...new Set(PROPERTY_FIELDS_CATALOG.map((g) => g.sourceRole)),
 ];
+
+export type FieldDictionaryStageId =
+  | "primary"
+  | "bourse"
+  | "inspector"
+  | "appraisal"
+  | "government"
+  | "engineering"
+  | "finance";
+
+export type FieldDictionaryStage = {
+  id: FieldDictionaryStageId;
+  label: string;
+  groupIds: readonly string[];
+};
+
+/** أقسام قاموس الحقول المركزي — عرض حسب المرحلة / الطرف. */
+export const FIELD_DICTIONARY_STAGES: readonly FieldDictionaryStage[] = [
+  {
+    id: "primary",
+    label: "البيانات الأولية",
+    groupIds: ["po-intake", "property-detail-hero", "property-documents"],
+  },
+  {
+    id: "bourse",
+    label: "توزيع البورصة",
+    groupIds: ["bourse", "bourse-obstruction"],
+  },
+  {
+    id: "inspector",
+    label: "المعاين",
+    groupIds: ["inspector-core", "inspector-infath"],
+  },
+  {
+    id: "appraisal",
+    label: "التقييم",
+    groupIds: [
+      "evaluator-core",
+      "evaluator-checklist",
+      "evaluator-infath",
+      "infath-worker-license",
+    ],
+  },
+  {
+    id: "government",
+    label: "المراجع الحكومي",
+    groupIds: ["government-reviewer", "keys-tab"],
+  },
+  {
+    id: "engineering",
+    label: "المكتب الهندسي",
+    groupIds: [
+      "engineering-core",
+      "engineering-infath",
+      "engineering-checklist",
+    ],
+  },
+  {
+    id: "finance",
+    label: "المالية",
+    groupIds: ["finance"],
+  },
+];
+
+function uniqueCatalogFields(
+  groups: readonly PropertyFieldCatalogGroup[],
+): PropertyFieldCatalogEntry[] {
+  const seen = new Set<string>();
+  const out: PropertyFieldCatalogEntry[] = [];
+  for (const group of groups) {
+    for (const field of group.fields) {
+      if (seen.has(field.label)) continue;
+      seen.add(field.label);
+      out.push(field);
+    }
+  }
+  return out;
+}
+
+export function fieldsForDictionaryStage(
+  stageId: FieldDictionaryStageId,
+): PropertyFieldCatalogEntry[] {
+  const stage = FIELD_DICTIONARY_STAGES.find((item) => item.id === stageId);
+  if (!stage) return [];
+  const groups = PROPERTY_FIELDS_CATALOG.filter((group) =>
+    stage.groupIds.includes(group.id),
+  );
+  return uniqueCatalogFields(groups);
+}

@@ -5,6 +5,7 @@ import {
   type FormErrorTarget,
 } from "@platform/app-shared/form-ux";
 import { getCachedEvaluatorReport } from "./evaluator-report-attachments";
+import type { EvaluatorReportWorker } from "./evaluator-window-data";
 import { parseEvaluatorAmount } from "./value-estimation";
 
 export type EvaluatorValidationErrors = Record<string, string>;
@@ -18,6 +19,13 @@ const EVALUATOR_ERROR_TARGETS: readonly FormErrorTarget[] = [
   { key: "evaluator_price", targetId: "inf-total" },
   { key: "forced_sale_discount", targetId: "inf-discount" },
   { key: "asset_data_confirmed", targetId: "val-asset-data" },
+  { key: "independence_declared", targetId: "inf-independence" },
+  { key: "report_workers", targetId: "inf-workers" },
+] as const;
+
+export const EVALUATOR_INFATH_ERROR_KEYS = [
+  "independence_declared",
+  "report_workers",
 ] as const;
 
 const EVALUATOR_ERROR_KEYS = EVALUATOR_ERROR_TARGETS.map((t) => t.key);
@@ -37,6 +45,8 @@ export function validateEvaluatorSubmission(input: {
   forcedSaleDiscountPct?: string;
   assetDataConfirmed?: boolean;
   assetDataVarianceNotes?: string;
+  independenceDeclared?: boolean;
+  reportWorkers?: EvaluatorReportWorker[];
 }): EvaluatorValidationErrors {
   const errors: EvaluatorValidationErrors = {};
   const {
@@ -92,6 +102,21 @@ export function validateEvaluatorSubmission(input: {
   if (!assetConfirmed && !varianceNotes) {
     errors.asset_data_confirmed =
       "أكّد مراجعة بيانات الأصل، أو دوّن ملاحظات التباين إن وُجدت.";
+  }
+
+  if (!input.independenceDeclared) {
+    errors.independence_declared =
+      "يجب تأكيد إقرار الاستقلالية وعدم تضارب المصالح.";
+  }
+
+  const namedWorkers = (input.reportWorkers ?? []).filter((worker) =>
+    worker.name.trim(),
+  );
+  if (namedWorkers.length === 0) {
+    errors.report_workers =
+      "أضف عاملاً واحداً على الأقل على التقرير (الدور والاسم).";
+  } else if (namedWorkers.some((worker) => !worker.role)) {
+    errors.report_workers = "حدد دور كل عامل على التقرير (معد / مراجع / معتمد).";
   }
 
   return errors;

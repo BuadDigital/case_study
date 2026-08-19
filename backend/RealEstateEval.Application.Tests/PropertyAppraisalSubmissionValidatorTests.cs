@@ -42,7 +42,9 @@ public class PropertyAppraisalSubmissionValidatorTests
               "evaluatorPrice": "",
               "reportFileName": "",
               "assetDataConfirmed": true,
-              "assetDataVarianceNotes": ""
+              "assetDataVarianceNotes": "",
+              "independenceDeclared": true,
+              "reportWorkers": [{ "name": "أحمد", "role": "معد" }]
             }
             """);
         var errors = PropertyAppraisalSubmissionValidator.Validate(doc.RootElement);
@@ -51,13 +53,55 @@ public class PropertyAppraisalSubmissionValidatorTests
         Assert.Equal("تقرير PDF مطلوب", errors["reportFileName"]);
     }
 
+    [Fact]
+    public void Validate_rejects_missing_independence()
+    {
+        using var doc = JsonDocument.Parse(MinimalValidPayload(confirmed: true, notes: ""));
+        using var missing = JsonDocument.Parse(
+            """
+            {
+              "evaluatorPrice": "1250000",
+              "reportFileName": "appraisal.pdf",
+              "assetDataConfirmed": true,
+              "independenceDeclared": false,
+              "reportWorkers": [{ "name": "أحمد", "role": "معد" }]
+            }
+            """);
+        var errors = PropertyAppraisalSubmissionValidator.Validate(missing.RootElement);
+        Assert.Equal(
+            "يجب تأكيد إقرار الاستقلالية وعدم تضارب المصالح.",
+            errors["independence_declared"]);
+        Assert.Empty(PropertyAppraisalSubmissionValidator.Validate(doc.RootElement));
+    }
+
+    [Fact]
+    public void Validate_rejects_missing_report_worker()
+    {
+        using var doc = JsonDocument.Parse(
+            """
+            {
+              "evaluatorPrice": "1250000",
+              "reportFileName": "appraisal.pdf",
+              "assetDataConfirmed": true,
+              "independenceDeclared": true,
+              "reportWorkers": []
+            }
+            """);
+        var errors = PropertyAppraisalSubmissionValidator.Validate(doc.RootElement);
+        Assert.Equal(
+            "أضف عاملاً واحداً على الأقل على التقرير (الدور والاسم).",
+            errors["report_workers"]);
+    }
+
     private static string MinimalValidPayload(bool confirmed, string notes) =>
         $$"""
         {
           "evaluatorPrice": "1250000",
           "reportFileName": "appraisal.pdf",
           "assetDataConfirmed": {{(confirmed ? "true" : "false")}},
-          "assetDataVarianceNotes": {{JsonSerializer.Serialize(notes)}}
+          "assetDataVarianceNotes": {{JsonSerializer.Serialize(notes)}},
+          "independenceDeclared": true,
+          "reportWorkers": [{ "name": "أحمد", "role": "معد" }]
         }
         """;
 }

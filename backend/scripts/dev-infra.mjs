@@ -94,7 +94,7 @@ for (let i = 0; i < 20; i++) {
 
 console.log("");
 console.log("[dev-infra] infrastructure ready");
-console.log("  postgres  localhost:5432  (postgres / Admin / realestate_eval_dev)");
+console.log("  postgres  localhost:5433  (postgres / Admin / realestate_eval_dev)");
 console.log("  rabbitmq  localhost:5672  (dev / dev)  management :15672");
 console.log("  redis     localhost:6379");
 console.log("");

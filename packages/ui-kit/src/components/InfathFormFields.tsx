@@ -4,6 +4,7 @@ import { cn, formControlClassName } from "@platform/ui-kit";
 import type {
   InputHTMLAttributes,
   ReactNode,
+  SelectHTMLAttributes,
   TextareaHTMLAttributes,
 } from "react";
 
@@ -65,6 +66,48 @@ export function InfathTextField({
           className={cn(controlClass, "tabular-nums")}
           {...props}
         />
+      </div>
+      {error ? (
+        <span className="mt-1 block text-[11px] text-danger-text">{error}</span>
+      ) : null}
+    </div>
+  );
+}
+
+export function InfathSelectField({
+  id,
+  label,
+  required,
+  error,
+  className,
+  children,
+  ...props
+}: {
+  id: string;
+  label: string;
+  required?: boolean;
+  error?: string;
+  className?: string;
+} & Omit<SelectHTMLAttributes<HTMLSelectElement>, "id" | "className">) {
+  return (
+    <div className={cn("min-w-0", className)}>
+      <div
+        className={cn(
+          fieldShell,
+          "mt-2.5",
+          error && "border-[#f87171] focus-within:border-[#ef4444]",
+        )}
+      >
+        <InfathFloatLabel htmlFor={id} required={required}>
+          {label}
+        </InfathFloatLabel>
+        <select
+          id={id}
+          className={cn(controlClass, "appearance-none pe-8")}
+          {...props}
+        >
+          {children}
+        </select>
       </div>
       {error ? (
         <span className="mt-1 block text-[11px] text-danger-text">{error}</span>

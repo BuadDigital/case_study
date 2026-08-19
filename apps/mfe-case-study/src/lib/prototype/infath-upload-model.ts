@@ -303,7 +303,10 @@ export function buildInfathUploadModel(input: {
   const reportIssueDate = partyField(appraisal, L.reportIssueDate);
   const zoneStatus = partyField(inspection, L.zoneStatus);
   const linkedAssetsAnswer = partyField(specialist, L.linkedAssets);
-  const workerName = partyField(appraisal, "المقيم العقاري") || partyField(appraisal, "اسم المقيّم");
+  const workerName =
+    partyField(appraisal, "عامل على التقرير") ||
+    partyField(appraisal, "المقيم العقاري") ||
+    partyField(appraisal, "اسم المقيّم");
   const appraisalNotes = partyRemark(appraisal, "ملاحظات المقيّم");
   const keysReceived =
     ops?.keysStatus === PropertyKeysStatuses.Received ||
@@ -395,6 +398,13 @@ export function buildInfathUploadModel(input: {
           "EV",
           valueBasis ? "" : "ms",
         ),
+        sel(
+          "independence",
+          L.independenceDeclared,
+          partyField(appraisal, L.independenceDeclared),
+          "EV",
+          partyField(appraisal, L.independenceDeclared) ? "" : "ms",
+        ),
       ],
       areas: [],
     },
@@ -412,6 +422,7 @@ export function buildInfathUploadModel(input: {
         sel("facade", L.facade, partyField(inspection, L.facade), "MA", partyField(inspection, L.facade) ? "" : "un"),
         txt("street-width", L.streetWidth, partyField(inspection, L.streetWidth), "MA", "text", partyField(inspection, L.streetWidth) ? "" : "ms"),
         txt("built-area", L.builtArea, partyField(inspection, L.builtArea), "MA", "text", partyField(inspection, L.builtArea) ? "" : "ms"),
+        txt("build-license", L.buildLicenseNumber, partyField(inspection, L.buildLicenseNumber), "MA"),
         sel(
           "usage",
           L.propertyUsage,
@@ -632,12 +643,11 @@ export function buildInfathUploadModel(input: {
       id: "workers",
       num: "٨",
       title: "بيانات العاملين على التقرير",
-      badge: "تعبئة تلقائية غير محسومة",
       fields: [
-        txt("worker-name", "الاسم", workerName, "UN", "text", workerName ? "" : "ms"),
-        txt("worker-license", "رقم الترخيص", "", "SY", "text", "un"),
-        txt("worker-license-date", "تاريخ الترخيص", "", "SY", "text", "un"),
-        file("worker-license-file", "مرفق الترخيص", "", "SY"),
+        txt("worker-name", "الاسم", workerName, "EV", "text", workerName ? "" : "ms"),
+        txt("worker-license", "رقم الترخيص", "", "EV", "text", workerName ? "" : "un"),
+        txt("worker-license-date", "تاريخ الترخيص", "", "EV", "text", workerName ? "" : "un"),
+        file("worker-license-file", "مرفق الترخيص", "", "EV"),
       ],
       areas: [],
     },
@@ -702,8 +712,9 @@ export function buildInfathUploadModel(input: {
       fields: [
         file(
           "signed-appraisal",
-          "مرفق التقييم المعتمد",
-          partyField(appraisal, "تقرير التقييم"),
+          L.signedAppraisal,
+          partyField(appraisal, L.signedAppraisal) ||
+            partyField(appraisal, "تقرير التقييم"),
           "EV",
         ),
         file(

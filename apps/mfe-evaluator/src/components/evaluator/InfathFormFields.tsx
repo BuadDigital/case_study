@@ -2,5 +2,6 @@
 export {
   InfathTextField,
   InfathTextAreaField,
+  InfathSelectField,
   InfathSection,
 } from "@platform/ui-kit";

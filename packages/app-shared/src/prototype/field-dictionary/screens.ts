@@ -27,6 +27,7 @@ const SCREEN_PAGE_MAP: Record<string, PageId[]> = {
   "evaluator-form-keys": ["property-appraisal"],
   /** Court visits & keys — no legacy GR form pages. */
   "keys-tab": ["keys", "operations-tasks"],
+  "government-reviewer": ["keys", "operations-tasks"],
   "case-study-meta": ["active-case-study"],
   "case-study-deed": ["active-case-study"],
   "case-study-survey": ["active-case-study"],
@@ -43,6 +44,7 @@ const SCREEN_PAGE_MAP: Record<string, PageId[]> = {
   "enfath-upload": ["po"],
   "infath-worker-license": ["po"],
   "backend-api": ["po"],
+  finance: ["financial"],
 };
 
 const PLACEHOLDER_PAGES = new Set<PageId>([
@@ -60,6 +62,7 @@ export const CATALOG_SOURCE_ROLE_PRIMARY: Record<string, string> = {
   "مكتب هندسي": "engineering-office",
   مقيّم: "real-estate-appraiser",
   "مراجع حكومي": "government-reviewer",
+  مالية: "financial-officer",
   "بورصة عقارية": "case-specialist",
   "أخصائي / نظام": "case-specialist",
   نظام: "general-manager",

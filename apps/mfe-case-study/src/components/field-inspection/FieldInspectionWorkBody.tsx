@@ -1535,6 +1535,18 @@ export function FieldInspectionWorkBody({
                   />
                 </div>
               ))}
+              <div>
+                <MobileFieldLabel>رقم رخصة البناء</MobileFieldLabel>
+                <Input
+                  id="ins-build-license"
+                  value={draft.buildLicenseNumber}
+                  disabled={locked}
+                  onChange={(e) =>
+                    persist({ buildLicenseNumber: e.target.value })
+                  }
+                  className={mobileControlClassName}
+                />
+              </div>
             </div>
           ) : (
             <FormRow className="grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
@@ -1556,6 +1568,12 @@ export function FieldInspectionWorkBody({
                   onChange={(v) => persist({ [key]: v })}
                 />
               ))}
+              <RegField
+                id="ins-build-license"
+                label="رقم رخصة البناء"
+                value={draft.buildLicenseNumber}
+                onChange={(v) => persist({ buildLicenseNumber: v })}
+              />
             </FormRow>
           )}
           <BuildingInventorySection

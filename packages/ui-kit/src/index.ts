@@ -40,6 +40,7 @@ export { MobileKpiStatCards } from "./components/MobileKpiStatCards";
 export {
   InfathTextField,
   InfathTextAreaField,
+  InfathSelectField,
   InfathSection,
 } from "./components/InfathFormFields";
 export {

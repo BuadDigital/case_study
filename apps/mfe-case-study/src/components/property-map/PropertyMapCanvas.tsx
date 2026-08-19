@@ -4,14 +4,6 @@ import { useEffect, useRef } from "react";
 import "./leaflet.css";
 import type { LayerKey, MapCoords } from "../../lib/prototype/map-locations-logic";
 
-/**
- * كانفس Leaflet — المتبقي لاحقاً:
- * - leaflet.markercluster مع spiderfy بدل التجميع الشبكي أدناه.
- * - حركة سقوط النقاط (mapDrop) عند أول رسم.
- * - احترام prefers-reduced-motion (إيقاف النبض والسقوط).
- * - أزرار الزوم باهتة (opacity ~0.4) وتتضح عند المرور.
- */
-
 export type PropertyMapMarker = {
   id: string;
   coords: MapCoords;
@@ -72,15 +64,42 @@ const TILES: Record<MapBasemap, { url: string; attrib: string; subdomains?: stri
   },
 };
 
-function markerHtml(m: PropertyMapMarker, selected: boolean): string {
+const CLUSTER_COLORS: Record<LayerKey, { bg: string; ring: string; fg: string }> = {
+  active: { bg: "#12284C", ring: "rgba(164,144,111,.5)", fg: "#c8b591" },
+  archive: { bg: "#8a8d96", ring: "rgba(138,141,150,.35)", fg: "#fff" },
+  comparables: { bg: "#a4906f", ring: "rgba(164,144,111,.35)", fg: "#fff" },
+};
+
+type LeafletNS = typeof import("leaflet") & {
+  markerClusterGroup?: (options?: Record<string, unknown>) => import("leaflet").LayerGroup;
+};
+
+function prefersReducedMotion(): boolean {
+  return (
+    typeof window !== "undefined" &&
+    window.matchMedia("(prefers-reduced-motion: reduce)").matches
+  );
+}
+
+function markerHtml(
+  m: PropertyMapMarker,
+  selected: boolean,
+  opts: { dropDelayMs?: number; reduceMotion: boolean },
+): string {
   const archived = !!m.archived || m.layer === "archive";
   const size = archived ? 14 : m.layer === "comparables" ? 11 : 18;
   const haloColor = m.infeasible ? "#d9694f" : "#a4906f";
+  const pulseStyle = opts.reduceMotion
+    ? "opacity:.55;"
+    : "animation:ejada-map-pulse 1.7s ease-out infinite;";
   const halo =
     m.pulse && !archived
-      ? `<span style="position:absolute;inset:-6px;border-radius:50%;border:3px solid ${haloColor};animation:ejada-map-pulse 1.7s ease-out infinite"></span>`
+      ? `<span class="ejada-map-halo" style="position:absolute;inset:-6px;border-radius:50%;border:3px solid ${haloColor};${pulseStyle}"></span>`
       : "";
-  // لاحقاً: عند أول رسم أضف animation:mapDrop .55s مع تأخير متدرج؛ عطّل النبض والسقوط إذا prefers-reduced-motion.
+  const drop =
+    opts.dropDelayMs != null && !opts.reduceMotion
+      ? `animation:ejada-map-drop .55s cubic-bezier(.2,1.4,.5,1) both;animation-delay:${opts.dropDelayMs}ms;`
+      : "";
   const ring = selected
     ? "box-shadow:0 0 0 3px #fff,0 0 0 6px #c8b591,0 2px 8px rgba(18,40,76,.4);"
     : "";
@@ -100,63 +119,26 @@ function markerHtml(m: PropertyMapMarker, selected: boolean): string {
     m.count && m.count > 1
       ? `<span style="position:absolute;top:-6px;right:-6px;min-width:13px;height:13px;padding:0 2px;border-radius:99px;background:#a4906f;color:#fff;font:700 9px Tajawal,sans-serif;display:grid;place-items:center;border:1.5px solid #fff">${m.count}</span>`
       : "";
-  return `<div style="position:relative;width:${size}px;height:${size}px">${halo}${body}${badge}</div>`;
+  return `<div style="position:relative;width:${size}px;height:${size}px;${drop}">${halo}${body}${badge}</div>`;
 }
 
-function clusterHtml(count: number): string {
-  const size = count > 99 ? 44 : count > 9 ? 36 : 30;
-  return `<div style="width:${size}px;height:${size}px;border-radius:50%;background:#12284C;box-shadow:0 0 0 5px rgba(164,144,111,.5),0 2px 10px rgba(18,40,76,.4);display:grid;place-items:center"><span style="color:#c8b591;font:700 12px Tajawal,sans-serif">${count}</span></div>`;
+function clusterIconHtml(kind: LayerKey, count: number): string {
+  const colors = CLUSTER_COLORS[kind];
+  const size = count < 10 ? 30 : count < 100 ? 36 : 44;
+  const shape =
+    kind === "comparables"
+      ? "border-radius:8px;transform:rotate(45deg)"
+      : "border-radius:50%";
+  const inner = kind === "comparables" ? "transform:rotate(-45deg);" : "";
+  return `<div style="width:${size}px;height:${size}px;${shape};background:${colors.bg};box-shadow:0 0 0 5px ${colors.ring},0 2px 10px rgba(18,40,76,.4);display:grid;place-items:center"><span style="${inner}color:${colors.fg};font:700 ${count < 100 ? 12 : 11}px Tajawal,sans-serif">${count.toLocaleString("en-US")}</span></div>`;
 }
 
-function gridSize(zoom: number): number {
-  if (zoom >= 11) return 0;
-  if (zoom >= 9) return 0.12;
-  if (zoom >= 7) return 0.4;
-  if (zoom >= 5) return 1.1;
-  return 2.4;
-}
-
-type ClusterCell = {
-  lat: number;
-  lng: number;
-  members: PropertyMapMarker[];
-};
-
-function clusterMarkers(markers: PropertyMapMarker[], zoom: number): ClusterCell[] {
-  // لاحقاً: استبدل التجميع الشبكي بـ leaflet.markercluster (maxClusterRadius ≈ 55، spiderfyOnMaxZoom).
-  const cell = gridSize(zoom);
-  if (!cell) {
-    return markers.map((m) => ({ lat: m.coords.lat, lng: m.coords.lng, members: [m] }));
-  }
-  const buckets = new Map<string, ClusterCell>();
-  for (const m of markers) {
-    const key = `${Math.round(m.coords.lat / cell)}_${Math.round(m.coords.lng / cell)}`;
-    const existing = buckets.get(key);
-    if (existing) {
-      existing.members.push(m);
-      existing.lat =
-        existing.members.reduce((s, x) => s + x.coords.lat, 0) /
-        existing.members.length;
-      existing.lng =
-        existing.members.reduce((s, x) => s + x.coords.lng, 0) /
-        existing.members.length;
-    } else {
-      buckets.set(key, {
-        lat: m.coords.lat,
-        lng: m.coords.lng,
-        members: [m],
-      });
-    }
-  }
-  return [...buckets.values()];
-}
-
-function leafletNs(mod: typeof import("leaflet")) {
+function leafletNs(mod: typeof import("leaflet")): LeafletNS {
   const withDefault = mod as typeof import("leaflet") & {
     default?: typeof import("leaflet");
   };
   const candidate = withDefault.default ?? mod;
-  return typeof candidate.map === "function" ? candidate : mod;
+  return (typeof candidate.map === "function" ? candidate : mod) as LeafletNS;
 }
 
 function pinSize(m: PropertyMapMarker, selected: boolean): [number, number] {
@@ -165,13 +147,32 @@ function pinSize(m: PropertyMapMarker, selected: boolean): [number, number] {
   return [s, s];
 }
 
+function makeClusterGroup(L: LeafletNS, kind: LayerKey): import("leaflet").LayerGroup {
+  if (typeof L.markerClusterGroup !== "function") return L.layerGroup();
+  return L.markerClusterGroup({
+    maxClusterRadius: 55,
+    showCoverageOnHover: false,
+    spiderfyOnMaxZoom: true,
+    chunkedLoading: true,
+    iconCreateFunction: (cluster: { getChildCount: () => number }) => {
+      const n = cluster.getChildCount();
+      const size = n < 10 ? 30 : n < 100 ? 36 : 44;
+      return L.divIcon({
+        html: clusterIconHtml(kind, n),
+        className: "ejada-map-cluster",
+        iconSize: [size, size],
+        iconAnchor: [size / 2, size / 2],
+      });
+    },
+  });
+}
+
 export function PropertyMapCanvas({
   markers,
   selectedId,
   basemap,
   command,
   onSelect,
-  onSelectCluster,
   onBackgroundClick,
   onBasemapChange,
   onRecenter,
@@ -181,84 +182,85 @@ export function PropertyMapCanvas({
   basemap: MapBasemap;
   command: MapViewCommand | null;
   onSelect: (id: string) => void;
-  onSelectCluster: (ids: string[]) => void;
   onBackgroundClick: () => void;
   onBasemapChange: (basemap: MapBasemap) => void;
   onRecenter: () => void;
 }) {
   const hostRef = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<import("leaflet").Map | null>(null);
-  const layerRef = useRef<import("leaflet").LayerGroup | null>(null);
+  const groupsRef = useRef<Partial<Record<LayerKey, import("leaflet").LayerGroup>>>({});
   const tilesRef = useRef<import("leaflet").TileLayer | null>(null);
-  const LRef = useRef<typeof import("leaflet") | null>(null);
+  const LRef = useRef<LeafletNS | null>(null);
   const markersRef = useRef(markers);
   const selectedRef = useRef(selectedId);
   const onSelectRef = useRef(onSelect);
-  const onSelectClusterRef = useRef(onSelectCluster);
   const onBackgroundClickRef = useRef(onBackgroundClick);
   const lastCommandSeq = useRef(0);
+  const introPlayed = useRef(false);
 
   markersRef.current = markers;
   selectedRef.current = selectedId;
   onSelectRef.current = onSelect;
-  onSelectClusterRef.current = onSelectCluster;
   onBackgroundClickRef.current = onBackgroundClick;
 
   const paint = () => {
     const L = LRef.current;
     const current = mapRef.current;
-    const layer = layerRef.current;
-    if (!L || !current || !layer) return;
-    layer.clearLayers();
-    const zoom = current.getZoom();
+    const groups = groupsRef.current;
+    if (!L || !current) return;
     const selected = selectedRef.current;
-    const cells = clusterMarkers(markersRef.current, zoom);
-    for (const cell of cells) {
-      if (cell.members.length === 1) {
-        const m = cell.members[0]!;
-        const isSel = m.id === selected;
-        const size = pinSize(m, isSel);
-        const icon = L.divIcon({
-          className: "ejada-map-pin",
-          html: markerHtml(m, isSel),
-          iconSize: size,
-          iconAnchor: [size[0] / 2, size[1] / 2],
-        });
-        const marker = L.marker([m.coords.lat, m.coords.lng], {
-          icon,
-          zIndexOffset: isSel ? 600 : 0,
-        });
-        marker.on("click", (ev) => {
-          L.DomEvent.stopPropagation(ev);
-          onSelectRef.current(m.id);
-        });
-        if (m.title) {
-          marker.bindTooltip(
-            `<b>${m.title}</b>${m.subtitle ? `<br><span style="opacity:.75">${m.subtitle}</span>` : ""}`,
-            { className: "ejada-map-tip", direction: "top", offset: [0, -10], sticky: false },
-          );
-        }
-        marker.addTo(layer);
-      } else {
-        const icon = L.divIcon({
-          className: "ejada-map-cluster",
-          html: clusterHtml(cell.members.length),
-          iconSize: [36, 36],
-          iconAnchor: [18, 18],
-        });
-        const marker = L.marker([cell.lat, cell.lng], { icon });
-        marker.on("click", (ev) => {
-          L.DomEvent.stopPropagation(ev);
-          const ids = cell.members.map((x) => x.id);
-          if (ids.length <= 8) onSelectClusterRef.current(ids);
-          const bounds = L.latLngBounds(
-            cell.members.map((x) => [x.coords.lat, x.coords.lng] as [number, number]),
-          );
-          current.fitBounds(bounds.pad(0.4), { maxZoom: 12 });
-        });
-        marker.addTo(layer);
+    const reduceMotion = prefersReducedMotion();
+    const intro = !introPlayed.current && !reduceMotion;
+    let dropI = 0;
+    const counts: Record<LayerKey, number> = {
+      active: 0,
+      archive: 0,
+      comparables: 0,
+    };
+
+    (["active", "archive", "comparables"] as LayerKey[]).forEach((key) => {
+      groups[key]?.clearLayers();
+    });
+
+    for (const m of markersRef.current) {
+      const group = groups[m.layer];
+      if (!group) continue;
+      counts[m.layer] += 1;
+      const isSel = m.id === selected;
+      const size = pinSize(m, isSel);
+      const dropDelayMs = intro ? Math.min(dropI++ * 60, 900) : undefined;
+      const icon = L.divIcon({
+        className: "ejada-map-pin",
+        html: markerHtml(m, isSel, { dropDelayMs, reduceMotion }),
+        iconSize: size,
+        iconAnchor: [size[0] / 2, size[1] / 2],
+      });
+      const marker = L.marker([m.coords.lat, m.coords.lng], {
+        icon,
+        zIndexOffset: isSel ? 600 : 0,
+      });
+      marker.on("click", (ev) => {
+        L.DomEvent.stopPropagation(ev);
+        onSelectRef.current(m.id);
+      });
+      if (m.title) {
+        marker.bindTooltip(
+          `<b>${m.title}</b>${m.subtitle ? `<br><span style="opacity:.75">${m.subtitle}</span>` : ""}`,
+          { className: "ejada-map-tip", direction: "top", offset: [0, -10], sticky: false },
+        );
       }
+      marker.addTo(group);
     }
+
+    (["active", "archive", "comparables"] as LayerKey[]).forEach((key) => {
+      const group = groups[key];
+      if (!group) return;
+      const on = counts[key] > 0;
+      if (on && !current.hasLayer(group)) group.addTo(current);
+      if (!on && current.hasLayer(group)) current.removeLayer(group);
+    });
+
+    introPlayed.current = true;
   };
 
   useEffect(() => {
@@ -271,6 +273,9 @@ export function PropertyMapCanvas({
 
     void (async () => {
       const L = leafletNs(await import("leaflet"));
+      const globalL = globalThis as typeof globalThis & { L?: LeafletNS };
+      if (!globalL.L) globalL.L = L;
+      await import("leaflet.markercluster");
       if (cancelled || !hostRef.current) return;
       LRef.current = L;
 
@@ -291,11 +296,13 @@ export function PropertyMapCanvas({
       }).addTo(map);
       tilesRef.current = tiles;
 
-      const group = L.layerGroup().addTo(map);
-      layerRef.current = group;
+      groupsRef.current = {
+        active: makeClusterGroup(L, "active"),
+        archive: makeClusterGroup(L, "archive"),
+        comparables: makeClusterGroup(L, "comparables"),
+      };
       mapRef.current = map;
 
-      map.on("zoomend", paint);
       paint();
       const invalidate = () => map?.invalidateSize();
       requestAnimationFrame(invalidate);
@@ -312,7 +319,7 @@ export function PropertyMapCanvas({
       ro?.disconnect();
       map?.remove();
       mapRef.current = null;
-      layerRef.current = null;
+      groupsRef.current = {};
       tilesRef.current = null;
       LRef.current = null;
     };
@@ -362,19 +369,29 @@ export function PropertyMapCanvas({
   }, [command]);
 
   return (
-    <div className="relative h-full min-h-0 min-w-0 w-full flex-1">
+    <div
+      className="relative h-full min-h-0 min-w-0 w-full flex-1 [&_.leaflet-cluster-anim_.leaflet-marker-icon]:[transition:transform_0.3s_ease-out,opacity_0.3s_ease-in] [&_.leaflet-cluster-anim_.leaflet-marker-shadow]:[transition:transform_0.3s_ease-out,opacity_0.3s_ease-in] [&_.leaflet-cluster-spider-leg]:stroke-[#12284C] [&_.leaflet-cluster-spider-leg]:[stroke-opacity:0.45] [&_.leaflet-cluster-spider-leg]:[transition:stroke-dashoffset_0.3s_ease-out,stroke-opacity_0.3s_ease-in]"
+    >
       <style>{`
         @keyframes ejada-map-pulse {
           0% { box-shadow: 0 0 0 0 rgba(16, 43, 78, 0.45); opacity: 1; }
           70% { box-shadow: 0 0 0 12px rgba(16, 43, 78, 0); opacity: 0; }
           100% { box-shadow: 0 0 0 0 rgba(16, 43, 78, 0); opacity: 0; }
         }
+        @keyframes ejada-map-drop {
+          from { transform: translateY(-16px) scale(.55); opacity: 0; }
+          to { transform: none; opacity: 1; }
+        }
         .ejada-map-pin, .ejada-map-cluster { background: transparent; border: 0; }
+        .leaflet-top .leaflet-control {
+          opacity: .4;
+          transition: opacity .2s;
+        }
+        .leaflet-top .leaflet-control:hover { opacity: 1; }
         .leaflet-control-zoom {
           border: 0 !important;
           margin: 12px 12px 0 0 !important;
           box-shadow: 0 1px 6px rgba(16,43,78,.18) !important;
-          /* لاحقاً: opacity:.4 ثم opacity:1 عند :hover كما في نموذج HTML. */
         }
         .leaflet-control-zoom a {
           width: 34px !important;
@@ -394,9 +411,21 @@ export function PropertyMapCanvas({
           box-shadow: 0 8px 20px -10px rgba(18,40,76,.5);
         }
         .ejada-map-tip::before { border-top-color: #12284C; }
+        .ejada-map-chrome {
+          opacity: .4;
+          transition: opacity .2s;
+        }
+        .ejada-map-chrome:hover, .ejada-map-chrome:focus-within { opacity: 1; }
+        @media (prefers-reduced-motion: reduce) {
+          .ejada-map-halo, .leaflet-marker-pane div {
+            animation: none !important;
+            transform: none !important;
+          }
+          .ejada-map-halo { opacity: .55 !important; }
+        }
       `}</style>
       <div ref={hostRef} className="absolute inset-0 h-full w-full" dir="ltr" />
-      <div className="pointer-events-none absolute right-3 top-[92px] z-[1000] flex flex-col gap-1.5">
+      <div className="ejada-map-chrome pointer-events-none absolute right-3 top-[92px] z-[1000] flex flex-col gap-1.5">
         <button
           type="button"
           title="إعادة توسيط الخريطة"

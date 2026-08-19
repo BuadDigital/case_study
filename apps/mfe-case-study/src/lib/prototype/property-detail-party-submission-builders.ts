@@ -790,6 +790,10 @@ export function buildFromFieldInspection(
     true,
   );
   pushInspectionField(
+    INFATH_FIELD_LABELS.buildLicenseNumber,
+    submission.buildLicenseNumber,
+  );
+  pushInspectionField(
     INFATH_FIELD_LABELS.showroomCount,
     submission.showroomCount,
     true,

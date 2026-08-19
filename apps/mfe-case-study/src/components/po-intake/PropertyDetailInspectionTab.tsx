@@ -1610,6 +1610,12 @@ export function PropertyDetailInspectionTab({
                     ltr
                     onChange={(v) => patchDraft({ buildingsTotal: v })}
                   />
+                  <InsEditField
+                    label="رقم رخصة البناء"
+                    value={draft.buildLicenseNumber}
+                    ltr
+                    onChange={(v) => patchDraft({ buildLicenseNumber: v })}
+                  />
                 </>
               ) : (
                 <>
@@ -1636,6 +1642,11 @@ export function PropertyDetailInspectionTab({
                   <InsField
                     label="إجمالي مساحة المباني (م²)"
                     value={draft.buildingsTotal}
+                    ltr
+                  />
+                  <InsField
+                    label="رقم رخصة البناء"
+                    value={draft.buildLicenseNumber}
                     ltr
                   />
                 </>

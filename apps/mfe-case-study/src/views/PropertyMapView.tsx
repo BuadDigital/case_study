@@ -46,13 +46,10 @@ import {
 } from "../components/property-map/PropertyMapCanvas";
 
 /**
- * خريطة العقارات — المتبقي لاحقاً (تجميل / ربط بيانات، لا فلاتر ناقصة):
+ * خريطة العقارات — المتبقي لاحقاً (ربط بيانات حية، لا تجميل):
  * - صورة العقار في البطاقة + تكبير (lightbox) من مرفق المعاملة.
  * - مصدر النقاط الحي بدل SEED_* عند ربط أوامر العمل وبنك المقارنات.
  * - فتح سجل المقارن على بطاقة محددة لا قائمة البنك.
- * - قائمة اختيار كل مقارن داخل لوحة الطبقة (compSel جاهز للتصفية).
- * - إظهار مجموع القيمة الصادرة في شريط الإحصاء.
- * انظر أيضاً TODOs في PropertyMapCanvas (عنقدة Leaflet، حركة الظهور، تقليل الحركة، شفافية الزوم).
  */
 
 const DATE_PRESETS: { value: DatePreset; label: string }[] = [
@@ -188,7 +185,6 @@ export function PropertyMapView() {
   const [layerPanel, setLayerPanel] = useState<LayerPanel>(null);
   const [activeSel, setActiveSel] = useState<string[] | null>(null);
   const [archiveSel, setArchiveSel] = useState<string[] | null>(null);
-  /** لاحقاً: قائمة اختيار كل مقارن داخل لوحة الطبقة — التصفية هنا جاهزة. */
   const [compSel, setCompSel] = useState<string[] | null>(null);
   const [basemap, setBasemap] = useState<MapBasemap>("carto");
   const [command, setCommand] = useState<MapViewCommand | null>(null);
@@ -280,11 +276,17 @@ export function PropertyMapView() {
     [shownActive, shownArchive],
   );
 
+  const comparableChoices = useMemo(
+    () => filteredComparables.filter((c) => c.coords),
+    [filteredComparables],
+  );
+
   const shownComparables = useMemo(() => {
     if (!layers.comparables) return [];
-    const withCoords = filteredComparables.filter((c) => c.coords);
-    return compSel ? withCoords.filter((c) => compSel.includes(c.id)) : withCoords;
-  }, [layers.comparables, filteredComparables, compSel]);
+    return compSel
+      ? comparableChoices.filter((c) => compSel.includes(c.id))
+      : comparableChoices;
+  }, [layers.comparables, comparableChoices, compSel]);
 
   const shownPropertyRecords = useMemo(() => {
     const list: MapPropertyRecord[] = [];
@@ -710,7 +712,6 @@ export function PropertyMapView() {
           basemap={basemap}
           command={command}
           onSelect={handleSelect}
-          onSelectCluster={(ids) => setSelection({ kind: "cluster", ids })}
           onBackgroundClick={() => {
             setSelection(null);
             setDateOpen(false);
@@ -721,16 +722,16 @@ export function PropertyMapView() {
         />
 
         {layerPanel === "comparables" ? (
-          // لاحقاً: أضف قائمة اختيار كل مقارن (checkbox + zoom) مثل لوحتي النشط/الأرشيف.
           <LayerSidePanel
             title="فلترة المقارنات"
+            wide
             onHide={() => {
               setLayers((p) => ({ ...p, comparables: false }));
               setLayerPanel(null);
             }}
             onClose={() => setLayerPanel(null)}
           >
-            <div className="flex flex-col gap-3 p-3.5">
+            <div className="flex flex-col gap-3 border-b border-border p-3.5">
               <div>
                 <div className="mb-1.5 text-[11.5px] font-bold text-gold-d">نوع المقارن</div>
                 <select
@@ -753,6 +754,15 @@ export function PropertyMapView() {
                 مقارن موثوق فقط
               </label>
             </div>
+            <CompPickerList
+              items={comparableChoices}
+              selectedKeys={compSel}
+              onSelectedKeys={setCompSel}
+              onZoom={(item) => {
+                setSelection({ kind: "comparable", record: item });
+                flyTo(item.coords);
+              }}
+            />
           </LayerSidePanel>
         ) : null}
 
@@ -904,7 +914,7 @@ export function PropertyMapView() {
               : "لا نتائج ضمن الفلاتر الحالية"}
             {shownComparables.length ? ` · ${shownComparables.length} مقارنًا` : ""}
             {stats.expiredCount ? ` · ${stats.expiredCount} منتهي الصلاحية` : ""}
-            {/* لاحقاً: أظهر stats.issuedValueSum هنا عندما يكون > 0 (fmtMoney). */}
+            {stats.issuedValueSum ? ` · ${fmtMoney(stats.issuedValueSum)}` : ""}
           </span>
           <span className="h-4 w-px bg-[#ddd8cc]" />
           <span className="font-medium text-[#d9694f]">
@@ -1006,6 +1016,61 @@ function PickerList({
                 onClick={() => onZoom(n)}
               >
                 {label}
+              </button>
+            </div>
+          );
+        })}
+      </div>
+    </>
+  );
+}
+
+function CompPickerList({
+  items,
+  selectedKeys,
+  onSelectedKeys,
+  onZoom,
+}: {
+  items: MapComparableRecord[];
+  selectedKeys: string[] | null;
+  onSelectedKeys: (next: string[] | null) => void;
+  onZoom: (item: MapComparableRecord) => void;
+}) {
+  const allKeys = items.map((x) => x.id);
+  const allChecked = !selectedKeys;
+  return (
+    <>
+      <label className="flex cursor-pointer items-center gap-2 border-b border-border px-3.5 py-2.5 text-[13px] font-bold text-gold-d">
+        <input
+          type="checkbox"
+          checked={allChecked}
+          onChange={() => onSelectedKeys(allChecked ? [] : null)}
+        />
+        اختيار الكل ({items.length})
+      </label>
+      <div className="min-h-0 flex-1 overflow-y-auto py-1">
+        {items.map((item) => {
+          const checked = !selectedKeys || selectedKeys.includes(item.id);
+          return (
+            <div key={item.id} className="flex items-center gap-2 px-3.5 py-1.5 hover:bg-[#faf6ee]">
+              <input
+                type="checkbox"
+                checked={checked}
+                onChange={() => {
+                  const cur = selectedKeys ?? allKeys;
+                  const next = checked
+                    ? cur.filter((x) => x !== item.id)
+                    : [...cur, item.id];
+                  if (next.length === allKeys.length) onSelectedKeys(null);
+                  else onSelectedKeys(next);
+                }}
+              />
+              <button
+                type="button"
+                className="text-start text-[12.5px] font-medium text-text hover:text-gold-d"
+                onClick={() => onZoom(item)}
+              >
+                {item.refNo} — {item.comparableType}، {item.district}
               </button>
             </div>
           );

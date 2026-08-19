@@ -1,458 +1,146 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
-import { Badge, Button, Input, PageShellHeader, Skeleton, cn, pageGutterClassName, useToast } from "@platform/ui-kit";
+import { useMemo, useState } from "react";
+import { PageShell, cn } from "@platform/ui-kit";
 import {
-  FIELD_TYPE_LABELS,
-  FIELD_DICTIONARY_LAYER_LABELS,
-  fieldDictionaryLayer,
-  fieldDictionaryRoleLabel,
-  fieldDictionaryScreenName,
-  fieldReliabilityMode,
-  fieldRoles,
-  fieldScreens,
-  type FieldDictionaryLayer,
-  type FieldDictionaryField,
-  type FieldDictionaryState,
-  type FieldReliabilityMode,
-} from "@platform/app-shared/prototype/field-dictionary";
+  opsFldControl,
+  opsIconBoxGold,
+  opsLetterCard,
+  opsLetterHead,
+  opsLetterMeta,
+  opsLetterSub,
+  opsLetterTitle,
+  opsTfSeg,
+  opsTfSegActive,
+  opsTfSegRow,
+} from "@case-study/mfe/lib/prototype/ops-tasks-tw";
 import {
-  FIELD_DICTIONARY_CHANGED_EVENT,
-  loadFieldDictionaryFromApi,
-  resetFieldDictionaryOnApi,
-  saveFieldDictionaryToApi,
-} from "../../lib/prototype/field-dictionary-api";
-import { FieldDictionaryAddModal } from "./FieldDictionaryAddModal";
-import { FieldDictionaryDetailPanel } from "./FieldDictionaryDetailPanel";
+  FIELD_DICTIONARY_STAGES,
+  fieldsForDictionaryStage,
+  propertyFieldsCatalogTotalCount,
+  type FieldDictionaryStageId,
+} from "@platform/app-shared/prototype/property-fields-catalog";
 
-type FacetKey = "type" | "tag" | "role" | "screen" | "mode" | "layer";
-
-const FACET_LABELS: Record<FacetKey, string> = {
-  type: "النوع",
-  tag: "الوسم",
-  role: "الدور",
-  screen: "الشاشة",
-  mode: "وضع الموثوقية",
-  layer: "المصدر",
-};
-
-function emptyFilters(): Record<FacetKey, Set<string>> {
-  return {
-    type: new Set(),
-    tag: new Set(),
-    role: new Set(),
-    screen: new Set(),
-    mode: new Set(),
-    layer: new Set(),
-  };
+function DictionaryIcon() {
+  return (
+    <svg
+      width={20}
+      height={20}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.8"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden
+    >
+      <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20M4 19.5A2.5 2.5 0 0 0 6.5 22H20V4a2 2 0 0 0-2-2H6.5A2.5 2.5 0 0 0 4 4.5v15z" />
+    </svg>
+  );
 }
 
 export function FieldDictionaryTab() {
-  const { showToast } = useToast();
-  const [state, setState] = useState<FieldDictionaryState | null>(null);
-  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [stageId, setStageId] = useState<FieldDictionaryStageId>("primary");
   const [query, setQuery] = useState("");
-  const [filters, setFilters] = useState(emptyFilters);
-  const [openFacet, setOpenFacet] = useState<FacetKey | null>(null);
-  const [addOpen, setAddOpen] = useState(false);
 
-  useEffect(() => {
-    void loadFieldDictionaryFromApi()
-      .then(setState)
-      .catch((err: unknown) => {
-        showToast(
-          err instanceof Error ? err.message : "تعذّر تحميل قاموس الحقول",
-          "error",
-        );
-      });
-  }, [showToast]);
+  const stage = FIELD_DICTIONARY_STAGES.find((item) => item.id === stageId);
+  const totalInStage = fieldsForDictionaryStage(stageId).length;
 
-  useEffect(() => {
-    const refresh = (): void => {
-      void loadFieldDictionaryFromApi()
-        .then(setState)
-        .catch((err: unknown) => {
-          showToast(
-            err instanceof Error ? err.message : "تعذّر تحميل قاموس الحقول",
-            "error",
-          );
-        });
-    };
-    window.addEventListener(FIELD_DICTIONARY_CHANGED_EVENT, refresh);
-    return () => window.removeEventListener(FIELD_DICTIONARY_CHANGED_EVENT, refresh);
-  }, []);
-
-  const persist = useCallback((next: FieldDictionaryState) => {
-    setState(next);
-    void saveFieldDictionaryToApi(next).then((saved) => {
-      if (saved) {
-        setState(saved);
-        return;
-      }
-      showToast("تعذّر حفظ قاموس الحقول — تحقق من الاتصال وحاول مجدداً.", "error");
-    });
-  }, [showToast]);
-
-  const fields = state?.fields ?? [];
-  const tags = state?.tags ?? [];
-
-  const facetOptions = useMemo(() => {
-    const typeSet = new Set<string>();
-    const tagSet = new Set<string>(tags);
-    const roleSet = new Set<string>();
-    const screenSet = new Set<string>();
-    const modeSet = new Set<FieldReliabilityMode>();
-
-    fields.forEach((field) => {
-      typeSet.add(field.type);
-      field.tags.forEach((tag) => tagSet.add(tag));
-      fieldRoles(field).forEach((role) => roleSet.add(role));
-      fieldScreens(field).forEach((screen) => screenSet.add(screen));
-      modeSet.add(fieldReliabilityMode(field));
-    });
-
-    return {
-      type: [...typeSet],
-      tag: [...tagSet],
-      role: [...roleSet],
-      screen: [...screenSet],
-      mode: [...modeSet],
-      layer: ["frontend", "backend"],
-    };
-  }, [fields, tags]);
-
-  const visibleFields = useMemo(() => {
-    const q = query.trim().toLowerCase();
-    return fields.filter((field) => {
-      if (q && !field.name.toLowerCase().includes(q) && !field.ref.toLowerCase().includes(q))
-        return false;
-      if (filters.type.size && !filters.type.has(field.type)) return false;
-      if (filters.tag.size && !field.tags.some((tag) => filters.tag.has(tag)))
-        return false;
-      if (
-        filters.role.size &&
-        !fieldRoles(field).some((role) => filters.role.has(role))
-      )
-        return false;
-      if (
-        filters.screen.size &&
-        !fieldScreens(field).some((screen) => filters.screen.has(screen))
-      )
-        return false;
-      if (
-        filters.mode.size &&
-        !filters.mode.has(fieldReliabilityMode(field))
-      )
-        return false;
-      if (
-        filters.layer.size &&
-        !filters.layer.has(fieldDictionaryLayer(field))
-      )
-        return false;
-      return true;
-    });
-  }, [fields, filters, query]);
-
-  const selectedField = useMemo(
-    () => fields.find((field) => field.id === selectedId) ?? null,
-    [fields, selectedId],
-  );
-
-  useEffect(() => {
-    if (!selectedId && visibleFields[0]) setSelectedId(visibleFields[0].id);
-    if (selectedId && !visibleFields.some((field) => field.id === selectedId)) {
-      setSelectedId(visibleFields[0]?.id ?? null);
-    }
-  }, [selectedId, visibleFields]);
-
-  function toggleFilter(facet: FacetKey, value: string): void {
-    setFilters((current) => {
-      const next = { ...current, [facet]: new Set(current[facet]) };
-      if (next[facet].has(value)) next[facet].delete(value);
-      else next[facet].add(value);
-      return next;
-    });
-  }
-
-  function clearFilters(): void {
-    setFilters(emptyFilters());
-  }
-
-  function facetLabel(facet: FacetKey, value: string): string {
-    if (facet === "type") return FIELD_TYPE_LABELS[value as never] ?? value;
-    if (facet === "role") return fieldDictionaryRoleLabel(value as never);
-    if (facet === "screen") return fieldDictionaryScreenName(value);
-    if (facet === "layer")
-      return FIELD_DICTIONARY_LAYER_LABELS[value as FieldDictionaryLayer];
-    return value;
-  }
-
-  function handleAddField(field: FieldDictionaryField): void {
-    if (!state) return;
-    persist({ ...state, fields: [field, ...state.fields] });
-    setSelectedId(field.id);
-    setAddOpen(false);
-    showToast("تمت إضافة الحقل.", "success");
-  }
-
-  function handleDeleteField(field: FieldDictionaryField): void {
-    if (!state) return;
-    if (!window.confirm(`حذف الحقل «${field.name}» نهائياً؟`)) return;
-    persist({
-      ...state,
-      fields: state.fields.filter((item) => item.id !== field.id),
-    });
-    setSelectedId(null);
-    showToast("تم حذف الحقل.", "success");
-  }
-
-  function handleUpdateField(field: FieldDictionaryField): void {
-    if (!state) return;
-    persist({
-      ...state,
-      fields: state.fields.map((item) =>
-        item.id === field.id ? field : item,
-      ),
-    });
-    showToast("تم حفظ التعديلات.", "success");
-  }
-
-  function handleAddTag(tag: string): void {
-    if (!state || state.tags.includes(tag)) return;
-    persist({ ...state, tags: [...state.tags, tag] });
-  }
-
-  function handleReset(): void {
-    if (
-      !window.confirm(
-        "إعادة فهرسة القاموس من حقول النظام والشاشات الديناميكية؟ ستُحفظ التعديلات اليدوية على الحقول الموجودة.",
-      )
-    )
-      return;
-    void resetFieldDictionaryOnApi()
-      .then((next) => {
-        setState(next);
-        setSelectedId(next.fields[0]?.id ?? null);
-        clearFilters();
-        showToast("تمت إعادة فهرسة القاموس.", "success");
-      })
-      .catch((err: unknown) => {
-        showToast(
-          err instanceof Error ? err.message : "تعذّر إعادة فهرسة القاموس",
-          "error",
-        );
-      });
-  }
-
-  if (!state) {
-    return (
-      <article className="flex min-h-0 flex-1 flex-col gap-3 bg-surface p-4">
-        <Skeleton className="h-8 w-48" />
-        <Skeleton className="h-10 w-full" />
-        <div className="grid flex-1 grid-cols-1 gap-3 lg:grid-cols-2">
-          <Skeleton className="h-full min-h-[240px]" />
-          <Skeleton className="h-full min-h-[240px]" />
-        </div>
-      </article>
+  const fields = useMemo(() => {
+    const q = query.trim();
+    const list = fieldsForDictionaryStage(stageId);
+    if (!q) return list;
+    return list.filter(
+      (field) => field.label.includes(q) || field.key.toLowerCase().includes(q.toLowerCase()),
     );
-  }
-
-  const activeChips = (Object.keys(filters) as FacetKey[]).flatMap((facet) =>
-    [...filters[facet]].map((value) => ({ facet, value })),
-  );
+  }, [query, stageId]);
 
   return (
-    <article className="flex min-h-0 flex-1 flex-col overflow-hidden bg-surface max-lg:overflow-visible">
-      <PageShellHeader
-        title="قاموس الحقول المركزي"
-        actions={
-          <>
-            <Badge tone="info">
-              {visibleFields.length}/{fields.length} حقلاً
-            </Badge>
-            <Button type="button" variant="outline" size="sm" onClick={handleReset}>
-              إعادة الفهرسة
-            </Button>
-            <Button type="button" size="sm" onClick={() => setAddOpen(true)}>
-              ＋ حقل جديد
-            </Button>
-          </>
-        }
+    <PageShell
+      variant="canvas"
+      className="gap-0 p-4 pb-[max(1rem,env(safe-area-inset-bottom))] sm:p-6"
+    >
+      <div
+        className={cn(opsTfSegRow, "mb-3.5")}
+        role="tablist"
+        aria-label="مراحل قاموس الحقول"
       >
-        <p className="m-0 text-[11px] text-text-3">
-          فهرس تلقائي لحقول النظام — يُحدَّث عند إضافة حقول في الكود أو الشاشات
-          الديناميكية
-        </p>
-      </PageShellHeader>
+        {FIELD_DICTIONARY_STAGES.map((item) => (
+          <button
+            key={item.id}
+            type="button"
+            role="tab"
+            aria-selected={stageId === item.id}
+            className={stageId === item.id ? opsTfSegActive : opsTfSeg}
+            onClick={() => setStageId(item.id)}
+          >
+            {item.label}
+          </button>
+        ))}
+      </div>
 
-      <div className={cn("shrink-0 border-b border-border py-3", pageGutterClassName)}>
-        <div className="flex flex-wrap items-center gap-2">
-          <div className="min-w-0 flex-1 basis-[200px]">
-            <Input
+      <section className={opsLetterCard}>
+        <div className={opsLetterHead}>
+          <div className="flex items-center gap-[11px]">
+            <span className={opsIconBoxGold}>
+              <DictionaryIcon />
+            </span>
+            <div>
+              <div className={opsLetterTitle}>قاموس الحقول المركزي</div>
+              <div className={opsLetterSub}>
+                حقول كل مرحلة وطرف — البيانات الأولية، البورصة، المعاين، التقييم،
+                المراجع الحكومي، المكتب الهندسي، والمالية
+              </div>
+            </div>
+          </div>
+          <span className={opsLetterMeta}>
+            {propertyFieldsCatalogTotalCount()} حقل إجمالاً
+          </span>
+        </div>
+
+        <div className="px-4 pb-[18px] pt-4 sm:px-[18px]">
+          <div className="mb-3.5 flex flex-wrap items-center gap-2">
+            <input
+              className={cn(opsFldControl, "max-w-xs")}
               value={query}
               onChange={(event) => setQuery(event.target.value)}
-              placeholder="ابحث باسم الحقل أو رقمه المرجعي…"
+              placeholder="ابحث في حقول هذا القسم…"
             />
+            <span className="text-[11.5px] font-semibold text-text-3">
+              {fields.length}
+              {query.trim() ? `/${totalInStage}` : ""} حقل — {stage?.label}
+            </span>
           </div>
-          {(Object.keys(FACET_LABELS) as FacetKey[]).map((facet) => (
-            <div key={facet} className="relative">
-              <button
-                type="button"
-                className="inline-flex items-center gap-1.5 rounded-[var(--radius-DEFAULT)] border border-border bg-surface px-2.5 py-2 text-xs text-text"
-                onClick={() =>
-                  setOpenFacet((current) => (current === facet ? null : facet))
-                }
-              >
-                {FACET_LABELS[facet]}
-                {filters[facet].size ? (
-                  <span className="inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-primary px-1 text-[10px] text-white">
-                    {filters[facet].size}
-                  </span>
-                ) : null}
-                ▾
-              </button>
-              {openFacet === facet ? (
-                <div className="absolute end-0 top-[calc(100%+4px)] z-20 max-h-64 min-w-[190px] overflow-auto rounded-[var(--radius-DEFAULT)] border border-border bg-surface p-1.5 shadow-lg">
-                  {facetOptions[facet].map((value) => (
-                    <label
-                      key={value}
-                      className="flex cursor-pointer items-center gap-2 rounded px-2 py-1.5 text-xs hover:bg-surface-2"
-                    >
-                      <input
-                        type="checkbox"
-                        checked={filters[facet].has(value)}
-                        onChange={() => toggleFilter(facet, value)}
-                      />
-                      {facet === "role"
-                        ? fieldDictionaryRoleLabel(value as never)
-                        : facet === "type"
-                          ? FIELD_TYPE_LABELS[value as never]
-                          : facet === "screen"
-                            ? fieldDictionaryScreenName(value)
-                            : facet === "layer"
-                              ? FIELD_DICTIONARY_LAYER_LABELS[
-                                  value as FieldDictionaryLayer
-                                ]
-                            : value}
-                    </label>
-                  ))}
-                </div>
-              ) : null}
-            </div>
-          ))}
-        </div>
-        {activeChips.length ? (
-          <div className="mt-2 flex flex-wrap items-center gap-1.5">
-            {activeChips.map((chip) => (
-              <button
-                key={`${chip.facet}-${chip.value}`}
-                type="button"
-                className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-2.5 py-0.5 text-[11px] text-primary"
-                onClick={() => toggleFilter(chip.facet, chip.value)}
-              >
-                {FACET_LABELS[chip.facet]}: {facetLabel(chip.facet, chip.value)}
-                <span className="font-bold">✕</span>
-              </button>
-            ))}
-            <button
-              type="button"
-              className="text-[11px] text-text-3 underline"
-              onClick={clearFilters}
-            >
-              مسح الكل
-            </button>
-          </div>
-        ) : null}
-      </div>
 
-      <div className="flex min-h-0 flex-1 flex-col overflow-hidden max-lg:min-h-0 max-lg:flex-none max-lg:overflow-visible lg:flex-row">
-        <div className="flex min-h-[240px] min-w-0 flex-1 flex-col overflow-hidden border-border max-lg:max-h-none max-lg:overflow-visible lg:max-w-[62%] lg:border-e">
-          <div className="min-h-0 flex-1 overflow-x-auto overflow-y-auto overscroll-contain max-lg:max-h-none max-lg:overflow-visible lg:min-h-0">
-            <div className="min-w-[520px]">
-          <div className="grid shrink-0 grid-cols-[.55fr_1.4fr_.8fr_1fr] gap-2 border-b border-border bg-surface-2 px-3 py-2 text-[10px] text-text-3">
-            <span>#</span>
-            <span>الحقل</span>
-            <span>النوع</span>
-            <span>الوضع / الوسوم</span>
-          </div>
-            {visibleFields.length === 0 ? (
-              <p className="py-10 text-center text-xs text-text-3">
-                لا توجد حقول مطابقة
-              </p>
-            ) : (
-              visibleFields.map((field) => {
-                const mode = fieldReliabilityMode(field);
-                return (
-                  <button
-                    key={field.id}
-                    type="button"
-                    className={cn(
-                      "grid w-full grid-cols-[.55fr_1.4fr_.8fr_1fr] gap-2 border-b border-border px-3 py-2 text-start text-xs transition-colors hover:bg-surface-2",
-                      selectedId === field.id && "bg-primary/8",
-                    )}
-                    onClick={() => setSelectedId(field.id)}
-                  >
-                    <span className="font-sans text-[10px] text-text-3">
-                      {field.ref}
-                    </span>
-                    <span className="font-medium text-text">{field.name}</span>
-                    <span className="text-text-3">
-                      {FIELD_TYPE_LABELS[field.type]}
-                    </span>
-                    <span className="flex flex-wrap items-center gap-1">
-                      <Badge tone={mode === "متعدد" ? "warning" : "success"}>
-                        {mode}
-                      </Badge>
-                      {field.tags.slice(0, 2).map((tag) => (
-                        <span
-                          key={tag}
-                          className="rounded bg-surface-2 px-1.5 py-0.5 text-[10px] text-text-3"
-                        >
-                          {tag}
-                        </span>
-                      ))}
-                    </span>
-                  </button>
-                );
-              })
-            )}
-            </div>
-          </div>
-        </div>
-
-        <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden bg-surface max-lg:overflow-visible">
-          {selectedField ? (
-            <FieldDictionaryDetailPanel
-              field={selectedField}
-              onUpdate={handleUpdateField}
-              onDelete={() => handleDeleteField(selectedField)}
-            />
+          {fields.length === 0 ? (
+            <p className="py-10 text-center text-xs text-text-3">
+              لا توجد حقول في هذا القسم
+            </p>
           ) : (
-            <div className="flex h-full items-center justify-center p-6 text-xs text-text-3">
-              اختر حقلاً من القائمة لعرض تعريفه
-            </div>
+            <ol className="m-0 list-none divide-y divide-border rounded-[10px] border border-border-md p-0">
+              {fields.map((field, index) => (
+                <li
+                  key={`${field.key}-${index}`}
+                  className="flex items-baseline gap-3 px-3.5 py-2.5"
+                >
+                  <span className="w-7 shrink-0 text-end text-[11px] tabular-nums text-text-3">
+                    {index + 1}
+                  </span>
+                  <span className="min-w-0 flex-1 text-[13px] font-medium text-text">
+                    {field.label}
+                  </span>
+                  <span
+                    dir="ltr"
+                    className="hidden shrink-0 font-mono text-[10px] text-text-3 sm:inline"
+                  >
+                    {field.key}
+                  </span>
+                </li>
+              ))}
+            </ol>
           )}
         </div>
-      </div>
-
-      {addOpen ? (
-        <FieldDictionaryAddModal
-          tags={tags}
-          listFields={fields}
-          onAddTag={handleAddTag}
-          onSave={handleAddField}
-          onClose={() => setAddOpen(false)}
-        />
-      ) : null}
-
-      {openFacet ? (
-        <button
-          type="button"
-          className="fixed inset-0 z-10 cursor-default"
-          aria-label="إغلاق الفلاتر"
-          onClick={() => setOpenFacet(null)}
-        />
-      ) : null}
-    </article>
+      </section>
+    </PageShell>
   );
 }

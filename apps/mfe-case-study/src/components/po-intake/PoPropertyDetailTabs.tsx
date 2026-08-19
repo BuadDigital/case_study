@@ -25,7 +25,8 @@ import { PropertyDetailMobileGlance } from "./PropertyDetailMobileGlance";
 import { PropertyDetailMediaGlance } from "./PropertyDetailMediaGlance";
 import { PropertyDetailInspectionTab } from "./PropertyDetailInspectionTab";
 import { PropertyDetailPartyPackageReview } from "./PropertyDetailPartyPackageReview";
-import { boundariesAvailabilityLabel, boundariesMarkedUnavailable, formatDateAr, formatPropertyDeedDisplay, hasBourseDetailFields, 
+import { boundariesAvailabilityLabel, boundariesMarkedUnavailable, formatDateAr, formatPropertyDeedDisplay,
+  hasBourseDetailFields, 
   ownershipStatusLabel, 
   formatPropertyRestrictionsLine,
   showsCourtFields,
