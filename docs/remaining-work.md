@@ -18,12 +18,25 @@ Status values: **todo** · **in progress** · **blocked** · **deferred** · **d
 
 ---
 
-## Remaining work at a glance — updated 2026-08-19
+## Remaining work at a glance — updated 2026-08-19 (evening)
 
-Everything below is current after the A8 extraction marathon (2026-08-18/19). **~23 local
-commits sit unpushed on `dev`** — push to `main` auto-deploys production, so pushing waits for
-Omar's explicit go (recommended first: restart the stack and smoke-test failure lifecycle,
-valuation report preview, and a notification).
+Everything below is current after the A8 extraction marathon (2026-08-18/19).
+**`dev` is fully pushed to GitHub (through `9cdbeffd`); `main` is untouched — nothing has
+deployed to production yet.** Landed after the marathon, same day:
+
+- **Identity auth-scheme fix** (`8021ac44`): `AddIdentity()` was overriding the JWT default
+  scheme with its login cookie, so every `[Authorize]` endpoint on the Identity host — incl.
+  `/api/permissions`, which feeds the shell role chip — returned 401 and the UI fell back to
+  the hardcoded «مدير إدارة التقييم العقاري» persona under real users. Latent pre-existing
+  bug, **would have shipped to production** — make sure the next `main` deploy includes it.
+  Fix: bearer re-asserted after `AddIdentityStores`; verified all four suites green + live
+  `/api/permissions` 200.
+- **Dev upstream URLs → 127.0.0.1** (`9cdbeffd`): on this Windows box, `localhost` resolves
+  to `::1` first and the firewall silently drops it → every fresh service-to-service
+  connection stalled ~2s (keys page = 2 hops = ~4s after idle). Dev-only files; production
+  compose uses container names and is unaffected. **Needs one stack restart to take effect**
+  (options are cached at startup) — if keys/إدارة المفاتيح still feels slow on first load,
+  the stack predates this fix.
 
 **1. Needs a supervised session (A8 tail — the only substantial engineering left in the split):**
 
@@ -45,7 +58,11 @@ valuation report preview, and a notification).
 
 **2. Waiting on Omar:**
 
-- **Push authorization** for the ~23 `dev` commits (see above).
+- ~~Push authorization~~ **done 2026-08-19** — `dev` pushed as sole author (standing rule: no
+  AI co-author trailers in this repo). **Next decision: deploy** — merging `dev` → `main`
+  auto-deploys production with no test gate. Smoke-test first (failure lifecycle, valuation
+  report preview, a notification, role chip shows real roles), then merge when ready; the
+  identity auth-scheme fix should ship with it.
 - **Dev system reset redesign** (explicitly parked "for later"): the old reset walked the god
   context; `DELETE /api/system/data` returns 501. The settings UI
   (`apps/mfe-settings/src/lib/system-maintenance-api.ts`) and `apps/shell/scripts/clear-all-pos.mjs`
