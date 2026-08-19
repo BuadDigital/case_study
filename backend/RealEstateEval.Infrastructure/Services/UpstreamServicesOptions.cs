@@ -1,5 +1,6 @@
 using System.Net.Http.Json;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 using Microsoft.AspNetCore.Http;
 
 namespace RealEstateEval.Infrastructure.Services;
@@ -18,13 +19,22 @@ public sealed class UpstreamServicesOptions
     public string OperationsBaseUrl { get; set; } = "http://localhost:5163";
 }
 
+/// <summary>
+/// JSON for owner-to-owner HTTP. Matches API host settings: camelCase names and string enums.
+/// </summary>
+public static class OwnerApiJson
+{
+    public static JsonSerializerOptions Options { get; } = new()
+    {
+        PropertyNameCaseInsensitive = true,
+        Converters = { new JsonStringEnumConverter() },
+    };
+}
+
 /// <summary>Authenticated JSON calls to another owner API. Forwards the inbound Authorization header.</summary>
 internal static class UpstreamJson
 {
-    public static readonly JsonSerializerOptions JsonOpts = new()
-    {
-        PropertyNameCaseInsensitive = true,
-    };
+    public static JsonSerializerOptions JsonOpts => OwnerApiJson.Options;
 
     public static async Task<T> GetAsync<T>(
         HttpClient http,

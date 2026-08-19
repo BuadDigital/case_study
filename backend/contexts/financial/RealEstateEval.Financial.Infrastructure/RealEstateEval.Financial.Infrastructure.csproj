@@ -13,8 +13,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <!-- Enfaz invoice PDF generation lives with the Financial slice; this is the
-         repo's only QuestPDF consumer. -->
+    <!-- Enfaz invoices and issued valuation reports. -->
     <PackageReference Include="QuestPDF" Version="2025.7.3" />
   </ItemGroup>
 

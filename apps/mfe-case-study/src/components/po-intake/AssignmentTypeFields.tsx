@@ -66,6 +66,7 @@ export function AssignmentTypeFields({
         value={secondary}
         disabled={!primary}
         placeholder={!primary ? "اختر الأساسي أولاً" : "اختر…"}
+        hint={value ? `الوسم: ${assignmentCompositeTag(value)}` : undefined}
         onChange={(v) => {
           if (!primary || !v) return;
           onChange(
@@ -73,11 +74,6 @@ export function AssignmentTypeFields({
           );
         }}
       />
-      {value ? (
-        <p className="col-span-full m-0 text-[10px] text-text-3">
-          الوسم: {assignmentCompositeTag(value)}
-        </p>
-      ) : null}
     </>
   );
 }

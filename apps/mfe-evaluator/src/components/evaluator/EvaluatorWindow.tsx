@@ -5,15 +5,15 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { WorkflowTask } from "@case-study/mfe";
 import { inspectionGateForAppraisal } from "../../lib/evaluator/evaluator-inspection-gate";
 import {
-  cacheEvaluatorReport,
-  clearCachedEvaluatorReport,
-  getCachedEvaluatorReport,
-} from "../../lib/evaluator/evaluator-report-attachments";
-import {
   cacheEvaluatorPlanImage,
   clearCachedEvaluatorPlanImage,
   getCachedEvaluatorPlanImage,
 } from "../../lib/evaluator/evaluator-plan-attachments";
+import {
+  cacheEvaluatorDepositCertificate,
+  clearCachedEvaluatorDepositCertificate,
+  getCachedEvaluatorDepositCertificate,
+} from "../../lib/evaluator/evaluator-deposit-attachments";
 import {
   createEvaluatorDraft,
   evaluatorStatusLabel,
@@ -44,6 +44,7 @@ import {
   InfathTextAreaField,
   InfathTextField,
 } from "./InfathFormFields";
+import { EvaluatorIssuedReportActions } from "./EvaluatorIssuedReportActions";
 import { EvaluatorReportWorkersSection } from "./EvaluatorReportWorkersSection";
 import type {
   EvaluatorChecklistAnswers,
@@ -55,17 +56,12 @@ import {
   EVALUATOR_DEMAND_LEVEL_OPTIONS,
   EVALUATOR_VALUATION_METHODS,
   EVALUATOR_VALUE_BASIS_OPTIONS,
-  MAX_EVALUATOR_PDF_BYTES,
 } from "../../lib/evaluator/evaluator-window-data";
-import {
-  clearTaskScopedAttachments,
-  uploadTaskScopedAttachment,
-} from "@platform/app-shared/prototype/task-attachments-api";
-import { EvaluatorChecklistTab } from "./EvaluatorChecklistTab";
 import {
   EvaluatorPropertyTab,
   type EvaluatorPropertySummary,
 } from "./EvaluatorPropertyTab";
+import { EvaluatorChecklistTab } from "./EvaluatorChecklistTab";
 import { EvaluatorComparableSelectionPanel } from "./EvaluatorComparableSelectionPanel";
 import {
   appraiserInspectionDone,
@@ -83,8 +79,6 @@ import {
   VAL_STATUS_COLORS,
   valCardClassName,
   valChipClassName,
-  valInputClassName,
-  valLabelClassName,
   valPpHeadClassName,
   valPrimaryBtnClassName,
 } from "./EvaluatorHtmlPrimitives";
@@ -103,8 +97,6 @@ const VAL_TABS: { id: EvaluatorWindowTab; label: string }[] = [
   { id: "infath", label: "بيانات الرفع لإنفاذ" },
   { id: "checklist", label: "قائمة الفحص" },
 ];
-
-const EVALUATOR_SIGNED_SCOPE = "evaluator-signed-appraisal";
 
 function extraSelectOption(options: readonly string[], current: string) {
   const trimmed = current.trim();
@@ -133,32 +125,26 @@ export function EvaluatorWindow({
     [task, tasks],
   );
   const { showToast, runWithUploadToast } = useToast();
-  const fileInputRef = useRef<HTMLInputElement>(null);
   const planFileInputRef = useRef<HTMLInputElement>(null);
-  const signedFileInputRef = useRef<HTMLInputElement>(null);
+  const depositFileInputRef = useRef<HTMLInputElement>(null);
 
   const [draft, setDraft] = useState<EvaluatorSubmission>(() =>
     createEvaluatorDraft({
       taskId: task.id,
       propertyId: task.propertyId ?? "",
       poNumber: task.poNumber,
+      assignmentType: task.assignmentType,
     }),
   );
   const [draftLoading, setDraftLoading] = useState(true);
-  const [reportName, setReportName] = useState<string | null>(() => {
-    const cached = getCachedEvaluatorReport(task.id);
-    return cached?.fileName ?? null;
-  });
-  const [uploadError, setUploadError] = useState<string | null>(null);
   const [planUploadError, setPlanUploadError] = useState<string | null>(null);
   const [formError, setFormError] = useState<string | null>(null);
   const [fieldErrors, setFieldErrors] = useState<EvaluatorValidationErrors>(
     {},
   );
-  const [uploading, setUploading] = useState(false);
   const [planUploading, setPlanUploading] = useState(false);
-  const [signedUploading, setSignedUploading] = useState(false);
-  const [signedUploadError, setSignedUploadError] = useState<string | null>(
+  const [depositUploading, setDepositUploading] = useState(false);
+  const [depositUploadError, setDepositUploadError] = useState<string | null>(
     null,
   );
   const [submitting, setSubmitting] = useState(false);
@@ -171,23 +157,21 @@ export function EvaluatorWindow({
 
   const locked = isEvaluatorFormLocked(draft.status);
   const formDisabled = locked || !gate.ready;
-  const hasReport = Boolean(
-    reportName || getCachedEvaluatorReport(task.id)?.dataUrl,
-  );
   const hasPlan = Boolean(
     planName ||
       draft.planImageFileName ||
       getCachedEvaluatorPlanImage(task.id)?.dataUrl,
   );
-  const hasSigned = Boolean(draft.signedAppraisalFileName?.trim());
+  const hasDepositCertificate = Boolean(
+    draft.depositCertificateFileName?.trim() ||
+      getCachedEvaluatorDepositCertificate(task.id)?.fileName,
+  );
 
   const persistDraft = useCallback(
     (
       patch: Partial<{
-        reportNo: string;
         evaluatorPrice: string;
         evaluatorNotes: string;
-        reportFileName: string | null;
         appraisalDate: string;
         valuationMethod: string;
         valueBasis: string;
@@ -199,13 +183,13 @@ export function EvaluatorWindow({
         planImageFileName: string | null;
         appraiserAddress: string;
         appraiserPhone: string;
-        reportIssueDate: string;
         checklist: EvaluatorChecklistAnswers;
         assetDataConfirmed: boolean;
         assetDataVarianceNotes: string;
         independenceDeclared: boolean;
         reportWorkers: EvaluatorReportWorker[];
-        signedAppraisalFileName: string | null;
+        depositCode: string;
+        depositCertificateFileName: string | null;
       }>,
       reportMetadata?: EvaluatorReportMetadata,
       planImageMetadata?: EvaluatorPlanImageMetadata,
@@ -239,6 +223,7 @@ export function EvaluatorWindow({
       taskId: task.id,
       propertyId: task.propertyId ?? "",
       poNumber: task.poNumber,
+      assignmentType: task.assignmentType,
     }).then((loaded) => {
       if (!cancelled) {
         const summed = computePropertyTotal(
@@ -263,9 +248,6 @@ export function EvaluatorWindow({
           }).catch(() => {
             /* best-effort; UI already shows the sum */
           });
-        }
-        if (reconciled.reportFileName) {
-          setReportName(reconciled.reportFileName);
         }
         if (reconciled.planImageFileName) {
           setPlanName(reconciled.planImageFileName);
@@ -294,7 +276,6 @@ export function EvaluatorWindow({
 
     const errors = validateEvaluatorSubmission({
       taskId: task.id,
-      reportNo: draft.reportNo,
       evaluatorPrice: draft.evaluatorPrice,
       landValue: draft.landValue,
       buildingValue: draft.buildingValue,
@@ -329,7 +310,6 @@ export function EvaluatorWindow({
     try {
       try {
         const updated = await updateEvaluatorDraft(task.id, {
-          reportNo: draft.reportNo,
           landValue: draft.landValue,
           buildingValue: draft.buildingValue,
           forcedSaleDiscountPct: draft.forcedSaleDiscountPct,
@@ -338,10 +318,11 @@ export function EvaluatorWindow({
           assetDataVarianceNotes: draft.assetDataVarianceNotes,
           independenceDeclared: draft.independenceDeclared,
           reportWorkers: draft.reportWorkers,
-          signedAppraisalFileName: draft.signedAppraisalFileName,
           valuationMethod: draft.valuationMethod,
           valueBasis: draft.valueBasis,
           demandLevel: draft.demandLevel,
+          depositCode: draft.depositCode,
+          depositCertificateFileName: draft.depositCertificateFileName,
         });
         if (updated) setDraft(updated);
       } catch (err: unknown) {
@@ -358,7 +339,7 @@ export function EvaluatorWindow({
       if (result.ok) {
         setDraft(result.submission);
         showToast(
-          "تم الإرسال لأخصائي دراسة الحالة — يمكنك إغلاق الشاشة أو العودة للقائمة.",
+          "تم اعتماد التقييم وإرساله لأخصائي دراسة الحالة.",
           "success",
         );
         hostRef.current?.onSubmitted?.();
@@ -375,7 +356,6 @@ export function EvaluatorWindow({
     locked,
     gate,
     task.id,
-    draft.reportNo,
     draft.evaluatorPrice,
     draft.landValue,
     draft.buildingValue,
@@ -384,10 +364,11 @@ export function EvaluatorWindow({
     draft.assetDataVarianceNotes,
     draft.independenceDeclared,
     draft.reportWorkers,
-    draft.signedAppraisalFileName,
     draft.valuationMethod,
     draft.valueBasis,
     draft.demandLevel,
+    draft.depositCode,
+    draft.depositCertificateFileName,
     hostRef,
     showToast,
   ]);
@@ -404,53 +385,6 @@ export function EvaluatorWindow({
       window.setTimeout(() => field.focus(), 120);
     };
   }, [hostRef, submit]);
-
-  async function onReportSelected(file: File | null) {
-    if (!file || formDisabled) return;
-    setUploadError(null);
-    await runWithUploadToast(async () => {
-      setUploading(true);
-      try {
-        const result = await cacheEvaluatorReport(task.id, file);
-        if (!result.ok) {
-          setUploadError(result.error);
-          throw new Error(result.error);
-        }
-        setReportName(file.name);
-        persistDraft(
-          { reportFileName: file.name },
-          {
-            fileName: file.name,
-            mimeType: file.type || "application/pdf",
-            sizeBytes: file.size,
-          },
-        );
-        setFieldErrors((prev) => {
-          const next = { ...prev };
-          delete next.evaluator_report_file;
-          return next;
-        });
-        return true;
-      } finally {
-        setUploading(false);
-      }
-    });
-  }
-
-  async function clearReport() {
-    if (formDisabled) return;
-    try {
-      await clearCachedEvaluatorReport(task.id);
-      setReportName(null);
-      setDraft((prev) => ({ ...prev, reportFileName: null }));
-      if (fileInputRef.current) fileInputRef.current.value = "";
-    } catch (err: unknown) {
-      showToast(
-        err instanceof Error ? err.message : "تعذّر حذف الملف — حاول مرة أخرى",
-        "error",
-      );
-    }
-  }
 
   async function onPlanSelected(file: File | null) {
     if (!file || formDisabled) return;
@@ -495,52 +429,35 @@ export function EvaluatorWindow({
     }
   }
 
-  async function onSignedSelected(file: File | null) {
+  async function onDepositCertificateSelected(file: File | null) {
     if (!file || formDisabled) return;
-    setSignedUploadError(null);
+    setDepositUploadError(null);
     await runWithUploadToast(async () => {
-      setSignedUploading(true);
+      setDepositUploading(true);
       try {
-        const lower = file.name.toLowerCase();
-        if (file.type !== "application/pdf" && !lower.endsWith(".pdf")) {
-          const error = "يُقبل ملف PDF فقط.";
-          setSignedUploadError(error);
-          throw new Error(error);
-        }
-        if (file.size > MAX_EVALUATOR_PDF_BYTES) {
-          const error = "الحجم الأقصى 20 ميجابايت.";
-          setSignedUploadError(error);
-          throw new Error(error);
-        }
-        const uploaded = await uploadTaskScopedAttachment(
-          EVALUATOR_SIGNED_SCOPE,
-          task.id,
-          file,
-        );
-        if (!uploaded) {
-          const error = "تعذّر حفظ الملف.";
-          setSignedUploadError(error);
-          throw new Error(error);
+        const result = await cacheEvaluatorDepositCertificate(task.id, file);
+        if (!result.ok) {
+          setDepositUploadError(result.error);
+          throw new Error(result.error);
         }
         setDraft((prev) => ({
           ...prev,
-          signedAppraisalFileName: file.name,
+          depositCertificateFileName: file.name,
         }));
-        persistDraft({ signedAppraisalFileName: file.name });
+        persistDraft({ depositCertificateFileName: file.name });
         return true;
       } finally {
-        setSignedUploading(false);
+        setDepositUploading(false);
       }
     });
   }
 
-  async function clearSigned() {
+  async function clearDepositCertificate() {
     if (formDisabled) return;
     try {
-      await clearTaskScopedAttachments(EVALUATOR_SIGNED_SCOPE, task.id);
-      setDraft((prev) => ({ ...prev, signedAppraisalFileName: null }));
-      persistDraft({ signedAppraisalFileName: null });
-      if (signedFileInputRef.current) signedFileInputRef.current.value = "";
+      await clearCachedEvaluatorDepositCertificate(task.id);
+      setDraft((prev) => ({ ...prev, depositCertificateFileName: null }));
+      if (depositFileInputRef.current) depositFileInputRef.current.value = "";
     } catch (err: unknown) {
       showToast(
         err instanceof Error ? err.message : "تعذّر حذف الملف — حاول مرة أخرى",
@@ -581,7 +498,7 @@ export function EvaluatorWindow({
 
   const depChips = [
     {
-      t: "المعاينة الميدانية — المعاين",
+      t: "معاينة العقار — المعاين",
       ok: inspected,
       wait: "تُراقب حتى اكتمالها",
     },
@@ -654,11 +571,11 @@ export function EvaluatorWindow({
           <EngInfo variant="amber">
             <strong>تراقب تقدم الأطراف:</strong>{" "}
             {!gate.ready ? gate.reason : ""} يمكنك متابعة بيانات العقار
-            والمقارنات دون حساب القيمة حتى اعتماد بيانات المعاينة.
+            والمقارنات دون حساب القيمة حتى اعتماد بيانات معاينة العقار.
           </EngInfo>
         ) : needsSurvey && !surveyed && !locked ? (
           <EngInfo variant="amber">
-            ℹ يمكنك التقييم الآن (بيانات المعاينة معتمدة) — الرفع المساحي وصف
+            ℹ يمكنك التقييم الآن (بيانات معاينة العقار معتمدة) — الرفع المساحي وصف
             إضافي: قد يلزم تعديل التقييم بعد صدوره.
           </EngInfo>
         ) : null}
@@ -696,6 +613,7 @@ export function EvaluatorWindow({
             <EvaluatorComparableSelectionPanel
               propertyId={task.propertyId ?? ""}
               poNumber={task.poNumber}
+              assignmentType={task.assignmentType}
               districtHint={
                 summary.property?.district?.trim() ||
                 summary.cityDistrict.split(/[|/·,،]/)[0]?.trim() ||
@@ -729,113 +647,45 @@ export function EvaluatorWindow({
 
           {activeTab === "valuation" ? (
             <div className="flex flex-col gap-3">
-              <EngSection>تقرير التقييم (PDF)</EngSection>
-              <div className="mb-3 grid max-w-[260px] grid-cols-1 gap-1.5">
-                <label htmlFor="val-report-no" className={valLabelClassName}>
-                  رقم التقرير <span className="text-[#a5432e]">*</span>
-                </label>
-                <input
-                  id="val-report-no"
-                  dir="ltr"
-                  disabled={formDisabled}
-                  value={draft.reportNo}
-                  placeholder="مثال: RPT-2026-1045"
-                  className={cn(
-                    valInputClassName,
-                    fieldErrors.report_no && evaluatorInvalidControlClass,
-                  )}
-                  onChange={(e) => {
-                    const reportNo = e.target.value;
-                    setDraft((prev) => ({ ...prev, reportNo }));
-                    scheduleAutosave({ reportNo });
-                    setFieldErrors((prev) => {
-                      const next = { ...prev };
-                      delete next.report_no;
-                      return next;
-                    });
-                  }}
-                />
-                {fieldErrors.report_no ? (
-                  <span className="text-[11px] text-danger-text">
-                    {fieldErrors.report_no}
+              <EngSection>تقرير التقييم</EngSection>
+              <p className="m-0 text-[12px] leading-relaxed text-text-2">
+                استعراض تقرير التقييم يعرض مسودة المستند المولَّد — وليس معاينة
+                العقار. التقرير يُصدَر PDF عند الاعتماد، ويُحجز رقمه عند توزيع
+                المعاملة على المقيم. معاينة العقار مصدر بيانات يبني عليه المقيم
+                التقرير دون إعادة إدخالها.
+              </p>
+              {draft.reportNo.trim() ? (
+                <p className="m-0 text-[12.5px] text-text">
+                  رقم التقرير:{" "}
+                  <span className="font-bold" dir="ltr">
+                    {draft.reportNo.trim()}
                   </span>
-                ) : null}
-              </div>
-              <div
-                id="val-report-file"
-                className={cn(
-                  "flex flex-col gap-1.5",
-                  fieldErrors.evaluator_report_file &&
-                    "[&_.file-zone]:border-danger [&_.file-zone]:bg-danger-bg/40 [&_.file-zone]:ring-2 [&_.file-zone]:ring-[color-mix(in_srgb,var(--danger)_28%,transparent)]",
-                )}
-              >
-                <div
-                  className={cn(
-                    "file-zone rounded-[10px] border-2 border-dashed border-border-md bg-surface-2 p-4 text-center",
-                    hasReport && "border-solid border-[#a9dfbf] bg-[#d5f5ef]",
-                    formDisabled && "cursor-not-allowed opacity-65",
-                  )}
-                >
-                  <input
-                    ref={fileInputRef}
-                    type="file"
-                    accept="application/pdf,.pdf"
-                    disabled={formDisabled || uploading}
-                    className="pointer-events-none absolute size-0 opacity-0"
-                    onChange={(e) =>
-                      void onReportSelected(e.target.files?.[0] ?? null)
-                    }
-                  />
-                  {!hasReport ? (
+                  {draft.reportIssueDate.trim() ? (
                     <>
-                      <div className="mb-1 text-[12px] font-bold text-text-2">
-                        رفع تقرير التقييم
-                      </div>
-                      <div className="mb-2.5 text-[11px] text-text-3">
-                        PDF لتقرير التقييم · حتى 20 ميجابايت · ملف واحد
-                        لكل عقار
-                      </div>
-                      {!formDisabled ? (
-                        <Button
-                          type="button"
-                          size="sm"
-                          variant="primary"
-                          loading={uploading}
-                          disabled={uploading}
-                          showActionToast={false}
-                          onClick={() => fileInputRef.current?.click()}
-                        >
-                          اختيار ملف
-                        </Button>
-                      ) : null}
+                      {" "}
+                      · تاريخ الإصدار: {draft.reportIssueDate.trim()}
                     </>
                   ) : (
-                    <div className="flex items-center justify-between gap-2 text-[12px]">
-                      <span>📎 {reportName ?? "تم رفع الملف"}</span>
-                      {!formDisabled ? (
-                        <button
-                          type="button"
-                          aria-label="حذف تقرير التقييم"
-                          className="cursor-pointer border-0 bg-transparent p-1 text-[14px] text-text-3"
-                          onClick={() => void clearReport()}
-                        >
-                          ✕
-                        </button>
-                      ) : null}
-                    </div>
+                    <> · محجوز — يُثبَّت تاريخ الإصدار عند الاعتماد</>
                   )}
-                </div>
-                {uploadError ? (
-                  <span className="text-[11px] text-danger-text">
-                    {uploadError}
-                  </span>
-                ) : null}
-                {fieldErrors.evaluator_report_file ? (
-                  <span className="text-[11px] text-danger-text">
-                    {fieldErrors.evaluator_report_file}
-                  </span>
-                ) : null}
-              </div>
+                </p>
+              ) : (
+                <p className="m-0 text-[12px] text-text-3">
+                  يُحجز الرقم تلقائياً بصيغة TQ عند توزيع المعاملة على المقيم.
+                </p>
+              )}
+              <EvaluatorIssuedReportActions
+                taskId={task.id}
+                propertyId={task.propertyId ?? ""}
+                reportNo={draft.reportNo}
+                depositCode={draft.depositCode}
+                area={summary.cityDistrict}
+                propertyType={summary.classification}
+                appraiserName={task.assigneeName}
+                issued={
+                  draft.status === "submitted" || draft.status === "completed"
+                }
+              />
 
               <ValueEstimationSection
                 landValue={draft.landValue}
@@ -915,7 +765,7 @@ export function EvaluatorWindow({
                 )}
               >
                 <p className="text-[12px] leading-relaxed text-text-2">
-                  راجع بيانات الأصل من المعاينة / الرفع المساحي / دراسة الحالة.
+                  راجع بيانات الأصل من معاينة العقار / الرفع المساحي / دراسة الحالة.
                   أكّد مطابقتها، أو دوّن ملاحظات التباين إن وُجدت اختلافات.
                 </p>
                 <label
@@ -1004,13 +854,15 @@ export function EvaluatorWindow({
                   <button
                     type="button"
                     className={valPrimaryBtnClassName}
-                    disabled={uploading || submitting}
+                    disabled={submitting}
                     aria-busy={submitting || undefined}
                     onClick={() => void submit()}
                   >
                     {submitting ? <Spinner /> : null}
                     <span>
-                      {submitting ? "جاري الإرسال…" : "إرسال للأخصائي"}
+                      {submitting
+                        ? "جاري الاعتماد…"
+                        : "اعتماد التقييم وإرسال للأخصائي"}
                     </span>
                   </button>
                 </div>
@@ -1035,19 +887,15 @@ export function EvaluatorWindow({
                       scheduleAutosave({ appraisalDate });
                     }}
                   />
-                  <InfathTextField
-                    id="inf-issue-date"
-                    label="تاريخ إصدار التقرير"
-                    type="date"
-                    autoComplete="off"
-                    disabled={formDisabled}
-                    value={draft.reportIssueDate}
-                    onChange={(e) => {
-                      const reportIssueDate = e.target.value;
-                      setDraft((prev) => ({ ...prev, reportIssueDate }));
-                      scheduleAutosave({ reportIssueDate });
-                    }}
-                  />
+                  {draft.reportIssueDate.trim() ? (
+                    <InfathTextField
+                      id="inf-issue-date"
+                      label="تاريخ إصدار التقرير"
+                      readOnly
+                      disabled
+                      value={draft.reportIssueDate}
+                    />
+                  ) : null}
                   <InfathSelectField
                     id="inf-method"
                     label="الأسلوب المستخدم"
@@ -1281,41 +1129,61 @@ export function EvaluatorWindow({
                 ) : null}
               </InfathSection>
 
-              <InfathSection title="مرفق التقييم المعتمد">
+              <InfathSection title="شهادة الإيداع في قيمة">
+                <p className="mb-3 text-[12px] leading-relaxed text-text-2">
+                  اختيارية — لا تمنع اعتماد التقييم. الرمز يظهر في ترويسة التقرير،
+                  والشهادة تُرفق ضمن مرفقات التقرير.
+                </p>
+                <div className="mb-3">
+                  <InfathTextField
+                    id="inf-deposit-code"
+                    label="رمز الإيداع"
+                    dir="ltr"
+                    autoComplete="off"
+                    disabled={formDisabled}
+                    value={draft.depositCode}
+                    onChange={(e) => {
+                      const depositCode = e.target.value;
+                      setDraft((prev) => ({ ...prev, depositCode }));
+                      scheduleAutosave({ depositCode });
+                    }}
+                  />
+                </div>
                 <div
                   className={cn(
                     "file-zone rounded-[10px] border-2 border-dashed border-border-md bg-surface-2 p-4 text-center",
-                    hasSigned && "border-solid border-[#a9dfbf] bg-[#d5f5ef]",
+                    hasDepositCertificate &&
+                      "border-solid border-[#a9dfbf] bg-[#d5f5ef]",
                     formDisabled && "cursor-not-allowed opacity-65",
                   )}
                 >
                   <input
-                    ref={signedFileInputRef}
+                    ref={depositFileInputRef}
                     type="file"
-                    accept="application/pdf,.pdf"
-                    disabled={formDisabled || signedUploading}
+                    accept="application/pdf,.pdf,image/jpeg,image/png,image/webp,image/gif,.jpg,.jpeg,.png,.webp,.gif"
+                    disabled={formDisabled || depositUploading}
                     className="pointer-events-none absolute size-0 opacity-0"
                     onChange={(e) =>
-                      void onSignedSelected(e.target.files?.[0] ?? null)
+                      void onDepositCertificateSelected(e.target.files?.[0] ?? null)
                     }
                   />
-                  {!hasSigned ? (
+                  {!hasDepositCertificate ? (
                     <>
                       <div className="mb-1 text-[12px] font-bold text-text-2">
-                        رفع التقرير الموقع والمختوم
+                        رفع شهادة الرفع على قيمة
                       </div>
                       <div className="mb-2.5 text-[11px] text-text-3">
-                        PDF · حتى 20 ميجابايت · اختياري إن رُفع تقرير التقييم
+                        PDF أو صورة · حتى 20 ميجابايت · اختياري
                       </div>
                       {!formDisabled ? (
                         <Button
                           type="button"
                           size="sm"
                           variant="primary"
-                          loading={signedUploading}
-                          disabled={signedUploading}
+                          loading={depositUploading}
+                          disabled={depositUploading}
                           showActionToast={false}
-                          onClick={() => signedFileInputRef.current?.click()}
+                          onClick={() => depositFileInputRef.current?.click()}
                         >
                           اختيار ملف
                         </Button>
@@ -1323,13 +1191,17 @@ export function EvaluatorWindow({
                     </>
                   ) : (
                     <div className="flex items-center justify-between gap-2 text-[12px]">
-                      <span>📎 {draft.signedAppraisalFileName}</span>
+                      <span>
+                        📎{" "}
+                        {draft.depositCertificateFileName ??
+                          getCachedEvaluatorDepositCertificate(task.id)?.fileName}
+                      </span>
                       {!formDisabled ? (
                         <button
                           type="button"
-                          aria-label="حذف مرفق التقييم المعتمد"
+                          aria-label="حذف شهادة الإيداع"
                           className="cursor-pointer border-0 bg-transparent p-1 text-[14px] text-text-3"
-                          onClick={() => void clearSigned()}
+                          onClick={() => void clearDepositCertificate()}
                         >
                           ✕
                         </button>
@@ -1337,9 +1209,9 @@ export function EvaluatorWindow({
                     </div>
                   )}
                 </div>
-                {signedUploadError ? (
+                {depositUploadError ? (
                   <span className="mt-1 block text-[11px] text-danger-text">
-                    {signedUploadError}
+                    {depositUploadError}
                   </span>
                 ) : null}
               </InfathSection>

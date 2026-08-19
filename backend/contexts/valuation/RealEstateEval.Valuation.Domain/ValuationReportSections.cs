@@ -1,3 +1,5 @@
+using System.Linq;
+
 namespace RealEstateEval.Domain;
 
 /// <summary>
@@ -133,15 +135,32 @@ public static class ValuationReportSectionCatalog
         hasStructuresToValue ? "حتى 12 صورة (6 بالصفحة)" : "حتى 6 صور (أرض)";
 }
 
-/// <summary>Temporary report number until numbering workshop locks the final format.</summary>
+/// <summary>Issued report number — preliminary format until numbering workshop locks prefixes.</summary>
 public static class ValuationReportNumberRules
 {
- /// <summary>Format: تق-YYYY-DisplayId (temporary reference before issuance deposit code).</summary>
+    /// <summary>Format: TQ + yyyyMMdd + 4-digit daily ordinal (e.g. TQ202608190001).</summary>
+    public static string FormatIssued(DateOnly reportDate, int dailyOrdinal)
+    {
+        var n = dailyOrdinal < 1 ? 1 : dailyOrdinal;
+        return $"TQ{reportDate:yyyyMMdd}{n:D4}";
+    }
+
+    /// <summary>
+    /// Preview number before issuance: same TQ date stamp, ordinal from display-id digits.
+    /// </summary>
     public static string FormatTemporary(string displayId, DateOnly reportDate)
     {
-        var id = string.IsNullOrWhiteSpace(displayId) ? "—" : displayId.Trim();
-        return $"تق-{reportDate.Year:D4}-{id}";
+        var digits = new string((displayId ?? "").Where(char.IsDigit).ToArray());
+        var ordinal = int.TryParse(digits, out var n) && n > 0 ? n : 1;
+        return FormatIssued(reportDate, ordinal);
     }
+
+    /// <summary>
+    /// Number reserved when the appraisal task is spawned. Uses the request
+    /// (distribution) date so the TQ stamp does not change at later preview.
+    /// </summary>
+    public static string FormatReserved(string displayId, DateOnly reservedDate) =>
+        FormatTemporary(displayId, reservedDate);
 }
 
 /// <summary>report validity: 90 days from the report date. ضابط تنبيهي لا حاجب.</summary>

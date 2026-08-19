@@ -26,4 +26,18 @@ public class ValuationReportDocumentController : ControllerBase
         var dto = await _reports.GetPreviewAsync(valuationRequestId, ct);
         return dto is null ? NotFound() : Ok(dto);
     }
+
+    [HttpGet("pdf")]
+    [Authorize(Policy = CapabilityPolicyNames.ReadValuationQueue)]
+    public async Task<IActionResult> GetPreviewPdf(
+        Guid valuationRequestId,
+        CancellationToken ct)
+    {
+        var dto = await _reports.GetPreviewAsync(valuationRequestId, ct);
+        if (dto is null) return NotFound();
+        var pdf = await _reports.GetPreviewPdfAsync(valuationRequestId, ct);
+        if (pdf is null || pdf.Length == 0) return NotFound();
+        var fileName = $"{(dto.ReportNumber ?? dto.DisplayId).Trim()}.pdf";
+        return File(pdf, "application/pdf", fileName);
+    }
 }

@@ -1,8 +1,7 @@
 namespace RealEstateEval.Domain;
 
 /// <summary>
-/// Flattens bank comparable adjustments into Word-merge template cells.
-/// Template uses columns 2/4/6 for the three comparable slots (bank replaces fixed rows).
+/// Flattens bank comparable adjustments into report field keys for the three comparable slots.
 /// </summary>
 public static class ValuationReportFieldAdjustmentFlattenRules
 {

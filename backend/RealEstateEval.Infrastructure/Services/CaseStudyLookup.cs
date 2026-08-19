@@ -149,6 +149,9 @@ public sealed class CaseStudyLookup(CaseStudyDbContext caseStudy) : ICaseStudyLo
             Id = property.Id,
             WorkOrderId = property.WorkOrderId,
             PoNumber = property.WorkOrder?.PoNumber.Trim() ?? "",
+            AssignmentType = property.WorkOrder is { } wo
+                ? AssignmentTypeLabels.ToLabel(wo.AssignmentType)
+                : "",
             DeedKind = property.DeedKind.ToString(),
             DeedNumber = property.DeedNumber,
             DeedDate = property.DeedDate,

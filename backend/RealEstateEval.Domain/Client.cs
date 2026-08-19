@@ -18,9 +18,15 @@ public class Client
     public DateTime UpdatedAtUtc { get; set; }
 }
 
-/// <summary>Known seed ids — Infath Assignment and Liquidation Center.</summary>
+/// <summary>Known seed ids — Infath assignment center and Nabr Real Estate.</summary>
 public static class SeedClientIds
 {
     public static readonly Guid InfathAssignmentCenter =
         Guid.Parse("a1000001-0000-4000-8000-000000000001");
+
+    /// <summary>
+    /// Infath sub-client that can also be selected as a direct client.
+    /// </summary>
+    public static readonly Guid NabrRealEstate =
+        Guid.Parse("a1000001-0000-4000-8000-000000000002");
 }

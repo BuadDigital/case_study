@@ -59,6 +59,15 @@ public sealed class HttpValuationRequestService(
         }
     }
 
+    public async Task<(ValuationRequestDto? Result, string? Error)> EnsureOpenByPropertyAsync(
+        SaveValuationRequestRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        var existing = await GetOpenByPropertyAsync(request.PropId, cancellationToken);
+        if (existing is not null) return (existing, null);
+        return await CreateAsync(request, cancellationToken);
+    }
+
     public Task<(ValuationRequestDto? Result, string? Error)> SubmitReportAsync(
         Guid id,
         CancellationToken cancellationToken = default) =>

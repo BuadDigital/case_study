@@ -34,13 +34,12 @@ public class PropertyAppraisalSubmissionValidatorTests
     }
 
     [Fact]
-    public void Validate_rejects_missing_price_and_report()
+    public void Validate_rejects_missing_price()
     {
         using var doc = JsonDocument.Parse(
             """
             {
               "evaluatorPrice": "",
-              "reportFileName": "",
               "assetDataConfirmed": true,
               "assetDataVarianceNotes": "",
               "independenceDeclared": true,
@@ -50,7 +49,7 @@ public class PropertyAppraisalSubmissionValidatorTests
         var errors = PropertyAppraisalSubmissionValidator.Validate(doc.RootElement);
 
         Assert.Equal("سعر التقييم مطلوب", errors["evaluatorPrice"]);
-        Assert.Equal("تقرير PDF مطلوب", errors["reportFileName"]);
+        Assert.False(errors.ContainsKey("reportFileName"));
     }
 
     [Fact]
@@ -61,7 +60,6 @@ public class PropertyAppraisalSubmissionValidatorTests
             """
             {
               "evaluatorPrice": "1250000",
-              "reportFileName": "appraisal.pdf",
               "assetDataConfirmed": true,
               "independenceDeclared": false,
               "reportWorkers": [{ "name": "أحمد", "role": "معد" }]
@@ -81,7 +79,6 @@ public class PropertyAppraisalSubmissionValidatorTests
             """
             {
               "evaluatorPrice": "1250000",
-              "reportFileName": "appraisal.pdf",
               "assetDataConfirmed": true,
               "independenceDeclared": true,
               "reportWorkers": []
@@ -97,7 +94,6 @@ public class PropertyAppraisalSubmissionValidatorTests
         $$"""
         {
           "evaluatorPrice": "1250000",
-          "reportFileName": "appraisal.pdf",
           "assetDataConfirmed": {{(confirmed ? "true" : "false")}},
           "assetDataVarianceNotes": {{JsonSerializer.Serialize(notes)}},
           "independenceDeclared": true,

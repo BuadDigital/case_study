@@ -12,7 +12,7 @@ import { EVALUATOR_SUBMISSION_CHANGED_EVENT, isEvaluatorFormLocked, loadEvaluato
 import type { EvaluatorWindowHostRefObject } from "../lib/evaluator/evaluator-window-host";
 
 /** Footer from Case Study.html `renderValOrders`. */
-const APPRAISER_TABLE_HINT = "راقب تقدم الأطراف من هنا. حساب القيمة يُفعَّل بعد اعتماد الأخصائي لبيانات المعاينة — المقيّم يعتمد القيمة، واستلام الأخصائي ليس اعتماداً للسعر.";
+const APPRAISER_TABLE_HINT = "راقب تقدم الأطراف من هنا. حساب القيمة يُفعَّل بعد اعتماد الأخصائي لبيانات معاينة العقار — المقيّم يعتمد القيمة، واستلام الأخصائي ليس اعتماداً للسعر.";
 
 export const partyAppraisalExtensions: PartyAppraisalExtensions = {
   patchQueueConfig(base, _def) {

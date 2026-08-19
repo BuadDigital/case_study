@@ -54,6 +54,7 @@ export { useSyncedNotifications } from "./notifications/useSyncedNotifications";
 export { exportRowsToCsv } from "./export/export-csv";
 export * from "./domain/form/field-errors";
 export * from "./form-ux";
+export * from "./prototype/assignment-valuation-defaults";
 export * from "./prototype/constants";
 export * from "./prototype/po-list-status";
 export * from "./prototype/active-transactions";

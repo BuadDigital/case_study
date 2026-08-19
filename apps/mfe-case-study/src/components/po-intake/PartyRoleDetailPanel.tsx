@@ -49,9 +49,9 @@ export function PartyRoleDetailPanel({
         <>
           {submission.fields.length > 0 ? (
             <FieldsGrid>
-              {submission.fields.map((field) => (
+              {submission.fields.map((field, index) => (
                 <FieldBox
-                  key={field.label}
+                  key={`${field.label}-${index}`}
                   label={field.label}
                   value={field.value}
                   ltr={field.ltr}
@@ -65,9 +65,9 @@ export function PartyRoleDetailPanel({
               <SectionDivider />
               <SectionHeader>ملاحظات</SectionHeader>
               <FieldsGrid cols={2}>
-                {submission.remarks.map((remark) => (
+                {submission.remarks.map((remark, index) => (
                   <FieldBox
-                    key={remark.label}
+                    key={`${remark.label}-${index}`}
                     label={remark.label}
                     value={remark.value}
                     span={2}

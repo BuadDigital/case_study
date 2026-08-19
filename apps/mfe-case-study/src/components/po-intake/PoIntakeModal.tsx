@@ -1,12 +1,14 @@
 "use client";
 
 import { AppModal } from "@case-study/mfe/components/ui/AppModal";
-import { RegField, RegSelect, RegTextarea } from "@platform/app-shared/registration/FormFields";
+import { RegField, RegTextarea } from "@platform/app-shared/registration/FormFields";
 import { RegistrationFormCard } from "@platform/app-shared/registration/RegistrationFormCard";
 import { UNSAVED_CONFIRM_MSG } from "@platform/app-shared/registration/registration-utils";
 import { Button, Note } from "@platform/ui-kit";
 import type { PoIntakeRecord } from "../../lib/prototype/po-intake-data";
 import { AssignmentTypeFields } from "@case-study/mfe/components/po-intake/AssignmentTypeFields";
+import { AssignmentValuationFields } from "@case-study/mfe/components/po-intake/AssignmentValuationFields";
+import { PoWorkOrderPartyFields } from "@case-study/mfe/components/po-intake/PoWorkOrderPartyFields";
 import { usePoIntakeForm } from "@case-study/mfe/components/po-intake/usePoIntakeForm";
 
 export function PoIntakeModal({
@@ -51,7 +53,7 @@ export function PoIntakeModal({
       {form.formError ? <Note tone="warn">{form.formError}</Note> : null}
 
       <RegistrationFormCard>
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+        <div className="grid grid-cols-1 items-start gap-3 sm:grid-cols-2">
           <RegField
             id="po_number_modal"
             label="رقم التعميد (PO)"
@@ -87,25 +89,29 @@ export function PoIntakeModal({
             error={form.fieldErrors.assignmentSpecialistEmail}
             onChange={form.setAssignmentSpecialistEmail}
           />
-          <RegSelect
-            id="po_client_modal"
-            label="العميل"
-            required
-            value={form.clientId}
-            error={form.fieldErrors.clientId}
-            disabled={form.clientsLoading}
-            placeholder={form.clientsLoading ? "جاري التحميل…" : "اختر العميل"}
-            options={form.clients.map((c) => ({
-              value: c.id,
-              label: c.nameAr,
-            }))}
-            onChange={form.setClientId}
-          />
           <AssignmentTypeFields
             value={form.assignmentType}
             allowEmpty
             error={form.fieldErrors.assignmentType}
             onChange={(v) => form.setAssignmentType(v)}
+          />
+          <PoWorkOrderPartyFields
+            idPrefix="po_modal"
+            assignmentType={form.assignmentType}
+            clientId={form.clientId}
+            subClientId={form.subClientId}
+            clients={form.clients}
+            clientsLoading={form.clientsLoading}
+            clientError={form.fieldErrors.clientId}
+            subClientError={form.fieldErrors.subClientId}
+            clientLocked
+            onClientChange={form.setClientId}
+            onSubClientChange={form.setSubClientId}
+          />
+          <AssignmentValuationFields
+            idPrefix="po_modal"
+            assignmentType={form.assignmentType}
+            subClientId={form.subClientId}
           />
           <RegField
             id="expected_property_count_modal"

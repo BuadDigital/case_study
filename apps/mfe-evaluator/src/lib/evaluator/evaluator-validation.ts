@@ -4,7 +4,6 @@ import {
   resolveFirstErrorTarget,
   type FormErrorTarget,
 } from "@platform/app-shared/form-ux";
-import { getCachedEvaluatorReport } from "./evaluator-report-attachments";
 import type { EvaluatorReportWorker } from "./evaluator-window-data";
 import { parseEvaluatorAmount } from "./value-estimation";
 
@@ -12,8 +11,6 @@ export type EvaluatorValidationErrors = Record<string, string>;
 
 /** Document order on the valuation tab for scroll + first message. */
 const EVALUATOR_ERROR_TARGETS: readonly FormErrorTarget[] = [
-  { key: "report_no", targetId: "val-report-no" },
-  { key: "evaluator_report_file", targetId: "val-report-file" },
   { key: "land_value", targetId: "inf-land" },
   { key: "building_value", targetId: "inf-building" },
   { key: "evaluator_price", targetId: "inf-total" },
@@ -38,7 +35,6 @@ export function firstEvaluatorErrorTarget(
 
 export function validateEvaluatorSubmission(input: {
   taskId: string;
-  reportNo?: string;
   evaluatorPrice: string;
   landValue?: string;
   buildingValue?: string;
@@ -50,22 +46,11 @@ export function validateEvaluatorSubmission(input: {
 }): EvaluatorValidationErrors {
   const errors: EvaluatorValidationErrors = {};
   const {
-    taskId,
-    reportNo = "",
     evaluatorPrice,
     landValue = "",
     buildingValue = "",
     forcedSaleDiscountPct = "",
   } = input;
-
-  if (!reportNo.trim()) {
-    errors.report_no = "مطلوب إدخال رقم التقرير.";
-  }
-
-  const report = getCachedEvaluatorReport(taskId);
-  if (!report?.dataUrl) {
-    errors.evaluator_report_file = "مطلوب رفع تقرير التقييم PDF.";
-  }
 
   const land = parseEvaluatorAmount(landValue);
   if (!landValue.trim()) {

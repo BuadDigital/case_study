@@ -8,6 +8,9 @@ import {
   type ClientDto,
 } from "@platform/api-client";
 import {
+  defaultSubClientId,
+  reportUserClientIdsForAssignment,
+  showsSubClientField,
   type AssignmentType,
   type PoIntakeRecord,
 } from "../../lib/prototype/po-intake-data";
@@ -51,6 +54,7 @@ export function usePoIntakeForm(onComplete: (record: PoIntakeRecord) => void) {
   const [expectedPropertyCount, setExpectedPropertyCount] = useState("1");
   const [workOrderDescription, setWorkOrderDescription] = useState("");
   const [clientId, setClientId] = useState(INFATH_SEED_CLIENT_ID);
+  const [subClientId, setSubClientId] = useState(defaultSubClientId());
   const [clients, setClients] = useState<ClientDto[]>([]);
   const [clientsLoading, setClientsLoading] = useState(true);
 
@@ -66,7 +70,6 @@ export function usePoIntakeForm(onComplete: (record: PoIntakeRecord) => void) {
           const count = draft.expectedPropertyCount;
           setExpectedPropertyCount(count && count > 0 ? String(count) : "1");
           setWorkOrderDescription(draft.workOrderDescription ?? "");
-          if (draft.clientId?.trim()) setClientId(draft.clientId.trim());
         }
         setDraftReady(true);
       })
@@ -112,6 +115,7 @@ export function usePoIntakeForm(onComplete: (record: PoIntakeRecord) => void) {
       !!assignmentSpecialistEmail.trim() ||
       !!workOrderDescription.trim() ||
       clientId !== INFATH_SEED_CLIENT_ID ||
+      subClientId !== defaultSubClientId() ||
       expectedPropertyCount !== "1",
     [
       poNumber,
@@ -121,6 +125,7 @@ export function usePoIntakeForm(onComplete: (record: PoIntakeRecord) => void) {
       assignmentSpecialistEmail,
       workOrderDescription,
       clientId,
+      subClientId,
       expectedPropertyCount,
     ],
   );
@@ -154,6 +159,10 @@ export function usePoIntakeForm(onComplete: (record: PoIntakeRecord) => void) {
     clientId,
   ]);
 
+  function handleAssignmentType(next: AssignmentType) {
+    setAssignmentType(next);
+  }
+
   function clearErrors() {
     setFieldErrors({});
     setFormError(null);
@@ -172,6 +181,9 @@ export function usePoIntakeForm(onComplete: (record: PoIntakeRecord) => void) {
         ["poNumber", "promulgationDate", "assignmentType", "clientId"],
       ),
     );
+    if (showsSubClientField(assignmentType, clientId) && !subClientId.trim()) {
+      errors.subClientId = "اختر العميل الفرعي";
+    }
     if (
       assignmentSpecialistEmail.trim() &&
       !EMAIL_RE.test(assignmentSpecialistEmail.trim())
@@ -204,7 +216,7 @@ export function usePoIntakeForm(onComplete: (record: PoIntakeRecord) => void) {
     setSaving(true);
     clearErrors();
 
-    const clientNameAr = clients.find((c) => c.id === clientId)?.nameAr;
+    const clientNameAr = clients.find((c) => c.id === INFATH_SEED_CLIENT_ID)?.nameAr;
     const record = buildPoRecord({
       poNumber: poNumber.trim(),
       assignmentType: assignmentType as AssignmentType,
@@ -212,10 +224,14 @@ export function usePoIntakeForm(onComplete: (record: PoIntakeRecord) => void) {
       assignmentSpecialist: assignmentSpecialist.trim(),
       assignmentSpecialistEmail: assignmentSpecialistEmail.trim(),
       expectedPropertyCount: Math.max(1, parseInt(expectedPropertyCount, 10) || 1),
-      reportUserClientIds: [],
+      reportUserClientIds: reportUserClientIdsForAssignment(
+        assignmentType,
+        INFATH_SEED_CLIENT_ID,
+        subClientId,
+      ),
       propertiesRegion: "",
       workOrderDescription: workOrderDescription.trim(),
-      clientId: clientId.trim(),
+      clientId: INFATH_SEED_CLIENT_ID,
       clientNameAr,
       properties: [],
     });
@@ -243,7 +259,7 @@ export function usePoIntakeForm(onComplete: (record: PoIntakeRecord) => void) {
     promulgationDate,
     setPromulgationDate,
     assignmentType,
-    setAssignmentType,
+    setAssignmentType: handleAssignmentType,
     assignmentSpecialist,
     setAssignmentSpecialist,
     assignmentSpecialistEmail,
@@ -254,6 +270,8 @@ export function usePoIntakeForm(onComplete: (record: PoIntakeRecord) => void) {
     setWorkOrderDescription,
     clientId,
     setClientId,
+    subClientId,
+    setSubClientId,
     clients,
     clientsLoading,
     save,

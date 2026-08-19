@@ -145,7 +145,7 @@ export function EvaluatorReportWorkersSection({
         <Button
           type="button"
           size="sm"
-          variant="secondary"
+          variant="outline"
           showActionToast={false}
           onClick={() =>
             onChange([...workers, createEmptyReportWorker("مراجع")])

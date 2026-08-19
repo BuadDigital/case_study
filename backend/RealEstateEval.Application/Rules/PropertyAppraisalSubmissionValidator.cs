@@ -14,8 +14,6 @@ public static class PropertyAppraisalSubmissionValidator
 
         if (!HasNonEmpty(root, "evaluatorPrice"))
             errors["evaluatorPrice"] = "سعر التقييم مطلوب";
-        if (!HasNonEmpty(root, "reportFileName"))
-            errors["reportFileName"] = "تقرير PDF مطلوب";
 
         var assetConfirmed = GetBool(root, "assetDataConfirmed");
         var hasVarianceNotes = HasNonEmpty(root, "assetDataVarianceNotes");

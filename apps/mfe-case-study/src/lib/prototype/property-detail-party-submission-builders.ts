@@ -587,6 +587,13 @@ export function buildFromEvaluator(
     },
   ];
   if (price) fields.push({ label: "سعر التقييم", value: price, ltr: true });
+  if (submission.reportNo?.trim()) {
+    fields.push({
+      label: "رقم التقرير",
+      value: submission.reportNo.trim(),
+      ltr: true,
+    });
+  }
   if (submission.reportFileName?.trim()) {
     fields.push({
       label: "تقرير التقييم",
@@ -627,6 +634,11 @@ export function buildFromEvaluator(
       true,
     );
   }
+  pushEval(INFATH_FIELD_LABELS.depositCode, submission.depositCode);
+  pushEval(
+    INFATH_FIELD_LABELS.depositCertificate,
+    submission.depositCertificateFileName ?? undefined,
+  );
   pushEval(INFATH_FIELD_LABELS.planPhoto, submission.planImageFileName ?? undefined);
   if (submission.independenceDeclared) {
     fields.push({
@@ -658,10 +670,7 @@ export function buildFromEvaluator(
       value: bits.join(" · "),
     });
   }
-  const signedName =
-    submission.signedAppraisalFileName?.trim() ||
-    submission.reportFileName?.trim() ||
-    "";
+  const signedName = submission.reportFileName?.trim() || "";
   if (signedName) {
     fields.push({
       label: INFATH_FIELD_LABELS.signedAppraisal,
@@ -716,6 +725,7 @@ export function buildFromEvaluator(
     Boolean(price) ||
     remarks.length > 0 ||
     Boolean(submission.reportFileName?.trim()) ||
+    Boolean(submission.reportNo?.trim()) ||
     answers.length > 0;
 
   return {

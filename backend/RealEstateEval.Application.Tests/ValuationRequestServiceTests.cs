@@ -57,6 +57,61 @@ public class ValuationRequestServiceTests
     }
 
     [Fact]
+    public async Task GetOpenByProperty_matches_guid_format_variants()
+    {
+        await using var db = CreateDb();
+        var propertyId = Guid.Parse("aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa");
+        db.ValuationRequests.Add(ValuationRequest.Create(
+            Guid.Parse("a1000001-0000-4000-8000-000000000003"),
+            "VR-510",
+            propertyId.ToString("D"),
+            "جدة",
+            "فيلا",
+            "مقيم",
+            "2026-08-19",
+            DateTime.UtcNow));
+        await db.SaveChangesAsync();
+
+        var service = CreateService(db);
+        var found = await service.GetOpenByPropertyAsync(propertyId.ToString("D").ToUpperInvariant());
+        Assert.NotNull(found);
+        Assert.Equal("VR-510", found!.DisplayId);
+    }
+
+    [Fact]
+    public async Task EnsureOpen_returns_existing_without_creating_a_second()
+    {
+        await using var db = CreateDb();
+        var propertyId = Guid.Parse("bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb");
+        db.ValuationRequests.Add(ValuationRequest.Create(
+            Guid.Parse("a1000001-0000-4000-8000-000000000004"),
+            "VR-511",
+            propertyId.ToString("D"),
+            "جدة",
+            "فيلا",
+            "مقيم",
+            "2026-08-19",
+            DateTime.UtcNow));
+        await db.SaveChangesAsync();
+
+        var service = CreateService(db);
+        var (result, error) = await service.EnsureOpenByPropertyAsync(new SaveValuationRequestRequest
+        {
+            PropId = propertyId.ToString("D"),
+            Area = "جدة",
+            Type = "فيلا",
+            Appraiser = "مقيم",
+            Status = ValuationRequestStatuses.Progress,
+            Date = "2026-08-19",
+        });
+
+        Assert.Null(error);
+        Assert.NotNull(result);
+        Assert.Equal("VR-511", result!.DisplayId);
+        Assert.Equal(1, await db.ValuationRequests.CountAsync());
+    }
+
+    [Fact]
     public async Task RecordImpediment_rejects_without_reason()
     {
         await using var db = CreateDb();

@@ -483,10 +483,14 @@ export function PropertyDetailEnfathUpload({
       keysStatus: keyGate?.keysStatus ?? null,
       keyAvailable: keyGate?.keyAvailable,
       envelopeId,
-      depositCode: depositDraft.depositCode,
-      depositCertificateName: depositDraft.depositCertificateName,
+      depositCode:
+        parties?.appraisal?.fields.find((f) => f.label === "رمز إيداع التقرير")
+          ?.value ?? depositDraft.depositCode,
+      depositCertificateName:
+        parties?.appraisal?.fields.find((f) => f.label === "شهادة الإيداع")
+          ?.value ?? depositDraft.depositCertificateName,
     };
-  }, [primaryCourtVisit, keyGate, depositDraft]);
+  }, [primaryCourtVisit, keyGate, depositDraft, parties]);
 
   const model = useMemo(
     () =>

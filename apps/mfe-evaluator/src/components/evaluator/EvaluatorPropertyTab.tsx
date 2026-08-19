@@ -8,6 +8,7 @@ import {
 } from "@case-study/mfe/lib/prototype/property-detail-documents";
 import { usePropertyDetailDocuments } from "@case-study/mfe/query/property-detail-documents-query";
 import { EvaluatorCopyField } from "./EvaluatorChecklistTab";
+import { EvaluatorInspectionFactsSection } from "./EvaluatorInspectionFactsSection";
 import {
   EngField,
   EngInfo,
@@ -152,8 +153,9 @@ export function EvaluatorPropertyTab({
   return (
     <div>
       <EngInfo>
-        تُستخدم هذه البيانات لتسجيل أمر عمل تقييم عقاري جديد في نظام التقييم —
-        انسخ كل حقل بأيقونته ثم أكمل التقييم هناك وارفع تقريره في تبويب «التقييم».
+        تُستخدم هذه البيانات لتسجيل أمر عمل تقييم عقاري. أكمل التقييم في
+        التبويبات التالية؛ التقرير يُولَّد من النظام عند الاعتماد ويُصدَر PDF.
+        رقم التقرير يُحجز عند توزيع المعاملة على المقيم.
       </EngInfo>
 
       <EngSection>بيانات الصك</EngSection>
@@ -166,13 +168,17 @@ export function EvaluatorPropertyTab({
           value={property.cityDistrict}
         />
         <EvaluatorCopyField label="تاريخ الإسناد" value={property.assignedAt} />
-        <EngField label="حالة المعاينة">
+        <EngField label="حالة معاينة العقار">
           <ValStatusPill
             label={property.inspectionDone ? "مكتملة" : "غير مكتملة"}
             color={property.inspectionDone ? "#3f8f5f" : "#d9694f"}
           />
         </EngField>
       </div>
+
+      <EvaluatorInspectionFactsSection
+        inspectionTaskId={property.inspectionTaskId}
+      />
 
       <EngSection>
         مستندات المعاملة — تُضاف من جميع الأطراف أثناء العمل

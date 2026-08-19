@@ -342,6 +342,14 @@ export function EvaluatorAdvisoryPanel({
             </span>
           </div>
         ))}
+      {submission.reportNo.trim() ? (
+        <div className={infoRowClass}>
+          <span className="shrink-0 text-text-3">رقم التقرير</span>
+          <span className="text-left font-medium text-text" dir="ltr">
+            {submission.reportNo}
+          </span>
+        </div>
+      ) : null}
       {submission.reportFileName ? (
         <div className={infoRowClass}>
           <span className="shrink-0 text-text-3">تقرير التقييم</span>
@@ -354,7 +362,7 @@ export function EvaluatorAdvisoryPanel({
                 void openEvaluatorReportPreview(appraisalTask.id);
               }}
             >
-              معاينة PDF
+              استعراض
             </Button>
           </span>
         </div>

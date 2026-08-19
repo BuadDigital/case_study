@@ -17,6 +17,13 @@ public interface IValuationRequestService
     Task<(ValuationRequestDto? Result, string? Error)> CreateAsync(
         SaveValuationRequestRequest request,
         CancellationToken cancellationToken = default);
+    /// <summary>
+    /// Returns the open request for the property, creating one when distribution
+    /// did not (or the lookup key differed only by GUID format).
+    /// </summary>
+    Task<(ValuationRequestDto? Result, string? Error)> EnsureOpenByPropertyAsync(
+        SaveValuationRequestRequest request,
+        CancellationToken cancellationToken = default);
     Task<(ValuationRequestDto? Result, string? Error)> SubmitReportAsync(
         Guid id,
         CancellationToken cancellationToken = default);

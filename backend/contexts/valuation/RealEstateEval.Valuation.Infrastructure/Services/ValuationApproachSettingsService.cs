@@ -31,10 +31,12 @@ public sealed class ValuationApproachSettingsService(
         var row = await db.ValuationApproachSettings.AsNoTracking()
             .FirstOrDefaultAsync(x => x.ValuationRequestId == valuationRequestId, cancellationToken);
 
+        var (hasStructures, assignmentType) = await PropertyContextAsync(vr, cancellationToken);
         return ToDto(
             vr,
             row,
-            await HasStructuresToValueAsync(vr, cancellationToken),
+            hasStructures,
+            assignmentType,
             await AssumptionLibraryAsync(cancellationToken));
     }
 
@@ -58,7 +60,7 @@ public sealed class ValuationApproachSettingsService(
         if (vr.Status == ValuationRequestStatus.Done)
             return (null, new Dictionary<string, string> { ["_"] = "طلب التقييم مكتمل" });
 
-        var hasStructures = await HasStructuresToValueAsync(vr, cancellationToken);
+        var (hasStructures, assignmentType) = await PropertyContextAsync(vr, cancellationToken);
         DateOnly? retroDate = null;
         if (DateOnly.TryParse(request.RetrospectiveDate?.Trim(), out var parsedRetro))
             retroDate = parsedRetro;
@@ -117,30 +119,36 @@ public sealed class ValuationApproachSettingsService(
         row.UpdatedAtUtc = _time.UtcNow();
 
         await db.SaveChangesAsync(cancellationToken);
-        return (ToDto(vr, row, hasStructures, await AssumptionLibraryAsync(cancellationToken)), null);
+        return (ToDto(vr, row, hasStructures, assignmentType, await AssumptionLibraryAsync(cancellationToken)), null);
     }
 
- /// <summary>سؤال الحصر «هل توجد مبانٍ/إنشاءات يجب تقييمها؟» من عقار أمر العمل.</summary>
-    private async Task<bool> HasStructuresToValueAsync(
+ /// <summary>سؤال الحصر «هل توجد مبانٍ/إنشاءات يجب تقييمها؟» + نوع الإسناد من عقار أمر العمل.</summary>
+    private async Task<(bool HasStructures, AssignmentType AssignmentType)> PropertyContextAsync(
         ValuationRequest vr,
         CancellationToken cancellationToken)
     {
-        if (!Guid.TryParse(vr.PropertyId?.Trim(), out var propertyGuid)) return false;
+        if (!Guid.TryParse(vr.PropertyId?.Trim(), out var propertyGuid))
+            return (false, AssignmentType.Execution);
         var context = await caseStudy.GetValuationPropertyContextAsync(propertyGuid, cancellationToken);
-        return string.Equals(
+        var hasStructures = string.Equals(
             context?.HasStructuresToValue.Trim(),
             "yes",
             StringComparison.OrdinalIgnoreCase);
+        return (hasStructures, context?.AssignmentTypeValue() ?? AssignmentType.Execution);
     }
 
     private static ValuationApproachSettingsDto ToDto(
         ValuationRequest vr,
         ValuationApproachSettings? row,
         bool hasStructures,
+        AssignmentType assignmentType,
         IReadOnlyList<string> assumptionLibrary)
     {
         var effective = row
             ?? ValuationApproachSettingsRules.Defaults(vr.Id, vr.PropertyType, hasStructures);
+        var purposeKey = string.IsNullOrWhiteSpace(effective.ValuationPurposeKey)
+            ? AssignmentValuationDefaults.PurposeKey(assignmentType)
+            : effective.ValuationPurposeKey;
         return new ValuationApproachSettingsDto
         {
             ValuationRequestId = vr.Id,
@@ -158,8 +166,8 @@ public sealed class ValuationApproachSettingsService(
             CostMeasurementUnitKey = effective.CostMeasurementUnitKey,
             CostMeasurementUnitLabelAr = CostMeasurementUnitKeys.LabelAr(effective.CostMeasurementUnitKey),
             AdjustmentsEditUnlocked = effective.AdjustmentsEditUnlocked,
-            ValuationPurposeKey = effective.ValuationPurposeKey,
-            ValuationPurposeLabelAr = ValuationPurposeKeys.LabelAr(effective.ValuationPurposeKey),
+            ValuationPurposeKey = purposeKey,
+            ValuationPurposeLabelAr = ValuationPurposeKeys.LabelAr(purposeKey),
             ValuationPurposeNote = effective.ValuationPurposeNote,
             ExternalSpecialistUsed = effective.ExternalSpecialistUsed,
             ExternalSpecialistDetails = effective.ExternalSpecialistDetails,

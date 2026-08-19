@@ -169,6 +169,7 @@ export function CaseStudyWorkspaceView({
           record={record}
           property={property}
           propertyIndex={propertyIndex + 1}
+          hideOpenCaseStudy
         />
 
         <div className="grid min-h-0 flex-1 grid-cols-1 items-start gap-3.5 lg:grid-cols-[minmax(0,1fr)_250px]">

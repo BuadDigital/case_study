@@ -49,6 +49,22 @@ public class ValuationRequestsController : ControllerBase
         return dto is null ? NotFound() : Ok(dto);
     }
 
+    [HttpPost("ensure-open")]
+    [Authorize(Policy = CapabilityPolicyNames.ReadValuationQueue)]
+    public async Task<ActionResult<ValuationRequestDto>> EnsureOpen(
+        [FromBody] SaveValuationRequestRequest request,
+        CancellationToken ct)
+    {
+        var (dto, error) = await _service.EnsureOpenByPropertyAsync(request, ct);
+        return error switch
+        {
+            "valuation_already_open" => this.ConflictProblem(
+                "an open valuation request already exists for this property"),
+            "duplicate_display_id" => this.ConflictProblem("display id already in use"),
+            _ => dto is null ? this.BadRequestProblem("تعذّر فتح طلب التقييم") : Ok(dto),
+        };
+    }
+
     [HttpPost]
     [Authorize(Policy = CapabilityPolicyNames.ManageValuationRequests)]
     public async Task<ActionResult<ValuationRequestDto>> Create(

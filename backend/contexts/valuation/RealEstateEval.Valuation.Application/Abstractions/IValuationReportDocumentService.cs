@@ -7,4 +7,8 @@ public interface IValuationReportDocumentService
     Task<ValuationReportDocumentDto?> GetPreviewAsync(
         Guid valuationRequestId,
         CancellationToken cancellationToken = default);
+
+    Task<byte[]?> GetPreviewPdfAsync(
+        Guid valuationRequestId,
+        CancellationToken cancellationToken = default);
 }

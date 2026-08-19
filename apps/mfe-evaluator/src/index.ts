@@ -28,6 +28,8 @@ export {
 } from "@platform/app-shared/prototype/party-task-recall-storage";
 export * from "./lib/evaluator/evaluator-validation";
 export * from "./lib/evaluator/evaluator-report-attachments";
+export * from "./lib/evaluator/evaluator-deposit-attachments";
+export * from "./lib/evaluator/valuation-report-number";
 export * from "./lib/evaluator/evaluator-inspection-gate";
 export * from "./lib/evaluator/evaluator-queue";
 export * from "./lib/evaluator/evaluator-window-host";

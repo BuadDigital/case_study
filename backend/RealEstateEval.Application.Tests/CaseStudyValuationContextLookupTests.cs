@@ -28,6 +28,8 @@ public class CaseStudyValuationContextLookupTests
         Assert.NotNull(context);
         Assert.Equal(PropertyId, context.Id);
         Assert.Equal("PO-900", context.PoNumber);
+        Assert.Equal("تنفيذ", context.AssignmentType);
+        Assert.Equal(AssignmentType.Execution, context.AssignmentTypeValue());
         Assert.Equal(nameof(DeedKind.Traditional), context.DeedKind);
         Assert.Equal(DeedKind.Traditional, context.DeedKindValue());
         Assert.Equal("yes", context.HasStructuresToValue);

@@ -16,6 +16,9 @@ import {
   type EvaluatorSubmission,
   type EvaluatorSubmissionStatus,
 } from "./evaluator-window-data";
+import { reservedValuationReportNumber } from "./valuation-report-number";
+import { getApiBase, ensureOpenValuationRequestByProperty } from "@platform/api-client";
+import { getAuthSession } from "@platform/auth-client";
 
 export const EVALUATOR_SUBMISSION_CHANGED_EVENT = "evaluator-submission-changed";
 
@@ -65,7 +68,9 @@ function dtoToSubmission(
       typeof payload.assetDataVarianceNotes === "string"
         ? payload.assetDataVarianceNotes
         : base.assetDataVarianceNotes,
-    signedAppraisalFileName: payload.signedAppraisalFileName ?? null,
+    depositCode:
+      typeof payload.depositCode === "string" ? payload.depositCode : base.depositCode,
+    depositCertificateFileName: payload.depositCertificateFileName ?? null,
     appraiserAddress:
       typeof payload.appraiserAddress === "string" &&
       payload.appraiserAddress.trim()
@@ -111,15 +116,46 @@ export async function hydrateEvaluatorSubmission(input: {
   taskId: string;
   propertyId: string;
   poNumber: string;
+  assignmentType?: string;
 }): Promise<EvaluatorSubmission> {
   const existing = await fetchEvaluatorSubmission(input.taskId);
-  if (existing) return existing;
-  const draft = createEvaluatorDraft(input);
-  const saved = await saveEvaluatorSubmission(draft);
-  if (!saved) {
-    throw new Error("تعذّر حفظ مسودة التقييم — تحقق من الاتصال وحاول مجدداً.");
+  const draft = existing ?? createEvaluatorDraft(input);
+  if (!existing) {
+    const saved = await saveEvaluatorSubmission(draft);
+    if (!saved) {
+      throw new Error("تعذّر حفظ مسودة التقييم — تحقق من الاتصال وحاول مجدداً.");
+    }
+    return stampReservedReportNumber(saved);
   }
-  return saved;
+  return stampReservedReportNumber(existing);
+}
+
+async function stampReservedReportNumber(
+  submission: EvaluatorSubmission,
+): Promise<EvaluatorSubmission> {
+  if (submission.reportNo.trim() || !submission.propertyId.trim()) {
+    return submission;
+  }
+  const session = getAuthSession();
+  if (!session?.token) return submission;
+  try {
+    const open = await ensureOpenValuationRequestByProperty(
+      { token: session.token, baseUrl: getApiBase() },
+      {
+        propId: submission.propertyId,
+        area: "—",
+        type: "—",
+        appraiser: "—",
+      },
+    );
+    if (!open.ok) return submission;
+    const reportNo = reservedValuationReportNumber(open.data.displayId, open.data.date);
+    if (!reportNo.trim()) return submission;
+    const saved = await saveEvaluatorSubmission({ ...submission, reportNo });
+    return saved ?? { ...submission, reportNo };
+  } catch {
+    return submission;
+  }
 }
 
 export async function syncEvaluatorChecklistFromPartyCaseStudy(

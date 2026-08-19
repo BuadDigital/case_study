@@ -6,7 +6,6 @@ import {
   uploadTaskScopedAttachment,
 } from "@platform/app-shared/prototype/task-attachments-api";
 import { getCachedPartySubmission } from "@platform/app-shared/prototype/party-submission-api";
-import { MAX_EVALUATOR_PDF_BYTES } from "./evaluator-window-data";
 import {
   loadEvaluatorSubmission,
   saveEvaluatorSubmission,
@@ -59,20 +58,14 @@ export async function prefetchEvaluatorReport(
   return prefetchTaskAttachment(EVALUATOR_REPORT_SCOPE, taskId);
 }
 
-export async function cacheEvaluatorReport(
+export async function cacheIssuedValuationReport(
   taskId: string,
   file: File,
+  reportNo: string,
 ): Promise<{ ok: true } | { ok: false; error: string }> {
   if (!taskId) {
-    return { ok: false, error: "تعذّر حفظ الملف." };
+    return { ok: false, error: "تعذّر حفظ التقرير." };
   }
-  if (file.type !== "application/pdf" && !file.name.toLowerCase().endsWith(".pdf")) {
-    return { ok: false, error: "يُقبل ملف PDF فقط." };
-  }
-  if (file.size > MAX_EVALUATOR_PDF_BYTES) {
-    return { ok: false, error: "الحجم الأقصى 20 ميجابايت." };
-  }
-
   const current = loadEvaluatorSubmission(taskId);
   if (!current) {
     return { ok: false, error: "لا توجد مسودة تقييم." };
@@ -84,7 +77,7 @@ export async function cacheEvaluatorReport(
     file,
   );
   if (!uploaded) {
-    return { ok: false, error: "تعذّر حفظ الملف." };
+    return { ok: false, error: "تعذّر حفظ التقرير المولَّد." };
   }
 
   const reportMetadata: EvaluatorReportMetadata = {
@@ -100,7 +93,7 @@ export async function cacheEvaluatorReport(
     | undefined;
 
   await saveEvaluatorSubmission(
-    { ...current, reportFileName: file.name },
+    { ...current, reportFileName: file.name, reportNo: reportNo.trim() || current.reportNo },
     reportMetadata,
     planImageMetadata,
   );

@@ -164,6 +164,7 @@ export type PoHeaderFieldIdMap = {
   assignmentSpecialistEmail: string;
   expectedPropertyCount: string;
   clientId?: string;
+  subClientId?: string;
 };
 
 export const PO_HEADER_MODAL_FIELD_IDS: PoHeaderFieldIdMap = {
@@ -173,7 +174,8 @@ export const PO_HEADER_MODAL_FIELD_IDS: PoHeaderFieldIdMap = {
   assignmentSpecialist: "po_specialist_modal",
   assignmentSpecialistEmail: "po_specialist_email_modal",
   expectedPropertyCount: "expected_property_count_modal",
-  clientId: "po_client_modal",
+  clientId: "po_modal_client",
+  subClientId: "po_modal_sub_client",
 };
 
 export const PO_HEADER_EDIT_FIELD_IDS: PoHeaderFieldIdMap = {
@@ -182,13 +184,15 @@ export const PO_HEADER_EDIT_FIELD_IDS: PoHeaderFieldIdMap = {
   assignmentSpecialist: "po_specialist_edit",
   assignmentSpecialistEmail: "po_specialist_email_edit",
   expectedPropertyCount: "expected_property_count_edit",
-  clientId: "po_client_edit",
+  clientId: "po_edit_client",
+  subClientId: "po_edit_sub_client",
 };
 
 const HEADER_KEY_ORDER = [
   "poNumber",
   "promulgationDate",
   "clientId",
+  "subClientId",
   "assignmentType",
   "assignmentSpecialist",
   "assignmentSpecialistEmail",

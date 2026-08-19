@@ -110,9 +110,9 @@ public class ArabicAmountWordsTests
     [Fact]
     public void Catalog_tafqit_is_computed()
     {
-        var m = ValuationReportFieldCatalog.Find("65167");
+        var m = ValuationReportFieldCatalog.Find("final.opinion_tafqit");
         Assert.NotNull(m);
         Assert.Equal(ValuationReportFieldSourceKind.Computed, m!.SourceKind);
-        Assert.Equal("final.opinion_tafqit", m.FieldKey);
+        Assert.Equal(ValuationReportFieldValueType.Text, m.ValueType);
     }
 }

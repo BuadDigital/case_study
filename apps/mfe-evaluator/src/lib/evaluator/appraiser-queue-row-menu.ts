@@ -29,8 +29,8 @@ export function buildAppraiserQueueRowMoreItems(options: {
       },
     },
     {
-      id: "upload-report",
-      label: "رفع تقرير التقييم",
+      id: "open-report",
+      label: "تقرير التقييم",
       onClick: options.openTask,
     },
   ];

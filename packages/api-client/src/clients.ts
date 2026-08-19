@@ -27,6 +27,9 @@ export type UpsertClientRequest = {
 /** Seeded Infath assignment-center client id (matches backend SeedClientIds). */
 export const INFATH_SEED_CLIENT_ID = "a1000001-0000-4000-8000-000000000001";
 
+/** Seeded Nabr Real Estate client — private-sector valuation report user. */
+export const NABR_SEED_CLIENT_ID = "a1000001-0000-4000-8000-000000000002";
+
 function headers(token: string): HeadersInit {
   return {
     "Content-Type": "application/json",

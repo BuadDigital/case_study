@@ -33,12 +33,14 @@ public sealed class ValuationReconciliationService(
             .Include(x => x.Methods)
             .FirstOrDefaultAsync(x => x.ValuationRequestId == valuationRequestId, cancellationToken);
 
+        var assignmentType = await ResolveAssignmentTypeAsync(vr, cancellationToken);
         return ToDto(
             vr,
             market?.MarketOpinionValue ?? 0m,
             cost?.CostOpinionWithLand ?? 0m,
             entity,
-            await GetEnabledKindsAsync(vr, cancellationToken));
+            await GetEnabledKindsAsync(vr, cancellationToken),
+            assignmentType);
     }
 
  /// <summary>ق-2: الأسلوب غير المفعَّل لا يظهر صفاً ولا يدخل في الوزن.</summary>
@@ -68,6 +70,16 @@ public sealed class ValuationReconciliationService(
         return ValuationApproachSettingsRules.EnabledReconciliationKinds(
             settings.MarketApproachEnabled,
             settings.CostApproachEnabled);
+    }
+
+    private async Task<AssignmentType> ResolveAssignmentTypeAsync(
+        ValuationRequest vr,
+        CancellationToken cancellationToken)
+    {
+        if (!Guid.TryParse(vr.PropertyId?.Trim(), out var propertyGuid))
+            return AssignmentType.Execution;
+        var context = await caseStudy.GetValuationPropertyContextAsync(propertyGuid, cancellationToken);
+        return context?.AssignmentTypeValue() ?? AssignmentType.Execution;
     }
 
     public async Task<(ValuationReconciliationDto? Result, Dictionary<string, string>? Errors)> SaveAsync(
@@ -265,7 +277,8 @@ public sealed class ValuationReconciliationService(
         decimal marketValue,
         decimal costValue,
         ValuationReconciliation? entity,
-        IReadOnlyList<string> enabledKinds)
+        IReadOnlyList<string> enabledKinds,
+        AssignmentType assignmentType)
     {
  // ق-2: a disabled approach neither shows a row nor skews the suggestion split.
         var marketEnabled = enabledKinds.Contains(
@@ -319,8 +332,15 @@ public sealed class ValuationReconciliationService(
         var weightSum = methodDtos.Where(m => m.IsIncluded).Sum(m => m.WeightPct);
         var weighted = ReconciliationRules.WeightedValue(includedMethods);
         var decimals = entity?.FinalRoundDecimals ?? 0;
-        var basis = entity?.BasisOfValueKey ?? BasisOfValueKeys.Market;
+        var basis = string.IsNullOrWhiteSpace(entity?.BasisOfValueKey)
+            ? AssignmentValuationDefaults.BasisOfValueKey(assignmentType)
+            : entity!.BasisOfValueKey;
         var premise = entity?.ValuePremiseKey;
+        if (string.Equals(basis, BasisOfValueKeys.Liquidation, StringComparison.OrdinalIgnoreCase)
+            && string.IsNullOrWhiteSpace(premise))
+        {
+            premise = ValuePremiseKeys.Orderly;
+        }
         var discountPct = entity?.LiquidationDiscountPct ?? 0m;
         var (before, final, applied) = ReconciliationRules.FinalOpinionWithOptionalDiscount(
             weighted,

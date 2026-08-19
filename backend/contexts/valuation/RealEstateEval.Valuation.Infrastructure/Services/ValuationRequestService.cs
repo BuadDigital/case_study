@@ -53,11 +53,11 @@ public sealed class ValuationRequestService : IValuationRequestService
         string propertyId,
         CancellationToken cancellationToken = default)
     {
-        var key = propertyId?.Trim() ?? "";
-        if (key.Length == 0) return null;
+        var keys = PropertyIdKeys(propertyId);
+        if (keys.Count == 0) return null;
 
         var row = await _db.ValuationRequests.AsNoTracking()
-            .Where(x => x.PropertyId == key && x.Status != ValuationRequestStatus.Done)
+            .Where(x => keys.Contains(x.PropertyId) && x.Status != ValuationRequestStatus.Done)
             .OrderByDescending(x => x.UpdatedAtUtc)
             .FirstOrDefaultAsync(cancellationToken);
         return row is null ? null : ToDto(row);
@@ -76,7 +76,7 @@ public sealed class ValuationRequestService : IValuationRequestService
         var row = ValuationRequest.Create(
             Guid.NewGuid(),
             displayId,
-            request.PropId,
+            NormalizePropertyId(request.PropId),
             request.Area,
             request.Type,
             request.Appraiser,
@@ -105,6 +105,21 @@ public sealed class ValuationRequestService : IValuationRequestService
         }
 
         return (ToDto(row), null);
+    }
+
+    public async Task<(ValuationRequestDto? Result, string? Error)> EnsureOpenByPropertyAsync(
+        SaveValuationRequestRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        var existing = await GetOpenByPropertyAsync(request.PropId, cancellationToken);
+        if (existing is not null) return (existing, null);
+
+        var (created, error) = await CreateAsync(request, cancellationToken);
+        if (created is not null) return (created, null);
+        if (error != "valuation_already_open") return (null, error);
+
+        existing = await GetOpenByPropertyAsync(request.PropId, cancellationToken);
+        return existing is not null ? (existing, null) : (null, error);
     }
 
     public async Task<(ValuationRequestDto? Result, string? Error)> SubmitReportAsync(
@@ -194,4 +209,27 @@ public sealed class ValuationRequestService : IValuationRequestService
         Status = row.Status.ToDbValue(),
         Date = row.RequestDate,
     };
+
+    internal static string NormalizePropertyId(string? propertyId)
+    {
+        var key = propertyId?.Trim() ?? "";
+        return Guid.TryParse(key, out var id) ? id.ToString("D") : key;
+    }
+
+    internal static IReadOnlyList<string> PropertyIdKeys(string? propertyId)
+    {
+        var key = propertyId?.Trim() ?? "";
+        if (key.Length == 0) return [];
+
+        var keys = new HashSet<string>(StringComparer.Ordinal) { key };
+        if (Guid.TryParse(key, out var id))
+        {
+            keys.Add(id.ToString("D"));
+            keys.Add(id.ToString("N"));
+            keys.Add(id.ToString("D").ToUpperInvariant());
+            keys.Add(id.ToString("N").ToUpperInvariant());
+        }
+
+        return keys.ToList();
+    }
 }

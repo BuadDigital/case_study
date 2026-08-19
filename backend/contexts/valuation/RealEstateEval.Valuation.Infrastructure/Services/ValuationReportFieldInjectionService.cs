@@ -6,10 +6,8 @@ using RealEstateEval.Infrastructure.Data.Contexts;
 namespace RealEstateEval.Infrastructure.Services;
 
 /// <summary>
-/// <summary>
-/// Builds valuation-report field payload (legacy template codes ⟵ field_key) from live context.
+/// Builds valuation-report field payload from live context.
 /// Parallel to PDF upload — Ejada owns the business logic.
-/// </summary>
 /// </summary>
 public sealed class ValuationReportFieldInjectionService(
     ValuationDbContext valuation,
@@ -74,7 +72,7 @@ public sealed class ValuationReportFieldInjectionService(
         var today = DateOnly.FromDateTime(clock.GetUtcNow().UtcDateTime);
         var bag = BuildValueBag( vr, prop, workspace, client, org, market, cost, recon, printable, hasStructures, deedNatureMatchOutcome, today);
         var fields = new List<ValuationReportFieldDto>(ValuationReportFieldCatalog.Count);
-        var valuesByCode = new Dictionary<string, string>(StringComparer.Ordinal);
+        var valuesByFieldKey = new Dictionary<string, string>(StringComparer.Ordinal);
         var filled = 0;
         var deferred = 0;
         var asset = 0;
@@ -97,20 +95,21 @@ public sealed class ValuationReportFieldInjectionService(
             if (isFilled)
             {
                 filled++;
-                valuesByCode[map.Code] = value!;
+                valuesByFieldKey[map.FieldKey] = value!;
             }
             else if (map.SourceKind == ValuationReportFieldSourceKind.ConditionalEmpty)
             {
- // conditional-delete codes upload with explicit empty
- // values instead of dropping out of the merge payload.
-                valuesByCode[map.Code] = "";
+                // vacant-land conditional fields upload as explicit empty
+                // instead of dropping out of the payload.
+                valuesByFieldKey[map.FieldKey] = "";
             }
 
             fields.Add(new ValuationReportFieldDto
             {
-                Code = map.Code,
-                LabelAr = map.LabelAr,
                 FieldKey = map.FieldKey,
+                LabelAr = map.LabelAr,
+                ValueType = ValuationReportFieldRules.ValueTypeApi(map.ValueType),
+                ValueTypeLabelAr = ValuationReportFieldRules.ValueTypeLabelAr(map.ValueType),
                 SourceKind = ValuationReportFieldRules.SourceKindApi(map.SourceKind),
                 Value = value,
                 Filled = isFilled,
@@ -130,9 +129,9 @@ public sealed class ValuationReportFieldInjectionService(
             DeferredCount = deferred,
             AssetCount = asset,
             Fields = fields,
-            ValuesByCode = valuesByCode,
+            ValuesByFieldKey = valuesByFieldKey,
             TruncationNoteAr = (market?.Items ?? []).Count(i => i.IsAdopted) > 3
-                ? "تنبيه: قالب المقياس يستوعب 3 مقارنات — رُفعت الثلاثة الأولى فقط من "
+                ? "تنبيه: أسلوب السوق يستوعب 3 مقارنات معتمدة في الحمولة — رُفعت الثلاثة الأولى فقط من "
                   + (market?.Items ?? []).Count(i => i.IsAdopted) + " معتمدة."
                 : null,
         };

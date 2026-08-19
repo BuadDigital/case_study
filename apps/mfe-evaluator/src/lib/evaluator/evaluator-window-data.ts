@@ -1,3 +1,8 @@
+import {
+  basisOfValueLabelArForAssignment,
+  VALUE_BASIS_OPTIONS,
+} from "@platform/app-shared/prototype/assignment-valuation-defaults";
+
 export type EvaluatorSubmissionStatus =
   | "draft"
   | "submitted"
@@ -42,16 +47,10 @@ export const EVALUATOR_VALUATION_METHODS = [
   "رسملة الدخل",
 ] as const;
 
-/** أساس القيمة — قائمة مغلقة وفق حصر الحقول v2 */
-export const EVALUATOR_VALUE_BASIS_OPTIONS = [
-  "القيمة السوقية",
-  "قيمة التصفية",
-  "القيمة الاستثمارية",
-  "القيمة المنصفة",
-  "القيمة التكاملية",
-  "الإيجار السوقي",
-  "القيمة العادلة",
-] as const;
+/** أساس القيمة — نفس قائمة IVS الثمانية في تبويب التقييم. */
+export const EVALUATOR_VALUE_BASIS_OPTIONS = VALUE_BASIS_OPTIONS.map(
+  (option) => option.label,
+);
 
 /** حجم الطلب على العقار — infath_case_study_fields.md §٣.٢ */
 export const EVALUATOR_DEMAND_LEVEL_OPTIONS = [
@@ -79,11 +78,12 @@ export type EvaluatorSubmission = {
   propertyId: string;
   poNumber: string;
   status: EvaluatorSubmissionStatus;
-  /** رقم التقرير — Case Study.html `reportNo`. */
+  /** رقم التقرير — يُحجز عند توزيع المعاملة على المقيم (TQ…). */
   reportNo: string;
   evaluatorPrice: string;
   evaluatorNotes: string;
   checklist: EvaluatorChecklistAnswers;
+  /** Snapshot file name of the generated valuation report (not an upload). */
   reportFileName: string | null;
   /** حقول الرفع لإنفاذ — المقيّم */
   appraisalDate: string;
@@ -97,7 +97,12 @@ export type EvaluatorSubmission = {
   planImageFileName: string | null;
   appraiserAddress: string;
   appraiserPhone: string;
+  /** تاريخ إصدار التقرير — يُثبَّت عند اعتماد التقييم. */
   reportIssueDate: string;
+  /** رمز إيداع التقرير في قيمة — اختياري، لا يمنع الاعتماد. */
+  depositCode: string;
+  /** شهادة الرفع على قيمة — مرفق اختياري يُطبع مع التقرير. */
+  depositCertificateFileName: string | null;
   /** إقرار الاستقلالية وعدم تضارب المصالح */
   independenceDeclared: boolean;
   /** بيانات العاملين على التقرير (معد / مراجع / معتمد) */
@@ -106,8 +111,6 @@ export type EvaluatorSubmission = {
   assetDataConfirmed: boolean;
   /** ملاحظات التباين عند عدم تأكيد بيانات الأصل كما هي */
   assetDataVarianceNotes: string;
-  /** مرفق التقييم المعتمد الموقّع (البيانات الختامية) — اختياري */
-  signedAppraisalFileName: string | null;
   submittedAtUtc: string | null;
   updatedAtUtc: string;
 };
@@ -211,10 +214,12 @@ export function createEvaluatorDraft(input: {
   taskId: string;
   propertyId: string;
   poNumber: string;
+  assignmentType?: string;
 }): EvaluatorSubmission {
+  const { assignmentType, ...ids } = input;
   const now = new Date().toISOString();
   return {
-    ...input,
+    ...ids,
     status: "draft",
     reportNo: "",
     evaluatorPrice: "",
@@ -223,7 +228,7 @@ export function createEvaluatorDraft(input: {
     reportFileName: null,
     appraisalDate: "",
     valuationMethod: "طريقة البيوع المقارنة",
-    valueBasis: "القيمة السوقية",
+    valueBasis: basisOfValueLabelArForAssignment(assignmentType),
     demandLevel: "",
     landValue: "0",
     buildingValue: "0",
@@ -233,11 +238,12 @@ export function createEvaluatorDraft(input: {
     appraiserAddress: DEFAULT_APPRAISER_ADDRESS,
     appraiserPhone: DEFAULT_APPRAISER_PHONE,
     reportIssueDate: "",
+    depositCode: "",
+    depositCertificateFileName: null,
     independenceDeclared: false,
     reportWorkers: [createEmptyReportWorker("معد")],
     assetDataConfirmed: false,
     assetDataVarianceNotes: "",
-    signedAppraisalFileName: null,
     submittedAtUtc: null,
     updatedAtUtc: now,
   };

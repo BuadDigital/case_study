@@ -545,6 +545,7 @@ export {
   updateClient,
   deactivateClient,
   INFATH_SEED_CLIENT_ID,
+  NABR_SEED_CLIENT_ID,
   type ClientDto,
   type UpsertClientRequest,
 } from "./clients";
@@ -575,6 +576,7 @@ export {
 
 export {
   getOpenValuationRequestByProperty,
+  ensureOpenValuationRequestByProperty,
   listValuationComparableSelections,
   replaceValuationComparableSelections,
   setValuationComparableAdopted,
@@ -589,6 +591,7 @@ export {
   saveValuationReconciliation,
   getValuationIssuanceGates,
   getValuationReportDocument,
+  getValuationReportPdf,
   getValuationReportFieldPayload,
   type ValuationComparableAdjustmentLineDto,
   type ValuationComparableMarketDto,
@@ -612,6 +615,7 @@ export {
   type ValuationReportPrintedAttachmentDto,
   type ValuationReportSectionDto,
   type ValuationRequestLiteDto,
+  type SaveValuationRequestBody,
   type ValuationSelectionsApiConfig,
   type ValuationReportFieldPayloadDto,
   type ValuationReportFieldDto,

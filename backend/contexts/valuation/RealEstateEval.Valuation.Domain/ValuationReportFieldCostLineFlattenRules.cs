@@ -1,7 +1,7 @@
 namespace RealEstateEval.Domain;
 
 /// <summary>
-/// Lite cost / inventory line for Word-merge template cells (no Application DTO dependency).
+/// Maps priced cost-approach (or inventory area) lines into cost_line.* / inventory.* field keys.
 /// </summary>
 public readonly record struct ValuationReportFieldCostLineLite(
     string StructureKind,
@@ -12,7 +12,7 @@ public readonly record struct ValuationReportFieldCostLineLite(
     string ItemKey = "");
 
 /// <summary>
-/// Maps priced cost-approach (or inventory area) lines into Word-merge cost_line.* / inventory.* keys.
+/// Maps priced cost-approach (or inventory area) lines into cost_line.* / inventory.* keys.
 /// Label heuristics disambiguate floor/annex slots; StructureKind is the primary gate.
 /// </summary>
 public static class ValuationReportFieldCostLineFlattenRules

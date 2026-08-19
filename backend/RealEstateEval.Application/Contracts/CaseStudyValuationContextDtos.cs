@@ -14,6 +14,7 @@ public sealed class CaseStudyValuationPropertyContextDto
     public Guid Id { get; set; }
     public Guid WorkOrderId { get; set; }
     public string PoNumber { get; set; } = "";
+    public string AssignmentType { get; set; } = "";
 
     public string DeedKind { get; set; } = "";
     public string DeedNumber { get; set; } = "";
@@ -82,6 +83,11 @@ public sealed class CaseStudyValuationPropertyContextDto
         Enum.TryParse<Domain.DeedKind>(DeedKind, ignoreCase: true, out var kind)
             ? kind
             : Domain.DeedKind.Traditional;
+
+    public Domain.AssignmentType AssignmentTypeValue() =>
+        AssignmentTypeLabels.TryParseLabel(AssignmentType, out var type)
+            ? type
+            : Domain.AssignmentType.Execution;
 
     public WorkOrderProperty ToProperty() => new()
     {

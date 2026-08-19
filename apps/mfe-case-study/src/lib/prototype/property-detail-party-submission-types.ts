@@ -34,6 +34,7 @@ export type EvaluatorSubmissionSnapshot = {
   evaluatorPrice: string;
   evaluatorNotes: string;
   reportFileName: string | null;
+  reportNo?: string;
   submittedAtUtc: string | null;
   checklist: EvaluatorChecklist;
   appraisalDate?: string;
@@ -48,6 +49,8 @@ export type EvaluatorSubmissionSnapshot = {
   appraiserAddress?: string;
   appraiserPhone?: string;
   reportIssueDate?: string;
+  depositCode?: string;
+  depositCertificateFileName?: string | null;
   independenceDeclared?: boolean;
   reportWorkers?: {
     id?: string;
@@ -59,7 +62,6 @@ export type EvaluatorSubmissionSnapshot = {
   }[];
   assetDataConfirmed?: boolean;
   assetDataVarianceNotes?: string;
-  signedAppraisalFileName?: string | null;
   acceptedAtUtc?: string | null;
   acceptedByName?: string | null;
   returnNote?: string | null;

@@ -177,6 +177,7 @@ export function RegSelect({
   onChange,
   className,
   error,
+  hint,
   disabled,
   placeholder,
 }: {
@@ -188,12 +189,20 @@ export function RegSelect({
   onChange: (value: string) => void;
   className?: string;
   error?: string;
+  hint?: string;
   disabled?: boolean;
   placeholder?: string;
 }) {
   const entries = regSelectEntries(options);
   return (
-    <FieldWrap label={label} required={required} className={className} error={error}>
+    <FieldWrap
+      label={label}
+      required={required}
+      className={className}
+      error={error}
+      hint={hint}
+      fieldId={id}
+    >
       <Select
         id={id}
         hasError={Boolean(error)}

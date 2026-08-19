@@ -1,17 +1,9 @@
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it } from "vitest";
 import { validateEvaluatorSubmission } from "../evaluator-validation";
-
-vi.mock("../evaluator-report-attachments", () => ({
-  getCachedEvaluatorReport: () => ({
-    dataUrl: "data:application/pdf;base64,abc",
-    fileName: "report.pdf",
-  }),
-}));
 
 describe("validateEvaluatorSubmission", () => {
   const base = {
     taskId: "t1",
-    reportNo: "RPT-1",
     evaluatorPrice: "1000",
     landValue: "1000",
     buildingValue: "0",
@@ -29,13 +21,13 @@ describe("validateEvaluatorSubmission", () => {
     ],
   };
 
-  it("requires report number", () => {
+  it("does not require an uploaded report file or typed report number", () => {
     const errors = validateEvaluatorSubmission({
       ...base,
-      reportNo: "",
       assetDataConfirmed: true,
     });
-    expect(errors.report_no).toBeTruthy();
+    expect(errors.report_no).toBeUndefined();
+    expect(errors.evaluator_report_file).toBeUndefined();
   });
 
   it("requires asset data confirmation or variance notes", () => {

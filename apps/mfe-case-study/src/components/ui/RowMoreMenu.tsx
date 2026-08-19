@@ -171,9 +171,11 @@ const moreBtnClass = (open: boolean) =>
 export function RowMoreMenu({
   items,
   ariaLabel = "المزيد",
+  buttonClassName,
 }: {
   items: RowMoreMenuItem[];
   ariaLabel?: string;
+  buttonClassName?: string;
 }) {
   const menuId = useId();
   const wrapRef = useRef<HTMLDivElement>(null);
@@ -306,7 +308,7 @@ export function RowMoreMenu({
       <button
         ref={btnRef}
         type="button"
-        className={moreBtnClass(open)}
+        className={cn(moreBtnClass(open), buttonClassName)}
         aria-label={ariaLabel}
         aria-haspopup="menu"
         aria-expanded={open}

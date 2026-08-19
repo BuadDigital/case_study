@@ -243,7 +243,7 @@ const engineeringChecklistNoteFields: PropertyFieldCatalogEntry[] = [
 const evaluatorCoreFields: PropertyFieldCatalogEntry[] = [
   { key: "evaluatorPrice", label: "سعر التقييم" },
   { key: "evaluatorNotes", label: "ملاحظات المقيّم" },
-  { key: "reportFileName", label: "تقرير التقييم (مرفق)" },
+  { key: "reportFileName", label: "تقرير التقييم (مولَّد)" },
 ];
 
 const evaluatorChecklistFields: PropertyFieldCatalogEntry[] = [
@@ -281,7 +281,9 @@ const evaluatorInfathFields: PropertyFieldCatalogEntry[] = [
   { key: "appraiserPhone", label: "رقم تواصل المقيّم" },
   { key: "reportIssueDate", label: "تاريخ إصدار التقرير" },
   { key: "independenceDeclared", label: "إقرار الاستقلالية وعدم تضارب المصالح" },
-  { key: "signedAppraisal", label: "مرفق التقييم المعتمد" },
+  { key: "depositCode", label: "رمز إيداع التقرير" },
+  { key: "depositCertificate", label: "شهادة الإيداع في قيمة" },
+  { key: "signedAppraisal", label: "تقرير التقييم المعتمد (مولَّد)" },
 ];
 
 const evaluatorFormKeyFields: PropertyFieldCatalogEntry[] = [

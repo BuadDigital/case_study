@@ -281,8 +281,10 @@ export function buildInfathUploadModel(input: {
   const appraisal = partyPackageFeedsInfath(parties?.appraisal ?? null);
   const specialist = parties?.specialist ?? null;
 
-  const deed = property.deedNumber.trim() || "—";
-  const reportNumber = `INF-${record.poNumber.trim()}-${deed}`;
+  const reportNumber =
+    partyField(appraisal, "رقم التقرير") ||
+    partyField(appraisal, L.reportNumber) ||
+    "";
   const coords =
     partyField(inspection, L.mapCoords) ||
     partyField(survey, "الإحداثيات") ||
@@ -386,10 +388,12 @@ export function buildInfathUploadModel(input: {
         txt(
           "deposit-code",
           L.depositCode,
-          ops?.depositCode?.trim() ?? "",
-          "SP",
+          partyField(appraisal, L.depositCode) || ops?.depositCode?.trim() || "",
+          "EV",
           "text",
-          ops?.depositCode?.trim() ? "" : "ms",
+          partyField(appraisal, L.depositCode) || ops?.depositCode?.trim()
+            ? ""
+            : "ms",
         ),
         sel(
           "value-basis",
@@ -720,8 +724,10 @@ export function buildInfathUploadModel(input: {
         file(
           "deposit-certificate",
           L.depositCertificate,
-          ops?.depositCertificateName?.trim() ?? "",
-          "SP",
+          partyField(appraisal, L.depositCertificate) ||
+            ops?.depositCertificateName?.trim() ||
+            "",
+          "EV",
         ),
       ],
       areas: [],
@@ -756,7 +762,7 @@ export function buildInfathUploadModel(input: {
   const attachments = buildAttachments(
     documentSections,
     keysReceived,
-    ops?.depositCertificateName,
+    partyField(appraisal, L.depositCertificate) || ops?.depositCertificateName,
   );
   const stats = computeStats(sections);
 

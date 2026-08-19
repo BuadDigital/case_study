@@ -1,7 +1,15 @@
 /** PO intake wizard — steps and reference lists (from system requirements v1.2). */
 
+import {
+  basisOfValueKeyForAssignment,
+  basisOfValueLabelArForAssignment,
+  valuationPurposeKeyForAssignment,
+  valuationPurposeLabelArForAssignment,
+} from "@platform/app-shared/prototype/assignment-valuation-defaults";
 import { getCachedOrganizationSla } from "@platform/app-shared/organization/organization-settings-cache";
 import {
+  INFATH_SEED_CLIENT_ID,
+  NABR_SEED_CLIENT_ID,
   PropertyListRowStatuses,
   type PropertyListRowStatus,
 } from "@platform/api-client";
@@ -55,6 +63,105 @@ export function assignmentTypeFromParts(
   if (primary === "خاص" || secondary === "خاص") return "قطاع خاص";
   if (secondary === "تركات") return "تركات";
   return "تنفيذ";
+}
+
+/** Infath + خاص: Nabr is the sub-client and extra report user. */
+export function showsValuationReportUserField(
+  type: AssignmentType | "",
+  clientId: string,
+): boolean {
+  return (
+    isInfathClient(clientId) &&
+    type !== "" &&
+    assignmentPrimary(type) === "خاص"
+  );
+}
+
+export function isInfathClient(clientId: string): boolean {
+  return clientId.trim() === INFATH_SEED_CLIENT_ID;
+}
+
+export function isNabrClient(clientId: string): boolean {
+  return clientId.trim() === NABR_SEED_CLIENT_ID;
+}
+
+/** Nabr is Infath's sub-client for now — not a peer work-order client. */
+export function isSelectableWorkOrderClient(
+  clientId: string,
+  currentClientId = "",
+): boolean {
+  return !isNabrClient(clientId) || clientId === currentClientId;
+}
+
+/** Infath's known sub-client. Direct-Nabr-as-peer-client is deferred. */
+export const INFATH_SUB_CLIENT_IDS = [NABR_SEED_CLIENT_ID] as const;
+
+export function showsSubClientField(
+  type: AssignmentType | "",
+  clientId: string,
+): boolean {
+  return showsValuationReportUserField(type, clientId);
+}
+
+export function defaultSubClientId(): string {
+  return NABR_SEED_CLIENT_ID;
+}
+
+export function subClientIdFromReportUsers(
+  reportUserClientIds: string[] | undefined,
+): string {
+  const match = (reportUserClientIds ?? []).find((id) =>
+    (INFATH_SUB_CLIENT_IDS as readonly string[]).includes(id),
+  );
+  return match ?? defaultSubClientId();
+}
+
+export const VALUATION_REPORT_USER_OPTION_LABEL =
+  "مركز الإسناد والتصفية (إنفاذ) و شركة نبر العقارية";
+
+/**
+ * Infath + تنفيذ → none (report is Infath alone).
+ * Infath + خاص → Nabr (usage: Infath client + Nabr report user).
+ */
+export function reportUserClientIdsForAssignment(
+  type: AssignmentType | "",
+  clientId: string,
+  subClientId: string = NABR_SEED_CLIENT_ID,
+): string[] {
+  if (!showsValuationReportUserField(type, clientId)) return [];
+  return [subClientId.trim() || NABR_SEED_CLIENT_ID];
+}
+
+export const VALUATION_PURPOSE_AUCTION_LIQUIDATION =
+  "البيع بالمزاد العلني لغرض التصفية";
+export const VALUATION_PURPOSE_SALE = "البيع";
+export const VALUE_BASIS_MARKET = "القيمة السوقية";
+export const VALUE_BASIS_LIQUIDATION = "قيمة التصفية";
+
+export function valuationPurposeForAssignment(
+  type: AssignmentType,
+  subClientId?: string,
+): {
+  key: string;
+  label: string;
+} {
+  return {
+    key: valuationPurposeKeyForAssignment(type, subClientId),
+    label: valuationPurposeLabelArForAssignment(type, subClientId),
+  };
+}
+
+export function basisOfValueForAssignment(
+  type: AssignmentType,
+  subClientId?: string,
+): {
+  key: string;
+  label: string;
+} {
+  return {
+    key: basisOfValueKeyForAssignment(type, subClientId),
+    label: basisOfValueLabelArForAssignment(type, subClientId),
+  };
 }
 
 /** Court path: request number + court/circuit + assignment decision + visits/keys. */

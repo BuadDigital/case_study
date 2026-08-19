@@ -22,6 +22,7 @@ import { useWorkflowTasksQuery } from "../../query/case-study-queries";
 import { useFailuresQuery } from "@failures/mfe";
 import { derivePropertyUiStatus } from "../../lib/prototype/property-detail-ui-status";
 import { useFavoriteProperties } from "../../lib/prototype/favorite-properties";
+import { PoPropertyDetailTopbarActions } from "./PoPropertyDetailTopbarActions";
 
 function deedTitle(property: { deedNumber: string }): string {
   return property.deedNumber.trim() || "—";
@@ -184,11 +185,13 @@ export function PropertyDetailHero({
   record,
   property,
   propertyIndex,
+  hideOpenCaseStudy = false,
 }: {
   record: PoIntakeRecord;
   property: PoPropertyIntake;
   /** 1-based index in PO properties list */
   propertyIndex: number;
+  hideOpenCaseStudy?: boolean;
 }) {
   const { data: tasks = [] } = useWorkflowTasksQuery();
   const { data: failures = [] } = useFailuresQuery();
@@ -302,7 +305,7 @@ export function PropertyDetailHero({
             </div>
           </div>
 
-          <div className="flex shrink-0 items-center gap-[18px]">
+          <div className="flex shrink-0 items-center gap-3 sm:gap-[18px]">
             <div className="text-start">
               <div className="mb-0.5 text-[11px] text-text-3">رقم الطلب</div>
               <div className="text-[21px] font-bold text-[#8c7857]">
@@ -315,6 +318,12 @@ export function PropertyDetailHero({
               pct={completion.pct}
               done={completion.done}
               total={completion.total}
+            />
+            <PoPropertyDetailTopbarActions
+              poNumber={record.poNumber}
+              propertyId={property.id}
+              variant="hero"
+              hideOpenCaseStudy={hideOpenCaseStudy}
             />
           </div>
         </div>

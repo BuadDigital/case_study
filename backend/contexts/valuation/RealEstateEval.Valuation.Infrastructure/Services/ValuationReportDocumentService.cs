@@ -36,6 +36,7 @@ public sealed class ValuationReportDocumentService(
         InspectorPayloadFacts inspector = new();
         string? clientNameAr = null;
         IReadOnlyList<string> reportUserNames = [];
+        AssignmentType? assignmentType = null;
         if (Guid.TryParse(propertyId, out var propertyGuid))
         {
             var context = await caseStudy.GetValuationPropertyContextAsync(
@@ -50,6 +51,7 @@ public sealed class ValuationReportDocumentService(
                 // client name derives from the registry; report users 0..n.
                 clientNameAr = context.ClientNameAr;
                 reportUserNames = context.ReportUserClientNamesAr;
+                assignmentType = context.AssignmentTypeValue();
             }
         }
 
@@ -83,6 +85,9 @@ public sealed class ValuationReportDocumentService(
             .FirstOrDefaultAsync(x => x.ValuationRequestId == vr.Id, cancellationToken);
 
         var today = DateOnly.FromDateTime(clock.GetUtcNow().UtcDateTime);
+        var reservedDate = DateOnly.TryParse(vr.RequestDate, out var parsedRequestDate)
+            ? parsedRequestDate
+            : today;
         var sections = visible.Select(def =>
         {
             var title = ValuationReportSectionCatalog.DisplayTitleAr(def, hasStructures);
@@ -102,7 +107,8 @@ public sealed class ValuationReportDocumentService(
                 reportUserNames,
                 inspector,
                 complianceRestricted,
-                approachSettings);
+                approachSettings,
+                assignmentType);
             return new ValuationReportSectionDto
             {
                 Number = def.Number,
@@ -211,7 +217,7 @@ public sealed class ValuationReportDocumentService(
             MarketApproachUsed = marketUsed,
             CostApproachUsed = costUsed,
             IncomeApproachUsed = incomeUsed,
-            ReportNumber = ValuationReportNumberRules.FormatTemporary(vr.DisplayId, today),
+            ReportNumber = ValuationReportNumberRules.FormatReserved(vr.DisplayId, reservedDate),
             ReportDateDisplay = ValuationReportDisplayRules.FormatGregorianDate(today),
             ValidUntilDisplay = ValuationReportDisplayRules.FormatGregorianDate(
                 ValuationReportValidityRules.ValidUntil(today)),
@@ -265,6 +271,14 @@ public sealed class ValuationReportDocumentService(
             DeedAttachments = printed.Deed,
             Sections = sections,
         };
+    }
+
+    public async Task<byte[]?> GetPreviewPdfAsync(
+        Guid valuationRequestId,
+        CancellationToken cancellationToken = default)
+    {
+        var dto = await GetPreviewAsync(valuationRequestId, cancellationToken);
+        return dto is null ? null : ValuationReportPdfGenerator.Generate(dto);
     }
 
     private async Task<(
@@ -395,14 +409,17 @@ public sealed class ValuationReportDocumentService(
         IReadOnlyList<string>? reportUserNames = null,
         InspectorPayloadFacts? inspector = null,
         bool complianceRestricted = false,
-        ValuationApproachSettings? approachSettings = null)
+        ValuationApproachSettings? approachSettings = null,
+        AssignmentType? assignmentType = null)
     {
         inspector ??= new InspectorPayloadFacts();
         var d = new Dictionary<string, string?>(StringComparer.Ordinal);
         var adopted = (market?.Items ?? []).Where(i => i.IsAdopted).OrderBy(i => i.SortOrder).ToList();
-        var basisLabel = string.IsNullOrWhiteSpace(recon?.BasisOfValueLabelAr)
-            ? BasisOfValueKeys.LabelAr(recon?.BasisOfValueKey ?? BasisOfValueKeys.Market)
-            : recon!.BasisOfValueLabelAr;
+        var basisLabel = assignmentType is { } assignedType
+            ? AssignmentValuationDefaults.BasisOfValueLabelAr(assignedType)
+            : string.IsNullOrWhiteSpace(recon?.BasisOfValueLabelAr)
+                ? BasisOfValueKeys.LabelAr(recon?.BasisOfValueKey ?? BasisOfValueKeys.Market)
+                : recon!.BasisOfValueLabelAr;
         var premiseLabel = recon?.ValuePremiseLabelAr;
 
         switch (key)
@@ -444,14 +461,15 @@ public sealed class ValuationReportDocumentService(
                 d["currency"] = "الريال السعودي";
                 d["basis"] = basisLabel;
                 d["premise"] = premiseLabel;
- // §4ج-5: الغرض يختاره المقيّم من إعدادات تقرير التقييم (شاشة 1).
-                d["purpose"] = approachSettings is null
-                    || string.IsNullOrWhiteSpace(approachSettings.ValuationPurposeKey)
-                    ? null
-                    : ValuationPurposeKeys.LabelAr(approachSettings.ValuationPurposeKey)
-                      + (string.IsNullOrWhiteSpace(approachSettings.ValuationPurposeNote)
-                          ? ""
-                          : $" — {approachSettings.ValuationPurposeNote}");
+                d["purpose"] = assignmentType is { } purposeType
+                    ? AssignmentValuationDefaults.PurposeLabelAr(purposeType)
+                    : approachSettings is null
+                        || string.IsNullOrWhiteSpace(approachSettings.ValuationPurposeKey)
+                        ? null
+                        : ValuationPurposeKeys.LabelAr(approachSettings.ValuationPurposeKey)
+                          + (string.IsNullOrWhiteSpace(approachSettings.ValuationPurposeNote)
+                              ? ""
+                              : $" — {approachSettings.ValuationPurposeNote}");
  // تاريخ التقييم بنوعيه: إصدار القيمة (آلي = تاريخ التقرير) أو أثر رجعي يدوي.
                 d["valuationDateMode"] = ValuationDateModes.LabelAr(
                     approachSettings?.ValuationDateMode);

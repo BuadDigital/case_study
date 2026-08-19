@@ -28,7 +28,7 @@ public class ValuationApproachSettings
  /// <summary>صلاحية تحرير التسويات — معطّلة تمنع حفظ بنود التسوية والأوزان.</summary>
     public bool AdjustmentsEditUnlocked { get; set; } = true;
 
- /// <summary>الغرض من التقييم (§4ج-5) — يختاره المقيّم، لا يفرضه نوع الإسناد. See <see cref="ValuationPurposeKeys"/>.</summary>
+ /// <summary>الغرض من التقييم (§4ج-5) — يُختار تلقائياً من نوع الإسناد ويمكن للمقيّم تعديله. See <see cref="ValuationPurposeKeys"/>.</summary>
     public string ValuationPurposeKey { get; set; } = "";
  /// <summary>توضيح اختياري للغرض (إلزامي عند «أخرى»).</summary>
     public string? ValuationPurposeNote { get; set; }
@@ -103,7 +103,7 @@ public static class CostMeasurementUnitKeys
 }
 
 /// <summary>
-/// الغرض من التقييم (§4ج-5) — قائمة يختارها المقيّم؛ إسناد إنفاذ قد يكون قيمة سوقية.
+/// الغرض من التقييم (§4ج-5) — قائمة كاملة؛ القيمة الافتراضية تُشتق من نوع الإسناد.
 /// القائمة قابلة للتوسعة عند اعتماد قائمة رسمية.
 /// </summary>
 public static class ValuationPurposeKeys
@@ -114,9 +114,16 @@ public static class ValuationPurposeKeys
     public const string FinancialReporting = "financial_reporting";
     public const string Litigation = "litigation";
     public const string Other = "other";
+    /// <summary>تنفيذ / تركات — البيع بالمزاد العلني لغرض التصفية.</summary>
+    public const string AuctionLiquidation = "auction_liquidation";
+    /// <summary>قطاع خاص — البيع.</summary>
+    public const string Sale = "sale";
 
     public static readonly string[] All =
-        [JudicialExecution, SalePurchase, Financing, FinancialReporting, Litigation, Other];
+    [
+        JudicialExecution, SalePurchase, Financing, FinancialReporting, Litigation, Other,
+        AuctionLiquidation, Sale,
+    ];
 
     public static bool IsKnown(string? value) =>
         All.Contains((value ?? "").Trim().ToLowerInvariant(), StringComparer.Ordinal);
@@ -129,6 +136,8 @@ public static class ValuationPurposeKeys
         FinancialReporting => "قوائم مالية",
         Litigation => "نزاع قضائي",
         Other => "أخرى",
+        AuctionLiquidation => "البيع بالمزاد العلني لغرض التصفية",
+        Sale => "البيع",
         _ => "",
     };
 }

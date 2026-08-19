@@ -106,7 +106,7 @@ export function appraiserQueueStatusBadge(
   const rd = appraiserReadiness(task, tasks);
   if (rd === "ready") return { label: "جاهزة للتقييم", className: "b-gold" };
   if (rd === "wait_specialist") {
-    return { label: "بانتظار اعتماد بيانات المعاينة", className: "b-prog" };
+    return { label: "بانتظار اعتماد بيانات معاينة العقار", className: "b-prog" };
   }
   if (rd === "wait_inspection") {
     return { label: "تراقب تقدم الأطراف", className: "b-new" };

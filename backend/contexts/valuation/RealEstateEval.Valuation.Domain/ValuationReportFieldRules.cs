@@ -20,4 +20,24 @@ public static class ValuationReportFieldRules
         ValuationReportFieldSourceKind.ConditionalEmpty => "conditional_empty",
         _ => "deferred",
     };
+
+    public static string ValueTypeApi(ValuationReportFieldValueType type) => type switch
+    {
+        ValuationReportFieldValueType.Number => "number",
+        ValuationReportFieldValueType.Date => "date",
+        ValuationReportFieldValueType.Money => "money",
+        ValuationReportFieldValueType.Percent => "percent",
+        ValuationReportFieldValueType.Attachment => "attachment",
+        _ => "text",
+    };
+
+    public static string ValueTypeLabelAr(ValuationReportFieldValueType type) => type switch
+    {
+        ValuationReportFieldValueType.Number => "رقم",
+        ValuationReportFieldValueType.Date => "تاريخ",
+        ValuationReportFieldValueType.Money => "مبلغ",
+        ValuationReportFieldValueType.Percent => "نسبة",
+        ValuationReportFieldValueType.Attachment => "مرفق",
+        _ => "نص",
+    };
 }

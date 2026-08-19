@@ -3,6 +3,7 @@ using System.Text.Json;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Options;
 using RealEstateEval.Application.Contracts;
+using RealEstateEval.Infrastructure.Services;
 
 namespace RealEstateEval.Reporting.Api.Services;
 
@@ -37,10 +38,7 @@ public interface IReportingUpstreamClient
 
 public sealed class ReportingUpstreamClient : IReportingUpstreamClient
 {
-    private static readonly JsonSerializerOptions JsonOpts = new()
-    {
-        PropertyNameCaseInsensitive = true,
-    };
+    private static readonly JsonSerializerOptions JsonOpts = OwnerApiJson.Options;
 
     private readonly HttpClient _http;
     private readonly IHttpContextAccessor _httpContextAccessor;

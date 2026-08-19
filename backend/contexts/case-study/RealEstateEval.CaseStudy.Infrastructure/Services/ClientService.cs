@@ -17,20 +17,39 @@ public class ClientService(CaseStudyDbContext db, IOptions<DatabaseOptions>? dbO
     private readonly DatabaseOptions _dbOptions = dbOptions?.Value ?? new DatabaseOptions();
     public async Task EnsureSeedClientsAsync(CancellationToken cancellationToken)
     {
-        if (await db.Clients.AnyAsync(c => c.Id == SeedClientIds.InfathAssignmentCenter, cancellationToken))
-            return;
-
         var now = _time.UtcNow();
-        db.Clients.Add(new Client
+        var added = false;
+
+        if (!await db.Clients.AnyAsync(c => c.Id == SeedClientIds.InfathAssignmentCenter, cancellationToken))
         {
-            Id = SeedClientIds.InfathAssignmentCenter,
-            NameAr = "مركز الإسناد والتصفية (إنفاذ)",
-            NameEn = "Assignment and Liquidation Center (Infath)",
-            IsActive = true,
-            CreatedAtUtc = now,
-            UpdatedAtUtc = now,
-        });
-        await db.SaveChangesAsync(cancellationToken);
+            db.Clients.Add(new Client
+            {
+                Id = SeedClientIds.InfathAssignmentCenter,
+                NameAr = "مركز الإسناد والتصفية (إنفاذ)",
+                NameEn = "Assignment and Liquidation Center (Infath)",
+                IsActive = true,
+                CreatedAtUtc = now,
+                UpdatedAtUtc = now,
+            });
+            added = true;
+        }
+
+        if (!await db.Clients.AnyAsync(c => c.Id == SeedClientIds.NabrRealEstate, cancellationToken))
+        {
+            db.Clients.Add(new Client
+            {
+                Id = SeedClientIds.NabrRealEstate,
+                NameAr = "شركة نبر العقارية",
+                NameEn = "Nabr Real Estate Company",
+                IsActive = true,
+                CreatedAtUtc = now,
+                UpdatedAtUtc = now,
+            });
+            added = true;
+        }
+
+        if (added)
+            await db.SaveChangesAsync(cancellationToken);
     }
 
     public async Task<IReadOnlyList<ClientDto>> ListAsync(
@@ -107,6 +126,8 @@ public class ClientService(CaseStudyDbContext db, IOptions<DatabaseOptions>? dbO
     {
         if (id == SeedClientIds.InfathAssignmentCenter)
             return (false, "لا يمكن تعطيل عميل إنفاذ الأساسي");
+        if (id == SeedClientIds.NabrRealEstate)
+            return (false, "لا يمكن تعطيل شركة نبر العقارية");
 
         var entity = await db.Clients.FirstOrDefaultAsync(c => c.Id == id, cancellationToken);
         if (entity is null) return (false, "العميل غير موجود");

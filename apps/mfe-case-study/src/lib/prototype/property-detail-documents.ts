@@ -4,7 +4,7 @@ import {
   downloadEngineeringSurveyDocument,
   type EngineeringSurveyDocumentEntry,
 } from "@engineering-office/mfe";
-import { getCachedEvaluatorReport } from "@evaluator/mfe";
+import { getCachedEvaluatorDepositCertificate, getCachedEvaluatorReport } from "@evaluator/mfe";
 import {
   getCachedPropertyDocMatching,
   isImageMime,
@@ -265,19 +265,32 @@ export function collectAppraisalDocuments(
   appraisalTaskId: string | null | undefined,
 ): PropertyDetailDocumentEntry[] {
   if (!appraisalTaskId) return [];
+  const docs: PropertyDetailDocumentEntry[] = [];
   const cached = getCachedEvaluatorReport(appraisalTaskId);
-  if (!cached?.fileName?.trim()) return [];
-  return [
-    {
+  if (cached?.fileName?.trim()) {
+    docs.push({
       id: "appraisal-report",
       name: "تقرير التقييم",
       fileName: cached.fileName.trim(),
       source: "المقيّم العقاري",
-      kind: "pdf",
+      kind: fileKind(cached.fileName, cached.mimeType),
       dataUrl: cached.dataUrl,
       attachmentId: cached.attachmentId,
-    },
-  ];
+    });
+  }
+  const deposit = getCachedEvaluatorDepositCertificate(appraisalTaskId);
+  if (deposit?.fileName?.trim()) {
+    docs.push({
+      id: "appraisal-deposit-certificate",
+      name: "شهادة الإيداع",
+      fileName: deposit.fileName.trim(),
+      source: "المقيّم العقاري",
+      kind: fileKind(deposit.fileName, deposit.mimeType),
+      dataUrl: deposit.dataUrl,
+      attachmentId: deposit.attachmentId,
+    });
+  }
+  return docs;
 }
 
 export function collectFieldInspectionDocuments(

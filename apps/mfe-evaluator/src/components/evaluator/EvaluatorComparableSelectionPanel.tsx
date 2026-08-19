@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { getApiBase, approveRemoteInspection, getOpenValuationRequestByProperty, listComparableProperties,
+import { getApiBase, approveRemoteInspection, ensureOpenValuationRequestByProperty, listComparableProperties,
   suggestComparablePropertiesByProximity,
   listValuationComparableSelections,
   removeValuationComparableSelection,
@@ -34,6 +34,12 @@ import { getApiBase, approveRemoteInspection, getOpenValuationRequestByProperty,
 } from "@platform/api-client";
 import { getAuthSession } from "@platform/auth-client";
 import { Button, Input, Label, Note, cn, useToast } from "@platform/ui-kit";
+import {
+  VALUATION_PURPOSE_OPTIONS,
+  VALUE_BASIS_OPTIONS,
+  basisOfValueKeyForAssignment,
+  valuationPurposeKeyForAssignment,
+} from "@platform/app-shared/prototype/assignment-valuation-defaults";
 import { amountWordsOrZero } from "../../lib/evaluator/value-estimation";
 import { openValuationReportPreview } from "../../lib/evaluator/valuation-report-preview";
 import {
@@ -461,10 +467,12 @@ function MarketAdjustEditor({
 export function EvaluatorComparableSelectionPanel({
   propertyId,
   poNumber,
+  assignmentType,
   districtHint,
 }: {
   propertyId: string;
   poNumber?: string;
+  assignmentType?: string;
   districtHint?: string;
 }) {
   const { showToast } = useToast();
@@ -511,7 +519,9 @@ export function EvaluatorComparableSelectionPanel({
   const [asCostUnit, setAsCostUnit] = useState("comparison_unit");
   const [asAdjustUnlocked, setAsAdjustUnlocked] = useState(true);
   // إعدادات تقرير التقييم: الغرض (§4ج-5) + بند الأخصائي الخارجي (IVS 101).
-  const [asPurpose, setAsPurpose] = useState("");
+  const [asPurpose, setAsPurpose] = useState(() =>
+    valuationPurposeKeyForAssignment(assignmentType),
+  );
   const [asPurposeNote, setAsPurposeNote] = useState("");
   const [asSpecialistUsed, setAsSpecialistUsed] = useState(false);
   const [asSpecialistDetails, setAsSpecialistDetails] = useState("");
@@ -545,7 +555,9 @@ export function EvaluatorComparableSelectionPanel({
   );
   const [methodsRationale, setMethodsRationale] = useState("");
   const [finalRoundDecimals, setFinalRoundDecimals] = useState("0");
-  const [basisOfValueKey, setBasisOfValueKey] = useState("market");
+  const [basisOfValueKey, setBasisOfValueKey] = useState(() =>
+    basisOfValueKeyForAssignment(assignmentType),
+  );
   const [valuePremiseKey, setValuePremiseKey] = useState("");
   const [liquidationDiscountPct, setLiquidationDiscountPct] = useState("0");
   const [liquidationDiscountRationale, setLiquidationDiscountRationale] =
@@ -572,7 +584,12 @@ export function EvaluatorComparableSelectionPanel({
     setLoading(true);
     setError(null);
 
-    const open = await getOpenValuationRequestByProperty(config, propertyId.trim());
+    const open = await ensureOpenValuationRequestByProperty(config, {
+      propId: propertyId.trim(),
+      area: districtHint?.trim() || "—",
+      type: "—",
+      appraiser: "—",
+    });
     if (!open.ok) {
       setLoading(false);
       setValuationRequestId(null);
@@ -585,12 +602,12 @@ export function EvaluatorComparableSelectionPanel({
       setReportFields(null);
       setProximity([]);
       setProximitySource("none");
-      if (open.kind === "not_found") {
-        setError(
-          "لا يوجد طلب تقييم مفتوح لهذا العقار — يُنشأ عادةً بعد دراسة الحالة.",
-        );
+      if (open.kind === "auth") {
+        setError("يلزم تسجيل الدخول");
+      } else if (open.kind === "network") {
+        setError("تعذّر الاتصال بخدمة التقييم");
       } else {
-        setError("تعذّر تحميل طلب التقييم");
+        setError("تعذّر فتح طلب التقييم — يُنشأ عند توزيع المعاملة على المقيم.");
       }
       return;
     }
@@ -628,7 +645,10 @@ export function EvaluatorComparableSelectionPanel({
       setAsCostBasis(settingsRes.data.costBasisKey || "replacement");
       setAsCostUnit(settingsRes.data.costMeasurementUnitKey || "comparison_unit");
       setAsAdjustUnlocked(settingsRes.data.adjustmentsEditUnlocked);
-      setAsPurpose(settingsRes.data.valuationPurposeKey || "");
+      setAsPurpose(
+        settingsRes.data.valuationPurposeKey ||
+          valuationPurposeKeyForAssignment(assignmentType),
+      );
       setAsPurposeNote(settingsRes.data.valuationPurposeNote ?? "");
       setAsSpecialistUsed(settingsRes.data.externalSpecialistUsed);
       setAsSpecialistDetails(settingsRes.data.externalSpecialistDetails ?? "");
@@ -696,8 +716,17 @@ export function EvaluatorComparableSelectionPanel({
       setReconMethods(reconRes.data.methods);
       setMethodsRationale(reconRes.data.methodsRationale ?? "");
       setFinalRoundDecimals(String(reconRes.data.finalRoundDecimals ?? 0));
-      setBasisOfValueKey(reconRes.data.basisOfValueKey || "market");
-      setValuePremiseKey(reconRes.data.valuePremiseKey || "");
+      const nextBasis =
+        reconRes.data.basisOfValueKey ||
+        basisOfValueKeyForAssignment(assignmentType);
+      setBasisOfValueKey(nextBasis);
+      let nextPremise = reconRes.data.valuePremiseKey || "";
+      if (nextBasis === "liquidation") {
+        if (nextPremise !== "orderly" && nextPremise !== "forced") {
+          nextPremise = "orderly";
+        }
+      }
+      setValuePremiseKey(nextPremise);
       setLiquidationDiscountPct(String(reconRes.data.liquidationDiscountPct ?? 0));
       setLiquidationDiscountRationale(
         reconRes.data.liquidationDiscountRationale ?? "",
@@ -718,8 +747,12 @@ export function EvaluatorComparableSelectionPanel({
       setReconMethods([]);
       setMethodsRationale("");
       setFinalRoundDecimals("0");
-      setBasisOfValueKey("market");
-      setValuePremiseKey("");
+      setBasisOfValueKey(basisOfValueKeyForAssignment(assignmentType));
+      setValuePremiseKey(
+        basisOfValueKeyForAssignment(assignmentType) === "liquidation"
+          ? "orderly"
+          : "",
+      );
       setLiquidationDiscountPct("0");
       setLiquidationDiscountRationale("");
       setAlertOverrides({});
@@ -743,7 +776,7 @@ export function EvaluatorComparableSelectionPanel({
       setProximity([]);
       setProximitySource("none");
     }
-  }, [propertyId, districtHint, q]);
+  }, [propertyId, districtHint, q, assignmentType]);
 
   useEffect(() => {
     void reload();
@@ -1038,13 +1071,13 @@ export function EvaluatorComparableSelectionPanel({
     const res = await getValuationReportDocument(config, valuationRequestId);
     setSaving(false);
     if (!res.ok) {
-      showToast("تعذّر تحميل معاينة التقرير", "error");
+      showToast("تعذّر تحميل استعراض تقرير التقييم", "error");
       return;
     }
     try {
       await openValuationReportPreview(res.data);
     } catch {
-      showToast("تعذّر فتح معاينة القالب المعتمد", "error");
+      showToast("تعذّر فتح استعراض تقرير التقييم على الكليشة المعتمدة", "error");
     }
   }
 
@@ -1068,18 +1101,18 @@ export function EvaluatorComparableSelectionPanel({
     const rows = filled
       .map(
         (f) =>
-          `<tr><td>${esc(f.code)}</td><td>${esc(f.fieldKey)}</td><td>${esc(f.labelAr)}</td><td>${esc(f.value ?? "")}</td><td>${esc(f.sourceKind)}</td></tr>`,
+          `<tr><td>${esc(f.fieldKey)}</td><td>${esc(f.labelAr)}</td><td>${esc(f.valueTypeLabelAr)}</td><td>${esc(f.value ?? "")}</td><td>${esc(f.sourceKind)}</td></tr>`,
       )
       .join("");
     w.document.open();
-    w.document.write(`<!DOCTYPE html><html lang="ar" dir="rtl"><head><meta charset="utf-8"/><title>حقول التقرير</title>
+    w.document.write(`<!DOCTYPE html><html lang="ar" dir="rtl"><head><meta charset="utf-8"/><title>حقول تقرير التقييم</title>
 <style>body{font-family:Tahoma,sans-serif;padding:16px}table{border-collapse:collapse;width:100%;font-size:12px}td,th{border:1px solid #ccc;padding:4px 6px}th{background:#f3f3f3}.meta{margin-bottom:12px;color:#444}</style></head>
 <body>
-<h1>حمولة حقول التقرير (code ⟵ field_key)</h1>
+<h1>حمولة حقول التقرير</h1>
 <p class="meta">${esc(reportFields.packageNoteAr)}</p>
 <p class="meta">طلب ${esc(reportFields.displayId)} · الكتالوج ${reportFields.catalogCount} · مملوء ${reportFields.filledCount} · قابل للحل ${reportFields.resolvableCount} · مؤجّل ${reportFields.deferredCount} · أصول ${reportFields.assetCount}</p>
-<table><thead><tr><th>الرمز</th><th>field_key</th><th>التسمية</th><th>القيمة</th><th>المصدر</th></tr></thead><tbody>${rows}</tbody></table>
-<details style="margin-top:16px"><summary>valuesByCode JSON</summary><pre>${esc(JSON.stringify(reportFields.valuesByCode, null, 2))}</pre></details>
+<table><thead><tr><th>المفتاح</th><th>التسمية</th><th>النوع</th><th>القيمة</th><th>المصدر</th></tr></thead><tbody>${rows}</tbody></table>
+<details style="margin-top:16px"><summary>valuesByFieldKey JSON</summary><pre>${esc(JSON.stringify(reportFields.valuesByFieldKey, null, 2))}</pre></details>
 </body></html>`);
     w.document.close();
   }
@@ -1182,7 +1215,7 @@ export function EvaluatorComparableSelectionPanel({
           ) : null}
           <div className="mb-2 grid max-w-2xl gap-2 sm:grid-cols-2">
             <div>
-              <Label className={valLabelClassName}>الغرض من التقييم * (يختاره المقيّم — §4ج-5)</Label>
+              <Label className={valLabelClassName}>الغرض من التقييم *</Label>
               <select
                 className={valInputClassName}
                 value={asPurpose}
@@ -1190,12 +1223,11 @@ export function EvaluatorComparableSelectionPanel({
                 onChange={(e) => setAsPurpose(e.target.value)}
               >
                 <option value="">— اختر —</option>
-                <option value="judicial_execution">تنفيذ قضائي</option>
-                <option value="sale_purchase">بيع أو شراء</option>
-                <option value="financing">تمويل ورهن</option>
-                <option value="financial_reporting">قوائم مالية</option>
-                <option value="litigation">نزاع قضائي</option>
-                <option value="other">أخرى</option>
+                {VALUATION_PURPOSE_OPTIONS.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
               </select>
             </div>
             <div>
@@ -2183,16 +2215,11 @@ export function EvaluatorComparableSelectionPanel({
                   }
                 }}
               >
-                <option value="market">القيمة السوقية</option>
-                <option value="market_rent">الإيجار السوقي</option>
-                <option value="equitable">القيمة المنصفة</option>
-                <option value="investment">القيمة الاستثمارية</option>
-                <option value="synergistic">القيمة التكاملية</option>
-                <option value="liquidation">قيمة التصفية</option>
-                <option value="fair_ifrs">القيمة العادلة (IFRS)</option>
-                <option value="fair_statutory">
-                  القيمة العادلة (القانونية/التشريعية)
-                </option>
+                {VALUE_BASIS_OPTIONS.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
               </select>
             </div>
             <div>
@@ -2344,7 +2371,7 @@ export function EvaluatorComparableSelectionPanel({
         <div className="mt-3 rounded-lg border border-border-md px-3 py-2">
           <EngSection>بوابات الإصدار</EngSection>
           <p className="mb-2 text-[12px] text-text-muted">
-            تمنع إرسال/إصدار التقرير الأصلي عند الفشل. رفع PDF ميكياس يبقى متاحًا
+            تمنع إرسال/إصدار التقرير الأصلي عند الفشل.
             بالتوازي.
           </p>
           <p className="mb-2 text-[13px] text-text">
@@ -2498,7 +2525,7 @@ export function EvaluatorComparableSelectionPanel({
               disabled={saving}
               onClick={() => void openReportPreview()}
             >
-              معاينة التقرير على الكليشة المعتمدة
+              استعراض تقرير التقييم على الكليشة المعتمدة
             </Button>
             {reportFields ? (
               <Button
@@ -2508,13 +2535,13 @@ export function EvaluatorComparableSelectionPanel({
                 disabled={saving}
                 onClick={() => openValuationReportFieldPreview()}
               >
-                معاينة حقول التقرير ({reportFields.filledCount}/{reportFields.catalogCount})
+                عرض حقول تقرير التقييم ({reportFields.filledCount}/{reportFields.catalogCount})
               </Button>
             ) : null}
           </div>
           {reportFields ? (
             <p className="mt-2 text-[12px] text-text-muted">
-              تعبئة حقول التقرير (موازٍ لرفع PDF): مملوء {reportFields.filledCount} · قابل
+              تعبئة حقول التقرير: مملوء {reportFields.filledCount} · قابل
               للحل الآن {reportFields.resolvableCount} · مؤجّل {reportFields.deferredCount} ·
               أصول/مرفقات {reportFields.assetCount}
             </p>

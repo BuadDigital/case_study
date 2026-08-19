@@ -449,10 +449,16 @@ if(document.readyState==='complete')run();
 else window.addEventListener('load',run);
 })();`;
 
+export type ValuationReportMergeExtras = {
+  reportNumber?: string | null;
+  depositCode?: string | null;
+};
+
 /** Merge live valuation document into the approved letterhead HTML. */
 export function mergeApprovedValuationTemplate(
   templateHtml: string,
   doc: ValuationReportDocumentDto,
+  extras?: ValuationReportMergeExtras,
 ): string {
   const parser = new DOMParser();
   const dom = parser.parseFromString(templateHtml, "text/html");
@@ -462,11 +468,12 @@ export function mergeApprovedValuationTemplate(
     el.classList.remove("marked-keep", "marked-cut", "marked-edit");
   });
 
-  const reportNo = doc.reportNumber?.trim() || doc.displayId;
+  const reportNo = extras?.reportNumber?.trim() || doc.reportNumber?.trim() || doc.displayId;
+  const deposit = extras?.depositCode?.trim() || "—";
   const hijri = doc.reportDateHijriDisplay?.trim();
   const metaHtml = hijri
-    ? `رقم التقرير: ${esc(reportNo)}<br>التاريخ: ${esc(doc.reportDateDisplay)} م<br>${esc(hijri)}<br>رمز إيداع التقرير: —`
-    : `رقم التقرير: ${esc(reportNo)}<br>التاريخ: ${esc(doc.reportDateDisplay)}<br>رمز إيداع التقرير: —`;
+    ? `رقم التقرير: ${esc(reportNo)}<br>التاريخ: ${esc(doc.reportDateDisplay)} م<br>${esc(hijri)}<br>رمز إيداع التقرير: ${esc(deposit)}`
+    : `رقم التقرير: ${esc(reportNo)}<br>التاريخ: ${esc(doc.reportDateDisplay)}<br>رمز إيداع التقرير: ${esc(deposit)}`;
   dom.querySelectorAll(".pg-meta").forEach((el) => {
     el.innerHTML = metaHtml;
   });
@@ -514,18 +521,27 @@ export function mergeApprovedValuationTemplate(
   return `<!DOCTYPE html>\n${dom.documentElement.outerHTML}`;
 }
 
-export async function openApprovedValuationReportPreview(
+export async function buildApprovedValuationReportHtml(
   doc: ValuationReportDocumentDto,
+  extras?: ValuationReportMergeExtras,
   templateUrl = doc.approvedTemplateUrl || "/ejadah/report-template-approved.html",
-): Promise<void> {
+): Promise<string> {
   const res = await fetch(templateUrl, { cache: "no-cache" });
   if (!res.ok) {
     throw new Error(`تعذّر تحميل القالب المعتمد (${res.status})`);
   }
   const templateHtml = await res.text();
-  const merged = mergeApprovedValuationTemplate(templateHtml, doc);
+  return mergeApprovedValuationTemplate(templateHtml, doc, extras);
+}
+
+export async function openApprovedValuationReportPreview(
+  doc: ValuationReportDocumentDto,
+  extras?: ValuationReportMergeExtras,
+  templateUrl = doc.approvedTemplateUrl || "/ejadah/report-template-approved.html",
+): Promise<void> {
+  const merged = await buildApprovedValuationReportHtml(doc, extras, templateUrl);
   const w = window.open("", "_blank", "noopener,noreferrer,width=980,height=1100");
-  if (!w) throw new Error("المتصفح منع فتح نافذة المعاينة");
+  if (!w) throw new Error("المتصفح منع فتح نافذة استعراض تقرير التقييم");
   w.document.open();
   w.document.write(merged);
   w.document.close();

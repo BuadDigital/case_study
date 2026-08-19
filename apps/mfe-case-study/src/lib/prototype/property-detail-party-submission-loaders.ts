@@ -19,6 +19,7 @@ function parseEvaluatorPayload(
     evaluatorNotes: String(raw.evaluatorNotes ?? ""),
     reportFileName:
       typeof raw.reportFileName === "string" ? raw.reportFileName : null,
+    reportNo: typeof raw.reportNo === "string" ? raw.reportNo : "",
     submittedAtUtc:
       typeof raw.submittedAtUtc === "string"
         ? raw.submittedAtUtc
@@ -37,16 +38,17 @@ function parseEvaluatorPayload(
     appraiserAddress: String(raw.appraiserAddress ?? ""),
     appraiserPhone: String(raw.appraiserPhone ?? ""),
     reportIssueDate: String(raw.reportIssueDate ?? ""),
+    depositCode: String(raw.depositCode ?? ""),
+    depositCertificateFileName:
+      typeof raw.depositCertificateFileName === "string"
+        ? raw.depositCertificateFileName
+        : null,
     independenceDeclared: Boolean(raw.independenceDeclared),
     reportWorkers: Array.isArray(raw.reportWorkers)
       ? (raw.reportWorkers as EvaluatorSubmissionSnapshot["reportWorkers"])
       : [],
     assetDataConfirmed: Boolean(raw.assetDataConfirmed),
     assetDataVarianceNotes: String(raw.assetDataVarianceNotes ?? ""),
-    signedAppraisalFileName:
-      typeof raw.signedAppraisalFileName === "string"
-        ? raw.signedAppraisalFileName
-        : null,
     acceptedAtUtc: dto.acceptedAtUtc ?? null,
     acceptedByName: dto.acceptedByName ?? null,
     returnNote:

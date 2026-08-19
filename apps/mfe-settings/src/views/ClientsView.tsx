@@ -5,6 +5,7 @@ import {
   createClient,
   deactivateClient,
   INFATH_SEED_CLIENT_ID,
+  NABR_SEED_CLIENT_ID,
   listClients,
   updateClient,
   type ClientDto,
@@ -143,6 +144,10 @@ export function ClientsView() {
       showToast("لا يمكن تعطيل عميل إنفاذ الأساسي", "error");
       return;
     }
+    if (row.id === NABR_SEED_CLIENT_ID) {
+      showToast("لا يمكن تعطيل شركة نبر العقارية", "error");
+      return;
+    }
     if (!window.confirm(`تعطيل العميل «${row.nameAr}»؟`)) return;
     const config = organizationSettingsApiConfig();
     if (!config) return;
@@ -211,6 +216,11 @@ export function ClientsView() {
                     <Badge className="mt-1" tone="info">
                       إنفاذ (بذرة)
                     </Badge>
+                  ) : row.id === NABR_SEED_CLIENT_ID ? (
+                    <div className="mt-1 flex flex-wrap gap-1">
+                      <Badge tone="info">نبر (بذرة)</Badge>
+                      <Badge tone="info">فرعي لإنفاذ</Badge>
+                    </div>
                   ) : null}
                 </Td>
                 <Td dir="ltr">{row.identityNumber || "—"}</Td>
@@ -227,7 +237,10 @@ export function ClientsView() {
                         تعديل
                       </Button>
                     ) : null}
-                    {canEdit && row.isActive && row.id !== INFATH_SEED_CLIENT_ID ? (
+                    {canEdit &&
+                    row.isActive &&
+                    row.id !== INFATH_SEED_CLIENT_ID &&
+                    row.id !== NABR_SEED_CLIENT_ID ? (
                       <Button type="button" size="sm" onClick={() => void onDeactivate(row)}>
                         تعطيل
                       </Button>

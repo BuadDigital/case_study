@@ -34,6 +34,10 @@ public class CaseStudyValuationDispatchTests
         Assert.Equal("عبدالله الكثيري", vr.Appraiser);
         Assert.StartsWith("VR-", vr.DisplayId);
 
+        var draft = await contexts.CaseStudy.PartyTaskSubmissions.SingleAsync();
+        Assert.Equal(AppraisalTaskId, draft.WorkflowTaskId);
+        Assert.Contains("\"reportNo\":\"TQ", draft.PayloadJson, StringComparison.Ordinal);
+
         var outbox = await db.OutboxMessages.SingleAsync();
         Assert.Equal(IntegrationEventTypes.ValuationRequestCreated, outbox.EventType);
     }

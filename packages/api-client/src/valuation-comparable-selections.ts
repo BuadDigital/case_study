@@ -301,7 +301,7 @@ export type ValuationApproachSettingsDto = {
   costMeasurementUnitKey: string;
   costMeasurementUnitLabelAr: string;
   adjustmentsEditUnlocked: boolean;
-  /** الغرض من التقييم (§4ج-5) — judicial_execution | sale_purchase | financing | financial_reporting | litigation | other. */
+  /** الغرض من التقييم — auction_liquidation | sale | judicial_execution | sale_purchase | financing | financial_reporting | litigation | other. */
   valuationPurposeKey: string;
   valuationPurposeLabelAr: string;
   valuationPurposeNote?: string | null;
@@ -352,6 +352,15 @@ export type ValuationRequestLiteDto = {
   date: string;
 };
 
+export type SaveValuationRequestBody = {
+  propId: string;
+  area: string;
+  type: string;
+  appraiser: string;
+  status?: string;
+  date?: string;
+};
+
 export type ValuationSelectionsApiConfig = {
   baseUrl?: string;
   token: string;
@@ -388,6 +397,38 @@ export async function getOpenValuationRequestByProperty(
       `${base}/api/valuation-requests/open-by-property/${encodeURIComponent(propertyId)}`,
       { headers: headers(config.token) },
     );
+    if (res.status === 401) return { ok: false, kind: "auth" };
+    if (res.status === 404) return { ok: false, kind: "not_found" };
+    if (!res.ok) return { ok: false, kind: "server" };
+    return { ok: true, data: await parseJson<ValuationRequestLiteDto>(res) };
+  } catch {
+    return { ok: false, kind: "network" };
+  }
+}
+
+export async function ensureOpenValuationRequestByProperty(
+  config: ValuationSelectionsApiConfig,
+  body: SaveValuationRequestBody,
+): Promise<Result<ValuationRequestLiteDto>> {
+  const base = config.baseUrl ?? getApiBase();
+  const open = await getOpenValuationRequestByProperty(config, body.propId);
+  if (open.ok) return open;
+  if (open.kind === "auth" || open.kind === "network") return open;
+
+  try {
+    const today = new Date().toISOString().slice(0, 10);
+    const res = await fetch(`${base}/api/valuation-requests/ensure-open`, {
+      method: "POST",
+      headers: headers(config.token),
+      body: JSON.stringify({
+        propId: body.propId,
+        area: body.area.trim() || "—",
+        type: body.type.trim() || "—",
+        appraiser: body.appraiser.trim() || "—",
+        status: body.status ?? "progress",
+        date: body.date?.trim() || today,
+      }),
+    });
     if (res.status === 401) return { ok: false, kind: "auth" };
     if (res.status === 404) return { ok: false, kind: "not_found" };
     if (!res.ok) return { ok: false, kind: "server" };
@@ -933,10 +974,30 @@ export async function getValuationReportDocument(
   }
 }
 
+export async function getValuationReportPdf(
+  config: ValuationSelectionsApiConfig,
+  valuationRequestId: string,
+): Promise<Result<Blob>> {
+  const base = config.baseUrl ?? getApiBase();
+  try {
+    const res = await fetch(
+      `${base}/api/valuation-requests/${valuationRequestId}/report-document/pdf`,
+      { headers: { Authorization: `Bearer ${config.token}`, Accept: "application/pdf" } },
+    );
+    if (res.status === 401) return { ok: false, kind: "auth" };
+    if (res.status === 404) return { ok: false, kind: "not_found" };
+    if (!res.ok) return { ok: false, kind: "server" };
+    return { ok: true, data: await res.blob() };
+  } catch {
+    return { ok: false, kind: "network" };
+  }
+}
+
 export type ValuationReportFieldDto = {
-  code: string;
-  labelAr: string;
   fieldKey: string;
+  labelAr: string;
+  valueType: string;
+  valueTypeLabelAr: string;
   sourceKind: string;
   value?: string | null;
   filled: boolean;
@@ -955,7 +1016,7 @@ export type ValuationReportFieldPayloadDto = {
   assetCount: number;
   packageNoteAr: string;
   fields: ValuationReportFieldDto[];
-  valuesByCode: Record<string, string>;
+  valuesByFieldKey: Record<string, string>;
   /** Set when adopted comparables exceed the platform's 3 slots. */
   truncationNoteAr?: string | null;
 };
