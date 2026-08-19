@@ -1,4 +1,5 @@
-﻿using Microsoft.AspNetCore.Identity;
+﻿using Microsoft.AspNetCore.Authentication;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -241,6 +242,17 @@ public static class DependencyInjection
             })
             .AddEntityFrameworkStores<IdentityDbContext>()
             .AddDefaultTokenProviders();
+
+        // AddIdentity() makes the Identity application cookie the default
+        // authenticate/challenge scheme, which sends API callers to /Account/Login —
+        // on the Identity host this 401'd every [Authorize] endpoint (incl.
+        // /api/permissions, breaking the shell role chip). The APIs are JWT-only,
+        // so re-assert bearer; this Configure runs after Identity's and wins.
+        services.Configure<AuthenticationOptions>(options =>
+        {
+            options.DefaultAuthenticateScheme = "Bearer";
+            options.DefaultChallengeScheme = "Bearer";
+        });
 
         services.Configure<DataProtectionTokenProviderOptions>(options =>
             options.TokenLifespan = TimeSpan.FromHours(24));
