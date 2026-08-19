@@ -1,0 +1,307 @@
+═══════════════════════════════════════════════════════════════════════════════
+        دليل عملي: كيف تسحب نسخة احتياطية (Backup) كاملة من Azure
+        التاريخ: 2026-08-13
+        الاشتراك: Azure subscription 1 (BUAD.COM.SA)
+        كل شيء انحفظ في: D:\AzureBackup_2026-08-13
+═══════════════════════════════════════════════════════════════════════════════
+
+هذا الملف يشرح بالخطوات العملية كل اللي سويته لسحب باكب كامل من Azure لجهازك.
+الأوامر مكتوبة كما هي عشان تقدر تعيدها أو تتعلم منها.
+
+ملاحظة مهمة عن الأدوات: على ويندوز، الأمر "az" أحياناً ما يشتغل مباشرة، فاستخدمت
+المسار الكامل له:
+   "C:\Program Files\Microsoft SDKs\Azure\CLI2\wbin\az.cmd"
+في الأمثلة تحت راح أكتبه مختصراً "az" للتبسيط.
+
+
+═══════════════════════════════════════════════════════════════════════════════
+الخطوة 0: الفكرة العامة — إيش نسحب من Azure؟
+═══════════════════════════════════════════════════════════════════════════════
+
+أي اشتراك Azure يتكوّن من "موارد" (Resources). اللي يهمنا في الباكب 3 أنواع:
+
+  1. تطبيقات الويب (App Services)  → ملفات المواقع والكود
+  2. قواعد البيانات (Databases)     → SQL / MySQL / PostgreSQL
+  3. حسابات التخزين (Storage)       → الملفات والصور والمرفقات
+
+الموارد الثانية (المراقبة، التنبيهات، خطط الاستضافة، Key Vaults) لا تُسحب كملفات،
+لأنها إعدادات مو بيانات.
+
+
+═══════════════════════════════════════════════════════════════════════════════
+الخطوة 1: تنصيب أدوات Azure على الجهاز
+═══════════════════════════════════════════════════════════════════════════════
+
+نصّبت الأدوات التالية (عن طريق winget على ويندوز):
+
+  # أداة Azure الرئيسية (سطر الأوامر)
+  winget install --id Microsoft.AzureCLI -e
+
+  # أداة تصدير قواعد SQL
+  winget install --id Microsoft.SqlPackage -e
+
+  # عميل PostgreSQL (فيه pg_dump)
+  winget install --id PostgreSQL.PostgreSQL.17 -e
+
+  # عميل MySQL (فيه mysqldump)
+  winget install --id Oracle.MySQL -e
+
+  # أداة النقل السريع للتخزين (مهمة جداً للملفات الكثيرة)
+  winget install --id Microsoft.Azure.AZCopy.10 -e
+
+بعد كل تنصيب: تأكد إنها اشتغلت، مثلاً:
+  az version
+
+
+═══════════════════════════════════════════════════════════════════════════════
+الخطوة 2: تسجيل الدخول إلى Azure
+═══════════════════════════════════════════════════════════════════════════════
+
+  az login
+
+راح يفتح المتصفح لتسجيل الدخول. لو ما فتح أو رفض، استخدم طريقة "رمز الجهاز":
+
+  az login --use-device-code
+
+راح يعطيك رمز (مثل: CWN2DQJ93) وتروح للرابط https://login.microsoft.com/device
+تدخل الرمز وتسجّل دخولك.
+
+للتأكد إنك مسجّل دخول:
+  az account show
+
+
+═══════════════════════════════════════════════════════════════════════════════
+الخطوة 3: استعراض كل الموارد في الاشتراك (عشان تعرف إيش عندك)
+═══════════════════════════════════════════════════════════════════════════════
+
+  # كل الموارد
+  az resource list --query "[].{name:name, type:type, rg:resourceGroup}" -o table
+
+  # فلترة حسب النوع (مفيد جداً للجرد):
+  az resource list --resource-type "Microsoft.Web/sites" -o table            # تطبيقات الويب
+  az resource list --resource-type "Microsoft.Web/sites/slots" -o table       # النسخ الفرعية (dev/test)
+  az resource list --resource-type "Microsoft.Web/staticSites" -o table       # المواقع الثابتة
+  az resource list --resource-type "Microsoft.Storage/storageAccounts" -o table  # التخزين
+  az resource list --resource-type "Microsoft.Sql/servers/databases" -o table    # قواعد SQL
+
+>>> درس مهم: هذي الخطوة أنقذت الباكب! لأني بالجرد اكتشفت موردين (eed-server و
+    eed-web) كانوا ناقصين من قائمتي الأولى. دايماً اعمل جرد شامل قبل ما تبدأ.
+
+
+═══════════════════════════════════════════════════════════════════════════════
+الخطوة 4: سحب تطبيقات الويب (App Services)
+═══════════════════════════════════════════════════════════════════════════════
+
+كل تطبيق ويب في Azure له "بوابة إدارة" اسمها Kudu على العنوان:
+   https://<اسم-الموقع>.scm.azurewebsites.net
+
+ومنها تقدر تنزّل كل ملفات الموقع كملف zip عبر الرابط:
+   https://<scm-host>/api/zip/site/wwwroot/
+
+الخطوات:
+  # 1. جيب اسم مضيف الـ SCM للموقع
+  az webapp show -n ejadah-new-website -g ejadahRG --query "hostNameSslStates[?hostType=='Repository'].name | [0]" -o tsv
+
+  # 2. جيب توكن الدخول (صلاحية مؤقتة)
+  $token = az account get-access-token --query accessToken -o tsv
+
+  # 3. نزّل الموقع كامل كـ zip
+  curl.exe -H "Authorization: Bearer $token" -o "ejadah-new-website.zip" "https://<scm-host>/api/zip/site/wwwroot/"
+
+>>> درس: بعد كل تنزيل zip، تأكد إنه سليم (مو تالف). في PowerShell:
+    [System.IO.Compression.ZipFile]::OpenRead("الملف.zip")
+    لو فتح بدون خطأ = سليم. لو أعطى "End of Central Directory" = تالف، أعد التنزيل.
+    (curl مع --retry أفضل من طرق التنزيل الثانية لأنه يعيد المحاولة تلقائياً)
+
+المواقع الثابتة (Static Web Apps) مثل eed-web مختلفة — ما لها Kudu.
+مصدرها الحقيقي يكون في GitHub. تعرف عليه بـ:
+  az staticwebapp show -n eed-web -g eed-project --query "{url:defaultHostname, repo:repositoryUrl, branch:branch}" -o json
+
+
+═══════════════════════════════════════════════════════════════════════════════
+الخطوة 5: سحب قواعد البيانات
+═══════════════════════════════════════════════════════════════════════════════
+
+قبل أي شيء: قواعد البيانات محمية بجدار ناري (Firewall). لازم تضيف IP جهازك.
+
+  # اعرف IP جهازك
+  $ip = (Invoke-RestMethod "https://api.ipify.org")
+
+──────────────────────────────────────────
+(أ) قواعد Azure SQL  →  بصيغة .bacpac (باستخدام SqlPackage)
+──────────────────────────────────────────
+  # افتح الجدار الناري لجهازك
+  az sql server firewall-rule create -g <RG> -s <server> -n temp-rule --start-ip-address $ip --end-ip-address $ip
+
+  # عيّن نفسك أدمن مؤقت (للدخول بدون كلمة سر عبر حسابك)
+  $oid = az ad signed-in-user show --query id -o tsv
+  az sql server ad-admin create -s <server> -g <RG> --display-name "admin@buad.com.sa" --object-id $oid
+
+  # صدّر القاعدة (توكن الدخول لـ SQL له resource مختلف!)
+  $token = az account get-access-token --resource https://database.windows.net/ --query accessToken -o tsv
+  sqlpackage /Action:Export /TargetFile:"moshdb.bacpac" ^
+     /SourceServerName:"<server>.database.windows.net" ^
+     /SourceDatabaseName:"moshdb" /AccessToken:"$token"
+
+──────────────────────────────────────────
+(ب) قاعدة PostgreSQL  →  بصيغة .dump (باستخدام pg_dump)
+──────────────────────────────────────────
+  # كلمة السر عادة موجودة في إعدادات التطبيق المرتبط:
+  az webapp config appsettings list -n eed-server -g eed-project -o json
+  # (ابحث عن ConnectionStrings — فيها السيرفر واليوزر والباسورد)
+
+  # افتح الجدار الناري
+  az postgres flexible-server firewall-rule create -g <RG> -s <server> -n temp-rule --start-ip-address $ip --end-ip-address $ip
+
+  # اسحب النسخة (صيغة مضغوطة -Fc)
+  $env:PGPASSWORD = "الباسورد"
+  pg_dump -h <server>.postgres.database.azure.com -U <user> -d <db> -Fc -f "eed.dump" --no-owner --no-privileges
+
+──────────────────────────────────────────
+(ج) قاعدة MySQL  →  بصيغة .sql (باستخدام mysqldump)
+──────────────────────────────────────────
+  # كلمة السر لموقع ووردبريس موجودة في ملف wp-config.php (داخل zip الموقع)
+  # ابحث عن: DB_NAME, DB_USER, DB_PASSWORD, DB_HOST
+
+  # اسحب النسخة (لاحظ --ssl-mode=REQUIRED لأن Azure يفرض SSL)
+  $env:MYSQL_PWD = "الباسورد"
+  mysqldump --host=<server>.mysql.database.azure.com --user=<user> --ssl-mode=REQUIRED ^
+     --single-transaction --routines --triggers --set-gtid-purged=OFF --column-statistics=0 ^
+     --databases "اسم-القاعدة" --result-file="mysql.sql"
+
+>>> أصعب درس في المهمة كلها (قاعدة MySQL):
+    القاعدة كانت "الوصول العام مقفول" (publicNetworkAccess = Disabled)، فلا أحد
+    يوصل لها، ولا حتى الموقع نفسه. تأكدت من هذا بـ:
+      az mysql flexible-server show -g <RG> -n <server> --query "network" -o json
+
+    الحل: فتحت الوصول العام مؤقتاً، سحبت النسخة، ثم أرجعته مقفول:
+      az mysql flexible-server update -g <RG> -n <server> --public-access Enabled    # افتح
+      ... اسحب النسخة ...
+      az mysql flexible-server update -g <RG> -n <server> --public-access Disabled   # ارجع اقفل
+
+    اكتشفت إنه أصلاً فيه قاعدة جدار ناري AllowAll، فما احتجت أضيف IP.
+
+
+═══════════════════════════════════════════════════════════════════════════════
+الخطوة 6: سحب حسابات التخزين (الأهم والأكبر) — استخدم azcopy!
+═══════════════════════════════════════════════════════════════════════════════
+
+هنا أهم درس في السرعة. في طريقتين:
+
+──────────────────────────────────────────
+الطريقة البطيئة (az CLI) — تجنّبها للملفات الكثيرة
+──────────────────────────────────────────
+  $key = az storage account keys list -n <account> -g <RG> --query "[0].value" -o tsv
+  az storage blob download-batch --account-name <account> --account-key $key -s <container> -d "مجلد"
+
+  المشكلة: تنزّل ملف-ملف (طلب لكل ملف). حساب فيه 560 ألف ملف صغير أخذ ~4 ساعات
+  بسرعة ~1.9 MB/s. البطء من كثرة الملفات مو من حجمها.
+
+──────────────────────────────────────────
+الطريقة السريعة (azcopy) — أسرع 20 مرة!
+──────────────────────────────────────────
+  # 1. ولّد SAS token (بطاقة دخول مؤقتة، قراءة فقط)
+  $key = az storage account keys list -n <account> -g <RG> --query "[0].value" -o tsv
+  $sas = az storage account generate-sas --account-name <account> --account-key $key ^
+     --services b --resource-types sco --permissions rl --expiry "2026-08-14T06:00:00Z" --https-only -o tsv
+
+  # 2. نزّل الـ container بالتوازي (128 اتصال في نفس الوقت)
+  $env:AZCOPY_CONCURRENCY_VALUE = "128"
+  azcopy copy "https://<account>.blob.core.windows.net/<container>?$sas" "مجلد-الوجهة" ^
+     --recursive --overwrite=false
+
+  النتيجة: نفس الحساب قفز من 1.9 MB/s إلى ~39 MB/s (خلص في ~12 دقيقة بدل 4 ساعات).
+
+  --overwrite=false مهم: يتخطى الملفات اللي نزلت أصلاً (يكمّل من حيث وقف).
+
+
+═══════════════════════════════════════════════════════════════════════════════
+الخطوة 7: التحقق 100% إن كل شيء اتنقل (لا تتخطاها!)
+═══════════════════════════════════════════════════════════════════════════════
+
+لا تكتفِ بـ "خلص التنزيل". قارن Azure بالقرص فعلياً:
+
+──────────────────────────────────────────
+(أ) عدد وحجم ملفات كل container (الأدق: azcopy list)
+──────────────────────────────────────────
+  azcopy list "https://<account>.blob.core.windows.net/<container>?$sas" --running-tally
+
+  يعطيك: File count: XXXXX  و  Total file size: XX GiB
+  قارنها بعدد وحجم المجلد المحلي.
+
+  >>> تحذير: أمر "az storage blob list" يرجّع 5000 ملف كحد أقصى افتراضياً!
+      لو ما تنبّهت له، بتظن حساب فيه 560 ألف ملف = 5000 وتغلط. استخدم azcopy list
+      أو أضف --num-results "*" لأمر az.
+
+──────────────────────────────────────────
+(ب) الحجم الكلي لكل حساب (من مقاييس Azure)
+──────────────────────────────────────────
+  az monitor metrics list --resource "<resource-id>" --metric UsedCapacity ^
+     --query "value[0].timeseries[0].data[-1].average" -o tsv
+
+  >>> درس: لو الحجم في Azure أكبر شوي من القرص، تأكد من إعدادات:
+      az storage account blob-service-properties show -n <account> -g <RG>
+      لو Versioning أو Soft-delete مفعّلة، فالفرق = نسخ قديمة/محذوفة محفوظة،
+      مو بيانات حالية ناقصة. (عندنا moshtmlat: Azure 40.99 GB لكن الحالي 40.09 GB،
+      والفرق كان بالضبط النسخ القديمة).
+
+──────────────────────────────────────────
+(ج) سلامة قواعد البيانات
+──────────────────────────────────────────
+  - ملف .bacpac = ملف zip، افتحه وتأكد فيه "model.xml"
+  - ملف .sql = افتح آخر سطر، لازم يكون فيه "Dump completed"
+  - ملف .dump (postgres): pg_restore -l "الملف.dump"  ثم عُدّ صفوف "TABLE DATA"
+
+
+═══════════════════════════════════════════════════════════════════════════════
+الخطوة 8: التنظيف — أرجع كل شيء لحالته الأصلية (مهم جداً للأمان!)
+═══════════════════════════════════════════════════════════════════════════════
+
+أي إعداد مؤقت غيّرته، أرجعه:
+
+  # احذف قواعد الجدار الناري المؤقتة
+  az sql server firewall-rule delete -g <RG> -s <server> -n temp-rule
+  az postgres flexible-server firewall-rule delete -g <RG> -s <server> -n temp-rule --yes
+
+  # احذف أدمن AAD المؤقت
+  az sql server ad-admin delete -s <server> -g <RG>
+
+  # ارجع اقفل الوصول العام لـ MySQL
+  az mysql flexible-server update -g <RG> -n <server> --public-access Disabled
+
+  # احذف أي ملفات اختبار رفعتها على المواقع
+  # احذف ملفات SAS token المؤقتة من الجهاز
+
+
+═══════════════════════════════════════════════════════════════════════════════
+ملخّص النتيجة النهائية للباكب
+═══════════════════════════════════════════════════════════════════════════════
+
+  الإجمالي: ~49 GB في D:\AzureBackup_2026-08-13
+
+  \databases  → 9 قواعد (7 SQL بصيغة .bacpac + MySQL .sql + PostgreSQL .dump)
+  \webapps    → 10 مواقع (.zip) + مجلد eed-web-static
+  \storage    → 8 حسابات تخزين (أكبرها moshtmlat: 563,947 ملف / 40 GB)
+
+  تم التحقق: كل حساب تخزين قورن بالبايت/العدد مع Azure = مطابق.
+
+
+═══════════════════════════════════════════════════════════════════════════════
+أهم 5 دروس تعلّمتها من هذه المهمة
+═══════════════════════════════════════════════════════════════════════════════
+
+  1. اعمل جرد شامل أول (az resource list حسب كل نوع) — لا تعتمد على الذاكرة.
+     هذا كشف موردين ناقصين كانوا بيضيعون.
+
+  2. للتخزين كثير الملفات: azcopy وليس az CLI. الفرق 20 ضعف بالسرعة.
+
+  3. انتبه للحدود الخفية: "az blob list" يقصّ عند 5000 ملف. لا تثق بالعدد
+     بدون --num-results "*" أو azcopy list.
+
+  4. الفرق بين الحجم في Azure والقرص عادة = versioning/soft-delete (نسخ قديمة)،
+     مو بيانات ناقصة. تحقق قبل ما تقلق.
+
+  5. نظّف بعدك: أرجع الجدران النارية والصلاحيات والوصول العام كما كانت. لا تترك
+     ثغرات أمنية بعد الباكب.
+
+═══════════════════════════════════════════════════════════════════════════════
