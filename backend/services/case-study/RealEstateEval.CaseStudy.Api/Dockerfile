@@ -6,6 +6,7 @@ COPY backend/RealEstateEval.Application/ backend/RealEstateEval.Application/
 COPY backend/RealEstateEval.Infrastructure/ backend/RealEstateEval.Infrastructure/
 COPY backend/contexts/ backend/contexts/
 COPY backend/shared/ backend/shared/
+COPY backend/services/Directory.Build.props backend/services/Directory.Build.props
 COPY backend/services/case-study/RealEstateEval.CaseStudy.Api/ backend/services/case-study/RealEstateEval.CaseStudy.Api/
 
 RUN dotnet restore backend/services/case-study/RealEstateEval.CaseStudy.Api/RealEstateEval.CaseStudy.Api.csproj
