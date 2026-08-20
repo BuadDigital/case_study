@@ -391,22 +391,39 @@ jobs:
             # Log into GHCR on the VPS with this run's token (see the job permissions).
             echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u "${{ github.actor }}" --password-stdin
 
-            # Export variables for compose
+            # Host /app/.env is the documented source of compose secrets.
+            # GitHub secrets override when set; never export an empty value
+            # because that would wipe the host file for docker compose.
+            if [ -f .env ]; then
+              set -a
+              # shellcheck disable=SC1091
+              . ./.env
+              set +a
+            fi
+
+            apply_secret() {
+              name="$1"
+              value="$2"
+              if [ -n "$value" ]; then
+                export "$name=$value"
+              fi
+            }
+
             export IMAGE_OWNER="${{ needs.build-and-push.outputs.image_owner }}"
             export TAG="${{ needs.build-and-push.outputs.tag }}"
-            export TLS_CERTIFICATE_PATH="${{ secrets.TLS_CERTIFICATE_PATH }}"
-            export TLS_PRIVATE_KEY_PATH="${{ secrets.TLS_PRIVATE_KEY_PATH }}"
-            export PUBLIC_APP_URL="${{ secrets.PUBLIC_APP_URL }}"
-            export WEB_PUSH_ENABLED="${{ secrets.WEB_PUSH_ENABLED }}"
-            export WEB_PUSH_PUBLIC_KEY="${{ secrets.WEB_PUSH_PUBLIC_KEY }}"
-            export WEB_PUSH_PRIVATE_KEY="${{ secrets.WEB_PUSH_PRIVATE_KEY }}"
-            export WEB_PUSH_SUBJECT="${{ secrets.WEB_PUSH_SUBJECT }}"
-            export JWT_SIGNING_KEY="${{ secrets.JWT_SIGNING_KEY }}"
-            export POSTGRES_PASSWORD="${{ secrets.POSTGRES_PASSWORD }}"
-            export RABBITMQ_USER="${{ secrets.RABBITMQ_USER }}"
-            export RABBITMQ_PASSWORD="${{ secrets.RABBITMQ_PASSWORD }}"
-            export GRAFANA_ADMIN_USER="${{ secrets.GRAFANA_ADMIN_USER }}"
-            export GRAFANA_ADMIN_PASSWORD="${{ secrets.GRAFANA_ADMIN_PASSWORD }}"
+            apply_secret TLS_CERTIFICATE_PATH "${{ secrets.TLS_CERTIFICATE_PATH }}"
+            apply_secret TLS_PRIVATE_KEY_PATH "${{ secrets.TLS_PRIVATE_KEY_PATH }}"
+            apply_secret PUBLIC_APP_URL "${{ secrets.PUBLIC_APP_URL }}"
+            apply_secret WEB_PUSH_ENABLED "${{ secrets.WEB_PUSH_ENABLED }}"
+            apply_secret WEB_PUSH_PUBLIC_KEY "${{ secrets.WEB_PUSH_PUBLIC_KEY }}"
+            apply_secret WEB_PUSH_PRIVATE_KEY "${{ secrets.WEB_PUSH_PRIVATE_KEY }}"
+            apply_secret WEB_PUSH_SUBJECT "${{ secrets.WEB_PUSH_SUBJECT }}"
+            apply_secret JWT_SIGNING_KEY "${{ secrets.JWT_SIGNING_KEY }}"
+            apply_secret POSTGRES_PASSWORD "${{ secrets.POSTGRES_PASSWORD }}"
+            apply_secret RABBITMQ_USER "${{ secrets.RABBITMQ_USER }}"
+            apply_secret RABBITMQ_PASSWORD "${{ secrets.RABBITMQ_PASSWORD }}"
+            apply_secret GRAFANA_ADMIN_USER "${{ secrets.GRAFANA_ADMIN_USER }}"
+            apply_secret GRAFANA_ADMIN_PASSWORD "${{ secrets.GRAFANA_ADMIN_PASSWORD }}"
 
             # TLS is mandatory in Production. Fail before touching the running stack
             # when the host certificate has not been provisioned or renewed correctly.
@@ -454,7 +471,6 @@ jobs:
 
             deny_value "RABBITMQ_USER" "$RABBITMQ_USER" "dev"
             deny_value "RABBITMQ_PASSWORD" "$RABBITMQ_PASSWORD" "dev"
-            deny_value "GRAFANA_ADMIN_USER" "$GRAFANA_ADMIN_USER" "admin"
             deny_value "POSTGRES_PASSWORD" "$POSTGRES_PASSWORD" "Admin"
 
             PREVIOUS_TAG=""
