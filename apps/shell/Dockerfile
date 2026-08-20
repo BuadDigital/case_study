@@ -26,9 +26,9 @@ COPY apps/mfe-valuation/package.json       ./apps/mfe-valuation/
 COPY packages/api-client/package.json      ./packages/api-client/
 COPY packages/app-shared/package.json      ./packages/app-shared/
 COPY packages/auth-client/package.json     ./packages/auth-client/
-COPY packages/design-system/package.json   ./packages/design-system/
 COPY packages/offline-client/package.json  ./packages/offline-client/
 COPY packages/types/package.json           ./packages/types/
+COPY packages/ui-kit/package.json          ./packages/ui-kit/
 
 RUN npm ci --no-audit --no-fund
 
@@ -59,9 +59,9 @@ COPY packages/tsconfig.mfe-paths.json ./packages/
 COPY packages/api-client/     ./packages/api-client/
 COPY packages/app-shared/     ./packages/app-shared/
 COPY packages/auth-client/    ./packages/auth-client/
-COPY packages/design-system/  ./packages/design-system/
 COPY packages/offline-client/ ./packages/offline-client/
 COPY packages/types/          ./packages/types/
+COPY packages/ui-kit/         ./packages/ui-kit/
 
 # Copy all MFE apps (the shell depends on them as workspace packages)
 COPY apps/mfe-case-study/      ./apps/mfe-case-study/
