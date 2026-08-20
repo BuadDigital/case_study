@@ -27,6 +27,9 @@
     <ProjectReference Include="..\services\identity\RealEstateEval.Identity.Api\RealEstateEval.Identity.Api.csproj" Aliases="IdentityApi" />
     <ProjectReference Include="..\services\operations\RealEstateEval.Operations.Api\RealEstateEval.Operations.Api.csproj" Aliases="OperationsApi" />
     <ProjectReference Include="..\services\failures\RealEstateEval.Failures.Api\RealEstateEval.Failures.Api.csproj" Aliases="FailuresApi" />
+    <ProjectReference Include="..\services\platform\RealEstateEval.Platform.Api\RealEstateEval.Platform.Api.csproj" Aliases="PlatformApi" />
+    <ProjectReference Include="..\services\valuation\RealEstateEval.Valuation.Api\RealEstateEval.Valuation.Api.csproj" Aliases="ValuationApi" />
+    <ProjectReference Include="..\services\reporting\RealEstateEval.Reporting.Api\RealEstateEval.Reporting.Api.csproj" Aliases="ReportingApi" />
   </ItemGroup>
 
   <ItemGroup>

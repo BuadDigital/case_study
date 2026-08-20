@@ -3,6 +3,7 @@
 export { partyAppraisalExtensions } from "./extensions/party-appraisal-extensions";
 
 export { EvaluatorWindow } from "./components/evaluator/EvaluatorWindow";
+export { EvaluatorValuationReportTab } from "./components/evaluator/EvaluatorValuationReportTab";
 export { AppraiserUploadTab } from "./components/evaluator/AppraiserUploadTab";
 export { EvaluatorAdvisoryPanel } from "./components/evaluator/EvaluatorAdvisoryPanel";
 
@@ -30,6 +31,8 @@ export * from "./lib/evaluator/evaluator-validation";
 export * from "./lib/evaluator/evaluator-report-attachments";
 export * from "./lib/evaluator/evaluator-deposit-attachments";
 export * from "./lib/evaluator/valuation-report-number";
+export * from "./lib/evaluator/valuation-report-tab-sections";
+export * from "./lib/evaluator/valuation-report-org-overlay";
 export * from "./lib/evaluator/evaluator-inspection-gate";
 export * from "./lib/evaluator/evaluator-queue";
 export * from "./lib/evaluator/evaluator-window-host";

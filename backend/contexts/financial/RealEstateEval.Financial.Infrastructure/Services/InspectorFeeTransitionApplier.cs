@@ -18,18 +18,6 @@ public sealed class InspectorFeeTransitionApplier : IInspectorFeeTransitionAppli
     private readonly IAuditLogWriter _audit;
     private readonly TimeProvider _time;
 
-    public InspectorFeeTransitionApplier(FinancialDbContext financial, CaseStudyDbContext caseStudy,
-        TimeProvider? time = null)
-        : this(financial, new CaseStudyLookup(caseStudy), new AuditLogWriter(time), time)
-    {
-    }
-
-    public InspectorFeeTransitionApplier(FinancialDbContext financial, CaseStudyDbContext caseStudy, IAuditLogWriter audit,
-        TimeProvider? time = null)
-        : this(financial, new CaseStudyLookup(caseStudy), audit, time)
-    {
-    }
-
     [ActivatorUtilitiesConstructor]
     public InspectorFeeTransitionApplier(
         FinancialDbContext financial,

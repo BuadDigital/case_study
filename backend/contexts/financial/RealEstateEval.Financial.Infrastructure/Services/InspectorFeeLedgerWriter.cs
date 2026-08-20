@@ -16,16 +16,6 @@ public sealed class InspectorFeeLedgerWriter : IInspectorFeeLedgerWriter
     private readonly IInspectorFeeLedgerResolver _resolver;
     private readonly TimeProvider _time;
 
-    public InspectorFeeLedgerWriter(
-        FinancialDbContext financial,
-        CaseStudyDbContext caseStudy,
-        IPartyFeePricingService pricing,
-        IInspectorFeeLedgerResolver resolver,
-        TimeProvider? time = null)
-        : this(financial, new CaseStudyLookup(caseStudy), pricing, resolver, time)
-    {
-    }
-
     [ActivatorUtilitiesConstructor]
     public InspectorFeeLedgerWriter(
         FinancialDbContext financial,

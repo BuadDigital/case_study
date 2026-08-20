@@ -2,7 +2,9 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using RealEstateEval.Application.Abstractions;
+using RealEstateEval.Application.Services;
 using RealEstateEval.Infrastructure.Integration;
+using RealEstateEval.Infrastructure.Persistence;
 using RealEstateEval.Infrastructure.Services;
 
 namespace RealEstateEval.Infrastructure;
@@ -22,6 +24,7 @@ public static class CaseStudyDependencyInjection
         services.AddScoped<IWorkOrderQuery, WorkOrderQueryService>();
         services.AddScoped<IWorkOrderPropertyCommands, WorkOrderPropertyCommands>();
         services.AddScoped<IWorkOrderService, WorkOrderService>();
+        services.AddScoped<IClientRepository, ClientRepository>();
         services.AddScoped<IClientService, ClientService>();
         services.AddScoped<IBuildingInventoryService, BuildingInventoryService>();
         services.AddScoped<IPropertyGroupService, PropertyGroupService>();
@@ -42,6 +45,7 @@ public static class CaseStudyDependencyInjection
  /// <summary>PO intake drafts, delegation letters, suspended-transaction reads.</summary>
     public static IServiceCollection AddCaseStudyAuxiliaryInfrastructure(this IServiceCollection services)
     {
+        services.AddScoped<IPoIntakeDraftRepository, PoIntakeDraftRepository>();
         services.AddScoped<IPoIntakeDraftService, PoIntakeDraftService>();
         services.AddScoped<ISuspendedTransactionsService, SuspendedTransactionsService>();
         return services;

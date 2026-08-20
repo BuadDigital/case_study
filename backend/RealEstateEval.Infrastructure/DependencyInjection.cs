@@ -213,9 +213,11 @@ public static class DependencyInjection
             configuration,
             BoundedContextConnections.ServiceNames.CaseStudy,
             connectionString);
-        return services.AddBoundedContextPersistence<CaseStudyDbContext>(
+        services.AddBoundedContextPersistence<CaseStudyDbContext>(
             configuration,
             caseStudyConnection);
+        services.AddScoped<ICaseStudyRepository>(sp => sp.GetRequiredService<CaseStudyDbContext>());
+        return services;
     }
 
     // AddIdentityApplicationServices and AddIdentityInfrastructure moved to

@@ -110,7 +110,11 @@ public class FinancialReportServiceTests
             new NullDistributedCache(),
             Options.Create(new RedisCacheOptions { Enabled = false }),
             NullLogger<ApiResponseCache>.Instance);
-        return new FinancialReportService(store.Fin, store.CaseStudy, store.Identity, cache);
+        return new FinancialReportService(
+            store.Fin,
+            new CaseStudyLookup(store.CaseStudy),
+            new IdentityDirectory(store.Identity),
+            cache);
     }
 
     private static Store CreateStore(EntityMaterializationCounter materialization)

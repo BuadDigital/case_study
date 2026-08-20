@@ -10,12 +10,12 @@ namespace RealEstateEval.Infrastructure.Services;
 
 public sealed class WorkflowTaskQueryService : IWorkflowTaskQuery
 {
-    private readonly CaseStudyDbContext _caseStudy;
+    private readonly ICaseStudyRepository _caseStudy;
     private readonly IWorkflowTaskVisibilityFilter _visibility;
     private readonly DatabaseOptions _dbOptions;
 
     public WorkflowTaskQueryService(
-        CaseStudyDbContext caseStudy,
+        ICaseStudyRepository caseStudy,
         IWorkflowTaskVisibilityFilter? visibility = null,
         IOptions<DatabaseOptions>? dbOptions = null)
     {

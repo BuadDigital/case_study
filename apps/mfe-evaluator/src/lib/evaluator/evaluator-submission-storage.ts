@@ -13,6 +13,7 @@ import { loadPartyCaseStudyFormDraft } from "@case-study/mfe";
 import { mergeEvaluatorChecklistFromCaseStudy } from "./evaluator-checklist-case-study-sync";
 import {
   createEvaluatorDraft,
+  normalizeReportWorkers,
   type EvaluatorSubmission,
   type EvaluatorSubmissionStatus,
 } from "./evaluator-window-data";
@@ -60,9 +61,7 @@ function dtoToSubmission(
     reportNo:
       typeof payload.reportNo === "string" ? payload.reportNo : base.reportNo,
     independenceDeclared: Boolean(payload.independenceDeclared),
-    reportWorkers: Array.isArray(payload.reportWorkers)
-      ? payload.reportWorkers
-      : base.reportWorkers,
+    reportWorkers: normalizeReportWorkers(payload.reportWorkers),
     assetDataConfirmed: Boolean(payload.assetDataConfirmed),
     assetDataVarianceNotes:
       typeof payload.assetDataVarianceNotes === "string"

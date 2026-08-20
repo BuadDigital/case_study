@@ -8,7 +8,7 @@ namespace RealEstateEval.Infrastructure.Data.Contexts;
 /// Maps existing Case Study–owned tables in the <c>case_study</c> schema.
 /// </summary>
 public sealed class CaseStudyDbContext(DbContextOptions<CaseStudyDbContext> options)
-    : DbContext(options)
+    : DbContext(options), ICaseStudyRepository
 {
     public DbSet<WorkOrder> WorkOrders => Set<WorkOrder>();
     public DbSet<WorkOrderProperty> WorkOrderProperties => Set<WorkOrderProperty>();

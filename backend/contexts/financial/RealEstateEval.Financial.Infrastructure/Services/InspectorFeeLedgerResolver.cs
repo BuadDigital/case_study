@@ -12,11 +12,6 @@ public sealed class InspectorFeeLedgerResolver : IInspectorFeeLedgerResolver
     private readonly ICaseStudyLookup _lookup;
     private readonly IIdentityDirectory _identity;
 
-    public InspectorFeeLedgerResolver(CaseStudyDbContext caseStudy, IdentityDbContext identity)
-        : this(new CaseStudyLookup(caseStudy), new IdentityDirectory(identity))
-    {
-    }
-
     [ActivatorUtilitiesConstructor]
     public InspectorFeeLedgerResolver(ICaseStudyLookup lookup, IIdentityDirectory identity)
     {

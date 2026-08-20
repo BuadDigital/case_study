@@ -38,7 +38,7 @@ export function EvaluatorReportWorkersSection({
     <div id="inf-workers" className="flex flex-col gap-3">
       {workers.map((worker, index) => (
         <div
-          key={worker.id}
+          key={worker.id || `worker-${index}`}
           className="rounded-[10px] border border-border bg-surface-2/50 p-3"
         >
           <div className="mb-2 flex items-center justify-between gap-2">
@@ -70,10 +70,15 @@ export function EvaluatorReportWorkersSection({
                 })
               }
             >
-              <option value="">اختر الدور</option>
-              {EVALUATOR_WORKER_ROLES.map((role) => (
-                <option key={role} value={role}>
-                  {role}
+              {[
+                { value: "", label: "اختر الدور" },
+                ...EVALUATOR_WORKER_ROLES.map((role) => ({
+                  value: role,
+                  label: role,
+                })),
+              ].map((option) => (
+                <option key={option.value || "none"} value={option.value}>
+                  {option.label}
                 </option>
               ))}
             </InfathSelectField>

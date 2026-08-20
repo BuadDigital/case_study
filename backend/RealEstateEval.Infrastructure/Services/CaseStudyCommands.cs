@@ -10,10 +10,10 @@ namespace RealEstateEval.Infrastructure.Services;
 
 public sealed class CaseStudyCommands : ICaseStudyCommands
 {
-    private readonly CaseStudyDbContext _caseStudy;
+    private readonly ICaseStudyRepository _caseStudy;
     private readonly TimeProvider _time;
 
-    public CaseStudyCommands(CaseStudyDbContext caseStudy, TimeProvider? time = null)
+    public CaseStudyCommands(ICaseStudyRepository caseStudy, TimeProvider? time = null)
     {
         _caseStudy = caseStudy;
         _time = time ?? TimeProvider.System;
@@ -120,13 +120,13 @@ public sealed class CaseStudyFailureCommands : ICaseStudyFailureCommands
 {
     private const WorkflowTaskKind CaseStudyPropertyKind = WorkflowTaskKind.CaseStudyProperty;
 
-    private readonly CaseStudyDbContext _caseStudy;
+    private readonly ICaseStudyRepository _caseStudy;
     private readonly IWorkflowTaskShellPatcher _tasks;
     private readonly IPropertyTimelineService _timeline;
     private readonly TimeProvider _time;
 
     public CaseStudyFailureCommands(
-        CaseStudyDbContext caseStudy,
+        ICaseStudyRepository caseStudy,
         IWorkflowTaskShellPatcher tasks,
         IPropertyTimelineService timeline,
         TimeProvider? time = null)

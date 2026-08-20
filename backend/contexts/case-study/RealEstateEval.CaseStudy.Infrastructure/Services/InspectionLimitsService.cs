@@ -14,13 +14,13 @@ namespace RealEstateEval.Infrastructure.Services;
 /// </summary>
 public sealed class InspectionLimitsService : IInspectionLimitsService
 {
-    private readonly CaseStudyDbContext db;
+    private readonly ICaseStudyRepository db;
     private readonly IAuditLogWriter audit;
     private readonly IAuditLogAppend _auditLog;
     private readonly TimeProvider _time;
 
     public InspectionLimitsService(
-        CaseStudyDbContext db,
+        ICaseStudyRepository db,
         PlatformDbContext platformDb,
         IAuditLogWriter audit,
         TimeProvider? time = null)
@@ -30,7 +30,7 @@ public sealed class InspectionLimitsService : IInspectionLimitsService
 
     [ActivatorUtilitiesConstructor]
     public InspectionLimitsService(
-        CaseStudyDbContext db,
+        ICaseStudyRepository db,
         IAuditLogWriter audit,
         IAuditLogAppend auditLog,
         TimeProvider? time = null)

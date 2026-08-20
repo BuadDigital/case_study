@@ -41,7 +41,8 @@ public class PartyBillingStatementService : IPartyBillingStatementService
 
     public PartyBillingStatementService(
         FinancialDbContext db,
-        CaseStudyDbContext caseStudy,
+        ICaseStudyLookup lookup,
+        ICaseStudyCommands commands,
         IAttachmentLookup attachments,
         INotificationService notifications,
         NotificationRecipientResolver recipients,
@@ -50,8 +51,8 @@ public class PartyBillingStatementService : IPartyBillingStatementService
         TimeProvider? time = null)
         : this(
             db,
-            new CaseStudyLookup(caseStudy),
-            new CaseStudyCommands(caseStudy, time),
+            lookup,
+            commands,
             attachments,
             notifications,
             recipients,

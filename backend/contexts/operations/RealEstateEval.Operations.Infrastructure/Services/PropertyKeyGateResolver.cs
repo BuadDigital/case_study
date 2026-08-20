@@ -12,11 +12,6 @@ public sealed class PropertyKeyGateResolver : IPropertyKeyGateResolver
     private readonly OperationsDbContext _ops;
     private readonly ICaseStudyLookup _caseStudy;
 
-    public PropertyKeyGateResolver(OperationsDbContext ops, CaseStudyDbContext caseStudy)
-        : this(ops, new CaseStudyLookup(caseStudy))
-    {
-    }
-
     [ActivatorUtilitiesConstructor]
     public PropertyKeyGateResolver(OperationsDbContext ops, ICaseStudyLookup caseStudy)
     {

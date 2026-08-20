@@ -79,10 +79,44 @@ export type OrganizationValuationSettings = {
   comparableTimeGapMonths: number;
 };
 
-/** تبويب «تقرير التقييم» (القرار 25 طبقة ب) — منه مكتبة الافتراضات الخاصة. */
+/** تبويب «تقرير التقييم» (القرار 25 طبقة ب) — ثوابت ونصوص تُعبَّأ مرة. */
 export type OrganizationValuationReportSettings = {
+  reportType: string;
+  currency: string;
+  valuationBranch: string;
+  keyInputsText: string;
+  professionalStandards: string;
+  independence: string;
+  researchScopeText: string;
+  terms: string;
+  restrictions: string;
+  ivsStandards: string;
+  glossary: string;
+  finishingLuxury: string;
+  finishingMedium: string;
+  finishingOrdinary: string;
   specialAssumptionLibrary: string[];
 };
+
+export function emptyValuationReportSettings(): OrganizationValuationReportSettings {
+  return {
+    reportType: "",
+    currency: "",
+    valuationBranch: "",
+    keyInputsText: "",
+    professionalStandards: "",
+    independence: "",
+    researchScopeText: "",
+    terms: "",
+    restrictions: "",
+    ivsStandards: "",
+    glossary: "",
+    finishingLuxury: "",
+    finishingMedium: "",
+    finishingOrdinary: "",
+    specialAssumptionLibrary: [],
+  };
+}
 
 export type OrganizationSettingsDto = {
   company: OrganizationCompanySettings;
@@ -190,6 +224,46 @@ function normalizeValuers(raw: unknown): OrganizationValuerRosterEntry[] {
   return out;
 }
 
+function pickStr(
+  raw: Record<string, unknown>,
+  camel: string,
+  pascal: string,
+): string {
+  const value = raw[camel] ?? raw[pascal];
+  return typeof value === "string" ? value : "";
+}
+
+function normalizeValuationReport(
+  raw: Record<string, unknown>,
+): OrganizationValuationReportSettings {
+  const libraryRaw =
+    raw.specialAssumptionLibrary ?? raw.SpecialAssumptionLibrary;
+  const library = Array.isArray(libraryRaw)
+    ? libraryRaw.filter((item): item is string => typeof item === "string")
+    : [];
+  return {
+    reportType: pickStr(raw, "reportType", "ReportType"),
+    currency: pickStr(raw, "currency", "Currency"),
+    valuationBranch: pickStr(raw, "valuationBranch", "ValuationBranch"),
+    keyInputsText: pickStr(raw, "keyInputsText", "KeyInputsText"),
+    professionalStandards: pickStr(
+      raw,
+      "professionalStandards",
+      "ProfessionalStandards",
+    ),
+    independence: pickStr(raw, "independence", "Independence"),
+    researchScopeText: pickStr(raw, "researchScopeText", "ResearchScopeText"),
+    terms: pickStr(raw, "terms", "Terms"),
+    restrictions: pickStr(raw, "restrictions", "Restrictions"),
+    ivsStandards: pickStr(raw, "ivsStandards", "IvsStandards"),
+    glossary: pickStr(raw, "glossary", "Glossary"),
+    finishingLuxury: pickStr(raw, "finishingLuxury", "FinishingLuxury"),
+    finishingMedium: pickStr(raw, "finishingMedium", "FinishingMedium"),
+    finishingOrdinary: pickStr(raw, "finishingOrdinary", "FinishingOrdinary"),
+    specialAssumptionLibrary: library,
+  };
+}
+
 function normalizeSettings(raw: Record<string, unknown>): OrganizationSettingsDto {
   const company = (raw.company ?? raw.Company ?? {}) as Record<string, unknown>;
   const evaluator = (raw.evaluator ?? raw.Evaluator ?? {}) as Record<string, unknown>;
@@ -257,15 +331,9 @@ function normalizeSettings(raw: Record<string, unknown>): OrganizationSettingsDt
         valuation.comparableTimeGapMonths ?? valuation.ComparableTimeGapMonths ?? 6,
       ),
     },
-    valuationReport: {
-      specialAssumptionLibrary: (
-        ((raw.valuationReport ?? raw.ValuationReport ?? {}) as Record<string, unknown>)
-          .specialAssumptionLibrary as string[] | undefined
-        ?? (((raw.valuationReport ?? raw.ValuationReport ?? {}) as Record<string, unknown>)
-          .SpecialAssumptionLibrary as string[] | undefined)
-        ?? []
-      ).filter((x) => typeof x === "string"),
-    },
+    valuationReport: normalizeValuationReport(
+      (raw.valuationReport ?? raw.ValuationReport ?? {}) as Record<string, unknown>,
+    ),
     updatedAtUtc: String(raw.updatedAtUtc ?? raw.UpdatedAtUtc ?? new Date().toISOString()),
   };
 }

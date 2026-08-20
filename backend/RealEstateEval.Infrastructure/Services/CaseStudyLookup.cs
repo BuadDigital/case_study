@@ -7,7 +7,7 @@ using RealEstateEval.Infrastructure.Data.Contexts;
 
 namespace RealEstateEval.Infrastructure.Services;
 
-public sealed class CaseStudyLookup(CaseStudyDbContext caseStudy) : ICaseStudyLookup
+public sealed class CaseStudyLookup(ICaseStudyRepository caseStudy) : ICaseStudyLookup
 {
     public async Task<IReadOnlyList<Guid>> ListCompletedCaseStudyPropertyIdsAsync(
         CancellationToken cancellationToken = default) =>

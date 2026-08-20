@@ -1,4 +1,6 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Infrastructure;
+using RealEstateEval.Infrastructure.Data.Contexts;
 
 namespace RealEstateEval.Infrastructure.Data;
 
@@ -9,15 +11,36 @@ namespace RealEstateEval.Infrastructure.Data;
 /// </summary>
 public static class DbContextTransaction
 {
- /// <summary>
- /// Commits when <paramref name="action"/> completes without throwing.
- /// </summary>
     public static Task ExecuteInTransactionAsync(
         DbContext db,
         Func<CancellationToken, Task> action,
         CancellationToken cancellationToken = default) =>
+        ExecuteInTransactionAsync(db.Database, action, cancellationToken);
+
+    public static Task<T> ExecuteInTransactionAsync<T>(
+        DbContext db,
+        Func<CancellationToken, Task<(bool Commit, T Result)>> action,
+        CancellationToken cancellationToken = default) =>
+        ExecuteInTransactionAsync(db.Database, action, cancellationToken);
+
+    public static Task ExecuteInTransactionAsync(
+        ICaseStudyRepository db,
+        Func<CancellationToken, Task> action,
+        CancellationToken cancellationToken = default) =>
+        ExecuteInTransactionAsync(db.Database, action, cancellationToken);
+
+    public static Task<T> ExecuteInTransactionAsync<T>(
+        ICaseStudyRepository db,
+        Func<CancellationToken, Task<(bool Commit, T Result)>> action,
+        CancellationToken cancellationToken = default) =>
+        ExecuteInTransactionAsync(db.Database, action, cancellationToken);
+
+    public static Task ExecuteInTransactionAsync(
+        DatabaseFacade database,
+        Func<CancellationToken, Task> action,
+        CancellationToken cancellationToken = default) =>
         ExecuteInTransactionAsync(
-            db,
+            database,
             async ct =>
             {
                 await action(ct);
@@ -25,26 +48,26 @@ public static class DbContextTransaction
             },
             cancellationToken);
 
- /// <summary>
- /// Runs <paramref name="action"/> and commits only when it returns
- /// <c>Commit: true</c>. Returning <c>Commit: false</c> rolls back without throwing —
- /// useful for business-rule failures that already produced an error payload.
- /// </summary>
+    /// <summary>
+    /// Runs <paramref name="action"/> and commits only when it returns
+    /// <c>Commit: true</c>. Returning <c>Commit: false</c> rolls back without throwing —
+    /// useful for business-rule failures that already produced an error payload.
+    /// </summary>
     public static async Task<T> ExecuteInTransactionAsync<T>(
-        DbContext db,
+        DatabaseFacade database,
         Func<CancellationToken, Task<(bool Commit, T Result)>> action,
         CancellationToken cancellationToken = default)
     {
-        if (!db.Database.IsRelational())
+        if (!database.IsRelational())
         {
             var (_, result) = await action(cancellationToken);
             return result;
         }
 
-        var strategy = db.Database.CreateExecutionStrategy();
+        var strategy = database.CreateExecutionStrategy();
         return await strategy.ExecuteAsync(async () =>
         {
-            await using var tx = await db.Database.BeginTransactionAsync(cancellationToken);
+            await using var tx = await database.BeginTransactionAsync(cancellationToken);
             try
             {
                 var (commit, result) = await action(cancellationToken);

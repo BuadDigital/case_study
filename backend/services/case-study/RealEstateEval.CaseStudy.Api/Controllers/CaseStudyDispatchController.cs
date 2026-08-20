@@ -11,6 +11,7 @@ namespace RealEstateEval.CaseStudy.Api.Controllers;
 /// Authenticated lookups used by Financial and Operations. Operator work-order and
 /// workflow-task routes keep their capability policies.
 /// </summary>
+
 [ApiController]
 [Route("api/case-study-dispatch")]
 [Authorize]

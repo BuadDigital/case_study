@@ -19,12 +19,12 @@ public class CaseStudyFormService : ICaseStudyFormService
     private const WorkflowTaskKind CaseStudyPropertyKind = WorkflowTaskKind.CaseStudyProperty;
     private const string FormStatusSubmitted = "submitted";
 
-    private readonly CaseStudyDbContext _db;
+    private readonly ICaseStudyRepository _db;
     private readonly IWorkflowTaskService _workflowTasks;
     private readonly TimeProvider _time;
 
     public CaseStudyFormService(
-        CaseStudyDbContext db,
+        ICaseStudyRepository db,
         IWorkflowTaskService workflowTasks,
         TimeProvider? time = null)
     {

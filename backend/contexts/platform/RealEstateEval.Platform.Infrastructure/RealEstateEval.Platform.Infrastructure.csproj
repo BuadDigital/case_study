@@ -7,9 +7,10 @@
     <RootNamespace>RealEstateEval.Infrastructure</RootNamespace>
   </PropertyGroup>
 
-  <ItemGroup>
+    <ItemGroup>
     <ProjectReference Include="..\RealEstateEval.Platform.Application\RealEstateEval.Platform.Application.csproj" />
     <ProjectReference Include="..\..\..\RealEstateEval.Infrastructure\RealEstateEval.Infrastructure.csproj" />
+    <ProjectReference Include="..\..\valuation\RealEstateEval.Valuation.Domain\RealEstateEval.Valuation.Domain.csproj" />
   </ItemGroup>
 
   <ItemGroup>

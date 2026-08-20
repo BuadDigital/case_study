@@ -5,7 +5,7 @@ using RealEstateEval.Infrastructure.Data.Contexts;
 
 namespace RealEstateEval.Infrastructure.Services;
 
-public sealed class WorkflowAssigneeLookup(CaseStudyDbContext caseStudy) : IWorkflowAssigneeLookup
+public sealed class WorkflowAssigneeLookup(ICaseStudyRepository caseStudy) : IWorkflowAssigneeLookup
 {
     public Task<IReadOnlyList<string>> GetOpenAssigneeIdsForPropertyAsync(
         Guid propertyId,

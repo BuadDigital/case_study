@@ -1,4 +1,4 @@
-ï»¿using System.Text.Json;
+using System.Text.Json;
 using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
@@ -16,7 +16,7 @@ namespace RealEstateEval.Infrastructure.Services;
 
 public class PartyTaskSubmissionService : IPartyTaskSubmissionService
 {
- /// <summary>Party kinds that submit work through this service â€” everything but the parent.</summary>
+ /// <summary>Party kinds that submit work through this service — everything but the parent.</summary>
     private static readonly HashSet<WorkflowTaskKind> AllowedKinds =
     [
         WorkflowTaskKind.EngineeringSurvey,
@@ -28,14 +28,14 @@ public class PartyTaskSubmissionService : IPartyTaskSubmissionService
     private static readonly Dictionary<WorkflowTaskKind, (string Title, string Body)> SubmitNotificationText = new()
     {
         [WorkflowTaskKind.EngineeringSurvey] =
-            ("Ø¥Ø±Ø³Ø§Ù„ Ø§Ù„Ø±ÙØ¹ Ø§Ù„Ù…Ø³Ø§Ø­ÙŠ", "Ø£Ø±Ø³Ù„ Ø§Ù„Ù…ÙƒØªØ¨ Ø§Ù„Ù‡Ù†Ø¯Ø³ÙŠ Ù…Ø®Ø±Ø¬Ø§Øª Ø§Ù„Ø±ÙØ¹ Ø§Ù„Ù…Ø³Ø§Ø­ÙŠ Ù„Ù„Ù…Ø±Ø§Ø¬Ø¹Ø©"),
+            ("ÅÑÓÇá ÇáÑİÚ ÇáãÓÇÍí", "ÃÑÓá ÇáãßÊÈ ÇáåäÏÓí ãÎÑÌÇÊ ÇáÑİÚ ÇáãÓÇÍí ááãÑÇÌÚÉ"),
         [WorkflowTaskKind.FieldInspection] =
-            ("Ø¥Ø±Ø³Ø§Ù„ Ø§Ù„Ù…Ø¹Ø§ÙŠÙ†Ø© Ø§Ù„Ù…ÙŠØ¯Ø§Ù†ÙŠØ©", "Ø£Ø±Ø³Ù„ Ø§Ù„Ù…Ø¹Ø§ÙŠÙ† Ø¨ÙŠØ§Ù†Ø§Øª Ø§Ù„Ù…Ø¹Ø§ÙŠÙ†Ø© Ø§Ù„Ù…ÙŠØ¯Ø§Ù†ÙŠØ© Ù„Ù„Ù…Ø±Ø§Ø¬Ø¹Ø©"),
+            ("ÅÑÓÇá ÇáãÚÇíäÉ ÇáãíÏÇäíÉ", "ÃÑÓá ÇáãÚÇíä ÈíÇäÇÊ ÇáãÚÇíäÉ ÇáãíÏÇäíÉ ááãÑÇÌÚÉ"),
         [WorkflowTaskKind.PropertyAppraisal] =
-            ("Ø¥Ø±Ø³Ø§Ù„ ØªÙ‚Ø±ÙŠØ± Ø§Ù„ØªÙ‚ÙŠÙŠÙ…", "Ø£Ø±Ø³Ù„ Ø§Ù„Ù…Ù‚ÙŠÙ… ØªÙ‚Ø±ÙŠØ± Ø§Ù„ØªÙ‚ÙŠÙŠÙ… Ø§Ù„Ø¹Ù‚Ø§Ø±ÙŠ Ù„Ù„Ù…Ø±Ø§Ø¬Ø¹Ø©"),
+            ("ÅÑÓÇá ÊŞÑíÑ ÇáÊŞííã", "ÃÑÓá ÇáãŞíã ÊŞÑíÑ ÇáÊŞííã ÇáÚŞÇÑí ááãÑÇÌÚÉ"),
     };
 
-    private readonly CaseStudyDbContext _db;
+    private readonly ICaseStudyRepository _db;
     private readonly IFailureLookup _failureLookup;
     private readonly IWorkflowTaskService _tasks;
     private readonly IFieldInspectionAttachmentVerifier _fieldInspectionAttachments;
@@ -49,7 +49,7 @@ public class PartyTaskSubmissionService : IPartyTaskSubmissionService
 
     [ActivatorUtilitiesConstructor]
     public PartyTaskSubmissionService(
-        CaseStudyDbContext db,
+        ICaseStudyRepository db,
         IFailureLookup failureLookup,
         IWorkflowTaskService tasks,
         IFieldInspectionAttachmentVerifier fieldInspectionAttachments,
@@ -167,10 +167,10 @@ public class PartyTaskSubmissionService : IPartyTaskSubmissionService
             .AsNoTracking()
             .FirstOrDefaultAsync(t => t.Id == taskId, cancellationToken);
         if (task is null)
-            return (null, new Dictionary<string, string> { ["_"] = "Ø§Ù„Ù…Ù‡Ù…Ø© ØºÙŠØ± Ù…ÙˆØ¬ÙˆØ¯Ø©" });
+            return (null, new Dictionary<string, string> { ["_"] = "ÇáãåãÉ ÛíÑ ãæÌæÏÉ" });
 
         if (!AllowedKinds.Contains(task.Kind))
-            return (null, new Dictionary<string, string> { ["_"] = "Ù†ÙˆØ¹ Ø§Ù„Ù…Ù‡Ù…Ø© ØºÙŠØ± Ù…Ø¯Ø¹ÙˆÙ…" });
+            return (null, new Dictionary<string, string> { ["_"] = "äæÚ ÇáãåãÉ ÛíÑ ãÏÚæã" });
 
         if (actor is not null
             && !PoRoleMatrixRules.CanWritePartyTask(
@@ -179,14 +179,14 @@ public class PartyTaskSubmissionService : IPartyTaskSubmissionService
                 actor.UserId,
                 actor.DistributionAssigneeId))
         {
-            return (null, new Dictionary<string, string> { ["_"] = "Ù„ÙŠØ³ Ù„Ø¯ÙŠÙƒ ØµÙ„Ø§Ø­ÙŠØ© ØªØ¹Ø¯ÙŠÙ„ Ù‡Ø°Ù‡ Ø§Ù„Ù…Ù‡Ù…Ø©" });
+            return (null, new Dictionary<string, string> { ["_"] = "áíÓ áÏíß ÕáÇÍíÉ ÊÚÏíá åĞå ÇáãåãÉ" });
         }
 
         var entity = await _db.PartyTaskSubmissions
             .FirstOrDefaultAsync(s => s.WorkflowTaskId == taskId, cancellationToken);
 
         if (entity is not null && entity.Status is PartyTaskSubmissionStatus.Submitted)
-            return (null, new Dictionary<string, string> { ["_"] = "Ù„Ø§ ÙŠÙ…ÙƒÙ† ØªØ¹Ø¯ÙŠÙ„ Ø¥Ø±Ø³Ø§Ù„ Ù…ÙÙƒØªÙ…Ù„" });
+            return (null, new Dictionary<string, string> { ["_"] = "áÇ íãßä ÊÚÏíá ÅÑÓÇá ãõßÊãá" });
 
         var now = _time.UtcNow();
         if (entity is null)
@@ -209,7 +209,7 @@ public class PartyTaskSubmissionService : IPartyTaskSubmissionService
 
         var status = PartyTaskSubmissionPayloadRules.ExtractStatus(payloadJson) ?? entity.Status;
         if (status is PartyTaskSubmissionStatus.Submitted)
-            return (null, new Dictionary<string, string> { ["_"] = "Ø§Ø³ØªØ®Ø¯Ù… Ù†Ù‚Ø·Ø© Ø§Ù„Ø¥Ø±Ø³Ø§Ù„ Ù„ØªÙ‚Ø¯ÙŠÙ… Ø§Ù„Ø¹Ù…Ù„" });
+            return (null, new Dictionary<string, string> { ["_"] = "ÇÓÊÎÏã äŞØÉ ÇáÅÑÓÇá áÊŞÏíã ÇáÚãá" });
 
         entity.PayloadJson = payloadJson;
         entity.Status = status is PartyTaskSubmissionStatus.Reopened
@@ -236,10 +236,10 @@ public class PartyTaskSubmissionService : IPartyTaskSubmissionService
             .AsNoTracking()
             .FirstOrDefaultAsync(t => t.Id == taskId, cancellationToken);
         if (task is null)
-            return (null, new Dictionary<string, string> { ["_"] = "Ø§Ù„Ù…Ù‡Ù…Ø© ØºÙŠØ± Ù…ÙˆØ¬ÙˆØ¯Ø©" });
+            return (null, new Dictionary<string, string> { ["_"] = "ÇáãåãÉ ÛíÑ ãæÌæÏÉ" });
 
         if (!AllowedKinds.Contains(task.Kind))
-            return (null, new Dictionary<string, string> { ["_"] = "Ù†ÙˆØ¹ Ø§Ù„Ù…Ù‡Ù…Ø© ØºÙŠØ± Ù…Ø¯Ø¹ÙˆÙ…" });
+            return (null, new Dictionary<string, string> { ["_"] = "äæÚ ÇáãåãÉ ÛíÑ ãÏÚæã" });
 
         if (actor is not null
             && !PoRoleMatrixRules.CanWritePartyTask(
@@ -248,14 +248,14 @@ public class PartyTaskSubmissionService : IPartyTaskSubmissionService
                 actor.UserId,
                 actor.DistributionAssigneeId))
         {
-            return (null, new Dictionary<string, string> { ["_"] = "Ù„ÙŠØ³ Ù„Ø¯ÙŠÙƒ ØµÙ„Ø§Ø­ÙŠØ© Ø¥Ø±Ø³Ø§Ù„ Ù‡Ø°Ù‡ Ø§Ù„Ù…Ù‡Ù…Ø©" });
+            return (null, new Dictionary<string, string> { ["_"] = "áíÓ áÏíß ÕáÇÍíÉ ÅÑÓÇá åĞå ÇáãåãÉ" });
         }
 
         var entity = await _db.PartyTaskSubmissions
             .FirstOrDefaultAsync(s => s.WorkflowTaskId == taskId, cancellationToken);
 
         if (entity is null)
-            return (null, new Dictionary<string, string> { ["_"] = "Ù„Ø§ ÙŠÙˆØ¬Ø¯ Ù…Ø³ÙˆØ¯Ø© Ù„Ù„Ø¥Ø±Ø³Ø§Ù„" });
+            return (null, new Dictionary<string, string> { ["_"] = "áÇ íæÌÏ ãÓæÏÉ ááÅÑÓÇá" });
 
         if (entity.Status is PartyTaskSubmissionStatus.Submitted)
             return (await ToDtoAsync(entity, cancellationToken), null);
@@ -328,17 +328,17 @@ public class PartyTaskSubmissionService : IPartyTaskSubmissionService
             .AsNoTracking()
             .FirstOrDefaultAsync(t => t.Id == taskId, cancellationToken);
         if (task is null)
-            return (null, new Dictionary<string, string> { ["_"] = "Ø§Ù„Ù…Ù‡Ù…Ø© ØºÙŠØ± Ù…ÙˆØ¬ÙˆØ¯Ø©" });
+            return (null, new Dictionary<string, string> { ["_"] = "ÇáãåãÉ ÛíÑ ãæÌæÏÉ" });
 
         if (task.Kind is not (WorkflowTaskKind.EngineeringSurvey
             or WorkflowTaskKind.PropertyAppraisal
             or WorkflowTaskKind.FieldInspection))
         {
-            return (null, new Dictionary<string, string> { ["_"] = "Ø¥Ø¹Ø§Ø¯Ø© Ø§Ù„ÙØªØ­ ØºÙŠØ± Ù…Ø¯Ø¹ÙˆÙ…Ø© Ù„Ù‡Ø°Ø§ Ø§Ù„Ù†ÙˆØ¹" });
+            return (null, new Dictionary<string, string> { ["_"] = "ÅÚÇÏÉ ÇáİÊÍ ÛíÑ ãÏÚæãÉ áåĞÇ ÇáäæÚ" });
         }
 
         if (actor is not null && !PoRoleMatrixRules.CanManagePartySubmissions(actor.PrototypeRole))
-            return (null, new Dictionary<string, string> { ["_"] = "Ù„ÙŠØ³ Ù„Ø¯ÙŠÙƒ ØµÙ„Ø§Ø­ÙŠØ© Ø¥Ø¹Ø§Ø¯Ø© ÙØªØ­ Ø¥Ø±Ø³Ø§Ù„ Ø§Ù„Ø·Ø±Ù" });
+            return (null, new Dictionary<string, string> { ["_"] = "áíÓ áÏíß ÕáÇÍíÉ ÅÚÇÏÉ İÊÍ ÅÑÓÇá ÇáØÑİ" });
 
         var returnNote = request.ReturnNote?.Trim() ?? "";
         if ((task.Kind is WorkflowTaskKind.EngineeringSurvey
@@ -346,14 +346,14 @@ public class PartyTaskSubmissionService : IPartyTaskSubmissionService
             or WorkflowTaskKind.PropertyAppraisal)
             && string.IsNullOrWhiteSpace(returnNote))
         {
-            return (null, new Dictionary<string, string> { ["returnNote"] = "Ù…Ù„Ø§Ø­Ø¸Ø© Ø§Ù„Ø¥Ø±Ø¬Ø§Ø¹ Ù…Ø·Ù„ÙˆØ¨Ø©" });
+            return (null, new Dictionary<string, string> { ["returnNote"] = "ãáÇÍÙÉ ÇáÅÑÌÇÚ ãØáæÈÉ" });
         }
 
         var entity = await _db.PartyTaskSubmissions
             .FirstOrDefaultAsync(s => s.WorkflowTaskId == taskId, cancellationToken);
 
         if (entity is null || entity.Status != PartyTaskSubmissionStatus.Submitted)
-            return (null, new Dictionary<string, string> { ["_"] = "Ù„Ø§ ÙŠÙˆØ¬Ø¯ Ø¥Ø±Ø³Ø§Ù„ Ù…ÙÙƒØªÙ…Ù„ Ù„Ø¥Ø¹Ø§Ø¯ØªÙ‡" });
+            return (null, new Dictionary<string, string> { ["_"] = "áÇ íæÌÏ ÅÑÓÇá ãõßÊãá áÅÚÇÏÊå" });
 
         var now = _time.UtcNow();
         entity.Status = PartyTaskSubmissionStatus.Reopened;
@@ -398,10 +398,10 @@ public class PartyTaskSubmissionService : IPartyTaskSubmissionService
         if (task.Kind == WorkflowTaskKind.EngineeringSurvey)
             await NotifyPartyAssigneeAsync(
                 task,
-                title: "Ø¥Ø¹Ø§Ø¯Ø© Ø§Ù„Ø±ÙØ¹ Ø§Ù„Ù…Ø³Ø§Ø­ÙŠ Ù„Ù„ØªØµØ­ÙŠØ­",
+                title: "ÅÚÇÏÉ ÇáÑİÚ ÇáãÓÇÍí ááÊÕÍíÍ",
                 body: string.IsNullOrWhiteSpace(returnNote)
-                    ? "Ø£ÙØ¹ÙŠØ¯Øª Ù…Ø®Ø±Ø¬Ø§Øª Ø§Ù„Ø±ÙØ¹ Ø§Ù„Ù…Ø³Ø§Ø­ÙŠ Ù„Ù„ØªØµØ­ÙŠØ­."
-                    : $"Ø£ÙØ¹ÙŠØ¯Øª Ù…Ø®Ø±Ø¬Ø§Øª Ø§Ù„Ø±ÙØ¹ Ø§Ù„Ù…Ø³Ø§Ø­ÙŠ Ù„Ù„ØªØµØ­ÙŠØ­: {returnNote.Trim()}",
+                    ? "ÃõÚíÏÊ ãÎÑÌÇÊ ÇáÑİÚ ÇáãÓÇÍí ááÊÕÍíÍ."
+                    : $"ÃõÚíÏÊ ãÎÑÌÇÊ ÇáÑİÚ ÇáãÓÇÍí ááÊÕÍíÍ: {returnNote.Trim()}",
                 tone: "warn",
                 sourceEvent: $"engineering-survey-returned:{taskId}",
                 href: $"/active-survey/{Uri.EscapeDataString(task.Id.ToString())}",
@@ -409,10 +409,10 @@ public class PartyTaskSubmissionService : IPartyTaskSubmissionService
         else if (task.Kind == WorkflowTaskKind.FieldInspection)
             await NotifyPartyAssigneeAsync(
                 task,
-                title: "Ø¥Ø¹Ø§Ø¯Ø© Ø§Ù„Ù…Ø¹Ø§ÙŠÙ†Ø© Ù„Ù„ØªØµØ­ÙŠØ­",
+                title: "ÅÚÇÏÉ ÇáãÚÇíäÉ ááÊÕÍíÍ",
                 body: string.IsNullOrWhiteSpace(returnNote)
-                    ? "Ø£ÙØ¹ÙŠØ¯Øª Ø¨ÙŠØ§Ù†Ø§Øª Ø§Ù„Ù…Ø¹Ø§ÙŠÙ†Ø© Ù„Ù„ØªØµØ­ÙŠØ­."
-                    : $"Ø£ÙØ¹ÙŠØ¯Øª Ø¨ÙŠØ§Ù†Ø§Øª Ø§Ù„Ù…Ø¹Ø§ÙŠÙ†Ø© Ù„Ù„ØªØµØ­ÙŠØ­: {returnNote.Trim()}",
+                    ? "ÃõÚíÏÊ ÈíÇäÇÊ ÇáãÚÇíäÉ ááÊÕÍíÍ."
+                    : $"ÃõÚíÏÊ ÈíÇäÇÊ ÇáãÚÇíäÉ ááÊÕÍíÍ: {returnNote.Trim()}",
                 tone: "warn",
                 sourceEvent: $"field-inspection-returned:{taskId}",
                 href: $"/active-inspection/{Uri.EscapeDataString(task.Id.ToString())}",
@@ -420,10 +420,10 @@ public class PartyTaskSubmissionService : IPartyTaskSubmissionService
         else if (task.Kind == WorkflowTaskKind.PropertyAppraisal)
             await NotifyPartyAssigneeAsync(
                 task,
-                title: "Ø¥Ø¹Ø§Ø¯Ø© Ø§Ù„ØªÙ‚ÙŠÙŠÙ… Ù„Ù„ØªØµØ­ÙŠØ­",
+                title: "ÅÚÇÏÉ ÇáÊŞííã ááÊÕÍíÍ",
                 body: string.IsNullOrWhiteSpace(returnNote)
-                    ? "Ø£ÙØ¹ÙŠØ¯ ØªÙ‚ÙŠÙŠÙ… Ø§Ù„Ø¹Ù‚Ø§Ø± Ù„Ù„ØªØµØ­ÙŠØ­."
-                    : $"Ø£ÙØ¹ÙŠØ¯ ØªÙ‚ÙŠÙŠÙ… Ø§Ù„Ø¹Ù‚Ø§Ø± Ù„Ù„ØªØµØ­ÙŠØ­: {returnNote.Trim()}",
+                    ? "ÃõÚíÏ ÊŞííã ÇáÚŞÇÑ ááÊÕÍíÍ."
+                    : $"ÃõÚíÏ ÊŞííã ÇáÚŞÇÑ ááÊÕÍíÍ: {returnNote.Trim()}",
                 tone: "warn",
                 sourceEvent: $"property-appraisal-returned:{taskId}",
                 href: $"/property-appraisal/{Uri.EscapeDataString(task.Id.ToString())}",
@@ -441,24 +441,24 @@ public class PartyTaskSubmissionService : IPartyTaskSubmissionService
             .AsNoTracking()
             .FirstOrDefaultAsync(t => t.Id == taskId, cancellationToken);
         if (task is null)
-            return (null, new Dictionary<string, string> { ["_"] = "Ø§Ù„Ù…Ù‡Ù…Ø© ØºÙŠØ± Ù…ÙˆØ¬ÙˆØ¯Ø©" });
+            return (null, new Dictionary<string, string> { ["_"] = "ÇáãåãÉ ÛíÑ ãæÌæÏÉ" });
 
         if (task.Kind is not (WorkflowTaskKind.EngineeringSurvey
             or WorkflowTaskKind.FieldInspection
             or WorkflowTaskKind.PropertyAppraisal))
-            return (null, new Dictionary<string, string> { ["_"] = "Ù‚Ø¨ÙˆÙ„ Ø§Ù„Ù…Ø®Ø±Ø¬Ø§Øª ØºÙŠØ± Ù…ØªØ§Ø­ Ù„Ù‡Ø°Ø§ Ø§Ù„Ù†ÙˆØ¹ Ù…Ù† Ø§Ù„Ù…Ù‡Ø§Ù…" });
+            return (null, new Dictionary<string, string> { ["_"] = "ŞÈæá ÇáãÎÑÌÇÊ ÛíÑ ãÊÇÍ áåĞÇ ÇáäæÚ ãä ÇáãåÇã" });
 
         if (!PoRoleMatrixRules.CanManagePartySubmissions(actor.PrototypeRole))
-            return (null, new Dictionary<string, string> { ["_"] = "Ù„ÙŠØ³ Ù„Ø¯ÙŠÙƒ ØµÙ„Ø§Ø­ÙŠØ© Ù‚Ø¨ÙˆÙ„ Ù…Ø®Ø±Ø¬Ø§Øª Ø§Ù„Ø·Ø±Ù" });
+            return (null, new Dictionary<string, string> { ["_"] = "áíÓ áÏíß ÕáÇÍíÉ ŞÈæá ãÎÑÌÇÊ ÇáØÑİ" });
 
         var entity = await _db.PartyTaskSubmissions
             .FirstOrDefaultAsync(s => s.WorkflowTaskId == taskId, cancellationToken);
 
         if (entity is null || entity.Status != PartyTaskSubmissionStatus.Submitted)
-            return (null, new Dictionary<string, string> { ["_"] = "Ù„Ø§ ÙŠÙˆØ¬Ø¯ Ø¥Ø±Ø³Ø§Ù„ Ù…ÙƒØªÙ…Ù„ Ù„Ù‚Ø¨ÙˆÙ„Ù‡" });
+            return (null, new Dictionary<string, string> { ["_"] = "áÇ íæÌÏ ÅÑÓÇá ãßÊãá áŞÈæáå" });
 
         if (task.Status != WorkflowTaskStatus.Completed)
-            return (null, new Dictionary<string, string> { ["_"] = "Ø§Ù„Ù…Ù‡Ù…Ø© ØºÙŠØ± Ù…ÙƒØªÙ…Ù„Ø© Ø¨Ø¹Ø¯" });
+            return (null, new Dictionary<string, string> { ["_"] = "ÇáãåãÉ ÛíÑ ãßÊãáÉ ÈÚÏ" });
 
         var actorUserId = string.IsNullOrWhiteSpace(actor.UserId) ? "system" : actor.UserId;
         var alreadyAccepted = entity.AcceptedAtUtc is not null;
@@ -492,16 +492,16 @@ public class PartyTaskSubmissionService : IPartyTaskSubmissionService
         }
         else if (!alreadyAccepted)
         {
- // Field inspection: Ø¥Ù†ÙØ§Ø° package gate. Appraisal stamp is receive/acknowledge only.
+ // Field inspection: ÅäİÇĞ package gate. Appraisal stamp is receive/acknowledge only.
             StampAcceptance(entity, actorUserId, actor.DisplayName);
             await _db.SaveChangesAsync(cancellationToken);
         }
 
         var timelineTitle = task.Kind switch
         {
-            WorkflowTaskKind.FieldInspection => "Ø§Ø¹ØªÙ…Ø§Ø¯ Ø¨ÙŠØ§Ù†Ø§Øª Ø§Ù„Ù…Ø¹Ø§ÙŠÙ†Ø©",
-            WorkflowTaskKind.PropertyAppraisal => "Ø§Ø³ØªÙ„Ø§Ù… ØªÙ‚Ø±ÙŠØ± Ø§Ù„ØªÙ‚ÙŠÙŠÙ…",
-            _ => "Ù‚Ø¨ÙˆÙ„ Ù…Ø®Ø±Ø¬Ø§Øª Ø§Ù„Ø±ÙØ¹ Ø§Ù„Ù…Ø³Ø§Ø­ÙŠ",
+            WorkflowTaskKind.FieldInspection => "ÇÚÊãÇÏ ÈíÇäÇÊ ÇáãÚÇíäÉ",
+            WorkflowTaskKind.PropertyAppraisal => "ÇÓÊáÇã ÊŞÑíÑ ÇáÊŞííã",
+            _ => "ŞÈæá ãÎÑÌÇÊ ÇáÑİÚ ÇáãÓÇÍí",
         };
 
         if (task.PropertyId is Guid propertyId)
@@ -523,8 +523,8 @@ public class PartyTaskSubmissionService : IPartyTaskSubmissionService
             {
                 await NotifyPartyAssigneeAsync(
                     task,
-                    title: "Ù‚Ø¨ÙˆÙ„ Ù…Ø®Ø±Ø¬Ø§Øª Ø§Ù„Ø±ÙØ¹ Ø§Ù„Ù…Ø³Ø§Ø­ÙŠ",
-                    body: "ØªÙ… Ù‚Ø¨ÙˆÙ„ Ù…Ø®Ø±Ø¬Ø§Øª Ø§Ù„Ø±ÙØ¹ Ø§Ù„Ù…Ø³Ø§Ø­ÙŠ ÙˆØ§Ø³ØªØ­Ù‚Ø§Ù‚ Ø§Ù„Ø£ØªØ¹Ø§Ø¨.",
+                    title: "ŞÈæá ãÎÑÌÇÊ ÇáÑİÚ ÇáãÓÇÍí",
+                    body: "Êã ŞÈæá ãÎÑÌÇÊ ÇáÑİÚ ÇáãÓÇÍí æÇÓÊÍŞÇŞ ÇáÃÊÚÇÈ.",
                     tone: "success",
                     sourceEvent: $"engineering-survey-accepted:{taskId}",
                     href: $"/active-survey/{Uri.EscapeDataString(task.Id.ToString())}",
@@ -534,8 +534,8 @@ public class PartyTaskSubmissionService : IPartyTaskSubmissionService
             {
                 await NotifyPartyAssigneeAsync(
                     task,
-                    title: "Ø§Ø¹ØªÙ…Ø§Ø¯ Ø¨ÙŠØ§Ù†Ø§Øª Ø§Ù„Ù…Ø¹Ø§ÙŠÙ†Ø©",
-                    body: "Ø§Ø¹ØªÙ…Ø¯ Ø§Ù„Ø£Ø®ØµØ§Ø¦ÙŠ Ø¨ÙŠØ§Ù†Ø§Øª Ø§Ù„Ù…Ø¹Ø§ÙŠÙ†Ø©. ØªØ¸Ù‡Ø± Ø§Ù„Ø¨ÙŠØ§Ù†Ø§Øª Ø§Ù„Ù…Ø¹ØªÙ…Ø¯Ø© ÙÙŠ Ø­Ø²Ù…Ø© Ø§Ù„Ø±ÙØ¹ Ø¹Ù„Ù‰ Ø¥Ù†ÙØ§Ø°ØŒ ÙˆÙŠÙ…ÙƒÙ† Ù„Ù„Ù…Ù‚ÙŠÙ‘Ù… Ø¨Ø¯Ø¡ Ø§Ù„ØªÙ‚ÙŠÙŠÙ….",
+                    title: "ÇÚÊãÇÏ ÈíÇäÇÊ ÇáãÚÇíäÉ",
+                    body: "ÇÚÊãÏ ÇáÃÎÕÇÆí ÈíÇäÇÊ ÇáãÚÇíäÉ. ÊÙåÑ ÇáÈíÇäÇÊ ÇáãÚÊãÏÉ İí ÍÒãÉ ÇáÑİÚ Úáì ÅäİÇĞ¡ æíãßä ááãŞíøã ÈÏÁ ÇáÊŞííã.",
                     tone: "success",
                     sourceEvent: $"field-inspection-accepted:{taskId}",
                     href: $"/active-inspection/{Uri.EscapeDataString(task.Id.ToString())}",
@@ -546,8 +546,8 @@ public class PartyTaskSubmissionService : IPartyTaskSubmissionService
             {
                 await NotifyPartyAssigneeAsync(
                     task,
-                    title: "Ø§Ø³ØªÙ„Ø§Ù… ØªÙ‚Ø±ÙŠØ± Ø§Ù„ØªÙ‚ÙŠÙŠÙ…",
-                    body: "Ø§Ø³ØªÙ„Ù… Ø§Ù„Ø£Ø®ØµØ§Ø¦ÙŠ ØªÙ‚Ø±ÙŠØ± Ø§Ù„ØªÙ‚ÙŠÙŠÙ…. Ù‡Ø°Ø§ Ø¥Ù‚Ø±Ø§Ø± Ø¨Ø§Ù„Ø§Ø³ØªÙ„Ø§Ù… ÙˆÙ„ÙŠØ³ Ø§Ø¹ØªÙ…Ø§Ø¯Ø§Ù‹ Ù„Ù„Ù‚ÙŠÙ…Ø© â€” Ø­Ø²Ù…Ø© Ø¥Ù†ÙØ§Ø° ØªØªØºØ°Ù‰ Ù…Ù† Ø§Ù„ØªÙ‚Ø±ÙŠØ± Ø§Ù„Ù…ÙØ±Ø³Ù„.",
+                    title: "ÇÓÊáÇã ÊŞÑíÑ ÇáÊŞííã",
+                    body: "ÇÓÊáã ÇáÃÎÕÇÆí ÊŞÑíÑ ÇáÊŞííã. åĞÇ ÅŞÑÇÑ ÈÇáÇÓÊáÇã æáíÓ ÇÚÊãÇÏÇğ ááŞíãÉ — ÍÒãÉ ÅäİÇĞ ÊÊÛĞì ãä ÇáÊŞÑíÑ ÇáãõÑÓá.",
                     tone: "success",
                     sourceEvent: $"property-appraisal-accepted:{taskId}",
                     href: $"/property-appraisal/{Uri.EscapeDataString(task.Id.ToString())}",
@@ -641,7 +641,7 @@ public class PartyTaskSubmissionService : IPartyTaskSubmissionService
         if (userIds.Count == 0) return;
 
         var refLabel = task.PoNumber?.Trim();
-        var body = string.IsNullOrEmpty(refLabel) ? $"{text.Body}." : $"{text.Body} Ø¹Ù„Ù‰ {refLabel}.";
+        var body = string.IsNullOrEmpty(refLabel) ? $"{text.Body}." : $"{text.Body} Úáì {refLabel}.";
 
         await _notifications.CreateForUsersAsync(
             userIds,
@@ -686,7 +686,7 @@ public class PartyTaskSubmissionService : IPartyTaskSubmissionService
         }
         catch
         {
-            errors["_"] = "Ø¨ÙŠØ§Ù†Ø§Øª Ø§Ù„Ø¥Ø±Ø³Ø§Ù„ ØºÙŠØ± ØµØ§Ù„Ø­Ø©";
+            errors["_"] = "ÈíÇäÇÊ ÇáÅÑÓÇá ÛíÑ ÕÇáÍÉ";
         }
 
         return errors;
@@ -752,7 +752,7 @@ public class PartyTaskSubmissionService : IPartyTaskSubmissionService
 
             case "field-inspection":
             {
- // Informal map-URL access gate removed â€” tasks are not assigned without initial data.
+ // Informal map-URL access gate removed — tasks are not assigned without initial data.
  // Key envelopes remain tracked (payload keyAvailable) but do not block submit.
                 var hasPhone = property is not null
                     && DocumentaryWorkflowRules.HasAnyPartyPhone(property.Contacts);
@@ -864,8 +864,8 @@ public class PartyTaskSubmissionService : IPartyTaskSubmissionService
 
         await NotifyPartyAssigneeAsync(
             appraisal,
-            title: "Ø¨ÙŠØ§Ù†Ø§Øª Ø§Ù„Ù…Ø¹Ø§ÙŠÙ†Ø© Ù…Ø¹ØªÙ…Ø¯Ø© â€” ÙŠÙ…ÙƒÙ† Ø¨Ø¯Ø¡ Ø§Ù„ØªÙ‚ÙŠÙŠÙ…",
-            body: "Ø§Ø¹ØªÙ…Ø¯ Ø§Ù„Ø£Ø®ØµØ§Ø¦ÙŠ Ø¨ÙŠØ§Ù†Ø§Øª Ø§Ù„Ø£Ø·Ø±Ø§Ù. ÙŠÙ…ÙƒÙ†Ùƒ Ø§Ù„Ø¢Ù† Ø­Ø³Ø§Ø¨ Ø§Ù„Ù‚ÙŠÙ…Ø© Ø¯Ø§Ø®Ù„ Ø§Ù„Ù†Ø¸Ø§Ù….",
+            title: "ÈíÇäÇÊ ÇáãÚÇíäÉ ãÚÊãÏÉ — íãßä ÈÏÁ ÇáÊŞííã",
+            body: "ÇÚÊãÏ ÇáÃÎÕÇÆí ÈíÇäÇÊ ÇáÃØÑÇİ. íãßäß ÇáÂä ÍÓÇÈ ÇáŞíãÉ ÏÇÎá ÇáäÙÇã.",
             tone: "success",
             sourceEvent: $"field-inspection-accepted-appraiser:{inspectionTask.Id}",
             href: $"/property-appraisal/{Uri.EscapeDataString(appraisal.Id.ToString())}",
@@ -939,11 +939,11 @@ public class PartyTaskSubmissionService : IPartyTaskSubmissionService
 
     private static string PartySubmittedTitle(string kind) => kind switch
     {
-        "field-inspection" => "Ø¥ØªÙ…Ø§Ù… Ø§Ù„Ù…Ø¹Ø§ÙŠÙ†Ø© Ø§Ù„Ù…ÙŠØ¯Ø§Ù†ÙŠØ©",
-        "engineering-survey" => "Ø¥ØªÙ…Ø§Ù… Ø§Ù„Ø±ÙØ¹ Ø§Ù„Ù…Ø³Ø§Ø­ÙŠ",
-        "property-appraisal" => "Ø¥ØªÙ…Ø§Ù… Ø§Ù„ØªÙ‚ÙŠÙŠÙ… Ø§Ù„Ø¹Ù‚Ø§Ø±ÙŠ",
+        "field-inspection" => "ÅÊãÇã ÇáãÚÇíäÉ ÇáãíÏÇäíÉ",
+        "engineering-survey" => "ÅÊãÇã ÇáÑİÚ ÇáãÓÇÍí",
+        "property-appraisal" => "ÅÊãÇã ÇáÊŞííã ÇáÚŞÇÑí",
  // Legacy government-review submissions (product surface removed).
-        "government-review" => "Ø¥ØªÙ…Ø§Ù… Ø§Ù„Ù…Ø±Ø§Ø¬Ø¹Ø© Ø§Ù„Ø­ÙƒÙˆÙ…ÙŠØ©",
-        _ => "Ø¥ØªÙ…Ø§Ù… Ø¹Ù…Ù„ Ø§Ù„Ø·Ø±Ù",
+        "government-review" => "ÅÊãÇã ÇáãÑÇÌÚÉ ÇáÍßæãíÉ",
+        _ => "ÅÊãÇã Úãá ÇáØÑİ",
     };
 }

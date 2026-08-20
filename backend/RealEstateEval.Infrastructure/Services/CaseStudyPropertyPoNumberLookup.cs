@@ -7,15 +7,15 @@ namespace RealEstateEval.Infrastructure.Services;
 /// <summary>
 /// Phase-1 bridge for the one Case Study value the Valuation context still needs.
 /// <para>
-/// Read-only against <see cref="CaseStudyDbContext"/> (not the legacy god context). Owner: Case
+/// Read-only against <see cref="ICaseStudyRepository"/> (not the legacy god context). Owner: Case
 /// Study. Removal criterion: Case Study owner API or a Valuation-local projection.
 /// </para>
 /// </summary>
 public sealed class CaseStudyPropertyPoNumberLookup : IPropertyPoNumberLookup
 {
-    private readonly CaseStudyDbContext _db;
+    private readonly ICaseStudyRepository _db;
 
-    public CaseStudyPropertyPoNumberLookup(CaseStudyDbContext db) => _db = db;
+    public CaseStudyPropertyPoNumberLookup(ICaseStudyRepository db) => _db = db;
 
     public async Task<string> ResolveForPropertyAsync(
         string propertyId,

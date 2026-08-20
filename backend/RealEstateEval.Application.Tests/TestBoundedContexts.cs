@@ -155,13 +155,13 @@ internal static class TestBoundedContexts
     }
 
     public static PropertyKeyGateResolver CreateKeyGate(ApplicationDbContext app, OperationsDbContext ops) =>
-        new(ops, TestInspectorFeeServiceFactory.ShareCaseStudy(app));
+        new(ops, new CaseStudyLookup(TestInspectorFeeServiceFactory.ShareCaseStudy(app)));
 
     public static PropertyKeyGateResolver CreateKeyGate(Bundle bundle) =>
         CreateKeyGate(bundle.App, bundle.Ops);
 
     public static PropertyKeysService CreatePropertyKeys(Bundle bundle) =>
-        new(bundle.Ops, TestInspectorFeeServiceFactory.ShareCaseStudy(bundle.App));
+        new(bundle.Ops, new CaseStudyLookup(TestInspectorFeeServiceFactory.ShareCaseStudy(bundle.App)));
 
     public static OperationsTaskService CreateOperationsTasks(
         Bundle bundle,

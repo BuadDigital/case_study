@@ -1,4 +1,4 @@
-ï»¿using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using RealEstateEval.Application;
 using RealEstateEval.Application.Abstractions;
@@ -21,7 +21,7 @@ public sealed class WorkflowTaskDistributionCommands : IWorkflowTaskDistribution
         "cdo",
     };
 
-    private readonly CaseStudyDbContext _caseStudy;
+    private readonly ICaseStudyRepository _caseStudy;
     private readonly IFailureLookup _failureLookup;
     private readonly INotificationService _notifications;
     private readonly NotificationRecipientResolver _recipients;
@@ -31,7 +31,7 @@ public sealed class WorkflowTaskDistributionCommands : IWorkflowTaskDistribution
 
     [ActivatorUtilitiesConstructor]
     public WorkflowTaskDistributionCommands(
-        CaseStudyDbContext caseStudy,
+        ICaseStudyRepository caseStudy,
         IFailureLookup failureLookup,
         INotificationService notifications,
         NotificationRecipientResolver recipients,
@@ -76,7 +76,7 @@ public sealed class WorkflowTaskDistributionCommands : IWorkflowTaskDistribution
         {
             return (null, new Dictionary<string, string>
             {
-                ["_"] = "Ø§Ù„Ù…Ù‡Ù…Ø© ØºÙŠØ± Ù…ÙˆØ¬ÙˆØ¯Ø©",
+                ["_"] = "ÇáãåãÉ ÛíÑ ãæÌæÏÉ",
             });
         }
 
@@ -84,7 +84,7 @@ public sealed class WorkflowTaskDistributionCommands : IWorkflowTaskDistribution
         {
             return (null, new Dictionary<string, string>
             {
-                ["_"] = "Ø§Ù„Ù…Ø¹Ø§Ù…Ù„Ø© Ù„ÙŠØ³Øª ÙÙŠ Ù…Ø±Ø­Ù„Ø© Ø§Ù„ØªÙˆØ²ÙŠØ¹ Ø­Ø§Ù„ÙŠØ§Ù‹",
+                ["_"] = "ÇáãÚÇãáÉ áíÓÊ İí ãÑÍáÉ ÇáÊæÒíÚ ÍÇáíÇğ",
             });
         }
 
@@ -92,7 +92,7 @@ public sealed class WorkflowTaskDistributionCommands : IWorkflowTaskDistribution
         {
             return (null, new Dictionary<string, string>
             {
-                ["_"] = "Ù„Ø§ ÙŠÙˆØ¬Ø¯ Ø¹Ù‚Ø§Ø± Ù…Ø±ØªØ¨Ø· Ø¨Ù…Ù‡Ù…Ø© Ø§Ù„ØªÙˆØ²ÙŠØ¹",
+                ["_"] = "áÇ íæÌÏ ÚŞÇÑ ãÑÊÈØ ÈãåãÉ ÇáÊæÒíÚ",
             });
         }
 
@@ -103,7 +103,7 @@ public sealed class WorkflowTaskDistributionCommands : IWorkflowTaskDistribution
         {
             return (null, new Dictionary<string, string>
             {
-                ["_"] = "Ù„Ø§ ÙŠÙ…ÙƒÙ† ØªÙˆØ²ÙŠØ¹ Ù…Ø¹Ø§Ù…Ù„Ø© Ù„Ø¹Ù‚Ø§Ø± Ù…Ø­Ø°ÙˆÙ Ø£Ùˆ ØºÙŠØ± Ù…ÙˆØ¬ÙˆØ¯",
+                ["_"] = "áÇ íãßä ÊæÒíÚ ãÚÇãáÉ áÚŞÇÑ ãÍĞæİ Ãæ ÛíÑ ãæÌæÏ",
             });
         }
 
@@ -116,7 +116,7 @@ public sealed class WorkflowTaskDistributionCommands : IWorkflowTaskDistribution
         {
             return (null, new Dictionary<string, string>
             {
-                ["_"] = "Ù„Ø§ ÙŠÙ…ÙƒÙ† ØªÙˆØ²ÙŠØ¹ Ø§Ù„Ù…Ø¹Ø§Ù…Ù„Ø© Ù…Ø§ Ø¯Ø§Ù… Ø¹Ù„ÙŠÙ‡Ø§ ØªØ¹Ø°Ø± Ù†Ø´Ø·",
+                ["_"] = "áÇ íãßä ÊæÒíÚ ÇáãÚÇãáÉ ãÇ ÏÇã ÚáíåÇ ÊÚĞÑ äÔØ",
             });
         }
 
@@ -130,7 +130,7 @@ public sealed class WorkflowTaskDistributionCommands : IWorkflowTaskDistribution
         {
             return (null, new Dictionary<string, string>
             {
-                ["_"] = "Ø§Ø®ØªØ± Ø£Ø®ØµØ§Ø¦ÙŠ Ø¯Ø±Ø§Ø³Ø© Ø§Ù„Ø­Ø§Ù„Ø©.",
+                ["_"] = "ÇÎÊÑ ÃÎÕÇÆí ÏÑÇÓÉ ÇáÍÇáÉ.",
             });
         }
 
@@ -138,7 +138,7 @@ public sealed class WorkflowTaskDistributionCommands : IWorkflowTaskDistribution
         {
             return (null, new Dictionary<string, string>
             {
-                ["_"] = "Ø§Ø®ØªØ± Ø§Ù„Ù…Ø¹Ø§ÙŠÙ† Ø§Ù„Ù…ÙŠØ¯Ø§Ù†ÙŠ.",
+                ["_"] = "ÇÎÊÑ ÇáãÚÇíä ÇáãíÏÇäí.",
             });
         }
 
@@ -146,7 +146,7 @@ public sealed class WorkflowTaskDistributionCommands : IWorkflowTaskDistribution
         {
             return (null, new Dictionary<string, string>
             {
-                ["_"] = "Ø§Ø®ØªØ± Ø§Ù„Ù…Ù‚ÙŠÙ… Ø§Ù„Ø¹Ù‚Ø§Ø±ÙŠ.",
+                ["_"] = "ÇÎÊÑ ÇáãŞíã ÇáÚŞÇÑí.",
             });
         }
 
@@ -163,7 +163,7 @@ public sealed class WorkflowTaskDistributionCommands : IWorkflowTaskDistribution
             WorkflowTaskPhaseRules.ResolveName(
                 names,
                 WorkflowTaskKind.FieldInspection,
-                "Ù…Ø¹Ø§ÙŠÙ† Ù…ÙŠØ¯Ø§Ù†ÙŠ"),
+                "ãÚÇíä ãíÏÇäí"),
             distribution.InspectorId,
             deed,
             now));
@@ -174,7 +174,7 @@ public sealed class WorkflowTaskDistributionCommands : IWorkflowTaskDistribution
             WorkflowTaskPhaseRules.ResolveName(
                 names,
                 WorkflowTaskKind.PropertyAppraisal,
-                "Ù…Ù‚ÙŠÙ… Ø¹Ù‚Ø§Ø±ÙŠ"),
+                "ãŞíã ÚŞÇÑí"),
             distribution.ValuatorId,
             deed,
             now));
@@ -188,7 +188,7 @@ public sealed class WorkflowTaskDistributionCommands : IWorkflowTaskDistribution
                 WorkflowTaskPhaseRules.ResolveName(
                     names,
                     WorkflowTaskKind.EngineeringSurvey,
-                    "Ù…ÙƒØªØ¨ Ù‡Ù†Ø¯Ø³ÙŠ"),
+                    "ãßÊÈ åäÏÓí"),
                 distribution.EngineeringOfficeId,
                 deed,
                 now));
@@ -203,7 +203,7 @@ public sealed class WorkflowTaskDistributionCommands : IWorkflowTaskDistribution
                     : names.TryGetValue("case-specialist", out var named2) &&
                       !string.IsNullOrWhiteSpace(named2)
                         ? named2.Trim()
-                        : "Ø£Ø®ØµØ§Ø¦ÙŠ Ø¯Ø±Ø§Ø³Ø© Ø­Ø§Ù„Ø©";
+                        : "ÃÎÕÇÆí ÏÑÇÓÉ ÍÇáÉ";
             parent.Assign(
                 distribution.CaseSpecialistId,
                 specialistName,
@@ -212,7 +212,7 @@ public sealed class WorkflowTaskDistributionCommands : IWorkflowTaskDistribution
         }
 
         parent.ConfirmDistribution(
-            $"Ø¯Ø±Ø§Ø³Ø© Ø­Ø§Ù„Ø© â€” {(string.IsNullOrEmpty(deed) ? parent.PoNumber : deed)}",
+            $"ÏÑÇÓÉ ÍÇáÉ — {(string.IsNullOrEmpty(deed) ? parent.PoNumber : deed)}",
             WorkflowTaskMapper.SerializeDistribution(distribution),
             now);
 
@@ -227,7 +227,7 @@ public sealed class WorkflowTaskDistributionCommands : IWorkflowTaskDistribution
                     parent.PoNumber,
                     propertyId,
                     $"task:{parent.Id}:distribution",
-                    "ØªÙˆØ²ÙŠØ¹ Ø§Ù„Ù…Ø¹Ø§Ù…Ù„Ø©",
+                    "ÊæÒíÚ ÇáãÚÇãáÉ",
                     null,
                     "active",
                     now),
@@ -235,7 +235,7 @@ public sealed class WorkflowTaskDistributionCommands : IWorkflowTaskDistribution
                     parent.PoNumber,
                     propertyId,
                     $"task:{parent.Id}:case-study",
-                    "Ø¯Ø±Ø§Ø³Ø© Ø­Ø§Ù„Ø© Ø§Ù„Ø¹Ù‚Ø§Ø±",
+                    "ÏÑÇÓÉ ÍÇáÉ ÇáÚŞÇÑ",
                     parent.AssigneeName,
                     "active",
                     now),
@@ -246,7 +246,7 @@ public sealed class WorkflowTaskDistributionCommands : IWorkflowTaskDistribution
                     parent.PoNumber,
                     propertyId,
                     $"task:{parent.Id}:specialist-assigned",
-                    "ØªØ¹ÙŠÙŠÙ† Ø£Ø®ØµØ§Ø¦ÙŠ Ø¯Ø±Ø§Ø³Ø© Ø§Ù„Ø­Ø§Ù„Ø©",
+                    "ÊÚííä ÃÎÕÇÆí ÏÑÇÓÉ ÇáÍÇáÉ",
                     parent.AssigneeName,
                     "active",
                     now));
@@ -286,7 +286,7 @@ public sealed class WorkflowTaskDistributionCommands : IWorkflowTaskDistribution
         {
             return (null, new Dictionary<string, string>
             {
-                ["_"] = "Ø¥Ø¹Ø§Ø¯Ø© Ø¥Ø³Ù†Ø§Ø¯ Ø§Ù„Ø£Ø·Ø±Ø§Ù ØµÙ„Ø§Ø­ÙŠØ© Ù…Ø´Ø±Ù Ø§Ù„Ù‚Ø³Ù… ÙØ£Ø¹Ù„Ù‰",
+                ["_"] = "ÅÚÇÏÉ ÅÓäÇÏ ÇáÃØÑÇİ ÕáÇÍíÉ ãÔÑİ ÇáŞÓã İÃÚáì",
             });
         }
 
@@ -297,7 +297,7 @@ public sealed class WorkflowTaskDistributionCommands : IWorkflowTaskDistribution
         {
             return (null, new Dictionary<string, string>
             {
-                ["_"] = "ÙŠÙ…ÙƒÙ† Ø¥Ø¹Ø§Ø¯Ø© Ø¥Ø³Ù†Ø§Ø¯ Ø§Ù„Ø£Ø·Ø±Ø§Ù Ù„Ù…Ø¹Ø§Ù…Ù„Ø§Øª Ø¯Ø±Ø§Ø³Ø© Ø§Ù„Ø­Ø§Ù„Ø© ÙÙ‚Ø·",
+                ["_"] = "íãßä ÅÚÇÏÉ ÅÓäÇÏ ÇáÃØÑÇİ áãÚÇãáÇÊ ÏÑÇÓÉ ÇáÍÇáÉ İŞØ",
             });
         }
 
@@ -305,7 +305,7 @@ public sealed class WorkflowTaskDistributionCommands : IWorkflowTaskDistribution
         {
             return (null, new Dictionary<string, string>
             {
-                ["_"] = "Ø¥Ø¹Ø§Ø¯Ø© Ø¥Ø³Ù†Ø§Ø¯ Ø§Ù„Ø£Ø·Ø±Ø§Ù Ù…ØªØ§Ø­Ø© ÙÙ‚Ø· Ø¨Ø¹Ø¯ ØªØ£ÙƒÙŠØ¯ Ø§Ù„ØªÙˆØ²ÙŠØ¹ (Ù…Ø±Ø­Ù„Ø© Ø¯Ø±Ø§Ø³Ø© Ø§Ù„Ø­Ø§Ù„Ø©)",
+                ["_"] = "ÅÚÇÏÉ ÅÓäÇÏ ÇáÃØÑÇİ ãÊÇÍÉ İŞØ ÈÚÏ ÊÃßíÏ ÇáÊæÒíÚ (ãÑÍáÉ ÏÑÇÓÉ ÇáÍÇáÉ)",
             });
         }
 
@@ -314,7 +314,7 @@ public sealed class WorkflowTaskDistributionCommands : IWorkflowTaskDistribution
         {
             return (null, new Dictionary<string, string>
             {
-                ["reason"] = "Ø³Ø¨Ø¨ Ø¥Ø¹Ø§Ø¯Ø© Ø§Ù„Ø¥Ø³Ù†Ø§Ø¯ Ù…Ø·Ù„ÙˆØ¨",
+                ["reason"] = "ÓÈÈ ÅÚÇÏÉ ÇáÅÓäÇÏ ãØáæÈ",
             });
         }
 
@@ -322,7 +322,7 @@ public sealed class WorkflowTaskDistributionCommands : IWorkflowTaskDistribution
         {
             return (null, new Dictionary<string, string>
             {
-                ["reason"] = "Ø§Ù„Ø³Ø¨Ø¨ Ø·ÙˆÙŠÙ„ Ø¬Ø¯Ø§Ù‹",
+                ["reason"] = "ÇáÓÈÈ Øæíá ÌÏÇğ",
             });
         }
 
@@ -333,16 +333,16 @@ public sealed class WorkflowTaskDistributionCommands : IWorkflowTaskDistribution
             .Where(t => t.ParentTaskId == parent.Id)
             .ToListAsync(cancellationToken);
 
- // Ù„Ø§ ÙŠØ´Ù…Ù„ Ø§Ù„Ù…Ø±Ø§Ø¬Ø¹ Ø§Ù„Ø­ÙƒÙˆÙ…ÙŠ â€” ÙŠÙØ³Ù†Ø¯ Ø¹Ø¨Ø± Ù…Ù‡Ø§Ù… Ø§Ù„Ø¹Ù…Ù„ÙŠØ§Øª ÙˆÙ„ÙŠØ³ Ø¥Ø¹Ø§Ø¯Ø© ØªÙˆØ²ÙŠØ¹ Ø§Ù„Ø£Ø·Ø±Ø§Ù.
+ // áÇ íÔãá ÇáãÑÇÌÚ ÇáÍßæãí — íõÓäÏ ÚÈÑ ãåÇã ÇáÚãáíÇÊ æáíÓ ÅÚÇÏÉ ÊæÒíÚ ÇáÃØÑÇİ.
         var mappings =
             new (bool Enabled, WorkflowTaskKind Kind, string Role, string AssigneeId, string Fallback)[]
         {
             (true, WorkflowTaskKind.FieldInspection, "field-inspector",
-                distribution.InspectorId, "Ù…Ø¹Ø§ÙŠÙ† Ù…ÙŠØ¯Ø§Ù†ÙŠ"),
+                distribution.InspectorId, "ãÚÇíä ãíÏÇäí"),
             (true, WorkflowTaskKind.PropertyAppraisal, "real-estate-appraiser",
-                distribution.ValuatorId, "Ù…Ù‚ÙŠÙ… Ø¹Ù‚Ø§Ø±ÙŠ"),
+                distribution.ValuatorId, "ãŞíã ÚŞÇÑí"),
             (distribution.EngineeringOffice, WorkflowTaskKind.EngineeringSurvey, "engineering-office",
-                distribution.EngineeringOfficeId, "Ù…ÙƒØªØ¨ Ù‡Ù†Ø¯Ø³ÙŠ"),
+                distribution.EngineeringOfficeId, "ãßÊÈ åäÏÓí"),
         };
 
         var now = _time.UtcNow();
@@ -363,18 +363,18 @@ public sealed class WorkflowTaskDistributionCommands : IWorkflowTaskDistribution
                         : names.TryGetValue("case-specialist", out var named2) &&
                           !string.IsNullOrWhiteSpace(named2)
                             ? named2.Trim()
-                            : "Ø£Ø®ØµØ§Ø¦ÙŠ Ø¯Ø±Ø§Ø³Ø© Ø­Ø§Ù„Ø©";
+                            : "ÃÎÕÇÆí ÏÑÇÓÉ ÍÇáÉ";
                 parent.Assign(newAssigneeId, specialistName, "case-specialist", now);
                 if (parent.PropertyId is Guid propertyId)
                 {
                     var detail = string.IsNullOrWhiteSpace(actorName)
-                        ? $"{specialistName} â€” {reason}"
-                        : $"{actorName}: {specialistName} â€” {reason}";
+                        ? $"{specialistName} — {reason}"
+                        : $"{actorName}: {specialistName} — {reason}";
                     timelineEvents.Add(new PropertyTimelineRecordRequest(
                         parent.PoNumber,
                         propertyId,
                         $"task:{parent.Id}:specialist-redistributed:{now.Ticks}",
-                        "Ø¥Ø¹Ø§Ø¯Ø© Ø¥Ø³Ù†Ø§Ø¯ â€” Ø£Ø®ØµØ§Ø¦ÙŠ Ø¯Ø±Ø§Ø³Ø© Ø§Ù„Ø­Ø§Ù„Ø©",
+                        "ÅÚÇÏÉ ÅÓäÇÏ — ÃÎÕÇÆí ÏÑÇÓÉ ÇáÍÇáÉ",
                         detail,
                         "active",
                         now));
@@ -401,13 +401,13 @@ public sealed class WorkflowTaskDistributionCommands : IWorkflowTaskDistribution
             if (parent.PropertyId is Guid propertyId)
             {
                 var detail = string.IsNullOrWhiteSpace(actorName)
-                    ? $"{newName} â€” {reason}"
-                    : $"{actorName}: {newName} â€” {reason}";
+                    ? $"{newName} — {reason}"
+                    : $"{actorName}: {newName} — {reason}";
                 timelineEvents.Add(new PropertyTimelineRecordRequest(
                     parent.PoNumber,
                     propertyId,
                     $"party:{child.Id}:redistributed:{now.Ticks}",
-                    $"Ø¥Ø¹Ø§Ø¯Ø© Ø¥Ø³Ù†Ø§Ø¯ â€” {WorkflowTaskPhaseRules.PartyAssignedTitle(child.Kind)}",
+                    $"ÅÚÇÏÉ ÅÓäÇÏ — {WorkflowTaskPhaseRules.PartyAssignedTitle(child.Kind)}",
                     detail,
                     "active",
                     now));
@@ -468,8 +468,8 @@ public sealed class WorkflowTaskDistributionCommands : IWorkflowTaskDistribution
             {
                 [userId] = new CreateUserNotificationRequest
                 {
-                    Title = "Ù…Ø¹Ø§Ù…Ù„Ø© Ø¯Ø±Ø§Ø³Ø© Ø­Ø§Ù„Ø© Ø¨Ø§Ù†ØªØ¸Ø§Ø±Ùƒ",
-                    Body = $"Ø£ÙØ³Ù†Ø¯Øª Ø¥Ù„ÙŠÙƒ Ø¯Ø±Ø§Ø³Ø© Ø­Ø§Ù„Ø© Ø§Ù„Ø¹Ù‚Ø§Ø± Ø¹Ù„Ù‰ {refLabel}.",
+                    Title = "ãÚÇãáÉ ÏÑÇÓÉ ÍÇáÉ ÈÇäÊÙÇÑß",
+                    Body = $"ÃõÓäÏÊ Åáíß ÏÑÇÓÉ ÍÇáÉ ÇáÚŞÇÑ Úáì {refLabel}.",
                     Tone = "info",
                     Href = $"/case-study/{id}",
                     Category = "workflow",
@@ -527,12 +527,12 @@ public sealed class WorkflowTaskDistributionCommands : IWorkflowTaskDistribution
                 ? TaskHref(single.Kind, single.Id)
                 : "/active-primary-data";
             var body = single is not null
-                ? $"Ø£ÙØ³Ù†Ø¯Øª Ø¥Ù„ÙŠÙƒ Ù…Ù‡Ù…Ø© Ø¬Ø¯ÙŠØ¯Ø©: {TaskNotificationLabel(single.Kind)} Ø¹Ù„Ù‰ {refLabel}."
-                : $"Ø£ÙØ³Ù†Ø¯Øª Ø¥Ù„ÙŠÙƒ {assignedTasks.Count} Ù…Ù‡Ø§Ù… Ø¬Ø¯ÙŠØ¯Ø© Ø¹Ù„Ù‰ {refLabel}.";
+                ? $"ÃõÓäÏÊ Åáíß ãåãÉ ÌÏíÏÉ: {TaskNotificationLabel(single.Kind)} Úáì {refLabel}."
+                : $"ÃõÓäÏÊ Åáíß {assignedTasks.Count} ãåÇã ÌÏíÏÉ Úáì {refLabel}.";
 
             requestsByUser[userId] = new CreateUserNotificationRequest
             {
-                Title = "Ù…Ø¹Ø§Ù…Ù„Ø© Ø¬Ø¯ÙŠØ¯Ø© Ø¨Ø§Ù†ØªØ¸Ø§Ø±Ùƒ",
+                Title = "ãÚÇãáÉ ÌÏíÏÉ ÈÇäÊÙÇÑß",
                 Body = body,
                 Tone = "info",
                 Href = href,
@@ -550,10 +550,10 @@ public sealed class WorkflowTaskDistributionCommands : IWorkflowTaskDistribution
 
     private static string TaskNotificationLabel(WorkflowTaskKind kind) => kind switch
     {
-        WorkflowTaskKind.FieldInspection => "Ù…Ø¹Ø§ÙŠÙ†Ø© Ø§Ù„Ø¹Ù‚Ø§Ø±",
-        WorkflowTaskKind.EngineeringSurvey => "Ø§Ù„Ø±ÙØ¹ Ø§Ù„Ù…Ø³Ø§Ø­ÙŠ",
-        WorkflowTaskKind.PropertyAppraisal => "ØªÙ‚ÙŠÙŠÙ… Ø§Ù„Ø¹Ù‚Ø§Ø±",
-        _ => "Ù…Ù‡Ù…Ø© Ø¬Ø¯ÙŠØ¯Ø©",
+        WorkflowTaskKind.FieldInspection => "ãÚÇíäÉ ÇáÚŞÇÑ",
+        WorkflowTaskKind.EngineeringSurvey => "ÇáÑİÚ ÇáãÓÇÍí",
+        WorkflowTaskKind.PropertyAppraisal => "ÊŞííã ÇáÚŞÇÑ",
+        _ => "ãåãÉ ÌÏíÏÉ",
     };
 
     private static string TaskHref(WorkflowTaskKind kind, Guid taskId)

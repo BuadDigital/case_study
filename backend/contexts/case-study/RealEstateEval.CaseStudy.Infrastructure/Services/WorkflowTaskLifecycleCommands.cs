@@ -21,7 +21,7 @@ public sealed class WorkflowTaskLifecycleCommands : IWorkflowTaskLifecycleComman
         "cdo",
     };
 
-    private readonly CaseStudyDbContext _db;
+    private readonly ICaseStudyRepository _db;
     private readonly IInspectorFeeService _inspectorFees;
     private readonly IPropertyTimelineService _timeline;
     private readonly WorkflowTaskCascadeCleanup _cascade;
@@ -31,7 +31,7 @@ public sealed class WorkflowTaskLifecycleCommands : IWorkflowTaskLifecycleComman
     private readonly TimeProvider _time;
 
     public WorkflowTaskLifecycleCommands(
-        CaseStudyDbContext db,
+        ICaseStudyRepository db,
         IInspectorFeeService inspectorFees,
         IPropertyTimelineService timeline,
         WorkflowTaskCascadeCleanup cascade,

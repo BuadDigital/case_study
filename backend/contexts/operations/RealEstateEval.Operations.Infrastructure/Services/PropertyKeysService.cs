@@ -15,12 +15,6 @@ public sealed class PropertyKeysService : IPropertyKeysService
     private readonly ICaseStudyLookup _caseStudy;
     private readonly TimeProvider _time;
 
-    public PropertyKeysService(OperationsDbContext ops, CaseStudyDbContext caseStudy,
-        TimeProvider? time = null)
-        : this(ops, new CaseStudyLookup(caseStudy), time)
-    {
-    }
-
     [ActivatorUtilitiesConstructor]
     public PropertyKeysService(OperationsDbContext ops, ICaseStudyLookup caseStudy,
         TimeProvider? time = null)

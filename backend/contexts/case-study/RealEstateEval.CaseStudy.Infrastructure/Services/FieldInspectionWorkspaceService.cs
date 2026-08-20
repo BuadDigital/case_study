@@ -9,9 +9,9 @@ namespace RealEstateEval.Infrastructure.Services;
 
 public sealed class FieldInspectionWorkspaceService : IFieldInspectionWorkspaceService
 {
-    private readonly CaseStudyDbContext _db;
+    private readonly ICaseStudyRepository _db;
 
-    public FieldInspectionWorkspaceService(CaseStudyDbContext db)
+    public FieldInspectionWorkspaceService(ICaseStudyRepository db)
     {
         _db = db;
     }

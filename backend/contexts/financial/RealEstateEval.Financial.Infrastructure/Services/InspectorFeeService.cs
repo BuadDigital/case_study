@@ -27,32 +27,6 @@ public class InspectorFeeService : IInspectorFeeService
     private readonly IInspectorFeeTransitionApplier _transitions;
     private readonly TimeProvider _time;
 
-    public InspectorFeeService(
-        CaseStudyDbContext caseStudy,
-        FinancialDbContext financial,
-        INotificationService notifications,
-        NotificationRecipientResolver recipients,
-        IPartyFeePricingService pricing,
-        IInspectorFeeLedgerResolver resolver,
-        IInspectorFeeLedgerWriter writer,
-        IInspectorFeeSummaryQuery summary,
-        IInspectorFeeTransitionApplier transitions,
-        TimeProvider? time = null)
-        : this(
-            new CaseStudyLookup(caseStudy),
-            new CaseStudyCommands(caseStudy, time),
-            financial,
-            notifications,
-            recipients,
-            pricing,
-            resolver,
-            writer,
-            summary,
-            transitions,
-            time)
-    {
-    }
-
     [ActivatorUtilitiesConstructor]
     public InspectorFeeService(
         ICaseStudyLookup lookup,

@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { validateEvaluatorSubmission } from "../evaluator-validation";
+import { normalizeReportWorkers } from "../evaluator-window-data";
 
 describe("validateEvaluatorSubmission", () => {
   const base = {
@@ -82,5 +83,19 @@ describe("validateEvaluatorSubmission", () => {
       ],
     });
     expect(errors.report_workers).toBeTruthy();
+  });
+});
+
+describe("normalizeReportWorkers", () => {
+  it("assigns unique ids when they are missing or duplicated", () => {
+    const workers = normalizeReportWorkers([
+      { role: "معد", name: "أ" },
+      { id: "dup", role: "مراجع", name: "ب" },
+      { id: "dup", role: "معتمد", name: "ج" },
+    ]);
+    const ids = workers.map((w) => w.id);
+    expect(ids).toHaveLength(3);
+    expect(new Set(ids).size).toBe(3);
+    expect(ids.every((id) => id.length > 0)).toBe(true);
   });
 });

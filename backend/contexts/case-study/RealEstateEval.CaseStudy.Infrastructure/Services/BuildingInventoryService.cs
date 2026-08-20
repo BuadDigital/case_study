@@ -7,7 +7,7 @@ using RealEstateEval.Infrastructure.Data.Contexts;
 
 namespace RealEstateEval.Infrastructure.Services;
 
-public class BuildingInventoryService(CaseStudyDbContext db,
+public class BuildingInventoryService(ICaseStudyRepository db,
     TimeProvider? time = null) : IBuildingInventoryService
 {
     private readonly TimeProvider _time = time ?? TimeProvider.System;

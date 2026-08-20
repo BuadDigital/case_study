@@ -1,30 +1,21 @@
 using System.Text.Json;
-using Microsoft.EntityFrameworkCore;
-using RealEstateEval.Application;
 using RealEstateEval.Application.Abstractions;
 using RealEstateEval.Application.Contracts;
 using RealEstateEval.Domain;
-using RealEstateEval.Infrastructure.Data.Contexts;
 
-namespace RealEstateEval.Infrastructure.Services;
+namespace RealEstateEval.Application.Services;
 
-public sealed class PoIntakeDraftService : IPoIntakeDraftService
+public sealed class PoIntakeDraftService(
+    IPoIntakeDraftRepository drafts,
+    TimeProvider? time = null) : IPoIntakeDraftService
 {
-    private readonly CaseStudyDbContext _db;
-    private readonly TimeProvider _time;
-
-    public PoIntakeDraftService(CaseStudyDbContext db, TimeProvider? time = null)
-    {
-        _db = db;
-        _time = time ?? TimeProvider.System;
-    }
+    private readonly TimeProvider _time = time ?? TimeProvider.System;
 
     public async Task<PoIntakeDraftDto?> GetForUserAsync(
         string userId,
         CancellationToken cancellationToken = default)
     {
-        var row = await _db.PoIntakeDrafts.AsNoTracking()
-            .FirstOrDefaultAsync(x => x.UserId == userId, cancellationToken);
+        var row = await drafts.GetByUserIdAsync(userId, track: false, cancellationToken);
         return row is null ? null : Deserialize(row.DraftJson, row.UpdatedAtUtc);
     }
 
@@ -34,8 +25,7 @@ public sealed class PoIntakeDraftService : IPoIntakeDraftService
         CancellationToken cancellationToken = default)
     {
         var payload = JsonSerializer.Serialize(request);
-        var row = await _db.PoIntakeDrafts
-            .FirstOrDefaultAsync(x => x.UserId == userId, cancellationToken);
+        var row = await drafts.GetByUserIdAsync(userId, track: true, cancellationToken);
         var now = _time.UtcNow();
 
         if (row is null)
@@ -47,7 +37,7 @@ public sealed class PoIntakeDraftService : IPoIntakeDraftService
                 DraftJson = payload,
                 UpdatedAtUtc = now,
             };
-            _db.PoIntakeDrafts.Add(row);
+            drafts.Add(row);
         }
         else
         {
@@ -55,18 +45,14 @@ public sealed class PoIntakeDraftService : IPoIntakeDraftService
             row.UpdatedAtUtc = now;
         }
 
-        await _db.SaveChangesAsync(cancellationToken);
+        await drafts.SaveChangesAsync(cancellationToken);
         return Deserialize(row.DraftJson, row.UpdatedAtUtc);
     }
 
-    public async Task DeleteForUserAsync(
+    public Task DeleteForUserAsync(
         string userId,
-        CancellationToken cancellationToken = default)
-    {
-        await _db.PoIntakeDrafts
-            .Where(x => x.UserId == userId)
-            .ExecuteDeleteAsync(cancellationToken);
-    }
+        CancellationToken cancellationToken = default) =>
+        drafts.DeleteByUserIdAsync(userId, cancellationToken);
 
     private static PoIntakeDraftDto Deserialize(string json, DateTime updatedAtUtc)
     {

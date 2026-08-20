@@ -17,6 +17,19 @@ public class ValuationReportFrozenTextLayersTests
     }
 
     [Fact]
+    public void Settings_defaults_seed_official_copy_and_fill_empty_values()
+    {
+        Assert.Contains("IVSC", ValuationReportSettingsDefaults.ProfessionalStandards, StringComparison.Ordinal);
+        Assert.Equal(
+            ValuationReportSettingsDefaults.ProfessionalStandards,
+            ValuationReportSettingsDefaults.ForSectionKey(ValuationReportSectionKeys.ProfessionalStandards));
+        Assert.Equal(
+            ValuationReportSettingsDefaults.ReportType,
+            ValuationReportSettingsDefaults.Clip("", ValuationReportSettingsDefaults.ReportType, 200));
+        Assert.Contains("فرع", ValuationReportSettingsDefaults.ValuationBranch, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void Temporary_report_number_uses_tq_date_and_display_digits()
     {
         var n = ValuationReportNumberRules.FormatTemporary("V-12", new DateOnly(2026, 8, 19));

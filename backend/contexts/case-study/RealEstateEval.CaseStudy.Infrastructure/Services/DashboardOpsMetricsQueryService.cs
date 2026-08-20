@@ -13,10 +13,10 @@ namespace RealEstateEval.Infrastructure.Services;
 /// </summary>
 public sealed class DashboardOpsMetricsQueryService : IDashboardOpsMetricsQuery
 {
-    private readonly CaseStudyDbContext _db;
+    private readonly ICaseStudyRepository _db;
     private readonly TimeProvider _time;
 
-    public DashboardOpsMetricsQueryService(CaseStudyDbContext db,
+    public DashboardOpsMetricsQueryService(ICaseStudyRepository db,
         TimeProvider? time = null)
     {
         _time = time ?? TimeProvider.System;

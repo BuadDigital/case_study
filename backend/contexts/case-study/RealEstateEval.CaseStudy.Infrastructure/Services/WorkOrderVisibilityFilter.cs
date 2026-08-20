@@ -8,9 +8,9 @@ namespace RealEstateEval.Infrastructure.Services;
 
 public sealed class WorkOrderVisibilityFilter : IWorkOrderVisibilityFilter
 {
-    private readonly CaseStudyDbContext _db;
+    private readonly ICaseStudyRepository _db;
 
-    public WorkOrderVisibilityFilter(CaseStudyDbContext db)
+    public WorkOrderVisibilityFilter(ICaseStudyRepository db)
     {
         _db = db;
     }

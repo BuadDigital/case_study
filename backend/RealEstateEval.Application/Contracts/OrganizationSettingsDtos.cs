@@ -16,9 +16,23 @@ public sealed class OrganizationSettingsDto
     public DateTime UpdatedAtUtc { get; init; }
 }
 
-/// <summary>تبويب تقرير التقييم — منه مكتبة الافتراضات الخاصة (انتقاء المقيّم).</summary>
+/// <summary>تبويب تقرير التقييم — الطبقة ب (القرار 25): ثوابت ونصوص تُعبَّأ مرة وتُستهلك في كل تقرير.</summary>
 public sealed class OrganizationValuationReportSettingsDto
 {
+    public string ReportType { get; init; } = "";
+    public string Currency { get; init; } = "";
+    public string ValuationBranch { get; init; } = "";
+    public string KeyInputsText { get; init; } = "";
+    public string ProfessionalStandards { get; init; } = "";
+    public string Independence { get; init; } = "";
+    public string ResearchScopeText { get; init; } = "";
+    public string Terms { get; init; } = "";
+    public string Restrictions { get; init; } = "";
+    public string IvsStandards { get; init; } = "";
+    public string Glossary { get; init; } = "";
+    public string FinishingLuxury { get; init; } = "";
+    public string FinishingMedium { get; init; } = "";
+    public string FinishingOrdinary { get; init; } = "";
  /// <summary>بنود الافتراضات الخاصة الجاهزة — يديرها الأدمن وينتقي منها المقيّم.</summary>
     public List<string> SpecialAssumptionLibrary { get; init; } = [];
 }

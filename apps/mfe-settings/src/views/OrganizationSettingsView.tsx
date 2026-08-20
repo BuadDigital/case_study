@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { getOrganizationSettings, saveOrganizationSettings, testOrganizationCommunication, type OrganizationSettingsDto, type OrganizationValuerRosterEntry, VALUER_MEMBERSHIP_CATEGORIES } from "@platform/api-client";
+import { getOrganizationSettings, saveOrganizationSettings, testOrganizationCommunication, emptyValuationReportSettings, type OrganizationSettingsDto, type OrganizationValuationReportSettings, type OrganizationValuerRosterEntry, VALUER_MEMBERSHIP_CATEGORIES } from "@platform/api-client";
 import { Can, useCapability } from "@platform/app-shared/components/Can";
 import { cn, Note, PageShell, Spinner, useToast } from "@platform/ui-kit";
 import {
@@ -25,7 +25,13 @@ import {
 } from "@case-study/mfe/lib/prototype/ops-tasks-tw";
 import { organizationSettingsApiConfig } from "../lib/settings-api-config";
 
-type TabId = "company" | "evaluator" | "branding" | "communications" | "sla";
+type TabId =
+  | "company"
+  | "evaluator"
+  | "branding"
+  | "communications"
+  | "sla"
+  | "report";
 
 const TABS: { id: TabId; label: string }[] = [
   { id: "company", label: "بيانات الشركة" },
@@ -33,6 +39,7 @@ const TABS: { id: TabId; label: string }[] = [
   { id: "branding", label: "الهوية والأصول" },
   { id: "communications", label: "الاتصالات" },
   { id: "sla", label: "معايير المهل" },
+  { id: "report", label: "تقرير التقييم" },
 ];
 
 const TAB_META: Record<TabId, { icon: string; sub: string }> = {
@@ -56,7 +63,33 @@ const TAB_META: Record<TabId, { icon: string; sub: string }> = {
     icon: "M12 22a10 10 0 1 0 0-20 10 10 0 0 0 0 20zM12 6v6l4 2",
     sub: "المهل الافتراضية بأيام العمل لأوامر العمل الجديدة",
   },
+  report: {
+    icon: "M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8zM14 2v6h6M16 13H8M16 17H8M10 9H8",
+    sub: "ثوابت ونصوص تقرير التقييم تُعبَّأ مرة وتُستهلك في كل تقرير — التعديل لا يغيّر ما سبق إصداره",
+  },
 };
+
+const REPORT_TEXT_FIELDS: {
+  key: keyof OrganizationValuationReportSettings;
+  label: string;
+  rows: number;
+}[] = [
+  { key: "keyInputsText", label: "المدخلات الرئيسية", rows: 5 },
+  {
+    key: "professionalStandards",
+    label: "التأكيد على الالتزام بمعايير التقييم الدولية",
+    rows: 4,
+  },
+  { key: "independence", label: "إقرار الاستقلالية وعدم تضارب المصالح", rows: 4 },
+  { key: "researchScopeText", label: "نطاق البحث وطبيعة ومصدر المعلومات", rows: 8 },
+  { key: "terms", label: "الشروط والأحكام وإخلاء المسؤولية", rows: 8 },
+  { key: "restrictions", label: "القيود على الاستخدام والنشر", rows: 6 },
+  { key: "ivsStandards", label: "معايير التقييم الدولية العامة", rows: 8 },
+  { key: "glossary", label: "المصطلحات المهنية", rows: 8 },
+  { key: "finishingLuxury", label: "مرجع تشطيب فاخر", rows: 3 },
+  { key: "finishingMedium", label: "مرجع تشطيب متوسط", rows: 3 },
+  { key: "finishingOrdinary", label: "مرجع تشطيب عادي", rows: 3 },
+];
 
 function TabIcon({ path, size = 20 }: { path: string; size?: number }) {
   return (
@@ -125,7 +158,7 @@ function emptySettings(): OrganizationSettingsDto {
     },
     sla: { defaultBusinessDays: 4, privateSectorBusinessDays: 10 },
     valuation: { maxAdoptedComparables: 3, comparableTimeGapMonths: 6 },
-    valuationReport: { specialAssumptionLibrary: [] },
+    valuationReport: emptyValuationReportSettings(),
     updatedAtUtc: new Date().toISOString(),
   };
 }
@@ -1210,11 +1243,128 @@ export function OrganizationSettingsView() {
                   />
                 </div>
               </div>
+            </>
+          ) : null}
 
-              {/* تبويب تقرير التقييم (القرار 25 طبقة ب) — مكتبة الافتراضات الخاصة */}
+          {tab === "report" ? (
+            <>
+              <p className={cn(opsTfNote, "m-0 mb-3.5")}>
+                هذه الطبقة خاصة بتقرير التقييم وحده. الختم والتوقيع من تبويب
+                الهوية والأصول، وهوية المقيم المعتمد وقائمة المشاركين من تبويب
+                المقيم المعتمد. التقارير المُصدَرة تجمّد نسخة وقت الإصدار.
+              </p>
+              <div className="mb-3.5 flex flex-wrap gap-2">
+                <button
+                  type="button"
+                  className={opsBtnGhost}
+                  onClick={() => setTab("branding")}
+                >
+                  الهوية والأصول — الختم والتوقيع
+                </button>
+                <button
+                  type="button"
+                  className={opsBtnGhost}
+                  onClick={() => setTab("evaluator")}
+                >
+                  المقيم المعتمد — الهوية والقائمة
+                </button>
+              </div>
+              <div className={opsFormGrid}>
+                <div className={opsFld}>
+                  <label htmlFor="org-report-type" className={opsTfLbl}>
+                    نوع التقرير
+                  </label>
+                  <input
+                    id="org-report-type"
+                    className={opsFldControl}
+                    value={draft.valuationReport.reportType}
+                    disabled={!canEdit}
+                    onChange={(e) =>
+                      setDraft((d) => ({
+                        ...d,
+                        valuationReport: {
+                          ...d.valuationReport,
+                          reportType: e.target.value,
+                        },
+                      }))
+                    }
+                  />
+                </div>
+                <div className={opsFld}>
+                  <label htmlFor="org-report-currency" className={opsTfLbl}>
+                    عملة التقييم
+                  </label>
+                  <input
+                    id="org-report-currency"
+                    className={opsFldControl}
+                    value={draft.valuationReport.currency}
+                    disabled={!canEdit}
+                    onChange={(e) =>
+                      setDraft((d) => ({
+                        ...d,
+                        valuationReport: {
+                          ...d.valuationReport,
+                          currency: e.target.value,
+                        },
+                      }))
+                    }
+                  />
+                </div>
+                <div className={opsFldFull}>
+                  <label htmlFor="org-report-branch" className={opsTfLbl}>
+                    فرع التقييم
+                  </label>
+                  <input
+                    id="org-report-branch"
+                    className={opsFldControl}
+                    value={draft.valuationReport.valuationBranch}
+                    disabled={!canEdit}
+                    onChange={(e) =>
+                      setDraft((d) => ({
+                        ...d,
+                        valuationReport: {
+                          ...d.valuationReport,
+                          valuationBranch: e.target.value,
+                        },
+                      }))
+                    }
+                  />
+                </div>
+              </div>
+              <div className="mt-3.5 space-y-3">
+                {REPORT_TEXT_FIELDS.map((field) => {
+                  const value = draft.valuationReport[field.key];
+                  return (
+                    <div key={field.key} className={opsFldFull}>
+                      <label
+                        htmlFor={`org-report-${field.key}`}
+                        className={opsTfLbl}
+                      >
+                        {field.label}
+                      </label>
+                      <textarea
+                        id={`org-report-${field.key}`}
+                        className={cn(opsFldControl, "min-h-[5.5rem] py-2")}
+                        rows={field.rows}
+                        value={typeof value === "string" ? value : ""}
+                        disabled={!canEdit}
+                        onChange={(e) =>
+                          setDraft((d) => ({
+                            ...d,
+                            valuationReport: {
+                              ...d.valuationReport,
+                              [field.key]: e.target.value,
+                            },
+                          }))
+                        }
+                      />
+                    </div>
+                  );
+                })}
+              </div>
               <div className="mt-4">
                 <p className="m-0 text-[12px] font-bold text-heading">
-                  تقرير التقييم — مكتبة الافتراضات الخاصة
+                  مكتبة الافتراضات الخاصة
                 </p>
                 <p className="mt-1 text-[11px] text-text-3">
                   بنود جاهزة ينتقي منها المقيّم في نافذته (مع إمكان إضافته الحرة).
@@ -1232,6 +1382,7 @@ export function OrganizationSettingsView() {
                             setDraft((d) => ({
                               ...d,
                               valuationReport: {
+                                ...d.valuationReport,
                                 specialAssumptionLibrary:
                                   d.valuationReport.specialAssumptionLibrary.map(
                                     (x, i) => (i === index ? e.target.value : x),
@@ -1248,6 +1399,7 @@ export function OrganizationSettingsView() {
                               setDraft((d) => ({
                                 ...d,
                                 valuationReport: {
+                                  ...d.valuationReport,
                                   specialAssumptionLibrary:
                                     d.valuationReport.specialAssumptionLibrary.filter(
                                       (_, i) => i !== index,
@@ -1270,6 +1422,7 @@ export function OrganizationSettingsView() {
                         setDraft((d) => ({
                           ...d,
                           valuationReport: {
+                            ...d.valuationReport,
                             specialAssumptionLibrary: [
                               ...d.valuationReport.specialAssumptionLibrary,
                               "",

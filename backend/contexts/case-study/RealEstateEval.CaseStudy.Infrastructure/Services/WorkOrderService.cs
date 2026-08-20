@@ -14,7 +14,7 @@ namespace RealEstateEval.Infrastructure.Services;
 /// </summary>
 public class WorkOrderService : IWorkOrderService
 {
-    private readonly CaseStudyDbContext _db;
+    private readonly ICaseStudyRepository _db;
     private readonly IPropertyTimelineService _timeline;
     private readonly INotificationService _notifications;
     private readonly NotificationRecipientResolver _recipients;
@@ -25,7 +25,7 @@ public class WorkOrderService : IWorkOrderService
     private readonly TimeProvider _time;
 
     public WorkOrderService(
-        CaseStudyDbContext db,
+        ICaseStudyRepository db,
         IPropertyTimelineService timeline,
         INotificationService notifications,
         NotificationRecipientResolver recipients,

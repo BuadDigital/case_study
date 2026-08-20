@@ -29,10 +29,10 @@ public sealed class FinancialReportService : IFinancialReportService
 
     public FinancialReportService(
         FinancialDbContext fin,
-        CaseStudyDbContext caseStudy,
-        IdentityDbContext identity,
+        ICaseStudyLookup caseStudy,
+        IIdentityDirectory identity,
         ApiResponseCache cache)
-        : this(fin, new CaseStudyLookup(caseStudy), new IdentityDirectory(identity), cache, null)
+        : this(fin, caseStudy, identity, cache, null)
     {
     }
 

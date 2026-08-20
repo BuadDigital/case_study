@@ -63,6 +63,7 @@ import {
 } from "./EvaluatorPropertyTab";
 import { EvaluatorChecklistTab } from "./EvaluatorChecklistTab";
 import { EvaluatorComparableSelectionPanel } from "./EvaluatorComparableSelectionPanel";
+import { EvaluatorValuationReportTab } from "./EvaluatorValuationReportTab";
 import {
   appraiserInspectionDone,
   appraiserNeedsSurvey,
@@ -85,6 +86,7 @@ import {
 
 export type EvaluatorWindowTab =
   | "property"
+  | "report"
   | "comparables"
   | "valuation"
   | "infath"
@@ -92,6 +94,7 @@ export type EvaluatorWindowTab =
 
 const VAL_TABS: { id: EvaluatorWindowTab; label: string }[] = [
   { id: "property", label: "بيانات العقار" },
+  { id: "report", label: "تقييم العقار" },
   { id: "comparables", label: "المقارنات" },
   { id: "valuation", label: "التقييم" },
   { id: "infath", label: "بيانات الرفع لإنفاذ" },
@@ -109,7 +112,7 @@ export function EvaluatorWindow({
   tasks,
   hostRef,
   propertySummary,
-  initialTab = "valuation",
+  initialTab = "report",
   deedLabel,
 }: {
   task: WorkflowTask;
@@ -600,6 +603,7 @@ export function EvaluatorWindow({
           className={cn(
             formDisabled &&
               activeTab !== "property" &&
+              activeTab !== "report" &&
               activeTab !== "comparables"
               ? "opacity-75"
               : undefined,
@@ -607,6 +611,19 @@ export function EvaluatorWindow({
         >
           {activeTab === "property" ? (
             <EvaluatorPropertyTab property={summary} />
+          ) : null}
+
+          {activeTab === "report" ? (
+            <EvaluatorValuationReportTab
+              propertyId={task.propertyId ?? ""}
+              districtHint={
+                summary.property?.district?.trim() ||
+                summary.cityDistrict.split(/[|/·,،]/)[0]?.trim() ||
+                undefined
+              }
+              draft={draft}
+              inspectionTaskId={summary.inspectionTaskId}
+            />
           ) : null}
 
           {activeTab === "comparables" ? (

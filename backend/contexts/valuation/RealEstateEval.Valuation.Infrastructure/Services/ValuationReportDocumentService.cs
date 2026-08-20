@@ -432,13 +432,19 @@ public sealed class ValuationReportDocumentService(
                     org.Evaluator.LicenseExpiresAt);
                 d["membershipExpiresAt"] = ValuationReportDisplayRules.FormatIsoDateString(
                     org.Evaluator.MembershipExpiresAt);
+                d["branch"] = ValuationReportSettingsDefaults.Clip(
+                    org.ValuationReport.ValuationBranch,
+                    ValuationReportSettingsDefaults.ValuationBranch,
+                    200);
                 break;
 
             case ValuationReportSectionKeys.KeyInputs:
                 d["basis"] = basisLabel;
                 d["premise"] = premiseLabel;
-                d["currency"] = "الريال السعودي";
-                d["reportType"] = "تقرير مفصل";
+                d["currency"] = ValuationReportSettingsDefaults.Clip(
+                    org.ValuationReport.Currency, ValuationReportSettingsDefaults.Currency, 200);
+                d["reportType"] = ValuationReportSettingsDefaults.Clip(
+                    org.ValuationReport.ReportType, ValuationReportSettingsDefaults.ReportType, 200);
                 d["propertyType"] = prop?.PropertyType ?? vr.PropertyType;
                 d["area"] = prop?.Area ?? vr.Area;
                 d["hasStructures"] = hasStructures ? "نعم" : "لا";
@@ -451,14 +457,17 @@ public sealed class ValuationReportDocumentService(
                 d["finalOpinion"] = recon is null
                     ? null
                     : ValuationReportDisplayRules.FormatMoney(recon.FinalOpinionValue);
+                d["body"] = FrozenFromOrg(org, key);
                 break;
 
             case ValuationReportSectionKeys.ScopeOfWork:
                 d["displayId"] = vr.DisplayId;
                 d["propertyType"] = prop?.PropertyType ?? vr.PropertyType;
                 d["area"] = prop?.Area ?? vr.Area;
-                d["reportType"] = "تقرير مفصل";
-                d["currency"] = "الريال السعودي";
+                d["reportType"] = ValuationReportSettingsDefaults.Clip(
+                    org.ValuationReport.ReportType, ValuationReportSettingsDefaults.ReportType, 200);
+                d["currency"] = ValuationReportSettingsDefaults.Clip(
+                    org.ValuationReport.Currency, ValuationReportSettingsDefaults.Currency, 200);
                 d["basis"] = basisLabel;
                 d["premise"] = premiseLabel;
                 d["purpose"] = assignmentType is { } purposeType
@@ -646,11 +655,15 @@ public sealed class ValuationReportDocumentService(
                 break;
 
             case ValuationReportSectionKeys.ResearchScope:
-                d["body"] = ValuationReportNarrativeRules.ResearchScopeBody(
+            {
+                var frozen = FrozenFromOrg(org, key);
+                var live = ValuationReportNarrativeRules.ResearchScopeBody(
                     adopted.Select(i => i.Comparable.Source).ToList(),
                     adopted.Count);
+                d["body"] = string.IsNullOrWhiteSpace(live) ? frozen : frozen + "\n\n" + live;
                 d["adoptedCount"] = adopted.Count.ToString();
                 break;
+            }
 
             case ValuationReportSectionKeys.SpecialAssumptions:
             {
@@ -716,7 +729,7 @@ public sealed class ValuationReportDocumentService(
             case ValuationReportSectionKeys.Terms:
             case ValuationReportSectionKeys.IvsStandards:
             case ValuationReportSectionKeys.Glossary:
-                d["body"] = ValuationReportFrozenTextLayers.ForSectionKey(key)
+                d["body"] = FrozenFromOrg(org, key)
                     + (complianceRestricted
                        && key == ValuationReportSectionKeys.ProfessionalStandards
                         ? " تنبيه: توجد قيود مؤثرة غير محسومة"
@@ -728,6 +741,25 @@ public sealed class ValuationReportDocumentService(
         }
 
         return d;
+    }
+
+    private static string FrozenFromOrg(OrganizationSettingsDto org, string key)
+    {
+        var vr = org.ValuationReport;
+        var saved = key switch
+        {
+            ValuationReportSectionKeys.KeyInputs => vr.KeyInputsText,
+            ValuationReportSectionKeys.ProfessionalStandards => vr.ProfessionalStandards,
+            ValuationReportSectionKeys.Independence => vr.Independence,
+            ValuationReportSectionKeys.ResearchScope => vr.ResearchScopeText,
+            ValuationReportSectionKeys.Restrictions => vr.Restrictions,
+            ValuationReportSectionKeys.Terms => vr.Terms,
+            ValuationReportSectionKeys.IvsStandards => vr.IvsStandards,
+            ValuationReportSectionKeys.Glossary => vr.Glossary,
+            _ => "",
+        };
+        return ValuationReportSettingsDefaults.Clip(
+            saved, ValuationReportSettingsDefaults.ForSectionKey(key));
     }
 
     private static string? FormatRestrictions(WorkOrderProperty? prop)
@@ -760,7 +792,7 @@ public sealed class ValuationReportDocumentService(
 
         if (bodyKind == ValuationReportSectionBodyKind.FrozenText)
         {
-            var frozen = ValuationReportFrozenTextLayers.ForSectionKey(key);
+            var frozen = ValuationReportSettingsDefaults.ForSectionKey(key);
             return string.IsNullOrWhiteSpace(frozen)
                 ? "نص ثابت (طبقة معيارية/قانونية) — يُجمَّد برقم نسخة عند الإصدار."
                 : frozen;

@@ -16,12 +16,12 @@ public sealed class ValuationReportWorkflowHandler
         PropertyNameCaseInsensitive = true,
     };
 
-    private readonly CaseStudyDbContext _db;
+    private readonly ICaseStudyRepository _db;
     private readonly IWorkflowTaskService _tasks;
     private readonly ILogger<ValuationReportWorkflowHandler> _logger;
 
     public ValuationReportWorkflowHandler(
-        CaseStudyDbContext db,
+        ICaseStudyRepository db,
         IWorkflowTaskService tasks,
         ILogger<ValuationReportWorkflowHandler> logger)
     {

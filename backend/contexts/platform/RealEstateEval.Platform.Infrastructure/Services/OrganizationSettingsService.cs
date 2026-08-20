@@ -118,6 +118,8 @@ public sealed class OrganizationSettingsService : IOrganizationSettingsService
         Branding = new OrganizationBrandingSettingsDto(),
         Communications = new OrganizationCommunicationsSettingsDto(),
         Sla = new OrganizationSlaSettingsDto(),
+        Valuation = new OrganizationValuationSettingsDto(),
+        ValuationReport = NormalizeValuationReport(new OrganizationValuationReportSettingsDto()),
         UpdatedAtUtc = _time.UtcNow(),
     };
 
@@ -277,16 +279,36 @@ public sealed class OrganizationSettingsService : IOrganizationSettingsService
             UpdatedAtUtc = _time.UtcNow(),
         };
 
- /// <summary>مكتبة الافتراضات: قص وإسقاط الفراغات والتكرار (حد 100 بند × 2000 حرف).</summary>
+    /// <summary>نصوص تقرير التقييم: فراغ ⟵ افتراضي القالب؛ قص الحقول الطويلة.</summary>
     private static OrganizationValuationReportSettingsDto NormalizeValuationReport(
         OrganizationValuationReportSettingsDto dto) => new()
     {
-        SpecialAssumptionLibrary = dto.SpecialAssumptionLibrary
-            .Select(x => (x ?? "").Trim())
-            .Where(x => x.Length is > 0 and <= 2000)
-            .Distinct(StringComparer.Ordinal)
-            .Take(100)
-            .ToList(),
+        ReportType = ValuationReportSettingsDefaults.Clip(dto.ReportType, ValuationReportSettingsDefaults.ReportType, 200),
+        Currency = ValuationReportSettingsDefaults.Clip(dto.Currency, ValuationReportSettingsDefaults.Currency, 200),
+        ValuationBranch = ValuationReportSettingsDefaults.Clip(
+            dto.ValuationBranch, ValuationReportSettingsDefaults.ValuationBranch, 200),
+        KeyInputsText = ValuationReportSettingsDefaults.Clip(
+            dto.KeyInputsText, ValuationReportSettingsDefaults.KeyInputsText),
+        ProfessionalStandards = ValuationReportSettingsDefaults.Clip(
+            dto.ProfessionalStandards, ValuationReportSettingsDefaults.ProfessionalStandards),
+        Independence = ValuationReportSettingsDefaults.Clip(
+            dto.Independence, ValuationReportSettingsDefaults.Independence),
+        ResearchScopeText = ValuationReportSettingsDefaults.Clip(
+            dto.ResearchScopeText, ValuationReportSettingsDefaults.ResearchScopeText),
+        Terms = ValuationReportSettingsDefaults.Clip(dto.Terms, ValuationReportSettingsDefaults.Terms),
+        Restrictions = ValuationReportSettingsDefaults.Clip(
+            dto.Restrictions, ValuationReportSettingsDefaults.Restrictions),
+        IvsStandards = ValuationReportSettingsDefaults.Clip(
+            dto.IvsStandards, ValuationReportSettingsDefaults.IvsStandards),
+        Glossary = ValuationReportSettingsDefaults.Clip(dto.Glossary, ValuationReportSettingsDefaults.Glossary),
+        FinishingLuxury = ValuationReportSettingsDefaults.Clip(
+            dto.FinishingLuxury, ValuationReportSettingsDefaults.FinishingLuxury),
+        FinishingMedium = ValuationReportSettingsDefaults.Clip(
+            dto.FinishingMedium, ValuationReportSettingsDefaults.FinishingMedium),
+        FinishingOrdinary = ValuationReportSettingsDefaults.Clip(
+            dto.FinishingOrdinary, ValuationReportSettingsDefaults.FinishingOrdinary),
+        SpecialAssumptionLibrary = ValuationReportSettingsDefaults.NormalizeLibrary(
+            dto.SpecialAssumptionLibrary).ToList(),
     };
 
     private static OrganizationCommunicationsSettingsDto MergeCommunications(

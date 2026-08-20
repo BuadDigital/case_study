@@ -1,28 +1,21 @@
-using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Options;
-using RealEstateEval.Application;
 using RealEstateEval.Application.Abstractions;
 using RealEstateEval.Application.Contracts;
 using RealEstateEval.Domain;
-using RealEstateEval.Infrastructure.Data;
-using RealEstateEval.Infrastructure.Data.Contexts;
 
-namespace RealEstateEval.Infrastructure.Services;
+namespace RealEstateEval.Application.Services;
 
-public class ClientService(CaseStudyDbContext db, IOptions<DatabaseOptions>? dbOptions = null,
-    TimeProvider? time = null) : IClientService
+public class ClientService(IClientRepository clients, TimeProvider? time = null) : IClientService
 {
     private readonly TimeProvider _time = time ?? TimeProvider.System;
 
-    private readonly DatabaseOptions _dbOptions = dbOptions?.Value ?? new DatabaseOptions();
     public async Task EnsureSeedClientsAsync(CancellationToken cancellationToken)
     {
         var now = _time.UtcNow();
         var added = false;
 
-        if (!await db.Clients.AnyAsync(c => c.Id == SeedClientIds.InfathAssignmentCenter, cancellationToken))
+        if (!await clients.ExistsAsync(SeedClientIds.InfathAssignmentCenter, cancellationToken))
         {
-            db.Clients.Add(new Client
+            clients.Add(new Client
             {
                 Id = SeedClientIds.InfathAssignmentCenter,
                 NameAr = "مركز الإسناد والتصفية (إنفاذ)",
@@ -34,9 +27,9 @@ public class ClientService(CaseStudyDbContext db, IOptions<DatabaseOptions>? dbO
             added = true;
         }
 
-        if (!await db.Clients.AnyAsync(c => c.Id == SeedClientIds.NabrRealEstate, cancellationToken))
+        if (!await clients.ExistsAsync(SeedClientIds.NabrRealEstate, cancellationToken))
         {
-            db.Clients.Add(new Client
+            clients.Add(new Client
             {
                 Id = SeedClientIds.NabrRealEstate,
                 NameAr = "شركة نبر العقارية",
@@ -49,7 +42,7 @@ public class ClientService(CaseStudyDbContext db, IOptions<DatabaseOptions>? dbO
         }
 
         if (added)
-            await db.SaveChangesAsync(cancellationToken);
+            await clients.SaveChangesAsync(cancellationToken);
     }
 
     public async Task<IReadOnlyList<ClientDto>> ListAsync(
@@ -57,18 +50,13 @@ public class ClientService(CaseStudyDbContext db, IOptions<DatabaseOptions>? dbO
         CancellationToken cancellationToken)
     {
         await EnsureSeedClientsAsync(cancellationToken);
-        var q = db.Clients.AsNoTracking().AsQueryable();
-        if (!includeInactive)
-            q = q.Where(c => c.IsActive);
-        var (_, take, _, _) = NpgsqlConfiguration.ResolveListPaging(null, null, _dbOptions);
-        var rows = await q.OrderBy(c => c.NameAr).Take(take).ToListAsync(cancellationToken);
+        var rows = await clients.ListAsync(includeInactive, cancellationToken);
         return rows.Select(ToDto).ToList();
     }
 
     public async Task<ClientDto?> GetAsync(Guid id, CancellationToken cancellationToken)
     {
-        var entity = await db.Clients.AsNoTracking()
-            .FirstOrDefaultAsync(c => c.Id == id, cancellationToken);
+        var entity = await clients.GetByIdAsync(id, track: false, cancellationToken);
         return entity is null ? null : ToDto(entity);
     }
 
@@ -92,8 +80,8 @@ public class ClientService(CaseStudyDbContext db, IOptions<DatabaseOptions>? dbO
             CreatedAtUtc = now,
             UpdatedAtUtc = now,
         };
-        db.Clients.Add(entity);
-        await db.SaveChangesAsync(cancellationToken);
+        clients.Add(entity);
+        await clients.SaveChangesAsync(cancellationToken);
         return (ToDto(entity), null);
     }
 
@@ -105,7 +93,7 @@ public class ClientService(CaseStudyDbContext db, IOptions<DatabaseOptions>? dbO
         var errors = Validate(request);
         if (errors.Count > 0) return (null, errors);
 
-        var entity = await db.Clients.FirstOrDefaultAsync(c => c.Id == id, cancellationToken);
+        var entity = await clients.GetByIdAsync(id, track: true, cancellationToken);
         if (entity is null)
             return (null, new Dictionary<string, string> { ["_"] = "العميل غير موجود" });
 
@@ -116,7 +104,7 @@ public class ClientService(CaseStudyDbContext db, IOptions<DatabaseOptions>? dbO
         entity.Email = Normalize(request.Email);
         entity.IsActive = request.IsActive;
         entity.UpdatedAtUtc = _time.UtcNow();
-        await db.SaveChangesAsync(cancellationToken);
+        await clients.SaveChangesAsync(cancellationToken);
         return (ToDto(entity), null);
     }
 
@@ -129,11 +117,11 @@ public class ClientService(CaseStudyDbContext db, IOptions<DatabaseOptions>? dbO
         if (id == SeedClientIds.NabrRealEstate)
             return (false, "لا يمكن تعطيل شركة نبر العقارية");
 
-        var entity = await db.Clients.FirstOrDefaultAsync(c => c.Id == id, cancellationToken);
+        var entity = await clients.GetByIdAsync(id, track: true, cancellationToken);
         if (entity is null) return (false, "العميل غير موجود");
         entity.IsActive = false;
         entity.UpdatedAtUtc = _time.UtcNow();
-        await db.SaveChangesAsync(cancellationToken);
+        await clients.SaveChangesAsync(cancellationToken);
         return (true, null);
     }
 

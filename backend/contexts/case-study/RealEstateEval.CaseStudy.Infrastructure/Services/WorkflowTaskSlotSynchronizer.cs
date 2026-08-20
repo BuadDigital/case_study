@@ -12,11 +12,11 @@ public sealed class WorkflowTaskSlotSynchronizer : IWorkflowTaskSlotSynchronizer
 {
     private const WorkflowTaskKind CaseStudyPropertyKind = WorkflowTaskKind.CaseStudyProperty;
 
-    private readonly CaseStudyDbContext _caseStudy;
+    private readonly ICaseStudyRepository _caseStudy;
     private readonly IWorkflowTaskQuery _query;
     private readonly TimeProvider _time;
 
-    public WorkflowTaskSlotSynchronizer(CaseStudyDbContext caseStudy, IWorkflowTaskQuery query,
+    public WorkflowTaskSlotSynchronizer(ICaseStudyRepository caseStudy, IWorkflowTaskQuery query,
         TimeProvider? time = null)
     {
         _time = time ?? TimeProvider.System;

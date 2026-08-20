@@ -17,13 +17,13 @@ namespace RealEstateEval.Infrastructure.Services;
 public sealed class PropertyGroupService : IPropertyGroupService
 {
     private const int MaxSuggestions = 10;
-    private readonly CaseStudyDbContext db;
+    private readonly ICaseStudyRepository db;
     private readonly IAuditLogWriter audit;
     private readonly IAuditLogAppend _auditLog;
     private readonly TimeProvider _time;
 
     public PropertyGroupService(
-        CaseStudyDbContext db,
+        ICaseStudyRepository db,
         PlatformDbContext platformDb,
         IAuditLogWriter audit,
         TimeProvider? time = null)
@@ -33,7 +33,7 @@ public sealed class PropertyGroupService : IPropertyGroupService
 
     [ActivatorUtilitiesConstructor]
     public PropertyGroupService(
-        CaseStudyDbContext db,
+        ICaseStudyRepository db,
         IAuditLogWriter audit,
         IAuditLogAppend auditLog,
         TimeProvider? time = null)

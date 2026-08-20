@@ -12,7 +12,7 @@ namespace RealEstateEval.Infrastructure.Services;
 /// Case-study stream shell patch (no inspector-fee side effects). Failures pure host uses this
 /// instead of the full <see cref="IWorkflowTaskService"/> graph, which still needs residual App fees.
 /// </summary>
-public sealed class WorkflowTaskShellPatcher(CaseStudyDbContext caseStudy,
+public sealed class WorkflowTaskShellPatcher(ICaseStudyRepository caseStudy,
     TimeProvider? time = null) : IWorkflowTaskShellPatcher
 {
     private readonly TimeProvider _time = time ?? TimeProvider.System;

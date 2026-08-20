@@ -251,12 +251,14 @@ internal static class TestInspectorFeeServiceFactory
         NotificationRecipientResolver recipients,
         IPartyFeePricingService pricing)
     {
-        var resolver = new InspectorFeeLedgerResolver(caseStudy, identity);
-        var writer = new InspectorFeeLedgerWriter(financial, caseStudy, pricing, resolver);
-        var summary = new InspectorFeeSummaryQuery(financial, caseStudy, identity, writer);
-        var transitions = new InspectorFeeTransitionApplier(financial, caseStudy);
+        var lookup = new CaseStudyLookup(caseStudy);
+        var resolver = new InspectorFeeLedgerResolver(lookup, new IdentityDirectory(identity));
+        var writer = new InspectorFeeLedgerWriter(financial, lookup, pricing, resolver);
+        var summary = new InspectorFeeSummaryQuery(financial, lookup, new IdentityDirectory(identity), writer);
+        var transitions = new InspectorFeeTransitionApplier(financial, lookup, new AuditLogWriter());
         return new InspectorFeeService(
-            caseStudy,
+            lookup,
+            new CaseStudyCommands(caseStudy),
             financial,
             notifications,
             recipients,

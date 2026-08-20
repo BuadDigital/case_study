@@ -187,6 +187,44 @@ export function createEmptyReportWorker(
   };
 }
 
+const WORKER_ROLES = new Set<string>(EVALUATOR_WORKER_ROLES);
+
+function asWorkerRole(value: unknown): EvaluatorReportWorkerRole | "" {
+  return typeof value === "string" && WORKER_ROLES.has(value)
+    ? (value as EvaluatorReportWorkerRole)
+    : "";
+}
+
+/** Fill missing/duplicate ids so worker cards can mount with unique React keys. */
+export function normalizeReportWorkers(
+  workers: unknown,
+): EvaluatorReportWorker[] {
+  if (!Array.isArray(workers) || workers.length === 0) {
+    return [createEmptyReportWorker("معد")];
+  }
+  const seen = new Set<string>();
+  return workers.map((raw, index) => {
+    const row = raw as Partial<EvaluatorReportWorker>;
+    let id = typeof row.id === "string" ? row.id.trim() : "";
+    if (!id || seen.has(id)) {
+      id = `w-${index}-${Math.random().toString(36).slice(2, 9)}`;
+    }
+    seen.add(id);
+    return {
+      id,
+      role: asWorkerRole(row.role),
+      name: typeof row.name === "string" ? row.name : "",
+      licenseNumber:
+        typeof row.licenseNumber === "string" ? row.licenseNumber : "",
+      licenseDate: typeof row.licenseDate === "string" ? row.licenseDate : "",
+      licenseFileName:
+        typeof row.licenseFileName === "string" && row.licenseFileName.trim()
+          ? row.licenseFileName
+          : null,
+    };
+  });
+}
+
 export function emptyChecklist(): EvaluatorChecklistAnswers {
   return {
     q_plan_match: null,

@@ -26,6 +26,10 @@ export function getCachedOrganizationBranding() {
   return cached?.branding ?? null;
 }
 
+export function getCachedOrganizationSettings(): OrganizationSettingsDto | null {
+  return cached;
+}
+
 export async function ensureOrganizationSettingsLoaded(): Promise<OrganizationSettingsDto | null> {
   if (cached) return cached;
   if (inflight) return inflight;

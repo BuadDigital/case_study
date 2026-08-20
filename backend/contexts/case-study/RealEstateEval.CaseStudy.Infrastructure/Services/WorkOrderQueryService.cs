@@ -1,4 +1,4 @@
-ï»¿using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
 using RealEstateEval.Application.Abstractions;
@@ -15,7 +15,7 @@ public sealed class WorkOrderQueryService : IWorkOrderQuery
     private const WorkflowTaskKind CaseStudyPropertyKind = WorkflowTaskKind.CaseStudyProperty;
     private const int MaxDetailRows = 500;
 
-    private readonly CaseStudyDbContext _db;
+    private readonly ICaseStudyRepository _db;
     private readonly IFailureLookup _failureLookup;
     private readonly IPoEnfazInvoiceLookup _enfazInvoices;
     private readonly IUserLabelLookup _labels;
@@ -25,7 +25,7 @@ public sealed class WorkOrderQueryService : IWorkOrderQuery
 
     [ActivatorUtilitiesConstructor]
     public WorkOrderQueryService(
-        CaseStudyDbContext db,
+        ICaseStudyRepository db,
         IFailureLookup failureLookup,
         IPoEnfazInvoiceLookup enfazInvoices,
         IUserLabelLookup labels,
@@ -230,8 +230,8 @@ public sealed class WorkOrderQueryService : IWorkOrderQuery
         CancellationToken cancellationToken)
     {
  // Only properties whose case-study task is currently in the bourse phase.
- // After revert to enfath, BourseDataCompleted stays false â€” without the phase
- // check the row would incorrectly remain on Ø§Ø³ØªØ¹Ù„Ø§Ù… Ø§Ù„Ø¨ÙˆØ±ØµØ©.
+ // After revert to enfath, BourseDataCompleted stays false — without the phase
+ // check the row would incorrectly remain on ÇÓÊÚáÇã ÇáÈæÑÕÉ.
         var list = await _db.WorkOrderProperties
             .AsNoTracking()
             .Include(p => p.WorkOrder)

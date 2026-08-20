@@ -19,16 +19,6 @@ public sealed class InspectorFeeSummaryQuery : IInspectorFeeSummaryQuery
     private readonly IInspectorFeeLedgerWriter _writer;
     private readonly TimeProvider _time;
 
-    public InspectorFeeSummaryQuery(
-        FinancialDbContext financial,
-        CaseStudyDbContext caseStudy,
-        IdentityDbContext identity,
-        IInspectorFeeLedgerWriter writer,
-        TimeProvider? time = null)
-        : this(financial, new CaseStudyLookup(caseStudy), new IdentityDirectory(identity), writer, time)
-    {
-    }
-
     [ActivatorUtilitiesConstructor]
     public InspectorFeeSummaryQuery(
         FinancialDbContext financial,

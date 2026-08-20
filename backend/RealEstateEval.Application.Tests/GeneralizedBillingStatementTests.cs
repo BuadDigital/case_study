@@ -414,7 +414,8 @@ public class GeneralizedBillingStatementTests
             new PartyFeePricingService(financial));
         return new(
             financial,
-            caseStudy,
+            new CaseStudyLookup(caseStudy),
+            new CaseStudyCommands(caseStudy),
             attachments,
             new NullNotificationService(),
             TestInspectorFeeServiceFactory.CreateRecipients(db),

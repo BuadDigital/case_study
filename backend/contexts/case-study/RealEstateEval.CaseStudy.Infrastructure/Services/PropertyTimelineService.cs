@@ -1,4 +1,4 @@
-ï»¿using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using RealEstateEval.Application;
 using RealEstateEval.Application.Abstractions;
@@ -12,13 +12,13 @@ public sealed class PropertyTimelineService : IPropertyTimelineService
 {
     private const int MaxTimelineRows = 500;
 
-    private readonly CaseStudyDbContext _caseStudy;
+    private readonly ICaseStudyRepository _caseStudy;
     private readonly IFailureLookup _failureLookup;
     private readonly TimeProvider _time;
 
     [ActivatorUtilitiesConstructor]
     public PropertyTimelineService(
-        CaseStudyDbContext caseStudy,
+        ICaseStudyRepository caseStudy,
         IFailureLookup failureLookup,
         TimeProvider? time = null)
     {
@@ -234,10 +234,10 @@ public sealed class PropertyTimelineService : IPropertyTimelineService
             poNumber,
             propertyId,
             "enfath",
-            "Ø§Ø³ØªÙ„Ø§Ù… Ù…Ù† Ø¥Ù†ÙØ§Ø°",
+            "ÇÓÊáÇã ãä ÅäİÇĞ",
             string.IsNullOrWhiteSpace(order.AssignmentSpecialist)
                 ? null
-                : $"Ø£Ø®ØµØ§Ø¦ÙŠ Ø§Ù„Ø¥Ø³Ù†Ø§Ø¯: {order.AssignmentSpecialist.Trim()}",
+                : $"ÃÎÕÇÆí ÇáÅÓäÇÏ: {order.AssignmentSpecialist.Trim()}",
             PropertyTimelineTones.Done,
             DateOnlyToUtc(order.ReceivedFromEnfathAt),
             recordedAt);
@@ -247,7 +247,7 @@ public sealed class PropertyTimelineService : IPropertyTimelineService
             poNumber,
             propertyId,
             "due",
-            "Ù…ÙˆØ¹Ø¯ Ø§Ù„Ø§Ø³ØªØ­Ù‚Ø§Ù‚",
+            "ãæÚÏ ÇáÇÓÊÍŞÇŞ",
             null,
             PropertyTimelineTones.Muted,
             DateOnlyToUtc(order.DueDateAt),
@@ -267,7 +267,7 @@ public sealed class PropertyTimelineService : IPropertyTimelineService
                 poNumber,
                 propertyId,
                 $"task:{parent.Id}:created",
-                "Ø¥Ù†Ø´Ø§Ø¡ Ù…Ù‡Ù…Ø© Ø§Ù„Ø¹Ù‚Ø§Ø±",
+                "ÅäÔÇÁ ãåãÉ ÇáÚŞÇÑ",
                 TaskPhaseLabel(parent.Phase),
                 parent.Status == WorkflowTaskStatus.Completed ? PropertyTimelineTones.Done : PropertyTimelineTones.Active,
                 parent.CreatedAtUtc,
@@ -277,7 +277,7 @@ public sealed class PropertyTimelineService : IPropertyTimelineService
             {
                 var bourseAt = property.BourseCompletedAtUtc ?? parent.CreatedAtUtc;
                 var location = string.Join(
-                    " Â· ",
+                    " · ",
                     new[] { property.City, property.District }
                         .Where(s => !string.IsNullOrWhiteSpace(s))
                         .Select(s => s.Trim()));
@@ -286,7 +286,7 @@ public sealed class PropertyTimelineService : IPropertyTimelineService
                     poNumber,
                     propertyId,
                     "property-bourse",
-                    "Ø¨ÙŠØ§Ù†Ø§Øª Ø§Ù„Ø¨ÙˆØ±ØµØ© Ù„Ù„Ø¹Ù‚Ø§Ø±",
+                    "ÈíÇäÇÊ ÇáÈæÑÕÉ ááÚŞÇÑ",
                     string.IsNullOrEmpty(location) ? null : location,
                     PropertyTimelineTones.Done,
                     bourseAt,
@@ -299,7 +299,7 @@ public sealed class PropertyTimelineService : IPropertyTimelineService
                         poNumber,
                         propertyId,
                         $"task:{parent.Id}:bourse-complete",
-                        "Ø§ÙƒØªÙ…Ø§Ù„ Ø§Ø³ØªØ¹Ù„Ø§Ù… Ø§Ù„Ø¨ÙˆØ±ØµØ©",
+                        "ÇßÊãÇá ÇÓÊÚáÇã ÇáÈæÑÕÉ",
                         null,
                         PropertyTimelineTones.Done,
                         bourseAt,
@@ -319,7 +319,7 @@ public sealed class PropertyTimelineService : IPropertyTimelineService
                     poNumber,
                     propertyId,
                     $"task:{parent.Id}:distribution",
-                    "ØªÙˆØ²ÙŠØ¹ Ø§Ù„Ù…Ø¹Ø§Ù…Ù„Ø©",
+                    "ÊæÒíÚ ÇáãÚÇãáÉ",
                     null,
                     distributionDone ? PropertyTimelineTones.Done : PropertyTimelineTones.Active,
                     distributionAt,
@@ -350,7 +350,7 @@ public sealed class PropertyTimelineService : IPropertyTimelineService
                     poNumber,
                     propertyId,
                     $"task:{parent.Id}:case-study",
-                    "Ø¯Ø±Ø§Ø³Ø© Ø­Ø§Ù„Ø© Ø§Ù„Ø¹Ù‚Ø§Ø±",
+                    "ÏÑÇÓÉ ÍÇáÉ ÇáÚŞÇÑ",
                     parent.AssigneeName,
                     IsCaseStudyComplete(parent) ? PropertyTimelineTones.Done : PropertyTimelineTones.Active,
                     caseStudyAt,
@@ -365,7 +365,7 @@ public sealed class PropertyTimelineService : IPropertyTimelineService
                     poNumber,
                     propertyId,
                     $"task:{parent.Id}:blocked",
-                    "ØªØ¹Ø°Ø± / Ø¥ÙŠÙ‚Ø§Ù",
+                    "ÊÚĞÑ / ÅíŞÇİ",
                     parent.ObstructionReason,
                     PropertyTimelineTones.Warn,
                     parent.UpdatedAtUtc,
@@ -416,7 +416,7 @@ public sealed class PropertyTimelineService : IPropertyTimelineService
                     poNumber,
                     propertyId,
                     $"case-study-form:{parent.Id}",
-                    "Ø¥Ø±Ø³Ø§Ù„ Ù†Ù…ÙˆØ°Ø¬ Ø¯Ø±Ø§Ø³Ø© Ø§Ù„Ø­Ø§Ù„Ø©",
+                    "ÅÑÓÇá äãæĞÌ ÏÑÇÓÉ ÇáÍÇáÉ",
                     null,
                     PropertyTimelineTones.Done,
                     formAt,
@@ -437,8 +437,8 @@ public sealed class PropertyTimelineService : IPropertyTimelineService
                 poNumber,
                 propertyId,
                 $"failure:{failureId}:created",
-                "ØªØ³Ø¬ÙŠÙ„ ØªØ¹Ø°Ø±",
-                $"{failure.Title} â€” {FailureStatusLabel(failure.Status)}",
+                "ÊÓÌíá ÊÚĞÑ",
+                $"{failure.Title} — {FailureStatusLabel(failure.Status)}",
                 PropertyTimelineTones.Warn,
                 createdAt,
                 recordedAt);
@@ -450,7 +450,7 @@ public sealed class PropertyTimelineService : IPropertyTimelineService
                     poNumber,
                     propertyId,
                     $"failure:{failureId}:suspended",
-                    "ØªØ¹Ù„ÙŠÙ‚ Ø§Ù„Ù…Ø¹Ø§Ù…Ù„Ø©",
+                    "ÊÚáíŞ ÇáãÚÇãáÉ",
                     string.IsNullOrWhiteSpace(failure.FinalNote)
                         ? failure.Specialist
                         : failure.FinalNote.Trim(),
@@ -518,42 +518,42 @@ public sealed class PropertyTimelineService : IPropertyTimelineService
 
     private static string TaskPhaseLabel(WorkflowTaskPhase phase) => phase switch
     {
-        WorkflowTaskPhase.Enfath => "Ø§Ù„Ø¨ÙŠØ§Ù†Ø§Øª Ø§Ù„Ø£ÙˆÙ„ÙŠØ© Ù„Ù„Ø¹Ù‚Ø§Ø±",
-        WorkflowTaskPhase.Bourse => "Ø§Ù„Ù…Ø±Ø­Ù„Ø© 2 â€” Ø¨ÙŠØ§Ù†Ø§Øª Ø§Ù„Ø¨ÙˆØ±ØµØ©",
-        WorkflowTaskPhase.Distribution => "Ø§Ù„Ù…Ø±Ø­Ù„Ø© 3 â€” ØªÙˆØ²ÙŠØ¹ Ø§Ù„Ø£Ø·Ø±Ø§Ù",
-        WorkflowTaskPhase.CaseStudy => "Ø¯Ø±Ø§Ø³Ø© Ø­Ø§Ù„Ø© Ø§Ù„Ø¹Ù‚Ø§Ø±",
-        WorkflowTaskPhase.Obstruction => "ØªØ¹Ø°Ø± â€” Ø¨Ø§Ù†ØªØ¸Ø§Ø± Ø§Ù„Ù…Ø´Ø±Ù",
-        _ => "Ù…ÙƒØªÙ…Ù„Ø©",
+        WorkflowTaskPhase.Enfath => "ÇáÈíÇäÇÊ ÇáÃæáíÉ ááÚŞÇÑ",
+        WorkflowTaskPhase.Bourse => "ÇáãÑÍáÉ 2 — ÈíÇäÇÊ ÇáÈæÑÕÉ",
+        WorkflowTaskPhase.Distribution => "ÇáãÑÍáÉ 3 — ÊæÒíÚ ÇáÃØÑÇİ",
+        WorkflowTaskPhase.CaseStudy => "ÏÑÇÓÉ ÍÇáÉ ÇáÚŞÇÑ",
+        WorkflowTaskPhase.Obstruction => "ÊÚĞÑ — ÈÇäÊÙÇÑ ÇáãÔÑİ",
+        _ => "ãßÊãáÉ",
     };
 
     private static string PartyAssignedTitle(WorkflowTaskKind kind) => kind switch
     {
-        WorkflowTaskKind.FieldInspection => "ØªØ¹ÙŠÙŠÙ† Ø§Ù„Ù…Ø¹Ø§ÙŠÙ† Ø§Ù„Ù…ÙŠØ¯Ø§Ù†ÙŠ",
-        WorkflowTaskKind.EngineeringSurvey => "ØªØ¹ÙŠÙŠÙ† Ø§Ù„Ù…ÙƒØªØ¨ Ø§Ù„Ù‡Ù†Ø¯Ø³ÙŠ",
-        WorkflowTaskKind.PropertyAppraisal => "ØªØ¹ÙŠÙŠÙ† Ø§Ù„Ù…Ù‚ÙŠÙ‘Ù… Ø§Ù„Ø¹Ù‚Ø§Ø±ÙŠ",
+        WorkflowTaskKind.FieldInspection => "ÊÚííä ÇáãÚÇíä ÇáãíÏÇäí",
+        WorkflowTaskKind.EngineeringSurvey => "ÊÚííä ÇáãßÊÈ ÇáåäÏÓí",
+        WorkflowTaskKind.PropertyAppraisal => "ÊÚííä ÇáãŞíøã ÇáÚŞÇÑí",
  // Legacy government-review child tasks (no longer spawned).
-        WorkflowTaskKind.GovernmentReview => "ØªØ¹ÙŠÙŠÙ† Ø§Ù„Ù…Ø±Ø§Ø¬Ø¹ Ø§Ù„Ø­ÙƒÙˆÙ…ÙŠ",
-        _ => "ØªØ¹ÙŠÙŠÙ† Ø·Ø±Ù",
+        WorkflowTaskKind.GovernmentReview => "ÊÚííä ÇáãÑÇÌÚ ÇáÍßæãí",
+        _ => "ÊÚííä ØÑİ",
     };
 
     private static string PartySubmittedTitle(string kind) => kind switch
     {
-        "field-inspection" => "Ø¥ØªÙ…Ø§Ù… Ø§Ù„Ù…Ø¹Ø§ÙŠÙ†Ø© Ø§Ù„Ù…ÙŠØ¯Ø§Ù†ÙŠØ©",
-        "engineering-survey" => "Ø¥ØªÙ…Ø§Ù… Ø§Ù„Ø±ÙØ¹ Ø§Ù„Ù…Ø³Ø§Ø­ÙŠ",
-        "property-appraisal" => "Ø¥ØªÙ…Ø§Ù… Ø§Ù„ØªÙ‚ÙŠÙŠÙ… Ø§Ù„Ø¹Ù‚Ø§Ø±ÙŠ",
+        "field-inspection" => "ÅÊãÇã ÇáãÚÇíäÉ ÇáãíÏÇäíÉ",
+        "engineering-survey" => "ÅÊãÇã ÇáÑİÚ ÇáãÓÇÍí",
+        "property-appraisal" => "ÅÊãÇã ÇáÊŞííã ÇáÚŞÇÑí",
  // Legacy government-review submissions (product surface removed).
-        "government-review" => "Ø¥ØªÙ…Ø§Ù… Ø§Ù„Ù…Ø±Ø§Ø¬Ø¹Ø© Ø§Ù„Ø­ÙƒÙˆÙ…ÙŠØ©",
-        _ => "Ø¥ØªÙ…Ø§Ù… Ø¹Ù…Ù„ Ø§Ù„Ø·Ø±Ù",
+        "government-review" => "ÅÊãÇã ÇáãÑÇÌÚÉ ÇáÍßæãíÉ",
+        _ => "ÅÊãÇã Úãá ÇáØÑİ",
     };
 
     private static string FailureStatusLabel(string status) => status switch
     {
-        PropertyFailureStatus.Internal => "Ø¯Ø§Ø®Ù„ÙŠ",
-        PropertyFailureStatus.Review => "Ù‚ÙŠØ¯ Ø§Ù„Ù…Ø±Ø§Ø¬Ø¹Ø©",
-        PropertyFailureStatus.Approved => "Ù…Ø¹ØªÙ…Ø¯",
-        PropertyFailureStatus.Returned => "Ù…ÙØ¹Ø§Ø¯",
-        PropertyFailureStatus.Resolved => "Ù…Ø­Ù„ÙˆÙ„",
-        PropertyFailureStatus.Suspended => "Ù…Ø¹Ù„Ù‚",
+        PropertyFailureStatus.Internal => "ÏÇÎáí",
+        PropertyFailureStatus.Review => "ŞíÏ ÇáãÑÇÌÚÉ",
+        PropertyFailureStatus.Approved => "ãÚÊãÏ",
+        PropertyFailureStatus.Returned => "ãõÚÇÏ",
+        PropertyFailureStatus.Resolved => "ãÍáæá",
+        PropertyFailureStatus.Suspended => "ãÚáŞ",
         _ => status,
     };
 }

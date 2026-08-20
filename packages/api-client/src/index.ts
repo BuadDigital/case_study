@@ -498,6 +498,7 @@ export {
   getOrganizationSettings,
   saveOrganizationSettings,
   testOrganizationCommunication,
+  emptyValuationReportSettings,
   type OrganizationBrandingSettings,
   type OrganizationCommunicationsSettings,
   type OrganizationCompanySettings,
@@ -508,6 +509,7 @@ export {
   type OrganizationSettingsDto,
   type OrganizationSettingsResult,
   type OrganizationSlaSettings,
+  type OrganizationValuationReportSettings,
   type SaveOrganizationSettingsRequest,
 } from "./organization-settings";
 

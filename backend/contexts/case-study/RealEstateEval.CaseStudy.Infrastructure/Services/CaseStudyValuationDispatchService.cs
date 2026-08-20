@@ -12,14 +12,14 @@ namespace RealEstateEval.Infrastructure.Services;
 
 public sealed class CaseStudyValuationDispatchService : ICaseStudyValuationDispatchService
 {
-    private readonly CaseStudyDbContext _db;
+    private readonly ICaseStudyRepository _db;
     private readonly IValuationRequestService _valuationRequests;
     private readonly IPropertyTimelineService _timeline;
     private readonly ILogger<CaseStudyValuationDispatchService> _logger;
     private readonly TimeProvider _time;
 
     public CaseStudyValuationDispatchService(
-        CaseStudyDbContext db,
+        ICaseStudyRepository db,
         IValuationRequestService valuationRequests,
         IPropertyTimelineService timeline,
         ILogger<CaseStudyValuationDispatchService> logger,

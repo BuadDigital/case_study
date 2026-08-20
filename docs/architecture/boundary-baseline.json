@@ -290,7 +290,7 @@
     "backend/contexts/case-study/RealEstateEval.CaseStudy.Infrastructure/Services/CaseStudyValuationDispatchService.cs": [
       "case_study"
     ],
-    "backend/contexts/case-study/RealEstateEval.CaseStudy.Infrastructure/Services/ClientService.cs": [
+    "backend/contexts/case-study/RealEstateEval.CaseStudy.Infrastructure/Persistence/ClientRepository.cs": [
       "case_study"
     ],
     "backend/contexts/case-study/RealEstateEval.CaseStudy.Infrastructure/Services/DashboardOpsMetricsQueryService.cs": [
@@ -305,7 +305,7 @@
     "backend/contexts/case-study/RealEstateEval.CaseStudy.Infrastructure/Services/PartyTaskSubmissionService.cs": [
       "case_study"
     ],
-    "backend/contexts/case-study/RealEstateEval.CaseStudy.Infrastructure/Services/PoIntakeDraftService.cs": [
+    "backend/contexts/case-study/RealEstateEval.CaseStudy.Infrastructure/Persistence/PoIntakeDraftRepository.cs": [
       "case_study"
     ],
     "backend/contexts/case-study/RealEstateEval.CaseStudy.Infrastructure/Services/PropertyGroupService.cs": [
@@ -529,7 +529,7 @@
     "CaseStudyValuationDispatchService": [
       "case-study"
     ],
-    "ClientService": [
+    "ClientRepository": [
       "case-study"
     ],
     "ComparablePropertyService": [
@@ -647,7 +647,7 @@
     "PoEnfazInvoiceLookup": [
       "financial"
     ],
-    "PoIntakeDraftService": [
+    "PoIntakeDraftRepository": [
       "case-study"
     ],
     "PropertyGroupService": [

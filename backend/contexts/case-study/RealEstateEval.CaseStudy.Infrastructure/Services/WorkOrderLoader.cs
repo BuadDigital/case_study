@@ -7,9 +7,9 @@ namespace RealEstateEval.Infrastructure.Services;
 
 public sealed class WorkOrderLoader : IWorkOrderLoader
 {
-    private readonly CaseStudyDbContext _db;
+    private readonly ICaseStudyRepository _db;
 
-    public WorkOrderLoader(CaseStudyDbContext db)
+    public WorkOrderLoader(ICaseStudyRepository db)
     {
         _db = db;
     }

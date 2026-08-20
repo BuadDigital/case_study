@@ -1,4 +1,4 @@
-ï»¿using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using RealEstateEval.Application;
 using RealEstateEval.Application.Abstractions;
@@ -12,7 +12,7 @@ namespace RealEstateEval.Infrastructure.Services;
 
 public sealed class WorkOrderPropertyCommands : IWorkOrderPropertyCommands
 {
-    private readonly CaseStudyDbContext _db;
+    private readonly ICaseStudyRepository _db;
     private readonly IFailureLookup _failureLookup;
     private readonly IUserLabelLookup _labels;
     private readonly IWorkOrderLoader _loader;
@@ -22,7 +22,7 @@ public sealed class WorkOrderPropertyCommands : IWorkOrderPropertyCommands
 
     [ActivatorUtilitiesConstructor]
     public WorkOrderPropertyCommands(
-        CaseStudyDbContext db,
+        ICaseStudyRepository db,
         IFailureLookup failureLookup,
         IUserLabelLookup labels,
         IWorkOrderLoader loader,
@@ -46,7 +46,7 @@ public sealed class WorkOrderPropertyCommands : IWorkOrderPropertyCommands
         CancellationToken cancellationToken)
     {
         var entity = await _loader.LoadAsync(poNumber, cancellationToken);
-        if (entity is null) return (null, new Dictionary<string, string> { ["_"] = "Ø£Ù…Ø± Ø§Ù„Ø¹Ù…Ù„ ØºÙŠØ± Ù…ÙˆØ¬ÙˆØ¯" });
+        if (entity is null) return (null, new Dictionary<string, string> { ["_"] = "ÃãÑ ÇáÚãá ÛíÑ ãæÌæÏ" });
 
         var errors = WorkOrderValidator.ValidatePropertyEnfath(
             property,
@@ -57,7 +57,7 @@ public sealed class WorkOrderPropertyCommands : IWorkOrderPropertyCommands
                 !p.IsRemoved && p.DeedNumber.Trim() == deed.Trim()));
         if (errors.Count > 0) return (null, errors);
 
- // Never trust client ids on insert â€” draft ids make EF emit UPDATE and fail with 0 rows.
+ // Never trust client ids on insert — draft ids make EF emit UPDATE and fail with 0 rows.
         property.Id = null;
 
         var mapped = MapPropertyEnfath(property, entity.Id, forInsert: true);
@@ -73,12 +73,12 @@ public sealed class WorkOrderPropertyCommands : IWorkOrderPropertyCommands
         CancellationToken cancellationToken)
     {
         var entity = await _loader.LoadAsync(poNumber, cancellationToken);
-        if (entity is null) return (null, new Dictionary<string, string> { ["_"] = "Ø£Ù…Ø± Ø§Ù„Ø¹Ù…Ù„ ØºÙŠØ± Ù…ÙˆØ¬ÙˆØ¯" });
+        if (entity is null) return (null, new Dictionary<string, string> { ["_"] = "ÃãÑ ÇáÚãá ÛíÑ ãæÌæÏ" });
 
         var existing = entity.Properties.FirstOrDefault(p => p.Id == propertyId);
-        if (existing is null) return (null, new Dictionary<string, string> { ["_"] = "Ø§Ù„Ø¹Ù‚Ø§Ø± ØºÙŠØ± Ù…ÙˆØ¬ÙˆØ¯" });
+        if (existing is null) return (null, new Dictionary<string, string> { ["_"] = "ÇáÚŞÇÑ ÛíÑ ãæÌæÏ" });
         if (existing.IsRemoved)
-            return (null, new Dictionary<string, string> { ["_"] = "Ù„Ø§ ÙŠÙ…ÙƒÙ† ØªØ¹Ø¯ÙŠÙ„ Ø¹Ù‚Ø§Ø± Ù…Ø­Ø°ÙˆÙ" });
+            return (null, new Dictionary<string, string> { ["_"] = "áÇ íãßä ÊÚÏíá ÚŞÇÑ ãÍĞæİ" });
 
         var previousLocationMapUrl = existing.LocationMapUrl;
 
@@ -135,7 +135,7 @@ public sealed class WorkOrderPropertyCommands : IWorkOrderPropertyCommands
             ApplyPropertyEnfath(existing, property);
         }
 
- // Never mix contact DELETE/INSERT with property UPDATE in one SaveChanges â€”
+ // Never mix contact DELETE/INSERT with property UPDATE in one SaveChanges —
  // EF/Npgsql rewrites collection replaces into DELETE+UPDATE and throws
  // DbUpdateConcurrencyException (0 rows). Detach contacts, save scalars, then
  // rewrite contacts with ExecuteDelete + insert.
@@ -153,8 +153,8 @@ public sealed class WorkOrderPropertyCommands : IWorkOrderPropertyCommands
             return (null, new Dictionary<string, string>
             {
                 ["_"] = string.IsNullOrEmpty(kinds)
-                    ? "ØªØ¹Ø°Ù‘Ø± Ø­ÙØ¸ Ø§Ù„Ø¹Ù‚Ø§Ø± â€” Ø£Ø¹Ø¯ ØªØ­Ù…ÙŠÙ„ Ø§Ù„ØµÙØ­Ø© ÙˆØ­Ø§ÙˆÙ„ Ù…Ø±Ø© Ø£Ø®Ø±Ù‰"
-                    : $"ØªØ¹Ø°Ù‘Ø± Ø­ÙØ¸ Ø§Ù„Ø¹Ù‚Ø§Ø± ({kinds}) â€” Ø£Ø¹Ø¯ ØªØ­Ù…ÙŠÙ„ Ø§Ù„ØµÙØ­Ø© ÙˆØ­Ø§ÙˆÙ„ Ù…Ø±Ø© Ø£Ø®Ø±Ù‰",
+                    ? "ÊÚĞøÑ ÍİÙ ÇáÚŞÇÑ — ÃÚÏ ÊÍãíá ÇáÕİÍÉ æÍÇæá ãÑÉ ÃÎÑì"
+                    : $"ÊÚĞøÑ ÍİÙ ÇáÚŞÇÑ ({kinds}) — ÃÚÏ ÊÍãíá ÇáÕİÍÉ æÍÇæá ãÑÉ ÃÎÑì",
             });
         }
         await ApplyDocumentarySideEffectsAfterPropertySaveAsync(
@@ -177,19 +177,19 @@ public sealed class WorkOrderPropertyCommands : IWorkOrderPropertyCommands
         CancellationToken cancellationToken)
     {
         var entity = await _loader.LoadAsync(poNumber, cancellationToken);
-        if (entity is null) return (null, new Dictionary<string, string> { ["_"] = "Ø£Ù…Ø± Ø§Ù„Ø¹Ù…Ù„ ØºÙŠØ± Ù…ÙˆØ¬ÙˆØ¯" });
+        if (entity is null) return (null, new Dictionary<string, string> { ["_"] = "ÃãÑ ÇáÚãá ÛíÑ ãæÌæÏ" });
 
         var existing = entity.Properties.FirstOrDefault(p => p.Id == propertyId);
-        if (existing is null) return (null, new Dictionary<string, string> { ["_"] = "Ø§Ù„Ø¹Ù‚Ø§Ø± ØºÙŠØ± Ù…ÙˆØ¬ÙˆØ¯" });
+        if (existing is null) return (null, new Dictionary<string, string> { ["_"] = "ÇáÚŞÇÑ ÛíÑ ãæÌæÏ" });
         if (existing.IsRemoved)
-            return (null, new Dictionary<string, string> { ["_"] = "Ù„Ø§ ÙŠÙ…ÙƒÙ† ØªØ¹Ø¯ÙŠÙ„ Ø¹Ù‚Ø§Ø± Ù…Ø­Ø°ÙˆÙ" });
+            return (null, new Dictionary<string, string> { ["_"] = "áÇ íãßä ÊÚÏíá ÚŞÇÑ ãÍĞæİ" });
 
         var trimmed = locationMapUrl?.Trim() ?? "";
         if (!string.IsNullOrEmpty(trimmed) && !DocumentaryWorkflowRules.HasLocationMapUrl(trimmed))
         {
             return (null, new Dictionary<string, string>
             {
-                ["locationMapUrl"] = "Ø±Ø§Ø¨Ø· Ø§Ù„Ù…ÙˆÙ‚Ø¹ ÙŠØ¬Ø¨ Ø£Ù† ÙŠØ¨Ø¯Ø£ Ø¨Ù€ http:// Ø£Ùˆ https://",
+                ["locationMapUrl"] = "ÑÇÈØ ÇáãæŞÚ íÌÈ Ãä íÈÏÃ ÈÜ http:// Ãæ https://",
             });
         }
 
@@ -212,12 +212,12 @@ public sealed class WorkOrderPropertyCommands : IWorkOrderPropertyCommands
         CancellationToken cancellationToken)
     {
         var entity = await _loader.LoadAsync(poNumber, cancellationToken);
-        if (entity is null) return (null, new Dictionary<string, string> { ["_"] = "Ø£Ù…Ø± Ø§Ù„Ø¹Ù…Ù„ ØºÙŠØ± Ù…ÙˆØ¬ÙˆØ¯" });
+        if (entity is null) return (null, new Dictionary<string, string> { ["_"] = "ÃãÑ ÇáÚãá ÛíÑ ãæÌæÏ" });
 
         var existing = entity.Properties.FirstOrDefault(p => p.Id == propertyId);
-        if (existing is null) return (null, new Dictionary<string, string> { ["_"] = "Ø§Ù„Ø¹Ù‚Ø§Ø± ØºÙŠØ± Ù…ÙˆØ¬ÙˆØ¯" });
+        if (existing is null) return (null, new Dictionary<string, string> { ["_"] = "ÇáÚŞÇÑ ÛíÑ ãæÌæÏ" });
         if (existing.IsRemoved)
-            return (null, new Dictionary<string, string> { ["_"] = "Ù„Ø§ ÙŠÙ…ÙƒÙ† ØªØ¹Ø¯ÙŠÙ„ Ø¹Ù‚Ø§Ø± Ù…Ø­Ø°ÙˆÙ" });
+            return (null, new Dictionary<string, string> { ["_"] = "áÇ íãßä ÊÚÏíá ÚŞÇÑ ãÍĞæİ" });
 
         var errors = WorkOrderValidator.ValidatePropertyBourse(request);
         if (errors.Count > 0) return (null, errors);
@@ -256,7 +256,7 @@ public sealed class WorkOrderPropertyCommands : IWorkOrderPropertyCommands
         if (request.OwnershipTypeIsManual)
         {
             if (!OwnershipTypes.IsKnown(request.OwnershipType))
-                return (null, new Dictionary<string, string> { ["ownershipType"] = "Ù†ÙˆØ¹ Ù…Ù„ÙƒÙŠØ© ØºÙŠØ± Ù…Ø¹Ø±ÙˆÙ" });
+                return (null, new Dictionary<string, string> { ["ownershipType"] = "äæÚ ãáßíÉ ÛíÑ ãÚÑæİ" });
             existing.OwnershipType = request.OwnershipType!.Trim().ToLowerInvariant();
             existing.OwnershipTypeIsManual = true;
         }
@@ -305,14 +305,14 @@ public sealed class WorkOrderPropertyCommands : IWorkOrderPropertyCommands
                 propertyId.ToString(),
                 existing.DeedNumber,
                 "unknown-boundaries",
-                "Ø¹Ø¯Ù… Ù…Ø¹Ø±ÙØ© Ø­Ø¯ÙˆØ¯ Ø§Ù„Ø¹Ù‚Ø§Ø±",
-                "ØªÙˆÙØ± Ø§Ù„Ø­Ø¯ÙˆØ¯ = ØºÙŠØ± Ù…ØªÙˆÙØ±Ø© Ø­Ø³Ø¨ Ø§Ø³ØªØ¹Ù„Ø§Ù… Ø§Ù„Ø¨ÙˆØ±ØµØ©.",
+                "ÚÏã ãÚÑİÉ ÍÏæÏ ÇáÚŞÇÑ",
+                "ÊæİÑ ÇáÍÏæÏ = ÛíÑ ãÊæİÑÉ ÍÓÈ ÇÓÊÚáÇã ÇáÈæÑÕÉ.",
                 specialist,
                 cancellationToken);
         }
 
         var location = string.Join(
-            " Â· ",
+            " · ",
             new[] { existing.City, existing.District }
                 .Where(s => !string.IsNullOrWhiteSpace(s))
                 .Select(s => s.Trim()));
@@ -320,7 +320,7 @@ public sealed class WorkOrderPropertyCommands : IWorkOrderPropertyCommands
             IWorkOrderLoader.NormalizePo(poNumber),
             propertyId,
             "property-bourse",
-            "Ø¨ÙŠØ§Ù†Ø§Øª Ø§Ù„Ø¨ÙˆØ±ØµØ© Ù„Ù„Ø¹Ù‚Ø§Ø±",
+            "ÈíÇäÇÊ ÇáÈæÑÕÉ ááÚŞÇÑ",
             string.IsNullOrEmpty(location) ? null : location,
             "done",
             bourseNow,
@@ -337,16 +337,16 @@ public sealed class WorkOrderPropertyCommands : IWorkOrderPropertyCommands
     {
         var trimmedReason = (reason ?? "").Trim();
         if (trimmedReason.Length == 0)
-            return (false, "Ø³Ø¨Ø¨ Ø§Ù„Ø­Ø°Ù Ù…Ø·Ù„ÙˆØ¨");
+            return (false, "ÓÈÈ ÇáÍĞİ ãØáæÈ");
         if (trimmedReason.Length > 500)
-            return (false, "Ø³Ø¨Ø¨ Ø§Ù„Ø­Ø°Ù Ø·ÙˆÙŠÙ„ Ø¬Ø¯Ø§Ù‹");
+            return (false, "ÓÈÈ ÇáÍĞİ Øæíá ÌÏÇğ");
 
         var entity = await _loader.LoadAsync(poNumber, cancellationToken);
-        if (entity is null) return (false, "Ø£Ù…Ø± Ø§Ù„Ø¹Ù…Ù„ ØºÙŠØ± Ù…ÙˆØ¬ÙˆØ¯");
+        if (entity is null) return (false, "ÃãÑ ÇáÚãá ÛíÑ ãæÌæÏ");
 
         var prop = entity.Properties.FirstOrDefault(p => p.Id == propertyId);
-        if (prop is null) return (false, "Ø§Ù„Ø¹Ù‚Ø§Ø± ØºÙŠØ± Ù…ÙˆØ¬ÙˆØ¯");
-        if (prop.IsRemoved) return (false, "Ø§Ù„Ø¹Ù‚Ø§Ø± Ù…Ø­Ø°ÙˆÙ Ù…Ø³Ø¨Ù‚Ø§Ù‹");
+        if (prop is null) return (false, "ÇáÚŞÇÑ ÛíÑ ãæÌæÏ");
+        if (prop.IsRemoved) return (false, "ÇáÚŞÇÑ ãÍĞæİ ãÓÈŞÇğ");
 
         prop.IsRemoved = true;
         prop.RemovalReason = trimmedReason;
@@ -380,7 +380,7 @@ public sealed class WorkOrderPropertyCommands : IWorkOrderPropertyCommands
         if (string.IsNullOrWhiteSpace(type)) return null;
         var seen = new HashSet<string>(StringComparer.Ordinal);
         var parts = new List<string>();
-        foreach (var raw in type.Split([',', 'ØŒ'], StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
+        foreach (var raw in type.Split([',', '¡'], StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
         {
             var v = raw.ToLowerInvariant();
             if (v is not ("mortgaged" or "seized" or "suspended" or "other")) continue;
@@ -398,7 +398,7 @@ public sealed class WorkOrderPropertyCommands : IWorkOrderPropertyCommands
         if (!string.Equals(present?.Trim(), "yes", StringComparison.OrdinalIgnoreCase))
             return null;
         var types = (type ?? "")
-            .Split([',', 'ØŒ'], StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            .Split([',', '¡'], StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
             .Select(t => t.ToLowerInvariant());
         if (!types.Contains("other"))
             return null;
@@ -609,8 +609,8 @@ public sealed class WorkOrderPropertyCommands : IWorkOrderPropertyCommands
                 propertyId,
                 property.DeedNumber,
                 "unknown-boundaries",
-                "Ø¹Ø¯Ù… Ù…Ø¹Ø±ÙØ© Ø­Ø¯ÙˆØ¯ Ø§Ù„Ø¹Ù‚Ø§Ø±",
-                "ØªÙˆÙØ± Ø§Ù„Ø­Ø¯ÙˆØ¯ = ØºÙŠØ± Ù…ØªÙˆÙØ±Ø© Ø­Ø³Ø¨ Ø§Ø³ØªØ¹Ù„Ø§Ù… Ø§Ù„Ø¨ÙˆØ±ØµØ©.",
+                "ÚÏã ãÚÑİÉ ÍÏæÏ ÇáÚŞÇÑ",
+                "ÊæİÑ ÇáÍÏæÏ = ÛíÑ ãÊæİÑÉ ÍÓÈ ÇÓÊÚáÇã ÇáÈæÑÕÉ.",
                 specialist,
                 cancellationToken);
         }
@@ -628,8 +628,8 @@ public sealed class WorkOrderPropertyCommands : IWorkOrderPropertyCommands
                 propertyId,
                 property.DeedNumber,
                 "unknown-location",
-                "Ø¹Ø¯Ù… Ù…Ø¹Ø±ÙØ© Ù…ÙˆÙ‚Ø¹ Ø§Ù„Ø¹Ù‚Ø§Ø±",
-                "ØªÙ… Ù…Ø³Ø­ Ø±Ø§Ø¨Ø· Ù…ÙˆÙ‚Ø¹ Ø§Ù„Ø®Ø±ÙŠØ·Ø© Ù„Ø¹Ù‚Ø§Ø± ÙÙŠ Ù…Ù†Ø·Ù‚Ø© Ø¹Ø´ÙˆØ§Ø¦ÙŠØ©.",
+                "ÚÏã ãÚÑİÉ ãæŞÚ ÇáÚŞÇÑ",
+                "Êã ãÓÍ ÑÇÈØ ãæŞÚ ÇáÎÑíØÉ áÚŞÇÑ İí ãäØŞÉ ÚÔæÇÆíÉ.",
                 specialist,
                 cancellationToken);
         }
@@ -661,8 +661,8 @@ public sealed class WorkOrderPropertyCommands : IWorkOrderPropertyCommands
                 id,
                 new ResolveFailureRequest
                 {
-                    ResolutionReason = "ØªÙ… ØªØ²ÙˆÙŠØ¯ Ø±Ø§Ø¨Ø· Ù…ÙˆÙ‚Ø¹ Ø§Ù„Ø®Ø±ÙŠØ·Ø©.",
-                    ContinueInstructions = "ÙŠÙ…ÙƒÙ† Ø§Ø³ØªØ¦Ù†Ø§Ù Ø§Ù„Ø¹Ù…Ù„ Ø¹Ù„Ù‰ Ø§Ù„Ø¹Ù‚Ø§Ø±.",
+                    ResolutionReason = "Êã ÊÒæíÏ ÑÇÈØ ãæŞÚ ÇáÎÑíØÉ.",
+                    ContinueInstructions = "íãßä ÇÓÊÆäÇİ ÇáÚãá Úáì ÇáÚŞÇÑ.",
                 },
                 cancellationToken);
         }
