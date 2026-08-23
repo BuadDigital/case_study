@@ -89,21 +89,6 @@ export function validateEvaluatorSubmission(input: {
       "أكّد مراجعة بيانات الأصل، أو دوّن ملاحظات التباين إن وُجدت.";
   }
 
-  if (!input.independenceDeclared) {
-    errors.independence_declared =
-      "يجب تأكيد إقرار الاستقلالية وعدم تضارب المصالح.";
-  }
-
-  const namedWorkers = (input.reportWorkers ?? []).filter((worker) =>
-    worker.name.trim(),
-  );
-  if (namedWorkers.length === 0) {
-    errors.report_workers =
-      "أضف عاملاً واحداً على الأقل على التقرير (الدور والاسم).";
-  } else if (namedWorkers.some((worker) => !worker.role)) {
-    errors.report_workers = "حدد دور كل عامل على التقرير (معد / مراجع / معتمد).";
-  }
-
   return errors;
 }
 

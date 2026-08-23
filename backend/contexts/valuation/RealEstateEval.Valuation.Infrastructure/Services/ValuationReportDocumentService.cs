@@ -421,8 +421,16 @@ public sealed class ValuationReportDocumentService(
         inspector ??= new InspectorPayloadFacts();
         var d = new Dictionary<string, string?>(StringComparer.Ordinal);
         var adopted = (market?.Items ?? []).Where(i => i.IsAdopted).OrderBy(i => i.SortOrder).ToList();
-        var basisLabel = assignmentType is { } assignedType ? AssignmentValuationDefaults.BasisOfValueLabelAr(assignedType) : string.IsNullOrWhiteSpace(recon?.BasisOfValueLabelAr) ? BasisOfValueKeys.LabelAr(recon?.BasisOfValueKey ?? BasisOfValueKeys.Market) : recon!.BasisOfValueLabelAr;
-        var premiseLabel = recon?.ValuePremiseLabelAr;
+        var basisLabel = !string.IsNullOrWhiteSpace(recon?.BasisOfValueLabelAr)
+            ? recon!.BasisOfValueLabelAr
+            : assignmentType is { } assignedType
+                ? AssignmentValuationDefaults.BasisOfValueLabelAr(assignedType)
+                : BasisOfValueKeys.LabelAr(recon?.BasisOfValueKey ?? BasisOfValueKeys.Market);
+        var premiseLabel = !string.IsNullOrWhiteSpace(recon?.ValuePremiseLabelAr)
+            ? recon!.ValuePremiseLabelAr
+            : assignmentType is { } assignedPremiseType
+                ? AssignmentValuationDefaults.PremiseLabelAr(assignedPremiseType)
+                : ValuePremiseKeys.LabelAr(recon?.ValuePremiseKey);
 
         switch (key)
         {

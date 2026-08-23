@@ -8,6 +8,7 @@ export const INFATH_FIELD_LABELS = {
   reportIssueDate: "تاريخ إصدار التقرير",
   reportNumber: "رقم التقرير",
   valueBasis: "أساس القيمة",
+  valuePremise: "فرضية القيمة",
   assetSubject: "الأصل محل التقييم",
   facade: "الواجهة",
   streetWidth: "عرض الشارع (م)",

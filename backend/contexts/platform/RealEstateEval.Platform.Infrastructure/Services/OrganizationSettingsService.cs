@@ -107,7 +107,7 @@ public sealed class OrganizationSettingsService : IOrganizationSettingsService
         static void Mm(decimal? v, string name, decimal max)
         {
             if (v is null) return;
-            if (v.Value is < 0 or > max)
+            if (v.Value < 0 || v.Value > max)
                 throw new ArgumentOutOfRangeException(name, $"قيمة {name} خارج النطاق.");
         }
 

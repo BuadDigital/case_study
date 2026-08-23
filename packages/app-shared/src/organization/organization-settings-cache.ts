@@ -30,7 +30,13 @@ export function getCachedOrganizationSettings(): OrganizationSettingsDto | null 
   return cached;
 }
 
-export async function ensureOrganizationSettingsLoaded(): Promise<OrganizationSettingsDto | null> {
+export async function ensureOrganizationSettingsLoaded(
+  options?: { force?: boolean },
+): Promise<OrganizationSettingsDto | null> {
+  if (options?.force) {
+    cached = null;
+    inflight = null;
+  }
   if (cached) return cached;
   if (inflight) return inflight;
 

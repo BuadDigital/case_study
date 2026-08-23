@@ -72,7 +72,7 @@ export function deedStatusStyle(deedStatus: string): StatusPillStyle {
 
 export function PpHead({ children }: { children: ReactNode }) {
   return (
-    <div className="mb-[18px] rounded-[14px] border border-border bg-surface px-[22px] py-[18px] shadow-card">
+    <div className="relative mb-[18px] rounded-[14px] border border-border bg-surface px-[22px] py-[18px] shadow-card">
       {children}
     </div>
   );

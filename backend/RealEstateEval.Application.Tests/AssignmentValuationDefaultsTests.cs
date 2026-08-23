@@ -29,4 +29,17 @@ public class AssignmentValuationDefaultsTests
         Assert.Equal(key, AssignmentValuationDefaults.BasisOfValueKey(type));
         Assert.Equal(label, AssignmentValuationDefaults.BasisOfValueLabelAr(type));
     }
+
+    [Theory]
+    [InlineData(AssignmentType.Execution, "orderly", "التصفية المنظمة")]
+    [InlineData(AssignmentType.Estates, "orderly", "التصفية المنظمة")]
+    [InlineData(AssignmentType.PrivateSector, "current", "الاستخدام الحالي")]
+    public void Premise_follows_basis_of_assignment(
+        AssignmentType type,
+        string key,
+        string label)
+    {
+        Assert.Equal(key, AssignmentValuationDefaults.PremiseKey(type));
+        Assert.Equal(label, AssignmentValuationDefaults.PremiseLabelAr(type));
+    }
 }

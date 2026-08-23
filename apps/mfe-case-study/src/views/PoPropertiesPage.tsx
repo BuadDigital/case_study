@@ -45,7 +45,7 @@ import {
   hasBourseDetailFields,
   isPastDue,
 } from "../lib/prototype/po-intake-data";
-import { poPropertyPath, poListPath } from "../lib/po-routes";
+import { poHeaderEditPath, poPropertyPath, poListPath } from "../lib/po-routes";
 import { buildCopyPriorTargetOptions } from "../lib/prototype/po-intake-storage";
 import {
   buildPoPropertiesRowMoreItems,
@@ -58,6 +58,7 @@ import {
   useWorkflowTasksQuery,
 } from "@case-study/mfe/query/case-study-queries";
 import {
+  canEditPoHeader,
   canEditProperty,
   canRaisePropertyFailure,
   canViewPoEye,
@@ -108,6 +109,7 @@ export function PoPropertiesPage({
   const queryClient = useQueryClient();
   const { role } = usePrototype();
   const showEdit = canEditProperty(role);
+  const showHeaderEdit = canEditPoHeader(role) || showEdit;
   const showFailureRaise = canRaisePropertyFailure(role);
   const showEye = canViewPoEye(role);
   const showRowMenu =
@@ -234,6 +236,21 @@ export function PoPropertiesPage({
   return (
     <div className="min-h-0 flex-1 overflow-y-auto bg-bg px-4 py-5 max-lg:px-3 sm:px-[30px] sm:py-[26px]">
       <PpHead>
+        {showHeaderEdit ? (
+          <div className="absolute left-3 top-3 z-10">
+            <RowMoreMenu
+              ariaLabel="إجراءات أمر العمل"
+              items={[
+                {
+                  id: "edit-po-header",
+                  label: "تعديل أمر العمل",
+                  onClick: () =>
+                    router.push(poHeaderEditPath(record.poNumber)),
+                },
+              ]}
+            />
+          </div>
+        ) : null}
         <PpTitle>
           <span>عقارات</span>
           <PpPo>

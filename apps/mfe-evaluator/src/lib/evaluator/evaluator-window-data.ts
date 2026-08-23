@@ -1,5 +1,8 @@
 import {
+  basisOfValueKeyForAssignment,
   basisOfValueLabelArForAssignment,
+  defaultPremiseKeyForBasis,
+  valuationPurposeKeyForAssignment,
   VALUE_BASIS_OPTIONS,
 } from "@platform/app-shared/prototype/assignment-valuation-defaults";
 
@@ -100,6 +103,26 @@ const EMPTY_ESG: EvaluatorEsgGroup = {
   selected: [],
   notes: "",
 };
+
+export { defaultPremiseKeyForBasis };
+
+export function seedReportChoicesFromAssignment(
+  assignmentType?: string | null,
+  subClientId?: string | null,
+  existing?: EvaluatorReportChoices | null,
+): EvaluatorReportChoices {
+  const base = existing ?? emptyReportChoices();
+  const purposeKey = valuationPurposeKeyForAssignment(
+    assignmentType,
+    subClientId,
+  );
+  const valueBasisKey = basisOfValueKeyForAssignment(
+    assignmentType,
+    subClientId,
+  );
+  const premiseKey = defaultPremiseKeyForBasis(valueBasisKey);
+  return { ...base, purposeKey, valueBasisKey, premiseKey };
+}
 
 export function emptyReportChoices(): EvaluatorReportChoices {
   return {
@@ -372,7 +395,7 @@ export function createEvaluatorDraft(input: {
     reportWorkers: [createEmptyReportWorker("معد")],
     assetDataConfirmed: false,
     assetDataVarianceNotes: "",
-    reportChoices: emptyReportChoices(),
+    reportChoices: seedReportChoicesFromAssignment(assignmentType),
     submittedAtUtc: null,
     updatedAtUtc: now,
   };

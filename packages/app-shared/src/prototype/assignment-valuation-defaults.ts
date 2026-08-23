@@ -29,6 +29,13 @@ export const VALUE_BASIS_OPTIONS: ValuationSelectOption[] = [
   { value: "fair_statutory", label: "القيمة العادلة (القانونية/التشريعية)" },
 ];
 
+export const VALUE_PREMISE_OPTIONS: ValuationSelectOption[] = [
+  { value: "hau", label: "أعلى وأفضل استخدام" },
+  { value: "current", label: "الاستخدام الحالي" },
+  { value: "orderly", label: "التصفية المنظمة" },
+  { value: "forced", label: "البيع القسري" },
+];
+
 export function isPrivateAssignment(type: string | null | undefined): boolean {
   const t = (type ?? "").trim();
   return t === "قطاع خاص" || t === "خاص";
@@ -39,16 +46,14 @@ export function isNabrClientId(id: string | null | undefined): boolean {
 }
 
 /**
- * Infath + Nabr (خاص): بيع / قيمة سوقية.
- * تنفيذ بدون نبر: مزاد تصفية / قيمة تصفية.
+ * خاص: بيع / قيمة سوقية (بما فيها إنفاذ + نبر).
+ * تنفيذ / تركات: مزاد تصفية / قيمة تصفية.
  */
 export function usesNabrSaleMarketDefaults(
   assignmentType: string | null | undefined,
-  subClientId?: string | null,
+  _subClientId?: string | null,
 ): boolean {
-  if (!isPrivateAssignment(assignmentType)) return false;
-  const sub = (subClientId ?? "").trim();
-  return !sub || isNabrClientId(sub);
+  return isPrivateAssignment(assignmentType);
 }
 
 export function valuationPurposeKeyForAssignment(
@@ -85,4 +90,23 @@ export function basisOfValueLabelArForAssignment(
   return usesNabrSaleMarketDefaults(type, subClientId)
     ? "القيمة السوقية"
     : "قيمة التصفية";
+}
+
+export function defaultPremiseKeyForBasis(valueBasisKey: string): string {
+  return valueBasisKey === "liquidation" ? "orderly" : "current";
+}
+
+export function valuePremiseKeyForAssignment(
+  type: string | null | undefined,
+  subClientId?: string | null,
+): string {
+  return defaultPremiseKeyForBasis(basisOfValueKeyForAssignment(type, subClientId));
+}
+
+export function valuePremiseLabelArForAssignment(
+  type: string | null | undefined,
+  subClientId?: string | null,
+): string {
+  const key = valuePremiseKeyForAssignment(type, subClientId);
+  return VALUE_PREMISE_OPTIONS.find((o) => o.value === key)?.label ?? "";
 }

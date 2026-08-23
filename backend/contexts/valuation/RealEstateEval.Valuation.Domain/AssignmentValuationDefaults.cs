@@ -1,8 +1,8 @@
 namespace RealEstateEval.Domain;
 
 /// <summary>
-/// الغرض من التقييم وأساس القيمة يُشتقّان من التصنيف الأساسي لأمر العمل
-/// (خاص → بيع / قيمة سوقية، وإلا → مزاد تصفية / قيمة تصفية).
+/// الغرض من التقييم وأساس القيمة وفرضية القيمة تُشتق من التصنيف الأساسي لأمر العمل
+/// (خاص → بيع / قيمة سوقية / استخدام حالي، وإلا → مزاد تصفية / قيمة تصفية / تصفية منظمة).
 /// </summary>
 public static class AssignmentValuationDefaults
 {
@@ -24,4 +24,12 @@ public static class AssignmentValuationDefaults
 
     public static string BasisOfValueLabelAr(AssignmentType type) =>
         BasisOfValueKeys.LabelAr(BasisOfValueKey(type));
+
+    public static string PremiseKey(AssignmentType type) =>
+        string.Equals(BasisOfValueKey(type), BasisOfValueKeys.Liquidation, StringComparison.Ordinal)
+            ? ValuePremiseKeys.Orderly
+            : ValuePremiseKeys.CurrentUse;
+
+    public static string PremiseLabelAr(AssignmentType type) =>
+        ValuePremiseKeys.LabelAr(PremiseKey(type));
 }

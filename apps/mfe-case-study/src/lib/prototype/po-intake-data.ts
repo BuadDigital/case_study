@@ -5,6 +5,8 @@ import {
   basisOfValueLabelArForAssignment,
   valuationPurposeKeyForAssignment,
   valuationPurposeLabelArForAssignment,
+  valuePremiseKeyForAssignment,
+  valuePremiseLabelArForAssignment,
 } from "@platform/app-shared/prototype/assignment-valuation-defaults";
 import { getCachedOrganizationSla } from "@platform/app-shared/organization/organization-settings-cache";
 import {
@@ -161,6 +163,19 @@ export function basisOfValueForAssignment(
   return {
     key: basisOfValueKeyForAssignment(type, subClientId),
     label: basisOfValueLabelArForAssignment(type, subClientId),
+  };
+}
+
+export function valuePremiseForAssignment(
+  type: AssignmentType,
+  subClientId?: string,
+): {
+  key: string;
+  label: string;
+} {
+  return {
+    key: valuePremiseKeyForAssignment(type, subClientId),
+    label: valuePremiseLabelArForAssignment(type, subClientId),
   };
 }
 

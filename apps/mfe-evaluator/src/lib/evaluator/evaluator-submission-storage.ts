@@ -11,10 +11,12 @@ import { dispatchPartySubmissionChanged } from "@platform/app-shared/prototype/p
 import { dispatchWorkflowSubmitted, EVALUATOR_SUBMITTED_EVENT } from "@platform/app-shared/prototype/party-workflow-events";
 import { loadPartyCaseStudyFormDraft } from "@case-study/mfe";
 import { mergeEvaluatorChecklistFromCaseStudy } from "./evaluator-checklist-case-study-sync";
+import { basisOfValueLabelArForAssignment } from "@platform/app-shared/prototype/assignment-valuation-defaults";
 import {
   createEvaluatorDraft,
   normalizeReportChoices,
   normalizeReportWorkers,
+  seedReportChoicesFromAssignment,
   type EvaluatorSubmission,
   type EvaluatorSubmissionStatus,
 } from "./evaluator-window-data";
@@ -44,6 +46,7 @@ function notifyEvaluatorSubmissionChanged(): void {
 
 function dtoToSubmission(
   dto: ReturnType<typeof getCachedPartySubmission>,
+  assignmentType?: string,
 ): EvaluatorSubmission | null {
   if (!dto) return null;
   const payload = payloadFromDto<EvaluatorSubmission>(dto);
@@ -51,6 +54,7 @@ function dtoToSubmission(
     taskId: dto.taskId,
     propertyId: payload.propertyId ?? dto.propertyId ?? "",
     poNumber: payload.poNumber ?? dto.poNumber ?? "",
+    assignmentType,
   });
   return {
     ...base,
@@ -68,7 +72,16 @@ function dtoToSubmission(
       typeof payload.assetDataVarianceNotes === "string"
         ? payload.assetDataVarianceNotes
         : base.assetDataVarianceNotes,
-    reportChoices: normalizeReportChoices(payload.reportChoices),
+    reportChoices: seedReportChoicesFromAssignment(
+      assignmentType,
+      undefined,
+      normalizeReportChoices(payload.reportChoices),
+    ),
+    valueBasis: assignmentType
+      ? basisOfValueLabelArForAssignment(assignmentType)
+      : typeof payload.valueBasis === "string" && payload.valueBasis.trim()
+        ? payload.valueBasis
+        : base.valueBasis,
     depositCode:
       typeof payload.depositCode === "string" ? payload.depositCode : base.depositCode,
     depositCertificateFileName: payload.depositCertificateFileName ?? null,
@@ -119,7 +132,10 @@ export async function hydrateEvaluatorSubmission(input: {
   poNumber: string;
   assignmentType?: string;
 }): Promise<EvaluatorSubmission> {
-  const existing = await fetchEvaluatorSubmission(input.taskId);
+  const existing = dtoToSubmission(
+    await fetchPartySubmission(input.taskId),
+    input.assignmentType,
+  );
   const draft = existing ?? createEvaluatorDraft(input);
   if (!existing) {
     const saved = await saveEvaluatorSubmission(draft);

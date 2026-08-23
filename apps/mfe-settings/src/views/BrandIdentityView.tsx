@@ -115,23 +115,38 @@ export function BrandIdentityView() {
   }, [reload]);
 
   useEffect(() => {
-    if (!lhZoom) return;
+    if (!lhZoom) {
+      setLhPan(false);
+      return;
+    }
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+
+    const typing = (target: EventTarget | null) => {
+      if (!(target instanceof HTMLElement)) return false;
+      const tag = target.tagName;
+      return tag === "INPUT" || tag === "TEXTAREA" || target.isContentEditable;
+    };
+
     const down = (e: KeyboardEvent) => {
-      if (e.code === "Space" && !lhPan) {
-        e.preventDefault();
-        setLhPan(true);
-      }
+      if (e.code !== "Space" || typing(e.target)) return;
+      e.preventDefault();
+      if (!e.repeat) setLhPan(true);
     };
     const up = (e: KeyboardEvent) => {
-      if (e.code === "Space") setLhPan(false);
+      if (e.code !== "Space" || typing(e.target)) return;
+      e.preventDefault();
+      setLhPan(false);
     };
-    window.addEventListener("keydown", down);
-    window.addEventListener("keyup", up);
+
+    window.addEventListener("keydown", down, { capture: true });
+    window.addEventListener("keyup", up, { capture: true });
     return () => {
-      window.removeEventListener("keydown", down);
-      window.removeEventListener("keyup", up);
+      document.body.style.overflow = prevOverflow;
+      window.removeEventListener("keydown", down, { capture: true });
+      window.removeEventListener("keyup", up, { capture: true });
     };
-  }, [lhZoom, lhPan]);
+  }, [lhZoom]);
 
   async function persist(
     next: OrganizationBrandingSettings,
@@ -785,7 +800,13 @@ export function BrandIdentityView() {
                 الصفحة بالحجم الطبيعي <span>A4</span>. اسحب الشريط الذهبي أو اكتب القيمة، واضغط{" "}
                 <strong>مسافة</strong> مع السحب لتحريك الصفحة.
               </p>
-              <Button variant="primary" onClick={() => setLhZoom(false)}>
+              <Button
+                variant="primary"
+                onClick={() => {
+                  setLhPan(false);
+                  setLhZoom(false);
+                }}
+              >
                 تم
               </Button>
             </div>

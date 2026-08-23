@@ -3,11 +3,14 @@
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
 import {
   applyIvsDateToStandards,
+  BRAND_IDENTITY_DEFAULTS,
   CERTIFIED_VALUER_HTML_DEFAULTS,
   getApiBase,
   getValuationLists,
+  listClients,
   VALUATION_REPORT_HTML_DEFAULTS as REPORT_DEFAULTS,
   VALUER_MEMBERSHIP_CATEGORIES,
+  type ClientDto,
   type OrganizationSettingsDto,
   type OrganizationValuerRosterEntry,
   type ValuationListItemDto,
@@ -18,13 +21,29 @@ import { ensureOrganizationSettingsLoaded } from "@platform/app-shared/organizat
 import { fetchInspectorWorkspace } from "@case-study/mfe/lib/prototype/inspector-workspace-storage";
 import type { InspectorWorkspaceDraft } from "@case-study/mfe/lib/prototype/inspector-workspace-data";
 import type { PoPropertyIntake } from "@case-study/mfe/lib/prototype/po-intake-data";
+import {
+  subClientIdFromReportUsers,
+  valuationPurposeForAssignment,
+} from "@case-study/mfe/lib/prototype/po-intake-data";
 import { usePoRecordQuery } from "@case-study/mfe/query/case-study-queries";
 import { Spinner } from "@platform/ui-kit";
 import type {
   EvaluatorReportChoices,
   EvaluatorSubmission,
 } from "../../lib/evaluator/evaluator-window-data";
-import { emptyReportChoices } from "../../lib/evaluator/evaluator-window-data";
+import {
+  emptyReportChoices,
+  seedReportChoicesFromAssignment,
+} from "../../lib/evaluator/evaluator-window-data";
+import { basisOfValueLabelArForAssignment } from "@platform/app-shared/prototype/assignment-valuation-defaults";
+import {
+  assignmentValuationFromPo,
+  formatValuationReportUsers,
+  ownershipTypeDisplay,
+  labelForBasisKey,
+  labelForPremiseKey,
+  labelForPurposeKey,
+} from "../../lib/evaluator/valuation-report-live-fill";
 import "./professional-valuation-report.css";
 
 const UNUSED = "__unused__";
@@ -40,9 +59,14 @@ const ESG_GOV = [
   "مقومات تشغيل العقار",
 ];
 
-function filled(value: string | null | undefined, fallback = "—"): string {
+function filled(
+  value: string | null | undefined,
+  fallback: string | null | undefined = "—",
+): string {
   const t = (value ?? "").trim();
-  return t || fallback;
+  if (t) return t;
+  const f = (fallback ?? "").trim();
+  return f || "—";
 }
 
 function memLabel(value: string | null | undefined): string {
@@ -56,6 +80,32 @@ function slashDate(iso: string | null | undefined): string {
   if (!iso) return "—";
   const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(iso);
   return m ? `${m[1]}/${m[2]}/${m[3]}` : iso;
+}
+
+function BrandImage({
+  src,
+  alt,
+  widthCm,
+  heightCm,
+}: {
+  src?: string | null;
+  alt: string;
+  widthCm?: number;
+  heightCm?: number;
+}) {
+  const url = (src ?? "").trim();
+  if (!url || url.endsWith("ejadah-signature.png")) return null;
+  const size =
+    widthCm && heightCm
+      ? { width: `${widthCm}cm`, height: `${heightCm}cm` }
+      : { height: 40 };
+  return (
+    <img
+      src={url}
+      alt={alt}
+      style={{ ...size, objectFit: "contain", maxWidth: "100%" }}
+    />
+  );
 }
 
 function enabledList(
@@ -201,6 +251,14 @@ function ParticipantsTable({
             </td>
           ))}
         </tr>
+        <tr>
+          <K>التوقيع</K>
+          {rows.map((p) => (
+            <td className="v" key={`${p.id}-s`} style={{ height: 52 }}>
+              <BrandImage src={p.signatureUrl} alt={`توقيع ${p.nameAr}`} />
+            </td>
+          ))}
+        </tr>
       </tbody>
     </table>
   );
@@ -297,6 +355,7 @@ export function EvaluatorValuationReportTab({
   const [inspector, setInspector] = useState<InspectorWorkspaceDraft | null>(
     null,
   );
+  const [clients, setClients] = useState<ClientDto[]>([]);
   const [open, setOpen] = useState<Record<string, boolean>>({ "02": true });
   const { data: record } = usePoRecordQuery(draft.poNumber);
 
@@ -314,11 +373,13 @@ export function EvaluatorValuationReportTab({
     void Promise.all([
       ensureOrganizationSettingsLoaded(),
       getValuationLists({ token: session.token, baseUrl: getApiBase() }),
-    ]).then(([loadedOrg, listRes]) => {
+      listClients({ token: session.token, baseUrl: getApiBase() }),
+    ]).then(([loadedOrg, listRes, clientsRes]) => {
       if (cancelled) return;
       setOrg(loadedOrg);
       if (listRes.ok) setLists(listRes.data);
       else setError("تعذّر تحميل قوائم التقييم");
+      if (clientsRes.ok) setClients(clientsRes.data);
       setLoading(false);
     });
     return () => {
@@ -347,9 +408,7 @@ export function EvaluatorValuationReportTab({
   const toggle = (n: string) => setOpen((s) => ({ ...s, [n]: !s[n] }));
   const isOpen = (n: string) => Boolean(open[n]);
 
-  const purposes = enabledList(lists?.lists, "purposes");
   const bases = enabledList(lists?.lists, "valueBases");
-  const premises = enabledList(lists?.lists, "premises");
   const methods = enabledList(lists?.lists, "methods");
   const glossary = enabledList(lists?.lists, "glossary");
   const ivs = enabledList(lists?.lists, "ivsStandards");
@@ -362,8 +421,18 @@ export function EvaluatorValuationReportTab({
   const parts = (org?.valuers ?? []).filter(
     (v) => v.role !== "certified" && v.isActive,
   );
-  const selectedPurpose = purposes.find((p) => p.key === choices.purposeKey);
-  const selectedBasis = bases.find((b) => b.key === choices.valueBasisKey);
+  const certified = (org?.valuers ?? []).find(
+    (v) => v.role === "certified" && v.isActive,
+  );
+  const brand = org?.branding;
+  const stampUrl =
+    brand?.stampUrl?.trim() || BRAND_IDENTITY_DEFAULTS.stampUrl;
+  const stampW = brand?.stampWidthCm || BRAND_IDENTITY_DEFAULTS.stampWidthCm || 4;
+  const stampH = brand?.stampHeightCm || BRAND_IDENTITY_DEFAULTS.stampHeightCm || 4;
+  const certifiedSig =
+    certified?.signatureUrl?.trim() || brand?.signatureUrl?.trim() || "";
+  const poValuation = assignmentValuationFromPo(record);
+  const selectedBasis = bases.find((b) => b.key === poValuation.valueBasisKey);
   const basisDefinition = (selectedBasis?.cells[0] ?? "").trim();
   const specials = vr.specialAssumptionLibrary.filter((x) => x.trim());
   const assumptionOn =
@@ -395,17 +464,30 @@ export function EvaluatorValuationReportTab({
     [bases, choices, methods, onChange],
   );
 
-  const setPurpose = (purposeKey: string) => {
-    const purpose = purposes.find((p) => p.key === purposeKey);
-    const usual = (purpose?.cells[0] ?? "").trim();
-    const match = bases.find(
-      (b) => b.name.trim() === usual || b.key === usual,
+  useEffect(() => {
+    if (!record) return;
+    const sub = subClientIdFromReportUsers(record.reportUserClientIds);
+    const seeded = seedReportChoicesFromAssignment(
+      record.assignmentType,
+      sub,
+      choices,
     );
-    patch({
-      purposeKey,
-      valueBasisKey: match?.key ?? choices.valueBasisKey,
+    const expectedBasis = basisOfValueLabelArForAssignment(
+      record.assignmentType,
+      sub,
+    );
+    if (
+      seeded.purposeKey === choices.purposeKey &&
+      seeded.valueBasisKey === choices.valueBasisKey &&
+      seeded.premiseKey === choices.premiseKey &&
+      (draft.valueBasis || "") === expectedBasis
+    ) {
+      return;
+    }
+    patch(seeded, {
+      valueBasis: expectedBasis,
     });
-  };
+  }, [choices, draft.valueBasis, patch, record]);
 
   if (loading) {
     return (
@@ -502,7 +584,12 @@ export function EvaluatorValuationReportTab({
               </tr>
               <tr>
                 <K>مستخدمو التقرير</K>
-                <Auto>{filled(record?.clientNameAr)}</Auto>
+                <Auto>
+                  {filled(
+                    formatValuationReportUsers(record, clients) ||
+                      record?.clientNameAr,
+                  )}
+                </Auto>
                 <K>تاريخ المعاينة</K>
                 <Auto>{filled(inspector?.inspectionDate)}</Auto>
               </tr>
@@ -516,36 +603,39 @@ export function EvaluatorValuationReportTab({
               </tr>
               <tr>
                 <K>الغرض من التقييم</K>
-                <td className="v">
-                  <Pick
-                    disabled={disabled}
-                    value={choices.purposeKey}
-                    onChange={setPurpose}
-                    options={purposes.map((p) => ({ value: p.key, label: p.name }))}
-                  />
-                </td>
+                <Auto>
+                  {filled(
+                    labelForPurposeKey(poValuation.purposeKey) ||
+                      (record
+                        ? valuationPurposeForAssignment(
+                            record.assignmentType,
+                            subClientIdFromReportUsers(record.reportUserClientIds),
+                          ).label
+                        : ""),
+                  )}
+                </Auto>
                 <K>تاريخ الطلب</K>
                 <Auto>{slashDate(record?.receivedFromEnfathAt)}</Auto>
               </tr>
               <tr>
                 <K>أساس القيمة</K>
-                <td className="v">
-                  <Pick
-                    disabled={disabled}
-                    value={choices.valueBasisKey}
-                    onChange={(valueBasisKey) => patch({ valueBasisKey })}
-                    options={bases.map((b) => ({ value: b.key, label: b.name }))}
-                  />
-                </td>
+                <Auto>
+                  {filled(
+                    labelForBasisKey(poValuation.valueBasisKey) ||
+                      (record
+                        ? basisOfValueLabelArForAssignment(
+                            record.assignmentType,
+                            subClientIdFromReportUsers(record.reportUserClientIds),
+                          )
+                        : ""),
+                  )}
+                </Auto>
                 <K>فرضية القيمة</K>
-                <td className="v">
-                  <Pick
-                    disabled={disabled}
-                    value={choices.premiseKey}
-                    onChange={(premiseKey) => patch({ premiseKey })}
-                    options={premises.map((p) => ({ value: p.key, label: p.name }))}
-                  />
-                </td>
+                <Auto>
+                  {filled(
+                    labelForPremiseKey(poValuation.premiseKey),
+                  )}
+                </Auto>
               </tr>
               <tr>
                 <K>نوع التقرير</K>
@@ -569,7 +659,11 @@ export function EvaluatorValuationReportTab({
             <p style={{ margin: "0 0 8px" }}>
               يعتمد أساس التقييم على تحديد{" "}
               <span className="auto">
-                {filled(selectedBasis?.name || selectedPurpose?.name, "[أساس القيمة]")}
+                {filled(
+                    selectedBasis?.name ||
+                      labelForBasisKey(poValuation.valueBasisKey),
+                    "[أساس القيمة]",
+                  )}
               </span>{" "}
               لموضوع التقييم في حالته الراهنة.
             </p>
@@ -623,11 +717,13 @@ export function EvaluatorValuationReportTab({
                 <K>نوع العقار</K>
                 <Auto>{filled(property?.propertyType)}</Auto>
                 <K>حالة العقار</K>
-                <Auto>{filled(property?.deedStatus)}</Auto>
+                <Auto>{filled(inspector?.featureValues.buildState)}</Auto>
               </tr>
               <tr>
                 <K>نوع الملكية</K>
-                <Auto colSpan={3}>{filled(property?.ownershipType)}</Auto>
+                <Auto colSpan={3}>
+                  {filled(ownershipTypeDisplay(property?.ownershipType))}
+                </Auto>
               </tr>
             </tbody>
           </table>
@@ -932,6 +1028,21 @@ export function EvaluatorValuationReportTab({
                   {slashDate(
                     filled(ev.membershipExpiresAt, htmlEv.membershipExpiresAt),
                   )}
+                </td>
+              </tr>
+              <tr>
+                <K>التوقيع</K>
+                <td className="v" style={{ height: 64 }}>
+                  <BrandImage src={certifiedSig} alt="التوقيع" />
+                </td>
+                <K>ختم المنشأة</K>
+                <td className="v" style={{ textAlign: "center" }}>
+                  <BrandImage
+                    src={stampUrl}
+                    alt="ختم المنشأة"
+                    widthCm={stampW}
+                    heightCm={stampH}
+                  />
                 </td>
               </tr>
             </tbody>

@@ -58,19 +58,11 @@ describe("validateEvaluatorSubmission", () => {
     expect(errors.asset_data_confirmed).toBeUndefined();
   });
 
-  it("requires independence declaration", () => {
+  it("does not require independence or named workers after infath tab removal", () => {
     const errors = validateEvaluatorSubmission({
       ...base,
       assetDataConfirmed: true,
       independenceDeclared: false,
-    });
-    expect(errors.independence_declared).toBeTruthy();
-  });
-
-  it("requires a named report worker", () => {
-    const errors = validateEvaluatorSubmission({
-      ...base,
-      assetDataConfirmed: true,
       reportWorkers: [
         {
           id: "w1",
@@ -82,7 +74,8 @@ describe("validateEvaluatorSubmission", () => {
         },
       ],
     });
-    expect(errors.report_workers).toBeTruthy();
+    expect(errors.independence_declared).toBeUndefined();
+    expect(errors.report_workers).toBeUndefined();
   });
 });
 
