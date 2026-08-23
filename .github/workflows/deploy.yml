@@ -23,34 +23,10 @@ on:
 # minutes. Builds are disposable and get cancelled; deploys never are.
 
 jobs:
+  # Frontend typecheck and unit tests live in frontend.yml so a push to main
+  # does not list a skipped frontend job on the commit status.
   # ----------------------------------------------------
-  # Job 1a: Frontend checks (PRs and manual runs — never gate a deploy)
-  # ----------------------------------------------------
-  frontend:
-    if: github.event_name != 'push'
-    runs-on: ubuntu-latest
-    timeout-minutes: 15
-    steps:
-      - name: Checkout Code
-        uses: actions/checkout@v4
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: "22"
-          cache: npm
-
-      - name: Install Frontend Dependencies
-        run: npm ci
-
-      - name: Typecheck Microfrontends (MFEs)
-        run: npm run typecheck:mfes
-
-      - name: Run Frontend Unit Tests
-        run: npm run test:unit
-
-  # ----------------------------------------------------
-  # Job 1b: Backend build & tests (gates deploy on push to main)
+  # Backend build & tests (gates deploy on push to main)
   # ----------------------------------------------------
   test:
     runs-on: ubuntu-latest
