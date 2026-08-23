@@ -15,6 +15,7 @@ public sealed class ValuationApproachSettingsService(
     ValuationDbContext db,
     ICaseStudyLookup caseStudy,
     IOrganizationSettingsService organizationSettings,
+    IValuationListsService valuationLists,
     TimeProvider? time = null)
     : IValuationApproachSettingsService
 {
@@ -41,6 +42,26 @@ public sealed class ValuationApproachSettingsService(
     }
 
  /// <summary>مكتبة الافتراضات — تُدار في إعدادات تبويب تقرير التقييم (القرار 25 طبقة ب).</summary>
+    private async Task<HashSet<string>> AllowedPurposeKeysAsync(CancellationToken cancellationToken)
+    {
+        var allowed = new HashSet<string>(ValuationPurposeKeys.All, StringComparer.OrdinalIgnoreCase);
+        try
+        {
+            var catalog = await valuationLists.GetAsync(cancellationToken);
+            if (catalog.Lists.TryGetValue(ValuationListIds.Purposes, out var rows))
+            {
+                foreach (var row in rows.Where(x => x.IsEnabled))
+                    allowed.Add(row.Key);
+            }
+        }
+        catch
+        {
+            // Fall back to built-in keys when Platform catalog is unreachable.
+        }
+
+        return allowed;
+    }
+
     private async Task<IReadOnlyList<string>> AssumptionLibraryAsync(
         CancellationToken cancellationToken)
     {
@@ -79,7 +100,8 @@ public sealed class ValuationApproachSettingsService(
             request.ExternalSpecialistDetails,
             request.ValuationDateMode,
             retroDate,
-            request.RetrospectiveRationale);
+            request.RetrospectiveRationale,
+            await AllowedPurposeKeysAsync(cancellationToken));
         if (errors.Count > 0) return (null, errors);
 
         var row = await db.ValuationApproachSettings

@@ -38,6 +38,8 @@ export type PartyAppraisalExtensions = {
     propertySummary?: PartyAppraisalPropertySummary;
     deedLabel?: string;
     onBack?: () => void;
+    /** Same property chrome as دارس الحالة (hero + timeline). */
+    embeddedInPropertyChrome?: boolean;
   }) => ReactNode;
   isEvaluatorLocked: (taskId: string, saving: boolean) => boolean;
 };

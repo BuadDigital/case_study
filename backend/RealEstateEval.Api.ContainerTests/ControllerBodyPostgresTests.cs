@@ -272,7 +272,10 @@ public sealed class ControllerBodyPostgresTests : IAsyncLifetime
 
         using var missingRequest = AuthorizedGet("/api/po-intake-draft/mine");
         var missing = await client.SendAsync(missingRequest);
-        Assert.Equal(HttpStatusCode.NotFound, missing.StatusCode);
+        Assert.Equal(HttpStatusCode.OK, missing.StatusCode);
+        var missingBody = await missing.Content.ReadFromJsonAsync<PoIntakeDraftDto>();
+        Assert.Equal("", missingBody?.PoNumber);
+        Assert.Null(missingBody?.UpdatedAtUtc);
 
         using var saveRequest = AuthorizedPut(
             "/api/po-intake-draft",
@@ -295,7 +298,10 @@ public sealed class ControllerBodyPostgresTests : IAsyncLifetime
 
         using var afterDeleteRequest = AuthorizedGet("/api/po-intake-draft/mine");
         var afterDelete = await client.SendAsync(afterDeleteRequest);
-        Assert.Equal(HttpStatusCode.NotFound, afterDelete.StatusCode);
+        Assert.Equal(HttpStatusCode.OK, afterDelete.StatusCode);
+        var afterDeleteBody = await afterDelete.Content.ReadFromJsonAsync<PoIntakeDraftDto>();
+        Assert.Equal("", afterDeleteBody?.PoNumber);
+        Assert.Null(afterDeleteBody?.UpdatedAtUtc);
     }
 
     [DockerFact]
@@ -457,8 +463,8 @@ public sealed class ControllerBodyPostgresTests : IAsyncLifetime
         Assert.Equal(HttpStatusCode.OK, recalls.StatusCode);
 
         using var missingRecall = AuthorizedGet("/api/evaluator-recalls/missing-task");
-        var recall404 = await client.SendAsync(missingRecall);
-        Assert.Equal(HttpStatusCode.NotFound, recall404.StatusCode);
+        var recallEmpty = await client.SendAsync(missingRecall);
+        Assert.Equal(HttpStatusCode.OK, recallEmpty.StatusCode);
     }
 
     [DockerFact]

@@ -1015,16 +1015,17 @@ export async function listEvaluatorRecallsApi(
 export async function getEvaluatorRecallApi(
   config: PrototypeModulesApiConfig,
   taskId: string,
-): Promise<PrototypeModulesResult<EvaluatorRecallDto>> {
+): Promise<PrototypeModulesResult<EvaluatorRecallDto | null>> {
   const base = config.baseUrl ?? getApiBase();
   try {
     const res = await fetch(`${base}/api/evaluator-recalls/${taskId}`, {
       headers: headers(config.token),
     });
     if (res.status === 401) return { ok: false, kind: "auth" };
-    if (res.status === 404) return { ok: false, kind: "not_found" };
+    if (res.status === 404 || res.status === 204) return { ok: true, data: null };
     if (!res.ok) return { ok: false, kind: "server" };
-    return { ok: true, data: await parseJson<EvaluatorRecallDto>(res) };
+    const data = await parseJson<EvaluatorRecallDto | null>(res);
+    return { ok: true, data: data?.taskId ? data : null };
   } catch {
     return { ok: false, kind: "network" };
   }

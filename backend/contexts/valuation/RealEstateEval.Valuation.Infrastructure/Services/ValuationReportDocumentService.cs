@@ -16,6 +16,7 @@ public sealed class ValuationReportDocumentService(
     IAttachmentLookup attachments,
     IOrganizationSettingsService organizationSettings,
     IAttachmentPrintDictionaryService printDictionary,
+    IValuationListsService valuationLists,
     IValuationComparableSelectionService selections,
     IValuationCostApproachService costApproach,
     IValuationReconciliationService reconciliation,
@@ -69,6 +70,15 @@ public sealed class ValuationReportDocumentService(
         var complianceRestricted = gates?.Gates
             .Any(g => g.Code == ValuationIssuanceGateCodes.DeedNatureMatch && !g.Passed) == true;
         var org = await organizationSettings.GetAsync(cancellationToken);
+        ValuationListsDto? valuationCatalog = null;
+        try
+        {
+            valuationCatalog = await valuationLists.GetAsync(cancellationToken);
+        }
+        catch
+        {
+            valuationCatalog = null;
+        }
 
         var marketUsed = (market?.AdoptedCount ?? 0) > 0 || (market?.MarketOpinionValue ?? 0m) > 0m;
         var costUsed = (cost?.CostOpinionWithLand ?? 0m) > 0m
@@ -108,7 +118,8 @@ public sealed class ValuationReportDocumentService(
                 inspector,
                 complianceRestricted,
                 approachSettings,
-                assignmentType);
+                assignmentType,
+                valuationCatalog);
             return new ValuationReportSectionDto
             {
                 Number = def.Number,
@@ -240,28 +251,22 @@ public sealed class ValuationReportDocumentService(
             TextLayerNoteAr =
                 $"طبقة النصوص الثابتة: {ValuationReportFrozenTextLayers.VersionId} — تُجمَّد عند الإصدار.",
             ApprovedTemplateUrl = "/ejadah/report-template-approved.html",
-            LetterheadImageUrl = org?.Branding?.LetterheadUrl,
+            LetterheadImageUrl = string.IsNullOrWhiteSpace(org?.Branding?.LetterheadUrl) ? "/case-study/ejadah-letterhead.png" : org.Branding.LetterheadUrl,
+            LetterheadHeadMm = org?.Branding?.LetterheadHeadMm,
+            LetterheadFootTopMm = org?.Branding?.LetterheadFootTopMm,
+            LetterheadPadMm = org?.Branding?.LetterheadPadMm,
+            LetterheadPadStartMm = org?.Branding?.LetterheadPadStartMm,
+            StampWidthCm = org?.Branding?.StampWidthCm,
+            StampHeightCm = org?.Branding?.StampHeightCm,
             MarketMethodLabelAr = marketUsed ? "طريقة البيوع المقارنة" : "غير مستخدم",
             CostMethodLabelAr = costUsed ? "طريقة المقاول" : "غير مستخدم",
             IncomeMethodLabelAr = "غير مستخدم",
-            WeightedPricePerSqmDisplay = market is null
-                ? null
-                : ValuationReportDisplayRules.FormatMoney(market.WeightedPricePerSqm),
-            MarketOpinionDisplay = market is null
-                ? null
-                : ValuationReportDisplayRules.FormatMoney(market.MarketOpinionValue),
-            SubjectAreaSqmDisplay = market?.SubjectAreaSqm is null
-                ? null
-                : ValuationReportDisplayRules.FormatMoney(market.SubjectAreaSqm.Value),
-            LandValueFromMarketDisplay = cost is null
-                ? null
-                : ValuationReportDisplayRules.FormatMoney(cost.LandValueFromMarket),
-            CostOpinionWithLandDisplay = cost is null
-                ? null
-                : ValuationReportDisplayRules.FormatMoney(cost.CostOpinionWithLand),
-            CostOpinionBuildingsOnlyDisplay = cost is null
-                ? null
-                : ValuationReportDisplayRules.FormatMoney(cost.CostOpinionBuildingsOnly),
+            WeightedPricePerSqmDisplay = market is null ? null : ValuationReportDisplayRules.FormatMoney(market.WeightedPricePerSqm),
+            MarketOpinionDisplay = market is null ? null : ValuationReportDisplayRules.FormatMoney(market.MarketOpinionValue),
+            SubjectAreaSqmDisplay = market?.SubjectAreaSqm is null ? null : ValuationReportDisplayRules.FormatMoney(market.SubjectAreaSqm.Value),
+            LandValueFromMarketDisplay = cost is null ? null : ValuationReportDisplayRules.FormatMoney(cost.LandValueFromMarket),
+            CostOpinionWithLandDisplay = cost is null ? null : ValuationReportDisplayRules.FormatMoney(cost.CostOpinionWithLand),
+            CostOpinionBuildingsOnlyDisplay = cost is null ? null : ValuationReportDisplayRules.FormatMoney(cost.CostOpinionBuildingsOnly),
             Comparables = comparableRows,
             Adjustments = adjustmentRows,
             ReconciliationMethods = reconRows,
@@ -410,16 +415,13 @@ public sealed class ValuationReportDocumentService(
         InspectorPayloadFacts? inspector = null,
         bool complianceRestricted = false,
         ValuationApproachSettings? approachSettings = null,
-        AssignmentType? assignmentType = null)
+        AssignmentType? assignmentType = null,
+        ValuationListsDto? valuationCatalog = null)
     {
         inspector ??= new InspectorPayloadFacts();
         var d = new Dictionary<string, string?>(StringComparer.Ordinal);
         var adopted = (market?.Items ?? []).Where(i => i.IsAdopted).OrderBy(i => i.SortOrder).ToList();
-        var basisLabel = assignmentType is { } assignedType
-            ? AssignmentValuationDefaults.BasisOfValueLabelAr(assignedType)
-            : string.IsNullOrWhiteSpace(recon?.BasisOfValueLabelAr)
-                ? BasisOfValueKeys.LabelAr(recon?.BasisOfValueKey ?? BasisOfValueKeys.Market)
-                : recon!.BasisOfValueLabelAr;
+        var basisLabel = assignmentType is { } assignedType ? AssignmentValuationDefaults.BasisOfValueLabelAr(assignedType) : string.IsNullOrWhiteSpace(recon?.BasisOfValueLabelAr) ? BasisOfValueKeys.LabelAr(recon?.BasisOfValueKey ?? BasisOfValueKeys.Market) : recon!.BasisOfValueLabelAr;
         var premiseLabel = recon?.ValuePremiseLabelAr;
 
         switch (key)
@@ -428,10 +430,14 @@ public sealed class ValuationReportDocumentService(
                 d["name"] = org.Evaluator.Name;
                 d["licenseNumber"] = org.Evaluator.LicenseNumber;
                 d["membershipNumber"] = org.Evaluator.MembershipNumber;
+                d["licenseIssuedAt"] = org.Evaluator.LicenseIssuedAt;
+                d["licenseExpiresHijri"] = org.Evaluator.LicenseExpiresHijri;
                 d["licenseExpiresAt"] = ValuationReportDisplayRules.FormatIsoDateString(
                     org.Evaluator.LicenseExpiresAt);
                 d["membershipExpiresAt"] = ValuationReportDisplayRules.FormatIsoDateString(
                     org.Evaluator.MembershipExpiresAt);
+                d["title"] = org.Evaluator.Title;
+                d["membershipCategory"] = org.Evaluator.MembershipCategory;
                 d["branch"] = ValuationReportSettingsDefaults.Clip(
                     org.ValuationReport.ValuationBranch,
                     ValuationReportSettingsDefaults.ValuationBranch,
@@ -457,7 +463,7 @@ public sealed class ValuationReportDocumentService(
                 d["finalOpinion"] = recon is null
                     ? null
                     : ValuationReportDisplayRules.FormatMoney(recon.FinalOpinionValue);
-                d["body"] = FrozenFromOrg(org, key);
+                d["body"] = FrozenFromOrg(org, key, valuationCatalog);
                 break;
 
             case ValuationReportSectionKeys.ScopeOfWork:
@@ -537,7 +543,6 @@ public sealed class ValuationReportDocumentService(
                 d["region"] = prop?.Region;
                 d["city"] = prop?.City;
                 d["district"] = prop?.District;
- // building rows deleted for land, shown for buildings.
                 d["buildingAge"] = hasStructures ? inspector.PropertyAgeYears : null;
                 d["occupancyState"] = hasStructures ? inspector.OccupancyState : null;
                 d["planNumber"] = prop?.PlanNumber;
@@ -656,7 +661,7 @@ public sealed class ValuationReportDocumentService(
 
             case ValuationReportSectionKeys.ResearchScope:
             {
-                var frozen = FrozenFromOrg(org, key);
+                var frozen = FrozenFromOrg(org, key, valuationCatalog);
                 var live = ValuationReportNarrativeRules.ResearchScopeBody(
                     adopted.Select(i => i.Comparable.Source).ToList(),
                     adopted.Count);
@@ -729,7 +734,7 @@ public sealed class ValuationReportDocumentService(
             case ValuationReportSectionKeys.Terms:
             case ValuationReportSectionKeys.IvsStandards:
             case ValuationReportSectionKeys.Glossary:
-                d["body"] = FrozenFromOrg(org, key)
+                d["body"] = FrozenFromOrg(org, key, valuationCatalog)
                     + (complianceRestricted
                        && key == ValuationReportSectionKeys.ProfessionalStandards
                         ? " تنبيه: توجد قيود مؤثرة غير محسومة"
@@ -743,8 +748,30 @@ public sealed class ValuationReportDocumentService(
         return d;
     }
 
-    private static string FrozenFromOrg(OrganizationSettingsDto org, string key)
+    private static string FrozenFromOrg(
+        OrganizationSettingsDto org,
+        string key,
+        ValuationListsDto? lists)
     {
+        if (key == ValuationReportSectionKeys.IvsStandards)
+        {
+            var fromList = FormatEnabledList(lists, ValuationListIds.IvsStandards);
+            if (fromList.Length > 0)
+            {
+                var date = string.IsNullOrWhiteSpace(lists?.IvsEffectiveDate)
+                    ? ""
+                    : $"تاريخ سريان المعايير: {lists!.IvsEffectiveDate}\n";
+                return date + fromList;
+            }
+        }
+
+        if (key == ValuationReportSectionKeys.Glossary)
+        {
+            var fromList = FormatEnabledList(lists, ValuationListIds.Glossary);
+            if (fromList.Length > 0)
+                return fromList;
+        }
+
         var vr = org.ValuationReport;
         var saved = key switch
         {
@@ -758,8 +785,31 @@ public sealed class ValuationReportDocumentService(
             ValuationReportSectionKeys.Glossary => vr.Glossary,
             _ => "",
         };
-        return ValuationReportSettingsDefaults.Clip(
+        var clipped = ValuationReportSettingsDefaults.Clip(
             saved, ValuationReportSettingsDefaults.ForSectionKey(key));
+        if (key == ValuationReportSectionKeys.ProfessionalStandards)
+        {
+            var date = string.IsNullOrWhiteSpace(lists?.IvsEffectiveDate)
+                ? "31 يناير 2025"
+                : lists!.IvsEffectiveDate.Trim();
+            clipped = clipped.Replace("{{ivsDate}}", date, StringComparison.Ordinal);
+        }
+        return clipped;
+    }
+
+    private static string FormatEnabledList(ValuationListsDto? lists, string listId)
+    {
+        if (lists?.Lists is null || !lists.Lists.TryGetValue(listId, out var rows) || rows is null)
+            return "";
+        return string.Join(
+            "\n",
+            rows.Where(x => x.IsEnabled)
+                .OrderBy(x => x.SortOrder)
+                .Select(x =>
+                {
+                    var extra = x.Cells.FirstOrDefault();
+                    return string.IsNullOrWhiteSpace(extra) ? x.Name : $"{x.Name} — {extra}";
+                }));
     }
 
     private static string? FormatRestrictions(WorkOrderProperty? prop)

@@ -8,6 +8,8 @@ public interface IPartyTaskSubmissionService
  /// Reads one submission. When <paramref name="actor"/> is supplied the caller must pass
  /// <see cref="Rules.PoRoleMatrixRules.CanReadPartyTask"/>; otherwise null is returned so
  /// callers cannot distinguish "missing" from "not yours".
+ /// When the task exists and the actor may read it, an unsaved empty draft is returned
+ /// instead of null so first open is 200 rather than 404.
  /// </summary>
     Task<PartyTaskSubmissionDto?> GetAsync(
         Guid taskId,

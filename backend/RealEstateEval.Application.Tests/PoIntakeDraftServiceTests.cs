@@ -8,11 +8,13 @@ namespace RealEstateEval.Application.Tests;
 public class PoIntakeDraftServiceTests
 {
     [Fact]
-    public async Task Get_returns_null_when_the_user_has_no_draft()
+    public async Task Get_returns_an_empty_draft_when_the_user_has_no_row()
     {
         var service = new PoIntakeDraftService(new FakePoIntakeDraftRepository());
         var result = await service.GetForUserAsync("user-1", CancellationToken.None);
-        Assert.Null(result);
+        Assert.Equal(1, result.Step);
+        Assert.Equal("", result.PoNumber);
+        Assert.Null(result.UpdatedAtUtc);
     }
 
     [Fact]

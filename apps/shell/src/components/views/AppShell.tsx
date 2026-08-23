@@ -31,11 +31,12 @@ import {
 import {
   SYSTEM_SETTINGS_GROUP,
   SYSTEM_SETTINGS_GROUP_ICON,
-  systemSettingsPrimaryNavForRole,
-  systemSettingsFieldsNavForRole,
+  settingsNavTreeForRole,
   isInSystemSettingsSection,
+  isSettingsNavItemActive,
+  organizationSettingsLeafTitle,
+  type SettingsNavTreeNode,
   type SystemSettingsNavItem,
-  type SystemFieldsNavItem,
 } from "@platform/app-shared/prototype/system-settings-nav";
 import {
   ORPHAN_SCREENS_GROUP,
@@ -326,6 +327,7 @@ function ActiveTransactionNavRow({
   active,
   onPrefetch,
   rail = false,
+  href,
 }: {
   id: PageId;
   label: string;
@@ -335,6 +337,7 @@ function ActiveTransactionNavRow({
   active: boolean;
   onPrefetch: (page: PageId) => void;
   rail?: boolean;
+  href?: string;
 }) {
   const cls = navItemClasses({
     active,
@@ -366,7 +369,7 @@ function ActiveTransactionNavRow({
   }
   return (
     <Link
-      href={`/${id}`}
+      href={href ?? `/${id}`}
       className={cls}
       title={rail ? label : undefined}
       prefetch
@@ -666,28 +669,63 @@ function ActiveTransactionsNavDropdown({
 }
 
 function SystemSettingsNavDropdown({
-  primaryItems,
-  fieldsItems,
+  tree,
   currentPage,
+  search,
   onPrefetch,
   role,
   rail = false,
 }: {
-  primaryItems: SystemSettingsNavItem[];
-  fieldsItems: SystemFieldsNavItem[];
+  tree: SettingsNavTreeNode[];
   currentPage: PageId;
+  search: string;
   onPrefetch: (page: PageId) => void;
   role: RoleId;
   rail?: boolean;
 }) {
   const inSection = isInSystemSettingsSection(currentPage, role);
-  const [open, setOpen] = useState(inSection);
+  const [open, setOpen] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
+  const [expanded, setExpanded] = useState<Record<string, boolean>>(() => {
+    const init: Record<string, boolean> = {};
+    for (const node of tree) {
+      if (node.type === "group") init[node.id] = false;
+    }
+    return init;
+  });
 
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- auto-expand when route is under system settings.
-    if (inSection && !rail) setOpen(true);
-  }, [inSection, rail]);
+    setExpanded((prev) => {
+      let changed = false;
+      const next = { ...prev };
+      for (const node of tree) {
+        if (node.type !== "group") continue;
+        if (next[node.id] === undefined) {
+          next[node.id] = false;
+          changed = true;
+        }
+      }
+      return changed ? next : prev;
+    });
+  }, [tree]);
+
+  useEffect(() => {
+    if (!inSection) return;
+    setExpanded((prev) => {
+      const next = { ...prev };
+      for (const node of tree) {
+        if (node.type !== "group") continue;
+        if (
+          node.items.some((item) =>
+            isSettingsNavItemActive(item, currentPage, "", search),
+          )
+        ) {
+          next[node.id] = true;
+        }
+      }
+      return next;
+    });
+  }, [currentPage, inSection, search, tree]);
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect -- avoid leftover open flyouts when entering icon-rail.
@@ -703,32 +741,64 @@ function SystemSettingsNavDropdown({
     return () => document.removeEventListener("mousedown", onPointerDown);
   }, [open, rail]);
 
+  const renderItem = (item: SystemSettingsNavItem) => (
+    <ActiveTransactionNavRow
+      key={item.navKey}
+      id={item.id}
+      href={item.href}
+      label={item.label}
+      icon={item.icon}
+      available
+      active={isSettingsNavItemActive(item, currentPage, "", search)}
+      onPrefetch={onPrefetch}
+    />
+  );
+
   const renderBody = () => (
     <>
-      {primaryItems.map((item) => (
-        <ActiveTransactionNavRow
-          key={item.id}
-          id={item.id}
-          label={item.label}
-          icon={item.icon}
-          available
-          active={currentPage === item.id}
-          onPrefetch={onPrefetch}
-        />
-      ))}
-      {fieldsItems.length > 0
-        ? fieldsItems.map((item) => (
-            <ActiveTransactionNavRow
-              key={item.id}
-              id={item.id}
-              label={item.label}
-              icon={item.icon}
-              available
-              active={currentPage === item.id}
-              onPrefetch={onPrefetch}
+      {tree.map((node, index) => {
+        if (node.type === "divider") {
+          return (
+            <div
+              key={`div-${index}`}
+              className="mx-1 my-1.5 h-px bg-white/[0.08]"
             />
-          ))
-        : null}
+          );
+        }
+        if (node.type === "item") return renderItem(node.item);
+        const groupOpen = !!expanded[node.id];
+        return (
+          <div key={node.id} className="flex flex-col">
+            <button
+              type="button"
+              className="flex w-full items-center justify-between border-0 bg-transparent px-2.5 py-1.5 text-start font-inherit text-[11.5px] font-bold text-white/45"
+              onClick={() =>
+                setExpanded((prev) => ({ ...prev, [node.id]: !prev[node.id] }))
+              }
+            >
+              <span>{node.label}</span>
+              <svg
+                className={cn(
+                  "opacity-60 transition-transform duration-150",
+                  groupOpen ? "rotate-0" : "-rotate-90",
+                )}
+                width="11"
+                height="11"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                aria-hidden
+              >
+                <polyline points="6 9 12 15 18 9" />
+              </svg>
+            </button>
+            {groupOpen ? node.items.map(renderItem) : null}
+          </div>
+        );
+      })}
     </>
   );
 
@@ -1038,17 +1108,11 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
   const navPages = useMemo(() => rolePages, [rolePages]);
 
-  const systemSettingsPrimaryItems = useMemo(
-    () => systemSettingsPrimaryNavForRole(rolePages, role),
+  const settingsNavTree = useMemo(
+    () => settingsNavTreeForRole(rolePages, role),
     [rolePages, role],
   );
-  const systemSettingsFieldsItems = useMemo(
-    () => systemSettingsFieldsNavForRole(rolePages),
-    [rolePages],
-  );
-  const showGeneralGroup =
-    systemSettingsPrimaryItems.length > 0 ||
-    systemSettingsFieldsItems.length > 0;
+  const showGeneralGroup = settingsNavTree.some((node) => node.type !== "divider");
 
   const orphanScreenItems = useMemo(
     () => orphanScreensNavForRole(rolePages),
@@ -1180,8 +1244,20 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     return workflowTasks?.find((t) => t.id === id) ?? null;
   }, [caseStudyTaskId, workflowTasks]);
 
-  const { data: caseStudyPo } = usePoRecordQuery(
-    caseStudyTask?.poNumber ?? null,
+  const appraisalWorkspaceTask = useMemo(() => {
+    if (!propertyAppraisalTaskId) return null;
+    const id = decodeTaskParam(propertyAppraisalTaskId);
+    return workflowTasks?.find((t) => t.id === id) ?? null;
+  }, [propertyAppraisalTaskId, workflowTasks]);
+
+  const propertyWorkspaceTask = onCaseStudyWorkspace
+    ? caseStudyTask
+    : onPropertyAppraisalWorkspace
+      ? appraisalWorkspaceTask
+      : null;
+
+  const { data: propertyWorkspacePo } = usePoRecordQuery(
+    propertyWorkspaceTask?.poNumber ?? null,
   );
 
   useEffect(() => {
@@ -1191,24 +1267,40 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     }
   }, [queryClient, caseStudyTask?.poNumber]);
 
-  const caseStudyDeedLabel = useMemo(() => {
-    if (!caseStudyTask || !caseStudyPo) return "";
-    const prop = findPropertyForTask(caseStudyPo, caseStudyTask);
+  useEffect(() => {
+    if (appraisalWorkspaceTask?.poNumber) {
+      prefetchPoRecord(queryClient, appraisalWorkspaceTask.poNumber);
+    }
+  }, [queryClient, appraisalWorkspaceTask?.poNumber]);
+
+  const propertyWorkspaceDeedLabel = useMemo(() => {
+    if (!propertyWorkspaceTask || !propertyWorkspacePo) return "";
+    const prop = findPropertyForTask(propertyWorkspacePo, propertyWorkspaceTask);
     if (!prop) return "";
     const formatted = formatPropertyDeedDisplay(prop);
     if (formatted && formatted !== "—") return formatted;
     return prop.deedNumber.trim();
-  }, [caseStudyTask, caseStudyPo]);
+  }, [propertyWorkspaceTask, propertyWorkspacePo]);
+
+  const caseStudyDeedLabel = propertyWorkspaceDeedLabel;
 
   const caseStudyBreadcrumb = useMemo(() => {
-    if (!onCaseStudyWorkspace || !caseStudyTask?.poNumber?.trim()) {
+    if (
+      (!onCaseStudyWorkspace && !onPropertyAppraisalWorkspace) ||
+      !propertyWorkspaceTask?.poNumber?.trim()
+    ) {
       return null;
     }
     return buildPoPropertyWorkspaceSegments(
-      caseStudyTask.poNumber.trim(),
-      caseStudyDeedLabel || undefined,
+      propertyWorkspaceTask.poNumber.trim(),
+      propertyWorkspaceDeedLabel || undefined,
     );
-  }, [onCaseStudyWorkspace, caseStudyTask, caseStudyDeedLabel]);
+  }, [
+    onCaseStudyWorkspace,
+    onPropertyAppraisalWorkspace,
+    propertyWorkspaceTask,
+    propertyWorkspaceDeedLabel,
+  ]);
 
   const poChrome = useMemo(
     () => (pathname ? resolvePoChrome(pathname) : null),
@@ -1258,7 +1350,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                       : taskQuery
               : null,
             {
-              ...(onCaseStudyWorkspace
+              ...(onCaseStudyWorkspace || onPropertyAppraisalWorkspace
                 ? { deedLabel: caseStudyDeedLabel }
                 : {}),
               ...(opsTaskDeepLink ? { opsTaskTitle } : {}),
@@ -1363,6 +1455,12 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     return null;
   }, [currentPage, searchParams]);
 
+  const orgSettingsChrome = useMemo(() => {
+    if (currentPage !== "organization-settings") return null;
+    const title = organizationSettingsLeafTitle(searchParams.get("tab"));
+    return { title, breadcrumb: title };
+  }, [currentPage, searchParams]);
+
   // Engineering fees under active-transactions — same parent group as other active queues.
   const engineeringFeesCrumb =
     currentPage === "party-fees" && isPartyFeesUnderActiveTransactions(role)
@@ -1384,14 +1482,17 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       ? slashTrailToSegments(myTasksChrome.breadcrumb)
       : keysChrome?.breadcrumb
         ? slashTrailToSegments(keysChrome.breadcrumb)
-        : PAGE_BREADCRUMB[currentPage]
-          ? slashTrailToSegments(PAGE_BREADCRUMB[currentPage])
-          : undefined);
+        : orgSettingsChrome?.breadcrumb
+          ? slashTrailToSegments(orgSettingsChrome.breadcrumb)
+          : PAGE_BREADCRUMB[currentPage]
+            ? slashTrailToSegments(PAGE_BREADCRUMB[currentPage])
+            : undefined);
 
   const resolvedPageTitle =
     poChrome?.title ??
     myTasksChrome?.title ??
     keysChrome?.title ??
+    orgSettingsChrome?.title ??
     financeLeaf?.pageTitle ??
     (currentPage === "party-fees" && isPartyFeesUnderActiveTransactions(role)
       ? "فوترة الأتعاب"
@@ -1555,9 +1656,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                       ) : null,
                       <SystemSettingsNavDropdown
                         key="system-settings-dropdown"
-                        primaryItems={systemSettingsPrimaryItems}
-                        fieldsItems={systemSettingsFieldsItems}
+                        tree={settingsNavTree}
                         currentPage={currentPage}
+                        search={searchParams.toString()}
                         onPrefetch={prefetchPage}
                         role={role}
                         rail={desktopRail}
@@ -1646,9 +1747,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               ) : null}
               <SystemSettingsNavDropdown
                 key="system-settings-dropdown-fallback"
-                primaryItems={systemSettingsPrimaryItems}
-                fieldsItems={systemSettingsFieldsItems}
+                tree={settingsNavTree}
                 currentPage={currentPage}
+                search={searchParams.toString()}
                 onPrefetch={prefetchPage}
                 role={role}
                 rail={desktopRail}

@@ -84,6 +84,12 @@ public class ValuationReportDocumentDto
     public string ApprovedTemplateUrl { get; init; } = "/ejadah/report-template-approved.html";
  /// <summary>Org-settings letterhead (3-slice render); null keeps the template's baked one.</summary>
     public string? LetterheadImageUrl { get; init; }
+    public decimal? LetterheadHeadMm { get; init; }
+    public decimal? LetterheadFootTopMm { get; init; }
+    public decimal? LetterheadPadMm { get; init; }
+    public decimal? LetterheadPadStartMm { get; init; }
+    public decimal? StampWidthCm { get; init; }
+    public decimal? StampHeightCm { get; init; }
     public string ReportDateHijriDisplay { get; init; } = "";
     public string MarketMethodLabelAr { get; init; } = "غير مستخدم";
     public string CostMethodLabelAr { get; init; } = "غير مستخدم";

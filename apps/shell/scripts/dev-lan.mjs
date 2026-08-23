@@ -1,5 +1,5 @@
 import { spawn } from "node:child_process";
-import { existsSync } from "node:fs";
+import { existsSync, readFileSync, rmSync } from "node:fs";
 import net from "node:net";
 import os from "node:os";
 import path from "node:path";
@@ -56,6 +56,25 @@ const shellDir = path.dirname(fileURLToPath(import.meta.url));
 const appDir = path.resolve(shellDir, "..");
 const nextBin = findNextBin(appDir);
 
+function clearCorruptTurbopackCache() {
+  const routesFile = path.join(appDir, ".next", "dev", "types", "routes.d.ts");
+  if (!existsSync(routesFile)) return;
+  let text = "";
+  try {
+    text = readFileSync(routesFile, "utf8");
+  } catch {
+    return;
+  }
+  const emptyAppRoutes = /type AppRoutes = never/.test(text);
+  const truncated = /ct\.ReactNode/.test(text) || !/export type \{ AppRoutes/.test(text);
+  if (!emptyAppRoutes && !truncated) return;
+  rmSync(path.join(appDir, ".next", "dev"), { recursive: true, force: true });
+  console.log(
+    "  Cleared stale Turbopack cache (AppRoutes was empty — that 404s every page).",
+  );
+  console.log("");
+}
+
 if (!nextBin) {
   console.error("Could not find next — run npm install from the repo root.");
   process.exit(1);
@@ -99,6 +118,8 @@ if (await isPortInUse(port)) {
   console.error("");
   process.exit(1);
 }
+
+clearCorruptTurbopackCache();
 
 const child = spawn(
   process.execPath,

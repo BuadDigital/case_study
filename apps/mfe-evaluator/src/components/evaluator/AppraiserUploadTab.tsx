@@ -14,6 +14,7 @@ export function AppraiserUploadTab({
   propertySummary,
   deedLabel,
   onBack,
+  embeddedInPropertyChrome,
 }: {
   def: PartyTaskPageDef;
   childTask: WorkflowTask;
@@ -21,6 +22,7 @@ export function AppraiserUploadTab({
   propertySummary?: EvaluatorPropertySummary;
   deedLabel?: string;
   onBack?: () => void;
+  embeddedInPropertyChrome?: boolean;
 }) {
   const { data: tasks } = useWorkflowTasksQuery();
   const liveTask =
@@ -34,6 +36,7 @@ export function AppraiserUploadTab({
       propertySummary={propertySummary}
       deedLabel={deedLabel}
       onBack={onBack}
+      embeddedInPropertyChrome={embeddedInPropertyChrome}
     />
   );
 }

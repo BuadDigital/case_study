@@ -39,8 +39,7 @@ public class FailuresController : ControllerBase
             propertyId,
             await ActorAsync(cancellationToken),
             cancellationToken);
-        if (dto is null) return NotFound();
-        return Ok(dto);
+        return this.OkOrEmpty(dto);
     }
 
     [HttpPost]

@@ -86,7 +86,16 @@ public class PartyTaskSubmissionService : IPartyTaskSubmissionService
         var entity = await _db.PartyTaskSubmissions
             .AsNoTracking()
             .FirstOrDefaultAsync(s => s.WorkflowTaskId == taskId, cancellationToken);
-        return entity is null ? null : await ToDtoAsync(entity, cancellationToken);
+        if (entity is not null)
+            return await ToDtoAsync(entity, cancellationToken);
+
+        var task = await _db.WorkflowTasks
+            .AsNoTracking()
+            .FirstOrDefaultAsync(t => t.Id == taskId, cancellationToken);
+        if (task is null || !AllowedKinds.Contains(task.Kind))
+            return null;
+
+        return await ToUnsavedDraftDtoAsync(task, cancellationToken);
     }
 
     public async Task<IReadOnlyList<PartyTaskSubmissionDto>> ListForTasksAsync(
@@ -870,6 +879,26 @@ public class PartyTaskSubmissionService : IPartyTaskSubmissionService
             sourceEvent: $"field-inspection-accepted-appraiser:{inspectionTask.Id}",
             href: $"/property-appraisal/{Uri.EscapeDataString(appraisal.Id.ToString())}",
             cancellationToken);
+    }
+
+    private async Task<PartyTaskSubmissionDto> ToUnsavedDraftDtoAsync(
+        WorkflowTask task,
+        CancellationToken cancellationToken)
+    {
+        var dto = await ToDtoAsync(
+            new PartyTaskSubmission
+            {
+                Id = Guid.Empty,
+                WorkflowTaskId = task.Id,
+                Kind = task.Kind.ToDbValue(),
+                Status = PartyTaskSubmissionStatus.Draft,
+                PropertyId = task.PropertyId,
+                PoNumber = task.PoNumber,
+                PayloadJson = "{}",
+            },
+            cancellationToken);
+        dto.Id = "";
+        return dto;
     }
 
     private async Task<PartyTaskSubmissionDto> ToDtoAsync(

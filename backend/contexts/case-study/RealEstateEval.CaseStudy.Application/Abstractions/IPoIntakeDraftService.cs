@@ -4,7 +4,7 @@ namespace RealEstateEval.Application.Abstractions;
 
 public interface IPoIntakeDraftService
 {
-    Task<PoIntakeDraftDto?> GetForUserAsync(
+    Task<PoIntakeDraftDto> GetForUserAsync(
         string userId,
         CancellationToken cancellationToken = default);
 

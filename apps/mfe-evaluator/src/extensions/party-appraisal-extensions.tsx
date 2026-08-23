@@ -57,6 +57,7 @@ export const partyAppraisalExtensions: PartyAppraisalExtensions = {
     propertySummary,
     deedLabel,
     onBack,
+    embeddedInPropertyChrome,
   }) {
     return (
       <AppraiserUploadTab
@@ -66,6 +67,7 @@ export const partyAppraisalExtensions: PartyAppraisalExtensions = {
         propertySummary={propertySummary}
         deedLabel={deedLabel}
         onBack={onBack}
+        embeddedInPropertyChrome={embeddedInPropertyChrome}
       />
     );
   },

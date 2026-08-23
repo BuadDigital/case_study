@@ -13,6 +13,7 @@ import { loadPartyCaseStudyFormDraft } from "@case-study/mfe";
 import { mergeEvaluatorChecklistFromCaseStudy } from "./evaluator-checklist-case-study-sync";
 import {
   createEvaluatorDraft,
+  normalizeReportChoices,
   normalizeReportWorkers,
   type EvaluatorSubmission,
   type EvaluatorSubmissionStatus,
@@ -67,6 +68,7 @@ function dtoToSubmission(
       typeof payload.assetDataVarianceNotes === "string"
         ? payload.assetDataVarianceNotes
         : base.assetDataVarianceNotes,
+    reportChoices: normalizeReportChoices(payload.reportChoices),
     depositCode:
       typeof payload.depositCode === "string" ? payload.depositCode : base.depositCode,
     depositCertificateFileName: payload.depositCertificateFileName ?? null,

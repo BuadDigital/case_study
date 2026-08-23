@@ -26,6 +26,27 @@ public sealed class HttpAttachmentPrintDictionaryService(
             "Print-dictionary writes belong on the Platform API.");
 }
 
+public sealed class HttpValuationListsService(
+    HttpClient http,
+    IHttpContextAccessor httpContext,
+    IOptions<UpstreamServicesOptions> options) : IValuationListsService
+{
+    public Task<ValuationListsDto> GetAsync(CancellationToken cancellationToken = default) =>
+        UpstreamJson.GetAsync<ValuationListsDto>(
+            http,
+            httpContext,
+            options.Value.PlatformBaseUrl,
+            "/api/valuation-lists",
+            "UpstreamServices:PlatformBaseUrl",
+            cancellationToken);
+
+    public Task<ValuationListsDto> SaveAsync(
+        SaveValuationListsRequest request,
+        CancellationToken cancellationToken = default) =>
+        throw new InvalidOperationException(
+            "Valuation-lists writes belong on the Platform API.");
+}
+
 public sealed class HttpOrganizationSettingsService(
     HttpClient http,
     IHttpContextAccessor httpContext,

@@ -3,15 +3,12 @@ namespace RealEstateEval.Application.Contracts;
 public sealed class OrganizationSettingsDto
 {
     public OrganizationCompanySettingsDto Company { get; init; } = new();
- /// <summary>Certified valuer used by issuance gates — keep singleton.</summary>
     public OrganizationEvaluatorSettingsDto Evaluator { get; init; } = new();
- /// <summary>Additional valuers / assistants for report (roster).</summary>
     public List<OrganizationValuerRosterEntryDto> Valuers { get; init; } = [];
     public OrganizationBrandingSettingsDto Branding { get; init; } = new();
     public OrganizationCommunicationsSettingsDto Communications { get; init; } = new();
     public OrganizationSlaSettingsDto Sla { get; init; } = new();
     public OrganizationValuationSettingsDto Valuation { get; init; } = new();
- /// <summary>تبويب «تقرير التقييم» (القرار 25 — الطبقة ب): حقول التقرير وحده.</summary>
     public OrganizationValuationReportSettingsDto ValuationReport { get; init; } = new();
     public DateTime UpdatedAtUtc { get; init; }
 }
@@ -39,9 +36,19 @@ public sealed class OrganizationValuationReportSettingsDto
 
 public sealed class OrganizationCompanySettingsDto
 {
-    public string Name { get; init; } = "شركة إجادة المهنية للتقييم";
+    public string Name { get; init; } = "شركة إجادة المهنية للتقييم العقاري";
     public string? TaxNumber { get; init; }
     public string? Address { get; init; }
+    public string? CommercialRegistration { get; init; }
+    /// <summary>رقم ترخيص المزاولة للمنشأة (الهيئة).</summary>
+    public string? PracticeLicenseNumber { get; init; }
+    /// <summary>ISO date — انتهاء ترخيص مزاولة المنشأة.</summary>
+    public string? PracticeLicenseExpiresAt { get; init; }
+    /// <summary>مرجع المقيّم المعتمد من سجل المقيّمين (certified أو معرّف الصف).</summary>
+    public string? CertifiedValuerId { get; init; }
+    public string? Email { get; init; }
+    public string? Phone { get; init; }
+    public string? Website { get; init; }
 }
 
 public sealed class OrganizationEvaluatorSettingsDto
@@ -55,6 +62,12 @@ public sealed class OrganizationEvaluatorSettingsDto
     public string? LicenseExpiresAt { get; init; }
  /// <summary>ISO date (yyyy-MM-dd) — membership expiry / effective end.</summary>
     public string? MembershipExpiresAt { get; init; }
+ /// <summary>تاريخ إصدار الترخيص (هجري) كما في هوية المقيم — عرض/تقرير.</summary>
+    public string? LicenseIssuedAt { get; init; }
+ /// <summary>تاريخ انتهاء الترخيص (هجري) للعرض في الهوية — بوابة الإصدار تبقى على LicenseExpiresAt.</summary>
+    public string? LicenseExpiresHijri { get; init; }
+ /// <summary>صفته — مثل «الرئيس التنفيذي».</summary>
+    public string? Title { get; init; }
 }
 
 public sealed class OrganizationValuerRosterEntryDto
@@ -69,34 +82,54 @@ public sealed class OrganizationValuerRosterEntryDto
     public string? LicenseExpiresAt { get; init; }
  /// <summary>ISO date (yyyy-MM-dd) — membership expiry / effective end.</summary>
     public string? MembershipExpiresAt { get; init; }
- /// <summary>certified | assistant | reviewer</summary>
+ /// <summary>certified | valuer | assistant | reviewer — الدور في النظام.</summary>
     public string Role { get; init; } = "assistant";
     public bool IsActive { get; init; } = true;
+ /// <summary>توقيع المقيّم للتقارير الجديدة.</summary>
+    public string? SignatureUrl { get; init; }
 }
 
 public sealed class OrganizationBrandingSettingsDto
 {
-    public string StampUrl { get; init; } = "/case-study/ejadah-stamp.png";
+    public string StampUrl { get; init; } = "/case-study/ejadah-stamp.svg";
     public string SignatureUrl { get; init; } = "/case-study/ejadah-signature.png";
     public string? HeaderUrl { get; init; }
- /// <summary>Report letterhead image (أصل نظام) — rendered as 3 slices: header ≤41mm, footer from 270mm, sidebar 13mm repeat-y. Null keeps the template's baked letterhead.</summary>
+    /// <summary>Report letterhead image — sliced by Letterhead*Mm. Null keeps the template's baked letterhead.</summary>
     public string? LetterheadUrl { get; init; }
     public string WatermarkText { get; init; } = "EJADAH";
+
+    public string? LogoColorUrl { get; init; }
+    public string? LogoWhiteUrl { get; init; }
+    /// <summary>عرض الختم على A4 (سم) — المصدر: الإعدادات v2 هوية بصرية.</summary>
+    public decimal? StampWidthCm { get; init; }
+    public decimal? StampHeightCm { get; init; }
+    public decimal? LetterheadHeadMm { get; init; }
+    public decimal? LetterheadFootTopMm { get; init; }
+    /// <summary>الهامش الأيسر (mm).</summary>
+    public decimal? LetterheadPadMm { get; init; }
+    /// <summary>الهامش الأيمن (mm) — شريحة الجانب في الطباعة.</summary>
+    public decimal? LetterheadPadStartMm { get; init; }
+    public decimal? LetterheadStripMm { get; init; }
+    public string? LogoVersion { get; init; }
+    public string? LogoUpdatedAt { get; init; }
+    public string? LogoUploadedBy { get; init; }
+    public string? StampUpdatedAt { get; init; }
+    public string? StampUploadedBy { get; init; }
+    public string? LetterheadVersion { get; init; }
+    public string? LetterheadUpdatedAt { get; init; }
 }
 
-public sealed class OrganizationCommunicationsSettingsDto
+public sealed class OrganizationCommunicationsSettingsDto 
 {
  /// <summary>dev-log | sms | email</summary>
     public string OtpProvider { get; init; } = "dev-log";
     public string DefaultOtpChannel { get; init; } = "sms";
     public string? SmsSenderId { get; init; }
     public string? EmailFrom { get; init; }
-
     public string? SmsApiUrl { get; init; }
  /// <summary>Write-only on save; never returned in clear text from GET.</summary>
     public string? SmsApiKey { get; init; }
     public bool SmsApiKeyConfigured { get; init; }
-
     public string? SmtpHost { get; init; }
     public int SmtpPort { get; init; } = 587;
     public string? SmtpUsername { get; init; }

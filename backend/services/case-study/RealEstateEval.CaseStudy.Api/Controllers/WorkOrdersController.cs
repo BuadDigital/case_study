@@ -89,8 +89,7 @@ public class WorkOrdersController : ControllerBase
             excludePo,
             cancellationToken,
             excludePropertyId);
-        if (hit is null) return NotFound();
-        return Ok(hit);
+        return this.OkOrEmpty(hit);
     }
 
  /// <summary>

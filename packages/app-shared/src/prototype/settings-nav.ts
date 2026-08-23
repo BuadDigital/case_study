@@ -8,7 +8,7 @@ export type SettingsNavItem = {
   placeholder?: boolean;
 };
 
-/** عناصر قائمة الإعدادات — التسعيرة تظهر حسب صلاحية الصفحة (مسؤول/مشرف/أخصائي…) */
+/** صفحات إعدادات تبقى في الكتالوج والصلاحيات — الشجرة في system-settings-nav.ts */
 export const SETTINGS_NAV: SettingsNavItem[] = [
   {
     id: "users",
@@ -18,7 +18,7 @@ export const SETTINGS_NAV: SettingsNavItem[] = [
   },
   {
     id: "organization-settings",
-    label: "إعدادات المنشأة",
+    label: "بيانات المنشأة",
     icon: "M3 21h18M5 21V7l7-4 7 4v14M9 21v-6h6v6",
     available: true,
   },
@@ -30,7 +30,7 @@ export const SETTINGS_NAV: SettingsNavItem[] = [
   },
   {
     id: "attachment-print-dictionary",
-    label: "قاموس مرفقات التقرير",
+    label: "قوائم التقييم",
     icon: "M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8zM14 2v6h6M12 18v-6M9 15h6",
     available: true,
   },

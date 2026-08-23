@@ -1,4 +1,4 @@
-﻿using Microsoft.AspNetCore.Authentication;
+using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
@@ -348,6 +348,7 @@ public static class DependencyInjection
     {
         services.AddUpstreamHttp(configuration);
         services.AddHttpClient<IAttachmentPrintDictionaryService, HttpAttachmentPrintDictionaryService>();
+        services.AddHttpClient<IValuationListsService, HttpValuationListsService>();
         services.AddHttpClient<IOrganizationSettingsService, HttpOrganizationSettingsService>();
         return services;
     }

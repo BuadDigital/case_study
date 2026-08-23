@@ -340,20 +340,34 @@ function buildSectionBody(sec: number, doc: ValuationReportDocumentDto): string 
 
 /**
  * الكليشة أصل نظام تُستبدل من الإعدادات دون أثر على الكود :
- * ثلاث شرائح — ترويسة حتى 41مم، تذييل من 270مم (27مم)، شريط جانبي 13مم repeat-y.
+ * ثلاث شرائح من هوامش الهوية البصرية (افتراضي HTML: ترويسة 41مم، تذييل من 270مم، يمين 13مم).
  * Null keeps the template's baked letterhead untouched.
  */
-function applyLetterheadSlices(dom: Document, letterheadUrl?: string | null): void {
+function applyLetterheadSlices(
+  dom: Document,
+  letterheadUrl?: string | null,
+  geo?: {
+    letterheadHeadMm?: number | null;
+    letterheadFootTopMm?: number | null;
+    letterheadPadStartMm?: number | null;
+  },
+): void {
   const url = letterheadUrl?.trim();
   if (!url) return;
   const cssUrl = url.replace(/["\)]/g, "");
+  const head = geo?.letterheadHeadMm && geo.letterheadHeadMm > 0 ? geo.letterheadHeadMm : 41;
+  const footTop =
+    geo?.letterheadFootTopMm && geo.letterheadFootTopMm > 0 ? geo.letterheadFootTopMm : 270;
+  const footH = Math.max(0, 297 - footTop);
+  const side =
+    geo?.letterheadPadStartMm && geo.letterheadPadStartMm > 0 ? geo.letterheadPadStartMm : 13;
   const style = dom.createElement("style");
   style.textContent =
     `.sheet{position:relative;background:#fff!important}` +
     `.lh-slice{position:absolute;pointer-events:none;background-image:url("${cssUrl}")}` +
-    `.lh-head{top:0;left:0;right:0;height:41mm;background-size:210mm auto;background-position:top center;background-repeat:no-repeat}` +
-    `.lh-foot{bottom:0;left:0;right:0;height:27mm;background-size:210mm auto;background-position:bottom center;background-repeat:no-repeat}` +
-    `.lh-side{top:41mm;bottom:27mm;right:0;width:13mm;background-size:210mm auto;background-position:top right;background-repeat:repeat-y}`;
+    `.lh-head{top:0;left:0;right:0;height:${head}mm;background-size:210mm auto;background-position:top center;background-repeat:no-repeat}` +
+    `.lh-foot{bottom:0;left:0;right:0;height:${footH}mm;background-size:210mm auto;background-position:bottom center;background-repeat:no-repeat}` +
+    `.lh-side{top:${head}mm;bottom:${footH}mm;right:0;width:${side}mm;background-size:210mm auto;background-position:top right;background-repeat:repeat-y}`;
   dom.head.appendChild(style);
   dom.querySelectorAll<HTMLElement>(".sheet").forEach((sheet) => {
     for (const cls of ["lh-head", "lh-foot", "lh-side"]) {
@@ -361,6 +375,23 @@ function applyLetterheadSlices(dom: Document, letterheadUrl?: string | null): vo
       slice.className = `lh-slice ${cls}`;
       sheet.insertBefore(slice, sheet.firstChild);
     }
+  });
+}
+
+function applyStampSize(
+  dom: Document,
+  widthCm?: number | null,
+  heightCm?: number | null,
+): void {
+  const w = widthCm && widthCm > 0 ? widthCm : 4;
+  const h = heightCm && heightCm > 0 ? heightCm : 4;
+  dom.querySelectorAll("img").forEach((img) => {
+    const alt = img.getAttribute("alt") ?? "";
+    const src = img.getAttribute("src") ?? "";
+    if (!/ختم|stamp/i.test(`${alt} ${src}`)) return;
+    img.style.width = `${w}cm`;
+    img.style.height = `${h}cm`;
+    img.style.objectFit = "contain";
   });
 }
 
@@ -500,7 +531,8 @@ export function mergeApprovedValuationTemplate(
     while (wrap.firstChild) sec.appendChild(wrap.firstChild);
   });
 
-  applyLetterheadSlices(dom, doc.letterheadImageUrl);
+  applyLetterheadSlices(dom, doc.letterheadImageUrl, doc);
+  applyStampSize(dom, doc.stampWidthCm, doc.stampHeightCm);
 
  // محرك الصف التلقائي : لا توزيع يدويًا —
   // القسم وحدة لا تنشطر بين صفحتين، وما لا يتسع ينزل لبداية الصفحة التالية،

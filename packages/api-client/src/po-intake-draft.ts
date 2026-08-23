@@ -35,7 +35,7 @@ export async function getPoIntakeDraft(
     });
     if (res.status === 401) return { ok: false, kind: "auth" };
     if (res.status === 403) return { ok: false, kind: "forbidden" };
-    if (res.status === 404) return { ok: true, data: null };
+    if (res.status === 404 || res.status === 204) return { ok: true, data: null };
     if (!res.ok) return { ok: false, kind: "server" };
     const data = (await res.json()) as {
       step?: number;
@@ -47,8 +47,11 @@ export async function getPoIntakeDraft(
       expectedPropertyCount?: number;
       propertiesRegion?: string;
       workOrderDescription?: string;
-      updatedAtUtc?: string;
-    };
+      updatedAtUtc?: string | null;
+    } | null;
+    if (!data?.updatedAtUtc && !data?.poNumber?.trim()) {
+      return { ok: true, data: null };
+    }
     return {
       ok: true,
       data: {

@@ -109,6 +109,13 @@ function normalizeSubmissionDto(raw: unknown): PartyTaskSubmissionDto {
   };
 }
 
+/** Unsaved GET placeholders have no row id — treat them as "not started". */
+export function isPersistedPartyTaskSubmission(
+  dto: PartyTaskSubmissionDto | null | undefined,
+): dto is PartyTaskSubmissionDto {
+  return Boolean(dto?.id?.trim());
+}
+
 export async function getPartyTaskSubmission(
   config: WorkOrdersApiConfig,
   taskId: string,

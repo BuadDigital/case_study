@@ -1,7 +1,7 @@
 "use client";
 
 import type { ReactNode } from "react";
-import { cn, StatusPill, type StatusPillStyle } from "@platform/ui-kit";
+import { Tab, TabBar, cn, StatusPill, type StatusPillStyle } from "@platform/ui-kit";
 
 /** Case Study.html `ENG_BOX` — soft surface field cell. */
 export const engBoxClassName =
@@ -120,26 +120,30 @@ export function ValTabBar({
   onChange: (id: string) => void;
 }) {
   return (
-    <div className="-mx-0.5 mb-[18px] flex gap-0 overflow-x-auto overflow-y-hidden border-b border-border [scrollbar-width:none] [&::-webkit-scrollbar]:h-0">
+    <TabBar
+      className="z-10 mx-[-20px] mb-0 flex flex-wrap gap-x-0.5 gap-y-0 !overflow-x-hidden overflow-y-visible [scrollbar-width:none] [&::-webkit-scrollbar]:hidden border-b border-border bg-transparent px-3.5 sm:px-3.5"
+      aria-label="أقسام نافذة التقييم"
+    >
       {tabs.map((tab) => {
         const on = active === tab.id;
         return (
-          <button
+          <Tab
             key={tab.id}
-            type="button"
+            active={on}
             onClick={() => onChange(tab.id)}
             className={cn(
-              "-mb-px shrink-0 border-b-2 bg-transparent px-3.5 py-2.5 font-[inherit] text-[12.5px] transition-colors",
-              on
-                ? "border-gold-d font-bold text-heading"
-                : "border-transparent font-medium text-text-2",
+              "relative mb-0 max-lg:min-h-0 border-0 border-b-0 px-2.5 py-[9px] text-[12.5px] font-normal text-text-2",
+              "rounded-none transition-[background,color] duration-150",
+              "hover:bg-[color-mix(in_srgb,#102B4E_6%,transparent)] hover:text-heading",
+              on &&
+                "!border-0 !bg-ink !font-normal !text-white hover:!bg-ink hover:!text-white",
             )}
           >
             {tab.label}
-          </button>
+          </Tab>
         );
       })}
-    </div>
+    </TabBar>
   );
 }
 

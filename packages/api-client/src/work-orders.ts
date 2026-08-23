@@ -477,9 +477,10 @@ export async function findPriorDeed(
     });
     if (res.status === 401) return { ok: false, kind: "auth" };
     if (res.status === 403) return parseForbidden(res);
-    if (res.status === 404) return { ok: true, data: null };
+    if (res.status === 404 || res.status === 204) return { ok: true, data: null };
     if (!res.ok) return { ok: false, kind: "server" };
-    return { ok: true, data: (await res.json()) as PriorDeedRegistrationDto };
+    const data = (await res.json()) as PriorDeedRegistrationDto | null;
+    return { ok: true, data: data ?? null };
   } catch {
     return { ok: false, kind: "network" };
   }

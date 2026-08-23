@@ -22,7 +22,7 @@ export const CASE_STUDY_FORM_STEPS = [
 ] as const;
 
 const DEFAULT_PROVIDER_NAME = "شركة إجادة المهنية للتقييم";
-const DEFAULT_STAMP = "/case-study/ejadah-stamp.png";
+const DEFAULT_STAMP = "/case-study/ejadah-stamp.svg";
 const DEFAULT_SIGNATURE = "/case-study/emad-signature.png";
 
 /** Resolved from OrganizationSettings when cache is warm; falls back to built-in defaults. */

@@ -8,7 +8,7 @@ export type SystemFieldsNavItem = {
   placeholder?: boolean;
 };
 
-/** جميع حقول النظام — مرجع الحقول والأدوات */
+/** دراسة الحالة — داخل شجرة الإعدادات v2 */
 export const SYSTEM_FIELDS_NAV: SystemFieldsNavItem[] = [
   {
     id: "case-study-info-roles",
@@ -17,26 +17,20 @@ export const SYSTEM_FIELDS_NAV: SystemFieldsNavItem[] = [
     available: true,
   },
   {
-    id: "courts",
-    label: "المحاكم و الدوائر",
-    icon: "M3 21h18M5 21V7l8-4 8 4v14M9 21v-6h6v6",
-    available: true,
-  },
-  {
-    id: "location-pending",
-    label: "مراجعة المسميات",
-    icon: "M12 2l3 7h7l-5.5 4.5L18 21l-6-4-6 4 1.5-7.5L2 9h7z",
-    available: true,
-  },
-  {
     id: "failure-types",
     label: "أنواع التعذرات",
     icon: "M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z",
     available: true,
   },
+  {
+    id: "courts",
+    label: "المحاكم والدوائر",
+    icon: "M3 21h18M5 21V7l8-4 8 4v14M9 21v-6h6v6",
+    available: true,
+  },
 ];
 
-export const SYSTEM_FIELDS_GROUP = "جميع حقول النظام";
+export const SYSTEM_FIELDS_GROUP = "دراسة الحالة";
 
 export const SYSTEM_FIELDS_GROUP_ICON =
   "M4 6h16M4 10h16M4 14h16M4 18h16";

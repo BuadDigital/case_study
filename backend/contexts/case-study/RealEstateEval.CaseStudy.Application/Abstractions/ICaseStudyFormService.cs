@@ -9,6 +9,8 @@ public interface ICaseStudyFormService
  /// Reads a form. When <paramref name="actor"/> is supplied, party forms require
  /// <see cref="Rules.PoRoleMatrixRules.CanReadPartyTask"/> and the internal case-study form
  /// requires case-staff role; otherwise null is returned so callers cannot probe existence.
+ /// When the task exists and the actor may read it, an unsaved empty form is returned
+ /// instead of null so first open is 200 rather than 404.
  /// </summary>
     Task<CaseStudyFormDto?> GetAsync(
         Guid taskId,

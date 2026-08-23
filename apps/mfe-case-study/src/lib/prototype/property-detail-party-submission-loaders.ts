@@ -1,4 +1,4 @@
-import { getPartyTaskSubmission, type PartyTaskSubmissionDto } from "@platform/api-client";
+import { getPartyTaskSubmission, isPersistedPartyTaskSubmission, type PartyTaskSubmissionDto,} from "@platform/api-client";
 import { resolveApiError, workOrdersApiConfig } from "../work-orders-api-config";
 import type {
   EngineeringSurveyChecklistRow,
@@ -71,6 +71,7 @@ export async function loadEvaluatorSubmissionSnapshot(
       resolveApiError(result.kind, result.errors, "تعذّر تحميل بيانات التقييم"),
     );
   }
+  if (!isPersistedPartyTaskSubmission(result.data)) return null;
   return parseEvaluatorPayload(result.data);
 }
 
@@ -87,6 +88,7 @@ export async function loadEngineeringSurveySubmissionSnapshot(
       resolveApiError(result.kind, result.errors, "تعذّر تحميل بيانات الرفع المساحي"),
     );
   }
+  if (!isPersistedPartyTaskSubmission(result.data)) return null;
 
   const payload = result.data.payload ?? {};
   const status =

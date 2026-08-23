@@ -72,7 +72,7 @@ export async function loadPropertyDetailPartySubmission(input: {
 
   if (roleKey === "specialist") {
     const draft = await loadCaseStudyFormDraft(parentTask.id);
-    if (!draft) {
+    if (!draft?.savedAtUtc) {
       return emptySubmission(roleKey, "لم يُقدَّم بعد");
     }
     return buildFromFormDraft(roleKey, draft);
@@ -90,7 +90,7 @@ export async function loadPropertyDetailPartySubmission(input: {
     }
     const partyDraft = await loadPartyCaseStudyFormDraft(child.id);
     const infoRoles = await loadCaseStudyInfoRolesConfig();
-    if (partyDraft) {
+    if (partyDraft?.savedAtUtc) {
       submission.checklist = mergeEvaluatorChecklistFromCaseStudy(
         submission.checklist as EvaluatorChecklistAnswers,
         partyDraft.answers,

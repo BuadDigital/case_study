@@ -46,7 +46,7 @@ public class ValuationRequestsController : ControllerBase
         CancellationToken ct)
     {
         var dto = await _service.GetOpenByPropertyAsync(propertyId, ct);
-        return dto is null ? NotFound() : Ok(dto);
+        return this.OkOrEmpty(dto);
     }
 
     [HttpPost("ensure-open")]

@@ -11,6 +11,8 @@ import { getApiBase, approveRemoteInspection, ensureOpenValuationRequestByProper
   getValuationCostApproach,
   getValuationApproachSettings,
   saveValuationApproachSettings,
+  getValuationLists,
+  activeValuationListOptions,
   getValuationReconciliation,
   saveValuationReconciliation,
   getValuationIssuanceGates,
@@ -559,6 +561,11 @@ export function EvaluatorComparableSelectionPanel({
     basisOfValueKeyForAssignment(assignmentType),
   );
   const [valuePremiseKey, setValuePremiseKey] = useState("");
+  const [purposeOptions, setPurposeOptions] = useState(VALUATION_PURPOSE_OPTIONS);
+  const [basisOptions, setBasisOptions] = useState(VALUE_BASIS_OPTIONS);
+  const [premiseOptions, setPremiseOptions] = useState<
+    { value: string; label: string }[]
+  >([]);
   const [liquidationDiscountPct, setLiquidationDiscountPct] = useState("0");
   const [liquidationDiscountRationale, setLiquidationDiscountRationale] =
     useState("");
@@ -567,6 +574,20 @@ export function EvaluatorComparableSelectionPanel({
   >({});
   const [gates, setGates] = useState<ValuationIssuanceGatesDto | null>(null);
   const [reportFields, setReportFields] = useState<ValuationReportFieldPayloadDto | null>(null);
+
+  useEffect(() => {
+    const config = apiConfig();
+    if (!config) return;
+    void getValuationLists(config).then((res) => {
+      if (!res.ok) return;
+      const purposes = activeValuationListOptions(res.data.lists, "purposes");
+      const bases = activeValuationListOptions(res.data.lists, "valueBases");
+      const premises = activeValuationListOptions(res.data.lists, "premises");
+      if (purposes.length) setPurposeOptions(purposes);
+      if (bases.length) setBasisOptions(bases);
+      if (premises.length) setPremiseOptions(premises);
+    });
+  }, []);
 
   const reload = useCallback(async () => {
     const config = apiConfig();
@@ -1223,7 +1244,7 @@ export function EvaluatorComparableSelectionPanel({
                 onChange={(e) => setAsPurpose(e.target.value)}
               >
                 <option value="">— اختر —</option>
-                {VALUATION_PURPOSE_OPTIONS.map((option) => (
+                {purposeOptions.map((option) => (
                   <option key={option.value} value={option.value}>
                     {option.label}
                   </option>
@@ -2215,7 +2236,7 @@ export function EvaluatorComparableSelectionPanel({
                   }
                 }}
               >
-                {VALUE_BASIS_OPTIONS.map((option) => (
+                {basisOptions.map((option) => (
                   <option key={option.value} value={option.value}>
                     {option.label}
                   </option>
@@ -2231,17 +2252,26 @@ export function EvaluatorComparableSelectionPanel({
                 onChange={(e) => setValuePremiseKey(e.target.value)}
               >
                 <option value="">— اختر —</option>
-                {basisOfValueKey === "liquidation" ? (
-                  <>
-                    <option value="orderly">التصفية المنظمة</option>
-                    <option value="forced">البيع القسري</option>
-                  </>
-                ) : (
-                  <>
-                    <option value="hau">أعلى وأفضل استخدام</option>
-                    <option value="current">الاستخدام الحالي</option>
-                  </>
-                )}
+                {(premiseOptions.length
+                  ? premiseOptions.filter((option) =>
+                      basisOfValueKey === "liquidation"
+                        ? option.value === "orderly" || option.value === "forced"
+                        : option.value === "hau" || option.value === "current",
+                    )
+                  : basisOfValueKey === "liquidation"
+                    ? [
+                        { value: "orderly", label: "التصفية المنظمة" },
+                        { value: "forced", label: "البيع القسري" },
+                      ]
+                    : [
+                        { value: "hau", label: "أعلى وأفضل استخدام" },
+                        { value: "current", label: "الاستخدام الحالي" },
+                      ]
+                ).map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
               </select>
             </div>
           </div>

@@ -22,8 +22,7 @@ public class PoIntakeDraftController : ControllerBase
         var userId = CurrentUserId();
         if (userId is null) return Unauthorized();
 
-        var dto = await _drafts.GetForUserAsync(userId, ct);
-        return dto is null ? NotFound() : Ok(dto);
+        return Ok(await _drafts.GetForUserAsync(userId, ct));
     }
 
     [HttpPut]

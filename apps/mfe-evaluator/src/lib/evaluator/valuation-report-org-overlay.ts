@@ -1,6 +1,7 @@
-import type {
-  OrganizationSettingsDto,
-  OrganizationValuationReportSettings,
+import {
+  applyIvsDateToStandards,
+  type OrganizationSettingsDto,
+  type OrganizationValuationReportSettings,
 } from "@platform/api-client";
 import type { ReportTabSection } from "./valuation-report-tab-sections";
 
@@ -47,7 +48,9 @@ function overlaySection(
       return bullets.length ? { ...section, bullets } : section;
     }
     case "04": {
-      const paragraphs = lines(vr.professionalStandards);
+      const paragraphs = lines(
+        applyIvsDateToStandards(vr.professionalStandards, "31 يناير 2025"),
+      );
       return paragraphs.length ? { ...section, paragraphs } : section;
     }
     case "05": {

@@ -118,11 +118,14 @@ public static class ValuationPurposeKeys
     public const string AuctionLiquidation = "auction_liquidation";
     /// <summary>قطاع خاص — البيع.</summary>
     public const string Sale = "sale";
+    public const string EstateLiquidation = "estate_liquidation";
+    public const string Purchase = "purchase";
+    public const string Expropriation = "expropriation";
 
     public static readonly string[] All =
     [
         JudicialExecution, SalePurchase, Financing, FinancialReporting, Litigation, Other,
-        AuctionLiquidation, Sale,
+        AuctionLiquidation, Sale, EstateLiquidation, Purchase, Expropriation,
     ];
 
     public static bool IsKnown(string? value) =>
@@ -138,6 +141,9 @@ public static class ValuationPurposeKeys
         Other => "أخرى",
         AuctionLiquidation => "البيع بالمزاد العلني لغرض التصفية",
         Sale => "البيع",
+        EstateLiquidation => "تصفية التركات",
+        Purchase => "الشراء",
+        Expropriation => "نزع الملكية للمنفعة العامة",
         _ => "",
     };
 }
@@ -210,7 +216,8 @@ public static class ValuationApproachSettingsRules
         string? externalSpecialistDetails = null,
         string? valuationDateMode = null,
         DateOnly? retrospectiveDate = null,
-        string? retrospectiveRationale = null)
+        string? retrospectiveRationale = null,
+        IReadOnlySet<string>? allowedPurposeKeys = null)
     {
         var errors = new Dictionary<string, string>();
 
@@ -218,7 +225,7 @@ public static class ValuationApproachSettingsRules
         var purpose = (valuationPurposeKey ?? "").Trim().ToLowerInvariant();
         if (purpose.Length == 0)
             errors["valuationPurposeKey"] = "الغرض من التقييم إلزامي";
-        else if (!ValuationPurposeKeys.IsKnown(purpose))
+        else if (!(allowedPurposeKeys?.Contains(purpose) ?? ValuationPurposeKeys.IsKnown(purpose)))
             errors["valuationPurposeKey"] = "الغرض من التقييم غير معروف";
         else if (purpose == ValuationPurposeKeys.Other
             && string.IsNullOrWhiteSpace(valuationPurposeNote))

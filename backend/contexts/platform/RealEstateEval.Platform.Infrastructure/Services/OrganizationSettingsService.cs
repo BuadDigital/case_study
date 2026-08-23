@@ -51,6 +51,7 @@ public sealed class OrganizationSettingsService : IOrganizationSettingsService
         ValidateSla(next.Sla);
         ValidateCommunications(next.Communications);
         ValidateValuation(next.Valuation);
+        ValidateBranding(next.Branding);
 
         var row = await _db.OrganizationSettings.FirstOrDefaultAsync(cancellationToken);
         var now = _time.UtcNow();
@@ -99,6 +100,26 @@ public sealed class OrganizationSettingsService : IOrganizationSettingsService
             throw new ArgumentOutOfRangeException(nameof(v.MaxAdoptedComparables), "الحد الأقصى للمقارنات المعتمدة يجب أن يكون بين 1 و 20.");
         if (v.ComparableTimeGapMonths is < 1 or > 60)
             throw new ArgumentOutOfRangeException(nameof(v.ComparableTimeGapMonths), "عتبة الفارق الزمني يجب أن تكون بين 1 و 60 شهراً.");
+    }
+
+    private static void ValidateBranding(OrganizationBrandingSettingsDto b)
+    {
+        static void Mm(decimal? v, string name, decimal max)
+        {
+            if (v is null) return;
+            if (v.Value is < 0 or > max)
+                throw new ArgumentOutOfRangeException(name, $"قيمة {name} خارج النطاق.");
+        }
+
+        if (b.StampWidthCm is > 0 and (< 0.5m or > 20m))
+            throw new ArgumentOutOfRangeException(nameof(b.StampWidthCm), "عرض الختم يجب أن يكون بين 0.5 و 20 سم.");
+        if (b.StampHeightCm is > 0 and (< 0.5m or > 20m))
+            throw new ArgumentOutOfRangeException(nameof(b.StampHeightCm), "ارتفاع الختم يجب أن يكون بين 0.5 و 20 سم.");
+        Mm(b.LetterheadHeadMm, "الهامش الأعلى", 297);
+        Mm(b.LetterheadFootTopMm, "الهامش الأسفل", 297);
+        Mm(b.LetterheadPadMm, "الهامش الأيسر", 210);
+        Mm(b.LetterheadPadStartMm, "الهامش الأيمن", 210);
+        Mm(b.LetterheadStripMm, "شريط الكليشة", 210);
     }
 
     private static void ValidateCommunications(OrganizationCommunicationsSettingsDto c)
@@ -239,6 +260,7 @@ public sealed class OrganizationSettingsService : IOrganizationSettingsService
                     : v.MembershipExpiresAt.Trim(),
                 Role = NormalizeValuerRole(v.Role),
                 IsActive = v.IsActive,
+                SignatureUrl = string.IsNullOrWhiteSpace(v.SignatureUrl) ? null : v.SignatureUrl.Trim(),
             })
             .ToList();
     }
@@ -246,7 +268,7 @@ public sealed class OrganizationSettingsService : IOrganizationSettingsService
     private static string NormalizeValuerRole(string? role)
     {
         var r = (role ?? "assistant").Trim().ToLowerInvariant();
-        return r is "certified" or "assistant" or "reviewer" ? r : "assistant";
+        return r is "certified" or "valuer" or "assistant" or "reviewer" ? r : "assistant";
     }
 
     private static OrganizationSlaSettingsDto NormalizeSla(OrganizationSlaSettingsDto? sla) =>

@@ -68,6 +68,10 @@ export async function fetchPartySubmission(
   }
   const result = await getPartyTaskSubmission(config, taskId);
   if (result.ok) {
+    if (!result.data.id?.trim()) {
+      setCachedPartySubmission(null, taskId);
+      return null;
+    }
     setCachedPartySubmission(result.data, taskId);
     return result.data;
   }

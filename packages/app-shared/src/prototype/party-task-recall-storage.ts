@@ -123,6 +123,10 @@ export async function hydratePartyTaskRecallForTask(
     }
     return getPartyTaskRecall(taskId);
   }
+  if (!result.data) {
+    memoryByTask.delete(taskId);
+    return null;
+  }
 
   const mapped = mapDto(result.data);
   memoryByTask.set(taskId, mapped);

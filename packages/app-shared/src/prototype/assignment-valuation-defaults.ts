@@ -6,12 +6,15 @@ export type ValuationSelectOption = { value: string; label: string };
 
 export const VALUATION_PURPOSE_OPTIONS: ValuationSelectOption[] = [
   { value: "auction_liquidation", label: "البيع بالمزاد العلني لغرض التصفية" },
+  { value: "estate_liquidation", label: "تصفية التركات" },
   { value: "sale", label: "البيع" },
+  { value: "purchase", label: "الشراء" },
+  { value: "financing", label: "التمويل والرهن العقاري" },
+  { value: "financial_reporting", label: "التقارير المالية" },
+  { value: "litigation", label: "التقاضي وفض النزاعات" },
+  { value: "expropriation", label: "نزع الملكية للمنفعة العامة" },
   { value: "judicial_execution", label: "تنفيذ قضائي" },
   { value: "sale_purchase", label: "بيع أو شراء" },
-  { value: "financing", label: "تمويل ورهن" },
-  { value: "financial_reporting", label: "قوائم مالية" },
-  { value: "litigation", label: "نزاع قضائي" },
   { value: "other", label: "أخرى" },
 ];
 

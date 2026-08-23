@@ -153,7 +153,7 @@ function buildMainPages(): SystemScreenEntry[] {
   SETTINGS_NAV.forEach((item) => {
     add(
       pageEntry(item, SETTINGS_GROUP, {
-        whereToFind: `أعلى الشاشة ← الملف الشخصي ← الإعدادات ← ${item.label}`,
+        whereToFind: `القائمة الجانبية ← الإعدادات ← ${item.label}`,
       }),
     );
   });
@@ -161,7 +161,7 @@ function buildMainPages(): SystemScreenEntry[] {
   SYSTEM_FIELDS_NAV.forEach((item) => {
     add(
       pageEntry(item, SYSTEM_FIELDS_GROUP, {
-        whereToFind: `أعلى الشاشة ← الملف الشخصي ← جميع حقول النظام ← ${item.label}`,
+        whereToFind: `القائمة الجانبية ← الإعدادات ← دراسة الحالة ← ${item.label}`,
         notes: item.placeholder
           ? "مرجع إعدادات — قيد إكمال الربط بالنظام."
           : undefined,
@@ -170,16 +170,16 @@ function buildMainPages(): SystemScreenEntry[] {
   });
 
   add(
-    pageEntry(SYSTEM_FIELDS_CATALOG_NAV_ITEM, "أدوات عامة", {
+    pageEntry(SYSTEM_FIELDS_CATALOG_NAV_ITEM, SETTINGS_GROUP, {
       path: `/${SYSTEM_FIELDS_CATALOG_NAV_ITEM.id}`,
-      whereToFind: "القائمة الجانبية ← عام ← قاموس الحقول المركزي",
+      whereToFind: "القائمة الجانبية ← الإعدادات ← الحقول والمصطلحات ← قاموس الحقول المركزي",
     }),
   );
 
   add(
-    pageEntry(SYSTEM_SCREEN_CATALOG_NAV_ITEM, "أدوات عامة", {
+    pageEntry(SYSTEM_SCREEN_CATALOG_NAV_ITEM, SETTINGS_GROUP, {
       path: `/${SYSTEM_SCREEN_CATALOG_NAV_ITEM.id}`,
-      whereToFind: "القائمة الجانبية ← عام ← دليل الشاشات",
+      whereToFind: "القائمة الجانبية ← الإعدادات ← الحقول والمصطلحات ← دليل الشاشات",
     }),
   );
 

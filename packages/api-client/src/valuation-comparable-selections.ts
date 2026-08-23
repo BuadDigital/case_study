@@ -390,7 +390,7 @@ async function parseJson<T>(res: Response): Promise<T> {
 export async function getOpenValuationRequestByProperty(
   config: ValuationSelectionsApiConfig,
   propertyId: string,
-): Promise<Result<ValuationRequestLiteDto>> {
+): Promise<Result<ValuationRequestLiteDto | null>> {
   const base = config.baseUrl ?? getApiBase();
   try {
     const res = await fetch(
@@ -398,9 +398,10 @@ export async function getOpenValuationRequestByProperty(
       { headers: headers(config.token) },
     );
     if (res.status === 401) return { ok: false, kind: "auth" };
-    if (res.status === 404) return { ok: false, kind: "not_found" };
+    if (res.status === 404 || res.status === 204) return { ok: true, data: null };
     if (!res.ok) return { ok: false, kind: "server" };
-    return { ok: true, data: await parseJson<ValuationRequestLiteDto>(res) };
+    const data = await parseJson<ValuationRequestLiteDto | null>(res);
+    return { ok: true, data: data?.id ? data : null };
   } catch {
     return { ok: false, kind: "network" };
   }
@@ -412,8 +413,8 @@ export async function ensureOpenValuationRequestByProperty(
 ): Promise<Result<ValuationRequestLiteDto>> {
   const base = config.baseUrl ?? getApiBase();
   const open = await getOpenValuationRequestByProperty(config, body.propId);
-  if (open.ok) return open;
-  if (open.kind === "auth" || open.kind === "network") return open;
+  if (open.ok && open.data) return { ok: true, data: open.data };
+  if (!open.ok && (open.kind === "auth" || open.kind === "network")) return open;
 
   try {
     const today = new Date().toISOString().slice(0, 10);
@@ -936,6 +937,12 @@ export type ValuationReportDocumentDto = {
   approvedTemplateUrl?: string;
   /** Org-settings letterhead for the 3-slice render; null keeps the baked one. */
   letterheadImageUrl?: string | null;
+  letterheadHeadMm?: number | null;
+  letterheadFootTopMm?: number | null;
+  letterheadPadMm?: number | null;
+  letterheadPadStartMm?: number | null;
+  stampWidthCm?: number | null;
+  stampHeightCm?: number | null;
   marketMethodLabelAr: string;
   costMethodLabelAr: string;
   incomeMethodLabelAr: string;

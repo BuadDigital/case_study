@@ -4,6 +4,7 @@ import {
 } from "@engineering-office/mfe/lib/jeddah-default-coords";
 import {
   getPartyTaskSubmission,
+  isPersistedPartyTaskSubmission,
   savePartyTaskSubmission,
   submitPartyTaskSubmission,
   type PartyTaskSubmissionDto,
@@ -440,6 +441,25 @@ export async function fetchInspectorWorkspace(
   }
 
   const result = await getPartyTaskSubmission(config, taskId);
+  if (result.ok && !isPersistedPartyTaskSubmission(result.data)) {
+    const queued = await loadQueuedDraftPayload<Record<string, unknown>>(
+      "field-inspection",
+      taskId,
+    );
+    if (queued) {
+      const local: PartyTaskSubmissionDto = {
+        taskId,
+        kind: "field-inspection",
+        status: "draft",
+        payload: queued,
+        updatedAtUtc: new Date().toISOString(),
+      };
+      const draft = payloadToDraft(local);
+      setCache(draft);
+      return draft;
+    }
+    return null;
+  }
   if (!result.ok) {
     if (result.kind === "not_found") {
       const queued = await loadQueuedDraftPayload<Record<string, unknown>>(

@@ -22,19 +22,29 @@ Status values: **todo** · **in progress** · **blocked** · **deferred** · **d
 
 
 
-## Remaining work at a glance — updated 2026-08-19 (evening)
+## Remaining work at a glance — updated 2026-08-20 (afternoon)
 
-Everything below is current after the A8 extraction marathon (2026-08-18/19).
-`dev` **is fully pushed to GitHub (through** `9cdbeffd`**);** `main` **is untouched — nothing has
-deployed to production yet.** Landed after the marathon, same day:
+Everything below is current after the A8 extraction marathon (2026-08-18/19) and the
+2026-08-20 production cutover. `dev` and `main` are both at **`d880b070`**. Production
+deployed that SHA (Hetzner stack smoke: gateway / identity / case-study health+ready all
+passed). Previous live release was 17 Aug.
+
+Landed after the marathon, now **on production**:
 
 - **Identity auth-scheme fix** (`8021ac44`): `AddIdentity()` was overriding the JWT default
 scheme with its login cookie, so every `[Authorize]` endpoint on the Identity host — incl.
 `/api/permissions`, which feeds the shell role chip — returned 401 and the UI fell back to
-the hardcoded «مدير إدارة التقييم العقاري» persona under real users. Latent pre-existing
-bug, **would have shipped to production** — make sure the next `main` deploy includes it.
-Fix: bearer re-asserted after `AddIdentityStores`; verified all four suites green + live
-`/api/permissions` 200.
+the hardcoded «مدير إدارة التقييم العقاري» persona under real users. Fix: bearer re-asserted
+after `AddIdentityStores`.
+- **B7 / F16 leftover / evaluator report tab** (`28d181f5`): Case Study services off
+`CaseStudyDbContext`, broader controller-body Postgres coverage, evaluator valuation-report
+tab + org-settings overlay.
+- **Deploy plumbing** (`8130f805`, `fe1fd253`, `d880b070`): UTF-8 Arabic in Case Study
+sources, `ui-kit` COPY in the shell image, `Directory.Build.props` in API images (shared
+`Program`/`Main`), deploy loads `/app/.env` when GitHub does not define compose secrets.
+
+Still local-only (dev box, not production):
+
 - **Dev upstream URLs → 127.0.0.1** (`9cdbeffd`): on this Windows box, `localhost` resolves
 to `::1` first and the firewall silently drops it → every fresh service-to-service
 connection stalled ~2s (keys page = 2 hops = ~4s after idle). Dev-only files; production
@@ -63,10 +73,11 @@ items above.
 **2. Waiting on Omar:**
 
 - ~~Push authorization~~ **done 2026-08-19** — `dev` pushed as sole author (standing rule: no
-AI co-author trailers in this repo). **Next decision: deploy** — merging `dev` → `main`
-auto-deploys production with no test gate. Smoke-test first (failure lifecycle, valuation
-report preview, a notification, role chip shows real roles), then merge when ready; the
-identity auth-scheme fix should ship with it.
+AI co-author trailers in this repo). ~~**Next decision: deploy**~~ **done 2026-08-20** —
+`dev` merged to `main`; pipeline tests now gate `build-and-push` / `deploy`. Production is
+`d880b070`. Still worth a live smoke: failure lifecycle, valuation report preview, a
+notification, role chip shows real roles (the identity auth-scheme fix shipped with this
+cutover).
 - **Dev system reset redesign** (explicitly parked "for later"): the old reset walked the god
 context; `DELETE /api/system/data` returns 501. The settings UI
 (`apps/mfe-settings/src/lib/system-maintenance-api.ts`) and `apps/shell/scripts/clear-all-pos.mjs`

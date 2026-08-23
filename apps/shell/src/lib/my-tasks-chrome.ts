@@ -41,9 +41,10 @@ export function resolveMyTasksChrome(
   }
 
   if (page === "property-appraisal" && parts[1]) {
+    const deed = options?.deedLabel?.trim();
     return {
-      breadcrumb: "نافذة التقييم",
-      title: "المقيم العقاري — نافذة التقييم",
+      breadcrumb: deed || "نافذة التقييم",
+      title: "",
     };
   }
 
@@ -74,9 +75,10 @@ export function resolveMyTasksChrome(
     const party = partyTaskPageDef(page);
     if (party) {
       if (page === "property-appraisal") {
+        const deed = options?.deedLabel?.trim();
         return {
-          breadcrumb: "نافذة التقييم",
-          title: "المقيم العقاري — نافذة التقييم",
+          breadcrumb: deed || "نافذة التقييم",
+          title: "",
         };
       }
       if (page === "active-survey") {

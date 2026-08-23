@@ -19,7 +19,7 @@ export function buildAppraiserQueueRowMoreItems(options: {
   const items: RowMoreMenuItem[] = [
     {
       id: "property-data",
-      label: "بيانات العقار",
+      label: "تفاصيل العقار",
       onClick: () => {
         if (po && propertyId) {
           options.router.push(poPropertyPath(po, propertyId));
@@ -30,7 +30,7 @@ export function buildAppraiserQueueRowMoreItems(options: {
     },
     {
       id: "open-report",
-      label: "تقرير التقييم",
+      label: "تقييم العقار",
       onClick: options.openTask,
     },
   ];

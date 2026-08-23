@@ -124,5 +124,5 @@ public class PoIntakeDraftDto
     public int ExpectedPropertyCount { get; init; } = 1;
     public string PropertiesRegion { get; init; } = "";
     public string WorkOrderDescription { get; init; } = "";
-    public DateTime UpdatedAtUtc { get; init; }
+    public DateTime? UpdatedAtUtc { get; init; }
 }

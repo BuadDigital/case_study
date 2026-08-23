@@ -11,12 +11,12 @@ public sealed class PoIntakeDraftService(
 {
     private readonly TimeProvider _time = time ?? TimeProvider.System;
 
-    public async Task<PoIntakeDraftDto?> GetForUserAsync(
+    public async Task<PoIntakeDraftDto> GetForUserAsync(
         string userId,
         CancellationToken cancellationToken = default)
     {
         var row = await drafts.GetByUserIdAsync(userId, track: false, cancellationToken);
-        return row is null ? null : Deserialize(row.DraftJson, row.UpdatedAtUtc);
+        return row is null ? EmptyDraft() : Deserialize(row.DraftJson, row.UpdatedAtUtc);
     }
 
     public async Task<PoIntakeDraftDto> SaveForUserAsync(
@@ -83,7 +83,7 @@ public sealed class PoIntakeDraftService(
         }
     }
 
-    private static PoIntakeDraftDto EmptyDraft(DateTime updatedAtUtc) => new()
+    private static PoIntakeDraftDto EmptyDraft(DateTime? updatedAtUtc = null) => new()
     {
         Step = 1,
         ExpectedPropertyCount = 1,

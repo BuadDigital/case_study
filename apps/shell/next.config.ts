@@ -1,4 +1,5 @@
 import os from "node:os";
+import path from "node:path";
 import type { NextConfig } from "next";
 
 const apiUpstream =
@@ -38,6 +39,14 @@ const allowedDevOrigins = getDevAllowedOrigins();
 const nextConfig: NextConfig = {
   /** Produce a self-contained server.js for Docker / Hetzner deployment. */
   output: "standalone",
+  /**
+   * Monorepo: lockfile lives at the repo root. Without an explicit root,
+   * Turbopack can infer the wrong workspace and emit AppRoutes = never
+   * (every page 404s in `next dev` while layout.tsx still compiles).
+   */
+  turbopack: {
+    root: path.join(__dirname, "..", ".."),
+  },
   /** Hide the floating "N" dev badge (bottom-left) during `npm run dev`. */
   devIndicators: false,
   /** Required when colleagues open http://YOUR_LAN_IP:3000 — otherwise login JS is blocked. */

@@ -73,6 +73,94 @@ export const DEFAULT_APPRAISER_ADDRESS =
   "جدة — حي الروضة، شارع الأمير سلطان، مبنى 42";
 export const DEFAULT_APPRAISER_PHONE = "0126612345";
 
+export type EvaluatorEsgGroup = {
+  none: boolean;
+  selected: string[];
+  notes: string;
+};
+
+/** اختيارات المقيم في تبويب تقييم العقار — من قوائم التقييم وتقرير التقييم المهني. */
+export type EvaluatorReportChoices = {
+  purposeKey: string;
+  valueBasisKey: string;
+  premiseKey: string;
+  marketMethodKey: string;
+  costMethodKey: string;
+  incomeMethodKey: string;
+  finishingLevel: "" | "luxury" | "medium" | "ordinary" | "none";
+  specialAssumptionOn: boolean[];
+  esgEnv: EvaluatorEsgGroup;
+  esgSoc: EvaluatorEsgGroup;
+  esgGov: EvaluatorEsgGroup;
+  printAttachmentKeys: string[];
+};
+
+const EMPTY_ESG: EvaluatorEsgGroup = {
+  none: true,
+  selected: [],
+  notes: "",
+};
+
+export function emptyReportChoices(): EvaluatorReportChoices {
+  return {
+    purposeKey: "",
+    valueBasisKey: "",
+    premiseKey: "",
+    marketMethodKey: "",
+    costMethodKey: "",
+    incomeMethodKey: "",
+    finishingLevel: "",
+    specialAssumptionOn: [],
+    esgEnv: { ...EMPTY_ESG },
+    esgSoc: { ...EMPTY_ESG },
+    esgGov: { ...EMPTY_ESG },
+    printAttachmentKeys: [],
+  };
+}
+
+export function normalizeReportChoices(raw: unknown): EvaluatorReportChoices {
+  const base = emptyReportChoices();
+  if (!raw || typeof raw !== "object") return base;
+  const row = raw as Partial<EvaluatorReportChoices>;
+  const esg = (value: unknown): EvaluatorEsgGroup => {
+    if (!value || typeof value !== "object") return { ...EMPTY_ESG };
+    const g = value as Partial<EvaluatorEsgGroup>;
+    return {
+      none: Boolean(g.none),
+      selected: Array.isArray(g.selected)
+        ? g.selected.filter((x): x is string => typeof x === "string")
+        : [],
+      notes: typeof g.notes === "string" ? g.notes : "",
+    };
+  };
+  return {
+    purposeKey: typeof row.purposeKey === "string" ? row.purposeKey : "",
+    valueBasisKey: typeof row.valueBasisKey === "string" ? row.valueBasisKey : "",
+    premiseKey: typeof row.premiseKey === "string" ? row.premiseKey : "",
+    marketMethodKey:
+      typeof row.marketMethodKey === "string" ? row.marketMethodKey : "",
+    costMethodKey: typeof row.costMethodKey === "string" ? row.costMethodKey : "",
+    incomeMethodKey:
+      typeof row.incomeMethodKey === "string" ? row.incomeMethodKey : "",
+    finishingLevel:
+      row.finishingLevel === "luxury" ||
+      row.finishingLevel === "medium" ||
+      row.finishingLevel === "ordinary" ||
+      row.finishingLevel === "none"
+        ? row.finishingLevel
+        : "",
+    specialAssumptionOn: Array.isArray(row.specialAssumptionOn)
+      ? row.specialAssumptionOn.map(Boolean)
+      : [],
+    esgEnv: esg(row.esgEnv),
+    esgSoc: esg(row.esgSoc),
+    esgGov: esg(row.esgGov),
+    printAttachmentKeys: Array.isArray(row.printAttachmentKeys)
+      ? row.printAttachmentKeys.filter((x): x is string => typeof x === "string")
+      : [],
+  };
+}
+
 export type EvaluatorSubmission = {
   taskId: string;
   propertyId: string;
@@ -111,6 +199,8 @@ export type EvaluatorSubmission = {
   assetDataConfirmed: boolean;
   /** ملاحظات التباين عند عدم تأكيد بيانات الأصل كما هي */
   assetDataVarianceNotes: string;
+  /** اختيارات تقرير التقييم المهني في المعاملة */
+  reportChoices: EvaluatorReportChoices;
   submittedAtUtc: string | null;
   updatedAtUtc: string;
 };
@@ -282,6 +372,7 @@ export function createEvaluatorDraft(input: {
     reportWorkers: [createEmptyReportWorker("معد")],
     assetDataConfirmed: false,
     assetDataVarianceNotes: "",
+    reportChoices: emptyReportChoices(),
     submittedAtUtc: null,
     updatedAtUtc: now,
   };

@@ -52,8 +52,12 @@ import {
   cn,
   InlineLoadingSkeleton,
   Note,
+  PageShell,
+  PanelSkeleton,
   useToast,
 } from "@platform/ui-kit";
+import { PropertyDetailHero } from "../components/po-intake/PropertyDetailHero";
+import { PropertyTransactionTimeline } from "../components/po-intake/PropertyTransactionTimeline";
 import { FailureRaisePanel } from "@failures/mfe";
 import { failureRaiserRoleForParty } from "@failures/mfe/lib/failure-party-roles";
 
@@ -390,6 +394,13 @@ export function PartyActiveTaskWork({
   }
 
   if (recordLoading && !record) {
+    if (isAppraisal && layout === "page") {
+      return (
+        <div className="flex min-h-0 w-full flex-1 flex-col overflow-hidden bg-[#f5f3ee]">
+          <PanelSkeleton />
+        </div>
+      );
+    }
     return (
       <TaskWorkChrome
         layout={layout}
@@ -459,6 +470,62 @@ export function PartyActiveTaskWork({
       ? requiresAssignmentDecree(record.assignmentType)
       : false;
 
+    const propertyIndex = record && property
+      ? record.properties.findIndex((p) => p.id === property.id)
+      : -1;
+    const appraisalWork = appraisalExtensions ? (
+      appraisalExtensions.renderAppraisalWork({
+        def,
+        childTask: task,
+        hostRef: evaluatorHostRef,
+        deedLabel,
+        onBack: exit,
+        embeddedInPropertyChrome: layout === "page" && Boolean(record && property),
+        propertySummary: {
+          deedNumber: deedLabel,
+          poNumber: formatPoDisplay(task.poNumber),
+          classification,
+          cityDistrict,
+          assignedAt: assignedLabel,
+          inspectionDone: false,
+          property: property ?? null,
+          showDecree,
+          surveyTaskId,
+          inspectionTaskId,
+          appraisalTaskId: task.id,
+        },
+      })
+    ) : (
+      <InlineLoadingSkeleton className={LOADING_TEXT} />
+    );
+
+    if (layout === "page" && record && property && propertyIndex >= 0) {
+      return (
+        <div
+          id="view-property-appraisal-workspace"
+          className="flex min-h-0 w-full flex-1 flex-col overflow-hidden bg-[#f5f3ee] [zoom:0.85]"
+        >
+          <PageShell
+            variant="canvas"
+            className="gap-0 overflow-x-hidden overflow-y-auto bg-[#f5f3ee] px-[30px] py-[26px] max-sm:px-4 max-sm:py-4"
+          >
+            <PropertyDetailHero
+              record={record}
+              property={property}
+              propertyIndex={propertyIndex + 1}
+              hideOpenCaseStudy
+            />
+            <div className="grid min-h-0 flex-1 grid-cols-1 items-start gap-3.5 lg:grid-cols-[minmax(0,1fr)_250px]">
+              <div className="min-w-0 overflow-hidden rounded-[12px] border border-border bg-surface px-5 pb-5 shadow-[0_1px_2px_rgba(18,40,76,0.03),0_6px_16px_-18px_rgba(18,40,76,0.10)]">
+                {appraisalWork}
+              </div>
+              <PropertyTransactionTimeline record={record} property={property} />
+            </div>
+          </PageShell>
+        </div>
+      );
+    }
+
     return (
       <TaskWorkChrome
         layout={layout}
@@ -471,30 +538,7 @@ export function PartyActiveTaskWork({
         showFooter={false}
         scrollMode="document"
       >
-        {appraisalExtensions ? (
-          appraisalExtensions.renderAppraisalWork({
-            def,
-            childTask: task,
-            hostRef: evaluatorHostRef,
-            deedLabel,
-            onBack: exit,
-            propertySummary: {
-              deedNumber: deedLabel,
-              poNumber: formatPoDisplay(task.poNumber),
-              classification,
-              cityDistrict,
-              assignedAt: assignedLabel,
-              inspectionDone: false,
-              property: property ?? null,
-              showDecree,
-              surveyTaskId,
-              inspectionTaskId,
-              appraisalTaskId: task.id,
-            },
-          })
-        ) : (
-          <InlineLoadingSkeleton className={LOADING_TEXT} />
-        )}
+        {appraisalWork}
       </TaskWorkChrome>
     );
   }

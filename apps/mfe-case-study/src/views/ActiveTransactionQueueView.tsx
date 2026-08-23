@@ -1197,21 +1197,33 @@ export function ActiveTransactionQueueView({
     </PageToolbar>
   ) : null;
 
+  const openPropertyDetailFromQueue = useCallback(
+    (task: WorkflowTask, propertyId: string | undefined) => {
+      if (!propertyId) return;
+      markTaskRowSeen(task);
+      setOpeningTaskId(task.id);
+      startOpenTask(() => {
+        router.push(poPropertyDetailPath(task.poNumber, propertyId, "basic"));
+      });
+    },
+    [router, markTaskRowSeen],
+  );
+
   const handleDistributionRowClick = useCallback(
     (task: WorkflowTask, propertyId: string | undefined) => {
       markTaskRowSeen(task);
       if (showPartyColumns && propertyId) {
-        setOpeningTaskId(task.id);
-        startOpenTask(() => {
-          router.push(
-            poPropertyDetailPath(task.poNumber, propertyId, "basic"),
-          );
-        });
+        openPropertyDetailFromQueue(task, propertyId);
         return;
       }
       handleRowClick(task.id);
     },
-    [showPartyColumns, router, handleRowClick, markTaskRowSeen],
+    [
+      showPartyColumns,
+      handleRowClick,
+      markTaskRowSeen,
+      openPropertyDetailFromQueue,
+    ],
   );
 
   const mobileQueueCardItems = useMemo((): ActiveQueueMobileCardItem[] => {
@@ -2153,24 +2165,58 @@ export function ActiveTransactionQueueView({
                               onClick={() => handleRowClick(task.id)}
                             >
                               <Td className="whitespace-nowrap">
-                                <InteractiveDeedCell
-                                  label={row.propertySlot}
-                                  loading={isTaskOpening(task.id)}
-                                  tone="gold"
-                                  labelClassName="text-[13.5px] justify-end"
-                                  trailing={
-                                    resolveRowAttention(task) ? (
-                                      <RowAttentionDot />
-                                    ) : undefined
-                                  }
-                                  subtitle={
-                                    propertyType ? (
-                                      <span className="text-[11.5px] font-normal text-text-3 no-underline">
-                                        {propertyType}
-                                      </span>
-                                    ) : null
-                                  }
-                                />
+                                {property?.id ? (
+                                  <button
+                                    type="button"
+                                    className="relative z-[1] inline-flex max-w-full cursor-pointer border-0 bg-transparent p-0 font-inherit text-start"
+                                    aria-label={`تفاصيل العقار ${row.propertySlot}`}
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      openPropertyDetailFromQueue(
+                                        task,
+                                        property.id,
+                                      );
+                                    }}
+                                  >
+                                    <InteractiveDeedCell
+                                      label={row.propertySlot}
+                                      loading={isTaskOpening(task.id)}
+                                      tone="gold"
+                                      labelClassName="text-[13.5px] justify-end"
+                                      trailing={
+                                        resolveRowAttention(task) ? (
+                                          <RowAttentionDot />
+                                        ) : undefined
+                                      }
+                                      subtitle={
+                                        propertyType ? (
+                                          <span className="text-[11.5px] font-normal text-text-3 no-underline">
+                                            {propertyType}
+                                          </span>
+                                        ) : null
+                                      }
+                                    />
+                                  </button>
+                                ) : (
+                                  <InteractiveDeedCell
+                                    label={row.propertySlot}
+                                    loading={isTaskOpening(task.id)}
+                                    tone="gold"
+                                    labelClassName="text-[13.5px] justify-end"
+                                    trailing={
+                                      resolveRowAttention(task) ? (
+                                        <RowAttentionDot />
+                                      ) : undefined
+                                    }
+                                    subtitle={
+                                      propertyType ? (
+                                        <span className="text-[11.5px] font-normal text-text-3 no-underline">
+                                          {propertyType}
+                                        </span>
+                                      ) : null
+                                    }
+                                  />
+                                )}
                               </Td>
                               <Td className="text-center text-[13px] text-text-2">
                                 {cityDistrict || "—"}

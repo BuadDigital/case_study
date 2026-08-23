@@ -24,7 +24,11 @@ public static class PlatformDependencyInjection
         services.AddPlatformPersistence(configuration, connectionString);
         services.AddScoped<IAuditLogAppend, PlatformAuditLogAppend>();
         services.AddScoped<IFieldDictionaryService, FieldDictionaryService>();
-        services.AddScoped<IAttachmentPrintDictionaryService, AttachmentPrintDictionaryService>();
+        services.AddScoped<AttachmentPrintDictionaryService>();
+        services.AddScoped<IAttachmentPrintDictionaryService>(sp =>
+            sp.GetRequiredService<AttachmentPrintDictionaryService>());
+        services.AddScoped<IValuationListsService>(sp =>
+            sp.GetRequiredService<AttachmentPrintDictionaryService>());
         services.AddScoped<IDifferenceFactorCatalogService, DifferenceFactorCatalogService>();
         services.AddScoped<ICourtsService, CourtsService>();
         services.AddScoped<ICourtsCatalogService, CourtsCatalogService>();

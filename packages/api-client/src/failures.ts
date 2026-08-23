@@ -83,7 +83,7 @@ export async function getPropertyFailure(
   config: FailuresApiConfig,
   poNumber: string,
   propertyId: string,
-): Promise<ApiOk<FailureRecordDto> | ApiErr> {
+): Promise<ApiOk<FailureRecordDto | null> | ApiErr> {
   const base = config.baseUrl ?? getApiBase();
   const params = new URLSearchParams({
     poNumber: poNumber.trim(),
@@ -94,9 +94,10 @@ export async function getPropertyFailure(
       headers: headers(config.token),
     });
     if (res.status === 401) return { ok: false, kind: "auth" };
-    if (res.status === 404) return { ok: false, kind: "not_found" };
+    if (res.status === 404 || res.status === 204) return { ok: true, data: null };
     if (!res.ok) return { ok: false, kind: "server" };
-    return { ok: true, data: (await res.json()) as FailureRecordDto };
+    const data = (await res.json()) as FailureRecordDto | null;
+    return { ok: true, data: data?.id ? data : null };
   } catch {
     return { ok: false, kind: "network" };
   }

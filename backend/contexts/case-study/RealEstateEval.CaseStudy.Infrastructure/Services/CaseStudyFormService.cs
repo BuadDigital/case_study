@@ -48,7 +48,13 @@ public class CaseStudyFormService : ICaseStudyFormService
             .FirstOrDefaultAsync(
                 f => f.TaskId == taskId && f.IsPartyForm == party,
                 cancellationToken);
-        return entity is null ? null : ToDto(entity);
+        if (entity is not null)
+            return ToDto(entity);
+
+        var task = await _db.WorkflowTasks
+            .AsNoTracking()
+            .FirstOrDefaultAsync(t => t.Id == taskId, cancellationToken);
+        return task is null ? null : EmptyDto(task);
     }
 
  /// <summary>
@@ -376,6 +382,15 @@ public class CaseStudyFormService : ICaseStudyFormService
         entity.SavedAtUtc = now;
         entity.UpdatedAtUtc = now;
     }
+
+    private static CaseStudyFormDto EmptyDto(WorkflowTask task) =>
+        new()
+        {
+            TaskId = task.Id.ToString(),
+            PropertyId = task.PropertyId?.ToString(),
+            PoNumber = task.PoNumber,
+            Status = "new",
+        };
 
     private static CaseStudyFormDto ToDto(CaseStudyForm entity)
     {

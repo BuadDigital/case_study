@@ -21,7 +21,7 @@ public sealed class ValuationRequestDispatchController(IValuationRequestService 
         CancellationToken cancellationToken)
     {
         var dto = await service.GetOpenByPropertyAsync(propertyId, cancellationToken);
-        return dto is null ? NotFound() : Ok(dto);
+        return this.OkOrEmpty(dto);
     }
 
     [HttpPost]

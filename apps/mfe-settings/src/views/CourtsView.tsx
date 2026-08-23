@@ -8,7 +8,6 @@ import {
   getAdminCourt,
   listAdminCourts,
   setAdminCourtCircuitStatus,
-  setAdminCourtStatus,
   updateAdminCourt,
   updateAdminCourtCircuit,
   type AdminCourtCircuitDto,
@@ -21,16 +20,17 @@ import {
 import {
   Badge,
   Button,
+  Card,
   Input,
   Label,
   ModalBody,
   ModalCard,
-  ModalClose,
   ModalFooter,
   ModalHeader,
   ModalOverlay,
   ModalTitle,
   Note,
+  PageShell,
   Select,
   Spinner,
   Table,
@@ -58,11 +58,9 @@ function regionForCity(city: string): string | undefined {
 }
 
 function normalizedRegion(region: string, city: string): string {
-  // Legacy catalog rows used the city as the region during their first seed.
   return region === city ? regionForCity(city) ?? region : region;
 }
 
-type StatusFilter = "all" | "active" | "inactive";
 type CourtModalState = { mode: "create" | "edit"; court?: AdminCourtDto } | null;
 type CircuitModalState = {
   mode: "create" | "edit";
@@ -80,85 +78,6 @@ function resultMessage(result: CourtsAdminResult<unknown>): string {
   return "تعذّر تنفيذ العملية — حاول مرة أخرى";
 }
 
-function formatHijriDate(value: string): string {
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return "—";
-  // Match admin mock: Hijri as yyyy/MM/dd in Riyadh (not day-first locale order).
-  const parts = new Intl.DateTimeFormat("en-u-ca-islamic-umalqura", {
-    timeZone: "Asia/Riyadh",
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-  }).formatToParts(date);
-  const year = parts.find((part) => part.type === "year")?.value.replace(/\D/g, "");
-  const month = parts.find((part) => part.type === "month")?.value;
-  const day = parts.find((part) => part.type === "day")?.value;
-  if (!year || !month || !day) return "—";
-  return `${year}/${month}/${day}`;
-}
-
-function ActionButton({
-  label,
-  tone = "default",
-  children,
-  disabled,
-  loading = false,
-  onClick,
-}: {
-  label: string;
-  tone?: "default" | "danger" | "success";
-  children: React.ReactNode;
-  disabled?: boolean;
-  loading?: boolean;
-  onClick: () => void;
-}) {
-  const toneClass =
-    tone === "danger"
-      ? "text-danger-text hover:bg-danger-bg"
-      : tone === "success"
-        ? "text-success-text hover:bg-success-bg"
-        : "text-text-2 hover:bg-surface-2 hover:text-primary";
-  return (
-    <button
-      type="button"
-      title={label}
-      aria-label={label}
-      disabled={disabled || loading}
-      aria-busy={loading || undefined}
-      onClick={onClick}
-      className={`inline-flex size-7 items-center justify-center rounded-md border-0 bg-transparent text-sm transition-colors disabled:opacity-40 ${toneClass}`}
-    >
-      {loading ? <Spinner className="size-3.5" /> : children}
-    </button>
-  );
-}
-
-function StatusToggle({
-  checked,
-  onChange,
-}: {
-  checked: boolean;
-  onChange: (checked: boolean) => void;
-}) {
-  return (
-    <button
-      type="button"
-      role="switch"
-      aria-checked={checked}
-      onClick={() => onChange(!checked)}
-      className={`relative h-6 w-11 rounded-full border-0 transition-colors ${
-        checked ? "bg-success-text" : "bg-text-3"
-      }`}
-    >
-      <span
-        className={`absolute top-1 size-4 rounded-full bg-white shadow transition-[inset-inline-start] ${
-          checked ? "start-6" : "start-1"
-        }`}
-      />
-    </button>
-  );
-}
-
 function CourtFormModal({
   state,
   busy,
@@ -172,16 +91,17 @@ function CourtFormModal({
 }) {
   const initialRegion = state.court
     ? normalizedRegion(state.court.region, state.court.city)
-    : Object.keys(REGION_CITIES)[0];
+    : Object.keys(REGION_CITIES)[0]!;
   const [draft, setDraft] = useState<CourtDraftDto>({
     name: state.court?.name ?? "",
     region: initialRegion,
     city: state.court?.city || REGION_CITIES[initialRegion]?.[0] || "",
     isActive: state.court?.isActive ?? true,
   });
-  const regions = draft.region in REGION_CITIES
-    ? Object.keys(REGION_CITIES)
-    : [draft.region, ...Object.keys(REGION_CITIES)];
+  const regions =
+    draft.region in REGION_CITIES
+      ? Object.keys(REGION_CITIES)
+      : [draft.region, ...Object.keys(REGION_CITIES)];
   const configuredCities = REGION_CITIES[draft.region] ?? [];
   const cities = configuredCities.includes(draft.city)
     ? configuredCities
@@ -190,35 +110,31 @@ function CourtFormModal({
 
   return (
     <ModalOverlay onClick={onClose}>
-      <ModalCard onClick={(event) => event.stopPropagation()} className="p-0">
-        <ModalHeader className="border-0 bg-ink text-white">
-          <span aria-hidden className="text-gold">☰</span>
-          <ModalTitle className="text-start text-white">
+      <ModalCard onClick={(e) => e.stopPropagation()} role="dialog" aria-modal>
+        <ModalHeader>
+          <ModalTitle>
             {state.mode === "create" ? "إضافة محكمة" : "تعديل المحكمة"}
           </ModalTitle>
-          <ModalClose className="text-white/70 hover:bg-white/10 hover:text-white" onClick={onClose}>
-            ×
-          </ModalClose>
         </ModalHeader>
-        <ModalBody className="space-y-4 p-5">
+        <ModalBody className="space-y-3.5">
           <div>
-            <Label htmlFor="court-name">اسم المحكمة <span className="text-danger-text">*</span></Label>
+            <Label htmlFor="court-name">اسم المحكمة</Label>
             <Input
               id="court-name"
               value={draft.name}
               maxLength={150}
               placeholder="مثال: المحكمة العامة بجدة"
-              onChange={(event) => setDraft({ ...draft, name: event.target.value })}
+              onChange={(e) => setDraft({ ...draft, name: e.target.value })}
             />
           </div>
           <div className="grid gap-3 sm:grid-cols-2">
             <div>
-              <Label htmlFor="court-region">المنطقة <span className="text-danger-text">*</span></Label>
+              <Label htmlFor="court-region">المنطقة</Label>
               <Select
                 id="court-region"
                 value={draft.region}
-                onChange={(event) => {
-                  const region = event.target.value;
+                onChange={(e) => {
+                  const region = e.target.value;
                   setDraft({
                     ...draft,
                     region,
@@ -226,43 +142,37 @@ function CourtFormModal({
                   });
                 }}
               >
-                {regions.map((region) => <option key={region}>{region}</option>)}
+                {regions.map((region) => (
+                  <option key={region}>{region}</option>
+                ))}
               </Select>
             </div>
             <div>
-              <Label htmlFor="court-city">المدينة <span className="text-danger-text">*</span></Label>
+              <Label htmlFor="court-city">المدينة</Label>
               <Select
                 id="court-city"
                 value={draft.city}
-                onChange={(event) => setDraft({ ...draft, city: event.target.value })}
+                onChange={(e) => setDraft({ ...draft, city: e.target.value })}
               >
-                {cities.map((city) => <option key={city}>{city}</option>)}
+                {cities.map((city) => (
+                  <option key={city}>{city}</option>
+                ))}
               </Select>
             </div>
           </div>
-          <div className="flex items-center justify-between rounded-md bg-surface-2 px-3 py-3">
-            <div>
-              <p className="text-xs font-bold text-text">الحالة</p>
-              <p className="mt-1 text-[10px] text-text-3">
-                المحاكم المعطّلة لا تظهر في قوائم الاختيار
-              </p>
-            </div>
-            <StatusToggle
-              checked={draft.isActive}
-              onChange={(isActive) => setDraft({ ...draft, isActive })}
-            />
-          </div>
         </ModalBody>
-        <ModalFooter className="justify-start">
+        <ModalFooter>
+          <Button variant="ghost" disabled={busy} onClick={onClose}>
+            إلغاء
+          </Button>
           <Button
             variant="primary"
             loading={busy}
             disabled={!valid}
             onClick={() => onSave({ ...draft, name: draft.name.trim() })}
           >
-            ✓ حفظ المحكمة
+            حفظ
           </Button>
-          <Button variant="outline" disabled={busy} onClick={onClose}>إلغاء</Button>
         </ModalFooter>
       </ModalCard>
     </ModalOverlay>
@@ -288,30 +198,23 @@ function CircuitFormModal({
 
   return (
     <ModalOverlay onClick={onClose}>
-      <ModalCard onClick={(event) => event.stopPropagation()} className="p-0">
-        <ModalHeader className="border-0 bg-ink text-white">
-          <span aria-hidden className="text-gold">☰</span>
-          <ModalTitle className="text-start text-white">
+      <ModalCard onClick={(e) => e.stopPropagation()} role="dialog" aria-modal>
+        <ModalHeader>
+          <ModalTitle>
             {state.mode === "create" ? "إضافة دائرة" : "تعديل الدائرة"}
           </ModalTitle>
-          <ModalClose className="text-white/70 hover:bg-white/10 hover:text-white" onClick={onClose}>
-            ×
-          </ModalClose>
         </ModalHeader>
-        <ModalBody className="space-y-4 p-5">
-          <div>
-            <Label>المحكمة</Label>
-            <Input value={state.court.name} readOnly className="bg-surface-2 text-text-2" />
-          </div>
+        <ModalBody className="space-y-3.5">
+          <p className="m-0 text-[12.5px] text-text-2">{state.court.name}</p>
           <div className="grid gap-3 sm:grid-cols-2">
             <div>
-              <Label htmlFor="circuit-no">رقم الدائرة <span className="text-danger-text">*</span></Label>
+              <Label htmlFor="circuit-no">رقم الدائرة</Label>
               <Input
                 id="circuit-no"
                 value={draft.circuitNo}
                 maxLength={50}
-                placeholder="مثال: الأولى، ١، أ"
-                onChange={(event) => setDraft({ ...draft, circuitNo: event.target.value })}
+                placeholder="مثال: الأولى"
+                onChange={(e) => setDraft({ ...draft, circuitNo: e.target.value })}
               />
             </div>
             <div>
@@ -321,24 +224,15 @@ function CircuitFormModal({
                 value={draft.circuitName ?? ""}
                 maxLength={150}
                 placeholder="اختياري"
-                onChange={(event) => setDraft({ ...draft, circuitName: event.target.value })}
+                onChange={(e) => setDraft({ ...draft, circuitName: e.target.value })}
               />
             </div>
           </div>
-          <div className="flex items-center justify-between rounded-md bg-surface-2 px-3 py-3">
-            <div>
-              <p className="text-xs font-bold text-text">الحالة</p>
-              <p className="mt-1 text-[10px] text-text-3">
-                الدوائر المعطّلة لا تظهر في قوائم الاختيار
-              </p>
-            </div>
-            <StatusToggle
-              checked={draft.isActive}
-              onChange={(isActive) => setDraft({ ...draft, isActive })}
-            />
-          </div>
         </ModalBody>
-        <ModalFooter className="justify-start">
+        <ModalFooter>
+          <Button variant="ghost" disabled={busy} onClick={onClose}>
+            إلغاء
+          </Button>
           <Button
             variant="primary"
             loading={busy}
@@ -351,9 +245,8 @@ function CircuitFormModal({
               })
             }
           >
-            ✓ حفظ الدائرة
+            حفظ
           </Button>
-          <Button variant="outline" disabled={busy} onClick={onClose}>إلغاء</Button>
         </ModalFooter>
       </ModalCard>
     </ModalOverlay>
@@ -366,27 +259,20 @@ export function CourtsView() {
   const { showToast } = useToast();
   const [courts, setCourts] = useState<AdminCourtDto[]>([]);
   const [details, setDetails] = useState<Record<string, AdminCourtDetailDto>>({});
-  const [expandedId, setExpandedId] = useState<string | null>(null);
-  const [searchInput, setSearchInput] = useState("");
-  const [search, setSearch] = useState("");
-  const [status, setStatus] = useState<StatusFilter>("all");
+  const [names, setNames] = useState<Record<string, string>>({});
+  const [circuitsCourt, setCircuitsCourt] = useState<AdminCourtDto | null>(null);
   const [loading, setLoading] = useState(true);
   const [busyKey, setBusyKey] = useState<string | null>(null);
   const [loadError, setLoadError] = useState("");
   const [courtModal, setCourtModal] = useState<CourtModalState>(null);
   const [circuitModal, setCircuitModal] = useState<CircuitModalState>(null);
 
-  useEffect(() => {
-    const timer = window.setTimeout(() => setSearch(searchInput.trim()), 300);
-    return () => window.clearTimeout(timer);
-  }, [searchInput]);
-
   const loadCourts = useCallback(async () => {
     if (!authReady) return;
     const config = courtsApiConfig();
     if (!config) return;
     setLoading(true);
-    const result = await listAdminCourts(config, { search, status, limit: 200 });
+    const result = await listAdminCourts(config, { search: "", status: "all", limit: 200 });
     setLoading(false);
     if (!result.ok) {
       setLoadError(resultMessage(result));
@@ -395,7 +281,8 @@ export function CourtsView() {
     }
     setLoadError("");
     setCourts(result.data.data);
-  }, [authReady, search, status]);
+    setNames(Object.fromEntries(result.data.data.map((c) => [c.id, c.name])));
+  }, [authReady]);
 
   useEffect(() => {
     void loadCourts();
@@ -415,13 +302,34 @@ export function CourtsView() {
     setDetails((current) => ({ ...current, [courtId]: result.data }));
   }
 
-  async function toggleExpanded(courtId: string) {
-    if (expandedId === courtId) {
-      setExpandedId(null);
+  async function openCircuits(court: AdminCourtDto) {
+    setCircuitsCourt(court);
+    await loadDetail(court.id);
+  }
+
+  async function persistName(court: AdminCourtDto) {
+    const next = (names[court.id] ?? court.name).trim();
+    if (next.length < 2 || next === court.name) {
+      setNames((n) => ({ ...n, [court.id]: court.name }));
       return;
     }
-    setExpandedId(courtId);
-    await loadDetail(courtId);
+    const config = courtsApiConfig();
+    if (!config) return;
+    setBusyKey(`name:${court.id}`);
+    const result = await updateAdminCourt(config, court.id, {
+      name: next,
+      region: court.region,
+      city: court.city,
+      isActive: court.isActive,
+    });
+    setBusyKey(null);
+    if (!result.ok) {
+      showToast(resultMessage(result), "error");
+      setNames((n) => ({ ...n, [court.id]: court.name }));
+      return;
+    }
+    await loadCourts();
+    showToast("تم تحديث المحكمة", "success");
   }
 
   async function saveCourt(draft: CourtDraftDto) {
@@ -439,11 +347,7 @@ export function CourtsView() {
     }
     setCourtModal(null);
     await loadCourts();
-    if (courtModal.mode === "edit") await loadDetail(result.data.id, true);
-    showToast(
-      courtModal.mode === "create" ? "تمت إضافة المحكمة" : "تم تحديث المحكمة",
-      "success",
-    );
+    showToast(courtModal.mode === "create" ? "تمت إضافة المحكمة" : "تم تحديث المحكمة", "success");
   }
 
   async function saveCircuit(draft: CourtCircuitDraftDto) {
@@ -465,24 +369,7 @@ export function CourtsView() {
     showToast(mode === "create" ? "تمت إضافة الدائرة" : "تم تحديث الدائرة", "success");
   }
 
-  async function toggleCourtStatus(court: AdminCourtDto) {
-    const config = courtsApiConfig();
-    if (!config) return;
-    setBusyKey(`court-status:${court.id}`);
-    const result = await setAdminCourtStatus(config, court.id, !court.isActive);
-    setBusyKey(null);
-    if (!result.ok) {
-      showToast(resultMessage(result), "error");
-      return;
-    }
-    await loadCourts();
-    showToast(court.isActive ? "تم تعطيل المحكمة" : "تم تفعيل المحكمة", "success");
-  }
-
-  async function toggleCircuitStatus(
-    court: AdminCourtDto,
-    circuit: AdminCourtCircuitDto,
-  ) {
+  async function toggleCircuitStatus(court: AdminCourtDto, circuit: AdminCourtCircuitDto) {
     const config = courtsApiConfig();
     if (!config) return;
     setBusyKey(`circuit-status:${circuit.id}`);
@@ -501,99 +388,192 @@ export function CourtsView() {
     showToast(circuit.isActive ? "تم تعطيل الدائرة" : "تم تفعيل الدائرة", "success");
   }
 
+  const circuitsDetail = circuitsCourt ? details[circuitsCourt.id] : undefined;
+
   return (
-    <div className="flex min-h-0 flex-1 flex-col overflow-y-auto bg-surface-2" dir="rtl">
+    <PageShell variant="canvas" className="gap-0 px-4 pb-4 pt-2 sm:px-6 sm:pb-6" dir="rtl">
+      {!canEdit && authReady ? (
+        <Note tone="warn" className="mb-3 max-w-[560px]">
+          الرابط صحيح، لكن دورك الحالي لا يملك صلاحية هذا البند. اطلب الصلاحية من مسؤول النظام.
+        </Note>
+      ) : null}
+      {loadError ? <Note tone="warn">{loadError}</Note> : null}
+
       {canEdit ? (
-        <div className="flex justify-end px-4 py-4 sm:px-6">
-          <Button variant="primary" onClick={() => setCourtModal({ mode: "create" })}>
-            + إضافة محكمة
+        <div className="mb-3 flex flex-wrap gap-2.5">
+          <Button variant="default" onClick={() => setCourtModal({ mode: "create" })}>
+            إضافة محكمة
           </Button>
         </div>
       ) : null}
 
-      {!canEdit && authReady ? (
-        <Note tone="info" className="mx-4 mb-3 mt-4 sm:mx-6">
-          عرض فقط — تحتاج صلاحية إدارة المحاكم للتعديل.
-        </Note>
-      ) : null}
-
-      <section className="mx-4 mb-5 overflow-hidden rounded-lg border border-border bg-surface shadow-sm sm:mx-6">
-        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border px-4 py-3">
-          <h2 className="text-sm font-bold text-heading">قائمة المحاكم</h2>
-          <div className="flex w-full flex-wrap gap-2 sm:w-auto">
-            <div className="relative min-w-[210px] flex-1 sm:flex-none">
-              <span className="pointer-events-none absolute inset-y-0 start-3 flex items-center text-text-3">
-                ⌕
-              </span>
-              <Input
-                aria-label="البحث في المحاكم"
-                value={searchInput}
-                placeholder="بحث..."
-                onChange={(event) => setSearchInput(event.target.value)}
-                className="pe-3 ps-8 text-xs"
-              />
-            </div>
-            <Select
-              aria-label="تصفية حسب الحالة"
-              value={status}
-              onChange={(event) => setStatus(event.target.value as StatusFilter)}
-              className="w-[140px] text-xs"
-            >
-              <option value="all">كل الحالات</option>
-              <option value="active">فعّالة</option>
-              <option value="inactive">معطّلة</option>
-            </Select>
+      <Card className="overflow-hidden">
+        {loading && courts.length === 0 ? (
+          <div className="flex items-center justify-center gap-2 py-16 text-text-3">
+            <Spinner />
+            <span className="text-[13px]">جاري التحميل…</span>
           </div>
-        </div>
-
-        {loadError ? (
-          <Note tone="danger" className="m-4">{loadError}</Note>
-        ) : loading && courts.length === 0 ? (
-          <div className="flex justify-center py-12"><Spinner /></div>
-        ) : courts.length === 0 ? (
-          <p className="py-12 text-center text-xs text-text-3">لا توجد محاكم مطابقة.</p>
         ) : (
-          <Table pending={loading} className="min-w-[900px]">
+          <Table className="tabular-nums">
             <THead>
               <Tr hoverable={false}>
-                <Th className="w-8 px-2" />
-                <Th>اسم المحكمة</Th>
-                <Th>المنطقة / المدينة</Th>
+                <Th>المحكمة</Th>
+                <Th>المدينة</Th>
                 <Th>الدوائر</Th>
+                <Th>الاستخدام</Th>
                 <Th>الحالة</Th>
-                <Th className="w-32 text-center">تاريخ الإضافة</Th>
-                <Th className="w-32 text-center">إجراءات</Th>
               </Tr>
             </THead>
             <TBody>
-              {courts.map((court) => {
-                const expanded = expandedId === court.id;
-                const detail = details[court.id];
-                return (
-                  <CourtRows
-                    key={court.id}
-                    court={court}
-                    detail={detail}
-                    expanded={expanded}
-                    canEdit={canEdit}
-                    busyKey={busyKey}
-                    onToggle={() => void toggleExpanded(court.id)}
-                    onEditCourt={() => setCourtModal({ mode: "edit", court })}
-                    onAddCircuit={() => setCircuitModal({ mode: "create", court })}
-                    onToggleCourtStatus={() => void toggleCourtStatus(court)}
-                    onEditCircuit={(circuit) =>
-                      setCircuitModal({ mode: "edit", court, circuit })
-                    }
-                    onToggleCircuitStatus={(circuit) =>
-                      void toggleCircuitStatus(court, circuit)
-                    }
-                  />
-                );
-              })}
+              {courts.length === 0 ? (
+                <Tr hoverable={false}>
+                  <Td colSpan={5} className="py-10 text-center text-[12.5px] text-text-3">
+                    لا توجد محاكم بعد
+                  </Td>
+                </Tr>
+              ) : (
+                courts.map((court) => (
+                  <Tr key={court.id} hoverable={false}>
+                    <Td className="min-w-[220px]">
+                      {canEdit ? (
+                        <input
+                          value={names[court.id] ?? court.name}
+                          disabled={busyKey === `name:${court.id}`}
+                          onChange={(e) =>
+                            setNames((n) => ({ ...n, [court.id]: e.target.value }))
+                          }
+                          onBlur={() => void persistName(court)}
+                          className="w-full border-0 border-b border-transparent bg-transparent p-0.5 font-[inherit] text-[13px] font-medium text-text outline-none focus:border-gold"
+                        />
+                      ) : (
+                        <span className="font-medium">{court.name}</span>
+                      )}
+                    </Td>
+                    <Td>{court.city}</Td>
+                    <Td>
+                      <button
+                        type="button"
+                        className="cursor-pointer border-0 bg-transparent p-0 font-[inherit] text-[13px] text-ink hover:text-gold-d"
+                        onClick={() => void openCircuits(court)}
+                      >
+                        {court.circuitsCount}
+                      </button>
+                    </Td>
+                    <Td>
+                      <bdi>—</bdi>
+                    </Td>
+                    <Td>
+                      <Badge tone={court.isActive ? "success" : "default"}>
+                        {court.isActive ? "ساري" : "معطّل"}
+                      </Badge>
+                    </Td>
+                  </Tr>
+                ))
+              )}
             </TBody>
           </Table>
         )}
-      </section>
+      </Card>
+      <p className="mx-0.5 mt-2.5 text-[11.5px] text-text-3">
+        مرجع رسمي — إضافة فقط، والدمج والتصحيح عبر وحدة المواقع.
+      </p>
+
+      {circuitsCourt ? (
+        <ModalOverlay onClick={() => setCircuitsCourt(null)}>
+          <ModalCard
+            className="w-full max-w-[640px]"
+            onClick={(e) => e.stopPropagation()}
+            role="dialog"
+            aria-modal
+          >
+            <ModalHeader>
+              <ModalTitle>دوائر {circuitsCourt.name}</ModalTitle>
+            </ModalHeader>
+            <ModalBody>
+              {canEdit ? (
+                <div className="mb-3">
+                  <Button
+                    variant="default"
+                    size="sm"
+                    onClick={() =>
+                      setCircuitModal({ mode: "create", court: circuitsCourt })
+                    }
+                  >
+                    إضافة دائرة
+                  </Button>
+                </div>
+              ) : null}
+              {busyKey === `detail:${circuitsCourt.id}` && !circuitsDetail ? (
+                <div className="flex justify-center py-8">
+                  <Spinner />
+                </div>
+              ) : !circuitsDetail || circuitsDetail.circuits.length === 0 ? (
+                <p className="m-0 py-6 text-center text-[12.5px] text-text-3">
+                  لا توجد دوائر لهذه المحكمة.
+                </p>
+              ) : (
+                <Table className="tabular-nums">
+                  <THead>
+                    <Tr hoverable={false}>
+                      <Th>رقم الدائرة</Th>
+                      <Th>اسم الدائرة</Th>
+                      <Th>الحالة</Th>
+                      <Th />
+                    </Tr>
+                  </THead>
+                  <TBody>
+                    {circuitsDetail.circuits.map((circuit) => (
+                      <Tr key={circuit.id} hoverable={false}>
+                        <Td className="font-medium">{circuit.circuitNo}</Td>
+                        <Td>{circuit.circuitName || "—"}</Td>
+                        <Td>
+                          <Badge tone={circuit.isActive ? "success" : "default"}>
+                            {circuit.isActive ? "ساري" : "معطّل"}
+                          </Badge>
+                        </Td>
+                        <Td className="whitespace-nowrap">
+                          {canEdit ? (
+                            <>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() =>
+                                  setCircuitModal({
+                                    mode: "edit",
+                                    court: circuitsCourt,
+                                    circuit,
+                                  })
+                                }
+                              >
+                                تعديل
+                              </Button>{" "}
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                loading={busyKey === `circuit-status:${circuit.id}`}
+                                onClick={() =>
+                                  void toggleCircuitStatus(circuitsCourt, circuit)
+                                }
+                              >
+                                {circuit.isActive ? "تعطيل" : "تفعيل"}
+                              </Button>
+                            </>
+                          ) : null}
+                        </Td>
+                      </Tr>
+                    ))}
+                  </TBody>
+                </Table>
+              )}
+            </ModalBody>
+            <ModalFooter>
+              <Button variant="ghost" onClick={() => setCircuitsCourt(null)}>
+                إغلاق
+              </Button>
+            </ModalFooter>
+          </ModalCard>
+        </ModalOverlay>
+      ) : null}
 
       {courtModal ? (
         <CourtFormModal
@@ -613,144 +593,6 @@ export function CourtsView() {
           onSave={(draft) => void saveCircuit(draft)}
         />
       ) : null}
-    </div>
-  );
-}
-
-function CourtRows({
-  court,
-  detail,
-  expanded,
-  canEdit,
-  busyKey,
-  onToggle,
-  onEditCourt,
-  onAddCircuit,
-  onToggleCourtStatus,
-  onEditCircuit,
-  onToggleCircuitStatus,
-}: {
-  court: AdminCourtDto;
-  detail?: AdminCourtDetailDto;
-  expanded: boolean;
-  canEdit: boolean;
-  busyKey: string | null;
-  onToggle: () => void;
-  onEditCourt: () => void;
-  onAddCircuit: () => void;
-  onToggleCourtStatus: () => void;
-  onEditCircuit: (circuit: AdminCourtCircuitDto) => void;
-  onToggleCircuitStatus: (circuit: AdminCourtCircuitDto) => void;
-}) {
-  return (
-    <>
-      <Tr hoverable={false} className="hover:bg-row-hover">
-        <Td className="px-2">
-          <button
-            type="button"
-            aria-label={expanded ? "طي الدوائر" : "عرض الدوائر"}
-            aria-expanded={expanded}
-            onClick={onToggle}
-            className="inline-flex size-7 items-center justify-center rounded-md bg-transparent text-text-2"
-          >
-            <span className={`transition-transform ${expanded ? "rotate-90" : ""}`}>‹</span>
-          </button>
-        </Td>
-        <Td className="font-bold text-heading">{court.name}</Td>
-        <Td>
-          <span>{normalizedRegion(court.region, court.city)}</span>
-          <span className="text-text-3"> — {court.city}</span>
-        </Td>
-        <Td>
-          <Badge tone="info">● {court.circuitsCount} دائرة</Badge>
-        </Td>
-        <Td>
-          <Badge tone={court.isActive ? "success" : "danger"} dot>
-            {court.isActive ? "فعّالة" : "معطّلة"}
-          </Badge>
-        </Td>
-        <Td className="w-32 text-center text-text-2">
-          <span dir="ltr" className="inline-block tabular-nums">
-            {formatHijriDate(court.createdAtUtc)}
-          </span>
-        </Td>
-        <Td className="w-32">
-          {canEdit ? (
-            <div className="flex items-center justify-center gap-1">
-              <ActionButton label="إضافة دائرة" disabled={Boolean(busyKey)} onClick={onAddCircuit}>＋</ActionButton>
-              <ActionButton label="تعديل المحكمة" disabled={Boolean(busyKey)} onClick={onEditCourt}>✎</ActionButton>
-              <ActionButton
-                label={court.isActive ? "تعطيل المحكمة" : "تفعيل المحكمة"}
-                tone={court.isActive ? "danger" : "success"}
-                disabled={Boolean(busyKey)}
-                loading={busyKey === `court-status:${court.id}`}
-                onClick={onToggleCourtStatus}
-              >
-                {court.isActive ? "⊘" : "✓"}
-              </ActionButton>
-            </div>
-          ) : (
-            <span className="text-text-3">—</span>
-          )}
-        </Td>
-      </Tr>
-      {expanded ? (
-        <Tr hoverable={false}>
-          <Td colSpan={7} className="bg-surface-2 p-0">
-            {busyKey === `detail:${court.id}` && !detail ? (
-              <div className="flex justify-center py-6"><Spinner /></div>
-            ) : !detail || detail.circuits.length === 0 ? (
-              <p className="py-5 text-center text-xs text-text-3">لا توجد دوائر لهذه المحكمة.</p>
-            ) : (
-              <table className="w-full border-collapse">
-                <thead>
-                  <tr className="text-[11px] text-text-3">
-                    <th className="px-12 py-2 text-start font-semibold">رقم الدائرة</th>
-                    <th className="px-4 py-2 text-start font-semibold">اسم الدائرة</th>
-                    <th className="px-4 py-2 text-start font-semibold">الحالة</th>
-                    <th className="px-4 py-2 text-center font-semibold">إجراءات</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {detail.circuits.map((circuit) => (
-                    <tr key={circuit.id} className="border-t border-border bg-surface/70 text-xs">
-                      <td className="px-12 py-2.5 font-bold text-heading">{circuit.circuitNo}</td>
-                      <td className="px-4 py-2.5 text-text-2">{circuit.circuitName || "—"}</td>
-                      <td className="px-4 py-2.5">
-                        <Badge tone={circuit.isActive ? "success" : "danger"} dot>
-                          {circuit.isActive ? "فعّالة" : "معطّلة"}
-                        </Badge>
-                      </td>
-                      <td className="px-4 py-2 text-center">
-                        {canEdit ? (
-                          <div className="flex justify-center gap-1">
-                            <ActionButton
-                              label="تعديل الدائرة"
-                              disabled={Boolean(busyKey)}
-                              onClick={() => onEditCircuit(circuit)}
-                            >
-                              ✎
-                            </ActionButton>
-                            <ActionButton
-                              label={circuit.isActive ? "تعطيل الدائرة" : "تفعيل الدائرة"}
-                              tone={circuit.isActive ? "danger" : "success"}
-                              disabled={Boolean(busyKey)}
-                              loading={busyKey === `circuit-status:${circuit.id}`}
-                              onClick={() => onToggleCircuitStatus(circuit)}
-                            >
-                              {circuit.isActive ? "⊘" : "✓"}
-                            </ActionButton>
-                          </div>
-                        ) : "—"}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            )}
-          </Td>
-        </Tr>
-      ) : null}
-    </>
+    </PageShell>
   );
 }

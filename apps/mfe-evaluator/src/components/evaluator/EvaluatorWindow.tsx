@@ -4,24 +4,10 @@ import { Button, InlineLoadingSkeleton, Spinner, cn, useToast } from "@platform/
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { WorkflowTask } from "@case-study/mfe";
 import { inspectionGateForAppraisal } from "../../lib/evaluator/evaluator-inspection-gate";
-import {
-  cacheEvaluatorPlanImage,
-  clearCachedEvaluatorPlanImage,
-  getCachedEvaluatorPlanImage,
-} from "../../lib/evaluator/evaluator-plan-attachments";
-import {
-  cacheEvaluatorDepositCertificate,
-  clearCachedEvaluatorDepositCertificate,
-  getCachedEvaluatorDepositCertificate,
-} from "../../lib/evaluator/evaluator-deposit-attachments";
-import {
-  createEvaluatorDraft,
-  evaluatorStatusLabel,
-} from "../../lib/evaluator/evaluator-window-data";
-import {
-  hydrateEvaluatorSubmission,
-  isEvaluatorFormLocked,
-  updateEvaluatorDraft,
+import { cacheEvaluatorPlanImage, clearCachedEvaluatorPlanImage, getCachedEvaluatorPlanImage } from "../../lib/evaluator/evaluator-plan-attachments";
+import { cacheEvaluatorDepositCertificate, clearCachedEvaluatorDepositCertificate, getCachedEvaluatorDepositCertificate } from "../../lib/evaluator/evaluator-deposit-attachments";
+import { createEvaluatorDraft } from "../../lib/evaluator/evaluator-window-data";
+import { hydrateEvaluatorSubmission, isEvaluatorFormLocked, updateEvaluatorDraft,
   type EvaluatorPlanImageMetadata,
   type EvaluatorReportMetadata,
 } from "../../lib/evaluator/evaluator-submission-storage";
@@ -37,17 +23,16 @@ import {
 } from "../../lib/evaluator/evaluator-validation";
 import { finalizeAppraiserSubmission } from "../../lib/evaluator/finalize-appraiser-submission";
 import type { EvaluatorWindowHostRefObject } from "../../lib/evaluator/evaluator-window-host";
-import { ValueEstimationSection } from "./ValueEstimationSection";
 import {
   InfathSection,
   InfathSelectField,
   InfathTextAreaField,
   InfathTextField,
 } from "./InfathFormFields";
-import { EvaluatorIssuedReportActions } from "./EvaluatorIssuedReportActions";
 import { EvaluatorReportWorkersSection } from "./EvaluatorReportWorkersSection";
 import type {
   EvaluatorChecklistAnswers,
+  EvaluatorReportChoices,
   EvaluatorReportWorker,
 } from "../../lib/evaluator/evaluator-window-data";
 import {
@@ -58,11 +43,9 @@ import {
   EVALUATOR_VALUE_BASIS_OPTIONS,
 } from "../../lib/evaluator/evaluator-window-data";
 import {
-  EvaluatorPropertyTab,
   type EvaluatorPropertySummary,
 } from "./EvaluatorPropertyTab";
 import { EvaluatorChecklistTab } from "./EvaluatorChecklistTab";
-import { EvaluatorComparableSelectionPanel } from "./EvaluatorComparableSelectionPanel";
 import { EvaluatorValuationReportTab } from "./EvaluatorValuationReportTab";
 import {
   appraiserInspectionDone,
@@ -73,30 +56,19 @@ import { computePropertyTotal } from "../../lib/evaluator/value-estimation";
 import {
   EngField,
   EngInfo,
-  EngSection,
-  ValDepChip,
-  ValStatusPill,
   ValTabBar,
-  VAL_STATUS_COLORS,
   valCardClassName,
-  valChipClassName,
   valPpHeadClassName,
   valPrimaryBtnClassName,
 } from "./EvaluatorHtmlPrimitives";
 
 export type EvaluatorWindowTab =
-  | "property"
   | "report"
-  | "comparables"
-  | "valuation"
   | "infath"
   | "checklist";
 
 const VAL_TABS: { id: EvaluatorWindowTab; label: string }[] = [
-  { id: "property", label: "بيانات العقار" },
   { id: "report", label: "تقييم العقار" },
-  { id: "comparables", label: "المقارنات" },
-  { id: "valuation", label: "التقييم" },
   { id: "infath", label: "بيانات الرفع لإنفاذ" },
   { id: "checklist", label: "قائمة الفحص" },
 ];
@@ -114,6 +86,7 @@ export function EvaluatorWindow({
   propertySummary,
   initialTab = "report",
   deedLabel,
+  embeddedInPropertyChrome = false,
 }: {
   task: WorkflowTask;
   tasks: WorkflowTask[];
@@ -122,6 +95,7 @@ export function EvaluatorWindow({
   initialTab?: EvaluatorWindowTab;
   deedLabel?: string;
   onBack?: () => void;
+  embeddedInPropertyChrome?: boolean;
 }) {
   const gate = useMemo(
     () => inspectionGateForAppraisal(task, tasks),
@@ -193,6 +167,7 @@ export function EvaluatorWindow({
         reportWorkers: EvaluatorReportWorker[];
         depositCode: string;
         depositCertificateFileName: string | null;
+        reportChoices: EvaluatorReportChoices;
       }>,
       reportMetadata?: EvaluatorReportMetadata,
       planImageMetadata?: EvaluatorPlanImageMetadata,
@@ -297,7 +272,7 @@ export function EvaluatorWindow({
       const infathError = EVALUATOR_INFATH_ERROR_KEYS.some(
         (key) => errors[key],
       );
-      setActiveTab(infathError ? "infath" : "valuation");
+      setActiveTab(infathError ? "infath" : "report");
       scheduleScrollToFormField(firstEvaluatorErrorTarget(errors), 120);
       return false;
     }
@@ -480,7 +455,6 @@ export function EvaluatorWindow({
   const inspected = appraiserInspectionDone(task, tasks);
   const needsSurvey = appraiserNeedsSurvey(task, tasks);
   const surveyed = appraiserSurveyDone(task, tasks);
-  const gated = !gate.ready;
   const summary: EvaluatorPropertySummary = {
     deedNumber: propertySummary?.deedNumber ?? "—",
     poNumber: propertySummary?.poNumber ?? task.poNumber,
@@ -499,94 +473,37 @@ export function EvaluatorWindow({
     appraisalTaskId: propertySummary?.appraisalTaskId ?? task.id,
   };
 
-  const depChips = [
-    {
-      t: "معاينة العقار — المعاين",
-      ok: inspected,
-      wait: "تُراقب حتى اكتمالها",
-    },
-    {
-      t: "اعتماد بيانات الأطراف — الأخصائي",
-      ok: !gated,
-      wait: "شرط بدء التقييم",
-    },
-    ...(needsSurvey
-      ? [
-          {
-            t: "الرفع المساحي — المكتب الهندسي",
-            ok: surveyed,
-            wait: "وصف إضافي — لا يمنع بدء التقييم",
-          },
-        ]
-      : []),
-  ];
-
   return (
-    <div className="flex flex-col">
-      <div className={valPpHeadClassName}>
-        <h1 className="m-0 flex flex-wrap items-center gap-2.5 text-[18px] font-extrabold text-heading">
-          <span>نافذة المقيم العقاري</span>
-          <span className="text-[14px] font-bold text-gold-d" dir="ltr">
-            صك {deedLabel ?? summary.deedNumber}
-          </span>
-        </h1>
-        <div className="mt-1.5 flex flex-wrap items-center gap-2">
-          <span className={valChipClassName}>{summary.poNumber}</span>
-          {draft.reportNo.trim() ? (
-            <span className={valChipClassName} dir="ltr" title="رقم التقرير">
-              {draft.reportNo.trim()}
+    <div className="flex min-w-0 flex-col overflow-x-hidden">
+      {embeddedInPropertyChrome ? null : (
+        <div className={valPpHeadClassName}>
+          <h1 className="m-0 flex flex-wrap items-center gap-2.5 text-[18px] font-extrabold text-heading">
+            <span>نافذة المقيم العقاري</span>
+            <span className="text-[14px] font-bold text-gold-d" dir="ltr">
+              صك {deedLabel ?? summary.deedNumber}
             </span>
-          ) : null}
-          <ValStatusPill
-            label={evaluatorStatusLabel(draft.status)}
-            color={
-              VAL_STATUS_COLORS[draft.status] ?? VAL_STATUS_COLORS.draft
-            }
-          />
-          {gated ? (
-            <ValStatusPill
-              label="تراقب تقدم الأطراف"
-              color={VAL_STATUS_COLORS.gated}
-            />
-          ) : null}
+          </h1>
         </div>
-      </div>
+      )}
 
-      <div className={valCardClassName}>
+      <div
+        className={cn(
+          valCardClassName,
+          embeddedInPropertyChrome &&
+            "overflow-x-hidden border-0 bg-transparent p-0 shadow-none",
+        )}
+      >
         <ValTabBar
           tabs={VAL_TABS}
           active={activeTab}
           onChange={(id) => setActiveTab(id as EvaluatorWindowTab)}
         />
 
-        <div className="mb-3.5 flex flex-wrap gap-2">
-          {depChips.map((dep) => (
-            <ValDepChip
-              key={dep.t}
-              label={dep.t}
-              ok={dep.ok}
-              title={dep.wait}
-            />
-          ))}
-        </div>
-
-        {gated ? (
-          <EngInfo variant="amber">
-            <strong>تراقب تقدم الأطراف:</strong>{" "}
-            {!gate.ready ? gate.reason : ""} يمكنك متابعة بيانات العقار
-            والمقارنات دون حساب القيمة حتى اعتماد بيانات معاينة العقار.
-          </EngInfo>
-        ) : needsSurvey && !surveyed && !locked ? (
+        <div className="pt-5">
+        {needsSurvey && !surveyed && !locked && gate.ready ? (
           <EngInfo variant="amber">
             ℹ يمكنك التقييم الآن (بيانات معاينة العقار معتمدة) — الرفع المساحي وصف
             إضافي: قد يلزم تعديل التقييم بعد صدوره.
-          </EngInfo>
-        ) : null}
-
-        {draft.status === "reopened" ? (
-          <EngInfo variant="amber">
-            <strong>⚠ معادة للتصحيح</strong> — أرجعها الأخصائي؛ يمكنك تعديل
-            جميع الحقول وإعادة الإرسال.
           </EngInfo>
         ) : null}
 
@@ -602,41 +519,51 @@ export function EvaluatorWindow({
         <div
           className={cn(
             formDisabled &&
-              activeTab !== "property" &&
-              activeTab !== "report" &&
-              activeTab !== "comparables"
+              activeTab !== "report"
               ? "opacity-75"
               : undefined,
           )}
         >
-          {activeTab === "property" ? (
-            <EvaluatorPropertyTab property={summary} />
-          ) : null}
-
           {activeTab === "report" ? (
+            <>
             <EvaluatorValuationReportTab
-              propertyId={task.propertyId ?? ""}
-              districtHint={
-                summary.property?.district?.trim() ||
-                summary.cityDistrict.split(/[|/·,،]/)[0]?.trim() ||
-                undefined
-              }
               draft={draft}
+              disabled={formDisabled}
+              property={summary.property}
               inspectionTaskId={summary.inspectionTaskId}
+              onChange={(reportChoices, extras) => {
+                const patch = {
+                  reportChoices,
+                  ...(extras?.valueBasis
+                    ? { valueBasis: extras.valueBasis }
+                    : {}),
+                  ...(extras?.valuationMethod
+                    ? { valuationMethod: extras.valuationMethod }
+                    : {}),
+                };
+                setDraft((prev) => ({ ...prev, ...patch }));
+                scheduleAutosave(patch);
+              }}
             />
-          ) : null}
-
-          {activeTab === "comparables" ? (
-            <EvaluatorComparableSelectionPanel
-              propertyId={task.propertyId ?? ""}
-              poNumber={task.poNumber}
-              assignmentType={task.assignmentType}
-              districtHint={
-                summary.property?.district?.trim() ||
-                summary.cityDistrict.split(/[|/·,،]/)[0]?.trim() ||
-                undefined
-              }
-            />
+            {!formDisabled ? (
+              <div className="mt-5">
+                <button
+                  type="button"
+                  className={valPrimaryBtnClassName}
+                  disabled={submitting}
+                  aria-busy={submitting || undefined}
+                  onClick={() => void submit()}
+                >
+                  {submitting ? <Spinner /> : null}
+                  <span>
+                    {submitting
+                      ? "جاري الاعتماد…"
+                      : "اعتماد التقييم وإرسال للأخصائي"}
+                  </span>
+                </button>
+              </div>
+            ) : null}
+            </>
           ) : null}
 
           {activeTab === "checklist" ? (
@@ -660,231 +587,6 @@ export function EvaluatorWindow({
                 });
               }}
             />
-          ) : null}
-
-          {activeTab === "valuation" ? (
-            <div className="flex flex-col gap-3">
-              <EngSection>تقرير التقييم</EngSection>
-              <p className="m-0 text-[12px] leading-relaxed text-text-2">
-                استعراض تقرير التقييم يعرض مسودة المستند المولَّد — وليس معاينة
-                العقار. التقرير يُصدَر PDF عند الاعتماد، ويُحجز رقمه عند توزيع
-                المعاملة على المقيم. معاينة العقار مصدر بيانات يبني عليه المقيم
-                التقرير دون إعادة إدخالها.
-              </p>
-              {draft.reportNo.trim() ? (
-                <p className="m-0 text-[12.5px] text-text">
-                  رقم التقرير:{" "}
-                  <span className="font-bold" dir="ltr">
-                    {draft.reportNo.trim()}
-                  </span>
-                  {draft.reportIssueDate.trim() ? (
-                    <>
-                      {" "}
-                      · تاريخ الإصدار: {draft.reportIssueDate.trim()}
-                    </>
-                  ) : (
-                    <> · محجوز — يُثبَّت تاريخ الإصدار عند الاعتماد</>
-                  )}
-                </p>
-              ) : (
-                <p className="m-0 text-[12px] text-text-3">
-                  يُحجز الرقم تلقائياً بصيغة TQ عند توزيع المعاملة على المقيم.
-                </p>
-              )}
-              <EvaluatorIssuedReportActions
-                taskId={task.id}
-                propertyId={task.propertyId ?? ""}
-                reportNo={draft.reportNo}
-                depositCode={draft.depositCode}
-                area={summary.cityDistrict}
-                propertyType={summary.classification}
-                appraiserName={task.assigneeName}
-                issued={
-                  draft.status === "submitted" || draft.status === "completed"
-                }
-              />
-
-              <ValueEstimationSection
-                landValue={draft.landValue}
-                buildingValue={draft.buildingValue}
-                propertyTotal={draft.evaluatorPrice}
-                forcedSaleDiscountPct={draft.forcedSaleDiscountPct}
-                disabled={formDisabled}
-                landError={fieldErrors.land_value}
-                buildingError={fieldErrors.building_value}
-                totalError={fieldErrors.evaluator_price}
-                discountError={fieldErrors.forced_sale_discount}
-                onLandChange={(landValue) => {
-                  const evaluatorPrice = String(
-                    computePropertyTotal(landValue, draft.buildingValue),
-                  );
-                  setDraft((prev) => ({
-                    ...prev,
-                    landValue,
-                    evaluatorPrice: String(
-                      computePropertyTotal(landValue, prev.buildingValue),
-                    ),
-                  }));
-                  scheduleAutosave({ landValue, evaluatorPrice });
-                  setFieldErrors((prev) => {
-                    const next = { ...prev };
-                    delete next.land_value;
-                    delete next.evaluator_price;
-                    return next;
-                  });
-                }}
-                onBuildingChange={(buildingValue) => {
-                  const evaluatorPrice = String(
-                    computePropertyTotal(draft.landValue, buildingValue),
-                  );
-                  setDraft((prev) => ({
-                    ...prev,
-                    buildingValue,
-                    evaluatorPrice: String(
-                      computePropertyTotal(prev.landValue, buildingValue),
-                    ),
-                  }));
-                  scheduleAutosave({ buildingValue, evaluatorPrice });
-                  setFieldErrors((prev) => {
-                    const next = { ...prev };
-                    delete next.building_value;
-                    delete next.evaluator_price;
-                    return next;
-                  });
-                }}
-                onTotalChange={(evaluatorPrice) => {
-                  setDraft((prev) => ({ ...prev, evaluatorPrice }));
-                  scheduleAutosave({ evaluatorPrice });
-                  setFieldErrors((prev) => {
-                    const next = { ...prev };
-                    delete next.evaluator_price;
-                    return next;
-                  });
-                }}
-                onDiscountChange={(forcedSaleDiscountPct) => {
-                  setDraft((prev) => ({ ...prev, forcedSaleDiscountPct }));
-                  scheduleAutosave({ forcedSaleDiscountPct });
-                  setFieldErrors((prev) => {
-                    const next = { ...prev };
-                    delete next.forced_sale_discount;
-                    return next;
-                  });
-                }}
-              />
-
-              <EngSection>مراجعة بيانات الأصل</EngSection>
-              <div
-                id="val-asset-data"
-                className={cn(
-                  "flex flex-col gap-3 rounded-[10px] border border-border bg-surface-2/60 p-3",
-                  fieldErrors.asset_data_confirmed &&
-                    evaluatorInvalidControlClass,
-                )}
-              >
-                <p className="text-[12px] leading-relaxed text-text-2">
-                  راجع بيانات الأصل من معاينة العقار / الرفع المساحي / دراسة الحالة.
-                  أكّد مطابقتها، أو دوّن ملاحظات التباين إن وُجدت اختلافات.
-                </p>
-                <label
-                  className={cn(
-                    "flex cursor-pointer items-start gap-2.5 text-[13px] font-medium text-text",
-                    formDisabled && "cursor-not-allowed opacity-65",
-                  )}
-                >
-                  <input
-                    id="asset-data-confirmed"
-                    type="checkbox"
-                    className="mt-0.5 size-4 shrink-0 accent-primary"
-                    disabled={formDisabled}
-                    checked={draft.assetDataConfirmed}
-                    onChange={(e) => {
-                      const assetDataConfirmed = e.target.checked;
-                      setDraft((prev) => ({
-                        ...prev,
-                        assetDataConfirmed,
-                      }));
-                      scheduleAutosave({ assetDataConfirmed });
-                      setFieldErrors((prev) => {
-                        const next = { ...prev };
-                        delete next.asset_data_confirmed;
-                        return next;
-                      });
-                    }}
-                  />
-                  <span>
-                    أؤكّد مراجعة بيانات الأصل وأنها مطابقة لما وُثِّق من
-                    الأطراف
-                    <span className="text-[#a5432e]"> *</span>
-                  </span>
-                </label>
-                <InfathTextAreaField
-                  id="asset-data-variance-notes"
-                  label="ملاحظات التباين (إن وُجدت)"
-                  autoComplete="off"
-                  disabled={formDisabled}
-                  placeholder="مثال: فرق في مساحة البناء مقارنة بالمعاينة الميدانية…"
-                  rows={2}
-                  value={draft.assetDataVarianceNotes}
-                  onChange={(e) => {
-                    const assetDataVarianceNotes = e.target.value;
-                    setDraft((prev) => ({
-                      ...prev,
-                      assetDataVarianceNotes,
-                    }));
-                    scheduleAutosave({ assetDataVarianceNotes });
-                    setFieldErrors((prev) => {
-                      const next = { ...prev };
-                      if (
-                        draft.assetDataConfirmed ||
-                        assetDataVarianceNotes.trim()
-                      ) {
-                        delete next.asset_data_confirmed;
-                      }
-                      return next;
-                    });
-                  }}
-                />
-                {fieldErrors.asset_data_confirmed ? (
-                  <span className="text-[11px] text-danger-text">
-                    {fieldErrors.asset_data_confirmed}
-                  </span>
-                ) : null}
-              </div>
-
-              <EngSection>ملاحظات</EngSection>
-              <InfathTextAreaField
-                id="evaluator_notes"
-                label="ملاحظات على العقار (اختياري)"
-                autoComplete="off"
-                disabled={formDisabled}
-                placeholder="أي ملاحظات على العقار…"
-                rows={3}
-                value={draft.evaluatorNotes}
-                onChange={(e) => {
-                  const evaluatorNotes = e.target.value;
-                  setDraft((prev) => ({ ...prev, evaluatorNotes }));
-                  scheduleAutosave({ evaluatorNotes });
-                }}
-              />
-              {!formDisabled ? (
-                <div className="mt-5">
-                  <button
-                    type="button"
-                    className={valPrimaryBtnClassName}
-                    disabled={submitting}
-                    aria-busy={submitting || undefined}
-                    onClick={() => void submit()}
-                  >
-                    {submitting ? <Spinner /> : null}
-                    <span>
-                      {submitting
-                        ? "جاري الاعتماد…"
-                        : "اعتماد التقييم وإرسال للأخصائي"}
-                    </span>
-                  </button>
-                </div>
-              ) : null}
-            </div>
           ) : null}
 
           {activeTab === "infath" ? (
@@ -1234,6 +936,7 @@ export function EvaluatorWindow({
               </InfathSection>
             </div>
           ) : null}
+        </div>
         </div>
       </div>
     </div>

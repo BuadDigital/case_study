@@ -6,7 +6,6 @@ public class UserProfile
 {
     public string UserId { get; set; } = string.Empty;
     public ApplicationUser User { get; set; } = null!;
-
     public RegistrationSource RegistrationSource { get; set; }
     public ContractType ContractType { get; set; }
  /// <summary>Canonical product role id (for example case-specialist).</summary>

@@ -73,6 +73,48 @@ public class PartyTaskSubmissionReadAuthorizationTests
     }
 
     [Fact]
+    public async Task Get_returns_empty_draft_when_assigned_task_has_no_submission()
+    {
+        var bundle = CreateDb();
+        var db = bundle.App;
+        SeedTaskOnly(db, OwnedTaskId, "dist-owner");
+        db.SaveChanges();
+
+        var dto = await CreateService(db, bundle.Failures, bundle.Ops).GetAsync(OwnedTaskId, Owner);
+
+        Assert.NotNull(dto);
+        Assert.Equal("", dto!.Id);
+        Assert.Equal(OwnedTaskId.ToString(), dto.TaskId);
+        Assert.Equal("draft", dto.Status);
+        Assert.Equal("engineering-survey", dto.Kind);
+    }
+
+    [Fact]
+    public async Task Get_hides_task_without_submission_from_other_party()
+    {
+        var bundle = CreateDb();
+        var db = bundle.App;
+        SeedTaskOnly(db, ForeignTaskId, "dist-other");
+        db.SaveChanges();
+
+        var dto = await CreateService(db, bundle.Failures, bundle.Ops).GetAsync(ForeignTaskId, Owner);
+
+        Assert.Null(dto);
+    }
+
+    [Fact]
+    public async Task Get_returns_null_when_task_is_missing()
+    {
+        var bundle = CreateDb();
+        var db = bundle.App;
+
+        var dto = await CreateService(db, bundle.Failures, bundle.Ops)
+            .GetAsync(Guid.Parse("aaaaaaaa-ffff-0000-0000-000000000099"), CaseStaff);
+
+        Assert.Null(dto);
+    }
+
+    [Fact]
     public async Task List_drops_tasks_the_party_cannot_read()
     {
         var bundle = CreateDb();
@@ -108,16 +150,12 @@ public class PartyTaskSubmissionReadAuthorizationTests
         db.SaveChanges();
     }
 
-    private static void AddTaskWithSubmission(
-        ApplicationDbContext db,
-        Guid taskId,
-        string assigneeId)
+    private static void SeedTaskOnly(ApplicationDbContext db, Guid taskId, string assigneeId)
     {
-        var now = DateTime.UtcNow;
         db.WorkflowTasks.Add(WorkflowTask.Create(
             WorkflowTaskKind.EngineeringSurvey,
             "PO-READ",
-            now,
+            DateTime.UtcNow,
             title: "الرفع المساحي",
             phase: WorkflowTaskPhase.Done,
             assigneeRole: "engineering-office",
@@ -125,6 +163,15 @@ public class PartyTaskSubmissionReadAuthorizationTests
             id: taskId,
             propertyId: PropertyId,
             assigneeId: assigneeId));
+    }
+
+    private static void AddTaskWithSubmission(
+        ApplicationDbContext db,
+        Guid taskId,
+        string assigneeId)
+    {
+        var now = DateTime.UtcNow;
+        SeedTaskOnly(db, taskId, assigneeId);
         db.PartyTaskSubmissions.Add(new PartyTaskSubmission
         {
             Id = Guid.NewGuid(),
@@ -257,9 +304,49 @@ public class CaseStudyFormReadAuthorizationTests
         Assert.NotNull(dto);
     }
 
-    private static void Seed(ApplicationDbContext db)
+    [Fact]
+    public async Task Get_returns_empty_form_when_task_exists_but_no_row()
     {
-        var now = DateTime.UtcNow;
+        await using var contexts = CreateContexts();
+        SeedTasksOnly(contexts.Legacy);
+
+        var dto = await CreateFormService(contexts).GetAsync(
+            ParentTaskId,
+            party: false,
+            new CaseStudyFormActor { UserId = "staff", PrototypeRole = "case-specialist" });
+
+        Assert.NotNull(dto);
+        Assert.Equal("new", dto!.Status);
+        Assert.Equal(ParentTaskId.ToString(), dto.TaskId);
+        Assert.Null(dto.SavedAtUtc);
+    }
+
+    [Fact]
+    public async Task GetParty_returns_empty_form_for_assigned_task_without_row()
+    {
+        await using var contexts = CreateContexts();
+        SeedTasksOnly(contexts.Legacy);
+
+        var dto = await CreateFormService(contexts).GetAsync(PartyTaskId, party: true, Party);
+
+        Assert.NotNull(dto);
+        Assert.Equal("new", dto!.Status);
+        Assert.Equal(PartyTaskId.ToString(), dto.TaskId);
+    }
+
+    [Fact]
+    public async Task GetParty_hides_empty_form_from_other_party()
+    {
+        await using var contexts = CreateContexts();
+        SeedTasksOnly(contexts.Legacy);
+
+        var dto = await CreateFormService(contexts).GetAsync(ForeignPartyTaskId, party: true, Party);
+
+        Assert.Null(dto);
+    }
+
+    private static void SeedTasksOnly(ApplicationDbContext db)
+    {
         db.WorkflowTasks.AddRange(
             NewTask(ParentTaskId, WorkflowTaskKind.CaseStudyProperty, "dist-specialist", null),
             NewTask(PartyTaskId, WorkflowTaskKind.EngineeringSurvey, "dist-party", ParentTaskId),
@@ -268,6 +355,13 @@ public class CaseStudyFormReadAuthorizationTests
                 WorkflowTaskKind.EngineeringSurvey,
                 "dist-outsider",
                 ParentTaskId));
+        db.SaveChanges();
+    }
+
+    private static void Seed(ApplicationDbContext db)
+    {
+        var now = DateTime.UtcNow;
+        SeedTasksOnly(db);
 
         db.CaseStudyForms.AddRange(
             new CaseStudyForm
