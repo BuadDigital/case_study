@@ -96,6 +96,11 @@ export type EvaluatorReportChoices = {
   esgSoc: EvaluatorEsgGroup;
   esgGov: EvaluatorEsgGroup;
   printAttachmentKeys: string[];
+  incomeAnnual: string;
+  incomeVacancyPct: string;
+  incomeOpexPct: string;
+  incomeCapRatePct: string;
+  methodsRationale: string;
 };
 
 const EMPTY_ESG: EvaluatorEsgGroup = {
@@ -138,6 +143,11 @@ export function emptyReportChoices(): EvaluatorReportChoices {
     esgSoc: { ...EMPTY_ESG },
     esgGov: { ...EMPTY_ESG },
     printAttachmentKeys: [],
+    incomeAnnual: "",
+    incomeVacancyPct: "",
+    incomeOpexPct: "",
+    incomeCapRatePct: "",
+    methodsRationale: "",
   };
 }
 
@@ -181,6 +191,14 @@ export function normalizeReportChoices(raw: unknown): EvaluatorReportChoices {
     printAttachmentKeys: Array.isArray(row.printAttachmentKeys)
       ? row.printAttachmentKeys.filter((x): x is string => typeof x === "string")
       : [],
+    incomeAnnual: typeof row.incomeAnnual === "string" ? row.incomeAnnual : "",
+    incomeVacancyPct:
+      typeof row.incomeVacancyPct === "string" ? row.incomeVacancyPct : "",
+    incomeOpexPct: typeof row.incomeOpexPct === "string" ? row.incomeOpexPct : "",
+    incomeCapRatePct:
+      typeof row.incomeCapRatePct === "string" ? row.incomeCapRatePct : "",
+    methodsRationale:
+      typeof row.methodsRationale === "string" ? row.methodsRationale : "",
   };
 }
 

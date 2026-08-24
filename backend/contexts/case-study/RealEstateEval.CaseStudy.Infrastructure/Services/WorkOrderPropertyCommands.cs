@@ -460,6 +460,8 @@ public sealed class WorkOrderPropertyCommands : IWorkOrderPropertyCommands
         entity.PlotNumber = IWorkOrderLoader.NormalizeOptionalText(dto.PlotNumber);
         entity.BlockNumber = IWorkOrderLoader.NormalizeOptionalText(dto.BlockNumber);
         entity.LocationMapUrl = IWorkOrderLoader.NormalizeOptionalText(dto.LocationMapUrl);
+        entity.PartitionMinutesNumber = IWorkOrderLoader.NormalizeOptionalText(dto.PartitionMinutesNumber);
+        entity.PartitionMinutesDate = IWorkOrderLoader.NormalizeOptionalText(dto.PartitionMinutesDate);
         entity.FinishingType = NormalizeFinishingType(dto.FinishingType);
         entity.FinishingStructure = NormalizeFinishingStructure(dto.FinishingStructure);
     }

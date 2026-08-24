@@ -6,6 +6,8 @@ namespace RealEstateEval.Application.Rules;
 /// <summary>
 /// Server-side validation for field-inspection party task payloads —
 /// mirrors <c>validateInspectorWorkspace</c> / <c>listInspectorPhotoValidationIssues</c> in the MFE.
+/// Proof photos (feature table, showroom/well, services/amenities) are optional —
+/// a missing one never blocks submission.
 /// </summary>
 public static class FieldInspectionSubmissionValidator
 {
@@ -18,34 +20,6 @@ public static class FieldInspectionSubmissionValidator
     {
         "21.5433,39.1728",
         "21.543300,39.172800",
-    };
-
- /// <summary>
- /// Desktop table «صورة» + mobile proof: closed-list fields always when valued;
- /// yes/no fields only when «نعم» (Case Study.html PHOTO_ON_YES + desktop table).
- /// </summary>
-    private static readonly (string Key, string Label)[] FeaturePhotoFields =
-    [
-        ("assetSubject", "الأصل محل التقييم"),
-        ("facade", "الواجهة"),
-        ("propertyUsage", "استخدام العقار"),
-        ("buildState", "حالة البناء"),
-        ("movables", "يوجد منقولات"),
-        ("carEntrance", "مدخل السيارة"),
-        ("hasBasement", "يوجد قبو"),
-        ("hasElevator", "يوجد مصعد"),
-        ("hasPool", "يوجد مسبح"),
-        ("kitchen", "مطبخ"),
-    ];
-
-    private static readonly HashSet<string> FeaturePhotoYesNoOnlyKeys = new(StringComparer.Ordinal)
-    {
-        "movables",
-        "carEntrance",
-        "hasBasement",
-        "hasElevator",
-        "hasPool",
-        "kitchen",
     };
 
     public static Dictionary<string, string> Validate(JsonElement root)
@@ -65,21 +39,14 @@ public static class FieldInspectionSubmissionValidator
             errors["inspectionConfirmed"] = "يجب التأشير على إقرار المعاينة";
 
         if (HasIncompleteObservations(root))
-            errors["observations"] = "كل ملاحظة موثّقة يجب أن تتضمن شرحاً وصورة توثيقية";
+            errors["observations"] = "كل ملاحظة يجب أن تتضمن شرحاً";
+
+        if (RequiresMovablesDescription(root))
+            errors["movablesDescription"] = "وصف المنقولات مطلوب عند اختيار «نعم»";
 
         var photoIssues = ListPhotoValidationIssues(root);
         if (photoIssues.Count > 0)
-        {
             errors["definedPhotos"] = photoIssues[0];
-            var featureIssue = photoIssues.Find(i => i.Contains("توثيقية", StringComparison.Ordinal));
-            if (featureIssue is not null)
-                errors["featurePhotos"] = featureIssue;
-            var componentIssue = photoIssues.Find(i =>
-                i.Contains("المعرض", StringComparison.Ordinal) ||
-                i.Contains("البئر", StringComparison.Ordinal));
-            if (componentIssue is not null)
-                errors["componentPhotos"] = componentIssue;
-        }
 
         return errors;
     }
@@ -101,6 +68,19 @@ public static class FieldInspectionSubmissionValidator
                lng >= SaudiLngMin && lng <= SaudiLngMax;
     }
 
+    private static bool RequiresMovablesDescription(JsonElement root)
+    {
+        if (!root.TryGetProperty("featureValues", out var features) ||
+            features.ValueKind != JsonValueKind.Object)
+        {
+            return false;
+        }
+
+        var movables = ReadString(features, "movables");
+        if (movables != "نعم") return false;
+        return string.IsNullOrWhiteSpace(ReadString(features, "movablesDescription"));
+    }
+
     private static bool HasIncompleteObservations(JsonElement root)
     {
         if (!root.TryGetProperty("observations", out var observations) ||
@@ -114,8 +94,6 @@ public static class FieldInspectionSubmissionValidator
             var text = ReadString(obs, "text");
             if (string.IsNullOrWhiteSpace(text))
                 return true;
-            if (!HasPhotoFileName(obs, "photo"))
-                return true;
         }
 
         return false;
@@ -125,38 +103,10 @@ public static class FieldInspectionSubmissionValidator
     {
         var issues = new List<string>();
 
-        if (root.TryGetProperty("featureValues", out var featureValues) &&
-            featureValues.ValueKind == JsonValueKind.Object)
-        {
-            foreach (var (key, label) in FeaturePhotoFields)
-            {
-                if (!TryReadFeatureValue(featureValues, key, out var value) ||
-                    !FeatureValueRequiresPhoto(key, value))
-                {
-                    continue;
-                }
-
-                if (!HasFeaturePhotoAttachment(root, key))
-                    issues.Add($"يجب إرفاق صورة توثيقية: {label}");
-            }
-        }
-
-        var showroomCount = ParsePositiveCount(ReadString(root, "showroomCount"));
-        if (showroomCount > 0 && !HasComponentPhotoAttachment(root, "showroom"))
-            issues.Add("يجب إرفاق صورة المعرض");
-
-        var wellCount = ParsePositiveCount(ReadString(root, "wellCount"));
-        if (wellCount > 0 && !HasComponentPhotoAttachment(root, "well"))
-            issues.Add("يجب إرفاق صورة البئر");
-
-        var (requiredTotal, requiredDone, pendingApproval) = ComputeDefinedPhotoCoverage(root);
-
-        if (requiredTotal > 0 && requiredDone < requiredTotal)
-        {
-            issues.Add(
-                "وثّق بالصورة كل خدمة/مرفق اخترته في «الخدمات والمرافق المحيطة»");
-        }
-
+        // Proof photos (feature table, showroom/well, services/amenities) are
+        // optional — only already-uploaded photos are checked below (pending
+        // approval / not yet on the server), never whether one exists at all.
+        var (_, _, pendingApproval) = ComputeDefinedPhotoCoverage(root);
         if (pendingApproval > 0)
             issues.Add($"{pendingApproval} صورة بانتظار الاعتماد");
 
@@ -285,75 +235,8 @@ public static class FieldInspectionSubmissionValidator
         return count;
     }
 
-    private static bool FeatureValueRequiresPhoto(string key, string value)
-    {
-        if (string.IsNullOrWhiteSpace(value))
-            return false;
-        if (FeaturePhotoYesNoOnlyKeys.Contains(key))
-            return value == "نعم";
-        return true;
-    }
-
-    private static bool TryReadFeatureValue(JsonElement featureValues, string key, out string value)
-    {
-        value = "";
-        if (!featureValues.TryGetProperty(key, out var prop))
-            return false;
-        if (prop.ValueKind != JsonValueKind.String)
-            return false;
-        value = prop.GetString()?.Trim() ?? "";
-        return true;
-    }
-
-    private static bool HasFeaturePhotoAttachment(JsonElement root, string key)
-    {
-        if (!root.TryGetProperty("featurePhotoAttachments", out var attachments) ||
-            attachments.ValueKind != JsonValueKind.Object ||
-            !attachments.TryGetProperty(key, out var attachment))
-        {
-            return false;
-        }
-
-        return HasPhotoFileName(attachment);
-    }
-
-    private static bool HasComponentPhotoAttachment(JsonElement root, string key)
-    {
-        if (!root.TryGetProperty("componentPhotoAttachments", out var attachments) ||
-            attachments.ValueKind != JsonValueKind.Object ||
-            !attachments.TryGetProperty(key, out var attachment))
-        {
-            return false;
-        }
-
-        if (attachment.ValueKind is JsonValueKind.Null or JsonValueKind.Undefined)
-            return false;
-
-        return HasPhotoFileName(attachment);
-    }
-
-    private static bool HasPhotoFileName(JsonElement element, string? propertyName = null)
-    {
-        if (propertyName is not null)
-        {
-            if (!element.TryGetProperty(propertyName, out var nested))
-                return false;
-            if (nested.ValueKind is JsonValueKind.Null or JsonValueKind.Undefined)
-                return false;
-            return HasPhotoFileName(nested);
-        }
-
-        return HasNonEmptyString(element, "fileName");
-    }
-
-    private static int ParsePositiveCount(string? value)
-    {
-        if (string.IsNullOrWhiteSpace(value))
-            return 0;
-        return int.TryParse(value.Trim(), NumberStyles.Integer, CultureInfo.InvariantCulture, out var n) && n > 0
-            ? n
-            : 0;
-    }
+    private static bool HasPhotoFileName(JsonElement element) =>
+        HasNonEmptyString(element, "fileName");
 
     private static bool TryParseCoord(string raw, out double value)
     {

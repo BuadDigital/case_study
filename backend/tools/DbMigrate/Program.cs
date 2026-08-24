@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Npgsql;
@@ -202,9 +203,11 @@ async Task ListStreamAsync(string name, string connection, DbContext db)
 
 void UseStream<TContext>(DbContextOptionsBuilder options, string connectionString)
     where TContext : DbContext =>
-    options.UseNpgsql(connectionString, npgsql => npgsql.MigrationsHistoryTable(
-        BoundedContextMigrations.HistoryTable,
-        BoundedContextMigrations.HistorySchemaFor<TContext>()));
+    options
+        .ConfigureWarnings(w => w.Ignore(RelationalEventId.PendingModelChangesWarning))
+        .UseNpgsql(connectionString, npgsql => npgsql.MigrationsHistoryTable(
+            BoundedContextMigrations.HistoryTable,
+            BoundedContextMigrations.HistorySchemaFor<TContext>()));
 
 static string DatabaseName(string connectionString) =>
     new NpgsqlConnectionStringBuilder(connectionString).Database ?? "(unknown)";

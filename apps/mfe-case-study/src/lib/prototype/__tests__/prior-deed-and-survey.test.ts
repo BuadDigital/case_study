@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { PriorDeedRegistrationDto } from "@platform/api-client";
 import { deedsMatch, normalizeDeedNumber } from "../deed-number";
-import { engineeringOfficeAvailable } from "../tasks-storage";
+import { engineeringOfficeAvailable, engineeringOfficeUnavailableReason } from "../tasks-storage";
 import { emptyProperty } from "../po-intake-data";
 import { buildPropertyFromPriorDeed } from "../po-intake-storage";
 
@@ -35,6 +35,17 @@ describe("engineeringOfficeAvailable with prior survey", () => {
       deedNumber: "1",
     };
     expect(engineeringOfficeAvailable(prop, false)).toBe(false);
+  });
+
+  it("hides engineering office for registered title (سجل عيني)", () => {
+    const prop = {
+      ...emptyProperty(),
+      classification: "أرض",
+      deedNumber: "1",
+      identifierType: "real_estate_reg" as const,
+    };
+    expect(engineeringOfficeAvailable(prop, false)).toBe(false);
+    expect(engineeringOfficeUnavailableReason(prop, false)).toContain("سجل عيني");
   });
 });
 

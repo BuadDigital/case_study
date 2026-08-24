@@ -163,14 +163,50 @@ public class FieldInspectionSubmissionIntegrationTests
         Assert.True(errors!.ContainsKey("returnNote"));
     }
 
+    [Fact]
+    public async Task Submit_notifies_sibling_engineering_survey_assignee()
+    {
+        var bundle = CreateDb();
+        var db = bundle.App;
+        var notifications = new RecordingNotificationService();
+        var service = CreateService(db, bundle.Failures, bundle.Ops, notifications);
+        var parentId = Guid.Parse("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaa0");
+        var surveyId = Guid.Parse("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaa3");
+
+        SeedInspectionTask(db, parentId);
+        SeedSiblingSurvey(db, parentId, surveyId, assigneeId: "eo-dist-1");
+        SeedAssigneeProfile(db, userId: "eo-user-1", distributionAssigneeId: "eo-dist-1");
+        SeedPhotoAttachments(db);
+
+        var payload = ParsePayload(MinimalValidPayload());
+        await service.SaveDraftAsync(
+            TaskId,
+            new SavePartyTaskSubmissionRequest { Payload = payload });
+
+        var (result, errors) = await service.SubmitAsync(TaskId);
+
+        Assert.Null(errors);
+        Assert.NotNull(result);
+        var notice = Assert.Single(notifications.Created);
+        Assert.Equal("eo-user-1", notice.UserId);
+        Assert.Equal("بدء العمل على العقار — رُفعت المعاينة", notice.Request.Title);
+        Assert.Contains("PO-100", notice.Request.Body);
+        Assert.Equal($"/active-survey/{surveyId}", notice.Request.Href);
+        Assert.Equal($"field-inspection-submitted-survey:{TaskId}", notice.Request.SourceEvent);
+    }
+
     private static TestBoundedContexts.Bundle CreateDb() =>
         TestBoundedContexts.Create($"field-inspection-{Guid.NewGuid():N}");
 
-    private static PartyTaskSubmissionService CreateService(ApplicationDbContext db, FailuresDbContext failures, OperationsDbContext __)
+    private static PartyTaskSubmissionService CreateService(
+        ApplicationDbContext db,
+        FailuresDbContext failures,
+        OperationsDbContext __,
+        INotificationService? notifications = null)
     {
         var caseStudy = TestInspectorFeeServiceFactory.ShareCaseStudy(db);
         var timeline = TestInspectorFeeServiceFactory.CreateTimeline(db);
-        var (notifications, recipients) = TestInspectorFeeServiceFactory.CreateNotificationDeps(db);
+        var recipients = TestInspectorFeeServiceFactory.CreateRecipients(db);
         return new(
             caseStudy,
             new FailureLookup(failures),
@@ -180,7 +216,7 @@ public class FieldInspectionSubmissionIntegrationTests
             new NullHttpContextAccessor(),
             new NullPermissionService(),
             TestInspectorFeeServiceFactory.Create(db),
-            notifications,
+            notifications ?? TestInspectorFeeServiceFactory.CreateNotificationDeps(db).Notifications,
             recipients);
     }
 
@@ -197,8 +233,19 @@ public class FieldInspectionSubmissionIntegrationTests
         }
     }
 
-    private static void SeedInspectionTask(ApplicationDbContext db)
+    private static void SeedInspectionTask(ApplicationDbContext db, Guid? parentTaskId = null)
     {
+        if (parentTaskId is Guid parentId)
+        {
+            db.WorkflowTasks.Add(WorkflowTask.Create(
+                WorkflowTaskKind.CaseStudyProperty,
+                "PO-100",
+                DateTime.UtcNow,
+                title: "دراسة الحالة",
+                id: parentId,
+                propertyId: PropertyId));
+        }
+
         db.WorkflowTasks.Add(WorkflowTask.Create(
             WorkflowTaskKind.FieldInspection,
             "PO-100",
@@ -206,8 +253,97 @@ public class FieldInspectionSubmissionIntegrationTests
             title: "معاينة العقار",
             phase: WorkflowTaskPhase.Done,
             id: TaskId,
-            propertyId: PropertyId));
+            propertyId: PropertyId,
+            parentTaskId: parentTaskId));
         db.SaveChanges();
+    }
+
+    private static void SeedSiblingSurvey(
+        ApplicationDbContext db,
+        Guid parentTaskId,
+        Guid surveyId,
+        string assigneeId)
+    {
+        db.WorkflowTasks.Add(WorkflowTask.Create(
+            WorkflowTaskKind.EngineeringSurvey,
+            "PO-100",
+            DateTime.UtcNow,
+            title: "الرفع المساحي",
+            assigneeRole: "engineering-office",
+            assigneeName: "المكتب الهندسي",
+            id: surveyId,
+            propertyId: PropertyId,
+            assigneeId: assigneeId,
+            parentTaskId: parentTaskId));
+        db.SaveChanges();
+    }
+
+    private static void SeedAssigneeProfile(
+        ApplicationDbContext db,
+        string userId,
+        string distributionAssigneeId)
+    {
+        db.Users.Add(new ApplicationUser
+        {
+            Id = userId,
+            UserName = userId,
+            Email = $"{userId}@example.test",
+            NormalizedEmail = $"{userId}@EXAMPLE.TEST",
+            DisplayName = userId,
+        });
+        db.UserProfiles.Add(new UserProfile
+        {
+            UserId = userId,
+            DistributionAssigneeId = distributionAssigneeId,
+            JobTitle = "engineering-office",
+            RoleId = "engineering-office",
+            Status = UserStatus.Active,
+            CreatedAtUtc = DateTime.UtcNow,
+        });
+        db.SaveChanges();
+    }
+
+    private sealed class RecordingNotificationService : INotificationService
+    {
+        public List<(string UserId, CreateUserNotificationRequest Request)> Created { get; } = [];
+
+        public Task<IReadOnlyList<UserNotificationDto>> ListForUserAsync(
+            string userId,
+            CancellationToken cancellationToken = default) =>
+            Task.FromResult<IReadOnlyList<UserNotificationDto>>([]);
+
+        public Task<UserNotificationDto> CreateForUserAsync(
+            string userId,
+            CreateUserNotificationRequest request,
+            CancellationToken cancellationToken = default)
+        {
+            Created.Add((userId, request));
+            return Task.FromResult(new UserNotificationDto { Title = request.Title });
+        }
+
+        public Task<int> CreateForUsersAsync(
+            IReadOnlyCollection<string> userIds,
+            CreateUserNotificationRequest request,
+            CancellationToken cancellationToken = default) =>
+            Task.FromResult(0);
+
+        public Task<bool> MarkReadAsync(
+            string userId,
+            Guid id,
+            CancellationToken cancellationToken = default) =>
+            Task.FromResult(false);
+
+        public Task MarkAllReadAsync(string userId, CancellationToken cancellationToken = default) =>
+            Task.CompletedTask;
+
+        public Task<bool> DeleteAsync(
+            string userId,
+            Guid id,
+            CancellationToken cancellationToken = default) =>
+            Task.FromResult(false);
+
+        public Task ClearForUserAsync(string userId, CancellationToken cancellationToken = default) =>
+            Task.CompletedTask;
     }
 
     private static void SeedPhotoAttachments(ApplicationDbContext db)

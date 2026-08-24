@@ -31,8 +31,9 @@ import type {
   PoPropertyIntake,
 } from "./po-intake-data";
 import {
-  classificationRequiresSurvey,
   formatPropertyDeedDisplay,
+  propertyHasRegisteredTitle,
+  propertyRequiresSurvey,
 } from "./po-intake-data";
 import {
   assigneeLabel,
@@ -308,9 +309,25 @@ export function engineeringOfficeAvailable(
   property: PoPropertyIntake,
   hasPriorSurvey: boolean,
 ): boolean {
-  if (!classificationRequiresSurvey(property.classification)) return false;
+  if (!propertyRequiresSurvey(property)) return false;
   if (hasPriorSurvey) return false;
   return true;
+}
+
+export function engineeringOfficeUnavailableReason(
+  property: PoPropertyIntake,
+  hasPriorSurvey: boolean,
+): string | null {
+  if (!propertyRequiresSurvey(property)) {
+    if (propertyHasRegisteredTitle(property)) {
+      return "المكتب الهندسي غير متاح: المعاملة لها سجل عيني ولا تتطلب رفعاً مساحياً.";
+    }
+    return "المكتب الهندسي غير متاح: تصنيف «وحدة داخل مبنى» لا يتطلب رفعاً مساحياً.";
+  }
+  if (hasPriorSurvey) {
+    return "يوجد رفع مساحي سابق لنفس الصك — لا حاجة لمكتب هندسي.";
+  }
+  return null;
 }
 
 export function defaultDistribution(): TaskDistributionDraft {

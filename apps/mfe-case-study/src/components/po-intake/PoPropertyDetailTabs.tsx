@@ -45,8 +45,7 @@ import { buildPropertyDetailTimeline, formatTimelineDate } from "../../lib/proto
 import { usePropertyTimelineQuery } from "../../query/use-property-timeline-query";
 import { caseStudyTaskForProperty, type WorkflowTask } from "../../lib/prototype/tasks-storage";
 import { childTasksForCaseStudyParent } from "../../lib/prototype/case-study-party-answers";
-import { downloadPropertyDetailDocument, listPropertyDetailPhotos, type PropertyDetailDocumentEntry, type PropertyDetailDocumentSection } from "../../lib/prototype/property-detail-documents";
-import { ReportAttachmentClassifyControls } from "./ReportAttachmentClassifyControls";
+import { downloadPropertyDetailDocument, listPropertyDetailPhotos, pickPrimaryPropertyDetailPhoto, type PropertyDetailDocumentEntry, type PropertyDetailDocumentSection } from "../../lib/prototype/property-detail-documents";
 import { usePropertyDetailDocuments } from "../../query/property-detail-documents-query";
 import { useWorkflowTasksQuery } from "../../query/case-study-queries";
 import { useInspectorFeesQuery } from "../../query/inspector-fees-queries";
@@ -153,28 +152,12 @@ function docExtLabel(doc: PropertyDetailDocumentEntry): string {
   return ext.slice(0, 4) || "DOC";
 }
 
-function suggestDocKindForClassify(doc: PropertyDetailDocumentEntry): string {
-  const id = doc.id.toLowerCase();
-  if (id.includes("reg")) return "registry";
-  if (id.includes("assignment") || id.includes("decree")) return "decree";
-  if (id.includes("bourse")) return "bourse-deed";
-  if (id.includes("deed")) return "deed";
-  if (id.includes("delegation")) return "delegation";
-  if (id.includes("boundar") || id.includes("survey")) return "boundaries";
-  if (id.includes("map") || id.includes("site")) return "site-map";
-  if (id.includes("photo") || doc.kind === "image") return "photo";
-  return "other";
-}
-
 function DocumentRow({
   doc,
-  propertyTypeKey,
 }: {
   doc: PropertyDetailDocumentEntry;
-  propertyTypeKey?: string;
 }) {
   const ext = docExtLabel(doc);
-  const attachmentId = doc.attachmentId?.trim();
 
   return (
     <div className="rounded border border-border bg-surface-2 px-3 py-2.5">
@@ -207,23 +190,14 @@ function DocumentRow({
           تنزيل
         </button>
       </div>
-      {attachmentId ? (
-        <ReportAttachmentClassifyControls
-          attachmentId={attachmentId}
-          docKind={suggestDocKindForClassify(doc)}
-          propertyTypeKey={propertyTypeKey}
-        />
-      ) : null}
     </div>
   );
 }
 
 function DocumentsTab({
   sections,
-  propertyTypeKey,
 }: {
   sections: PropertyDetailDocumentSection[];
-  propertyTypeKey?: string;
 }) {
   if (sections.length === 0) {
     return (
@@ -244,7 +218,7 @@ function DocumentsTab({
           </div>
           <div className="grid gap-2">
             {section.documents.map((doc) => (
-              <DocumentRow key={doc.id} doc={doc} propertyTypeKey={propertyTypeKey} />
+              <DocumentRow key={doc.id} doc={doc} />
             ))}
           </div>
         </section>
@@ -354,6 +328,14 @@ function BasicTab({
         ) : null}
         <FieldBox label="رقم المخطط" value={property.planNumber} ltr />
         <FieldBox label="رقم القطعة" value={property.plotNumber} ltr />
+        <FieldBox
+          label="محضر التجزئة"
+          value={[property.partitionMinutesNumber, property.partitionMinutesDate]
+            .map((x) => x.trim())
+            .filter(Boolean)
+            .join(" · ")}
+          ltr
+        />
       </FieldsGrid>
 
       <SectionHeader>البيانات المساحية</SectionHeader>
@@ -657,15 +639,7 @@ export function PoPropertyDetailTabs({
     [propertyDocumentSections],
   );
   const primaryPhoto = useMemo(() => {
-    const preferred = propertyPhotos.find((p) =>
-      /رئيس|main|primary/i.test(`${p.name} ${p.fileName}`),
-    );
-    return (
-      preferred ??
-      propertyPhotos.find((p) => Boolean(p.dataUrl)) ??
-      propertyPhotos[0] ??
-      null
-    );
+    return pickPrimaryPropertyDetailPhoto(propertyPhotos);
   }, [propertyPhotos]);
   const partyCards = buildPropertyDetailPartyCards({
     task: task ?? null,
@@ -911,7 +885,7 @@ export function PoPropertyDetailTabs({
           ) : null}
 
           {tab === "documents" ? (
-            <DocumentsTab sections={propertyDocumentSections} propertyTypeKey={property.propertyType} />
+            <DocumentsTab sections={propertyDocumentSections} />
           ) : null}
 
           {tab === "linked" ? (

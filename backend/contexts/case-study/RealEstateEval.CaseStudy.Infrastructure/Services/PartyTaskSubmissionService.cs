@@ -323,6 +323,8 @@ public class PartyTaskSubmissionService : IPartyTaskSubmissionService
         }
 
         await NotifySpecialistAndSupervisorOnSubmitAsync(task, cancellationToken);
+        if (task.Kind == WorkflowTaskKind.FieldInspection)
+            await NotifySiblingSurveyInspectionSubmittedAsync(task, cancellationToken);
 
         return (await ToDtoAsync(entity, cancellationToken), null);
     }
@@ -852,6 +854,41 @@ public class PartyTaskSubmissionService : IPartyTaskSubmissionService
 
         return await _db.PartyTaskSubmissions.AsNoTracking().AnyAsync(
             s => s.WorkflowTaskId == id && s.AcceptedAtUtc != null,
+            cancellationToken);
+    }
+
+    /// <summary>
+    /// When the inspector submits field inspection, tell the sibling engineering-office
+    /// assignee that work on the property has started and survey can begin.
+    /// </summary>
+    private async Task NotifySiblingSurveyInspectionSubmittedAsync(
+        WorkflowTask inspectionTask,
+        CancellationToken cancellationToken)
+    {
+        if (inspectionTask.ParentTaskId is not Guid parentId
+            || inspectionTask.PropertyId is not Guid propertyId)
+            return;
+
+        var survey = await _db.WorkflowTasks.AsNoTracking()
+            .FirstOrDefaultAsync(
+                t => t.ParentTaskId == parentId
+                    && t.PropertyId == propertyId
+                    && t.Kind == WorkflowTaskKind.EngineeringSurvey,
+                cancellationToken);
+        if (survey is null) return;
+
+        var refLabel = inspectionTask.PoNumber?.Trim();
+        var body = string.IsNullOrEmpty(refLabel)
+            ? "رفع المعاين المعاينة الميدانية. يمكنك الآن بدء الرفع المساحي على العقار."
+            : $"رفع المعاين المعاينة الميدانية على {refLabel}. يمكنك الآن بدء الرفع المساحي على العقار.";
+
+        await NotifyPartyAssigneeAsync(
+            survey,
+            title: "بدء العمل على العقار — رُفعت المعاينة",
+            body: body,
+            tone: "info",
+            sourceEvent: $"field-inspection-submitted-survey:{inspectionTask.Id}",
+            href: $"/active-survey/{Uri.EscapeDataString(survey.Id.ToString())}",
             cancellationToken);
     }
 

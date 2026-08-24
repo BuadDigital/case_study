@@ -115,6 +115,7 @@ internal static class ValuationListsSeed
             Row(ValuationListIds.Comparables, ++i, "district", "الحي", 214, "يُختار من قائمة أحياء المدينة"),
             Row(ValuationListIds.Comparables, ++i, "plan_no", "رقم المخطط", 150, "إدخال"),
             Row(ValuationListIds.Comparables, ++i, "plot", "القطعة", 150, "إدخال"),
+            Row(ValuationListIds.Comparables, ++i, "comp_desc", "وصف العقار", 214, "إدخال — يعدّه الأخصائي"),
             Row(ValuationListIds.Comparables, ++i, "coords", "الإحداثيات", 112, "إدخال — تحديد على الخريطة"),
         ];
     }

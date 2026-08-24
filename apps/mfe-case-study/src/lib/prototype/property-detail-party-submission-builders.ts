@@ -16,7 +16,10 @@ import {
 import { childTasksForCaseStudyParent } from "./case-study-party-answers";
 import {
   INSPECTOR_FEATURE_FIELDS,
+  MOVABLES_DESCRIPTION_KEY,
+  MOVABLES_DESCRIPTION_LABEL,
   inspectorWorkspaceStatusLabel,
+  isMovablesPresent,
 } from "./inspector-workspace-data";
 import type { InspectorWorkspaceSnapshot } from "./inspector-workspace-storage";
 import type { PropertyDetailPartyRoleKey } from "./property-detail-parties";
@@ -781,6 +784,12 @@ export function buildFromFieldInspection(
 
   for (const field of INSPECTOR_FEATURE_FIELDS) {
     pushInspectionField(field.label, submission.featureValues[field.key] ?? "");
+    if (field.key === "movables" && isMovablesPresent(submission.featureValues)) {
+      pushInspectionField(
+        MOVABLES_DESCRIPTION_LABEL,
+        submission.featureValues[MOVABLES_DESCRIPTION_KEY] ?? "",
+      );
+    }
   }
 
   pushInspectionField(INFATH_FIELD_LABELS.streetName, submission.streetName);

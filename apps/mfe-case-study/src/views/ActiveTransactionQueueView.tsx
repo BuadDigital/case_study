@@ -11,7 +11,6 @@ import {
   useTransition,
 } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import "./active-queue-group-by-po.css";
 import {
   Button,
   Note,
@@ -1154,15 +1153,16 @@ export function ActiveTransactionQueueView({
             aria-pressed={groupByPo}
           >
             <span
-              className={cn(
-                "atq-group-ico",
-                groupByPo && "is-on",
-                groupGatherAnim && "is-gathering",
-              )}
+              className="relative inline-grid size-[15px] shrink-0 place-items-center"
               aria-hidden
             >
               <svg
-                className="ico-grid"
+                className={cn(
+                  "col-start-1 row-start-1 size-[15px] transition-[opacity,transform] duration-[220ms] ease-out motion-reduce:transition-none",
+                  groupByPo
+                    ? "-translate-y-0.5 scale-[0.86] opacity-0"
+                    : "scale-100 opacity-100",
+                )}
                 viewBox="0 0 24 24"
                 fill="none"
                 stroke="currentColor"
@@ -1176,7 +1176,15 @@ export function ActiveTransactionQueueView({
                 <rect x="14" y="14" width="7" height="7" rx="1.2" />
               </svg>
               <svg
-                className="ico-stack"
+                className={cn(
+                  "col-start-1 row-start-1 size-[15px] transition-[opacity,transform] duration-[280ms] ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none",
+                  groupByPo
+                    ? "translate-y-0 scale-100 opacity-100"
+                    : "translate-y-0.5 scale-[0.86] opacity-0",
+                  groupByPo &&
+                    groupGatherAnim &&
+                    "animate-[atq-ico-pop_0.38s_cubic-bezier(0.22,1,0.36,1)_both] motion-reduce:animate-none",
+                )}
                 viewBox="0 0 24 24"
                 fill="none"
                 stroke="currentColor"
@@ -1457,7 +1465,7 @@ export function ActiveTransactionQueueView({
                             <Fragment key={po}>
                               <Tr
                                 hoverable={false}
-                                className="atq-po-group-row cursor-pointer bg-surface-2"
+                                className="cursor-pointer bg-surface-2 animate-[atq-group-row-in_0.28s_ease-out_both] motion-reduce:animate-none"
                                 style={{
                                   animationDelay: `${Math.min(groupIndex, 8) * 35}ms`,
                                 }}

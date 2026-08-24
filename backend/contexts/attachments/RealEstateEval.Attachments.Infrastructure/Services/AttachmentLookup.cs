@@ -65,8 +65,6 @@ public sealed class AttachmentLookup(AttachmentsDbContext db) : IAttachmentLooku
                 ContentType = row.ContentType,
                 SizeBytes = row.SizeBytes,
                 CreatedAtUtc = row.CreatedAtUtc,
-                DictionaryTypeKey = row.DictionaryTypeKey ?? "",
-                PrintInReport = row.PrintInReport,
                 PhotoMetadata = photo is null
                     ? null
                     : new PhotoMetadataDto

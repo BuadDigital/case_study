@@ -96,6 +96,8 @@ internal static class CaseStudyModel
             e.Property(x => x.PlotNumber).HasMaxLength(128);
             e.Property(x => x.BlockNumber).HasMaxLength(64);
             e.Property(x => x.LocationMapUrl).HasMaxLength(1024);
+            e.Property(x => x.PartitionMinutesNumber).HasMaxLength(128);
+            e.Property(x => x.PartitionMinutesDate).HasMaxLength(32);
             e.Property(x => x.FinishingType).HasMaxLength(32);
             e.Property(x => x.FinishingStructure).HasMaxLength(32);
             e.Property(x => x.RemovalReason).HasMaxLength(500);

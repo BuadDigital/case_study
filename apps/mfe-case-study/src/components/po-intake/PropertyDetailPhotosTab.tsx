@@ -8,7 +8,6 @@ import {
   type PropertyDetailDocumentEntry,
 } from "../../lib/prototype/property-detail-documents";
 import { openPropertyPhotosPdfPrint } from "../../lib/prototype/property-photos-pdf";
-import { ReportAttachmentClassifyControls } from "./ReportAttachmentClassifyControls";
 
 /**
  * Case Study.html photo groups — sections always listed; empty groups hide tiles
@@ -53,9 +52,8 @@ const HTML_PHOTO_GROUPS: {
 
 function PhotoTile({ photo }: { photo: PropertyDetailDocumentEntry }) {
   const canOpen = Boolean(photo.dataUrl);
-  const attachmentId = photo.attachmentId?.trim();
   return (
-    <div className="flex flex-col gap-1">
+    <div>
       <button
         type="button"
         className={cn(
@@ -91,13 +89,6 @@ function PhotoTile({ photo }: { photo: PropertyDetailDocumentEntry }) {
           </div>
         )}
       </button>
-      {attachmentId ? (
-        <ReportAttachmentClassifyControls
-          attachmentId={attachmentId}
-          docKind="photo"
-          className="mt-0"
-        />
-      ) : null}
     </div>
   );
 }

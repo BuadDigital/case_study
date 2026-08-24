@@ -1,6 +1,6 @@
 /**
  * Pixel-matched Tailwind for operations tasks (Case Study.html look).
- * Residual CSS: apps/mfe-case-study/src/views/operations-tasks-look.css
+ * Residual motion: Tailwind animate-[ops-pulse-*] on the live countdown dot.
  * (pulse tip arrow, show-all eye motion only).
  */
 
@@ -212,8 +212,8 @@ export const opsCdWrap = "group/cd relative inline-flex items-center gap-2";
 export const opsCdDot =
   "relative inline-block h-[9px] w-[9px] shrink-0 self-center rounded-full";
 
-/** Pair with residual CSS class `ops-cd-dot-live` for pulse + ::after ring */
-export const opsCdTip = "ops-cd-tip pointer-events-none invisible absolute bottom-[calc(100%+8px)] start-0 z-[25] whitespace-nowrap rounded-lg bg-ink px-2.5 py-1.5 text-[11.5px] font-semibold text-white opacity-0 shadow-[0_8px_22px_-8px_rgba(18,40,76,0.42)] transition-[opacity,transform,visibility] duration-150 -translate-y-1 group-hover/cd:visible group-hover/cd:translate-y-0 group-hover/cd:opacity-100";
+export const opsCdTip =
+  "pointer-events-none invisible absolute bottom-[calc(100%+8px)] start-0 z-[25] whitespace-nowrap rounded-lg bg-ink px-2.5 py-1.5 text-[11.5px] font-semibold text-white opacity-0 shadow-[0_8px_22px_-8px_rgba(18,40,76,0.42)] transition-[opacity,transform,visibility] duration-150 -translate-y-1 group-hover/cd:visible group-hover/cd:translate-y-0 group-hover/cd:opacity-100";
 
 export const opsRemindMini = "grid h-8 w-8 cursor-pointer place-items-center rounded-lg border border-transparent bg-transparent text-gold-d transition-[background,border-color] hover:border-gold-2 hover:bg-[color-mix(in_srgb,var(--gold)_14%,transparent)]";
 

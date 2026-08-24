@@ -80,10 +80,8 @@ import {
   EngUploadBox,
   ENG_STATUS_COLORS,
   engCardClassName,
-  engChipClassName,
   engInputClassName,
   engLabelClassName,
-  engPpHeadClassName,
   engPrimaryBtnClassName,
 } from "./EngineeringSurveyHtmlPrimitives";
 
@@ -762,17 +760,6 @@ export function EngineeringSurveyWorkPanel({
     return <InlineLoadingSkeleton className="my-2" />;
   }
 
-  const statusPill =
-    task.status === "completed" ? (
-      <EngStatusPill label="مكتمل" color={ENG_STATUS_COLORS.completed} />
-    ) : locked ? (
-      <EngStatusPill label="مُرسل" color={ENG_STATUS_COLORS.submitted} />
-    ) : draft.status === "reopened" ? (
-      <EngStatusPill label="معادة للتصحيح" color={ENG_STATUS_COLORS.reopened} />
-    ) : (
-      <EngStatusPill label="مسودة" color={ENG_STATUS_COLORS.draft} />
-    );
-
   const surveyBody = (
     <>
       {draft.status === "reopened" && draft.returnNote ? (
@@ -1244,24 +1231,6 @@ export function EngineeringSurveyWorkPanel({
   return (
     <>
       <div className="mx-auto w-full max-w-[1100px]">
-        <div className={engPpHeadClassName}>
-          <h1 className="m-0 flex flex-wrap items-center gap-2.5 text-[18px] font-extrabold leading-tight text-heading">
-            <span>مساحة عمل الرفع المساحي</span>
-            <span className="text-[14px] font-bold text-gold-d [direction:ltr]">
-              صك {deedNumber}
-            </span>
-          </h1>
-          <div className="mt-1.5 flex flex-wrap items-center gap-2">
-            <span className={engChipClassName}>
-              {task.assigneeName?.trim() || def.assigneeSubtitle || "المكتب الهندسي"}
-            </span>
-            {statusPill}
-            {viewOnly ? (
-              <EngStatusPill label="استعراض" color={ENG_STATUS_COLORS.view} />
-            ) : null}
-          </div>
-        </div>
-
         <div className={engCardClassName}>
           <EngTabBar
             active={workTab}

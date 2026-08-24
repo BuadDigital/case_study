@@ -186,7 +186,7 @@ export function PropertyMapView() {
   const [activeSel, setActiveSel] = useState<string[] | null>(null);
   const [archiveSel, setArchiveSel] = useState<string[] | null>(null);
   const [compSel, setCompSel] = useState<string[] | null>(null);
-  const [basemap, setBasemap] = useState<MapBasemap>("carto");
+  const [basemap, setBasemap] = useState<MapBasemap>("satellite");
   const [command, setCommand] = useState<MapViewCommand | null>(null);
   const cmdSeq = useRef(0);
   const fitted = useRef(false);

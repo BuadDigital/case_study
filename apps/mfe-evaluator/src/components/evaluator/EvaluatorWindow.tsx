@@ -5,18 +5,15 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { WorkflowTask } from "@case-study/mfe";
 import { inspectionGateForAppraisal } from "../../lib/evaluator/evaluator-inspection-gate";
 import { createEvaluatorDraft } from "../../lib/evaluator/evaluator-window-data";
-import { hydrateEvaluatorSubmission, isEvaluatorFormLocked, updateEvaluatorDraft,
+import { hydrateEvaluatorSubmission, 
+  isEvaluatorFormLocked, 
+  updateEvaluatorDraft,
   type EvaluatorPlanImageMetadata,
   type EvaluatorReportMetadata,
 } from "../../lib/evaluator/evaluator-submission-storage";
 import type { EvaluatorSubmission } from "../../lib/evaluator/evaluator-window-data";
 import { scheduleScrollToFormField } from "@platform/app-shared/form-ux";
-import {
-  firstEvaluatorError,
-  firstEvaluatorErrorTarget,
-  validateEvaluatorSubmission,
-  type EvaluatorValidationErrors,
-} from "../../lib/evaluator/evaluator-validation";
+import { firstEvaluatorError, firstEvaluatorErrorTarget, validateEvaluatorSubmission, type EvaluatorValidationErrors } from "../../lib/evaluator/evaluator-validation";
 import { finalizeAppraiserSubmission } from "../../lib/evaluator/finalize-appraiser-submission";
 import type { EvaluatorWindowHostRefObject } from "../../lib/evaluator/evaluator-window-host";
 import type {
@@ -29,14 +26,12 @@ import {
 } from "./EvaluatorPropertyTab";
 import { EvaluatorValuationReportOutputTab } from "./EvaluatorValuationReportOutputTab";
 import { EvaluatorValuationReportTab } from "./EvaluatorValuationReportTab";
-import {
-  appraiserInspectionDone,
+import { appraiserInspectionDone,
   appraiserNeedsSurvey,
   appraiserSurveyDone,
 } from "../../lib/evaluator/evaluator-readiness";
 import { computePropertyTotal } from "../../lib/evaluator/value-estimation";
-import {
-  EngInfo,
+import { EngInfo,
   ValTabBar,
   valCardClassName,
   valPpHeadClassName,
@@ -84,9 +79,7 @@ export function EvaluatorWindow({
   );
   const [draftLoading, setDraftLoading] = useState(true);
   const [formError, setFormError] = useState<string | null>(null);
-  const [fieldErrors, setFieldErrors] = useState<EvaluatorValidationErrors>(
-    {},
-  );
+  const [fieldErrors, setFieldErrors] = useState<EvaluatorValidationErrors>( {} );
   const [submitting, setSubmitting] = useState(false);
   const [activeTab, setActiveTab] = useState<EvaluatorWindowTab>(initialTab);
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -205,6 +198,7 @@ export function EvaluatorWindow({
       landValue: draft.landValue,
       buildingValue: draft.buildingValue,
       forcedSaleDiscountPct: draft.forcedSaleDiscountPct,
+      valueBasisKey: draft.reportChoices?.valueBasisKey,
       assetDataConfirmed: draft.assetDataConfirmed,
       assetDataVarianceNotes: draft.assetDataVarianceNotes,
       independenceDeclared: draft.independenceDeclared,
@@ -396,6 +390,8 @@ export function EvaluatorWindow({
               disabled={formDisabled}
               property={summary.property}
               inspectionTaskId={summary.inspectionTaskId}
+              assignmentType={task.assignmentType}
+              fieldErrors={fieldErrors}
               onChange={(reportChoices, extras) => {
                 const patch = {
                   reportChoices,
@@ -408,6 +404,10 @@ export function EvaluatorWindow({
                 };
                 setDraft((prev) => ({ ...prev, ...patch }));
                 scheduleAutosave(patch);
+              }}
+              onDraftPatch={(values) => {
+                setDraft((prev) => ({ ...prev, ...values }));
+                scheduleAutosave(values);
               }}
             />
             {!formDisabled ? (

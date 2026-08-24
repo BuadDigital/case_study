@@ -20,24 +20,24 @@ public class ComparablePropertiesController : ControllerBase
 
     public ComparablePropertiesController(IComparablePropertyService bank) => _bank = bank;
 
-    [HttpGet]
-    [Authorize(Policy = CapabilityPolicyNames.ReadValuationQueue)]
-    public async Task<ActionResult<IReadOnlyList<ComparablePropertyDto>>> List(
+        [HttpGet]
+        [Authorize(Policy = CapabilityPolicyNames.ReadComparableBank)]
+        public async Task<ActionResult<IReadOnlyList<ComparablePropertyDto>>> List(
         [FromQuery] ComparablePropertyListQuery query,
         CancellationToken ct)
         => Ok(await _bank.ListAsync(query, ct));
 
  /// <summary>System proximity stream — nearest active bank comps to subject coords.</summary>
-    [HttpGet("proximity-suggestions")]
-    [Authorize(Policy = CapabilityPolicyNames.ReadValuationQueue)]
-    public async Task<ActionResult<ComparableProximitySuggestionListDto>> ProximitySuggestions(
+        [HttpGet("proximity-suggestions")]
+        [Authorize(Policy = CapabilityPolicyNames.ReadComparableBank)]
+        public async Task<ActionResult<ComparableProximitySuggestionListDto>> ProximitySuggestions(
         [FromQuery] ComparableProximityQuery query,
         CancellationToken ct)
         => Ok(await _bank.SuggestByProximityAsync(query, ct));
 
-    [HttpGet("{id:guid}")]
-    [Authorize(Policy = CapabilityPolicyNames.ReadValuationQueue)]
-    public async Task<ActionResult<ComparablePropertyDto>> Get(Guid id, CancellationToken ct)
+        [HttpGet("{id:guid}")]
+        [Authorize(Policy = CapabilityPolicyNames.ReadComparableBank)]
+        public async Task<ActionResult<ComparablePropertyDto>> Get(Guid id, CancellationToken ct)
     {
         var row = await _bank.GetAsync(id, ct);
         return row is null ? NotFound() : Ok(row);

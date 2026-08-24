@@ -80,6 +80,8 @@ public sealed class OrganizationValuerRosterEntryDto
     public string? MembershipCategory { get; init; }
  /// <summary>ISO date (yyyy-MM-dd) — license practice expiry.</summary>
     public string? LicenseExpiresAt { get; init; }
+ /// <summary>تاريخ إصدار الترخيص.</summary>
+    public string? LicenseIssuedAt { get; init; }
  /// <summary>ISO date (yyyy-MM-dd) — membership expiry / effective end.</summary>
     public string? MembershipExpiresAt { get; init; }
  /// <summary>certified | valuer | assistant | reviewer — الدور في النظام.</summary>

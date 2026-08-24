@@ -58,24 +58,24 @@ describe("validateEvaluatorSubmission", () => {
     expect(errors.asset_data_confirmed).toBeUndefined();
   });
 
-  it("does not require independence or named workers after infath tab removal", () => {
+  it("does not require liquidation discount unless value basis is liquidation", () => {
     const errors = validateEvaluatorSubmission({
       ...base,
+      forcedSaleDiscountPct: "",
+      valueBasisKey: "market",
       assetDataConfirmed: true,
-      independenceDeclared: false,
-      reportWorkers: [
-        {
-          id: "w1",
-          role: "معد",
-          name: "  ",
-          licenseNumber: "",
-          licenseDate: "",
-          licenseFileName: null,
-        },
-      ],
     });
-    expect(errors.independence_declared).toBeUndefined();
-    expect(errors.report_workers).toBeUndefined();
+    expect(errors.forced_sale_discount).toBeUndefined();
+  });
+
+  it("requires liquidation discount when value basis is liquidation", () => {
+    const errors = validateEvaluatorSubmission({
+      ...base,
+      forcedSaleDiscountPct: "",
+      valueBasisKey: "liquidation",
+      assetDataConfirmed: true,
+    });
+    expect(errors.forced_sale_discount).toBeTruthy();
   });
 });
 

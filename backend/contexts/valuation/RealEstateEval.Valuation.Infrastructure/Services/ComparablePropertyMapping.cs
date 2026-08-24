@@ -39,6 +39,8 @@ internal static class ComparablePropertyMapping
             PricePerSqmAnomalyNoteAr = anomalyNoteAr,
             City = row.City,
             District = row.District,
+            PlanNumber = row.PlanNumber,
+            PlotNumber = row.PlotNumber,
             Description = row.Description,
             IntakeChannel = row.IntakeChannel,
             EnteredByUserId = row.EnteredByUserId,

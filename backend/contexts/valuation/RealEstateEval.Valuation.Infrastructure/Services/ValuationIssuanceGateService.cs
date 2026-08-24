@@ -236,8 +236,8 @@ public sealed class ValuationIssuanceGateService(
     }
 
  /// <summary>
- /// for every active dictionary type marked required (and matching the property
- /// type, when linked), at least one printable classified upload must exist.
+ /// For every active dictionary type marked required (and matching the property
+ /// type, when linked), at least one upload whose scope maps to that type must exist.
  /// </summary>
     private async Task<IReadOnlyList<string>> FindMissingRequiredAttachmentLabelsAsync(
         string propertyId,
@@ -255,17 +255,14 @@ public sealed class ValuationIssuanceGateService(
             .ToList();
         if (required.Count == 0) return [];
 
-        var printableKeys = (await attachments.ListForPropertyAsync(propertyId, cancellationToken))
-            .Where(a => a.PrintInReport)
-            .Select(a => a.DictionaryTypeKey)
-            .Distinct()
-            .ToList();
-        var have = printableKeys
-            .Select(k => (k ?? "").Trim().ToLowerInvariant())
+        var presentKeys = (await attachments.ListForPropertyAsync(propertyId, cancellationToken))
+            .Select(a => AttachmentPrintRules.TypeKeyFromScope(a.Scope))
+            .Where(k => !string.IsNullOrWhiteSpace(k))
+            .Select(k => k!.Trim().ToLowerInvariant())
             .ToHashSet(StringComparer.Ordinal);
 
         return required
-            .Where(t => !have.Contains(t.Key.Trim().ToLowerInvariant()))
+            .Where(t => !presentKeys.Contains(t.Key.Trim().ToLowerInvariant()))
             .Select(t => t.LabelAr)
             .ToList();
     }

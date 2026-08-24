@@ -95,7 +95,12 @@ public class WorkOrderProperty
  /// <summary>Site map URL — initial data (ad-hoc when no plan/plot).</summary>
     public string? LocationMapUrl { get; set; }
 
- /// <summary>Finishing level: luxury | medium | ordinary | none.</summary>
+    /// <summary>محضر التجزئة — رقم.</summary>
+    public string? PartitionMinutesNumber { get; set; }
+    /// <summary>محضر التجزئة — تاريخ.</summary>
+    public string? PartitionMinutesDate { get; set; }
+
+    /// <summary>Finishing level: luxury | medium | ordinary | none.</summary>
     public string? FinishingType { get; set; }
  /// <summary>Structural system: concrete | metal | mixed | other.</summary>
     public string? FinishingStructure { get; set; }

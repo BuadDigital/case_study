@@ -36,7 +36,46 @@ public class FieldInspectionSubmissionValidatorTests
     }
 
     [Fact]
-    public void Validate_rejects_incomplete_observation()
+    public void Validate_rejects_yes_movables_without_description()
+    {
+        using var doc = JsonDocument.Parse(
+            MinimalValidPayload().Replace(
+                "\"featureValues\": {}",
+                """ "featureValues": { "movables": "نعم" } """));
+        var errors = FieldInspectionSubmissionValidator.Validate(doc.RootElement);
+        Assert.Equal("وصف المنقولات مطلوب عند اختيار «نعم»", errors["movablesDescription"]);
+    }
+
+    [Fact]
+    public void Validate_accepts_yes_movables_with_description()
+    {
+        using var doc = JsonDocument.Parse(
+            MinimalValidPayload().Replace(
+                "\"featureValues\": {}",
+                """ "featureValues": { "movables": "نعم", "movablesDescription": "أثاث ومكيفات" } """));
+        var errors = FieldInspectionSubmissionValidator.Validate(doc.RootElement);
+        Assert.DoesNotContain("movablesDescription", errors.Keys);
+    }
+
+    [Fact]
+    public void Validate_rejects_observation_missing_text()
+    {
+        var json = MinimalValidPayload().Replace(
+            "\"observations\": []",
+            """
+            "observations": [
+              { "id": "obs-1", "category": "عيب ظاهر", "text": "", "photo": null }
+            ]
+            """);
+
+        using var doc = JsonDocument.Parse(json);
+        var errors = FieldInspectionSubmissionValidator.Validate(doc.RootElement);
+
+        Assert.Equal("كل ملاحظة يجب أن تتضمن شرحاً", errors["observations"]);
+    }
+
+    [Fact]
+    public void Validate_accepts_observation_with_text_and_no_photo()
     {
         var json = MinimalValidPayload().Replace(
             "\"observations\": []",
@@ -49,13 +88,11 @@ public class FieldInspectionSubmissionValidatorTests
         using var doc = JsonDocument.Parse(json);
         var errors = FieldInspectionSubmissionValidator.Validate(doc.RootElement);
 
-        Assert.Equal(
-            "كل ملاحظة موثّقة يجب أن تتضمن شرحاً وصورة توثيقية",
-            errors["observations"]);
+        Assert.DoesNotContain("observations", errors.Keys);
     }
 
     [Fact]
-    public void Validate_requires_showroom_photo_when_count_positive()
+    public void Validate_does_not_require_showroom_photo_when_count_positive()
     {
         var json = MinimalValidPayload().Replace(
             "\"showroomCount\": \"\"",
@@ -64,11 +101,11 @@ public class FieldInspectionSubmissionValidatorTests
         using var doc = JsonDocument.Parse(json);
         var errors = FieldInspectionSubmissionValidator.Validate(doc.RootElement);
 
-        Assert.Equal("يجب إرفاق صورة المعرض", errors["componentPhotos"]);
+        Assert.Empty(errors);
     }
 
     [Fact]
-    public void Validate_requires_feature_photo_when_value_is_yes()
+    public void Validate_does_not_require_feature_photo_when_value_is_yes()
     {
         var json = MinimalValidPayload().Replace(
             "\"featureValues\": {}",
@@ -79,11 +116,11 @@ public class FieldInspectionSubmissionValidatorTests
         using var doc = JsonDocument.Parse(json);
         var errors = FieldInspectionSubmissionValidator.Validate(doc.RootElement);
 
-        Assert.Contains("توثيقية", errors["featurePhotos"]);
+        Assert.Empty(errors);
     }
 
     [Fact]
-    public void Validate_requires_service_slot_photo_when_service_selected()
+    public void Validate_does_not_require_service_slot_photo_when_service_selected()
     {
         var json = MinimalValidPayload().Replace(
             """
@@ -96,8 +133,7 @@ public class FieldInspectionSubmissionValidatorTests
         using var doc = JsonDocument.Parse(json);
         var errors = FieldInspectionSubmissionValidator.Validate(doc.RootElement);
 
-        Assert.Contains("definedPhotos", errors.Keys);
-        Assert.Contains("خدمة", errors["definedPhotos"]);
+        Assert.Empty(errors);
     }
 
     [Fact]

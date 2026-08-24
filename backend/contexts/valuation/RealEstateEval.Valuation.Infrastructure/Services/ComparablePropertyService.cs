@@ -130,6 +130,18 @@ public sealed class ComparablePropertyService(
         entity.UpdatedAtUtc = now;
 
         db.ComparableProperties.Add(entity);
+        if (entity.SourcePropertyId is Guid sourcePropertyId && sourcePropertyId != Guid.Empty)
+        {
+            db.PropertyComparableLinks.Add(new PropertyComparableLink
+            {
+                Id = Guid.NewGuid(),
+                PropertyId = sourcePropertyId,
+                ComparablePropertyId = entity.Id,
+                Description = entity.Description,
+                LinkedByUserId = entity.EnteredByUserId,
+                LinkedAtUtc = now,
+            });
+        }
         await db.SaveChangesAsync(cancellationToken);
         var anomaly = await ComputeAnomalyNoteAsync(entity, cancellationToken);
         return (ComparablePropertyMapping.ToDto(entity, DateOnly.FromDateTime(now), anomaly), null);
@@ -352,6 +364,8 @@ public sealed class ComparablePropertyService(
             request.AreaSqm);
         entity.City = Normalize(request.City);
         entity.District = request.District.Trim();
+        entity.PlanNumber = Normalize(request.PlanNumber);
+        entity.PlotNumber = Normalize(request.PlotNumber);
         entity.Description = Normalize(request.Description);
         entity.IntakeChannel = request.IntakeChannel.Trim().ToLowerInvariant();
         entity.SourceWorkOrderNumber = Normalize(request.SourceWorkOrderNumber);

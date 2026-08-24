@@ -172,6 +172,8 @@ public sealed class CaseStudyLookup(ICaseStudyRepository caseStudy) : ICaseStudy
             PlanName = property.PlanName,
             PlotNumber = property.PlotNumber,
             BlockNumber = property.BlockNumber,
+            PartitionMinutesNumber = property.PartitionMinutesNumber,
+            PartitionMinutesDate = property.PartitionMinutesDate,
             NorthBoundary = property.NorthBoundary,
             NorthBoundaryLengthM = property.NorthBoundaryLengthM,
             NorthBoundaryType = property.NorthBoundaryType,

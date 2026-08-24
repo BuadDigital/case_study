@@ -260,7 +260,6 @@ export {
   deleteAttachment,
   downloadAttachmentBlob,
   getAttachmentMeta,
-  classifyAttachment,
   getFailureTypesCatalog,
   getFieldDictionary,
   getEvaluatorRecallApi,
@@ -304,7 +303,6 @@ export {
   type FieldDictionaryFieldDto,
   type FieldDictionaryStateDto,
   type FileAttachmentMetaDto,
-  type ClassifyAttachmentRequest,
   type KeyEnvelopeAssignmentDto,
   type KeyEnvelopeAssignmentInput,
   type KeyEnvelopeDto,
@@ -581,6 +579,7 @@ export {
   listComparableProperties,
   suggestComparablePropertiesByProximity,
   createComparableProperty,
+  updateComparableProperty,
   deactivateComparableProperty,
   setComparableQualityTags,
   type SaveComparableQualityTagsRequest,
@@ -593,6 +592,15 @@ export {
   type ComparableSourceCardDto,
   type UpsertComparablePropertyRequest,
 } from "./comparable-properties";
+
+export {
+  listPropertyComparableLinks,
+  linkPropertyComparable,
+  patchPropertyComparableLinkDescription,
+  unlinkPropertyComparable,
+  type PropertyComparableLinkItemDto,
+  type PropertyComparableLinkListDto,
+} from "./property-comparable-links";
 
 export {
   getOpenValuationRequestByProperty,

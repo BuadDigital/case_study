@@ -8,6 +8,7 @@ import {
   useRef,
   useState,
 } from "react";
+import { flushSync } from "react-dom";
 import { useRouter } from "next/navigation";
 import {
   fetchPermissions,
@@ -132,14 +133,10 @@ export default function LoginPage() {
   const otpRefs = useRef<Array<HTMLInputElement | null>>([]);
   const mobileRef = useRef<HTMLInputElement | null>(null);
   const otpConfirmingRef = useRef(false);
-
   const isEmailMode = /[a-zA-Z@]/.test(identifier);
   const mobileDigits = identifier.replace(/\D/g, "");
-  const credsReady = isEmailMode
-    ? identifier.trim().length > 3 && password.length >= 1
-    : mobileDigits.length >= 9 && password.length >= 1;
+  const credsReady = isEmailMode? identifier.trim().length > 3 && password.length >= 1 : mobileDigits.length >= 9 && password.length >= 1;
   const otpValue = otp.join("");
-  const otpReady = otpValue.length === 6;
 
   useEffect(() => {
     const session = getValidAuthSession();
@@ -346,12 +343,12 @@ export default function LoginPage() {
     }
 
     otpConfirmingRef.current = true;
-    setLoading(true);
+    flushSync(() => setLoading(true));
     try {
       setAuthSession(pendingSession);
       showToast("تم تسجيل الدخول !", "success");
       router.replace(landingPath);
-    } finally {
+    } catch {
       otpConfirmingRef.current = false;
       setLoading(false);
     }
@@ -661,6 +658,7 @@ export default function LoginPage() {
                 <button
                   type="button"
                   className="inline-flex cursor-pointer items-center gap-[7px] border-0 bg-transparent p-0 text-[13px] font-bold text-text-2 hover:text-ink"
+                  disabled={loading}
                   onClick={() => {
                     setStep("creds");
                     setPendingSession(null);
@@ -730,6 +728,7 @@ export default function LoginPage() {
                     inputMode="numeric"
                     maxLength={1}
                     value={digit}
+                    disabled={loading}
                     aria-label={`رقم التحقق ${index + 1}`}
                     onChange={(e) => onOtpChange(index, e.target.value)}
                     onKeyDown={(e) => onOtpKeyDown(index, e)}
@@ -751,7 +750,7 @@ export default function LoginPage() {
                 <button
                   type="button"
                   className={linkSm}
-                  disabled={resendLeft > 0}
+                  disabled={loading || resendLeft > 0}
                   onClick={onResend}
                 >
                   إعادة إرسال الرمز
@@ -761,14 +760,22 @@ export default function LoginPage() {
               <button
                 type="button"
                 className={cn(primaryBtn, loading && "pointer-events-none")}
-                disabled={loading || !otpReady}
-                onClick={() => void onOtpConfirm()}
+                disabled={loading}
+                aria-busy={loading || undefined}
+                onClick={() => {
+                  if (otpValue.replace(/\D/g, "").length !== 6) {
+                    setOtpBad(true);
+                    setOtpError("أدخل رمز التحقق كاملاً (٦ أرقام) ثم أكّد الدخول");
+                    const empty = otp.findIndex((d) => !d);
+                    otpRefs.current[empty === -1 ? 0 : empty]?.focus();
+                    return;
+                  }
+                  void onOtpConfirm();
+                }}
                 data-no-action-toast
               >
                 {loading ? <Spinner /> : null}
-                <span className={cn(loading && "opacity-60")}>
-                  {loading ? "جارٍ التحقق" : "تأكيد الدخول"}
-                </span>
+                <span>تأكيد الدخول</span>
                 {!loading ? (
                   <svg
                     className="size-[18px]"

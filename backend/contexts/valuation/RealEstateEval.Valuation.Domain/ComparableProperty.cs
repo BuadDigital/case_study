@@ -43,6 +43,8 @@ public class ComparableProperty
 
     public string? City { get; set; }
     public string District { get; set; } = "";
+    public string? PlanNumber { get; set; }
+    public string? PlotNumber { get; set; }
     public string? Description { get; set; }
 
  /// <summary>field | office | system — intake stream.</summary>

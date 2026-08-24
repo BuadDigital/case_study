@@ -37,6 +37,8 @@ public sealed class CaseStudyValuationPropertyContextDto
     public string? PlanName { get; set; }
     public string? PlotNumber { get; set; }
     public string? BlockNumber { get; set; }
+    public string? PartitionMinutesNumber { get; set; }
+    public string? PartitionMinutesDate { get; set; }
 
     public string? NorthBoundary { get; set; }
     public string? NorthBoundaryLengthM { get; set; }
@@ -113,6 +115,8 @@ public sealed class CaseStudyValuationPropertyContextDto
         PlanName = PlanName,
         PlotNumber = PlotNumber,
         BlockNumber = BlockNumber,
+        PartitionMinutesNumber = PartitionMinutesNumber,
+        PartitionMinutesDate = PartitionMinutesDate,
         NorthBoundary = NorthBoundary,
         NorthBoundaryLengthM = NorthBoundaryLengthM,
         NorthBoundaryType = NorthBoundaryType,

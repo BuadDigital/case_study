@@ -205,7 +205,6 @@ import {
   opsTfSegActive,
   opsTfSegRow,
 } from "../lib/prototype/ops-tasks-tw";
-import "./operations-tasks-look.css";
 
 const LETTER_COLS =
   "2.75rem minmax(5.75rem,0.9fr) minmax(9.5rem,1.35fr) minmax(7rem,1.05fr) minmax(5.5rem,0.85fr) minmax(11rem,1.55fr)";
@@ -1064,14 +1063,24 @@ function DueCell({ task, now }: { task: OperationsTask; now: number }) {
   return (
     <div className={opsCdWrap}>
       <span
-        className={cn(opsCdDot, urgency?.pulse && "ops-cd-dot-live")}
+        className={cn(
+          opsCdDot,
+          urgency?.pulse &&
+            "animate-[ops-pulse-fade_1.4s_ease-in-out_infinite] after:absolute after:inset-0 after:animate-[ops-pulse-ring_1.6s_ease-out_infinite] after:rounded-full after:bg-inherit motion-reduce:animate-none motion-reduce:after:animate-none",
+        )}
         style={{ background: urgency?.color ?? "#3f8f5f" }}
         aria-hidden
       />
       {/* Keep Arabic overdue labels in one LTR-neutral run so the marker stays
           flush with the start edge of the column (matches header). */}
       <span className={cd.over ? opsDueCdOver : opsDueCd}>{cd.txt}</span>
-      <span className={opsCdTip}>الاستحقاق: {formatTaskDueLabel(task.dueAt)}</span>
+      <span className={opsCdTip}>
+        <span
+          className="absolute top-full start-3.5 border-[5px] border-solid border-transparent border-t-ink"
+          aria-hidden
+        />
+        الاستحقاق: {formatTaskDueLabel(task.dueAt)}
+      </span>
     </div>
   );
 }

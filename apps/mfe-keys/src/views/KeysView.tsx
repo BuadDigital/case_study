@@ -53,7 +53,6 @@ import {
   scenarioLabel,
   type KeyEnvelopeRow,
 } from "../lib/keys-envelope-types";
-import "./keys-look.css";
 import {
   useInvalidateKeyEnvelopes,
   useKeyEnvelopesQuery,
@@ -101,7 +100,11 @@ function ChevronIcon() {
 function EyeIcon({ open, blink }: { open: boolean; blink?: boolean }) {
   return (
     <svg
-      className={cn("show-all-eye", open && "is-open", blink && "is-blink")}
+      className={cn(
+        "overflow-visible",
+        blink &&
+          "[&_.eye-ball]:animate-[show-all-eye-blink_0.42s_ease] motion-reduce:[&_.eye-ball]:animate-none",
+      )}
       width="15"
       height="15"
       viewBox="0 0 24 24"
@@ -112,11 +115,30 @@ function EyeIcon({ open, blink }: { open: boolean; blink?: boolean }) {
       strokeLinejoin="round"
       aria-hidden
     >
-      <g className="show-all-eye-ball">
+      <g
+        className={cn(
+          "eye-ball origin-[12px_12px] transition-transform duration-[320ms] ease-[cubic-bezier(0.34,1.2,0.64,1)] motion-reduce:transition-none",
+          open ? "scale-y-100" : "scale-y-[0.08]",
+        )}
+      >
         <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7Z" />
-        <circle className="show-all-eye-pupil" cx="12" cy="12" r="3" />
+        <circle
+          className={cn(
+            "origin-[12px_12px] transition-[opacity,transform] duration-200 ease-out motion-reduce:transition-none",
+            open ? "scale-100 opacity-100" : "scale-[0.2] opacity-0",
+          )}
+          cx="12"
+          cy="12"
+          r="3"
+        />
       </g>
-      <path className="show-all-eye-lid" d="M3 12h18" />
+      <path
+        className={cn(
+          "[stroke-dasharray:18] transition-[opacity,stroke-dashoffset] duration-[180ms] ease-out motion-reduce:transition-none",
+          open ? "opacity-0 [stroke-dashoffset:18]" : "opacity-100 [stroke-dashoffset:0]",
+        )}
+        d="M3 12h18"
+      />
     </svg>
   );
 }

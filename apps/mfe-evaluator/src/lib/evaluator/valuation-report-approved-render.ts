@@ -116,7 +116,6 @@ function buildSectionBody(sec: number, doc: ValuationReportDocumentDto): string 
     case 6:
       return kvTable([
         ["رقم الصك / المعرف", field(doc, 6, "deedNumber")],
-        ["نوع الصك", field(doc, 6, "deedKindLabel")],
         ["المالك", field(doc, 6, "ownerName")],
         ["نوع الملكية", field(doc, 6, "ownershipType")],
         ["المدينة / الحي", `${field(doc, 6, "city")} / ${field(doc, 6, "district")}`],

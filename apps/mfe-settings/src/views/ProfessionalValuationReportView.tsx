@@ -28,7 +28,6 @@ import {
   ReportSourceTables,
   ReportDynamicTables,
 } from "./professional-valuation-report-tables";
-import "./professional-valuation-report.css";
 
 function filled(value: string | null | undefined, fallback: string): string {
   return value?.trim() ? value : fallback;

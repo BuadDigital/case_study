@@ -21,17 +21,20 @@ public class CaseStudyFormService : ICaseStudyFormService
 
     private readonly ICaseStudyRepository _db;
     private readonly IWorkflowTaskService _workflowTasks;
+    private readonly IPropertyComparableLinkLookup? _comparableLinks;
     private readonly TimeProvider _time;
 
     public CaseStudyFormService(
         ICaseStudyRepository db,
         IWorkflowTaskService workflowTasks,
+        IPropertyComparableLinkLookup? comparableLinks = null,
         TimeProvider? time = null)
     {
         _time = time ?? TimeProvider.System;
 
         _db = db;
         _workflowTasks = workflowTasks;
+        _comparableLinks = comparableLinks;
     }
 
     public async Task<CaseStudyFormDto?> GetAsync(
@@ -198,6 +201,37 @@ public class CaseStudyFormService : ICaseStudyFormService
         }
 
         ApplyDto(entity, form, now);
+
+        if (!party
+            && string.Equals(form.Status, FormStatusSubmitted, StringComparison.OrdinalIgnoreCase)
+            && !string.Equals(previousStatus, FormStatusSubmitted, StringComparison.OrdinalIgnoreCase)
+            && _comparableLinks is not null)
+        {
+            var propertyId = Guid.TryParse(form.PropertyId, out var parsed) ? parsed : entity.PropertyId;
+            if (propertyId is Guid pid && pid != Guid.Empty)
+            {
+                int linked;
+                try
+                {
+                    linked = await _comparableLinks.CountLinkedAsync(pid, cancellationToken);
+                }
+                catch
+                {
+                    return (null, new Dictionary<string, string>
+                    {
+                        ["_"] = "تعذّر التحقق من المقارنات المربوطة — أعد المحاولة قبل رفع النموذج للمقيم.",
+                    });
+                }
+                if (!PropertyComparableLinkRules.MeetsMinimum(linked))
+                {
+                    return (null, new Dictionary<string, string>
+                    {
+                        ["_"] =
+                            $"لا يمكن رفع دراسة الحالة وإرسالها للمقيم قبل ربط {PropertyComparableLinkRules.MinimumLinkedForAppraisalPrep} مقارنين على الأقل بهذا العقار.",
+                    });
+                }
+            }
+        }
 
         if (actor is not null)
         {

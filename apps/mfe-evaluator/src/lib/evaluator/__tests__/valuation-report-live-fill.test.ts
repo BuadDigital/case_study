@@ -155,4 +155,47 @@ describe("valuation report live fill from intake", () => {
     expect(dom.querySelector('[data-sec="17"] td.v')?.textContent).toBe("—");
     expect(dom.querySelector('[data-sec="17"] td.num')?.textContent).toBe("—");
   });
+
+  it("fills inspector counts, inventory areas, and amenities onto the sheet", () => {
+    const draft = createEvaluatorDraft({
+      taskId: "t1",
+      propertyId: "p1",
+      poNumber: "PO-1",
+      assignmentType: "قطاع خاص",
+    });
+    const fill = buildValuationReportLiveFill({
+      draft,
+      record: poRecord() as never,
+      inspector: {
+        roomCount: "4",
+        hallCount: "2",
+        bathroomCount: "3",
+        annexTotal: "40",
+        hasAnnex: "نعم",
+        featureValues: { hasElevator: "نعم", hasPool: "لا", kitchen: "نعم" },
+        amenities: ["مساجد", "مدارس"],
+        services: ["كهرباء"],
+        electricityMeterCount: "2",
+        electricityMeterNumbers: "12, 14",
+        observations: [{ category: "عيب ظاهر", text: "تشقق" }],
+      } as never,
+      inventoryLines: [
+        {
+          sortOrder: 1,
+          structureKind: "floor",
+          label: "الدور الأرضي",
+          areaSqm: "180",
+          notes: "مجلس ومطبخ",
+        },
+      ],
+    });
+    expect(fill.cells["غرف النوم"]).toBe("4");
+    expect(fill.cells["مصعد"]).toBe("نعم");
+    expect(fill.cells["جامع"]).toBe("يوجد");
+    expect(fill.cells["مرفق تعليمي"]).toBe("يوجد");
+    expect(fill.cells["وصف العيوب الإنشائية"]).toContain("تشقق");
+    expect(fill.areaRows[0]?.values[0]).toBe("180");
+    expect(fill.serviceRows[0]?.values[0]).toBe("متوفر");
+    expect(fill.serviceRows[0]?.values[1]).toBe("2");
+  });
 });

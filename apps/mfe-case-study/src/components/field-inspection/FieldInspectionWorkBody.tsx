@@ -1,7 +1,8 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState, type ReactNode, type RefObject } from "react";
-import { Button, FormRow, InlineLoadingSkeleton, Input, Label, Note, Select, Textarea, cn, formControlClassName, useToast } from "@platform/ui-kit";
+import { useCallback, useEffect, useRef, useState, type ReactNode, type RefObject, Fragment } from "react";
+import { Button, FormRow, GoogleMapPin, InlineLoadingSkeleton, Input, Label, Note, Select, Textarea, cn, formControlClassName, useToast } from "@platform/ui-kit";
+import { AppModal } from "../ui/AppModal";
 import { RegField, RegTextarea} from "@platform/app-shared/registration/FormFields";
 import type { PartyTaskPageDef } from "@platform/app-shared/prototype/party-task-pages";
 import { usePrototype } from "@platform/app-shared/contexts/PrototypeContext";
@@ -11,6 +12,7 @@ import { InspectionLimitsSection } from "./InspectionLimitsSection";
 import { FieldComparableCaptureSection } from "./FieldComparableCaptureSection";
 import { InspectorDefinedPhotosSection } from "./InspectorDefinedPhotosSection";
 import { InspectorSubmitFooter } from "./InspectorSubmitFooter";
+import { InspectorMovablesDescriptionField } from "./InspectorMovablesDescriptionField";
 import { InspectorPhotoFilePicker } from "./InspectorPhotoFilePicker";
 import { InspectorStampedPhotoThumb } from "./InspectorStampedPhotoThumb";
 import {
@@ -46,13 +48,16 @@ import {
   INSPECTOR_FEATURE_FIELDS,
   INSPECTOR_OBSERVATION_CATEGORIES,
   INSPECTOR_SERVICE_OPTIONS,
+  MOVABLES_DESCRIPTION_KEY,
   inspectorFeatureRequiresPhoto,
   inspectorPhotoCoverageLabel,
   inspectorPhotoStampText,
   inspectorWorkspaceStatusLabel,
   isInspectorWorkspaceLocked,
+  isMovablesPresent,
   newObservationId,
   parseInspectorCount,
+  patchInspectorFeatureValues,
   type InspectorComponentPhotoKey,
   type InspectorBoundaryKey,
   type InspectorWorkspaceDraft,
@@ -229,16 +234,20 @@ export type FieldInspectionWorkHostRef = {
   focusNotes?: () => void;
 };
 
-function MobileInspectOsmMap({
+function MobileInspectMap({
   latitude,
   longitude,
   property,
   heightClass = "h-[180px]",
+  interactive = false,
+  onCoordsChange,
 }: {
   latitude: string;
   longitude: string;
   property?: PoPropertyIntake | null;
   heightClass?: string;
+  interactive?: boolean;
+  onCoordsChange?: (lat: number, lng: number) => void;
 }) {
   const latNum = Number.parseFloat(latitude);
   const lngNum = Number.parseFloat(longitude);
@@ -249,23 +258,32 @@ function MobileInspectOsmMap({
       : null;
   const lat = hasPin ? latNum : fallback?.lat;
   const lng = hasPin ? lngNum : fallback?.lng;
+  const picking = Boolean(interactive && onCoordsChange);
   if (lat == null || lng == null) {
-    return (
-      <div className="rounded-xl border border-dashed border-border-2 bg-surface px-3 py-8 text-center text-[12px] text-text-3">
-        حدّد موقعك لعرض الخريطة
-      </div>
-    );
+    if (!picking) {
+      return (
+        <div className="rounded-xl border border-dashed border-border-2 bg-surface px-3 py-8 text-center text-[12px] text-text-3">
+          حدّد موقعك لعرض الخريطة
+        </div>
+      );
+    }
   }
-  const src = `https://www.openstreetmap.org/export/embed.html?bbox=${(lng - 0.006).toFixed(5)}%2C${(lat - 0.004).toFixed(5)}%2C${(lng + 0.006).toFixed(5)}%2C${(lat + 0.004).toFixed(5)}&layer=mapnik&marker=${lat}%2C${lng}`;
   return (
-    <div className={cn("relative overflow-hidden rounded-lg border border-border", heightClass)}>
-      <iframe
-        title="خريطة المعاينة"
-        loading="lazy"
-        referrerPolicy="no-referrer-when-downgrade"
-        className="block h-full w-full border-0"
-        src={src}
-      />
+    <div className="min-w-0">
+      <div className={cn("relative overflow-hidden rounded-lg border border-border", heightClass)}>
+        <GoogleMapPin
+          lat={lat}
+          lng={lng}
+          title="خريطة المعاينة"
+          interactive={picking}
+          onCoordsChange={onCoordsChange}
+        />
+      </div>
+      {picking ? (
+        <p className="mb-0 mt-1.5 text-center text-[11px] text-text-3">
+          اضغط على الخريطة أو اسحب الدبوس لتحديد موقع العقار
+        </p>
+      ) : null}
     </div>
   );
 }
@@ -397,6 +415,20 @@ export function FieldInspectionWorkBody({
     {},
   );
   const [formError, setFormError] = useState<string | null>(null);
+  const [mapBackup, setMapBackup] = useState<{
+    lat: string;
+    lng: string;
+  } | null>(null);
+  const [pendingMapMove, setPendingMapMove] = useState<{
+    nextLat: string;
+    nextLng: string;
+    prevLat: string;
+    prevLng: string;
+  } | null>(null);
+  const [mapPinEpoch, setMapPinEpoch] = useState(0);
+  const [mapPinned, setMapPinned] = useState(false);
+  const mapPinnedRef = useRef(false);
+  mapPinnedRef.current = mapPinned;
 
   useEffect(() => {
     if (!propertyId) return;
@@ -417,6 +449,27 @@ export function FieldInspectionWorkBody({
       cancelled = true;
     };
   }, [task.id, task.poNumber, task.propertyOrdinal, propertyId, property]);
+
+  useEffect(() => {
+    if (!task.id) return;
+    try {
+      setMapPinned(sessionStorage.getItem(`inspector-map-pinned:${task.id}`) === "1");
+    } catch {
+      setMapPinned(false);
+    }
+  }, [task.id]);
+
+  useEffect(() => {
+    if (!task.id) return;
+    try {
+      sessionStorage.setItem(
+        `inspector-map-pinned:${task.id}`,
+        mapPinned ? "1" : "0",
+      );
+    } catch {
+      /* ignore */
+    }
+  }, [task.id, mapPinned]);
 
   const locked =
     task.status === "completed" ||
@@ -443,6 +496,31 @@ export function FieldInspectionWorkBody({
         });
     },
     [task.id, workLocked, showToast],
+  );
+
+  const requestMapMove = useCallback(
+    (lat: number, lng: number): "saved" | "pending" | "same" => {
+      const nextLat = lat.toFixed(5);
+      const nextLng = lng.toFixed(5);
+      const curLat = (draft?.mapLatitude ?? "").trim();
+      const curLng = (draft?.mapLongitude ?? "").trim();
+      if (!curLat || !curLng || !mapPinnedRef.current) {
+        persist({
+          mapLatitude: nextLat,
+          mapLongitude: nextLng,
+        });
+        return "saved";
+      }
+      if (curLat === nextLat && curLng === nextLng) return "same";
+      setPendingMapMove({
+        nextLat,
+        nextLng,
+        prevLat: curLat,
+        prevLng: curLng,
+      });
+      return "pending";
+    },
+    [draft?.mapLatitude, draft?.mapLongitude, persist],
   );
 
   const saveDraft = useCallback(async (): Promise<boolean> => {
@@ -563,18 +641,17 @@ export function FieldInspectionWorkBody({
     }
     navigator.geolocation.getCurrentPosition(
       (pos) => {
-        persist({
-          mapLatitude: pos.coords.latitude.toFixed(5),
-          mapLongitude: pos.coords.longitude.toFixed(5),
-        });
-        showToast("تم التقاط موقعك الحالي", "success");
+        const outcome = requestMapMove(pos.coords.latitude, pos.coords.longitude);
+        if (outcome === "saved") {
+          showToast("تم التقاط موقعك الحالي", "success");
+        }
       },
       () => {
         showToast("تعذّر التقاط الموقع — تأكد من صلاحية الموقع", "error");
       },
       { enableHighAccuracy: true, timeout: 15_000 },
     );
-  }, [persist, showToast]);
+  }, [requestMapMove, showToast]);
 
   const scrollToErrorTarget = useCallback((targetId: string) => {
     scrollToInspectorField(targetId);
@@ -662,6 +739,35 @@ export function FieldInspectionWorkBody({
   const photoCoverage = inspectorPhotoCoverageLabel(liveDraft);
   const cardLayout = layout;
 
+  function confirmPendingMapMove() {
+    if (!pendingMapMove) return;
+    setMapBackup({
+      lat: pendingMapMove.prevLat,
+      lng: pendingMapMove.prevLng,
+    });
+    persist({
+      mapLatitude: pendingMapMove.nextLat,
+      mapLongitude: pendingMapMove.nextLng,
+    });
+    setPendingMapMove(null);
+    setMapPinned(true);
+  }
+
+  function cancelPendingMapMove() {
+    setPendingMapMove(null);
+    setMapPinEpoch((n) => n + 1);
+  }
+
+  function undoMapMove() {
+    if (!mapBackup) return;
+    persist({
+      mapLatitude: mapBackup.lat,
+      mapLongitude: mapBackup.lng,
+    });
+    setMapBackup(null);
+    setMapPinEpoch((n) => n + 1);
+  }
+
   return (
     <div className={cn(mobile ? "min-h-full bg-[var(--bg)] pb-2" : "pb-4")}>
       {locked ? (
@@ -745,17 +851,18 @@ export function FieldInspectionWorkBody({
               </span>
             </div>
           )}
-          {mobile ? (
-            <button
-              type="button"
-              disabled={locked}
-              className="mb-2.5 flex min-h-12 w-full items-center justify-center gap-2 rounded-xl border-[1.5px] border-ink bg-[color-mix(in_srgb,var(--ink)_7%,transparent)] font-inherit text-[14px] font-bold text-ink"
-              onClick={captureDeviceGps}
-            >
-              <i className="ti ti-current-location text-base" aria-hidden />
-              تحديد موقعي الحالي
-            </button>
-          ) : null}
+          <button
+            type="button"
+            disabled={locked}
+            className={cn(
+              "mb-2.5 flex min-h-12 w-full items-center justify-center gap-2 rounded-xl border-[1.5px] border-ink bg-[color-mix(in_srgb,var(--ink)_7%,transparent)] font-inherit text-[14px] font-bold text-ink",
+              !mobile && "min-h-10 text-[13px]",
+            )}
+            onClick={captureDeviceGps}
+          >
+            <i className="ti ti-current-location text-base" aria-hidden />
+            تحديد موقعي الحالي
+          </button>
           {!mobile ? (
             <div className="mb-2.5 grid grid-cols-1 gap-3 sm:grid-cols-2">
               <div className="min-w-0">
@@ -796,94 +903,112 @@ export function FieldInspectionWorkBody({
           {!mobile ? (
             <div className="mb-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
               <div className="min-w-0">
-                <Label htmlFor="ins-date" className="mb-1 text-[11px] font-semibold text-text-2">
+                <div className="mb-1 text-[11px] font-semibold text-text-2">
                   تاريخ المعاينة
-                </Label>
-                <Input
+                </div>
+                <p
                   id="ins-date"
-                  type="date"
                   dir="ltr"
-                  className={cn(
-                    EDIT_CONTROL_CLASS,
-                    fieldErrors.inspectionDate && inspectorInvalidControlClass,
-                  )}
-                  disabled={locked}
-                  value={draft.inspectionDate}
-                  onChange={(e) => persist({ inspectionDate: e.target.value })}
-                />
-                {fieldErrors.inspectionDate ? (
-                  <p className="mt-1 text-[11px] font-semibold text-danger" role="alert">
-                    {fieldErrors.inspectionDate}
-                  </p>
-                ) : null}
+                  className="m-0 text-[13px] font-semibold text-heading"
+                >
+                  {draft.inspectionDate || "—"}
+                </p>
               </div>
               <div className="min-w-0">
-                <Label htmlFor="ins-time" className="mb-1 text-[11px] font-semibold text-text-2">
+                <div className="mb-1 text-[11px] font-semibold text-text-2">
                   وقت المعاينة
-                </Label>
-                <Input
+                </div>
+                <p
                   id="ins-time"
-                  type="time"
                   dir="ltr"
-                  className={cn(
-                    EDIT_CONTROL_CLASS,
-                    fieldErrors.inspectionTime && inspectorInvalidControlClass,
-                  )}
-                  disabled={locked}
-                  value={draft.inspectionTime}
-                  onChange={(e) => persist({ inspectionTime: e.target.value })}
-                />
-                {fieldErrors.inspectionTime ? (
-                  <p className="mt-1 text-[11px] font-semibold text-danger" role="alert">
-                    {fieldErrors.inspectionTime}
-                  </p>
-                ) : null}
+                  className="m-0 text-[13px] font-semibold text-heading"
+                >
+                  {draft.inspectionTime || "—"}
+                </p>
               </div>
             </div>
           ) : (
             <div className="mb-2.5 grid grid-cols-2 gap-2">
               <div>
-                <Label htmlFor="ins-date" className="mb-1 text-[11px] text-text-2">
-                  التاريخ
-                </Label>
-                <Input
+                <div className="mb-1 text-[11px] text-text-2">التاريخ</div>
+                <p
                   id="ins-date"
-                  type="date"
                   dir="ltr"
-                  className={cn(
-                    mobileControlClassName,
-                    fieldErrors.inspectionDate && inspectorInvalidControlClass,
-                  )}
-                  disabled={locked}
-                  value={draft.inspectionDate}
-                  onChange={(e) => persist({ inspectionDate: e.target.value })}
-                />
+                  className="m-0 text-[13px] font-semibold text-heading"
+                >
+                  {draft.inspectionDate || "—"}
+                </p>
               </div>
               <div>
-                <Label htmlFor="ins-time" className="mb-1 text-[11px] text-text-2">
-                  الوقت
-                </Label>
-                <Input
+                <div className="mb-1 text-[11px] text-text-2">الوقت</div>
+                <p
                   id="ins-time"
-                  type="time"
                   dir="ltr"
-                  className={cn(
-                    mobileControlClassName,
-                    fieldErrors.inspectionTime && inspectorInvalidControlClass,
-                  )}
-                  disabled={locked}
-                  value={draft.inspectionTime}
-                  onChange={(e) => persist({ inspectionTime: e.target.value })}
-                />
+                  className="m-0 text-[13px] font-semibold text-heading"
+                >
+                  {draft.inspectionTime || "—"}
+                </p>
               </div>
             </div>
           )}
-          <MobileInspectOsmMap
+          <MobileInspectMap
+            key={`${draft.mapLatitude},${draft.mapLongitude},${mapPinEpoch}`}
             latitude={draft.mapLatitude}
             longitude={draft.mapLongitude}
             property={property}
             heightClass={mobile ? "h-[180px] rounded-xl" : "h-[200px]"}
+            interactive={!locked && !mapPinned}
+            onCoordsChange={
+              locked || mapPinned
+                ? undefined
+                : (lat, lng) => requestMapMove(lat, lng)
+            }
           />
+          {!locked ? (
+            <div className="mt-2 flex flex-col gap-2">
+              {draft.mapLatitude.trim() && draft.mapLongitude.trim() && !mapPinned ? (
+                <button
+                  type="button"
+                  className={cn(
+                    "flex w-full items-center justify-center gap-2 rounded-xl border-[1.5px] border-ink bg-[color-mix(in_srgb,var(--ink)_7%,transparent)] font-inherit font-bold text-ink",
+                    mobile ? "min-h-12 text-[14px]" : "min-h-11 text-[13px]",
+                  )}
+                  onClick={() => {
+                    setMapPinned(true);
+                    showToast("تم تثبيت الموقع", "success");
+                  }}
+                >
+                  <i className="ti ti-pin text-base" aria-hidden />
+                  تثبيت الموقع
+                </button>
+              ) : null}
+              {mapPinned ? (
+                <div className="flex gap-2">
+                  <div className="flex min-h-11 flex-1 items-center justify-center gap-2 rounded-xl border border-[#B7E4C7] bg-[#F0FFF4] text-[13px] font-bold text-[#1B7A4A]">
+                    <i className="ti ti-pin-filled text-base" aria-hidden />
+                    الموقع مثبت
+                  </div>
+                  <button
+                    type="button"
+                    className="flex min-h-11 shrink-0 items-center justify-center rounded-xl border border-border bg-surface px-3 font-inherit text-[13px] font-bold text-heading"
+                    onClick={() => setMapPinned(false)}
+                  >
+                    تعديل
+                  </button>
+                </div>
+              ) : null}
+              {mapBackup ? (
+                <button
+                  type="button"
+                  className="flex min-h-11 w-full items-center justify-center gap-2 rounded-xl border border-border bg-surface font-inherit text-[13px] font-bold text-heading"
+                  onClick={undoMapMove}
+                >
+                  <i className="ti ti-arrow-back-up text-base" aria-hidden />
+                  رجوع للموقع السابق
+                </button>
+              ) : null}
+            </div>
+          ) : null}
           {mobile ? (
             <div className="mt-1.5 text-center text-[12px] text-text-3" dir="ltr">
               {draft.mapLatitude && draft.mapLongitude
@@ -937,6 +1062,7 @@ export function FieldInspectionWorkBody({
                   const photoMissing =
                     fieldErrors.missingFeaturePhotoKey === field.key;
                   return (
+                    <Fragment key={field.key}>
                     <tr
                       key={field.key}
                       id={`ins-feature-${field.key}`}
@@ -976,10 +1102,11 @@ export function FieldInspectionWorkBody({
                           onChange={(e) => {
                             const next = e.target.value;
                             persist({
-                              featureValues: {
-                                ...draft.featureValues,
-                                [field.key]: next,
-                              },
+                              featureValues: patchInspectorFeatureValues(
+                                draft.featureValues,
+                                field.key,
+                                next,
+                              ),
                               featurePhotoAttachments: {
                                 ...draft.featurePhotoAttachments,
                                 [field.key]:
@@ -1042,6 +1169,33 @@ export function FieldInspectionWorkBody({
                         />
                       </td>
                     </tr>
+                    {field.key === "movables" && isMovablesPresent(draft.featureValues) ? (
+                      <tr
+                        className={cn(
+                          fieldErrors.movablesDescription && "bg-danger-bg/45",
+                        )}
+                      >
+                        <td className={TABLE_TD} />
+                        <td className={TABLE_TD} colSpan={3}>
+                          <InspectorMovablesDescriptionField
+                            value={
+                              draft.featureValues[MOVABLES_DESCRIPTION_KEY] ?? ""
+                            }
+                            disabled={locked}
+                            invalid={Boolean(fieldErrors.movablesDescription)}
+                            onChange={(next) =>
+                              persist({
+                                featureValues: {
+                                  ...draft.featureValues,
+                                  [MOVABLES_DESCRIPTION_KEY]: next,
+                                },
+                              })
+                            }
+                          />
+                        </td>
+                      </tr>
+                    ) : null}
+                    </Fragment>
                   );
                 })}
               </tbody>
@@ -1064,10 +1218,11 @@ export function FieldInspectionWorkBody({
 
               function setFeatureValue(next: string) {
                 persist({
-                  featureValues: {
-                    ...liveDraft.featureValues,
-                    [field.key]: next,
-                  },
+                  featureValues: patchInspectorFeatureValues(
+                    liveDraft.featureValues,
+                    field.key,
+                    next,
+                  ),
                   featurePhotoAttachments: {
                     ...liveDraft.featurePhotoAttachments,
                     [field.key]: inspectorFeatureRequiresPhoto(field, next)
@@ -1189,6 +1344,21 @@ export function FieldInspectionWorkBody({
                         onChange={(v) => persist({ propertyAgeYears: v })}
                       />
                     </div>
+                  ) : null}
+                  {field.key === "movables" && isMovablesPresent(draft.featureValues) ? (
+                    <InspectorMovablesDescriptionField
+                      value={draft.featureValues[MOVABLES_DESCRIPTION_KEY] ?? ""}
+                      disabled={locked}
+                      invalid={Boolean(fieldErrors.movablesDescription)}
+                      onChange={(next) =>
+                        persist({
+                          featureValues: {
+                            ...draft.featureValues,
+                            [MOVABLES_DESCRIPTION_KEY]: next,
+                          },
+                        })
+                      }
+                    />
                   ) : null}
                 </div>
               );
@@ -1324,6 +1494,14 @@ export function FieldInspectionWorkBody({
                   },
                 ],
                 ["towerCount", "عدد الأبراج", null],
+                ["jacuzziCount", "جاكوزي", null],
+                ["diningCount", "غرف الطعام", null],
+                ["majlisCount", "المجالس", null],
+                ["maidRoomCount", "غرف الخدم", null],
+                ["guardRoomCount", "غرفة حارس", null],
+                ["parkingCount", "مواقف", null],
+                ["storeCount", "مستودع", null],
+                ["playgroundCount", "ملاعب أطفال", null],
                 ["propertyAgeYears", "عمر العقار (سنوات)", null],
               ] as const
             )
@@ -1519,7 +1697,7 @@ export function FieldInspectionWorkBody({
                   ["builtArea", "مساحة البناء (م²)"],
                   ["buildingFloors", "عدد أدوار المباني"],
                   ["basementTotal", "إجمالي مساحة القبو (م²)"],
-                  ["annexTotal", "إجمالي مساحة اللاحق (م²)"],
+                  ["annexTotal", "إجمالي مساحة الملاحق (م²)"],
                   ["buildingsTotal", "إجمالي مساحة المباني (م²)"],
                 ] as const
               ).map(([key, label]) => (
@@ -1555,7 +1733,7 @@ export function FieldInspectionWorkBody({
                   ["builtArea", "مساحة البناء (م²)"],
                   ["buildingFloors", "عدد أدوار المباني"],
                   ["basementTotal", "إجمالي مساحة القبو (م²)"],
-                  ["annexTotal", "إجمالي مساحة اللاحق (م²)"],
+                  ["annexTotal", "إجمالي مساحة الملاحق (م²)"],
                   ["buildingsTotal", "إجمالي مساحة المباني (م²)"],
                 ] as const
               ).map(([key, label]) => (
@@ -1593,6 +1771,9 @@ export function FieldInspectionWorkBody({
             longitude={draft.mapLongitude}
             city={property?.city}
             district={property?.district}
+            propertyType={property?.propertyType}
+            poNumber={task.poNumber}
+            propertyId={propertyId}
             disabled={workLocked}
           />
         </InspectorCard>
@@ -1792,6 +1973,51 @@ export function FieldInspectionWorkBody({
           )}
         </InspectorCard>
 
+        {draft.services.includes("كهرباء") || draft.services.includes("ماء") ? (
+          <InspectorCard
+            title="عدادات الخدمات"
+            icon="ti-hash"
+            layout={cardLayout}
+          >
+            <FormRow className="grid-cols-1 sm:grid-cols-2">
+              {draft.services.includes("كهرباء") ? (
+                <>
+                  <RegField
+                    id="ins-elec-meter-count"
+                    label="عدد عدادات الكهرباء"
+                    type="number"
+                    value={draft.electricityMeterCount}
+                    onChange={(v) => persist({ electricityMeterCount: v })}
+                  />
+                  <RegField
+                    id="ins-elec-meter-nos"
+                    label="أرقام عدادات الكهرباء"
+                    value={draft.electricityMeterNumbers}
+                    onChange={(v) => persist({ electricityMeterNumbers: v })}
+                  />
+                </>
+              ) : null}
+              {draft.services.includes("ماء") ? (
+                <>
+                  <RegField
+                    id="ins-water-meter-count"
+                    label="عدد عدادات الماء"
+                    type="number"
+                    value={draft.waterMeterCount}
+                    onChange={(v) => persist({ waterMeterCount: v })}
+                  />
+                  <RegField
+                    id="ins-water-meter-nos"
+                    label="أرقام عدادات الماء"
+                    value={draft.waterMeterNumbers}
+                    onChange={(v) => persist({ waterMeterNumbers: v })}
+                  />
+                </>
+              ) : null}
+            </FormRow>
+          </InspectorCard>
+        ) : null}
+
         <InspectorCard
           title="الوصف والملاحظات"
           icon="ti-notes"
@@ -1838,6 +2064,49 @@ export function FieldInspectionWorkBody({
                 value={draft.propertyDescription}
                 onChange={(v) => persist({ propertyDescription: v })}
               />
+              <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
+                <div>
+                  <label
+                    htmlFor="ins-has-violations"
+                    className="mb-1 block text-[11px] font-semibold text-text-2"
+                  >
+                    هل توجد مخالفات ظاهرة؟
+                  </label>
+                  <Select
+                    id="ins-has-violations"
+                    value={draft.hasViolations}
+                    onChange={(e) =>
+                      persist({
+                        hasViolations: e.target.value as InspectorWorkspaceDraft["hasViolations"],
+                      })
+                    }
+                    className={cn(formControlClassName, "text-xs")}
+                  >
+                    <option value="">— اختر —</option>
+                    <option value="نعم">نعم</option>
+                    <option value="لا">لا</option>
+                  </Select>
+                </div>
+                {draft.hasViolations === "نعم" ? (
+                  <RegField
+                    id="ins-violations-count"
+                    label="عدد المخالفات"
+                    type="number"
+                    value={draft.violationsCount}
+                    onChange={(v) => persist({ violationsCount: v })}
+                  />
+                ) : null}
+              </div>
+              {draft.hasViolations === "نعم" ? (
+                <RegTextarea
+                  id="ins-violations-desc"
+                  label="وصف المخالفات"
+                  rows={2}
+                  className="mt-3"
+                  value={draft.violationsDescription}
+                  onChange={(v) => persist({ violationsDescription: v })}
+                />
+              ) : null}
               <RegTextarea
                 id="ins-pros-cons"
                 label="الإيجابيات والعيوب الظاهرة على الحي"
@@ -2373,6 +2642,31 @@ export function FieldInspectionWorkBody({
           />
         ) : null}
       </fieldset>
+      <AppModal
+        open={Boolean(pendingMapMove)}
+        title="تأكيد تحريك الموقع"
+        onClose={cancelPendingMapMove}
+        footer={
+          <>
+            <Button type="button" onClick={cancelPendingMapMove}>
+              إلغاء
+            </Button>
+            <Button
+              type="button"
+              variant="primary"
+              showActionToast={false}
+              onClick={confirmPendingMapMove}
+            >
+              تثبيت الموقع الجديد
+            </Button>
+          </>
+        }
+      >
+        <p className="m-0 text-[13px] leading-6 text-text-2">
+          هل تريد اعتماد هذا الموقع بدل الموقع الحالي؟ يمكنك الرجوع للموقع السابق
+          بعد التثبيت.
+        </p>
+      </AppModal>
     </div>
   );
 }

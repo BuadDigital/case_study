@@ -1,18 +1,11 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
-  applyIvsDateToStandards,
-  BRAND_IDENTITY_DEFAULTS,
-  CERTIFIED_VALUER_HTML_DEFAULTS,
   getApiBase,
   getValuationLists,
-  listClients,
   VALUATION_REPORT_HTML_DEFAULTS as REPORT_DEFAULTS,
-  VALUER_MEMBERSHIP_CATEGORIES,
-  type ClientDto,
   type OrganizationSettingsDto,
-  type OrganizationValuerRosterEntry,
   type ValuationListItemDto,
   type ValuationListsDto,
 } from "@platform/api-client";
@@ -21,12 +14,17 @@ import { ensureOrganizationSettingsLoaded } from "@platform/app-shared/organizat
 import { fetchInspectorWorkspace } from "@case-study/mfe/lib/prototype/inspector-workspace-storage";
 import type { InspectorWorkspaceDraft } from "@case-study/mfe/lib/prototype/inspector-workspace-data";
 import type { PoPropertyIntake } from "@case-study/mfe/lib/prototype/po-intake-data";
-import {
-  subClientIdFromReportUsers,
-  valuationPurposeForAssignment,
-} from "@case-study/mfe/lib/prototype/po-intake-data";
+import { subClientIdFromReportUsers } from "@case-study/mfe/lib/prototype/po-intake-data";
 import { usePoRecordQuery } from "@case-study/mfe/query/case-study-queries";
-import { Spinner } from "@platform/ui-kit";
+import { PropertyDetailMediaGlance } from "@case-study/mfe/components/po-intake/PropertyDetailMediaGlance";
+import { prefetchInspectorWorkspacePhotos } from "@case-study/mfe/lib/prototype/inspector-photo-upload";
+import {
+  collectFieldInspectionDocumentsFromSubmission,
+  pickPrimaryPropertyDetailPhoto,
+  type PropertyDetailDocumentEntry,
+} from "@case-study/mfe/lib/prototype/property-detail-documents";
+import { cn, Spinner } from "@platform/ui-kit";
+import { invalidControlClass } from "@platform/app-shared/form-ux";
 import type {
   EvaluatorReportChoices,
   EvaluatorSubmission,
@@ -36,15 +34,19 @@ import {
   seedReportChoicesFromAssignment,
 } from "../../lib/evaluator/evaluator-window-data";
 import { basisOfValueLabelArForAssignment } from "@platform/app-shared/prototype/assignment-valuation-defaults";
+import { EvaluatorLinkedComparablesBlock } from "./EvaluatorLinkedComparablesBlock";
+import { EvaluatorComparableSelectionPanel } from "./EvaluatorComparableSelectionPanel";
+import { inspectionFactChips } from "./EvaluatorInspectionFactsSection";
+import { computePropertyTotal } from "../../lib/evaluator/value-estimation";
 import {
-  assignmentValuationFromPo,
-  formatValuationReportUsers,
-  ownershipTypeDisplay,
-  labelForBasisKey,
-  labelForPremiseKey,
-  labelForPurposeKey,
-} from "../../lib/evaluator/valuation-report-live-fill";
-import "./professional-valuation-report.css";
+  ValCard,
+  ValFieldsGrid,
+  valChipClassName,
+  valInputClassName,
+  valLabelClassName,
+  valTableTdClassName,
+  valTableThClassName,
+} from "./EvaluatorHtmlPrimitives";
 
 const UNUSED = "__unused__";
 const ESG_ENV = ["كفاءة الطاقة", "أخطار الموقع والمناخ", "المباني الخضراء"];
@@ -58,55 +60,6 @@ const ESG_GOV = [
   "الإدارة الفعالة لبيانات العقار",
   "مقومات تشغيل العقار",
 ];
-
-function filled(
-  value: string | null | undefined,
-  fallback: string | null | undefined = "—",
-): string {
-  const t = (value ?? "").trim();
-  if (t) return t;
-  const f = (fallback ?? "").trim();
-  return f || "—";
-}
-
-function memLabel(value: string | null | undefined): string {
-  return (
-    VALUER_MEMBERSHIP_CATEGORIES.find((x) => x.value === value)?.label ??
-    filled(value)
-  );
-}
-
-function slashDate(iso: string | null | undefined): string {
-  if (!iso) return "—";
-  const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(iso);
-  return m ? `${m[1]}/${m[2]}/${m[3]}` : iso;
-}
-
-function BrandImage({
-  src,
-  alt,
-  widthCm,
-  heightCm,
-}: {
-  src?: string | null;
-  alt: string;
-  widthCm?: number;
-  heightCm?: number;
-}) {
-  const url = (src ?? "").trim();
-  if (!url || url.endsWith("ejadah-signature.png")) return null;
-  const size =
-    widthCm && heightCm
-      ? { width: `${widthCm}cm`, height: `${heightCm}cm` }
-      : { height: 40 };
-  return (
-    <img
-      src={url}
-      alt={alt}
-      style={{ ...size, objectFit: "contain", maxWidth: "100%" }}
-    />
-  );
-}
 
 function enabledList(
   lists: Record<string, ValuationListItemDto[]> | undefined,
@@ -125,51 +78,8 @@ function methodsForApproach(
   return methods.filter((row) => (row.cells[0] ?? "").trim() === approach);
 }
 
-function Auto({ children, colSpan }: { children: ReactNode; colSpan?: number }) {
-  return (
-    <td className="v auto" colSpan={colSpan}>
-      {children}
-    </td>
-  );
-}
-
-function K({
-  children,
-  nowrap = true,
-}: {
-  children: ReactNode;
-  nowrap?: boolean;
-}) {
-  return (
-    <td className="k" style={nowrap ? undefined : { whiteSpace: "normal" }}>
-      {children}
-    </td>
-  );
-}
-
-function Sec({
-  n,
-  title,
-  open,
-  onToggle,
-  children,
-}: {
-  n: string;
-  title: string;
-  open: boolean;
-  onToggle: () => void;
-  children: ReactNode;
-}) {
-  return (
-    <section className="sec">
-      <h2 className="rpt-h" onClick={onToggle}>
-        <span className="n">{n}</span>
-        {title}
-        <span className={open ? "chev" : "chev is-closed"}>▾</span>
-      </h2>
-      {open ? children : null}
-    </section>
-  );
+function approachUsed(key: string | null | undefined): boolean {
+  return Boolean(key && key !== UNUSED);
 }
 
 function Pick({
@@ -187,7 +97,7 @@ function Pick({
 }) {
   return (
     <select
-      className="cell-input"
+      className={valInputClassName}
       disabled={disabled}
       value={value}
       onChange={(e) => onChange(e.target.value)}
@@ -199,68 +109,6 @@ function Pick({
         </option>
       ))}
     </select>
-  );
-}
-
-function BulletView({ text }: { text: string }) {
-  const items = text.split("\n").map((x) => x.trim()).filter(Boolean);
-  if (!items.length) return <p>—</p>;
-  return (
-    <ul>
-      {items.map((item, i) => (
-        <li key={i}>{item}</li>
-      ))}
-    </ul>
-  );
-}
-
-function ParticipantsTable({
-  rows,
-  branch,
-}: {
-  rows: OrganizationValuerRosterEntry[];
-  branch: string;
-}) {
-  if (!rows.length) {
-    return <p className="sysnote">لا مشاركين نشطين في سجل المقيّمين.</p>;
-  }
-  return (
-    <table className="ctr">
-      <tbody>
-        <tr>
-          <K>الاسم</K>
-          {rows.map((p) => (
-            <td className="v" key={p.id}>
-              {p.nameAr}
-            </td>
-          ))}
-        </tr>
-        <tr>
-          <K>فرع التقييم</K>
-          {rows.map((p) => (
-            <td className="v" key={`${p.id}-b`}>
-              {filled(branch)}
-            </td>
-          ))}
-        </tr>
-        <tr>
-          <K>رقم العضوية</K>
-          {rows.map((p) => (
-            <td className="v num" key={`${p.id}-m`}>
-              {filled(p.membershipNumber)}
-            </td>
-          ))}
-        </tr>
-        <tr>
-          <K>التوقيع</K>
-          {rows.map((p) => (
-            <td className="v" key={`${p.id}-s`} style={{ height: 52 }}>
-              <BrandImage src={p.signatureUrl} alt={`توقيع ${p.nameAr}`} />
-            </td>
-          ))}
-        </tr>
-      </tbody>
-    </table>
   );
 }
 
@@ -283,10 +131,10 @@ function EsgRow({
 }) {
   return (
     <tr>
-      <td className="k" style={{ whiteSpace: "normal", verticalAlign: "middle" }}>
+      <td className={cn(valTableTdClassName, "align-middle font-semibold text-text-2")}>
         {label}
       </td>
-      <td className="v">
+      <td className={valTableTdClassName}>
         <label className="mb-1.5 flex items-center gap-1.5 text-[12px]">
           <input
             type="checkbox"
@@ -319,9 +167,9 @@ function EsgRow({
           </label>
         ))}
       </td>
-      <td className="v">
+      <td className={valTableTdClassName}>
         <textarea
-          className="edit-p"
+          className={cn(valInputClassName, "resize-y")}
           rows={3}
           disabled={disabled || none}
           placeholder="وصف الأثر — لكل عامل مختار"
@@ -340,13 +188,24 @@ export function EvaluatorValuationReportTab({
   disabled = false,
   property,
   inspectionTaskId,
+  assignmentType,
   onChange,
+  onDraftPatch,
+  fieldErrors,
 }: {
   draft: EvaluatorSubmission;
   disabled?: boolean;
   property?: PoPropertyIntake | null;
   inspectionTaskId?: string | null;
+  assignmentType?: string | null;
   onChange?: (choices: EvaluatorReportChoices, extras?: { valueBasis?: string; valuationMethod?: string }) => void;
+  onDraftPatch?: (patch: {
+    landValue?: string;
+    buildingValue?: string;
+    evaluatorPrice?: string;
+    forcedSaleDiscountPct?: string;
+  }) => void;
+  fieldErrors?: Record<string, string>;
 }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -355,8 +214,8 @@ export function EvaluatorValuationReportTab({
   const [inspector, setInspector] = useState<InspectorWorkspaceDraft | null>(
     null,
   );
-  const [clients, setClients] = useState<ClientDto[]>([]);
-  const [open, setOpen] = useState<Record<string, boolean>>({ "02": true });
+  const [primaryPhoto, setPrimaryPhoto] =
+    useState<PropertyDetailDocumentEntry | null>(null);
   const { data: record } = usePoRecordQuery(draft.poNumber);
 
   const choices = draft.reportChoices ?? emptyReportChoices();
@@ -373,13 +232,11 @@ export function EvaluatorValuationReportTab({
     void Promise.all([
       ensureOrganizationSettingsLoaded(),
       getValuationLists({ token: session.token, baseUrl: getApiBase() }),
-      listClients({ token: session.token, baseUrl: getApiBase() }),
-    ]).then(([loadedOrg, listRes, clientsRes]) => {
+    ]).then(([loadedOrg, listRes]) => {
       if (cancelled) return;
       setOrg(loadedOrg);
       if (listRes.ok) setLists(listRes.data);
       else setError("تعذّر تحميل قوائم التقييم");
-      if (clientsRes.ok) setClients(clientsRes.data);
       setLoading(false);
     });
     return () => {
@@ -390,11 +247,23 @@ export function EvaluatorValuationReportTab({
   useEffect(() => {
     if (!inspectionTaskId) {
       setInspector(null);
+      setPrimaryPhoto(null);
       return;
     }
     let cancelled = false;
-    void fetchInspectorWorkspace(inspectionTaskId).then((ws) => {
-      if (!cancelled) setInspector(ws);
+    void fetchInspectorWorkspace(inspectionTaskId).then(async (ws) => {
+      if (cancelled) return;
+      setInspector(ws);
+      if (!ws) {
+        setPrimaryPhoto(null);
+        return;
+      }
+      await prefetchInspectorWorkspacePhotos(ws);
+      if (cancelled) return;
+      const photos = collectFieldInspectionDocumentsFromSubmission(ws).filter(
+        (doc) => doc.kind === "image",
+      );
+      setPrimaryPhoto(pickPrimaryPropertyDetailPhoto(photos));
     });
     return () => {
       cancelled = true;
@@ -405,35 +274,9 @@ export function EvaluatorValuationReportTab({
     () => ({ ...REPORT_DEFAULTS, ...(org?.valuationReport ?? {}) }),
     [org],
   );
-  const toggle = (n: string) => setOpen((s) => ({ ...s, [n]: !s[n] }));
-  const isOpen = (n: string) => Boolean(open[n]);
-
   const bases = enabledList(lists?.lists, "valueBases");
   const methods = enabledList(lists?.lists, "methods");
-  const glossary = enabledList(lists?.lists, "glossary");
-  const ivs = enabledList(lists?.lists, "ivsStandards");
   const attachments = enabledList(lists?.lists, "attachments");
-  const comparableCols = enabledList(lists?.lists, "comparables");
-  const ivsDate = filled(lists?.ivsEffectiveDate, "31 يناير 2025");
-
-  const ev = org?.evaluator ?? {};
-  const htmlEv = CERTIFIED_VALUER_HTML_DEFAULTS;
-  const parts = (org?.valuers ?? []).filter(
-    (v) => v.role !== "certified" && v.isActive,
-  );
-  const certified = (org?.valuers ?? []).find(
-    (v) => v.role === "certified" && v.isActive,
-  );
-  const brand = org?.branding;
-  const stampUrl =
-    brand?.stampUrl?.trim() || BRAND_IDENTITY_DEFAULTS.stampUrl;
-  const stampW = brand?.stampWidthCm || BRAND_IDENTITY_DEFAULTS.stampWidthCm || 4;
-  const stampH = brand?.stampHeightCm || BRAND_IDENTITY_DEFAULTS.stampHeightCm || 4;
-  const certifiedSig =
-    certified?.signatureUrl?.trim() || brand?.signatureUrl?.trim() || "";
-  const poValuation = assignmentValuationFromPo(record);
-  const selectedBasis = bases.find((b) => b.key === poValuation.valueBasisKey);
-  const basisDefinition = (selectedBasis?.cells[0] ?? "").trim();
   const specials = vr.specialAssumptionLibrary.filter((x) => x.trim());
   const assumptionOn =
     choices.specialAssumptionOn.length >= specials.length
@@ -462,6 +305,29 @@ export function EvaluatorValuationReportTab({
       });
     },
     [bases, choices, methods, onChange],
+  );
+
+  const patchValues = useCallback(
+    (partial: {
+      landValue?: string;
+      buildingValue?: string;
+      evaluatorPrice?: string;
+      forcedSaleDiscountPct?: string;
+    }) => {
+      const land = partial.landValue ?? draft.landValue;
+      const building = partial.buildingValue ?? draft.buildingValue;
+      const summed = computePropertyTotal(land, building);
+      const next = {
+        ...partial,
+        ...(partial.evaluatorPrice === undefined &&
+        (partial.landValue !== undefined || partial.buildingValue !== undefined) &&
+        summed > 0
+          ? { evaluatorPrice: String(summed) }
+          : {}),
+      };
+      onDraftPatch?.(next);
+    },
+    [draft.buildingValue, draft.landValue, onDraftPatch],
   );
 
   useEffect(() => {
@@ -498,36 +364,6 @@ export function EvaluatorValuationReportTab({
     );
   }
 
-  const loc = [property?.city, property?.district].filter(Boolean).join(" — ");
-  const coords = [inspector?.mapLatitude, inspector?.mapLongitude]
-    .filter((x) => (x ?? "").trim())
-    .join(" ، ");
-  const sides = [
-    {
-      name: "الشمالية",
-      bound: property?.northBoundary,
-      len: property?.northBoundaryLengthM,
-      face: property?.northFacadeFinishing,
-    },
-    {
-      name: "الجنوبية",
-      bound: property?.southBoundary,
-      len: property?.southBoundaryLengthM,
-      face: property?.southFacadeFinishing,
-    },
-    {
-      name: "الشرقية",
-      bound: property?.eastBoundary,
-      len: property?.eastBoundaryLengthM,
-      face: property?.eastFacadeFinishing,
-    },
-    {
-      name: "الغربية",
-      bound: property?.westBoundary,
-      len: property?.westBoundaryLengthM,
-      face: property?.westFacadeFinishing,
-    },
-  ];
   const methodOpts = (approach: string) => [
     { value: UNUSED, label: "غير مستخدم" },
     ...methodsForApproach(methods, approach).map((m) => ({
@@ -535,564 +371,269 @@ export function EvaluatorValuationReportTab({
       label: m.name,
     })),
   ];
+  const noteClassName = "mb-2 text-[11px] leading-relaxed text-text-3";
+  const inspectionChips = inspectionFactChips(inspector);
+  const marketOn = approachUsed(choices.marketMethodKey);
+  const costOn = approachUsed(choices.costMethodKey);
+  const incomeOn = approachUsed(choices.incomeMethodKey);
+  const showWorkPanel = marketOn || costOn;
+  const liquidation = choices.valueBasisKey === "liquidation";
+  const err = (key: string) => fieldErrors?.[key];
+
   return (
-    <div className="rpt-ref" dir="rtl">
-      {error ? <p className="sysnote">{error}</p> : null}
+    <div dir="rtl">
+      {error ? (
+        <p className="mb-3 text-[12px] font-semibold text-danger-text">{error}</p>
+      ) : null}
 
-      <section className="rpt-page">
-        <div className="rpt-title">تقرير تقييم عقار</div>
-        <Sec n="01" title="هوية المقيم المعتمد" open={isOpen("01")} onToggle={() => toggle("01")}>
-          <p className="sysnote">ثابت — من إعدادات المنشأة / المقيّمون.</p>
-          <table>
-            <tbody>
-              <tr>
-                <K>اسم المقيم المعتمد</K>
-                <Auto>{filled(ev.name, htmlEv.name)}</Auto>
-                <K>رقم ترخيص مزاولة المهنة</K>
-                <Auto>
-                  <bdi>{filled(ev.licenseNumber, htmlEv.licenseNumber)}</bdi>
-                </Auto>
-              </tr>
-              <tr>
-                <K>تاريخ الإصدار</K>
-                <Auto>
-                  <bdi>{filled(ev.licenseIssuedAt, htmlEv.licenseIssuedAt)}</bdi>
-                </Auto>
-                <K>تاريخ الانتهاء</K>
-                <Auto>
-                  <bdi>
-                    {filled(ev.licenseExpiresHijri, htmlEv.licenseExpiresHijri)}
-                  </bdi>
-                </Auto>
-              </tr>
-              <tr>
-                <K>فرع التقييم</K>
-                <Auto colSpan={3}>{filled(vr.valuationBranch)}</Auto>
-              </tr>
-            </tbody>
-          </table>
-        </Sec>
-
-        <Sec n="02" title="نطاق العمل" open={isOpen("02")} onToggle={() => toggle("02")}>
-          <table>
-            <tbody>
-              <tr>
-                <K>اسم العميل</K>
-                <Auto>{filled(record?.clientNameAr)}</Auto>
-                <K>تاريخ التقييم</K>
-                <Auto>{filled(draft.appraisalDate || draft.reportIssueDate)}</Auto>
-              </tr>
-              <tr>
-                <K>مستخدمو التقرير</K>
-                <Auto>
-                  {filled(
-                    formatValuationReportUsers(record, clients) ||
-                      record?.clientNameAr,
-                  )}
-                </Auto>
-                <K>تاريخ المعاينة</K>
-                <Auto>{filled(inspector?.inspectionDate)}</Auto>
-              </tr>
-              <tr>
-                <K>اسم المالك</K>
-                <Auto>{filled(property?.ownerName)}</Auto>
-                <K>رقم الطلب</K>
-                <Auto>
-                  <bdi>{filled(property?.requestNumber)}</bdi>
-                </Auto>
-              </tr>
-              <tr>
-                <K>الغرض من التقييم</K>
-                <Auto>
-                  {filled(
-                    labelForPurposeKey(poValuation.purposeKey) ||
-                      (record
-                        ? valuationPurposeForAssignment(
-                            record.assignmentType,
-                            subClientIdFromReportUsers(record.reportUserClientIds),
-                          ).label
-                        : ""),
-                  )}
-                </Auto>
-                <K>تاريخ الطلب</K>
-                <Auto>{slashDate(record?.receivedFromEnfathAt)}</Auto>
-              </tr>
-              <tr>
-                <K>أساس القيمة</K>
-                <Auto>
-                  {filled(
-                    labelForBasisKey(poValuation.valueBasisKey) ||
-                      (record
-                        ? basisOfValueLabelArForAssignment(
-                            record.assignmentType,
-                            subClientIdFromReportUsers(record.reportUserClientIds),
-                          )
-                        : ""),
-                  )}
-                </Auto>
-                <K>فرضية القيمة</K>
-                <Auto>
-                  {filled(
-                    labelForPremiseKey(poValuation.premiseKey),
-                  )}
-                </Auto>
-              </tr>
-              <tr>
-                <K>نوع التقرير</K>
-                <Auto>{filled(vr.reportType)}</Auto>
-                <K>عملة التقييم</K>
-                <Auto>{filled(vr.currency)}</Auto>
-              </tr>
-              <tr>
-                <K>نوع العقار</K>
-                <Auto>
-                  {filled(property?.propertyType || property?.classification)}
-                </Auto>
-                <K>رقم التقرير</K>
-                <Auto>
-                  <bdi>{filled(draft.reportNo)}</bdi>
-                </Auto>
-              </tr>
-            </tbody>
-          </table>
-          <div className="scope-box">
-            <p style={{ margin: "0 0 8px" }}>
-              يعتمد أساس التقييم على تحديد{" "}
-              <span className="auto">
-                {filled(
-                    selectedBasis?.name ||
-                      labelForBasisKey(poValuation.valueBasisKey),
-                    "[أساس القيمة]",
-                  )}
-              </span>{" "}
-              لموضوع التقييم في حالته الراهنة.
-            </p>
-            <ul style={{ margin: 0 }}>
-              <li>
-                {basisDefinition ||
-                  "تعريف أساس القيمة — يتبدل تلقائيًا حسب الأساس المختار من قوائم التقييم."}
-              </li>
-            </ul>
+      <div className="mb-4">
+        <PropertyDetailMediaGlance
+          property={property}
+          primaryPhoto={primaryPhoto}
+          inspectorDescription={inspector?.propertyDescription}
+          latitude={inspector?.mapLatitude}
+          longitude={inspector?.mapLongitude}
+          showCoordinates={false}
+        />
+        {inspectionChips.length > 0 ? (
+          <div className="mt-2 flex flex-wrap gap-1.5">
+            {inspectionChips.map((chip) => (
+              <span key={chip} className={valChipClassName}>
+                {chip}
+              </span>
+            ))}
           </div>
-        </Sec>
+        ) : null}
+      </div>
 
-        <Sec n="03" title="المدخلات الرئيسية" open={isOpen("03")} onToggle={() => toggle("03")}>
-          <p className="sysnote">نص ثابت من تقرير التقييم المهني.</p>
-          <BulletView text={vr.keyInputsText} />
-        </Sec>
-        <Sec
-          n="04"
-          title="التأكيد على الالتزام بمعايير التقييم الدولية"
-          open={isOpen("04")}
-          onToggle={() => toggle("04")}
-        >
-          <p>
-            {applyIvsDateToStandards(vr.professionalStandards, ivsDate)
-              .split(ivsDate)
-              .map((part, i, arr) => (
-                <span key={i}>
-                  {part}
-                  {i < arr.length - 1 ? (
-                    <span className="gold-date">{ivsDate}</span>
-                  ) : null}
-                </span>
-              ))}
-          </p>
-        </Sec>
-        <Sec
-          n="05"
-          title="إقرار بالاستقلالية وعدم تضارب المصالح"
-          open={isOpen("05")}
-          onToggle={() => toggle("05")}
-        >
-          <p>{filled(vr.independence)}</p>
-        </Sec>
-      </section>
-
-      <section className="rpt-page">
-        <Sec n="06" title="الأصل محل التقييم" open={isOpen("06")} onToggle={() => toggle("06")}>
-          <table>
-            <tbody>
-              <tr>
-                <K>نوع العقار</K>
-                <Auto>{filled(property?.propertyType)}</Auto>
-                <K>حالة العقار</K>
-                <Auto>{filled(inspector?.featureValues.buildState)}</Auto>
-              </tr>
-              <tr>
-                <K>نوع الملكية</K>
-                <Auto colSpan={3}>
-                  {filled(ownershipTypeDisplay(property?.ownershipType))}
-                </Auto>
-              </tr>
-            </tbody>
-          </table>
-        </Sec>
-        <Sec n="07" title="تفاصيل موقع العقار" open={isOpen("07")} onToggle={() => toggle("07")}>
-          <table>
-            <tbody>
-              <tr>
-                <K>اسم المنطقة</K>
-                <Auto>{filled(property?.region)}</Auto>
-                <K>اسم المدينة</K>
-                <Auto>{filled(property?.city)}</Auto>
-                <K>اسم الحي</K>
-                <Auto>{filled(property?.district)}</Auto>
-              </tr>
-              <tr>
-                <K>اسم المخطط</K>
-                <Auto>{filled(property?.planName)}</Auto>
-                <K>رقم المخطط</K>
-                <Auto>{filled(property?.planNumber)}</Auto>
-                <K>رقم البلك</K>
-                <Auto>{filled(property?.blockNumber)}</Auto>
-              </tr>
-              <tr>
-                <K>رقم القطعة</K>
-                <Auto>{filled(property?.plotNumber)}</Auto>
-                <K>استخدام العقار</K>
-                <Auto>{filled(property?.classification)}</Auto>
-                <K>إحداثيات الموقع</K>
-                <Auto>
-                  <bdi>{filled(coords)}</bdi>
-                </Auto>
-              </tr>
-              <tr>
-                <K>اسم المالك</K>
-                <Auto>{filled(property?.ownerName)}</Auto>
-                <K>رقم الصك</K>
-                <Auto>
-                  <bdi>{filled(property?.deedNumber)}</bdi>
-                </Auto>
-                <K>تاريخ الصك</K>
-                <Auto>{filled(property?.deedDate)}</Auto>
-              </tr>
-              <tr>
-                <K>عمر البناء</K>
-                <Auto>{filled(inspector?.propertyAgeYears)}</Auto>
-                <K>حالة البناء</K>
-                <Auto>{filled(inspector?.featureValues.buildState)}</Auto>
-                <K>حالة الإشغال</K>
-                <Auto>{filled(inspector?.featureValues.occupancyState)}</Auto>
-              </tr>
-            </tbody>
-          </table>
-        </Sec>
-        <Sec n="08" title="حدود وأطوال العقار" open={isOpen("08")} onToggle={() => toggle("08")}>
-          <table className="mx">
-            <thead>
-              <tr>
-                <th style={{ width: "18%" }}>الجهة</th>
-                <th>الحد</th>
-                <th style={{ width: "18%" }}>طول الضلع</th>
-                <th style={{ width: "22%" }}>الواجهات</th>
-              </tr>
-            </thead>
-            <tbody>
-              {sides.map((side) => (
-                <tr key={side.name}>
-                  <td className="v">{side.name}</td>
-                  <Auto>{filled(side.bound)}</Auto>
-                  <Auto>{filled(side.len)}</Auto>
-                  <Auto>{filled(side.face)}</Auto>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </Sec>
-        <Sec n="09" title="تفاصيل المساحات" open={isOpen("09")} onToggle={() => toggle("09")}>
-          <table>
-            <tbody>
-              <tr>
-                <K>مساحة الأرض</K>
-                <Auto>{filled(property?.area)}</Auto>
-              </tr>
-            </tbody>
-          </table>
-        </Sec>
-        <Sec n="10" title="وصف حالة العقار" open={isOpen("10")} onToggle={() => toggle("10")}>
-          <p className="sysnote">من المعاينة.</p>
-          <table>
-            <tbody>
-              <tr>
-                <K>حالة البناء</K>
-                <Auto>{filled(inspector?.featureValues.buildState)}</Auto>
-                <K>حالة الإشغال</K>
-                <Auto>{filled(inspector?.featureValues.occupancyState)}</Auto>
-              </tr>
-            </tbody>
-          </table>
-        </Sec>
-        <Sec n="11" title="مكونات العقار" open={isOpen("11")} onToggle={() => toggle("11")}>
-          <p className="sysnote">من جرد المعاينة عند توفره.</p>
-          <table>
-            <tbody>
-              <tr>
-                <K>غرف</K>
-                <Auto>{filled(inspector?.roomCount)}</Auto>
-                <K>صالات</K>
-                <Auto>{filled(inspector?.hallCount)}</Auto>
-                <K>دورات مياه</K>
-                <Auto>{filled(inspector?.bathroomCount)}</Auto>
-              </tr>
-            </tbody>
-          </table>
-        </Sec>
-        <Sec n="12" title="مستوى تشطيبات البناء" open={isOpen("12")} onToggle={() => toggle("12")}>
-          <p className="sysnote">اختيار المقيم — التفصيل من تقرير التقييم المهني.</p>
-          <div className="mb-2">
+      <ValCard title="أسلوب وطريقة التقييم المستخدمة">
+        <p className={noteClassName}>
+          اختيار المقيم. حقائق المعاينة والحصر وأمر العمل أعلاه معلومات — لا تُعاد كتابتها.
+        </p>
+        <ValFieldsGrid min={180}>
+          <div className="min-w-0">
+            <div className={valLabelClassName}>أسلوب السوق</div>
             <Pick
               disabled={disabled}
-              value={choices.finishingLevel}
-              onChange={(finishingLevel) =>
-                patch({
-                  finishingLevel: finishingLevel as EvaluatorReportChoices["finishingLevel"],
-                })
-              }
-              options={[
-                { value: "luxury", label: "فاخر" },
-                { value: "medium", label: "متوسط" },
-                { value: "ordinary", label: "عادي" },
-                { value: "none", label: "بدون تشطيب" },
-              ]}
+              value={choices.marketMethodKey}
+              onChange={(marketMethodKey) => patch({ marketMethodKey })}
+              options={methodOpts("أسلوب السوق")}
             />
           </div>
-          {choices.finishingLevel === "luxury" ? (
-            <BulletView text={vr.finishingLuxury} />
-          ) : null}
-          {choices.finishingLevel === "medium" ? (
-            <BulletView text={vr.finishingMedium} />
-          ) : null}
-          {choices.finishingLevel === "ordinary" ? (
-            <BulletView text={vr.finishingOrdinary} />
-          ) : null}
-          {choices.finishingLevel === "none" ? (
-            <p>بدون تشطيب — يُطبع دون تفصيل.</p>
-          ) : null}
-        </Sec>
-        <Sec n="13" title="وصف العيوب الإنشائية" open={isOpen("13")} onToggle={() => toggle("13")}>
-          <p>
-            لا توجد عيوب إنشائية ظاهرة وقت المعاينة، وما رُصد ملاحظات صيانة سطحية لا تؤثر في القيمة.
-          </p>
-        </Sec>
-        <Sec
-          n="14"
-          title="الخدمات والمرافق المتوفرة بالعقار"
-          open={isOpen("14")}
-          onToggle={() => toggle("14")}
-        >
-          <p className="sysnote">من المعاينة عند توفرها — تُستكمل لاحقًا من جرد الخدمات.</p>
-        </Sec>
-      </section>
+          <div className="min-w-0">
+            <div className={valLabelClassName}>أسلوب التكلفة</div>
+            <Pick
+              disabled={disabled}
+              value={choices.costMethodKey}
+              onChange={(costMethodKey) => patch({ costMethodKey })}
+              options={methodOpts("أسلوب التكلفة")}
+            />
+          </div>
+          <div className="min-w-0">
+            <div className={valLabelClassName}>أسلوب الدخل</div>
+            <Pick
+              disabled={disabled}
+              value={choices.incomeMethodKey}
+              onChange={(incomeMethodKey) => patch({ incomeMethodKey })}
+              options={methodOpts("أسلوب الدخل")}
+            />
+          </div>
+        </ValFieldsGrid>
+      </ValCard>
 
-      <section className="rpt-page">
-        <Sec n="15" title="المحيط المؤثر للعقار" open={isOpen("15")} onToggle={() => toggle("15")}>
-          <p className="sysnote">يُستكمل من ملاحظات المعاينة.</p>
-        </Sec>
-        <Sec
-          n="16"
-          title="أسلوب وطريقة التقييم المستخدمة"
-          open={isOpen("16")}
-          onToggle={() => toggle("16")}
-        >
-          <p className="sysnote">من قائمة «أساليب وطرق التقييم» في قوائم التقييم.</p>
-          <table className="mx">
+      <ValCard title="العقارات المقارنة">
+        <p className={noteClassName}>
+          ربط الأخصائي — للعلم. الاعتماد والتسويات وأسعار التكلفة في اللوحة أدناه عند استخدام
+          أسلوب السوق أو التكلفة.
+        </p>
+        <EvaluatorLinkedComparablesBlock propertyId={property?.id} />
+      </ValCard>
+
+      {showWorkPanel && property?.id ? (
+        <ValCard title="اعتماد المقارنات وأسلوب التكلفة">
+          <p className={noteClassName}>
+            عمل المقيم: اعتماد المقارن، التسويات، بنود التكلفة والإهلاك. الخريطة وجدول
+            التسويات يُولَّدان هنا وعند طباعة التقرير.
+          </p>
+          <EvaluatorComparableSelectionPanel
+            propertyId={property.id}
+            poNumber={draft.poNumber}
+            assignmentType={assignmentType ?? undefined}
+            districtHint={property.district}
+          />
+        </ValCard>
+      ) : null}
+
+      {incomeOn ? (
+        <ValCard title="أسلوب الدخل">
+          <p className={noteClassName}>يظهر فقط عند اختيار أسلوب الدخل.</p>
+          <ValFieldsGrid min={160}>
+            <div className="min-w-0">
+              <div className={valLabelClassName}>دخل سنوي (ر.س.)</div>
+              <input
+                className={valInputClassName}
+                disabled={disabled}
+                dir="ltr"
+                value={choices.incomeAnnual}
+                onChange={(e) => patch({ incomeAnnual: e.target.value })}
+              />
+            </div>
+            <div className="min-w-0">
+              <div className={valLabelClassName}>نسبة الشغور ٪</div>
+              <input
+                className={valInputClassName}
+                disabled={disabled}
+                dir="ltr"
+                value={choices.incomeVacancyPct}
+                onChange={(e) => patch({ incomeVacancyPct: e.target.value })}
+              />
+            </div>
+            <div className="min-w-0">
+              <div className={valLabelClassName}>نسبة التشغيل ٪</div>
+              <input
+                className={valInputClassName}
+                disabled={disabled}
+                dir="ltr"
+                value={choices.incomeOpexPct}
+                onChange={(e) => patch({ incomeOpexPct: e.target.value })}
+              />
+            </div>
+            <div className="min-w-0">
+              <div className={valLabelClassName}>معدل الرسملة ٪</div>
+              <input
+                className={valInputClassName}
+                disabled={disabled}
+                dir="ltr"
+                value={choices.incomeCapRatePct}
+                onChange={(e) => patch({ incomeCapRatePct: e.target.value })}
+              />
+            </div>
+          </ValFieldsGrid>
+        </ValCard>
+      ) : null}
+
+      <ValCard title="ترجيح أساليب التقييم">
+        <p className={noteClassName}>المبرر يُطبع في التقرير. الأوزان تُحفظ مع الترجيح في لوحة العمل.</p>
+        <textarea
+          className={cn(valInputClassName, "min-h-[88px] resize-y")}
+          disabled={disabled}
+          rows={3}
+          placeholder="مبرر استخدام طرق التقييم"
+          value={choices.methodsRationale}
+          onChange={(e) => patch({ methodsRationale: e.target.value })}
+        />
+      </ValCard>
+
+      <ValCard title="القيمة النهائية للعقار">
+        <p className={noteClassName}>رأي المقيم. المجموع يُحدَّث من الأرض والمباني إن وُجدت.</p>
+        <ValFieldsGrid min={160}>
+          <div className="min-w-0">
+            <label className={valLabelClassName} htmlFor="inf-land">
+              قيمة الأرض (ر.س.)
+            </label>
+            <input
+              id="inf-land"
+              className={cn(valInputClassName, err("land_value") && invalidControlClass)}
+              disabled={disabled}
+              dir="ltr"
+              value={draft.landValue}
+              onChange={(e) => patchValues({ landValue: e.target.value })}
+            />
+            {err("land_value") ? (
+              <p className="mt-1 text-[11px] text-danger-text">{err("land_value")}</p>
+            ) : null}
+          </div>
+          <div className="min-w-0">
+            <label className={valLabelClassName} htmlFor="inf-building">
+              قيمة المباني (ر.س.)
+            </label>
+            <input
+              id="inf-building"
+              className={cn(valInputClassName, err("building_value") && invalidControlClass)}
+              disabled={disabled}
+              dir="ltr"
+              value={draft.buildingValue}
+              onChange={(e) => patchValues({ buildingValue: e.target.value })}
+            />
+            {err("building_value") ? (
+              <p className="mt-1 text-[11px] text-danger-text">{err("building_value")}</p>
+            ) : null}
+          </div>
+          <div className="min-w-0">
+            <label className={valLabelClassName} htmlFor="inf-total">
+              رأي القيمة (ر.س.)
+            </label>
+            <input
+              id="inf-total"
+              className={cn(valInputClassName, err("evaluator_price") && invalidControlClass)}
+              disabled={disabled}
+              dir="ltr"
+              value={draft.evaluatorPrice}
+              onChange={(e) => patchValues({ evaluatorPrice: e.target.value })}
+            />
+            {err("evaluator_price") ? (
+              <p className="mt-1 text-[11px] text-danger-text">{err("evaluator_price")}</p>
+            ) : null}
+          </div>
+          {liquidation ? (
+            <div className="min-w-0">
+              <label className={valLabelClassName} htmlFor="inf-discount">
+                خصم التصفية ٪
+              </label>
+              <input
+                id="inf-discount"
+                className={cn(
+                  valInputClassName,
+                  err("forced_sale_discount") && invalidControlClass,
+                )}
+                disabled={disabled}
+                dir="ltr"
+                value={draft.forcedSaleDiscountPct}
+                onChange={(e) =>
+                  patchValues({ forcedSaleDiscountPct: e.target.value })
+                }
+              />
+              {err("forced_sale_discount") ? (
+                <p className="mt-1 text-[11px] text-danger-text">
+                  {err("forced_sale_discount")}
+                </p>
+              ) : null}
+            </div>
+          ) : null}
+        </ValFieldsGrid>
+      </ValCard>
+
+      <ValCard title="الافتراضات الخاصة">
+        <p className={noteClassName}>أزل العبارة التي لا تصح على هذا العقار. يُطبع المُبقى فقط.</p>
+        <ul className="m-0 flex list-none flex-col gap-2 p-0">
+          {specials.map((item, i) => (
+            <li key={i}>
+              <label className="flex items-start gap-2 text-[12.5px] text-text">
+                <input
+                  type="checkbox"
+                  disabled={disabled}
+                  checked={assumptionOn[i] ?? true}
+                  onChange={(e) => {
+                    const next = [...assumptionOn];
+                    next[i] = e.target.checked;
+                    patch({ specialAssumptionOn: next });
+                  }}
+                />
+                <span>{item}</span>
+              </label>
+            </li>
+          ))}
+        </ul>
+      </ValCard>
+
+      <ValCard title="العوامل البيئية والاجتماعية والحوكمة (ESG)">
+        <div className="overflow-x-auto">
+          <table className="w-full min-w-[560px] border-collapse">
             <thead>
               <tr>
-                <th style={{ width: "33%" }}>أسلوب السوق</th>
-                <th style={{ width: "33%" }}>أسلوب التكلفة</th>
-                <th>أسلوب الدخل</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr>
-                <td className="v">
-                  <Pick
-                    disabled={disabled}
-                    value={choices.marketMethodKey}
-                    onChange={(marketMethodKey) => patch({ marketMethodKey })}
-                    options={methodOpts("أسلوب السوق")}
-                  />
-                </td>
-                <td className="v">
-                  <Pick
-                    disabled={disabled}
-                    value={choices.costMethodKey}
-                    onChange={(costMethodKey) => patch({ costMethodKey })}
-                    options={methodOpts("أسلوب التكلفة")}
-                  />
-                </td>
-                <td className="v">
-                  <Pick
-                    disabled={disabled}
-                    value={choices.incomeMethodKey}
-                    onChange={(incomeMethodKey) => patch({ incomeMethodKey })}
-                    options={methodOpts("أسلوب الدخل")}
-                  />
-                </td>
-              </tr>
-            </tbody>
-          </table>
-        </Sec>
-        <Sec n="17" title="العقارات المقارنة" open={isOpen("17")} onToggle={() => toggle("17")}>
-          <p className="sysnote">
-            أعمدة الجدول من قائمة «العقارات المقارنة» في قوائم التقييم. يُطبع إذا اختيرت طريقة
-            المقارنة.
-          </p>
-          {comparableCols.length ? (
-            <table className="mx">
-              <thead>
-                <tr>
-                  {comparableCols.map((col) => (
-                    <th key={col.id}>{col.name}</th>
-                  ))}
-                </tr>
-              </thead>
-            </table>
-          ) : null}
-        </Sec>
-        <Sec n="18" title="خريطة مواقع المقارنات" open={isOpen("18")} onToggle={() => toggle("18")}>
-          <div className="map-ph">تُولَّد من إحداثيات الأصل والمقارنات عند الإصدار</div>
-        </Sec>
-        <Sec n="19" title="جدول التسويات" open={isOpen("19")} onToggle={() => toggle("19")}>
-          <p className="sysnote">ديناميكي — يظهر مع طريقة المقارنة.</p>
-        </Sec>
-        <Sec n="20" title="قيمة الأرض (أسلوب التكلفة)" open={isOpen("20")} onToggle={() => toggle("20")}>
-          <p className="sysnote">يُطبع إذا اختير أسلوب التكلفة.</p>
-          <table>
-            <tbody>
-              <tr>
-                <K>قيمة الأرض</K>
-                <Auto>{filled(draft.landValue)}</Auto>
-              </tr>
-            </tbody>
-          </table>
-        </Sec>
-        <Sec n="21" title="بنود التكلفة المباشرة" open={isOpen("21")} onToggle={() => toggle("21")}>
-          <p className="sysnote">شرط الظهور: أسلوب التكلفة + عقار مبني.</p>
-        </Sec>
-        <Sec n="22" title="التكاليف غير المباشرة" open={isOpen("22")} onToggle={() => toggle("22")}>
-          <p className="sysnote">شرط الظهور: أسلوب التكلفة + عقار مبني.</p>
-        </Sec>
-        <Sec n="23" title="العمر والإهلاك" open={isOpen("23")} onToggle={() => toggle("23")}>
-          <p className="sysnote">شرط الظهور: أسلوب التكلفة + عقار مبني.</p>
-        </Sec>
-        <Sec n="24" title="ترجيح أساليب التقييم" open={isOpen("24")} onToggle={() => toggle("24")}>
-          <p className="sysnote">يظهر عند استخدام أكثر من أسلوب.</p>
-        </Sec>
-        <Sec n="25" title="القيمة النهائية للعقار" open={isOpen("25")} onToggle={() => toggle("25")}>
-          <table>
-            <tbody>
-              <tr>
-                <K>رأي القيمة</K>
-                <Auto>{filled(draft.evaluatorPrice)}</Auto>
-                <K>خصم التصفية ٪</K>
-                <Auto>{filled(draft.forcedSaleDiscountPct)}</Auto>
-              </tr>
-            </tbody>
-          </table>
-        </Sec>
-      </section>
-
-      <section className="rpt-page">
-        <Sec n="26" title="المشاركون في إعداد التقرير" open={isOpen("26")} onToggle={() => toggle("26")}>
-          <ParticipantsTable rows={parts} branch={vr.valuationBranch} />
-          <h2 className="rpt-h static">
-            <span className="n">27</span>إعتماد تقرير التقييم
-          </h2>
-          <table className="ctr">
-            <tbody>
-              <tr>
-                <K>الاسم</K>
-                <td className="v">{filled(ev.name, htmlEv.name)}</td>
-                <K>رقم العضوية</K>
-                <td className="v num">
-                  {filled(ev.membershipNumber, htmlEv.membershipNumber)}
-                </td>
-              </tr>
-              <tr>
-                <K>فرع التقييم</K>
-                <td className="v">{filled(vr.valuationBranch)}</td>
-                <K>فئة العضوية</K>
-                <td className="v">
-                  {memLabel(
-                    filled(ev.membershipCategory, String(htmlEv.membershipCategory ?? "")),
-                  )}
-                </td>
-              </tr>
-              <tr>
-                <K>صفته</K>
-                <td className="v">{filled(ev.title, htmlEv.title)}</td>
-                <K>تاريخ انتهاء العضوية</K>
-                <td className="v num">
-                  {slashDate(
-                    filled(ev.membershipExpiresAt, htmlEv.membershipExpiresAt),
-                  )}
-                </td>
-              </tr>
-              <tr>
-                <K>التوقيع</K>
-                <td className="v" style={{ height: 64 }}>
-                  <BrandImage src={certifiedSig} alt="التوقيع" />
-                </td>
-                <K>ختم المنشأة</K>
-                <td className="v" style={{ textAlign: "center" }}>
-                  <BrandImage
-                    src={stampUrl}
-                    alt="ختم المنشأة"
-                    widthCm={stampW}
-                    heightCm={stampH}
-                  />
-                </td>
-              </tr>
-            </tbody>
-          </table>
-        </Sec>
-      </section>
-
-      <section className="rpt-page">
-        <Sec
-          n="28"
-          title="نطاق البحث وطبيعة ومصدر المعلومات"
-          open={isOpen("28")}
-          onToggle={() => toggle("28")}
-        >
-          <BulletView text={vr.researchScopeText} />
-        </Sec>
-        <Sec n="29" title="الافتراضات الخاصة" open={isOpen("29")} onToggle={() => toggle("29")}>
-          <p className="sysnote">أزل العبارة التي لا تصح على هذا العقار. يُطبع المُبقى فقط.</p>
-          <ul>
-            {specials.map((item, i) => (
-              <li key={i}>
-                <label className="flex items-start gap-2">
-                  <input
-                    type="checkbox"
-                    disabled={disabled}
-                    checked={assumptionOn[i] ?? true}
-                    onChange={(e) => {
-                      const next = [...assumptionOn];
-                      next[i] = e.target.checked;
-                      patch({ specialAssumptionOn: next });
-                    }}
-                  />
-                  <span>{item}</span>
-                </label>
-              </li>
-            ))}
-          </ul>
-        </Sec>
-        <Sec
-          n="30"
-          title="العوامل البيئية والاجتماعية والحوكمة (ESG)"
-          open={isOpen("30")}
-          onToggle={() => toggle("30")}
-        >
-          <table>
-            <thead>
-              <tr>
-                <th style={{ width: "16%" }}>المجموعة</th>
-                <th style={{ width: "34%" }}>العوامل</th>
-                <th>وصف الأثر</th>
+                <th className={cn(valTableThClassName, "w-[16%] text-start")}>المجموعة</th>
+                <th className={cn(valTableThClassName, "w-[34%] text-start")}>العوامل</th>
+                <th className={cn(valTableThClassName, "text-start")}>وصف الأثر</th>
               </tr>
             </thead>
             <tbody>
@@ -1125,42 +666,14 @@ export function EvaluatorValuationReportTab({
               />
             </tbody>
           </table>
-        </Sec>
-        <Sec
-          n="31"
-          title="الشروط والأحكام وإخلاء المسؤولية"
-          open={isOpen("31")}
-          onToggle={() => toggle("31")}
-        >
-          <BulletView text={vr.terms} />
-        </Sec>
-        <Sec n="32" title="القيود على الاستخدام والنشر" open={isOpen("32")} onToggle={() => toggle("32")}>
-          <BulletView text={vr.restrictions} />
-        </Sec>
-        <Sec n="33" title="خريطة الأقمار الصناعية" open={isOpen("33")} onToggle={() => toggle("33")}>
-          <table>
-            <tbody>
-              <tr>
-                <K>الموقع</K>
-                <Auto>{filled(loc)}</Auto>
-                <K>إحداثيات الموقع</K>
-                <Auto>
-                  <bdi>{filled(coords)}</bdi>
-                </Auto>
-              </tr>
-            </tbody>
-          </table>
-        </Sec>
-        <Sec n="34" title="صور العقار" open={isOpen("34")} onToggle={() => toggle("34")}>
-          <p className="sysnote">
-            من المعاينة. صفحات الصور من قوائم التقييم: أرض {lists?.photoPagesLand ?? 1} · مبانٍ{" "}
-            {lists?.photoPagesBuilt ?? 2}.
-          </p>
-        </Sec>
-        <Sec n="35" title="التقرير المساحي" open={isOpen("35")} onToggle={() => toggle("35")}>
-          <p className="sysnote">اختر المرفق ليُطبع — من قائمة مرفقات التقرير.</p>
+        </div>
+      </ValCard>
+
+      <ValCard title="التقرير المساحي">
+        <p className={noteClassName}>اختر المرفق ليُطبع — من قائمة مرفقات التقرير.</p>
+        <div className="flex flex-col gap-2">
           {attachments.map((row) => (
-            <label key={row.id} className="flex items-center gap-2 text-[12px]">
+            <label key={row.id} className="flex items-center gap-2 text-[12px] text-text">
               <input
                 type="checkbox"
                 disabled={disabled}
@@ -1176,57 +689,8 @@ export function EvaluatorValuationReportTab({
               {row.isRequired ? " (إلزامي)" : ""}
             </label>
           ))}
-        </Sec>
-        <Sec n="36" title="صك الملكية" open={isOpen("36")} onToggle={() => toggle("36")}>
-          <p className="sysnote">من مستندات المعاملة.</p>
-          <table>
-            <tbody>
-              <tr>
-                <K>ملف الصك</K>
-                <Auto>
-                  {filled(
-                    property?.deedOwnershipFileName ||
-                      property?.bourseDeedImageFileName,
-                  )}
-                </Auto>
-              </tr>
-            </tbody>
-          </table>
-        </Sec>
-        <Sec
-          n="37"
-          title="معايير التقييم الدولية العامة"
-          open={isOpen("37")}
-          onToggle={() => toggle("37")}
-        >
-          <table className="def">
-            <tbody>
-              {ivs.map((row) => (
-                <tr key={row.id}>
-                  <td className="k" style={{ width: "22%", whiteSpace: "normal" }}>
-                    {row.name}
-                  </td>
-                  <td>{row.cells[0] ?? ""}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </Sec>
-        <Sec n="38" title="مصطلحات مهنية" open={isOpen("38")} onToggle={() => toggle("38")}>
-          <table className="tight">
-            <tbody>
-              {glossary.map((row) => (
-                <tr key={row.id}>
-                  <td className="k" style={{ width: "20%", whiteSpace: "normal" }}>
-                    {row.name}
-                  </td>
-                  <td>{row.cells[0] ?? ""}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </Sec>
-      </section>
+        </div>
+      </ValCard>
     </div>
   );
 }

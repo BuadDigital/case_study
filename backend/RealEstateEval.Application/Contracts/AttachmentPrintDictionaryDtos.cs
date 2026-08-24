@@ -25,5 +25,3 @@ public class SaveAttachmentPrintDictionaryRequest
 {
     public IReadOnlyList<AttachmentPrintTypeDto>? Types { get; init; }
 }
-
-// ClassifyAttachmentRequest moved to RealEstateEval.Attachments.Application (A8).

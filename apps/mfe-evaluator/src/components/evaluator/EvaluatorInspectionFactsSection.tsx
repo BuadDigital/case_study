@@ -9,6 +9,65 @@ import { fetchInspectorWorkspace } from "@case-study/mfe/lib/prototype/inspector
 import { EvaluatorCopyField } from "./EvaluatorChecklistTab";
 import { EngInfo, EngSection } from "./EvaluatorHtmlPrimitives";
 
+export function inspectionFactChips(
+  workspace: InspectorWorkspaceDraft | null | undefined,
+): string[] {
+  if (!workspace) return [];
+  const chips: string[] = [];
+  const add = (text: string | null | undefined) => {
+    const t = (text ?? "").trim();
+    if (t) chips.push(t);
+  };
+  add((workspace.roomCount ?? "").trim() ? `${workspace.roomCount.trim()} غرف` : "");
+  add((workspace.hallCount ?? "").trim() ? `${workspace.hallCount.trim()} صالات` : "");
+  add(
+    (workspace.bathroomCount ?? "").trim()
+      ? `${workspace.bathroomCount.trim()} دورات مياه`
+      : "",
+  );
+  add(
+    workspace.featureValues?.hasElevator === "نعم"
+      ? "مصعد"
+      : workspace.featureValues?.hasElevator === "لا"
+        ? "بدون مصعد"
+        : "",
+  );
+  add(
+    workspace.featureValues?.hasPool === "نعم"
+      ? "مسبح"
+      : workspace.featureValues?.hasPool === "لا"
+        ? "بدون مسبح"
+        : "",
+  );
+  add(
+    workspace.hasAnnex === "نعم"
+      ? (workspace.annexTotal ?? "").trim()
+        ? `ملاحق ${workspace.annexTotal.trim()} م²`
+        : "ملاحق"
+      : workspace.hasAnnex === "لا"
+        ? "بدون ملاحق"
+        : "",
+  );
+  add(
+    workspace.hasViolations === "نعم"
+      ? "مخالفات ظاهرة"
+      : workspace.hasViolations === "لا"
+        ? "لا مخالفات"
+        : "",
+  );
+  add(
+    (workspace.electricityMeterCount ?? "").trim()
+      ? `${workspace.electricityMeterCount.trim()} عداد كهرباء`
+      : "",
+  );
+  add(
+    (workspace.waterMeterCount ?? "").trim()
+      ? `${workspace.waterMeterCount.trim()} عداد ماء`
+      : "",
+  );
+  return chips;
+}
+
 function filled(value: string | null | undefined): string | null {
   const trimmed = value?.trim() ?? "";
   return trimmed ? trimmed : null;
@@ -50,17 +109,48 @@ export function EvaluatorInspectionFactsSection({
     };
   }, [inspectionTaskId]);
 
-  const features = INSPECTOR_FEATURE_FIELDS.map((field) => ({
-    label: field.label,
-    value: filled(workspace?.featureValues[field.key]),
-  })).filter((row) => row.value);
+  const features = INSPECTOR_FEATURE_FIELDS.flatMap((field) => {
+    const rows = [
+      {
+        label: field.label,
+        value: filled(workspace?.featureValues[field.key]),
+      },
+    ];
+    if (
+      field.key === "movables" &&
+      filled(workspace?.featureValues[field.key]) === "نعم"
+    ) {
+      rows.push({
+        label: "وصف المنقولات",
+        value: filled(workspace?.featureValues.movablesDescription),
+      });
+    }
+    return rows;
+  }).filter((row) => row.value);
 
   const extras = [
     { label: "تاريخ معاينة العقار", value: filled(workspace?.inspectionDate) },
     { label: "عمر العقار (سنة)", value: filled(workspace?.propertyAgeYears) },
     { label: "مساحة البناء", value: filled(workspace?.builtArea) },
     { label: "عدد الأدوار", value: filled(workspace?.buildingFloors) },
+    { label: "عدد الغرف", value: filled(workspace?.roomCount) },
+    { label: "عدد الصالات", value: filled(workspace?.hallCount) },
+    { label: "دورات المياه", value: filled(workspace?.bathroomCount) },
+    { label: "ملاحق", value: filled(workspace?.hasAnnex) || filled(workspace?.annexTotal) },
+    { label: "عدادات الكهرباء", value: filled(workspace?.electricityMeterCount) },
+    { label: "عدادات الماء", value: filled(workspace?.waterMeterCount) },
+    {
+      label: "مخالفات ظاهرة",
+      value:
+        workspace?.hasViolations === "نعم"
+          ? [workspace.violationsCount, workspace.violationsDescription]
+              .map((x) => (x ?? "").trim())
+              .filter(Boolean)
+              .join(" — ") || "نعم"
+          : filled(workspace?.hasViolations),
+    },
     { label: "الخدمات", value: workspace?.services?.filter(Boolean).join("، ") || null },
+    { label: "المرافق", value: workspace?.amenities?.filter(Boolean).join("، ") || null },
   ].filter((row) => row.value);
 
   return (

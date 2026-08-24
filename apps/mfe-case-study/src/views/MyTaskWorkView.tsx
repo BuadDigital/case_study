@@ -24,7 +24,6 @@ import {
 import { usePrototype } from "@platform/app-shared/contexts/PrototypeContext";
 import { myTasksPath } from "../lib/my-task-routes";
 import {
-  classificationRequiresSurvey,
   emptyProperty,
   formatPoDisplay,
   formatPropertyDeedDisplay,
@@ -58,6 +57,7 @@ import {
   confirmTaskDistribution,
   distributionValidationError,
   engineeringOfficeAvailable,
+  engineeringOfficeUnavailableReason,
   migrateDistribution,
   patchTaskDistribution,
   resolveTaskObstruction,
@@ -194,7 +194,6 @@ export function CaseStudyTaskWork({
   }, []);
 
   const showEngineering = engineeringOfficeAvailable(property, hasPriorSurvey);
-  const requiresSurvey = classificationRequiresSurvey(property.classification);
 
   useEffect(() => {
     if (loading || task.phase !== "distribution" || showEngineering) return;
@@ -214,14 +213,10 @@ export function CaseStudyTaskWork({
       });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps -- sync when engineering unavailable
-  }, [loading, task.phase, task.id, showEngineering, property.classification]);
+  }, [loading, task.phase, task.id, showEngineering, property.classification, property.identifierType, property.realEstateRegNumber]);
 
   function engineeringUnavailableHint(): string | null {
-    if (!requiresSurvey) {
-      return "المكتب الهندسي غير متاح: تصنيف «وحدة داخل مبنى» لا يتطلب رفعاً مساحياً.";
-    }
-    if (hasPriorSurvey) return "يوجد رفع مساحي سابق لنفس الصك — لا حاجة لمكتب هندسي.";
-    return null;
+    return engineeringOfficeUnavailableReason(property, hasPriorSurvey);
   }
 
   async function saveEnfath() {

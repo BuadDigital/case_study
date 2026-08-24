@@ -24,6 +24,7 @@ import {
 } from "./inspector-enfath-prefill";
 import {
   createInspectorWorkspaceDraft,
+  inspectionStampFromNow,
   type InspectorBoundaryKey,
   type InspectorBoundaryMatch,
   type InspectorDefinedPhotoSlot,
@@ -286,8 +287,8 @@ function payloadToDraft(
     ...draft,
     propertyDisplayId:
       readString(payload.propertyDisplayId) || draft.propertyDisplayId,
-    inspectionDate: readString(payload.inspectionDate) || draft.inspectionDate,
-    inspectionTime: readString(payload.inspectionTime) || draft.inspectionTime,
+    inspectionDate: readString(payload.inspectionDate),
+    inspectionTime: readString(payload.inspectionTime),
     ...mapCoords,
     featureValues: readRecord(payload.featureValues),
     featurePhotoAttachments: readFeaturePhotoAttachments(
@@ -321,6 +322,24 @@ function payloadToDraft(
     declarationPhoneSatisfied: Boolean(payload.declarationPhoneSatisfied),
     hasAnnex:
       annex === "نعم" || annex === "لا" ? annex : ("" as "" | "نعم" | "لا"),
+    jacuzziCount: readString(payload.jacuzziCount),
+    diningCount: readString(payload.diningCount),
+    majlisCount: readString(payload.majlisCount),
+    maidRoomCount: readString(payload.maidRoomCount),
+    guardRoomCount: readString(payload.guardRoomCount),
+    parkingCount: readString(payload.parkingCount),
+    playgroundCount: readString(payload.playgroundCount),
+    storeCount: readString(payload.storeCount),
+    electricityMeterCount: readString(payload.electricityMeterCount),
+    electricityMeterNumbers: readString(payload.electricityMeterNumbers),
+    waterMeterCount: readString(payload.waterMeterCount),
+    waterMeterNumbers: readString(payload.waterMeterNumbers),
+    hasViolations: (() => {
+      const v = readString(payload.hasViolations);
+      return v === "نعم" || v === "لا" ? v : ("" as "" | "نعم" | "لا");
+    })(),
+    violationsCount: readString(payload.violationsCount),
+    violationsDescription: readString(payload.violationsDescription),
     boundaryMatches: readBoundaryMatches(payload.boundaryMatches),
     services: readStringArray(payload.services),
     amenities: readStringArray(payload.amenities),
@@ -381,6 +400,21 @@ function draftToPayload(
     clientDeclarationSigned: draft.clientDeclarationSigned,
     declarationPhoneSatisfied: draft.declarationPhoneSatisfied,
     hasAnnex: draft.hasAnnex,
+    jacuzziCount: draft.jacuzziCount,
+    diningCount: draft.diningCount,
+    majlisCount: draft.majlisCount,
+    maidRoomCount: draft.maidRoomCount,
+    guardRoomCount: draft.guardRoomCount,
+    parkingCount: draft.parkingCount,
+    playgroundCount: draft.playgroundCount,
+    storeCount: draft.storeCount,
+    electricityMeterCount: draft.electricityMeterCount,
+    electricityMeterNumbers: draft.electricityMeterNumbers,
+    waterMeterCount: draft.waterMeterCount,
+    waterMeterNumbers: draft.waterMeterNumbers,
+    hasViolations: draft.hasViolations,
+    violationsCount: draft.violationsCount,
+    violationsDescription: draft.violationsDescription,
     boundaryMatches: draft.boundaryMatches,
     services: draft.services,
     amenities: draft.amenities,
@@ -519,10 +553,23 @@ export async function getOrCreateInspectorWorkspace(input: {
   let existing = await fetchInspectorWorkspace(input.taskId);
   if (existing) {
     existing = await migrateInspectorDefaultCoordsIfNeeded(existing);
+    const stamp = inspectionStampFromNow();
+    const patch: {
+      propertyDisplayId?: string;
+      inspectionDate?: string;
+      inspectionTime?: string;
+    } = {};
     if (input.propertyDisplayId && !existing.propertyDisplayId.trim()) {
-      return updateInspectorWorkspace(input.taskId, {
-        propertyDisplayId: input.propertyDisplayId,
-      });
+      patch.propertyDisplayId = input.propertyDisplayId;
+    }
+    if (!existing.inspectionDate.trim()) {
+      patch.inspectionDate = stamp.inspectionDate;
+    }
+    if (!existing.inspectionTime.trim()) {
+      patch.inspectionTime = stamp.inspectionTime;
+    }
+    if (Object.keys(patch).length > 0) {
+      return updateInspectorWorkspace(input.taskId, patch);
     }
     return existing;
   }

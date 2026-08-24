@@ -24,11 +24,6 @@ public interface IAttachmentService
         PermissionsDto? actor,
         CancellationToken cancellationToken = default);
 
-    Task<(FileAttachmentMetaDto? Meta, string? Error)> ClassifyAsync(
-        Guid id,
-        ClassifyAttachmentRequest request,
-        CancellationToken cancellationToken = default);
-
     Task<bool> DeleteAsync(
         Guid id,
         PermissionsDto? actor,

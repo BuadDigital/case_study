@@ -2,6 +2,7 @@ import type { InputHTMLAttributes, ReactNode, SelectHTMLAttributes } from "react
 import { cn } from "../lib/cn";
 import {
   operationalToolbarPrimaryButtonClassName,
+  operationalToolbarSearchIconClassName,
   operationalToolbarSearchInputClassName,
   operationalToolbarSearchWrapClassName,
   operationalToolbarSelectCaretClassName,
@@ -59,7 +60,7 @@ export function OperationalToolbarSearch({
 }) {
   return (
     <div className={cn(operationalToolbarSearchWrapClassName, className)}>
-      <span className="ot-search__icon">
+      <span className={operationalToolbarSearchIconClassName}>
         <SearchGlyph />
       </span>
       {startAdornment}

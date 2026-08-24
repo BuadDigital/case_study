@@ -64,6 +64,26 @@ export type InspectorFeatureField = {
   shared?: boolean;
 };
 
+export const MOVABLES_FEATURE_KEY = "movables";
+export const MOVABLES_DESCRIPTION_KEY = "movablesDescription";
+export const MOVABLES_DESCRIPTION_LABEL = "وصف المنقولات";
+
+export function isMovablesPresent(featureValues: Record<string, string>): boolean {
+  return (featureValues[MOVABLES_FEATURE_KEY] ?? "").trim() === "نعم";
+}
+
+export function patchInspectorFeatureValues(
+  featureValues: Record<string, string>,
+  key: string,
+  next: string,
+): Record<string, string> {
+  const values = { ...featureValues, [key]: next };
+  if (key === MOVABLES_FEATURE_KEY && next.trim() !== "نعم") {
+    values[MOVABLES_DESCRIPTION_KEY] = "";
+  }
+  return values;
+}
+
 /**
  * Feature fields with photo-proof column (desktop table «صورة» / mobile capture).
  *
@@ -180,6 +200,8 @@ export const INSPECTOR_AMENITY_OPTIONS = [
   "أسواق تجارية",
   "طرق رئيسية",
   "حدائق",
+  "مرفق أمني",
+  "مقر حكومي",
 ] as const;
 
 export const INSPECTOR_OBSERVATION_CATEGORIES = [
@@ -306,6 +328,21 @@ export type InspectorWorkspaceDraft = {
   /** جُمِع جوال طرف قبل الإقرار — لا يُعاد قفله بعد الحذف */
   declarationPhoneSatisfied: boolean;
   hasAnnex: "" | "نعم" | "لا";
+  jacuzziCount: string;
+  diningCount: string;
+  majlisCount: string;
+  maidRoomCount: string;
+  guardRoomCount: string;
+  parkingCount: string;
+  playgroundCount: string;
+  storeCount: string;
+  electricityMeterCount: string;
+  electricityMeterNumbers: string;
+  waterMeterCount: string;
+  waterMeterNumbers: string;
+  hasViolations: "" | "نعم" | "لا";
+  violationsCount: string;
+  violationsDescription: string;
   boundaryMatches: Record<InspectorBoundaryKey, InspectorBoundaryMatch>;
   services: string[];
   amenities: string[];
@@ -345,22 +382,37 @@ function emptyBoundaryMatches(): Record<
   };
 }
 
+/** Local calendar date + clock when the inspector first opens the assignment. */
+export function inspectionStampFromNow(now = new Date()): {
+  inspectionDate: string;
+  inspectionTime: string;
+} {
+  const y = now.getFullYear();
+  const m = String(now.getMonth() + 1).padStart(2, "0");
+  const d = String(now.getDate()).padStart(2, "0");
+  const hh = String(now.getHours()).padStart(2, "0");
+  const mm = String(now.getMinutes()).padStart(2, "0");
+  return {
+    inspectionDate: `${y}-${m}-${d}`,
+    inspectionTime: `${hh}:${mm}`,
+  };
+}
+
 export function createInspectorWorkspaceDraft(input: {
   taskId: string;
   propertyId: string;
   poNumber: string;
   propertyDisplayId?: string;
 }): InspectorWorkspaceDraft {
-  const now = new Date().toISOString();
-  const today = now.slice(0, 10);
+  const stamp = inspectionStampFromNow();
   const { latitude, longitude } = jeddahDefaultCoords();
   return {
     taskId: input.taskId,
     propertyId: input.propertyId,
     poNumber: input.poNumber,
     propertyDisplayId: input.propertyDisplayId?.trim() ?? "",
-    inspectionDate: today,
-    inspectionTime: "10:30",
+    inspectionDate: stamp.inspectionDate,
+    inspectionTime: stamp.inspectionTime,
     mapLatitude: latitude,
     mapLongitude: longitude,
     featureValues: {},
@@ -389,6 +441,21 @@ export function createInspectorWorkspaceDraft(input: {
     clientDeclarationSigned: false,
     declarationPhoneSatisfied: false,
     hasAnnex: "",
+    jacuzziCount: "",
+    diningCount: "",
+    majlisCount: "",
+    maidRoomCount: "",
+    guardRoomCount: "",
+    parkingCount: "",
+    playgroundCount: "",
+    storeCount: "",
+    electricityMeterCount: "",
+    electricityMeterNumbers: "",
+    waterMeterCount: "",
+    waterMeterNumbers: "",
+    hasViolations: "",
+    violationsCount: "",
+    violationsDescription: "",
     boundaryMatches: emptyBoundaryMatches(),
     services: [],
     amenities: [],
@@ -401,7 +468,7 @@ export function createInspectorWorkspaceDraft(input: {
     inspectionConfirmed: false,
     status: "draft",
     submittedAtUtc: null,
-    updatedAtUtc: now,
+    updatedAtUtc: new Date().toISOString(),
   };
 }
 
@@ -511,36 +578,10 @@ export function listInspectorPhotoValidationIssues(
 ): string[] {
   const issues: string[] = [];
 
-  for (const field of INSPECTOR_FEATURE_FIELDS) {
-    const value = draft.featureValues[field.key] ?? "";
-    if (
-      inspectorFeatureRequiresPhoto(field, value) &&
-      !draft.featurePhotoAttachments[field.key]?.fileName
-    ) {
-      issues.push(`يجب إرفاق صورة توثيقية: ${field.label}`);
-    }
-  }
-
-  if (
-    parseInspectorCount(draft.showroomCount) > 0 &&
-    !draft.componentPhotoAttachments.showroom?.fileName
-  ) {
-    issues.push("يجب إرفاق صورة المعرض");
-  }
-  if (
-    parseInspectorCount(draft.wellCount) > 0 &&
-    !draft.componentPhotoAttachments.well?.fileName
-  ) {
-    issues.push("يجب إرفاق صورة البئر");
-  }
-
-  const { requiredTotal, requiredDone, pendingApproval } =
-    computeInspectorPhotoCoverage(draft);
-  if (requiredTotal > 0 && requiredDone < requiredTotal) {
-    issues.push(
-      "وثّق بالصورة كل خدمة/مرفق اخترته في «الخدمات والمرافق المحيطة»",
-    );
-  }
+  // Proof photos (feature table, showroom/well, services/amenities) are
+  // optional — the inspector may attach them but submission never blocks
+  // on a missing one.
+  const { pendingApproval } = computeInspectorPhotoCoverage(draft);
   if (pendingApproval > 0) {
     issues.push(`${pendingApproval} صورة بانتظار الاعتماد`);
   }

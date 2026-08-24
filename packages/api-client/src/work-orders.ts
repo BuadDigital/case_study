@@ -94,6 +94,8 @@ export type WorkOrderPropertyDto = {
   plotNumber?: string;
   blockNumber?: string;
   locationMapUrl?: string;
+  partitionMinutesNumber?: string;
+  partitionMinutesDate?: string;
   finishingType?: string;
   finishingStructure?: string;
   isRemoved?: boolean;
@@ -255,6 +257,8 @@ export type PriorDeedRegistrationDto = {
   plotNumber?: string;
   blockNumber?: string;
   locationMapUrl?: string;
+  partitionMinutesNumber?: string;
+  partitionMinutesDate?: string;
   finishingType?: string;
   finishingStructure?: string;
   bourseDataCompleted?: boolean;

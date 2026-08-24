@@ -12,7 +12,6 @@ import type {
   CaseStudyReportSection,
 } from "../../lib/prototype/case-study-report-model";
 import { PROPERTY_IDENTIFIER_COLUMN_LABEL } from "../../lib/prototype/po-intake-data";
-import "./case-study-report.css";
 
 type Props = {
   model: CaseStudyReportModel;

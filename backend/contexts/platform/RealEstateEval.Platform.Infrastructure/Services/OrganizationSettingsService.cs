@@ -255,6 +255,9 @@ public sealed class OrganizationSettingsService : IOrganizationSettingsService
                 LicenseExpiresAt = string.IsNullOrWhiteSpace(v.LicenseExpiresAt)
                     ? null
                     : v.LicenseExpiresAt.Trim(),
+                LicenseIssuedAt = string.IsNullOrWhiteSpace(v.LicenseIssuedAt)
+                    ? null
+                    : v.LicenseIssuedAt.Trim(),
                 MembershipExpiresAt = string.IsNullOrWhiteSpace(v.MembershipExpiresAt)
                     ? null
                     : v.MembershipExpiresAt.Trim(),

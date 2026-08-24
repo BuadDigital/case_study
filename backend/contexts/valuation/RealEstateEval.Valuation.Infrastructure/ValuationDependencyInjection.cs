@@ -32,6 +32,11 @@ public static class ValuationDependencyInjection
         services.AddScoped<IValuationRequestService, ValuationRequestService>();
         services.AddScoped<IEvaluatorRecallsService, EvaluatorRecallsService>();
         services.AddScoped<IComparablePropertyService, ComparablePropertyService>();
+        services.AddScoped<PropertyComparableLinkService>();
+        services.AddScoped<IPropertyComparableLinkService>(sp =>
+            sp.GetRequiredService<PropertyComparableLinkService>());
+        services.AddScoped<IPropertyComparableLinkLookup>(sp =>
+            sp.GetRequiredService<PropertyComparableLinkService>());
         services.AddScoped<IValuationComparableSelectionService, ValuationComparableSelectionService>();
         services.AddScoped<IValuationApproachSettingsService, ValuationApproachSettingsService>();
         services.AddScoped<IValuationCostApproachService, ValuationCostApproachService>();

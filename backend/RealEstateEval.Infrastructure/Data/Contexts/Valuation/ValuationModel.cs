@@ -73,6 +73,8 @@ internal static class ValuationModel
             e.Property(x => x.PricePerSqm).HasPrecision(18, 2);
             e.Property(x => x.City).HasMaxLength(128);
             e.Property(x => x.District).HasMaxLength(128).IsRequired();
+            e.Property(x => x.PlanNumber).HasMaxLength(64);
+            e.Property(x => x.PlotNumber).HasMaxLength(64);
             e.Property(x => x.Description).HasMaxLength(2000);
             e.Property(x => x.IntakeChannel).HasMaxLength(16).IsRequired();
             e.Property(x => x.EnteredByUserId).HasMaxLength(128);
@@ -81,6 +83,21 @@ internal static class ValuationModel
             e.HasIndex(x => new { x.IsActive, x.District });
             e.HasIndex(x => x.TransactionDate);
             e.HasIndex(x => x.IntakeChannel);
+        });
+
+        builder.Entity<PropertyComparableLink>(e =>
+        {
+            e.ToTable("PropertyComparableLinks", DatabaseSchemas.Valuation);
+            e.Property(x => x.Description).HasMaxLength(2000);
+            e.Property(x => x.LinkedByUserId).HasMaxLength(128);
+            e.HasIndex(x => new { x.PropertyId, x.ComparablePropertyId })
+                .IsUnique()
+                .HasDatabaseName("IX_PropertyComparableLinks_Property_Comp");
+            e.HasIndex(x => x.PropertyId);
+            e.HasOne(x => x.ComparableProperty)
+                .WithMany()
+                .HasForeignKey(x => x.ComparablePropertyId)
+                .OnDelete(DeleteBehavior.Restrict);
         });
 
         builder.Entity<ValuationComparableSelection>(e =>

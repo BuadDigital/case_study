@@ -82,6 +82,8 @@ public class WorkOrderPropertyDto
     public string? PlotNumber { get; set; }
     public string? BlockNumber { get; set; }
     public string? LocationMapUrl { get; set; }
+    public string? PartitionMinutesNumber { get; set; }
+    public string? PartitionMinutesDate { get; set; }
     public string? FinishingType { get; set; }
     public string? FinishingStructure { get; set; }
     public bool IsRemoved { get; set; }
@@ -310,6 +312,8 @@ public class PriorDeedRegistrationDto
     public string? PlotNumber { get; set; }
     public string? BlockNumber { get; set; }
     public string? LocationMapUrl { get; set; }
+    public string? PartitionMinutesNumber { get; set; }
+    public string? PartitionMinutesDate { get; set; }
     public string? FinishingType { get; set; }
     public string? FinishingStructure { get; set; }
     public bool BourseDataCompleted { get; set; }

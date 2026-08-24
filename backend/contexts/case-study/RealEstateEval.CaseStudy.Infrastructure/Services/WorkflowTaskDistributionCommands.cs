@@ -125,6 +125,11 @@ public sealed class WorkflowTaskDistributionCommands : IWorkflowTaskDistribution
         // ValuationDepartment remains a stored picker/permissions flag, not a spawn gate.
         distribution.ValuationDepartment = true;
         distribution.CaseSpecialist = true;
+        if (!SurveyRequirementRules.PropertyRequiresSurvey(confirmProperty))
+        {
+            distribution.EngineeringOffice = false;
+            distribution.EngineeringOfficeId = "";
+        }
 
         if (string.IsNullOrWhiteSpace(distribution.CaseSpecialistId))
         {

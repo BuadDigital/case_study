@@ -17,6 +17,7 @@ public sealed class ValuationDbContext(DbContextOptions<ValuationDbContext> opti
 {
     public DbSet<ValuationRequest> ValuationRequests => Set<ValuationRequest>();
     public DbSet<ComparableProperty> ComparableProperties => Set<ComparableProperty>();
+    public DbSet<PropertyComparableLink> PropertyComparableLinks => Set<PropertyComparableLink>();
     public DbSet<ValuationComparableSelection> ValuationComparableSelections =>
         Set<ValuationComparableSelection>();
     public DbSet<ValuationComparableAdjustmentLine> ValuationComparableAdjustmentLines =>

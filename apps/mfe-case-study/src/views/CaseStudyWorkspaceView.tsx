@@ -1,14 +1,17 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useEffect, useMemo, type ReactNode } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import {
   Button,
   Note,
   PageShell,
   PanelSkeleton,
+  Tab,
+  TabBar,
 } from "@platform/ui-kit";
 import { CaseStudyForm } from "../components/case-study/CaseStudyForm";
+import { CaseStudyPropertyComparablesTab } from "../components/case-study/CaseStudyPropertyComparablesTab";
 import { PropertyDetailHero } from "../components/po-intake/PropertyDetailHero";
 import { PropertyTransactionTimeline } from "../components/po-intake/PropertyTransactionTimeline";
 import { usePrototype } from "@platform/app-shared/contexts/PrototypeContext";
@@ -47,6 +50,7 @@ export function CaseStudyWorkspaceView({
     props: CaseStudyWorkspacePartiesExtrasProps,
   ) => ReactNode;
 }) {
+  const [workspaceTab, setWorkspaceTab] = useState<"study" | "appraisal">("study");
   const router = useRouter();
   const { role } = usePrototype();
   const {
@@ -174,13 +178,37 @@ export function CaseStudyWorkspaceView({
 
         <div className="grid min-h-0 flex-1 grid-cols-1 items-start gap-3.5 lg:grid-cols-[minmax(0,1fr)_250px]">
           <div className="min-w-0 overflow-hidden rounded-[12px] border border-border bg-surface px-5 pb-5 shadow-[0_1px_2px_rgba(18,40,76,0.03),0_6px_16px_-18px_rgba(18,40,76,0.10)]">
-            <CaseStudyForm
-              taskId={taskId}
-              task={task}
-              property={property}
-              poRecord={record}
-              requestDateSeed={record.receivedFromEnfathAt}
-            />
+            <TabBar
+              className="mx-[-20px] mb-0 border-b border-border bg-transparent px-3.5"
+              aria-label="أقسام دراسة الحالة"
+            >
+              <Tab
+                active={workspaceTab === "study"}
+                onClick={() => setWorkspaceTab("study")}
+              >
+                نموذج الدراسة
+              </Tab>
+              <Tab
+                active={workspaceTab === "appraisal"}
+                onClick={() => setWorkspaceTab("appraisal")}
+              >
+                تقييم العقار
+              </Tab>
+            </TabBar>
+            {workspaceTab === "study" ? (
+              <CaseStudyForm
+                taskId={taskId}
+                task={task}
+                property={property}
+                poRecord={record}
+                requestDateSeed={record.receivedFromEnfathAt}
+              />
+            ) : (
+              <CaseStudyPropertyComparablesTab
+                property={property}
+                poNumber={record.poNumber}
+              />
+            )}
             {renderPartiesExtras ? (
               <div className="mt-4 border-t border-border pt-4">
                 {renderPartiesExtras({

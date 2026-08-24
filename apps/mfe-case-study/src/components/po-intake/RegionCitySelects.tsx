@@ -48,16 +48,11 @@ type SuggestPrompt = {
 };
 
 function cityOptionLabel(city: SelectableCityDto, showEn: boolean): string {
-  const pending = city.status === "pending" ? " · مبدئي" : "";
   const base = city.isCapital ? `${city.nameAr} ★` : city.nameAr;
   if (showEn && city.nameEn?.trim()) {
-    return `${base} (${city.nameEn.trim()})${pending}`;
+    return `${base} (${city.nameEn.trim()})`;
   }
-  return `${base}${pending}`;
-}
-
-function districtOptionLabel(d: SelectableDistrictDto): string {
-  return d.status === "pending" ? `${d.nameAr} · مبدئي` : d.nameAr;
+  return base;
 }
 
 export function RegionCitySelects({
@@ -214,7 +209,7 @@ export function RegionCitySelects({
   const districtOptions = useMemo(() => {
     const options = districts.map((d) => ({
       value: d.id,
-      label: districtOptionLabel(d),
+      label: d.nameAr,
     }));
     if (
       selectedDistrictId &&

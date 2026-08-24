@@ -31,6 +31,76 @@ export const valChipClassName =
 export const valPrimaryBtnClassName =
   "inline-flex items-center gap-1.5 rounded-lg border-none bg-ink px-4 py-2.5 text-[13px] font-bold text-white shadow-[0_6px_16px_-8px_rgba(18,40,76,0.6)] transition-[transform,background] hover:bg-navy-3 hover:-translate-y-px";
 
+/** Field-inspection `InsCard` language — aligns evaluator input sections with the rest of the app. */
+export function ValCard({
+  title,
+  badge,
+  children,
+}: {
+  title: string;
+  badge?: ReactNode;
+  children: ReactNode;
+}) {
+  return (
+    <section className="mb-3 rounded-lg border border-border bg-surface px-4 py-3.5 shadow-none">
+      <div className="mb-3 flex flex-wrap items-center gap-2">
+        <h4 className="m-0 text-[13px] font-bold text-heading">{title}</h4>
+        <span className="flex-1" />
+        {badge}
+      </div>
+      {children}
+    </section>
+  );
+}
+
+/** Field-inspection `InsField` language — label above value, no boxed background. */
+export function ValField({
+  label,
+  value,
+  ltr,
+}: {
+  label: string;
+  value?: ReactNode;
+  ltr?: boolean;
+}) {
+  return (
+    <div className="min-w-0">
+      <div className="mb-1 text-[11px] font-semibold text-text-2">{label}</div>
+      <div
+        className={cn(
+          "text-[13px] font-semibold text-heading",
+          ltr && "[direction:ltr] text-start",
+        )}
+      >
+        {value ?? "—"}
+      </div>
+    </div>
+  );
+}
+
+export function ValFieldsGrid({
+  children,
+  min = 150,
+}: {
+  children: ReactNode;
+  min?: number;
+}) {
+  return (
+    <div
+      className="grid gap-3"
+      style={{ gridTemplateColumns: `repeat(auto-fit, minmax(${min}px, 1fr))` }}
+    >
+      {children}
+    </div>
+  );
+}
+
+/** Field-inspection `TABLE_TH`/`TABLE_TD` language — used inside ValCard tables. */
+export const valTableThClassName =
+  "border border-border bg-surface-2 px-2.5 py-[7px] text-[11px] font-bold text-text-2";
+export const valTableTdClassName =
+  "border border-border px-2.5 py-1.5 align-middle text-[12px]";
+
 export function EngSection({ children }: { children: ReactNode }) {
   return (
     <div className="mb-2.5 mt-[18px] border-b border-border pb-[7px] text-[13px] font-bold text-heading first:mt-0">

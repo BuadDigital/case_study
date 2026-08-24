@@ -108,19 +108,6 @@ public class AttachmentsController : ControllerBase
     public async Task<ActionResult<AttachmentExistsDto>> Exists(Guid id, CancellationToken ct) =>
         Ok(new AttachmentExistsDto { Exists = await _lookup.ExistsAsync(id, ct) });
 
-    [HttpPatch("{id:guid}/classify")]
-    [Authorize(Policy = CapabilityPolicyNames.ManageAttachments)]
-    public async Task<ActionResult<FileAttachmentMetaDto>> Classify(
-        Guid id,
-        [FromBody] ClassifyAttachmentRequest request,
-        CancellationToken ct)
-    {
-        var (meta, error) = await _attachments.ClassifyAsync(id, request, ct);
-        if (error is not null)
-            return this.BadRequestProblem(error);
-        return meta is null ? NotFound() : Ok(meta);
-    }
-
     [HttpDelete("{id:guid}")]
     [Authorize(Policy = CapabilityPolicyNames.ManageAttachments)]
     public async Task<IActionResult> Delete(Guid id, CancellationToken ct)

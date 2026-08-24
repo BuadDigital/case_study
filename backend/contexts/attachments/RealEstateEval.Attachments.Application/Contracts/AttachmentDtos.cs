@@ -12,10 +12,6 @@ public class FileAttachmentMetaDto
     public long SizeBytes { get; init; }
     public DateTime CreatedAtUtc { get; init; }
     public PhotoMetadataDto? PhotoMetadata { get; init; }
- /// <summary>Attachment print dictionary type key; empty = library only.</summary>
-    public string DictionaryTypeKey { get; init; } = "";
- /// <summary>When true with a type key, attachment is eligible for report –25.</summary>
-    public bool PrintInReport { get; init; }
 }
 
 public sealed class AttachmentRefDto
@@ -64,13 +60,4 @@ public class PhotoMetadataDto
     public DateTime? CapturedAtUtc { get; init; }
     public double? DistanceM { get; init; }
     public string? Flag { get; init; }
-}
-
-public class ClassifyAttachmentRequest
-{
- /// <summary>Dictionary type key; empty clears classification.</summary>
-    [MaxLength(64)]
-    public string? DictionaryTypeKey { get; init; }
-
-    public bool? PrintInReport { get; init; }
 }

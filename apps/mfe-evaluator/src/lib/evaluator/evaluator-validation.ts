@@ -39,6 +39,7 @@ export function validateEvaluatorSubmission(input: {
   landValue?: string;
   buildingValue?: string;
   forcedSaleDiscountPct?: string;
+  valueBasisKey?: string;
   assetDataConfirmed?: boolean;
   assetDataVarianceNotes?: string;
   independenceDeclared?: boolean;
@@ -50,6 +51,7 @@ export function validateEvaluatorSubmission(input: {
     landValue = "",
     buildingValue = "",
     forcedSaleDiscountPct = "",
+    valueBasisKey = "",
   } = input;
 
   const land = parseEvaluatorAmount(landValue);
@@ -66,11 +68,13 @@ export function validateEvaluatorSubmission(input: {
     errors.building_value = "يجب أن تكون قيمة المباني رقماً صحيحاً (≥ 0).";
   }
 
-  const discount = parseEvaluatorAmount(forcedSaleDiscountPct);
-  if (!forcedSaleDiscountPct.trim()) {
-    errors.forced_sale_discount = "مطلوب إدخال نسبة خصم البيع القسري.";
-  } else if (discount == null || discount < 0 || discount > 100) {
-    errors.forced_sale_discount = "النسبة يجب أن تكون بين 0 و 100.";
+  if (valueBasisKey === "liquidation") {
+    const discount = parseEvaluatorAmount(forcedSaleDiscountPct);
+    if (!forcedSaleDiscountPct.trim()) {
+      errors.forced_sale_discount = "مطلوب إدخال نسبة خصم التصفية.";
+    } else if (discount == null || discount < 0 || discount > 100) {
+      errors.forced_sale_discount = "النسبة يجب أن تكون بين 0 و 100.";
+    }
   }
 
   const priceRaw = evaluatorPrice.trim()

@@ -78,7 +78,17 @@ public static class AuthorizationExtensions
                     ctx,
                     PlatformCapabilities.ManageValuationRequests,
                     PlatformCapabilities.SubmitValuationReport,
-                    PlatformCapabilities.SubmitPartyWork)));
+                    PlatformCapabilities.SubmitPartyWork,
+                    PlatformCapabilities.ManageWorkOrders)));
+
+            options.AddPolicy(
+                CapabilityPolicyNames.ReadComparableBank,
+                policy => policy.RequireAssertion(ctx => HasAnyCapability(
+                    ctx,
+                    PlatformCapabilities.ManageValuationRequests,
+                    PlatformCapabilities.SubmitValuationReport,
+                    PlatformCapabilities.SubmitPartyWork,
+                    PlatformCapabilities.ManageWorkOrders)));
 
             options.AddPolicy(
                 CapabilityPolicyNames.ListDistributionAssignees,

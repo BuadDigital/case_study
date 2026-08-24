@@ -6,12 +6,21 @@ import { ensureOrganizationSettingsLoaded } from "@platform/app-shared/organizat
 import {
   CERTIFIED_VALUER_HTML_DEFAULTS,
   getApiBase,
+  getBuildingInventory,
+  getValuationCostApproach,
   getValuationLists,
+  getValuationReconciliation,
   listClients,
+  listValuationComparableSelections,
+  ensureOpenValuationRequestByProperty,
   VALUATION_REPORT_HTML_DEFAULTS as REPORT_DEFAULTS,
+  type BuildingInventoryLineDto,
   type ClientDto,
   type OrganizationBrandingSettings,
   type OrganizationValuerRosterEntry,
+  type ValuationComparableSelectionListDto,
+  type ValuationCostApproachDto,
+  type ValuationReconciliationDto,
 } from "@platform/api-client";
 import { getAuthSession } from "@platform/auth-client";
 import { fetchInspectorWorkspace } from "@case-study/mfe/lib/prototype/inspector-workspace-storage";
@@ -43,6 +52,13 @@ export function EvaluatorValuationReportOutputTab({
   const [inspector, setInspector] = useState<InspectorWorkspaceDraft | null>(
     null,
   );
+  const [inventoryLines, setInventoryLines] = useState<
+    BuildingInventoryLineDto[]
+  >([]);
+  const [market, setMarket] =
+    useState<ValuationComparableSelectionListDto | null>(null);
+  const [cost, setCost] = useState<ValuationCostApproachDto | null>(null);
+  const [recon, setRecon] = useState<ValuationReconciliationDto | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [printing, setPrinting] = useState(false);
   const printUrlRef = useRef<string | null>(null);
@@ -69,6 +85,54 @@ export function EvaluatorValuationReportOutputTab({
       cancelled = true;
     };
   }, [inspectionTaskId]);
+
+  useEffect(() => {
+    const session = getAuthSession();
+    if (!session?.token) return;
+    const config = { token: session.token, baseUrl: getApiBase() };
+    let cancelled = false;
+    const propertyId = (property?.id ?? "").trim();
+    if (draft.poNumber && propertyId) {
+      void getBuildingInventory(config, draft.poNumber, propertyId).then((res) => {
+        if (!cancelled && res.ok) setInventoryLines(res.data.lines ?? []);
+      });
+    } else {
+      setInventoryLines([]);
+    }
+    if (!propertyId) {
+      setMarket(null);
+      setCost(null);
+      setRecon(null);
+      return;
+    }
+    void ensureOpenValuationRequestByProperty(config, {
+      propId: propertyId,
+      area: (property?.area ?? "").trim() || "—",
+      type: property?.propertyType || "—",
+      appraiser: "—",
+    }).then(async (open) => {
+      if (!open.ok || cancelled) {
+        if (!cancelled) {
+          setMarket(null);
+          setCost(null);
+          setRecon(null);
+        }
+        return;
+      }
+      const [sel, costRes, reconRes] = await Promise.all([
+        listValuationComparableSelections(config, open.data.id),
+        getValuationCostApproach(config, open.data.id),
+        getValuationReconciliation(config, open.data.id),
+      ]);
+      if (cancelled) return;
+      setMarket(sel.ok ? sel.data : null);
+      setCost(costRes.ok ? costRes.data : null);
+      setRecon(reconRes.ok ? reconRes.data : null);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [draft.poNumber, property?.area, property?.id, property?.propertyType]);
 
   useEffect(() => {
     const session = getAuthSession();
@@ -106,6 +170,10 @@ export function EvaluatorValuationReportOutputTab({
       record,
       property,
       inspector,
+      inventoryLines,
+      market,
+      cost,
+      recon,
       clients,
       purposeLabel: listLabels.purpose,
       basisLabel: listLabels.basis,
@@ -115,10 +183,24 @@ export function EvaluatorValuationReportOutputTab({
       certifiedLicense: htmlEv.licenseNumber,
       certifiedIssuedAt: htmlEv.licenseIssuedAt,
       certifiedExpires: htmlEv.licenseExpiresHijri,
+      certifiedMembershipCategory: htmlEv.membershipCategory,
+      certifiedTitle: htmlEv.title,
+      certifiedMembershipExpires: htmlEv.membershipExpiresAt,
       reportType: REPORT_DEFAULTS.reportType,
       currency: REPORT_DEFAULTS.currency,
     });
-  }, [clients, draft, inspector, listLabels, property, record]);
+  }, [
+    clients,
+    cost,
+    draft,
+    inspector,
+    inventoryLines,
+    listLabels,
+    market,
+    property,
+    recon,
+    record,
+  ]);
 
   const meta = useMemo(
     () => ({
@@ -149,6 +231,10 @@ export function EvaluatorValuationReportOutputTab({
           record,
           property,
           inspector,
+          inventoryLines,
+          market,
+          cost,
+          recon,
           clients,
           purposeLabel: listLabels.purpose,
           basisLabel: listLabels.basis,
@@ -162,6 +248,13 @@ export function EvaluatorValuationReportOutputTab({
           certifiedExpires:
             ev.licenseExpiresHijri ||
             CERTIFIED_VALUER_HTML_DEFAULTS.licenseExpiresHijri,
+          certifiedMembershipCategory:
+            ev.membershipCategory ||
+            CERTIFIED_VALUER_HTML_DEFAULTS.membershipCategory,
+          certifiedTitle: ev.title || CERTIFIED_VALUER_HTML_DEFAULTS.title,
+          certifiedMembershipExpires:
+            ev.membershipExpiresAt ||
+            CERTIFIED_VALUER_HTML_DEFAULTS.membershipExpiresAt,
           valuationBranch: vr.valuationBranch,
           reportType: vr.reportType,
           currency: vr.currency,
@@ -189,7 +282,7 @@ export function EvaluatorValuationReportOutputTab({
     return () => {
       cancelled = true;
     };
-  }, [clients, draft, inspector, listLabels, meta, poQuery.isPending, property, record]);
+  }, [clients, cost, draft, inspector, inventoryLines, listLabels, market, meta, poQuery.isPending, property, recon, record]);
 
   useEffect(
     () => () => {
@@ -218,6 +311,10 @@ export function EvaluatorValuationReportOutputTab({
             record,
             property,
             inspector,
+            inventoryLines,
+            market,
+            cost,
+            recon,
             clients,
             purposeLabel: listLabels.purpose,
             basisLabel: listLabels.basis,
@@ -231,6 +328,13 @@ export function EvaluatorValuationReportOutputTab({
             certifiedExpires:
               ev.licenseExpiresHijri ||
               CERTIFIED_VALUER_HTML_DEFAULTS.licenseExpiresHijri,
+            certifiedMembershipCategory:
+              ev.membershipCategory ||
+              CERTIFIED_VALUER_HTML_DEFAULTS.membershipCategory,
+            certifiedTitle: ev.title || CERTIFIED_VALUER_HTML_DEFAULTS.title,
+            certifiedMembershipExpires:
+              ev.membershipExpiresAt ||
+              CERTIFIED_VALUER_HTML_DEFAULTS.membershipExpiresAt,
             valuationBranch: vr.valuationBranch,
             reportType: vr.reportType,
             currency: vr.currency,
@@ -269,11 +373,15 @@ export function EvaluatorValuationReportOutputTab({
   }, [
     branding,
     clients,
+    cost,
     draft,
     inspector,
+    inventoryLines,
     listLabels,
+    market,
     meta,
     property,
+    recon,
     record,
     valuers,
   ]);

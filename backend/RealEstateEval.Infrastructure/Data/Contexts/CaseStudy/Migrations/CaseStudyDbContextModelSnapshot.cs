@@ -930,6 +930,14 @@ namespace RealEstateEval.Infrastructure.Data.Contexts.CaseStudy.Migrations
                     b.Property<bool>("OwnershipTypeIsManual")
                         .HasColumnType("boolean");
 
+                    b.Property<string>("PartitionMinutesDate")
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)");
+
+                    b.Property<string>("PartitionMinutesNumber")
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)");
+
                     b.Property<string>("PlanName")
                         .HasMaxLength(256)
                         .HasColumnType("character varying(256)");

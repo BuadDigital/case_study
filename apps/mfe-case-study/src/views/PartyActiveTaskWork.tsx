@@ -275,6 +275,13 @@ export function PartyActiveTaskWork({
     () => record?.properties.find((p) => p.id === task.propertyId) ?? null,
     [record, task.propertyId],
   );
+  const surveyPropertyIndex = useMemo(
+    () =>
+      record && surveyProperty
+        ? record.properties.findIndex((p) => p.id === surveyProperty.id)
+        : -1,
+    [record, surveyProperty],
+  );
 
   if (isFieldInspection && layout === "page") {
     const inspectionReadOnly = fieldInspectionLocked || submitSuccess;
@@ -288,45 +295,42 @@ export function PartyActiveTaskWork({
     };
 
     const desktopStandalone =
-      record && surveyProperty ? (
-        <div className="flex min-h-0 w-full flex-1 flex-col overflow-hidden bg-[#f5f3ee]">
-          <header className="flex shrink-0 items-center border-b border-border bg-surface px-5 py-3.5">
-            <div className="min-w-0 flex-1">
-              <div className="truncate text-[15px] font-bold text-heading">
-                {def.workTitle}
+      record && surveyProperty && surveyPropertyIndex >= 0 ? (
+        <div
+          id="view-active-inspection-workspace"
+          className="flex min-h-0 w-full flex-1 flex-col overflow-hidden bg-[#f5f3ee]"
+        >
+          <PageShell
+            variant="canvas"
+            className="gap-0 overflow-x-hidden overflow-y-auto bg-[#f5f3ee] px-[30px] py-[26px] max-sm:px-4 max-sm:py-4"
+          >
+            <PropertyDetailHero
+              record={record}
+              property={surveyProperty}
+              propertyIndex={surveyPropertyIndex + 1}
+              hideOpenCaseStudy
+            />
+            <div className="grid min-h-0 flex-1 grid-cols-1 items-start gap-3.5 lg:grid-cols-[minmax(0,1fr)_250px]">
+              <div className="min-w-0 overflow-hidden rounded-[12px] border border-border bg-surface px-5 pb-5 shadow-[0_1px_2px_rgba(18,40,76,0.03),0_6px_16px_-18px_rgba(18,40,76,0.10)]">
+                <PropertyDetailInspectionTab
+                  property={surveyProperty}
+                  inspectionTask={task}
+                  inspectionCard={inspectorCard}
+                  editMode={!inspectionReadOnly}
+                  lockEditMode={!inspectionReadOnly}
+                  onEditModeChange={(edit) => {
+                    if (!edit) exit();
+                  }}
+                  onSubmitted={() =>
+                    completePartyTaskSubmit(def.completeMessage, {
+                      showToast: false,
+                    })
+                  }
+                />
               </div>
-              <div className="mt-0.5 truncate text-[12px] text-text-3">
-                صك {deedLabel}
-                <span className="mx-1.5 text-border-md">·</span>
-                {formatPoDisplay(task.poNumber)}
-                {location ? (
-                  <>
-                    <span className="mx-1.5 text-border-md">·</span>
-                    {location}
-                  </>
-                ) : null}
-              </div>
+              <PropertyTransactionTimeline record={record} property={surveyProperty} />
             </div>
-          </header>
-          <div className="min-h-0 flex-1 overflow-y-auto px-5 py-5 sm:px-8">
-            <div className="mx-auto max-w-[920px]">
-              <PropertyDetailInspectionTab
-                property={surveyProperty}
-                inspectionTask={task}
-                inspectionCard={inspectorCard}
-                editMode={!inspectionReadOnly}
-                lockEditMode={!inspectionReadOnly}
-                onEditModeChange={(edit) => {
-                  if (!edit) exit();
-                }}
-                onSubmitted={() =>
-                  completePartyTaskSubmit(def.completeMessage, {
-                    showToast: false,
-                  })
-                }
-              />
-            </div>
-          </div>
+          </PageShell>
         </div>
       ) : (
         <InlineLoadingSkeleton className={LOADING_TEXT} />
@@ -363,6 +367,54 @@ export function PartyActiveTaskWork({
       task.status === "completed" ||
       submitSuccess;
 
+    const surveyWork = engineeringSurveyExtensions ? (
+      engineeringSurveyExtensions.renderSurveyWork({
+        def,
+        childTask: task,
+        hostRef: surveyHostRef,
+        deedNumber: deedLabel,
+        onBack: exit,
+        onFailureSubmitted: refresh,
+        variant: engineeringSurveyEntry ? "entry" : "workspace",
+        forceReadOnly: surveyLocked,
+      })
+    ) : (
+      <InlineLoadingSkeleton className={LOADING_TEXT} />
+    );
+
+    if (
+      layout === "page" &&
+      !engineeringSurveyEntry &&
+      record &&
+      surveyProperty &&
+      surveyPropertyIndex >= 0
+    ) {
+      return (
+        <div
+          id="view-engineering-survey-workspace"
+          className="flex min-h-0 w-full flex-1 flex-col overflow-hidden bg-[#f5f3ee]"
+        >
+          <PageShell
+            variant="canvas"
+            className="gap-0 overflow-x-hidden overflow-y-auto bg-[#f5f3ee] px-[30px] py-[26px] max-sm:px-4 max-sm:py-4"
+          >
+            <PropertyDetailHero
+              record={record}
+              property={surveyProperty}
+              propertyIndex={surveyPropertyIndex + 1}
+              hideOpenCaseStudy
+            />
+            <div className="grid min-h-0 flex-1 grid-cols-1 items-start gap-3.5 lg:grid-cols-[minmax(0,1fr)_250px]">
+              <div className="min-w-0 overflow-hidden rounded-[12px] border border-border bg-surface px-5 pb-5 shadow-[0_1px_2px_rgba(18,40,76,0.03),0_6px_16px_-18px_rgba(18,40,76,0.10)]">
+                {surveyWork}
+              </div>
+              <PropertyTransactionTimeline record={record} property={surveyProperty} />
+            </div>
+          </PageShell>
+        </div>
+      );
+    }
+
     return (
       <TaskWorkChrome
         layout={layout}
@@ -375,20 +427,7 @@ export function PartyActiveTaskWork({
         showFooter={false}
         scrollMode="document"
       >
-        {engineeringSurveyExtensions ? (
-          engineeringSurveyExtensions.renderSurveyWork({
-            def,
-            childTask: task,
-            hostRef: surveyHostRef,
-            deedNumber: deedLabel,
-            onBack: exit,
-            onFailureSubmitted: refresh,
-            variant: engineeringSurveyEntry ? "entry" : "workspace",
-            forceReadOnly: surveyLocked,
-          })
-        ) : (
-          <InlineLoadingSkeleton className={LOADING_TEXT} />
-        )}
+        {surveyWork}
       </TaskWorkChrome>
     );
   }
@@ -503,7 +542,7 @@ export function PartyActiveTaskWork({
       return (
         <div
           id="view-property-appraisal-workspace"
-          className="flex min-h-0 w-full flex-1 flex-col overflow-hidden bg-[#f5f3ee] [zoom:0.85]"
+          className="flex min-h-0 w-full flex-1 flex-col overflow-hidden bg-[#f5f3ee]"
         >
           <PageShell
             variant="canvas"

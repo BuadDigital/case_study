@@ -8,8 +8,6 @@ import {
   DEED_STATUS_OPTIONS,
   RESTRICTIONS_PRESENT_OPTIONS,
   RESTRICTION_TYPE_OPTIONS,
-  PROPERTY_FINISHING_STRUCTURE_OPTIONS,
-  PROPERTY_FINISHING_TYPE_OPTIONS,
   boundariesDetailFieldsOptional,
   boundariesMarkedUnavailable,
   clearPropertyBoundaryFields,
@@ -50,11 +48,8 @@ type Props = {
 };
 
 const pillClass = (selected: boolean) =>
-  cn(
-    "inline-flex cursor-pointer items-center gap-1.5 rounded-[var(--radius-DEFAULT)] border-2 px-4 py-2 font-[inherit] text-xs font-semibold transition-all",
-    selected
-      ? "border-primary bg-primary text-white shadow-[0_0_0_2px_color-mix(in_srgb,var(--color-primary)_20%,transparent)]"
-      : "border-border bg-surface text-text-2 hover:border-primary-light hover:text-primary",
+  cn( "inline-flex cursor-pointer items-center gap-1.5 rounded-[var(--radius-DEFAULT)] border-2 px-4 py-2 font-[inherit] text-xs font-semibold transition-all",
+    selected ? "border-primary bg-primary text-white shadow-[0_0_0_2px_color-mix(in_srgb,var(--color-primary)_20%,transparent)]" : "border-border bg-surface text-text-2 hover:border-primary-light hover:text-primary",
   );
 
 export function PoPropertyBourseForm({
@@ -130,9 +125,7 @@ export function PoPropertyBourseForm({
       ) : null}
 
       {showIntroNote && !obstructionPath ? (
-        <Note tone="info" className="mb-3">
-          بيانات البورصة — المدينة والحي والمساحة والحدود حسب استعلام البورصة.
-        </Note>
+        <Note tone="info" className="mb-3">بيانات البورصة — المدينة والحي والمساحة والحدود حسب استعلام البورصة.</Note>
       ) : null}
 
       {!obstructionPath ? (
@@ -359,30 +352,6 @@ export function PoPropertyBourseForm({
                 onPatch={onPatch}
               />
             ) : null}
-            <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
-              <RegSelect
-                id="finishing_type"
-                label="مستوى التشطيب"
-                value={property.finishingType}
-                error={fieldErrors.finishingType}
-                onChange={(v) => onPatch("finishingType", v)}
-                options={PROPERTY_FINISHING_TYPE_OPTIONS.map((o) => ({
-                  value: o.value,
-                  label: o.label,
-                }))}
-              />
-              <RegSelect
-                id="finishing_structure"
-                label="الهيكل الإنشائي"
-                value={property.finishingStructure}
-                error={fieldErrors.finishingStructure}
-                onChange={(v) => onPatch("finishingStructure", v)}
-                options={PROPERTY_FINISHING_STRUCTURE_OPTIONS.map((o) => ({
-                  value: o.value,
-                  label: o.label,
-                }))}
-              />
-            </div>
           </div>
         </>
       ) : null}

@@ -67,7 +67,7 @@ export async function getPoIntakeDraft(
             : 1,
         propertiesRegion: data.propertiesRegion ?? "",
         workOrderDescription: data.workOrderDescription ?? "",
-        updatedAtUtc: data.updatedAtUtc,
+        updatedAtUtc: data.updatedAtUtc ?? undefined,
       },
     };
   } catch {

@@ -35,6 +35,8 @@ export type ComparablePropertyDto = {
   pricePerSqmAnomalyNoteAr?: string | null;
   city?: string | null;
   district: string;
+  planNumber?: string | null;
+  plotNumber?: string | null;
   description?: string | null;
   intakeChannel: string;
   enteredByUserId?: string | null;
@@ -84,6 +86,8 @@ export type UpsertComparablePropertyRequest = {
   price: number;
   city?: string | null;
   district: string;
+  planNumber?: string | null;
+  plotNumber?: string | null;
   description?: string | null;
   intakeChannel: string;
   sourceWorkOrderNumber?: string | null;
@@ -224,6 +228,58 @@ export async function createComparableProperty(
   try {
     const res = await fetch(`${base}/api/comparable-properties`, {
       method: "POST",
+      headers: headers(config.token),
+      body: JSON.stringify(body),
+    });
+    if (res.status === 401) return { ok: false, kind: "auth" };
+    if (res.status === 400) {
+      const payload = (await res.json().catch(() => null)) as {
+        errors?: Record<string, string>;
+        error?: string;
+      } | null;
+      return {
+        ok: false,
+        kind: "validation",
+        message:
+          payload?.errors
+            ? Object.values(payload.errors)[0]
+            : payload?.error ?? "بيانات غير صالحة",
+        errors: payload?.errors,
+      };
+    }
+    if (!res.ok) {
+      const payload = (await res.json().catch(() => null)) as {
+        detail?: string;
+        title?: string;
+        error?: string;
+        message?: string;
+      } | null;
+      return {
+        ok: false,
+        kind: "server",
+        message:
+          payload?.detail ??
+          payload?.title ??
+          payload?.error ??
+          payload?.message ??
+          "تعذّر حفظ المقارن",
+      };
+    }
+    return { ok: true, data: await parseJson<ComparablePropertyDto>(res) };
+  } catch {
+    return { ok: false, kind: "network" };
+  }
+}
+
+export async function updateComparableProperty(
+  config: ComparablePropertiesApiConfig,
+  id: string,
+  body: UpsertComparablePropertyRequest,
+): Promise<Result<ComparablePropertyDto>> {
+  const base = config.baseUrl ?? getApiBase();
+  try {
+    const res = await fetch(`${base}/api/comparable-properties/${id}`, {
+      method: "PUT",
       headers: headers(config.token),
       body: JSON.stringify(body),
     });

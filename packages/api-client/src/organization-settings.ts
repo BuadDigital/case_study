@@ -93,6 +93,7 @@ export type OrganizationValuerRosterEntry = {
   membershipNumber?: string | null;
   membershipCategory?: string | null;
   licenseExpiresAt?: string | null;
+  licenseIssuedAt?: string | null;
   membershipExpiresAt?: string | null;
   /** certified | valuer | assistant | reviewer */
   role: string;
@@ -416,6 +417,7 @@ function normalizeValuers(raw: unknown): OrganizationValuerRosterEntry[] {
       membershipNumber: (v.membershipNumber ?? v.MembershipNumber ?? null) as string | null,
       membershipCategory: (v.membershipCategory ?? v.MembershipCategory ?? null) as string | null,
       licenseExpiresAt: (v.licenseExpiresAt ?? v.LicenseExpiresAt ?? null) as | string | null,
+      licenseIssuedAt: (v.licenseIssuedAt ?? v.LicenseIssuedAt ?? null) as string | null,
       membershipExpiresAt: (v.membershipExpiresAt ?? v.MembershipExpiresAt ?? null) as string | null,
       role: String(v.role ?? v.Role ?? "assistant").trim() || "assistant",
       isActive: Boolean(v.isActive ?? v.IsActive ?? true),

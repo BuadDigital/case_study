@@ -1,6 +1,8 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import {
   createInspectorWorkspaceDraft,
+  inspectionStampFromNow,
+  INSPECTOR_FEATURE_FIELDS,
   listInspectorPhotoValidationIssues,
   serviceAmenityPhotoSlotId,
 } from "../inspector-workspace-data";
@@ -66,28 +68,62 @@ describe("Field inspection frontend/backend rule parity", () => {
     );
   });
 
-  it("uses the same showroom/well photo messages as the backend", () => {
+  it("does not require showroom/well photos (optional, mirrors the backend)", () => {
     const draft = completeDraft();
     draft.showroomCount = "2";
     draft.wellCount = "1";
 
     const issues = listInspectorPhotoValidationIssues(draft);
-    expect(issues).toContain("يجب إرفاق صورة المعرض");
-    expect(issues).toContain("يجب إرفاق صورة البئر");
+    expect(issues).not.toContain("يجب إرفاق صورة المعرض");
+    expect(issues).not.toContain("يجب إرفاق صورة البئر");
 
     const errors = validateInspectorWorkspace(draft);
-    expect(errors.componentPhotos).toBe("يجب إرفاق صورة المعرض");
+    expect(errors.componentPhotos).toBeUndefined();
     expect(errors.featurePhotos).toBeUndefined();
   });
 
-  it("requires a photo when a service chip is selected", () => {
+  it("does not require a photo when a service chip is selected without one", () => {
     const draft = completeDraft();
     draft.services = ["كهرباء", "مياه"];
-    // only first service has a photo in completeDraft shape — clear water slot
+    // only first service has a photo in completeDraft shape — water slot stays empty
 
     const issues = listInspectorPhotoValidationIssues(draft);
     expect(issues.some((i) => i.includes("خدمة") || i.includes("مرفق"))).toBe(
-      true,
+      false,
     );
+    expect(validateInspectorWorkspace(draft).definedPhotos).toBeUndefined();
+  });
+
+  it("requires a movables description when the inspector answers yes", () => {
+    const draft = completeDraft();
+    for (const field of INSPECTOR_FEATURE_FIELDS) {
+      draft.featureValues[field.key] = field.options[0] ?? "نعم";
+    }
+    draft.featureValues.movables = "نعم";
+    draft.featureValues.movablesDescription = "";
+
+    expect(validateInspectorWorkspace(draft).movablesDescription).toBe(
+      "وصف المنقولات مطلوب عند اختيار «نعم»",
+    );
+
+    draft.featureValues.movablesDescription = "أثاث ومكيفات";
+    expect(validateInspectorWorkspace(draft).movablesDescription).toBeUndefined();
+  });
+
+  it("stamps local inspection date and time when the inspector first opens", () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date(2026, 7, 24, 15, 31, 0));
+    expect(inspectionStampFromNow()).toEqual({
+      inspectionDate: "2026-08-24",
+      inspectionTime: "15:31",
+    });
+    const draft = createInspectorWorkspaceDraft({
+      taskId: "task-1",
+      propertyId: "prop-1",
+      poNumber: "PO-1",
+    });
+    expect(draft.inspectionDate).toBe("2026-08-24");
+    expect(draft.inspectionTime).toBe("15:31");
+    vi.useRealTimers();
   });
 });

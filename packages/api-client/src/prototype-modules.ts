@@ -756,15 +756,6 @@ export type FileAttachmentMetaDto = {
   sizeBytes: number;
   createdAtUtc: string;
   photoMetadata?: PhotoMetadataDto | null;
-  /** Attachment print dictionary type key; empty = library only. */
-  dictionaryTypeKey?: string;
- /** When true with a type key, eligible for report –25. */
-  printInReport?: boolean;
-};
-
-export type ClassifyAttachmentRequest = {
-  dictionaryTypeKey?: string | null;
-  printInReport?: boolean | null;
 };
 
 type PhotoMetadataDto = {
@@ -856,37 +847,6 @@ export async function getAttachmentMeta(
     });
     if (res.status === 401) return { ok: false, kind: "auth" };
     if (res.status === 404) return { ok: false, kind: "server" };
-    if (!res.ok) return { ok: false, kind: "server" };
-    return { ok: true, data: await parseJson<FileAttachmentMetaDto>(res) };
-  } catch {
-    return { ok: false, kind: "network" };
-  }
-}
-
-export async function classifyAttachment(
-  config: PrototypeModulesApiConfig,
-  id: string,
-  body: ClassifyAttachmentRequest,
-): Promise<PrototypeModulesResult<FileAttachmentMetaDto>> {
-  const base = config.baseUrl ?? getApiBase();
-  try {
-    const res = await fetch(`${base}/api/attachments/${id}/classify`, {
-      method: "PATCH",
-      headers: headers(config.token),
-      body: JSON.stringify(body),
-    });
-    if (res.status === 401) return { ok: false, kind: "auth" };
-    if (res.status === 404) return { ok: false, kind: "server" };
-    if (res.status === 400) {
-      const problem = (await res.json().catch(() => null)) as
-        | { detail?: string; error?: string }
-        | null;
-      return {
-        ok: false,
-        kind: "validation",
-        message: problem?.detail ?? problem?.error,
-      };
-    }
     if (!res.ok) return { ok: false, kind: "server" };
     return { ok: true, data: await parseJson<FileAttachmentMetaDto>(res) };
   } catch {

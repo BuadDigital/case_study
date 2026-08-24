@@ -8,7 +8,8 @@ import {
 } from "@platform/app-shared/form-ux";
 import {
   INSPECTOR_FEATURE_FIELDS,
-  inspectorFeatureRequiresPhoto,
+  MOVABLES_DESCRIPTION_KEY,
+  isMovablesPresent,
   listInspectorPhotoValidationIssues,
   type InspectorWorkspaceDraft,
 } from "./inspector-workspace-data";
@@ -25,6 +26,7 @@ export type InspectorWorkspaceFieldErrors = Partial<
     | "featurePhotos"
     | "componentPhotos"
     | "features"
+    | "movablesDescription"
     | "_"
     ,
     string
@@ -59,6 +61,8 @@ export function inspectorFieldTargetId(
       return "ins-map-section";
     case "features":
       return "ins-features-section";
+    case "movablesDescription":
+      return `ins-feature-${MOVABLES_DESCRIPTION_KEY}`;
     case "featurePhotos":
       return "ins-features-section";
     case "componentPhotos":
@@ -85,6 +89,9 @@ export function firstInspectorWorkspaceErrorTarget(
   }
   if (errors.emptyFeatureKeys?.[0]) {
     return inspectorFieldTargetId(`feature:${errors.emptyFeatureKeys[0]}`);
+  }
+  if (errors.movablesDescription) {
+    return inspectorFieldTargetId("movablesDescription");
   }
   if (errors.missingFeaturePhotoKey) {
     return inspectorFieldTargetId(
@@ -150,46 +157,24 @@ export function validateInspectorWorkspace(
       : `أكمل خصائص العقار — ${emptyFeatureKeys.length} حقل بدون اختيار`;
   }
 
-  for (const field of INSPECTOR_FEATURE_FIELDS) {
-    const value = submission.featureValues[field.key] ?? "";
-    if (
-      inspectorFeatureRequiresPhoto(field, value) &&
-      !submission.featurePhotoAttachments[field.key]?.fileName
-    ) {
-      errors.missingFeaturePhotoKey = field.key;
-      errors.featurePhotos = `يجب إرفاق صورة توثيقية: ${field.label}`;
-      break;
-    }
+  if (isMovablesPresent(submission.featureValues)
+    && !(submission.featureValues[MOVABLES_DESCRIPTION_KEY] ?? "").trim()) {
+    errors.movablesDescription = "وصف المنقولات مطلوب عند اختيار «نعم»";
   }
 
-  const incompleteObs = submission.observations.filter(
-    (o) => !o.text.trim() || !o.photo?.fileName,
-  );
+  // Proof photos are optional — a missing one never blocks submission.
+  const incompleteObs = submission.observations.filter((o) => !o.text.trim());
   if (incompleteObs.length > 0) {
-    errors.observations =
-      "كل ملاحظة موثّقة يجب أن تتضمن شرحاً وصورة توثيقية";
+    errors.observations = "كل ملاحظة يجب أن تتضمن شرحاً";
   }
 
   const photoIssues = listInspectorPhotoValidationIssues(submission);
   if (photoIssues.length > 0) {
-    if (!errors.featurePhotos) {
-      const featureIssue = photoIssues.find((issue) => issue.includes("توثيقية"));
-      if (featureIssue) errors.featurePhotos = featureIssue;
-    }
-
-    const componentIssue = photoIssues.find(
-      (issue) => issue.includes("المعرض") || issue.includes("البئر"),
-    );
-    if (componentIssue) errors.componentPhotos = componentIssue;
-
     const definedIssue = photoIssues.find(
       (issue) =>
-        issue.includes("الموثّقة") ||
         issue.includes("بانتظار الاعتماد") ||
         issue.includes("إضافية") ||
-        issue.includes("الخادم") ||
-        issue.includes("خدمة") ||
-        issue.includes("مرفق"),
+        issue.includes("الخادم"),
     );
     if (definedIssue) errors.definedPhotos = definedIssue;
   }
@@ -203,6 +188,7 @@ const INSPECTOR_ERROR_KEYS = [
   "inspectionTime",
   "mapLatitude",
   "features",
+  "movablesDescription",
   "featurePhotos",
   "componentPhotos",
   "definedPhotos",

@@ -107,6 +107,7 @@ export const ENG_STATUS_COLORS = {
   pending: "#d9a441",
 } as const;
 
+/** Matches the دراسة الحالة / المقيم tab bar — active tab fills a navy «ink» box. */
 export function EngTabBar({
   tabs,
   active,
@@ -117,19 +118,24 @@ export function EngTabBar({
   onChange: (id: string) => void;
 }) {
   return (
-    <div className="mb-[18px] flex gap-0 overflow-x-auto overflow-y-hidden border-b border-border [scrollbar-width:none] [&::-webkit-scrollbar]:h-0">
+    <div
+      className="z-10 mx-[-20px] mb-[18px] flex flex-wrap gap-x-0.5 gap-y-0 overflow-visible whitespace-nowrap border-b border-border bg-transparent px-3.5 sm:px-3.5"
+      role="tablist"
+      aria-label="أقسام مساحة عمل الرفع المساحي"
+    >
       {tabs.map((tab) => {
         const on = active === tab.id;
         return (
           <button
             key={tab.id}
             type="button"
+            role="tab"
+            aria-selected={on}
             onClick={() => onChange(tab.id)}
             className={cn(
-              "-mb-px shrink-0 cursor-pointer border-b-2 bg-transparent px-3.5 py-2.5 font-[inherit] text-[12.5px] transition-colors",
-              on
-                ? "border-gold-d font-bold text-heading"
-                : "border-transparent font-medium text-text-2",
+              "relative mb-0 max-lg:min-h-0 cursor-pointer rounded-none border-0 border-b-0 bg-transparent px-2.5 py-[9px] font-[inherit] text-[12.5px] font-normal text-text-2 transition-[background,color] duration-150",
+              "hover:bg-[color-mix(in_srgb,#102B4E_6%,transparent)] hover:text-heading",
+              on && "!bg-ink !font-normal !text-white hover:!bg-ink hover:!text-white",
             )}
           >
             {tab.label}

@@ -455,7 +455,6 @@ export function propertyCard(
     rows: [
       ["الرقم المرجعي", r.refNo],
       ["رقم الصك", r.deedNo],
-      ["نوع الصك", r.deedType],
       ["العميل", r.client],
       ["نوع الإسناد", r.assignmentType],
       ["المساحة", r.area != null ? r.area.toLocaleString("en-US") + " م²" : "-"],

@@ -145,13 +145,12 @@ public sealed class ValuationReportFieldInjectionService(
 
         var all = await attachments.ListForPropertyAsync(propertyId, cancellationToken);
 
- // Prefer classified print-in-report rows; fall back to images scoped to this property id.
-        var classified = all
-            .Where(a => a.PrintInReport)
+        var routed = all
+            .Where(a => AttachmentPrintRules.TypeKeyFromScope(a.Scope) is not null)
             .OrderBy(a => a.CreatedAtUtc)
             .Take(40)
             .ToList();
-        if (classified.Count > 0) return classified;
+        if (routed.Count > 0) return routed;
 
         return all
             .Where(a => a.ContentType.StartsWith("image/", StringComparison.OrdinalIgnoreCase))
@@ -211,6 +210,9 @@ public sealed class ValuationReportFieldInjectionService(
         Put("owner_name", prop?.OwnerName);
         Put("deed_number", prop?.DeedNumber);
         Put("deed_date_h", prop?.DeedDate);
+        Put("partition_minutes_number", prop?.PartitionMinutesNumber);
+        if (!string.IsNullOrWhiteSpace(prop?.PartitionMinutesDate))
+            Put("partition_minutes_date", prop!.PartitionMinutesDate);
         Put("north_boundary", prop?.NorthBoundary);
         Put("north_boundary_length_m", prop?.NorthBoundaryLengthM);
         Put("boundary_north_type", PropertyBoundaryTypes.LabelAr(prop?.NorthBoundaryType));
@@ -378,6 +380,8 @@ public sealed class ValuationReportFieldInjectionService(
             PutMoney("final.opinion_value", recon.FinalOpinionValue);
             PutMoney("final.opinion_before_liquidation", recon.FinalOpinionBeforeLiquidation);
             PutMoney("final.liquidation_discount_pct", recon.LiquidationDiscountPct);
+            if (!string.IsNullOrWhiteSpace(recon.MethodsRationale))
+                Put("methods_rationale", recon.MethodsRationale);
         }
         else if (market is not null)
         {

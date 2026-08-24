@@ -22,9 +22,7 @@ internal static class AttachmentsModel
             e.Property(x => x.ContentType).HasMaxLength(128);
             e.Property(x => x.StorageKey).HasMaxLength(1024);
             e.Property(x => x.UploadedByUserId).HasMaxLength(450);
-            e.Property(x => x.DictionaryTypeKey).HasMaxLength(64);
             e.HasIndex(x => new { x.Scope, x.ScopeKey });
-            e.HasIndex(x => new { x.ScopeKey, x.PrintInReport });
         });
 
         builder.Entity<PhotoMetadata>(e =>

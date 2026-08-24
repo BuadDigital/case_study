@@ -464,6 +464,20 @@ export function listPropertyDetailPhotos(
     .filter((doc) => doc.kind === "image");
 }
 
+export function pickPrimaryPropertyDetailPhoto(
+  photos: PropertyDetailDocumentEntry[],
+): PropertyDetailDocumentEntry | null {
+  const preferred = photos.find((p) =>
+    /رئيس|main|primary/i.test(`${p.name} ${p.fileName}`),
+  );
+  return (
+    preferred ??
+    photos.find((p) => Boolean(p.dataUrl)) ??
+    photos[0] ??
+    null
+  );
+}
+
 export function openPropertyDetailDocumentPreview(
   entry: PropertyDetailDocumentEntry,
 ): void {

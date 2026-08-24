@@ -14,7 +14,6 @@ import {
   useFailuresQuery,
 } from "@failures/mfe";
 import {
-  classificationRequiresSurvey,
   emptyProperty,
   formatPoDisplay,
   formatPropertyDeedDisplay,
@@ -26,6 +25,7 @@ import {
   defaultDistribution,
   distributionValidationError,
   engineeringOfficeAvailable,
+  engineeringOfficeUnavailableReason,
   migrateDistribution,
   patchTaskDistribution,
   taskDisplayPropertyLabel,
@@ -107,7 +107,6 @@ export function DistributionTaskWork({
     priorSurveyLookup.exists;
 
   const showEngineering = engineeringOfficeAvailable(property, hasPriorSurvey);
-  const requiresSurvey = classificationRequiresSurvey(property.classification);
   const activeFailure = useMemo(() => {
     const propertyId = task.propertyId?.trim();
     if (!propertyId) return null;
@@ -150,17 +149,11 @@ export function DistributionTaskWork({
       });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps -- sync when engineering unavailable
-  }, [loading, task.id, showEngineering, property.classification]);
+  }, [loading, task.id, showEngineering, property.classification, property.identifierType, property.realEstateRegNumber]);
 
   const engineeringUnavailableHint = useCallback((): string | null => {
-    if (!requiresSurvey) {
-      return "المكتب الهندسي غير متاح: تصنيف «وحدة داخل مبنى» لا يتطلب رفعاً مساحياً.";
-    }
-    if (hasPriorSurvey) {
-      return "يوجد رفع مساحي سابق لنفس الصك — لا حاجة لمكتب هندسي.";
-    }
-    return null;
-  }, [hasPriorSurvey, requiresSurvey]);
+    return engineeringOfficeUnavailableReason(property, hasPriorSurvey);
+  }, [hasPriorSurvey, property]);
 
   async function patchDistribution(patch: Partial<TaskDistributionDraft>) {
     const next = migrateDistribution({ ...effectiveDistribution, ...patch });

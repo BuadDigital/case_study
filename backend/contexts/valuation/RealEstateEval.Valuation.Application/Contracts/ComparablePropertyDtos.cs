@@ -41,6 +41,8 @@ public class ComparablePropertyDto
     public string? PricePerSqmAnomalyNoteAr { get; init; }
     public string? City { get; init; }
     public required string District { get; init; }
+    public string? PlanNumber { get; init; }
+    public string? PlotNumber { get; init; }
     public string? Description { get; init; }
     public required string IntakeChannel { get; init; }
     public string? EnteredByUserId { get; init; }
@@ -130,6 +132,12 @@ public class UpsertComparablePropertyRequest
 
     [Required, MaxLength(128)]
     public string District { get; init; } = "";
+
+    [MaxLength(64)]
+    public string? PlanNumber { get; init; }
+
+    [MaxLength(64)]
+    public string? PlotNumber { get; init; }
 
     [MaxLength(2000)]
     public string? Description { get; init; }

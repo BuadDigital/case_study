@@ -11,7 +11,6 @@ namespace RealEstateEval.Infrastructure.Services;
 public static class PropertyListRowBuilder
 {
     private const string IncompleteContactMarkerPhone = "0500000000";
-    private const string UnitInsideBuildingClassification = "وحدة داخل مبنى";
     private const string DeedUnderVerification = "قيد التحقق";
     private const string DeedSuspended = "موقوف";
     public static IReadOnlyList<PropertyListItemDto> Build(
@@ -207,27 +206,22 @@ public static class PropertyListRowBuilder
     }
 
  /// <summary>
- /// Survey waived when classification does not require it, or the same deed
- /// already exists on a different work order (true prior registration).
+ /// Survey waived when classification does not require it, the property has
+ /// a registered title (سجل عيني), or the same deed already exists on a
+ /// different work order (true prior registration).
  /// </summary>
     private static bool PriorSurveyWaived(
         WorkOrderProperty prop,
         string currentPoNumber,
         Dictionary<string, HashSet<string>> priorByDeed)
     {
-        if (!ClassificationRequiresSurvey(prop.Classification)) return true;
+        if (!SurveyRequirementRules.PropertyRequiresSurvey(prop)) return true;
         var deed = DeedNumberRules.Normalize(prop.DeedNumber);
         if (deed.Length == 0) return false;
         if (!priorByDeed.TryGetValue(deed, out var pos) || pos.Count == 0) return false;
         var currentPo = currentPoNumber.Trim();
         return pos.Any(po => !string.Equals(po, currentPo, StringComparison.OrdinalIgnoreCase));
     }
-
-    private static bool ClassificationRequiresSurvey(string classification) =>
-        !string.Equals(
-            classification.Trim(),
-            UnitInsideBuildingClassification,
-            StringComparison.Ordinal);
 
     private static bool HasIncompleteContact(WorkOrderProperty prop)
     {

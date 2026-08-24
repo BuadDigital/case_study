@@ -515,6 +515,12 @@ export function buildInfathUploadModel(input: {
         sel("amenities", L.amenities, partyField(inspection, L.amenities), "MA"),
       ],
       areas: [
+        area(
+          "movables-desc",
+          L.movablesDescription,
+          partyField(inspection, L.movablesDescription),
+          "MA",
+        ),
         area("desc", L.propertyDescription, partyRemark(inspection, L.propertyDescription), "MA"),
         area("pros-cons", L.districtProsCons, partyRemark(inspection, L.districtProsCons) || partyRemark(inspection, "ملاحظات سوقية"), "MA"),
         area("access", L.accessRoute, partyRemark(inspection, L.accessRoute) || partyField(inspection, "إمكانية الوصول"), "MA"),

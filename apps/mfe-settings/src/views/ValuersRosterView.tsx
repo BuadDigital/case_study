@@ -376,6 +376,7 @@ export function ValuersRosterView() {
               <Th>الدور في النظام</Th>
               <Th>فئة العضوية</Th>
               <Th>رقم العضوية</Th>
+              <Th>إصدار الترخيص</Th>
               <Th>سريان العضوية</Th>
               <Th>التوقيع</Th>
               <Th>الحالة</Th>
@@ -470,6 +471,24 @@ export function ValuersRosterView() {
                       />
                     ) : (
                       <bdi>{v.membershipNumber || "—"}</bdi>
+                    )}
+                  </Td>
+                  <Td>
+                    {editing ? (
+                      <Input
+                        type="date"
+                        dir="ltr"
+                        className="h-[30px] py-0 text-xs"
+                        value={
+                          isIsoDate(v.licenseIssuedAt) ? v.licenseIssuedAt! : ""
+                        }
+                        disabled={!canEdit}
+                        onChange={(e) =>
+                          patch(v.id, { licenseIssuedAt: e.target.value })
+                        }
+                      />
+                    ) : (
+                      <bdi>{v.licenseIssuedAt || "—"}</bdi>
                     )}
                   </Td>
                   <Td>

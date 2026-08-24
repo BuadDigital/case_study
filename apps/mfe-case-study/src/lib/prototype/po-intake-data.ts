@@ -347,6 +347,26 @@ export function classificationRequiresSurvey(classification: string): boolean {
   return classification.trim() !== "وحدة داخل مبنى";
 }
 
+/** Registered title (سجل عيني) — same intake signals that skip bourse. */
+export function propertyHasRegisteredTitle(property: {
+  realEstateRegNumber: string;
+  identifierType: PropertyIdentifierType;
+}): boolean {
+  return propertySkipsBourse(property);
+}
+
+/** Engineering survey is skipped for unit-inside-building and for سجل عيني. */
+export function propertyRequiresSurvey(property: {
+  classification: string;
+  realEstateRegNumber: string;
+  identifierType: PropertyIdentifierType;
+}): boolean {
+  return (
+    classificationRequiresSurvey(property.classification) &&
+    !propertyHasRegisteredTitle(property)
+  );
+}
+
 export type PropertyIdentifierType = "deed" | "real_estate_reg" | "bourse_inquiry";
 
 export const BOURSE_INQUIRY_IDENTIFIER_STATUS = "قيد الدراسة";
@@ -901,6 +921,8 @@ export type PoPropertyIntake = {
   plotNumber: string;
   blockNumber: string;
   locationMapUrl: string;
+  partitionMinutesNumber: string;
+  partitionMinutesDate: string;
   finishingType: string;
   finishingStructure: string;
   bourseDataCompleted: boolean;
@@ -994,6 +1016,8 @@ export function emptyProperty(): PoPropertyIntake {
     plotNumber: "",
     blockNumber: "",
     locationMapUrl: "",
+    partitionMinutesNumber: "",
+    partitionMinutesDate: "",
     finishingType: "",
     finishingStructure: "",
     bourseDataCompleted: false,

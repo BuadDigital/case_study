@@ -364,6 +364,21 @@ export function PoPropertyEnfathForm({
               error={fieldErrors.blockNumber}
               onChange={(v) => onPatch("blockNumber", v)}
             />
+            <RegField
+              id="partition_minutes_number"
+              label="محضر التجزئة (رقم)"
+              dir="ltr"
+              value={property.partitionMinutesNumber}
+              onChange={(v) => onPatch("partitionMinutesNumber", v)}
+            />
+            <RegField
+              id="partition_minutes_date"
+              label="محضر التجزئة (تاريخ)"
+              type="date"
+              dir="ltr"
+              value={property.partitionMinutesDate}
+              onChange={(v) => onPatch("partitionMinutesDate", v)}
+            />
           </div>
           <RegField
             id="location_map_url_bourse"
@@ -437,28 +452,6 @@ export function PoPropertyEnfathForm({
           error={fieldErrors.realEstateRegDate}
           onChange={(v) => onPatch("realEstateRegDate", v)}
         />
-        <div>
-          <label
-            htmlFor="deed_kind"
-            className="mb-1 block text-[11px] font-semibold text-text-2"
-          >
-            نوع الصك
-          </label>
-          <select
-            id="deed_kind"
-            className="w-full rounded-lg border border-border-md bg-surface px-[11px] py-[7px] text-[12.5px] text-text"
-            value={property.deedKind}
-            onChange={(e) => onPatch("deedKind", e.target.value)}
-          >
-            <option value="">
-              تلقائي — {property.suggestedDeedKind === "registered_title"
-                ? "سجل عيني"
-                : "صك تقليدي"}
-            </option>
-            <option value="traditional">صك تقليدي</option>
-            <option value="registered_title">سجل عيني</option>
-          </select>
-        </div>
         <RegField
           id="assignment_mandate_number"
           label="رقم التكليف"
@@ -578,6 +571,21 @@ export function PoPropertyEnfathForm({
             value={property.blockNumber}
             error={fieldErrors.blockNumber}
             onChange={(v) => onPatch("blockNumber", v)}
+          />
+          <RegField
+            id="partition_minutes_number_deed"
+            label="محضر التجزئة (رقم)"
+            dir="ltr"
+            value={property.partitionMinutesNumber}
+            onChange={(v) => onPatch("partitionMinutesNumber", v)}
+          />
+          <RegField
+            id="partition_minutes_date_deed"
+            label="محضر التجزئة (تاريخ)"
+            type="date"
+            dir="ltr"
+            value={property.partitionMinutesDate}
+            onChange={(v) => onPatch("partitionMinutesDate", v)}
           />
         </div>
         <RegField

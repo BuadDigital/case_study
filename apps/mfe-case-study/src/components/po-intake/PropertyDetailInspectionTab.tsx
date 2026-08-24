@@ -1,8 +1,9 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode, Fragment } from "react";
 import {
   Button,
+  GoogleMapPin,
   InlineLoadingSkeleton,
   Label,
   cn,
@@ -32,14 +33,17 @@ import {
   INSPECTOR_SERVICE_OPTIONS,
   INSPECTOR_AMENITY_OPTIONS,
   INSPECTOR_OBSERVATION_CATEGORIES,
+  MOVABLES_DESCRIPTION_KEY,
   inspectorFeatureRequiresPhoto,
   inspectorPhotoCoverageLabel,
   inspectorPhotoStampText,
   isInspectorWorkspaceAccepted,
   isInspectorWorkspaceLocked,
+  isMovablesPresent,
   listServiceAmenityPhotoSlots,
   newObservationId,
   parseInspectorCount,
+  patchInspectorFeatureValues,
   type InspectorBoundaryKey,
   type InspectorComponentPhotoKey,
   type InspectorPhotoAttachment,
@@ -57,10 +61,13 @@ import {
   filterInspectorPhotoFiles,
   useInspectorPhotoDropZone,
 } from "../../lib/prototype/inspector-photo-drop";
+import { FieldComparableCaptureSection } from "../field-inspection/FieldComparableCaptureSection";
 import { InspectorDefinedPhotosSection } from "../field-inspection/InspectorDefinedPhotosSection";
 import { InspectorPhotoFilePicker } from "../field-inspection/InspectorPhotoFilePicker";
 import { InspectorStampedPhotoThumb } from "../field-inspection/InspectorStampedPhotoThumb";
+import { InspectorMovablesDescriptionField } from "../field-inspection/InspectorMovablesDescriptionField";
 import { photoLocationFlagLabel } from "@platform/app-shared/media/photo-location";
+import { AppModal } from "../ui/AppModal";
 import {
   firstInspectorWorkspaceError,
   firstInspectorWorkspaceErrorTarget,
@@ -712,6 +719,20 @@ export function PropertyDetailInspectionTab({
   const [returnError, setReturnError] = useState<string | null>(null);
   const [returning, setReturning] = useState(false);
   const [accepting, setAccepting] = useState(false);
+  const [mapPinned, setMapPinned] = useState(false);
+  const mapPinnedRef = useRef(false);
+  mapPinnedRef.current = mapPinned;
+  const [mapBackup, setMapBackup] = useState<{
+    lat: string;
+    lng: string;
+  } | null>(null);
+  const [pendingMapMove, setPendingMapMove] = useState<{
+    nextLat: string;
+    nextLng: string;
+    prevLat: string;
+    prevLng: string;
+  } | null>(null);
+  const [mapPinEpoch, setMapPinEpoch] = useState(0);
 
   useEffect(() => {
     if (!inspectionTask) {
@@ -778,10 +799,6 @@ export function PropertyDetailInspectionTab({
     return approximatePropertyGeo(property);
   }, [draft, property]);
 
-  const osmEmbed = mapGeo
-    ? `https://www.openstreetmap.org/export/embed.html?bbox=${(mapGeo.lng - 0.006).toFixed(5)}%2C${(mapGeo.lat - 0.004).toFixed(5)}%2C${(mapGeo.lng + 0.006).toFixed(5)}%2C${(mapGeo.lat + 0.004).toFixed(5)}&layer=mapnik&marker=${mapGeo.lat}%2C${mapGeo.lng}`
-    : null;
-
   const locked = draft ? isInspectorWorkspaceLocked(draft.status) : false;
   const showEditFields = editMode && Boolean(draft) && !locked;
 
@@ -799,6 +816,43 @@ export function PropertyDetailInspectionTab({
           "error",
         );
       });
+  }
+
+  function requestMapMove(lat: number, lng: number) {
+    const nextLat = lat.toFixed(5);
+    const nextLng = lng.toFixed(5);
+    const curLat = (draft?.mapLatitude ?? "").trim();
+    const curLng = (draft?.mapLongitude ?? "").trim();
+    if (!curLat || !curLng || !mapPinnedRef.current) {
+      patchDraft({ mapLatitude: nextLat, mapLongitude: nextLng });
+      return;
+    }
+    if (curLat === nextLat && curLng === nextLng) return;
+    setPendingMapMove({
+      nextLat,
+      nextLng,
+      prevLat: curLat,
+      prevLng: curLng,
+    });
+  }
+
+  function confirmPendingMapMove() {
+    if (!pendingMapMove) return;
+    setMapBackup({
+      lat: pendingMapMove.prevLat,
+      lng: pendingMapMove.prevLng,
+    });
+    patchDraft({
+      mapLatitude: pendingMapMove.nextLat,
+      mapLongitude: pendingMapMove.nextLng,
+    });
+    setPendingMapMove(null);
+    setMapPinned(true);
+  }
+
+  function cancelPendingMapMove() {
+    setPendingMapMove(null);
+    setMapPinEpoch((n) => n + 1);
   }
 
   async function handleCancelEdit() {
@@ -1112,13 +1166,21 @@ export function PropertyDetailInspectionTab({
               )}
             </InsFieldsGrid>
             </div>
-            <div className="relative mt-2.5 h-[200px] overflow-hidden rounded-lg border border-border">
-              {osmEmbed ? (
-                <iframe
+            <div
+              key={`${draft.mapLatitude},${draft.mapLongitude},${mapPinEpoch}`}
+              className="relative mt-2.5 h-[200px] overflow-hidden rounded-lg border border-border"
+            >
+              {mapGeo || showEditFields ? (
+                <GoogleMapPin
+                  lat={mapGeo?.lat}
+                  lng={mapGeo?.lng}
                   title="خريطة المعاينة"
-                  loading="lazy"
-                  className="block h-full w-full border-0"
-                  src={osmEmbed}
+                  interactive={showEditFields && !mapPinned}
+                  onCoordsChange={
+                    showEditFields && !mapPinned
+                      ? (lat, lng) => requestMapMove(lat, lng)
+                      : undefined
+                  }
                 />
               ) : (
                 <div className="grid h-full place-items-center bg-surface-2 text-[12px] text-text-3">
@@ -1126,45 +1188,76 @@ export function PropertyDetailInspectionTab({
                 </div>
               )}
             </div>
+            {showEditFields ? (
+              <div className="mt-2.5 flex flex-col gap-2">
+                {(draft.mapLatitude.trim() || mapGeo) && !mapPinned ? (
+                  <button
+                    type="button"
+                    className="flex min-h-11 w-full items-center justify-center gap-2 rounded-xl border-[1.5px] border-ink bg-[color-mix(in_srgb,var(--ink)_7%,transparent)] font-inherit text-[13px] font-bold text-ink"
+                    onClick={() => {
+                      if (
+                        !draft.mapLatitude.trim() &&
+                        mapGeo
+                      ) {
+                        patchDraft({
+                          mapLatitude: mapGeo.lat.toFixed(5),
+                          mapLongitude: mapGeo.lng.toFixed(5),
+                        });
+                      }
+                      setMapPinned(true);
+                      showToast("تم تثبيت الموقع", "success");
+                    }}
+                  >
+                    <i className="ti ti-pin text-base" aria-hidden />
+                    تثبيت الموقع
+                  </button>
+                ) : null}
+                {mapPinned ? (
+                  <div className="flex gap-2">
+                    <div className="flex min-h-11 flex-1 items-center justify-center gap-2 rounded-xl border border-[#B7E4C7] bg-[#F0FFF4] text-[13px] font-bold text-[#1B7A4A]">
+                      <i className="ti ti-pin-filled text-base" aria-hidden />
+                      الموقع مثبت
+                    </div>
+                    <button
+                      type="button"
+                      className="flex min-h-11 shrink-0 items-center justify-center rounded-xl border border-border bg-surface px-3 font-inherit text-[13px] font-bold text-heading"
+                      onClick={() => setMapPinned(false)}
+                    >
+                      تعديل
+                    </button>
+                  </div>
+                ) : null}
+                {mapBackup ? (
+                  <button
+                    type="button"
+                    className="flex min-h-11 w-full items-center justify-center gap-2 rounded-xl border border-border bg-surface font-inherit text-[13px] font-bold text-heading"
+                    onClick={() => {
+                      patchDraft({
+                        mapLatitude: mapBackup.lat,
+                        mapLongitude: mapBackup.lng,
+                      });
+                      setMapBackup(null);
+                      setMapPinEpoch((n) => n + 1);
+                    }}
+                  >
+                    <i className="ti ti-arrow-back-up text-base" aria-hidden />
+                    رجوع للموقع السابق
+                  </button>
+                ) : null}
+              </div>
+            ) : null}
             <div className="mt-3" id="ins-date-time">
               <InsFieldsGrid>
-                {showEditFields ? (
-                  <>
-                    <InsEditField
-                      id="ins-date"
-                      label="تاريخ المعاينة"
-                      type="date"
-                      ltr
-                      value={draft.inspectionDate}
-                      invalid={Boolean(fieldErrors.inspectionDate)}
-                      errorMessage={fieldErrors.inspectionDate}
-                      onChange={(v) => patchDraft({ inspectionDate: v })}
-                    />
-                    <InsEditField
-                      id="ins-time"
-                      label="وقت المعاينة"
-                      type="time"
-                      ltr
-                      value={draft.inspectionTime}
-                      invalid={Boolean(fieldErrors.inspectionTime)}
-                      errorMessage={fieldErrors.inspectionTime}
-                      onChange={(v) => patchDraft({ inspectionTime: v })}
-                    />
-                  </>
-                ) : (
-                  <>
-                    <InsField
-                      label="تاريخ المعاينة"
-                      value={draft.inspectionDate}
-                      ltr
-                    />
-                    <InsField
-                      label="وقت المعاينة"
-                      value={draft.inspectionTime}
-                      ltr
-                    />
-                  </>
-                )}
+                <InsField
+                  label="تاريخ المعاينة"
+                  value={draft.inspectionDate}
+                  ltr
+                />
+                <InsField
+                  label="وقت المعاينة"
+                  value={draft.inspectionTime}
+                  ltr
+                />
               </InsFieldsGrid>
             </div>
           </InsCard>
@@ -1214,8 +1307,8 @@ export function PropertyDetailInspectionTab({
                     const photoMissing =
                       fieldErrors.missingFeaturePhotoKey === field.key;
                     return (
+                      <Fragment key={field.key}>
                       <tr
-                        key={field.key}
                         id={`ins-feature-${field.key}`}
                         className={cn(
                           (valueMissing || photoMissing) && "bg-danger-bg/50",
@@ -1262,10 +1355,11 @@ export function PropertyDetailInspectionTab({
                               onChange={(e) => {
                                 const next = e.target.value;
                                 patchDraft({
-                                  featureValues: {
-                                    ...draft.featureValues,
-                                    [field.key]: next,
-                                  },
+                                  featureValues: patchInspectorFeatureValues(
+                                    draft.featureValues,
+                                    field.key,
+                                    next,
+                                  ),
                                   featurePhotoAttachments: {
                                     ...draft.featurePhotoAttachments,
                                     [field.key]: inspectorFeatureRequiresPhoto(
@@ -1351,6 +1445,43 @@ export function PropertyDetailInspectionTab({
                           )}
                         </td>
                       </tr>
+                      {field.key === "movables" && isMovablesPresent(draft.featureValues) ? (
+                        <tr
+                          className={cn(
+                            fieldErrors.movablesDescription && "bg-danger-bg/50",
+                          )}
+                        >
+                          <td className="border border-border" />
+                          <td className="border border-border px-2.5 py-1.5" colSpan={3}>
+                            {showEditFields ? (
+                              <InspectorMovablesDescriptionField
+                                value={
+                                  draft.featureValues[MOVABLES_DESCRIPTION_KEY] ??
+                                  ""
+                                }
+                                invalid={Boolean(fieldErrors.movablesDescription)}
+                                onChange={(next) =>
+                                  patchDraft({
+                                    featureValues: {
+                                      ...draft.featureValues,
+                                      [MOVABLES_DESCRIPTION_KEY]: next,
+                                    },
+                                  })
+                                }
+                              />
+                            ) : (
+                              <p className="m-0 whitespace-pre-wrap text-[12.5px] text-heading">
+                                <span className="block text-[10.5px] font-bold text-text-3">
+                                  وصف المنقولات
+                                </span>
+                                {draft.featureValues[MOVABLES_DESCRIPTION_KEY]?.trim()
+                                  || "—"}
+                              </p>
+                            )}
+                          </td>
+                        </tr>
+                      ) : null}
+                      </Fragment>
                     );
                   })}
                 </tbody>
@@ -1501,6 +1632,54 @@ export function PropertyDetailInspectionTab({
                     ltr
                     onChange={(v) => patchDraft({ towerCount: v })}
                   />
+                  <InsEditField
+                    label="جاكوزي"
+                    value={draft.jacuzziCount}
+                    ltr
+                    onChange={(v) => patchDraft({ jacuzziCount: v })}
+                  />
+                  <InsEditField
+                    label="غرف الطعام"
+                    value={draft.diningCount}
+                    ltr
+                    onChange={(v) => patchDraft({ diningCount: v })}
+                  />
+                  <InsEditField
+                    label="المجالس"
+                    value={draft.majlisCount}
+                    ltr
+                    onChange={(v) => patchDraft({ majlisCount: v })}
+                  />
+                  <InsEditField
+                    label="غرف الخدم"
+                    value={draft.maidRoomCount}
+                    ltr
+                    onChange={(v) => patchDraft({ maidRoomCount: v })}
+                  />
+                  <InsEditField
+                    label="غرفة حارس"
+                    value={draft.guardRoomCount}
+                    ltr
+                    onChange={(v) => patchDraft({ guardRoomCount: v })}
+                  />
+                  <InsEditField
+                    label="مواقف"
+                    value={draft.parkingCount}
+                    ltr
+                    onChange={(v) => patchDraft({ parkingCount: v })}
+                  />
+                  <InsEditField
+                    label="مستودع"
+                    value={draft.storeCount}
+                    ltr
+                    onChange={(v) => patchDraft({ storeCount: v })}
+                  />
+                  <InsEditField
+                    label="ملاعب أطفال"
+                    value={draft.playgroundCount}
+                    ltr
+                    onChange={(v) => patchDraft({ playgroundCount: v })}
+                  />
                   <InsEditSelect
                     label="هل يوجد ملحق؟"
                     value={draft.hasAnnex}
@@ -1549,6 +1728,14 @@ export function PropertyDetailInspectionTab({
                     onPatch={patchDraft}
                   />
                   <InsField label="الأبراج" value={draft.towerCount} ltr />
+                  <InsField label="جاكوزي" value={draft.jacuzziCount} ltr />
+                  <InsField label="غرف الطعام" value={draft.diningCount} ltr />
+                  <InsField label="المجالس" value={draft.majlisCount} ltr />
+                  <InsField label="غرف الخدم" value={draft.maidRoomCount} ltr />
+                  <InsField label="غرفة حارس" value={draft.guardRoomCount} ltr />
+                  <InsField label="مواقف" value={draft.parkingCount} ltr />
+                  <InsField label="مستودع" value={draft.storeCount} ltr />
+                  <InsField label="ملاعب أطفال" value={draft.playgroundCount} ltr />
                   <InsField label="هل يوجد ملحق؟" value={draft.hasAnnex} />
                 </>
               )}
@@ -1599,7 +1786,7 @@ export function PropertyDetailInspectionTab({
                     onChange={(v) => patchDraft({ basementTotal: v })}
                   />
                   <InsEditField
-                    label="إجمالي مساحة اللاحق (م²)"
+                    label="إجمالي مساحة الملاحق (م²)"
                     value={draft.annexTotal}
                     ltr
                     onChange={(v) => patchDraft({ annexTotal: v })}
@@ -1635,7 +1822,7 @@ export function PropertyDetailInspectionTab({
                     ltr
                   />
                   <InsField
-                    label="إجمالي مساحة اللاحق (م²)"
+                    label="إجمالي مساحة الملاحق (م²)"
                     value={draft.annexTotal}
                     ltr
                   />
@@ -1653,6 +1840,19 @@ export function PropertyDetailInspectionTab({
               )}
             </InsFieldsGrid>
           </InsCard>
+
+          {showEditFields ? (
+            <FieldComparableCaptureSection
+              latitude={draft.mapLatitude}
+              longitude={draft.mapLongitude}
+              city={property.city}
+              district={property.district}
+              propertyType={property.propertyType}
+              poNumber={inspectionTask?.poNumber}
+              propertyId={property.id}
+              disabled={locked}
+            />
+          ) : null}
 
           {!boundariesMarkedUnavailable(property.boundariesAvailability) ? (
             <InsCard
@@ -2125,6 +2325,31 @@ export function PropertyDetailInspectionTab({
           </div>
         </div>
       ) : null}
+      <AppModal
+        open={Boolean(pendingMapMove)}
+        title="تأكيد تحريك الموقع"
+        onClose={cancelPendingMapMove}
+        footer={
+          <>
+            <Button type="button" onClick={cancelPendingMapMove}>
+              إلغاء
+            </Button>
+            <Button
+              type="button"
+              variant="primary"
+              showActionToast={false}
+              onClick={confirmPendingMapMove}
+            >
+              تثبيت الموقع الجديد
+            </Button>
+          </>
+        }
+      >
+        <p className="m-0 text-[13px] leading-6 text-text-2">
+          هل تريد اعتماد هذا الموقع بدل الموقع الحالي؟ يمكنك الرجوع للموقع السابق
+          بعد التثبيت.
+        </p>
+      </AppModal>
     </div>
   );
 }

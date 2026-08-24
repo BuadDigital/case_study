@@ -363,6 +363,7 @@ public static class DependencyInjection
     {
         services.AddUpstreamHttp(configuration);
         services.AddHttpClient<IValuationRequestService, HttpValuationRequestService>();
+        services.AddHttpClient<IPropertyComparableLinkLookup, HttpPropertyComparableLinkLookup>();
         return services;
     }
 

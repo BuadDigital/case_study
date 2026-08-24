@@ -96,7 +96,7 @@ export function PoPropertyGroupSection({ propertyId }: { propertyId: string }) {
           <ul className="mt-2 flex flex-col gap-1 text-[12px] text-text-2">
             {group.members.map((m) => (
               <li key={m.propertyId}>
-                صك {m.deedNumber} · أمر {m.poNumber} · {m.deedKind ?? "—"}
+                صك {m.deedNumber} · أمر {m.poNumber}
                 {m.signalLabelsAr.length > 0
                   ? ` · إشارات: ${m.signalLabelsAr.join("، ")}`
                   : ""}
