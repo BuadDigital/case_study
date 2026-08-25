@@ -872,7 +872,7 @@ public sealed class KeyEnvelopesService : IKeyEnvelopesService
     private Task<bool> AttachmentExistsAsync(
         Guid id,
         CancellationToken cancellationToken) =>
-        _attachments.ExistsAsync(id, cancellationToken);
+        _attachments.ExistsAsync(id, actor: null, cancellationToken);
 
     private async Task<string?> ValidateCourtVisitTaskLinkAsync(
         Guid taskId,

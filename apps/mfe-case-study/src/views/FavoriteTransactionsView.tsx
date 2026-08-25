@@ -40,8 +40,7 @@ export function FavoriteTransactionsView() {
       emptyHint:
         "افتح تفاصيل أي عقار واضغط النجمة بجانب رقم الصك لإضافته هنا.",
       panelId: "favorite-transactions-panel",
-      tableHint:
-        "اضغط الصف لفتح المعاملة في مرحلتها الحالية — اضغط نفس الصف مرة أخرى للإغلاق.",
+      tableHint: "اضغط الصف للفتح أو الإغلاق.",
       partyAssignee: isPartyRole,
       assigneeRole: isPartyRole ? role : undefined,
       getBasePath: favoritesPath,

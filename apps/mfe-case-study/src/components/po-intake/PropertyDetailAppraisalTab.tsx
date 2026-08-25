@@ -2,6 +2,7 @@
 
 import { EmptyState } from "./PropertyDetailFields";
 import { PartyRoleDetailPanel } from "./PartyRoleDetailPanel";
+import { ReturnedForCorrectionNote } from "../ui/ReturnedForCorrectionNote";
 import { PropertyDetailPartyPackageReview } from "./PropertyDetailPartyPackageReview";
 import type { PropertyDetailPartyCard } from "../../lib/prototype/property-detail-parties";
 import type { PropertyDetailPartySubmission } from "../../lib/prototype/property-detail-party-submissions";
@@ -49,9 +50,7 @@ export function PropertyDetailAppraisalTab({
         onChanged={onReviewChanged}
       />
       {submission?.packageStatus === "reopened" && returnRemark?.trim() ? (
-        <div className="mb-3 rounded-lg border border-amber border-e-[3px] border-e-amber bg-amber-light px-3.5 py-2.5 text-xs leading-relaxed text-amber-text">
-          <strong>معادة للتصحيح</strong> — {returnRemark.trim()}
-        </div>
+        <ReturnedForCorrectionNote note={returnRemark} className="mb-3" />
       ) : null}
       <PartyRoleDetailPanel
         card={appraisalCard}

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { prototypeKeys } from "@platform/app-shared/query/prototype-keys";
 import { loadEnfazTracking } from "@platform/app-shared/prototype/enfaz-billing-api";
@@ -62,6 +62,8 @@ import {
 import { FinanceStagePills } from "./FinanceStagePills";
 import { FinanceEnfazPoBilling } from "./FinanceEnfazPoBilling";
 import { FinanceEnfazFollowupsPanel } from "./FinanceEnfazFollowupsPanel";
+
+const EMPTY_TRACKING_ROWS: EnfazTrackingRowDto[] = [];
 
 function fmtNum(n: number, digits = 2) {
   return n.toLocaleString("en-US", {
@@ -220,6 +222,7 @@ function Thead({
 }
 
 function EmptyState({ stage }: { stage: RevenueStage }) {
+  const hint = revenueStageEmptyHint(stage);
   return (
     <div className={finCard}>
       <div className={finEmpty}>
@@ -230,9 +233,7 @@ function EmptyState({ stage }: { stage: RevenueStage }) {
               ? "لا مستبعدة حالياً."
               : "لا معاملات في هذه المرحلة."}
         </div>
-        {revenueStageEmptyHint(stage) ? (
-          <div className={finEmptyS}>{revenueStageEmptyHint(stage)}</div>
-        ) : null}
+        {hint ? <div className={finEmptyS}>{hint}</div> : null}
       </div>
     </div>
   );
@@ -1043,7 +1044,7 @@ export function FinanceRevenueView({
     staleTime: 20_000,
   });
 
-  const allRows = trackingQuery.data ?? [];
+  const allRows = trackingQuery.data ?? EMPTY_TRACKING_ROWS;
   const cities = useMemo(() => uniqueCities(allRows), [allRows]);
   const buckets = useMemo(() => bucketRevenueRows(allRows), [allRows]);
 
@@ -1075,21 +1076,23 @@ export function FinanceRevenueView({
     setFollowMode(false);
   }, [viewStage]);
 
-  const toggleGroup = (key: string) => {
+  const toggleGroup = useCallback((key: string) => {
     setCollapsed((prev) => ({ ...prev, [key]: !prev[key] }));
-  };
+  }, []);
 
-  const toggleSelect = (propertyId: string) => {
+  const toggleSelect = useCallback((propertyId: string) => {
     setSelected((prev) => ({ ...prev, [propertyId]: !prev[propertyId] }));
-  };
+  }, []);
 
+  const selectedRows: EnfazTrackingRowDto[] = [];
+  let selectedTotal = 0;
+  for (const r of stageRows) {
+    if (!selected[r.propertyId]) continue;
+    selectedRows.push(r);
+    selectedTotal += revenueAmountsFromRow(r).total;
+  }
   const allSelected =
-    stageRows.length > 0 && stageRows.every((r) => selected[r.propertyId]);
-  const selectedRows = stageRows.filter((r) => selected[r.propertyId]);
-  const selectedTotal = selectedRows.reduce(
-    (s, r) => s + revenueAmountsFromRow(r).total,
-    0,
-  );
+    stageRows.length > 0 && selectedRows.length === stageRows.length;
 
   const selectAll = () => {
     if (allSelected) {

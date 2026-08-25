@@ -13,6 +13,7 @@ import {
   filterTasksForDistribution,
   filterTasksForPrimaryData,
 } from "@case-study/mfe";
+import type { FailureRecord } from "@failures/mfe";
 import { isTaskOnSuspendedProperty } from "@case-study/mfe/lib/prototype/suspended-transactions-storage";
 import { listedTasksForPage } from "@case-study/mfe/lib/prototype/active-transaction-page-situation";
 import { PARTY_TASK_PAGES } from "@platform/app-shared/prototype/party-task-pages";
@@ -31,6 +32,8 @@ import {
 import { filterActionablePendingBourseItems } from "@case-study/mfe/lib/prototype/pending-bourse-queue";
 import { useStaffUsersQuery } from "@settings/mfe/query/settings-queries";
 import { loadInspectorFeesSummary } from "@platform/app-shared/prototype/inspector-fees-api";
+
+const EMPTY_FAILURES: FailureRecord[] = [];
 
 function poRecordsMap(records: PoIntakeRecord[] | undefined) {
   const map = new Map<string, PoIntakeRecord>();
@@ -51,7 +54,7 @@ export function useActiveTransactionNavBadges(): ActiveTransactionNavIndicators 
   const { data: tasks } = useWorkflowTasksQuery();
   const { data: poRecords } = usePoRecordsQuery();
   const { data: pendingBourse } = usePendingBourseItemsQuery();
-  const { data: failures = [] } = useFailuresQuery();
+  const { data: failures = EMPTY_FAILURES } = useFailuresQuery();
   const { data: staffResult } = useStaffUsersQuery();
   const staffUsers = useMemo(
     () => staffResult?.users ?? [],

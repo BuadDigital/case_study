@@ -150,7 +150,7 @@ export function FinanceDisbursementCloseModal({
   return (
     <ModalOverlay
       role="presentation"
-      className="items-start bg-[rgba(16,43,78,0.42)] pt-[6vh] backdrop-blur-[2px] !z-[200]"
+      className="items-start bg-[rgba(16,43,78,0.42)] pt-[6vh] backdrop-blur-[2px] !z-[var(--z-modal)]"
       onClick={() => {
         if (!busy && !uploading) onClose();
       }}

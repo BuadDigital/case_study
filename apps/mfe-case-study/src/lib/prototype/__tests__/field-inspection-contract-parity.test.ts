@@ -4,6 +4,7 @@ import {
   inspectionStampFromNow,
   INSPECTOR_FEATURE_FIELDS,
   listInspectorPhotoValidationIssues,
+  inspectorFeatureRequiresPhoto,
   serviceAmenityPhotoSlotId,
 } from "../inspector-workspace-data";
 import { validateInspectorWorkspace } from "../inspector-workspace-validation";
@@ -68,36 +69,41 @@ describe("Field inspection frontend/backend rule parity", () => {
     );
   });
 
-  it("does not require showroom/well photos (optional, mirrors the backend)", () => {
+  it("requires showroom/well photos when counts are positive", () => {
     const draft = completeDraft();
     draft.showroomCount = "2";
     draft.wellCount = "1";
 
     const issues = listInspectorPhotoValidationIssues(draft);
-    expect(issues).not.toContain("يجب إرفاق صورة المعرض");
-    expect(issues).not.toContain("يجب إرفاق صورة البئر");
+    expect(issues).toContain("يجب إرفاق صورة المعرض");
+    expect(issues).toContain("يجب إرفاق صورة البئر");
 
     const errors = validateInspectorWorkspace(draft);
-    expect(errors.componentPhotos).toBeUndefined();
-    expect(errors.featurePhotos).toBeUndefined();
+    expect(errors.componentPhotos).toBe("يجب إرفاق صورة المعرض");
   });
 
-  it("does not require a photo when a service chip is selected without one", () => {
+  it("requires a photo when a service chip is selected without one", () => {
     const draft = completeDraft();
     draft.services = ["كهرباء", "مياه"];
-    // only first service has a photo in completeDraft shape — water slot stays empty
 
     const issues = listInspectorPhotoValidationIssues(draft);
     expect(issues.some((i) => i.includes("خدمة") || i.includes("مرفق"))).toBe(
-      false,
+      true,
     );
-    expect(validateInspectorWorkspace(draft).definedPhotos).toBeUndefined();
+    expect(validateInspectorWorkspace(draft).definedPhotos).toBeDefined();
   });
 
   it("requires a movables description when the inspector answers yes", () => {
     const draft = completeDraft();
     for (const field of INSPECTOR_FEATURE_FIELDS) {
       draft.featureValues[field.key] = field.options[0] ?? "نعم";
+      if (inspectorFeatureRequiresPhoto(field, draft.featureValues[field.key])) {
+        draft.featurePhotoAttachments[field.key] = {
+          fileName: `${field.key}.jpg`,
+          mimeType: "image/jpeg",
+          attachmentId: `att-${field.key}`,
+        };
+      }
     }
     draft.featureValues.movables = "نعم";
     draft.featureValues.movablesDescription = "";

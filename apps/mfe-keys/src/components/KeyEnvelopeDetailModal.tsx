@@ -578,18 +578,31 @@ export function KeyEnvelopeDetailPage({
       ) : null}
 
       {handoffOpen && env ? (
-        <HandoffModal
-          env={env}
-          inspectors={fieldInspectors}
-          staffLoadError={staffLoadError}
-          busy={busy}
-          onClose={() => setHandoffOpen(false)}
-          onBusy={setBusy}
-          onDone={async (next) => {
-            setHandoffOpen(false);
-            await refresh(next);
-          }}
-        />
+        env.status === "reviewer" ? (
+          <DeliverEnvelopeModal
+            env={env}
+            inspectors={fieldInspectors}
+            staffLoadError={staffLoadError}
+            busy={busy}
+            onClose={() => setHandoffOpen(false)}
+            onBusy={setBusy}
+            onDone={async (next) => {
+              setHandoffOpen(false);
+              await refresh(next);
+            }}
+          />
+        ) : (
+          <ReceiveEnvelopeModal
+            env={env}
+            busy={busy}
+            onClose={() => setHandoffOpen(false)}
+            onBusy={setBusy}
+            onDone={async (next) => {
+              setHandoffOpen(false);
+              await refresh(next);
+            }}
+          />
+        )
       ) : null}
 
       {courtEditTarget ? (
@@ -1080,6 +1093,45 @@ function CourtAccessPanel({
   );
 }
 
+/** Exact tiles from HTML `openKeyResult` / Case Study.html. */
+const MATCH_RESULT_TILES: {
+  id: KeyAssignmentMatchStatus;
+  label: string;
+  hint: string;
+  color: string;
+}[] = [
+  {
+    id: "matched",
+    label: "مطابق",
+    hint: "فُتح العقار بالمفاتيح",
+    color: "#2f7a4d",
+  },
+  {
+    id: "partial",
+    label: "مطابقة جزئية",
+    hint: "بعض الوحدات فقط",
+    color: "#b58a3c",
+  },
+  {
+    id: "unmatched",
+    label: "غير مطابق",
+    hint: "لا مفتاح مناسب",
+    color: "#d9694f",
+  },
+  {
+    id: "unmatched_inspected",
+    label: "غير مطابق — تمت المعاينة",
+    hint: "عوين العقار بالكامل رغم عدم المطابقة",
+    color: "#8a5e14",
+  },
+  {
+    id: "missing",
+    label: "مفقود",
+    hint: "لم يُعثر على المفتاح",
+    color: "#c0553d",
+  },
+];
+
 function MatchResultModal({
   deed,
   busy,
@@ -1095,48 +1147,9 @@ function MatchResultModal({
   const [note, setNote] = useState("");
   const [err, setErr] = useState("");
 
-  /** Exact tiles from HTML `openKeyResult` / Case Study.html. */
-  const tiles: {
-    id: KeyAssignmentMatchStatus;
-    label: string;
-    hint: string;
-    color: string;
-  }[] = [
-    {
-      id: "matched",
-      label: "مطابق",
-      hint: "فُتح العقار بالمفاتيح",
-      color: "#2f7a4d",
-    },
-    {
-      id: "partial",
-      label: "مطابقة جزئية",
-      hint: "بعض الوحدات فقط",
-      color: "#b58a3c",
-    },
-    {
-      id: "unmatched",
-      label: "غير مطابق",
-      hint: "لا مفتاح مناسب",
-      color: "#d9694f",
-    },
-    {
-      id: "unmatched_inspected",
-      label: "غير مطابق — تمت المعاينة",
-      hint: "عوين العقار بالكامل رغم عدم المطابقة",
-      color: "#8a5e14",
-    },
-    {
-      id: "missing",
-      label: "مفقود",
-      hint: "لم يُعثر على المفتاح",
-      color: "#c0553d",
-    },
-  ];
-
   return (
     <div
-      className="fixed inset-0 z-[1100] flex items-start justify-center overflow-y-auto bg-[rgba(16,43,78,0.42)] px-4 py-[6vh] backdrop-blur-[2px] max-lg:items-stretch max-lg:px-0 max-lg:py-0"
+      className="fixed inset-0 z-[var(--z-modal-2)] flex items-start justify-center overflow-y-auto bg-[rgba(16,43,78,0.42)] px-4 py-[6vh] backdrop-blur-[2px] max-lg:items-stretch max-lg:px-0 max-lg:py-0"
       role="presentation"
       onClick={onClose}
     >
@@ -1178,7 +1191,7 @@ function MatchResultModal({
           <div>
             <Label>نتيجة تجربة المفاتيح ميدانياً *</Label>
             <div className="mt-1.5 grid gap-2">
-              {tiles.map((t) => {
+              {MATCH_RESULT_TILES.map((t) => {
                 const on = sel === t.id;
                 return (
                   <button
@@ -1284,7 +1297,130 @@ function MatchResultModal({
   );
 }
 
-function HandoffModal({
+const HANDOFF_NOTES_BY_KIND: Record<string, string> = {
+  internal:
+    "التسليم الداخلي يُسجَّل بحالة «بانتظار التأكيد» ثم يؤكّده المعاين — وتنتقل العهدة إليه.",
+  external:
+    "التسليم الخارجي يتطلب إثباتاً: صورة/مستند، أو بيانات التواصل للجهة.",
+  return_court:
+    "المحكمة جهة معرَّفة — لا يلزم إثبات استلام؛ الإرجاع يُنهي دورة الظرف.",
+};
+
+/** استلام الظرف — تأكيد المناولة المعلّقة لتعود العهدة إلى المراجع (الحالة ليست «لدى المراجع»). */
+function ReceiveEnvelopeModal({
+  env,
+  busy,
+  onClose,
+  onBusy,
+  onDone,
+}: {
+  env: KeyEnvelopeRow;
+  busy: boolean;
+  onClose: () => void;
+  onBusy: (v: boolean) => void;
+  onDone: (next: KeyEnvelopeRow) => Promise<void>;
+}) {
+  const { showToast } = useToast();
+  const pending = [...env.handoffs]
+    .reverse()
+    .find((h) => h.status === "pending_confirm");
+  const rawHolder =
+    pending?.toParty ||
+    env.handoffs[env.handoffs.length - 1]?.toParty ||
+    "";
+  const resolvedHolder = displayPersonName(rawHolder);
+  const holder =
+    resolvedHolder === "—" ? "الطرف الحالي" : resolvedHolder;
+
+  return (
+    <ModalOverlay onClick={onClose}>
+      <ModalCard
+        onClick={(e) => e.stopPropagation()}
+        className="max-w-[520px] p-0 max-lg:max-h-[min(92dvh,100%)]"
+      >
+        <ModalHeader className="relative border-b border-border px-5 py-4">
+          <ModalTitle className="text-center text-[16px] font-extrabold text-heading">
+            استلام الظرف — {env.requestNumber}
+          </ModalTitle>
+          <ModalClose
+            className="absolute start-3 top-1/2 flex size-8 -translate-y-1/2 items-center justify-center rounded-[9px] bg-surface-2"
+            onClick={onClose}
+          >
+            ✕
+          </ModalClose>
+        </ModalHeader>
+        <ModalBody className="px-5 py-5">
+          <div className="flex items-start gap-3">
+            <span className="grid size-10 shrink-0 place-items-center rounded-[10px] bg-[color-mix(in_srgb,#378add_14%,transparent)] text-[#378add]">
+              <svg
+                width="20"
+                height="20"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.8"
+                aria-hidden
+              >
+                <path d="M20 6 9 17l-5-5" />
+              </svg>
+            </span>
+            <div>
+              <div className="mb-1 text-[14px] font-extrabold text-heading">
+                تأكيد استلام الظرف {env.requestNumber}
+              </div>
+              <div className="text-[12.5px] leading-relaxed text-text-2">
+                الظرف بعهدة <b>{holder}</b> — يكفي تأكيد الاستلام لتعود العهدة
+                إليك ويوثَّق ذلك في السجل.
+              </div>
+            </div>
+          </div>
+        </ModalBody>
+        <ModalFooter className="justify-start gap-2 border-t border-border px-5 py-3.5">
+          <Button
+            variant="outline"
+            disabled={busy}
+            showActionToast={false}
+            onClick={onClose}
+          >
+            إلغاء
+          </Button>
+          <Button
+            variant="primary"
+            loading={busy}
+            disabled={!pending}
+            showActionToast={false}
+            onClick={async () => {
+              if (!pending) {
+                showToast("لا توجد مناولة بانتظار التأكيد.", "error");
+                return;
+              }
+              onBusy(true);
+              const result = await confirmEnvelopeHandoff(
+                env.id,
+                pending.id,
+              );
+              onBusy(false);
+              if (!result.ok) {
+                showToast(result.error, "error");
+                return;
+              }
+              showToast(
+                `تم تأكيد استلام الظرف ${env.requestNumber}.`,
+                "success",
+              );
+              await onDone(result.data);
+            }}
+          >
+            تأكيد الاستلام
+          </Button>
+        </ModalFooter>
+      </ModalCard>
+    </ModalOverlay>
+  );
+}
+
+/** تسليم الظرف — مناولة داخلية/خارجية أو إرجاع للمحكمة (العهدة لدى المراجع). */
+function DeliverEnvelopeModal({
   env,
   inspectors,
   staffLoadError,
@@ -1302,7 +1438,6 @@ function HandoffModal({
   onDone: (next: KeyEnvelopeRow) => Promise<void>;
 }) {
   const { showToast } = useToast();
-  const deliver = env.status === "reviewer";
   const [kind, setKind] = useState("internal");
   const [toUserId, setToUserId] = useState("");
   const [partyName, setPartyName] = useState("");
@@ -1313,114 +1448,6 @@ function HandoffModal({
   const [letterName, setLetterName] = useState("");
   const [err, setErr] = useState("");
   const fileRef = useRef<HTMLInputElement>(null);
-
-  const notesByKind: Record<string, string> = {
-    internal:
-      "التسليم الداخلي يُسجَّل بحالة «بانتظار التأكيد» ثم يؤكّده المعاين — وتنتقل العهدة إليه.",
-    external:
-      "التسليم الخارجي يتطلب إثباتاً: صورة/مستند، أو بيانات التواصل للجهة.",
-    return_court:
-      "المحكمة جهة معرَّفة — لا يلزم إثبات استلام؛ الإرجاع يُنهي دورة الظرف.",
-  };
-
-  if (!deliver) {
-    const pending = [...env.handoffs]
-      .reverse()
-      .find((h) => h.status === "pending_confirm");
-    const rawHolder =
-      pending?.toParty ||
-      env.handoffs[env.handoffs.length - 1]?.toParty ||
-      "";
-    const resolvedHolder = displayPersonName(rawHolder);
-    const holder =
-      resolvedHolder === "—" ? "الطرف الحالي" : resolvedHolder;
-
-    return (
-      <ModalOverlay onClick={onClose}>
-        <ModalCard
-          onClick={(e) => e.stopPropagation()}
-          className="max-w-[520px] p-0 max-lg:max-h-[min(92dvh,100%)]"
-        >
-          <ModalHeader className="relative border-b border-border px-5 py-4">
-            <ModalTitle className="text-center text-[16px] font-extrabold text-heading">
-              استلام الظرف — {env.requestNumber}
-            </ModalTitle>
-            <ModalClose
-              className="absolute start-3 top-1/2 flex size-8 -translate-y-1/2 items-center justify-center rounded-[9px] bg-surface-2"
-              onClick={onClose}
-            >
-              ✕
-            </ModalClose>
-          </ModalHeader>
-          <ModalBody className="px-5 py-5">
-            <div className="flex items-start gap-3">
-              <span className="grid size-10 shrink-0 place-items-center rounded-[10px] bg-[color-mix(in_srgb,#378add_14%,transparent)] text-[#378add]">
-                <svg
-                  width="20"
-                  height="20"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="1.8"
-                  aria-hidden
-                >
-                  <path d="M20 6 9 17l-5-5" />
-                </svg>
-              </span>
-              <div>
-                <div className="mb-1 text-[14px] font-extrabold text-heading">
-                  تأكيد استلام الظرف {env.requestNumber}
-                </div>
-                <div className="text-[12.5px] leading-relaxed text-text-2">
-                  الظرف بعهدة <b>{holder}</b> — يكفي تأكيد الاستلام لتعود العهدة
-                  إليك ويوثَّق ذلك في السجل.
-                </div>
-              </div>
-            </div>
-          </ModalBody>
-          <ModalFooter className="justify-start gap-2 border-t border-border px-5 py-3.5">
-            <Button
-              variant="outline"
-              disabled={busy}
-              showActionToast={false}
-              onClick={onClose}
-            >
-              إلغاء
-            </Button>
-            <Button
-              variant="primary"
-              loading={busy}
-              disabled={!pending}
-              showActionToast={false}
-              onClick={async () => {
-                if (!pending) {
-                  showToast("لا توجد مناولة بانتظار التأكيد.", "error");
-                  return;
-                }
-                onBusy(true);
-                const result = await confirmEnvelopeHandoff(
-                  env.id,
-                  pending.id,
-                );
-                onBusy(false);
-                if (!result.ok) {
-                  showToast(result.error, "error");
-                  return;
-                }
-                showToast(
-                  `تم تأكيد استلام الظرف ${env.requestNumber}.`,
-                  "success",
-                );
-                await onDone(result.data);
-              }}
-            >
-              تأكيد الاستلام
-            </Button>
-          </ModalFooter>
-        </ModalCard>
-      </ModalOverlay>
-    );
-  }
 
   return (
     <ModalOverlay onClick={onClose}>
@@ -1586,7 +1613,7 @@ function HandoffModal({
           ) : null}
 
           <div className="rounded-[10px] border border-border bg-surface-2/50 px-3.5 py-2.5 text-[12.5px] leading-relaxed text-text-2">
-            {notesByKind[kind] ?? ""}
+            {HANDOFF_NOTES_BY_KIND[kind] ?? ""}
           </div>
         </ModalBody>
         <ModalFooter className="justify-start gap-2 border-t border-border px-5 py-3.5">
@@ -1675,6 +1702,12 @@ function HandoffModal({
   );
 }
 
+const COURT_ACCESS_OPTIONS = [
+  { id: "none" as const, label: "لا يوجد" },
+  { id: "enabling" as const, label: "تمكين" },
+  { id: "eviction" as const, label: "محظر إخلاء" },
+] as const;
+
 function CourtAccessModal({
   property,
   current,
@@ -1758,13 +1791,7 @@ function CourtAccessModal({
           <div>
             <Label>مسار الدخول</Label>
             <div className="mt-1 grid grid-cols-3 gap-1.5">
-              {(
-                [
-                  { id: "none" as const, label: "لا يوجد" },
-                  { id: "enabling" as const, label: "تمكين" },
-                  { id: "eviction" as const, label: "محظر إخلاء" },
-                ] as const
-              ).map((opt) => {
+              {COURT_ACCESS_OPTIONS.map((opt) => {
                 const active =
                   opt.id === "none"
                     ? !hasEnablingLetter && !hasEvictionNotice

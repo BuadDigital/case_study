@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import dynamic from "next/dynamic";
 import { useRouter, useSearchParams } from "next/navigation";
 import { getOrganizationSettings, saveOrganizationSettings, testOrganizationCommunication, emptyValuationReportSettings, BRAND_IDENTITY_DEFAULTS, ORG_COMPANY_DEFAULTS, type OrganizationSettingsDto } from "@platform/api-client";
 import { Can, useCapability } from "@platform/app-shared/components/Can";
@@ -24,11 +25,36 @@ import {
   opsTfSegActive,
   opsTfSegRow,
 } from "@case-study/mfe/lib/prototype/ops-tasks-tw";
-import { BrandIdentityView } from "./BrandIdentityView";
-import { OrganizationDataView } from "./OrganizationDataView";
-import { ValuersRosterView } from "./ValuersRosterView";
-import { ProfessionalValuationReportView } from "./ProfessionalValuationReportView";
 import { organizationSettingsApiConfig } from "../lib/settings-api-config";
+
+const settingsViewFallback = () => (
+  <PageShell variant="canvas" className="gap-0 p-4 sm:p-6" dir="rtl">
+    <div className="flex items-center justify-center gap-2 py-20 text-text-3">
+      <Spinner />
+      <span className="text-[13px]">جاري التحميل…</span>
+    </div>
+  </PageShell>
+);
+
+const BrandIdentityView = dynamic(
+  () => import("./BrandIdentityView").then((m) => m.BrandIdentityView),
+  { ssr: false, loading: settingsViewFallback },
+);
+const OrganizationDataView = dynamic(
+  () => import("./OrganizationDataView").then((m) => m.OrganizationDataView),
+  { ssr: false, loading: settingsViewFallback },
+);
+const ValuersRosterView = dynamic(
+  () => import("./ValuersRosterView").then((m) => m.ValuersRosterView),
+  { ssr: false, loading: settingsViewFallback },
+);
+const ProfessionalValuationReportView = dynamic(
+  () =>
+    import("./ProfessionalValuationReportView").then(
+      (m) => m.ProfessionalValuationReportView,
+    ),
+  { ssr: false, loading: settingsViewFallback },
+);
 
 type TabId =
   | "company"

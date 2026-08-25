@@ -16,6 +16,8 @@ type PoChrome = {
   propertyDetail?: { poNumber: string; propertyId: string };
 };
 
+const ARABIC_CHAR_RE = /[\u0600-\u06FF]/;
+
 /** Nested PO trail after list (edit / workspace) — leaf-only style: no dashboard parents. */
 function poTrailBase(poNumber: string): BreadcrumbSegment[] {
   return [
@@ -46,7 +48,7 @@ export function buildPoPropertyWorkspaceSegments(
   const segments: BreadcrumbSegment[] = [...poTrailBase(poNumber)];
   const deed = deedLabel?.trim();
   if (deed) {
-    const ltr = !/[\u0600-\u06FF]/.test(deed);
+    const ltr = !ARABIC_CHAR_RE.test(deed);
     segments.push({ label: deed, current: true, ltr });
   }
   return segments;

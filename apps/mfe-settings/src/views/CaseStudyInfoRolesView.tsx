@@ -289,12 +289,13 @@ export function CaseStudyInfoRolesView() {
             const qs = CASE_STUDY_QUESTION_CATALOG.filter(
               (q) => q.section === sec.id,
             );
-            const doneCount = qs.filter(
-              (q) => questionStatus(config, q.key) === "done",
-            ).length;
-            const partialCount = qs.filter(
-              (q) => questionStatus(config, q.key) === "partial",
-            ).length;
+            let doneCount = 0;
+            let partialCount = 0;
+            for (const q of qs) {
+              const s = questionStatus(config, q.key);
+              if (s === "done") doneCount++;
+              else if (s === "partial") partialCount++;
+            }
             const active = activeSec === sec.id;
             return (
               <button

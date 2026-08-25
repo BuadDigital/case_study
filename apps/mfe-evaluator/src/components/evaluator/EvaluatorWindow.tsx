@@ -1,6 +1,7 @@
 "use client";
 
 import { InlineLoadingSkeleton, Spinner, cn, useToast } from "@platform/ui-kit";
+import dynamic from "next/dynamic";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { WorkflowTask } from "@case-study/mfe";
 import { inspectionGateForAppraisal } from "../../lib/evaluator/evaluator-inspection-gate";
@@ -24,7 +25,6 @@ import type {
 import {
   type EvaluatorPropertySummary,
 } from "./EvaluatorPropertyTab";
-import { EvaluatorValuationReportOutputTab } from "./EvaluatorValuationReportOutputTab";
 import { EvaluatorValuationReportTab } from "./EvaluatorValuationReportTab";
 import { appraiserInspectionDone,
   appraiserNeedsSurvey,
@@ -40,10 +40,27 @@ import { EngInfo,
 
 export type EvaluatorWindowTab = "report" | "output";
 
+const EMPTY_FIELD_ERRORS: EvaluatorValidationErrors = {};
+
 const VAL_TABS: { id: EvaluatorWindowTab; label: string }[] = [
   { id: "report", label: "تقييم العقار" },
   { id: "output", label: "تقرير التقييم" },
 ];
+
+const EvaluatorValuationReportOutputTab = dynamic(
+  () =>
+    import("./EvaluatorValuationReportOutputTab").then(
+      (m) => m.EvaluatorValuationReportOutputTab,
+    ),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="flex justify-center py-10">
+        <Spinner />
+      </div>
+    ),
+  },
+);
 
 export function EvaluatorWindow({
   task,
@@ -79,7 +96,8 @@ export function EvaluatorWindow({
   );
   const [draftLoading, setDraftLoading] = useState(true);
   const [formError, setFormError] = useState<string | null>(null);
-  const [fieldErrors, setFieldErrors] = useState<EvaluatorValidationErrors>( {} );
+  const [fieldErrors, setFieldErrors] =
+    useState<EvaluatorValidationErrors>(EMPTY_FIELD_ERRORS);
   const [submitting, setSubmitting] = useState(false);
   const [activeTab, setActiveTab] = useState<EvaluatorWindowTab>(initialTab);
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -302,6 +320,36 @@ export function EvaluatorWindow({
     };
   }, [hostRef, submit]);
 
+  const onTabChange = useCallback((id: string) => {
+    setActiveTab(id as EvaluatorWindowTab);
+  }, []);
+
+  const onReportChoicesChange = useCallback(
+    (
+      reportChoices: EvaluatorReportChoices,
+      extras?: { valueBasis?: string; valuationMethod?: string },
+    ) => {
+      const patch = {
+        reportChoices,
+        ...(extras?.valueBasis ? { valueBasis: extras.valueBasis } : {}),
+        ...(extras?.valuationMethod
+          ? { valuationMethod: extras.valuationMethod }
+          : {}),
+      };
+      setDraft((prev) => ({ ...prev, ...patch }));
+      scheduleAutosave(patch);
+    },
+    [scheduleAutosave],
+  );
+
+  const onDraftPatch = useCallback(
+    (values: Parameters<typeof persistDraft>[0]) => {
+      setDraft((prev) => ({ ...prev, ...values }));
+      scheduleAutosave(values);
+    },
+    [scheduleAutosave],
+  );
+
   if (draftLoading) {
     return (
       <div className="flex flex-col gap-3.5">
@@ -354,7 +402,7 @@ export function EvaluatorWindow({
         <ValTabBar
           tabs={VAL_TABS}
           active={activeTab}
-          onChange={(id) => setActiveTab(id as EvaluatorWindowTab)}
+          onChange={onTabChange}
         />
 
         <div className="pt-5">
@@ -392,23 +440,8 @@ export function EvaluatorWindow({
               inspectionTaskId={summary.inspectionTaskId}
               assignmentType={task.assignmentType}
               fieldErrors={fieldErrors}
-              onChange={(reportChoices, extras) => {
-                const patch = {
-                  reportChoices,
-                  ...(extras?.valueBasis
-                    ? { valueBasis: extras.valueBasis }
-                    : {}),
-                  ...(extras?.valuationMethod
-                    ? { valuationMethod: extras.valuationMethod }
-                    : {}),
-                };
-                setDraft((prev) => ({ ...prev, ...patch }));
-                scheduleAutosave(patch);
-              }}
-              onDraftPatch={(values) => {
-                setDraft((prev) => ({ ...prev, ...values }));
-                scheduleAutosave(values);
-              }}
+              onChange={onReportChoicesChange}
+              onDraftPatch={onDraftPatch}
             />
             {!formDisabled ? (
               <div className="mt-5">

@@ -14,6 +14,11 @@ import { ENGINEERING_SURVEY_CHECKLIST_ITEMS } from "../lib/engineering-survey-da
 import type { EngineeringSurveyChecklistRow } from "../lib/engineering-survey-data";
 import { patchChecklistRow } from "../lib/engineering-survey-submission-storage";
 
+const EMPTY_CHECKLIST_ROW: EngineeringSurveyChecklistRow = {
+  answer: null,
+  note: "",
+};
+
 function YesNoToggle({
   name,
   value,
@@ -87,7 +92,7 @@ export function EngineeringSurveyChecklist({
         </THead>
         <TBody>
           {ENGINEERING_SURVEY_CHECKLIST_ITEMS.map((label, index) => {
-            const row = rows[index] ?? { answer: null, note: "" };
+            const row = rows[index] ?? EMPTY_CHECKLIST_ROW;
             return (
               <Tr key={label} hoverable={!disabled}>
                 <Td className="w-12 text-center text-[12px] font-semibold text-text-3">

@@ -2,8 +2,8 @@
 
 import {
   createContext,
+  use,
   useCallback,
-  useContext,
   useEffect,
   useLayoutEffect,
   useMemo,
@@ -86,7 +86,7 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
 }
 
 export function useNotifications() {
-  const ctx = useContext(NotificationContext);
+  const ctx = use(NotificationContext);
   if (!ctx) {
     throw new Error("useNotifications must be used within NotificationProvider");
   }

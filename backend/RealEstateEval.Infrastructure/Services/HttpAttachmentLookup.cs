@@ -2,7 +2,6 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Options;
 using RealEstateEval.Application.Abstractions;
 using RealEstateEval.Application.Contracts;
-
 namespace RealEstateEval.Infrastructure.Services;
 
 public sealed class HttpAttachmentLookup(
@@ -10,8 +9,12 @@ public sealed class HttpAttachmentLookup(
     IHttpContextAccessor httpContext,
     IOptions<UpstreamServicesOptions> options) : IAttachmentLookup
 {
-    public async Task<bool> ExistsAsync(Guid id, CancellationToken cancellationToken = default)
+    public async Task<bool> ExistsAsync(
+        Guid id,
+        PermissionsDto? actor,
+        CancellationToken cancellationToken = default)
     {
+        _ = actor;
         var body = await UpstreamJson.GetAsync<AttachmentExistsDto>(
             http,
             httpContext,
@@ -24,8 +27,10 @@ public sealed class HttpAttachmentLookup(
 
     public async Task<IReadOnlyList<AttachmentRefDto>> GetRefsAsync(
         IReadOnlyList<Guid> ids,
+        PermissionsDto? actor,
         CancellationToken cancellationToken = default)
     {
+        _ = actor;
         if (ids.Count == 0)
             return [];
 
@@ -42,8 +47,10 @@ public sealed class HttpAttachmentLookup(
 
     public async Task<IReadOnlyList<FileAttachmentMetaDto>> ListForPropertyAsync(
         string propertyId,
+        PermissionsDto? actor,
         CancellationToken cancellationToken = default)
     {
+        _ = actor;
         if (string.IsNullOrWhiteSpace(propertyId))
             return [];
 

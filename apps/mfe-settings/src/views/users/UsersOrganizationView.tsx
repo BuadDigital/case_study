@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState, type ReactNode } from "react";
+import dynamic from "next/dynamic";
 import { useQueryClient } from "@tanstack/react-query";
 import type { RoleId } from "@platform/types";
 import type { UpdateStaffUserRequest } from "@platform/api-client";
@@ -50,8 +51,6 @@ import {
 import { getAuthSession } from "@platform/auth-client";
 import type { StaffUser } from "@platform/app-shared/prototype/constants";
 import { DevSystemResetPanel } from "../../components/DevSystemResetPanel";
-import { EditStaffUserModal } from "../../components/EditStaffUserModal";
-import { UserProfileModal } from "../../components/UserProfileModal";
 import {
   requestActivationTicket,
   submitCreateStaffUser,
@@ -61,7 +60,31 @@ import {
 } from "../../lib/users-api";
 import { useStaffUsersQuery } from "../../query/settings-queries";
 
+const EditStaffUserModal = dynamic(
+  () =>
+    import("../../components/EditStaffUserModal").then(
+      (m) => m.EditStaffUserModal,
+    ),
+  { ssr: false },
+);
+const UserProfileModal = dynamic(
+  () =>
+    import("../../components/UserProfileModal").then((m) => m.UserProfileModal),
+  { ssr: false },
+);
+
 const ROLE_OPTIONS = adminStaffRoleOptions();
+const ROLE_SELECT_OPTIONS = ROLE_OPTIONS.map((o) => ({
+  value: o.value,
+  label: o.label,
+}));
+const SUPERVISOR_DEPARTMENT_SELECT_OPTIONS = SUPERVISOR_DEPARTMENT_OPTIONS.map(
+  (o) => ({ value: o.value, label: o.label }),
+);
+const INSPECTOR_TYPE_OPTIONS = [
+  { value: "employee", label: "موظف" },
+  { value: "contractor", label: "متعاون" },
+];
 
 const PROTECTED_USERNAMES = new Set(["sliman", "admin"]);
 const PROTECTED_EMAILS = new Set([
@@ -655,10 +678,7 @@ export function UsersOrganizationView() {
                     label="الدور"
                     required
                     placeholder="اختر الدور"
-                    options={ROLE_OPTIONS.map((o) => ({
-                      value: o.value,
-                      label: o.label,
-                    }))}
+                    options={ROLE_SELECT_OPTIONS}
                     value={form.roleId}
                     onChange={(v) => {
                       const roleId = v as RoleId | "";
@@ -715,10 +735,7 @@ export function UsersOrganizationView() {
                       label="قسم الإشراف"
                       required
                       placeholder="اختر القسم"
-                      options={SUPERVISOR_DEPARTMENT_OPTIONS.map((o) => ({
-                        value: o.value,
-                        label: o.label,
-                      }))}
+                      options={SUPERVISOR_DEPARTMENT_SELECT_OPTIONS}
                       value={form.department}
                       onChange={(v) => updateField("department", v)}
                       error={errors.department}
@@ -730,10 +747,7 @@ export function UsersOrganizationView() {
                       label="نوع المعاين"
                       required
                       placeholder="اختر النوع"
-                      options={[
-                        { value: "employee", label: "موظف" },
-                        { value: "contractor", label: "متعاون" },
-                      ]}
+                      options={INSPECTOR_TYPE_OPTIONS}
                       value={form.inspectorType}
                       onChange={(v) =>
                         updateField("inspectorType", v as FormState["inspectorType"])

@@ -18,6 +18,7 @@ import {
   useToast,
 } from "@platform/ui-kit";
 import {
+  type EnfazReadyPoSummaryDto,
   type PoEnfazRevenueLineDto,
 } from "@platform/api-client";
 import {
@@ -36,6 +37,8 @@ import {
   finStatusFor,
   finWorkTitle,
 } from "../lib/finance-tw";
+
+const EMPTY_READY_SUMMARIES: EnfazReadyPoSummaryDto[] = [];
 
 type LineDraft = {
   caseStudyFee: string;
@@ -84,12 +87,15 @@ export function FinanceEnfazPoBilling({
   const [collectAmount, setCollectAmount] = useState("");
   const [busy, setBusy] = useState(false);
 
-  const { data: readySummaries = [] } = useQuery({
+  const { data: readySummaries = EMPTY_READY_SUMMARIES } = useQuery({
     queryKey: [...prototypeKeys.all, "enfaz-billing", "ready-summary"],
     queryFn: loadReadyEnfazPoSummaries,
   });
 
-  const readyPos = readySummaries.map((s) => s.poNumber);
+  const readyPos = useMemo(
+    () => readySummaries.map((s) => s.poNumber),
+    [readySummaries],
+  );
 
   useEffect(() => {
     if (initialPo?.trim()) {

@@ -36,12 +36,15 @@ export function failureStatusLabel(status: FailureStatus): string {
   return "معاد للأخصائي";
 }
 
+const UUID_PATTERN =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 /** Display labels for raiser / specialist cells (system token + raw user ids). */
 export function failureActorLabel(raw: string | null | undefined): string {
   const value = (raw ?? "").trim();
   if (!value) return "—";
   if (value.toLowerCase() === "system" || value === "النظام") return "النظام";
-  if (/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value)) {
+  if (UUID_PATTERN.test(value)) {
     return "—";
   }
   return value;

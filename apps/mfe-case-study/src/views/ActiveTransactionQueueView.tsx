@@ -798,6 +798,16 @@ export function ActiveTransactionQueueView({
     return buildDistributionQueueRowMeta(listed, poByNumber);
   }, [isDistributionTable, listed, poByNumber]);
 
+  /* أعمدة المدينة/الحي تُخفى عندما لا تحمل أي بيانات في هذه المرحلة — «—» في كل صف ضجيج. */
+  const primaryHasLocation = useMemo(
+    () =>
+      primaryRowMeta.some(
+        (m) =>
+          (m.city && m.city !== "—") || (m.district && m.district !== "—"),
+      ),
+    [primaryRowMeta],
+  );
+
   const assignmentTypes = useMemo(
     () =>
       uniqueSortedLabels(
@@ -1039,8 +1049,8 @@ export function ActiveTransactionQueueView({
             : `${filteredListed.length} صك`
           : (
               <>
+                <span>النتائج:</span>
                 {filteredListed.length}
-                <span>نتيجة</span>
               </>
             )
         : "—"}
@@ -2359,15 +2369,26 @@ export function ActiveTransactionQueueView({
                         <Th>{PROPERTY_IDENTIFIER_COLUMN_LABEL}</Th>
                         <Th>أمر العمل</Th>
                         <Th>نوع الإسناد</Th>
-                        <Th>المدينة</Th>
-                        <Th>الحي</Th>
+                        {primaryHasLocation ? (
+                          <>
+                            <Th>المدينة</Th>
+                            <Th>الحي</Th>
+                          </>
+                        ) : null}
                         <Th>{config.statusColumnLabel ?? "الحالة"}</Th>
                         <ThAction aria-label="المزيد" />
                       </Tr>
                     </THead>
                     <TBody>
                       {queuePending && listed.length === 0 ? (
-                        <SkeletonTableRows rows={6} cols={primarySkeletonCols} />
+                        <SkeletonTableRows
+                          rows={6}
+                          cols={
+                            primaryHasLocation
+                              ? primarySkeletonCols
+                              : primarySkeletonCols - 2
+                          }
+                        />
                       ) : (
                         filteredListed.map((task) => {
                         const record = poByNumber.get(task.poNumber.trim());
@@ -2412,8 +2433,12 @@ export function ActiveTransactionQueueView({
                               />
                             </Td>
                             <Td className="text-text-2">{row.assignmentType}</Td>
-                            <Td className="text-text-2">{row.city}</Td>
-                            <Td className="text-text-2">{row.district}</Td>
+                            {primaryHasLocation ? (
+                              <>
+                                <Td className="text-text-2">{row.city}</Td>
+                                <Td className="text-text-2">{row.district}</Td>
+                              </>
+                            ) : null}
                             <Td className="text-text-2">
                               {renderStatusOrRemaining(task, row.remainingTime)}
                             </Td>
@@ -2440,7 +2465,7 @@ export function ActiveTransactionQueueView({
                 {config.tableHint ??
                   (useFullPage
                     ? "اضغط الصف لفتح دراسة الحالة."
-                    : "اضغط الصف لفتح التوزيع — اضغط نفس الصف مرة أخرى للإغلاق.")}
+                    : "اضغط الصف للفتح أو الإغلاق.")}
               </QueueTableHint>
             </>
           )}

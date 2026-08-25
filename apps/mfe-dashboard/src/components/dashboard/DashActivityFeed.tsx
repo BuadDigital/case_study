@@ -69,13 +69,10 @@ export function DashActivityFeed() {
 
   const items = useMemo(() => {
     return filterNotificationsForRole(role, allItems)
-      .slice()
-      .sort(
-        (a, b) =>
-          Date.parse(b.createdAt) - Date.parse(a.createdAt) ||
-          b.id.localeCompare(a.id),
-      )
-      .slice(0, FEED_LIMIT);
+      .map((item) => ({ item, ts: Date.parse(item.createdAt) }))
+      .sort((a, b) => b.ts - a.ts || b.item.id.localeCompare(a.item.id))
+      .slice(0, FEED_LIMIT)
+      .map(({ item }) => item);
   }, [allItems, role]);
 
   const unreadCount = items.filter((item) => !item.read).length;

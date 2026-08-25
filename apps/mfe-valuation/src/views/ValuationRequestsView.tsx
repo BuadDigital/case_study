@@ -87,6 +87,17 @@ function isValuationMgr(role: RoleId) {
   return isSuperAdmin(role) || role === "general-manager";
 }
 
+const mobileLoadingSkeleton = (
+  <div className="flex flex-col gap-3">
+    {Array.from({ length: 4 }).map((_, i) => (
+      <div
+        key={i}
+        className="h-[100px] animate-pulse rounded-[14px] border border-border bg-surface-2"
+      />
+    ))}
+  </div>
+);
+
 type StatusFilter = "all" | "progress" | "done" | "fail";
 
 export function ValuationRequestsView() {
@@ -102,9 +113,17 @@ export function ValuationRequestsView() {
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState<StatusFilter>("all");
 
-  const done = vr.filter((v) => v.status === "done").length;
-  const prog = vr.filter((v) => v.status === "progress").length;
-  const failed = vr.filter((v) => v.status === "fail").length;
+  const { done, prog, failed } = useMemo(() => {
+    let done = 0;
+    let prog = 0;
+    let failed = 0;
+    for (const v of vr) {
+      if (v.status === "done") done += 1;
+      else if (v.status === "progress") prog += 1;
+      else if (v.status === "fail") failed += 1;
+    }
+    return { done, prog, failed };
+  }, [vr]);
   const ready = !isPending;
 
   const rows = useMemo(() => {
@@ -398,14 +417,7 @@ export function ValuationRequestsView() {
 
         <div className="p-3 lg:hidden">
           {!ready ? (
-            <div className="flex flex-col gap-3">
-              {Array.from({ length: 4 }).map((_, i) => (
-                <div
-                  key={i}
-                  className="h-[100px] animate-pulse rounded-[14px] border border-border bg-surface-2"
-                />
-              ))}
-            </div>
+            mobileLoadingSkeleton
           ) : rows.length === 0 ? (
             <div className="py-10 text-center text-[13px] text-text-3">
               لا توجد نتائج مطابقة

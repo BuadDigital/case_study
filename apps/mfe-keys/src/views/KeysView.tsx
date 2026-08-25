@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import dynamic from "next/dynamic";
 import { useRouter, useSearchParams } from "next/navigation";
 import { usePrototype } from "@platform/app-shared/contexts/PrototypeContext";
 import { isSuperAdmin } from "@platform/app-shared/prototype/prototype-role-access";
@@ -28,8 +29,6 @@ import {
   type ActiveQueueMobileCardItem,
 } from "@case-study/mfe/components/queue/ActiveQueueMobileCards";
 import type { RowMoreMenuItem } from "@case-study/mfe/components/ui/RowMoreMenu";
-import { KeyEnvelopeDetailPage } from "../components/KeyEnvelopeDetailModal";
-import { KeyEnvelopeFeesPanel } from "../components/KeyEnvelopeFeesPanel";
 import {
   KEYS_LIST_COLS,
   KeysEmpty,
@@ -42,7 +41,6 @@ import {
   keysChipClassName,
   keysGhostBtnClassName,
 } from "../components/KeysHtmlPrimitives";
-import { RegisterKeyEnvelopeModal } from "../components/RegisterKeyEnvelopeModal";
 import { removeKeyEnvelope } from "../lib/keys-envelope-api";
 import {
   envelopeDisplayRef,
@@ -60,6 +58,37 @@ import {
 
 type StatusFilter = "all" | "reviewer" | "assessor" | "external" | "returned";
 type ListTab = "envelopes" | "fees";
+
+const KeyEnvelopeDetailPage = dynamic(
+  () =>
+    import("../components/KeyEnvelopeDetailModal").then(
+      (m) => m.KeyEnvelopeDetailPage,
+    ),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="py-8 text-center text-sm text-text-3">جاري التحميل…</div>
+    ),
+  },
+);
+const KeyEnvelopeFeesPanel = dynamic(
+  () =>
+    import("../components/KeyEnvelopeFeesPanel").then(
+      (m) => m.KeyEnvelopeFeesPanel,
+    ),
+  {
+    loading: () => (
+      <div className="py-8 text-center text-sm text-text-3">جاري التحميل…</div>
+    ),
+  },
+);
+const RegisterKeyEnvelopeModal = dynamic(
+  () =>
+    import("../components/RegisterKeyEnvelopeModal").then(
+      (m) => m.RegisterKeyEnvelopeModal,
+    ),
+  { ssr: false },
+);
 
 function PlusIcon() {
   return (
@@ -248,6 +277,18 @@ function MismatchIcon() {
   );
 }
 
+/** صفوف هيكلية أثناء التحميل — JSX ثابت لا يعتمد على الحالة. */
+const LIST_SKELETON = (
+  <div className="space-y-0">
+    {Array.from({ length: 6 }).map((_, i) => (
+      <div
+        key={i}
+        className="h-[58px] animate-pulse border-b border-border bg-surface-2/60"
+      />
+    ))}
+  </div>
+);
+
 function keysListHref(opts?: {
   tab?: "fees";
   envelope?: string;
@@ -345,22 +386,26 @@ export function KeysView() {
   /** KPI metrics — labels from `renderKeys`; live API approximates order-state with custody + assignments. */
   const kpis = useMemo(() => {
     const total = envelopes.length;
-    const delivered = envelopes.filter((e) =>
-      isEnvelopeOutOfCustody(e.status),
-    ).length;
+    let delivered = 0;
+    let pendingMatch = 0;
+    let readyToDeliver = 0;
+    for (const e of envelopes) {
+      if (isEnvelopeOutOfCustody(e.status)) delivered += 1;
+      let pendingInEnvelope = 0;
+      for (const a of e.assignments) {
+        if (a.status === "pending") pendingInEnvelope += 1;
+      }
+      pendingMatch += pendingInEnvelope;
+      if (
+        e.status !== "returned" &&
+        e.assignments.length > 0 &&
+        pendingInEnvelope === 0
+      ) {
+        readyToDeliver += 1;
+      }
+    }
     const inCustody = total - delivered;
-    const active = envelopes.filter(
-      (e) => !isEnvelopeOutOfCustody(e.status),
-    ).length;
-    const pendingMatch = envelopes.reduce(
-      (n, e) => n + e.assignments.filter((a) => a.status === "pending").length,
-      0,
-    );
-    const readyToDeliver = envelopes.filter((e) => {
-      if (e.status === "returned") return false;
-      if (e.assignments.length === 0) return false;
-      return e.assignments.every((a) => a.status !== "pending");
-    }).length;
+    const active = inCustody;
     return { total, delivered, inCustody, active, pendingMatch, readyToDeliver };
   }, [envelopes]);
 
@@ -670,14 +715,7 @@ export function KeysView() {
             </KeysGridHead>
 
             {!ready ? (
-              <div className="space-y-0">
-                {Array.from({ length: 6 }).map((_, i) => (
-                  <div
-                    key={i}
-                    className="h-[58px] animate-pulse border-b border-border bg-surface-2/60"
-                  />
-                ))}
-              </div>
+              LIST_SKELETON
             ) : filtered.length === 0 ? (
               <KeysEmpty
                 title="لا توجد ظروف مطابقة"

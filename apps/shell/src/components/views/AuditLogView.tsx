@@ -26,12 +26,15 @@ import {
 const GRID_COLS =
   "[grid-template-columns:150px_1fr_1fr_1.3fr_2fr]";
 
+// Hoisted: constructing Intl.DateTimeFormat per row is expensive.
+const AT_FORMATTER = new Intl.DateTimeFormat("ar-SA", {
+  dateStyle: "short",
+  timeStyle: "short",
+});
+
 function formatAt(iso: string): string {
   try {
-    return new Intl.DateTimeFormat("ar-SA", {
-      dateStyle: "short",
-      timeStyle: "short",
-    }).format(new Date(iso));
+    return AT_FORMATTER.format(new Date(iso));
   } catch {
     return iso;
   }
@@ -167,30 +170,33 @@ export function AuditLogView() {
               <div className={opsThStart}>الكيان</div>
               <div className={opsThStart}>التفاصيل</div>
             </div>
-            {entries.map((entry) => (
-              <div key={entry.id} className={cn(opsLetterRow, GRID_COLS)}>
-                <div className={cn(opsTdPlain, "whitespace-nowrap text-text-2")}>
-                  {formatAt(entry.createdAtUtc)}
+            {entries.map((entry) => {
+              const detail = formatDetail(entry);
+              return (
+                <div key={entry.id} className={cn(opsLetterRow, GRID_COLS)}>
+                  <div className={cn(opsTdPlain, "whitespace-nowrap text-text-2")}>
+                    {formatAt(entry.createdAtUtc)}
+                  </div>
+                  <div className={cn(opsTdPlain, "font-semibold text-text-2")}>
+                    {entry.actorId}
+                  </div>
+                  <div className={cn(opsTdPlain, "font-bold text-heading")}>
+                    {entry.action}
+                  </div>
+                  <div className={opsTdPlain}>
+                    <span className="min-w-0 truncate">
+                      {entry.entityType} · {entry.entityId}
+                    </span>
+                  </div>
+                  <div
+                    className={cn(opsTdPlain, "text-text-3")}
+                    title={detail}
+                  >
+                    <span className="min-w-0 truncate">{detail}</span>
+                  </div>
                 </div>
-                <div className={cn(opsTdPlain, "font-semibold text-text-2")}>
-                  {entry.actorId}
-                </div>
-                <div className={cn(opsTdPlain, "font-bold text-heading")}>
-                  {entry.action}
-                </div>
-                <div className={opsTdPlain}>
-                  <span className="min-w-0 truncate">
-                    {entry.entityType} · {entry.entityId}
-                  </span>
-                </div>
-                <div
-                  className={cn(opsTdPlain, "text-text-3")}
-                  title={formatDetail(entry)}
-                >
-                  <span className="min-w-0 truncate">{formatDetail(entry)}</span>
-                </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </section>
       )}

@@ -195,11 +195,14 @@ export function FailuresView() {
 
   const stats = useMemo(() => {
     const open = countOpenFailures(visibleItems);
-    const review = visibleItems.filter((f) => f.status === "review").length;
-    const approved = visibleItems.filter((f) => f.status === "approved").length;
-    const resolved = visibleItems.filter((f) => f.status === "resolved").length;
-    const closed = approved + resolved;
-    const total = visibleItems.filter((f) => f.status !== "suspended").length;
+    let review = 0;
+    let closed = 0;
+    let total = 0;
+    for (const f of visibleItems) {
+      if (f.status === "review") review += 1;
+      else if (f.status === "approved" || f.status === "resolved") closed += 1;
+      if (f.status !== "suspended") total += 1;
+    }
     return {
       open,
       review,

@@ -105,6 +105,8 @@ const TABLE_META: Record<
   },
 };
 
+const PROPERTY_TYPE_SPLIT_RE = /[,،]/;
+
 function emptyItem(listId: string, sortOrder: number): ValuationListItemDto {
   const cellCount = Math.max(0, (TABLE_META[listId]?.cols.length ?? 4) - 4);
   return {
@@ -436,7 +438,7 @@ export function ValuationListsView() {
                                   value={row.propertyTypeKeys.join("، ") || row.cells[1] || "الكل"}
                                   onChange={(e) => {
                                     const keys = e.target.value
-                                      .split(/[,،]/)
+                                      .split(PROPERTY_TYPE_SPLIT_RE)
                                       .map((s) => s.trim())
                                       .filter((s) => s && s !== "الكل");
                                     patchRow(row.id, {

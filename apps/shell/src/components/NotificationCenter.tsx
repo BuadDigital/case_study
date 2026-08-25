@@ -91,7 +91,9 @@ export function NotificationCenter() {
 
   if (!isFeatureEnabled("notificationCenter")) return null;
 
-  const panel = (
+  // Built only while the popover is open — skips mapping the notification
+  // list on every re-render of the closed bell button.
+  const panel = !open ? null : (
     <>
       <div className="flex items-center justify-between border-b border-border px-3 py-2.5 max-lg:px-4 max-lg:py-3.5">
         <span className="text-sm font-semibold text-text">الإشعارات</span>

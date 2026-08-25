@@ -96,8 +96,16 @@ async function reportFieldSyncHeartbeat(
     );
     return;
   }
-  const oldest = active.map((item) => item.createdAtUtc).sort()[0];
-  const kinds = [...new Set(active.map((item) => item.kind))];
+  // Single pass: oldest timestamp (min) + unique kinds — no sort/extra arrays.
+  let oldest: string | undefined;
+  const kindSet = new Set<string>();
+  for (const item of active) {
+    if (oldest === undefined || item.createdAtUtc < oldest) {
+      oldest = item.createdAtUtc;
+    }
+    kindSet.add(item.kind);
+  }
+  const kinds = [...kindSet];
   await upsertFieldSyncStatus(
     { token: session.token },
     {

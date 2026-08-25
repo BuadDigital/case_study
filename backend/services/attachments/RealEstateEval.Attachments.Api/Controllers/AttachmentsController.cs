@@ -90,7 +90,8 @@ public class AttachmentsController : ControllerBase
         CancellationToken ct)
     {
         var parsed = ParseIds(ids);
-        return Ok(await _lookup.GetRefsAsync(parsed, ct));
+        var actor = await _permissions.GetForUserIdAsync(ActorClaims.Id(User), ct);
+        return Ok(await _lookup.GetRefsAsync(parsed, actor, ct));
     }
 
     [HttpGet("for-property")]
@@ -101,12 +102,16 @@ public class AttachmentsController : ControllerBase
         if (string.IsNullOrWhiteSpace(propertyId))
             return this.BadRequestProblem("propertyId is required");
 
-        return Ok(await _lookup.ListForPropertyAsync(propertyId, ct));
+        var actor = await _permissions.GetForUserIdAsync(ActorClaims.Id(User), ct);
+        return Ok(await _lookup.ListForPropertyAsync(propertyId, actor, ct));
     }
 
     [HttpGet("{id:guid}/exists")]
-    public async Task<ActionResult<AttachmentExistsDto>> Exists(Guid id, CancellationToken ct) =>
-        Ok(new AttachmentExistsDto { Exists = await _lookup.ExistsAsync(id, ct) });
+    public async Task<ActionResult<AttachmentExistsDto>> Exists(Guid id, CancellationToken ct)
+    {
+        var actor = await _permissions.GetForUserIdAsync(ActorClaims.Id(User), ct);
+        return Ok(new AttachmentExistsDto { Exists = await _lookup.ExistsAsync(id, actor, ct) });
+    }
 
     [HttpDelete("{id:guid}")]
     [Authorize(Policy = CapabilityPolicyNames.ManageAttachments)]

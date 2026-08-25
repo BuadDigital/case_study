@@ -9,6 +9,7 @@ import {
 } from "@platform/app-shared/prototype/party-billing-statements-api";
 import { resolvePartyName } from "@platform/app-shared/fees/party-fee-meta";
 import { useStaffUsersQuery } from "@settings/mfe/query/settings-queries";
+import type { StaffUser } from "@platform/app-shared/prototype/constants";
 import {
   applyCostTax,
   buildFinanceCostParties,
@@ -24,6 +25,8 @@ import { FinanceStagePills } from "./FinanceStagePills";
 import { FinancePartyBillingStatements } from "./FinancePartyBillingStatements";
 import { FinanceExcludedCosts } from "./FinanceExcludedCosts";
 import { FinanceCostPartiesList } from "./FinanceCostPartiesList";
+
+const EMPTY_STAFF_USERS: StaffUser[] = [];
 
 function fmtSar(n: number) {
   return `${n.toLocaleString("en-US", {
@@ -119,7 +122,7 @@ export function FinanceCostsView({
   excludedCount?: number;
 }) {
   const { data: staffResult } = useStaffUsersQuery();
-  const staffUsers = staffResult?.users ?? [];
+  const staffUsers = staffResult?.users ?? EMPTY_STAFF_USERS;
 
   const readyQuery = useQuery({
     queryKey: [...prototypeKeys.all, "party-billing", "ready-lines", "account"],
@@ -205,16 +208,13 @@ export function FinanceCostsView({
     const due = (readyQuery.data ?? []).filter(
       (l) => (l.assigneeId?.trim() || "—") === partyKey && l.netFeeSar > 0,
     ).length;
-    const stmts = (statementsQuery.data ?? []).filter(
-      (s) =>
-        (s.assigneeId?.trim() || "") === partyKey &&
-        s.status !== "closed" &&
-        s.status !== "cancelled",
-    ).length;
-    const paid = (statementsQuery.data ?? []).filter(
-      (s) =>
-        (s.assigneeId?.trim() || "") === partyKey && s.status === "closed",
-    ).length;
+    let stmts = 0;
+    let paid = 0;
+    for (const s of statementsQuery.data ?? []) {
+      if ((s.assigneeId?.trim() || "") !== partyKey) continue;
+      if (s.status === "closed") paid += 1;
+      else if (s.status !== "cancelled") stmts += 1;
+    }
     return {
       dues: due,
       statements: stmts,

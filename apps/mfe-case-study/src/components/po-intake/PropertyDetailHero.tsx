@@ -95,6 +95,8 @@ function CompletionRing({
   return (
     <div
       className="flex flex-col items-center gap-0.5"
+      role="img"
+      aria-label={`اكتمال الدراسة ${clamped}٪ — ${done} من ${total} مراحل مكتملة`}
       title={`اكتمال دراسة حالة العقار — ${done} من ${total} مرحلة مكتملة`}
     >
       <div className="relative h-[50px] w-[50px]">
@@ -129,6 +131,9 @@ function CompletionRing({
           {clamped}%
         </span>
       </div>
+      <span className="whitespace-nowrap text-[10px] font-semibold text-text-3">
+        اكتمال الدراسة
+      </span>
     </div>
   );
 }
@@ -306,14 +311,16 @@ export function PropertyDetailHero({
           </div>
 
           <div className="flex shrink-0 items-center gap-3 sm:gap-[18px]">
-            <div className="text-start">
-              <div className="mb-0.5 text-[11px] text-text-3">رقم الطلب</div>
-              <div className="text-[21px] font-bold text-[#8c7857]">
-                <bdi dir="ltr" className={ltrValueClass}>
-                  {property.requestNumber.trim() || "—"}
-                </bdi>
+            {property.requestNumber.trim() ? (
+              <div className="text-start">
+                <div className="mb-0.5 text-[11px] text-text-3">رقم الطلب</div>
+                <div className="text-[21px] font-bold text-[#8c7857]">
+                  <bdi dir="ltr" className={ltrValueClass}>
+                    {property.requestNumber.trim()}
+                  </bdi>
+                </div>
               </div>
-            </div>
+            ) : null}
             <CompletionRing
               pct={completion.pct}
               done={completion.done}
@@ -328,49 +335,63 @@ export function PropertyDetailHero({
           </div>
         </div>
 
-        <div
-          className="mt-3 grid grid-cols-2 gap-x-3 gap-y-2 border-b border-border pb-3 lg:flex lg:flex-wrap lg:gap-0"
-          aria-label="ملخص العقار"
-        >
-          <StripCell label="اسم المالك" first>
-            {property.ownerName.trim() || "—"}
-          </StripCell>
-          <StripCell label="المدينة / الحي">
-            {locationLine || "—"}
-          </StripCell>
-          <StripCell label="التصنيف">
-            {property.classification.trim() || "—"}
-          </StripCell>
-          <StripCell label="المساحة">
-            {property.area.trim() ? `${property.area.trim()} م²` : "—"}
-          </StripCell>
-          {showsCourtFields(record.assignmentType) ? (
-            <StripCell label="المحكمة / الدائرة">
-              {courtLine || "—"}
-            </StripCell>
-          ) : null}
-          <StripCell label="تاريخ الاستحقاق">
-            {record.dueDateAt ? (
-              <bdi
-                dir="ltr"
-                className={cn(ltrValueClass, dueUrgent && "text-danger-text")}
-              >
-                {formatDateAr(record.dueDateAt)}
-              </bdi>
-            ) : (
-              "—"
-            )}
-          </StripCell>
-          <StripCell label="استلام إنفاذ">
-            {record.receivedFromEnfathAt ? (
-              <bdi dir="ltr" className={ltrValueClass}>
-                {formatDateAr(record.receivedFromEnfathAt)}
-              </bdi>
-            ) : (
-              "—"
-            )}
-          </StripCell>
-        </div>
+        {(() => {
+          /* الخلايا الفارغة تُخفى — «—» لكل حقل ناقص ضجيج بصري بلا معلومة. */
+          const stripCells: { label: string; node: ReactNode }[] = [];
+          if (property.ownerName.trim())
+            stripCells.push({
+              label: "اسم المالك",
+              node: property.ownerName.trim(),
+            });
+          if (locationLine)
+            stripCells.push({ label: "المدينة / الحي", node: locationLine });
+          if (property.classification.trim())
+            stripCells.push({
+              label: "التصنيف",
+              node: property.classification.trim(),
+            });
+          if (property.area.trim())
+            stripCells.push({
+              label: "المساحة",
+              node: `${property.area.trim()} م²`,
+            });
+          if (showsCourtFields(record.assignmentType) && courtLine)
+            stripCells.push({ label: "المحكمة / الدائرة", node: courtLine });
+          if (record.dueDateAt)
+            stripCells.push({
+              label: "تاريخ الاستحقاق",
+              node: (
+                <bdi
+                  dir="ltr"
+                  className={cn(ltrValueClass, dueUrgent && "text-danger-text")}
+                >
+                  {formatDateAr(record.dueDateAt)}
+                </bdi>
+              ),
+            });
+          if (record.receivedFromEnfathAt)
+            stripCells.push({
+              label: "استلام إنفاذ",
+              node: (
+                <bdi dir="ltr" className={ltrValueClass}>
+                  {formatDateAr(record.receivedFromEnfathAt)}
+                </bdi>
+              ),
+            });
+          if (stripCells.length === 0) return null;
+          return (
+            <div
+              className="mt-3 grid grid-cols-2 gap-x-3 gap-y-2 border-b border-border pb-3 lg:flex lg:flex-wrap lg:gap-0"
+              aria-label="ملخص العقار"
+            >
+              {stripCells.map((cell, i) => (
+                <StripCell key={cell.label} label={cell.label} first={i === 0}>
+                  {cell.node}
+                </StripCell>
+              ))}
+            </div>
+          );
+        })()}
       </header>
     </>
   );

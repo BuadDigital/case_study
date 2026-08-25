@@ -1,6 +1,11 @@
 "use client";
 
 import { useMemo } from "react";
+import type {
+  ReportingCompletionYearDto,
+  ReportingStageDwellDto,
+} from "@platform/api-client";
+import type { PoRow } from "@platform/app-shared/prototype/constants";
 import { cn, ReportPageBody } from "@platform/ui-kit";
 import { DashActionQueue } from "../components/dashboard/DashActionQueue";
 import { DashActivityFeed } from "../components/dashboard/DashActivityFeed";
@@ -23,6 +28,10 @@ import {
   useReportingDashboardQuery,
 } from "../query/dashboard-queries";
 
+const EMPTY_PO_ROWS: PoRow[] = [];
+const EMPTY_COMPLETION_TREND: ReportingCompletionYearDto[] = [];
+const EMPTY_STAGE_DWELL: ReportingStageDwellDto[] = [];
+
 /**
  * لوحة التحكم — مطابق لـ Case Study.html `renderDashboard()`.
  */
@@ -35,7 +44,7 @@ export function DashboardView() {
   const { data: reporting, isPending: reportingPending } =
     useReportingDashboardQuery();
 
-  const rows = poRows ?? [];
+  const rows = poRows ?? EMPTY_PO_ROWS;
   const openTasks = useMemo(
     () => (opsTasks ?? []).filter((t) => isOpsTaskActive(t.status)),
     [opsTasks],
@@ -59,13 +68,13 @@ export function DashboardView() {
       </div>
       <div className={cn(dashGrid, "mb-4")}>
         <DashTrendCard
-          years={reporting?.completionTrend ?? []}
+          years={reporting?.completionTrend ?? EMPTY_COMPLETION_TREND}
           pending={reportingPending}
         />
         <DashCompletionCard model={completion} pending={poPending} />
       </div>
       <DashDwellSlaCard
-        rows={reporting?.stageDwell ?? []}
+        rows={reporting?.stageDwell ?? EMPTY_STAGE_DWELL}
         pending={reportingPending}
       />
     </ReportPageBody>

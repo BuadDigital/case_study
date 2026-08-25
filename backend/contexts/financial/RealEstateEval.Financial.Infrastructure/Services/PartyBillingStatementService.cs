@@ -603,7 +603,7 @@ public class PartyBillingStatementService : IPartyBillingStatementService
         if (!Guid.TryParse(request.TransferReceiptAttachmentId, out var receiptId))
             return (null, "إيصال التحويل (مرفق) مطلوب.");
 
-        var receiptExists = await _attachments.ExistsAsync(receiptId, cancellationToken);
+        var receiptExists = await _attachments.ExistsAsync(receiptId, actor: null, cancellationToken);
         if (!receiptExists)
             return (null, "مرفق إيصال التحويل غير موجود.");
 
@@ -855,7 +855,7 @@ public class PartyBillingStatementService : IPartyBillingStatementService
         if (!Guid.TryParse(request.AttachmentId, out var attachmentId))
             return (null, "مرفق PDF الفاتورة مطلوب.");
 
-        var exists = await _attachments.ExistsAsync(attachmentId, cancellationToken);
+        var exists = await _attachments.ExistsAsync(attachmentId, actor: null, cancellationToken);
         if (!exists)
             return (null, "مرفق الفاتورة غير موجود.");
 

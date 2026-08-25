@@ -23,13 +23,16 @@ public class ValuationComparableSelectionRulesTests
         Assert.False(ValuationComparableSelectionRules.HasAtLeastOneAdopted(rows));
 
         rows[1].IsAdopted = true;
+        Assert.False(ValuationComparableSelectionRules.HasAtLeastOneAdopted(rows));
+        rows[0].IsAdopted = true;
         Assert.True(ValuationComparableSelectionRules.HasAtLeastOneAdopted(rows));
     }
 
     [Theory]
     [InlineData(new[] { false, false }, false)]
-    [InlineData(new[] { true }, true)]
-    [InlineData(new[] { false, true, false }, true)]
+    [InlineData(new[] { true }, false)]
+    [InlineData(new[] { false, true, false }, false)]
+    [InlineData(new[] { true, true }, true)]
     public void HasAtLeastOneAdopted_flags(bool[] flags, bool expected)
     {
         Assert.Equal(expected, ValuationComparableSelectionRules.HasAtLeastOneAdopted(flags));

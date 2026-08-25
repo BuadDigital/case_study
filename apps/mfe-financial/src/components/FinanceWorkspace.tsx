@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback } from "react";
+import dynamic from "next/dynamic";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
   parseCostsSection,
@@ -11,11 +12,35 @@ import {
 } from "../lib/finance-nav";
 import { financeLeafForArea } from "@platform/app-shared/prototype/financial-nav";
 import { FinanceMyTasks } from "./FinanceMyTasks";
-import { FinanceRevenueView } from "./FinanceRevenueView";
-import { FinanceCostsView } from "./FinanceCostsView";
-import { FinanceEngOfficePortal } from "./FinanceEngOfficePortal";
-import { FinanceInspectorPortal } from "./FinanceInspectorPortal";
+import { finCard, finEmpty, finEmptyT } from "../lib/finance-tw";
 import { useFinanceTabCounts } from "../query/finance-tab-counts";
+
+const areaChunkFallback = () => (
+  <div className={finCard}>
+    <div className={finEmpty}>
+      <div className={finEmptyT}>جاري التحميل…</div>
+    </div>
+  </div>
+);
+
+const FinanceRevenueView = dynamic(
+  () => import("./FinanceRevenueView").then((m) => m.FinanceRevenueView),
+  { ssr: false, loading: areaChunkFallback },
+);
+const FinanceCostsView = dynamic(
+  () => import("./FinanceCostsView").then((m) => m.FinanceCostsView),
+  { ssr: false, loading: areaChunkFallback },
+);
+const FinanceEngOfficePortal = dynamic(
+  () =>
+    import("./FinanceEngOfficePortal").then((m) => m.FinanceEngOfficePortal),
+  { ssr: false, loading: areaChunkFallback },
+);
+const FinanceInspectorPortal = dynamic(
+  () =>
+    import("./FinanceInspectorPortal").then((m) => m.FinanceInspectorPortal),
+  { ssr: false, loading: areaChunkFallback },
+);
 
 export function FinanceWorkspace() {
   const router = useRouter();

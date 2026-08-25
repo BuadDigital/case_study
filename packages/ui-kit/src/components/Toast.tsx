@@ -2,8 +2,8 @@
 
 import {
   createContext,
+  use,
   useCallback,
-  useContext,
   useEffect,
   useMemo,
   useState,
@@ -235,7 +235,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
     <ToastContext.Provider value={value}>
       {children}
       <div
-        className="pointer-events-none fixed bottom-6 right-6 z-[400] flex max-w-[min(420px,calc(100vw-3rem))] flex-col items-end gap-2"
+        className="pointer-events-none fixed bottom-6 right-6 z-[var(--z-toast)] flex max-w-[min(420px,calc(100vw-3rem))] flex-col items-end gap-2"
         aria-live="polite"
         aria-relevant="additions"
       >
@@ -265,7 +265,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
 }
 
 export function useToast(): ToastContextValue {
-  const context = useContext(ToastContext);
+  const context = use(ToastContext);
   if (!context) {
     throw new Error("useToast must be used within ToastProvider");
   }
@@ -273,5 +273,5 @@ export function useToast(): ToastContextValue {
 }
 
 export function useOptionalToast(): ToastContextValue | null {
-  return useContext(ToastContext);
+  return use(ToastContext);
 }

@@ -50,7 +50,7 @@ export function resolveMyTasksChrome(
 
   if (page === "active-inspection" && parts[1]) {
     return {
-      breadcrumb: "مساحة العمل",
+      breadcrumb: "معاينة العقار / مساحة العمل",
       title: "معاينة العقار",
     };
   }

@@ -8,13 +8,18 @@ namespace RealEstateEval.Application.Abstractions;
 /// </summary>
 public interface IAttachmentLookup
 {
-    Task<bool> ExistsAsync(Guid id, CancellationToken cancellationToken = default);
+    Task<bool> ExistsAsync(
+        Guid id,
+        PermissionsDto? actor,
+        CancellationToken cancellationToken = default);
 
     Task<IReadOnlyList<AttachmentRefDto>> GetRefsAsync(
         IReadOnlyList<Guid> ids,
+        PermissionsDto? actor,
         CancellationToken cancellationToken = default);
 
     Task<IReadOnlyList<FileAttachmentMetaDto>> ListForPropertyAsync(
         string propertyId,
+        PermissionsDto? actor,
         CancellationToken cancellationToken = default);
 }

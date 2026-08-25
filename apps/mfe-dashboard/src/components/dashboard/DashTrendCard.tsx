@@ -48,7 +48,7 @@ export function DashTrendCard({
   pending?: boolean;
 }) {
   const [mode, setMode] = useState<Mode>("month");
-  const yearKeys = years.map((y) => String(y.year));
+  const yearKeys = useMemo(() => years.map((y) => String(y.year)), [years]);
   const [enabled, setEnabled] = useState<Record<string, boolean>>({});
 
   const activeYears = useMemo(() => {

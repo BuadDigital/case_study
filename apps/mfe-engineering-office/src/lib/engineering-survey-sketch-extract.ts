@@ -346,7 +346,7 @@ export function mineBoundaryDescriptionsFromOcr(
     const win = sliceTextForDirection(soup, dir);
     if (!win) continue;
     // A) full DESC_TOKEN in window
-    const tok = win.match(new RegExp(DESC_TOKEN, "i"));
+    const tok = win.match(DESC_TOKEN_RE);
     if (tok) {
       const f = formatDescription(tok[0]);
       if (isPlausibleBoundaryDescription(f)) {
@@ -623,6 +623,8 @@ function descriptionCount(b: SketchBoundaryBlock): number {
 /** Plot/street/path anchors — optional plot suffix must start with dash (ـس) so next row is not eaten. */
 const DESC_TOKEN =
   "(?:قطعه?\\s*(?:رقم|دقم|رقه)\\s*[\\d٠-٩]{1,6}(?![\\d٠-٩])(?:\\s*[\\-–ـ.]+\\s*[ا-يA-Za-zسص]{1,3})?|شارع\\s+(?:[^\\n\\d]{1,40}?)?(?:محدث\\s*)?(?:بعرض|عرض)\\s*[\\d.٠-٩]+\\s*م?|(?:شاع|زع|شايع)\\s*(?:بعرض|عرض)\\s*[\\d.٠-٩]+\\s*م?|ممر\\s*(?:مشاه?ة?|مشاء)?\\s*عرض\\s*[\\d.٠-٩]+\\s*م?|ملك\\s+[^\\d\\n]{2,40}|سك[ةه]\\s*نافذ[ةه]?|مواقف\\s*سيارات|ارض\\s*فضا[ءد](?:\\s+[^\\d|,/]{1,30})?|الجزء\\s*المفرز(?:\\s+[^\\d|,/]{1,30})?|مسيل\\s*السيل|السبل\\s*السالك|جار)";
+/** Hoisted non-global matcher — DESC_TOKEN is compiled once, not per call. */
+const DESC_TOKEN_RE = new RegExp(DESC_TOKEN, "i");
 /**
  * Edge meters: decimals preferred; whole meters 2–3 digits (20, 25).
  */
@@ -825,8 +827,7 @@ export function sliceTextForDirection(
     let endRel = after.length;
     for (const other of DIR_ORDER) {
       if (other === dir) continue;
-      const oRe = new RegExp(DIR_TOKEN_BY_DIR[other], "i");
-      const om = oRe.exec(after);
+      const om = DIR_PATTERNS[other].exec(after);
       if (om && om.index < endRel) endRel = om.index;
     }
     return flat.slice(start, start + tokenLen + endRel);
@@ -837,12 +838,12 @@ export function sliceTextForDirection(
   let bestStart = -1;
 
   for (const start of hits) {
-    const tokM = flat.slice(start).match(new RegExp(DIR_TOKEN_BY_DIR[dir], "i"));
+    const tokM = flat.slice(start).match(DIR_PATTERNS[dir]);
     const tokenLen = tokM?.[0].length ?? 0;
     const win = windowAfter(start, tokenLen);
     let score = 0;
     // Table row: وصف (قطعة/شارع) is a strong signal
-    if (new RegExp(DESC_TOKEN, "i").test(win)) score += 5;
+    if (DESC_TOKEN_RE.test(win)) score += 5;
     // Decimal immediately after description
     if (
       /قطعه?\s*رقم\s*\d+\s*[:：\-–—|/]*\s*[\d]+[.,]\d{1,3}/i.test(win) ||
@@ -1105,7 +1106,7 @@ export function fillMissingLengthsFromTableContext(
       lengthAfterDescriptionInText(sourceText, desc);
 
     // Explicit "طول …" only inside a high-quality direction window (has وصف)
-    if (!found && windowText && new RegExp(DESC_TOKEN, "i").test(windowText)) {
+    if (!found && windowText && DESC_TOKEN_RE.test(windowText)) {
       const nWin = normalizeSketchText(windowText);
       const m = nWin.match(
         new RegExp(
@@ -1173,7 +1174,7 @@ function parseStrictDirectionalRows(sectionText: string): SketchBoundaryBlock {
     // dir + … طول N.NN only when window already has table وصف
     if (
       block[dir].description ||
-      new RegExp(DESC_TOKEN, "i").test(flat)
+      DESC_TOKEN_RE.test(flat)
     ) {
       m = flat.match(
         new RegExp(
@@ -1217,7 +1218,7 @@ function parseColumnarTableBody(sectionText: string): SketchBoundaryBlock | null
       if (last.index != null) dirHits.push({ dir, index: last.index });
       continue;
     }
-    const m = n.match(new RegExp(DIR_TOKEN_BY_DIR[dir], "i"));
+    const m = n.match(DIR_PATTERNS[dir]);
     if (m && m.index != null) dirHits.push({ dir, index: m.index });
   }
   if (dirHits.length < 4) return null;

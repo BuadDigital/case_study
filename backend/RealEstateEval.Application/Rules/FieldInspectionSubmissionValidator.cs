@@ -6,8 +6,8 @@ namespace RealEstateEval.Application.Rules;
 /// <summary>
 /// Server-side validation for field-inspection party task payloads —
 /// mirrors <c>validateInspectorWorkspace</c> / <c>listInspectorPhotoValidationIssues</c> in the MFE.
-/// Proof photos (feature table, showroom/well, services/amenities) are optional —
-/// a missing one never blocks submission.
+/// Proof photos (feature table, showroom/well, services/amenities) are required
+/// when the corresponding value or slot is selected.
 /// </summary>
 public static class FieldInspectionSubmissionValidator
 {
@@ -45,8 +45,16 @@ public static class FieldInspectionSubmissionValidator
             errors["movablesDescription"] = "وصف المنقولات مطلوب عند اختيار «نعم»";
 
         var photoIssues = ListPhotoValidationIssues(root);
-        if (photoIssues.Count > 0)
-            errors["definedPhotos"] = photoIssues[0];
+        foreach (var issue in photoIssues)
+        {
+            if (issue.Contains("توثيقية", StringComparison.Ordinal))
+                errors["featurePhotos"] = issue;
+            else if (issue.Contains("المعرض", StringComparison.Ordinal)
+                     || issue.Contains("البئر", StringComparison.Ordinal))
+                errors["componentPhotos"] = issue;
+            else
+                errors["definedPhotos"] = issue;
+        }
 
         return errors;
     }
@@ -103,10 +111,34 @@ public static class FieldInspectionSubmissionValidator
     {
         var issues = new List<string>();
 
-        // Proof photos (feature table, showroom/well, services/amenities) are
-        // optional — only already-uploaded photos are checked below (pending
-        // approval / not yet on the server), never whether one exists at all.
-        var (_, _, pendingApproval) = ComputeDefinedPhotoCoverage(root);
+        root.TryGetProperty("featureValues", out var featureValues);
+        root.TryGetProperty("featurePhotoAttachments", out var featurePhotos);
+        foreach (var (key, label, photoOnYes, yesNo) in FeaturePhotoFields)
+        {
+            var value = featureValues.ValueKind == JsonValueKind.Object
+                ? ReadString(featureValues, key)
+                : "";
+            if (!FeatureRequiresPhoto(photoOnYes, yesNo, value))
+                continue;
+            if (!HasBoundAttachment(featurePhotos, key))
+                issues.Add($"يجب إرفاق صورة توثيقية: {label}");
+        }
+
+        if (ParsePositiveCount(root, "showroomCount") > 0
+            && !HasBoundAttachment(GetObject(root, "componentPhotoAttachments"), "showroom"))
+        {
+            issues.Add("يجب إرفاق صورة المعرض");
+        }
+
+        if (ParsePositiveCount(root, "wellCount") > 0
+            && !HasBoundAttachment(GetObject(root, "componentPhotoAttachments"), "well"))
+        {
+            issues.Add("يجب إرفاق صورة البئر");
+        }
+
+        var (requiredTotal, requiredDone, pendingApproval) = ComputeDefinedPhotoCoverage(root);
+        if (requiredDone < requiredTotal)
+            issues.Add("وثّق بالصورة كل خدمة/مرفق اخترته في «الخدمات والمرافق المحيطة»");
         if (pendingApproval > 0)
             issues.Add($"{pendingApproval} صورة بانتظار الاعتماد");
 
@@ -118,6 +150,53 @@ public static class FieldInspectionSubmissionValidator
             issues.Add("يجب رفع الصور إلى الخادم قبل الإرسال");
 
         return issues;
+    }
+
+    private static readonly (string Key, string Label, bool PhotoOnYes, bool YesNo)[] FeaturePhotoFields =
+    [
+        ("assetSubject", "الأصل محل التقييم", true, false),
+        ("facade", "الواجهة", true, false),
+        ("propertyUsage", "استخدام العقار", true, false),
+        ("zoneStatus", "حالة منطقة العقار", false, false),
+        ("buildState", "حالة البناء", true, false),
+        ("occupancyState", "حالة الإشغال", false, false),
+        ("districtState", "حالة الحي", false, false),
+        ("movables", "يوجد منقولات", true, true),
+        ("carEntrance", "مدخل السيارة", true, true),
+        ("hasBasement", "يوجد قبو", true, true),
+        ("hasElevator", "يوجد مصعد", true, true),
+        ("hasPool", "يوجد مسبح", true, true),
+        ("kitchen", "مطبخ", true, true),
+    ];
+
+    private static bool FeatureRequiresPhoto(bool photoOnYes, bool yesNo, string value)
+    {
+        if (!photoOnYes) return false;
+        var trimmed = value.Trim();
+        if (trimmed.Length == 0) return false;
+        if (yesNo) return trimmed == "نعم";
+        return true;
+    }
+
+    private static JsonElement GetObject(JsonElement root, string name) =>
+        root.TryGetProperty(name, out var el) && el.ValueKind == JsonValueKind.Object
+            ? el
+            : default;
+
+    private static int ParsePositiveCount(JsonElement root, string name)
+    {
+        var raw = ReadString(root, name);
+        return int.TryParse(raw, out var n) && n > 0 ? n : 0;
+    }
+
+    private static bool HasBoundAttachment(JsonElement map, string key)
+    {
+        if (map.ValueKind != JsonValueKind.Object || !map.TryGetProperty(key, out var el))
+            return false;
+        if (el.ValueKind is JsonValueKind.Null or JsonValueKind.Undefined)
+            return false;
+        return (HasNonEmptyString(el, "fileName") || HasNonEmptyString(el, "fileName"))
+            && (HasNonEmptyString(el, "attachmentId") || HasNonEmptyString(el, "attachmentId"));
     }
 
     private static bool HasPhotosWithoutServerAttachment(JsonElement root) =>
@@ -236,7 +315,7 @@ public static class FieldInspectionSubmissionValidator
     }
 
     private static bool HasPhotoFileName(JsonElement element) =>
-        HasNonEmptyString(element, "fileName");
+        HasNonEmptyString(element, "fileName") || HasNonEmptyString(element, "fileName");
 
     private static bool TryParseCoord(string raw, out double value)
     {

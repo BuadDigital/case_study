@@ -578,10 +578,37 @@ export function listInspectorPhotoValidationIssues(
 ): string[] {
   const issues: string[] = [];
 
-  // Proof photos (feature table, showroom/well, services/amenities) are
-  // optional — the inspector may attach them but submission never blocks
-  // on a missing one.
-  const { pendingApproval } = computeInspectorPhotoCoverage(draft);
+  for (const field of INSPECTOR_FEATURE_FIELDS) {
+    const value = draft.featureValues[field.key] ?? "";
+    if (
+      inspectorFeatureRequiresPhoto(field, value) &&
+      !draft.featurePhotoAttachments[field.key]?.attachmentId
+    ) {
+      issues.push(`يجب إرفاق صورة توثيقية: ${field.label}`);
+    }
+  }
+
+  if (
+    parseInspectorCount(draft.showroomCount) > 0 &&
+    !draft.componentPhotoAttachments.showroom?.attachmentId
+  ) {
+    issues.push("يجب إرفاق صورة المعرض");
+  }
+
+  if (
+    parseInspectorCount(draft.wellCount) > 0 &&
+    !draft.componentPhotoAttachments.well?.attachmentId
+  ) {
+    issues.push("يجب إرفاق صورة البئر");
+  }
+
+  const { requiredTotal, requiredDone, pendingApproval } =
+    computeInspectorPhotoCoverage(draft);
+  if (requiredDone < requiredTotal) {
+    issues.push(
+      "وثّق بالصورة كل خدمة/مرفق اخترته في «الخدمات والمرافق المحيطة»",
+    );
+  }
   if (pendingApproval > 0) {
     issues.push(`${pendingApproval} صورة بانتظار الاعتماد`);
   }

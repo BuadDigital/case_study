@@ -14,12 +14,11 @@ export function DashActionQueue({
   tasks: OperationsTaskDto[];
 }) {
   const router = useRouter();
-  const rows = [...tasks]
-    .sort(
-      (a, b) =>
-        (Date.parse(a.dueAt) || 0) - (Date.parse(b.dueAt) || 0),
-    )
-    .slice(0, 5);
+  const rows = tasks
+    .map((t) => ({ t, dueTs: Date.parse(t.dueAt) || 0 }))
+    .sort((a, b) => a.dueTs - b.dueTs)
+    .slice(0, 5)
+    .map(({ t }) => t);
 
   return (
     <div className={dashCard}>

@@ -21,8 +21,7 @@ const DISTRIBUTION_QUEUE: ActiveTransactionQueueConfig = {
   emptyLine: "لا توجد معاملات بانتظار التوزيع.",
   emptyHint:
     "تظهر هنا بعد إكمال البيانات الأولية واستعلام البورصة عند الحاجة.",
-  tableHint:
-    "اضغط الصف لفتح توزيع المعاملة على الأطراف — اضغط نفس الصف مرة أخرى للإغلاق.",
+  tableHint: "اضغط الصف للفتح أو الإغلاق.",
   panelId: "distribution-panel",
   getBasePath: activeDistributionPath,
   getTaskPath: distributionTaskPath,

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState, type ReactNode, Fragment } from "react";
+import { ReturnedForCorrectionNote } from "../ui/ReturnedForCorrectionNote";
 import {
   Button,
   GoogleMapPin,
@@ -1060,9 +1061,7 @@ export function PropertyDetailInspectionTab({
       ) : null}
 
       {draft?.status === "reopened" && draft.returnNote?.trim() ? (
-        <div className="mb-3 rounded-lg border border-amber border-e-[3px] border-e-amber bg-amber-light px-3.5 py-2.5 text-xs leading-relaxed text-amber-text">
-          <strong>معادة للتصحيح</strong> — {draft.returnNote.trim()}
-        </div>
+        <ReturnedForCorrectionNote note={draft.returnNote} className="mb-3" />
       ) : null}
 
       {!showEditFields && returnOpen ? (
@@ -2076,7 +2075,6 @@ export function PropertyDetailInspectionTab({
             {showEditFields ? (
               <InspectorDefinedPhotosSection
                 draft={draft}
-                bare
                 layout="desktop"
                 onPatch={(patch) => patchDraft(patch)}
               />

@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState, type ReactNode, type RefObject, Fragment } from "react";
 import { Button, FormRow, GoogleMapPin, InlineLoadingSkeleton, Input, Label, Note, Select, Textarea, cn, formControlClassName, useToast } from "@platform/ui-kit";
 import { AppModal } from "../ui/AppModal";
+import { ReturnedForCorrectionNote } from "../ui/ReturnedForCorrectionNote";
 import { RegField, RegTextarea} from "@platform/app-shared/registration/FormFields";
 import type { PartyTaskPageDef } from "@platform/app-shared/prototype/party-task-pages";
 import { usePrototype } from "@platform/app-shared/contexts/PrototypeContext";
@@ -52,7 +53,6 @@ import {
   inspectorFeatureRequiresPhoto,
   inspectorPhotoCoverageLabel,
   inspectorPhotoStampText,
-  inspectorWorkspaceStatusLabel,
   isInspectorWorkspaceLocked,
   isMovablesPresent,
   newObservationId,
@@ -777,10 +777,10 @@ export function FieldInspectionWorkBody({
       ) : null}
 
       {draft.status === "reopened" && draft.returnNote?.trim() ? (
-        <Note tone="warn" className={cn("mb-4", mobile && "mx-4 mt-3")}>
-          <strong>{inspectorWorkspaceStatusLabel("reopened")}</strong> —{" "}
-          {draft.returnNote.trim()}
-        </Note>
+        <ReturnedForCorrectionNote
+          note={draft.returnNote}
+          className={cn("mb-4", mobile && "mx-4 mt-3")}
+        />
       ) : null}
 
       {formError ? (
@@ -2144,7 +2144,6 @@ export function FieldInspectionWorkBody({
               draft={draft}
               disabled={locked}
               onPatch={(patch) => persist(patch)}
-              bare
               layout={mobile ? "mobile" : "desktop"}
             />
           </InspectorCard>

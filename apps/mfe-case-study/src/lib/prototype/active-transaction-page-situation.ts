@@ -61,9 +61,9 @@ const SUB_TODAY = "اليوم";
 function workflowCards(openLabel: string): PageSituationCardDef[] {
   return [
     { key: "open", label: openLabel, sub: SUB_ASSIGNED, tone: "blue" },
-    { key: "arrivedToday", label: "وردت اليوم", sub: SUB_TODAY, tone: "warn" },
-    { key: "doneToday", label: "أنجزت اليوم", sub: SUB_TODAY, tone: "green" },
-    { key: "overdue", label: "متأخرة", sub: "عن المهلة", tone: "red" },
+    { key: "arrivedToday", label: "وردت اليوم", sub: "معاملات جديدة", tone: "warn" },
+    { key: "doneToday", label: "أنجزت اليوم", sub: "من عملك", tone: "green" },
+    { key: "overdue", label: "متأخرة عن المهلة", sub: "تحتاج إجراء", tone: "red" },
   ];
 }
 

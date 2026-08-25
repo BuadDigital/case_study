@@ -8,6 +8,7 @@ import {
   loadPartyBillingStatements,
 } from "@platform/app-shared/prototype/party-billing-statements-api";
 import { useStaffUsersQuery } from "@settings/mfe/query/settings-queries";
+import type { StaffUser } from "@platform/app-shared/prototype/constants";
 import { cn } from "@platform/ui-kit";
 import {
   buildFinanceCostParties,
@@ -33,6 +34,8 @@ import {
   finTh,
   finThead,
 } from "../lib/finance-tw";
+
+const EMPTY_STAFF_USERS: StaffUser[] = [];
 
 function fmtSar(n: number) {
   return `${n.toLocaleString("en-US", {
@@ -85,7 +88,7 @@ export function FinanceCostPartiesList({
 }) {
   const [q, setQ] = useState("");
   const { data: staffResult } = useStaffUsersQuery();
-  const staffUsers = staffResult?.users ?? [];
+  const staffUsers = staffResult?.users ?? EMPTY_STAFF_USERS;
 
   const readyQuery = useQuery({
     queryKey: [...prototypeKeys.all, "party-billing", "ready-lines", "parties"],

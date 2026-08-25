@@ -51,6 +51,31 @@ const stepTag = "mb-4 inline-flex items-center gap-[7px] rounded-full bg-gold-so
 
 const footNote = "mt-6 flex items-center justify-center gap-2 text-center text-xs leading-relaxed text-text-3";
 
+// Hoisted: these run on every keystroke of the identifier/password fields.
+const EMAIL_LIKE_RE = /[a-zA-Z@]/;
+const NON_DIGIT_RE = /\D/g;
+
+// Static watermark — hoisted so keystroke re-renders reuse the same element.
+const asideWatermarkSvg = (
+  <svg
+    className="pointer-events-none absolute -bottom-[60px] -left-[70px] w-[420px] opacity-[0.055]"
+    viewBox="0 0 141.7 50"
+    xmlns="http://www.w3.org/2000/svg"
+    aria-hidden
+  >
+    <g fill="#ffffff">
+      <path d="M35.3,27.7c1.7,0,5.4,0,5.4,0l8-16.8l8,16.8H62L48.6,1C48.6,1,39.7,18.8,35.3,27.7z" />
+      <path d="M89.6,27.7c1.7,0,5.4,0,5.4,0l8-16.8l8,16.8h5.4L103,1C103,1,94.1,18.8,89.6,27.7z" />
+      <polygon points="131.3,12.4 115.5,12.4 115.5,16.8 131.4,16.8 131.4,27.7 135.7,27.7 135.7,1 131.3,1" />
+      <path d="M29.2,1c0,0-0.1,11.9-0.1,17.5c0,2.3-1.7,4.5-4.1,4.8c-0.4,0-1.3,0.1-1.3,0.1v4.3c0,0,1.9-0.1,2.8-0.3c2.5-0.5,4.6-1.8,5.8-4.1c0.9-1.7,1.3-3.6,1.3-5.5c0-5.4,0-16.8,0-16.8H29.2z" />
+      <rect x="0.8" y="1" width="17.8" height="4.3" />
+      <rect x="0.8" y="23.4" width="17.8" height="4.3" />
+      <rect x="0.7" y="12.2" width="14.9" height="4.3" />
+      <path d="M75.3,1L75.3,1L59.8,1v4.5h15.5v0c4.9,0,9,4,9,8.9c0,4.9-4,8.9-9,8.9h-8.9v4.3h8.9c7.4,0,13.3-5.9,13.3-13.3S82.7,1,75.3,1z" />
+    </g>
+  </svg>
+);
+
 async function resolvePostLoginPath(token: string): Promise<string> {
   try {
     const permissions = await fetchPermissions({ token });
@@ -133,8 +158,8 @@ export default function LoginPage() {
   const otpRefs = useRef<Array<HTMLInputElement | null>>([]);
   const mobileRef = useRef<HTMLInputElement | null>(null);
   const otpConfirmingRef = useRef(false);
-  const isEmailMode = /[a-zA-Z@]/.test(identifier);
-  const mobileDigits = identifier.replace(/\D/g, "");
+  const isEmailMode = EMAIL_LIKE_RE.test(identifier);
+  const mobileDigits = identifier.replace(NON_DIGIT_RE, "");
   const credsReady = isEmailMode? identifier.trim().length > 3 && password.length >= 1 : mobileDigits.length >= 9 && password.length >= 1;
   const otpValue = otp.join("");
 
@@ -175,11 +200,11 @@ export default function LoginPage() {
     setMobileBad(false);
     // Any letter means the user is entering an email, not a mobile number —
     // keep it verbatim so characters before the "@" are not stripped away.
-    if (/[a-zA-Z@]/.test(raw)) {
+    if (EMAIL_LIKE_RE.test(raw)) {
       setIdentifier(raw.slice(0, 120));
       return;
     }
-    const digits = raw.replace(/\D/g, "").slice(0, 9);
+    const digits = raw.replace(NON_DIGIT_RE, "").slice(0, 9);
     setIdentifier(formatPhoneDisplay(digits));
   }
 
@@ -292,7 +317,7 @@ export default function LoginPage() {
   }
 
   function onOtpChange(index: number, raw: string) {
-    const digit = raw.replace(/\D/g, "").slice(0, 1);
+    const digit = raw.replace(NON_DIGIT_RE, "").slice(0, 1);
     const next = [...otp];
     next[index] = digit;
     setOtp(next);
@@ -316,7 +341,7 @@ export default function LoginPage() {
     e.preventDefault();
     const text = e.clipboardData
       .getData("text")
-      .replace(/\D/g, "")
+      .replace(NON_DIGIT_RE, "")
       .slice(0, 6);
     if (!text) return;
     const next = ["", "", "", "", "", ""];
@@ -334,7 +359,7 @@ export default function LoginPage() {
   }
 
   async function onOtpConfirm(codeOverride?: string) {
-    const code = (codeOverride ?? otpValue).replace(/\D/g, "").slice(0, 6);
+    const code = (codeOverride ?? otpValue).replace(NON_DIGIT_RE, "").slice(0, 6);
     if (code.length !== 6 || !pendingSession || otpConfirmingRef.current) return;
     if (code === "000000") {
       setOtpBad(true);
@@ -387,23 +412,7 @@ export default function LoginPage() {
           className="pointer-events-none absolute inset-0 bg-[radial-gradient(120%_90%_at_82%_8%,rgba(164,144,111,.20),transparent_55%),radial-gradient(90%_80%_at_10%_100%,rgba(34,64,110,.55),transparent_60%)]"
           aria-hidden
         />
-        <svg
-          className="pointer-events-none absolute -bottom-[60px] -left-[70px] w-[420px] opacity-[0.055]"
-          viewBox="0 0 141.7 50"
-          xmlns="http://www.w3.org/2000/svg"
-          aria-hidden
-        >
-          <g fill="#ffffff">
-            <path d="M35.3,27.7c1.7,0,5.4,0,5.4,0l8-16.8l8,16.8H62L48.6,1C48.6,1,39.7,18.8,35.3,27.7z" />
-            <path d="M89.6,27.7c1.7,0,5.4,0,5.4,0l8-16.8l8,16.8h5.4L103,1C103,1,94.1,18.8,89.6,27.7z" />
-            <polygon points="131.3,12.4 115.5,12.4 115.5,16.8 131.4,16.8 131.4,27.7 135.7,27.7 135.7,1 131.3,1" />
-            <path d="M29.2,1c0,0-0.1,11.9-0.1,17.5c0,2.3-1.7,4.5-4.1,4.8c-0.4,0-1.3,0.1-1.3,0.1v4.3c0,0,1.9-0.1,2.8-0.3c2.5-0.5,4.6-1.8,5.8-4.1c0.9-1.7,1.3-3.6,1.3-5.5c0-5.4,0-16.8,0-16.8H29.2z" />
-            <rect x="0.8" y="1" width="17.8" height="4.3" />
-            <rect x="0.8" y="23.4" width="17.8" height="4.3" />
-            <rect x="0.7" y="12.2" width="14.9" height="4.3" />
-            <path d="M75.3,1L75.3,1L59.8,1v4.5h15.5v0c4.9,0,9,4,9,8.9c0,4.9-4,8.9-9,8.9h-8.9v4.3h8.9c7.4,0,13.3-5.9,13.3-13.3S82.7,1,75.3,1z" />
-          </g>
-        </svg>
+        {asideWatermarkSvg}
         <div className="relative flex items-center gap-3.5">
           <EjadaLogo variant="onDark" className="h-auto w-[150px]" />
         </div>
@@ -763,7 +772,7 @@ export default function LoginPage() {
                 disabled={loading}
                 aria-busy={loading || undefined}
                 onClick={() => {
-                  if (otpValue.replace(/\D/g, "").length !== 6) {
+                  if (otpValue.replace(NON_DIGIT_RE, "").length !== 6) {
                     setOtpBad(true);
                     setOtpError("أدخل رمز التحقق كاملاً (٦ أرقام) ثم أكّد الدخول");
                     const empty = otp.findIndex((d) => !d);

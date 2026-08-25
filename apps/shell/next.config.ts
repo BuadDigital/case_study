@@ -39,6 +39,14 @@ const allowedDevOrigins = getDevAllowedOrigins();
 const nextConfig: NextConfig = {
   /** Produce a self-contained server.js for Docker / Hetzner deployment. */
   output: "standalone",
+  /** Transform barrel imports to per-module paths (Vercel bundle-barrel-imports). */
+  experimental: {
+    optimizePackageImports: [
+      "@platform/ui-kit",
+      "@platform/api-client",
+      "@platform/app-shared",
+    ],
+  },
   /**
    * Monorepo: lockfile lives at the repo root. Without an explicit root,
    * Turbopack can infer the wrong workspace and emit AppRoutes = never

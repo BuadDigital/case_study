@@ -65,6 +65,9 @@ const PRICING_STALE_MS = 60_000;
 
 const PRICING_ICON = "M12 1v22M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6";
 
+const EMPTY_STAFF_USERS: Parameters<typeof getEngineeringOffices>[0] = [];
+const EMPTY_TABLES: PartyFeePricingTableSummaryDto[] = [];
+
 function OpsIcon({ path, size = 20 }: { path: string; size?: number }) {
   return (
     <svg
@@ -218,7 +221,7 @@ export function FinancePartyFeePricing() {
   /** مسؤول النظام · مشرف · أخصائي دراسة حالة */
   const canEdit = isSystemAdmin || canEditOps || canEditSpecialist;
   const { data: staffResult } = useStaffUsersQuery();
-  const staffUsers = staffResult?.users ?? [];
+  const staffUsers = staffResult?.users ?? EMPTY_STAFF_USERS;
   const [selectedCategory, setSelectedCategory] =
     useState<PartyFeePricingCategory>("engineering-survey");
   const [selectedId, setSelectedId] = useState("");
@@ -240,7 +243,7 @@ export function FinancePartyFeePricing() {
     queryFn: () => loadPartyFeePricingTables(selectedCategory),
     staleTime: PRICING_STALE_MS,
   });
-  const tables = tablesQuery.data ?? [];
+  const tables = tablesQuery.data ?? EMPTY_TABLES;
 
   // Resolve which table to open (prefer ref after mutations, else active/first).
   useEffect(() => {

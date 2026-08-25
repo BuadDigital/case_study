@@ -356,7 +356,7 @@ function AttachmentPreview({
 
           <div
 
-            className="fixed inset-0 z-[1000] flex items-center justify-center bg-slate-900/72 p-6 backdrop-blur-sm"
+            className="fixed inset-0 z-[var(--z-modal)] flex items-center justify-center bg-slate-900/72 p-6 backdrop-blur-sm"
 
             role="dialog"
 

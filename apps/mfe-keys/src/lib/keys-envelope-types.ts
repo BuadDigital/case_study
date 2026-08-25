@@ -187,9 +187,11 @@ export function scenarioColor(scenario: string): string {
   }
 }
 
+const NON_DIGIT_PATTERN = /\D/g;
+
 /** Display ref like HTML `keyRef` → ENV-2026-NNN */
 export function envelopeDisplayRef(id: string, createdAtUtc?: string): string {
-  const digits = id.replace(/\D/g, "");
+  const digits = id.replace(NON_DIGIT_PATTERN, "");
   const n = (digits.slice(-3) || "1").padStart(3, "0");
   const year = createdAtUtc
     ? new Date(createdAtUtc).getFullYear() || 2026

@@ -30,6 +30,17 @@ import {
 } from "@platform/ui-kit";
 
 const ROLE_OPTIONS = adminStaffRoleOptions();
+const ROLE_SELECT_OPTIONS = ROLE_OPTIONS.map((o) => ({
+  value: o.value,
+  label: o.label,
+}));
+const SUPERVISOR_DEPARTMENT_SELECT_OPTIONS = SUPERVISOR_DEPARTMENT_OPTIONS.map(
+  (o) => ({ value: o.value, label: o.label }),
+);
+const INSPECTOR_TYPE_OPTIONS = [
+  { value: "employee", label: "موظف" },
+  { value: "contractor", label: "متعاون" },
+];
 
 type FormState = {
   displayName: string;
@@ -252,10 +263,7 @@ export function EditStaffUserModal({
                 label="الدور"
                 required
                 placeholder="اختر الدور"
-                options={ROLE_OPTIONS.map((o) => ({
-                  value: o.value,
-                  label: o.label,
-                }))}
+                options={ROLE_SELECT_OPTIONS}
                 value={form.roleId}
                 onChange={(v) => {
                   const roleId = v as RoleId | "";
@@ -311,10 +319,7 @@ export function EditStaffUserModal({
                   label="قسم الإشراف"
                   required
                   placeholder="اختر القسم"
-                  options={SUPERVISOR_DEPARTMENT_OPTIONS.map((o) => ({
-                    value: o.value,
-                    label: o.label,
-                  }))}
+                  options={SUPERVISOR_DEPARTMENT_SELECT_OPTIONS}
                   value={form.department}
                   onChange={(v) => updateField("department", v)}
                   error={errors.department}
@@ -342,10 +347,7 @@ export function EditStaffUserModal({
                   label="نوع المعاين"
                   required
                   placeholder="اختر النوع"
-                  options={[
-                    { value: "employee", label: "موظف" },
-                    { value: "contractor", label: "متعاون" },
-                  ]}
+                  options={INSPECTOR_TYPE_OPTIONS}
                   value={form.inspectorType}
                   onChange={(v) =>
                     updateField("inspectorType", v as FormState["inspectorType"])

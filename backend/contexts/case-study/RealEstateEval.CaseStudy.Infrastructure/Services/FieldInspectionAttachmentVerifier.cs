@@ -25,7 +25,7 @@ public sealed class FieldInspectionAttachmentVerifier : IFieldInspectionAttachme
             return errors;
 
         var ids = refs.Select(r => r.AttachmentId).Distinct().ToArray();
-        var rows = (await _lookup.GetRefsAsync(ids, cancellationToken))
+        var rows = (await _lookup.GetRefsAsync(ids, actor: null, cancellationToken))
             .ToDictionary(x => x.Id);
 
         var taskPrefix = $"{workflowTaskId}:";

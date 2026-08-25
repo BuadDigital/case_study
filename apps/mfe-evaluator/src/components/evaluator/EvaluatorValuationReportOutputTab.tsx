@@ -34,6 +34,41 @@ import {
   buildValuationReportLiveFill,
 } from "../../lib/evaluator/valuation-report-live-fill";
 
+type ValuationApiConfig = { token: string; baseUrl: string };
+
+async function loadValuationApproaches(
+  config: ValuationApiConfig,
+  property: PoPropertyIntake | null | undefined,
+): Promise<{
+  market: ValuationComparableSelectionListDto | null;
+  cost: ValuationCostApproachDto | null;
+  recon: ValuationReconciliationDto | null;
+}> {
+  const propertyId = (property?.id ?? "").trim();
+  if (!propertyId) {
+    return { market: null, cost: null, recon: null };
+  }
+  const open = await ensureOpenValuationRequestByProperty(config, {
+    propId: propertyId,
+    area: (property?.area ?? "").trim() || "—",
+    type: property?.propertyType || "—",
+    appraiser: "—",
+  });
+  if (!open.ok) {
+    return { market: null, cost: null, recon: null };
+  }
+  const [sel, costRes, reconRes] = await Promise.all([
+    listValuationComparableSelections(config, open.data.id),
+    getValuationCostApproach(config, open.data.id),
+    getValuationReconciliation(config, open.data.id),
+  ]);
+  return {
+    market: sel.ok ? sel.data : null,
+    cost: costRes.ok ? costRes.data : null,
+    recon: reconRes.ok ? reconRes.data : null,
+  };
+}
+
 export function EvaluatorValuationReportOutputTab({
   draft,
   property,
@@ -73,95 +108,79 @@ export function EvaluatorValuationReportOutputTab({
   }>({});
 
   useEffect(() => {
-    if (!inspectionTaskId) {
-      setInspector(null);
-      return;
-    }
-    let cancelled = false;
-    void fetchInspectorWorkspace(inspectionTaskId).then((ws) => {
-      if (!cancelled) setInspector(ws);
-    });
-    return () => {
-      cancelled = true;
-    };
-  }, [inspectionTaskId]);
-
-  useEffect(() => {
-    const session = getAuthSession();
-    if (!session?.token) return;
-    const config = { token: session.token, baseUrl: getApiBase() };
     let cancelled = false;
     const propertyId = (property?.id ?? "").trim();
-    if (draft.poNumber && propertyId) {
-      void getBuildingInventory(config, draft.poNumber, propertyId).then((res) => {
-        if (!cancelled && res.ok) setInventoryLines(res.data.lines ?? []);
-      });
-    } else {
-      setInventoryLines([]);
-    }
-    if (!propertyId) {
-      setMarket(null);
-      setCost(null);
-      setRecon(null);
-      return;
-    }
-    void ensureOpenValuationRequestByProperty(config, {
-      propId: propertyId,
-      area: (property?.area ?? "").trim() || "—",
-      type: property?.propertyType || "—",
-      appraiser: "—",
-    }).then(async (open) => {
-      if (!open.ok || cancelled) {
-        if (!cancelled) {
-          setMarket(null);
-          setCost(null);
-          setRecon(null);
-        }
-        return;
-      }
-      const [sel, costRes, reconRes] = await Promise.all([
-        listValuationComparableSelections(config, open.data.id),
-        getValuationCostApproach(config, open.data.id),
-        getValuationReconciliation(config, open.data.id),
-      ]);
-      if (cancelled) return;
-      setMarket(sel.ok ? sel.data : null);
-      setCost(costRes.ok ? costRes.data : null);
-      setRecon(reconRes.ok ? reconRes.data : null);
-    });
-    return () => {
-      cancelled = true;
-    };
-  }, [draft.poNumber, property?.area, property?.id, property?.propertyType]);
+    const inspectorP = inspectionTaskId
+      ? fetchInspectorWorkspace(inspectionTaskId)
+      : Promise.resolve(null);
 
-  useEffect(() => {
     const session = getAuthSession();
-    if (!session?.token) return;
-    let cancelled = false;
-    void Promise.all([
-      getValuationLists({ token: session.token, baseUrl: getApiBase() }),
-      listClients({ token: session.token, baseUrl: getApiBase() }),
-    ]).then(([listsRes, clientsRes]) => {
-      if (cancelled) return;
-      if (clientsRes.ok) setClients(clientsRes.data);
-      if (!listsRes.ok) return;
-      const lists = listsRes.data.lists;
-      const find = (kind: string, key: string) =>
-        (lists[kind] ?? []).find((i) => i.isEnabled && i.key === key);
-      const purpose = find("purposes", poKeys.purposeKey);
-      const basis = find("valueBases", poKeys.valueBasisKey);
-      const premise = find("premises", poKeys.premiseKey);
-      setListLabels({
-        purpose: purpose?.name,
-        basis: basis?.name,
-        premise: premise?.name,
-        basisDefinition: (basis?.cells[0] ?? "").trim(),
+    if (!session?.token) {
+      void inspectorP.then((ws) => {
+        if (!cancelled) setInspector(ws);
       });
-    });
+      return () => {
+        cancelled = true;
+      };
+    }
+
+    const config: ValuationApiConfig = {
+      token: session.token,
+      baseUrl: getApiBase(),
+    };
+    const inventoryP =
+      draft.poNumber && propertyId
+        ? getBuildingInventory(config, draft.poNumber, propertyId)
+        : Promise.resolve(null);
+    const labelsP = Promise.all([
+      getValuationLists(config),
+      listClients(config),
+    ]);
+    const approachesP = loadValuationApproaches(config, property);
+
+    void Promise.all([inspectorP, inventoryP, labelsP, approachesP]).then(
+      ([ws, invRes, [listsRes, clientsRes], approaches]) => {
+        if (cancelled) return;
+        setInspector(ws);
+        if (draft.poNumber && propertyId) {
+          if (invRes?.ok) setInventoryLines(invRes.data.lines ?? []);
+        } else {
+          setInventoryLines([]);
+        }
+        if (clientsRes.ok) setClients(clientsRes.data);
+        if (listsRes.ok) {
+          const lists = listsRes.data.lists;
+          const find = (kind: string, key: string) =>
+            (lists[kind] ?? []).find((i) => i.isEnabled && i.key === key);
+          const purpose = find("purposes", poKeys.purposeKey);
+          const basis = find("valueBases", poKeys.valueBasisKey);
+          const premise = find("premises", poKeys.premiseKey);
+          setListLabels({
+            purpose: purpose?.name,
+            basis: basis?.name,
+            premise: premise?.name,
+            basisDefinition: (basis?.cells[0] ?? "").trim(),
+          });
+        }
+        setMarket(approaches.market);
+        setCost(approaches.cost);
+        setRecon(approaches.recon);
+      },
+    );
+
     return () => {
       cancelled = true;
     };
-  }, [poKeys.premiseKey, poKeys.purposeKey, poKeys.valueBasisKey]);
+  }, [
+    draft.poNumber,
+    inspectionTaskId,
+    poKeys.premiseKey,
+    poKeys.purposeKey,
+    poKeys.valueBasisKey,
+    property?.area,
+    property?.id,
+    property?.propertyType,
+  ]);
 
   const live = useMemo(() => {
     const htmlEv = CERTIFIED_VALUER_HTML_DEFAULTS;

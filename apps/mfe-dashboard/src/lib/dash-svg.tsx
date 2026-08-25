@@ -1,7 +1,9 @@
 "use client";
 
-import { animate } from "animejs";
 import { useEffect, useId, useRef } from "react";
+
+// animejs تُحمَّل عند الطلب داخل التأثيرات حتى لا تدخل في حزمة البداية.
+type DashAnimation = { pause: () => void };
 
 function prefersReducedMotion(): boolean {
   if (typeof window === "undefined") return false;
@@ -36,13 +38,19 @@ function MiniDonut({
       return;
     }
     el.style.strokeDashoffset = String(cc);
-    const anim = animate(el, {
-      strokeDashoffset: [cc, off],
-      duration: 1100,
-      ease: "outCubic",
+    let anim: DashAnimation | null = null;
+    let cancelled = false;
+    void import("animejs").then(({ animate }) => {
+      if (cancelled) return;
+      anim = animate(el, {
+        strokeDashoffset: [cc, off],
+        duration: 1100,
+        ease: "outCubic",
+      });
     });
     return () => {
-      anim.pause();
+      cancelled = true;
+      anim?.pause();
     };
   }, [cc, off]);
 
@@ -120,13 +128,19 @@ export function BigRing({ pct, color }: { pct: number; color: string }) {
       return;
     }
     el.style.strokeDashoffset = String(c);
-    const anim = animate(el, {
-      strokeDashoffset: [c, off],
-      duration: 1100,
-      ease: "outCubic",
+    let anim: DashAnimation | null = null;
+    let cancelled = false;
+    void import("animejs").then(({ animate }) => {
+      if (cancelled) return;
+      anim = animate(el, {
+        strokeDashoffset: [c, off],
+        duration: 1100,
+        ease: "outCubic",
+      });
     });
     return () => {
-      anim.pause();
+      cancelled = true;
+      anim?.pause();
     };
   }, [c, off]);
 
@@ -230,47 +244,60 @@ export function TrendChart({
       return;
     }
 
-    const anims: { pause: () => void }[] = [];
+    const anims: DashAnimation[] = [];
+    let cancelled = false;
+    const len = 400;
 
-    lines.forEach((el, i) => {
-      const len = 400;
+    lines.forEach((el) => {
       el.style.strokeDasharray = String(len);
       el.style.strokeDashoffset = String(len);
-      anims.push(
-        animate(el, {
-          strokeDashoffset: [len, 0],
-          duration: 1100,
-          delay: i * 80,
-          ease: "inOutQuad",
-        }),
-      );
     });
-
     areas.forEach((el) => {
       el.style.opacity = "0";
-      anims.push(
-        animate(el, {
-          opacity: [0, 1],
-          duration: 800,
-          delay: 300,
-          ease: "inOutQuad",
-        }),
-      );
+    });
+    dots.forEach((el) => {
+      el.style.opacity = "0";
     });
 
-    dots.forEach((el, i) => {
-      el.style.opacity = "0";
-      anims.push(
-        animate(el, {
-          opacity: [0, 1],
-          duration: 400,
-          delay: 550 + i * 40,
-          ease: "inOutQuad",
-        }),
-      );
+    void import("animejs").then(({ animate }) => {
+      if (cancelled) return;
+
+      lines.forEach((el, i) => {
+        anims.push(
+          animate(el, {
+            strokeDashoffset: [len, 0],
+            duration: 1100,
+            delay: i * 80,
+            ease: "inOutQuad",
+          }),
+        );
+      });
+
+      areas.forEach((el) => {
+        anims.push(
+          animate(el, {
+            opacity: [0, 1],
+            duration: 800,
+            delay: 300,
+            ease: "inOutQuad",
+          }),
+        );
+      });
+
+      dots.forEach((el, i) => {
+        anims.push(
+          animate(el, {
+            opacity: [0, 1],
+            duration: 400,
+            delay: 550 + i * 40,
+            ease: "inOutQuad",
+          }),
+        );
+      });
     });
 
     return () => {
+      cancelled = true;
       for (const a of anims) a.pause();
     };
   }, [seriesKey, labels.join(",")]);

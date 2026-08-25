@@ -281,7 +281,12 @@ export function PoPropertyEnfathForm({
       ) : null}
 
       {showBoursePrimary ? (
-        <FormRow>
+        <div className="flex flex-col gap-5">
+        <fieldset className="m-0 min-w-0 border-0 p-0">
+          <legend className="mb-2.5 p-0 text-[13px] font-bold text-heading">
+            بيانات الصك
+          </legend>
+          <FormRow>
           <RegField
             id="deed_number_bourse"
             label="رقم الصك"
@@ -289,7 +294,7 @@ export function PoPropertyEnfathForm({
             dir="ltr"
             inputMode="numeric"
             maxLength={identifierDigitLength}
-            hint={`${identifierDigitLength} أرقام`}
+            hint={`${identifierDigitLength} رقمًا.`}
             value={property.deedNumber}
             error={fieldErrors.deedNumber}
             onChange={patchDeedNumber}
@@ -303,6 +308,14 @@ export function PoPropertyEnfathForm({
             error={fieldErrors.deedDate}
             onChange={(v) => onPatch("deedDate", v)}
           />
+          </FormRow>
+        </fieldset>
+
+        <fieldset className="m-0 min-w-0 border-0 p-0">
+          <legend className="mb-2.5 p-0 text-[13px] font-bold text-heading">
+            التكليف
+          </legend>
+          <FormRow>
           <RegField
             id="assignment_mandate_number_bourse"
             label="رقم التكليف"
@@ -332,7 +345,14 @@ export function PoPropertyEnfathForm({
               onChange={(v) => onPatch("requestNumber", v)}
             />
           ) : null}
-          <div className="grid grid-cols-1 gap-3 sm:col-span-2 sm:grid-cols-2">
+          </FormRow>
+        </fieldset>
+
+        <fieldset className="m-0 min-w-0 border-0 p-0">
+          <legend className="mb-2.5 p-0 text-[13px] font-bold text-heading">
+            بيانات المخطط والموقع
+          </legend>
+          <FormRow>
             <RegField
               id="plan_number_bourse"
               label="رقم المخطط"
@@ -379,16 +399,23 @@ export function PoPropertyEnfathForm({
               value={property.partitionMinutesDate}
               onChange={(v) => onPatch("partitionMinutesDate", v)}
             />
-          </div>
-          <RegField
-            id="location_map_url_bourse"
-            label="رابط موقع الخريطة"
-            dir="ltr"
-            hint="مطلوب للمناطق العشوائية (بدون مخطط وقطعة)"
-            value={property.locationMapUrl}
-            error={fieldErrors.locationMapUrl}
-            onChange={(v) => onPatch("locationMapUrl", v)}
-          />
+            <RegField
+              id="location_map_url_bourse"
+              label="رابط موقع الخريطة"
+              dir="ltr"
+              hint="مطلوب للمناطق العشوائية (بدون مخطط وقطعة)."
+              value={property.locationMapUrl}
+              error={fieldErrors.locationMapUrl}
+              onChange={(v) => onPatch("locationMapUrl", v)}
+            />
+          </FormRow>
+        </fieldset>
+
+        <fieldset className="m-0 min-w-0 border-0 p-0">
+          <legend className="mb-2.5 p-0 text-[13px] font-bold text-heading">
+            المالك والمحكمة
+          </legend>
+          <FormRow>
           <RegField
             id="owner_name_bourse"
             label="اسم المالك"
@@ -409,23 +436,33 @@ export function PoPropertyEnfathForm({
               onPatch={onPatch}
             />
           ) : null}
-        </FormRow>
+          </FormRow>
+        </fieldset>
+        </div>
       ) : showDeedFields ? (
-      <FormRow>
+      <div className="flex flex-col gap-5">
+      <fieldset className="m-0 min-w-0 border-0 p-0">
+        <legend className="mb-1 p-0 text-[13px] font-bold text-heading">
+          معرّف العقار
+        </legend>
+        <p className="mb-2.5 mt-0 text-[11.5px] leading-relaxed text-text-3">
+          أدخل رقم الصك ({identifierDigitLength} رقمًا) أو رقم التسجيل العيني (
+          {realEstateRegDigitLength} رقمًا) — أحدهما إلزامي.
+        </p>
+        <FormRow>
         <RegField
           id="deed_number"
           label="رقم الصك"
           dir="ltr"
           inputMode="numeric"
           maxLength={identifierDigitLength}
-          hint={`${identifierDigitLength} أرقام — مطلوب أحدهما على الأقل (صك أو تسجيل عيني)`}
           value={property.deedNumber}
           error={fieldErrors.deedNumber}
           onChange={patchDeedNumber}
         />
         <RegField
           id="deed_date"
-          label="تاريخه"
+          label="تاريخ الصك"
           type="date"
           hint="اختياري"
           value={property.deedDate}
@@ -434,24 +471,32 @@ export function PoPropertyEnfathForm({
         />
         <RegField
           id="real_estate_reg_number"
-          label="تسجيل عيني"
+          label="رقم التسجيل العيني"
           dir="ltr"
           inputMode="numeric"
           maxLength={realEstateRegDigitLength}
-          hint={`${realEstateRegDigitLength} أرقام — مطلوب أحدهما على الأقل؛ عند التعبئة يتجاوز استعلام البورصة`}
+          hint="تعبئته تُغني عن استعلام البورصة."
           value={property.realEstateRegNumber}
           error={fieldErrors.realEstateRegNumber}
           onChange={patchRealEstateRegNumber}
         />
         <RegField
           id="real_estate_reg_date"
-          label="تاريخه"
+          label="تاريخ التسجيل العيني"
           required={hasRealEstateReg}
           type="date"
           value={property.realEstateRegDate}
           error={fieldErrors.realEstateRegDate}
           onChange={(v) => onPatch("realEstateRegDate", v)}
         />
+        </FormRow>
+      </fieldset>
+
+      <fieldset className="m-0 min-w-0 border-0 p-0">
+        <legend className="mb-2.5 p-0 text-[13px] font-bold text-heading">
+          التكليف
+        </legend>
+        <FormRow>
         <RegField
           id="assignment_mandate_number"
           label="رقم التكليف"
@@ -536,11 +581,18 @@ export function PoPropertyEnfathForm({
             </>
           ) : (
             <p className="m-0 text-[10px] text-text-3">
-              رقم الطلب لا ينطبق على هذا النوع من الإسناد (مرجع محكمة).
+              رقم الطلب: لا ينطبق على إسناد المحاكم.
             </p>
           )}
         </div>
-        <div className="grid grid-cols-1 gap-3 sm:col-span-2 sm:grid-cols-2">
+        </FormRow>
+      </fieldset>
+
+      <fieldset className="m-0 min-w-0 border-0 p-0">
+        <legend className="mb-2.5 p-0 text-[13px] font-bold text-heading">
+          بيانات المخطط والموقع
+        </legend>
+        <FormRow>
           <RegField
             id="plan_number"
             label="رقم المخطط"
@@ -587,16 +639,23 @@ export function PoPropertyEnfathForm({
             value={property.partitionMinutesDate}
             onChange={(v) => onPatch("partitionMinutesDate", v)}
           />
-        </div>
-        <RegField
-          id="location_map_url"
-          label="رابط موقع الخريطة"
-          dir="ltr"
-          hint="مطلوب للمناطق العشوائية (بدون مخطط وقطعة)"
-          value={property.locationMapUrl}
-          error={fieldErrors.locationMapUrl}
-          onChange={(v) => onPatch("locationMapUrl", v)}
-        />
+          <RegField
+            id="location_map_url"
+            label="رابط موقع الخريطة"
+            dir="ltr"
+            hint="مطلوب للمناطق العشوائية (بدون مخطط وقطعة)."
+            value={property.locationMapUrl}
+            error={fieldErrors.locationMapUrl}
+            onChange={(v) => onPatch("locationMapUrl", v)}
+          />
+        </FormRow>
+      </fieldset>
+
+      <fieldset className="m-0 min-w-0 border-0 p-0">
+        <legend className="mb-2.5 p-0 text-[13px] font-bold text-heading">
+          المالك والمحكمة
+        </legend>
+        <FormRow>
         <RegField
           id="owner_name"
           label="اسم المالك"
@@ -617,7 +676,9 @@ export function PoPropertyEnfathForm({
             onPatch={onPatch}
           />
         ) : null}
-      </FormRow>
+        </FormRow>
+      </fieldset>
+      </div>
       ) : null}
 
       {!isBourseId && fieldsMode === "all" ? (

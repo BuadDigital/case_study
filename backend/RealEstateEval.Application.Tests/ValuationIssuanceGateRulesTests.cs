@@ -22,8 +22,8 @@ public class ValuationIssuanceGateRulesTests
                 ],
                 Today),
             ValuationIssuanceGateRules.DeedNatureMatch(DeedKind.RegisteredTitle, ""),
-            ValuationIssuanceGateRules.MinAdoptedComparables(1),
-            ValuationIssuanceGateRules.ComparableWeights(true, 1),
+            ValuationIssuanceGateRules.MinAdoptedComparables(2),
+            ValuationIssuanceGateRules.ComparableWeights(true, 2),
             ValuationIssuanceGateRules.ReconciliationWeights(true, true),
             ValuationIssuanceGateRules.FinalOpinion(500_000m),
         };

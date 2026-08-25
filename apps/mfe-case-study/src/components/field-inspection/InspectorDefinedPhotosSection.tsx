@@ -17,7 +17,6 @@ import {
 } from "@platform/ui-kit";
 import {
   INSPECTOR_FREE_PHOTO_CATEGORIES,
-  inspectorPhotoCoverageLabel,
   inspectorPhotoStampText,
   listServiceAmenityPhotoSlots,
   nextInspectorPhotoId,
@@ -26,7 +25,6 @@ import {
   type InspectorFreePhoto,
   type InspectorSlotPhoto,
   type InspectorWorkspaceDraft,
-  type ServiceAmenityPhotoSlotDef,
 } from "../../lib/prototype/inspector-workspace-data";
 import {
   INSPECTOR_PHOTO_ACCEPT,
@@ -41,8 +39,6 @@ import {
   uploadInspectorPhotoFromFile,
 } from "../../lib/prototype/inspector-photo-upload";
 import { InspectorPhotoFilePicker } from "./InspectorPhotoFilePicker";
-import { InspectorStampedPhotoThumb } from "./InspectorStampedPhotoThumb";
-import { InspectorToggleSwitch } from "./InspectorToggleSwitch";
 
 type PreviewRef =
   | { kind: "slot"; slotId: string; photoId: number }
@@ -148,18 +144,19 @@ function MiniPhotoThumb({
   );
 }
 
+/**
+ * Bare section — always nested inside a parent card (InspectorCard / InsCard),
+ * so it renders no outer chrome of its own.
+ */
 export function InspectorDefinedPhotosSection({
   draft,
   disabled,
   onPatch,
-  bare = false,
   layout = "desktop",
 }: {
   draft: InspectorWorkspaceDraft;
   disabled?: boolean;
   onPatch: (patch: Patch) => void;
-  /** Skip outer card chrome when nested in a parent section. */
-  bare?: boolean;
   /** `desktop` = Case Study.html c9 tiles (100px); `mobile` = square photoTile grid. */
   layout?: "desktop" | "mobile";
 }) {
@@ -169,21 +166,12 @@ export function InspectorDefinedPhotosSection({
   const [uploading, setUploading] = useState(false);
 
   const stamp = inspectorPhotoStampText(draft);
-  const coverageLabel = inspectorPhotoCoverageLabel(draft);
   const untaggedFree = draft.freePhotos.filter((photo) => !photo.category);
 
   const visibleSlots = useMemo(
     () => listServiceAmenityPhotoSlots(draft),
     [draft.services, draft.amenities],
   );
-
-  function slotIcon(def: ServiceAmenityPhotoSlotDef): string {
-    return def.kind === "service" ? "ti-plug" : "ti-map-pin";
-  }
-
-  function slotKindBadge(def: ServiceAmenityPhotoSlotDef): string {
-    return def.kind === "service" ? "خدمة" : "مرفق";
-  }
 
   const previewPhoto = useMemo(() => {
     if (!previewRef) return null;
@@ -417,32 +405,15 @@ export function InspectorDefinedPhotosSection({
 
   return (
     <>
-      <RegistrationFormCard
-        title={bare ? undefined : "توثيق الخدمات والمرافق"}
-        headerRight={
-          bare ? undefined : (
-            <div className="flex items-center gap-2">
-              <i className="ti ti-camera-plus text-base text-primary" aria-hidden />
-              <Badge tone="default">{coverageLabel}</Badge>
-            </div>
-          )
-        }
-      >
-        {bare && layout === "desktop" ? (
+      <RegistrationFormCard>
+        {layout === "desktop" ? (
           <p className="mb-3 text-[11px] leading-relaxed text-text-3">
             لكل خدمة/مرفق اخترته في القسم أعلاه: ارفع صورة توثيقية (كاميرا أو
             ملف). بدون اختيار لا تظهر خانات.
           </p>
-        ) : null}
-        {bare && layout === "mobile" ? (
+        ) : (
           <p className="mb-2.5 text-[11px] leading-relaxed text-text-3">
             وثّق كل خدمة/مرفق اخترته. اضغط الخانة للتصوير أو اختيار ملف.
-          </p>
-        ) : null}
-        {bare ? null : (
-          <p className="mb-3.5 text-[11px] leading-relaxed text-text-3">
-            الخانات تعكس اختيارك من «الخدمات» و«المرافق». ارفع صورة لكل عنصر، أو
-            «غير متوفر» إن تعذّر التوثيق في الموقع.
           </p>
         )}
 
@@ -451,8 +422,7 @@ export function InspectorDefinedPhotosSection({
             اختر خدمة أو مرفقاً من «الخدمات والمرافق المحيطة» أولاً — تظهر
             هنا خانة صورة لكل اختيار.
           </div>
-        ) : bare ? (
-          layout === "mobile" ? (
+        ) : layout === "mobile" ? (
             <div className="grid grid-cols-3 gap-2.5">
               {visibleSlots.map((def) => {
                 const slot = draft.definedPhotos[def.id] ?? {
@@ -524,132 +494,34 @@ export function InspectorDefinedPhotosSection({
                 );
               })}
             </div>
-          )
-        ) : (
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
-          {visibleSlots.map((def) => {
-            const slot = draft.definedPhotos[def.id] ?? {
-              none: false,
-              photos: [],
-            };
-            const incomplete =
-              !isServiceAmenityPhotoSlotComplete(slot);
-
-            return (
-              <div
-                key={def.id}
-                className={cn(
-                  "rounded-lg border bg-surface-2 p-3.5",
-                  incomplete
-                    ? "border-[#F5CBA7]"
-                    : "border-border",
-                )}
-              >
-                <div className="mb-2.5 flex items-center justify-between gap-2">
-                  <span className="flex items-center gap-1.5 text-xs font-semibold text-text">
-                    <i className={`ti ${slotIcon(def)} text-primary-light text-base`} aria-hidden />
-                    {def.label}
-                  </span>
-                  <Badge tone="danger">{slotKindBadge(def)}</Badge>
-                </div>
-
-                {slot.none ? (
-                  <div className="mb-2 flex items-center gap-1.5 rounded-md bg-surface-3 px-3 py-2 text-xs font-semibold text-text-2">
-                    <i className="ti ti-circle-minus" aria-hidden />
-                    لا يوجد في هذا العقار
-                  </div>
-                ) : slot.photos.length > 0 ? (
-                  <div className="mb-2 flex flex-wrap gap-1.5">
-                    {slot.photos.map((photo) => (
-                      <MiniPhotoThumb
-                        key={photo.id}
-                        taskId={draft.taskId}
-                        photoRef={slotPhotoRef(def.id, photo.id)}
-                        photo={photo}
-                        stamp={stamp}
-                        icon={slotIcon(def)}
-                        onClick={() =>
-                          setPreviewRef({
-                            kind: "slot",
-                            slotId: def.id,
-                            photoId: photo.id,
-                          })
-                        }
-                        onDelete={() => deleteSlotPhoto(def.id, photo.id)}
-                      />
-                    ))}
-                  </div>
-                ) : null}
-
-                {!slot.none ? (
-                  <InspectorPhotoFilePicker
-                    label={
-                      slot.photos.length > 0
-                        ? "صورة أخرى"
-                        : "رفع صورة (متعدد)"
-                    }
-                    disabled={disabled}
-                    loading={uploading}
-                    multiple
-                    className={slot.photos.length === 0 ? "w-full justify-center" : undefined}
-                    onFilesSelected={(files) =>
-                      uploadSlotPhotos(def.id, files)
-                    }
-                  />
-                ) : null}
-
-                <div className="mt-2.5 flex items-center justify-between gap-2 border-t border-dashed border-border pt-2.5">
-                  <span className="inline-flex items-center gap-1.5 text-xs font-medium text-text-2">
-                    <i className="ti ti-ban text-sm" aria-hidden /> لا يوجد
-                  </span>
-                  <InspectorToggleSwitch
-                    checked={slot.none}
-                    disabled={disabled}
-                    ariaLabel={`لا يوجد — ${def.label}`}
-                    onChange={(none) => toggleSlotNone(def.id, none)}
-                  />
-                </div>
-              </div>
-            );
-          })}
-        </div>
         )}
 
         <div
           className={cn(
+            /* mt-5 + mt-4 معاً كما في السابق — cn لا يدمج فئات Tailwind. */
             "mb-2.5 mt-5 flex flex-wrap items-center justify-between gap-2",
-            bare && "mt-4",
-            bare && layout === "desktop" && "hidden",
+            "mt-4",
+            layout === "desktop" && "hidden",
           )}
         >
-          {bare ? null : (
-            <div className="flex items-center gap-1.5 text-xs font-semibold text-text">
-              <i className="ti ti-photo-plus text-primary" aria-hidden />
-              صور إضافية
-            </div>
-          )}
           <InspectorPhotoFilePicker
-            label={bare ? "صور إضافية" : "رفع صور إضافية"}
+            label="صور إضافية"
             disabled={disabled}
             loading={uploading}
             multiple
-            className={cn(
-              bare
-                ? "w-full [&_button]:min-h-11 [&_button]:rounded-xl [&_button]:border-[1.5px] [&_button]:border-dashed [&_button]:border-[var(--gold-d,#a4906f)] [&_button]:bg-[color-mix(in_srgb,var(--gold)_8%,transparent)] [&_button]:text-[13px] [&_button]:font-bold [&_button]:text-[var(--gold-d,#a4906f)]"
-                : "w-auto",
-            )}
+            className="w-full [&_button]:min-h-11 [&_button]:rounded-xl [&_button]:border-[1.5px] [&_button]:border-dashed [&_button]:border-[var(--gold-d,#a4906f)] [&_button]:bg-[color-mix(in_srgb,var(--gold)_8%,transparent)] [&_button]:text-[13px] [&_button]:font-bold [&_button]:text-[var(--gold-d,#a4906f)]"
             onFilesSelected={uploadFreePhotos}
           />
         </div>
 
-        {untaggedFree.length > 0 && !(bare && layout === "desktop") ? (
+        {untaggedFree.length > 0 && layout !== "desktop" ? (
           <div className="mb-2.5 flex items-center gap-1.5 rounded-lg border border-orange bg-orange-bg px-3 py-2 text-[11px] font-semibold text-orange">
             <i className="ti ti-alert-triangle" aria-hidden />
             {untaggedFree.length} صورة بحاجة لتعريف — اضغط عليها لتحديد نوعها
           </div>
         ) : null}
 
-        {!(bare && layout === "desktop") ? (
+        {layout !== "desktop" ? (
         <div className="flex flex-wrap gap-2">
           {draft.freePhotos.map((photo) => {
             if (!photo.category) {

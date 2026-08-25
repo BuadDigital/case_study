@@ -1,12 +1,10 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
-import { DistributionPartiesForm } from "@case-study/mfe/components/distribution/DistributionPartiesForm";
 import { RegistrationFormCard } from "@platform/app-shared/registration/RegistrationFormCard";
 import { TaskWorkChrome } from "@case-study/mfe/components/primary-data/TaskWorkChrome";
-import { PoPropertyEnfathForm } from "@case-study/mfe/components/po-intake/PoPropertyEnfathForm";
-import { PoPropertyBourseForm } from "@case-study/mfe/components/po-intake/PoPropertyBourseForm";
 import {
   firstEnfathValidationMessage,
   mergePropertyEnfathValidation,
@@ -50,7 +48,6 @@ import {
   FAILURE_RAISER_SPECIALIST,
   FAILURE_RAISER_SUPERVISOR,
 } from "@failures/mfe";
-import { FailureRaiseModal } from "@case-study/mfe/components/failures/FailureRaiseModal";
 import {
   advanceTaskAfterBourse,
   advanceTaskAfterEnfath,
@@ -74,7 +71,42 @@ import { prototypeKeys } from "@platform/app-shared/query/prototype-keys";
 import { useStaffUsersQuery } from "@settings/mfe/query/settings-queries";
 
 const LOADING_TEXT = "text-xs text-text-3";
-const CONFIRM_DISTRIBUTION_ERROR = "تعذّر تأكيد التوزيع — تحقق من المرحلة وحاول مرة أخرى";
+const CONFIRM_DISTRIBUTION_ERROR =
+  "تعذّر تأكيد التوزيع — تحقق من المرحلة وحاول مرة أخرى";
+const NOOP_DISTRIBUTION_PATCH = () => {};
+
+const formChunkFallback = () => (
+  <InlineLoadingSkeleton className="my-2" />
+);
+
+const DistributionPartiesForm = dynamic(
+  () =>
+    import("@case-study/mfe/components/distribution/DistributionPartiesForm").then(
+      (m) => m.DistributionPartiesForm,
+    ),
+  { loading: formChunkFallback },
+);
+const PoPropertyEnfathForm = dynamic(
+  () =>
+    import("@case-study/mfe/components/po-intake/PoPropertyEnfathForm").then(
+      (m) => m.PoPropertyEnfathForm,
+    ),
+  { loading: formChunkFallback },
+);
+const PoPropertyBourseForm = dynamic(
+  () =>
+    import("@case-study/mfe/components/po-intake/PoPropertyBourseForm").then(
+      (m) => m.PoPropertyBourseForm,
+    ),
+  { loading: formChunkFallback },
+);
+const FailureRaiseModal = dynamic(
+  () =>
+    import("@case-study/mfe/components/failures/FailureRaiseModal").then(
+      (m) => m.FailureRaiseModal,
+    ),
+  { ssr: false },
+);
 
 export function CaseStudyTaskWork({
   task,
@@ -191,6 +223,11 @@ export function CaseStudyTaskWork({
   const replaceProperty = useCallback((next: PoPropertyIntake) => {
     setProperty(next);
     setFieldErrors({});
+  }, []);
+
+  const onObstructionReasonChange = useCallback((value: string) => {
+    setObstructionReason(value);
+    setObstructionReasonError(undefined);
   }, []);
 
   const showEngineering = engineeringOfficeAvailable(property, hasPriorSurvey);
@@ -662,7 +699,7 @@ export function CaseStudyTaskWork({
           </Note>
           <DistributionPartiesForm
             distribution={migrateDistribution(task.distribution)}
-            onPatch={() => {}}
+            onPatch={NOOP_DISTRIBUTION_PATCH}
             showEngineering={engineeringOfficeAvailable(
               property,
               hasPriorSurvey,
@@ -717,10 +754,20 @@ export function CaseStudyTaskWork({
     );
   }
 
+  const panelStepTitle = showEnfathStep
+    ? "البيانات الأولية"
+    : showBourseStep
+      ? "استعلام البورصة"
+      : showDistribution
+        ? "توزيع المعاملة"
+        : "تنفيذ المعاملة";
+
   return (
     <TaskWorkChrome
       layout={layout}
-      title={`تعديل عقار — ${deedTitle}`}
+      title={
+        layout === "panel" ? panelStepTitle : `تعديل عقار — ${deedTitle}`
+      }
       subtitle={workSubtitle}
       deedBadge={panelDeedBadge}
       saving={saving}
@@ -805,10 +852,7 @@ export function CaseStudyTaskWork({
             deedVitality={deedVitality}
             onDeedVitalityChange={setDeedVitality}
             obstructionReason={obstructionReason}
-            onObstructionReasonChange={(v) => {
-              setObstructionReason(v);
-              setObstructionReasonError(undefined);
-            }}
+            onObstructionReasonChange={onObstructionReasonChange}
             obstructionReasonError={obstructionReasonError}
           />
         </RegistrationFormCard>

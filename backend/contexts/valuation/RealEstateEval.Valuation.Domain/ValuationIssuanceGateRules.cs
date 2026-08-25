@@ -128,10 +128,12 @@ public static class ValuationIssuanceGateRules
     public static ValuationIssuanceGateCheck MinAdoptedComparables(int adoptedCount) =>
         new(
             ValuationIssuanceGateCodes.MinAdoptedComparables,
-            "مقارن معتمد واحد على الأقل",
-            adoptedCount >= 1,
+            "مقارنان معتمدان على الأقل",
+            adoptedCount >= PropertyComparableLinkRules.MinimumLinkedForAppraisalPrep,
             IsHard: true,
-            DetailAr: adoptedCount < 1 ? "لا توجد مقارنات معتمدة" : null);
+            DetailAr: adoptedCount < PropertyComparableLinkRules.MinimumLinkedForAppraisalPrep
+                ? "يلزم مقارنان معتمدان على الأقل"
+                : null);
 
     public static ValuationIssuanceGateCheck ComparableWeights(bool weightsSumTo100, int adoptedCount) =>
         new(

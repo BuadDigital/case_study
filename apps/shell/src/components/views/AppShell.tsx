@@ -1387,7 +1387,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const def = ROLES[role];
   const chipName = sessionUser?.displayName?.trim() || def.name;
 
-  async function handleLogout(): Promise<void> {
+  const handleLogout = useCallback(async (): Promise<void> => {
     const session = getAuthSession();
     const userId = session?.user?.id;
     if (userId) {
@@ -1423,7 +1423,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     clearAuthSession();
     queryClient.clear();
     router.replace("/login");
-  }
+  }, [queryClient, router]);
 
   // These are reset to false at the start of each render, which is correct —
   // they track sidebar insertion within the current JSX pass only.
@@ -1787,11 +1787,13 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             </span>
           </div>
         ) : null}
-        {/* Inspection + government review: sidebar on; in-page task card owns the header. */}
-        {!hideShellTopbar ? (
+        {/* مساحة عمل المعاينة: الشريط (بمسار التنقل) يبقى على الشاشات الكبيرة؛ يُخفى على الجوال حيث بطاقة المهمة هي الرأس. */}
         <div
           id="topbar"
-          className="flex min-h-topbar shrink-0 items-center justify-between gap-2 border-b-[0.5px] border-border bg-surface px-4 py-3.5 pt-[max(0.875rem,env(safe-area-inset-top))] sm:gap-3 sm:px-[30px]"
+          className={cn(
+            "flex min-h-topbar shrink-0 items-center justify-between gap-2 border-b-[0.5px] border-border bg-surface px-4 py-3.5 pt-[max(0.875rem,env(safe-area-inset-top))] sm:gap-3 sm:px-[30px]",
+            hideShellTopbar && "max-lg:hidden",
+          )}
         >
           <div className="flex min-w-0 flex-1 items-center gap-2 sm:gap-3">
             <button
@@ -1861,7 +1863,6 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             />
           </div>
         </div>
-        ) : null}
         <div
           id="content"
           ref={contentRef}

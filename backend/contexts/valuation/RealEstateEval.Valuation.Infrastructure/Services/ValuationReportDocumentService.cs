@@ -302,7 +302,7 @@ public sealed class ValuationReportDocumentService(
         if (string.IsNullOrWhiteSpace(propertyId))
             return (siteMaps, photos, survey, deed);
 
-        var rows = (await attachments.ListForPropertyAsync(propertyId, cancellationToken))
+        var rows = (await attachments.ListForPropertyAsync(propertyId, actor: null, cancellationToken))
             .OrderBy(a => a.CreatedAtUtc)
             .Take(60)
             .ToList();

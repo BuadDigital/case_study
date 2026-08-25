@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { ReturnedForCorrectionNote } from "../ui/ReturnedForCorrectionNote";
 import { RegistrationFormCard } from "@platform/app-shared/registration/RegistrationFormCard";
 import {
   Button,
@@ -23,9 +24,6 @@ import {
   inspectorWorkspaceStatusLabel,
   type InspectorWorkspaceDraft,
 } from "../../lib/prototype/inspector-workspace-data";
-
-const noteWarnClass =
-  "mb-3 rounded-[var(--radius-DEFAULT)] border border-amber border-e-[3px] border-e-amber bg-amber-light px-3.5 py-2.5 text-xs leading-relaxed text-amber-text";
 
 export function FieldInspectionAdvisoryPanel({
   parentTask,
@@ -179,11 +177,7 @@ export function FieldInspectionAdvisoryPanel({
       />
 
       {submission.status === "reopened" && submission.returnNote?.trim() ? (
-        <div className={noteWarnClass}>
-          <p className="m-0">
-            <strong>معادة للتصحيح</strong> — {submission.returnNote.trim()}
-          </p>
-        </div>
+        <ReturnedForCorrectionNote note={submission.returnNote} />
       ) : null}
 
       <div className="space-y-2 text-xs">

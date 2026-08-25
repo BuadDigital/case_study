@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
 import {
   Badge,
@@ -38,12 +39,26 @@ import {
   type PropertyKindCat,
   type PropertyUsageCat,
 } from "../lib/prototype/map-locations-logic";
-import {
-  PropertyMapCanvas,
-  type MapBasemap,
-  type MapViewCommand,
-  type PropertyMapMarker,
+import type {
+  MapBasemap,
+  MapViewCommand,
+  PropertyMapMarker,
 } from "../components/property-map/PropertyMapCanvas";
+
+const PropertyMapCanvas = dynamic(
+  () =>
+    import("../components/property-map/PropertyMapCanvas").then(
+      (m) => m.PropertyMapCanvas,
+    ),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="flex h-full min-h-[320px] items-center justify-center bg-[#e8eef3] text-sm text-[#6b7c8a]">
+        جاري تحميل الخريطة…
+      </div>
+    ),
+  },
+);
 
 /**
  * خريطة العقارات — المتبقي لاحقاً (ربط بيانات حية، لا تجميل):

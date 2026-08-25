@@ -152,7 +152,7 @@ export function FinanceVendorInvoiceMatchModal({
   return (
     <ModalOverlay
       role="presentation"
-      className="!items-center !justify-center bg-[rgba(16,43,78,0.42)] backdrop-blur-[2px] !z-[200] max-lg:!items-center"
+      className="!items-center !justify-center bg-[rgba(16,43,78,0.42)] backdrop-blur-[2px] !z-[var(--z-modal)] max-lg:!items-center"
       onClick={() => {
         if (!busy) onClose();
       }}

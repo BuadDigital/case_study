@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using RealEstateEval.Application.Abstractions;
 using RealEstateEval.Application.Contracts;
+using RealEstateEval.Application.Rules;
 using RealEstateEval.Infrastructure.Data.Contexts;
 
 namespace RealEstateEval.Infrastructure.Services;
@@ -10,41 +11,65 @@ public sealed class AttachmentLookup(AttachmentsDbContext db) : IAttachmentLooku
     private const int MaxLookupIds = 200;
     private const int MaxPropertyRows = 200;
 
-    public Task<bool> ExistsAsync(Guid id, CancellationToken cancellationToken = default) =>
-        db.FileAttachments.AsNoTracking().AnyAsync(a => a.Id == id, cancellationToken);
+    public async Task<bool> ExistsAsync(
+        Guid id,
+        PermissionsDto? actor,
+        CancellationToken cancellationToken = default)
+    {
+        var row = await db.FileAttachments.AsNoTracking()
+            .FirstOrDefaultAsync(a => a.Id == id, cancellationToken);
+        if (row is null)
+            return false;
+        return actor is null || AttachmentAccessRules.Allows(row.UploadedByUserId, actor);
+    }
 
     public async Task<IReadOnlyList<AttachmentRefDto>> GetRefsAsync(
         IReadOnlyList<Guid> ids,
+        PermissionsDto? actor,
         CancellationToken cancellationToken = default)
     {
         if (ids.Count == 0)
             return [];
 
         var limited = ids.Distinct().Take(MaxLookupIds).ToArray();
-        return await db.FileAttachments.AsNoTracking()
+        var rows = await db.FileAttachments.AsNoTracking()
             .Where(x => limited.Contains(x.Id))
+            .ToListAsync(cancellationToken);
+
+        return rows
+            .Where(x => actor is null || AttachmentAccessRules.Allows(x.UploadedByUserId, actor))
             .Select(x => new AttachmentRefDto
             {
                 Id = x.Id,
                 Scope = x.Scope,
                 ScopeKey = x.ScopeKey,
             })
-            .ToListAsync(cancellationToken);
+            .ToList();
     }
 
     public async Task<IReadOnlyList<FileAttachmentMetaDto>> ListForPropertyAsync(
         string propertyId,
+        PermissionsDto? actor,
         CancellationToken cancellationToken = default)
     {
         var needle = propertyId.Trim();
         if (needle.Length == 0)
             return [];
 
+        var colon = needle + ":";
+        var slash = needle + "/";
         var rows = await db.FileAttachments.AsNoTracking()
-            .Where(a => a.ScopeKey.Contains(needle))
+            .Where(a =>
+                a.ScopeKey == needle
+                || a.ScopeKey.StartsWith(colon)
+                || a.ScopeKey.StartsWith(slash))
             .OrderBy(a => a.CreatedAtUtc)
-            .Take(MaxPropertyRows)
             .ToListAsync(cancellationToken);
+
+        rows = rows
+            .Where(a => actor is null || AttachmentAccessRules.Allows(a.UploadedByUserId, actor))
+            .Take(MaxPropertyRows)
+            .ToList();
 
         var rowIds = rows.Select(r => r.Id).ToList();
         var photos = rowIds.Count == 0

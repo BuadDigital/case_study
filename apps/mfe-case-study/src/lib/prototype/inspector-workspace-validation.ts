@@ -162,7 +162,6 @@ export function validateInspectorWorkspace(
     errors.movablesDescription = "وصف المنقولات مطلوب عند اختيار «نعم»";
   }
 
-  // Proof photos are optional — a missing one never blocks submission.
   const incompleteObs = submission.observations.filter((o) => !o.text.trim());
   if (incompleteObs.length > 0) {
     errors.observations = "كل ملاحظة يجب أن تتضمن شرحاً";
@@ -170,11 +169,21 @@ export function validateInspectorWorkspace(
 
   const photoIssues = listInspectorPhotoValidationIssues(submission);
   if (photoIssues.length > 0) {
+    const featureIssue = photoIssues.find((issue) => issue.includes("توثيقية"));
+    if (featureIssue) errors.featurePhotos = featureIssue;
+
+    const componentIssue = photoIssues.find(
+      (issue) => issue.includes("المعرض") || issue.includes("البئر"),
+    );
+    if (componentIssue) errors.componentPhotos = componentIssue;
+
     const definedIssue = photoIssues.find(
       (issue) =>
         issue.includes("بانتظار الاعتماد") ||
         issue.includes("إضافية") ||
-        issue.includes("الخادم"),
+        issue.includes("الخادم") ||
+        issue.includes("خدمة") ||
+        issue.includes("مرفق"),
     );
     if (definedIssue) errors.definedPhotos = definedIssue;
   }

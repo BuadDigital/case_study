@@ -29,13 +29,16 @@ import {
   ReportDynamicTables,
 } from "./professional-valuation-report-tables";
 
+const ISO_DATE_RE = /^(\d{4})-(\d{2})-(\d{2})/;
+const FINISH_LABEL_RE = /^(تشطيبات خارجية:|تشطيبات داخلية:)(.*)$/;
+
 function filled(value: string | null | undefined, fallback: string): string {
   return value?.trim() ? value : fallback;
 }
 
 function slashDate(iso: string | null | undefined): string {
   if (!iso) return "—";
-  const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(iso);
+  const m = ISO_DATE_RE.exec(iso);
   return m ? `${m[1]}/${m[2]}/${m[3]}` : iso;
 }
 
@@ -151,7 +154,7 @@ function FinishCell({
   return (
     <td className="v finish">
       {linesOf(text).map((line, i) => {
-        const m = /^(تشطيبات خارجية:|تشطيبات داخلية:)(.*)$/.exec(line);
+        const m = FINISH_LABEL_RE.exec(line);
         return (
           <span key={i}>
             {i > 0 ? <br /> : null}

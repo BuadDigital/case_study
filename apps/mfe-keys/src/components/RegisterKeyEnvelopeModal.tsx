@@ -29,6 +29,12 @@ type RequestSuggestion = {
 
 type FilePick = { file: File; attachmentId?: string };
 
+const SOURCE_OPTIONS = [
+  { id: "court" as const, label: "المحكمة" },
+  { id: "third_party" as const, label: "طرف آخر" },
+  { id: "missing" as const, label: "مفقودة" },
+] as const;
+
 /** Exact HTML `.fld input/textarea` tokens — avoid ui-kit formControlClassName conflicts. */
 const fldControlClassName =
   "box-border w-full rounded-[9px] border border-border-md bg-surface-2 px-3 py-[9px] font-[inherit] text-[13px] text-text outline-none transition-[border-color,box-shadow] duration-150 focus:border-[var(--gold)] focus:shadow-[0_0_0_3px_color-mix(in_srgb,var(--gold)_20%,transparent)]";
@@ -419,7 +425,7 @@ export function RegisterKeyEnvelopeModal({
 
   return (
     <div
-      className="fixed inset-0 z-[200] flex items-start justify-center overflow-y-auto bg-[rgba(16,43,78,0.42)] px-4 py-[6vh] backdrop-blur-[2px] max-lg:items-stretch max-lg:px-0 max-lg:py-0"
+      className="fixed inset-0 z-[var(--z-modal)] flex items-start justify-center overflow-y-auto bg-[rgba(16,43,78,0.42)] px-4 py-[6vh] backdrop-blur-[2px] max-lg:items-stretch max-lg:px-0 max-lg:py-0"
       role="presentation"
       onClick={onClose}
     >
@@ -483,7 +489,7 @@ export function RegisterKeyEnvelopeModal({
                   }}
                 />
                 {listOpen && filteredSuggestions.length > 0 ? (
-                  <div className="absolute inset-x-0 top-[calc(100%+4px)] z-30 max-h-[220px] overflow-y-auto rounded-[10px] border border-border-md bg-surface p-1 shadow-[0_12px_30px_-8px_rgba(18,40,76,0.3)]">
+                  <div className="absolute inset-x-0 top-[calc(100%+4px)] z-[var(--z-dropdown)] max-h-[220px] overflow-y-auto rounded-[10px] border border-border-md bg-surface p-1 shadow-[0_12px_30px_-8px_rgba(18,40,76,0.3)]">
                     {filteredSuggestions.map((s) => (
                       <button
                         key={s.requestNumber}
@@ -514,13 +520,7 @@ export function RegisterKeyEnvelopeModal({
                 مصدر استلام الظرف *
               </FldLabel>
               <div className="flex flex-wrap gap-2">
-                {(
-                  [
-                    { id: "court" as const, label: "المحكمة" },
-                    { id: "third_party" as const, label: "طرف آخر" },
-                    { id: "missing" as const, label: "مفقودة" },
-                  ] as const
-                ).map((opt) => {
+                {SOURCE_OPTIONS.map((opt) => {
                   const on = source === opt.id;
                   return (
                     <button

@@ -7,7 +7,10 @@ using RealEstateEval.Infrastructure.Data.Contexts;
 
 namespace RealEstateEval.Infrastructure.Services;
 
-public sealed class PropertyComparableLinkService(ValuationDbContext db, TimeProvider? time = null)
+public sealed class PropertyComparableLinkService(
+    ValuationDbContext db,
+    ICaseStudyLookup caseStudy,
+    TimeProvider? time = null)
     : IPropertyComparableLinkService, IPropertyComparableLinkLookup
 {
     private readonly TimeProvider _time = time ?? TimeProvider.System;
@@ -60,6 +63,11 @@ public sealed class PropertyComparableLinkService(ValuationDbContext db, TimePro
         if (comp is null)
         {
             return (null, new Dictionary<string, string> { ["comparablePropertyId"] = "المقارن غير موجود أو معطّل" });
+        }
+
+        if (await caseStudy.GetPropertyAsync(request.PropertyId, cancellationToken) is null)
+        {
+            return (null, new Dictionary<string, string> { ["propertyId"] = "العقار غير موجود" });
         }
 
         db.PropertyComparableLinks.Add(new PropertyComparableLink

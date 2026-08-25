@@ -107,19 +107,17 @@ const REVENUE_META: Record<
 function buildRevenueMyTasks(
   tracking: EnfazTrackingRowDto[],
 ): FinanceMyTask[] {
-  const actionable = tracking.filter((r) => {
-    const stage = resolveRevenueStage(r);
-    return (
-      stage === "eligible" ||
-      stage === "billing_assistant" ||
-      stage === "awaiting_collection" ||
-      stage === "stopped"
-    );
-  });
-
   const byStage = new Map<RevenueStage, EnfazTrackingRowDto[]>();
-  for (const row of actionable) {
+  for (const row of tracking) {
     const stage = resolveRevenueStage(row);
+    if (
+      stage !== "eligible" &&
+      stage !== "billing_assistant" &&
+      stage !== "awaiting_collection" &&
+      stage !== "stopped"
+    ) {
+      continue;
+    }
     const list = byStage.get(stage) ?? [];
     list.push(row);
     byStage.set(stage, list);
@@ -338,22 +336,34 @@ export function buildFinanceMyTasks(input: {
 
 /** بطاقات KPI لمهامي — مطابقة اللقطة */
 export function buildFinanceMyTasksKpis(tasks: FinanceMyTask[]) {
-  const match = tasks.filter((t) => t.kind === "revenue_match");
-  const collect = tasks.filter((t) => t.kind === "revenue_collect");
-  const docs = tasks.filter(
-    (t) =>
+  let matchCount = 0;
+  let collectCount = 0;
+  let collectAmountSar = 0;
+  let docsCount = 0;
+  let closeCount = 0;
+
+  for (const t of tasks) {
+    if (t.kind === "revenue_match") {
+      matchCount += 1;
+    } else if (t.kind === "revenue_collect") {
+      collectCount += 1;
+      collectAmountSar += t.amountSar;
+    } else if (
       t.kind === "cost_create_statement" ||
       t.kind === "cost_issue_statement" ||
-      t.kind === "cost_match_invoice",
-  );
-  const close = tasks.filter((t) => t.kind === "cost_close_statement");
-  const collectAmt = collect.reduce((s, t) => s + t.amountSar, 0);
+      t.kind === "cost_match_invoice"
+    ) {
+      docsCount += 1;
+    } else if (t.kind === "cost_close_statement") {
+      closeCount += 1;
+    }
+  }
 
   return {
-    matchCount: match.length,
-    collectCount: collect.length,
-    collectAmountSar: collectAmt,
-    docsCount: docs.length,
-    closeCount: close.length,
+    matchCount,
+    collectCount,
+    collectAmountSar,
+    docsCount,
+    closeCount,
   };
 }

@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useMemo, useState, type ReactNode } from "react";
+import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { prototypeKeys } from "@platform/app-shared/query/prototype-keys";
@@ -17,8 +18,23 @@ import {
   type FinanceMyTask,
 } from "../lib/finance-my-tasks";
 import { buildFinanceHref } from "../lib/finance-nav";
-import { FinanceDisbursementCloseModal } from "./FinanceDisbursementCloseModal";
-import { FinanceVendorInvoiceMatchModal } from "./FinanceVendorInvoiceMatchModal";
+
+const FinanceDisbursementCloseModal = dynamic(
+  () =>
+    import("./FinanceDisbursementCloseModal").then(
+      (m) => m.FinanceDisbursementCloseModal,
+    ),
+  { ssr: false },
+);
+const FinanceVendorInvoiceMatchModal = dynamic(
+  () =>
+    import("./FinanceVendorInvoiceMatchModal").then(
+      (m) => m.FinanceVendorInvoiceMatchModal,
+    ),
+  { ssr: false },
+);
+
+const EMPTY_STATEMENTS: PartyBillingStatementDto[] = [];
 
 function fmtSar(n: number) {
   return n.toLocaleString("en-US", {
@@ -217,7 +233,7 @@ export function FinanceMyTasks() {
     readyQuery.isPending ||
     statementsQuery.isPending;
 
-  const statements = statementsQuery.data ?? [];
+  const statements = statementsQuery.data ?? EMPTY_STATEMENTS;
 
   const tasks = useMemo(
     () =>
@@ -284,6 +300,9 @@ export function FinanceMyTasks() {
       }),
     );
   }, [statements]);
+
+  const closeMatchModal = useCallback(() => setMatchStatementId(null), []);
+  const closeCloseModal = useCallback(() => setCloseStatementId(null), []);
 
   return (
     <div>
@@ -449,14 +468,14 @@ export function FinanceMyTasks() {
       <FinanceVendorInvoiceMatchModal
         open={Boolean(matchStatementId)}
         statement={matchStatement}
-        onClose={() => setMatchStatementId(null)}
+        onClose={closeMatchModal}
         onDone={invalidateBilling}
         onMatched={goToCostsAfterMatch}
       />
       <FinanceDisbursementCloseModal
         open={Boolean(closeStatementId)}
         statement={closeStatement}
-        onClose={() => setCloseStatementId(null)}
+        onClose={closeCloseModal}
         onDone={invalidateBilling}
       />
     </div>

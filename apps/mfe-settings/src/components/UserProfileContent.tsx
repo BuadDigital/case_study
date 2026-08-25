@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import dynamic from "next/dynamic";
 import {
   listInspectorFees,
   type InspectorFeeRowDto,
@@ -9,8 +10,22 @@ import type { StaffUser } from "@platform/app-shared/prototype/constants";
 import { supervisingDepartmentLabel } from "@platform/app-shared/users/admin-staff-roles";
 import { getAuthSession } from "@platform/auth-client";
 import { Badge, Spinner, Table, TBody, Td, Th, THead, Tr } from "@platform/ui-kit";
-import { PartyOfficeBillingStatementsPanel } from "@case-study/mfe/components/fees/PartyOfficeBillingStatementsPanel";
 import { ProfileInspectorDuesPanel } from "./ProfileInspectorDuesPanel";
+
+const PartyOfficeBillingStatementsPanel = dynamic(
+  () =>
+    import("@case-study/mfe/components/fees/PartyOfficeBillingStatementsPanel").then(
+      (m) => m.PartyOfficeBillingStatementsPanel,
+    ),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="flex justify-center py-10">
+        <Spinner />
+      </div>
+    ),
+  },
+);
 
 type ProfileTab =
   | "basic"
@@ -40,15 +55,20 @@ function typeLabel(type: StaffUser["type"]): string {
   return "خارجي";
 }
 
+const ENG_OFFICE_ROLE_RE = /مكتب.*مساح|مقدم خدمة\s*[—\-]\s*جهة/i;
+const ENG_OFFICE_DETAIL_RE = /engineering-office/i;
+const FIELD_INSPECTOR_DETAIL_RE = /field-inspector/i;
+const LTR_FIELD_LABEL_RE = /إيميل|بريد|جوال|هوية|عضوية|مستخدم|معرّف/i;
+
 /** حساب مكتب هندسي — تظهر له تبويبة مسيرات الصرف */
 function isEngineeringOfficeProfile(user: StaffUser): boolean {
   if ((user.roleId ?? "").trim() === "engineering-office") return true;
   if ((user.distributionAssigneeId ?? "").trim().toLowerCase().startsWith("eo-"))
     return true;
   if ((user.role ?? "").trim() === "مقدم خدمة — جهة") return true;
-  if (/مكتب.*مساح|مقدم خدمة\s*[—\-]\s*جهة/i.test(user.role ?? "")) return true;
+  if (ENG_OFFICE_ROLE_RE.test(user.role ?? "")) return true;
   return (user.details ?? []).some((d) =>
-    /engineering-office/i.test(d.value),
+    ENG_OFFICE_DETAIL_RE.test(d.value),
   );
 }
 
@@ -61,7 +81,7 @@ function isFieldInspectorProfile(user: StaffUser): boolean {
   if (user.inspectorType === "employee" || user.inspectorType === "contractor")
     return true;
   return (user.details ?? []).some((d) =>
-    /field-inspector/i.test(d.value),
+    FIELD_INSPECTOR_DETAIL_RE.test(d.value),
   );
 }
 
@@ -319,9 +339,7 @@ export function UserProfileContent({ user }: { user: StaffUser }) {
                     label={field.label}
                     value={field.value}
                     dir={
-                      /إيميل|بريد|جوال|هوية|عضوية|مستخدم|معرّف/i.test(field.label)
-                        ? "ltr"
-                        : undefined
+                      LTR_FIELD_LABEL_RE.test(field.label) ? "ltr" : undefined
                     }
                   />
                 ))}

@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
 import { InlineLoadingSkeleton, Spinner, cn, useToast } from "@platform/ui-kit";
 import type { PartyTaskPageDef } from "@platform/app-shared/prototype/party-task-pages";
@@ -23,7 +24,6 @@ import {
 } from "@case-study/mfe/query/case-study-queries";
 import { useInspectorFeesQuery } from "@case-study/mfe/query/inspector-fees-queries";
 import {
-  FailureRaisePanel,
   blockingFailureForProperty,
   failureRecordTitle,
 } from "@failures/mfe";
@@ -64,7 +64,6 @@ import {
   type SurveySketchExtractResult,
 } from "../lib/engineering-survey-sketch-extract";
 import { EngineeringSurveyChecklist } from "./EngineeringSurveyChecklist";
-import { EngineeringSurveyMap } from "./EngineeringSurveyMap";
 import { EngineeringSurveyPropertySummary } from "./EngineeringSurveyPropertySummary";
 import {
   applyChecklistToCaseStudyAnswers,
@@ -86,6 +85,30 @@ import {
 } from "./EngineeringSurveyHtmlPrimitives";
 
 type WorkTab = "property" | "survey" | "fees" | "notes" | "failures";
+
+const EMPTY_FIELD_ERRORS: EngineeringSurveyFieldErrors = {};
+
+const EngineeringSurveyMap = dynamic(
+  () => import("./EngineeringSurveyMap").then((m) => m.EngineeringSurveyMap),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="flex h-[280px] items-center justify-center rounded-DEFAULT border border-border bg-surface-2 text-xs text-text-3">
+        جاري تحميل الخريطة…
+      </div>
+    ),
+  },
+);
+const FailureRaisePanel = dynamic(
+  () =>
+    import("@failures/mfe/components/failures/FailureRaisePanel").then(
+      (m) => m.FailureRaisePanel,
+    ),
+  {
+    ssr: false,
+    loading: () => <InlineLoadingSkeleton className="my-2" />,
+  },
+);
 
 type LocalTextFields = {
   latitude: string;
@@ -232,9 +255,8 @@ export function EngineeringSurveyWorkPanel({
   const [draft, setDraft] = useState<EngineeringSurveySubmission | null>(null);
   const [localFields, setLocalFields] = useState<LocalTextFields | null>(null);
   const [workTab, setWorkTab] = useState<WorkTab>("survey");
-  const [fieldErrors, setFieldErrors] = useState<EngineeringSurveyFieldErrors>(
-    {},
-  );
+  const [fieldErrors, setFieldErrors] =
+    useState<EngineeringSurveyFieldErrors>(EMPTY_FIELD_ERRORS);
   const [formError, setFormError] = useState<string | null>(null);
   const [noteDraft, setNoteDraft] = useState("");
   const [savingLocal, setSavingLocal] = useState(false);
@@ -622,6 +644,23 @@ export function EngineeringSurveyWorkPanel({
       });
     },
     [schedulePersist],
+  );
+
+  const onWorkTabChange = useCallback((id: string) => {
+    setWorkTab(id as WorkTab);
+  }, []);
+
+  const handleChecklistChange = useCallback(
+    (checklist: EngineeringSurveySubmission["checklist"]) => {
+      persist({ checklist });
+      void syncCaseStudyFromChecklist(checklist);
+      setFieldErrors((prev) => {
+        const next = { ...prev };
+        delete next.checklist;
+        return next;
+      });
+    },
+    [persist, syncCaseStudyFromChecklist],
   );
 
   function onFilePick(
@@ -1179,15 +1218,7 @@ export function EngineeringSurveyWorkPanel({
         <EngineeringSurveyChecklist
           rows={draft.checklist}
           disabled={formDisabled}
-          onChange={(checklist) => {
-            persist({ checklist });
-            void syncCaseStudyFromChecklist(checklist);
-            setFieldErrors((prev) => {
-              const next = { ...prev };
-              delete next.checklist;
-              return next;
-            });
-          }}
+          onChange={handleChecklistChange}
         />
         {fieldErrors.checklist ? (
           <p className="mt-1 text-[11px] text-[#a5432e]">
@@ -1234,7 +1265,7 @@ export function EngineeringSurveyWorkPanel({
         <div className={engCardClassName}>
           <EngTabBar
             active={workTab}
-            onChange={(id) => setWorkTab(id as WorkTab)}
+            onChange={onWorkTabChange}
             tabs={[
               { id: "property", label: "بيانات العقار" },
               { id: "survey", label: "الرفع المساحي" },

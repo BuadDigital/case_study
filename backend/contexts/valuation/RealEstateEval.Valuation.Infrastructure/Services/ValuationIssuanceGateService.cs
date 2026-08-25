@@ -255,7 +255,7 @@ public sealed class ValuationIssuanceGateService(
             .ToList();
         if (required.Count == 0) return [];
 
-        var presentKeys = (await attachments.ListForPropertyAsync(propertyId, cancellationToken))
+        var presentKeys = (await attachments.ListForPropertyAsync(propertyId, actor: null, cancellationToken))
             .Select(a => AttachmentPrintRules.TypeKeyFromScope(a.Scope))
             .Where(k => !string.IsNullOrWhiteSpace(k))
             .Select(k => k!.Trim().ToLowerInvariant())

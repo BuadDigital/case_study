@@ -66,6 +66,9 @@ import {
 } from "../lib/finance-tw";
 import { FinanceReceiptUploadField } from "./FinanceReceiptUploadField";
 
+const EMPTY_READY_LINES: PartyBillingReadyLineDto[] = [];
+const EMPTY_STATEMENTS: PartyBillingStatementDto[] = [];
+
 function formatSar(n: number) {
   return `${n.toLocaleString("en-US", { maximumFractionDigits: 2 })} ر.س`;
 }
@@ -160,8 +163,8 @@ export function FinancePartyBillingStatements({
     queryFn: () => loadPartyBillingStatements(),
   });
 
-  const readyLinesAll = readyQuery.data ?? [];
-  const allStatementsRaw = statementsQuery.data ?? [];
+  const readyLinesAll = readyQuery.data ?? EMPTY_READY_LINES;
+  const allStatementsRaw = statementsQuery.data ?? EMPTY_STATEMENTS;
 
   const readyLines = useMemo(() => {
     if (!assigneeId?.trim()) return readyLinesAll;
@@ -209,6 +212,12 @@ export function FinancePartyBillingStatements({
       return (a.propertyLabel || "").localeCompare(b.propertyLabel || "", "ar");
     });
   }, [readyLines, duesSearch]);
+
+  /** البنود القابلة للتحديد (صافي > صفر) — تُحسب مرة بدل تكرار filter */
+  const payableDues = useMemo(
+    () => filteredDues.filter((l) => l.netFeeSar > 0),
+    [filteredDues],
+  );
 
   const selectedStatement = useMemo(() => {
     const id = focusStatementId ?? selectedStatementId;
@@ -522,19 +531,16 @@ export function FinancePartyBillingStatements({
                 filteredDues.length === 0 && "pointer-events-none opacity-50",
               )}
               onClick={() => {
-                const ids = filteredDues.filter((l) => l.netFeeSar > 0);
                 const allOn =
-                  ids.length > 0 &&
-                  ids.every((l) => selected.has(l.workflowTaskId));
-                selectGroup(ids, !allOn);
+                  payableDues.length > 0 &&
+                  payableDues.every((l) => selected.has(l.workflowTaskId));
+                selectGroup(payableDues, !allOn);
               }}
             >
               {filteredDues.length > 0 &&
-              filteredDues
-                .filter((l) => l.netFeeSar > 0)
-                .every((l) => selected.has(l.workflowTaskId))
+              payableDues.every((l) => selected.has(l.workflowTaskId))
                 ? "إلغاء التحديد"
-                : `تحديد الكل (${filteredDues.filter((l) => l.netFeeSar > 0).length})`}
+                : `تحديد الكل (${payableDues.length})`}
             </button>
             <button
               type="button"
@@ -563,12 +569,12 @@ export function FinancePartyBillingStatements({
               {filteredDues.length} مستحق ·{" "}
               <b
                 className={
-                  filteredDues.some((l) => l.netFeeSar > 0)
+                  payableDues.length > 0
                     ? "text-heading"
                     : "text-[#8a5e14]"
                 }
               >
-                {filteredDues.filter((l) => l.netFeeSar > 0).length}
+                {payableDues.length}
               </b>{" "}
               جاهز للصرف
             </span>

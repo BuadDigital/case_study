@@ -143,7 +143,7 @@ public sealed class ValuationReportFieldInjectionService(
     {
         if (string.IsNullOrWhiteSpace(propertyId)) return [];
 
-        var all = await attachments.ListForPropertyAsync(propertyId, cancellationToken);
+        var all = await attachments.ListForPropertyAsync(propertyId, actor: null, cancellationToken);
 
         var routed = all
             .Where(a => AttachmentPrintRules.TypeKeyFromScope(a.Scope) is not null)

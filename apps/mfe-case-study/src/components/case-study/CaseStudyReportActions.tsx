@@ -51,7 +51,7 @@ export function CaseStudyReportActions({ model }: Props) {
 
       {previewOpen ? (
         <ModalOverlay
-          className="z-[1200] items-start overflow-y-auto p-6 px-4 print:absolute print:inset-0 print:overflow-visible print:bg-white print:p-0"
+          className="z-[var(--z-lightbox)] items-start overflow-y-auto p-6 px-4 print:absolute print:inset-0 print:overflow-visible print:bg-white print:p-0"
           onClick={() => setPreviewOpen(false)}
           role="dialog"
           aria-modal="true"

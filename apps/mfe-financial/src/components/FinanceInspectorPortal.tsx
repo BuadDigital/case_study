@@ -54,6 +54,8 @@ type PortalLine = {
   st: "due" | "instmt" | "paid";
 };
 
+const EMPTY_STAFF_USERS: StaffUser[] = [];
+
 const COST_ST: Record<PortalLine["st"], { t: string; cls: string }> = {
   due: { t: "مستحق", cls: finStatus },
   instmt: { t: "في أمر صرف", cls: finStatusGold },
@@ -193,7 +195,7 @@ export function FinanceInspectorPortal({
   onFocusParty?: (assigneeId: string | null) => void;
 } = {}) {
   const { data: staffResult } = useStaffUsersQuery();
-  const staffUsers = staffResult?.users ?? [];
+  const staffUsers = staffResult?.users ?? EMPTY_STAFF_USERS;
   const staffByAssignee = useMemo(
     () => buildAssigneeStaffIndex(staffUsers),
     [staffUsers],

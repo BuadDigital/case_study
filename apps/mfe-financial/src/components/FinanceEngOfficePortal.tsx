@@ -70,6 +70,8 @@ function isPortalAwaitingInvoice(s: PartyBillingStatementDto): boolean {
   return s.status === "issued" && isEngVendor(s);
 }
 
+const EMPTY_STAFF_USERS: Parameters<typeof getEngineeringOffices>[0] = [];
+
 const fieldLbl = "text-[12px] font-semibold text-text-2";
 const fieldInp =
   "w-full rounded-[9px] border border-border-md bg-surface-2 px-3 py-[9px] font-[inherit] text-[13px] text-text outline-none focus:border-gold focus:shadow-[0_0_0_3px_color-mix(in_srgb,var(--gold)_22%,transparent)]";
@@ -82,7 +84,7 @@ export function FinanceEngOfficePortal({
   const { showToast } = useToast();
   const queryClient = useQueryClient();
   const { data: staffResult } = useStaffUsersQuery();
-  const staffUsers = staffResult?.users ?? [];
+  const staffUsers = staffResult?.users ?? EMPTY_STAFF_USERS;
 
   const offices = useMemo(
     () => getEngineeringOffices(staffUsers),
@@ -465,7 +467,7 @@ export function FinanceEngOfficePortal({
       {modalRun ? (
         <ModalOverlay
           role="presentation"
-          className="items-start bg-[rgba(16,43,78,0.42)] pt-[6vh] !z-[200]"
+          className="items-start bg-[rgba(16,43,78,0.42)] pt-[6vh] !z-[var(--z-modal)]"
           onClick={closeModal}
         >
           <ModalCard

@@ -35,8 +35,8 @@ public class ValuationComparableSelection
 public static class ValuationComparableSelectionRules
 {
     public static bool HasAtLeastOneAdopted(IEnumerable<ValuationComparableSelection> rows) =>
-        rows.Any(r => r.IsAdopted);
+        rows.Count(r => r.IsAdopted) >= PropertyComparableLinkRules.MinimumLinkedForAppraisalPrep;
 
     public static bool HasAtLeastOneAdopted(IEnumerable<bool> adoptedFlags) =>
-        adoptedFlags.Any(a => a);
+        adoptedFlags.Count(a => a) >= PropertyComparableLinkRules.MinimumLinkedForAppraisalPrep;
 }

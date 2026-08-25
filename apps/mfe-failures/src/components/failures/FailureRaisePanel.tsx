@@ -154,12 +154,14 @@ export function FailureRaisePanel({
         raisedByRole,
         specialist,
       });
-      await queryClient.invalidateQueries({
-        queryKey: prototypeKeys.failures(),
-      });
-      await queryClient.invalidateQueries({
-        queryKey: prototypeKeys.propertyKeys(),
-      });
+      await Promise.all([
+        queryClient.invalidateQueries({
+          queryKey: prototypeKeys.failures(),
+        }),
+        queryClient.invalidateQueries({
+          queryKey: prototypeKeys.propertyKeys(),
+        }),
+      ]);
       setProblemTypeId("");
       showToast("تم رفع التعذر — سيظهر لأخصائي دراسة الحالة.", "success");
       onSubmitted?.();

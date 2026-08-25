@@ -58,6 +58,17 @@ function KpiAlertIcon() {
   );
 }
 
+const mobileLoadingSkeleton = (
+  <div className="flex flex-col gap-3">
+    {Array.from({ length: 4 }).map((_, i) => (
+      <div
+        key={i}
+        className="h-[88px] animate-pulse rounded-[14px] border border-border bg-surface-2"
+      />
+    ))}
+  </div>
+);
+
 export function SurveyView() {
   const { data: offices = [], isPending: officesPending } = useSurveyOfficesQuery();
   const { data: stats, isPending: statsPending } = useSurveyRequestStatsQuery();
@@ -202,14 +213,7 @@ export function SurveyView() {
 
         <div className="lg:hidden">
           {!ready ? (
-            <div className="flex flex-col gap-3">
-              {Array.from({ length: 4 }).map((_, i) => (
-                <div
-                  key={i}
-                  className="h-[88px] animate-pulse rounded-[14px] border border-border bg-surface-2"
-                />
-              ))}
-            </div>
+            mobileLoadingSkeleton
           ) : offices.length === 0 ? (
             <EmptyState line="لا توجد مكاتب مسجّلة" />
           ) : (

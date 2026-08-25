@@ -16,6 +16,9 @@ on:
         description: "Also run container tests and collect coverage"
         type: boolean
         default: false
+  # Nightly full run, so the slow suite still guards main without sitting on every deploy.
+  schedule:
+    - cron: "0 2 * * *"
 
 # Concurrency is set per job, not here. A workflow-level group either cancels a deploy
 # halfway through the host, or makes every superseded build sit in the queue ahead of the
@@ -24,7 +27,7 @@ on:
 
 jobs:
   # ----------------------------------------------------
-  # Job 1a: Frontend checks (PRs and manual runs — never gate a deploy)
+  # Job 1a: Frontend checks (PRs, nightly, and manual runs — never gate a deploy)
   # ----------------------------------------------------
   frontend:
     if: github.event_name != 'push'
@@ -57,8 +60,8 @@ jobs:
     timeout-minutes: 30
     env:
       # Testcontainers (Postgres, RabbitMQ, Redis) dominates the run, so it is reserved
-      # for a manual run asking for the full suite.
-      RUN_FULL_SUITE: ${{ inputs.full_suite == true }}
+      # for the nightly schedule and for a manual run asking for the full suite.
+      RUN_FULL_SUITE: ${{ github.event_name == 'schedule' || inputs.full_suite == true }}
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
@@ -149,7 +152,7 @@ jobs:
   # Job 2: Build & Push Docker Images to GHCR
   # ----------------------------------------------------
   build-and-push:
-    if: github.event_name != 'pull_request'
+    if: github.event_name != 'pull_request' && github.event_name != 'schedule'
     needs: test
     runs-on: ubuntu-latest
     # A newer commit makes these images pointless; drop them and let the new run build.
@@ -376,25 +379,49 @@ jobs:
 
       - name: Deploy Stack via SSH
         uses: appleboy/ssh-action@v1.0.3
+        env:
+          GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GHCR_USER: ${{ github.actor }}
+          IMAGE_OWNER: ${{ needs.build-and-push.outputs.image_owner }}
+          IMAGE_TAG: ${{ needs.build-and-push.outputs.tag }}
+          TLS_CERTIFICATE_PATH: ${{ secrets.TLS_CERTIFICATE_PATH }}
+          TLS_PRIVATE_KEY_PATH: ${{ secrets.TLS_PRIVATE_KEY_PATH }}
+          PUBLIC_APP_URL: ${{ secrets.PUBLIC_APP_URL }}
+          WEB_PUSH_ENABLED: ${{ secrets.WEB_PUSH_ENABLED }}
+          WEB_PUSH_PUBLIC_KEY: ${{ secrets.WEB_PUSH_PUBLIC_KEY }}
+          WEB_PUSH_PRIVATE_KEY: ${{ secrets.WEB_PUSH_PRIVATE_KEY }}
+          WEB_PUSH_SUBJECT: ${{ secrets.WEB_PUSH_SUBJECT }}
+          JWT_SIGNING_KEY: ${{ secrets.JWT_SIGNING_KEY }}
+          POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
+          RABBITMQ_USER: ${{ secrets.RABBITMQ_USER }}
+          RABBITMQ_PASSWORD: ${{ secrets.RABBITMQ_PASSWORD }}
+          GRAFANA_ADMIN_USER: ${{ secrets.GRAFANA_ADMIN_USER }}
+          GRAFANA_ADMIN_PASSWORD: ${{ secrets.GRAFANA_ADMIN_PASSWORD }}
         with:
           host: ${{ secrets.HETZNER_SSH_HOST }}
           username: ${{ secrets.HETZNER_SSH_USER }}
           key: ${{ secrets.HETZNER_SSH_KEY }}
           port: ${{ secrets.HETZNER_SSH_PORT }}
+          envs: GHCR_TOKEN,GHCR_USER,IMAGE_OWNER,IMAGE_TAG,TLS_CERTIFICATE_PATH,TLS_PRIVATE_KEY_PATH,PUBLIC_APP_URL,WEB_PUSH_ENABLED,WEB_PUSH_PUBLIC_KEY,WEB_PUSH_PRIVATE_KEY,WEB_PUSH_SUBJECT,JWT_SIGNING_KEY,POSTGRES_PASSWORD,RABBITMQ_USER,RABBITMQ_PASSWORD,GRAFANA_ADMIN_USER,GRAFANA_ADMIN_PASSWORD
           script: |
             set -eu
             cd /app
-            # Log into GHCR on the VPS with this run's token (see the job permissions).
-            echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u "${{ github.actor }}" --password-stdin
+            echo "$GHCR_TOKEN" | docker login ghcr.io -u "$GHCR_USER" --password-stdin
 
             # Host /app/.env is the documented source of compose secrets.
-            # GitHub secrets override when set; never export an empty value
-            # because that would wipe the host file for docker compose.
+            # Parse KEY=VALUE only — never source the file (that would execute it).
             if [ -f .env ]; then
-              set -a
-              # shellcheck disable=SC1091
-              . ./.env
-              set +a
+              while IFS= read -r line || [ -n "$line" ]; do
+                case "$line" in
+                  ''|\#*) continue ;;
+                esac
+                key="${line%%=*}"
+                value="${line#*=}"
+                case "$key" in
+                  *[!A-Za-z0-9_]*|'') continue ;;
+                esac
+                export "$key=$value"
+              done < .env
             fi
 
             apply_secret() {
@@ -405,21 +432,21 @@ jobs:
               fi
             }
 
-            export IMAGE_OWNER="${{ needs.build-and-push.outputs.image_owner }}"
-            export TAG="${{ needs.build-and-push.outputs.tag }}"
-            apply_secret TLS_CERTIFICATE_PATH "${{ secrets.TLS_CERTIFICATE_PATH }}"
-            apply_secret TLS_PRIVATE_KEY_PATH "${{ secrets.TLS_PRIVATE_KEY_PATH }}"
-            apply_secret PUBLIC_APP_URL "${{ secrets.PUBLIC_APP_URL }}"
-            apply_secret WEB_PUSH_ENABLED "${{ secrets.WEB_PUSH_ENABLED }}"
-            apply_secret WEB_PUSH_PUBLIC_KEY "${{ secrets.WEB_PUSH_PUBLIC_KEY }}"
-            apply_secret WEB_PUSH_PRIVATE_KEY "${{ secrets.WEB_PUSH_PRIVATE_KEY }}"
-            apply_secret WEB_PUSH_SUBJECT "${{ secrets.WEB_PUSH_SUBJECT }}"
-            apply_secret JWT_SIGNING_KEY "${{ secrets.JWT_SIGNING_KEY }}"
-            apply_secret POSTGRES_PASSWORD "${{ secrets.POSTGRES_PASSWORD }}"
-            apply_secret RABBITMQ_USER "${{ secrets.RABBITMQ_USER }}"
-            apply_secret RABBITMQ_PASSWORD "${{ secrets.RABBITMQ_PASSWORD }}"
-            apply_secret GRAFANA_ADMIN_USER "${{ secrets.GRAFANA_ADMIN_USER }}"
-            apply_secret GRAFANA_ADMIN_PASSWORD "${{ secrets.GRAFANA_ADMIN_PASSWORD }}"
+            export IMAGE_OWNER="$IMAGE_OWNER"
+            export TAG="$IMAGE_TAG"
+            apply_secret TLS_CERTIFICATE_PATH "${TLS_CERTIFICATE_PATH:-}"
+            apply_secret TLS_PRIVATE_KEY_PATH "${TLS_PRIVATE_KEY_PATH:-}"
+            apply_secret PUBLIC_APP_URL "${PUBLIC_APP_URL:-}"
+            apply_secret WEB_PUSH_ENABLED "${WEB_PUSH_ENABLED:-}"
+            apply_secret WEB_PUSH_PUBLIC_KEY "${WEB_PUSH_PUBLIC_KEY:-}"
+            apply_secret WEB_PUSH_PRIVATE_KEY "${WEB_PUSH_PRIVATE_KEY:-}"
+            apply_secret WEB_PUSH_SUBJECT "${WEB_PUSH_SUBJECT:-}"
+            apply_secret JWT_SIGNING_KEY "${JWT_SIGNING_KEY:-}"
+            apply_secret POSTGRES_PASSWORD "${POSTGRES_PASSWORD:-}"
+            apply_secret RABBITMQ_USER "${RABBITMQ_USER:-}"
+            apply_secret RABBITMQ_PASSWORD "${RABBITMQ_PASSWORD:-}"
+            apply_secret GRAFANA_ADMIN_USER "${GRAFANA_ADMIN_USER:-}"
+            apply_secret GRAFANA_ADMIN_PASSWORD "${GRAFANA_ADMIN_PASSWORD:-}"
 
             # TLS is mandatory in Production. Fail before touching the running stack
             # when the host certificate has not been provisioned or renewed correctly.

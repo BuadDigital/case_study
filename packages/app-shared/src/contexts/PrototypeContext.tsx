@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useContext, useEffect, useMemo } from "react";
+import { createContext, use, useEffect, useMemo } from "react";
 import type { PageId, RoleId } from "@platform/types";
 import { ROLES } from "@platform/app-shared/prototype/constants";
 import { pagesFromPermissions } from "@platform/app-shared/prototype/permissions-pages";
@@ -143,7 +143,7 @@ export function PrototypeProvider({ children }: { children: React.ReactNode }) {
 }
 
 export function usePrototype() {
-  const v = useContext(AppAccessContext);
+  const v = use(AppAccessContext);
   if (!v) throw new Error("usePrototype must be used within PrototypeProvider");
   return v;
 }

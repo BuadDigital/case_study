@@ -105,13 +105,25 @@
 
   button:focus,
 
+  input:focus,
+
+  select:focus,
+
+  textarea:focus,
+
   [role="tab"]:focus {
     outline: none;
   }
 
   a:focus-visible,
-  
+
   button:focus-visible,
+
+  input:focus-visible,
+
+  select:focus-visible,
+
+  textarea:focus-visible,
 
   [role="tab"]:focus-visible {
 

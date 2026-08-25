@@ -187,20 +187,8 @@ public sealed class AttachmentService : IAttachmentService
         return true;
     }
 
-    private static bool CanAccess(FileAttachment row, PermissionsDto? actor)
-    {
-        if (actor is null)
-            return false;
-
-        if (PoRoleMatrixRules.CanManagePartySubmissions(actor.PrototypeRole))
-            return true;
-
-        if (actor.Capabilities.Contains(PlatformCapabilities.ManageAttachments, StringComparer.Ordinal))
-            return true;
-
-        return !string.IsNullOrWhiteSpace(actor.UserId)
-            && string.Equals(row.UploadedByUserId, actor.UserId, StringComparison.Ordinal);
-    }
+    private static bool CanAccess(FileAttachment row, PermissionsDto? actor) =>
+        AttachmentAccessRules.Allows(row.UploadedByUserId, actor);
 
     private async Task<byte[]?> ReadContentAsync(FileAttachment row, CancellationToken ct)
     {

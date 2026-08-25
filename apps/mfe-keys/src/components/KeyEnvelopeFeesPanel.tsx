@@ -23,6 +23,29 @@ import {
   useKeyEnvelopeFeesQuery,
 } from "../query/keys-queries";
 
+/** صفوف هيكلية أثناء التحميل — JSX ثابت لا يعتمد على الحالة. */
+const FEES_TABLE_SKELETON = (
+  <div className="space-y-0">
+    {Array.from({ length: 4 }).map((_, i) => (
+      <div
+        key={i}
+        className="h-[54px] animate-pulse border-b border-border bg-surface-2/60"
+      />
+    ))}
+  </div>
+);
+
+const FEES_CARDS_SKELETON = (
+  <div className="space-y-2.5 p-3">
+    {Array.from({ length: 4 }).map((_, i) => (
+      <div
+        key={i}
+        className="h-[96px] animate-pulse rounded-[12px] bg-surface-2"
+      />
+    ))}
+  </div>
+);
+
 export function KeyEnvelopeFeesPanel({
   canCollect,
   onOpenEnvelope,
@@ -122,14 +145,7 @@ export function KeyEnvelopeFeesPanel({
             </KeysGridHead>
 
             {!ready ? (
-              <div className="space-y-0">
-                {Array.from({ length: 4 }).map((_, i) => (
-                  <div
-                    key={i}
-                    className="h-[54px] animate-pulse border-b border-border bg-surface-2/60"
-                  />
-                ))}
-              </div>
+              FEES_TABLE_SKELETON
             ) : rows.length === 0 ? (
               <KeysEmpty
                 title="لا توجد بنود أتعاب"
@@ -220,14 +236,7 @@ export function KeyEnvelopeFeesPanel({
 
           <div className="lg:hidden">
             {!ready ? (
-              <div className="space-y-2.5 p-3">
-                {Array.from({ length: 4 }).map((_, i) => (
-                  <div
-                    key={i}
-                    className="h-[96px] animate-pulse rounded-[12px] bg-surface-2"
-                  />
-                ))}
-              </div>
+              FEES_CARDS_SKELETON
             ) : rows.length === 0 ? (
               <KeysEmpty
                 title="لا توجد بنود أتعاب"

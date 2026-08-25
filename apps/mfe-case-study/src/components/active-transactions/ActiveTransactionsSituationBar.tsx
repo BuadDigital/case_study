@@ -277,9 +277,16 @@ export function ActiveTransactionsSituationBar({
 
   const { cards, values } = situation;
 
-  const desktopCells: ReactNode[] = cards.map((card, index) => {
+  /* صفر متأخرات خبر جيد لا إنذار — حيّد اللون الأحمر عندما تكون القيمة صفراً. */
+  const effectiveCards = cards.map((card) =>
+    card.tone === "red" && (values[card.key] ?? 0) === 0
+      ? { ...card, tone: "blue" as SituationTone }
+      : card,
+  );
+
+  const desktopCells: ReactNode[] = effectiveCards.map((card, index) => {
     const isFirst = index === 0;
-    const isLast = index === cards.length - 1;
+    const isLast = index === effectiveCards.length - 1;
     const displayValue = formatSituationValue(card, values[card.key]);
     const iconClass = resolveIconClass(card, isFirst);
     const cell = (
@@ -329,7 +336,7 @@ export function ActiveTransactionsSituationBar({
 
       {/* Mobile: HTML inspector separate stat cards (2×2). */}
       <div className="mb-3 grid min-w-0 max-w-full grid-cols-2 gap-2.5 lg:hidden">
-        {cards.map((card, index) => (
+        {effectiveCards.map((card, index) => (
           <MobileSituationStatCard
             key={card.key}
             card={card}

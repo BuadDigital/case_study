@@ -35,7 +35,7 @@ import {
 } from "../../lib/evaluator/evaluator-window-data";
 import { basisOfValueLabelArForAssignment } from "@platform/app-shared/prototype/assignment-valuation-defaults";
 import { EvaluatorLinkedComparablesBlock } from "./EvaluatorLinkedComparablesBlock";
-import { EvaluatorComparableSelectionPanel } from "./EvaluatorComparableSelectionPanel";
+import dynamic from "next/dynamic";
 import { inspectionFactChips } from "./EvaluatorInspectionFactsSection";
 import { computePropertyTotal } from "../../lib/evaluator/value-estimation";
 import {
@@ -49,6 +49,14 @@ import {
 } from "./EvaluatorHtmlPrimitives";
 
 const UNUSED = "__unused__";
+
+const EvaluatorComparableSelectionPanel = dynamic(
+  () =>
+    import("./EvaluatorComparableSelectionPanel").then(
+      (m) => m.EvaluatorComparableSelectionPanel,
+    ),
+  { ssr: false },
+);
 const ESG_ENV = ["كفاءة الطاقة", "أخطار الموقع والمناخ", "المباني الخضراء"];
 const ESG_SOC = [
   "جودة التصاميم ورفاهية المسكن",
@@ -232,30 +240,18 @@ export function EvaluatorValuationReportTab({
     void Promise.all([
       ensureOrganizationSettingsLoaded(),
       getValuationLists({ token: session.token, baseUrl: getApiBase() }),
-    ]).then(([loadedOrg, listRes]) => {
+      inspectionTaskId
+        ? fetchInspectorWorkspace(inspectionTaskId)
+        : Promise.resolve(null),
+    ]).then(async ([loadedOrg, listRes, ws]) => {
       if (cancelled) return;
       setOrg(loadedOrg);
       if (listRes.ok) setLists(listRes.data);
       else setError("تعذّر تحميل قوائم التقييم");
-      setLoading(false);
-    });
-    return () => {
-      cancelled = true;
-    };
-  }, []);
-
-  useEffect(() => {
-    if (!inspectionTaskId) {
-      setInspector(null);
-      setPrimaryPhoto(null);
-      return;
-    }
-    let cancelled = false;
-    void fetchInspectorWorkspace(inspectionTaskId).then(async (ws) => {
-      if (cancelled) return;
       setInspector(ws);
       if (!ws) {
         setPrimaryPhoto(null);
+        setLoading(false);
         return;
       }
       await prefetchInspectorWorkspacePhotos(ws);
@@ -264,6 +260,7 @@ export function EvaluatorValuationReportTab({
         (doc) => doc.kind === "image",
       );
       setPrimaryPhoto(pickPrimaryPropertyDetailPhoto(photos));
+      setLoading(false);
     });
     return () => {
       cancelled = true;

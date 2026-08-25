@@ -218,10 +218,12 @@ public class UserRegistrationService : IUserRegistrationService
             };
         }
 
+        // GroupBy بدل ToDictionary: تكرار الدور التنظيمي (مثل CDO مرتين) يجب ألا يُسقط النظرة العامة.
         var byRole = rows
             .Select(p => (Profile: p, Person: ToPerson(p)))
             .Where(x => x.Person is not null)
-            .ToDictionary(x => x.Person!.SystemRole, x => x.Person!);
+            .GroupBy(x => x.Person!.SystemRole)
+            .ToDictionary(g => g.Key, g => g.First().Person!);
 
         return new OrganizationOverviewDto
         {

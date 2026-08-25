@@ -172,7 +172,7 @@ export function AppModal({
         <div
           onClick={onClose}
           role="presentation"
-          className="fixed inset-0 z-[1000] flex items-start justify-center overflow-y-auto bg-[rgba(16,43,78,0.42)] px-4 py-[6vh] backdrop-blur-[2px]"
+          className="fixed inset-0 z-[var(--z-modal)] flex items-start justify-center overflow-y-auto bg-[rgba(16,43,78,0.42)] px-4 py-[6vh] backdrop-blur-[2px]"
         >
           {panel}
         </div>

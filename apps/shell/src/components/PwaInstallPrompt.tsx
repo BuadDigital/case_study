@@ -100,7 +100,7 @@ export function PwaInstallPrompt() {
     <div
       role="dialog"
       aria-label="تثبيت التطبيق"
-      className="fixed inset-x-3 bottom-[max(0.75rem,env(safe-area-inset-bottom))] z-[1200] mx-auto flex max-w-md flex-col gap-3 rounded-[14px] border border-border bg-surface p-3.5 shadow-[0_12px_40px_-12px_rgba(16,43,78,0.45)] sm:inset-x-auto sm:end-4 sm:start-auto"
+      className="fixed inset-x-3 bottom-[max(0.75rem,env(safe-area-inset-bottom))] z-[var(--z-banner)] mx-auto flex max-w-md flex-col gap-3 rounded-[14px] border border-border bg-surface p-3.5 shadow-[0_12px_40px_-12px_rgba(16,43,78,0.45)] sm:inset-x-auto sm:end-4 sm:start-auto"
     >
       <div className="min-w-0">
         <div className="text-[13.5px] font-extrabold text-heading">
