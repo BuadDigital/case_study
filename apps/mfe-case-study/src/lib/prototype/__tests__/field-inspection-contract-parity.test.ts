@@ -82,6 +82,73 @@ describe("Field inspection frontend/backend rule parity", () => {
     expect(errors.componentPhotos).toBe("يجب إرفاق صورة المعرض");
   });
 
+  it("skips building feature fields and component photos on vacant land", () => {
+    const draft = completeDraft();
+    draft.featureValues.assetSubject = "أرض";
+    draft.vacantLand = true;
+    draft.showroomCount = "2";
+    draft.featureValues.kitchen = "نعم";
+    draft.featurePhotoAttachments.assetSubject = {
+      fileName: "land.jpg",
+      mimeType: "image/jpeg",
+      attachmentId: "att-land",
+    };
+
+    const errors = validateInspectorWorkspace(draft, { classification: "أرض" });
+    expect(errors.emptyFeatureKeys ?? []).not.toContain("facade");
+    expect(errors.emptyFeatureKeys ?? []).not.toContain("kitchen");
+    expect(errors.featurePhotos).toBeUndefined();
+    expect(errors.componentPhotos).toBeUndefined();
+  });
+
+  it("does not require a leftover facade photo when الأصل is أرض", () => {
+    const draft = completeDraft();
+    draft.vacantLand = false;
+    draft.featureValues.assetSubject = "أرض";
+    draft.featureValues.facade = "شمالية";
+    draft.featurePhotoAttachments.assetSubject = {
+      fileName: "land.jpg",
+      mimeType: "image/jpeg",
+      attachmentId: "att-land",
+    };
+
+    const errors = validateInspectorWorkspace(draft);
+    expect(errors.featurePhotos).toBeUndefined();
+    expect(errors.emptyFeatureKeys ?? []).not.toContain("facade");
+  });
+
+  it("does not require a leftover facade photo when الأصل is أرضي", () => {
+    const draft = completeDraft();
+    draft.vacantLand = false;
+    draft.featureValues.assetSubject = "أرضي";
+    draft.featureValues.facade = "شمالية";
+    draft.featurePhotoAttachments.assetSubject = {
+      fileName: "land.jpg",
+      mimeType: "image/jpeg",
+      attachmentId: "att-land",
+    };
+
+    const errors = validateInspectorWorkspace(draft);
+    expect(errors.featurePhotos).toBeUndefined();
+    expect(errors.emptyFeatureKeys ?? []).not.toContain("facade");
+  });
+
+  it("skips well photo and shop-hidden leftover counts for محل تجاري", () => {
+    const draft = completeDraft();
+    draft.featureValues.assetSubject = "محل تجاري";
+    draft.wellCount = "3";
+    draft.showroomCount = "1";
+
+    const issues = listInspectorPhotoValidationIssues(draft, { isShop: true });
+    expect(issues).not.toContain("يجب إرفاق صورة البئر");
+    expect(issues).toContain("يجب إرفاق صورة المعرض");
+
+    const errors = validateInspectorWorkspace(draft, {
+      classification: "محل تجاري",
+    });
+    expect(errors.componentPhotos).toBe("يجب إرفاق صورة المعرض");
+  });
+
   it("requires a photo when a service chip is selected without one", () => {
     const draft = completeDraft();
     draft.services = ["كهرباء", "مياه"];

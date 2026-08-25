@@ -59,7 +59,14 @@ type UiStatus =
   | "other";
 
 const FEE_COLS =
-  "minmax(125px,1.1fr) minmax(95px,.85fr) minmax(85px,.8fr) minmax(120px,1.1fr) minmax(90px,.8fr) minmax(150px,1.2fr) 130px";
+  "minmax(140px,1.2fr) minmax(110px,.75fr) minmax(100px,.75fr) minmax(140px,1.2fr) minmax(100px,.8fr) minmax(148px,1fr) minmax(148px,1.05fr)";
+
+const FEE_CELL =
+  "flex min-w-0 items-center overflow-hidden px-3.5 py-2 text-start";
+const FEE_HEAD = cn(
+  FEE_CELL,
+  "py-3.5 text-[12px] font-bold leading-snug text-heading",
+);
 
 function fmtSar(n: number): string {
   return `${Number(n || 0).toLocaleString("en-US")} ر.س`;
@@ -780,10 +787,7 @@ export function PartyIndividualFeesHtmlScreen({
                     "الحالة",
                     copy.actionCol,
                   ].map((h) => (
-                    <div
-                      key={h}
-                      className="flex min-w-0 items-center justify-center overflow-hidden px-4 py-3.5 text-center text-[12px] font-bold text-heading"
-                    >
+                    <div key={h} className={FEE_HEAD}>
                       {h}
                     </div>
                   ))}
@@ -813,11 +817,11 @@ export function PartyIndividualFeesHtmlScreen({
                         className="grid min-h-[38px] items-center border-b border-border transition-colors hover:bg-[var(--row-hover,#faf6ee)]"
                         style={{ gridTemplateColumns: FEE_COLS }}
                       >
-                        <div className="flex min-w-0 items-center overflow-hidden px-3.5 py-1.5">
+                        <div className={FEE_CELL}>
                           <div className="flex min-w-0 flex-col gap-0.5">
                             <span
                               dir="ltr"
-                              className="text-end text-[13px] font-bold text-gold-d"
+                              className="text-start text-[13px] font-bold text-gold-d"
                             >
                               {deed}
                             </span>
@@ -826,26 +830,24 @@ export function PartyIndividualFeesHtmlScreen({
                             </span>
                           </div>
                         </div>
-                        <div
-                          dir="ltr"
-                          className="flex min-w-0 items-center justify-center px-3.5 py-1.5 text-center text-[12px] tabular-nums text-text-2"
-                        >
-                          {formatYmd(
-                            row.workSubmittedAtUtc ??
-                              row.accruedAtUtc ??
-                              row.updatedAtUtc,
-                          )}
+                        <div className={cn(FEE_CELL, "text-[12px] text-text-2")}>
+                          <span dir="ltr" className="tabular-nums [unicode-bidi:isolate]">
+                            {formatYmd(
+                              row.workSubmittedAtUtc ??
+                                row.accruedAtUtc ??
+                                row.updatedAtUtc,
+                            )}
+                          </span>
                         </div>
-                        <div
-                          dir="ltr"
-                          className="flex min-w-0 items-center justify-center px-3.5 py-1.5 text-center text-[12.5px] tabular-nums text-text-2"
-                        >
-                          {fmtSar(row.agreedFeeSar)}
+                        <div className={cn(FEE_CELL, "text-[12.5px] text-text-2")}>
+                          <span dir="ltr" className="tabular-nums [unicode-bidi:isolate]">
+                            {fmtSar(row.agreedFeeSar)}
+                          </span>
                         </div>
-                        <div className="flex min-w-0 items-center justify-center overflow-hidden px-3.5 py-1.5 text-center">
+                        <div className={FEE_CELL}>
                           {ded ? (
                             <span
-                              className="inline-flex min-w-0 max-w-full items-center justify-center gap-1.5"
+                              className="inline-flex min-w-0 max-w-full items-center gap-1.5"
                               title={row.discountReason ?? undefined}
                             >
                               <span
@@ -865,15 +867,19 @@ export function PartyIndividualFeesHtmlScreen({
                           )}
                         </div>
                         <div
-                          dir="ltr"
-                          className="flex min-w-0 items-center justify-center px-3.5 py-1.5 text-center text-[13px] font-bold tabular-nums text-heading"
+                          className={cn(
+                            FEE_CELL,
+                            "text-[13px] font-bold text-heading",
+                          )}
                         >
-                          {fmtSar(row.netFeeSar)}
+                          <span dir="ltr" className="tabular-nums [unicode-bidi:isolate]">
+                            {fmtSar(row.netFeeSar)}
+                          </span>
                         </div>
-                        <div className="flex min-w-0 items-center justify-center px-3.5 py-1.5">
+                        <div className={FEE_CELL}>
                           <StatusPill label={meta.label} style={meta.style} />
                         </div>
-                        <div className="flex min-w-0 items-center justify-center overflow-visible px-3.5 py-1.5">
+                        <div className={cn(FEE_CELL, "overflow-visible")}>
                           {st === "needs_submit" ? (
                             <button
                               type="button"

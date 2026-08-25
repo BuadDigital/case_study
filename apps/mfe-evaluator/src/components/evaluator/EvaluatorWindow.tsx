@@ -395,6 +395,7 @@ export function EvaluatorWindow({
       <div
         className={cn(
           valCardClassName,
+          "overflow-hidden pt-0",
           embeddedInPropertyChrome &&
             "overflow-x-hidden border-0 bg-transparent p-0 shadow-none",
         )}
@@ -469,6 +470,7 @@ export function EvaluatorWindow({
               draft={draft}
               property={summary.property}
               inspectionTaskId={summary.inspectionTaskId}
+              surveyTaskId={summary.surveyTaskId}
             />
           ) : null}
         </div>

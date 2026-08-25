@@ -114,7 +114,7 @@ public class MarketOpinionAndCostApproachRulesTests
     public void Cost_item_catalog_covers_the_15_defined_items()
     {
  // : group 1 (7 مسطحات) + group 2 (8 تجهيزات) + custom.
-        Assert.Equal(7, CostLineItemKeys.Group1.Length);
+        Assert.Equal(8, CostLineItemKeys.Group1.Length);
         Assert.Equal(8, CostLineItemKeys.Group2.Length);
         Assert.True(CostLineItemKeys.IsKnown("fence"));
         Assert.False(CostLineItemKeys.IsKnown("garage"));

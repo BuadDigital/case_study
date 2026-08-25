@@ -46,18 +46,21 @@ import {
 import { usePoRecordQuery } from "../../query/case-study-queries";
 import {
   INSPECTOR_AMENITY_OPTIONS,
-  INSPECTOR_FEATURE_FIELDS,
   INSPECTOR_OBSERVATION_CATEGORIES,
   INSPECTOR_SERVICE_OPTIONS,
   MOVABLES_DESCRIPTION_KEY,
   inspectorFeatureRequiresPhoto,
   inspectorPhotoCoverageLabel,
   inspectorPhotoStampText,
+  isCommercialShopInspectionContext,
   isInspectorWorkspaceLocked,
+  isLandInspectionContext,
   isMovablesPresent,
+  isShopHiddenInspectorComponentKey,
   newObservationId,
   parseInspectorCount,
   patchInspectorFeatureValues,
+  visibleInspectorFeatureFields,
   type InspectorComponentPhotoKey,
   type InspectorBoundaryKey,
   type InspectorWorkspaceDraft,
@@ -560,6 +563,8 @@ export function FieldInspectionWorkBody({
 
     const errors = validateInspectorWorkspace(draft, {
       boundariesUnavailable,
+      classification: property?.classification,
+      propertyType: property?.propertyType,
     });
     setFieldErrors(errors);
     if (
@@ -578,6 +583,17 @@ export function FieldInspectionWorkBody({
 
     hostRef.current?.onSavingChange?.(true);
     setFormError(null);
+    try {
+      const saved = await saveInspectorWorkspaceDraft(draft);
+      setDraft(saved);
+    } catch (err: unknown) {
+      hostRef.current?.onSavingChange?.(false);
+      const message =
+        err instanceof Error ? err.message : "تعذّر حفظ المعاينة قبل الإرسال";
+      setFormError(message);
+      showToast(message, "error");
+      return false;
+    }
     const patched = await updateInspectorWorkspace(task.id, {
       vacantLand: draft.vacantLand,
       keyAvailable: keyAvailability.keyAvailable,
@@ -738,6 +754,19 @@ export function FieldInspectionWorkBody({
   const photoStamp = inspectorPhotoStampText(liveDraft);
   const photoCoverage = inspectorPhotoCoverageLabel(liveDraft);
   const cardLayout = layout;
+  const isLandInspection = isLandInspectionContext({
+    vacantLand: liveDraft.vacantLand,
+    assetSubject: liveDraft.featureValues.assetSubject,
+    classification: property?.classification,
+    propertyType: property?.propertyType,
+  });
+  const isShopInspection = isCommercialShopInspectionContext({
+    vacantLand: liveDraft.vacantLand,
+    assetSubject: liveDraft.featureValues.assetSubject,
+    classification: property?.classification,
+    propertyType: property?.propertyType,
+  });
+  const featureFields = visibleInspectorFeatureFields(isLandInspection);
 
   function confirmPendingMapMove() {
     if (!pendingMapMove) return;
@@ -1024,7 +1053,7 @@ export function FieldInspectionWorkBody({
           icon="ti-list-check"
           layout={cardLayout}
           step={mobile ? 2 : undefined}
-          subtitle={mobile ? `${INSPECTOR_FEATURE_FIELDS.length} خاصية` : undefined}
+          subtitle={mobile ? `${featureFields.length} خاصية` : undefined}
           defaultOpen={!mobile}
         >
           {fieldErrors.features || fieldErrors.featurePhotos ? (
@@ -1052,7 +1081,7 @@ export function FieldInspectionWorkBody({
                 </tr>
               </thead>
               <tbody>
-                {INSPECTOR_FEATURE_FIELDS.map((field, index) => {
+                {featureFields.map((field, index) => {
                   const value = draft.featureValues[field.key] ?? "";
                   const attachment = draft.featurePhotoAttachments[field.key];
                   const photoRef = `feature:${field.key}`;
@@ -1204,7 +1233,7 @@ export function FieldInspectionWorkBody({
 
           {/* Mobile: pills / suggest+search (HTML renderInspectMobile) */}
           <div className={cn("flex flex-col", !mobile && "hidden")}>
-            {INSPECTOR_FEATURE_FIELDS.map((field, fi) => {
+            {featureFields.map((field, fi) => {
               const value = draft.featureValues[field.key] ?? "";
               const attachment = draft.featurePhotoAttachments[field.key];
               const photoRef = `feature:${field.key}`;
@@ -1332,7 +1361,7 @@ export function FieldInspectionWorkBody({
                       )}
                     </div>
                   ) : null}
-                  {fi === 0 && value !== "أرض" ? (
+                  {fi === 0 && !isLandInspection ? (
                     <div className="mt-4">
                       <MobileFieldLabel shared>
                         عمر العقار (سنوات)
@@ -1405,7 +1434,9 @@ export function FieldInspectionWorkBody({
                 <MobileFieldLabel>عرض الشارع الرئيسي (م)</MobileFieldLabel>
                 <Input
                   id="ins-street-width"
-                  type="number"
+                  type="text"
+                  inputMode="decimal"
+                  dir="ltr"
                   value={draft.streetWidthM}
                   disabled={locked}
                   onChange={(e) => persist({ streetWidthM: e.target.value })}
@@ -1444,7 +1475,9 @@ export function FieldInspectionWorkBody({
                 <RegField
                   id="ins-street-width"
                   label="عرض الشارع (م)"
-                  type="number"
+                  type="text"
+                  inputMode="decimal"
+                  dir="ltr"
                   value={draft.streetWidthM}
                   onChange={(v) => persist({ streetWidthM: v })}
                 />
@@ -1461,6 +1494,7 @@ export function FieldInspectionWorkBody({
           )}
         </InspectorCard>
 
+        {!isLandInspection ? (
         <div id="ins-components-section">
         <InspectorCard
           title="مكوّنات العقار"
@@ -1506,6 +1540,13 @@ export function FieldInspectionWorkBody({
               ] as const
             )
               .filter(([key]) => !(mobile && key === "propertyAgeYears"))
+              .filter(
+                ([key]) =>
+                  !(
+                    isShopInspection &&
+                    isShopHiddenInspectorComponentKey(key)
+                  ),
+              )
               .map(([key, label, photoMeta]) => {
               if (key === "propertyAgeYears") {
                 return (
@@ -1633,6 +1674,8 @@ export function FieldInspectionWorkBody({
                 </div>
               );
             })}
+            {!isShopInspection ? (
+            <>
             <div className={cn(mobile && "mt-4")}>
               {mobile ? (
                 <>
@@ -1644,6 +1687,9 @@ export function FieldInspectionWorkBody({
                     onChange={(next) =>
                       persist({
                         hasAnnex: next as InspectorWorkspaceDraft["hasAnnex"],
+                        ...(next === "لا"
+                          ? { annexUpperCount: "", annexGroundCount: "" }
+                          : {}),
                       })
                     }
                   />
@@ -1659,11 +1705,16 @@ export function FieldInspectionWorkBody({
                   <Select
                     id="ins-has-annex"
                     value={draft.hasAnnex}
-                    onChange={(e) =>
+                    onChange={(e) => {
+                      const next = e.target
+                        .value as InspectorWorkspaceDraft["hasAnnex"];
                       persist({
-                        hasAnnex: e.target.value as InspectorWorkspaceDraft["hasAnnex"],
-                      })
-                    }
+                        hasAnnex: next,
+                        ...(next === "لا"
+                          ? { annexUpperCount: "", annexGroundCount: "" }
+                          : {}),
+                      });
+                    }}
                     className={cn(formControlClassName, "text-xs")}
                   >
                     <option value="">— اختر —</option>
@@ -1673,6 +1724,49 @@ export function FieldInspectionWorkBody({
                 </>
               )}
             </div>
+            {draft.hasAnnex === "نعم" ? (
+              <>
+                {mobile ? (
+                  <>
+                    <div className="mt-4">
+                      <MobileCountStepper
+                        label="ملحق علوي (عدد)"
+                        value={draft.annexUpperCount}
+                        disabled={locked}
+                        onChange={(next) => persist({ annexUpperCount: next })}
+                      />
+                    </div>
+                    <div className="mt-4">
+                      <MobileCountStepper
+                        label="ملحق أرضي (عدد)"
+                        value={draft.annexGroundCount}
+                        disabled={locked}
+                        onChange={(next) => persist({ annexGroundCount: next })}
+                      />
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <RegField
+                      id="ins-annexUpperCount"
+                      label="ملحق علوي (عدد)"
+                      type="number"
+                      value={draft.annexUpperCount}
+                      onChange={(v) => persist({ annexUpperCount: v })}
+                    />
+                    <RegField
+                      id="ins-annexGroundCount"
+                      label="ملحق أرضي (عدد)"
+                      type="number"
+                      value={draft.annexGroundCount}
+                      onChange={(v) => persist({ annexGroundCount: v })}
+                    />
+                  </>
+                )}
+              </>
+            ) : null}
+            </>
+            ) : null}
           </FormRow>
           {fieldErrors.componentPhotos ? (
             <p className="mt-2 text-[10px] text-danger-text" role="alert">
@@ -1681,6 +1775,7 @@ export function FieldInspectionWorkBody({
           ) : null}
         </InspectorCard>
         </div>
+        ) : null}
 
         <InspectorCard
           title={mobile ? "مساحات المباني" : "مساحات المباني"}
@@ -1690,6 +1785,8 @@ export function FieldInspectionWorkBody({
           step={mobile ? 5 : undefined}
           subtitle={mobile ? "م²" : undefined}
         >
+          {!isLandInspection ? (
+          <>
           {mobile ? (
             <div className="grid gap-3.5">
               {(
@@ -1760,6 +1857,8 @@ export function FieldInspectionWorkBody({
             disabled={workLocked}
             mobile={mobile}
           />
+          </>
+          ) : null}
           <InspectionLimitsSection
             poNumber={task.poNumber}
             propertyId={propertyId}

@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useRef, useState } from "react";
 import {
   Table,
   TBody,
@@ -70,6 +71,44 @@ function YesNoToggle({
   );
 }
 
+function ChecklistNoteField({
+  value,
+  disabled,
+  onChange,
+}: {
+  value: string;
+  disabled?: boolean;
+  onChange: (note: string) => void;
+}) {
+  const [text, setText] = useState(value);
+  const focusedRef = useRef(false);
+
+  useEffect(() => {
+    if (!focusedRef.current) setText(value);
+  }, [value]);
+
+  return (
+    <Textarea
+      rows={1}
+      disabled={disabled}
+      value={text}
+      onFocus={() => {
+        focusedRef.current = true;
+      }}
+      onBlur={() => {
+        focusedRef.current = false;
+        onChange(text);
+      }}
+      onChange={(e) => {
+        const next = e.target.value;
+        setText(next);
+        onChange(next);
+      }}
+      className="min-h-[38px] text-[12.5px]"
+    />
+  );
+}
+
 export function EngineeringSurveyChecklist({
   rows,
   disabled,
@@ -79,6 +118,9 @@ export function EngineeringSurveyChecklist({
   disabled?: boolean;
   onChange: (rows: EngineeringSurveyChecklistRow[]) => void;
 }) {
+  const rowsRef = useRef(rows);
+  rowsRef.current = rows;
+
   return (
     <div className="overflow-hidden rounded-[var(--radius-lg)] border border-border bg-surface shadow-card">
       <Table wrapClassName="rounded-[var(--radius-lg)]">
@@ -109,25 +151,23 @@ export function EngineeringSurveyChecklist({
                       disabled={disabled}
                       onChange={(value) =>
                         onChange(
-                          patchChecklistRow(rows, index, { answer: value }),
+                          patchChecklistRow(rowsRef.current, index, {
+                            answer: value,
+                          }),
                         )
                       }
                     />
                   </div>
                 </Td>
                 <Td>
-                  <Textarea
-                    rows={1}
-                    disabled={disabled}
+                  <ChecklistNoteField
                     value={row.note}
-                    onChange={(e) =>
+                    disabled={disabled}
+                    onChange={(note) =>
                       onChange(
-                        patchChecklistRow(rows, index, {
-                          note: e.target.value,
-                        }),
+                        patchChecklistRow(rowsRef.current, index, { note }),
                       )
                     }
-                    className="min-h-[38px] text-[12.5px]"
                   />
                 </Td>
               </Tr>

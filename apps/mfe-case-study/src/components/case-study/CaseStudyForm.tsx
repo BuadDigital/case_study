@@ -649,13 +649,14 @@ export function CaseStudyForm({
     actionLabel: string,
     successMessage: string,
     buildNext: () => CaseStudyFormDraft,
+    opts?: { skipSavingGuard?: boolean },
   ): Promise<boolean> => {
-    if (saving) return false;
+    if (!opts?.skipSavingGuard && saving) return false;
 
     const progressId = showProgressToast(
       progressMessageForActionLabel(actionLabel),
     );
-    setSaving(true);
+    if (!opts?.skipSavingGuard) setSaving(true);
     try {
       const result = await persistToServer(buildNext());
       if (!result.ok) {
@@ -667,7 +668,7 @@ export function CaseStudyForm({
       return true;
     } finally {
       dismissToast(progressId);
-      setSaving(false);
+      if (!opts?.skipSavingGuard) setSaving(false);
     }
   };
 
@@ -693,18 +694,32 @@ export function CaseStudyForm({
       return;
     }
 
+    setSaving(true);
+    try {
     const propertyId = (draft.propertyId || property?.id || "").trim();
     if (propertyId) {
       const config = workOrdersApiConfig();
-      if (config) {
-        const links = await listPropertyComparableLinks(config, propertyId);
-        if (links.ok && !links.data.meetsMinimumForAppraisalPrep) {
-          showToast(
-            `لا يمكن رفع النموذج للمقيم قبل ربط ${links.data.minimumRequired} مقارنين على الأقل. افتح تبويب تقييم العقار.`,
-            "error",
-          );
-          return;
-        }
+      if (!config) {
+        showToast(
+          "تعذّر التحقق من المقارنات المربوطة — أعد المحاولة قبل رفع النموذج.",
+          "error",
+        );
+        return;
+      }
+      const links = await listPropertyComparableLinks(config, propertyId);
+      if (!links.ok) {
+        showToast(
+          "تعذّر التحقق من المقارنات المربوطة — أعد المحاولة قبل رفع النموذج.",
+          "error",
+        );
+        return;
+      }
+      if (!links.data.meetsMinimumForAppraisalPrep) {
+        showToast(
+          `لا يمكن رفع النموذج للمقيم قبل ربط ${links.data.minimumRequired} مقارنين على الأقل. افتح تبويب تقييم العقار.`,
+          "error",
+        );
+        return;
       }
     }
 
@@ -761,7 +776,11 @@ export function CaseStudyForm({
       "رفع النموذج للنظام",
       "تم رفع نموذج دراسة الحالة للنظام بنجاح",
       () => ({ ...draft, status: "submitted" }),
+      { skipSavingGuard: true },
     );
+    } finally {
+      setSaving(false);
+    }
   };
 
   if (loadError) {

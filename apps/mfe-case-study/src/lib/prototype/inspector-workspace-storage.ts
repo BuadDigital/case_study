@@ -25,6 +25,7 @@ import {
 import {
   createInspectorWorkspaceDraft,
   inspectionStampFromNow,
+  sanitizeInspectorDraftForLand,
   type InspectorBoundaryKey,
   type InspectorBoundaryMatch,
   type InspectorDefinedPhotoSlot,
@@ -283,7 +284,7 @@ function payloadToDraft(
     readString(payload.mapLongitude),
     draft,
   );
-  return {
+  const mapped: InspectorWorkspaceDraft = {
     ...draft,
     propertyDisplayId:
       readString(payload.propertyDisplayId) || draft.propertyDisplayId,
@@ -313,6 +314,8 @@ function payloadToDraft(
     buildingFloors: readString(payload.buildingFloors),
     basementTotal: readString(payload.basementTotal),
     annexTotal: readString(payload.annexTotal),
+    annexUpperCount: readString(payload.annexUpperCount),
+    annexGroundCount: readString(payload.annexGroundCount),
     buildingsTotal: readString(payload.buildingsTotal),
     propertyAgeYears: readString(payload.propertyAgeYears),
     buildLicenseNumber: readString(payload.buildLicenseNumber),
@@ -363,19 +366,21 @@ function payloadToDraft(
     acceptedByName: dto.acceptedByName ?? null,
     updatedAtUtc: dto.updatedAtUtc || draft.updatedAtUtc,
   };
+  return sanitizeInspectorDraftForLand(mapped);
 }
 
 function draftToPayload(
   draft: InspectorWorkspaceDraft,
 ): Record<string, unknown> {
+  const clean = sanitizeInspectorDraftForLand(draft);
   return {
-    propertyDisplayId: draft.propertyDisplayId,
+    propertyDisplayId: clean.propertyDisplayId,
     inspectionDate: draft.inspectionDate,
     inspectionTime: draft.inspectionTime,
     mapLatitude: draft.mapLatitude,
     mapLongitude: draft.mapLongitude,
-    featureValues: draft.featureValues,
-    featurePhotoAttachments: draft.featurePhotoAttachments,
+    featureValues: clean.featureValues,
+    featurePhotoAttachments: clean.featurePhotoAttachments,
     componentPhotoAttachments: draft.componentPhotoAttachments,
     streetName: draft.streetName,
     mainStreetName: draft.mainStreetName,
@@ -392,6 +397,8 @@ function draftToPayload(
     buildingFloors: draft.buildingFloors,
     basementTotal: draft.basementTotal,
     annexTotal: draft.annexTotal,
+    annexUpperCount: draft.annexUpperCount,
+    annexGroundCount: draft.annexGroundCount,
     buildingsTotal: draft.buildingsTotal,
     propertyAgeYears: draft.propertyAgeYears,
     buildLicenseNumber: draft.buildLicenseNumber,
@@ -553,12 +560,13 @@ export async function getOrCreateInspectorWorkspace(input: {
   let existing = await fetchInspectorWorkspace(input.taskId);
   if (existing) {
     existing = await migrateInspectorDefaultCoordsIfNeeded(existing);
+    const beforeSanitize = existing;
+    existing = sanitizeInspectorDraftForLand(existing, {
+      classification: input.property?.classification,
+      propertyType: input.property?.propertyType,
+    });
     const stamp = inspectionStampFromNow();
-    const patch: {
-      propertyDisplayId?: string;
-      inspectionDate?: string;
-      inspectionTime?: string;
-    } = {};
+    const patch: Partial<InspectorWorkspaceDraft> = {};
     if (input.propertyDisplayId && !existing.propertyDisplayId.trim()) {
       patch.propertyDisplayId = input.propertyDisplayId;
     }
@@ -568,8 +576,8 @@ export async function getOrCreateInspectorWorkspace(input: {
     if (!existing.inspectionTime.trim()) {
       patch.inspectionTime = stamp.inspectionTime;
     }
-    if (Object.keys(patch).length > 0) {
-      return updateInspectorWorkspace(input.taskId, patch);
+    if (existing !== beforeSanitize || Object.keys(patch).length > 0) {
+      return saveInspectorWorkspaceDraft({ ...existing, ...patch });
     }
     return existing;
   }
@@ -586,7 +594,7 @@ export async function saveInspectorWorkspaceDraft(
   draft: InspectorWorkspaceDraft,
 ): Promise<InspectorWorkspaceDraft> {
   const config = workOrdersApiConfig();
-  const nextDraft: InspectorWorkspaceDraft = {
+  const nextDraft = sanitizeInspectorDraftForLand({
     ...draft,
     status:
       draft.status === "submitted"
@@ -595,7 +603,7 @@ export async function saveInspectorWorkspaceDraft(
           ? "reopened"
           : "draft",
     updatedAtUtc: new Date().toISOString(),
-  };
+  });
   const payload = draftToPayload(nextDraft);
 
   if (!config) {

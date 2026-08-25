@@ -98,6 +98,7 @@ const COST_ITEM_OPTIONS: { key: string; label: string; unit: string }[] = [
   { key: "first_floor", label: "الدور الأول", unit: "sqm" },
   { key: "repeated_floors", label: "الأدوار المتكررة", unit: "sqm" },
   { key: "upper_annex", label: "الملحق العلوي", unit: "sqm" },
+  { key: "lower_annex", label: "الملحق الأرضي", unit: "sqm" },
   { key: "apartment_area", label: "مساحة الشقة", unit: "sqm" },
   { key: "shared_portion", label: "حصة المشترك من المبنى", unit: "sqm" },
   { key: "parking", label: "المواقف", unit: "count" },
@@ -943,7 +944,9 @@ export function EvaluatorComparableSelectionPanel({
           : l.structureKind === "fence"
             ? "fence"
             : l.structureKind === "annex"
-              ? "upper_annex"
+              ? /علوي|upper/i.test(l.label ?? "")
+                ? "upper_annex"
+                : "lower_annex"
               : "custom",
       itemLabelAr: "",
       unit: "sqm",

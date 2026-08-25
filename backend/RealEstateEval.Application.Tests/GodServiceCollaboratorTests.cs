@@ -1,3 +1,4 @@
+using System.Text.Json;
 using RealEstateEval.Application.Contracts;
 using RealEstateEval.Application.Rules;
 using RealEstateEval.Domain;
@@ -215,6 +216,22 @@ public class GodServiceCollaboratorTests
 
         var errors = PartyTaskSubmissionPayloadRules.ValidateForSubmit(entity);
         Assert.True(errors.ContainsKey("coordinates"));
+        Assert.DoesNotContain("siteLetterFileName", errors.Keys);
+    }
+
+    [Fact]
+    public void Site_letter_is_optional_when_property_has_plan_and_plot()
+    {
+        using var doc = JsonDocument.Parse("""{"siteLetterFileName":""}""");
+        var waived = new Dictionary<string, string>();
+        PartyTaskSubmissionPayloadRules.RequireSiteLetterUnlessPlatted(
+            waived, doc.RootElement, "1234", "56");
+        Assert.Empty(waived);
+
+        var required = new Dictionary<string, string>();
+        PartyTaskSubmissionPayloadRules.RequireSiteLetterUnlessPlatted(
+            required, doc.RootElement, "1234", "");
+        Assert.Equal("خطاب الموقع مطلوب", required["siteLetterFileName"]);
     }
 
     [Fact]

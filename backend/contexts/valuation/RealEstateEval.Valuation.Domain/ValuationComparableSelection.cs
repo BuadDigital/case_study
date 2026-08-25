@@ -34,9 +34,17 @@ public class ValuationComparableSelection
 /// <summary>Selection / adoption helpers.</summary>
 public static class ValuationComparableSelectionRules
 {
-    public static bool HasAtLeastOneAdopted(IEnumerable<ValuationComparableSelection> rows) =>
+    public static bool MeetsMinimumAdopted(IEnumerable<ValuationComparableSelection> rows) =>
         rows.Count(r => r.IsAdopted) >= PropertyComparableLinkRules.MinimumLinkedForAppraisalPrep;
 
-    public static bool HasAtLeastOneAdopted(IEnumerable<bool> adoptedFlags) =>
+    public static bool MeetsMinimumAdopted(IEnumerable<bool> adoptedFlags) =>
         adoptedFlags.Count(a => a) >= PropertyComparableLinkRules.MinimumLinkedForAppraisalPrep;
+
+    [Obsolete("Use MeetsMinimumAdopted — requires two adopted comparables, not one.")]
+    public static bool HasAtLeastOneAdopted(IEnumerable<ValuationComparableSelection> rows) =>
+        MeetsMinimumAdopted(rows);
+
+    [Obsolete("Use MeetsMinimumAdopted — requires two adopted comparables, not one.")]
+    public static bool HasAtLeastOneAdopted(IEnumerable<bool> adoptedFlags) =>
+        MeetsMinimumAdopted(adoptedFlags);
 }

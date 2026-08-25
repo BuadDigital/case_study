@@ -7,10 +7,13 @@ import {
   type ScrollToFormFieldOptions,
 } from "@platform/app-shared/form-ux";
 import {
-  INSPECTOR_FEATURE_FIELDS,
   MOVABLES_DESCRIPTION_KEY,
+  isCommercialShopInspectionContext,
+  isLandInspectionContext,
   isMovablesPresent,
   listInspectorPhotoValidationIssues,
+  sanitizeInspectorDraftForLand,
+  visibleInspectorFeatureFields,
   type InspectorWorkspaceDraft,
 } from "./inspector-workspace-data";
 
@@ -121,10 +124,31 @@ export function scrollToInspectorField(
 export { scheduleScrollToFormField };
 
 export function validateInspectorWorkspace(
-  submission: InspectorWorkspaceDraft,
-  options?: { boundariesUnavailable?: boolean },
+  rawSubmission: InspectorWorkspaceDraft,
+  options?: {
+    boundariesUnavailable?: boolean;
+    classification?: string | null;
+    propertyType?: string | null;
+  },
 ): InspectorWorkspaceFieldErrors {
   const errors: InspectorWorkspaceFieldErrors = {};
+  const submission = sanitizeInspectorDraftForLand(rawSubmission, {
+    classification: options?.classification,
+    propertyType: options?.propertyType,
+  });
+  const isLand = isLandInspectionContext({
+    vacantLand: submission.vacantLand,
+    assetSubject: submission.featureValues.assetSubject,
+    classification: options?.classification,
+    propertyType: options?.propertyType,
+  });
+  const isShop = isCommercialShopInspectionContext({
+    vacantLand: submission.vacantLand,
+    assetSubject: submission.featureValues.assetSubject,
+    classification: options?.classification,
+    propertyType: options?.propertyType,
+  });
+  const featureFields = visibleInspectorFeatureFields(isLand);
   if (!submission.inspectionDate.trim()) {
     errors.inspectionDate = "تاريخ المعاينة مطلوب";
   }
@@ -144,14 +168,12 @@ export function validateInspectorWorkspace(
     errors.inspectionConfirmed = "يجب التأشير على إقرار المعاينة";
   }
 
-  const emptyFeatureKeys = INSPECTOR_FEATURE_FIELDS.filter(
-    (field) => !(submission.featureValues[field.key] ?? "").trim(),
-  ).map((field) => field.key);
+  const emptyFeatureKeys = featureFields
+    .filter((field) => !(submission.featureValues[field.key] ?? "").trim())
+    .map((field) => field.key);
   if (emptyFeatureKeys.length > 0) {
     errors.emptyFeatureKeys = emptyFeatureKeys;
-    const first = INSPECTOR_FEATURE_FIELDS.find(
-      (f) => f.key === emptyFeatureKeys[0],
-    );
+    const first = featureFields.find((f) => f.key === emptyFeatureKeys[0]);
     errors.features = first
       ? `اختر قيمة لـ «${first.label}» (${emptyFeatureKeys.length} حقل ناقص)`
       : `أكمل خصائص العقار — ${emptyFeatureKeys.length} حقل بدون اختيار`;
@@ -167,10 +189,19 @@ export function validateInspectorWorkspace(
     errors.observations = "كل ملاحظة يجب أن تتضمن شرحاً";
   }
 
-  const photoIssues = listInspectorPhotoValidationIssues(submission);
+  const photoIssues = listInspectorPhotoValidationIssues(submission, {
+    isLand,
+    isShop,
+  });
   if (photoIssues.length > 0) {
     const featureIssue = photoIssues.find((issue) => issue.includes("توثيقية"));
-    if (featureIssue) errors.featurePhotos = featureIssue;
+    if (featureIssue) {
+      errors.featurePhotos = featureIssue;
+      const photoField = featureFields.find((field) =>
+        featureIssue.includes(field.label),
+      );
+      if (photoField) errors.missingFeaturePhotoKey = photoField.key;
+    }
 
     const componentIssue = photoIssues.find(
       (issue) => issue.includes("المعرض") || issue.includes("البئر"),

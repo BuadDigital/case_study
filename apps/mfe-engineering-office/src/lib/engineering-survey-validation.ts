@@ -48,8 +48,16 @@ export function firstEngineeringSurveyErrorTarget(
   );
 }
 
+export function isPlattedPropertyWithPlot(property?: {
+  planNumber?: string | null;
+  plotNumber?: string | null;
+} | null): boolean {
+  return Boolean(property?.planNumber?.trim() && property?.plotNumber?.trim());
+}
+
 export function validateEngineeringSurveySubmission(
   submission: EngineeringSurveySubmission,
+  options?: { siteLetterRequired?: boolean },
 ): EngineeringSurveyFieldErrors {
   const errors: EngineeringSurveyFieldErrors = {};
 
@@ -87,7 +95,8 @@ export function validateEngineeringSurveySubmission(
   if (!submission.surveyReportFileName.trim()) {
     errors.survey_report = "ارفع التقرير المساحي (PDF)";
   }
-  if (!submission.siteLetterFileName.trim()) {
+  const siteLetterRequired = options?.siteLetterRequired !== false;
+  if (siteLetterRequired && !submission.siteLetterFileName.trim()) {
     errors.site_letter = "ارفع خطاب إقرار صحة الموقع";
   }
   if (!submission.siteConfirmed) {

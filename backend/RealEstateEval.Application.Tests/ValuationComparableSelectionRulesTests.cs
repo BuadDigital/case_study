@@ -6,26 +6,26 @@ namespace RealEstateEval.Application.Tests;
 public class ValuationComparableSelectionRulesTests
 {
     [Fact]
-    public void HasAtLeastOneAdopted_false_when_empty()
+    public void MeetsMinimumAdopted_false_when_empty()
     {
-        Assert.False(ValuationComparableSelectionRules.HasAtLeastOneAdopted(
+        Assert.False(ValuationComparableSelectionRules.MeetsMinimumAdopted(
             Array.Empty<ValuationComparableSelection>()));
     }
 
     [Fact]
-    public void HasAtLeastOneAdopted_requires_adopted_flag()
+    public void MeetsMinimumAdopted_requires_two_adopted_flags()
     {
         var rows = new[]
         {
             new ValuationComparableSelection { IsAdopted = false },
             new ValuationComparableSelection { IsAdopted = false },
         };
-        Assert.False(ValuationComparableSelectionRules.HasAtLeastOneAdopted(rows));
+        Assert.False(ValuationComparableSelectionRules.MeetsMinimumAdopted(rows));
 
         rows[1].IsAdopted = true;
-        Assert.False(ValuationComparableSelectionRules.HasAtLeastOneAdopted(rows));
+        Assert.False(ValuationComparableSelectionRules.MeetsMinimumAdopted(rows));
         rows[0].IsAdopted = true;
-        Assert.True(ValuationComparableSelectionRules.HasAtLeastOneAdopted(rows));
+        Assert.True(ValuationComparableSelectionRules.MeetsMinimumAdopted(rows));
     }
 
     [Theory]
@@ -33,8 +33,8 @@ public class ValuationComparableSelectionRulesTests
     [InlineData(new[] { true }, false)]
     [InlineData(new[] { false, true, false }, false)]
     [InlineData(new[] { true, true }, true)]
-    public void HasAtLeastOneAdopted_flags(bool[] flags, bool expected)
+    public void MeetsMinimumAdopted_flags(bool[] flags, bool expected)
     {
-        Assert.Equal(expected, ValuationComparableSelectionRules.HasAtLeastOneAdopted(flags));
+        Assert.Equal(expected, ValuationComparableSelectionRules.MeetsMinimumAdopted(flags));
     }
 }

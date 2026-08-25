@@ -43,4 +43,27 @@ public class AttachmentAccessRulesTests
             Capabilities = [PlatformCapabilities.ManageAttachments],
         }));
     }
+
+    [Fact]
+    public void Allows_operational_capabilities_to_read_foreign_uploads()
+    {
+        Assert.True(AttachmentAccessRules.Allows("owner-1", new PermissionsDto
+        {
+            UserId = "finance-staff",
+            PrototypeRole = "financial-officer",
+            Capabilities = [PlatformCapabilities.ManageFinancial],
+        }));
+        Assert.True(AttachmentAccessRules.Allows("owner-1", new PermissionsDto
+        {
+            UserId = "ops-staff",
+            PrototypeRole = "operations-coordinator",
+            Capabilities = [PlatformCapabilities.ManageOperations],
+        }));
+        Assert.False(AttachmentAccessRules.Allows("owner-1", new PermissionsDto
+        {
+            UserId = "random",
+            PrototypeRole = "field-inspector",
+            Capabilities = [PlatformCapabilities.SubmitPartyWork],
+        }));
+    }
 }

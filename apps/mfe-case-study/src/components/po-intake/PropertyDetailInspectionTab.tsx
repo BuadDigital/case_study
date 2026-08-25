@@ -30,7 +30,6 @@ import {
   updateInspectorWorkspace,
 } from "../../lib/prototype/inspector-workspace-storage";
 import {
-  INSPECTOR_FEATURE_FIELDS,
   INSPECTOR_SERVICE_OPTIONS,
   INSPECTOR_AMENITY_OPTIONS,
   INSPECTOR_OBSERVATION_CATEGORIES,
@@ -38,13 +37,17 @@ import {
   inspectorFeatureRequiresPhoto,
   inspectorPhotoCoverageLabel,
   inspectorPhotoStampText,
+  isCommercialShopInspectionContext,
   isInspectorWorkspaceAccepted,
   isInspectorWorkspaceLocked,
+  isLandInspectionContext,
   isMovablesPresent,
+  isShopHiddenInspectorComponentKey,
   listServiceAmenityPhotoSlots,
   newObservationId,
   parseInspectorCount,
   patchInspectorFeatureValues,
+  visibleInspectorFeatureFields,
   type InspectorBoundaryKey,
   type InspectorComponentPhotoKey,
   type InspectorPhotoAttachment,
@@ -141,6 +144,7 @@ function InsEditField({
   ltr,
   badge,
   type = "text",
+  inputMode,
   placeholder,
   className,
   invalid,
@@ -153,6 +157,7 @@ function InsEditField({
   ltr?: boolean;
   badge?: ReactNode;
   type?: string;
+  inputMode?: "decimal" | "numeric" | "text" | "tel" | "email" | "url" | "search" | "none";
   placeholder?: string;
   className?: string;
   invalid?: boolean;
@@ -174,6 +179,7 @@ function InsEditField({
       <input
         id={id}
         type={type}
+        inputMode={inputMode}
         aria-invalid={invalid || undefined}
         className={cn(
           EDIT_CONTROL_CLASS,
@@ -888,6 +894,8 @@ export function PropertyDetailInspectionTab({
         boundariesUnavailable: boundariesMarkedUnavailable(
           property.boundariesAvailability,
         ),
+        classification: property.classification,
+        propertyType: property.propertyType,
       });
       // Confirmation is set above — don't block on it for this path.
       delete errors.inspectionConfirmed;
@@ -985,6 +993,21 @@ export function PropertyDetailInspectionTab({
   if (loading) return <InlineLoadingSkeleton />;
 
   const photoSlots = draft ? listServiceAmenityPhotoSlots(draft) : [];
+  const isLandInspection = isLandInspectionContext({
+    vacantLand: draft?.vacantLand,
+    assetSubject: draft?.featureValues.assetSubject,
+    classification: property.classification,
+    propertyType: property.propertyType,
+  });
+  const isShopInspection = isCommercialShopInspectionContext({
+    vacantLand: draft?.vacantLand,
+    assetSubject: draft?.featureValues.assetSubject,
+    classification: property.classification,
+    propertyType: property.propertyType,
+  });
+  const showShopComp = (key: string) =>
+    !isShopInspection || !isShopHiddenInspectorComponentKey(key);
+  const featureFields = visibleInspectorFeatureFields(isLandInspection);
   const canReviewPackage =
     !editMode && Boolean(inspectionTask) && draft?.status === "submitted";
   const inspectionAccepted = isInspectorWorkspaceAccepted(draft);
@@ -1291,7 +1314,7 @@ export function PropertyDetailInspectionTab({
                   </tr>
                 </thead>
                 <tbody>
-                  {INSPECTOR_FEATURE_FIELDS.map((field, index) => {
+                  {featureFields.map((field, index) => {
                     const rawVal = draft.featureValues[field.key]?.trim() ?? "";
                     const attachment = draft.featurePhotoAttachments[field.key];
                     const hasPhoto = Boolean(attachment?.fileName);
@@ -1487,6 +1510,8 @@ export function PropertyDetailInspectionTab({
               </table>
             </div>
             <div className="mt-3">
+              {!isLandInspection ? (
+                <>
               {showEditFields ? (
                 <InsEditField
                   label="عمر العقار (سنوات)"
@@ -1504,10 +1529,8 @@ export function PropertyDetailInspectionTab({
                   badge={<SharedBadge />}
                 />
               )}
-              <p className="mb-0 mt-1.5 text-[10.5px] text-text-3">
-                عمر العقار يظهر بعد تحديد «الأصل محل التقييم» ولا ينطبق على
-                الأرض.
-              </p>
+                </>
+              ) : null}
             </div>
           </InsCard>
 
@@ -1532,6 +1555,7 @@ export function PropertyDetailInspectionTab({
                     label="عرض الشارع الرئيسي (م)"
                     value={draft.streetWidthM}
                     ltr
+                    inputMode="decimal"
                     onChange={(v) => patchDraft({ streetWidthM: v })}
                   />
                 </>
@@ -1566,6 +1590,7 @@ export function PropertyDetailInspectionTab({
             </div>
           </InsCard>
 
+          {!isLandInspection ? (
           <InsCard
             title="مكوّنات العقار"
             badge={<DetailBadge tone="red">إدخال ميداني</DetailBadge>}
@@ -1573,24 +1598,30 @@ export function PropertyDetailInspectionTab({
             <InsFieldsGrid min={130}>
               {showEditFields ? (
                 <>
+                  {showShopComp("roomCount") ? (
                   <InsEditField
                     label="عدد الغرف"
                     value={draft.roomCount}
                     ltr
                     onChange={(v) => patchDraft({ roomCount: v })}
                   />
+                  ) : null}
+                  {showShopComp("hallCount") ? (
                   <InsEditField
                     label="عدد الصالات"
                     value={draft.hallCount}
                     ltr
                     onChange={(v) => patchDraft({ hallCount: v })}
                   />
+                  ) : null}
+                  {showShopComp("unitCount") ? (
                   <InsEditField
                     label="عدد الشقق"
                     value={draft.unitCount}
                     ltr
                     onChange={(v) => patchDraft({ unitCount: v })}
                   />
+                  ) : null}
                   <InsEditField
                     label="دورات المياه"
                     value={draft.bathroomCount}
@@ -1611,6 +1642,7 @@ export function PropertyDetailInspectionTab({
                     disabled={locked}
                     onPatch={patchDraft}
                   />
+                  {showShopComp("wellCount") ? (
                   <ComponentCountWithPhotoField
                     label="الآبار"
                     countValue={draft.wellCount}
@@ -1625,42 +1657,55 @@ export function PropertyDetailInspectionTab({
                     disabled={locked}
                     onPatch={patchDraft}
                   />
+                  ) : null}
+                  {showShopComp("towerCount") ? (
                   <InsEditField
                     label="الأبراج"
                     value={draft.towerCount}
                     ltr
                     onChange={(v) => patchDraft({ towerCount: v })}
                   />
+                  ) : null}
+                  {showShopComp("jacuzziCount") ? (
                   <InsEditField
                     label="جاكوزي"
                     value={draft.jacuzziCount}
                     ltr
                     onChange={(v) => patchDraft({ jacuzziCount: v })}
                   />
+                  ) : null}
+                  {showShopComp("diningCount") ? (
                   <InsEditField
                     label="غرف الطعام"
                     value={draft.diningCount}
                     ltr
                     onChange={(v) => patchDraft({ diningCount: v })}
                   />
+                  ) : null}
+                  {showShopComp("majlisCount") ? (
                   <InsEditField
                     label="المجالس"
                     value={draft.majlisCount}
                     ltr
                     onChange={(v) => patchDraft({ majlisCount: v })}
                   />
+                  ) : null}
+                  {showShopComp("maidRoomCount") ? (
                   <InsEditField
                     label="غرف الخدم"
                     value={draft.maidRoomCount}
                     ltr
                     onChange={(v) => patchDraft({ maidRoomCount: v })}
                   />
+                  ) : null}
+                  {showShopComp("guardRoomCount") ? (
                   <InsEditField
                     label="غرفة حارس"
                     value={draft.guardRoomCount}
                     ltr
                     onChange={(v) => patchDraft({ guardRoomCount: v })}
                   />
+                  ) : null}
                   <InsEditField
                     label="مواقف"
                     value={draft.parkingCount}
@@ -1673,12 +1718,15 @@ export function PropertyDetailInspectionTab({
                     ltr
                     onChange={(v) => patchDraft({ storeCount: v })}
                   />
+                  {showShopComp("playgroundCount") ? (
                   <InsEditField
                     label="ملاعب أطفال"
                     value={draft.playgroundCount}
                     ltr
                     onChange={(v) => patchDraft({ playgroundCount: v })}
                   />
+                  ) : null}
+                  {showShopComp("hasAnnex") ? (
                   <InsEditSelect
                     label="هل يوجد ملحق؟"
                     value={draft.hasAnnex}
@@ -1686,15 +1734,43 @@ export function PropertyDetailInspectionTab({
                     onChange={(v) =>
                       patchDraft({
                         hasAnnex: v as InspectorWorkspaceDraft["hasAnnex"],
+                        ...(v === "لا"
+                          ? { annexUpperCount: "", annexGroundCount: "" }
+                          : {}),
                       })
                     }
                   />
+                  ) : null}
+                  {showShopComp("hasAnnex") && draft.hasAnnex === "نعم" ? (
+                    <>
+                      <InsEditField
+                        label="ملحق علوي (عدد)"
+                        value={draft.annexUpperCount}
+                        ltr
+                        type="number"
+                        onChange={(v) => patchDraft({ annexUpperCount: v })}
+                      />
+                      <InsEditField
+                        label="ملحق أرضي (عدد)"
+                        value={draft.annexGroundCount}
+                        ltr
+                        type="number"
+                        onChange={(v) => patchDraft({ annexGroundCount: v })}
+                      />
+                    </>
+                  ) : null}
                 </>
               ) : (
                 <>
+                  {showShopComp("roomCount") ? (
                   <InsField label="عدد الغرف" value={draft.roomCount} ltr />
+                  ) : null}
+                  {showShopComp("hallCount") ? (
                   <InsField label="عدد الصالات" value={draft.hallCount} ltr />
+                  ) : null}
+                  {showShopComp("unitCount") ? (
                   <InsField label="عدد الشقق" value={draft.unitCount} ltr />
+                  ) : null}
                   <InsField
                     label="دورات المياه"
                     value={draft.bathroomCount}
@@ -1713,6 +1789,7 @@ export function PropertyDetailInspectionTab({
                     editMode={false}
                     onPatch={patchDraft}
                   />
+                  {showShopComp("wellCount") ? (
                   <ComponentCountWithPhotoField
                     label="الآبار"
                     countValue={draft.wellCount}
@@ -1726,39 +1803,54 @@ export function PropertyDetailInspectionTab({
                     editMode={false}
                     onPatch={patchDraft}
                   />
+                  ) : null}
+                  {showShopComp("towerCount") ? (
                   <InsField label="الأبراج" value={draft.towerCount} ltr />
+                  ) : null}
+                  {showShopComp("jacuzziCount") ? (
                   <InsField label="جاكوزي" value={draft.jacuzziCount} ltr />
+                  ) : null}
+                  {showShopComp("diningCount") ? (
                   <InsField label="غرف الطعام" value={draft.diningCount} ltr />
+                  ) : null}
+                  {showShopComp("majlisCount") ? (
                   <InsField label="المجالس" value={draft.majlisCount} ltr />
+                  ) : null}
+                  {showShopComp("maidRoomCount") ? (
                   <InsField label="غرف الخدم" value={draft.maidRoomCount} ltr />
+                  ) : null}
+                  {showShopComp("guardRoomCount") ? (
                   <InsField label="غرفة حارس" value={draft.guardRoomCount} ltr />
+                  ) : null}
                   <InsField label="مواقف" value={draft.parkingCount} ltr />
                   <InsField label="مستودع" value={draft.storeCount} ltr />
+                  {showShopComp("playgroundCount") ? (
                   <InsField label="ملاعب أطفال" value={draft.playgroundCount} ltr />
+                  ) : null}
+                  {showShopComp("hasAnnex") ? (
                   <InsField label="هل يوجد ملحق؟" value={draft.hasAnnex} />
+                  ) : null}
+                  {showShopComp("hasAnnex") && draft.hasAnnex === "نعم" ? (
+                    <>
+                      <InsField
+                        label="ملحق علوي (عدد)"
+                        value={draft.annexUpperCount}
+                        ltr
+                      />
+                      <InsField
+                        label="ملحق أرضي (عدد)"
+                        value={draft.annexGroundCount}
+                        ltr
+                      />
+                    </>
+                  ) : null}
                 </>
               )}
-              <InsField
-                label="ملحق علوي (عدد)"
-                value={
-                  draft.annexTotal.trim()
-                    ? draft.annexTotal
-                    : draft.hasAnnex === "نعم"
-                      ? "—"
-                      : ""
-                }
-                ltr
-              />
-              <InsField
-                label="ملحق أرضي (عدد)"
-                value={
-                  draft.hasAnnex === "نعم" ? "—" : ""
-                }
-                ltr
-              />
             </InsFieldsGrid>
           </InsCard>
+          ) : null}
 
+          {!isLandInspection ? (
           <InsCard
             title="مساحات المباني"
             badge={<DetailBadge tone="red">إدخال ميداني</DetailBadge>}
@@ -1839,6 +1931,7 @@ export function PropertyDetailInspectionTab({
               )}
             </InsFieldsGrid>
           </InsCard>
+          ) : null}
 
           {showEditFields ? (
             <FieldComparableCaptureSection

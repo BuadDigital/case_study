@@ -2,8 +2,10 @@
 
 import { useEffect, useState } from "react";
 import {
-  INSPECTOR_FEATURE_FIELDS,
+  isCommercialShopInspectionContext,
+  isLandInspectionContext,
   type InspectorWorkspaceDraft,
+  visibleInspectorFeatureFields,
 } from "@case-study/mfe/lib/prototype/inspector-workspace-data";
 import { fetchInspectorWorkspace } from "@case-study/mfe/lib/prototype/inspector-workspace-storage";
 import { EvaluatorCopyField } from "./EvaluatorChecklistTab";
@@ -18,8 +20,19 @@ export function inspectionFactChips(
     const t = (text ?? "").trim();
     if (t) chips.push(t);
   };
+  const land = isLandInspectionContext({
+    vacantLand: workspace.vacantLand,
+    assetSubject: workspace.featureValues?.assetSubject,
+  });
+  const shop = isCommercialShopInspectionContext({
+    vacantLand: workspace.vacantLand,
+    assetSubject: workspace.featureValues?.assetSubject,
+  });
+  if (!land) {
+  if (!shop) {
   add((workspace.roomCount ?? "").trim() ? `${workspace.roomCount.trim()} غرف` : "");
   add((workspace.hallCount ?? "").trim() ? `${workspace.hallCount.trim()} صالات` : "");
+  }
   add(
     (workspace.bathroomCount ?? "").trim()
       ? `${workspace.bathroomCount.trim()} دورات مياه`
@@ -39,6 +52,7 @@ export function inspectionFactChips(
         ? "بدون مسبح"
         : "",
   );
+  if (!shop) {
   add(
     workspace.hasAnnex === "نعم"
       ? (workspace.annexTotal ?? "").trim()
@@ -48,6 +62,8 @@ export function inspectionFactChips(
         ? "بدون ملاحق"
         : "",
   );
+  }
+  }
   add(
     workspace.hasViolations === "نعم"
       ? "مخالفات ظاهرة"
@@ -109,7 +125,15 @@ export function EvaluatorInspectionFactsSection({
     };
   }, [inspectionTaskId]);
 
-  const features = INSPECTOR_FEATURE_FIELDS.flatMap((field) => {
+  const isLand = isLandInspectionContext({
+    vacantLand: workspace?.vacantLand,
+    assetSubject: workspace?.featureValues?.assetSubject,
+  });
+  const isShop = isCommercialShopInspectionContext({
+    vacantLand: workspace?.vacantLand,
+    assetSubject: workspace?.featureValues?.assetSubject,
+  });
+  const features = visibleInspectorFeatureFields(isLand).flatMap((field) => {
     const rows = [
       {
         label: field.label,
@@ -130,13 +154,36 @@ export function EvaluatorInspectionFactsSection({
 
   const extras = [
     { label: "تاريخ معاينة العقار", value: filled(workspace?.inspectionDate) },
-    { label: "عمر العقار (سنة)", value: filled(workspace?.propertyAgeYears) },
-    { label: "مساحة البناء", value: filled(workspace?.builtArea) },
-    { label: "عدد الأدوار", value: filled(workspace?.buildingFloors) },
-    { label: "عدد الغرف", value: filled(workspace?.roomCount) },
-    { label: "عدد الصالات", value: filled(workspace?.hallCount) },
-    { label: "دورات المياه", value: filled(workspace?.bathroomCount) },
-    { label: "ملاحق", value: filled(workspace?.hasAnnex) || filled(workspace?.annexTotal) },
+    ...(isLand
+      ? []
+      : [
+          { label: "عمر العقار (سنة)", value: filled(workspace?.propertyAgeYears) },
+          { label: "مساحة البناء", value: filled(workspace?.builtArea) },
+          { label: "عدد الأدوار", value: filled(workspace?.buildingFloors) },
+          ...(isShop
+            ? []
+            : [
+                { label: "عدد الغرف", value: filled(workspace?.roomCount) },
+                { label: "عدد الصالات", value: filled(workspace?.hallCount) },
+              ]),
+          { label: "دورات المياه", value: filled(workspace?.bathroomCount) },
+          ...(isShop
+            ? []
+            : [
+                {
+                  label: "ملاحق",
+                  value: filled(workspace?.hasAnnex),
+                },
+                {
+                  label: "ملحق علوي (عدد)",
+                  value: filled(workspace?.annexUpperCount),
+                },
+                {
+                  label: "ملحق أرضي (عدد)",
+                  value: filled(workspace?.annexGroundCount),
+                },
+              ]),
+        ]),
     { label: "عدادات الكهرباء", value: filled(workspace?.electricityMeterCount) },
     { label: "عدادات الماء", value: filled(workspace?.waterMeterCount) },
     {

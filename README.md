@@ -343,7 +343,7 @@ Default seeded user after migrate and seed: `admin@local.dev` / `Admin123!`
 From the repository root:
 
 ```bash
-npm install
+npm install   # run again after git pull when package.json or package-lock.json changed
 npm run dev
 ```
 

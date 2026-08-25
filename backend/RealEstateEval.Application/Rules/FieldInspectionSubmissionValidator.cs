@@ -8,6 +8,7 @@ namespace RealEstateEval.Application.Rules;
 /// mirrors <c>validateInspectorWorkspace</c> / <c>listInspectorPhotoValidationIssues</c> in the MFE.
 /// Proof photos (feature table, showroom/well, services/amenities) are required
 /// when the corresponding value or slot is selected.
+/// Building-only rows and component counts are skipped for vacant land.
 /// </summary>
 public static class FieldInspectionSubmissionValidator
 {
@@ -20,6 +21,21 @@ public static class FieldInspectionSubmissionValidator
     {
         "21.5433,39.1728",
         "21.543300,39.172800",
+    };
+
+    private static readonly HashSet<string> LandHiddenFeatureKeys = new(StringComparer.Ordinal)
+    {
+        "facade",
+        "buildState",
+        "occupancyState",
+        "carEntrance",
+        "hasBasement",
+        "hasElevator",
+        "hasPool",
+        "hasCentralAc",
+        "hasTanks",
+        "hasLandscaping",
+        "kitchen",
     };
 
     public static Dictionary<string, string> Validate(JsonElement root)
@@ -57,6 +73,67 @@ public static class FieldInspectionSubmissionValidator
         }
 
         return errors;
+    }
+
+    private static bool IsLandInspection(JsonElement root)
+    {
+        if (GetBool(root, "vacantLand"))
+            return true;
+
+        if (!root.TryGetProperty("featureValues", out var features) ||
+            features.ValueKind != JsonValueKind.Object)
+        {
+            return false;
+        }
+
+        var subject = ReadFeatureValue(features, "assetSubject");
+        return LooksLikeVacantLand(subject);
+    }
+
+    private static bool LooksLikeVacantLand(string value)
+    {
+        var normalized = value
+            .Replace("أ", "ا")
+            .Replace("إ", "ا")
+            .Replace("آ", "ا")
+            .Replace("ٱ", "ا")
+            .Trim();
+        if (normalized.Length == 0 || normalized.Contains("ملحق", StringComparison.Ordinal))
+            return false;
+        return normalized.Contains("ارض", StringComparison.Ordinal)
+            || normalized.Contains("أرض", StringComparison.Ordinal)
+            || normalized.Contains("land", StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static string ReadFeatureValue(JsonElement features, string key)
+    {
+        if (features.ValueKind != JsonValueKind.Object)
+            return "";
+        foreach (var prop in features.EnumerateObject())
+        {
+            if (!string.Equals(prop.Name, key, StringComparison.OrdinalIgnoreCase))
+                continue;
+            return prop.Value.ValueKind == JsonValueKind.String
+                ? prop.Value.GetString()?.Trim() ?? ""
+                : prop.Value.ToString()?.Trim() ?? "";
+        }
+        return "";
+    }
+
+    private static bool IsCommercialShopInspection(JsonElement root)
+    {
+        if (IsLandInspection(root))
+            return false;
+
+        if (!root.TryGetProperty("featureValues", out var features) ||
+            features.ValueKind != JsonValueKind.Object)
+        {
+            return false;
+        }
+
+        var subject = ReadFeatureValue(features, "assetSubject");
+        return subject.Contains("محل", StringComparison.Ordinal)
+            && subject.Contains("تجار", StringComparison.Ordinal);
     }
 
     private static bool ValidateGps(JsonElement root)
@@ -110,13 +187,17 @@ public static class FieldInspectionSubmissionValidator
     private static List<string> ListPhotoValidationIssues(JsonElement root)
     {
         var issues = new List<string>();
+        var isLand = IsLandInspection(root);
+        var isShop = IsCommercialShopInspection(root);
 
         root.TryGetProperty("featureValues", out var featureValues);
         root.TryGetProperty("featurePhotoAttachments", out var featurePhotos);
         foreach (var (key, label, photoOnYes, yesNo) in FeaturePhotoFields)
         {
+            if (isLand && LandHiddenFeatureKeys.Contains(key))
+                continue;
             var value = featureValues.ValueKind == JsonValueKind.Object
-                ? ReadString(featureValues, key)
+                ? ReadFeatureValue(featureValues, key)
                 : "";
             if (!FeatureRequiresPhoto(photoOnYes, yesNo, value))
                 continue;
@@ -124,13 +205,16 @@ public static class FieldInspectionSubmissionValidator
                 issues.Add($"يجب إرفاق صورة توثيقية: {label}");
         }
 
-        if (ParsePositiveCount(root, "showroomCount") > 0
+        if (!isLand
+            && ParsePositiveCount(root, "showroomCount") > 0
             && !HasBoundAttachment(GetObject(root, "componentPhotoAttachments"), "showroom"))
         {
             issues.Add("يجب إرفاق صورة المعرض");
         }
 
-        if (ParsePositiveCount(root, "wellCount") > 0
+        if (!isLand
+            && !isShop
+            && ParsePositiveCount(root, "wellCount") > 0
             && !HasBoundAttachment(GetObject(root, "componentPhotoAttachments"), "well"))
         {
             issues.Add("يجب إرفاق صورة البئر");
@@ -166,6 +250,10 @@ public static class FieldInspectionSubmissionValidator
         ("hasBasement", "يوجد قبو", true, true),
         ("hasElevator", "يوجد مصعد", true, true),
         ("hasPool", "يوجد مسبح", true, true),
+        ("hasFence", "يوجد سور", true, true),
+        ("hasCentralAc", "تكييف مركزي", true, true),
+        ("hasTanks", "خزانات", true, true),
+        ("hasLandscaping", "تشجير", true, true),
         ("kitchen", "مطبخ", true, true),
     ];
 

@@ -29,8 +29,6 @@ public static class PartyTaskSubmissionPayloadRules
                         errors["coordinates"] = "الإحداثيات مطلوبة";
                     if (!HasNonEmpty(root, "surveyReportFileName"))
                         errors["surveyReportFileName"] = "تقرير الرفع المساحي مطلوب";
-                    if (!HasNonEmpty(root, "siteLetterFileName"))
-                        errors["siteLetterFileName"] = "خطاب الموقع مطلوب";
                     if (!GetBool(root, "siteConfirmed"))
                         errors["siteConfirmed"] = "يجب تأكيد الموقع";
                     break;
@@ -81,6 +79,28 @@ public static class PartyTaskSubmissionPayloadRules
     {
         if (!root.TryGetProperty(name, out var prop)) return null;
         return prop.ValueKind == JsonValueKind.String ? prop.GetString() : prop.ToString();
+    }
+
+    public static bool HasPlanAndPlot(string? planNumber, string? plotNumber)
+    {
+        return !string.IsNullOrWhiteSpace(planNumber)
+            && !string.IsNullOrWhiteSpace(plotNumber);
+    }
+
+    /// <summary>
+    /// Site-validity letter is optional when the property is on a subdivision plan
+    /// and has a plot number.
+    /// </summary>
+    public static void RequireSiteLetterUnlessPlatted(
+        Dictionary<string, string> errors,
+        JsonElement root,
+        string? planNumber,
+        string? plotNumber)
+    {
+        if (HasPlanAndPlot(planNumber, plotNumber))
+            return;
+        if (!HasNonEmpty(root, "siteLetterFileName"))
+            errors["siteLetterFileName"] = "خطاب الموقع مطلوب";
     }
 
     public static string? ExtractStatus(string payloadJson)

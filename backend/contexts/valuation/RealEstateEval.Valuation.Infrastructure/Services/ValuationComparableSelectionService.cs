@@ -507,7 +507,7 @@ public sealed class ValuationComparableSelectionService(
             ValuationRequestId = request.Id,
             PropertyId = request.PropertyId,
             AdoptedCount = adoptedRows.Count,
-            MeetsMinimumAdoptedGate = ValuationComparableSelectionRules.HasAtLeastOneAdopted(
+            MeetsMinimumAdoptedGate = ValuationComparableSelectionRules.MeetsMinimumAdopted(
                 rows.Select(r => r.IsAdopted)),
             WeightsSumTo100 = adoptedRows.Count == 0
                 || MarketApproachRules.WeightsSumTo100(effectiveWeights),

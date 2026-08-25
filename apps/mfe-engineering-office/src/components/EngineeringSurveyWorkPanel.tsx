@@ -51,6 +51,7 @@ import {
   firstEngineeringSurveyError,
   firstEngineeringSurveyErrorTarget,
   validateEngineeringSurveySubmission,
+  isPlattedPropertyWithPlot,
   type EngineeringSurveyFieldErrors,
 } from "../lib/engineering-survey-validation";
 import { finalizeEngineeringSurveySubmission } from "../lib/finalize-engineering-survey-submission";
@@ -159,6 +160,19 @@ function localFieldsFromDraft(
     natureWestBoundary: draft.natureWestBoundary ?? "",
     natureWestBoundaryLengthM: draft.natureWestBoundaryLengthM ?? "",
     surveyNotes: draft.surveyNotes,
+  };
+}
+
+function mergeRemoteSurveyDraft(
+  next: EngineeringSurveySubmission,
+  prev: EngineeringSurveySubmission | null,
+  local: LocalTextFields | null,
+  pendingChecklist: EngineeringSurveySubmission["checklist"] | undefined,
+): EngineeringSurveySubmission {
+  return {
+    ...next,
+    ...(local ?? {}),
+    checklist: pendingChecklist ?? prev?.checklist ?? next.checklist,
   };
 }
 
@@ -271,6 +285,21 @@ export function EngineeringSurveyWorkPanel({
   const pendingPatchRef = useRef<Parameters<
     typeof updateEngineeringSurveyDraft
   >[1]>({});
+  const localFieldsRef = useRef(localFields);
+  localFieldsRef.current = localFields;
+  const draftRef = useRef(draft);
+  draftRef.current = draft;
+
+  const applyRemoteDraft = useCallback((next: EngineeringSurveySubmission) => {
+    setDraft(
+      mergeRemoteSurveyDraft(
+        next,
+        draftRef.current,
+        localFieldsRef.current,
+        pendingPatchRef.current.checklist,
+      ),
+    );
+  }, []);
 
   const liveSurveyTask = useMemo(
     () => workflowTasks.find((t) => t.id === task.id) ?? task,
@@ -453,8 +482,7 @@ export function EngineeringSurveyWorkPanel({
       void updateEngineeringSurveyDraft(task.id, patch)
         .then((next) => {
           if (!next) return;
-          setDraft(next);
-          // Keep local text fields unless this patch came from file/checklist locks.
+          applyRemoteDraft(next);
         })
         .catch((err: unknown) => {
           showToast(
@@ -465,7 +493,7 @@ export function EngineeringSurveyWorkPanel({
           );
         });
     },
-    [task.id, showToast],
+    [task.id, showToast, applyRemoteDraft],
   );
 
   const flushPendingPersist = useCallback(async () => {
@@ -478,7 +506,7 @@ export function EngineeringSurveyWorkPanel({
     if (!task.id || Object.keys(patch).length === 0) return;
     try {
       const next = await updateEngineeringSurveyDraft(task.id, patch);
-      if (next) setDraft(next);
+      if (next) applyRemoteDraft(next);
     } catch (err: unknown) {
       showToast(
         err instanceof Error
@@ -487,7 +515,7 @@ export function EngineeringSurveyWorkPanel({
         "error",
       );
     }
-  }, [showToast, task.id]);
+  }, [showToast, task.id, applyRemoteDraft]);
 
   const schedulePersist = useCallback(
     (patch: Parameters<typeof updateEngineeringSurveyDraft>[1]) => {
@@ -540,11 +568,6 @@ export function EngineeringSurveyWorkPanel({
     };
   }, []);
 
-  useEffect(() => {
-    if (!draft || locked || viewOnly) return;
-    void syncCaseStudyFromChecklist(draft.checklist);
-  }, [draft, locked, syncCaseStudyFromChecklist, viewOnly]);
-
   const submit = useCallback(async (): Promise<boolean> => {
     if (!draft || locked || viewOnly || !localFields) return false;
 
@@ -580,7 +603,10 @@ export function EngineeringSurveyWorkPanel({
       ...draft,
       ...localFields,
     };
-    const errors = validateEngineeringSurveySubmission(merged);
+    const siteLetterRequired = !isPlattedPropertyWithPlot(property);
+    const errors = validateEngineeringSurveySubmission(merged, {
+      siteLetterRequired,
+    });
     setFieldErrors(errors);
     if (Object.keys(errors).length > 0) {
       const message = firstEngineeringSurveyError(errors);
@@ -652,15 +678,22 @@ export function EngineeringSurveyWorkPanel({
 
   const handleChecklistChange = useCallback(
     (checklist: EngineeringSurveySubmission["checklist"]) => {
-      persist({ checklist });
-      void syncCaseStudyFromChecklist(checklist);
+      const prevAnswers = (draftRef.current?.checklist ?? [])
+        .map((row) => row.answer)
+        .join("|");
+      const nextAnswers = checklist.map((row) => row.answer).join("|");
+      setDraft((prev) => (prev ? { ...prev, checklist } : prev));
+      schedulePersist({ checklist });
+      if (prevAnswers !== nextAnswers) {
+        void syncCaseStudyFromChecklist(checklist);
+      }
       setFieldErrors((prev) => {
         const next = { ...prev };
         delete next.checklist;
         return next;
       });
     },
-    [persist, syncCaseStudyFromChecklist],
+    [schedulePersist, syncCaseStudyFromChecklist],
   );
 
   function onFilePick(
@@ -688,7 +721,7 @@ export function EngineeringSurveyWorkPanel({
           throw new Error(result.error);
         }
         const next = loadEngineeringSurveySubmission(draft.taskId);
-        if (next) setDraft(next);
+        if (next) applyRemoteDraft(next);
         setFieldErrors((prev) => {
           const nextErrors = { ...prev };
           delete nextErrors[isSurveyReport ? "survey_report" : "site_letter"];
@@ -733,7 +766,7 @@ export function EngineeringSurveyWorkPanel({
               const saved = await updateEngineeringSurveyDraft(draft.taskId, {
                 deedMatchesNature,
               });
-              if (saved) setDraft(saved);
+              if (saved) applyRemoteDraft(saved);
             }
             setFieldErrors((prev) => {
               const nextErrors = { ...prev };
@@ -790,7 +823,7 @@ export function EngineeringSurveyWorkPanel({
         return;
       }
       const next = loadEngineeringSurveySubmission(draft.taskId);
-      if (next) setDraft(next);
+      if (next) applyRemoteDraft(next);
       if (field === "surveyReportFileName") setSketchExtractNote(null);
     });
   }
@@ -1009,7 +1042,7 @@ export function EngineeringSurveyWorkPanel({
                     void updateEngineeringSurveyDraft(task.id, {
                       deedMatchesNature: next,
                     }).then((saved) => {
-                      if (saved) setDraft(saved);
+                      if (saved) applyRemoteDraft(saved);
                     });
                     setFieldErrors((prev) => {
                       if (!prev.deed_matches_nature) return prev;
@@ -1160,7 +1193,11 @@ export function EngineeringSurveyWorkPanel({
       <EngUploadBox
         id="eng-site-letter"
         title="رفع خطاب الإقرار"
-        hint="PDF — الحجم الأقصى 10 ميجابايت"
+        hint={
+          isPlattedPropertyWithPlot(property)
+            ? "اختياري — العقار ضمن مخطط وله رقم قطعة · PDF — الحجم الأقصى 10 ميجابايت"
+            : "PDF — الحجم الأقصى 10 ميجابايت"
+        }
         fileName={draft.siteLetterFileName}
         disabled={formDisabled}
         error={fieldErrors.site_letter}

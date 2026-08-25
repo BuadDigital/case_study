@@ -191,7 +191,7 @@ export function ValTabBar({
 }) {
   return (
     <TabBar
-      className="z-10 mx-[-20px] mb-0 flex flex-wrap gap-x-0.5 gap-y-0 !overflow-x-hidden overflow-y-visible [scrollbar-width:none] [&::-webkit-scrollbar]:hidden border-b border-border bg-transparent px-3.5 sm:px-3.5"
+      className="z-10 mx-[-20px] mb-0 flex flex-wrap items-stretch gap-x-0.5 gap-y-0 !overflow-x-hidden overflow-y-visible [scrollbar-width:none] [&::-webkit-scrollbar]:hidden border-b border-border bg-transparent px-3.5 sm:px-3.5"
       aria-label="أقسام نافذة التقييم"
     >
       {tabs.map((tab) => {

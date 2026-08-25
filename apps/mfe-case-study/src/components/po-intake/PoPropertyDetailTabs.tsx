@@ -875,7 +875,12 @@ export function PoPropertyDetailTabs({
             })}
           </TabBar>
 
-          <TabPanel className="min-h-0 overflow-visible bg-transparent px-0 py-5 sm:px-0">
+          <TabPanel
+            className={cn(
+              "min-h-0 overflow-visible bg-transparent px-0 py-5 sm:px-0",
+              tab === "appraisal" && "pt-0",
+            )}
+          >
           {tab === "basic" ? (
             <BasicTab
               record={record}

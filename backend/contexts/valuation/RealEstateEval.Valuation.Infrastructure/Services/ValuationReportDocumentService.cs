@@ -905,6 +905,14 @@ public sealed class InspectorPayloadFacts
     public string? GuardRoomCount { get; init; }
     public string? ParkingCount { get; init; }
     public string? StoreCount { get; init; }
+    public string? PlaygroundCount { get; init; }
+    public string? UnitCount { get; init; }
+    public string? ShowroomCount { get; init; }
+    public string? WellCount { get; init; }
+    public string? TowerCount { get; init; }
+    public string? AnnexUpperCount { get; init; }
+    public string? AnnexGroundCount { get; init; }
+    public string? OtherComponents { get; init; }
     public string? ElectricityMeterCount { get; init; }
     public string? ElectricityMeterNumbers { get; init; }
     public string? WaterMeterCount { get; init; }
@@ -1010,6 +1018,13 @@ public sealed class InspectorPayloadFacts
                 GuardRoomCount = Scalar("guardRoomCount"),
                 ParkingCount = Scalar("parkingCount"),
                 StoreCount = Scalar("storeCount"),
+                PlaygroundCount = Scalar("playgroundCount"),
+                UnitCount = Scalar("unitCount"),
+                ShowroomCount = Scalar("showroomCount"),
+                WellCount = Scalar("wellCount"),
+                TowerCount = Scalar("towerCount"),
+                AnnexUpperCount = Scalar("annexUpperCount"),
+                AnnexGroundCount = Scalar("annexGroundCount"),
                 ElectricityMeterCount = Scalar("electricityMeterCount"),
                 ElectricityMeterNumbers = Scalar("electricityMeterNumbers"),
                 WaterMeterCount = Scalar("waterMeterCount"),

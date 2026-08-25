@@ -39,6 +39,7 @@ public sealed class ValuationReportFieldInjectionService(
         var propertyId = vr.PropertyId?.Trim() ?? "";
         WorkOrderProperty? prop = null;
         FieldInspectionWorkspace? workspace = null;
+        InspectorPayloadFacts inspector = new();
         Client? client = null;
         var deedNatureMatchOutcome = DeedNatureMatchOutcomes.Unset;
         if (Guid.TryParse(propertyId, out var propertyGuid))
@@ -50,6 +51,7 @@ public sealed class ValuationReportFieldInjectionService(
             {
                 prop = context.ToProperty();
                 workspace = context.LatestWorkspace?.ToWorkspace();
+                inspector = InspectorPayloadFacts.Parse(context.InspectorPayloadJson);
                 deedNatureMatchOutcome = context.DeedNatureMatchOutcome ?? "";
                 client = context.ClientNameAr is null && context.ClientNameEn is null
                     ? null
@@ -70,7 +72,7 @@ public sealed class ValuationReportFieldInjectionService(
         var printable = await LoadPrintableAttachmentsAsync(propertyId, cancellationToken);
 
         var today = DateOnly.FromDateTime(clock.GetUtcNow().UtcDateTime);
-        var bag = BuildValueBag( vr, prop, workspace, client, org, market, cost, recon, printable, hasStructures, deedNatureMatchOutcome, today);
+        var bag = BuildValueBag( vr, prop, workspace, inspector, client, org, market, cost, recon, printable, hasStructures, deedNatureMatchOutcome, today);
         var fields = new List<ValuationReportFieldDto>(ValuationReportFieldCatalog.Count);
         var valuesByFieldKey = new Dictionary<string, string>(StringComparer.Ordinal);
         var filled = 0;
@@ -163,6 +165,7 @@ public sealed class ValuationReportFieldInjectionService(
         ValuationRequest vr,
         WorkOrderProperty? prop,
         FieldInspectionWorkspace? workspace,
+        InspectorPayloadFacts inspector,
         Client? client,
         OrganizationSettingsDto org,
         ValuationComparableSelectionListDto? market,
@@ -248,6 +251,8 @@ public sealed class ValuationReportFieldInjectionService(
             Put("geo_latitude", lat.ToString(System.Globalization.CultureInfo.InvariantCulture));
             Put("geo_longitude", lon.ToString(System.Globalization.CultureInfo.InvariantCulture));
         }
+
+        PutInspectorComponentCounts(Put, inspector, hasStructures);
 
         Put("valuer.name_ar", org.Evaluator.Name);
         Put("valuer.membership_number", org.Evaluator.MembershipNumber);
@@ -426,5 +431,50 @@ public sealed class ValuationReportFieldInjectionService(
 
         _ = hasStructures;
         return d;
+    }
+
+    private static void PutInspectorComponentCounts(
+        Action<string, string?> put,
+        InspectorPayloadFacts inspector,
+        bool hasStructures)
+    {
+    put("building_condition_ar", inspector.BuildState);
+        put("vacancy_ar", inspector.OccupancyState);
+        put("meter.4120", inspector.ElectricityMeterCount);
+        put("meter.4130", inspector.ElectricityMeterNumbers);
+        put("meter.4160", inspector.WaterMeterCount);
+        put("meter.4170", inspector.WaterMeterNumbers);
+        if (!hasStructures) return;
+
+        put("property_age_years", inspector.PropertyAgeYears);
+
+        put("inventory.6040", inspector.RoomCount);
+        put("pending.6090", inspector.HallCount);
+        put("inventory.6140", inspector.DiningCount);
+        put("inventory.6190", inspector.MajlisCount);
+        put("inventory.6240", inspector.MaidRoomCount);
+        put("inventory.6290", inspector.Kitchen);
+        put("inventory.6390", inspector.GuardRoomCount);
+        put("inventory.6440", inspector.StoreCount);
+        put("inventory.6490", inspector.ParkingCount);
+        put("inventory.6540", inspector.BathroomCount);
+        put("inventory.5330", inspector.JacuzziCount);
+        put("inventory.5280", inspector.HasElevator);
+        put("pending.5360", inspector.PlaygroundCount);
+        put("inventory.5350", AnnexCountOrFlag(inspector));
+        put("inventory.6590", inspector.OtherComponents);
+    }
+
+    private static string? AnnexCountOrFlag(InspectorPayloadFacts inspector)
+    {
+        var u = ParsePositive(inspector.AnnexUpperCount);
+        var g = ParsePositive(inspector.AnnexGroundCount);
+        if (u + g > 0) return (u + g).ToString();
+        return string.IsNullOrWhiteSpace(inspector.HasAnnex) ? null : inspector.HasAnnex;
+    }
+
+    private static int ParsePositive(string? raw)
+    {
+        return int.TryParse((raw ?? "").Trim(), out var n) && n > 0 ? n : 0;
     }
 }

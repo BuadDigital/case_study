@@ -72,6 +72,25 @@ export function isMovablesPresent(featureValues: Record<string, string>): boolea
   return (featureValues[MOVABLES_FEATURE_KEY] ?? "").trim() === "نعم";
 }
 
+export function normalizeInspectorLandText(value: string): string {
+  return value
+    .normalize("NFKC")
+    .replace(/[\u064B-\u065F\u0670]/g, "")
+    .replace(/[أإآٱ]/g, "ا")
+    .replace(/ى/g, "ي")
+    .replace(/\s+/g, " ")
+    .trim()
+    .toLowerCase();
+}
+
+export function textLooksLikeVacantLand(
+  value: string | null | undefined,
+): boolean {
+  const normalized = normalizeInspectorLandText(value ?? "");
+  if (!normalized || normalized.includes("ملحق")) return false;
+  return normalized.includes("ارض") || /\bland\b/.test(normalized);
+}
+
 export function patchInspectorFeatureValues(
   featureValues: Record<string, string>,
   key: string,
@@ -80,6 +99,11 @@ export function patchInspectorFeatureValues(
   const values = { ...featureValues, [key]: next };
   if (key === MOVABLES_FEATURE_KEY && next.trim() !== "نعم") {
     values[MOVABLES_DESCRIPTION_KEY] = "";
+  }
+  if (key === "assetSubject" && textLooksLikeVacantLand(next)) {
+    for (const hidden of LAND_HIDDEN_INSPECTOR_FEATURE_KEYS) {
+      values[hidden] = "";
+    }
   }
   return values;
 }
@@ -177,12 +201,153 @@ export const INSPECTOR_FEATURE_FIELDS: InspectorFeatureField[] = [
     photoOnYes: true,
   },
   {
+    key: "hasFence",
+    label: "يوجد سور",
+    options: ["نعم", "لا"],
+    photoOnYes: true,
+  },
+  {
+    key: "hasCentralAc",
+    label: "تكييف مركزي",
+    options: ["نعم", "لا"],
+    photoOnYes: true,
+  },
+  {
+    key: "hasTanks",
+    label: "خزانات",
+    options: ["نعم", "لا"],
+    photoOnYes: true,
+  },
+  {
+    key: "hasLandscaping",
+    label: "تشجير",
+    options: ["نعم", "لا"],
+    photoOnYes: true,
+  },
+  {
     key: "kitchen",
     label: "مطبخ",
     options: ["نعم", "لا"],
     photoOnYes: true,
   },
 ];
+
+/** Building-only inspector rows — hidden on vacant land. */
+export const LAND_HIDDEN_INSPECTOR_FEATURE_KEYS = [
+  "facade",
+  "buildState",
+  "occupancyState",
+  "carEntrance",
+  "hasBasement",
+  "hasElevator",
+  "hasPool",
+  "hasCentralAc",
+  "hasTanks",
+  "hasLandscaping",
+  "kitchen",
+] as const;
+
+const LAND_HIDDEN_FEATURE_KEY_SET = new Set<string>(
+  LAND_HIDDEN_INSPECTOR_FEATURE_KEYS,
+);
+
+const SHOP_SUBJECT_RE = /محل\s*تجار|\bshop\b/i;
+
+/** Vacant land: PO type/classification, inspector origin, or أرض فضاء checkbox. */
+export function isLandInspectionContext(input: {
+  classification?: string | null;
+  propertyType?: string | null;
+  assetSubject?: string | null;
+  vacantLand?: boolean;
+}): boolean {
+  if (input.vacantLand) return true;
+  return [input.assetSubject, input.classification, input.propertyType].some(
+    (value) => textLooksLikeVacantLand(value),
+  );
+}
+
+/** Drop leftover building-only values/photos so they cannot fail validation. */
+export function sanitizeInspectorDraftForLand(
+  draft: InspectorWorkspaceDraft,
+  options?: { classification?: string | null; propertyType?: string | null },
+): InspectorWorkspaceDraft {
+  if (
+    !isLandInspectionContext({
+      vacantLand: draft.vacantLand,
+      assetSubject: draft.featureValues.assetSubject,
+      classification: options?.classification,
+      propertyType: options?.propertyType,
+    })
+  ) {
+    return draft;
+  }
+
+  const featureValues = { ...draft.featureValues };
+  const featurePhotoAttachments = { ...draft.featurePhotoAttachments };
+  let changed = false;
+  for (const key of LAND_HIDDEN_INSPECTOR_FEATURE_KEYS) {
+    if (featureValues[key]) {
+      featureValues[key] = "";
+      changed = true;
+    }
+    if (featurePhotoAttachments[key]) {
+      delete featurePhotoAttachments[key];
+      changed = true;
+    }
+  }
+  if (!changed) return draft;
+  return { ...draft, featureValues, featurePhotoAttachments };
+}
+
+/** Residential / villa component rows — hidden for commercial shops. */
+export const SHOP_HIDDEN_INSPECTOR_COMPONENT_KEYS = [
+  "roomCount",
+  "hallCount",
+  "unitCount",
+  "wellCount",
+  "towerCount",
+  "jacuzziCount",
+  "diningCount",
+  "majlisCount",
+  "maidRoomCount",
+  "guardRoomCount",
+  "playgroundCount",
+  "hasAnnex",
+] as const;
+
+const SHOP_HIDDEN_COMPONENT_KEY_SET = new Set<string>(
+  SHOP_HIDDEN_INSPECTOR_COMPONENT_KEYS,
+);
+
+/** Commercial shop: PO type/classification or الأصل محل التقييم. Land wins. */
+export function isCommercialShopInspectionContext(input: {
+  classification?: string | null;
+  propertyType?: string | null;
+  assetSubject?: string | null;
+  vacantLand?: boolean;
+}): boolean {
+  if (isLandInspectionContext(input)) return false;
+  return [input.assetSubject, input.classification, input.propertyType].some(
+    (value) => Boolean(value && SHOP_SUBJECT_RE.test(value)),
+  );
+}
+
+export function isShopHiddenInspectorComponentKey(key: string): boolean {
+  return SHOP_HIDDEN_COMPONENT_KEY_SET.has(key);
+}
+
+export function isLandHiddenInspectorFeatureKey(key: string): boolean {
+  return LAND_HIDDEN_FEATURE_KEY_SET.has(key);
+}
+
+export function visibleInspectorFeatureFields(
+  isLand: boolean,
+): InspectorFeatureField[] {
+  if (!isLand) return INSPECTOR_FEATURE_FIELDS;
+  return INSPECTOR_FEATURE_FIELDS.filter(
+    (field) => !isLandHiddenInspectorFeatureKey(field.key),
+  );
+}
 
 export const INSPECTOR_SERVICE_OPTIONS = [
   "كهرباء",
@@ -316,6 +481,8 @@ export type InspectorWorkspaceDraft = {
   buildingFloors: string;
   basementTotal: string;
   annexTotal: string;
+  annexUpperCount: string;
+  annexGroundCount: string;
   buildingsTotal: string;
   propertyAgeYears: string;
   buildLicenseNumber: string;
@@ -433,6 +600,8 @@ export function createInspectorWorkspaceDraft(input: {
     buildingFloors: "",
     basementTotal: "",
     annexTotal: "",
+    annexUpperCount: "",
+    annexGroundCount: "",
     buildingsTotal: "",
     propertyAgeYears: "",
     buildLicenseNumber: "",
@@ -575,10 +744,34 @@ export function inspectorFeatureRequiresPhoto(
 
 export function listInspectorPhotoValidationIssues(
   draft: InspectorWorkspaceDraft,
+  options?: {
+    isLand?: boolean;
+    isShop?: boolean;
+    classification?: string | null;
+    propertyType?: string | null;
+  },
 ): string[] {
   const issues: string[] = [];
+  const isLand =
+    Boolean(options?.isLand) ||
+    isLandInspectionContext({
+      vacantLand: draft.vacantLand,
+      assetSubject: draft.featureValues.assetSubject,
+      classification: options?.classification,
+      propertyType: options?.propertyType,
+    });
+  const isShop =
+    Boolean(options?.isShop) ||
+    isCommercialShopInspectionContext({
+      vacantLand: draft.vacantLand,
+      assetSubject: draft.featureValues.assetSubject,
+      classification: options?.classification,
+      propertyType: options?.propertyType,
+    });
+  const featureFields = visibleInspectorFeatureFields(isLand);
 
-  for (const field of INSPECTOR_FEATURE_FIELDS) {
+  for (const field of featureFields) {
+    if (isLand && isLandHiddenInspectorFeatureKey(field.key)) continue;
     const value = draft.featureValues[field.key] ?? "";
     if (
       inspectorFeatureRequiresPhoto(field, value) &&
@@ -589,6 +782,7 @@ export function listInspectorPhotoValidationIssues(
   }
 
   if (
+    !isLand &&
     parseInspectorCount(draft.showroomCount) > 0 &&
     !draft.componentPhotoAttachments.showroom?.attachmentId
   ) {
@@ -596,6 +790,8 @@ export function listInspectorPhotoValidationIssues(
   }
 
   if (
+    !isLand &&
+    !isShop &&
     parseInspectorCount(draft.wellCount) > 0 &&
     !draft.componentPhotoAttachments.well?.attachmentId
   ) {

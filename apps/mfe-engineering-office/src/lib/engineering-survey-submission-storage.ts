@@ -345,7 +345,8 @@ export function patchChecklistRow(
   index: number,
   patch: Partial<EngineeringSurveyChecklistRow>,
 ): EngineeringSurveyChecklistRow[] {
-  return rows.map((row, i) => (i === index ? { ...row, ...patch } : row));
+  const next = normalizeEngineeringSurveyChecklist(rows);
+  return next.map((row, i) => (i === index ? { ...row, ...patch } : row));
 }
 
 export function engineeringSurveyStatusLabel(

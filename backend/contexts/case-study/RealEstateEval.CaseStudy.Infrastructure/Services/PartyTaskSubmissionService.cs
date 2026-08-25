@@ -746,6 +746,12 @@ public class PartyTaskSubmissionService : IPartyTaskSubmissionService
                 if (surveyBlock is not null)
                     errors["_documentary"] = surveyBlock;
 
+                PartyTaskSubmissionPayloadRules.RequireSiteLetterUnlessPlatted(
+                    errors,
+                    root,
+                    property?.PlanNumber,
+                    property?.PlotNumber);
+
                 var hasPhone = property is not null
                     && DocumentaryWorkflowRules.HasAnyPartyPhone(property.Contacts);
                 var phoneWasPresent = PartyTaskSubmissionPayloadRules.GetBool(root, "declarationPhoneSatisfied");

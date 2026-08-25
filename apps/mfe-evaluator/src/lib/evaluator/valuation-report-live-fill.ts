@@ -15,6 +15,7 @@ import {
   subClientIdFromReportUsers,
 } from "@case-study/mfe/lib/prototype/po-intake-data";
 import type { InspectorWorkspaceDraft } from "@case-study/mfe/lib/prototype/inspector-workspace-data";
+import { isLandInspectionContext } from "@case-study/mfe/lib/prototype/inspector-workspace-data";
 import type {
   BuildingInventoryLineDto,
   ClientDto,
@@ -26,12 +27,21 @@ import type {
 import {
   areasFromInventory,
   adoptedComparables,
+  annexCountDisplay,
+  buildAdjustmentRationaleText,
+  buildAdjustmentSheetRows,
+  buildDirectCostSheetRows,
+  buildIndirectCostSheetRows,
+  buildReconSheetRows,
+  composeTransactionCell,
+  costLinePresent,
   costRowCells,
-  countOrFlag,
   dashSheet,
   esgCell,
   finishingLevelLabel,
   formatMoneyCell,
+  formatSheetPct,
+  inventoryLinePresent,
   joinObservations,
   mapSurroundings,
   membershipCategoryLabel,
@@ -39,9 +49,13 @@ import {
   reconWeight,
   valuerRoleLabel,
   yesNoFromFlag,
+  existsFromCount,
+  existsFromYesNo,
+  existsIf,
 } from "./valuation-report-sheet-facts";
 import type {
   EvaluatorReportChoices,
+  EvaluatorReportWorker,
   EvaluatorSubmission,
 } from "./evaluator-window-data";
 import { emptyReportChoices } from "./evaluator-window-data";
@@ -59,7 +73,7 @@ const OWNERSHIP_LABELS: Record<string, string> = {
 };
 
 /** Template sample numbers wiped before live data is written. */
-const SAMPLE_SECS = new Set(["10", "11", "13", "14", "15", "17", "19", "21", "22", "23", "24"]);
+const SAMPLE_SECS = new Set(["10", "11", "13", "14", "15", "17", "19", "20", "21", "22", "23", "24", "25"]);
 
 const MARKET_BASIS_DEFINITION =
   "القيمة السوقية هي المبلغ المقدَّر الذي ينبغي أن يُتبادل به أصل أو التزام في تاريخ التقييم بين مشترٍ راغب وبائع راغب في معاملة تجارية بحتة بعد تسويق مناسب، بحيث يتصرف كل طرف عن دراية وبحكمة ودون إجبار.";
@@ -112,7 +126,7 @@ export function ownershipTypeDisplay(value: string | null | undefined): string {
 }
 
 export function reportUserNamesFromRecord(
-  record: Pick<PoIntakeRecord, "clientNameAr" | "reportUserClientIds"> | null | undefined,
+  record: Pick<PoIntakeRecord, "clientNameAr" | "reportUserClientIds" | "clientId"> | null | undefined,
   clients: Pick<ClientDto, "id" | "nameAr">[],
 ): string {
   const ids = record?.reportUserClientIds ?? [];
@@ -120,7 +134,18 @@ export function reportUserNamesFromRecord(
     .map((id) => clients.find((c) => c.id === id)?.nameAr.trim() ?? "")
     .filter(Boolean);
   if (names.length) return names.join(" و ");
-  return (record?.clientNameAr ?? "").trim();
+  return clientNameFromRecord(record, clients);
+}
+
+export function clientNameFromRecord(
+  record: Pick<PoIntakeRecord, "clientNameAr" | "clientId"> | null | undefined,
+  clients: Pick<ClientDto, "id" | "nameAr">[] = [],
+): string {
+  const named = (record?.clientNameAr ?? "").trim();
+  if (named) return named;
+  const id = (record?.clientId ?? "").trim();
+  if (!id) return "";
+  return clients.find((c) => c.id === id)?.nameAr.trim() ?? "";
 }
 
 export function formatValuationReportUsers(
@@ -140,9 +165,39 @@ export function formatValuationReportUsers(
     return VALUATION_REPORT_USER_OPTION_LABEL;
   }
   const names = reportUserNamesFromRecord(record, clients);
-  const client = (record?.clientNameAr ?? "").trim();
+  const client = clientNameFromRecord(record, clients);
   if (names && client && names !== client) return `${client} و ${names}`;
   return names || client;
+}
+
+function extraInventoryAreaRows(
+  lines: { structureKind?: string; label?: string; areaSqm?: string | null }[] | null | undefined,
+  base: Array<{ key: string; values: string[] }>,
+): Array<{ key: string; values: string[] }> {
+  const known = new Set(base.map((r) => normLabel(r.key)));
+  const extra: Array<{ key: string; values: string[] }> = [];
+  for (const line of lines ?? []) {
+    const kind = (line.structureKind ?? "").trim().toLowerCase();
+    if (kind !== "floor" && kind !== "annex" && kind !== "basement") continue;
+    const lab = (line.label ?? "").trim();
+    if (!lab || known.has(normLabel(lab))) continue;
+    extra.push({ key: lab, values: [dashSheet(line.areaSqm)] });
+    known.add(normLabel(lab));
+  }
+  return [...base, ...extra];
+}
+
+function pickLength(
+  survey: string | null | undefined,
+  property: string | null | undefined,
+): string {
+  const s = (survey ?? "").trim();
+  if (s) return s;
+  return (property ?? "").trim();
+}
+
+function surveyUsesNature(survey?: ValuationReportSurveyBounds | null): boolean {
+  return survey?.deedMatchesNature === "no";
 }
 
 function dash(value: string | null | undefined): string {
@@ -171,6 +226,26 @@ function methodsUsed(choices: EvaluatorReportChoices): string {
   return bits.join(" و ");
 }
 
+export type ValuationReportSurveyBounds = {
+  deedMatchesNature?: "yes" | "no" | null;
+  northBoundary?: string;
+  northBoundaryLengthM?: string;
+  southBoundary?: string;
+  southBoundaryLengthM?: string;
+  eastBoundary?: string;
+  eastBoundaryLengthM?: string;
+  westBoundary?: string;
+  westBoundaryLengthM?: string;
+  natureNorthBoundary?: string;
+  natureNorthBoundaryLengthM?: string;
+  natureSouthBoundary?: string;
+  natureSouthBoundaryLengthM?: string;
+  natureEastBoundary?: string;
+  natureEastBoundaryLengthM?: string;
+  natureWestBoundary?: string;
+  natureWestBoundaryLengthM?: string;
+};
+
 export type ValuationReportLiveFill = {
   cells: Record<string, string>;
   scopeBasis: string;
@@ -187,12 +262,20 @@ export type ValuationReportLiveFill = {
   buildDescRows: Array<{ key: string; values: string[] }>;
   serviceRows: Array<{ key: string; values: string[] }>;
   comparableRows: Array<{ key: string; values: string[] }>;
+  adjustmentRows: Array<{ key: string; values: string[] }>;
+  adjustmentComparisonLabel: string;
+  adjustmentNotes: string;
+  surroundingsOther: string;
   costRows: Array<{ key: string; values: string[] }>;
+  indirectRows: Array<{ key: string; values: string[] }>;
+  indirectTotalLabel: string;
   reconRows: Array<{ key: string; values: string[] }>;
   finalDisplay: string;
   finalWords: string;
   isLiquidation: boolean;
+  isLand: boolean;
   propertyDescription: string;
+  reportWorkers: EvaluatorReportWorker[];
 };
 
 export function buildValuationReportLiveFill(input: {
@@ -216,9 +299,12 @@ export function buildValuationReportLiveFill(input: {
   certifiedMembershipCategory?: string | null;
   certifiedTitle?: string | null;
   certifiedMembershipExpires?: string | null;
+  certifiedMembershipNumber?: string | null;
   valuationBranch?: string | null;
   reportType?: string | null;
   currency?: string | null;
+  effectiveValuationDate?: string | null;
+  survey?: ValuationReportSurveyBounds | null;
 }): ValuationReportLiveFill {
   const { draft, record, property, inspector } = input;
   const keys = assignmentValuationFromPo(record);
@@ -234,11 +320,14 @@ export function buildValuationReportLiveFill(input: {
       ? basisOfValueLabelArForAssignment(record.assignmentType, sub)
       : "");
   const premise = labelForPremiseKey(keys.premiseKey);
-  const client = (record?.clientNameAr ?? "").trim();
+  const client = clientNameFromRecord(record, input.clients ?? []);
   const users = formatValuationReportUsers(record, input.clients ?? []);
   const choices = draft.reportChoices ?? emptyReportChoices();
   const appraisal = slashReportDate(
-    draft.appraisalDate || draft.reportIssueDate,
+    input.effectiveValuationDate ||
+      draft.appraisalDate ||
+      draft.reportIssueDate ||
+      inspector?.inspectionDate,
   );
   const inspection = slashReportDate(inspector?.inspectionDate);
   const requestDate = slashReportDate(record?.receivedFromEnfathAt);
@@ -247,6 +336,12 @@ export function buildValuationReportLiveFill(input: {
   const price = (draft.evaluatorPrice ?? "").trim();
   const priceN = parseEvaluatorAmount(price);
   const isLiquidation = keys.valueBasisKey === "liquidation";
+  const isLand = isLandInspectionContext({
+    vacantLand: inspector?.vacantLand,
+    assetSubject: inspector?.featureValues?.assetSubject,
+    classification: property?.classification,
+    propertyType: property?.propertyType,
+  });
   const license = [
     inspector?.buildLicenseNumber?.trim(),
   ]
@@ -268,22 +363,30 @@ export function buildValuationReportLiveFill(input: {
     "فرضية القيمة (الاستخدام المفترض)": dash(premise),
     "نوع التقرير": dash(input.reportType),
     "عملة التقييم": dash(input.currency),
-    "نوع العقار": dash(property?.propertyType || property?.classification),
+    "نوع العقار": dash(
+      property?.propertyType ||
+        property?.classification ||
+        inspector?.featureValues?.assetSubject ||
+        inspector?.featureValues?.propertyUsage,
+    ),
     "أساليب التقييم المستخدمة": dash(methodsUsed(choices)),
-    "حالة العقار": dash(inspector?.featureValues.buildState),
+    "حالة العقار": dash(inspector?.featureValues?.buildState),
     "حالة الصك": dash(property?.deedStatus),
-    "نوع الملكية": dash(ownershipTypeDisplay(property?.ownershipType)),
-    "هل يوجد منقولات": dash(inspector?.featureValues.movables),
-    "وصف المنقولات":
-      inspector?.featureValues.movables === "نعم"
-        ? dash(inspector?.featureValues.movablesDescription)
-        : inspector?.featureValues.movables === "لا"
+    "نوع الملكية": dash(
+      ownershipTypeDisplay(
+        property?.ownershipType || property?.suggestedOwnershipType,
+      ),
+    ),
+    "هل يوجد منقولات": dash(inspector?.featureValues?.movables),
+    "وصف المنقولات": inspector?.featureValues?.movables === "نعم"
+        ? dash(inspector?.featureValues?.movablesDescription)
+        : inspector?.featureValues?.movables === "لا"
           ? "لا يوجد منقولات بالعقار"
           : dash(""),
     "المنقولات":
-      inspector?.featureValues.movables === "نعم"
-        ? dash(inspector?.featureValues.movablesDescription)
-        : inspector?.featureValues.movables === "لا"
+      inspector?.featureValues?.movables === "نعم"
+        ? dash(inspector?.featureValues?.movablesDescription)
+        : inspector?.featureValues?.movables === "لا"
           ? "لا يوجد منقولات بالعقار"
           : dash(""),
     "اسم المنطقة": dash(property?.region),
@@ -293,36 +396,47 @@ export function buildValuationReportLiveFill(input: {
     "رقم المخطط": dash(property?.planNumber),
     "رقم البلك": dash(property?.blockNumber),
     "رقم القطعة": dash(property?.plotNumber),
-    "استخدام العقار": dash(property?.classification),
+    "استخدام العقار": dash(
+      property?.classification || inspector?.featureValues?.propertyUsage,
+    ),
     "إحداثيات الموقع": dash(joinCoords(inspector)),
     "رقم الصك": dash(property?.deedNumber),
     "تاريخ الصك": dash(property?.deedDate),
     "رقم رخصة البناء وتاريخها": dash(license),
-    "عمر البناء": dash(
-      inspector?.propertyAgeYears
-        ? `${inspector.propertyAgeYears.trim()} سنوات`
-        : "",
-    ),
-    "حالة البناء": dash(inspector?.featureValues.buildState),
-    "حالة الإشغال": dash(inspector?.featureValues.occupancyState),
+    ...(isLand
+      ? {}
+      : {
+          "عمر البناء": dash(
+            inspector?.propertyAgeYears
+              ? `${inspector.propertyAgeYears.trim()} سنوات`
+              : "",
+          ),
+          "عمر العقار": dash(
+            inspector?.propertyAgeYears
+              ? `${inspector.propertyAgeYears.trim()} سنوات`
+              : "",
+          ),
+        }),
+    "حالة البناء": dash(inspector?.featureValues?.buildState),
+    "حالة الإشغال": dash(inspector?.featureValues?.occupancyState),
     "مساحة الأرض (حسب الصك)": dash(area ? `${area} م²` : ""),
-    "مساحة الأرض (م²)": dash(area),
+    "مساحة الأرض (م²)": dash(
+      input.cost?.landAreaSqm && input.cost.landAreaSqm > 0
+        ? formatMoneyCell(input.cost.landAreaSqm)
+        : area,
+    ),
     "قيمة الأرض": dash(
       land && land !== "0" ? formatAmountNumberDisplay(land) : land === "0" ? "0" : "",
     ),
     "القيمة المرجّحة": dash(price ? formatAmountNumberDisplay(price) : ""),
     "قيمة العقار": dash(price ? formatAmountNumberDisplay(price) : ""),
-    "نسبة خصم التصفية المنظمة": isLiquidation
-      ? dash(
-          draft.forcedSaleDiscountPct
-            ? `${draft.forcedSaleDiscountPct.replace(/%/g, "")}٪`
-            : "",
-        )
-      : "—",
+    "نسبة خصم التصفية المنظمة": "—",
+    "مبرر معامل التصفية": "—",
     "وصف العقار": dash(inspector?.propertyDescription),
   };
 
   const areas = areasFromInventory(input.inventoryLines, inspector);
+  cells["مجموع مسطحات البناء"] = dash(areas.builtUpTotal);
   const surroundings = mapSurroundings(inspector?.amenities);
   const defects = [
     joinObservations(inspector),
@@ -343,14 +457,18 @@ export function buildValuationReportLiveFill(input: {
     .filter(Boolean)
     .join("؛ ");
   const kitchenCount =
-    inspector?.featureValues.kitchen === "نعم"
+    inspector?.featureValues?.kitchen === "نعم"
       ? "نعم"
-      : inspector?.featureValues.kitchen === "لا"
+      : inspector?.featureValues?.kitchen === "لا"
         ? "لا"
         : "";
   const reconFinal = input.recon?.finalOpinionValue;
   const reconLand = input.cost?.landValueFromMarket;
-  const reconWeighted = input.recon?.weightedValue ?? reconFinal;
+  const reconBeforeLiq = input.recon?.finalOpinionBeforeLiquidation;
+  const reconWeighted =
+    reconBeforeLiq != null && reconBeforeLiq > 0
+      ? reconBeforeLiq
+      : (input.recon?.weightedValue ?? reconFinal);
   const landDisplay =
     reconLand != null && reconLand > 0
       ? formatMoneyCell(reconLand)
@@ -372,9 +490,17 @@ export function buildValuationReportLiveFill(input: {
   cells["قيمة الأرض"] = dash(landDisplay);
   cells["القيمة المرجّحة"] = dash(weightedDisplay);
   cells["قيمة العقار"] = dash(priceDisplay);
-  if (input.recon?.liquidationDiscountApplied) {
-    cells["نسبة خصم التصفية المنظمة"] = dash(
-      `${String(input.recon.liquidationDiscountPct ?? "").replace(/%/g, "")}٪`,
+  const liqOn =
+    isLiquidation || input.recon?.liquidationDiscountApplied === true;
+  if (liqOn) {
+    const pct =
+      input.recon?.liquidationDiscountPct != null &&
+      input.recon.liquidationDiscountPct > 0
+        ? String(input.recon.liquidationDiscountPct).replace(/%/g, "")
+        : draft.forcedSaleDiscountPct.replace(/%/g, "");
+    cells["نسبة خصم التصفية المنظمة"] = dash(pct ? `${pct}٪` : "");
+    cells["مبرر معامل التصفية"] = dash(
+      input.recon?.liquidationDiscountRationale,
     );
   }
 
@@ -386,32 +512,54 @@ export function buildValuationReportLiveFill(input: {
   cells["أسلوب الدخل"] = dash(incomeW.weight);
 
   cells["غرف النوم"] = dash(inspector?.roomCount);
+  cells["عدد الغرف"] = dash(inspector?.roomCount);
   cells["الصالات"] = dash(inspector?.hallCount);
+  cells["عدد الصالات"] = dash(inspector?.hallCount);
+  cells["عدد الشقق"] = dash(inspector?.unitCount);
+  cells["الشقق"] = dash(inspector?.unitCount);
   cells["دورات المياه"] = dash(inspector?.bathroomCount);
+  cells["عدد دورات المياه"] = dash(inspector?.bathroomCount);
   cells["مطابخ"] = dash(kitchenCount);
-  cells["مصعد"] = dash(yesNoFromFlag(inspector?.featureValues.hasElevator));
-  cells["مسبح"] = dash(yesNoFromFlag(inspector?.featureValues.hasPool));
-  cells["ملاحق"] = dash(countOrFlag(inspector?.annexTotal, inspector?.hasAnnex));
+  cells["مصعد"] = dash(
+    existsFromYesNo(inspector?.featureValues?.hasElevator) ||
+      existsIf(
+        costLinePresent(input.cost, ["elevator"], ["مصعد"]) ||
+          inventoryLinePresent(input.inventoryLines, "other", ["مصعد"]),
+      ),
+  );
+  cells["مسبح"] = dash(
+    existsFromYesNo(inspector?.featureValues?.hasPool) ||
+      existsIf(
+        costLinePresent(input.cost, ["pool"], ["مسبح"]) ||
+          inventoryLinePresent(input.inventoryLines, "other", ["مسبح"]),
+      ),
+  );
+  const annexCounts = annexCountDisplay(inspector);
+  cells["ملاحق"] = dash(annexCounts);
+  cells["ملاحق (عدد)"] = dash(annexCounts);
+  cells["ملحق علوي (عدد)"] = dash(inspector?.annexUpperCount);
+  cells["ملحق أرضي (عدد)"] = dash(inspector?.annexGroundCount);
   cells["جاكوزي"] = dash(inspector?.jacuzziCount);
+  cells["جاكوزي(عدد)"] = dash(inspector?.jacuzziCount);
   cells["غرف الطعام"] = dash(inspector?.diningCount);
   cells["المجالس"] = dash(inspector?.majlisCount);
   cells["غرف الخدم"] = dash(inspector?.maidRoomCount);
   cells["غرفة حارس"] = dash(inspector?.guardRoomCount);
-  cells["مواقف"] = dash(inspector?.parkingCount);
+  cells["مواقف"] = dash(existsFromCount(inspector?.parkingCount));
+  cells["موقف سيارة"] = dash(inspector?.parkingCount);
   cells["مستودع"] = dash(inspector?.storeCount);
-  const extraComp = [
-    inspector?.playgroundCount?.trim()
-      ? `ملاعب أطفال: ${inspector.playgroundCount.trim()}`
-      : "",
-    inspector?.wellCount?.trim() ? `آبار: ${inspector.wellCount.trim()}` : "",
-    inspector?.showroomCount?.trim()
-      ? `معارض: ${inspector.showroomCount.trim()}`
-      : "",
-    surroundings["أخرى"],
-  ]
-    .filter(Boolean)
-    .join("، ");
-  cells["أخرى"] = dash(extraComp);
+  cells["ملاعب أطفال"] = dash(inspector?.playgroundCount);
+  cells["ملاعب أطفال (عدد)"] = dash(inspector?.playgroundCount);
+  cells["عدد المعارض"] = dash(inspector?.showroomCount);
+  cells["المعارض"] = dash(inspector?.showroomCount);
+  cells["عدد الآبار"] = dash(inspector?.wellCount);
+  cells["الآبار"] = dash(inspector?.wellCount);
+  cells["عدد الأبراج"] = dash(inspector?.towerCount);
+  cells["الأبراج"] = dash(inspector?.towerCount);
+  cells["مدخل السيارة"] = dash(
+    yesNoFromFlag(inspector?.featureValues?.carEntrance),
+  );
+  cells["يوجد قبو"] = dash(yesNoFromFlag(inspector?.featureValues?.hasBasement));
   cells["وصف العيوب الإنشائية"] = dash(defects);
   cells["جامع"] = dash(surroundings["جامع"]);
   cells["مرفق طبي"] = dash(surroundings["مرفق طبي"]);
@@ -463,22 +611,32 @@ export function buildValuationReportLiveFill(input: {
   cells["تكلفة المبنى والأرض"] = dash(
     input.cost ? formatMoneyCell(input.cost.costOpinionWithLand) : "",
   );
-  cells["العمر الفعلي"] = dash(
-    inspector?.propertyAgeYears
-      ? `${inspector.propertyAgeYears.trim()} سنوات`
-      : input.cost?.actualAgeYears != null
-        ? String(input.cost.actualAgeYears)
-        : "",
-  );
+  if (!isLand) {
+    cells["العمر الفعلي"] = dash(
+      inspector?.propertyAgeYears
+        ? `${inspector.propertyAgeYears.trim()} سنوات`
+        : input.cost?.actualAgeYears != null
+          ? `${input.cost.actualAgeYears} سنوات`
+          : "",
+    );
+  }
   cells["العمر الاقتصادي"] = dash(
     input.cost?.economicAgeYears != null
-      ? String(input.cost.economicAgeYears)
+      ? `${input.cost.economicAgeYears} سنة`
       : "",
   );
+  cells["التقادم المادي"] = dash(
+    formatSheetPct(input.cost?.physicalObsolescencePct),
+  );
+  cells["التقادم الوظيفي"] = dash(
+    formatSheetPct(input.cost?.functionalObsolescencePct),
+  );
+  cells["التقادم الخارجي"] = dash(
+    formatSheetPct(input.cost?.externalObsolescencePct),
+  );
+  cells["مجموع التقادم"] = dash(formatSheetPct(input.cost?.totalObsolescencePct));
   cells["نسبة الإهلاك / مجموع التقادم"] = dash(
-    input.cost?.totalObsolescencePct != null
-      ? `${input.cost.totalObsolescencePct}٪`
-      : "",
+    formatSheetPct(input.cost?.totalObsolescencePct),
   );
   cells["قيمة الإهلاك"] = dash(
     input.cost ? formatMoneyCell(input.cost.depreciationValue) : "",
@@ -504,12 +662,16 @@ export function buildValuationReportLiveFill(input: {
 
   if ((input.certifiedName ?? "").trim()) {
     cells["اسم المقيم المعتمد"] = input.certifiedName!.trim();
-    cells["الاسم"] = input.certifiedName!.trim();
   }
   if ((input.certifiedLicense ?? "").trim()) {
     cells["رقم ترخيص مزاولة المهنة"] = input.certifiedLicense!.trim();
-    cells["رقم العضوية"] = dash(input.certifiedLicense);
   }
+  const membershipNo = (
+    input.certifiedMembershipNumber ||
+    input.certifiedLicense ||
+    ""
+  ).trim();
+  if (membershipNo) cells["رقم العضوية"] = membershipNo;
   if ((input.certifiedIssuedAt ?? "").trim()) {
     cells["تاريخ الإصدار"] = input.certifiedIssuedAt!.trim();
   }
@@ -543,8 +705,14 @@ export function buildValuationReportLiveFill(input: {
   const annexCost = costRowCells(
     input.cost,
     ["upper_annex"],
-    ["ملحق"],
+    ["علوي"],
     areas.annex,
+  );
+  const annexGroundCost = costRowCells(
+    input.cost,
+    ["lower_annex"],
+    ["أرضي", "سفلي"],
+    areas.annexGround,
   );
   const basementCost = costRowCells(
     input.cost,
@@ -557,7 +725,37 @@ export function buildValuationReportLiveFill(input: {
   const parkCost = costRowCells(input.cost, ["parking"], ["مواقف"], "");
   const otherCost = costRowCells(input.cost, ["custom"], ["أخرى"], "");
 
-  cells["سور"] = dash(fenceCost[0] || fenceCost[2]);
+  const hasFence =
+    existsFromYesNo(inspector?.featureValues?.hasFence) ||
+    existsIf(
+      inventoryLinePresent(input.inventoryLines, "fence", ["سور"]) ||
+        costLinePresent(input.cost, ["fence"], ["سور"]),
+    );
+  cells["سور"] = dash(hasFence);
+  const hasAc =
+    existsFromYesNo(inspector?.featureValues?.hasCentralAc) ||
+    existsIf(
+      costLinePresent(input.cost, ["central_ac"], ["تكييف"]) ||
+        inventoryLinePresent(input.inventoryLines, "other", ["تكييف"]),
+    );
+  cells["تكييف مركزي"] = dash(hasAc);
+  const hasTanks =
+    existsFromYesNo(inspector?.featureValues?.hasTanks) ||
+    existsIf(
+      costLinePresent(input.cost, ["tanks_pumps"], ["خزان"]) ||
+        inventoryLinePresent(input.inventoryLines, "other", ["خزان"]),
+    );
+  cells["خزانات"] = dash(hasTanks);
+  const hasLandscape =
+    existsFromYesNo(inspector?.featureValues?.hasLandscaping) ||
+    existsIf(
+      costLinePresent(input.cost, ["landscaping"], ["تشجير"]) ||
+        inventoryLinePresent(input.inventoryLines, "other", ["تشجير"]),
+    );
+  cells["تشجير"] = dash(hasLandscape);
+
+  const adj = buildAdjustmentSheetRows(comps, input.market);
+  const indirect = buildIndirectCostSheetRows(input.cost);
 
   return {
     cells,
@@ -582,36 +780,79 @@ export function buildValuationReportLiveFill(input: {
     boundaries: [
       {
         name: "الشمالية",
-        bound: property?.northBoundary ?? "",
-        len: property?.northBoundaryLengthM ?? "",
+        bound: pickLength(
+          surveyUsesNature(input.survey)
+            ? input.survey?.natureNorthBoundary
+            : input.survey?.northBoundary,
+          property?.northBoundary,
+        ),
+        len: pickLength(
+          surveyUsesNature(input.survey)
+            ? input.survey?.natureNorthBoundaryLengthM
+            : input.survey?.northBoundaryLengthM,
+          property?.northBoundaryLengthM,
+        ),
         face: property?.northFacadeFinishing ?? "",
       },
       {
         name: "الجنوبية",
-        bound: property?.southBoundary ?? "",
-        len: property?.southBoundaryLengthM ?? "",
+        bound: pickLength(
+          surveyUsesNature(input.survey)
+            ? input.survey?.natureSouthBoundary
+            : input.survey?.southBoundary,
+          property?.southBoundary,
+        ),
+        len: pickLength(
+          surveyUsesNature(input.survey)
+            ? input.survey?.natureSouthBoundaryLengthM
+            : input.survey?.southBoundaryLengthM,
+          property?.southBoundaryLengthM,
+        ),
         face: property?.southFacadeFinishing ?? "",
       },
       {
         name: "الشرقية",
-        bound: property?.eastBoundary ?? "",
-        len: property?.eastBoundaryLengthM ?? "",
+        bound: pickLength(
+          surveyUsesNature(input.survey)
+            ? input.survey?.natureEastBoundary
+            : input.survey?.eastBoundary,
+          property?.eastBoundary,
+        ),
+        len: pickLength(
+          surveyUsesNature(input.survey)
+            ? input.survey?.natureEastBoundaryLengthM
+            : input.survey?.eastBoundaryLengthM,
+          property?.eastBoundaryLengthM,
+        ),
         face: property?.eastFacadeFinishing ?? "",
       },
       {
         name: "الغربية",
-        bound: property?.westBoundary ?? "",
-        len: property?.westBoundaryLengthM ?? "",
+        bound: pickLength(
+          surveyUsesNature(input.survey)
+            ? input.survey?.natureWestBoundary
+            : input.survey?.westBoundary,
+          property?.westBoundary,
+        ),
+        len: pickLength(
+          surveyUsesNature(input.survey)
+            ? input.survey?.natureWestBoundaryLengthM
+            : input.survey?.westBoundaryLengthM,
+          property?.westBoundaryLengthM,
+        ),
         face: property?.westFacadeFinishing ?? "",
       },
     ],
-    areaRows: [
+    areaRows: extraInventoryAreaRows(input.inventoryLines, [
       { key: "الدور الأرضي", values: [dashSheet(areas.ground)] },
       { key: "الدور الأول", values: [dashSheet(areas.first)] },
       { key: "الملحق العلوي", values: [dashSheet(areas.annex)] },
+      { key: "الملحق الأرضي", values: [dashSheet(areas.annexGround)] },
+      { key: "ملحق أرضي", values: [dashSheet(areas.annexGround)] },
       { key: "القبو", values: [dashSheet(areas.basement)] },
       { key: "إجمالي الملاحق", values: [dashSheet(areas.annexTotal)] },
-    ],
+      { key: "مجموع مسطحات البناء", values: [dashSheet(areas.builtUpTotal)] },
+    ]),
     buildDescRows: areas.descriptions.map((r) => ({
       key: r.key,
       values: r.values.map((v) => dashSheet(v)),
@@ -656,6 +897,7 @@ export function buildValuationReportLiveFill(input: {
         key: String(i + 1),
         values: [
           dashSheet(c.comparablePropertyType),
+          dashSheet(composeTransactionCell(c)),
           dashSheet(c.areaSqm ? String(c.areaSqm) : ""),
           dashSheet(c.transactionDate),
           dashSheet(formatMoneyCell(c.price)),
@@ -663,40 +905,14 @@ export function buildValuationReportLiveFill(input: {
         ],
       };
     }),
-    costRows: [
-      { key: "مسطح الدور الأرضي", values: groundCost.map((v) => dashSheet(v)) },
-      { key: "مسطح الدور الأول", values: firstCost.map((v) => dashSheet(v)) },
-      { key: "مسطح الملحق العلوي", values: annexCost.map((v) => dashSheet(v)) },
-      { key: "القبو", values: basementCost.map((v) => dashSheet(v)) },
-      { key: "الأسوار", values: fenceCost.map((v) => dashSheet(v)) },
-      { key: "المسبح", values: poolCost.map((v) => dashSheet(v)) },
-      { key: "مواقف سيارات", values: parkCost.map((v) => dashSheet(v)) },
-      { key: "أخرى", values: otherCost.map((v) => dashSheet(v)) },
-      {
-        key: "مجموع التكلفة المباشرة",
-        values: [
-          "—",
-          "—",
-          dashSheet(
-            input.cost ? formatMoneyCell(input.cost.directCostTotal) : "",
-          ),
-        ],
-      },
-    ],
-    reconRows: [
-      {
-        key: "أسلوب السوق — طريقة المقارنة",
-        values: [dashSheet(marketW.weight), dashSheet(marketW.contrib)],
-      },
-      {
-        key: "أسلوب التكلفة — طريقة التكلفة (الإحلال)",
-        values: [dashSheet(costW.weight), dashSheet(costW.contrib)],
-      },
-      {
-        key: "أسلوب الدخل",
-        values: [dashSheet(incomeW.weight), dashSheet(incomeW.contrib)],
-      },
-    ],
+    adjustmentRows: adj.rows,
+    adjustmentComparisonLabel: adj.comparisonLabel,
+    adjustmentNotes: buildAdjustmentRationaleText(comps),
+    surroundingsOther: dash(surroundings["أخرى"]),
+    costRows: buildDirectCostSheetRows(input.cost, areas),
+    indirectRows: indirect.rows,
+    indirectTotalLabel: indirect.totalLabel,
+    reconRows: buildReconSheetRows(input.recon),
     finalDisplay:
       (reconFinal != null && reconFinal > 0
         ? `${formatAmountNumberDisplay(reconFinal)} ر.س.`
@@ -710,7 +926,9 @@ export function buildValuationReportLiveFill(input: {
           ? `فقط ${amountToArabicWords(priceN)} ريال سعودي لا غير`
           : "—",
     isLiquidation,
+    isLand,
     propertyDescription: (inspector?.propertyDescription ?? "").trim(),
+    reportWorkers: draft.reportWorkers ?? [],
   };
 }
 
@@ -739,9 +957,16 @@ function normLabel(value: string): string {
 }
 
 function blankValueCells(root: ParentNode) {
-  root.querySelectorAll("td.v, td.num").forEach((td) => {
-    if (td.classList.contains("k")) return;
-    td.textContent = "—";
+  root.querySelectorAll("tr").forEach((tr) => {
+    const cells = [...tr.querySelectorAll("td.v, td.num")];
+    const skipFirstLabel =
+      tr.querySelectorAll("td").length > 1 &&
+      cells[0] === tr.querySelector("td");
+    cells.forEach((td, i) => {
+      if (td.classList.contains("k")) return;
+      if (skipFirstLabel && i === 0) return;
+      td.textContent = "—";
+    });
   });
 }
 
@@ -787,58 +1012,358 @@ function fillFinalBanner(sec: Element, fill: ValuationReportLiveFill) {
   if (kids[1]) kids[1].textContent = fill.finalWords;
 }
 
+function peopleNameMatch(a: string, b: string): boolean {
+  const n = (s: string) => s.replace(/\s+/g, " ").trim();
+  const left = n(a);
+  const right = n(b);
+  if (!left || !right) return false;
+  return left === right || left.includes(right) || right.includes(left);
+}
+
+function workerJobTitle(
+  role: string,
+  rosterRole: string | undefined,
+): string {
+  if (rosterRole) {
+    const fromRoster = valuerRoleLabel(rosterRole);
+    if (fromRoster) return fromRoster;
+  }
+  if (role === "مراجع") return "مقيم عقاري مراجع";
+  if (role === "معد") return "مقيم عقاري";
+  return "";
+}
+
+function fillRowValues(row: Element | undefined, values: string[]) {
+  if (!row) return;
+  const cells = [...row.querySelectorAll("td.v, td.num")];
+  cells.forEach((cell, i) => {
+    cell.textContent = values[i] ?? "—";
+  });
+}
+
 function fillParticipants(
   sec: Element,
+  workers: EvaluatorReportWorker[] | undefined,
   valuers: OrganizationValuerRosterEntry[] | null | undefined,
   branch: string,
 ) {
-  const active = (valuers ?? []).filter(
-    (v) => v.isActive !== false && v.role !== "certified",
+  const named = (workers ?? []).filter(
+    (w) => w.role !== "معتمد" && (w.name ?? "").trim(),
   );
-  const people = sec.querySelector("table");
-  if (!people) return;
-  if (!active.length) {
-    blankValueCells(people);
-    return;
-  }
-  const table = people;
-  const nameRow = [...table.querySelectorAll("tr")].find((r) =>
-    normLabel(r.querySelector("td.k")?.textContent ?? "") === "الاسم",
+  const roster = (valuers ?? []).filter((v) => v.isActive !== false);
+  const people = named.length
+    ? named.slice(0, 3).map((w) => {
+        const hit = roster.find((v) => peopleNameMatch(v.nameAr, w.name));
+        return {
+          name: w.name.trim(),
+          title: workerJobTitle(w.role, hit?.role),
+          category: membershipCategoryLabel(hit?.membershipCategory),
+          membership: (hit?.membershipNumber || w.licenseNumber || "").trim(),
+        };
+      })
+    : roster
+        .filter((v) => v.role !== "certified")
+        .slice(0, 3)
+        .map((v) => ({
+          name: v.nameAr,
+          title: valuerRoleLabel(v.role),
+          category: membershipCategoryLabel(v.membershipCategory),
+          membership: (v.membershipNumber ?? "").trim(),
+        }));
+  const tables = [...sec.querySelectorAll("table")];
+  const table = tables[0];
+  if (!table) return;
+  const byLabel = (label: string) =>
+    [...table.querySelectorAll("tr")].find(
+      (r) => normLabel(r.querySelector("td.k")?.textContent ?? "") === label,
+    );
+  const cols = Math.max(
+    [...(byLabel("الاسم")?.querySelectorAll("td.v") ?? [])].length,
+    3,
   );
-  if (!nameRow) return;
-  const nameCells = [...nameRow.querySelectorAll("td.v")];
-  nameCells.forEach((cell, i) => {
-    cell.textContent = active[i]?.nameAr ?? "—";
-  });
-  const memRow = [...table.querySelectorAll("tr")].find((r) =>
-    normLabel(r.querySelector("td.k")?.textContent ?? "") === "رقم العضوية",
+  const pad = (pick: (p: (typeof people)[0]) => string) =>
+    Array.from({ length: cols }, (_, i) => dash(people[i] ? pick(people[i]!) : ""));
+  fillRowValues(byLabel("الاسم"), pad((p) => p.name));
+  fillRowValues(byLabel("المسمى الوظيفي"), pad((p) => p.title));
+  fillRowValues(byLabel("فئة العضوية"), pad((p) => p.category));
+  fillRowValues(byLabel("رقم العضوية"), pad((p) => p.membership));
+  fillRowValues(byLabel("فرع التقييم"), pad(() => branch));
+}
+
+function fillApprovalTable(sec: Element, fill: ValuationReportLiveFill) {
+  const heading = [...sec.querySelectorAll("h2")].find((h) =>
+    (h.textContent ?? "").includes("إعتماد"),
   );
-  memRow?.querySelectorAll("td.num, td.v").forEach((cell, i) => {
-    cell.textContent = dash(active[i]?.membershipNumber);
-  });
-  const branchRow = [...table.querySelectorAll("tr")].find((r) =>
-    normLabel(r.querySelector("td.k")?.textContent ?? "") === "فرع التقييم",
-  );
-  branchRow?.querySelectorAll("td.v").forEach((cell) => {
-    cell.textContent = dash(branch);
-  });
+  const table = heading?.nextElementSibling;
+  if (!table || table.tagName !== "TABLE") return;
+  const put = (label: string, value: string) => {
+    table.querySelectorAll("td.k").forEach((labelCell) => {
+      if (normLabel(labelCell.textContent ?? "") !== normLabel(label)) return;
+      const next = labelCell.nextElementSibling;
+      if (
+        next &&
+        (next.classList.contains("v") || next.classList.contains("num"))
+      ) {
+        next.textContent = value;
+      }
+    });
+  };
+  put("الاسم", fill.cells["اسم المقيم المعتمد"] || "—");
+  put("رقم العضوية", fill.cells["رقم العضوية"] || "—");
+  put("فرع التقييم", fill.cells["فرع التقييم"] || "—");
+  put("فئة العضوية", fill.cells["فئة العضوية"] || "—");
+  put("صفته", fill.cells["صفته"] || "—");
+  put("تاريخ انتهاء العضوية", fill.cells["تاريخ انتهاء العضوية"] || "—");
 }
 
 function fillKeyedRows(
   sec: Element,
   rows: Array<{ key: string; values: string[] }>,
+  match: "exact" | "adjustment" = "exact",
 ) {
   sec.querySelectorAll("tr").forEach((tr) => {
     const cells = [...tr.querySelectorAll("td")];
     if (cells.length < 2) return;
     const name = normLabel(cells[0]?.textContent ?? "");
-    const row = rows.find((r) => r.key === name);
+    const row = rows.find((r) => {
+      const key = normLabel(r.key);
+      if (key === name) return true;
+      if (match === "adjustment" && key === "القيمة بطريقة المقارنة") {
+        return name.includes("القيمة بطريقة المقارنة");
+      }
+      return false;
+    });
     if (!row) return;
     row.values.forEach((value, i) => {
       const cell = cells[i + 1];
       if (cell) cell.textContent = value;
     });
   });
+}
+
+function fillAdjustmentSection(sec: Element, fill: ValuationReportLiveFill) {
+  fillKeyedRows(sec, fill.adjustmentRows, "adjustment");
+  sec.querySelectorAll("tr").forEach((tr) => {
+    const first = tr.querySelector("td");
+    if (!first) return;
+    if (!normLabel(first.textContent ?? "").includes("القيمة بطريقة المقارنة")) {
+      return;
+    }
+    first.textContent = fill.adjustmentComparisonLabel;
+  });
+  const notesCell = [...sec.querySelectorAll("td.k")].find(
+    (td) => normLabel(td.textContent ?? "") === "مبررات التسويات",
+  )?.nextElementSibling;
+  if (notesCell) {
+    const text = fill.adjustmentNotes.trim();
+    notesCell.replaceChildren();
+    if (!text) {
+      notesCell.textContent = "—";
+      return;
+    }
+    const ul = sec.ownerDocument.createElement("ul");
+    ul.setAttribute("style", "margin:0;padding-inline-start:14px");
+    for (const line of text.split("\n")) {
+      const li = sec.ownerDocument.createElement("li");
+      li.textContent = line;
+      ul.appendChild(li);
+    }
+    notesCell.appendChild(ul);
+  }
+}
+
+function fillLoneValueSection(sec: Element, text: string) {
+  const cell = sec.querySelector("td.v, td.num");
+  if (cell) cell.textContent = text;
+}
+
+function fillKeyedInSection(
+  sec: Element,
+  label: string,
+  value: string,
+) {
+  sec.querySelectorAll("td.k").forEach((labelCell) => {
+    if (normLabel(labelCell.textContent ?? "") !== normLabel(label)) return;
+    const next = labelCell.nextElementSibling;
+    if (
+      next &&
+      (next.classList.contains("v") || next.classList.contains("num"))
+    ) {
+      next.textContent = value;
+    }
+  });
+}
+
+function rebuildTwoColSheet(
+  sec: Element,
+  rows: Array<{ key: string; values: string[] }>,
+  secondClass: "num" | "v",
+) {
+  const table = [...sec.querySelectorAll("table")].find((t) =>
+    t.querySelector("th"),
+  );
+  if (!table) {
+    fillKeyedRows(sec, rows);
+    return;
+  }
+  const doc = table.ownerDocument;
+  const header = table.querySelector("tr");
+  if (!header) {
+    fillKeyedRows(sec, rows);
+    return;
+  }
+  const seen = new Set<string>();
+  const ordered: Array<{ key: string; values: string[] }> = [];
+  for (const row of rows) {
+    const k = normLabel(row.key);
+    if (!k || seen.has(k)) continue;
+    seen.add(k);
+    ordered.push(row);
+  }
+  while (table.rows.length > 1) table.deleteRow(-1);
+  for (const row of ordered) {
+    const tr = doc.createElement("tr");
+    if (normLabel(row.key) === "مجموع مسطحات البناء") tr.className = "total";
+    const a = doc.createElement("td");
+    a.className = "v";
+    a.textContent = row.key;
+    const b = doc.createElement("td");
+    b.className = secondClass;
+    b.textContent = row.values[0] ?? "—";
+    tr.append(a, b);
+    table.appendChild(tr);
+  }
+}
+
+function rebuildDirectCostSheet(
+  sec: Element,
+  rows: Array<{ key: string; values: string[] }>,
+) {
+  const table = [...sec.querySelectorAll("table")].find((t) =>
+    t.querySelector("th"),
+  );
+  if (!table) {
+    fillKeyedRows(sec, rows);
+    return;
+  }
+  const doc = table.ownerDocument;
+  const header = table.querySelector("tr");
+  if (!header) {
+    fillKeyedRows(sec, rows);
+    return;
+  }
+  while (table.rows.length > 1) table.deleteRow(-1);
+  for (const row of rows) {
+    const tr = doc.createElement("tr");
+    const isTotal = normLabel(row.key) === "مجموع التكلفة المباشرة";
+    if (isTotal) tr.className = "total";
+    const name = doc.createElement("td");
+    name.className = "v";
+    name.textContent = row.key;
+    tr.appendChild(name);
+    if (isTotal || row.values.length === 1) {
+      const total = doc.createElement("td");
+      total.className = "num";
+      total.colSpan = 3;
+      total.textContent = row.values[0] ?? "—";
+      tr.appendChild(total);
+    } else if (row.values.length === 2) {
+      const lump = doc.createElement("td");
+      lump.className = "num";
+      lump.colSpan = 2;
+      lump.textContent = row.values[0] ?? "—";
+      const total = doc.createElement("td");
+      total.className = "num";
+      total.textContent = row.values[1] ?? "—";
+      tr.append(lump, total);
+    } else {
+      for (const value of row.values.slice(0, 3)) {
+        const cell = doc.createElement("td");
+        cell.className = "num";
+        cell.textContent = value;
+        tr.appendChild(cell);
+      }
+    }
+    table.appendChild(tr);
+  }
+}
+
+function rebuildIndirectCostSheet(
+  sec: Element,
+  rows: Array<{ key: string; values: string[] }>,
+  totalLabel: string,
+) {
+  const table = [...sec.querySelectorAll("table")].find((t) =>
+    t.querySelector("th"),
+  );
+  if (!table) {
+    fillKeyedRows(sec, rows);
+    return;
+  }
+  const doc = table.ownerDocument;
+  if (!table.querySelector("tr")) {
+    fillKeyedRows(sec, rows);
+    return;
+  }
+  while (table.rows.length > 1) table.deleteRow(-1);
+  for (const row of rows) {
+    const tr = doc.createElement("tr");
+    const key = normLabel(row.key);
+    if (key === "مجموع النسب غير المباشرة") tr.className = "sub";
+    if (key === "التكلفة الإجمالية") tr.className = "total";
+    const a = doc.createElement("td");
+    a.className = "v";
+    a.textContent = key === "التكلفة الإجمالية" ? totalLabel : row.key;
+    const b = doc.createElement("td");
+    b.className = "num";
+    b.textContent = row.values[0] ?? "—";
+    tr.append(a, b);
+    table.appendChild(tr);
+  }
+}
+
+function rebuildReconSheet(
+  sec: Element,
+  rows: Array<{ key: string; values: string[] }>,
+) {
+  const table = [...sec.querySelectorAll("table")].find((t) =>
+    t.querySelector("th"),
+  );
+  if (!table) {
+    fillKeyedRows(sec, rows);
+    return;
+  }
+  const doc = table.ownerDocument;
+  if (!table.querySelector("tr")) {
+    fillKeyedRows(sec, rows);
+    return;
+  }
+  while (table.rows.length > 1) table.deleteRow(-1);
+  for (const row of rows) {
+    const tr = doc.createElement("tr");
+    const key = normLabel(row.key);
+    if (key === "مجموع نسب المشاركة") tr.className = "sub";
+    if (key === "القيمة المرجّحة") tr.className = "total";
+    const name = doc.createElement("td");
+    name.className = "v";
+    name.textContent = row.key;
+    tr.appendChild(name);
+    if (row.values.length === 1) {
+      const total = doc.createElement("td");
+      total.className = "num";
+      total.colSpan = 3;
+      total.textContent = row.values[0] ?? "—";
+      tr.appendChild(total);
+    } else {
+      for (const value of row.values.slice(0, 3)) {
+        const cell = doc.createElement("td");
+        cell.className = "num";
+        cell.textContent = value || "—";
+        tr.appendChild(cell);
+      }
+    }
+    table.appendChild(tr);
+  }
 }
 
 export function applyValuationReportLiveFill(
@@ -857,6 +1382,23 @@ export function applyValuationReportLiveFill(
   const map = new Map(
     Object.entries(fill.cells).map(([k, v]) => [normLabel(k), v]),
   );
+  if (fill.isLand) {
+    const ageLabels = new Set(["عمر البناء", "عمر العقار", "العمر الفعلي"]);
+    dom.querySelectorAll("td.k").forEach((labelCell) => {
+      if (!ageLabels.has(normLabel(labelCell.textContent ?? ""))) return;
+      const row = labelCell.closest("tr");
+      const next = labelCell.nextElementSibling;
+      if (
+        next &&
+        (next.classList.contains("v") || next.classList.contains("num")) &&
+        row
+      ) {
+        labelCell.remove();
+        next.remove();
+        if (![...row.querySelectorAll("td")].length) row.remove();
+      }
+    });
+  }
   dom.querySelectorAll("td.k").forEach((labelCell) => {
     const label = normLabel(labelCell.textContent ?? "");
     if (!map.has(label)) return;
@@ -884,9 +1426,9 @@ export function applyValuationReportLiveFill(
         fill.basisDefinition ||
         (!fill.isLiquidation ? "" : items[0].textContent);
     }
-    if (items[1] && fill.scopeClient) {
+    if (items[1]) {
       items[1].textContent =
-        `أُعد هذا التقرير لاستخدام العميل (${fill.scopeClient}) فقط، ولا يجوز استخدامه من قبل مستخدم آخر إلا بإذن خطي موقع ومختوم بختم الشركة.`;
+        `أُعد هذا التقرير لاستخدام العميل (${fill.scopeClient && fill.scopeClient !== "—" ? fill.scopeClient : "—"}) فقط، ولا يجوز استخدامه من قبل مستخدم آخر إلا بإذن خطي موقع ومختوم بختم الشركة.`;
     }
   }
 
@@ -902,10 +1444,21 @@ export function applyValuationReportLiveFill(
   if (bounds) fillBoundaries(bounds, fill.boundaries);
 
   const areas = dom.querySelector('[data-sec="9"]');
-  if (areas) fillKeyedRows(areas, fill.areaRows);
+  if (areas) rebuildTwoColSheet(areas, fill.areaRows, "num");
 
   const build = dom.querySelector('[data-sec="10"]');
-  if (build) fillKeyedRows(build, fill.buildDescRows);
+  if (build) rebuildTwoColSheet(build, fill.buildDescRows, "v");
+
+  const defectsSec = dom.querySelector('[data-sec="13"]');
+  if (defectsSec) {
+    fillLoneValueSection(defectsSec, fill.cells["وصف العيوب الإنشائية"] || "—");
+  }
+
+  const surr = dom.querySelector('[data-sec="15"]');
+  if (surr) fillKeyedInSection(surr, "أخرى", fill.surroundingsOther);
+
+  const feat = dom.querySelector('[data-sec="11"]');
+  if (feat) fillKeyedInSection(feat, "أخرى", "—");
 
   const services = dom.querySelector('[data-sec="14"]');
   if (services) fillKeyedRows(services, fill.serviceRows);
@@ -916,26 +1469,28 @@ export function applyValuationReportLiveFill(
   const comps = dom.querySelector('[data-sec="17"]');
   if (comps) fillKeyedRows(comps, fill.comparableRows);
 
+  const adj = dom.querySelector('[data-sec="19"]');
+  if (adj) fillAdjustmentSection(adj, fill);
+
   const costSec = dom.querySelector('[data-sec="21"]');
-  if (costSec) fillKeyedRows(costSec, fill.costRows);
+  if (costSec) rebuildDirectCostSheet(costSec, fill.costRows);
+
+  const indirectSec = dom.querySelector('[data-sec="22"]');
+  if (indirectSec) {
+    rebuildIndirectCostSheet(
+      indirectSec,
+      fill.indirectRows,
+      fill.indirectTotalLabel,
+    );
+  }
 
   const reconSec = dom.querySelector('[data-sec="24"]');
-  if (reconSec) fillKeyedRows(reconSec, fill.reconRows);
-
-  const landSec = dom.querySelector('[data-sec="20"]');
-  if (landSec) {
-    landSec.querySelectorAll("td.num").forEach((td) => {
-      const row = td.closest("tr");
-      const label = normLabel(row?.querySelector("td.k")?.textContent ?? "");
-      if (label !== "قيمة الأرض" && label !== "سعر المتر المستورد من طريقة المقارنة") {
-        td.textContent = "—";
-      }
-    });
-  }
+  if (reconSec) rebuildReconSheet(reconSec, fill.reconRows);
 
   const finalSec = dom.querySelector('[data-sec="25"]');
   if (finalSec) {
-    if (!fill.isLiquidation) {
+    const liqShown = (fill.cells["نسبة خصم التصفية المنظمة"] ?? "—") !== "—";
+    if (!liqShown) {
       const disc = [...finalSec.querySelectorAll("td.k")].find((td) =>
         normLabel(td.textContent ?? "").includes("خصم التصفية"),
       );
@@ -953,8 +1508,10 @@ export function applyValuationReportLiveFill(
   if (people) {
     fillParticipants(
       people,
+      fill.reportWorkers,
       extras?.valuers,
       extras?.valuationBranch || fill.cells["فرع التقييم"] || "",
     );
+    fillApprovalTable(people, fill);
   }
 }

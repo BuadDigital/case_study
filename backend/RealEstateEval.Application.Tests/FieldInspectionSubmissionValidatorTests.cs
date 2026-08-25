@@ -120,6 +120,70 @@ public class FieldInspectionSubmissionValidatorTests
     }
 
     [Fact]
+    public void Validate_skips_building_features_and_showroom_photo_on_land()
+    {
+        var json = MinimalValidPayload()
+            .Replace("\"featureValues\": {}", """ "featureValues": { "assetSubject": "أرض", "kitchen": "نعم" } """)
+            .Replace(
+                "\"featurePhotoAttachments\": {}",
+                """ "featurePhotoAttachments": { "assetSubject": { "fileName": "land.jpg", "attachmentId": "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaa3" } } """)
+            .Replace("\"showroomCount\": \"\"", "\"showroomCount\": \"2\"")
+            .Replace("\"inspectionConfirmed\": true", "\"inspectionConfirmed\": true, \"vacantLand\": true");
+
+        using var doc = JsonDocument.Parse(json);
+        var errors = FieldInspectionSubmissionValidator.Validate(doc.RootElement);
+
+        Assert.DoesNotContain("featurePhotos", errors.Keys);
+        Assert.DoesNotContain("componentPhotos", errors.Keys);
+    }
+
+    [Fact]
+    public void Validate_skips_leftover_facade_photo_when_subject_is_land()
+    {
+        var json = MinimalValidPayload()
+            .Replace("\"featureValues\": {}", """ "featureValues": { "assetSubject": "أرض", "facade": "شمالية" } """)
+            .Replace(
+                "\"featurePhotoAttachments\": {}",
+                """ "featurePhotoAttachments": { "assetSubject": { "fileName": "land.jpg", "attachmentId": "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaa3" } } """);
+
+        using var doc = JsonDocument.Parse(json);
+        var errors = FieldInspectionSubmissionValidator.Validate(doc.RootElement);
+
+        Assert.DoesNotContain("featurePhotos", errors.Keys);
+    }
+
+    [Fact]
+    public void Validate_skips_leftover_facade_photo_when_subject_is_ardi()
+    {
+        var json = MinimalValidPayload()
+            .Replace("\"featureValues\": {}", """ "featureValues": { "assetSubject": "أرضي", "facade": "شمالية" } """)
+            .Replace(
+                "\"featurePhotoAttachments\": {}",
+                """ "featurePhotoAttachments": { "assetSubject": { "fileName": "land.jpg", "attachmentId": "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaa3" } } """);
+
+        using var doc = JsonDocument.Parse(json);
+        var errors = FieldInspectionSubmissionValidator.Validate(doc.RootElement);
+
+        Assert.DoesNotContain("featurePhotos", errors.Keys);
+    }
+
+    [Fact]
+    public void Validate_skips_well_photo_on_commercial_shop()
+    {
+        var json = MinimalValidPayload()
+            .Replace("\"featureValues\": {}", """ "featureValues": { "assetSubject": "محل تجاري" } """)
+            .Replace("\"wellCount\": \"\"", "\"wellCount\": \"2\"")
+            .Replace("\"showroomCount\": \"\"", "\"showroomCount\": \"1\"");
+
+        using var doc = JsonDocument.Parse(json);
+        var errors = FieldInspectionSubmissionValidator.Validate(doc.RootElement);
+
+        Assert.Contains("componentPhotos", errors.Keys);
+        Assert.Contains("المعرض", errors["componentPhotos"]);
+        Assert.DoesNotContain("البئر", errors["componentPhotos"]);
+    }
+
+    [Fact]
     public void Validate_requires_service_slot_photo_when_service_selected()
     {
         var json = MinimalValidPayload().Replace(

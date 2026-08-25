@@ -55,11 +55,11 @@ const ENGINEERING_SURVEY_CHECKLIST_LABELS = [
   "هل يوجد اختلاف في مساحة / أطوال الصك عن الطبيعة",
   "هل يوجد شوارع محتزلة / شطفات على الأصل في المخطط ولم يذكر في الصك",
   "هل يوجد تداخل في الصك أو أجزاء مشتركة ظاهرياً",
-  "هل ذُكر الاستخدام حسب الصك",
+  "هل تم ذكر المرجع المعتمد عليه في الاستدلال على استخدام العقار",
   "هل الموقع أرض فضاء",
   "هل يوجد غرفة كهرباء داخل / خارج حدود الموقع",
   "هل يوجد صناديق خدمات كهربائية / اتصالات / أخرى داخل أو خارج حدود العقار",
-  "هل تم تطبيق جميع التعليمات الصادرة في الرفع المساحي",
+  "هل تم تطبيق جميع التعليمات الصادرة من المركز في الرفع المساحي",
   "هل يوجد أسوار داخلية وخارجية بمحيط المبنى القائم بالموقع",
   "هل يوجد اختلاف في الحدود / الصك أو الأفادة من المستكشف",
 ] as const;
@@ -831,6 +831,16 @@ export function buildFromFieldInspection(
     true,
   );
   pushInspectionField(INFATH_FIELD_LABELS.annexTotal, submission.annexTotal, true);
+  pushInspectionField(
+    INFATH_FIELD_LABELS.annexUpperCount,
+    submission.annexUpperCount,
+    true,
+  );
+  pushInspectionField(
+    INFATH_FIELD_LABELS.annexGroundCount,
+    submission.annexGroundCount,
+    true,
+  );
   pushInspectionField(
     INFATH_FIELD_LABELS.buildingsTotal,
     submission.buildingsTotal,

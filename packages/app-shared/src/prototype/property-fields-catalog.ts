@@ -137,6 +137,10 @@ const inspectorInfathFields: PropertyFieldCatalogEntry[] = [
   { key: "hasBasement", label: "يوجد قبو" },
   { key: "hasElevator", label: "يوجد مصعد" },
   { key: "hasPool", label: "يوجد مسبح" },
+  { key: "hasFence", label: "يوجد سور" },
+  { key: "hasCentralAc", label: "تكييف مركزي" },
+  { key: "hasTanks", label: "خزانات" },
+  { key: "hasLandscaping", label: "تشجير" },
   { key: "buildState", label: "حالة البناء" },
   { key: "occupancyState", label: "حالة الإشغال" },
   { key: "districtState", label: "حالة الحي" },
@@ -216,11 +220,11 @@ const engineeringChecklistFields: PropertyFieldCatalogEntry[] = [
   { key: "chk_area_mismatch", label: "هل يوجد اختلاف في مساحة / أطوال الصك عن الطبيعة" },
   { key: "chk_roads_not_in_deed", label: "هل يوجد شوارع محتزلة / شطفات في المخطط ولم تذكر في الصك" },
   { key: "chk_overlap", label: "هل يوجد تداخل في الصك أو أجزاء مشتركة ظاهرياً" },
-  { key: "chk_usage_in_deed", label: "هل ذُكر الاستخدام حسب الصك" },
+  { key: "chk_usage_in_deed", label: "هل تم ذكر المرجع المعتمد عليه في الاستدلال على استخدام العقار" },
   { key: "chk_vacant_land", label: "هل الموقع أرض فضاء" },
   { key: "chk_electric_room", label: "هل يوجد غرفة كهرباء داخل / خارج حدود الموقع" },
   { key: "chk_utility_boxes", label: "هل يوجد صناديق خدمات كهربائية / اتصالات / أخرى" },
-  { key: "chk_instructions_applied", label: "هل تم تطبيق جميع التعليمات الصادرة في الرفع المساحي" },
+  { key: "chk_instructions_applied", label: "هل تم تطبيق جميع التعليمات الصادرة من المركز في الرفع المساحي" },
   { key: "chk_fences", label: "هل يوجد أسوار داخلية وخارجية بمحيط المبنى القائم" },
   { key: "chk_boundary_mismatch", label: "هل يوجد اختلاف في الحدود / الصك أو الأفادة من المستكشف" },
 ];
@@ -330,7 +334,7 @@ const caseStudySurveyQuestions: PropertyFieldCatalogEntry[] = [
   { key: "survey_3", label: "هل تم التوقيع وإرفاق إقرار على صحة الموقع" },
   { key: "survey_4", label: "هل يوجد تداخل في الأصل" },
   { key: "survey_5", label: "هل يوجد على الأصل مبنى مشترك" },
-  { key: "survey_6", label: "هل ذكر المرجع المعتمد في الاستدلال على استخدام العقار" },
+  { key: "survey_6", label: "هل تم ذكر المرجع المعتمد عليه في الاستدلال على استخدام العقار" },
 ];
 
 const caseStudyComponentsQuestions: PropertyFieldCatalogEntry[] = [

@@ -187,6 +187,7 @@ public static class CostLineItemKeys
     public const string FirstFloor = "first_floor";
     public const string RepeatedFloors = "repeated_floors";
     public const string UpperAnnex = "upper_annex";
+    public const string LowerAnnex = "lower_annex";
     public const string ApartmentArea = "apartment_area";
     public const string SharedPortion = "shared_portion";
  // Group 2 — تكاليف وتجهيزات إضافية
@@ -201,7 +202,7 @@ public static class CostLineItemKeys
     public const string Custom = "custom";
 
     public static readonly string[] Group1 =
-        [Basement, GroundFloor, FirstFloor, RepeatedFloors, UpperAnnex, ApartmentArea, SharedPortion];
+        [Basement, GroundFloor, FirstFloor, RepeatedFloors, UpperAnnex, LowerAnnex, ApartmentArea, SharedPortion];
 
     public static readonly string[] Group2 =
         [Parking, Fence, Pool, CentralAc, Elevator, Landscaping, TanksPumps, Electromechanical];
@@ -225,6 +226,7 @@ public static class CostLineItemKeys
         FirstFloor => "الدور الأول",
         RepeatedFloors => "الأدوار المتكررة",
         UpperAnnex => "الملحق العلوي",
+        LowerAnnex => "الملحق الأرضي",
         ApartmentArea => "مساحة الشقة",
         SharedPortion => "حصة المشترك من المبنى",
         Parking => "المواقف",

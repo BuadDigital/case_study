@@ -7,6 +7,8 @@ import {
   CERTIFIED_VALUER_HTML_DEFAULTS,
   getApiBase,
   getBuildingInventory,
+  getPartyTaskSubmission,
+  getValuationApproachSettings,
   getValuationCostApproach,
   getValuationLists,
   getValuationReconciliation,
@@ -18,6 +20,7 @@ import {
   type ClientDto,
   type OrganizationBrandingSettings,
   type OrganizationValuerRosterEntry,
+  type ValuationApproachSettingsDto,
   type ValuationComparableSelectionListDto,
   type ValuationCostApproachDto,
   type ValuationReconciliationDto,
@@ -32,6 +35,7 @@ import { fetchValuationReportV3Html } from "../../lib/evaluator/valuation-report
 import {
   assignmentValuationFromPo,
   buildValuationReportLiveFill,
+  type ValuationReportSurveyBounds,
 } from "../../lib/evaluator/valuation-report-live-fill";
 
 type ValuationApiConfig = { token: string; baseUrl: string };
@@ -43,10 +47,11 @@ async function loadValuationApproaches(
   market: ValuationComparableSelectionListDto | null;
   cost: ValuationCostApproachDto | null;
   recon: ValuationReconciliationDto | null;
+  settings: ValuationApproachSettingsDto | null;
 }> {
   const propertyId = (property?.id ?? "").trim();
   if (!propertyId) {
-    return { market: null, cost: null, recon: null };
+    return { market: null, cost: null, recon: null, settings: null };
   }
   const open = await ensureOpenValuationRequestByProperty(config, {
     propId: propertyId,
@@ -55,28 +60,79 @@ async function loadValuationApproaches(
     appraiser: "—",
   });
   if (!open.ok) {
-    return { market: null, cost: null, recon: null };
+    return { market: null, cost: null, recon: null, settings: null };
   }
-  const [sel, costRes, reconRes] = await Promise.all([
+  const [sel, costRes, reconRes, settingsRes] = await Promise.all([
     listValuationComparableSelections(config, open.data.id),
     getValuationCostApproach(config, open.data.id),
     getValuationReconciliation(config, open.data.id),
+    getValuationApproachSettings(config, open.data.id),
   ]);
   return {
     market: sel.ok ? sel.data : null,
     cost: costRes.ok ? costRes.data : null,
     recon: reconRes.ok ? reconRes.data : null,
+    settings: settingsRes.ok ? settingsRes.data : null,
   };
+}
+
+function surveyBoundsFromPayload(
+  payload: Record<string, unknown> | null | undefined,
+): ValuationReportSurveyBounds | null {
+  if (!payload) return null;
+  const str = (key: string) =>
+    typeof payload[key] === "string" ? payload[key] : "";
+  const raw = payload.deedMatchesNature;
+  const deedMatchesNature =
+    raw === "yes" || raw === true
+      ? "yes"
+      : raw === "no" || raw === false
+        ? "no"
+        : null;
+  return {
+    deedMatchesNature,
+    northBoundary: str("northBoundary"),
+    northBoundaryLengthM: str("northBoundaryLengthM"),
+    southBoundary: str("southBoundary"),
+    southBoundaryLengthM: str("southBoundaryLengthM"),
+    eastBoundary: str("eastBoundary"),
+    eastBoundaryLengthM: str("eastBoundaryLengthM"),
+    westBoundary: str("westBoundary"),
+    westBoundaryLengthM: str("westBoundaryLengthM"),
+    natureNorthBoundary: str("natureNorthBoundary"),
+    natureNorthBoundaryLengthM: str("natureNorthBoundaryLengthM"),
+    natureSouthBoundary: str("natureSouthBoundary"),
+    natureSouthBoundaryLengthM: str("natureSouthBoundaryLengthM"),
+    natureEastBoundary: str("natureEastBoundary"),
+    natureEastBoundaryLengthM: str("natureEastBoundaryLengthM"),
+    natureWestBoundary: str("natureWestBoundary"),
+    natureWestBoundaryLengthM: str("natureWestBoundaryLengthM"),
+  };
+}
+
+function effectiveValuationDate(input: {
+  draft: EvaluatorSubmission;
+  inspector: InspectorWorkspaceDraft | null;
+  settings: ValuationApproachSettingsDto | null;
+}): string {
+  const draftDate = input.draft.appraisalDate || input.draft.reportIssueDate;
+  if (draftDate.trim()) return draftDate;
+  if (input.settings?.valuationDateMode === "retrospective") {
+    return (input.settings.retrospectiveDate ?? "").trim();
+  }
+  return (input.inspector?.inspectionDate ?? "").trim();
 }
 
 export function EvaluatorValuationReportOutputTab({
   draft,
   property,
   inspectionTaskId,
+  surveyTaskId,
 }: {
   draft: EvaluatorSubmission;
   property?: PoPropertyIntake | null;
   inspectionTaskId?: string | null;
+  surveyTaskId?: string | null;
 }) {
   const [screenHtml, setScreenHtml] = useState<string | null>(null);
   const [branding, setBranding] = useState<OrganizationBrandingSettings | null>(
@@ -94,6 +150,11 @@ export function EvaluatorValuationReportOutputTab({
     useState<ValuationComparableSelectionListDto | null>(null);
   const [cost, setCost] = useState<ValuationCostApproachDto | null>(null);
   const [recon, setRecon] = useState<ValuationReconciliationDto | null>(null);
+  const [approachSettings, setApproachSettings] =
+    useState<ValuationApproachSettingsDto | null>(null);
+  const [survey, setSurvey] = useState<ValuationReportSurveyBounds | null>(
+    null,
+  );
   const [error, setError] = useState<string | null>(null);
   const [printing, setPrinting] = useState(false);
   const printUrlRef = useRef<string | null>(null);
@@ -137,9 +198,12 @@ export function EvaluatorValuationReportOutputTab({
       listClients(config),
     ]);
     const approachesP = loadValuationApproaches(config, property);
+    const surveyP = surveyTaskId
+      ? getPartyTaskSubmission(config, surveyTaskId)
+      : Promise.resolve(null);
 
-    void Promise.all([inspectorP, inventoryP, labelsP, approachesP]).then(
-      ([ws, invRes, [listsRes, clientsRes], approaches]) => {
+    void Promise.all([inspectorP, inventoryP, labelsP, approachesP, surveyP]).then(
+      ([ws, invRes, [listsRes, clientsRes], approaches, surveyRes]) => {
         if (cancelled) return;
         setInspector(ws);
         if (draft.poNumber && propertyId) {
@@ -165,6 +229,14 @@ export function EvaluatorValuationReportOutputTab({
         setMarket(approaches.market);
         setCost(approaches.cost);
         setRecon(approaches.recon);
+        setApproachSettings(approaches.settings);
+        setSurvey(
+          surveyRes && "ok" in surveyRes && surveyRes.ok
+            ? surveyBoundsFromPayload(
+                surveyRes.data.payload as Record<string, unknown>,
+              )
+            : null,
+        );
       },
     );
 
@@ -180,6 +252,7 @@ export function EvaluatorValuationReportOutputTab({
     property?.area,
     property?.id,
     property?.propertyType,
+    surveyTaskId,
   ]);
 
   const live = useMemo(() => {
@@ -200,6 +273,7 @@ export function EvaluatorValuationReportOutputTab({
       basisDefinition: listLabels.basisDefinition,
       certifiedName: htmlEv.name,
       certifiedLicense: htmlEv.licenseNumber,
+      certifiedMembershipNumber: htmlEv.membershipNumber,
       certifiedIssuedAt: htmlEv.licenseIssuedAt,
       certifiedExpires: htmlEv.licenseExpiresHijri,
       certifiedMembershipCategory: htmlEv.membershipCategory,
@@ -207,8 +281,15 @@ export function EvaluatorValuationReportOutputTab({
       certifiedMembershipExpires: htmlEv.membershipExpiresAt,
       reportType: REPORT_DEFAULTS.reportType,
       currency: REPORT_DEFAULTS.currency,
+      effectiveValuationDate: effectiveValuationDate({
+        draft,
+        inspector,
+        settings: approachSettings,
+      }),
+      survey,
     });
   }, [
+    approachSettings,
     clients,
     cost,
     draft,
@@ -219,6 +300,7 @@ export function EvaluatorValuationReportOutputTab({
     property,
     recon,
     record,
+    survey,
   ]);
 
   const meta = useMemo(
@@ -262,6 +344,9 @@ export function EvaluatorValuationReportOutputTab({
           certifiedName: ev.name || CERTIFIED_VALUER_HTML_DEFAULTS.name,
           certifiedLicense:
             ev.licenseNumber || CERTIFIED_VALUER_HTML_DEFAULTS.licenseNumber,
+          certifiedMembershipNumber:
+            ev.membershipNumber ||
+            CERTIFIED_VALUER_HTML_DEFAULTS.membershipNumber,
           certifiedIssuedAt:
             ev.licenseIssuedAt || CERTIFIED_VALUER_HTML_DEFAULTS.licenseIssuedAt,
           certifiedExpires:
@@ -277,6 +362,12 @@ export function EvaluatorValuationReportOutputTab({
           valuationBranch: vr.valuationBranch,
           reportType: vr.reportType,
           currency: vr.currency,
+          effectiveValuationDate: effectiveValuationDate({
+            draft,
+            inspector,
+            settings: approachSettings,
+          }),
+          survey,
         });
         return fetchValuationReportV3Html(
           {
@@ -301,7 +392,7 @@ export function EvaluatorValuationReportOutputTab({
     return () => {
       cancelled = true;
     };
-  }, [clients, cost, draft, inspector, inventoryLines, listLabels, market, meta, poQuery.isPending, property, recon, record]);
+  }, [approachSettings, clients, cost, draft, inspector, inventoryLines, listLabels, market, meta, poQuery.isPending, property, recon, record, survey]);
 
   useEffect(
     () => () => {
@@ -342,6 +433,9 @@ export function EvaluatorValuationReportOutputTab({
             certifiedName: ev.name || CERTIFIED_VALUER_HTML_DEFAULTS.name,
             certifiedLicense:
               ev.licenseNumber || CERTIFIED_VALUER_HTML_DEFAULTS.licenseNumber,
+            certifiedMembershipNumber:
+              ev.membershipNumber ||
+              CERTIFIED_VALUER_HTML_DEFAULTS.membershipNumber,
             certifiedIssuedAt:
               ev.licenseIssuedAt || CERTIFIED_VALUER_HTML_DEFAULTS.licenseIssuedAt,
             certifiedExpires:
@@ -357,6 +451,12 @@ export function EvaluatorValuationReportOutputTab({
             valuationBranch: vr.valuationBranch,
             reportType: vr.reportType,
             currency: vr.currency,
+            effectiveValuationDate: effectiveValuationDate({
+              draft,
+              inspector,
+              settings: approachSettings,
+            }),
+            survey,
           }),
           branding: nextBrand,
           valuers: nextValuers,
@@ -390,6 +490,7 @@ export function EvaluatorValuationReportOutputTab({
       setPrinting(false);
     }
   }, [
+    approachSettings,
     branding,
     clients,
     cost,
@@ -402,6 +503,7 @@ export function EvaluatorValuationReportOutputTab({
     property,
     recon,
     record,
+    survey,
     valuers,
   ]);
 

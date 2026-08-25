@@ -46,7 +46,14 @@ import { VendorInvoicePdfField } from "./VendorInvoicePdfField";
 type TabId = "action" | "ready" | "statements";
 
 const FEE_COLS =
-  "minmax(125px,1.1fr) minmax(85px,.8fr) minmax(85px,.8fr) minmax(170px,1.5fr) minmax(90px,.8fr) minmax(140px,1fr) 130px";
+  "minmax(140px,1.2fr) minmax(110px,.75fr) minmax(100px,.75fr) minmax(168px,1.4fr) minmax(100px,.8fr) minmax(148px,1fr) minmax(148px,1.05fr)";
+
+const FEE_CELL =
+  "flex min-w-0 items-center overflow-hidden px-3.5 py-2 text-start";
+const FEE_HEAD = cn(
+  FEE_CELL,
+  "py-3.5 text-[12px] font-bold leading-snug text-heading",
+);
 
 /** كشوف الفوترة الصادرة — نفس أعمدة الرأس والصف */
 const STATEMENT_COLS =
@@ -546,10 +553,7 @@ export function EngFeesHtmlScreen({ assigneeId }: { assigneeId?: string }) {
                     "الحالة",
                     "إجراء المكتب",
                   ].map((h) => (
-                    <div
-                      key={h}
-                      className="flex min-w-0 items-center justify-center overflow-hidden px-4 py-3.5 text-center text-[12px] font-bold text-heading"
-                    >
+                    <div key={h} className={FEE_HEAD}>
                       {h}
                     </div>
                   ))}
@@ -577,11 +581,11 @@ export function EngFeesHtmlScreen({ assigneeId }: { assigneeId?: string }) {
                         className="grid min-h-[38px] items-center border-b border-border transition-colors hover:bg-[var(--row-hover,#faf6ee)]"
                         style={{ gridTemplateColumns: FEE_COLS }}
                       >
-                        <div className="flex min-w-0 items-center overflow-hidden px-3.5 py-1.5">
+                        <div className={FEE_CELL}>
                           <div className="flex flex-col gap-0.5">
                             <span
                               dir="ltr"
-                              className="text-end text-[13px] font-bold text-gold-d"
+                              className="text-start text-[13px] font-bold text-gold-d"
                             >
                               {deed}
                             </span>
@@ -590,7 +594,7 @@ export function EngFeesHtmlScreen({ assigneeId }: { assigneeId?: string }) {
                             </span>
                           </div>
                         </div>
-                        <div className="flex min-w-0 items-center justify-start overflow-hidden px-3.5 py-1.5 text-start text-[12px] text-text-2">
+                        <div className={FEE_CELL}>
                           <span
                             dir="ltr"
                             className="tabular-nums [unicode-bidi:isolate]"
@@ -602,10 +606,10 @@ export function EngFeesHtmlScreen({ assigneeId }: { assigneeId?: string }) {
                             )}
                           </span>
                         </div>
-                        <div className="flex min-w-0 items-center px-3.5 py-1.5 text-[12.5px] text-text-2">
+                        <div className={cn(FEE_CELL, "text-[12.5px] text-text-2")}>
                           {fmtSar(row.agreedFeeSar)}
                         </div>
-                        <div className="flex min-w-0 items-center overflow-hidden px-3.5 py-1.5">
+                        <div className={FEE_CELL}>
                           {ded ? (
                             <span
                               className="inline-flex min-w-0 items-center gap-1.5"
@@ -624,13 +628,18 @@ export function EngFeesHtmlScreen({ assigneeId }: { assigneeId?: string }) {
                             </span>
                           )}
                         </div>
-                        <div className="flex min-w-0 items-center px-3.5 py-1.5 text-[13px] font-bold text-heading">
+                        <div
+                          className={cn(
+                            FEE_CELL,
+                            "text-[13px] font-bold text-heading",
+                          )}
+                        >
                           {fmtSar(row.netFeeSar)}
                         </div>
-                        <div className="flex min-w-0 items-center px-3.5 py-1.5">
+                        <div className={FEE_CELL}>
                           <StatusPill label={meta.label} style={meta.style} />
                         </div>
-                        <div className="flex min-w-0 items-center overflow-visible px-3.5 py-1.5">
+                        <div className={cn(FEE_CELL, "overflow-visible")}>
                           {st === "pending_office" ? (
                             <div className="flex w-full flex-col gap-1.5">
                               <div className="flex gap-1.5">

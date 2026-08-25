@@ -16,11 +16,18 @@ public sealed class TestAuthHandler : AuthenticationHandler<AuthenticationScheme
 {
     public const string TestScheme = "IntegrationTest";
     public const string AuthOnlyToken = "auth-only";
+    /// <summary>Field inspector who uploaded attachments on prop-1 (user id owner-1).</summary>
+    public const string InspectorOwnerToken = "actor:owner-1:field-inspector";
+    /// <summary>Another field inspector who did not upload prop-1 attachments.</summary>
+    public const string InspectorOtherToken = "actor:other:field-inspector";
+    /// <summary>Field inspector with no uploads on prop-1.</summary>
+    public const string InspectorStrangerToken = "actor:stranger:field-inspector";
     public static readonly string FinancialToken = TokenFor(PlatformCapabilities.ManageFinancial);
     public static readonly string AttachmentsToken =
         TokenFor(PlatformCapabilities.ManageAttachments);
 
     private const string CapabilityTokenPrefix = "caps:";
+    private const string ActorTokenPrefix = "actor:";
 
     public TestAuthHandler(
         IOptionsMonitor<AuthenticationSchemeOptions> options,
@@ -47,11 +54,22 @@ public sealed class TestAuthHandler : AuthenticationHandler<AuthenticationScheme
         if (!TryReadCapabilities(token, out var capabilities))
             return Task.FromResult(AuthenticateResult.Fail("Unknown test token"));
 
+        var userId = "integration-test-user";
+        string? prototypeRole = null;
+        if (TryReadActorToken(token, out var actorUserId, out var actorRole))
+        {
+            userId = actorUserId;
+            prototypeRole = actorRole;
+        }
+
         var claims = new List<Claim>
         {
-            new(ClaimTypes.NameIdentifier, "integration-test-user"),
+            new(ClaimTypes.NameIdentifier, userId),
             new(PlatformCapabilities.ClaimType, PlatformCapabilities.Authenticated),
         };
+
+        if (!string.IsNullOrWhiteSpace(prototypeRole))
+            claims.Add(new Claim("prototypeRole", prototypeRole));
 
         foreach (var capability in capabilities)
             claims.Add(new Claim(PlatformCapabilities.ClaimType, capability));
@@ -69,6 +87,12 @@ public sealed class TestAuthHandler : AuthenticationHandler<AuthenticationScheme
             return true;
         }
 
+        if (token.StartsWith(ActorTokenPrefix, StringComparison.Ordinal))
+        {
+            capabilities = [];
+            return true;
+        }
+
         if (token.StartsWith(CapabilityTokenPrefix, StringComparison.Ordinal))
         {
             capabilities = token[CapabilityTokenPrefix.Length..]
@@ -78,5 +102,24 @@ public sealed class TestAuthHandler : AuthenticationHandler<AuthenticationScheme
 
         capabilities = [];
         return false;
+    }
+
+    private static bool TryReadActorToken(
+        string token,
+        out string userId,
+        out string? prototypeRole)
+    {
+        userId = "integration-test-user";
+        prototypeRole = null;
+        if (!token.StartsWith(ActorTokenPrefix, StringComparison.Ordinal))
+            return false;
+
+        var parts = token.Split(':', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+        if (parts.Length < 3)
+            return false;
+
+        userId = parts[1];
+        prototypeRole = parts[2];
+        return true;
     }
 }
