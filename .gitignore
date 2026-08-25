@@ -37,6 +37,7 @@ apps/*/out/
 # requirements / reference HTML (local specs, not app assets)
 *.html
 !apps/shell/public/offline.html
+!apps/shell/public/ejadah/*.html
 
 # debug
 npm-debug.log*
