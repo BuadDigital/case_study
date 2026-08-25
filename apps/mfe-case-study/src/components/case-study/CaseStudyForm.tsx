@@ -680,32 +680,34 @@ export function CaseStudyForm({
     );
   };
 
-  const submitForm = () => {
+  const submitForm = async () => {
     if (!isParty && draft.status === "submitted") return;
     if (isParty && (draft.status === "submitted" || parentFormSubmitted)) return;
+    if (saving) return;
     if (isParty) {
-      void withSaveFeedback(
+      await withSaveFeedback(
         "حفظ إجاباتي",
         "تم حفظ إجاباتك في نموذج الدراسة",
         () => ({ ...draft, status: "draft" }),
       );
       return;
     }
-    void (async () => {
-      const propertyId = (draft.propertyId || property?.id || "").trim();
-      if (propertyId) {
-        const config = workOrdersApiConfig();
-        if (config) {
-          const links = await listPropertyComparableLinks(config, propertyId);
-          if (links.ok && !links.data.meetsMinimumForAppraisalPrep) {
-            showToast(
-              `لا يمكن رفع النموذج للمقيم قبل ربط ${links.data.minimumRequired} مقارنين على الأقل. افتح تبويب تقييم العقار.`,
-              "error",
-            );
-            return;
-          }
+
+    const propertyId = (draft.propertyId || property?.id || "").trim();
+    if (propertyId) {
+      const config = workOrdersApiConfig();
+      if (config) {
+        const links = await listPropertyComparableLinks(config, propertyId);
+        if (links.ok && !links.data.meetsMinimumForAppraisalPrep) {
+          showToast(
+            `لا يمكن رفع النموذج للمقيم قبل ربط ${links.data.minimumRequired} مقارنين على الأقل. افتح تبويب تقييم العقار.`,
+            "error",
+          );
+          return;
         }
       }
+    }
+
     const { answered, total, pct } = summary;
     const deedNonMatchKeys = sectionQuestions.deed
       .map((_, i) => caseStudyAnswerKey("deed", i))
@@ -755,12 +757,11 @@ export function CaseStudyForm({
       if (!ok) return;
       setMissingAnswerKeys(new Set());
     }
-    void withSaveFeedback(
+    await withSaveFeedback(
       "رفع النموذج للنظام",
       "تم رفع نموذج دراسة الحالة للنظام بنجاح",
       () => ({ ...draft, status: "submitted" }),
     );
-    })();
   };
 
   if (loadError) {
