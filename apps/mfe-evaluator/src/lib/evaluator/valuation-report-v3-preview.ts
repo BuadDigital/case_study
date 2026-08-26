@@ -66,6 +66,11 @@ function replaceImageSlots(dom: Document) {
   dom.querySelectorAll("image-slot").forEach((slot) => {
     const div = dom.createElement("div");
     div.className = "image-ph";
+    const id = slot.getAttribute("id");
+    if (id) {
+      div.id = id;
+      div.setAttribute("data-slot-id", id);
+    }
     const style = slot.getAttribute("style");
     if (style) div.setAttribute("style", style);
     div.textContent = slot.getAttribute("placeholder") || "";

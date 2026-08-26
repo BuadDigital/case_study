@@ -813,6 +813,10 @@ export function buildFromFieldInspection(
     submission.buildLicenseNumber,
   );
   pushInspectionField(
+    INFATH_FIELD_LABELS.buildLicenseDate,
+    submission.buildLicenseDate,
+  );
+  pushInspectionField(
     INFATH_FIELD_LABELS.showroomCount,
     submission.showroomCount,
     true,

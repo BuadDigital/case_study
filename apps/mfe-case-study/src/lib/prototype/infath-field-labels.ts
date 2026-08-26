@@ -16,6 +16,7 @@ export const INFATH_FIELD_LABELS = {
   propertyUsage: "استخدام العقار",
   streetName: "اسم الشارع",
   buildLicenseNumber: "رقم رخصة البناء",
+  buildLicenseDate: "تاريخ رخصة البناء",
   zoneStatus: "حالة منطقة العقار",
   mainStreet: "اسم أقرب شارع رئيسي",
   mapCoords: "الموقع على الخارطة (إحداثيات)",

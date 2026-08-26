@@ -264,6 +264,7 @@ export {
   getFieldDictionary,
   getEvaluatorRecallApi,
   listAttachments,
+  listAttachmentsForProperty,
   listEvaluatorRecallsApi,
   listKeyEnvelopeFeeReport,
   listKeyEnvelopeLinkedProperties,

@@ -1894,6 +1894,12 @@ export function PropertyDetailInspectionTab({
                     ltr
                     onChange={(v) => patchDraft({ buildLicenseNumber: v })}
                   />
+                  <InsEditField
+                    label="تاريخ رخصة البناء"
+                    value={draft.buildLicenseDate}
+                    ltr
+                    onChange={(v) => patchDraft({ buildLicenseDate: v })}
+                  />
                 </>
               ) : (
                 <>
@@ -1925,6 +1931,11 @@ export function PropertyDetailInspectionTab({
                   <InsField
                     label="رقم رخصة البناء"
                     value={draft.buildLicenseNumber}
+                    ltr
+                  />
+                  <InsField
+                    label="تاريخ رخصة البناء"
+                    value={draft.buildLicenseDate}
                     ltr
                   />
                 </>

@@ -212,6 +212,7 @@ export function EvaluatorValuationReportTab({
     buildingValue?: string;
     evaluatorPrice?: string;
     forcedSaleDiscountPct?: string;
+    searchScopeNotes?: string;
   }) => void;
   fieldErrors?: Record<string, string>;
 }) {
@@ -509,6 +510,28 @@ export function EvaluatorValuationReportTab({
         </ValCard>
       ) : null}
 
+      <ValCard title="مستوى تشطيبات البناء">
+        <p className={noteClassName}>
+          المستوى المختار يُظلَّل في التقرير. أوصاف الفاخر/المتوسط/العادي من إعدادات المنشأة.
+        </p>
+        <Pick
+          disabled={disabled}
+          value={choices.finishingLevel || ""}
+          onChange={(finishingLevel) =>
+            patch({
+              finishingLevel: finishingLevel as EvaluatorReportChoices["finishingLevel"],
+            })
+          }
+          options={[
+            { value: "", label: "— اختر المستوى —" },
+            { value: "luxury", label: "تشطيب فاخر" },
+            { value: "medium", label: "تشطيب متوسط" },
+            { value: "ordinary", label: "تشطيب عادي" },
+            { value: "none", label: "بدون تشطيب" },
+          ]}
+        />
+      </ValCard>
+
       <ValCard title="ترجيح أساليب التقييم">
         <p className={noteClassName}>المبرر يُطبع في التقرير. الأوزان تُحفظ مع الترجيح في لوحة العمل.</p>
         <textarea
@@ -518,6 +541,22 @@ export function EvaluatorValuationReportTab({
           placeholder="مبرر استخدام طرق التقييم"
           value={choices.methodsRationale}
           onChange={(e) => patch({ methodsRationale: e.target.value })}
+        />
+      </ValCard>
+
+      <ValCard title="نطاق البحث">
+        <p className={noteClassName}>
+          النقاط الثابتة من إعدادات التقرير. أضف ملاحظات خاصة بهذه المعاملة إن وُجدت.
+        </p>
+        <textarea
+          className={cn(valInputClassName, "min-h-[72px] resize-y")}
+          disabled={disabled}
+          rows={3}
+          placeholder="ملاحظات نطاق البحث (إن وُجدت)"
+          value={draft.searchScopeNotes}
+          onChange={(e) =>
+            onDraftPatch?.({ searchScopeNotes: e.target.value })
+          }
         />
       </ValCard>
 

@@ -69,7 +69,7 @@ describe("valuation report live fill from intake", () => {
     expect(fill.cells["نسبة خصم التصفية المنظمة"]).toBe("—");
   });
 
-  it("ignores stale list labels and empty PO so it never falls back to liquidation", () => {
+  it("prefers valuation lists API labels for the PO keys", () => {
     const draft = createEvaluatorDraft({
       taskId: "t1",
       propertyId: "p1",
@@ -81,12 +81,48 @@ describe("valuation report live fill from intake", () => {
     const fill = buildValuationReportLiveFill({
       draft,
       record: poRecord() as never,
-      basisLabel: "قيمة التصفية",
-      purposeLabel: "البيع بالمزاد العلني لغرض التصفية",
+      purposeLabel: "بيع (من القائمة)",
+      basisLabel: "قيمة سوقية (من القائمة)",
+      premiseLabel: "استخدام حالي (من القائمة)",
+      basisDefinition: "تعريف أساس السوق من القائمة",
+    });
+    expect(fill.cells["الغرض من التقييم"]).toBe("بيع (من القائمة)");
+    expect(fill.cells["أساس القيمة"]).toBe("قيمة سوقية (من القائمة)");
+    expect(fill.cells["فرضية القيمة"]).toBe("استخدام حالي (من القائمة)");
+    expect(fill.basisDefinition).toBe("تعريف أساس السوق من القائمة");
+    expect(fill.basisDefinition).not.toMatch(/قيمة التصفية/);
+  });
+
+  it("falls back to static maps when list labels are absent", () => {
+    const draft = createEvaluatorDraft({
+      taskId: "t1",
+      propertyId: "p1",
+      poNumber: "PO-1",
+    });
+    const fill = buildValuationReportLiveFill({
+      draft,
+      record: poRecord() as never,
     });
     expect(fill.cells["أساس القيمة"]).toBe("القيمة السوقية");
     expect(fill.cells["الغرض من التقييم"]).toBe("البيع");
-    expect(fill.basisDefinition).not.toMatch(/قيمة التصفية/);
+  });
+
+  it("joins build license number and date for §07", () => {
+    const draft = createEvaluatorDraft({
+      taskId: "t1",
+      propertyId: "p1",
+      poNumber: "PO-1",
+    });
+    const fill = buildValuationReportLiveFill({
+      draft,
+      inspector: {
+        buildLicenseNumber: "1441/2345",
+        buildLicenseDate: "هـ1441/03/15",
+      } as never,
+    });
+    expect(fill.cells["رقم رخصة البناء وتاريخها"]).toBe(
+      "1441/2345 · هـ1441/03/15",
+    );
   });
 
   it("overwrites previously seeded assignment keys from the current PO", () => {

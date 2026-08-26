@@ -53,6 +53,15 @@ import {
   existsFromYesNo,
   existsIf,
 } from "./valuation-report-sheet-facts";
+import type { ValuationReportSlotAttachment } from "./valuation-report-print-attachments";
+import {
+  linesFromOrgText,
+  pairsFromOrgLines,
+} from "./valuation-report-print-attachments";
+import {
+  buildComparablesMapSvgDataUrl,
+  collectComparablesMapPins,
+} from "./valuation-report-comparables-map";
 import type {
   EvaluatorReportChoices,
   EvaluatorReportWorker,
@@ -276,6 +285,32 @@ export type ValuationReportLiveFill = {
   isLand: boolean;
   propertyDescription: string;
   reportWorkers: EvaluatorReportWorker[];
+  /** §34 — up to 12 field photos (data URLs). */
+  photoSlots: ValuationReportSlotAttachment[];
+  /** §35 — survey document (image or PDF data URL). */
+  surveySlot: ValuationReportSlotAttachment | null;
+  /** §36 — deed document. */
+  deedSlot: ValuationReportSlotAttachment | null;
+  /** §18 — uploaded site map or generated SVG from coords. */
+  comparableMapSlot: ValuationReportSlotAttachment | null;
+  /** §28 — optional notes under research scope bullets. */
+  searchScopeNotes: string;
+  /** §28 — empty keeps template bullets; org `researchScopeText` replaces. */
+  researchScopeBullets: string[];
+  /** §29 — null keeps template; array (even empty) replaces org-filtered list. */
+  specialAssumptionBullets: string[] | null;
+  /** §37 — empty keeps template; org `ivsStandards` replaces rows. */
+  ivsPairs: Array<{ term: string; text: string }>;
+  /** §38 — empty keeps template; org `glossary` replaces rows. */
+  glossaryPairs: Array<{ term: string; text: string }>;
+  /** §12 — selected finishing level key (luxury|medium|ordinary|none). */
+  finishingLevel: "" | "luxury" | "medium" | "ordinary" | "none";
+  /** §12 — optional org overrides for the three description columns. */
+  finishingTexts: {
+    luxury: string;
+    medium: string;
+    ordinary: string;
+  };
 };
 
 export function buildValuationReportLiveFill(input: {
@@ -305,21 +340,38 @@ export function buildValuationReportLiveFill(input: {
   currency?: string | null;
   effectiveValuationDate?: string | null;
   survey?: ValuationReportSurveyBounds | null;
+  photoSlots?: ValuationReportSlotAttachment[] | null;
+  surveySlot?: ValuationReportSlotAttachment | null;
+  deedSlot?: ValuationReportSlotAttachment | null;
+  /** Prefer uploaded site-map; else generate from subject + adopted comps. */
+  siteMapSlot?: ValuationReportSlotAttachment | null;
+  ivsStandardsText?: string | null;
+  glossaryText?: string | null;
+  researchScopeText?: string | null;
+  /** Org special-assumption library; filtered by `reportChoices.specialAssumptionOn`. */
+  specialAssumptionLibrary?: string[] | null;
+  finishingLuxuryText?: string | null;
+  finishingMediumText?: string | null;
+  finishingOrdinaryText?: string | null;
 }): ValuationReportLiveFill {
   const { draft, record, property, inspector } = input;
   const keys = assignmentValuationFromPo(record);
   const sub = subClientIdFromReportUsers(record?.reportUserClientIds);
   const purpose =
+    (input.purposeLabel ?? "").trim() ||
     labelForPurposeKey(keys.purposeKey) ||
     (record
       ? valuationPurposeLabelArForAssignment(record.assignmentType, sub)
       : "");
   const basis =
+    (input.basisLabel ?? "").trim() ||
     labelForBasisKey(keys.valueBasisKey) ||
     (record
       ? basisOfValueLabelArForAssignment(record.assignmentType, sub)
       : "");
-  const premise = labelForPremiseKey(keys.premiseKey);
+  const premise =
+    (input.premiseLabel ?? "").trim() ||
+    labelForPremiseKey(keys.premiseKey);
   const client = clientNameFromRecord(record, input.clients ?? []);
   const users = formatValuationReportUsers(record, input.clients ?? []);
   const choices = draft.reportChoices ?? emptyReportChoices();
@@ -342,8 +394,12 @@ export function buildValuationReportLiveFill(input: {
     classification: property?.classification,
     propertyType: property?.propertyType,
   });
+  const licenseDateRaw = (inspector?.buildLicenseDate ?? "").trim();
+  const licenseDate =
+    slashReportDate(licenseDateRaw) || licenseDateRaw;
   const license = [
     inspector?.buildLicenseNumber?.trim(),
+    licenseDate,
   ]
     .filter(Boolean)
     .join(" · ");
@@ -757,6 +813,29 @@ export function buildValuationReportLiveFill(input: {
   const adj = buildAdjustmentSheetRows(comps, input.market);
   const indirect = buildIndirectCostSheetRows(input.cost);
 
+  const mapPins = collectComparablesMapPins({
+    subjectLat: inspector?.mapLatitude,
+    subjectLng: inspector?.mapLongitude,
+    comps: comps.map((item, i) => ({
+      latitude: item.comparable.latitude,
+      longitude: item.comparable.longitude,
+      label: String(i + 1),
+    })),
+  });
+  const generatedMapUrl = buildComparablesMapSvgDataUrl(mapPins);
+  const comparableMapSlot: ValuationReportSlotAttachment | null =
+    input.siteMapSlot ??
+    (generatedMapUrl
+      ? {
+          attachmentId: "generated-comps-map",
+          url: generatedMapUrl,
+          contentType: "image/svg+xml",
+          fileName: "comparables-map.svg",
+          labelAr: "خريطة مواقع المقارنات",
+          isImage: true,
+        }
+      : null);
+
   return {
     cells,
     scopeBasis: basis,
@@ -929,7 +1008,40 @@ export function buildValuationReportLiveFill(input: {
     isLand,
     propertyDescription: (inspector?.propertyDescription ?? "").trim(),
     reportWorkers: draft.reportWorkers ?? [],
+    photoSlots: input.photoSlots ?? [],
+    surveySlot: input.surveySlot ?? null,
+    deedSlot: input.deedSlot ?? null,
+    comparableMapSlot,
+    searchScopeNotes: (draft.searchScopeNotes ?? "").trim(),
+    researchScopeBullets: linesFromOrgText(input.researchScopeText),
+    specialAssumptionBullets: filterSpecialAssumptionBullets(
+      input.specialAssumptionLibrary,
+      choices.specialAssumptionOn,
+    ),
+    ivsPairs: pairsFromOrgLines(input.ivsStandardsText),
+    glossaryPairs: pairsFromOrgLines(input.glossaryText),
+    finishingLevel: choices.finishingLevel || "",
+    finishingTexts: {
+      luxury: (input.finishingLuxuryText ?? "").trim(),
+      medium: (input.finishingMediumText ?? "").trim(),
+      ordinary: (input.finishingOrdinaryText ?? "").trim(),
+    },
   };
+}
+
+/**
+ * Org library filtered by per-case toggles.
+ * `null` = no library → keep HTML template.
+ * `[]` = all unchecked → clear the printed list.
+ */
+export function filterSpecialAssumptionBullets(
+  library: string[] | null | undefined,
+  toggles: boolean[] | null | undefined,
+): string[] | null {
+  const items = (library ?? []).map((x) => x.trim()).filter(Boolean);
+  if (!items.length) return null;
+  const on = toggles ?? [];
+  return items.filter((_, i) => on[i] ?? true);
 }
 
 function resolveBasisDefinition(
@@ -1366,6 +1478,326 @@ function rebuildReconSheet(
   }
 }
 
+function fillImageSlot(
+  dom: Document,
+  slotId: string,
+  item: ValuationReportSlotAttachment | null | undefined,
+  emptyLabel: string,
+) {
+  const el =
+    dom.getElementById(slotId) ||
+    dom.querySelector(`[data-slot-id="${slotId}"]`);
+  if (!el) return;
+  const style = el.getAttribute("style") ?? "";
+  if (!item?.url) {
+    el.className = "image-ph";
+    el.replaceChildren();
+    el.textContent = emptyLabel;
+    if (style) el.setAttribute("style", style);
+    return;
+  }
+  if (item.isImage) {
+    const wrap = dom.createElement("figure");
+    wrap.className = "attach-fig";
+    if (style) wrap.setAttribute("style", style);
+    const img = dom.createElement("img");
+    img.src = item.url;
+    img.alt = item.labelAr || item.fileName || emptyLabel;
+    const fit = item.contentType.includes("svg") ? "contain" : "cover";
+    img.style.cssText =
+      `width:100%;height:100%;object-fit:${fit};display:block;background:#faf8f3`;
+    const cap = dom.createElement("figcaption");
+    cap.style.cssText = "font-size:9px;margin-top:4px;color:#3a3f4d";
+    cap.textContent = item.labelAr || item.fileName || emptyLabel;
+    wrap.append(img, cap);
+    el.replaceWith(wrap);
+    return;
+  }
+  const isPdf = item.contentType.toLowerCase().includes("pdf");
+  if (isPdf) {
+    const frame = dom.createElement("iframe");
+    frame.className = "attach-pdf";
+    frame.src = item.url;
+    frame.title = item.labelAr || item.fileName || emptyLabel;
+    if (style) frame.setAttribute("style", style);
+    else frame.style.cssText = "width:100%;height:768px;border:0";
+    el.replaceWith(frame);
+    return;
+  }
+  const link = dom.createElement("p");
+  link.className = "attach-link";
+  if (style) link.setAttribute("style", style);
+  const a = dom.createElement("a");
+  a.href = item.url;
+  a.target = "_blank";
+  a.rel = "noopener noreferrer";
+  a.textContent = item.labelAr || item.fileName || emptyLabel;
+  link.appendChild(a);
+  el.replaceWith(link);
+}
+
+function rebuildDefinitionTable(
+  sec: Element | null,
+  pairs: Array<{ term: string; text: string }>,
+  keyWidth = "22%",
+) {
+  if (!sec || !pairs.length) return;
+  const table = sec.querySelector("table");
+  if (!table) return;
+  const doc = table.ownerDocument;
+  table.replaceChildren();
+  for (const pair of pairs) {
+    const tr = doc.createElement("tr");
+    const k = doc.createElement("td");
+    k.className = "k";
+    k.style.width = keyWidth;
+    k.textContent = pair.term;
+    const v = doc.createElement("td");
+    v.textContent = pair.text;
+    tr.append(k, v);
+    table.appendChild(tr);
+  }
+}
+
+function fillBulletListSection(
+  sec: Element | null,
+  bullets: string[] | null | undefined,
+) {
+  if (!sec || bullets == null) return;
+  const ul = sec.querySelector("ul");
+  if (!ul) return;
+  const doc = sec.ownerDocument;
+  ul.replaceChildren();
+  for (const text of bullets) {
+    const li = doc.createElement("li");
+    li.textContent = text;
+    ul.appendChild(li);
+  }
+}
+
+function fillResearchScopeSection(
+  sec: Element | null,
+  bullets: string[],
+  notes: string,
+) {
+  if (!sec) return;
+  if (bullets.length) fillBulletListSection(sec, bullets);
+  const existing = sec.querySelector(".search-scope-notes");
+  if (existing) existing.remove();
+  if (!notes) return;
+  const doc = sec.ownerDocument;
+  const noteBlock = doc.createElement("table");
+  noteBlock.className = "search-scope-notes";
+  noteBlock.style.marginTop = "8px";
+  const tr = doc.createElement("tr");
+  const k = doc.createElement("td");
+  k.className = "k";
+  k.style.width = "28%";
+  k.textContent = "ملاحظات نطاق البحث";
+  const v = doc.createElement("td");
+  v.className = "v";
+  v.textContent = notes;
+  tr.append(k, v);
+  noteBlock.appendChild(tr);
+  sec.appendChild(noteBlock);
+}
+
+function formatFinishingHtml(text: string): string {
+  const t = text.trim();
+  if (!t) return "";
+  // Org settings use "تشطيبات خارجية: …\nتشطيبات داخلية: …"
+  const parts = t.split(/\n+/).map((p) => p.trim()).filter(Boolean);
+  return parts
+    .map((line) => {
+      const colon = line.indexOf(":");
+      if (colon > 0 && colon < 40) {
+        const head = line.slice(0, colon).trim();
+        const body = line.slice(colon + 1).trim();
+        return `<b>${escHtml(head)}:</b><br>${escHtml(body)}`;
+      }
+      return escHtml(line);
+    })
+    .join("<br>");
+}
+
+function escHtml(text: string): string {
+  return text
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}
+
+function fillFinishingLevelSection(
+  sec: Element | null,
+  fill: ValuationReportLiveFill,
+) {
+  if (!sec) return;
+  const table = sec.querySelector("table");
+  if (!table) return;
+  const rows = [...table.querySelectorAll("tr")];
+  const header = rows[0];
+  const body = rows[1];
+  const noneRow = rows.find((tr) =>
+    normLabel(tr.textContent ?? "").includes("بدون تشطيب"),
+  );
+  if (!header || !body) return;
+
+  const headers = [...header.querySelectorAll("th")];
+  const cells = [...body.querySelectorAll("td")];
+  const level = fill.finishingLevel;
+  const label = finishingLevelLabel(level);
+
+  const texts = [
+    fill.finishingTexts.luxury,
+    fill.finishingTexts.medium,
+    fill.finishingTexts.ordinary,
+  ];
+  cells.forEach((cell, i) => {
+    const html = formatFinishingHtml(texts[i] ?? "");
+    if (html) {
+      cell.innerHTML = html;
+      cell.style.fontSize = "9px";
+      cell.style.lineHeight = "1.5";
+    }
+  });
+
+  const clearMark = (el: Element) => {
+    el.removeAttribute("data-finishing-selected");
+    const htmlEl = el as HTMLElement;
+    htmlEl.style.outline = "";
+    htmlEl.style.outlineOffset = "";
+    htmlEl.style.background = "";
+    htmlEl.style.color = "";
+    htmlEl.style.boxShadow = "";
+    htmlEl.style.opacity = "";
+  };
+
+  headers.forEach(clearMark);
+  cells.forEach(clearMark);
+  if (noneRow) {
+    [...noneRow.querySelectorAll("th, td")].forEach(clearMark);
+  }
+
+  if (!label) return;
+
+  const markSelected = (el: Element) => {
+    const htmlEl = el as HTMLElement;
+    htmlEl.setAttribute("data-finishing-selected", "1");
+    htmlEl.style.outline = "2px solid #102b4e";
+    htmlEl.style.outlineOffset = "-2px";
+    htmlEl.style.background = "#eef2f7";
+    htmlEl.style.boxShadow = "inset 0 0 0 1px #a4906f";
+  };
+  const dim = (el: Element) => {
+    (el as HTMLElement).style.opacity = "0.45";
+  };
+
+  if (level === "none" && noneRow) {
+    headers.forEach(dim);
+    cells.forEach(dim);
+    [...noneRow.querySelectorAll("th, td")].forEach(markSelected);
+    const th = noneRow.querySelector("th");
+    if (th && !th.textContent?.includes("✓")) {
+      th.textContent = `✓ ${normLabel(th.textContent ?? "بدون تشطيب")}`;
+    }
+    return;
+  }
+
+  const idx = headers.findIndex(
+    (th) => normLabel(th.textContent ?? "") === normLabel(label),
+  );
+  if (idx < 0) return;
+
+  headers.forEach((th, i) => {
+    if (i === idx) {
+      markSelected(th);
+      if (!th.textContent?.includes("✓")) {
+        th.textContent = `✓ ${normLabel(th.textContent ?? "")}`;
+      }
+    } else {
+      dim(th);
+    }
+  });
+  cells.forEach((td, i) => {
+    if (i === idx) markSelected(td);
+    else dim(td);
+  });
+  if (noneRow) {
+    [...noneRow.querySelectorAll("th, td")].forEach(dim);
+  }
+}
+
+function fillAttachmentAndGlossarySections(
+  dom: Document,
+  fill: ValuationReportLiveFill,
+) {
+  fillImageSlot(
+    dom,
+    "map-comparables",
+    fill.comparableMapSlot,
+    "خريطة مواقع المقارنات — اسحب الصورة هنا",
+  );
+
+  const photos = fill.photoSlots ?? [];
+  for (let i = 0; i < 12; i++) {
+    fillImageSlot(
+      dom,
+      `photo-${i + 1}`,
+      photos[i] ?? null,
+      "—",
+    );
+  }
+
+  fillImageSlot(
+    dom,
+    "survey-report",
+    fill.surveySlot,
+    "التقرير المساحي — يُرفق مستند الرفع المساحي",
+  );
+  fillImageSlot(
+    dom,
+    "deed",
+    fill.deedSlot,
+    "صك الملكية — تُرفق صورة الصك",
+  );
+
+  fillResearchScopeSection(
+    dom.querySelector('[data-sec="28"]'),
+    fill.researchScopeBullets,
+    fill.searchScopeNotes,
+  );
+
+  fillBulletListSection(
+    dom.querySelector('[data-sec="29"]'),
+    fill.specialAssumptionBullets,
+  );
+
+  rebuildDefinitionTable(
+    dom.querySelector('[data-sec="37"]'),
+    fill.ivsPairs,
+    "22%",
+  );
+
+  const glossary = fill.glossaryPairs ?? [];
+  if (glossary.length) {
+    const mid = Math.ceil(glossary.length / 2);
+    rebuildDefinitionTable(
+      dom.querySelector('[data-sec="38"]'),
+      glossary.slice(0, mid),
+      "20%",
+    );
+    const rest = glossary.slice(mid);
+    const secB = dom.querySelector('[data-sec="38ب"]');
+    if (rest.length) {
+      rebuildDefinitionTable(secB, rest, "20%");
+    } else if (secB) {
+      const table = secB.querySelector("table");
+      if (table) table.replaceChildren();
+    }
+  }
+}
+
 export function applyValuationReportLiveFill(
   dom: Document,
   fill: ValuationReportLiveFill,
@@ -1514,4 +1946,7 @@ export function applyValuationReportLiveFill(
     );
     fillApprovalTable(people, fill);
   }
+
+  fillAttachmentAndGlossarySections(dom, fill);
+  fillFinishingLevelSection(dom.querySelector('[data-sec="12"]'), fill);
 }

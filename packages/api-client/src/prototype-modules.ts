@@ -804,6 +804,28 @@ export async function listAttachments(
   }
 }
 
+/** Property library uploads routed onto valuation-report print sections. */
+export async function listAttachmentsForProperty(
+  config: PrototypeModulesApiConfig,
+  propertyId: string,
+): Promise<PrototypeModulesResult<FileAttachmentMetaDto[]>> {
+  const base = config.baseUrl ?? getApiBase();
+  const id = propertyId.trim();
+  if (!id) return { ok: true, data: [] };
+  const qs = new URLSearchParams({ propertyId: id });
+  try {
+    const res = await fetch(`${base}/api/attachments/for-property?${qs}`, {
+      headers: headers(config.token),
+    });
+    if (res.status === 401) return { ok: false, kind: "auth" };
+    if (!res.ok) return { ok: false, kind: "server" };
+    const data = await parseJson<FileAttachmentMetaDto[]>(res);
+    return { ok: true, data: Array.isArray(data) ? data : [] };
+  } catch {
+    return { ok: false, kind: "network" };
+  }
+}
+
 export async function uploadAttachment(
   config: PrototypeModulesApiConfig,
   body: UploadAttachmentRequest,

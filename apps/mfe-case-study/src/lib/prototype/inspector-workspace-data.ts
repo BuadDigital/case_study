@@ -486,6 +486,8 @@ export type InspectorWorkspaceDraft = {
   buildingsTotal: string;
   propertyAgeYears: string;
   buildLicenseNumber: string;
+  /** تاريخ رخصة البناء — نص حر (هـ أو م). */
+  buildLicenseDate: string;
   /** checklist — هل الموقع أرض فضاء */
   vacantLand: boolean;
   /** مستمد من تسليم المراجع — يُحدَّث عند الإرسال */
@@ -605,6 +607,7 @@ export function createInspectorWorkspaceDraft(input: {
     buildingsTotal: "",
     propertyAgeYears: "",
     buildLicenseNumber: "",
+    buildLicenseDate: "",
     vacantLand: false,
     keyAvailable: false,
     clientDeclarationSigned: false,

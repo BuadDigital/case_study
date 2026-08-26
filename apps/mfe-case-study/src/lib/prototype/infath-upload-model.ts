@@ -427,6 +427,7 @@ export function buildInfathUploadModel(input: {
         txt("street-width", L.streetWidth, partyField(inspection, L.streetWidth), "MA", "text", partyField(inspection, L.streetWidth) ? "" : "ms"),
         txt("built-area", L.builtArea, partyField(inspection, L.builtArea), "MA", "text", partyField(inspection, L.builtArea) ? "" : "ms"),
         txt("build-license", L.buildLicenseNumber, partyField(inspection, L.buildLicenseNumber), "MA"),
+        txt("build-license-date", L.buildLicenseDate, partyField(inspection, L.buildLicenseDate), "MA"),
         sel(
           "usage",
           L.propertyUsage,

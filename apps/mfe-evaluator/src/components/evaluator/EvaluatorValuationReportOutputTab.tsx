@@ -28,6 +28,7 @@ import {
 import { getAuthSession } from "@platform/auth-client";
 import { fetchInspectorWorkspace } from "@case-study/mfe/lib/prototype/inspector-workspace-storage";
 import type { InspectorWorkspaceDraft } from "@case-study/mfe/lib/prototype/inspector-workspace-data";
+import { isLandInspectionContext } from "@case-study/mfe/lib/prototype/inspector-workspace-data";
 import type { PoPropertyIntake } from "@case-study/mfe/lib/prototype/po-intake-data";
 import { usePoRecordQuery } from "@case-study/mfe/query/case-study-queries";
 import type { EvaluatorSubmission } from "../../lib/evaluator/evaluator-window-data";
@@ -37,6 +38,10 @@ import {
   buildValuationReportLiveFill,
   type ValuationReportSurveyBounds,
 } from "../../lib/evaluator/valuation-report-live-fill";
+import {
+  loadValuationReportPrintAttachments,
+  type ValuationReportSlotAttachment,
+} from "../../lib/evaluator/valuation-report-print-attachments";
 
 type ValuationApiConfig = { token: string; baseUrl: string };
 
@@ -155,6 +160,24 @@ export function EvaluatorValuationReportOutputTab({
   const [survey, setSurvey] = useState<ValuationReportSurveyBounds | null>(
     null,
   );
+  const [photoSlots, setPhotoSlots] = useState<ValuationReportSlotAttachment[]>(
+    [],
+  );
+  const [surveySlot, setSurveySlot] =
+    useState<ValuationReportSlotAttachment | null>(null);
+  const [deedSlot, setDeedSlot] =
+    useState<ValuationReportSlotAttachment | null>(null);
+  const [siteMapSlot, setSiteMapSlot] =
+    useState<ValuationReportSlotAttachment | null>(null);
+  const [ivsStandardsText, setIvsStandardsText] = useState("");
+  const [glossaryText, setGlossaryText] = useState("");
+  const [researchScopeText, setResearchScopeText] = useState("");
+  const [specialAssumptionLibrary, setSpecialAssumptionLibrary] = useState<
+    string[]
+  >([]);
+  const [finishingLuxuryText, setFinishingLuxuryText] = useState("");
+  const [finishingMediumText, setFinishingMediumText] = useState("");
+  const [finishingOrdinaryText, setFinishingOrdinaryText] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [printing, setPrinting] = useState(false);
   const printUrlRef = useRef<string | null>(null);
@@ -201,9 +224,24 @@ export function EvaluatorValuationReportOutputTab({
     const surveyP = surveyTaskId
       ? getPartyTaskSubmission(config, surveyTaskId)
       : Promise.resolve(null);
+    const attachmentsP = propertyId
+      ? loadValuationReportPrintAttachments(config, propertyId, true)
+      : Promise.resolve({
+          photos: [] as ValuationReportSlotAttachment[],
+          survey: null as ValuationReportSlotAttachment | null,
+          deed: null as ValuationReportSlotAttachment | null,
+          siteMap: null as ValuationReportSlotAttachment | null,
+        });
 
-    void Promise.all([inspectorP, inventoryP, labelsP, approachesP, surveyP]).then(
-      ([ws, invRes, [listsRes, clientsRes], approaches, surveyRes]) => {
+    void Promise.all([
+      inspectorP,
+      inventoryP,
+      labelsP,
+      approachesP,
+      surveyP,
+      attachmentsP,
+    ]).then(
+      ([ws, invRes, [listsRes, clientsRes], approaches, surveyRes, attach]) => {
         if (cancelled) return;
         setInspector(ws);
         if (draft.poNumber && propertyId) {
@@ -237,6 +275,21 @@ export function EvaluatorValuationReportOutputTab({
               )
             : null,
         );
+        const land = isLandInspectionContext({
+          vacantLand: ws?.vacantLand,
+          assetSubject: ws?.featureValues?.assetSubject,
+          classification: property?.classification,
+          propertyType: property?.propertyType,
+        });
+        // Re-fetch with accurate structure budget when inspector arrives as land.
+        if (land && attach.photos.length > 6) {
+          setPhotoSlots(attach.photos.slice(0, 6));
+        } else {
+          setPhotoSlots(attach.photos);
+        }
+        setSurveySlot(attach.survey);
+        setDeedSlot(attach.deed);
+        setSiteMapSlot(attach.siteMap);
       },
     );
 
@@ -257,6 +310,12 @@ export function EvaluatorValuationReportOutputTab({
 
   const live = useMemo(() => {
     const htmlEv = CERTIFIED_VALUER_HTML_DEFAULTS;
+    const land = isLandInspectionContext({
+      vacantLand: inspector?.vacantLand,
+      assetSubject: inspector?.featureValues?.assetSubject,
+      classification: property?.classification,
+      propertyType: property?.propertyType,
+    });
     return buildValuationReportLiveFill({
       draft,
       record,
@@ -287,20 +346,42 @@ export function EvaluatorValuationReportOutputTab({
         settings: approachSettings,
       }),
       survey,
+      photoSlots: land ? photoSlots.slice(0, 6) : photoSlots,
+      surveySlot,
+      deedSlot,
+      siteMapSlot,
+      ivsStandardsText,
+      glossaryText,
+      researchScopeText,
+      specialAssumptionLibrary,
+      finishingLuxuryText,
+      finishingMediumText,
+      finishingOrdinaryText,
     });
   }, [
     approachSettings,
     clients,
     cost,
+    deedSlot,
     draft,
+    finishingLuxuryText,
+    finishingMediumText,
+    finishingOrdinaryText,
+    glossaryText,
     inspector,
     inventoryLines,
+    ivsStandardsText,
     listLabels,
     market,
+    photoSlots,
     property,
     recon,
     record,
+    researchScopeText,
+    siteMapSlot,
+    specialAssumptionLibrary,
     survey,
+    surveySlot,
   ]);
 
   const meta = useMemo(
@@ -326,6 +407,13 @@ export function EvaluatorValuationReportOutputTab({
         if (!cancelled) {
           setBranding(next);
           setValuers(roster);
+          setIvsStandardsText(vr.ivsStandards ?? "");
+          setGlossaryText(vr.glossary ?? "");
+          setResearchScopeText(vr.researchScopeText ?? "");
+          setSpecialAssumptionLibrary(vr.specialAssumptionLibrary ?? []);
+          setFinishingLuxuryText(vr.finishingLuxury ?? "");
+          setFinishingMediumText(vr.finishingMedium ?? "");
+          setFinishingOrdinaryText(vr.finishingOrdinary ?? "");
         }
         const filledLive = buildValuationReportLiveFill({
           draft,
@@ -368,6 +456,24 @@ export function EvaluatorValuationReportOutputTab({
             settings: approachSettings,
           }),
           survey,
+          photoSlots: isLandInspectionContext({
+            vacantLand: inspector?.vacantLand,
+            assetSubject: inspector?.featureValues?.assetSubject,
+            classification: property?.classification,
+            propertyType: property?.propertyType,
+          })
+            ? photoSlots.slice(0, 6)
+            : photoSlots,
+          surveySlot,
+          deedSlot,
+          siteMapSlot,
+          ivsStandardsText: vr.ivsStandards,
+          glossaryText: vr.glossary,
+          researchScopeText: vr.researchScopeText,
+          specialAssumptionLibrary: vr.specialAssumptionLibrary,
+          finishingLuxuryText: vr.finishingLuxury,
+          finishingMediumText: vr.finishingMedium,
+          finishingOrdinaryText: vr.finishingOrdinary,
         });
         return fetchValuationReportV3Html(
           {
@@ -392,7 +498,7 @@ export function EvaluatorValuationReportOutputTab({
     return () => {
       cancelled = true;
     };
-  }, [approachSettings, clients, cost, draft, inspector, inventoryLines, listLabels, market, meta, poQuery.isPending, property, recon, record, survey]);
+  }, [approachSettings, clients, cost, deedSlot, draft, inspector, inventoryLines, listLabels, market, meta, photoSlots, poQuery.isPending, property, recon, record, siteMapSlot, survey, surveySlot]);
 
   useEffect(
     () => () => {
@@ -457,6 +563,24 @@ export function EvaluatorValuationReportOutputTab({
               settings: approachSettings,
             }),
             survey,
+            photoSlots: isLandInspectionContext({
+              vacantLand: inspector?.vacantLand,
+              assetSubject: inspector?.featureValues?.assetSubject,
+              classification: property?.classification,
+              propertyType: property?.propertyType,
+            })
+              ? photoSlots.slice(0, 6)
+              : photoSlots,
+            surveySlot,
+            deedSlot,
+            siteMapSlot,
+            ivsStandardsText: vr.ivsStandards,
+            glossaryText: vr.glossary,
+            researchScopeText: vr.researchScopeText,
+            specialAssumptionLibrary: vr.specialAssumptionLibrary,
+            finishingLuxuryText: vr.finishingLuxury,
+            finishingMediumText: vr.finishingMedium,
+            finishingOrdinaryText: vr.finishingOrdinary,
           }),
           branding: nextBrand,
           valuers: nextValuers,
@@ -494,16 +618,20 @@ export function EvaluatorValuationReportOutputTab({
     branding,
     clients,
     cost,
+    deedSlot,
     draft,
     inspector,
     inventoryLines,
     listLabels,
     market,
     meta,
+    photoSlots,
     property,
     recon,
     record,
+    siteMapSlot,
     survey,
+    surveySlot,
     valuers,
   ]);
 

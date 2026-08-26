@@ -120,6 +120,7 @@ const inspectorInfathFields: PropertyFieldCatalogEntry[] = [
   { key: "streetWidth", label: "عرض الشارع (م)" },
   { key: "builtArea", label: "مساحة البناء (م²)" },
   { key: "buildLicenseNumber", label: "رقم رخصة البناء" },
+  { key: "buildLicenseDate", label: "تاريخ رخصة البناء" },
   { key: "propertyUsage", label: "استخدام العقار" },
   { key: "streetName", label: "اسم الشارع" },
   { key: "mainStreet", label: "اسم أقرب شارع رئيسي" },
