@@ -28,6 +28,27 @@ public static class DevSeedProvider
         services.AddCaseStudyPersistence(configuration, connectionString);
         services.AddValuationPersistence(configuration, connectionString);
         services.AddFailuresPersistence(configuration, connectionString);
+ // Seed-time audit entries land on the Platform database, as they did when the
+ // registration service could take PlatformDbContext directly (A8 unwind).
+        services.AddScoped<RealEstateEval.Application.Abstractions.IAuditLogAppend,
+            RealEstateEval.Infrastructure.Services.PlatformAuditLogAppend>();
         return services.BuildServiceProvider();
     }
+ /// <summary>
+ /// Development-only Identity stores for demo seeding. Does not register auth write services
+ /// or database-backed permission resolution — request paths still use claims.
+ /// A8: lives here because it wires Identity + Platform persistence together, which no
+ /// single context library may do.
+ /// </summary>
+    public static IServiceCollection AddIdentitySeedStores(
+        this IServiceCollection services,
+        IConfiguration configuration,
+        string connectionString)
+    {
+        services.AddIdentityPersistence(configuration, connectionString);
+        services.AddPlatformPersistence(configuration, connectionString);
+        services.AddIdentityStores();
+        return services;
+    }
+
 }

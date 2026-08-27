@@ -10,7 +10,9 @@ namespace RealEstateEval.Infrastructure.Data.Contexts;
 /// rows remain physically here. Applied by <see cref="CaseStudyDbContext"/> and by the legacy
 /// context (transitional cross-boundary reads until owner APIs replace them).
 /// </summary>
-internal static class CaseStudyModel
+// A8: public — the owner context lives in its context library; this shared mapping stays
+// global beside the frozen legacy context (drift guard).
+public static class CaseStudyModel
 {
     public static ModelBuilder ApplyCaseStudyModel(this ModelBuilder builder, bool ownsMigrations = true)
     {

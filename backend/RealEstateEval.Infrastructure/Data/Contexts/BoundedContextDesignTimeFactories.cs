@@ -39,21 +39,11 @@ public abstract class BoundedContextDesignTimeFactory<TContext> : IDesignTimeDbC
 // A8 physical move: AttachmentsDbContextDesignTimeFactory lives beside its context in
 // contexts/attachments (RealEstateEval.Attachments.Infrastructure/Data).
 
-public sealed class PlatformDbContextDesignTimeFactory
-    : BoundedContextDesignTimeFactory<PlatformDbContext>
-{
-    protected override PlatformDbContext Create(DbContextOptions<PlatformDbContext> options) =>
-        new(options);
-}
+// A8 physical move: PlatformDbContextDesignTimeFactory lives beside its context library.
 
 // A8 physical move: ValuationDbContextDesignTimeFactory lives beside its context library.
 
-public sealed class IdentityDbContextDesignTimeFactory
-    : BoundedContextDesignTimeFactory<IdentityDbContext>
-{
-    protected override IdentityDbContext Create(DbContextOptions<IdentityDbContext> options) =>
-        new(options);
-}
+// A8 physical move: IdentityDbContextDesignTimeFactory lives beside its context library.
 
 // A8 physical move: FailuresDbContextDesignTimeFactory lives beside its context library.
 
@@ -61,12 +51,7 @@ public sealed class IdentityDbContextDesignTimeFactory
 
 // A8 physical move: FinancialDbContextDesignTimeFactory lives beside its context library.
 
-public sealed class CaseStudyDbContextDesignTimeFactory
-    : BoundedContextDesignTimeFactory<CaseStudyDbContext>
-{
-    protected override CaseStudyDbContext Create(DbContextOptions<CaseStudyDbContext> options) =>
-        new(options);
-}
+// A8 physical move: CaseStudyDbContextDesignTimeFactory lives beside its context library.
 
 public sealed class MessagingDbContextDesignTimeFactory
     : BoundedContextDesignTimeFactory<MessagingDbContext>

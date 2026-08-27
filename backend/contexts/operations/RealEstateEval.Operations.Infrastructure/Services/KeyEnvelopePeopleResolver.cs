@@ -9,10 +9,7 @@ public sealed class KeyEnvelopePeopleResolver : IKeyEnvelopePeopleResolver
 {
     private readonly IUserLabelLookup _labels;
 
-    public KeyEnvelopePeopleResolver(IdentityDbContext db)
-        : this(new UserLabelLookup(db))
-    {
-    }
+    // A8: the IdentityDbContext convenience ctor is gone — pass IUserLabelLookup.
 
     [ActivatorUtilitiesConstructor]
     public KeyEnvelopePeopleResolver(IUserLabelLookup labels)

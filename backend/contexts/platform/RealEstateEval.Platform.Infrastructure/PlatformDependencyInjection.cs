@@ -5,6 +5,8 @@ using RealEstateEval.Application.Abstractions;
 using RealEstateEval.Infrastructure.Integration;
 using RealEstateEval.Infrastructure.Notifications;
 using RealEstateEval.Infrastructure.Services;
+using RealEstateEval.Infrastructure.Data;
+using RealEstateEval.Infrastructure.Data.Contexts;
 
 namespace RealEstateEval.Infrastructure;
 
@@ -80,4 +82,13 @@ public static class PlatformDependencyInjection
         services.AddScoped<NotificationRealtimePushHandler>();
         return services;
     }
+ /// <summary>Platform catalog write context. A8 physical move: lives beside <see cref="PlatformDbContext"/>.</summary>
+    public static IServiceCollection AddPlatformPersistence(
+        this IServiceCollection services,
+        IConfiguration configuration,
+        string connectionString)
+    {
+        return services.AddBoundedContextPersistence<PlatformDbContext>(configuration, connectionString);
+    }
+
 }

@@ -14,11 +14,7 @@ public sealed class IncentiveSuspensionService : IIncentiveSuspensionService
     private readonly IIdentityDirectory _identity;
     private readonly TimeProvider _time;
 
-    public IncentiveSuspensionService(FinancialDbContext db, IdentityDbContext identity,
-        TimeProvider? time = null)
-        : this(db, new IdentityDirectory(identity), time)
-    {
-    }
+    // A8: the IdentityDbContext convenience ctor is gone — pass IIdentityDirectory.
 
     [ActivatorUtilitiesConstructor]
     public IncentiveSuspensionService(FinancialDbContext db, IIdentityDirectory identity,

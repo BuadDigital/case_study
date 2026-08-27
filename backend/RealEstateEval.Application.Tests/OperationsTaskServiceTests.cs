@@ -1002,7 +1002,8 @@ public class OperationsTaskServiceTests
         OperationsTaskService.Create(
             ops,
             new CourtVisitFeeChargeService(fin),
-            identity,
+            new IdentityDirectory(identity),
+            new UserLabelLookup(identity),
             new NullNotificationService(),
             new PartyFeePricingService(fin));
 

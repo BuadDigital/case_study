@@ -115,12 +115,13 @@ public class RepositoryBoundaryTests
     [Fact]
     public void CaseStudyDbContext_implements_the_session()
     {
+        // A8 physical move: the context lives in its context library.
         var file = RepoPaths.Combine(
             "backend",
-            "RealEstateEval.Infrastructure",
+            "contexts",
+            "case-study",
+            "RealEstateEval.CaseStudy.Infrastructure",
             "Data",
-            "Contexts",
-            "CaseStudy",
             "CaseStudyDbContext.cs");
         Assert.Contains("ICaseStudyRepository", File.ReadAllText(file), StringComparison.Ordinal);
     }

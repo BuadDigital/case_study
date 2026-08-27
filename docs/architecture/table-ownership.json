@@ -58,7 +58,7 @@
         "platform",
         "audit"
       ],
-      "migrations": "backend/RealEstateEval.Infrastructure/Data/Contexts/Platform/Migrations",
+      "migrations": "backend/contexts/platform/RealEstateEval.Platform.Infrastructure/Data/Migrations",
       "migrationsHistorySchema": "platform",
       "note": "Platform catalogs and configuration, plus the shared audit schema (D7). Notification tables moved to MessagingDbContext (extraction step 5 / D3)."
     },
@@ -83,7 +83,7 @@
       "schemas": [
         "identity"
       ],
-      "migrations": "backend/RealEstateEval.Infrastructure/Data/Contexts/Identity/Migrations",
+      "migrations": "backend/contexts/identity/RealEstateEval.Identity.Infrastructure/Data/Migrations",
       "migrationsHistorySchema": "identity",
       "note": "Phase 1 extraction order, step 2. ASP.NET Identity stores and session/profile tables. Non-Identity APIs resolve permissions from JWT claims and no longer register Identity stores."
     },
@@ -131,7 +131,7 @@
       "schemas": [
         "case_study"
       ],
-      "migrations": "backend/RealEstateEval.Infrastructure/Data/Contexts/CaseStudy/Migrations",
+      "migrations": "backend/contexts/case-study/RealEstateEval.CaseStudy.Infrastructure/Data/Migrations",
       "migrationsHistorySchema": "case_study",
       "note": "Phase 1 extraction order, step 4. Case Study–owned case_study tables only (not D1 inspector fees, not D2 operations tasks)."
     },

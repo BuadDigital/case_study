@@ -149,7 +149,7 @@ internal static class TestBoundedContexts
             new KeyReceiptFeeChargeService(TestInspectorFeeServiceFactory.ShareFinancial(app)),
             TestInspectorFeeServiceFactory.ShareAttachmentLookup(app),
             CreateAccessHolds(app, failures),
-            new KeyEnvelopePeopleResolver(identity),
+            new KeyEnvelopePeopleResolver(new UserLabelLookup(identity)),
             new NullNotificationService(),
             TestNotificationRecipients.ForContexts(cs, identity));
     }
@@ -170,7 +170,8 @@ internal static class TestBoundedContexts
         OperationsTaskService.Create(
             bundle.Ops,
             new CourtVisitFeeChargeService(TestInspectorFeeServiceFactory.ShareFinancial(bundle.App)),
-            TestInspectorFeeServiceFactory.ShareIdentity(bundle.App),
+            new IdentityDirectory(TestInspectorFeeServiceFactory.ShareIdentity(bundle.App)),
+            new UserLabelLookup(TestInspectorFeeServiceFactory.ShareIdentity(bundle.App)),
             notifications ?? new NullNotificationService(),
             pricing ?? new PartyFeePricingService(
                 TestInspectorFeeServiceFactory.ShareFinancial(bundle.App)));

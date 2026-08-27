@@ -130,7 +130,11 @@ public sealed class OperationsTaskReminderDedupTests
         var time = new FakeTime(SundayMorningUtc);
         var financial = TestInspectorFeeServiceFactory.ShareFinancial(app);
         var identity = TestInspectorFeeServiceFactory.ShareIdentity(app);
-        var notifier = new OperationsTaskNotifier(ops, identity, notifications);
+        var notifier = new OperationsTaskNotifier(
+            ops,
+            new IdentityDirectory(identity),
+            notifications,
+            new UserLabelLookup(identity));
         var charges = new CourtVisitFeeChargeService(financial);
         var commands = new OperationsTaskCommands(
             ops,

@@ -51,14 +51,8 @@ public static class DependencyInjection
  // (contexts/attachments) beside its DbContext; the generic pool helper below is public
  // so per-context registrations can move with their contexts.
 
- /// <summary>Platform catalog write context.</summary>
-    public static IServiceCollection AddPlatformPersistence(
-        this IServiceCollection services,
-        IConfiguration configuration,
-        string connectionString)
-    {
-        return services.AddBoundedContextPersistence<PlatformDbContext>(configuration, connectionString);
-    }
+ // A8 physical move: AddPlatformPersistence lives in PlatformDependencyInjection
+ // (contexts/platform) beside its DbContext.
 
  // A8 physical move: AddValuationPersistence lives in ValuationDependencyInjection
  // (contexts/valuation) beside its DbContext.
@@ -125,14 +119,8 @@ public static class DependencyInjection
         return services;
     }
 
- /// <summary>Identity write context.</summary>
-    public static IServiceCollection AddIdentityPersistence(
-        this IServiceCollection services,
-        IConfiguration configuration,
-        string connectionString)
-    {
-        return services.AddBoundedContextPersistence<IdentityDbContext>(configuration, connectionString);
-    }
+ // A8 physical move: AddIdentityPersistence and AddIdentityStores live in
+ // IdentityDependencyInjection (contexts/identity) beside their DbContext.
 
  // A8 physical move: AddFailuresPersistence lives in FailuresDependencyInjection
  // (contexts/failures) beside its DbContext.
@@ -143,64 +131,14 @@ public static class DependencyInjection
  // A8 physical move: AddFinancialPersistence lives in FinancialDependencyInjection
  // (contexts/financial) beside its DbContext.
 
- /// <summary>Case Study write context. Prefers a dedicated Case Study connection string.</summary>
-    public static IServiceCollection AddCaseStudyPersistence(
-        this IServiceCollection services,
-        IConfiguration configuration,
-        string connectionString)
-    {
-        var caseStudyConnection = BoundedContextConnections.Resolve(
-            configuration,
-            BoundedContextConnections.ServiceNames.CaseStudy,
-            connectionString);
-        services.AddBoundedContextPersistence<CaseStudyDbContext>(
-            configuration,
-            caseStudyConnection);
-        services.AddScoped<ICaseStudyRepository>(sp => sp.GetRequiredService<CaseStudyDbContext>());
-        return services;
-    }
+ // A8 physical move: AddCaseStudyPersistence lives in CaseStudyDependencyInjection
+ // (contexts/case-study) beside its DbContext.
 
     // AddIdentityApplicationServices and AddIdentityInfrastructure moved to
     // RealEstateEval.Identity.Infrastructure (A8).
 
- /// <summary>
- /// ASP.NET Identity stores against <see cref="IdentityDbContext"/>. Used by the Identity
- /// host and by Development seeding hosts that still need <see cref="UserManager{TUser}"/>.
- /// </summary>
-    public static IServiceCollection AddIdentityStores(this IServiceCollection services)
-    {
-        services
-            .AddIdentity<ApplicationUser, IdentityRole>(options =>
-            {
-                options.User.RequireUniqueEmail = true;
-                options.Password.RequiredLength = 12;
-                options.Password.RequireDigit = true;
-                options.Password.RequireLowercase = true;
-                options.Password.RequireUppercase = true;
-                options.Password.RequireNonAlphanumeric = true;
-                options.Lockout.AllowedForNewUsers = true;
-                options.Lockout.MaxFailedAccessAttempts = 5;
-                options.Lockout.DefaultLockoutTimeSpan = TimeSpan.FromMinutes(15);
-            })
-            .AddEntityFrameworkStores<IdentityDbContext>()
-            .AddDefaultTokenProviders();
-
-        // AddIdentity() makes the Identity application cookie the default
-        // authenticate/challenge scheme, which sends API callers to /Account/Login —
-        // on the Identity host this 401'd every [Authorize] endpoint (incl.
-        // /api/permissions, breaking the shell role chip). The APIs are JWT-only,
-        // so re-assert bearer; this Configure runs after Identity's and wins.
-        services.Configure<AuthenticationOptions>(options =>
-        {
-            options.DefaultAuthenticateScheme = "Bearer";
-            options.DefaultChallengeScheme = "Bearer";
-        });
-
-        services.Configure<DataProtectionTokenProviderOptions>(options =>
-            options.TokenLifespan = TimeSpan.FromHours(24));
-
-        return services;
-    }
+ // A8 physical move: AddIdentityStores lives in IdentityDependencyInjection
+ // (contexts/identity) beside the Identity context and stores.
 
  /// <summary>
  /// Resolves the caller's permissions from JWT claims. Non-Identity APIs use this instead of
@@ -213,20 +151,8 @@ public static class DependencyInjection
         return services;
     }
 
- /// <summary>
- /// Development-only Identity stores for demo seeding. Does not register auth write services
- /// or database-backed <see cref="IPermissionService"/> — request paths still use claims.
- /// </summary>
-    public static IServiceCollection AddIdentitySeedStores(
-        this IServiceCollection services,
-        IConfiguration configuration,
-        string connectionString)
-    {
-        services.AddIdentityPersistence(configuration, connectionString);
-        services.AddPlatformPersistence(configuration, connectionString);
-        services.AddIdentityStores();
-        return services;
-    }
+ // A8: AddIdentitySeedStores lives in the DevSeed leaf (DevSeedProvider) — it wires
+ // Identity + Platform persistence for the throwaway seed graph only.
 
  // A8: CreateIdentityMaintenanceProvider moved to the RealEstateEval.DevSeed leaf project
  // (tools/DevSeed) beside DataSeeder, so context registrations can move with their contexts.

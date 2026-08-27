@@ -19,14 +19,8 @@ public sealed class InspectionLimitsService : IInspectionLimitsService
     private readonly IAuditLogAppend _auditLog;
     private readonly TimeProvider _time;
 
-    public InspectionLimitsService(
-        ICaseStudyRepository db,
-        PlatformDbContext platformDb,
-        IAuditLogWriter audit,
-        TimeProvider? time = null)
-        : this(db, audit, new PlatformAuditLogAppend(platformDb), time)
-    {
-    }
+    // A8: the PlatformDbContext convenience ctor is gone — compose PlatformAuditLogAppend
+    // explicitly where needed (tests); DI uses the interface ctor below.
 
     [ActivatorUtilitiesConstructor]
     public InspectionLimitsService(

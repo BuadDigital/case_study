@@ -45,63 +45,8 @@ public static class PersonLabelResolver
         return true;
     }
 
-    public static Task<string> ResolveAsync(
-        IdentityDbContext db,
-        string? raw,
-        CancellationToken cancellationToken = default) =>
-        ResolveFromUsersAsync(db.Users.AsNoTracking(), raw, cancellationToken);
-
-    public static Task<IReadOnlyDictionary<string, string>> ResolveManyAsync(
-        IdentityDbContext db,
-        IEnumerable<string?> raws,
-        CancellationToken cancellationToken = default) =>
-        ResolveManyFromUsersAsync(db.Users.AsNoTracking(), raws, cancellationToken);
-
-    private static async Task<string> ResolveFromUsersAsync(
-        IQueryable<ApplicationUser> users,
-        string? raw,
-        CancellationToken cancellationToken)
-    {
-        var normalized = NormalizeSystemLabel(raw);
-        if (normalized.Length == 0) return "";
-        if (!LooksLikeUserId(normalized)) return normalized;
-
-        var name = await users
-            .Where(u => u.Id == normalized)
-            .Select(u => u.DisplayName)
-            .FirstOrDefaultAsync(cancellationToken);
-        return string.IsNullOrWhiteSpace(name) ? normalized : name.Trim();
-    }
-
-    private static async Task<IReadOnlyDictionary<string, string>> ResolveManyFromUsersAsync(
-        IQueryable<ApplicationUser> users,
-        IEnumerable<string?> raws,
-        CancellationToken cancellationToken)
-    {
-        var ids = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-        foreach (var raw in raws)
-        {
-            var value = raw?.Trim() ?? "";
-            if (LooksLikeUserId(value)) ids.Add(value);
-        }
-
-        if (ids.Count == 0)
-            return new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
-
-        var names = await users
-            .Where(u => ids.Contains(u.Id))
-            .Select(u => new { u.Id, u.DisplayName })
-            .ToListAsync(cancellationToken);
-
-        var map = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
-        foreach (var row in names)
-        {
-            if (!string.IsNullOrWhiteSpace(row.DisplayName))
-                map[row.Id] = row.DisplayName.Trim();
-        }
-
-        return map;
-    }
+    // A8: the EF-backed Resolve/ResolveMany moved into UserLabelLookup (Identity context
+    // library) — this class keeps only the pure label helpers used across contexts.
 
     public static string ApplyResolved(
         string? raw,

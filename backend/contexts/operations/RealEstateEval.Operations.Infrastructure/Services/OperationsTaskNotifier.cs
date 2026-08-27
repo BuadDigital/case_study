@@ -24,15 +24,7 @@ public sealed class OperationsTaskNotifier
     private readonly IUserLabelLookup _labels;
     private readonly TimeProvider _time;
 
-    public OperationsTaskNotifier(
-        OperationsDbContext ops,
-        IdentityDbContext db,
-        INotificationService notifications,
-        IUserLabelLookup? labels = null,
-        TimeProvider? time = null)
-        : this(ops, new IdentityDirectory(db), notifications, labels ?? new UserLabelLookup(db), time)
-    {
-    }
+    // A8: the IdentityDbContext convenience ctor is gone — pass IIdentityDirectory + IUserLabelLookup.
 
     [ActivatorUtilitiesConstructor]
     public OperationsTaskNotifier(

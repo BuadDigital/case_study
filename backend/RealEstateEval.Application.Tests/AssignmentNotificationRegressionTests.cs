@@ -373,7 +373,8 @@ public sealed class AssignmentNotificationRegressionTests
         return OperationsTaskService.Create(
             bundle.Ops,
             new CourtVisitFeeChargeService(TestInspectorFeeServiceFactory.ShareFinancial(db)),
-            TestInspectorFeeServiceFactory.ShareIdentity(db),
+            new IdentityDirectory(TestInspectorFeeServiceFactory.ShareIdentity(db)),
+            new UserLabelLookup(TestInspectorFeeServiceFactory.ShareIdentity(db)),
             notifications,
             new PartyFeePricingService(TestInspectorFeeServiceFactory.ShareFinancial(db)));
     }

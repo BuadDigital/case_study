@@ -15,7 +15,6 @@ namespace RealEstateEval.Infrastructure.Services;
 public class UserRegistrationService : IUserRegistrationService
 {
     private readonly IdentityDbContext _db;
-    private readonly PlatformDbContext? _platform;
     private readonly IAuditLogAppend? _auditAppend;
     private readonly List<AuditLog> _pendingRemoteAudit = [];
     private readonly UserManager<ApplicationUser> _userManager;
@@ -32,14 +31,12 @@ public class UserRegistrationService : IUserRegistrationService
         IAuditLogWriter audit,
         IAuthSessionService sessions,
         IOptions<DatabaseOptions>? dbOptions = null,
-        PlatformDbContext? platform = null,
         IAuditLogAppend? auditAppend = null,
         TimeProvider? time = null)
     {
         _time = time ?? TimeProvider.System;
 
         _db = db;
-        _platform = platform;
         _auditAppend = auditAppend;
         _userManager = userManager;
         _activationTokenOptions = activationTokenOptions;
@@ -1162,9 +1159,7 @@ public class UserRegistrationService : IUserRegistrationService
 
     private void AddAudit(AuditLog entry)
     {
-        if (_platform is not null)
-            _platform.AuditLogs.Add(entry);
-        else if (_auditAppend is not null)
+        if (_auditAppend is not null)
             _pendingRemoteAudit.Add(entry);
         else
             _db.AuditLogs.Add(entry);
@@ -1173,8 +1168,6 @@ public class UserRegistrationService : IUserRegistrationService
     private async Task SaveIdentityAsync(CancellationToken cancellationToken)
     {
         await _db.SaveChangesAsync(cancellationToken);
-        if (_platform is not null)
-            await _platform.SaveChangesAsync(cancellationToken);
         if (_auditAppend is not null && _pendingRemoteAudit.Count > 0)
         {
             foreach (var entry in _pendingRemoteAudit)

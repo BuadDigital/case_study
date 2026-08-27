@@ -9,7 +9,9 @@ namespace RealEstateEval.Infrastructure.Data.Contexts;
 /// path, and by the legacy context, which still serves cross-boundary reference reads until
 /// a cacheable Platform API or versioned snapshot replaces them.
 /// </summary>
-internal static class PlatformModel
+// A8: public — the owner context lives in its context library; this shared mapping stays
+// global beside the frozen legacy context (drift guard).
+public static class PlatformModel
 {
  /// <param name="ownsMigrations">
  /// True only for <see cref="PlatformDbContext"/>. The legacy context mirrors platform tables

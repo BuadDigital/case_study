@@ -6,6 +6,8 @@ using RealEstateEval.Application.Services;
 using RealEstateEval.Infrastructure.Integration;
 using RealEstateEval.Infrastructure.Persistence;
 using RealEstateEval.Infrastructure.Services;
+using RealEstateEval.Infrastructure.Data;
+using RealEstateEval.Infrastructure.Data.Contexts;
 
 namespace RealEstateEval.Infrastructure;
 
@@ -97,4 +99,22 @@ public static class CaseStudyDependencyInjection
         services.AddScoped<ValuationReportWorkflowHandler>();
         return services;
     }
+ /// <summary>Case Study write context. Prefers a dedicated Case Study connection string.
+ /// A8 physical move: lives beside <see cref="CaseStudyDbContext"/>.</summary>
+    public static IServiceCollection AddCaseStudyPersistence(
+        this IServiceCollection services,
+        IConfiguration configuration,
+        string connectionString)
+    {
+        var caseStudyConnection = BoundedContextConnections.Resolve(
+            configuration,
+            BoundedContextConnections.ServiceNames.CaseStudy,
+            connectionString);
+        services.AddBoundedContextPersistence<CaseStudyDbContext>(
+            configuration,
+            caseStudyConnection);
+        services.AddScoped<ICaseStudyRepository>(sp => sp.GetRequiredService<CaseStudyDbContext>());
+        return services;
+    }
+
 }
