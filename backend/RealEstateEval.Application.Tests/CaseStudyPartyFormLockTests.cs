@@ -1,7 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using RealEstateEval.Application.Contracts;
 using RealEstateEval.Domain;
-using RealEstateEval.Infrastructure.Data;
+using RealEstateEval.Infrastructure.Data.Contexts;
 using RealEstateEval.Infrastructure.Services;
 
 namespace RealEstateEval.Application.Tests;
@@ -17,7 +17,7 @@ public class CaseStudyPartyFormLockTests
     public async Task Parent_submission_locks_existing_party_forms()
     {
         await using var contexts = CreateContexts();
-        var db = contexts.Legacy;
+        var db = contexts.CaseStudy;
         SeedWorkflow(db);
         db.CaseStudyForms.Add(new CaseStudyForm
         {
@@ -53,7 +53,7 @@ public class CaseStudyPartyFormLockTests
     public async Task Party_save_rejected_when_parent_form_submitted()
     {
         await using var contexts = CreateContexts();
-        var db = contexts.Legacy;
+        var db = contexts.CaseStudy;
         SeedWorkflow(db);
         db.CaseStudyForms.Add(new CaseStudyForm
         {
@@ -87,7 +87,7 @@ public class CaseStudyPartyFormLockTests
     public async Task Parent_save_rejected_when_parent_form_submitted()
     {
         await using var contexts = CreateContexts();
-        var db = contexts.Legacy;
+        var db = contexts.CaseStudy;
         SeedWorkflow(db);
         db.CaseStudyForms.Add(new CaseStudyForm
         {
@@ -124,7 +124,7 @@ public class CaseStudyPartyFormLockTests
     public async Task Party_save_rejected_when_party_form_locked()
     {
         await using var contexts = CreateContexts();
-        var db = contexts.Legacy;
+        var db = contexts.CaseStudy;
         SeedWorkflow(db);
         db.CaseStudyForms.Add(new CaseStudyForm
         {
@@ -156,7 +156,7 @@ public class CaseStudyPartyFormLockTests
 
     private static CaseStudyFormService CreateFormService(TestDatabases.ContextSet contexts)
     {
-        var db = contexts.Legacy;
+        var db = contexts.CaseStudy;
         var workflow = TestInspectorFeeServiceFactory.CreateWorkflow(db);
         return new CaseStudyFormService(contexts.CaseStudy, workflow);
     }
@@ -164,7 +164,7 @@ public class CaseStudyPartyFormLockTests
     private static TestDatabases.ContextSet CreateContexts() =>
         TestDatabases.Create("case-study-party-lock");
 
-    private static void SeedWorkflow(ApplicationDbContext db)
+    private static void SeedWorkflow(CaseStudyDbContext db)
     {
         var now = DateTime.UtcNow;
         db.WorkOrders.Add(new WorkOrder

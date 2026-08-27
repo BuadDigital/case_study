@@ -24,13 +24,11 @@ internal static class TestInspectorFeeServiceFactory
         public Store(string prefix)
         {
             _name = $"{prefix}-{Guid.NewGuid():N}";
-            App = Create<ApplicationDbContext>(o => new ApplicationDbContext(o));
             Fin = Create<FinancialDbContext>(o => new FinancialDbContext(o));
             Identity = Create<IdentityDbContext>(o => new IdentityDbContext(o));
             CaseStudy = Create<CaseStudyDbContext>(o => new CaseStudyDbContext(o));
         }
 
-        public ApplicationDbContext App { get; }
         public FinancialDbContext Fin { get; }
         public IdentityDbContext Identity { get; }
         public CaseStudyDbContext CaseStudy { get; }
@@ -57,7 +55,6 @@ internal static class TestInspectorFeeServiceFactory
             await CaseStudy.DisposeAsync();
             await Identity.DisposeAsync();
             await Fin.DisposeAsync();
-            await App.DisposeAsync();
         }
 
         private TContext Create<TContext>(Func<DbContextOptions<TContext>, TContext> factory)
@@ -67,19 +64,19 @@ internal static class TestInspectorFeeServiceFactory
                 .Options);
     }
 
-    public static InspectorFeeService Create(ApplicationDbContext db) =>
+    public static InspectorFeeService Create(DbContext db) =>
         Create(db, ShareFinancial(db));
 
-    public static InspectorFeeService Create(ApplicationDbContext db, FinancialDbContext fin)
+    public static InspectorFeeService Create(DbContext db, FinancialDbContext fin)
     {
         var pricing = new PartyFeePricingService(fin);
         return Compose(db, new NullNotificationService(), CreateRecipients(db), pricing);
     }
 
-    public static WorkflowTaskService CreateWorkflow(ApplicationDbContext db) =>
+    public static WorkflowTaskService CreateWorkflow(DbContext db) =>
         CreateWorkflow(db, ShareFinancial(db));
 
-    public static WorkflowTaskService CreateWorkflow(ApplicationDbContext db, FinancialDbContext fin)
+    public static WorkflowTaskService CreateWorkflow(DbContext db, FinancialDbContext fin)
     {
         var notifications = new NullNotificationService();
         var recipients = CreateRecipients(db);
@@ -134,6 +131,9 @@ internal static class TestInspectorFeeServiceFactory
 
     public static MessagingDbContext ShareMessaging(DbContext db) =>
         CreateSibling<MessagingDbContext>(db, options => new MessagingDbContext(options));
+
+    public static PlatformDbContext SharePlatform(DbContext db) =>
+        CreateSibling<PlatformDbContext>(db, options => new PlatformDbContext(options));
 
     private static TContext CreateSibling<TContext>(
         DbContext source,
@@ -202,7 +202,7 @@ internal static class TestInspectorFeeServiceFactory
     }
 
     public static WorkflowTaskService ComposeWorkflow(
-        ApplicationDbContext db,
+        DbContext db,
         IInspectorFeeService fees,
         INotificationService notifications,
         NotificationRecipientResolver recipients,
@@ -226,13 +226,13 @@ internal static class TestInspectorFeeServiceFactory
     }
 
     public static (INotificationService Notifications, NotificationRecipientResolver Recipients)
-        CreateNotificationDeps(ApplicationDbContext db)
+        CreateNotificationDeps(DbContext db)
     {
         return (new NullNotificationService(), CreateRecipients(db));
     }
 
     public static InspectorFeeService Compose(
-        ApplicationDbContext db,
+        DbContext db,
         INotificationService notifications,
         NotificationRecipientResolver recipients,
         IPartyFeePricingService pricing)

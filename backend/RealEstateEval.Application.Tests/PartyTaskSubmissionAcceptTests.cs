@@ -3,7 +3,6 @@ using Microsoft.EntityFrameworkCore;
 using RealEstateEval.Application.Abstractions;
 using RealEstateEval.Application.Contracts;
 using RealEstateEval.Domain;
-using RealEstateEval.Infrastructure.Data;
 using RealEstateEval.Infrastructure.Data.Contexts;
 using RealEstateEval.Infrastructure.Services;
 
@@ -18,7 +17,7 @@ public class PartyTaskSubmissionAcceptTests
     public async Task Accept_sets_AcceptedAtUtc_and_exposes_it_on_the_dto()
     {
         var bundle = CreateDb();
-        var db = bundle.App;
+        var db = bundle.CaseStudy;
         SeedAcceptedableSurvey(db);
         var service = CreateService(db, bundle.Failures, bundle.Ops);
 
@@ -44,7 +43,7 @@ public class PartyTaskSubmissionAcceptTests
     public async Task Accept_keeps_the_first_acceptance_timestamp_on_re_accept()
     {
         var bundle = CreateDb();
-        var db = bundle.App;
+        var db = bundle.CaseStudy;
         SeedAcceptedableSurvey(db);
         var service = CreateService(db, bundle.Failures, bundle.Ops);
 
@@ -66,7 +65,7 @@ public class PartyTaskSubmissionAcceptTests
     public async Task Get_returns_null_AcceptedAtUtc_before_acceptance()
     {
         var bundle = CreateDb();
-        var db = bundle.App;
+        var db = bundle.CaseStudy;
         SeedAcceptedableSurvey(db);
         var service = CreateService(db, bundle.Failures, bundle.Ops);
 
@@ -80,7 +79,7 @@ public class PartyTaskSubmissionAcceptTests
     public async Task Accept_field_inspection_sets_AcceptedAtUtc_without_fee_ledger()
     {
         var bundle = CreateDb();
-        var db = bundle.App;
+        var db = bundle.CaseStudy;
         SeedAcceptedableFieldInspection(db);
         var service = CreateService(db, bundle.Failures, bundle.Ops);
 
@@ -103,10 +102,11 @@ public class PartyTaskSubmissionAcceptTests
         Assert.Equal("specialist-1", entity.AcceptedByUserId);
         Assert.Equal("أخصائي", entity.AcceptedByName);
 
-        Assert.False(await db.InspectorFeeLedgers.AnyAsync(l => l.WorkflowTaskId == TaskId));
+        var fin = TestInspectorFeeServiceFactory.ShareFinancial(db);
+        Assert.False(await fin.InspectorFeeLedgers.AnyAsync(l => l.WorkflowTaskId == TaskId));
     }
 
-    private static void SeedAcceptedableFieldInspection(ApplicationDbContext db)
+    private static void SeedAcceptedableFieldInspection(CaseStudyDbContext db)
     {
         var now = DateTime.UtcNow;
         db.WorkflowTasks.Add(WorkflowTask.Create(
@@ -134,7 +134,7 @@ public class PartyTaskSubmissionAcceptTests
         db.SaveChanges();
     }
 
-    private static void SeedAcceptedableSurvey(ApplicationDbContext db)
+    private static void SeedAcceptedableSurvey(CaseStudyDbContext db)
     {
         var now = DateTime.UtcNow;
         db.WorkflowTasks.Add(WorkflowTask.Create(
@@ -161,7 +161,8 @@ public class PartyTaskSubmissionAcceptTests
         });
  // Ledger already accrued: the fee guard short-circuits so acceptance
  // exercises only the new AcceptedAtUtc persistence, no pricing needed.
-        db.InspectorFeeLedgers.Add(new InspectorFeeLedger
+        var fin = TestInspectorFeeServiceFactory.ShareFinancial(db);
+        fin.InspectorFeeLedgers.Add(new InspectorFeeLedger
         {
             WorkflowTaskId = TaskId,
             PoNumber = "PO-500",
@@ -175,18 +176,18 @@ public class PartyTaskSubmissionAcceptTests
             UpdatedAtUtc = now,
         });
         db.SaveChanges();
+        fin.SaveChanges();
     }
 
     private static TestBoundedContexts.Bundle CreateDb() =>
         TestBoundedContexts.Create($"party-accept-{Guid.NewGuid():N}");
 
-    private static PartyTaskSubmissionService CreateService(ApplicationDbContext db, FailuresDbContext failures, OperationsDbContext __)
+    private static PartyTaskSubmissionService CreateService(CaseStudyDbContext db, FailuresDbContext failures, OperationsDbContext __)
     {
-        var caseStudy = TestInspectorFeeServiceFactory.ShareCaseStudy(db);
         var timeline = TestInspectorFeeServiceFactory.CreateTimeline(db);
         var (notifications, recipients) = TestInspectorFeeServiceFactory.CreateNotificationDeps(db);
         return new(
-            caseStudy,
+            db,
             new FailureLookup(failures),
             TestInspectorFeeServiceFactory.CreateWorkflow(db),
             new FieldInspectionAttachmentVerifier(TestInspectorFeeServiceFactory.ShareAttachmentLookup(db)),

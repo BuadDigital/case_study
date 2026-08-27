@@ -9,7 +9,7 @@ namespace RealEstateEval.Application.Tests;
 internal static class TestWorkOrderServiceFactory
 {
     public static WorkOrderService Create(
-        ApplicationDbContext db,
+        Microsoft.EntityFrameworkCore.DbContext db,
         INotificationService? notifications = null,
         NotificationRecipientResolver? recipients = null,
         IPropertyTimelineService? timeline = null,
@@ -63,7 +63,7 @@ internal static class TestWorkOrderServiceFactory
         IOrganizationSettingsService? organizationSettings = null,
         IOptions<DatabaseOptions>? dbOptions = null) =>
         Create(
-            bundle.App,
+            bundle.CaseStudy,
             notifications,
             recipients,
             timeline,

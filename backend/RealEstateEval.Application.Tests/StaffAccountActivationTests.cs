@@ -9,7 +9,6 @@ using RealEstateEval.Application.Abstractions;
 using RealEstateEval.Application.Contracts;
 using RealEstateEval.Domain;
 using RealEstateEval.Infrastructure;
-using RealEstateEval.Infrastructure.Data;
 using RealEstateEval.Infrastructure.Data.Contexts;
 
 namespace RealEstateEval.Application.Tests;
@@ -224,8 +223,6 @@ public class StaffAccountActivationTests
         services.AddDataProtection();
         services.AddSingleton<IConfiguration>(configuration);
         var databaseName = $"staff-activation-{Guid.NewGuid()}";
-        services.AddDbContext<ApplicationDbContext>(options =>
-            options.UseInMemoryDatabase(databaseName));
         services.AddDbContext<IdentityDbContext>(options =>
             options.UseInMemoryDatabase(databaseName));
         services.AddIdentityApplicationServices();

@@ -1,7 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using RealEstateEval.Application.Contracts;
 using RealEstateEval.Domain;
-using RealEstateEval.Infrastructure.Data;
 using RealEstateEval.Infrastructure.Data.Contexts;
 
 namespace RealEstateEval.Application.Tests;
@@ -12,7 +11,7 @@ public class WorkOrderReadAuthorizationTests
     public async Task List_returns_only_pos_with_assigned_tasks_for_party()
     {
         var bundle = CreateDb();
-        var db = bundle.App;
+        var db = bundle.CaseStudy;
         Seed(db);
         var service = CreateService(bundle);
 
@@ -32,7 +31,7 @@ public class WorkOrderReadAuthorizationTests
     public async Task Get_hides_unassigned_po_from_party()
     {
         var bundle = CreateDb();
-        var db = bundle.App;
+        var db = bundle.CaseStudy;
         Seed(db);
         var service = CreateService(bundle);
 
@@ -53,7 +52,7 @@ public class WorkOrderReadAuthorizationTests
     public async Task List_returns_all_for_case_staff()
     {
         var bundle = CreateDb();
-        var db = bundle.App;
+        var db = bundle.CaseStudy;
         Seed(db);
         var service = CreateService(bundle);
 
@@ -67,7 +66,7 @@ public class WorkOrderReadAuthorizationTests
         Assert.Equal(2, rows.Count);
     }
 
-    private static void Seed(ApplicationDbContext db)
+    private static void Seed(CaseStudyDbContext db)
     {
         var now = DateTime.UtcNow;
         db.WorkOrders.AddRange(
@@ -101,7 +100,7 @@ public class WorkOrderReadAuthorizationTests
     private static RealEstateEval.Infrastructure.Services.WorkOrderService CreateService(
         TestBoundedContexts.Bundle bundle)
     {
-        var db = bundle.App;
+        var db = bundle.CaseStudy;
         var timeline = TestInspectorFeeServiceFactory.CreateTimeline(db, bundle.Failures);
         var (notifications, recipients) = TestInspectorFeeServiceFactory.CreateNotificationDeps(db);
         var failures = TestBoundedContexts.CreateFailureService(

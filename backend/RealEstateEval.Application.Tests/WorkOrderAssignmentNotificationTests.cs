@@ -3,7 +3,6 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging.Abstractions;
 using RealEstateEval.Application.Contracts;
 using RealEstateEval.Domain;
-using RealEstateEval.Infrastructure.Data;
 using RealEstateEval.Infrastructure.Data.Contexts;
 using RealEstateEval.Infrastructure.Integration;
 using RealEstateEval.Infrastructure.Notifications;
@@ -18,11 +17,11 @@ public sealed class WorkOrderAssignmentNotificationTests
     public async Task ResolveUserIdForEmail_matches_normalized_identity_email()
     {
         var bundle = CreateDb();
-        var db = bundle.App;
-        SeedUser(db, "user-feras", "feras@ejadah.dev");
-        await db.SaveChangesAsync();
+        var identity = TestInspectorFeeServiceFactory.ShareIdentity(bundle.CaseStudy);
+        SeedUser(identity, "user-feras", "feras@ejadah.dev");
+        await identity.SaveChangesAsync();
 
-        var resolver = TestInspectorFeeServiceFactory.CreateRecipients(db);
+        var resolver = TestInspectorFeeServiceFactory.CreateRecipients(bundle.CaseStudy);
 
         Assert.Equal(
             "user-feras",
@@ -35,10 +34,13 @@ public sealed class WorkOrderAssignmentNotificationTests
     public async Task CreateAsync_queues_assignment_notification_for_mapped_specialist()
     {
         var bundle = CreateDb();
-        var db = bundle.App;
-        SeedUser(db, "user-feras", "feras@ejadah.dev");
+        var db = bundle.CaseStudy;
+        var identity = TestInspectorFeeServiceFactory.ShareIdentity(db);
+        var messaging = TestInspectorFeeServiceFactory.ShareMessaging(db);
+        SeedUser(identity, "user-feras", "feras@ejadah.dev");
         SeedClient(db);
         await db.SaveChangesAsync();
+        await identity.SaveChangesAsync();
         var service = CreateService(bundle);
 
         var (result, errors) = await service.CreateAsync(
@@ -47,7 +49,7 @@ public sealed class WorkOrderAssignmentNotificationTests
 
         Assert.Null(errors);
         Assert.NotNull(result);
-        var payload = await AssertSingleNotificationRequest(db);
+        var payload = await AssertSingleNotificationRequest(messaging);
         Assert.Equal(["user-feras"], payload.UserIds);
         Assert.Equal("معاملة جديدة بانتظارك", payload.Title);
         Assert.Equal(NotificationContract.Tones.Info, payload.Tone);
@@ -62,7 +64,8 @@ public sealed class WorkOrderAssignmentNotificationTests
     public async Task CreateAsync_skips_notification_when_email_unmapped()
     {
         var bundle = CreateDb();
-        var db = bundle.App;
+        var db = bundle.CaseStudy;
+        var messaging = TestInspectorFeeServiceFactory.ShareMessaging(db);
         SeedClient(db);
         await db.SaveChangesAsync();
         var service = CreateService(bundle);
@@ -73,18 +76,21 @@ public sealed class WorkOrderAssignmentNotificationTests
 
         Assert.Null(errors);
         Assert.NotNull(result);
-        Assert.Empty(await db.OutboxMessages.ToListAsync());
+        Assert.Empty(await messaging.OutboxMessages.ToListAsync());
     }
 
     [Fact]
     public async Task UpdateHeaderAsync_notifies_only_when_specialist_email_changes()
     {
         var bundle = CreateDb();
-        var db = bundle.App;
-        SeedUser(db, "user-a", "a@ejadah.dev");
-        SeedUser(db, "user-b", "b@ejadah.dev");
+        var db = bundle.CaseStudy;
+        var identity = TestInspectorFeeServiceFactory.ShareIdentity(db);
+        var messaging = TestInspectorFeeServiceFactory.ShareMessaging(db);
+        SeedUser(identity, "user-a", "a@ejadah.dev");
+        SeedUser(identity, "user-b", "b@ejadah.dev");
         SeedClient(db);
         await db.SaveChangesAsync();
+        await identity.SaveChangesAsync();
         var service = CreateService(bundle);
 
         var (created, createErrors) = await service.CreateAsync(
@@ -92,14 +98,14 @@ public sealed class WorkOrderAssignmentNotificationTests
             CancellationToken.None);
         Assert.Null(createErrors);
         Assert.NotNull(created);
-        Assert.Single(await db.OutboxMessages.ToListAsync());
+        Assert.Single(await messaging.OutboxMessages.ToListAsync());
 
         var sameEmail = await service.UpdateHeaderAsync(
             "PO-REASSIGN",
             ValidUpdate("A@EjadaH.dev"),
             CancellationToken.None);
         Assert.Null(sameEmail.Errors);
-        Assert.Single(await db.OutboxMessages.ToListAsync());
+        Assert.Single(await messaging.OutboxMessages.ToListAsync());
 
         var changed = await service.UpdateHeaderAsync(
             "PO-REASSIGN",
@@ -107,7 +113,7 @@ public sealed class WorkOrderAssignmentNotificationTests
             CancellationToken.None);
         Assert.Null(changed.Errors);
 
-        var rows = await db.OutboxMessages.OrderBy(r => r.CreatedAtUtc).ToListAsync();
+        var rows = await messaging.OutboxMessages.OrderBy(r => r.CreatedAtUtc).ToListAsync();
         Assert.Equal(2, rows.Count);
         var payload = Deserialize(rows[^1]);
         Assert.Equal(["user-b"], payload.UserIds);
@@ -119,7 +125,7 @@ public sealed class WorkOrderAssignmentNotificationTests
     public async Task UpdateHeaderAsync_preserves_the_deadline_stamped_at_receipt()
     {
         var bundle = CreateDb();
-        var db = bundle.App;
+        var db = bundle.CaseStudy;
         SeedClient(db);
         await db.SaveChangesAsync();
         var service = CreateService(bundle);
@@ -171,7 +177,7 @@ public sealed class WorkOrderAssignmentNotificationTests
         ClientId = SeedClientIds.InfathAssignmentCenter,
     };
 
-    private static void SeedClient(ApplicationDbContext db)
+    private static void SeedClient(CaseStudyDbContext db)
     {
         db.Clients.Add(new Client
         {
@@ -183,7 +189,7 @@ public sealed class WorkOrderAssignmentNotificationTests
         });
     }
 
-    private static void SeedUser(ApplicationDbContext db, string userId, string email)
+    private static void SeedUser(IdentityDbContext db, string userId, string email)
     {
         db.Users.Add(new ApplicationUser
         {
@@ -196,7 +202,7 @@ public sealed class WorkOrderAssignmentNotificationTests
     }
 
     private static async Task<NotificationUsersRequestedPayload> AssertSingleNotificationRequest(
-        ApplicationDbContext db)
+        MessagingDbContext db)
     {
         var outbox = Assert.Single(await db.OutboxMessages.ToListAsync());
         Assert.Equal(IntegrationEventTypes.NotificationUsersRequested, outbox.EventType);
@@ -213,7 +219,7 @@ public sealed class WorkOrderAssignmentNotificationTests
 
     private static WorkOrderService CreateService(TestBoundedContexts.Bundle bundle)
     {
-        var db = bundle.App;
+        var db = bundle.CaseStudy;
         var timeline = TestInspectorFeeServiceFactory.CreateTimeline(db);
         var messaging = TestInspectorFeeServiceFactory.ShareMessaging(db);
         var notifications = new PlatformNotificationRequestService(

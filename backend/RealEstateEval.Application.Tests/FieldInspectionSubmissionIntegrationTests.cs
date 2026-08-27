@@ -4,7 +4,6 @@ using Microsoft.EntityFrameworkCore;
 using RealEstateEval.Application.Abstractions;
 using RealEstateEval.Application.Contracts;
 using RealEstateEval.Domain;
-using RealEstateEval.Infrastructure.Data;
 using RealEstateEval.Infrastructure.Data.Contexts;
 using RealEstateEval.Infrastructure.Services;
 
@@ -23,7 +22,7 @@ public class FieldInspectionSubmissionIntegrationTests
     public async Task SaveDraft_syncs_field_inspection_workspace_row()
     {
         var bundle = CreateDb();
-        var db = bundle.App;
+        var db = bundle.CaseStudy;
         var service = CreateService(db, bundle.Failures, bundle.Ops);
         SeedInspectionTask(db);
         SeedPhotoAttachments(db);
@@ -50,7 +49,7 @@ public class FieldInspectionSubmissionIntegrationTests
     public async Task Submit_syncs_workspace_completes_task_and_marks_submission_submitted()
     {
         var bundle = CreateDb();
-        var db = bundle.App;
+        var db = bundle.CaseStudy;
         var service = CreateService(db, bundle.Failures, bundle.Ops);
         SeedInspectionTask(db);
         SeedPhotoAttachments(db);
@@ -86,7 +85,7 @@ public class FieldInspectionSubmissionIntegrationTests
     public async Task Submit_rejects_when_attachment_rows_are_missing()
     {
         var bundle = CreateDb();
-        var db = bundle.App;
+        var db = bundle.CaseStudy;
         var service = CreateService(db, bundle.Failures, bundle.Ops);
         SeedInspectionTask(db);
 
@@ -112,7 +111,7 @@ public class FieldInspectionSubmissionIntegrationTests
     public async Task Reopen_submitted_inspection_reopens_task_and_workspace()
     {
         var bundle = CreateDb();
-        var db = bundle.App;
+        var db = bundle.CaseStudy;
         var service = CreateService(db, bundle.Failures, bundle.Ops);
         SeedInspectionTask(db);
         SeedPhotoAttachments(db);
@@ -144,7 +143,7 @@ public class FieldInspectionSubmissionIntegrationTests
     public async Task Reopen_requires_return_note_for_field_inspection()
     {
         var bundle = CreateDb();
-        var db = bundle.App;
+        var db = bundle.CaseStudy;
         var service = CreateService(db, bundle.Failures, bundle.Ops);
         SeedInspectionTask(db);
         SeedPhotoAttachments(db);
@@ -167,7 +166,7 @@ public class FieldInspectionSubmissionIntegrationTests
     public async Task Submit_notifies_sibling_engineering_survey_assignee()
     {
         var bundle = CreateDb();
-        var db = bundle.App;
+        var db = bundle.CaseStudy;
         var notifications = new RecordingNotificationService();
         var service = CreateService(db, bundle.Failures, bundle.Ops, notifications);
         var parentId = Guid.Parse("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaa0");
@@ -199,7 +198,7 @@ public class FieldInspectionSubmissionIntegrationTests
         TestBoundedContexts.Create($"field-inspection-{Guid.NewGuid():N}");
 
     private static PartyTaskSubmissionService CreateService(
-        ApplicationDbContext db,
+        CaseStudyDbContext db,
         FailuresDbContext failures,
         OperationsDbContext __,
         INotificationService? notifications = null)
@@ -233,7 +232,7 @@ public class FieldInspectionSubmissionIntegrationTests
         }
     }
 
-    private static void SeedInspectionTask(ApplicationDbContext db, Guid? parentTaskId = null)
+    private static void SeedInspectionTask(CaseStudyDbContext db, Guid? parentTaskId = null)
     {
         if (parentTaskId is Guid parentId)
         {
@@ -259,7 +258,7 @@ public class FieldInspectionSubmissionIntegrationTests
     }
 
     private static void SeedSiblingSurvey(
-        ApplicationDbContext db,
+        CaseStudyDbContext db,
         Guid parentTaskId,
         Guid surveyId,
         string assigneeId)
@@ -279,11 +278,12 @@ public class FieldInspectionSubmissionIntegrationTests
     }
 
     private static void SeedAssigneeProfile(
-        ApplicationDbContext db,
+        CaseStudyDbContext db,
         string userId,
         string distributionAssigneeId)
     {
-        db.Users.Add(new ApplicationUser
+        using var identity = TestInspectorFeeServiceFactory.ShareIdentity(db);
+        identity.Users.Add(new ApplicationUser
         {
             Id = userId,
             UserName = userId,
@@ -291,7 +291,7 @@ public class FieldInspectionSubmissionIntegrationTests
             NormalizedEmail = $"{userId}@EXAMPLE.TEST",
             DisplayName = userId,
         });
-        db.UserProfiles.Add(new UserProfile
+        identity.UserProfiles.Add(new UserProfile
         {
             UserId = userId,
             DistributionAssigneeId = distributionAssigneeId,
@@ -300,7 +300,7 @@ public class FieldInspectionSubmissionIntegrationTests
             Status = UserStatus.Active,
             CreatedAtUtc = DateTime.UtcNow,
         });
-        db.SaveChanges();
+        identity.SaveChanges();
     }
 
     private sealed class RecordingNotificationService : INotificationService
@@ -346,8 +346,9 @@ public class FieldInspectionSubmissionIntegrationTests
             Task.CompletedTask;
     }
 
-    private static void SeedPhotoAttachments(ApplicationDbContext db)
+    private static void SeedPhotoAttachments(CaseStudyDbContext db)
     {
+        using var attachments = TestInspectorFeeServiceFactory.ShareAttachments(db);
         var now = DateTime.UtcNow;
         var rows = new (Guid Id, string PhotoRef)[]
         {
@@ -357,7 +358,7 @@ public class FieldInspectionSubmissionIntegrationTests
 
         foreach (var (id, photoRef) in rows)
         {
-            db.FileAttachments.Add(new FileAttachment
+            attachments.FileAttachments.Add(new FileAttachment
             {
                 Id = id,
                 Scope = FieldInspectionScopes.Photo,
@@ -370,7 +371,7 @@ public class FieldInspectionSubmissionIntegrationTests
             });
         }
 
-        db.SaveChanges();
+        attachments.SaveChanges();
     }
 
     private static JsonElement ParsePayload(string json)

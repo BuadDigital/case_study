@@ -28,12 +28,12 @@ internal static class TestMessagingContexts
         return new MessagingDbContext(builder.Options);
     }
 
-    public static ApplicationDbContext CreateApp(
+    public static CaseStudyDbContext CreateCaseStudy(
         string name,
         InMemoryDatabaseRoot root)
     {
-        return new ApplicationDbContext(
-            new DbContextOptionsBuilder<ApplicationDbContext>()
+        return new CaseStudyDbContext(
+            new DbContextOptionsBuilder<CaseStudyDbContext>()
                 .UseInMemoryDatabase(name, root)
                 .ConfigureWarnings(w => w.Ignore(InMemoryEventId.TransactionIgnoredWarning))
                 .Options);

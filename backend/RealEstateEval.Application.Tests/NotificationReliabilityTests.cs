@@ -3,7 +3,6 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging.Abstractions;
 using RealEstateEval.Application.Contracts;
 using RealEstateEval.Domain;
-using RealEstateEval.Infrastructure.Data;
 using RealEstateEval.Infrastructure.Data.Contexts;
 using RealEstateEval.Infrastructure.Integration;
 using RealEstateEval.Infrastructure.Notifications;
@@ -60,12 +59,11 @@ public sealed class NotificationReliabilityTests
     [Fact]
     public async Task Non_owner_write_queues_platform_request_without_writing_inbox()
     {
-        await using var db = CreateAppDb();
-        await using var messaging = TestInspectorFeeServiceFactory.ShareMessaging(db);
+        await using var db = CreateDb();
         var service = new PlatformNotificationRequestService(
-            messaging,
+            db,
             new MessagingOutboxPublisher(
-                messaging,
+                db,
                 NullLogger<MessagingOutboxPublisher>.Instance));
 
         var count = await service.CreateForUsersAsync(
@@ -97,9 +95,9 @@ public sealed class NotificationReliabilityTests
         var name = $"notification-handler-{Guid.NewGuid():N}";
         var root = new Microsoft.EntityFrameworkCore.Storage.InMemoryDatabaseRoot();
         await using var messaging = TestMessagingContexts.CreateMessaging(name, root: root);
-        await using var app = TestMessagingContexts.CreateApp(name, root);
+        await using var caseStudy = TestMessagingContexts.CreateCaseStudy(name, root);
         var handler = new NotificationIntegrationEventHandler(
-            TestInspectorFeeServiceFactory.CreateRecipients(app),
+            TestInspectorFeeServiceFactory.CreateRecipients(caseStudy),
             CreateService(messaging),
             NullLogger<NotificationIntegrationEventHandler>.Instance);
         var payload = new NotificationUsersRequestedPayload(
@@ -217,12 +215,4 @@ public sealed class NotificationReliabilityTests
 
     private static MessagingDbContext CreateDb() =>
         TestMessagingContexts.CreateMessaging();
-
-    private static ApplicationDbContext CreateAppDb()
-    {
-        var options = new DbContextOptionsBuilder<ApplicationDbContext>()
-            .UseInMemoryDatabase($"notification-reliability-app-{Guid.NewGuid():N}")
-            .Options;
-        return new ApplicationDbContext(options);
-    }
 }

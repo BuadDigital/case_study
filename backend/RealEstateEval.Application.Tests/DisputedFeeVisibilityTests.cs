@@ -1,6 +1,4 @@
-using Microsoft.EntityFrameworkCore;
 using RealEstateEval.Domain;
-using RealEstateEval.Infrastructure.Data;
 
 namespace RealEstateEval.Application.Tests;
 
@@ -20,7 +18,7 @@ public class DisputedFeeVisibilityTests
         await using var db = CreateDb();
         await SeedAsync(db);
 
-        var summary = await TestInspectorFeeServiceFactory.Create(db).GetSummaryAsync(
+        var summary = await TestInspectorFeeServiceFactory.Create(db.CaseStudy).GetSummaryAsync(
             assigneeId: null,
             workflowTaskId: null,
             submittedOnly: false,
@@ -46,7 +44,7 @@ public class DisputedFeeVisibilityTests
         await using var db = CreateDb();
         await SeedAsync(db);
 
-        var summary = await TestInspectorFeeServiceFactory.Create(db).GetSummaryAsync(
+        var summary = await TestInspectorFeeServiceFactory.Create(db.CaseStudy).GetSummaryAsync(
             assigneeId: null,
             workflowTaskId: null,
             submittedOnly: false,
@@ -68,7 +66,7 @@ public class DisputedFeeVisibilityTests
         await using var db = CreateDb();
         await SeedAsync(db);
 
-        var summary = await TestInspectorFeeServiceFactory.Create(db).GetSummaryAsync(
+        var summary = await TestInspectorFeeServiceFactory.Create(db.CaseStudy).GetSummaryAsync(
             assigneeId: null,
             workflowTaskId: null,
             submittedOnly: false,
@@ -78,16 +76,17 @@ public class DisputedFeeVisibilityTests
         Assert.Empty(summary.Rows);
     }
 
-    private static async Task SeedAsync(ApplicationDbContext db)
+    private static async Task SeedAsync(TestDatabases.ContextSet db)
     {
         var now = DateTime.UtcNow;
-        db.WorkflowTasks.AddRange(
+        db.CaseStudy.WorkflowTasks.AddRange(
             SurveyTask(DisputedTaskId, "PO-DIS"),
             SurveyTask(ReadyTaskId, "PO-DIS"));
-        db.InspectorFeeLedgers.AddRange(
+        db.Financial.InspectorFeeLedgers.AddRange(
             Ledger(DisputedTaskId, InspectorFeeBillingStatus.Disputed, 900m, now),
             Ledger(ReadyTaskId, InspectorFeeBillingStatus.AtFinance, 450m, now));
-        await db.SaveChangesAsync();
+        await db.CaseStudy.SaveChangesAsync();
+        await db.Financial.SaveChangesAsync();
     }
 
  /// <summary>
@@ -123,8 +122,6 @@ public class DisputedFeeVisibilityTests
             UpdatedAtUtc = now,
         };
 
-    private static ApplicationDbContext CreateDb() =>
-        new(new DbContextOptionsBuilder<ApplicationDbContext>()
-            .UseInMemoryDatabase($"disputed-visibility-{Guid.NewGuid():N}")
-            .Options);
+    private static TestDatabases.ContextSet CreateDb() =>
+        TestDatabases.Create("disputed-visibility");
 }

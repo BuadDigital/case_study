@@ -2,29 +2,31 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata;
 using RealEstateEval.Domain;
 using RealEstateEval.Infrastructure.Data;
+using RealEstateEval.Infrastructure.Data.Contexts;
 
 namespace RealEstateEval.Application.Tests;
 
 /// <summary>
 /// The InMemory provider ignores indexes, so these assert the relational model that the
-/// PostgreSQL migration is generated from.
+/// PostgreSQL migrations are generated from — built per owner context.
 /// </summary>
 public class DatabaseIndexRulesTests
 {
     [Fact]
     public void Assignee_and_creator_lookups_are_indexed()
     {
-        using var db = CreateRelationalModel();
+        using var caseStudy = CreateRelationalModel<CaseStudyDbContext>(o => new CaseStudyDbContext(o));
+        using var operations = CreateRelationalModel<OperationsDbContext>(o => new OperationsDbContext(o));
 
-        Assert.NotNull(FindIndex(db, typeof(WorkflowTask), "AssigneeId"));
-        Assert.NotNull(FindIndex(db, typeof(OperationsTask), "CreatedBy"));
-        Assert.NotNull(FindIndex(db, typeof(OperationsTask), "PoNumber"));
+        Assert.NotNull(FindIndex(caseStudy, typeof(WorkflowTask), "AssigneeId"));
+        Assert.NotNull(FindIndex(operations, typeof(OperationsTask), "CreatedBy"));
+        Assert.NotNull(FindIndex(operations, typeof(OperationsTask), "PoNumber"));
     }
 
     [Fact]
     public void A_property_can_only_hold_one_open_valuation_request()
     {
-        using var db = CreateRelationalModel();
+        using var db = CreateRelationalModel<ValuationDbContext>(o => new ValuationDbContext(o));
 
         var index = FindIndex(db, typeof(ValuationRequest), "PropertyId");
 
@@ -39,7 +41,7 @@ public class DatabaseIndexRulesTests
     [Fact]
     public void Valuation_display_ids_are_unique_and_drawn_from_a_sequence()
     {
-        using var db = CreateRelationalModel();
+        using var db = CreateRelationalModel<ValuationDbContext>(o => new ValuationDbContext(o));
 
         var index = FindIndex(db, typeof(ValuationRequest), "DisplayId");
         Assert.NotNull(index);
@@ -56,7 +58,7 @@ public class DatabaseIndexRulesTests
     [Fact]
     public void A_user_can_only_hold_one_unread_notification_per_source_event()
     {
-        using var db = CreateRelationalModel();
+        using var db = CreateRelationalModel<MessagingDbContext>(o => new MessagingDbContext(o));
 
         var index = FindIndex(db, typeof(UserNotification), "UserId", "SourceEvent");
 
@@ -73,7 +75,7 @@ public class DatabaseIndexRulesTests
     [Fact]
     public void Outbox_backlog_is_indexed_by_the_dispatcher_claim_order_only()
     {
-        using var db = CreateRelationalModel();
+        using var db = CreateRelationalModel<MessagingDbContext>(o => new MessagingDbContext(o));
         var outbox = db.Model.FindEntityType(typeof(OutboxMessage))!;
 
         var pending = outbox.GetIndexes().Single(index =>
@@ -95,11 +97,10 @@ public class DatabaseIndexRulesTests
             .SingleOrDefault(index =>
                 index.Properties.Select(p => p.Name).SequenceEqual(properties));
 
-    private static ApplicationDbContext CreateRelationalModel()
-    {
-        var options = new DbContextOptionsBuilder<ApplicationDbContext>()
+    private static TContext CreateRelationalModel<TContext>(
+        Func<DbContextOptions<TContext>, TContext> create)
+        where TContext : DbContext =>
+        create(new DbContextOptionsBuilder<TContext>()
             .UseNpgsql("Host=localhost;Database=model_only;Username=test;Password=test")
-            .Options;
-        return new ApplicationDbContext(options);
-    }
+            .Options);
 }

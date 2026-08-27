@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using Npgsql;
 using RealEstateEval.Domain;
 using RealEstateEval.Infrastructure.Data;
+using RealEstateEval.Infrastructure.Data.Contexts;
 
 namespace RealEstateEval.Application.Tests;
 
@@ -83,11 +84,11 @@ public class SaveConflictHandlingTests
             "23505",
             constraintName: constraintName);
 
-    private static ApplicationDbContext CreateDb()
+    private static ValuationDbContext CreateDb()
     {
-        var options = new DbContextOptionsBuilder<ApplicationDbContext>()
+        var options = new DbContextOptionsBuilder<ValuationDbContext>()
             .UseInMemoryDatabase($"save-conflict-{Guid.NewGuid():N}")
             .Options;
-        return new ApplicationDbContext(options);
+        return new ValuationDbContext(options);
     }
 }

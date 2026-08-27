@@ -2,7 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging.Abstractions;
 using RealEstateEval.Application.Contracts;
 using RealEstateEval.Domain;
-using RealEstateEval.Infrastructure.Data;
+using RealEstateEval.Infrastructure.Data.Contexts;
 using RealEstateEval.Infrastructure.Integration;
 using RealEstateEval.Infrastructure.Services;
 using RealEstateEval.Shared.Contracts;
@@ -20,13 +20,12 @@ public class CaseStudyValuationDispatchTests
     public async Task Appraisal_spawn_creates_valuation_request()
     {
         await using var contexts = TestDatabases.Create("case-study-valuation");
-        var db = contexts.Legacy;
-        SeedWorkflow(db);
+        SeedWorkflow(contexts.CaseStudy);
 
         var dispatch = CreateDispatch(contexts);
         await dispatch.TryCreateWhenAppraisalSpawnedAsync(ParentTaskId);
 
-        var vr = await db.ValuationRequests.SingleAsync();
+        var vr = await contexts.Valuation.ValuationRequests.SingleAsync();
         Assert.Equal(PropertyId.ToString(), vr.PropertyId);
         Assert.Equal(ValuationRequestStatus.Progress, vr.Status);
         Assert.Equal("جدة", vr.Area);
@@ -38,7 +37,7 @@ public class CaseStudyValuationDispatchTests
         Assert.Equal(AppraisalTaskId, draft.WorkflowTaskId);
         Assert.Contains("\"reportNo\":\"TQ", draft.PayloadJson, StringComparison.Ordinal);
 
-        var outbox = await db.OutboxMessages.SingleAsync();
+        var outbox = await contexts.Messaging.OutboxMessages.SingleAsync();
         Assert.Equal(IntegrationEventTypes.ValuationRequestCreated, outbox.EventType);
     }
 
@@ -46,8 +45,7 @@ public class CaseStudyValuationDispatchTests
     public async Task Case_study_form_submission_does_not_create_valuation_request()
     {
         await using var contexts = TestDatabases.Create("case-study-valuation");
-        var db = contexts.Legacy;
-        SeedWorkflow(db);
+        SeedWorkflow(contexts.CaseStudy);
 
         var forms = CreateFormService(contexts);
         var (dto, errors) = await forms.SaveAsync(
@@ -62,15 +60,14 @@ public class CaseStudyValuationDispatchTests
             });
         Assert.Null(errors);
         Assert.NotNull(dto);
-        Assert.Equal(0, await db.ValuationRequests.CountAsync());
+        Assert.Equal(0, await contexts.Valuation.ValuationRequests.CountAsync());
     }
 
     [Fact]
     public async Task Submitted_form_is_locked_and_never_redispatches()
     {
         await using var contexts = TestDatabases.Create("case-study-valuation");
-        var db = contexts.Legacy;
-        SeedWorkflow(db);
+        SeedWorkflow(contexts.CaseStudy);
 
         var forms = CreateFormService(contexts);
 
@@ -93,15 +90,14 @@ public class CaseStudyValuationDispatchTests
         var (_, submitErrors) = await forms.SaveAsync(ParentTaskId, party: false, form);
         Assert.NotNull(submitErrors);
 
-        Assert.Equal(0, await db.ValuationRequests.CountAsync());
+        Assert.Equal(0, await contexts.Valuation.ValuationRequests.CountAsync());
     }
 
     [Fact]
     public async Task Case_study_form_submission_completes_parent_workflow_task()
     {
         await using var contexts = TestDatabases.Create("case-study-valuation");
-        var db = contexts.Legacy;
-        SeedWorkflow(db);
+        SeedWorkflow(contexts.CaseStudy);
 
         var forms = CreateFormService(contexts);
         var (dto, errors) = await forms.SaveAsync(
@@ -125,15 +121,13 @@ public class CaseStudyValuationDispatchTests
 
     private static CaseStudyFormService CreateFormService(TestDatabases.ContextSet contexts)
     {
-        var db = contexts.Legacy;
-        var workflow = TestInspectorFeeServiceFactory.CreateWorkflow(db);
+        var workflow = TestInspectorFeeServiceFactory.CreateWorkflow(contexts.CaseStudy);
         return new CaseStudyFormService(contexts.CaseStudy, workflow);
     }
 
     private static CaseStudyValuationDispatchService CreateDispatch(TestDatabases.ContextSet contexts)
     {
-        var db = contexts.Legacy;
-        var timeline = TestInspectorFeeServiceFactory.CreateTimeline(db);
+        var timeline = TestInspectorFeeServiceFactory.CreateTimeline(contexts.CaseStudy);
         var valuation = new ValuationRequestService(
             contexts.Valuation,
             new ValuationOutboxPublisher(
@@ -147,7 +141,7 @@ public class CaseStudyValuationDispatchTests
             NullLogger<CaseStudyValuationDispatchService>.Instance);
     }
 
-    private static void SeedWorkflow(ApplicationDbContext db)
+    private static void SeedWorkflow(CaseStudyDbContext db)
     {
         var now = DateTime.UtcNow;
         db.WorkOrders.Add(new WorkOrder

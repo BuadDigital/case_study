@@ -5,7 +5,6 @@ using Microsoft.Extensions.DependencyInjection;
 using RealEstateEval.Application.Abstractions;
 using RealEstateEval.Domain;
 using RealEstateEval.Infrastructure;
-using RealEstateEval.Infrastructure.Data;
 using RealEstateEval.Infrastructure.Data.Contexts;
 
 namespace RealEstateEval.Application.Tests;
@@ -105,8 +104,6 @@ public class PasswordAuthenticationServiceTests
         services.AddLogging();
         services.AddSingleton<IConfiguration>(configuration);
         var databaseName = $"password-auth-{Guid.NewGuid()}";
-        services.AddDbContext<ApplicationDbContext>(options =>
-            options.UseInMemoryDatabase(databaseName));
         services.AddDbContext<IdentityDbContext>(options =>
             options.UseInMemoryDatabase(databaseName));
         services.AddIdentityApplicationServices();

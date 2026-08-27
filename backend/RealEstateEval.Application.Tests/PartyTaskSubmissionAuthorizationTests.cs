@@ -4,7 +4,7 @@ using Microsoft.EntityFrameworkCore;
 using RealEstateEval.Application.Abstractions;
 using RealEstateEval.Application.Contracts;
 using RealEstateEval.Domain;
-using RealEstateEval.Infrastructure.Data;
+using RealEstateEval.Infrastructure.Data.Contexts;
 using RealEstateEval.Infrastructure.Services;
 
 namespace RealEstateEval.Application.Tests;
@@ -18,7 +18,7 @@ public class PartyTaskSubmissionAuthorizationTests
     public async Task SaveDraft_forbids_unassigned_party()
     {
         var bundle = CreateDb();
-        var db = bundle.App;
+        var db = bundle.CaseStudy;
         SeedTask(db, assigneeId: "dist-owner");
         var service = CreateService(db);
 
@@ -43,7 +43,7 @@ public class PartyTaskSubmissionAuthorizationTests
     public async Task SaveDraft_allows_matching_assignee()
     {
         var bundle = CreateDb();
-        var db = bundle.App;
+        var db = bundle.CaseStudy;
         SeedTask(db, assigneeId: "dist-owner");
         var service = CreateService(db);
 
@@ -68,7 +68,7 @@ public class PartyTaskSubmissionAuthorizationTests
     public async Task Accept_forbids_party_role()
     {
         var bundle = CreateDb();
-        var db = bundle.App;
+        var db = bundle.CaseStudy;
         SeedAcceptedableSurvey(db);
         var service = CreateService(db);
 
@@ -90,7 +90,7 @@ public class PartyTaskSubmissionAuthorizationTests
     public async Task Get_allows_property_appraisal_assignee_to_read_completed_sibling_inspection()
     {
         var bundle = CreateDb();
-        var db = bundle.App;
+        var db = bundle.CaseStudy;
         var parentId = Guid.Parse("cccccccc-cccc-cccc-cccc-cccccccccccc");
         var now = DateTime.UtcNow;
         var inspection = WorkflowTask.Create(
@@ -164,7 +164,7 @@ public class PartyTaskSubmissionAuthorizationTests
     public async Task Get_forbids_unrelated_appraiser_from_sibling_inspection()
     {
         var bundle = CreateDb();
-        var db = bundle.App;
+        var db = bundle.CaseStudy;
         var parentId = Guid.Parse("dddddddd-dddd-dddd-dddd-dddddddddddd");
         var now = DateTime.UtcNow;
         var inspection = WorkflowTask.Create(
@@ -233,7 +233,7 @@ public class PartyTaskSubmissionAuthorizationTests
         Assert.Null(dto);
     }
 
-    private static void SeedTask(ApplicationDbContext db, string assigneeId)
+    private static void SeedTask(CaseStudyDbContext db, string assigneeId)
     {
         var now = DateTime.UtcNow;
         db.WorkflowTasks.Add(WorkflowTask.Create(
@@ -250,7 +250,7 @@ public class PartyTaskSubmissionAuthorizationTests
         db.SaveChanges();
     }
 
-    private static void SeedAcceptedableSurvey(ApplicationDbContext db)
+    private static void SeedAcceptedableSurvey(CaseStudyDbContext db)
     {
         var now = DateTime.UtcNow;
         db.WorkflowTasks.Add(WorkflowTask.Create(
@@ -275,7 +275,8 @@ public class PartyTaskSubmissionAuthorizationTests
             CreatedAtUtc = now,
             UpdatedAtUtc = now,
         });
-        db.InspectorFeeLedgers.Add(new InspectorFeeLedger
+        var fin = TestInspectorFeeServiceFactory.ShareFinancial(db);
+        fin.InspectorFeeLedgers.Add(new InspectorFeeLedger
         {
             WorkflowTaskId = TaskId,
             PoNumber = "PO-AUTH",
@@ -289,19 +290,19 @@ public class PartyTaskSubmissionAuthorizationTests
             UpdatedAtUtc = now,
         });
         db.SaveChanges();
+        fin.SaveChanges();
     }
 
     private static TestBoundedContexts.Bundle CreateDb() =>
         TestBoundedContexts.Create($"party-auth-{Guid.NewGuid():N}");
 
-    private static PartyTaskSubmissionService CreateService(ApplicationDbContext db)
+    private static PartyTaskSubmissionService CreateService(CaseStudyDbContext db)
     {
-        var caseStudy = TestInspectorFeeServiceFactory.ShareCaseStudy(db);
         var failures = TestInspectorFeeServiceFactory.ShareFailures(db);
         var timeline = TestInspectorFeeServiceFactory.CreateTimeline(db);
         var (notifications, recipients) = TestInspectorFeeServiceFactory.CreateNotificationDeps(db);
         return new(
-            caseStudy,
+            db,
             new FailureLookup(failures),
             TestInspectorFeeServiceFactory.CreateWorkflow(db),
             new FieldInspectionAttachmentVerifier(TestInspectorFeeServiceFactory.ShareAttachmentLookup(db)),

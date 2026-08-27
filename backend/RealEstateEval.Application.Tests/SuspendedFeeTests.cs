@@ -2,7 +2,6 @@ using Microsoft.EntityFrameworkCore;
 using RealEstateEval.Application.Contracts;
 using RealEstateEval.Application.Rules;
 using RealEstateEval.Domain;
-using RealEstateEval.Infrastructure.Data;
 
 namespace RealEstateEval.Application.Tests;
 
@@ -18,8 +17,9 @@ public class SuspendedFeeTests
     {
         await using var db = CreateDb();
         var taskId = SeedLedger(db, InspectorFeeBillingStatus.AtFinance);
-        await db.SaveChangesAsync();
-        var service = TestInspectorFeeServiceFactory.Create(db);
+        await db.CaseStudy.SaveChangesAsync();
+        await db.Financial.SaveChangesAsync();
+        var service = TestInspectorFeeServiceFactory.Create(db.CaseStudy);
 
         var (row, error) = await service.TransitionAsync(
             taskId,
@@ -52,9 +52,10 @@ public class SuspendedFeeTests
     {
         await using var db = CreateDb();
         var taskId = SeedLedger(db, InspectorFeeBillingStatus.AtFinance);
-        await db.SaveChangesAsync();
+        await db.CaseStudy.SaveChangesAsync();
+        await db.Financial.SaveChangesAsync();
 
-        var (row, error) = await TestInspectorFeeServiceFactory.Create(db).TransitionAsync(
+        var (row, error) = await TestInspectorFeeServiceFactory.Create(db.CaseStudy).TransitionAsync(
             taskId,
             new InspectorFeeTransitionRequest { Action = InspectorFeeActions.Suspend },
             "supervisor-1",
@@ -65,7 +66,7 @@ public class SuspendedFeeTests
 
         Assert.Null(row);
         Assert.NotNull(error);
-        var stored = await db.InspectorFeeLedgers.AsNoTracking()
+        var stored = await db.Financial.InspectorFeeLedgers.AsNoTracking()
             .FirstAsync(l => l.WorkflowTaskId == taskId);
         Assert.Equal(InspectorFeeBillingStatus.AtFinance, stored.BillingStatus);
     }
@@ -83,8 +84,9 @@ public class SuspendedFeeTests
     {
         await using var db = CreateDb();
         var taskId = SeedLedger(db, original);
-        await db.SaveChangesAsync();
-        var service = TestInspectorFeeServiceFactory.Create(db);
+        await db.CaseStudy.SaveChangesAsync();
+        await db.Financial.SaveChangesAsync();
+        var service = TestInspectorFeeServiceFactory.Create(db.CaseStudy);
 
         await service.TransitionAsync(
             taskId,
@@ -111,7 +113,7 @@ public class SuspendedFeeTests
         Assert.Null(error);
         Assert.Equal(original, row!.BillingStatus);
         Assert.Null(row.SuspensionReason);
-        var stored = await db.InspectorFeeLedgers.AsNoTracking()
+        var stored = await db.Financial.InspectorFeeLedgers.AsNoTracking()
             .FirstAsync(l => l.WorkflowTaskId == taskId);
         Assert.Null(stored.PreSuspensionStatus);
     }
@@ -128,9 +130,10 @@ public class SuspendedFeeTests
     {
         await using var db = CreateDb();
         var taskId = SeedLedger(db, status);
-        await db.SaveChangesAsync();
+        await db.CaseStudy.SaveChangesAsync();
+        await db.Financial.SaveChangesAsync();
 
-        var (row, error) = await TestInspectorFeeServiceFactory.Create(db).TransitionAsync(
+        var (row, error) = await TestInspectorFeeServiceFactory.Create(db.CaseStudy).TransitionAsync(
             taskId,
             new InspectorFeeTransitionRequest
             {
@@ -152,9 +155,10 @@ public class SuspendedFeeTests
     {
         await using var db = CreateDb();
         var taskId = SeedLedger(db, InspectorFeeBillingStatus.AtFinance);
-        await db.SaveChangesAsync();
+        await db.CaseStudy.SaveChangesAsync();
+        await db.Financial.SaveChangesAsync();
 
-        var (row, error) = await TestInspectorFeeServiceFactory.Create(db).TransitionAsync(
+        var (row, error) = await TestInspectorFeeServiceFactory.Create(db.CaseStudy).TransitionAsync(
             taskId,
             new InspectorFeeTransitionRequest
             {
@@ -180,11 +184,11 @@ public class SuspendedFeeTests
         Assert.False(InspectorFeeBillingRules.IsReadyForEngStatement(
             InspectorFeeBillingStatus.Suspended));
 
-    private static Guid SeedLedger(ApplicationDbContext db, string status)
+    private static Guid SeedLedger(TestDatabases.ContextSet db, string status)
     {
         var taskId = Guid.NewGuid();
         var now = DateTime.UtcNow;
-        db.WorkflowTasks.Add(WorkflowTask.Create(
+        db.CaseStudy.WorkflowTasks.Add(WorkflowTask.Create(
             WorkflowTaskKind.EngineeringSurvey,
             "PO-SUSP",
             now,
@@ -193,7 +197,7 @@ public class SuspendedFeeTests
             assigneeId: "office-1",
             id: taskId,
             status: WorkflowTaskStatus.Completed));
-        db.InspectorFeeLedgers.Add(new InspectorFeeLedger
+        db.Financial.InspectorFeeLedgers.Add(new InspectorFeeLedger
         {
             WorkflowTaskId = taskId,
             PoNumber = "PO-SUSP",
@@ -209,8 +213,6 @@ public class SuspendedFeeTests
         return taskId;
     }
 
-    private static ApplicationDbContext CreateDb() =>
-        new(new DbContextOptionsBuilder<ApplicationDbContext>()
-            .UseInMemoryDatabase($"fee-suspension-{Guid.NewGuid():N}")
-            .Options);
+    private static TestDatabases.ContextSet CreateDb() =>
+        TestDatabases.Create("fee-suspension");
 }

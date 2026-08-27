@@ -1,7 +1,7 @@
 using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 using RealEstateEval.Domain;
-using RealEstateEval.Infrastructure.Data;
+using RealEstateEval.Infrastructure.Data.Contexts;
 using RealEstateEval.Infrastructure.Services;
 
 namespace RealEstateEval.Application.Tests;
@@ -94,11 +94,11 @@ public class FieldInspectionAttachmentVerifierTests
         Assert.Contains("definedPhotos", errors.Keys);
     }
 
-    private static ApplicationDbContext CreateDb()
+    private static AttachmentsDbContext CreateDb()
     {
-        var options = new DbContextOptionsBuilder<ApplicationDbContext>()
+        var options = new DbContextOptionsBuilder<AttachmentsDbContext>()
             .UseInMemoryDatabase($"attachment-verifier-{Guid.NewGuid():N}")
             .Options;
-        return new ApplicationDbContext(options);
+        return new AttachmentsDbContext(options);
     }
 }

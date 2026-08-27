@@ -1,7 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using RealEstateEval.Application.Contracts;
 using RealEstateEval.Domain;
-using RealEstateEval.Infrastructure.Data;
 using RealEstateEval.Infrastructure.Data.Contexts;
 using RealEstateEval.Infrastructure.Services;
 
@@ -103,7 +102,7 @@ public sealed class OperationsTaskReminderDedupTests
     {
         var name = $"ops-reminder-dedup-{Guid.NewGuid():N}";
         var root = new Microsoft.EntityFrameworkCore.Storage.InMemoryDatabaseRoot();
-        var app = new ApplicationDbContext(new DbContextOptionsBuilder<ApplicationDbContext>()
+        var identity = new IdentityDbContext(new DbContextOptionsBuilder<IdentityDbContext>()
             .UseInMemoryDatabase(name, root)
             .ConfigureWarnings(w =>
                 w.Ignore(Microsoft.EntityFrameworkCore.Diagnostics.InMemoryEventId.TransactionIgnoredWarning))
@@ -116,7 +115,7 @@ public sealed class OperationsTaskReminderDedupTests
         var messaging = TestMessagingContexts.CreateMessaging();
         var notifications = TestMessagingContexts.CreateNotificationService(messaging);
 
-        app.UserProfiles.Add(new UserProfile
+        identity.UserProfiles.Add(new UserProfile
         {
             UserId = AssigneeUserId,
             DistributionAssigneeId = "a1",
@@ -125,11 +124,10 @@ public sealed class OperationsTaskReminderDedupTests
             Status = UserStatus.Active,
             CreatedAtUtc = DateTime.UtcNow,
         });
-        await app.SaveChangesAsync();
+        await identity.SaveChangesAsync();
 
         var time = new FakeTime(SundayMorningUtc);
-        var financial = TestInspectorFeeServiceFactory.ShareFinancial(app);
-        var identity = TestInspectorFeeServiceFactory.ShareIdentity(app);
+        var financial = TestInspectorFeeServiceFactory.ShareFinancial(identity);
         var notifier = new OperationsTaskNotifier(
             ops,
             new IdentityDirectory(identity),

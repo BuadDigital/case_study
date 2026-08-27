@@ -1,7 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using RealEstateEval.Application.Contracts;
 using RealEstateEval.Domain;
-using RealEstateEval.Infrastructure.Data;
+using RealEstateEval.Infrastructure.Data.Contexts;
 
 namespace RealEstateEval.Application.Tests;
 
@@ -102,7 +102,8 @@ public class SupervisingDepartmentAuthorizationTests
             request,
             actorDepartment: SupervisingDepartments.CaseStudy);
         Assert.Null(denied);
-        Assert.Equal(0m, (await db.InspectorFeeLedgers.SingleAsync()).SupervisorDiscountSar);
+        var fin = TestInspectorFeeServiceFactory.ShareFinancial(db);
+        Assert.Equal(0m, (await fin.InspectorFeeLedgers.SingleAsync()).SupervisorDiscountSar);
 
         var accepted = await service.PatchAsync(
             taskId,
@@ -231,7 +232,7 @@ public class SupervisingDepartmentAuthorizationTests
     }
 
     private static Guid SeedLedger(
-        ApplicationDbContext db,
+        CaseStudyDbContext db,
         string department,
         string status = InspectorFeeBillingStatus.Draft,
         decimal discount = 0m)
@@ -247,7 +248,8 @@ public class SupervisingDepartmentAuthorizationTests
             assigneeId: "office-1",
             id: taskId,
             status: WorkflowTaskStatus.Completed));
-        db.InspectorFeeLedgers.Add(new InspectorFeeLedger
+        var fin = TestInspectorFeeServiceFactory.ShareFinancial(db);
+        fin.InspectorFeeLedgers.Add(new InspectorFeeLedger
         {
             WorkflowTaskId = taskId,
             PoNumber = "PO-DEPT",
@@ -262,11 +264,12 @@ public class SupervisingDepartmentAuthorizationTests
             CreatedAtUtc = now,
             UpdatedAtUtc = now,
         });
+        fin.SaveChanges();
         return taskId;
     }
 
-    private static ApplicationDbContext CreateDb() =>
-        new(new DbContextOptionsBuilder<ApplicationDbContext>()
+    private static CaseStudyDbContext CreateDb() =>
+        new(new DbContextOptionsBuilder<CaseStudyDbContext>()
             .UseInMemoryDatabase($"supervising-department-{Guid.NewGuid():N}")
             .Options);
 }

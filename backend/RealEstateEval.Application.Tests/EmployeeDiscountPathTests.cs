@@ -2,7 +2,6 @@ using Microsoft.EntityFrameworkCore;
 using RealEstateEval.Application.Contracts;
 using RealEstateEval.Application.Rules;
 using RealEstateEval.Domain;
-using RealEstateEval.Infrastructure.Data;
 
 namespace RealEstateEval.Application.Tests;
 
@@ -17,9 +16,10 @@ public class EmployeeDiscountPathTests
     {
         await using var db = CreateDb();
         var taskId = SeedEmployeeLedger(db, InspectorFeeBillingStatus.SupReview);
-        await db.SaveChangesAsync();
+        await db.CaseStudy.SaveChangesAsync();
+        await db.Financial.SaveChangesAsync();
 
-        await TestInspectorFeeServiceFactory.Create(db).PatchAsync(
+        await TestInspectorFeeServiceFactory.Create(db.CaseStudy).PatchAsync(
             taskId,
             new PatchInspectorFeeRequest
             {
@@ -28,7 +28,7 @@ public class EmployeeDiscountPathTests
             },
             canManageAllDepartments: true);
 
-        var stored = await db.InspectorFeeLedgers.AsNoTracking()
+        var stored = await db.Financial.InspectorFeeLedgers.AsNoTracking()
             .SingleAsync(l => l.WorkflowTaskId == taskId);
         Assert.Equal(InspectorFeeBillingStatus.AtFinance, stored.BillingStatus);
         Assert.Equal(50m, stored.SupervisorDiscountSar);
@@ -40,9 +40,10 @@ public class EmployeeDiscountPathTests
     {
         await using var db = CreateDb();
         var taskId = SeedEmployeeLedger(db, InspectorFeeBillingStatus.OfficeReview, discount: 40m);
-        await db.SaveChangesAsync();
+        await db.CaseStudy.SaveChangesAsync();
+        await db.Financial.SaveChangesAsync();
 
-        var (row, error) = await TestInspectorFeeServiceFactory.Create(db).TransitionAsync(
+        var (row, error) = await TestInspectorFeeServiceFactory.Create(db.CaseStudy).TransitionAsync(
             taskId,
             new InspectorFeeTransitionRequest
             {
@@ -57,7 +58,7 @@ public class EmployeeDiscountPathTests
         Assert.Null(row);
         Assert.NotNull(error);
         Assert.Contains("الموظف", error);
-        var stored = await db.InspectorFeeLedgers.AsNoTracking()
+        var stored = await db.Financial.InspectorFeeLedgers.AsNoTracking()
             .SingleAsync(l => l.WorkflowTaskId == taskId);
         Assert.Equal(InspectorFeeBillingStatus.OfficeReview, stored.BillingStatus);
     }
@@ -87,13 +88,13 @@ public class EmployeeDiscountPathTests
     }
 
     private static Guid SeedEmployeeLedger(
-        ApplicationDbContext db,
+        TestDatabases.ContextSet db,
         string status,
         decimal discount = 0m)
     {
         var taskId = Guid.NewGuid();
         var now = DateTime.UtcNow;
-        db.WorkflowTasks.Add(WorkflowTask.Create(
+        db.CaseStudy.WorkflowTasks.Add(WorkflowTask.Create(
             WorkflowTaskKind.FieldInspection,
             "PO-EMP",
             now,
@@ -102,7 +103,7 @@ public class EmployeeDiscountPathTests
             assigneeId: "insp-emp-1",
             id: taskId,
             status: WorkflowTaskStatus.Completed));
-        db.InspectorFeeLedgers.Add(new InspectorFeeLedger
+        db.Financial.InspectorFeeLedgers.Add(new InspectorFeeLedger
         {
             WorkflowTaskId = taskId,
             PoNumber = "PO-EMP",
@@ -120,8 +121,6 @@ public class EmployeeDiscountPathTests
         return taskId;
     }
 
-    private static ApplicationDbContext CreateDb() =>
-        new(new DbContextOptionsBuilder<ApplicationDbContext>()
-            .UseInMemoryDatabase($"employee-discount-{Guid.NewGuid():N}")
-            .Options);
+    private static TestDatabases.ContextSet CreateDb() =>
+        TestDatabases.Create("employee-discount");
 }

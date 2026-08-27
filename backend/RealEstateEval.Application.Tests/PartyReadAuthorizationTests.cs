@@ -4,7 +4,6 @@ using Microsoft.Extensions.Logging.Abstractions;
 using RealEstateEval.Application.Abstractions;
 using RealEstateEval.Application.Contracts;
 using RealEstateEval.Domain;
-using RealEstateEval.Infrastructure.Data;
 using RealEstateEval.Infrastructure.Data.Contexts;
 using RealEstateEval.Infrastructure.Integration;
 using RealEstateEval.Infrastructure.Services;
@@ -40,7 +39,7 @@ public class PartyTaskSubmissionReadAuthorizationTests
     public async Task Get_returns_submission_for_assigned_party()
     {
         var bundle = CreateDb();
-        var db = bundle.App;
+        var db = bundle.CaseStudy;
         Seed(db);
 
         var dto = await CreateService(db, bundle.Failures, bundle.Ops).GetAsync(OwnedTaskId, Owner);
@@ -52,7 +51,7 @@ public class PartyTaskSubmissionReadAuthorizationTests
     public async Task Get_hides_submission_from_other_party()
     {
         var bundle = CreateDb();
-        var db = bundle.App;
+        var db = bundle.CaseStudy;
         Seed(db);
 
         var dto = await CreateService(db, bundle.Failures, bundle.Ops).GetAsync(ForeignTaskId, Owner);
@@ -64,7 +63,7 @@ public class PartyTaskSubmissionReadAuthorizationTests
     public async Task Get_returns_any_submission_for_case_staff()
     {
         var bundle = CreateDb();
-        var db = bundle.App;
+        var db = bundle.CaseStudy;
         Seed(db);
 
         var dto = await CreateService(db, bundle.Failures, bundle.Ops).GetAsync(ForeignTaskId, CaseStaff);
@@ -76,7 +75,7 @@ public class PartyTaskSubmissionReadAuthorizationTests
     public async Task Get_returns_empty_draft_when_assigned_task_has_no_submission()
     {
         var bundle = CreateDb();
-        var db = bundle.App;
+        var db = bundle.CaseStudy;
         SeedTaskOnly(db, OwnedTaskId, "dist-owner");
         db.SaveChanges();
 
@@ -93,7 +92,7 @@ public class PartyTaskSubmissionReadAuthorizationTests
     public async Task Get_hides_task_without_submission_from_other_party()
     {
         var bundle = CreateDb();
-        var db = bundle.App;
+        var db = bundle.CaseStudy;
         SeedTaskOnly(db, ForeignTaskId, "dist-other");
         db.SaveChanges();
 
@@ -106,7 +105,7 @@ public class PartyTaskSubmissionReadAuthorizationTests
     public async Task Get_returns_null_when_task_is_missing()
     {
         var bundle = CreateDb();
-        var db = bundle.App;
+        var db = bundle.CaseStudy;
 
         var dto = await CreateService(db, bundle.Failures, bundle.Ops)
             .GetAsync(Guid.Parse("aaaaaaaa-ffff-0000-0000-000000000099"), CaseStaff);
@@ -118,7 +117,7 @@ public class PartyTaskSubmissionReadAuthorizationTests
     public async Task List_drops_tasks_the_party_cannot_read()
     {
         var bundle = CreateDb();
-        var db = bundle.App;
+        var db = bundle.CaseStudy;
         Seed(db);
 
         var rows = await CreateService(db, bundle.Failures, bundle.Ops).ListForTasksAsync(
@@ -133,7 +132,7 @@ public class PartyTaskSubmissionReadAuthorizationTests
     public async Task List_returns_all_tasks_for_case_staff()
     {
         var bundle = CreateDb();
-        var db = bundle.App;
+        var db = bundle.CaseStudy;
         Seed(db);
 
         var rows = await CreateService(db, bundle.Failures, bundle.Ops).ListForTasksAsync(
@@ -143,14 +142,14 @@ public class PartyTaskSubmissionReadAuthorizationTests
         Assert.Equal(2, rows.Count);
     }
 
-    private static void Seed(ApplicationDbContext db)
+    private static void Seed(CaseStudyDbContext db)
     {
         AddTaskWithSubmission(db, OwnedTaskId, "dist-owner");
         AddTaskWithSubmission(db, ForeignTaskId, "dist-other");
         db.SaveChanges();
     }
 
-    private static void SeedTaskOnly(ApplicationDbContext db, Guid taskId, string assigneeId)
+    private static void SeedTaskOnly(CaseStudyDbContext db, Guid taskId, string assigneeId)
     {
         db.WorkflowTasks.Add(WorkflowTask.Create(
             WorkflowTaskKind.EngineeringSurvey,
@@ -166,7 +165,7 @@ public class PartyTaskSubmissionReadAuthorizationTests
     }
 
     private static void AddTaskWithSubmission(
-        ApplicationDbContext db,
+        CaseStudyDbContext db,
         Guid taskId,
         string assigneeId)
     {
@@ -189,12 +188,11 @@ public class PartyTaskSubmissionReadAuthorizationTests
     private static TestBoundedContexts.Bundle CreateDb() =>
         TestBoundedContexts.Create($"party-read-{Guid.NewGuid():N}");
 
-    private static PartyTaskSubmissionService CreateService(ApplicationDbContext db, FailuresDbContext failures, OperationsDbContext __)
+    private static PartyTaskSubmissionService CreateService(CaseStudyDbContext db, FailuresDbContext failures, OperationsDbContext __)
     {
-        var caseStudy = TestInspectorFeeServiceFactory.ShareCaseStudy(db);
         var (notifications, recipients) = TestInspectorFeeServiceFactory.CreateNotificationDeps(db);
         return new(
-            caseStudy,
+            db,
             new FailureLookup(failures),
             TestInspectorFeeServiceFactory.CreateWorkflow(db),
             new FieldInspectionAttachmentVerifier(TestInspectorFeeServiceFactory.ShareAttachmentLookup(db)),
@@ -250,7 +248,7 @@ public class CaseStudyFormReadAuthorizationTests
     public async Task GetParty_returns_own_form()
     {
         await using var contexts = CreateContexts();
-        Seed(contexts.Legacy);
+        Seed(contexts.CaseStudy);
 
         var dto = await CreateFormService(contexts).GetAsync(PartyTaskId, party: true, Party);
 
@@ -261,7 +259,7 @@ public class CaseStudyFormReadAuthorizationTests
     public async Task GetParty_hides_other_partys_form()
     {
         await using var contexts = CreateContexts();
-        Seed(contexts.Legacy);
+        Seed(contexts.CaseStudy);
 
         var dto = await CreateFormService(contexts).GetAsync(ForeignPartyTaskId, party: true, Party);
 
@@ -272,7 +270,7 @@ public class CaseStudyFormReadAuthorizationTests
     public async Task Get_parent_form_visible_to_assigned_child_party()
     {
         await using var contexts = CreateContexts();
-        Seed(contexts.Legacy);
+        Seed(contexts.CaseStudy);
 
         var dto = await CreateFormService(contexts).GetAsync(ParentTaskId, party: false, Party);
 
@@ -283,7 +281,7 @@ public class CaseStudyFormReadAuthorizationTests
     public async Task Get_parent_form_hidden_from_unrelated_party()
     {
         await using var contexts = CreateContexts();
-        Seed(contexts.Legacy);
+        Seed(contexts.CaseStudy);
 
         var dto = await CreateFormService(contexts).GetAsync(ParentTaskId, party: false, Outsider);
 
@@ -294,7 +292,7 @@ public class CaseStudyFormReadAuthorizationTests
     public async Task Get_parent_form_visible_to_case_staff()
     {
         await using var contexts = CreateContexts();
-        Seed(contexts.Legacy);
+        Seed(contexts.CaseStudy);
 
         var dto = await CreateFormService(contexts).GetAsync(
             ParentTaskId,
@@ -308,7 +306,7 @@ public class CaseStudyFormReadAuthorizationTests
     public async Task Get_returns_empty_form_when_task_exists_but_no_row()
     {
         await using var contexts = CreateContexts();
-        SeedTasksOnly(contexts.Legacy);
+        SeedTasksOnly(contexts.CaseStudy);
 
         var dto = await CreateFormService(contexts).GetAsync(
             ParentTaskId,
@@ -325,7 +323,7 @@ public class CaseStudyFormReadAuthorizationTests
     public async Task GetParty_returns_empty_form_for_assigned_task_without_row()
     {
         await using var contexts = CreateContexts();
-        SeedTasksOnly(contexts.Legacy);
+        SeedTasksOnly(contexts.CaseStudy);
 
         var dto = await CreateFormService(contexts).GetAsync(PartyTaskId, party: true, Party);
 
@@ -338,14 +336,14 @@ public class CaseStudyFormReadAuthorizationTests
     public async Task GetParty_hides_empty_form_from_other_party()
     {
         await using var contexts = CreateContexts();
-        SeedTasksOnly(contexts.Legacy);
+        SeedTasksOnly(contexts.CaseStudy);
 
         var dto = await CreateFormService(contexts).GetAsync(ForeignPartyTaskId, party: true, Party);
 
         Assert.Null(dto);
     }
 
-    private static void SeedTasksOnly(ApplicationDbContext db)
+    private static void SeedTasksOnly(CaseStudyDbContext db)
     {
         db.WorkflowTasks.AddRange(
             NewTask(ParentTaskId, WorkflowTaskKind.CaseStudyProperty, "dist-specialist", null),
@@ -358,7 +356,7 @@ public class CaseStudyFormReadAuthorizationTests
         db.SaveChanges();
     }
 
-    private static void Seed(ApplicationDbContext db)
+    private static void Seed(CaseStudyDbContext db)
     {
         var now = DateTime.UtcNow;
         SeedTasksOnly(db);
@@ -415,9 +413,9 @@ public class CaseStudyFormReadAuthorizationTests
 
     private static CaseStudyFormService CreateFormService(TestDatabases.ContextSet contexts)
     {
-        var db = contexts.Legacy;
+        var db = contexts.CaseStudy;
         return new CaseStudyFormService(
-            TestInspectorFeeServiceFactory.ShareCaseStudy(db),
+            db,
             TestInspectorFeeServiceFactory.CreateWorkflow(db));
     }
 }

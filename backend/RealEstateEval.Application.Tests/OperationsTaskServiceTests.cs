@@ -3,7 +3,6 @@ using RealEstateEval.Application.Abstractions;
 using RealEstateEval.Application.Contracts;
 using RealEstateEval.Application.Rules;
 using RealEstateEval.Domain;
-using RealEstateEval.Infrastructure.Data;
 using RealEstateEval.Infrastructure.Data.Contexts;
 using RealEstateEval.Infrastructure.Services;
 
@@ -14,7 +13,7 @@ public class OperationsTaskServiceTests
     [Fact]
     public async Task CreateAsync_writes_system_comment_and_display_id()
     {
-        var (ops, db, fin, identity) = CreateDbPair();
+        var (ops, fin, identity) = CreateDbPair();
         var service = CreateService(ops, fin, identity);
 
         var (task, error) = await service.CreateAsync(
@@ -40,7 +39,7 @@ public class OperationsTaskServiceTests
     [Fact]
     public async Task ReassignAsync_requires_reason()
     {
-        var (ops, db, fin, identity) = CreateDbPair();
+        var (ops, fin, identity) = CreateDbPair();
         var service = CreateService(ops, fin, identity);
         var (created, _) = await service.CreateAsync(
             new CreateOperationsTaskRequest
@@ -73,7 +72,7 @@ public class OperationsTaskServiceTests
     [Fact]
     public async Task ReassignAsync_updates_assignee_and_logs_comment()
     {
-        var (ops, db, fin, identity) = CreateDbPair();
+        var (ops, fin, identity) = CreateDbPair();
         var service = CreateService(ops, fin, identity);
         var (created, _) = await service.CreateAsync(
             new CreateOperationsTaskRequest
@@ -113,7 +112,7 @@ public class OperationsTaskServiceTests
     [Fact]
     public async Task PatchAsync_cancel_requires_reason_and_persists()
     {
-        var (ops, db, fin, identity) = CreateDbPair();
+        var (ops, fin, identity) = CreateDbPair();
         var service = CreateService(ops, fin, identity);
         var (created, _) = await service.CreateAsync(
             new CreateOperationsTaskRequest
@@ -159,7 +158,7 @@ public class OperationsTaskServiceTests
     [Fact]
     public async Task PatchAsync_confirm_receipt_sets_receipt_confirmed_at()
     {
-        var (ops, db, fin, identity) = CreateDbPair();
+        var (ops, fin, identity) = CreateDbPair();
         var service = CreateService(ops, fin, identity);
         var (created, _) = await service.CreateAsync(
             new CreateOperationsTaskRequest
@@ -193,7 +192,7 @@ public class OperationsTaskServiceTests
     [Fact]
     public async Task PatchAsync_pause_requires_reason_and_persists()
     {
-        var (ops, db, fin, identity) = CreateDbPair();
+        var (ops, fin, identity) = CreateDbPair();
         var service = CreateService(ops, fin, identity);
         var (created, _) = await service.CreateAsync(
             new CreateOperationsTaskRequest
@@ -240,7 +239,7 @@ public class OperationsTaskServiceTests
     [Fact]
     public async Task PatchAsync_resume_after_pause_from_created_goes_in_progress()
     {
-        var (ops, db, fin, identity) = CreateDbPair();
+        var (ops, fin, identity) = CreateDbPair();
         var service = CreateService(ops, fin, identity);
         var (created, _) = await service.CreateAsync(
             new CreateOperationsTaskRequest
@@ -288,7 +287,7 @@ public class OperationsTaskServiceTests
     [Fact]
     public async Task PatchAsync_complete_after_reassign_records_execution_credit()
     {
-        var (ops, db, fin, identity) = CreateDbPair();
+        var (ops, fin, identity) = CreateDbPair();
         var service = CreateService(ops, fin, identity);
         var (created, _) = await service.CreateAsync(
             new CreateOperationsTaskRequest
@@ -345,7 +344,7 @@ public class OperationsTaskServiceTests
     [Fact]
     public async Task RemindAsync_appends_reminder_and_comment()
     {
-        var (ops, db, fin, identity) = CreateDbPair();
+        var (ops, fin, identity) = CreateDbPair();
         var service = CreateService(ops, fin, identity);
         var (created, _) = await service.CreateAsync(
             new CreateOperationsTaskRequest
@@ -375,7 +374,7 @@ public class OperationsTaskServiceTests
     [Fact]
     public async Task PatchAsync_rejects_invalid_status_transition()
     {
-        var (ops, db, fin, identity) = CreateDbPair();
+        var (ops, fin, identity) = CreateDbPair();
         var service = CreateService(ops, fin, identity);
         var (created, _) = await service.CreateAsync(
             new CreateOperationsTaskRequest
@@ -430,7 +429,7 @@ public class OperationsTaskServiceTests
     [Fact]
     public async Task RemindAsync_rejects_non_manager()
     {
-        var (ops, db, fin, identity) = CreateDbPair();
+        var (ops, fin, identity) = CreateDbPair();
         var service = CreateService(ops, fin, identity);
         var (created, _) = await service.CreateAsync(
             new CreateOperationsTaskRequest
@@ -457,7 +456,7 @@ public class OperationsTaskServiceTests
     [Fact]
     public async Task PatchAsync_complete_court_visit_requires_outcome()
     {
-        var (ops, db, fin, identity) = CreateDbPair();
+        var (ops, fin, identity) = CreateDbPair();
         var service = CreateService(ops, fin, identity);
         var (created, _) = await service.CreateAsync(
             new CreateOperationsTaskRequest
@@ -507,7 +506,7 @@ public class OperationsTaskServiceTests
     [Fact]
     public async Task PatchAsync_complete_court_visit_persists_outcome()
     {
-        var (ops, db, fin, identity) = CreateDbPair();
+        var (ops, fin, identity) = CreateDbPair();
         await SeedCooperatorAsync(identity, "a1");
         var pricingTableId = await SetVisitPriceAsync(fin, 350m);
         var service = CreateService(ops, fin, identity);
@@ -585,7 +584,7 @@ public class OperationsTaskServiceTests
     [Fact]
     public async Task PatchAsync_complete_court_visit_is_idempotent_for_visit_fee()
     {
-        var (ops, db, fin, identity) = CreateDbPair();
+        var (ops, fin, identity) = CreateDbPair();
         await SeedCooperatorAsync(identity, "a1");
         await SetVisitPriceAsync(fin, 350m);
         var service = CreateService(ops, fin, identity);
@@ -670,7 +669,7 @@ public class OperationsTaskServiceTests
     [Fact]
     public async Task CreateAsync_refuses_cooperator_court_visit_without_a_price()
     {
-        var (ops, db, fin, identity) = CreateDbPair();
+        var (ops, fin, identity) = CreateDbPair();
         await SeedCooperatorAsync(identity, "a1");
         var service = CreateService(ops, fin, identity);
         var (created, error) = await service.CreateAsync(
@@ -700,7 +699,7 @@ public class OperationsTaskServiceTests
 
         Assert.Null(created);
         Assert.Equal(PricingErrors.FeeUnresolved, error);
-        Assert.Empty(db.OperationsTasks);
+        Assert.Empty(ops.OperationsTasks);
         Assert.Empty(fin.CourtVisitFeeCharges);
     }
 
@@ -711,7 +710,7 @@ public class OperationsTaskServiceTests
     [Fact]
     public async Task PatchAsync_complete_recovers_missing_stamp_from_pricing_table()
     {
-        var (ops, db, fin, identity) = CreateDbPair();
+        var (ops, fin, identity) = CreateDbPair();
         await SeedCooperatorAsync(identity, "a1");
         var pricingTableId = await SetVisitPriceAsync(fin, 350m);
         var service = CreateService(ops, fin, identity);
@@ -790,7 +789,7 @@ public class OperationsTaskServiceTests
     [Fact]
     public async Task Employee_court_visit_completes_without_a_visit_charge()
     {
-        var (ops, db, fin, identity) = CreateDbPair();
+        var (ops, fin, identity) = CreateDbPair();
         await SeedEmployeeAsync(identity, "emp-1");
         var service = CreateService(ops, fin, identity);
         var (created, createError) = await service.CreateAsync(
@@ -854,7 +853,7 @@ public class OperationsTaskServiceTests
     [Fact]
     public async Task CreateAsync_rejects_visit_fee_for_employee_reviewer()
     {
-        var (ops, db, fin, identity) = CreateDbPair();
+        var (ops, fin, identity) = CreateDbPair();
         await SeedEmployeeAsync(identity, "emp-1");
         var service = CreateService(ops, fin, identity);
         var (created, error) = await service.CreateAsync(
@@ -890,7 +889,7 @@ public class OperationsTaskServiceTests
     [Fact]
     public async Task PatchAsync_complete_court_visit_credits_execution_assignee()
     {
-        var (ops, db, fin, identity) = CreateDbPair();
+        var (ops, fin, identity) = CreateDbPair();
         await SeedCooperatorAsync(identity, "original-1");
         await SeedCooperatorAsync(identity, "new-1");
         await SetVisitPriceAsync(fin, 350m);
@@ -968,15 +967,10 @@ public class OperationsTaskServiceTests
         Assert.Equal("جديد", charge.CreditAssigneeName);
     }
 
-    private static (OperationsDbContext Ops, ApplicationDbContext Db, FinancialDbContext Fin, IdentityDbContext Identity) CreateDbPair()
+    private static (OperationsDbContext Ops, FinancialDbContext Fin, IdentityDbContext Identity) CreateDbPair()
     {
         var name = $"ops-tasks-{Guid.NewGuid():N}";
         var root = new Microsoft.EntityFrameworkCore.Storage.InMemoryDatabaseRoot();
-        var app = new ApplicationDbContext(new DbContextOptionsBuilder<ApplicationDbContext>()
-            .UseInMemoryDatabase(name, root)
-            .ConfigureWarnings(w =>
-                w.Ignore(Microsoft.EntityFrameworkCore.Diagnostics.InMemoryEventId.TransactionIgnoredWarning))
-            .Options);
         var ops = new OperationsDbContext(new DbContextOptionsBuilder<OperationsDbContext>()
             .UseInMemoryDatabase(name, root)
             .ConfigureWarnings(w =>
@@ -992,7 +986,7 @@ public class OperationsTaskServiceTests
             .ConfigureWarnings(w =>
                 w.Ignore(Microsoft.EntityFrameworkCore.Diagnostics.InMemoryEventId.TransactionIgnoredWarning))
             .Options);
-        return (ops, app, fin, identity);
+        return (ops, fin, identity);
     }
 
     private static OperationsTaskService CreateService(

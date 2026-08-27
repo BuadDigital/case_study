@@ -2,7 +2,6 @@ using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 using RealEstateEval.Application.Contracts;
 using RealEstateEval.Domain;
-using RealEstateEval.Infrastructure.Data;
 
 namespace RealEstateEval.Application.Tests;
 
@@ -13,13 +12,14 @@ public class FeeBillingAuditAndDisbursementRetirementTests
     {
         await using var db = CreateDb();
         var taskId = SeedLedger(db, InspectorFeeBillingStatus.AtFinance);
-        await db.SaveChangesAsync();
-        var ledgerId = await db.InspectorFeeLedgers.AsNoTracking()
+        await db.CaseStudy.SaveChangesAsync();
+        await db.Financial.SaveChangesAsync();
+        var ledgerId = await db.Financial.InspectorFeeLedgers.AsNoTracking()
             .Where(l => l.WorkflowTaskId == taskId)
             .Select(l => l.Id)
             .SingleAsync();
 
-        var (row, error) = await TestInspectorFeeServiceFactory.Create(db).TransitionAsync(
+        var (row, error) = await TestInspectorFeeServiceFactory.Create(db.CaseStudy).TransitionAsync(
             taskId,
             new InspectorFeeTransitionRequest
             {
@@ -35,7 +35,7 @@ public class FeeBillingAuditAndDisbursementRetirementTests
         Assert.Null(error);
         Assert.NotNull(row);
 
-        var audit = Assert.Single(db.AuditLogs);
+        var audit = Assert.Single(db.Financial.AuditLogs);
         Assert.Equal("supervisor-1", audit.ActorId);
         Assert.Equal("FEE_BILLING_TRANSITION", audit.Action);
         Assert.Equal("inspector_fee_ledger", audit.EntityType);
@@ -56,9 +56,10 @@ public class FeeBillingAuditAndDisbursementRetirementTests
     {
         await using var db = CreateDb();
         var taskId = SeedLedger(db, InspectorFeeBillingStatus.AtFinance);
-        await db.SaveChangesAsync();
+        await db.CaseStudy.SaveChangesAsync();
+        await db.Financial.SaveChangesAsync();
 
-        var (row, error) = await TestInspectorFeeServiceFactory.Create(db).TransitionAsync(
+        var (row, error) = await TestInspectorFeeServiceFactory.Create(db.CaseStudy).TransitionAsync(
             taskId,
             new InspectorFeeTransitionRequest
             {
@@ -73,7 +74,7 @@ public class FeeBillingAuditAndDisbursementRetirementTests
 
         Assert.Null(row);
         Assert.NotNull(error);
-        Assert.Empty(db.AuditLogs);
+        Assert.Empty(db.Financial.AuditLogs);
     }
 
     [Fact]
@@ -81,9 +82,10 @@ public class FeeBillingAuditAndDisbursementRetirementTests
     {
         await using var db = CreateDb();
         var taskId = SeedLedger(db, InspectorFeeBillingStatus.AtFinance);
-        await db.SaveChangesAsync();
+        await db.CaseStudy.SaveChangesAsync();
+        await db.Financial.SaveChangesAsync();
 
-        var result = await TestInspectorFeeServiceFactory.Create(db).CreateDisbursementBatchAsync(
+        var result = await TestInspectorFeeServiceFactory.Create(db.CaseStudy).CreateDisbursementBatchAsync(
             new CreateDisbursementBatchRequest
             {
                 WorkflowTaskIds = [taskId.ToString()],
@@ -94,20 +96,20 @@ public class FeeBillingAuditAndDisbursementRetirementTests
         Assert.Empty(result.Rows);
         Assert.NotEmpty(result.Failed);
         Assert.Contains("كشف الأطراف", result.Failed[0].Error);
-        Assert.Empty(db.DisbursementBatches);
-        Assert.Empty(db.AuditLogs);
+        Assert.Empty(db.Financial.DisbursementBatches);
+        Assert.Empty(db.Financial.AuditLogs);
 
-        var ledger = await db.InspectorFeeLedgers.AsNoTracking()
+        var ledger = await db.Financial.InspectorFeeLedgers.AsNoTracking()
             .SingleAsync(l => l.WorkflowTaskId == taskId);
         Assert.Equal(InspectorFeeBillingStatus.AtFinance, ledger.BillingStatus);
         Assert.Null(ledger.DisbursementBatchId);
     }
 
-    private static Guid SeedLedger(ApplicationDbContext db, string status)
+    private static Guid SeedLedger(TestDatabases.ContextSet db, string status)
     {
         var taskId = Guid.NewGuid();
         var now = DateTime.UtcNow;
-        db.WorkflowTasks.Add(WorkflowTask.Create(
+        db.CaseStudy.WorkflowTasks.Add(WorkflowTask.Create(
             WorkflowTaskKind.EngineeringSurvey,
             "PO-AUDIT",
             now,
@@ -116,7 +118,7 @@ public class FeeBillingAuditAndDisbursementRetirementTests
             assigneeId: "office-1",
             id: taskId,
             status: WorkflowTaskStatus.Completed));
-        db.InspectorFeeLedgers.Add(new InspectorFeeLedger
+        db.Financial.InspectorFeeLedgers.Add(new InspectorFeeLedger
         {
             WorkflowTaskId = taskId,
             PoNumber = "PO-AUDIT",
@@ -132,8 +134,6 @@ public class FeeBillingAuditAndDisbursementRetirementTests
         return taskId;
     }
 
-    private static ApplicationDbContext CreateDb() =>
-        new(new DbContextOptionsBuilder<ApplicationDbContext>()
-            .UseInMemoryDatabase($"fee-audit-retire-{Guid.NewGuid():N}")
-            .Options);
+    private static TestDatabases.ContextSet CreateDb() =>
+        TestDatabases.Create("fee-audit-retire");
 }
