@@ -147,19 +147,22 @@ public static class WorkOrderListStatus
     public const string PartiallyBilled = "partially_billed";
     public const string FullyBilled = "fully_billed";
 
+ /// <param name="registeredCount">Properties on the PO that are not removed.</param>
  /// <param name="studiedCount">Properties whose case-study parent task is completed.</param>
  /// <param name="hasEnfazInvoice">True when an Enfaz invoice was issued for this PO.</param>
     public static string Resolve(
-        WorkOrder order,
+        string? lifecycleStatus,
+        int expectedPropertyCount,
+        int registeredCount,
         int studiedCount,
         bool hasEnfazInvoice = false)
     {
-        var lifecycle = order.LifecycleStatus?.Trim();
+        var lifecycle = lifecycleStatus?.Trim();
         if (lifecycle == WorkOrderLifecycleStatus.Cancelled) return Cancelled;
         if (lifecycle == WorkOrderLifecycleStatus.Stopped) return Stopped;
 
-        var expected = Math.Max(1, order.ExpectedPropertyCount);
-        var registered = order.Properties.Count(p => !p.IsRemoved);
+        var expected = Math.Max(1, expectedPropertyCount);
+        var registered = registeredCount;
         var allRegistered = registered > 0 && registered >= expected;
         var allStudied = allRegistered && studiedCount >= registered;
 

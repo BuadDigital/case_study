@@ -185,7 +185,12 @@ public static class WorkOrderMapper
             PropertyCount = liveProperties.Count,
             ExpectedPropertyCount = entity.ExpectedPropertyCount,
             CompletedCount = studiedCount,
-            Status = WorkOrderListStatus.Resolve(entity, studiedCount, hasEnfazInvoice),
+            Status = WorkOrderListStatus.Resolve(
+                entity.LifecycleStatus,
+                entity.ExpectedPropertyCount,
+                liveProperties.Count,
+                studiedCount,
+                hasEnfazInvoice),
             PromulgationDate = entity.PromulgationDate.ToString("yyyy-MM-dd"),
             ReceivedFromEnfathAt = entity.ReceivedFromEnfathAt.ToString("yyyy-MM-dd"),
             DueDateAt = entity.DueDateAt.ToString("yyyy-MM-dd"),

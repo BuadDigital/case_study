@@ -7,4 +7,11 @@
     <RootNamespace>RealEstateEval.Domain</RootNamespace>
   </PropertyGroup>
 
+  <ItemGroup>
+    <!-- A8 retirement: shared wire enums/statuses were moved into the Shared.Contracts leaf
+         (declared namespaces unchanged) so services can consume contracts without the
+         legacy Domain assembly. -->
+    <ProjectReference Include="..\shared\RealEstateEval.Shared.Contracts\RealEstateEval.Shared.Contracts.csproj" />
+  </ItemGroup>
+
 </Project>

@@ -16,9 +16,15 @@ public class ProjectReferenceBoundaryTests
         "RealEstateEval.Domain.csproj",
     ];
 
+    /// <summary>
+    /// A8 retirement: shared wire enums/statuses moved into the Shared.Contracts leaf, so
+    /// Domain builds on that one zero-reference leaf and nothing else.
+    /// </summary>
     [Fact]
-    public void DomainHasNoProjectReferences() =>
-        Assert.Empty(ReferencesOf("backend/RealEstateEval.Domain/RealEstateEval.Domain.csproj"));
+    public void DomainReferencesOnlyTheSharedContractsLeaf() =>
+        Assert.Equal(
+            new[] { "backend/shared/RealEstateEval.Shared.Contracts/RealEstateEval.Shared.Contracts.csproj" },
+            ReferencesOf("backend/RealEstateEval.Domain/RealEstateEval.Domain.csproj").ToArray());
 
     [Fact]
     public void DomainHasNoAspNetIdentityPackageReference()
