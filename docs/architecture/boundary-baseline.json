@@ -69,6 +69,9 @@
     "backend/tools/DbMigrate/DbMigrate.csproj": [
       "backend/RealEstateEval.Infrastructure/RealEstateEval.Infrastructure.csproj"
     ],
+    "backend/tools/DevSeed/RealEstateEval.DevSeed.csproj": [
+      "backend/RealEstateEval.Infrastructure/RealEstateEval.Infrastructure.csproj"
+    ],
     "backend/contexts/attachments/RealEstateEval.Attachments.Application/RealEstateEval.Attachments.Application.csproj": [
       "backend/RealEstateEval.Application/RealEstateEval.Application.csproj",
       "backend/contexts/attachments/RealEstateEval.Attachments.Domain/RealEstateEval.Attachments.Domain.csproj"

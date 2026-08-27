@@ -45,7 +45,7 @@
       "schemas": [
         "attachments"
       ],
-      "migrations": "backend/RealEstateEval.Infrastructure/Data/Contexts/Attachments/Migrations",
+      "migrations": "backend/contexts/attachments/RealEstateEval.Attachments.Infrastructure/Data/Migrations",
       "migrationsHistorySchema": "attachments",
       "note": "Phase 1 extraction order, step 1. A8 physical move (2026-08-27): the DbContext, migrations, design-time factory, and persistence registration live in the Attachments context library; the shared model mapping stays global beside the frozen legacy context until it is archived."
     },

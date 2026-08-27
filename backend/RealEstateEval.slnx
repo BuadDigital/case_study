@@ -43,4 +43,5 @@
   <Project Path="contexts/valuation/RealEstateEval.Valuation.Infrastructure/RealEstateEval.Valuation.Infrastructure.csproj" />
   <Project Path="scripts/reseed-ahmed-tool/ReseedAhmed.csproj" />
   <Project Path="tools/DbMigrate/DbMigrate.csproj" />
+  <Project Path="tools/DevSeed/RealEstateEval.DevSeed.csproj" />
 </Solution>

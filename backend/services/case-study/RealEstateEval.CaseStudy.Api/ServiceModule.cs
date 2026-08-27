@@ -93,7 +93,7 @@ public sealed class ServiceModule : IRealEstateEvalServiceModule
 
         if (seedDemoData)
         {
-            await using var seedProvider = DependencyInjection.CreateIdentityMaintenanceProvider(
+            await using var seedProvider = DevSeedProvider.CreateIdentityMaintenanceProvider(
                 app.Configuration, connectionString!);
             await DataSeeder.SeedAsync(seedProvider);
         }
