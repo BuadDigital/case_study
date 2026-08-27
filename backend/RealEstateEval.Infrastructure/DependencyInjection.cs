@@ -47,21 +47,9 @@ public static class DependencyInjection
  // composition registers ApplicationDbContext any more. The class survives only for
  // the frozen legacy migration stream (DbMigrate, design-time factory, guardrails).
 
- /// <summary>Attachments write context. Prefers a dedicated Attachments connection string.</summary>
-    public static IServiceCollection AddAttachmentsPersistence(
-        this IServiceCollection services,
-        IConfiguration configuration,
-        string connectionString)
-    {
- // Block body (not expression-bodied): architecture fan-out scans method braces.
-        var attachmentsConnection = BoundedContextConnections.Resolve(
-            configuration,
-            BoundedContextConnections.ServiceNames.Attachments,
-            connectionString);
-        return services.AddBoundedContextPersistence<AttachmentsDbContext>(
-            configuration,
-            attachmentsConnection);
-    }
+ // A8 physical move: AddAttachmentsPersistence lives in AttachmentsDependencyInjection
+ // (contexts/attachments) beside its DbContext; the generic pool helper below is public
+ // so per-context registrations can move with their contexts.
 
  /// <summary>Platform catalog write context.</summary>
     public static IServiceCollection AddPlatformPersistence(
@@ -92,7 +80,7 @@ public static class DependencyInjection
  /// may point an extracted context at a dedicated database via
  /// <see cref="BoundedContextConnections"/>.
  /// </summary>
-    private static IServiceCollection AddBoundedContextPersistence<TContext>(
+    public static IServiceCollection AddBoundedContextPersistence<TContext>(
         this IServiceCollection services,
         IConfiguration configuration,
         string connectionString)

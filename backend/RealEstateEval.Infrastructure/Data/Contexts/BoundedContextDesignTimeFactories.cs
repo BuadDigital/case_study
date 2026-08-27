@@ -36,12 +36,8 @@ public abstract class BoundedContextDesignTimeFactory<TContext> : IDesignTimeDbC
     protected abstract TContext Create(DbContextOptions<TContext> options);
 }
 
-public sealed class AttachmentsDbContextDesignTimeFactory
-    : BoundedContextDesignTimeFactory<AttachmentsDbContext>
-{
-    protected override AttachmentsDbContext Create(DbContextOptions<AttachmentsDbContext> options) =>
-        new(options);
-}
+// A8 physical move: AttachmentsDbContextDesignTimeFactory lives beside its context in
+// contexts/attachments (RealEstateEval.Attachments.Infrastructure/Data).
 
 public sealed class PlatformDbContextDesignTimeFactory
     : BoundedContextDesignTimeFactory<PlatformDbContext>

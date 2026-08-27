@@ -16,6 +16,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\RealEstateEval.Infrastructure\RealEstateEval.Infrastructure.csproj" />
+    <ProjectReference Include="..\contexts\attachments\RealEstateEval.Attachments.Infrastructure\RealEstateEval.Attachments.Infrastructure.csproj" />
   </ItemGroup>
 
   <ItemGroup>
