@@ -9,7 +9,9 @@ namespace RealEstateEval.Infrastructure.Data;
 /// lenient: an unrecognised legacy value materializes as the vocabulary's default instead of
 /// throwing and taking a whole list endpoint down with it.
 /// </summary>
-internal static class DomainEnumConverters
+// A10: public — the per-context model mappings that use these converters moved into
+// their context libraries with the legacy context's archival.
+public static class DomainEnumConverters
 {
     public static readonly ValueConverter<RealEstateEval.Domain.WorkflowTaskKind, string> WorkflowTaskKind =
         new(kind => kind.ToDbValue(), value => WorkflowTaskKindValues.Parse(value));
