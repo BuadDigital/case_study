@@ -17,7 +17,6 @@ import {
   basisOfValueKeyForAssignment,
 } from "@platform/app-shared/prototype/assignment-valuation-defaults";
 import { amountWordsOrZero } from "../../../lib/evaluator/value-estimation";
-import { openValuationReportPreview } from "../../../lib/evaluator/valuation-report-preview";
 import {
   Card,
   CardPad,
@@ -361,6 +360,10 @@ export const FinalOpinionSection = memo(function FinalOpinionSection({
       return;
     }
     try {
+      // تحميل شرطي — بنّاء المعاينة يُجلب عند أول نقرة لا مع حزمة الشاشة.
+      const { openValuationReportPreview } = await import(
+        "../../../lib/evaluator/valuation-report-preview"
+      );
       await openValuationReportPreview(res.data);
     } catch {
       showToast("تعذّر فتح استعراض تقرير التقييم", "error");

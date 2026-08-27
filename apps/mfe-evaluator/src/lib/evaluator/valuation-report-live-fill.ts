@@ -9,11 +9,17 @@ import {
   valuePremiseKeyForAssignment,
 } from "@platform/app-shared/prototype/assignment-valuation-defaults";
 import type { PoIntakeRecord, PoPropertyIntake } from "@case-study/mfe/lib/prototype/po-intake-data";
+import { subClientIdFromReportUsers } from "@case-study/mfe/lib/prototype/po-intake-data";
+// وحدة تنسيق المستخدمين خفيفة ومستقلة — تبويب التقرير يستوردها دون سحب هذا الملف.
+export {
+  clientNameFromRecord,
+  formatValuationReportUsers,
+  reportUserNamesFromRecord,
+} from "./valuation-report-users";
 import {
-  VALUATION_REPORT_USER_OPTION_LABEL,
-  showsValuationReportUserField,
-  subClientIdFromReportUsers,
-} from "@case-study/mfe/lib/prototype/po-intake-data";
+  clientNameFromRecord,
+  formatValuationReportUsers,
+} from "./valuation-report-users";
 import type { InspectorWorkspaceDraft } from "@case-study/mfe/lib/prototype/inspector-workspace-data";
 import { isLandInspectionContext } from "@case-study/mfe/lib/prototype/inspector-workspace-data";
 import {
@@ -136,51 +142,6 @@ export function ownershipTypeDisplay(value: string | null | undefined): string {
   const t = (value ?? "").trim();
   if (!t) return "";
   return OWNERSHIP_LABELS[t] ?? t;
-}
-
-export function reportUserNamesFromRecord(
-  record: Pick<PoIntakeRecord, "clientNameAr" | "reportUserClientIds" | "clientId"> | null | undefined,
-  clients: Pick<ClientDto, "id" | "nameAr">[],
-): string {
-  const ids = record?.reportUserClientIds ?? [];
-  const names = ids
-    .map((id) => clients.find((c) => c.id === id)?.nameAr.trim() ?? "")
-    .filter(Boolean);
-  if (names.length) return names.join(" و ");
-  return clientNameFromRecord(record, clients);
-}
-
-export function clientNameFromRecord(
-  record: Pick<PoIntakeRecord, "clientNameAr" | "clientId"> | null | undefined,
-  clients: Pick<ClientDto, "id" | "nameAr">[] = [],
-): string {
-  const named = (record?.clientNameAr ?? "").trim();
-  if (named) return named;
-  const id = (record?.clientId ?? "").trim();
-  if (!id) return "";
-  return clients.find((c) => c.id === id)?.nameAr.trim() ?? "";
-}
-
-export function formatValuationReportUsers(
-  record:
-    | Pick<
-        PoIntakeRecord,
-        "clientNameAr" | "reportUserClientIds" | "assignmentType" | "clientId"
-      >
-    | null
-    | undefined,
-  clients: Pick<ClientDto, "id" | "nameAr">[],
-): string {
-  if (
-    record &&
-    showsValuationReportUserField(record.assignmentType, record.clientId)
-  ) {
-    return VALUATION_REPORT_USER_OPTION_LABEL;
-  }
-  const names = reportUserNamesFromRecord(record, clients);
-  const client = clientNameFromRecord(record, clients);
-  if (names && client && names !== client) return `${client} و ${names}`;
-  return names || client;
 }
 
 function extraInventoryAreaRows(

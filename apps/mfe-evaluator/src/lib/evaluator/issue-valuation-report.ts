@@ -8,7 +8,6 @@ import {
 import { getAuthSession } from "@platform/auth-client";
 import { cacheIssuedValuationReport } from "./evaluator-report-attachments";
 import { reservedValuationReportNumber } from "./valuation-report-number";
-import { openValuationReportPreview } from "./valuation-report-preview";
 
 function apiConfig() {
   const session = getAuthSession();
@@ -86,6 +85,10 @@ export async function previewGeneratedValuationReport(input: {
   const reportNumber =
     input.extras?.reportNumber?.trim() ||
     reservedNumberFromValuationRequest(open);
+  // تحميل شرطي — بنّاء المعاينة يُجلب عند أول استعراض لا مع حزم القوائم الفورية.
+  const { openValuationReportPreview } = await import(
+    "./valuation-report-preview"
+  );
   await openValuationReportPreview(res.data, {
     ...input.extras,
     reportNumber,

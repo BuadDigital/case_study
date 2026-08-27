@@ -59,7 +59,7 @@ import {
   valuationPurposeLabelArForAssignment,
   valuePremiseLabelArForAssignment,
 } from "@platform/app-shared/prototype/assignment-valuation-defaults";
-import { formatValuationReportUsers } from "../../lib/evaluator/valuation-report-live-fill";
+import { formatValuationReportUsers } from "../../lib/evaluator/valuation-report-users";
 import dynamic from "next/dynamic";
 import { inspectionFactChips } from "./EvaluatorInspectionFactsSection";
 import { computePropertyTotal } from "../../lib/evaluator/value-estimation";
