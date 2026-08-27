@@ -171,3 +171,32 @@ multi-context plumbing:
 
 Verified: Architecture 56, Application 920, Integration 214, Container 39, and
 `DbMigrate -- list` zero-pending on all nine context streams.
+
+## A10 legacy-context archival (2026-08-28, late)
+
+The frozen legacy god context is gone from the codebase:
+
+- **Deleted:** `ApplicationDbContext`, its 166-file migration stream
+  (`backend/RealEstateEval.Infrastructure/Data/Migrations`), and the legacy design-time
+  factory. The last commit carrying them is tagged **`a10-legacy-stream-final`**; a
+  restored pre-split database is migrated by checking out that tag and running DbMigrate
+  with the unsuffixed `REAL_ESTATE_EVAL_PG_CONNECTION_STRING`.
+- **Provisioning:** DbMigrate and the container suite provision fresh databases from the
+  nine context streams alone (`Ensure*TablesForStandalone` baselines). Proven by
+  `Context_streams_provision_an_empty_database_and_leave_nothing_pending` and the full
+  39-test container run including seed and dev-reset cycles.
+- **Tests:** the application suite (920) runs entirely on owner contexts; the test
+  fixtures (`TestDatabases`, `TestBoundedContexts`, `TestInspectorFeeServiceFactory`)
+  expose all nine owner contexts over one shared in-memory store.
+- **Models:** each context's `*Model.cs` mapping moved into its context library
+  (`AuditModel`, shared by Platform/Identity/Financial, and the Messaging context stay
+  global). `DomainEnumConverters` is public for the moved mappings.
+- **Guardrails:** the union of the nine owner models replaced the legacy model as the
+  schema/ownership authority, with hard-failing consistency checks for shared mappings
+  (same table must map identically everywhere). The legacy-token ban is now total
+  (`LegacyContextIsNotUsedAnywhere`). Legacy-only tests (snapshot drift, cutover freeze)
+  are retired: Architecture suite is 54.
+- **Unblocked next (cosmetic/structural, no production coupling):** namespace alignment,
+  entity moves into ctx Domain libraries, retirement of the near-empty global assemblies.
+- **Still production-gated:** the metrics window and the `realestate_eval_dev` leftover
+  decision (do not drop — the tag + leftover are the restore pair).

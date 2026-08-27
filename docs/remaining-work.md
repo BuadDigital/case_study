@@ -47,6 +47,11 @@ from 2026-08-20, so the deploy decision is back on the table):**
   and `property-groups/by-property` no longer 204s misses (TS client reads the body).
   **Lesson:** hand-written migrations must regenerate both snapshots and the ownership row —
   the suites only gate `main`.
+- **A10 legacy-context archival (2026-08-28, late):** `ApplicationDbContext` + its 166-file
+  migration stream **deleted** (tag `a10-legacy-stream-final` is the archive). Fresh
+  databases provision from the nine context streams alone (container-proven); the app test
+  suite runs on owner contexts; `*Model.cs` mappings moved into their context libraries.
+  See §1 for what this unblocks.
 - **A8 retirement wave (2026-08-28, after the dev-reset restore):** reporting/work-order wire
   contracts + shared enums → `Shared.Contracts` (Domain now references only that leaf);
   case-study EF services → `CaseStudy.Infrastructure`; all owner-to-owner HTTP clients +
@@ -109,13 +114,27 @@ Deliberately still global: `PropertyAccessHoldService` (registered by two contex
 `NotificationRecipientResolver` (five consumer contexts), `ServiceHealthEndpoints` (needs
 global data/integration internals), messaging/outbox plumbing (Messaging stays global by
 design), and everything the frozen legacy context compiles against.
-- **Namespace alignment + final global Domain/Application/Infrastructure retirement — the
-only A8 remainder, and strictly A10-gated.** What is left in the global assemblies is now
-exactly the legacy-context compile surface (entities, `*Model.cs`, migrations, seed,
-`ApplicationUser`) plus the genuinely multi-context plumbing above. Retirement requires
-archiving the frozen legacy context (A10 metrics window + leftover-DB decision). Namespace
-renames before that would break the zero-using-churn template for no runtime benefit. Do
-not start this without the A10 gates closed.
+- ~~**A10 legacy-context archival**~~ **done 2026-08-28 (Omar: "go to A10"):**
+`ApplicationDbContext`, its 166-file migration stream, and the legacy design-time factory
+are **deleted**. The last commit carrying them is tagged **`a10-legacy-stream-final`** —
+that tag is the recovery path for migrating any restored pre-split database (A7 restore
+recipe: check out the tag, run DbMigrate with the unsuffixed env var). DbMigrate and all
+container tests now provision fresh databases from the nine context streams alone (each
+stream's `Ensure*TablesForStandalone` baseline — proven by
+`Context_streams_provision_an_empty_database_and_leave_nothing_pending`). The application
+test suite runs entirely on owner contexts (support fixtures expose all nine over one
+shared in-memory store). Each context's `*Model.cs` mapping moved into its context library;
+`AuditModel` (3 consumer contexts) and Messaging stay global. Guardrails updated: the union
+of the nine owner models is now the schema/ownership authority (with built-in
+shared-mapping drift checks), the legacy-token ban is total, and the legacy-only tests
+(snapshot drift, cutover freeze) are retired — suite is 54 tests.
+- **Remaining (unblocked by the archival, cosmetic/structural):** namespace alignment
+(`RealEstateEval.<Ctx>.*`), moving the shared Domain entities into ctx Domain libraries,
+and retiring the near-empty global Domain/Application/Infrastructure assemblies. This is
+now pure refactoring with no production coupling — schedule when wanted. **Production-side
+items still open:** the metrics window (§3) and the leftover `realestate_eval_dev`
+database decision (untouched; do not drop — with the code stream archived, the git tag +
+that leftover are the only restore pair).
 
 **2. Waiting on Omar:**
 
