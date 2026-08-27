@@ -3,6 +3,8 @@ using Microsoft.Extensions.DependencyInjection;
 using RealEstateEval.Application.Abstractions;
 using RealEstateEval.Infrastructure.Integration;
 using RealEstateEval.Infrastructure.Services;
+using RealEstateEval.Infrastructure.Data;
+using RealEstateEval.Infrastructure.Data.Contexts;
 
 namespace RealEstateEval.Infrastructure;
 
@@ -47,4 +49,20 @@ public static class ValuationDependencyInjection
         services.AddScoped<IPriorValuationBankFeeder, PriorValuationBankFeeder>();
         return services;
     }
+ /// <summary>Valuation write context, including its own outbox rows. Prefers a dedicated
+ /// Valuation connection string. A8 physical move: lives beside <see cref="ValuationDbContext"/>.</summary>
+    public static IServiceCollection AddValuationPersistence(
+        this IServiceCollection services,
+        IConfiguration configuration,
+        string connectionString)
+    {
+        var valuationConnection = BoundedContextConnections.Resolve(
+            configuration,
+            BoundedContextConnections.ServiceNames.Valuation,
+            connectionString);
+        return services.AddBoundedContextPersistence<ValuationDbContext>(
+            configuration,
+            valuationConnection);
+    }
+
 }

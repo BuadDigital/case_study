@@ -63,9 +63,5 @@ public sealed class MessagingOutboxPublisher(
     TimeProvider? time = null)
     : OutboxIntegrationEventPublisher<MessagingDbContext>(db, logger, time);
 
-/// <summary>Outbox writer owned by the Valuation context.</summary>
-public sealed class ValuationOutboxPublisher(
-    ValuationDbContext db,
-    ILogger<ValuationOutboxPublisher> logger,
-    TimeProvider? time = null)
-    : OutboxIntegrationEventPublisher<ValuationDbContext>(db, logger, time), IValuationEventPublisher;
+// A8 physical move: ValuationOutboxPublisher lives beside its context in
+// RealEstateEval.Valuation.Infrastructure (Integration/ValuationOutboxPublisher.cs).

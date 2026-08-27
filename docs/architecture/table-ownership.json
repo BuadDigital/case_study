@@ -71,7 +71,7 @@
         "valuation",
         "messaging"
       ],
-      "migrations": "backend/RealEstateEval.Infrastructure/Data/Contexts/Valuation/Migrations",
+      "migrations": "backend/contexts/valuation/RealEstateEval.Valuation.Infrastructure/Data/Migrations",
       "migrationsHistorySchema": "valuation",
       "note": "Maps messaging.OutboxMessages so a valuation write and the event it publishes stay in one SaveChanges (D5, per-producer outbox). It owns only the rows it writes."
     },

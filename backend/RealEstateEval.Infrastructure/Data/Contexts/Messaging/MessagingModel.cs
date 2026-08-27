@@ -15,7 +15,8 @@ namespace RealEstateEval.Infrastructure.Data.Contexts;
 /// for transitional dual write until owner APIs replace them.
 /// </para>
 /// </summary>
-internal static class MessagingModel
+// A8: public — owner contexts (incl. Valuation outbox mapping) live in context libraries.
+public static class MessagingModel
 {
     public static ModelBuilder ApplyOutboxModel(this ModelBuilder builder, bool ownsMigrations = true)
     {

@@ -46,12 +46,7 @@ public sealed class PlatformDbContextDesignTimeFactory
         new(options);
 }
 
-public sealed class ValuationDbContextDesignTimeFactory
-    : BoundedContextDesignTimeFactory<ValuationDbContext>
-{
-    protected override ValuationDbContext Create(DbContextOptions<ValuationDbContext> options) =>
-        new(options);
-}
+// A8 physical move: ValuationDbContextDesignTimeFactory lives beside its context library.
 
 public sealed class IdentityDbContextDesignTimeFactory
     : BoundedContextDesignTimeFactory<IdentityDbContext>

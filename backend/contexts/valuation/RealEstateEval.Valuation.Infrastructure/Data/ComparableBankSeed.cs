@@ -117,9 +117,11 @@ public static class ComparableBankSeed
 
     public static async Task EnsureAsync(
         ValuationDbContext db,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default,
+        TimeProvider? time = null)
     {
-        var now = DateTime.UtcNow;
+ // B8: wall clock only via TimeProvider — the seed lives beside runtime code now.
+        var now = (time ?? TimeProvider.System).GetUtcNow().UtcDateTime;
         await EnsureBankRowsAsync(db, now, cancellationToken);
         await AttachToOpenValuationsAsync(db, now, cancellationToken);
     }
@@ -131,9 +133,10 @@ public static class ComparableBankSeed
     public static async Task EnsureForValuationRequestAsync(
         ValuationDbContext db,
         Guid valuationRequestId,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default,
+        TimeProvider? time = null)
     {
-        var now = DateTime.UtcNow;
+        var now = (time ?? TimeProvider.System).GetUtcNow().UtcDateTime;
         await EnsureBankRowsAsync(db, now, cancellationToken);
         await AttachToValuationAsync(db, valuationRequestId, now, cancellationToken);
     }

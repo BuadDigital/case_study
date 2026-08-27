@@ -13,5 +13,6 @@
     <ProjectReference Include="..\..\contexts\failures\RealEstateEval.Failures.Infrastructure\RealEstateEval.Failures.Infrastructure.csproj" />
     <ProjectReference Include="..\..\contexts\operations\RealEstateEval.Operations.Infrastructure\RealEstateEval.Operations.Infrastructure.csproj" />
     <ProjectReference Include="..\..\contexts\financial\RealEstateEval.Financial.Infrastructure\RealEstateEval.Financial.Infrastructure.csproj" />
+    <ProjectReference Include="..\..\contexts\valuation\RealEstateEval.Valuation.Infrastructure\RealEstateEval.Valuation.Infrastructure.csproj" />
   </ItemGroup>
 </Project>

@@ -8,7 +8,9 @@ namespace RealEstateEval.Infrastructure.Data.Contexts;
 /// <see cref="ValuationDbContext"/>, which owns the write path, and by the legacy context,
 /// which still serves the Case Study dispatch pre-check until a Valuation owner call replaces it.
 /// </summary>
-internal static class ValuationModel
+// A8: public — the owner context lives in its context library; this shared mapping stays
+// global beside the frozen legacy context (drift guard).
+public static class ValuationModel
 {
     public static ModelBuilder ApplyValuationModel(this ModelBuilder builder)
     {

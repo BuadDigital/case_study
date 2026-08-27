@@ -60,20 +60,8 @@ public static class DependencyInjection
         return services.AddBoundedContextPersistence<PlatformDbContext>(configuration, connectionString);
     }
 
- /// <summary>Valuation write context, including its own outbox rows. Prefers a dedicated Valuation connection string.</summary>
-    public static IServiceCollection AddValuationPersistence(
-        this IServiceCollection services,
-        IConfiguration configuration,
-        string connectionString)
-    {
-        var valuationConnection = BoundedContextConnections.Resolve(
-            configuration,
-            BoundedContextConnections.ServiceNames.Valuation,
-            connectionString);
-        return services.AddBoundedContextPersistence<ValuationDbContext>(
-            configuration,
-            valuationConnection);
-    }
+ // A8 physical move: AddValuationPersistence lives in ValuationDependencyInjection
+ // (contexts/valuation) beside its DbContext.
 
  /// <summary>
  /// Registers one bounded-context pool. Phase 1 used one physical database; Phase 4
