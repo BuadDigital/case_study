@@ -25,7 +25,12 @@ public class PropertyGroupsController : ControllerBase
     public async Task<ActionResult<PropertyGroupDto?>> GetForProperty(
         Guid propertyId,
         CancellationToken ct)
-        => Ok(await _groups.GetForPropertyAsync(propertyId, ct));
+    {
+ // «لا مجموعة» يجب أن تصل كـ JSON null بحالة 200 لا 204 — عميل TS يقرأ الجسم دائماً،
+ // والجسم الفارغ يُفسَّر خطأ شبكة (HttpNoContentOutputFormatter يحوّل null إلى 204).
+        var group = await _groups.GetForPropertyAsync(propertyId, ct);
+        return new JsonResult(group);
+    }
 
     [HttpGet("by-property/{propertyId:guid}/suggestions")]
     [Authorize(Policy = CapabilityPolicyNames.ManageWorkOrders)]

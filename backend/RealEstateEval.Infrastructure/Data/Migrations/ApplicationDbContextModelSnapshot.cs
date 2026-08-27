@@ -741,6 +741,14 @@ namespace RealEstateEval.Infrastructure.Data.Migrations
                         .HasPrecision(9, 6)
                         .HasColumnType("numeric(9,6)");
 
+                    b.Property<string>("PlanNumber")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<string>("PlotNumber")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
                     b.Property<decimal>("Price")
                         .HasPrecision(18, 2)
                         .HasColumnType("numeric(18,2)");
@@ -3267,6 +3275,42 @@ namespace RealEstateEval.Infrastructure.Data.Migrations
                         });
                 });
 
+            modelBuilder.Entity("RealEstateEval.Domain.PropertyComparableLink", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("ComparablePropertyId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)");
+
+                    b.Property<DateTime>("LinkedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("LinkedByUserId")
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)");
+
+                    b.Property<Guid>("PropertyId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ComparablePropertyId");
+
+                    b.HasIndex("PropertyId");
+
+                    b.HasIndex("PropertyId", "ComparablePropertyId")
+                        .IsUnique()
+                        .HasDatabaseName("IX_PropertyComparableLinks_Property_Comp");
+
+                    b.ToTable("PropertyComparableLinks", "valuation");
+                });
+
             modelBuilder.Entity("RealEstateEval.Domain.PropertyContact", b =>
                 {
                     b.Property<Guid>("Id")
@@ -4110,6 +4154,13 @@ namespace RealEstateEval.Infrastructure.Data.Migrations
                         .HasMaxLength(32)
                         .HasColumnType("character varying(32)");
 
+                    b.Property<string>("CostScopeKey")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)")
+                        .HasDefaultValue("land_and_building");
+
                     b.Property<string>("ExternalSpecialistDetails")
                         .HasMaxLength(2000)
                         .HasColumnType("character varying(2000)");
@@ -4170,6 +4221,10 @@ namespace RealEstateEval.Infrastructure.Data.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
+                    b.Property<string>("DescriptionAr")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
                     b.Property<string>("FactorKey")
                         .IsRequired()
                         .HasMaxLength(32)
@@ -4216,11 +4271,19 @@ namespace RealEstateEval.Infrastructure.Data.Migrations
                         .HasMaxLength(32)
                         .HasColumnType("character varying(32)");
 
+                    b.Property<decimal?>("AreaOverrideSqm")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)");
+
                     b.Property<Guid>("ComparablePropertyId")
                         .HasColumnType("uuid");
 
                     b.Property<bool>("IsAdopted")
                         .HasColumnType("boolean");
+
+                    b.Property<decimal?>("PriceOverrideSar")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)");
 
                     b.Property<DateTime>("SelectedAtUtc")
                         .HasColumnType("timestamp with time zone");
@@ -4228,6 +4291,11 @@ namespace RealEstateEval.Infrastructure.Data.Migrations
                     b.Property<string>("SelectedByUserId")
                         .HasMaxLength(128)
                         .HasColumnType("character varying(128)");
+
+                    b.Property<string>("SelectionContext")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)");
 
                     b.Property<int>("SortOrder")
                         .HasColumnType("integer");
@@ -4252,9 +4320,9 @@ namespace RealEstateEval.Infrastructure.Data.Migrations
 
                     b.HasIndex("ValuationRequestId");
 
-                    b.HasIndex("ValuationRequestId", "ComparablePropertyId")
+                    b.HasIndex("ValuationRequestId", "ComparablePropertyId", "SelectionContext")
                         .IsUnique()
-                        .HasDatabaseName("IX_ValuationComparableSelections_Request_Comp");
+                        .HasDatabaseName("IX_ValuationComparableSelections_Request_Comp_Context");
 
                     b.ToTable("ValuationComparableSelections", "valuation");
                 });
@@ -4461,15 +4529,30 @@ namespace RealEstateEval.Infrastructure.Data.Migrations
                         .HasMaxLength(4000)
                         .HasColumnType("character varying(4000)");
 
+                    b.Property<decimal>("AnnualMarketRatePct")
+                        .HasPrecision(9, 4)
+                        .HasColumnType("numeric(9,4)");
+
+                    b.Property<decimal>("AreaFactorPct")
+                        .HasPrecision(9, 4)
+                        .HasColumnType("numeric(9,4)");
+
                     b.Property<decimal?>("SubjectAreaSqm")
                         .HasPrecision(18, 2)
                         .HasColumnType("numeric(18,2)");
+
+                    b.Property<string>("SubjectSpecJson")
+                        .HasMaxLength(4000)
+                        .HasColumnType("character varying(4000)");
 
                     b.Property<DateTime>("UpdatedAtUtc")
                         .HasColumnType("timestamp with time zone");
 
                     b.Property<Guid>("ValuationRequestId")
                         .HasColumnType("uuid");
+
+                    b.Property<int>("ValueRoundDecimals")
+                        .HasColumnType("integer");
 
                     b.HasKey("Id");
 
@@ -5321,6 +5404,17 @@ namespace RealEstateEval.Infrastructure.Data.Migrations
                         .IsRequired();
 
                     b.Navigation("Profile");
+                });
+
+            modelBuilder.Entity("RealEstateEval.Domain.PropertyComparableLink", b =>
+                {
+                    b.HasOne("RealEstateEval.Domain.ComparableProperty", "ComparableProperty")
+                        .WithMany()
+                        .HasForeignKey("ComparablePropertyId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("ComparableProperty");
                 });
 
             modelBuilder.Entity("RealEstateEval.Domain.PropertyContact", b =>

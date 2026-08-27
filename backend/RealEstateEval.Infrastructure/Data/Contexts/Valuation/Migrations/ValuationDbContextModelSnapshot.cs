@@ -94,6 +94,14 @@ namespace RealEstateEval.Infrastructure.Data.Contexts.Valuation.Migrations
                         .HasPrecision(9, 6)
                         .HasColumnType("numeric(9,6)");
 
+                    b.Property<string>("PlanNumber")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<string>("PlotNumber")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
                     b.Property<decimal>("Price")
                         .HasPrecision(18, 2)
                         .HasColumnType("numeric(18,2)");
@@ -283,6 +291,42 @@ namespace RealEstateEval.Infrastructure.Data.Contexts.Valuation.Migrations
                         {
                             t.ExcludeFromMigrations();
                         });
+                });
+
+            modelBuilder.Entity("RealEstateEval.Domain.PropertyComparableLink", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("ComparablePropertyId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)");
+
+                    b.Property<DateTime>("LinkedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("LinkedByUserId")
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)");
+
+                    b.Property<Guid>("PropertyId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ComparablePropertyId");
+
+                    b.HasIndex("PropertyId");
+
+                    b.HasIndex("PropertyId", "ComparablePropertyId")
+                        .IsUnique()
+                        .HasDatabaseName("IX_PropertyComparableLinks_Property_Comp");
+
+                    b.ToTable("PropertyComparableLinks", "valuation");
                 });
 
             modelBuilder.Entity("RealEstateEval.Domain.ValuationApproachSettings", b =>
@@ -865,6 +909,17 @@ namespace RealEstateEval.Infrastructure.Data.Contexts.Valuation.Migrations
                         .HasFilter("\"Status\" <> 'done'");
 
                     b.ToTable("ValuationRequests", "valuation");
+                });
+
+            modelBuilder.Entity("RealEstateEval.Domain.PropertyComparableLink", b =>
+                {
+                    b.HasOne("RealEstateEval.Domain.ComparableProperty", "ComparableProperty")
+                        .WithMany()
+                        .HasForeignKey("ComparablePropertyId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("ComparableProperty");
                 });
 
             modelBuilder.Entity("RealEstateEval.Domain.ValuationApproachSettings", b =>
