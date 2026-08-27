@@ -10,7 +10,7 @@
   <!-- The charge/statement entities key off shared Domain types (WorkflowTaskKind,
        SupervisingDepartments, wire statuses), which stay in the global Domain. -->
   <ItemGroup>
-    <ProjectReference Include="..\..\..\RealEstateEval.Domain\RealEstateEval.Domain.csproj" />
+    <ProjectReference Include="..\..\..\shared\RealEstateEval.Shared.Contracts\RealEstateEval.Shared.Contracts.csproj" />
   </ItemGroup>
 
 </Project>

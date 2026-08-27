@@ -11,7 +11,7 @@
        WorkflowTask entities, which stay in the global Domain until the wire DTOs and
        cross-context reads are de-typed (see the A8 defer list). -->
   <ItemGroup>
-    <ProjectReference Include="..\..\..\RealEstateEval.Domain\RealEstateEval.Domain.csproj" />
+    <ProjectReference Include="..\..\..\shared\RealEstateEval.Shared.Contracts\RealEstateEval.Shared.Contracts.csproj" />
   </ItemGroup>
 
 </Project>

@@ -13,28 +13,40 @@ public class ProjectReferenceBoundaryTests
     [
         "RealEstateEval.Application.csproj",
         "RealEstateEval.Infrastructure.csproj",
-        "RealEstateEval.Domain.csproj",
     ];
 
     /// <summary>
-    /// A8 retirement: shared wire enums/statuses moved into the Shared.Contracts leaf, so
-    /// Domain builds on that one zero-reference leaf and nothing else.
+    /// A10 cleanup: the global Domain assembly is retired — entities live in the context
+    /// Domain libraries, shared wire types in the Shared.Contracts leaf. It must not return.
     /// </summary>
     [Fact]
-    public void DomainReferencesOnlyTheSharedContractsLeaf() =>
-        Assert.Equal(
-            new[] { "backend/shared/RealEstateEval.Shared.Contracts/RealEstateEval.Shared.Contracts.csproj" },
-            ReferencesOf("backend/RealEstateEval.Domain/RealEstateEval.Domain.csproj").ToArray());
+    public void TheGlobalDomainProjectStaysRetired() =>
+        Assert.False(
+            Directory.Exists(RepoPaths.Combine("backend", "RealEstateEval.Domain")),
+            "backend/RealEstateEval.Domain returned; entities belong to their context Domain "
+            + "libraries and shared wire types to Shared.Contracts.");
 
+    /// <summary>
+    /// Context Domain libraries stay leaf-like: only the zero-reference contracts leaf
+    /// (and, transitively, nothing else) may sit beneath an entity.
+    /// </summary>
     [Fact]
-    public void DomainHasNoAspNetIdentityPackageReference()
+    public void ContextDomainLibrariesReferenceOnlyTheSharedContractsLeaf()
     {
-        var project = File.ReadAllText(RepoPaths.Combine(
-            "backend",
-            "RealEstateEval.Domain",
-            "RealEstateEval.Domain.csproj"));
+        var domainProjects = Directory
+            .EnumerateFiles(RepoPaths.Combine("backend", "contexts"), "*.Domain.csproj", SearchOption.AllDirectories)
+            .Select(RepoPaths.Relative);
 
-        Assert.DoesNotContain("Microsoft.AspNetCore.Identity", project, StringComparison.Ordinal);
+        foreach (var project in domainProjects)
+        {
+            var stray = ReferencesOf(project)
+                .Where(reference => !reference.EndsWith(
+                    "RealEstateEval.Shared.Contracts.csproj", StringComparison.Ordinal))
+                .ToList();
+            Assert.True(
+                stray.Count == 0,
+                $"{project} references non-leaf projects: {string.Join(", ", stray)}.");
+        }
     }
 
     [Fact]

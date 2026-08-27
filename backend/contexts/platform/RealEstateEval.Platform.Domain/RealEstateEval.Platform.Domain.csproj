@@ -10,7 +10,7 @@
   <!-- DifferenceFactorCatalog.Seed() keys its factors off the shared
        MarketAdjustmentFactorKeys, which stays in the global Domain for Valuation. -->
   <ItemGroup>
-    <ProjectReference Include="..\..\..\RealEstateEval.Domain\RealEstateEval.Domain.csproj" />
+    <ProjectReference Include="..\..\..\shared\RealEstateEval.Shared.Contracts\RealEstateEval.Shared.Contracts.csproj" />
   </ItemGroup>
 
 </Project>

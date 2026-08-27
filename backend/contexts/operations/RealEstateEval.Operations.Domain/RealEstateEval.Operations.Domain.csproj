@@ -10,7 +10,7 @@
   <!-- PropertyKeyRecord defaults its workflow status from the shared wire-status
        constants, which stay in the global Domain. -->
   <ItemGroup>
-    <ProjectReference Include="..\..\..\RealEstateEval.Domain\RealEstateEval.Domain.csproj" />
+    <ProjectReference Include="..\..\..\shared\RealEstateEval.Shared.Contracts\RealEstateEval.Shared.Contracts.csproj" />
   </ItemGroup>
 
 </Project>

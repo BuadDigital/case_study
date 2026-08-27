@@ -10,7 +10,7 @@
   <!-- Unlike Failures/Attachments, the Valuation rules depend on shared Domain types
        (DeedKind, ValuationRequestStatus, InspectionScopeKeys, MarketAdjustmentFactorKeys). -->
   <ItemGroup>
-    <ProjectReference Include="..\..\..\RealEstateEval.Domain\RealEstateEval.Domain.csproj" />
+    <ProjectReference Include="..\..\..\shared\RealEstateEval.Shared.Contracts\RealEstateEval.Shared.Contracts.csproj" />
   </ItemGroup>
 
 </Project>

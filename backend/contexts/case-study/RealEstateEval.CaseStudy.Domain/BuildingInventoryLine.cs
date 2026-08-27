@@ -26,20 +26,8 @@ public class BuildingInventoryLine
     public WorkOrderProperty? Property { get; set; }
 }
 
-public static class BuildingStructureKinds
-{
-    public const string Floor = "floor";
-    public const string Fence = "fence";
-    public const string Annex = "annex";
-    public const string Basement = "basement";
-    public const string Other = "other";
-
-    public static readonly string[] All =
-        [Floor, Fence, Annex, Basement, Other];
-
-    public static bool IsKnown(string? value) =>
-        All.Contains(value?.Trim() ?? "", StringComparer.Ordinal);
-}
+// BuildingStructureKinds moved to Shared.Contracts (A10 cleanup): the valuation cost
+// approach shares the structure-kind wire values.
 
 /// <summary>Governing question answer: are there buildings/structures to value?</summary>
 public static class HasStructuresToValueValues

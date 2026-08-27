@@ -17,7 +17,6 @@
   <Project Path="RealEstateEval.Api.IntegrationTests/RealEstateEval.Api.IntegrationTests.csproj" />
   <Project Path="RealEstateEval.Api.ContainerTests/RealEstateEval.Api.ContainerTests.csproj" />
   <Project Path="RealEstateEval.Application/RealEstateEval.Application.csproj" />
-  <Project Path="RealEstateEval.Domain/RealEstateEval.Domain.csproj" />
   <Project Path="RealEstateEval.Infrastructure/RealEstateEval.Infrastructure.csproj" />
   <Project Path="contexts/attachments/RealEstateEval.Attachments.Domain/RealEstateEval.Attachments.Domain.csproj" />
   <Project Path="contexts/attachments/RealEstateEval.Attachments.Application/RealEstateEval.Attachments.Application.csproj" />
