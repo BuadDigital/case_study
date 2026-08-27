@@ -51,4 +51,33 @@ public static class DevSeedProvider
         return services;
     }
 
+ /// <summary>
+ /// Throwaway DI graph for the Development system reset: every owner context plus the
+ /// identity registration/session services (remaining-work note: without
+ /// IAuthSessionService the user purge fails). Request paths never see this graph.
+ /// </summary>
+    public static ServiceProvider CreateResetProvider(
+        IConfiguration configuration,
+        string connectionString)
+    {
+        var services = new ServiceCollection();
+        services.AddLogging();
+        services.AddSingleton(configuration);
+        services.AddHostSharedInfrastructure(configuration);
+        services.AddIdentitySeedStores(configuration, connectionString);
+        services.AddOperationsPersistence(configuration, connectionString);
+        services.AddFinancialPersistence(configuration, connectionString);
+        services.AddCaseStudyPersistence(configuration, connectionString);
+        services.AddValuationPersistence(configuration, connectionString);
+        services.AddFailuresPersistence(configuration, connectionString);
+        services.AddAttachmentsPersistence(configuration, connectionString);
+        services.AddMessagingPersistence(configuration, connectionString);
+ // The registration/session bundle (IUserRegistrationService + IAuthSessionService and
+ // their permission/JWT dependencies) — the user purge revokes sessions as it deletes.
+        services.AddIdentityApplicationServices();
+ // Reset/registration audit lands on the Platform database like the old god-context reset.
+        services.AddScoped<Application.Abstractions.IAuditLogAppend,
+            Infrastructure.Services.PlatformAuditLogAppend>();
+        return services.BuildServiceProvider();
+    }
 }

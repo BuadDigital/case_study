@@ -39,6 +39,17 @@ public sealed class ServiceModule : IRealEstateEvalServiceModule
         builder.Services.AddIntegrationEventInbox();
         // A8: dead AddBlobStorage registration removed — nothing on this host resolves IBlobStorage.
         builder.Services.AddHostedService<ValuationIntegrationEventConsumer>();
+
+        if (builder.Environment.IsDevelopment())
+        {
+            // Dev-only system reset, redesigned for the per-service databases: builds a
+            // throwaway owner-context graph (DevSeed leaf) — request paths never see it.
+            var resetConnection = connectionString!;
+            builder.Services.AddScoped<ISystemMaintenanceService>(sp =>
+                new DevSystemMaintenanceService(
+                    sp.GetRequiredService<IConfiguration>(),
+                    resetConnection));
+        }
     }
 
     public async Task ConfigureAppAsync(WebApplication app, string? connectionString)

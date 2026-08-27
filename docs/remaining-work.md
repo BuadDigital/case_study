@@ -103,12 +103,13 @@ closed.
 plus the complete A8 physical-move wave; merging `dev` → `main` auto-deploys. The valuation
 report preview was smoke-clicked on dev (and its popup bug fixed); after deploy, re-smoke:
 failure lifecycle, report preview, a notification, real role chip.
-- **Dev system reset redesign** (explicitly parked "for later"): the old reset walked the god
-context; `DELETE /api/system/data` returns 501. The settings UI
-(`apps/mfe-settings/src/lib/system-maintenance-api.ts`) and `apps/shell/scripts/clear-all-pos.mjs`
-still call it. A working reset must fan out per owner service (or a dedicated maintenance job);
-also wire `IAuthSessionService`/`IAuditLogWriter` into `CreateIdentityMaintenanceProvider` when
-redesigning, or `DeleteAllRegisteredAsync` fails there.
+- ~~Dev system reset redesign~~ **done 2026-08-28**: `DELETE /api/system/data` works again in
+Development. `DevSystemMaintenanceService` (DevSeed leaf) truncates every owner context's
+mapped tables (audit schema preserved), purges registered non-org users through
+`DevSeedProvider.CreateResetProvider` (which wires `IAuthSessionService` +
+`IUserRegistrationService` + `IAuditLogAppend`), then re-runs the idempotent demo seed.
+Registered only under `IsDevelopment()` in the Case Study `ServiceModule`; any other
+environment still gets 501. Covered by `SystemResetTests` in the container suite.
 - **E6** — billing negotiation deadline notifications: product policy undefined.
 - **7 party-billing/Enfaz validators** — financially-shaped but bound by the case-study host;
 decide which slice owns them before moving.
@@ -310,8 +311,8 @@ Do **not** delete empty baselines or Sync no-ops once they exist in a stream peo
    the A7 restore source).
 4. **Product queue** — ق-8 ← ق-6 ← ق-9 per the v2 package, any time; it does not conflict
   with the A8 tail.
-5. **Open-ended / parallel:** F6 controller-body coverage, B2 aggregates, dev-reset redesign
-  (when Omar un-parks it), E6 after product defines deadline/escalation rules.
+5. **Open-ended / parallel:** F6 controller-body coverage, B2 aggregates (~~dev-reset
+  redesign~~ done 2026-08-28), E6 after product defines deadline/escalation rules.
 6. **Standing "do nots":** no `ApplicationDbContext` on request hosts; no cross-context EF
   opens (Case Study must not open Failures/Operations/Financial contexts and vice versa); no
    new compose `depends_on` cycles; no shared-DB connection reintroduction.
