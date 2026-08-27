@@ -72,6 +72,9 @@
     "backend/tools/DevSeed/RealEstateEval.DevSeed.csproj": [
       "backend/RealEstateEval.Infrastructure/RealEstateEval.Infrastructure.csproj"
     ],
+    "backend/shared/RealEstateEval.Shared.RemoteClients/RealEstateEval.Shared.RemoteClients.csproj": [
+      "backend/RealEstateEval.Application/RealEstateEval.Application.csproj"
+    ],
     "backend/contexts/attachments/RealEstateEval.Attachments.Application/RealEstateEval.Attachments.Application.csproj": [
       "backend/RealEstateEval.Application/RealEstateEval.Application.csproj",
       "backend/contexts/attachments/RealEstateEval.Attachments.Domain/RealEstateEval.Attachments.Domain.csproj"

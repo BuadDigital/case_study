@@ -10,6 +10,7 @@
   <Project Path="services/platform/RealEstateEval.Platform.Api/RealEstateEval.Platform.Api.csproj" />
   <Project Path="services/attachments/RealEstateEval.Attachments.Api/RealEstateEval.Attachments.Api.csproj" />
   <Project Path="shared/RealEstateEval.Shared.Contracts/RealEstateEval.Shared.Contracts.csproj" />
+  <Project Path="shared/RealEstateEval.Shared.RemoteClients/RealEstateEval.Shared.RemoteClients.csproj" />
   <Project Path="shared/RealEstateEval.Shared.Web/RealEstateEval.Shared.Web.csproj" />
   <Project Path="RealEstateEval.Application.Tests/RealEstateEval.Application.Tests.csproj" />
   <Project Path="RealEstateEval.Architecture.Tests/RealEstateEval.Architecture.Tests.csproj" />

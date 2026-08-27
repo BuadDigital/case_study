@@ -1,9 +1,5 @@
 using System.Text.RegularExpressions;
-using Microsoft.EntityFrameworkCore;
 using RealEstateEval.Application.Rules;
-using RealEstateEval.Domain;
-using RealEstateEval.Infrastructure.Data;
-using RealEstateEval.Infrastructure.Data.Contexts;
 
 namespace RealEstateEval.Infrastructure.Services;
 
