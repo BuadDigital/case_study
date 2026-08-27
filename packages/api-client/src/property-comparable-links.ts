@@ -1,4 +1,5 @@
 import { getApiBase } from "./index";
+import { repositoryFetch as fetch } from "./write-repository";
 import type { ComparablePropertyDto } from "./comparable-properties";
 
 export type PropertyComparableLinkItemDto = {

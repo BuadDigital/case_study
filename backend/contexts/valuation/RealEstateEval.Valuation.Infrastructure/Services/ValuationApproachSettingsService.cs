@@ -101,7 +101,8 @@ public sealed class ValuationApproachSettingsService(
             request.ValuationDateMode,
             retroDate,
             request.RetrospectiveRationale,
-            await AllowedPurposeKeysAsync(cancellationToken));
+            await AllowedPurposeKeysAsync(cancellationToken),
+            costScopeKey: request.CostScopeKey);
         if (errors.Count > 0) return (null, errors);
 
         var row = await db.ValuationApproachSettings
@@ -120,6 +121,7 @@ public sealed class ValuationApproachSettingsService(
         row.CostApproachEnabled = request.CostApproachEnabled;
         row.IncomeApproachEnabled = false;
         row.CostBasisKey = CostBasisKeys.Normalize(request.CostBasisKey);
+        row.CostScopeKey = CostScopeKeys.Normalize(request.CostScopeKey);
         row.CostMeasurementUnitKey = CostMeasurementUnitKeys.Normalize(request.CostMeasurementUnitKey);
         row.AdjustmentsEditUnlocked = request.AdjustmentsEditUnlocked;
         row.ValuationPurposeKey = (request.ValuationPurposeKey ?? "").Trim().ToLowerInvariant();
@@ -136,8 +138,12 @@ public sealed class ValuationApproachSettingsService(
         row.RetrospectiveRationale = dateMode == ValuationDateModes.Retrospective
             ? request.RetrospectiveRationale!.Trim()
             : null;
+        var selectedAssumptions = request.SelectedAssumptions ?? [];
+        if (request.ExternalSpecialistUsed)
+            selectedAssumptions = ValuationApproachSettingsRules.WithoutNoExternalSpecialistAssumptions(
+                selectedAssumptions);
         row.SelectedAssumptionsJson = ValuationApproachSettingsRules.SerializeAssumptions(
-            request.SelectedAssumptions ?? []);
+            selectedAssumptions);
         row.UpdatedAtUtc = _time.UtcNow();
 
         await db.SaveChangesAsync(cancellationToken);
@@ -185,6 +191,8 @@ public sealed class ValuationApproachSettingsService(
             IncomeApproachEnabled = effective.IncomeApproachEnabled,
             CostBasisKey = effective.CostBasisKey,
             CostBasisLabelAr = CostBasisKeys.LabelAr(effective.CostBasisKey),
+            CostScopeKey = CostScopeKeys.Normalize(effective.CostScopeKey),
+            CostScopeLabelAr = CostScopeKeys.LabelAr(effective.CostScopeKey),
             CostMeasurementUnitKey = effective.CostMeasurementUnitKey,
             CostMeasurementUnitLabelAr = CostMeasurementUnitKeys.LabelAr(effective.CostMeasurementUnitKey),
             AdjustmentsEditUnlocked = effective.AdjustmentsEditUnlocked,

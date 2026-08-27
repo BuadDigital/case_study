@@ -68,6 +68,14 @@ public static class DataSeeder
             await RemoveDemoPropertyKeyRecordsAsync(operations, cancellationToken);
             await RemoveSeededFinancialReportConfigAsync(financial, cancellationToken);
             await RemoveRetiredOrgAdminUsersAsync(userManager, cancellationToken);
+            try
+            {
+                await ComparableBankSeed.EnsureAsync(valuation, cancellationToken);
+            }
+            catch (Exception ex)
+            {
+                logger.LogWarning(ex, "ComparableBankSeed skipped.");
+            }
             return;
         }
 
@@ -91,6 +99,7 @@ public static class DataSeeder
             cancellationToken);
 
         await EnsurePrototypeModuleDataAsync(operations, valuation, failures, cancellationToken);
+        await ComparableBankSeed.EnsureAsync(valuation, cancellationToken);
     }
 
  /// <summary>

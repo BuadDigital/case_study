@@ -29,7 +29,7 @@ import {
 } from "@platform/ui-kit";
 import { organizationSettingsApiConfig } from "../lib/settings-api-config";
 
-type BrandKey = "logo" | "stamp" | "lh";
+type BrandKey = "logo" | "stamp" | "sig" | "lh";
 
 const D = BRAND_IDENTITY_DEFAULTS;
 
@@ -81,8 +81,8 @@ export function BrandIdentityView() {
     confirm: string;
     onConfirm: () => void;
   } | null>(null);
-  const dirtyRef = useRef({ logo: false, stamp: false, lh: false });
-  const [dirty, setDirty] = useState({ logo: false, stamp: false, lh: false });
+  const dirtyRef = useRef({ logo: false, stamp: false, sig: false, lh: false });
+  const [dirty, setDirty] = useState({ logo: false, stamp: false, sig: false, lh: false });
 
   const mark = useCallback((key: BrandKey, next: OrganizationBrandingSettings) => {
     setBrand(next);
@@ -106,8 +106,8 @@ export function BrandIdentityView() {
     }
     setError(null);
     setBrand(res.data.branding);
-    setDirty({ logo: false, stamp: false, lh: false });
-    dirtyRef.current = { logo: false, stamp: false, lh: false };
+    setDirty({ logo: false, stamp: false, sig: false, lh: false });
+    dirtyRef.current = { logo: false, stamp: false, sig: false, lh: false };
   }, []);
 
   useEffect(() => {
@@ -214,6 +214,7 @@ export function BrandIdentityView() {
   const logoColor = filled(brand.logoColorUrl, D.logoColorUrl!);
   const logoWhite = filled(brand.logoWhiteUrl, D.logoWhiteUrl!);
   const stamp = filled(brand.stampUrl, D.stampUrl);
+  const signature = filled(brand.signatureUrl, D.signatureUrl);
   const letterhead = filled(brand.letterheadUrl, D.letterheadUrl!);
   const head = mm(brand.letterheadHeadMm, D.letterheadHeadMm!);
   const footTop = mm(brand.letterheadFootTopMm, D.letterheadFootTopMm!);
@@ -221,6 +222,8 @@ export function BrandIdentityView() {
   const padStart = mm(brand.letterheadPadStartMm, D.letterheadPadStartMm!);
   const stampW = mm(brand.stampWidthCm, D.stampWidthCm!);
   const stampH = mm(brand.stampHeightCm, D.stampHeightCm!);
+  const sigW = mm(brand.signatureWidthCm, D.signatureWidthCm!);
+  const sigH = mm(brand.signatureHeightCm, D.signatureHeightCm!);
 
   const logoMeta = useMemo(
     () =>
@@ -300,6 +303,10 @@ export function BrandIdentityView() {
   }
 
   const fieldCls = "h-[30px] text-xs";
+  const cardFootCls =
+    "mt-auto flex flex-wrap items-center justify-between gap-2.5 border-t border-border px-4 py-3 text-xs text-text-2";
+  const previewBoxCls =
+    "grid h-[110px] w-[150px] shrink-0 place-items-center rounded-lg border border-dashed border-border-md bg-surface-2 p-2";
 
   return (
     <PageShell variant="canvas" className="gap-0 p-4 sm:p-6" dir="rtl">
@@ -310,19 +317,16 @@ export function BrandIdentityView() {
       ) : null}
       {error ? <Note tone="warn">{error}</Note> : null}
 
-      <p className="m-0 mx-0.5 mb-3 text-[11.5px] text-text-3">
+      <p className="m-0 mx-0.5 mb-4 text-[11.5px] leading-relaxed text-text-3">
         التغييرات لا تسري إلا باعتماد كل مكوّن على حدة — والاعتماد يُقيَّد في سجل التدقيق.
       </p>
 
-      <div
-        className="grid items-start gap-4"
-        style={{ gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))" }}
-      >
-        <Card>
+      <div className="grid grid-cols-1 items-stretch gap-4 lg:grid-cols-3">
+        <Card className="flex h-full flex-col">
           <CardHeader>
             <h2 className="m-0 text-sm font-bold">الشعار</h2>
           </CardHeader>
-          <CardBody>
+          <CardBody className="flex flex-1 flex-col">
             <div className="mb-3 grid grid-cols-2 gap-2.5">
               <div>
                 <div
@@ -410,12 +414,12 @@ export function BrandIdentityView() {
                 </div>
               </div>
             </div>
-            <div className="text-xs text-text-2">
+            <div className="mt-auto text-xs leading-relaxed text-text-2">
               المقاس الملزم: متجه SVG — ارتفاع <bdi className="font-[inherit]">48px</bdi> في
               الترويسة. لكل نسخة رفع مستقل.
             </div>
           </CardBody>
-          <div className="flex flex-wrap items-center justify-between gap-2.5 border-t border-border px-4 py-3 text-xs text-text-2">
+          <div className={cardFootCls}>
             <span>{logoMeta}</span>
             <Button
               variant="primary"
@@ -435,14 +439,12 @@ export function BrandIdentityView() {
           </div>
         </Card>
 
-        <Card>
+        <Card className="flex h-full flex-col">
           <CardHeader>
             <h2 className="m-0 text-sm font-bold">مقاس الختم على صفحة A4</h2>
           </CardHeader>
-          <CardBody className="flex flex-wrap items-start gap-4">
-            <div
-              className="grid h-[110px] w-[150px] shrink-0 place-items-center rounded-lg border border-dashed border-border-md bg-surface-2 p-2"
-            >
+          <CardBody className="flex flex-1 flex-wrap items-start gap-4">
+            <div className={previewBoxCls}>
               <img
                 src={stamp}
                 alt="ختم المنشأة"
@@ -483,7 +485,7 @@ export function BrandIdentityView() {
                   }
                 />
               </div>
-              <p className="col-span-2 m-0 text-[11.5px] text-text-3">
+              <p className="col-span-2 m-0 text-[11.5px] leading-relaxed text-text-3">
                 المقاس يسري على الصفحات المطبوعة فقط — رفع الختم نفسه من هنا.
               </p>
               <div className="col-span-2">
@@ -511,7 +513,7 @@ export function BrandIdentityView() {
               </div>
             </div>
           </CardBody>
-          <div className="flex flex-wrap items-center justify-between gap-2.5 border-t border-border px-4 py-3 text-xs text-text-2">
+          <div className={cardFootCls}>
             <span>يُطبع في قسم الاعتماد (27) من كل تقرير</span>
             <Button
               variant="primary"
@@ -531,41 +533,154 @@ export function BrandIdentityView() {
           </div>
         </Card>
 
-        <Card>
+        <Card className="flex h-full flex-col">
           <CardHeader>
-            <h2 className="m-0 text-sm font-bold">كليشة التقرير</h2>
+            <h2 className="m-0 text-sm font-bold">مقاس التوقيع على صفحة A4</h2>
           </CardHeader>
-          <CardBody className="flex flex-nowrap items-start gap-3.5 overflow-x-auto">
-            <button
-              type="button"
-              className="relative h-[269px] w-[190px] shrink-0 cursor-zoom-in overflow-hidden rounded border border-border-md bg-white p-0"
-              onClick={() => {
-                setLhZoom(true);
-                setLhX(0);
-                setLhY(0);
-              }}
-            >
+          <CardBody className="flex flex-1 flex-wrap items-start gap-4">
+            <div className={previewBoxCls}>
               <img
-                src={letterhead}
-                alt="معاينة الكليشة على A4"
-                className="absolute inset-0 size-full object-cover"
-              />
-              <div
-                className="pointer-events-none absolute inset-x-0 top-0 border-b-2 border-dashed border-gold"
+                src={signature}
+                alt="توقيع المقيم المعتمد"
+                draggable={false}
                 style={{
-                  height: head * 0.9,
-                  background: "color-mix(in srgb, var(--gold) 12%, transparent)",
+                  maxWidth: "100%",
+                  maxHeight: "100%",
+                  objectFit: "contain",
+                  pointerEvents: "none",
+                  userSelect: "none",
                 }}
               />
-              <div
-                className="pointer-events-none absolute inset-x-0 bottom-0 border-t-2 border-dashed border-gold"
-                style={{
-                  top: footTop * 0.9,
-                  background: "color-mix(in srgb, var(--gold) 12%, transparent)",
+            </div>
+            <div className="grid min-w-[14rem] flex-1 grid-cols-2 gap-2.5">
+              <div className="flex flex-col">
+                <Label size="field">عرض التوقيع في A4 (cm)</Label>
+                <Input
+                  className={fieldCls}
+                  type="number"
+                  dir="ltr"
+                  disabled={!canEdit}
+                  value={String(sigW)}
+                  onChange={(e) =>
+                    mark("sig", {
+                      ...brand,
+                      signatureWidthCm: Number(e.target.value),
+                    })
+                  }
+                />
+              </div>
+              <div className="flex flex-col">
+                <Label size="field">ارتفاع التوقيع في A4 (cm)</Label>
+                <Input
+                  className={fieldCls}
+                  type="number"
+                  dir="ltr"
+                  disabled={!canEdit}
+                  value={String(sigH)}
+                  onChange={(e) =>
+                    mark("sig", {
+                      ...brand,
+                      signatureHeightCm: Number(e.target.value),
+                    })
+                  }
+                />
+              </div>
+              <p className="col-span-2 m-0 text-[11.5px] leading-relaxed text-text-3">
+                المقاس يسري على الصفحات المطبوعة فقط — رفع التوقيع نفسه من هنا.
+              </p>
+              <div className="col-span-2">
+                <Button
+                  variant="default"
+                  size="sm"
+                  disabled={!canEdit}
+                  onClick={() =>
+                    pickImage((url, name, kb) =>
+                      confirmUpload(
+                        "sig",
+                        "توقيع المقيم المعتمد",
+                        "يُطبَّق التوقيع ومقاسه في A4 على كل تقرير جديد.",
+                        `الملف: ${name} (${kb}KB).`,
+                        {
+                          signatureUrl: url,
+                        },
+                      ),
+                    )
+                  }
+                >
+                  رفع توقيع جديد
+                </Button>
+              </div>
+            </div>
+          </CardBody>
+          <div className={cardFootCls}>
+            <span>يُطبع في المشاركين (26) وإعتماد التقرير (27)</span>
+            <Button
+              variant="primary"
+              size="sm"
+              disabled={!canEdit || !dirty.sig || saving}
+              onClick={() =>
+                confirmApply(
+                  "sig",
+                  "توقيع المقيم المعتمد",
+                  "يُطبَّق التوقيع ومقاسه في A4 على كل تقرير جديد.",
+                  brand,
+                )
+              }
+            >
+              اعتماد وتطبيق
+            </Button>
+          </div>
+        </Card>
+      </div>
+
+      <div className="mt-4">
+        <Card>
+          <CardHeader className="items-baseline gap-2">
+            <h2 className="m-0 text-sm font-bold">كليشة التقرير</h2>
+            <span className="text-[11.5px] font-normal text-text-3">
+              معاينة A4 مع ضبط الهوامش الأربعة
+            </span>
+          </CardHeader>
+          <CardBody className="flex flex-col gap-5 sm:flex-row sm:items-start sm:gap-6">
+            <div className="flex shrink-0 flex-col items-center gap-2">
+              <button
+                type="button"
+                className="group relative h-[300px] w-[212px] cursor-zoom-in overflow-hidden rounded-lg border border-border-md bg-white p-0 shadow-[0_1px_0_rgba(16,43,78,.04),0_8px_24px_rgba(16,43,78,.08)] transition-[box-shadow,transform] hover:-translate-y-0.5 hover:shadow-[0_2px_0_rgba(16,43,78,.04),0_14px_32px_rgba(16,43,78,.12)]"
+                onClick={() => {
+                  setLhZoom(true);
+                  setLhX(0);
+                  setLhY(0);
                 }}
-              />
-            </button>
-            <div className="grid w-[190px] shrink-0 grid-cols-1 gap-2">
+              >
+                <img
+                  src={letterhead}
+                  alt="معاينة الكليشة على A4"
+                  className="absolute inset-0 size-full object-cover"
+                />
+                <div
+                  className="pointer-events-none absolute inset-x-0 top-0 border-b-2 border-dashed border-gold"
+                  style={{
+                    height: head * 0.9,
+                    background: "color-mix(in srgb, var(--gold) 12%, transparent)",
+                  }}
+                />
+                <div
+                  className="pointer-events-none absolute inset-x-0 bottom-0 border-t-2 border-dashed border-gold"
+                  style={{
+                    top: footTop * 0.9,
+                    background: "color-mix(in srgb, var(--gold) 12%, transparent)",
+                  }}
+                />
+                <span
+                  className="pointer-events-none absolute inset-x-0 bottom-2 mx-auto w-fit rounded px-2 py-0.5 text-[10.5px] text-white opacity-0 transition-opacity group-hover:opacity-100"
+                  style={{ background: "color-mix(in srgb, var(--ink) 72%, transparent)" }}
+                >
+                  اضغط للتكبير وضبط الهوامش
+                </span>
+              </button>
+              <span className="text-[11px] text-text-3">نسبة العرض مطابقة لصفحة A4</span>
+            </div>
+            <div className="grid min-w-0 flex-1 grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-x-4 sm:gap-y-3">
               <div className="flex flex-col">
                 <Label size="field">الهامش الأعلى (mm)</Label>
                 <Input
@@ -610,11 +725,11 @@ export function BrandIdentityView() {
                   onChange={(e) => patchLh("letterheadPadStartMm", e.target.value)}
                 />
               </div>
-              <p className="col-span-full m-0 text-[11.5px] text-text-3">
+              <p className="m-0 text-[11.5px] leading-relaxed text-text-3 sm:col-span-2">
                 اضغط على الصفحة لتكبيرها وسحب الأشرطة لضبط الهوامش بدقة — الباترن يبقى خارج
                 منطقة المحتوى.
               </p>
-              <div className="col-span-full flex gap-1.5">
+              <div className="flex flex-wrap gap-1.5 sm:col-span-2">
                 <Button
                   variant="default"
                   size="sm"
@@ -648,7 +763,7 @@ export function BrandIdentityView() {
               </div>
             </div>
           </CardBody>
-          <div className="flex flex-wrap items-center justify-between gap-2.5 border-t border-border px-4 py-3 text-xs text-text-2">
+          <div className={cardFootCls}>
             <span>{lhMeta}</span>
             <Button
               variant="primary"

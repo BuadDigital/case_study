@@ -22,7 +22,10 @@ internal static class ComparablePropertyMapping
             ComparablePropertyType = row.ComparablePropertyType,
             Usage = row.Usage,
             TransactionKind = row.TransactionKind,
-            TransactionKindLabelAr = ComparableTransactionKinds.LabelAr(row.TransactionKind),
+            TransactionKindLabelAr = row.TransactionKind == ComparableTransactionKinds.Offer
+                && row.PriceDescription == ComparablePriceDescriptions.Som
+                    ? "سوم"
+                    : ComparableTransactionKinds.LabelAr(row.TransactionKind),
             PriceDescription = row.PriceDescription ?? "",
             PriceDescriptionLabelAr = ComparablePriceDescriptions.LabelAr(row.PriceDescription),
             Source = row.Source,

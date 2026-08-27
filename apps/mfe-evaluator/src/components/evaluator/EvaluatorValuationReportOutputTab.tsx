@@ -1,10 +1,9 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Button, Spinner } from "@platform/ui-kit";
 import { ensureOrganizationSettingsLoaded } from "@platform/app-shared/organization/organization-settings-cache";
 import {
-  CERTIFIED_VALUER_HTML_DEFAULTS,
   getApiBase,
   getBuildingInventory,
   getPartyTaskSubmission,
@@ -18,8 +17,7 @@ import {
   VALUATION_REPORT_HTML_DEFAULTS as REPORT_DEFAULTS,
   type BuildingInventoryLineDto,
   type ClientDto,
-  type OrganizationBrandingSettings,
-  type OrganizationValuerRosterEntry,
+  type OrganizationSettingsDto,
   type ValuationApproachSettingsDto,
   type ValuationComparableSelectionListDto,
   type ValuationCostApproachDto,
@@ -27,9 +25,11 @@ import {
 } from "@platform/api-client";
 import { getAuthSession } from "@platform/auth-client";
 import { fetchInspectorWorkspace } from "@case-study/mfe/lib/prototype/inspector-workspace-storage";
+import { loadInfathDeposit } from "@case-study/mfe/lib/prototype/infath-deposit-storage";
 import type { InspectorWorkspaceDraft } from "@case-study/mfe/lib/prototype/inspector-workspace-data";
 import { isLandInspectionContext } from "@case-study/mfe/lib/prototype/inspector-workspace-data";
 import type { PoPropertyIntake } from "@case-study/mfe/lib/prototype/po-intake-data";
+import { openHtmlDocumentInNewTab } from "@case-study/mfe/lib/open-html-document";
 import { usePoRecordQuery } from "@case-study/mfe/query/case-study-queries";
 import type { EvaluatorSubmission } from "../../lib/evaluator/evaluator-window-data";
 import { fetchValuationReportV3Html } from "../../lib/evaluator/valuation-report-v3-preview";
@@ -39,6 +39,7 @@ import {
   type ValuationReportSurveyBounds,
 } from "../../lib/evaluator/valuation-report-live-fill";
 import {
+  collectInspectorPhotoAttachmentIds,
   loadValuationReportPrintAttachments,
   type ValuationReportSlotAttachment,
 } from "../../lib/evaluator/valuation-report-print-attachments";
@@ -50,13 +51,14 @@ async function loadValuationApproaches(
   property: PoPropertyIntake | null | undefined,
 ): Promise<{
   market: ValuationComparableSelectionListDto | null;
+  landMarket: ValuationComparableSelectionListDto | null;
   cost: ValuationCostApproachDto | null;
   recon: ValuationReconciliationDto | null;
   settings: ValuationApproachSettingsDto | null;
 }> {
   const propertyId = (property?.id ?? "").trim();
   if (!propertyId) {
-    return { market: null, cost: null, recon: null, settings: null };
+    return { market: null, landMarket: null, cost: null, recon: null, settings: null };
   }
   const open = await ensureOpenValuationRequestByProperty(config, {
     propId: propertyId,
@@ -65,16 +67,18 @@ async function loadValuationApproaches(
     appraiser: "—",
   });
   if (!open.ok) {
-    return { market: null, cost: null, recon: null, settings: null };
+    return { market: null, landMarket: null, cost: null, recon: null, settings: null };
   }
-  const [sel, costRes, reconRes, settingsRes] = await Promise.all([
-    listValuationComparableSelections(config, open.data.id),
+  const [sel, landSel, costRes, reconRes, settingsRes] = await Promise.all([
+    listValuationComparableSelections(config, open.data.id, "market"),
+    listValuationComparableSelections(config, open.data.id, "land_within_cost"),
     getValuationCostApproach(config, open.data.id),
     getValuationReconciliation(config, open.data.id),
     getValuationApproachSettings(config, open.data.id),
   ]);
   return {
     market: sel.ok ? sel.data : null,
+    landMarket: landSel.ok ? landSel.data : null,
     cost: costRes.ok ? costRes.data : null,
     recon: reconRes.ok ? reconRes.data : null,
     settings: settingsRes.ok ? settingsRes.data : null,
@@ -140,10 +144,7 @@ export function EvaluatorValuationReportOutputTab({
   surveyTaskId?: string | null;
 }) {
   const [screenHtml, setScreenHtml] = useState<string | null>(null);
-  const [branding, setBranding] = useState<OrganizationBrandingSettings | null>(
-    null,
-  );
-  const [valuers, setValuers] = useState<OrganizationValuerRosterEntry[]>([]);
+  const [org, setOrg] = useState<OrganizationSettingsDto | null>(null);
   const [clients, setClients] = useState<ClientDto[]>([]);
   const [inspector, setInspector] = useState<InspectorWorkspaceDraft | null>(
     null,
@@ -152,6 +153,8 @@ export function EvaluatorValuationReportOutputTab({
     BuildingInventoryLineDto[]
   >([]);
   const [market, setMarket] =
+    useState<ValuationComparableSelectionListDto | null>(null);
+  const [landMarket, setLandMarket] =
     useState<ValuationComparableSelectionListDto | null>(null);
   const [cost, setCost] = useState<ValuationCostApproachDto | null>(null);
   const [recon, setRecon] = useState<ValuationReconciliationDto | null>(null);
@@ -169,18 +172,8 @@ export function EvaluatorValuationReportOutputTab({
     useState<ValuationReportSlotAttachment | null>(null);
   const [siteMapSlot, setSiteMapSlot] =
     useState<ValuationReportSlotAttachment | null>(null);
-  const [ivsStandardsText, setIvsStandardsText] = useState("");
-  const [glossaryText, setGlossaryText] = useState("");
-  const [researchScopeText, setResearchScopeText] = useState("");
-  const [specialAssumptionLibrary, setSpecialAssumptionLibrary] = useState<
-    string[]
-  >([]);
-  const [finishingLuxuryText, setFinishingLuxuryText] = useState("");
-  const [finishingMediumText, setFinishingMediumText] = useState("");
-  const [finishingOrdinaryText, setFinishingOrdinaryText] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [printing, setPrinting] = useState(false);
-  const printUrlRef = useRef<string | null>(null);
   const poQuery = usePoRecordQuery(draft.poNumber);
   const record = poQuery.data;
   const poKeys = assignmentValuationFromPo(record);
@@ -224,14 +217,19 @@ export function EvaluatorValuationReportOutputTab({
     const surveyP = surveyTaskId
       ? getPartyTaskSubmission(config, surveyTaskId)
       : Promise.resolve(null);
-    const attachmentsP = propertyId
-      ? loadValuationReportPrintAttachments(config, propertyId, true)
-      : Promise.resolve({
-          photos: [] as ValuationReportSlotAttachment[],
-          survey: null as ValuationReportSlotAttachment | null,
-          deed: null as ValuationReportSlotAttachment | null,
-          siteMap: null as ValuationReportSlotAttachment | null,
-        });
+    // صور المعاينة مرتبطة بمعرّف المهمة — تُجمع من مسودة المعاين وتُمرَّر للمحمّل.
+    const attachmentsP = inspectorP.then((ws) =>
+      propertyId
+        ? loadValuationReportPrintAttachments(config, propertyId, true, {
+            inspectorPhotoIds: collectInspectorPhotoAttachmentIds(ws),
+          })
+        : {
+            photos: [] as ValuationReportSlotAttachment[],
+            survey: null as ValuationReportSlotAttachment | null,
+            deed: null as ValuationReportSlotAttachment | null,
+            siteMap: null as ValuationReportSlotAttachment | null,
+          },
+    );
 
     void Promise.all([
       inspectorP,
@@ -265,6 +263,7 @@ export function EvaluatorValuationReportOutputTab({
           });
         }
         setMarket(approaches.market);
+        setLandMarket(approaches.landMarket);
         setCost(approaches.cost);
         setRecon(approaches.recon);
         setApproachSettings(approaches.settings);
@@ -308,185 +307,91 @@ export function EvaluatorValuationReportOutputTab({
     surveyTaskId,
   ]);
 
-  const live = useMemo(() => {
-    const htmlEv = CERTIFIED_VALUER_HTML_DEFAULTS;
-    const land = isLandInspectionContext({
-      vacantLand: inspector?.vacantLand,
-      assetSubject: inspector?.featureValues?.assetSubject,
-      classification: property?.classification,
-      propertyType: property?.propertyType,
-    });
-    return buildValuationReportLiveFill({
-      draft,
-      record,
-      property,
-      inspector,
-      inventoryLines,
-      market,
-      cost,
-      recon,
-      clients,
-      purposeLabel: listLabels.purpose,
-      basisLabel: listLabels.basis,
-      premiseLabel: listLabels.premise,
-      basisDefinition: listLabels.basisDefinition,
-      certifiedName: htmlEv.name,
-      certifiedLicense: htmlEv.licenseNumber,
-      certifiedMembershipNumber: htmlEv.membershipNumber,
-      certifiedIssuedAt: htmlEv.licenseIssuedAt,
-      certifiedExpires: htmlEv.licenseExpiresHijri,
-      certifiedMembershipCategory: htmlEv.membershipCategory,
-      certifiedTitle: htmlEv.title,
-      certifiedMembershipExpires: htmlEv.membershipExpiresAt,
-      reportType: REPORT_DEFAULTS.reportType,
-      currency: REPORT_DEFAULTS.currency,
-      effectiveValuationDate: effectiveValuationDate({
-        draft,
-        inspector,
-        settings: approachSettings,
-      }),
-      survey,
-      photoSlots: land ? photoSlots.slice(0, 6) : photoSlots,
-      surveySlot,
-      deedSlot,
-      siteMapSlot,
-      ivsStandardsText,
-      glossaryText,
-      researchScopeText,
-      specialAssumptionLibrary,
-      finishingLuxuryText,
-      finishingMediumText,
-      finishingOrdinaryText,
-    });
-  }, [
-    approachSettings,
-    clients,
-    cost,
-    deedSlot,
-    draft,
-    finishingLuxuryText,
-    finishingMediumText,
-    finishingOrdinaryText,
-    glossaryText,
-    inspector,
-    inventoryLines,
-    ivsStandardsText,
-    listLabels,
-    market,
-    photoSlots,
-    property,
-    recon,
-    record,
-    researchScopeText,
-    siteMapSlot,
-    specialAssumptionLibrary,
-    survey,
-    surveySlot,
-  ]);
-
-  const meta = useMemo(
-    () => ({
-      reportNo: draft.reportNo,
-      reportDate: draft.appraisalDate || draft.reportIssueDate,
-      depositCode: draft.depositCode,
-      live,
-    }),
-    [draft.appraisalDate, draft.depositCode, draft.reportIssueDate, draft.reportNo, live],
-  );
-
   useEffect(() => {
     if (draft.poNumber && poQuery.isPending) return;
     let cancelled = false;
     setError(null);
-    void ensureOrganizationSettingsLoaded({ force: true })
-      .then((org) => {
-        const next = org?.branding ?? null;
-        const roster = org?.valuers ?? [];
-        const ev = org?.evaluator ?? {};
-        const vr = { ...REPORT_DEFAULTS, ...(org?.valuationReport ?? {}) };
-        if (!cancelled) {
-          setBranding(next);
-          setValuers(roster);
-          setIvsStandardsText(vr.ivsStandards ?? "");
-          setGlossaryText(vr.glossary ?? "");
-          setResearchScopeText(vr.researchScopeText ?? "");
-          setSpecialAssumptionLibrary(vr.specialAssumptionLibrary ?? []);
-          setFinishingLuxuryText(vr.finishingLuxury ?? "");
-          setFinishingMediumText(vr.finishingMedium ?? "");
-          setFinishingOrdinaryText(vr.finishingOrdinary ?? "");
-        }
-        const filledLive = buildValuationReportLiveFill({
-          draft,
-          record,
-          property,
-          inspector,
-          inventoryLines,
-          market,
-          cost,
-          recon,
-          clients,
-          purposeLabel: listLabels.purpose,
-          basisLabel: listLabels.basis,
-          premiseLabel: listLabels.premise,
-          basisDefinition: listLabels.basisDefinition,
-          certifiedName: ev.name || CERTIFIED_VALUER_HTML_DEFAULTS.name,
-          certifiedLicense:
-            ev.licenseNumber || CERTIFIED_VALUER_HTML_DEFAULTS.licenseNumber,
-          certifiedMembershipNumber:
-            ev.membershipNumber ||
-            CERTIFIED_VALUER_HTML_DEFAULTS.membershipNumber,
-          certifiedIssuedAt:
-            ev.licenseIssuedAt || CERTIFIED_VALUER_HTML_DEFAULTS.licenseIssuedAt,
-          certifiedExpires:
-            ev.licenseExpiresHijri ||
-            CERTIFIED_VALUER_HTML_DEFAULTS.licenseExpiresHijri,
-          certifiedMembershipCategory:
-            ev.membershipCategory ||
-            CERTIFIED_VALUER_HTML_DEFAULTS.membershipCategory,
-          certifiedTitle: ev.title || CERTIFIED_VALUER_HTML_DEFAULTS.title,
-          certifiedMembershipExpires:
-            ev.membershipExpiresAt ||
-            CERTIFIED_VALUER_HTML_DEFAULTS.membershipExpiresAt,
-          valuationBranch: vr.valuationBranch,
-          reportType: vr.reportType,
-          currency: vr.currency,
-          effectiveValuationDate: effectiveValuationDate({
-            draft,
-            inspector,
-            settings: approachSettings,
-          }),
-          survey,
-          photoSlots: isLandInspectionContext({
-            vacantLand: inspector?.vacantLand,
-            assetSubject: inspector?.featureValues?.assetSubject,
-            classification: property?.classification,
-            propertyType: property?.propertyType,
-          })
-            ? photoSlots.slice(0, 6)
-            : photoSlots,
-          surveySlot,
-          deedSlot,
-          siteMapSlot,
-          ivsStandardsText: vr.ivsStandards,
-          glossaryText: vr.glossary,
-          researchScopeText: vr.researchScopeText,
-          specialAssumptionLibrary: vr.specialAssumptionLibrary,
-          finishingLuxuryText: vr.finishingLuxury,
-          finishingMediumText: vr.finishingMedium,
-          finishingOrdinaryText: vr.finishingOrdinary,
-        });
+    // Use the shared cache — do not force-refetch (that caused a request storm).
+    void ensureOrganizationSettingsLoaded()
+      .then((loaded) => {
+        if (cancelled) return null;
+        if (loaded) setOrg(loaded);
+        const ev = loaded?.evaluator ?? {};
+        const vr = { ...REPORT_DEFAULTS, ...(loaded?.valuationReport ?? {}) };
         return fetchValuationReportV3Html(
           {
-            ...meta,
-            live: filledLive,
-            branding: next,
-            valuers: roster,
+            reportNo: draft.reportNo,
+            reportDate: draft.appraisalDate || draft.reportIssueDate,
+            // رمز الإيداع: المسودة أولاً ثم ما حفظته شاشة إيداع نفاذ لهذا العقار.
+            depositCode:
+              draft.depositCode ||
+              loadInfathDeposit(property?.id ?? "").depositCode,
+            live: buildValuationReportLiveFill({
+              draft,
+              record,
+              property,
+              inspector,
+              inventoryLines,
+              market,
+              landMarket,
+              cost,
+              recon,
+              clients,
+              purposeLabel: listLabels.purpose,
+              basisLabel: listLabels.basis,
+              premiseLabel: listLabels.premise,
+              basisDefinition: listLabels.basisDefinition,
+              // بلا احتياطي عيّنة — إعدادات المنشأة أو «—» في التقرير.
+              certifiedName: ev.name,
+              certifiedLicense: ev.licenseNumber,
+              certifiedMembershipNumber: ev.membershipNumber,
+              certifiedIssuedAt: ev.licenseIssuedAt,
+              certifiedExpires: ev.licenseExpiresHijri,
+              certifiedMembershipCategory: ev.membershipCategory,
+              certifiedTitle: ev.title,
+              certifiedMembershipExpires: ev.membershipExpiresAt,
+              valuationBranch: vr.valuationBranch,
+              reportType: vr.reportType,
+              currency: vr.currency,
+              effectiveValuationDate: effectiveValuationDate({
+                draft,
+                inspector,
+                settings: approachSettings,
+              }),
+              survey,
+              photoSlots: isLandInspectionContext({
+                vacantLand: inspector?.vacantLand,
+                assetSubject: inspector?.featureValues?.assetSubject,
+                classification: property?.classification,
+                propertyType: property?.propertyType,
+              })
+                ? photoSlots.slice(0, 6)
+                : photoSlots,
+              surveySlot,
+              deedSlot,
+              siteMapSlot,
+              ivsStandardsText: vr.ivsStandards,
+              glossaryText: vr.glossary,
+              researchScopeText: vr.researchScopeText,
+              specialAssumptionLibrary: vr.specialAssumptionLibrary,
+              externalSpecialistUsed: approachSettings?.externalSpecialistUsed,
+              finishingLuxuryText: vr.finishingLuxury,
+              finishingMediumText: vr.finishingMedium,
+              finishingOrdinaryText: vr.finishingOrdinary,
+              keyInputsText: vr.keyInputsText,
+              professionalStandardsText: vr.professionalStandards,
+              independenceText: vr.independence,
+              termsText: vr.terms,
+              restrictionsText: vr.restrictions,
+            }),
+            branding: loaded?.branding ?? null,
+            valuers: loaded?.valuers ?? [],
           },
           "screen",
         );
       })
       .then((next) => {
-        if (!cancelled) setScreenHtml(next);
+        if (!cancelled && next != null) setScreenHtml(next);
       })
       .catch((err: unknown) => {
         if (!cancelled) {
@@ -498,30 +403,43 @@ export function EvaluatorValuationReportOutputTab({
     return () => {
       cancelled = true;
     };
-  }, [approachSettings, clients, cost, deedSlot, draft, inspector, inventoryLines, listLabels, market, meta, photoSlots, poQuery.isPending, property, recon, record, siteMapSlot, survey, surveySlot]);
-
-  useEffect(
-    () => () => {
-      if (printUrlRef.current) URL.revokeObjectURL(printUrlRef.current);
-    },
-    [],
-  );
+    // Intentionally omit `org`: this effect loads org and builds HTML.
+    // Including it re-triggered the effect after setOrg and caused a fetch loop.
+  }, [
+    approachSettings,
+    clients,
+    cost,
+    deedSlot,
+    draft,
+    inspector,
+    inventoryLines,
+    listLabels,
+    market,
+    landMarket,
+    photoSlots,
+    poQuery.isPending,
+    property,
+    recon,
+    record,
+    siteMapSlot,
+    survey,
+    surveySlot,
+  ]);
 
   const print = useCallback(async () => {
     setPrinting(true);
     try {
-      const org = await ensureOrganizationSettingsLoaded({ force: true });
-      const nextBrand = org?.branding ?? branding;
-      const nextValuers = org?.valuers ?? valuers;
-      if (org) {
-        setBranding(org.branding);
-        setValuers(org.valuers ?? []);
-      }
-      const ev = org?.evaluator ?? {};
-      const vr = { ...REPORT_DEFAULTS, ...(org?.valuationReport ?? {}) };
+      const loaded = await ensureOrganizationSettingsLoaded({ force: true });
+      if (loaded) setOrg(loaded);
+      const ev = loaded?.evaluator ?? {};
+      const vr = { ...REPORT_DEFAULTS, ...(loaded?.valuationReport ?? {}) };
       const html = await fetchValuationReportV3Html(
         {
-          ...meta,
+          reportNo: draft.reportNo,
+          reportDate: draft.appraisalDate || draft.reportIssueDate,
+          depositCode:
+            draft.depositCode ||
+            loadInfathDeposit(property?.id ?? "").depositCode,
           live: buildValuationReportLiveFill({
             draft,
             record,
@@ -529,6 +447,7 @@ export function EvaluatorValuationReportOutputTab({
             inspector,
             inventoryLines,
             market,
+            landMarket,
             cost,
             recon,
             clients,
@@ -536,24 +455,14 @@ export function EvaluatorValuationReportOutputTab({
             basisLabel: listLabels.basis,
             premiseLabel: listLabels.premise,
             basisDefinition: listLabels.basisDefinition,
-            certifiedName: ev.name || CERTIFIED_VALUER_HTML_DEFAULTS.name,
-            certifiedLicense:
-              ev.licenseNumber || CERTIFIED_VALUER_HTML_DEFAULTS.licenseNumber,
-            certifiedMembershipNumber:
-              ev.membershipNumber ||
-              CERTIFIED_VALUER_HTML_DEFAULTS.membershipNumber,
-            certifiedIssuedAt:
-              ev.licenseIssuedAt || CERTIFIED_VALUER_HTML_DEFAULTS.licenseIssuedAt,
-            certifiedExpires:
-              ev.licenseExpiresHijri ||
-              CERTIFIED_VALUER_HTML_DEFAULTS.licenseExpiresHijri,
-            certifiedMembershipCategory:
-              ev.membershipCategory ||
-              CERTIFIED_VALUER_HTML_DEFAULTS.membershipCategory,
-            certifiedTitle: ev.title || CERTIFIED_VALUER_HTML_DEFAULTS.title,
-            certifiedMembershipExpires:
-              ev.membershipExpiresAt ||
-              CERTIFIED_VALUER_HTML_DEFAULTS.membershipExpiresAt,
+            certifiedName: ev.name,
+            certifiedLicense: ev.licenseNumber,
+            certifiedMembershipNumber: ev.membershipNumber,
+            certifiedIssuedAt: ev.licenseIssuedAt,
+            certifiedExpires: ev.licenseExpiresHijri,
+            certifiedMembershipCategory: ev.membershipCategory,
+            certifiedTitle: ev.title,
+            certifiedMembershipExpires: ev.membershipExpiresAt,
             valuationBranch: vr.valuationBranch,
             reportType: vr.reportType,
             currency: vr.currency,
@@ -578,34 +487,29 @@ export function EvaluatorValuationReportOutputTab({
             glossaryText: vr.glossary,
             researchScopeText: vr.researchScopeText,
             specialAssumptionLibrary: vr.specialAssumptionLibrary,
+            externalSpecialistUsed: approachSettings?.externalSpecialistUsed,
             finishingLuxuryText: vr.finishingLuxury,
             finishingMediumText: vr.finishingMedium,
             finishingOrdinaryText: vr.finishingOrdinary,
+            keyInputsText: vr.keyInputsText,
+            professionalStandardsText: vr.professionalStandards,
+            independenceText: vr.independence,
+            termsText: vr.terms,
+            restrictionsText: vr.restrictions,
           }),
-          branding: nextBrand,
-          valuers: nextValuers,
+          branding: loaded?.branding ?? org?.branding ?? null,
+          valuers: loaded?.valuers ?? org?.valuers ?? [],
         },
         "print",
       );
-      if (printUrlRef.current) URL.revokeObjectURL(printUrlRef.current);
-      const url = URL.createObjectURL(
-        new Blob([html], { type: "text/html;charset=utf-8" }),
-      );
-      printUrlRef.current = url;
-      const w = window.open(url, "_blank");
-      if (!w) {
-        URL.revokeObjectURL(url);
-        printUrlRef.current = null;
-        return;
+      const opened = openHtmlDocumentInNewTab(html, {
+        print: true,
+        waitForImages: true,
+        waitForFonts: true,
+      });
+      if (!opened) {
+        setError("المتصفح منع فتح نافذة الطباعة — اسمح بالنوافذ المنبثقة");
       }
-      w.addEventListener(
-        "load",
-        () => {
-          w.focus();
-          w.print();
-        },
-        { once: true },
-      );
     } catch (err: unknown) {
       setError(
         err instanceof Error ? err.message : "تعذّر تجهيز نسخة الطباعة",
@@ -615,7 +519,6 @@ export function EvaluatorValuationReportOutputTab({
     }
   }, [
     approachSettings,
-    branding,
     clients,
     cost,
     deedSlot,
@@ -624,7 +527,7 @@ export function EvaluatorValuationReportOutputTab({
     inventoryLines,
     listLabels,
     market,
-    meta,
+    org,
     photoSlots,
     property,
     recon,
@@ -632,7 +535,6 @@ export function EvaluatorValuationReportOutputTab({
     siteMapSlot,
     survey,
     surveySlot,
-    valuers,
   ]);
 
   if (error && !screenHtml) {

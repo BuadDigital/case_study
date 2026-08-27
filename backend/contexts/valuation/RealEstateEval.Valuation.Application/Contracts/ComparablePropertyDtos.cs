@@ -167,6 +167,8 @@ public class ComparablePropertyListQuery
     public string? ToDate { get; init; }
     public bool IncludeInactive { get; init; }
     public int Take { get; init; } = 100;
+    /// <summary>مواصفة-طريقة-المقارنة §٢: أولوية المقارنات الميدانية لهذا العقار ثم المخزّنة.</summary>
+    public string? ForPropertyId { get; init; }
 }
 
 public class ComparableProximityQuery

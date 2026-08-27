@@ -16,17 +16,20 @@ import {
 } from "@case-study/mfe/lib/prototype/po-intake-data";
 import type { InspectorWorkspaceDraft } from "@case-study/mfe/lib/prototype/inspector-workspace-data";
 import { isLandInspectionContext } from "@case-study/mfe/lib/prototype/inspector-workspace-data";
-import type {
-  BuildingInventoryLineDto,
-  ClientDto,
-  OrganizationValuerRosterEntry,
-  ValuationComparableSelectionListDto,
-  ValuationCostApproachDto,
-  ValuationReconciliationDto,
+import {
+  applyIvsDateToStandards,
+  isNoExternalSpecialistAssumption,
+  type BuildingInventoryLineDto,
+  type ClientDto,
+  type OrganizationValuerRosterEntry,
+  type ValuationComparableSelectionListDto,
+  type ValuationCostApproachDto,
+  type ValuationReconciliationDto,
 } from "@platform/api-client";
 import {
   areasFromInventory,
   adoptedComparables,
+  effectiveComparableValues,
   annexCountDisplay,
   buildAdjustmentRationaleText,
   buildAdjustmentSheetRows,
@@ -271,6 +274,9 @@ export type ValuationReportLiveFill = {
   buildDescRows: Array<{ key: string; values: string[] }>;
   serviceRows: Array<{ key: string; values: string[] }>;
   comparableRows: Array<{ key: string; values: string[] }>;
+  /** Appendix (أ) — land_within_cost comps only. */
+  landComparableRows: Array<{ key: string; values: string[] }>;
+  landAppendixNote: string;
   adjustmentRows: Array<{ key: string; values: string[] }>;
   adjustmentComparisonLabel: string;
   adjustmentNotes: string;
@@ -311,6 +317,22 @@ export type ValuationReportLiveFill = {
     medium: string;
     ordinary: string;
   };
+  /** §3 — org keyInputsText; empty keeps template bullets. */
+  keyInputsBullets: string[];
+  /** §4 — org professionalStandards with {{ivsDate}} applied; empty keeps template. */
+  standardsParagraphs: string[];
+  /** §5 — org independence text; empty keeps template. */
+  independenceParagraphs: string[];
+  /** §31 — org terms; empty keeps template list (with date scrub). */
+  termsBullets: string[];
+  /** §32 — org restrictions; empty keeps template list (with date scrub). */
+  restrictionsBullets: string[];
+  /** تاريخ التقرير بصيغة yyyy/mm/dd — يستبدل تواريخ العيّنة المجمّدة في §31/§32. */
+  reportDateSlash: string;
+  /** §33 — «المدينة - الحي» بدل «جدة - الصوارى» المثبتة. */
+  locationLabel: string;
+  /** §33 — الخريطة المقربة: SVG مولّد عند توفر خريطة مرفوعة للأقمار. */
+  closeupMapSlot: ValuationReportSlotAttachment | null;
 };
 
 export function buildValuationReportLiveFill(input: {
@@ -320,6 +342,8 @@ export function buildValuationReportLiveFill(input: {
   inspector?: InspectorWorkspaceDraft | null;
   inventoryLines?: BuildingInventoryLineDto[] | null;
   market?: ValuationComparableSelectionListDto | null;
+  /** Independent vacant-land comps for cost approach (appendix). */
+  landMarket?: ValuationComparableSelectionListDto | null;
   cost?: ValuationCostApproachDto | null;
   recon?: ValuationReconciliationDto | null;
   clients?: Pick<ClientDto, "id" | "nameAr">[];
@@ -350,9 +374,18 @@ export function buildValuationReportLiveFill(input: {
   researchScopeText?: string | null;
   /** Org special-assumption library; filtered by `reportChoices.specialAssumptionOn`. */
   specialAssumptionLibrary?: string[] | null;
+  /** When true, drop the library clause that denies using an external specialist. */
+  externalSpecialistUsed?: boolean;
   finishingLuxuryText?: string | null;
   finishingMediumText?: string | null;
   finishingOrdinaryText?: string | null;
+  keyInputsText?: string | null;
+  professionalStandardsText?: string | null;
+  independenceText?: string | null;
+  termsText?: string | null;
+  restrictionsText?: string | null;
+  /** تاريخ سريان معايير IVS — يعوّض {{ivsDate}} في نص المعايير. */
+  ivsEffectiveDate?: string | null;
 }): ValuationReportLiveFill {
   const { draft, record, property, inspector } = input;
   const keys = assignmentValuationFromPo(record);
@@ -703,11 +736,18 @@ export function buildValuationReportLiveFill(input: {
   cells["ناتج أسلوب التكلفة (الأرض + المباني)"] = dash(
     input.cost ? formatMoneyCell(input.cost.costOpinionWithLand) : "",
   );
-  cells["سعر المتر المستورد من طريقة المقارنة"] = dash(
+  cells["سعر متر الأرض من مقارنات الأراضي الفضاء"] = dash(
     input.cost?.landUnitRateFromMarket
       ? formatMoneyCell(input.cost.landUnitRateFromMarket)
       : "",
   );
+  // Legacy template label — keep fill so old sheets still update.
+  cells["سعر المتر المستورد من طريقة المقارنة"] =
+    cells["سعر متر الأرض من مقارنات الأراضي الفضاء"];
+  cells["إشارة الملحق"] =
+    input.cost?.landEstimateComplete
+      ? "قُدّرت قيمة الأرض بطريقة المقارنات (أراضٍ فضاء)، وتفصيلها في الملحق (أ)."
+      : "قيمة الأرض غير مكتملة — بانتظار مقارنات أراضٍ فضاء.";
 
   const comps = adoptedComparables(input.market);
   comps.forEach((item, i) => {
@@ -716,35 +756,24 @@ export function buildValuationReportLiveFill(input: {
     cells[`المقارن (${n})`] = dash(c.comparablePropertyType);
   });
 
-  if ((input.certifiedName ?? "").trim()) {
-    cells["اسم المقيم المعتمد"] = input.certifiedName!.trim();
-  }
-  if ((input.certifiedLicense ?? "").trim()) {
-    cells["رقم ترخيص مزاولة المهنة"] = input.certifiedLicense!.trim();
-  }
+  // هوية المقيم المعتمد تُكتب دائماً — «—» عند الفراغ حتى لا تُطبع بيانات عيّنة القالب.
+  cells["اسم المقيم المعتمد"] = dash(input.certifiedName ?? "");
+  cells["رقم ترخيص مزاولة المهنة"] = dash(input.certifiedLicense ?? "");
   const membershipNo = (
     input.certifiedMembershipNumber ||
     input.certifiedLicense ||
     ""
   ).trim();
-  if (membershipNo) cells["رقم العضوية"] = membershipNo;
-  if ((input.certifiedIssuedAt ?? "").trim()) {
-    cells["تاريخ الإصدار"] = input.certifiedIssuedAt!.trim();
-  }
-  if ((input.certifiedExpires ?? "").trim()) {
-    cells["تاريخ الانتهاء"] = input.certifiedExpires!.trim();
-  }
-  if ((input.valuationBranch ?? "").trim()) {
-    cells["فرع التقييم"] = input.valuationBranch!.trim();
-  }
+  cells["رقم العضوية"] = membershipNo || "—";
+  cells["تاريخ الإصدار"] = dash(input.certifiedIssuedAt ?? "");
+  cells["تاريخ الانتهاء"] = dash(input.certifiedExpires ?? "");
+  cells["فرع التقييم"] = dash(input.valuationBranch ?? "");
   const memCat = membershipCategoryLabel(input.certifiedMembershipCategory);
-  if (memCat) cells["فئة العضوية"] = memCat;
+  cells["فئة العضوية"] = memCat || "—";
   const role =
     (input.certifiedTitle ?? "").trim() || valuerRoleLabel("certified");
   if (role) cells["صفته"] = role;
-  if ((input.certifiedMembershipExpires ?? "").trim()) {
-    cells["تاريخ انتهاء العضوية"] = input.certifiedMembershipExpires!.trim();
-  }
+  cells["تاريخ انتهاء العضوية"] = dash(input.certifiedMembershipExpires ?? "");
 
   const groundCost = costRowCells(
     input.cost,
@@ -835,6 +864,19 @@ export function buildValuationReportLiveFill(input: {
           isImage: true,
         }
       : null);
+
+  // §33 — عندما تشغل الخريطة المرفوعة فتحة الأقمار، يذهب SVG المولّد للفتحة المقربة.
+  const closeupMapSlot: ValuationReportSlotAttachment | null =
+    input.siteMapSlot && generatedMapUrl
+      ? {
+          attachmentId: "generated-closeup-map",
+          url: generatedMapUrl,
+          contentType: "image/svg+xml",
+          fileName: "closeup-map.svg",
+          labelAr: "صورة مقربة للموقع",
+          isImage: true,
+        }
+      : null;
 
   return {
     cells,
@@ -972,18 +1014,38 @@ export function buildValuationReportLiveFill(input: {
     ],
     comparableRows: comps.map((item, i) => {
       const c = item.comparable;
+      const eff = effectiveComparableValues(item);
       return {
         key: String(i + 1),
         values: [
           dashSheet(c.comparablePropertyType),
           dashSheet(composeTransactionCell(c)),
-          dashSheet(c.areaSqm ? String(c.areaSqm) : ""),
+          dashSheet(eff.areaSqm ? String(eff.areaSqm) : ""),
           dashSheet(c.transactionDate),
-          dashSheet(formatMoneyCell(c.price)),
-          dashSheet(formatMoneyCell(c.pricePerSqm)),
+          dashSheet(formatMoneyCell(eff.price)),
+          dashSheet(formatMoneyCell(eff.pricePerSqm)),
         ],
       };
     }),
+    landComparableRows: adoptedComparables(input.landMarket).map((item, i) => {
+      const c = item.comparable;
+      const eff = effectiveComparableValues(item);
+      return {
+        key: String(i + 1),
+        values: [
+          dashSheet(c.comparablePropertyType),
+          dashSheet(composeTransactionCell(c)),
+          dashSheet(eff.areaSqm ? String(eff.areaSqm) : ""),
+          dashSheet(c.transactionDate),
+          dashSheet(formatMoneyCell(eff.price)),
+          dashSheet(formatMoneyCell(eff.pricePerSqm)),
+          item.market
+            ? dashSheet(`${item.market.effectiveWeightPct}`)
+            : "—",
+        ],
+      };
+    }),
+    landAppendixNote: cells["إشارة الملحق"] || "",
     adjustmentRows: adj.rows,
     adjustmentComparisonLabel: adj.comparisonLabel,
     adjustmentNotes: buildAdjustmentRationaleText(comps),
@@ -1017,9 +1079,28 @@ export function buildValuationReportLiveFill(input: {
     specialAssumptionBullets: filterSpecialAssumptionBullets(
       input.specialAssumptionLibrary,
       choices.specialAssumptionOn,
+      { dropNoSpecialistClause: Boolean(input.externalSpecialistUsed) },
     ),
     ivsPairs: pairsFromOrgLines(input.ivsStandardsText),
     glossaryPairs: pairsFromOrgLines(input.glossaryText),
+    keyInputsBullets: linesFromOrgText(input.keyInputsText),
+    standardsParagraphs: linesFromOrgText(
+      applyIvsDateToStandards(
+        input.professionalStandardsText ?? "",
+        input.ivsEffectiveDate ?? "",
+      ),
+    ),
+    independenceParagraphs: linesFromOrgText(input.independenceText),
+    termsBullets: linesFromOrgText(input.termsText),
+    restrictionsBullets: linesFromOrgText(input.restrictionsText),
+    reportDateSlash: slashDateFromIso(
+      draft.appraisalDate || draft.reportIssueDate,
+    ),
+    locationLabel: [property?.city, property?.district]
+      .map((s) => (s ?? "").trim())
+      .filter(Boolean)
+      .join(" - "),
+    closeupMapSlot,
     finishingLevel: choices.finishingLevel || "",
     finishingTexts: {
       luxury: (input.finishingLuxuryText ?? "").trim(),
@@ -1037,11 +1118,16 @@ export function buildValuationReportLiveFill(input: {
 export function filterSpecialAssumptionBullets(
   library: string[] | null | undefined,
   toggles: boolean[] | null | undefined,
+  options?: { dropNoSpecialistClause?: boolean },
 ): string[] | null {
   const items = (library ?? []).map((x) => x.trim()).filter(Boolean);
   if (!items.length) return null;
   const on = toggles ?? [];
-  return items.filter((_, i) => on[i] ?? true);
+  const dropNoSpecialist = Boolean(options?.dropNoSpecialistClause);
+  return items.filter((item, i) => {
+    if (dropNoSpecialist && isNoExternalSpecialistAssumption(item)) return false;
+    return on[i] ?? true;
+  });
 }
 
 function resolveBasisDefinition(
@@ -1253,7 +1339,93 @@ function fillKeyedRows(
   });
 }
 
+/**
+ * مواصفة النموذج التفاعلي: عمود لكل مقارن معتمد (حتى ٥) — يوسّع/يقلّص أعمدة
+ * جدول التسويات في القالب (رأس «العقار المقارن (n)» وخلايا القيم وcolspan صفوف الإجمالي).
+ */
+function syncAdjustmentColumns(sec: Element, count: number) {
+  const table = sec.querySelector("table.mx") ?? sec.querySelector("table");
+  if (!table) return;
+  const headerRow = table.querySelector("tr");
+  const headerCells = headerRow ? [...headerRow.querySelectorAll("th")] : [];
+  if (headerCells.length < 2) return;
+  const currentCols = headerCells.length - 1;
+  if (count < 1) return;
+
+  // رأس الجدول.
+  for (let i = currentCols; i < count; i++) {
+    const clone = headerCells[headerCells.length - 1]!.cloneNode(true) as Element;
+    headerRow!.appendChild(clone);
+  }
+  while (headerRow!.querySelectorAll("th").length - 1 > count) {
+    headerRow!.querySelectorAll("th")[headerRow!.querySelectorAll("th").length - 1]!.remove();
+  }
+  [...headerRow!.querySelectorAll("th")].slice(1).forEach((th, i) => {
+    th.textContent = `العقار المقارن (${i + 1})`;
+  });
+
+  // صفوف القيم: صف بخلية واحدة ممتدة يظل ممتداً بعرض الأعمدة الجديد؛
+  // غيره يُستنسخ/يُقلَّم إلى عدد المقارنات.
+  [...table.querySelectorAll("tr")].slice(1).forEach((tr) => {
+    const cells = [...tr.querySelectorAll("td")];
+    if (cells.length < 2) return;
+    const valueCells = cells.slice(1);
+    if (valueCells.length === 1 && valueCells[0]!.hasAttribute("colspan")) {
+      valueCells[0]!.setAttribute("colspan", String(count));
+      return;
+    }
+    for (let i = valueCells.length; i < count; i++) {
+      tr.appendChild(valueCells[valueCells.length - 1]!.cloneNode(true));
+    }
+    while (tr.querySelectorAll("td").length - 1 > count) {
+      const all = tr.querySelectorAll("td");
+      all[all.length - 1]!.remove();
+    }
+  });
+}
+
+/** يضبط عدد الصفوف المرقّمة (1..n) في جداول المقارنات ليساوي المعتمد فعلاً. */
+function syncNumberedRows(scope: Element, count: number) {
+  const table = scope.matches("table")
+    ? scope
+    : [...scope.querySelectorAll("table")].find((t) =>
+        [...t.querySelectorAll("tr")].some((tr) =>
+          /^\d+$/.test((tr.querySelector("td")?.textContent ?? "").trim()),
+        ),
+      );
+  if (!table) return;
+  const numbered = () =>
+    [...table.querySelectorAll("tr")].filter((tr) =>
+      /^\d+$/.test((tr.querySelector("td")?.textContent ?? "").trim()),
+    );
+  let rows = numbered();
+  if (!rows.length) return;
+  const target = Math.max(count, 1);
+  while (rows.length < target) {
+    const clone = rows[rows.length - 1]!.cloneNode(true) as Element;
+    rows[rows.length - 1]!.after(clone);
+    rows = numbered();
+  }
+  while (rows.length > target) {
+    rows[rows.length - 1]!.remove();
+    rows = numbered();
+  }
+  rows.forEach((tr, i) => {
+    const first = tr.querySelector("td");
+    if (first) first.textContent = String(i + 1);
+    // امسح بيانات العيّنة في الصفوف المستنسخة/غير المطابقة — تُملأ بعد ذلك.
+    [...tr.querySelectorAll("td")].slice(1).forEach((td) => {
+      td.textContent = "—";
+    });
+  });
+}
+
 function fillAdjustmentSection(sec: Element, fill: ValuationReportLiveFill) {
+  const colCount = fill.adjustmentRows.reduce(
+    (m, r) => Math.max(m, r.values.length > 1 ? r.values.length : 0),
+    0,
+  );
+  if (colCount > 0) syncAdjustmentColumns(sec, colCount);
   fillKeyedRows(sec, fill.adjustmentRows, "adjustment");
   sec.querySelectorAll("tr").forEach((tr) => {
     const first = tr.querySelector("td");
@@ -1513,15 +1685,26 @@ function fillImageSlot(
     el.replaceWith(wrap);
     return;
   }
+  // Never iframe PDFs into the report HTML — Chrome print preview hangs on
+  // "Loading preview…" when laying out data:/blob: PDF frames (often deed/survey).
   const isPdf = item.contentType.toLowerCase().includes("pdf");
   if (isPdf) {
-    const frame = dom.createElement("iframe");
-    frame.className = "attach-pdf";
-    frame.src = item.url;
-    frame.title = item.labelAr || item.fileName || emptyLabel;
-    if (style) frame.setAttribute("style", style);
-    else frame.style.cssText = "width:100%;height:768px;border:0";
-    el.replaceWith(frame);
+    const note = dom.createElement("div");
+    note.className = "attach-pdf-note image-ph";
+    if (style) note.setAttribute("style", style);
+    else note.style.cssText =
+      "display:flex;flex-direction:column;justify-content:center;align-items:center;gap:6px;min-height:120px;padding:16px;border:1px dashed #c4c0b6;background:#faf8f3;text-align:center";
+    const title = dom.createElement("strong");
+    title.textContent = item.labelAr || emptyLabel;
+    const file = dom.createElement("span");
+    file.style.cssText = "font-size:11px;color:#3a3f4d";
+    file.textContent = item.fileName || "مرفق PDF";
+    const hint = dom.createElement("span");
+    hint.style.cssText = "font-size:10px;color:#6b6b66";
+    hint.textContent =
+      "ملف PDF لا يُضمَّن داخل الطباعة — اطبعه من مرفقات العقار عند الحاجة.";
+    note.append(title, file, hint);
+    el.replaceWith(note);
     return;
   }
   const link = dom.createElement("p");
@@ -1557,6 +1740,34 @@ function rebuildDefinitionTable(
     tr.append(k, v);
     table.appendChild(tr);
   }
+}
+
+function slashDateFromIso(iso: string | null | undefined): string {
+  const m = /^(\d{4})-(\d{2})-(\d{2})/.exec((iso ?? "").trim());
+  return m ? `${m[1]}/${m[2]}/${m[3]}` : "";
+}
+
+/** يستبدل فقرات القسم بنصوص الإعدادات — فارغ يُبقي نص القالب. */
+function fillParagraphSection(sec: Element | null, paragraphs: string[]) {
+  if (!sec || !paragraphs.length) return;
+  const doc = sec.ownerDocument;
+  sec.querySelectorAll("p").forEach((p) => p.remove());
+  for (const text of paragraphs) {
+    const p = doc.createElement("p");
+    p.textContent = text;
+    sec.appendChild(p);
+  }
+}
+
+/** يمسح تواريخ العيّنة المجمّدة (2026/06/03) عندما يبقى نص القالب كما هو. */
+function scrubFrozenDates(sec: Element | null, reportDateSlash: string) {
+  if (!sec || !reportDateSlash) return;
+  sec.querySelectorAll("li").forEach((li) => {
+    const text = li.textContent ?? "";
+    if (text.includes("2026/06/03")) {
+      li.textContent = text.replaceAll("2026/06/03", reportDateSlash);
+    }
+  });
 }
 
 function fillBulletListSection(
@@ -1899,7 +2110,26 @@ export function applyValuationReportLiveFill(
   if (methods) fillMethodRow(methods, fill.methodRow);
 
   const comps = dom.querySelector('[data-sec="17"]');
-  if (comps) fillKeyedRows(comps, fill.comparableRows);
+  if (comps) {
+    if (fill.comparableRows.length > 0) {
+      syncNumberedRows(comps, fill.comparableRows.length);
+    }
+    fillKeyedRows(comps, fill.comparableRows);
+  }
+
+  const landAppendix = dom.querySelector('[data-sec="20"]');
+  if (landAppendix) {
+    fillKeyedInSection(
+      landAppendix,
+      "إشارة الملحق",
+      fill.landAppendixNote || "—",
+    );
+    const landTable = landAppendix.querySelector("[data-land-comps]");
+    if (landTable && fill.landComparableRows.length > 0) {
+      syncNumberedRows(landTable as HTMLElement, fill.landComparableRows.length);
+      fillKeyedRows(landTable as HTMLElement, fill.landComparableRows);
+    }
+  }
 
   const adj = dom.querySelector('[data-sec="19"]');
   if (adj) fillAdjustmentSection(adj, fill);
@@ -1946,6 +2176,44 @@ export function applyValuationReportLiveFill(
     );
     fillApprovalTable(people, fill);
   }
+
+  // §3/§4/§5/§31/§32 — نصوص إعدادات المنشأة تحل محل نص العيّنة؛ الفراغ يُبقي القالب.
+  fillBulletListSection(
+    dom.querySelector('[data-sec="3"]'),
+    fill.keyInputsBullets.length ? fill.keyInputsBullets : null,
+  );
+  fillParagraphSection(dom.querySelector('[data-sec="4"]'), fill.standardsParagraphs);
+  fillParagraphSection(
+    dom.querySelector('[data-sec="5"]'),
+    fill.independenceParagraphs,
+  );
+  const termsSec = dom.querySelector('[data-sec="31"]');
+  if (fill.termsBullets.length) fillBulletListSection(termsSec, fill.termsBullets);
+  else scrubFrozenDates(termsSec, fill.reportDateSlash);
+  const restrictionsSec = dom.querySelector('[data-sec="32"]');
+  if (fill.restrictionsBullets.length) {
+    fillBulletListSection(restrictionsSec, fill.restrictionsBullets);
+  } else {
+    scrubFrozenDates(restrictionsSec, fill.reportDateSlash);
+  }
+
+  // §33 — الموقع الحقيقي وخريطتا الأقمار/المقربة (المولّدة أو المرفوعة).
+  const mapsSec = dom.querySelector('[data-sec="33"]');
+  if (mapsSec && fill.locationLabel) {
+    fillKeyedInSection(mapsSec, "الموقع", fill.locationLabel);
+  }
+  fillImageSlot(
+    dom,
+    "map-satellite",
+    fill.comparableMapSlot,
+    "خريطة الأقمار الصناعية — تُرفق صورة الموقع",
+  );
+  fillImageSlot(
+    dom,
+    "map-closeup",
+    fill.closeupMapSlot ?? fill.comparableMapSlot,
+    "صورة مقربة للموقع — تُرفق صورة",
+  );
 
   fillAttachmentAndGlossarySections(dom, fill);
   fillFinishingLevelSection(dom.querySelector('[data-sec="12"]'), fill);

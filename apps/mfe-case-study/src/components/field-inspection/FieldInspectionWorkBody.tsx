@@ -1884,16 +1884,6 @@ export function FieldInspectionWorkBody({
             disabled={workLocked}
             mobile={mobile}
           />
-          <FieldComparableCaptureSection
-            latitude={draft.mapLatitude}
-            longitude={draft.mapLongitude}
-            city={property?.city}
-            district={property?.district}
-            propertyType={property?.propertyType}
-            poNumber={task.poNumber}
-            propertyId={propertyId}
-            disabled={workLocked}
-          />
         </InspectorCard>
 
         {!boundariesUnavailable && property ? (
@@ -2704,6 +2694,30 @@ export function FieldInspectionWorkBody({
           ) : null}
         </InspectorCard>
         </div>
+
+        <InspectorCard
+          title="العقارات المقارنة"
+          icon="ti-building-estate"
+          layout={cardLayout}
+          step={mobile ? 11 : undefined}
+          subtitle={mobile ? "إضافة مقارن" : undefined}
+          badge={
+            mobile ? undefined : (
+              <InsBadge label="من حقول قوائم التقييم" tone="info" />
+            )
+          }
+        >
+          <FieldComparableCaptureSection
+            latitude={draft.mapLatitude}
+            longitude={draft.mapLongitude}
+            city={property?.city}
+            district={property?.district}
+            propertyType={property?.propertyType}
+            poNumber={task.poNumber}
+            propertyId={propertyId}
+            disabled={workLocked}
+          />
+        </InspectorCard>
 
         {beforeSubmitFooter}
 

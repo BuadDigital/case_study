@@ -42,6 +42,8 @@ public sealed class OrganizationCompanySettingsDto
     public string? CommercialRegistration { get; init; }
     /// <summary>رقم ترخيص المزاولة للمنشأة (الهيئة).</summary>
     public string? PracticeLicenseNumber { get; init; }
+    /// <summary>ISO date — إصدار ترخيص مزاولة المنشأة.</summary>
+    public string? PracticeLicenseIssuedAt { get; init; }
     /// <summary>ISO date — انتهاء ترخيص مزاولة المنشأة.</summary>
     public string? PracticeLicenseExpiresAt { get; init; }
     /// <summary>مرجع المقيّم المعتمد من سجل المقيّمين (certified أو معرّف الصف).</summary>
@@ -105,6 +107,9 @@ public sealed class OrganizationBrandingSettingsDto
     /// <summary>عرض الختم على A4 (سم) — المصدر: الإعدادات v2 هوية بصرية.</summary>
     public decimal? StampWidthCm { get; init; }
     public decimal? StampHeightCm { get; init; }
+    /// <summary>عرض التوقيع على A4 (سم) — قسم الاعتماد والمشاركين.</summary>
+    public decimal? SignatureWidthCm { get; init; }
+    public decimal? SignatureHeightCm { get; init; }
     public decimal? LetterheadHeadMm { get; init; }
     public decimal? LetterheadFootTopMm { get; init; }
     /// <summary>الهامش الأيسر (mm).</summary>
@@ -154,6 +159,15 @@ public sealed class OrganizationValuationSettingsDto
 
  /// <summary>ق-4: عتبة الفارق الزمني بالأشهر لتنبيه m20 (بيانات إدارية، 1–60).</summary>
     public int ComparableTimeGapMonths { get; init; } = 6;
+
+ /// <summary>معامل تسوية المساحة ٪ لكل مثل/مضاعف (منطق-التسويات، افتراضي ٥).</summary>
+    public decimal AreaFactorPct { get; init; } = 5m;
+
+ /// <summary>معدل تغير السوق السنوي ٪ لاقتراح تسوية ظروف السوق (افتراضي ٤).</summary>
+    public decimal AnnualMarketRatePct { get; init; } = 4m;
+
+ /// <summary>أسّ تقريب قيمة أسلوب السوق (١٠^ن). افتراضي ٤ → أقرب ١٠٬٠٠٠ ريال.</summary>
+    public int MarketValueRoundDecimals { get; init; } = 4;
 }
 
 public sealed class SaveOrganizationSettingsRequest

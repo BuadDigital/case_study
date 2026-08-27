@@ -132,17 +132,36 @@ public class PartyTaskSubmissionService : IPartyTaskSubmissionService
     {
         if (PoRoleMatrixRules.CanManagePartySubmissions(actor.PrototypeRole)) return true;
 
-        var assigneeId = await _db.WorkflowTasks
+        var task = await _db.WorkflowTasks
             .AsNoTracking()
             .Where(t => t.Id == taskId)
-            .Select(t => t.AssigneeId)
+            .Select(t => new
+            {
+                t.AssigneeId,
+                t.Kind,
+                t.Status,
+                t.PropertyId,
+                t.ParentTaskId,
+            })
             .FirstOrDefaultAsync(cancellationToken);
+        if (task is null) return false;
 
-        return PoRoleMatrixRules.CanReadPartyTask(
+        if (PoRoleMatrixRules.CanReadPartyTask(
             actor.PrototypeRole,
-            assigneeId,
+            task.AssigneeId,
             actor.UserId,
-            actor.DistributionAssigneeId);
+            actor.DistributionAssigneeId))
+            return true;
+
+        // Appraisers / EO need completed sibling field-inspection facts for report & gates
+        // even though party visibility hides the inspection row from their task list.
+        return await CanReadCompletedSiblingFieldInspectionAsync(
+            task.Kind,
+            task.Status,
+            task.PropertyId,
+            task.ParentTaskId,
+            actor,
+            cancellationToken);
     }
 
     private async Task<List<Guid>> ReadableTaskIdsAsync(
@@ -153,17 +172,76 @@ public class PartyTaskSubmissionService : IPartyTaskSubmissionService
         var tasks = await _db.WorkflowTasks
             .AsNoTracking()
             .Where(t => taskIds.Contains(t.Id))
-            .Select(t => new { t.Id, t.AssigneeId })
+            .Select(t => new
+            {
+                t.Id,
+                t.AssigneeId,
+                t.Kind,
+                t.Status,
+                t.PropertyId,
+                t.ParentTaskId,
+            })
             .ToListAsync(cancellationToken);
 
-        return tasks
-            .Where(t => PoRoleMatrixRules.CanReadPartyTask(
+        var readable = new List<Guid>(tasks.Count);
+        foreach (var task in tasks)
+        {
+            if (PoRoleMatrixRules.CanReadPartyTask(
                 actor.PrototypeRole,
-                t.AssigneeId,
+                task.AssigneeId,
                 actor.UserId,
-                actor.DistributionAssigneeId))
-            .Select(t => t.Id)
-            .ToList();
+                actor.DistributionAssigneeId)
+                || await CanReadCompletedSiblingFieldInspectionAsync(
+                    task.Kind,
+                    task.Status,
+                    task.PropertyId,
+                    task.ParentTaskId,
+                    actor,
+                    cancellationToken))
+            {
+                readable.Add(task.Id);
+            }
+        }
+
+        return readable;
+    }
+
+    /// <summary>
+    /// Property-appraisal / engineering-survey assignees on the same parent+property may
+    /// read a completed field-inspection submission (party lists hide that sibling row).
+    /// </summary>
+    private async Task<bool> CanReadCompletedSiblingFieldInspectionAsync(
+        WorkflowTaskKind kind,
+        WorkflowTaskStatus status,
+        Guid? propertyId,
+        Guid? parentTaskId,
+        PartySubmissionActor actor,
+        CancellationToken cancellationToken)
+    {
+        if (kind != WorkflowTaskKind.FieldInspection
+            || status != WorkflowTaskStatus.Completed
+            || propertyId is null
+            || parentTaskId is null)
+            return false;
+
+        var actorIds = new HashSet<string>(StringComparer.Ordinal);
+        if (!string.IsNullOrWhiteSpace(actor.UserId))
+            actorIds.Add(actor.UserId.Trim());
+        if (!string.IsNullOrWhiteSpace(actor.DistributionAssigneeId))
+            actorIds.Add(actor.DistributionAssigneeId.Trim());
+        if (actorIds.Count == 0) return false;
+
+        return await _db.WorkflowTasks
+            .AsNoTracking()
+            .AnyAsync(
+                t =>
+                    t.ParentTaskId == parentTaskId
+                    && t.PropertyId == propertyId
+                    && (t.Kind == WorkflowTaskKind.PropertyAppraisal
+                        || t.Kind == WorkflowTaskKind.EngineeringSurvey)
+                    && t.AssigneeId != null
+                    && actorIds.Contains(t.AssigneeId),
+                cancellationToken);
     }
 
     public async Task<(PartyTaskSubmissionDto? Result, Dictionary<string, string>? Errors)> SaveDraftAsync(

@@ -5,7 +5,6 @@ using RealEstateEval.Application.Contracts;
 using RealEstateEval.Application.Rules;
 using RealEstateEval.Domain;
 using RealEstateEval.Infrastructure.Data.Contexts;
-using RealEstateEval.Infrastructure.Notifications;
 
 namespace RealEstateEval.Infrastructure.Services;
 
@@ -593,9 +592,6 @@ public class FailureService : IFailureService
             .OrderByDescending(f => f.UpdatedAtUtc)
             .FirstOrDefaultAsync(cancellationToken);
     }
-
-    private static bool IsActiveStatus(string status) =>
-        PropertyFailureStatus.IsActive(status);
 
     private static string NormalizeSeverity(string severity) =>
         severity.Trim().ToLowerInvariant() == "suspected" ? "suspected" : "internal";

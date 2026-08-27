@@ -82,6 +82,9 @@ public static class ValuationReportNarrativeRules
         {
             var t = (a ?? "").Trim();
             if (t.Length == 0) continue;
+            if (externalSpecialistUsed
+                && ValuationApproachSettingsRules.IsNoExternalSpecialistAssumption(t))
+                continue;
             bits.Add(t.EndsWith('.') || t.EndsWith('؟') ? t : t + ".");
         }
 

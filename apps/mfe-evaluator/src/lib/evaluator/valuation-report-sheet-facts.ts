@@ -474,13 +474,25 @@ export function buildIndirectCostSheetRows(
   return { rows, totalLabel };
 }
 
+/** مواصفة النموذج التفاعلي: حتى ٥ مقارنات معتمدة تُطبع كاملة في التقرير. */
+export const MAX_REPORT_COMPARABLES = 5;
+
 export function adoptedComparables(
   market: ValuationComparableSelectionListDto | null | undefined,
 ) {
   return [...(market?.items ?? [])]
     .filter((i) => i.isAdopted)
     .sort((a, b) => a.sortOrder - b.sortOrder)
-    .slice(0, 3);
+    .slice(0, MAX_REPORT_COMPARABLES);
+}
+
+/** القيم الفعلية للمقارن بعد تجاوزات compEdit (سعر/مساحة هذا التقييم). */
+export function effectiveComparableValues(item: ValuationComparableSelectionDto) {
+  return {
+    price: item.effectivePriceSar ?? item.comparable.price,
+    areaSqm: item.effectiveAreaSqm ?? item.comparable.areaSqm,
+    pricePerSqm: item.effectivePricePerSqm ?? item.comparable.pricePerSqm,
+  };
 }
 
 const COMPARABLE_SOURCE_AR: Record<string, string> = {
@@ -538,11 +550,15 @@ function includedPct(
   return line ? formatSheetPct(line.percent) : "";
 }
 
-function threeCols(
+/** عمود لكل مقارن معتمد (حتى ٥) — وثلاثة أعمدة شرطات عند غياب المقارنات (هيكل القالب). */
+function compCols(
   comps: ValuationComparableSelectionDto[],
   pick: (item: ValuationComparableSelectionDto) => string,
 ): string[] {
-  return [0, 1, 2].map((i) => dashSheet(comps[i] ? pick(comps[i]!) : ""));
+  const count = Math.min(Math.max(comps.length, 3), MAX_REPORT_COMPARABLES);
+  return Array.from({ length: count }, (_, i) =>
+    dashSheet(comps[i] ? pick(comps[i]!) : ""),
+  );
 }
 
 export function buildAdjustmentRationaleText(
@@ -589,44 +605,45 @@ export function buildAdjustmentSheetRows(
   const rows: SheetTableRow[] = [
     {
       key: "وصف العقار المقارن",
-      values: threeCols(comps, (x) => x.comparable.comparablePropertyType),
+      values: compCols(comps, (x) => x.comparable.comparablePropertyType),
     },
     {
       key: "قيمة العقارات المقارنة",
-      values: threeCols(comps, (x) => formatMoneyCell(x.comparable.price)),
+      values: compCols(comps, (x) =>
+        formatMoneyCell(effectiveComparableValues(x).price),
+      ),
     },
-    { key: "تسوية عامل الوقت", values: threeCols(comps, () => "") },
+    { key: "تسوية عامل الوقت", values: compCols(comps, () => "") },
     {
       key: "تسوية شروط التمويل",
-      values: threeCols(comps, (x) => includedPct(x, "financing")),
+      values: compCols(comps, (x) => includedPct(x, "financing")),
     },
     {
       key: "تسوية ظروف السوق",
-      values: threeCols(comps, (x) => includedPct(x, "market")),
+      values: compCols(comps, (x) => includedPct(x, "market")),
     },
     {
       key: "إجمالي تسويات التمويل والسوق ٪",
-      values: threeCols(comps, finMkt),
+      values: compCols(comps, finMkt),
     },
     {
       key: "سعر البيع بعد تسوية شروط التمويل وظروف السوق",
-      values: threeCols(comps, (x) =>
+      values: compCols(comps, (x) =>
         formatMoneyCell(x.market?.pricePerSqmAfterSequential),
       ),
     },
     {
       key: "تسوية المساحة",
-      values: threeCols(comps, (x) => {
-        const areaTxt = x.comparable.areaSqm
-          ? String(x.comparable.areaSqm)
-          : "";
+      values: compCols(comps, (x) => {
+        const effArea = effectiveComparableValues(x).areaSqm;
+        const areaTxt = effArea ? String(effArea) : "";
         const p = includedPct(x, "area");
         return [areaTxt, p].filter(Boolean).join(" · ");
       }),
     },
     {
       key: "الموقع العام",
-      values: threeCols(comps, (x) => {
+      values: compCols(comps, (x) => {
         const d = (x.comparable.district ?? "").trim();
         const p = includedPct(x, "location");
         return [d, p].filter(Boolean).join(" ");
@@ -634,17 +651,17 @@ export function buildAdjustmentSheetRows(
     },
     {
       key: "عدد الشوارع",
-      values: threeCols(comps, (x) => includedPct(x, "street_count")),
+      values: compCols(comps, (x) => includedPct(x, "street_count")),
     },
     {
       key: "مجموع نسب التسويات (٪)",
-      values: threeCols(comps, (x) =>
+      values: compCols(comps, (x) =>
         formatSheetPct(x.market?.sumDifferencePct),
       ),
     },
     {
       key: "سعر البيع بعد التسويات",
-      values: threeCols(comps, (x) =>
+      values: compCols(comps, (x) =>
         formatMoneyCell(
           x.market?.pricePerSqmAfterDifference ??
             x.market?.pricePerSqmAfterSequential,
@@ -653,7 +670,7 @@ export function buildAdjustmentSheetRows(
     },
     {
       key: "الأوزان النسبية للعقارات المقارنة",
-      values: threeCols(comps, (x) =>
+      values: compCols(comps, (x) =>
         formatSheetPct(x.market?.effectiveWeightPct),
       ),
     },

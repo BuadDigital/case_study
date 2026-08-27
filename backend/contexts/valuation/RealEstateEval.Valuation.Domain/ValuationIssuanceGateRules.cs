@@ -7,6 +7,7 @@ public static class ValuationIssuanceGateCodes
     public const string ParticipantCredentials = "participant_credentials";
     public const string DeedNatureMatch = "deed_nature_match";
     public const string MinAdoptedComparables = "min_adopted_comparables";
+    public const string CostLandEstimateComplete = "cost_land_estimate_complete";
     public const string ComparableWeights = "comparable_weights";
     public const string ReconciliationWeights = "reconciliation_weights";
     public const string FinalOpinion = "final_opinion";
@@ -128,22 +129,63 @@ public static class ValuationIssuanceGateRules
     public static ValuationIssuanceGateCheck MinAdoptedComparables(int adoptedCount) =>
         new(
             ValuationIssuanceGateCodes.MinAdoptedComparables,
-            "مقارنان معتمدان على الأقل",
-            adoptedCount >= PropertyComparableLinkRules.MinimumLinkedForAppraisalPrep,
+            "مقارن معتمد واحد على الأقل",
+            adoptedCount >= ValuationComparableSelectionRules.MinimumAdoptedForMarketApproach,
             IsHard: true,
-            DetailAr: adoptedCount < PropertyComparableLinkRules.MinimumLinkedForAppraisalPrep
-                ? "يلزم مقارنان معتمدان على الأقل"
+            DetailAr: adoptedCount < ValuationComparableSelectionRules.MinimumAdoptedForMarketApproach
+                ? "يلزم مقارن معتمد واحد على الأقل (منطق-التسويات)"
+                : null);
+
+    /// <summary>
+    /// Approach-aware comps gate: market → market comps; cost → land_within_cost comps.
+    /// Skipped (pass) when the approach is off.
+    /// منطق-التسويات: واحد على الأقل.
+    /// </summary>
+    public static ValuationIssuanceGateCheck MinAdoptedComparablesForApproach(
+        string codeSuffix,
+        string labelAr,
+        bool approachEnabled,
+        int adoptedCount) =>
+        new(
+            $"{ValuationIssuanceGateCodes.MinAdoptedComparables}_{codeSuffix}",
+            labelAr,
+            !approachEnabled
+                || adoptedCount >= ValuationComparableSelectionRules.MinimumAdoptedForMarketApproach,
+            IsHard: true,
+            DetailAr: approachEnabled
+                && adoptedCount < ValuationComparableSelectionRules.MinimumAdoptedForMarketApproach
+                ? $"يلزم مقارن معتمد واحد على الأقل ({labelAr})"
+                : null);
+
+    public static ValuationIssuanceGateCheck CostLandEstimateComplete(
+        bool costApproachEnabled,
+        bool landEstimateComplete) =>
+        new(
+            ValuationIssuanceGateCodes.CostLandEstimateComplete,
+            "اكتمال تقدير الأرض ضمن أسلوب التكلفة",
+            !costApproachEnabled || landEstimateComplete,
+            IsHard: true,
+            DetailAr: costApproachEnabled && !landEstimateComplete
+                ? "أسلوب التكلفة مفعّل وقيمة الأرض غير مكتملة — يلزم مقارنات أراضٍ فضاء ثم حفظ التكلفة"
+                : null);
+
+    public static ValuationIssuanceGateCheck ComparableWeights(
+        string codeSuffix,
+        string labelAr,
+        bool approachEnabled,
+        bool weightsSumTo100,
+        int adoptedCount) =>
+        new(
+            $"{ValuationIssuanceGateCodes.ComparableWeights}_{codeSuffix}",
+            labelAr,
+            !approachEnabled || adoptedCount == 0 || weightsSumTo100,
+            IsHard: true,
+            DetailAr: approachEnabled && adoptedCount > 0 && !weightsSumTo100
+                ? $"مجموع أوزان المقارنات المعتمدة ≠ 100٪ ({labelAr})"
                 : null);
 
     public static ValuationIssuanceGateCheck ComparableWeights(bool weightsSumTo100, int adoptedCount) =>
-        new(
-            ValuationIssuanceGateCodes.ComparableWeights,
-            "أوزان المقارنات = 100٪",
-            adoptedCount == 0 || weightsSumTo100,
-            IsHard: true,
-            DetailAr: adoptedCount > 0 && !weightsSumTo100
-                ? "مجموع أوزان المقارنات المعتمدة ≠ 100٪"
-                : null);
+        ComparableWeights("market", "أوزان مقارنات أسلوب السوق = 100٪", true, weightsSumTo100, adoptedCount);
 
     public static ValuationIssuanceGateCheck ReconciliationWeights(
         bool hasReconciliation,

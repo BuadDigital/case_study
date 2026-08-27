@@ -26,14 +26,20 @@ public static class MarketAdjustmentFactorKeys
     public static readonly string[] StandardSequential =
         [Financing, Market, TransactionType];
 
-    public static readonly string[] StandardDifferenceFactors =
+    /// <summary>مواصفة النموذج التفاعلي: المساحة الآلية + أربعة عوامل اختلاف افتراضية (الموقع، الجذب، الوصول، عدد الشوارع).</summary>
+    public static readonly string[] DefaultDifferenceFactors =
     [
         Area,
-        IdealArea,
         Location,
         Attraction,
         Access,
         StreetCount,
+    ];
+
+    /// <summary>كتالوج إضافي — يُضاف من الواجهة عند الحاجة (يشمل المساحة المثالية وأطوال الشوارع).</summary>
+    public static readonly string[] CatalogExtraDifferenceFactors =
+    [
+        IdealArea,
         StreetLengths,
         PlotShape,
         Topography,
@@ -42,6 +48,10 @@ public static class MarketAdjustmentFactorKeys
         Restrictions,
         Development,
     ];
+
+    /// <summary>كل عوامل الاختلاف المعروفة (افتراضي + كتالوج + مخصص عبر المفتاح).</summary>
+    public static readonly string[] StandardDifferenceFactors =
+        [.. DefaultDifferenceFactors, .. CatalogExtraDifferenceFactors];
 
     public static string DefaultLabelAr(string key) => key switch
     {
@@ -75,7 +85,3 @@ public static class MarketAdjustmentFactorKeys
     public static bool IsKnown(string? key) =>
         IsSequential(key) || IsDifferenceFactor(key);
 }
-
-/// <summary>
-/// Market-approach calc — sequential multiply → difference sum-then-apply → weights.
-/// </summary>

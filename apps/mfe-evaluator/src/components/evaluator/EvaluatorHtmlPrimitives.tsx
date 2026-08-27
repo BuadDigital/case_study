@@ -42,8 +42,9 @@ export function ValCard({
   children: ReactNode;
 }) {
   return (
-    <section className="mb-3 rounded-lg border border-border bg-surface px-4 py-3.5 shadow-none">
+    <section className="mb-3.5 rounded-[var(--radius-lg)] border border-border bg-surface px-[18px] py-4 shadow-card">
       <div className="mb-3 flex flex-wrap items-center gap-2">
+        <span className="h-[15px] w-[3px] rounded-full bg-gold" aria-hidden />
         <h4 className="m-0 text-[13px] font-bold text-heading">{title}</h4>
         <span className="flex-1" />
         {badge}

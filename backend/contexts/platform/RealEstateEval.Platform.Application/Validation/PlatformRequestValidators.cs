@@ -98,6 +98,15 @@ public sealed class SaveOrganizationSettingsRequestValidator
         RuleFor(x => x.Valuation!.ComparableTimeGapMonths).InclusiveBetween(1, 60)
             .When(x => x.Valuation is not null)
             .OverridePropertyName("valuation.comparableTimeGapMonths");
+        RuleFor(x => x.Valuation!.AreaFactorPct).InclusiveBetween(0.1m, 50m)
+            .When(x => x.Valuation is not null)
+            .OverridePropertyName("valuation.areaFactorPct");
+        RuleFor(x => x.Valuation!.AnnualMarketRatePct).InclusiveBetween(0m, 50m)
+            .When(x => x.Valuation is not null)
+            .OverridePropertyName("valuation.annualMarketRatePct");
+        RuleFor(x => x.Valuation!.MarketValueRoundDecimals).InclusiveBetween(0, 6)
+            .When(x => x.Valuation is not null)
+            .OverridePropertyName("valuation.marketValueRoundDecimals");
         RuleFor(x => x.Communications!.OtpProvider!)
             .Must(v => v is "dev-log" or "sms" or "email")
             .When(x => x.Communications is not null && !string.IsNullOrWhiteSpace(x.Communications.OtpProvider))

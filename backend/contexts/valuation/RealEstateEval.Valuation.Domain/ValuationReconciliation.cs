@@ -157,9 +157,12 @@ public static class ReconciliationRules
 {
     public const decimal WeightSumTolerance = 0.05m;
 
- /// <summary>Unrounded contribution for intermediate math (no round until final).</summary>
+ /// <summary>
+ /// Unrounded contribution — مواصفة النموذج التفاعلي: القيمة كما هي بلا تصفير للسالب؛
+ /// المؤشر غير المكتمل/السالب يحجبه الاعتماد لا الجمع.
+ /// </summary>
     public static decimal Contribution(decimal approachValue, decimal weightPct) =>
-        Math.Max(0m, approachValue) * (weightPct / 100m);
+        approachValue * (weightPct / 100m);
 
     public static decimal WeightedValue(
         IEnumerable<(decimal value, decimal weightPct, bool included)> methods) =>
@@ -171,31 +174,41 @@ public static class ReconciliationRules
         return Math.Abs(sum - 100m) <= WeightSumTolerance;
     }
 
- /// <summary>Round once on the final opinion.</summary>
+ /// <summary>
+ /// Round once on the final opinion — مواصفة النموذج التفاعلي:
+ /// finalVal = round(القيمة / 10^ن) × 10^ن (ن=0 أقرب ريال؛ ن=4 أقرب ١٠٬٠٠٠).
+ /// </summary>
     public static decimal RoundFinal(decimal weightedValue, int decimals)
     {
-        var d = Math.Clamp(decimals, 0, 4);
-        return Math.Round(Math.Max(0m, weightedValue), d, MidpointRounding.AwayFromZero);
+        var d = Math.Clamp(decimals, 0, 6);
+        if (d == 0)
+            return Math.Round(weightedValue, MidpointRounding.AwayFromZero);
+        var power = 1m;
+        for (var i = 0; i < d; i++) power *= 10m;
+        return Math.Round(weightedValue / power, MidpointRounding.AwayFromZero) * power;
     }
 
  /// <summary>
- /// Provisional: apply discount only for liquidation basis with a known premise.
+ /// مواصفة النموذج التفاعلي: خصم البيع القسري لا يُفعَّل إلا مع «قيمة التصفية» —
+ /// اختيار الأساس وحده يكفي (الفرضية بيانات وصفية لا شرط تطبيق).
  /// </summary>
     public static bool ShouldApplyLiquidationDiscount(
         string? basisOfValueKey,
         string? valuePremiseKey,
-        decimal discountPct) =>
-        discountPct > 0m
-        && string.Equals(
-            basisOfValueKey?.Trim(),
-            BasisOfValueKeys.Liquidation,
-            StringComparison.OrdinalIgnoreCase)
-        && ValuePremiseKeys.IsKnown(valuePremiseKey);
+        decimal discountPct)
+    {
+        _ = valuePremiseKey;
+        return discountPct > 0m
+            && string.Equals(
+                basisOfValueKey?.Trim(),
+                BasisOfValueKeys.Liquidation,
+                StringComparison.OrdinalIgnoreCase);
+    }
 
     public static decimal ApplyLiquidationDiscount(decimal valueBeforeDiscount, decimal discountPct)
     {
         var pct = Math.Clamp(discountPct, 0m, 100m);
-        return Math.Max(0m, valueBeforeDiscount * (1m - pct / 100m));
+        return valueBeforeDiscount * (1m - pct / 100m);
     }
 
  /// <summary>Discount (if any) then round once.</summary>
@@ -217,8 +230,8 @@ public static class ReconciliationRules
     }
 
  /// <summary>
- /// Suggest participation when both market and cost have positive values: equal split;
- /// otherwise 100% on the sole positive approach.
+ /// مواصفة النموذج التفاعلي: الافتراضي أسلوب السوق ١٠٠٪ والتكلفة ٠٪ (apW = {market:100, cost:0})؛
+ /// وعند غياب مؤشر السوق يذهب الوزن كاملاً للتكلفة.
  /// </summary>
     public static IReadOnlyList<(string kind, decimal weightPct)> SuggestWeights(
         decimal marketValue,
@@ -226,8 +239,6 @@ public static class ReconciliationRules
     {
         var marketOk = marketValue > 0m;
         var costOk = costValue > 0m;
-        if (marketOk && costOk)
-            return [(ValuationApproachKinds.Market, 50m), (ValuationApproachKinds.Cost, 50m)];
         if (marketOk)
             return [(ValuationApproachKinds.Market, 100m), (ValuationApproachKinds.Cost, 0m)];
         if (costOk)
@@ -238,11 +249,11 @@ public static class ReconciliationRules
     public static bool RequiresWeightRationale(decimal weightPct, bool included) =>
         included && weightPct != 0m;
 
- /// <summary>n≥2 when two included methods each have a positive value and weight.</summary>
+ /// <summary>n≥2 when two (or more) approaches are selected/enabled for reconciliation.</summary>
+    public static bool MeetsMultiMethodGate(int enabledApproachCount) =>
+        enabledApproachCount >= 2;
+
     public static bool MeetsMultiMethodGate(
-        IEnumerable<(decimal value, decimal weightPct, bool included)> methods)
-    {
-        var n = methods.Count(m => m.included && m.value > 0m && m.weightPct > 0m);
-        return n >= 2;
-    }
+        IEnumerable<(decimal value, decimal weightPct, bool included)> methods) =>
+        MeetsMultiMethodGate(methods.Count(m => m.included));
 }

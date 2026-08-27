@@ -147,10 +147,23 @@ public sealed class WorkflowTaskQueryService : IWorkflowTaskQuery
             .Select(k => (Parent: k.ParentId.ToString(), Prop: k.PropertyId.ToString()))
             .ToHashSet();
 
+        var preferredIdByKey = inspectionRows
+            .GroupBy(k => (Parent: k.ParentId.ToString(), Prop: k.PropertyId.ToString()))
+            .ToDictionary(
+                g => g.Key,
+                g =>
+                {
+                    var preferred = g.FirstOrDefault(r => acceptedInspectionIds.Contains(r.Id))
+                        ?? g.First();
+                    return preferred.Id.ToString();
+                });
+
         foreach (var target in targets)
         {
             var key = (target.ParentTaskId!, target.PropertyId!);
             target.FieldInspectionCompleted = completed.Contains(key);
+            if (preferredIdByKey.TryGetValue(key, out var inspectionTaskId))
+                target.FieldInspectionTaskId = inspectionTaskId;
             if (target.Kind == WorkflowTaskKindValues.PropertyAppraisal)
                 target.FieldInspectionAccepted = accepted.Contains(key);
         }

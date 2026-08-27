@@ -8,7 +8,11 @@ import {
   submitEvaluatorSubmission,
   syncEvaluatorChecklistFromPartyCaseStudy,
 } from "./evaluator-submission-storage";
-import { snapshotIssuedValuationReport } from "./issue-valuation-report";
+import {
+  ensureOpenValuationRequest,
+  reservedNumberFromValuationRequest,
+  snapshotIssuedValuationReport,
+} from "./issue-valuation-report";
 import {
   allocateValuationReportNumber,
   formatValuationReportIssueDateIso,
@@ -34,19 +38,33 @@ export async function finalizeAppraiserSubmission(
   const current = loadEvaluatorSubmission(appraisalTaskId);
   if (current && current.status !== "submitted" && current.status !== "completed") {
     const issuedAt = new Date();
-    const reportNo =
-      current.status === "reopened" || !current.reportNo.trim()
-        ? allocateValuationReportNumber(issuedAt)
-        : current.reportNo.trim();
+    let reportNo = current.reportNo.trim();
+    if (current.status === "reopened" || !reportNo) {
+      // رقم التقرير من تسلسل الخادم (معرّف طلب التقييم VR-####) —
+      // عدّاد المتصفح المحلي احتياطي أخير عند انقطاع الخدمة فقط.
+      try {
+        const open = await ensureOpenValuationRequest({
+          propertyId: current.propertyId,
+        });
+        reportNo = reservedNumberFromValuationRequest(open);
+      } catch {
+        reportNo = allocateValuationReportNumber(issuedAt);
+      }
+    }
     const reportIssueDate =
       current.status === "reopened" || !current.reportIssueDate.trim()
         ? formatValuationReportIssueDateIso(issuedAt)
         : current.reportIssueDate.trim();
+    const appraisalDate =
+      current.status === "reopened" || !current.appraisalDate.trim()
+        ? reportIssueDate
+        : current.appraisalDate.trim();
 
     const prepared = await saveEvaluatorSubmission({
       ...current,
       reportNo,
       reportIssueDate,
+      appraisalDate,
       updatedAtUtc: issuedAt.toISOString(),
     });
     if (!prepared) {

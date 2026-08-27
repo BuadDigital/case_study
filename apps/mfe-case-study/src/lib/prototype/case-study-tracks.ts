@@ -168,9 +168,9 @@ export type CaseStudyPartyAssignee = {
 };
 
 const CASE_STUDY_PARTY_DEFS = [
+  { trackId: "survey", shortLabel: "المكتب الهندسي", partyId: "eng" },
   { trackId: "inspection", shortLabel: "المعاين", partyId: "insp" },
   { trackId: "appraisal", shortLabel: "المقيم", partyId: "val" },
-  { trackId: "survey", shortLabel: "المكتب الهندسي", partyId: "eng" },
 ] as const;
 
 /**

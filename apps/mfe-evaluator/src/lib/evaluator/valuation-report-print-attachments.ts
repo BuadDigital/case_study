@@ -1,9 +1,11 @@
 import {
   downloadAttachmentBlob,
+  getAttachmentMeta,
   listAttachmentsForProperty,
   type FileAttachmentMetaDto,
   type PrototypeModulesApiConfig,
 } from "@platform/api-client";
+import type { InspectorWorkspaceDraft } from "@case-study/mfe/lib/prototype/inspector-workspace-data";
 
 /** Mirrors backend `AttachmentPrintRules` for client-side report fill. */
 export function attachmentTypeKeyFromScope(scope: string | null | undefined): string | null {
@@ -165,10 +167,63 @@ async function toSlot(
   };
 }
 
+/**
+ * صور المعاينة الميدانية مرتبطة بمعرّف المهمة لا العقار — نداء for-property
+ * (بادئة معرّف العقار) لا يراها. مسودة المعاين تحمل معرّفات المرفقات نفسها،
+ * فنجمعها منها مباشرة لتدخل فتحات §34.
+ */
+export function collectInspectorPhotoAttachmentIds(
+  inspector: InspectorWorkspaceDraft | null | undefined,
+): string[] {
+  if (!inspector) return [];
+  const out: string[] = [];
+  const seen = new Set<string>();
+  const push = (id: string | null | undefined) => {
+    const t = (id ?? "").trim();
+    if (!t || seen.has(t)) return;
+    seen.add(t);
+    out.push(t);
+  };
+
+  // صور المزايا الموثّقة أولاً (واجهة، حالة البناء…) — الأكثر تمثيلاً للعقار.
+  const features = inspector.featurePhotoAttachments ?? {};
+  const featureOrder = [
+    "facade",
+    "assetSubject",
+    "buildState",
+    "propertyUsage",
+    "kitchen",
+    "carEntrance",
+  ];
+  for (const key of featureOrder) push(features[key]?.attachmentId);
+  for (const key of Object.keys(features)) push(features[key]?.attachmentId);
+
+  for (const slot of Object.values(inspector.definedPhotos ?? {})) {
+    if (!slot || slot.none) continue;
+    for (const photo of slot.photos ?? []) {
+      if (photo.approved !== false) push(photo.attachmentId);
+    }
+  }
+  for (const photo of inspector.freePhotos ?? []) {
+    if (photo.approved !== false) push(photo.attachmentId);
+  }
+  for (const comp of Object.values(inspector.componentPhotoAttachments ?? {})) {
+    push(comp?.attachmentId);
+  }
+  for (const obs of inspector.observations ?? []) {
+    push(obs.photo?.attachmentId);
+  }
+  return out;
+}
+
 export async function loadValuationReportPrintAttachments(
   config: PrototypeModulesApiConfig,
   propertyId: string,
   hasStructures: boolean,
+  extras?: {
+    /** معرّفات صور المعاينة من مسودة المعاين — تكمل ميزانية فتحات §34. */
+    inspectorPhotoIds?: string[];
+  },
 ): Promise<{
   photos: ValuationReportSlotAttachment[];
   survey: ValuationReportSlotAttachment | null;
@@ -191,6 +246,26 @@ export async function loadValuationReportPrintAttachments(
     listed.data,
     hasStructures,
   );
+
+  // أكمل ميزانية الصور من صور المعاينة المرتبطة بالمهمة (غير المرئية لـfor-property).
+  const budget = photoBudget(hasStructures);
+  const havePhoto = new Set(photos.map((row) => row.id));
+  const inspectorIds = (extras?.inspectorPhotoIds ?? []).filter(
+    (photoId) => !havePhoto.has(photoId),
+  );
+  if (photos.length < budget && inspectorIds.length) {
+    const metas = await Promise.all(
+      inspectorIds
+        .slice(0, budget - photos.length)
+        .map((photoId) => getAttachmentMeta(config, photoId)),
+    );
+    for (const meta of metas) {
+      if (meta.ok && photos.length < budget && !havePhoto.has(meta.data.id)) {
+        havePhoto.add(meta.data.id);
+        photos.push(meta.data);
+      }
+    }
+  }
 
   const photoSlots = (
     await Promise.all(photos.map((row) => toSlot(config, row, "photo")))

@@ -297,9 +297,8 @@ public static class ValuationMethodologyAlertRules
             Eval(17, ValuationMethodologyAlertCodes.LargeAdjustments,
                 "مجموع التسويات > ٣٥٪",
                 comps.Count > 0,
-                () => comps.Any(c => c.ExceedsLargeAdjustmentThreshold
-                                     || MarketApproachRules.ExceedsLargeAdjustmentThreshold(c.SumIncludedPct)),
-                "تجاوز عتبة التسوية الكبيرة — التبرير إلزامي",
+                () => comps.Any(c => c.ExceedsLargeAdjustmentThreshold),
+                "تجاوز عتبة ±٣٥٪ على مجموع عوامل الاختلاف — التبرير إلزامي مع مراجعة صلاحية المقارن",
                 resolutions),
 
  // القرار 24 — تُقيَّم فقط بعد التقاط نطاق المعاينة (ميزة حدود المعاينة).

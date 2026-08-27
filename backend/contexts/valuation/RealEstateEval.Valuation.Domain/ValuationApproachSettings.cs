@@ -22,6 +22,9 @@ public class ValuationApproachSettings
  /// <summary>أساس التكلفة — see <see cref="CostBasisKeys"/>. Meaningful when cost is enabled.</summary>
     public string CostBasisKey { get; set; } = CostBasisKeys.Replacement;
 
+ /// <summary>نطاق التقييم بالتكلفة — see <see cref="CostScopeKeys"/>: أرض ومبنى (الافتراضي) أو مبنى فقط.</summary>
+    public string CostScopeKey { get; set; } = CostScopeKeys.LandAndBuilding;
+
  /// <summary>وحدة قياس التكلفة — see <see cref="CostMeasurementUnitKeys"/>.</summary>
     public string CostMeasurementUnitKey { get; set; } = CostMeasurementUnitKeys.ComparisonUnit;
 
@@ -72,6 +75,27 @@ public static class CostBasisKeys
 
     public static string LabelAr(string? value) =>
         Normalize(value) == Reproduction ? "إعادة الإنتاج" : "الإحلال";
+}
+
+/// <summary>
+/// نطاق التقييم بالتكلفة (مواصفة النموذج التفاعلي): «أرض ومبنى» يستلزم تقدير الأرض بالمقارنات؛
+/// «مبنى فقط» يخفي قسم الأرض ويجعل مؤشر الأسلوب = تكلفة الإحلال ناقصاً الإهلاك.
+/// </summary>
+public static class CostScopeKeys
+{
+    public const string LandAndBuilding = "land_and_building";
+    public const string BuildingOnly = "building_only";
+
+    public static bool IsKnown(string? value) =>
+        (value ?? "").Trim().ToLowerInvariant() is LandAndBuilding or BuildingOnly;
+
+    public static string Normalize(string? value) =>
+        (value ?? "").Trim().ToLowerInvariant() == BuildingOnly ? BuildingOnly : LandAndBuilding;
+
+    public static string LabelAr(string? value) =>
+        Normalize(value) == BuildingOnly ? "مبنى فقط" : "أرض ومبنى";
+
+    public static bool IsBuildingOnly(string? value) => Normalize(value) == BuildingOnly;
 }
 
 /// <summary>وحدة قياس التكلفة (حقل ب-2 §10).</summary>
@@ -198,6 +222,7 @@ public static class ValuationApproachSettingsRules
         CostApproachEnabled = CanEnableCostApproach(propertyType, hasStructuresToValue),
         IncomeApproachEnabled = false,
         CostBasisKey = CostBasisKeys.Replacement,
+        CostScopeKey = CostScopeKeys.LandAndBuilding,
         CostMeasurementUnitKey = CostMeasurementUnitKeys.ComparisonUnit,
         AdjustmentsEditUnlocked = true,
     };
@@ -217,7 +242,8 @@ public static class ValuationApproachSettingsRules
         string? valuationDateMode = null,
         DateOnly? retrospectiveDate = null,
         string? retrospectiveRationale = null,
-        IReadOnlySet<string>? allowedPurposeKeys = null)
+        IReadOnlySet<string>? allowedPurposeKeys = null,
+        string? costScopeKey = null)
     {
         var errors = new Dictionary<string, string>();
 
@@ -258,6 +284,9 @@ public static class ValuationApproachSettingsRules
         if (costEnabled && costBasisKey is not null && !CostBasisKeys.IsKnown(costBasisKey))
             errors["costBasisKey"] = "أساس التكلفة غير معروف";
 
+        if (costEnabled && costScopeKey is not null && !CostScopeKeys.IsKnown(costScopeKey))
+            errors["costScopeKey"] = "نطاق التقييم بالتكلفة غير معروف (أرض ومبنى / مبنى فقط)";
+
         if (costEnabled
             && costMeasurementUnitKey is not null
             && !CostMeasurementUnitKeys.IsKnown(costMeasurementUnitKey))
@@ -274,6 +303,21 @@ public static class ValuationApproachSettingsRules
     {
         Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping,
     };
+
+ /// <summary>
+ /// بند نفي الأخصائي في مكتبة الافتراضات — يُسقط عند اختيار «استُعين بأخصائي خارجي».
+ /// </summary>
+    public static bool IsNoExternalSpecialistAssumption(string? text)
+    {
+        var t = (text ?? "").Trim();
+        return t.Contains("لم يستعن المقيّم بأي أخصائي", StringComparison.Ordinal);
+    }
+
+    public static IReadOnlyList<string> WithoutNoExternalSpecialistAssumptions(
+        IEnumerable<string>? items) =>
+        (items ?? [])
+            .Where(x => !IsNoExternalSpecialistAssumption(x))
+            .ToList();
 
  /// <summary>النصوص تُجمَّد مع التقييم (لا معرفات) — تعديل المكتبة لاحقاً لا يغيّر المنتقى.</summary>
     public static string? SerializeAssumptions(IReadOnlyList<string> items)

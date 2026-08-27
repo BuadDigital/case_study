@@ -9,8 +9,12 @@ public class ValuationComparableAdjustmentLineDto
     public required string LabelAr { get; init; }
     public decimal Percent { get; init; }
     public string Rationale { get; init; } = "";
+ /// <summary>وصف المقارن لهذا العامل (compSpec) — «وصف المقارن…».</summary>
+    public string? DescriptionAr { get; init; }
     public bool IsIncluded { get; init; } = true;
     public int SortOrder { get; init; }
+ /// <summary>true عندما تكون القيمة المعروضة افتراضياً مقترحاً (لم يدخلها المقيّم) — تُعرض بأسلوب «مقترح».</summary>
+    public bool IsSuggestedValue { get; init; }
 }
 
 public class ValuationComparableMarketDto
@@ -22,10 +26,12 @@ public class ValuationComparableMarketDto
     public decimal SumDifferencePct { get; init; }
  /// <summary>Algebraic sum of all included %.</summary>
     public decimal SumIncludedPct { get; init; }
- /// <summary>|sum| &gt; 35%.</summary>
+ /// <summary>|factorsSum| &gt; ٣٥٪ — التبرير إلزامي (مواصفة النموذج التفاعلي).</summary>
     public bool ExceedsLargeAdjustmentThreshold { get; init; }
- /// <summary>Deal age in months for market-condition inference.</summary>
+ /// <summary>Deal age in months — يُعرض للاستدلال فقط («عمر الصفقة ن شهراً»)؛ التسوية يدوية.</summary>
     public int DealAgeMonths { get; init; }
+ /// <summary>افتراضي تسوية نوع المقارن (KIND_DEFAULT): منفذة ٠ · عرض −٥ · حد −٨ · سوم +٦.</summary>
+    public decimal SuggestedTransactionTypePct { get; init; }
  /// <summary>Unit rate after sequential multiply only.</summary>
     public decimal PricePerSqmAfterSequential { get; init; }
  /// <summary>Unit rate after sequential + difference factors.</summary>
@@ -38,9 +44,9 @@ public class ValuationComparableMarketDto
     public decimal? WeightPct { get; init; }
  /// <summary>required when WeightIsManual.</summary>
     public string? WeightOverrideRationale { get; init; }
- /// <summary>المضاعف / الأمثال.</summary>
+ /// <summary>المضاعف / الأمثال — محسوب آلياً على مستوى الجدول.</summary>
     public string AreaAdjustmentMethod { get; init; } = "multiplier";
- /// <summary>computed suggestion (provisional curve until v3); valuer applies via the area line.</summary>
+ /// <summary>تسوية المساحة المحسوبة (أمثال/مضاعف) — تُطبَّق آلياً على سطر المساحة.</summary>
     public decimal SuggestedAreaAdjustmentPct { get; init; }
 }
 
@@ -55,12 +61,22 @@ public class ValuationComparableSelectionDto
     public string SelectedAtUtc { get; init; } = "";
     public ComparablePropertyDto Comparable { get; init; } = null!;
     public ValuationComparableMarketDto? Market { get; init; }
+
+ /// <summary>compEdit: تجاوزات هذا التقييم لسعر/مساحة المقارن — لا تمس البنك المشترك.</summary>
+    public decimal? PriceOverrideSar { get; init; }
+    public decimal? AreaOverrideSqm { get; init; }
+ /// <summary>القيم الفعلية بعد التجاوزات: السعر الإجمالي، المساحة، سعر المتر = الإجمالي ÷ المساحة.</summary>
+    public decimal EffectivePriceSar { get; init; }
+    public decimal EffectiveAreaSqm { get; init; }
+    public decimal EffectivePricePerSqm { get; init; }
 }
 
 public class ValuationComparableSelectionListDto
 {
     public Guid ValuationRequestId { get; init; }
     public string PropertyId { get; init; } = "";
+    /// <summary>market | land_within_cost</summary>
+    public string SelectionContext { get; init; } = "market";
     public int AdoptedCount { get; init; }
  /// <summary>helper — true when ≥1 adopted (issuance gate wired later).</summary>
     public bool MeetsMinimumAdoptedGate { get; init; }
@@ -73,9 +89,20 @@ public class ValuationComparableSelectionListDto
  /// <summary>price_per_sqm | whole_property.</summary>
     public string AdjustmentBasis { get; init; } = "price_per_sqm";
     public string AdjustmentBasisLabelAr { get; init; } = "";
- /// <summary>Per-m²: weighted × area. Whole-property: weighted value directly.</summary>
+ /// <summary>Per-m²: weighted × area. Whole-property: weighted value directly — قبل تقريب قاعدة التسويات.</summary>
+    public decimal MarketOpinionValueRaw { get; init; }
+ /// <summary>منطق-التسويات: قيمة السوق بعد التقريب لأقرب ١٠^ن.</summary>
     public decimal MarketOpinionValue { get; init; }
+    /// <summary>Frozen area adjustment factor ٪ for this valuation.</summary>
+    public decimal AreaFactorPct { get; init; } = 5m;
+    /// <summary>Frozen annual market rate ٪ for mkt suggestion.</summary>
+    public decimal AnnualMarketRatePct { get; init; } = 4m;
+    /// <summary>Frozen أسّ تقريب قيمة السوق (١٠^ن).</summary>
+    public int ValueRoundDecimals { get; init; } = 4;
     public string? AnalysisNotes { get; init; }
+ /// <summary>أوصاف العقار محل التقييم لكل عامل (subjSpec) — factorKey → نص.</summary>
+    public IReadOnlyDictionary<string, string> SubjectSpecs { get; init; } =
+        new Dictionary<string, string>();
     public IReadOnlyList<ValuationComparableSelectionDto> Items { get; init; } = [];
 }
 
@@ -87,8 +114,19 @@ public class SaveValuationMarketApproachRequest
     [MaxLength(32)]
     public string? AdjustmentBasis { get; init; }
 
+    /// <summary>Optional freeze override; null keeps existing / seeds from org.</summary>
+    public decimal? AreaFactorPct { get; init; }
+
+    public decimal? AnnualMarketRatePct { get; init; }
+
+    /// <summary>Optional freeze override 0–6; null keeps existing.</summary>
+    public int? ValueRoundDecimals { get; init; }
+
     [MaxLength(4000)]
     public string? AnalysisNotes { get; init; }
+
+ /// <summary>subjSpec: أوصاف العقار محل التقييم لكل عامل اختلاف — null يبقي المخزّن.</summary>
+    public IReadOnlyDictionary<string, string>? SubjectSpecs { get; init; }
 }
 
 public class ValuationCostLineDto
@@ -110,7 +148,15 @@ public class ValuationCostLineDto
  /// <summary>repeated-floors count (quantity derives from first floor × count).</summary>
     public int? RepeatedFloorCount { get; init; }
     public decimal UnitCostSar { get; init; }
+ /// <summary>تكلفة الوحدة الفعلية — ترث سعر متر «الدور الأول» عندما تُترك تكلفة المتكررة فارغة/صفراً.</summary>
+    public decimal EffectiveUnitCostSar { get; init; }
+ /// <summary>true عندما ورثت تكلفة الوحدة من «الدور الأول» («موروثة من الدور الأول»).</summary>
+    public bool UnitCostInherited { get; init; }
+ /// <summary>الكمية الفعلية بعد نسبة البناء (م² في مجموعة المسطحات) — «المسطح N م²».</summary>
+    public decimal EffectiveQuantity { get; init; }
     public decimal LineTotal { get; init; }
+ /// <summary>سعر المتر بعد غير المباشرة — total × (1 + indirect%) ÷ الكمية.</summary>
+    public decimal NetUnitRateWithIndirect { get; init; }
     public string Rationale { get; init; } = "";
     public bool IsIncluded { get; init; } = true;
     public int SortOrder { get; init; }
@@ -120,10 +166,12 @@ public class ValuationCostApproachDto
 {
     public Guid ValuationRequestId { get; init; }
     public string PropertyId { get; init; } = "";
- /// <summary>market weighted unit rate imported at land import.</summary>
+ /// <summary>weighted unit rate from land_within_cost comps (not market approach).</summary>
     public decimal LandUnitRateFromMarket { get; init; }
- /// <summary>Land area m² snapshot from the market header at import.</summary>
+ /// <summary>Land area m² used in the cost land equation.</summary>
     public decimal LandAreaSqm { get; init; }
+ /// <summary>true when land_within_cost has adopted comps yielding a unit rate.</summary>
+    public bool LandEstimateComplete { get; init; }
  /// <summary>. </summary>
     public decimal UseRestrictionDiscountPct { get; init; }
  /// <summary>required when discount &gt; 0.</summary>
@@ -170,10 +218,14 @@ public class ValuationCostApproachDto
  /// <summary> — computed.</summary>
     public decimal BuildingsValueAfterDepreciation { get; init; }
 
- /// <summary> — buildings after depreciation + land.</summary>
+ /// <summary>مؤشر أسلوب التكلفة وفق النطاق: أرض ومبنى = الأرض + المباني بعد الإهلاك؛ مبنى فقط = المباني بعد الإهلاك.</summary>
     public decimal CostOpinionWithLand { get; init; }
  /// <summary> — buildings after indirect + depreciation, without land.</summary>
     public decimal CostOpinionBuildingsOnly { get; init; }
+ /// <summary>نطاق التقييم بالتكلفة من إعدادات شاشة 1: land_and_building | building_only.</summary>
+    public string CostScopeKey { get; init; } = "land_and_building";
+ /// <summary>Σ الكمية الفعلية لبنود م² في مجموعة المسطحات — «المسطحات».</summary>
+    public decimal BuildingAreaSqm { get; init; }
     public string? AnalysisNotes { get; init; }
     public IReadOnlyList<ValuationCostLineDto> Lines { get; init; } = [];
 }
@@ -247,7 +299,8 @@ public class SaveValuationCostApproachRequest
     public string? AnalysisNotes { get; init; }
 
  /// <summary>When true, refresh land rate/area from current market approach .</summary>
-    public bool ImportLandFromMarket { get; init; } = true;
+    /// <summary>Refresh land unit rate/area from land_within_cost comps (not market).</summary>
+    public bool RefreshLandFromLandComps { get; init; } = true;
 
  /// <summary>0–100, default 0.</summary>
     public decimal UseRestrictionDiscountPct { get; init; }
@@ -352,7 +405,7 @@ public class SaveValuationReconciliationRequest
     [Required, MaxLength(4000)]
     public string MethodsRationale { get; init; } = "";
 
- /// <summary>0–4; rounding applied once on final opinion.</summary>
+ /// <summary>0–6; تقريب لأقرب ١٠^ن — applied once on final opinion.</summary>
     public int FinalRoundDecimals { get; init; }
 
     [MaxLength(32)]
@@ -382,6 +435,9 @@ public class ValuationComparableSelectionItemRequest
 
 public class ReplaceValuationComparableSelectionsRequest
 {
+    /// <summary>market (default) | land_within_cost</summary>
+    public string? SelectionContext { get; init; }
+
     public IReadOnlyList<ValuationComparableSelectionItemRequest> Items { get; init; } = [];
 }
 
@@ -399,6 +455,10 @@ public class SaveValuationComparableAdjustmentLineRequest
 
     [MaxLength(2000)]
     public string? Rationale { get; init; }
+
+ /// <summary>compSpec: وصف المقارن لهذا العامل («وصف المقارن…»).</summary>
+    [MaxLength(500)]
+    public string? DescriptionAr { get; init; }
 
     public bool IsIncluded { get; init; } = true;
 
@@ -423,6 +483,9 @@ public class ValuationApproachSettingsDto
     public bool IncomeApproachEnabled { get; init; }
     public string CostBasisKey { get; init; } = "replacement";
     public string CostBasisLabelAr { get; init; } = "";
+ /// <summary>نطاق التقييم بالتكلفة: land_and_building (افتراضي) | building_only.</summary>
+    public string CostScopeKey { get; init; } = "land_and_building";
+    public string CostScopeLabelAr { get; init; } = "";
     public string CostMeasurementUnitKey { get; init; } = "comparison_unit";
     public string CostMeasurementUnitLabelAr { get; init; } = "";
     public bool AdjustmentsEditUnlocked { get; init; } = true;
@@ -461,6 +524,10 @@ public class SaveValuationApproachSettingsRequest
     [MaxLength(32)]
     public string? CostBasisKey { get; init; }
 
+ /// <summary>land_and_building (افتراضي) | building_only.</summary>
+    [MaxLength(32)]
+    public string? CostScopeKey { get; init; }
+
     [MaxLength(32)]
     public string? CostMeasurementUnitKey { get; init; }
 
@@ -497,6 +564,12 @@ public class SaveValuationApproachSettingsRequest
 public class SaveValuationComparableMarketRequest
 {
     public IReadOnlyList<SaveValuationComparableAdjustmentLineRequest> AdjustmentLines { get; init; } = [];
+
+ /// <summary>compEdit: تجاوز سعر العقار الإجمالي لهذا التقييم — null يمسح التجاوز.</summary>
+    public decimal? PriceOverrideSar { get; init; }
+
+ /// <summary>compEdit: تجاوز مساحة المقارن (م²) — null يمسح التجاوز.</summary>
+    public decimal? AreaOverrideSqm { get; init; }
 
  /// <summary>When set with WeightIsManual, overrides suggestion.</summary>
     public decimal? WeightPct { get; init; }

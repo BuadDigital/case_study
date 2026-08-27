@@ -631,14 +631,19 @@ export const VALUATION_REPORT_TAB_SECTIONS: readonly ReportTabSection[] = [
   {
     n: "20",
     title: "قيمة الأرض (أسلوب التكلفة)",
-    hint: "تُحرَّر في تبويب المقارنات.",
+    hint: "تُقدَّر بمقارنات أراضٍ فضاء مستقلة — تفصيل التسويات في الملحق (أ).",
     fields: [
       {
         id: "land-sqm-price",
-        label: "سعر المتر المستورد من طريقة المقارنة",
-        keys: ["comp1.price_per_sqm"],
+        label: "سعر متر الأرض من مقارنات الأراضي الفضاء",
+        keys: ["cost.land_unit_rate"],
       },
       { id: "land-value", label: "قيمة الأرض", keys: ["cost.land_value_from_market"] },
+      {
+        id: "land-appendix-note",
+        label: "إشارة الملحق",
+        keys: ["cost.land_appendix_note"],
+      },
     ],
   },
   {

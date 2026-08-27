@@ -70,11 +70,42 @@ public sealed class ComparablePropertyService(
         if (DateOnly.TryParse(query.ToDate, out var to))
             q = q.Where(x => x.TransactionDate <= to);
 
+        Guid? forPropertyId = null;
+        if (Guid.TryParse(query.ForPropertyId, out var parsedPropertyId)
+            && parsedPropertyId != Guid.Empty)
+        {
+            forPropertyId = parsedPropertyId;
+        }
+
+        var fetchTake = forPropertyId is not null
+            ? Math.Min(MaxTake, Math.Max(take * 2, take + 20))
+            : take;
+
         var rows = await q
             .OrderByDescending(x => x.TransactionDate)
             .ThenByDescending(x => x.CreatedAtUtc)
-            .Take(take)
+            .Take(fetchTake)
             .ToListAsync(cancellationToken);
+
+        // مواصفة-طريقة-المقارنة §٢ أولوية العرض:
+        // ١) ميداني لهذا العقار ٢) بقية المخزّن
+        if (forPropertyId is Guid subjectId)
+        {
+            rows = rows
+                .OrderByDescending(x =>
+                    x.SourcePropertyId == subjectId
+                    && (x.Source == ComparableSources.Field
+                        || x.IntakeChannel == ComparableIntakeChannels.Field)
+                        ? 2
+                    : x.Source == ComparableSources.Field
+                      || x.IntakeChannel == ComparableIntakeChannels.Field
+                        ? 1
+                    : 0)
+                .ThenByDescending(x => x.TransactionDate)
+                .ThenByDescending(x => x.CreatedAtUtc)
+                .Take(take)
+                .ToList();
+        }
 
  // ق-3/2: النظام يقترح الاشتباه (سجلان بنفس الموقع) ولا يحجب ولا يدمج آلياً.
         var suspectCoords = await DuplicateSuspectCoordsAsync(cancellationToken);

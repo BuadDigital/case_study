@@ -1,4 +1,5 @@
 import { getApiBase } from "./index";
+import { repositoryFetch as fetch } from "./write-repository";
 
 export type ComparableSourceCardDto = {
   intakeChannel: string;
@@ -107,6 +108,8 @@ export type ComparablePropertyListQuery = {
   toDate?: string;
   includeInactive?: boolean;
   take?: number;
+  /** مواصفة-طريقة-المقارنة: أولوية ميداني لهذا العقار. */
+  forPropertyId?: string;
 };
 
 export type ComparableProximityQuery = {
@@ -176,6 +179,7 @@ export async function listComparableProperties(
   if (query.toDate) qs.set("toDate", query.toDate);
   if (query.includeInactive) qs.set("includeInactive", "true");
   if (query.take) qs.set("take", String(query.take));
+  if (query.forPropertyId) qs.set("forPropertyId", query.forPropertyId);
   try {
     const res = await fetch(
       `${base}/api/comparable-properties?${qs}`,

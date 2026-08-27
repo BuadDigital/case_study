@@ -86,6 +86,153 @@ public class PartyTaskSubmissionAuthorizationTests
         Assert.Contains("صلاحية", errors!["_"]);
     }
 
+    [Fact]
+    public async Task Get_allows_property_appraisal_assignee_to_read_completed_sibling_inspection()
+    {
+        var bundle = CreateDb();
+        var db = bundle.App;
+        var parentId = Guid.Parse("cccccccc-cccc-cccc-cccc-cccccccccccc");
+        var now = DateTime.UtcNow;
+        var inspection = WorkflowTask.Create(
+            WorkflowTaskKind.FieldInspection,
+            "PO-SIBLING",
+            now,
+            title: "معاينة",
+            phase: WorkflowTaskPhase.Done,
+            assigneeRole: "field-inspector",
+            assigneeName: "معاين",
+            assigneeId: "fi-1",
+            id: TaskId,
+            parentTaskId: parentId,
+            propertyId: PropertyId);
+        inspection.Complete(now);
+        db.WorkflowTasks.AddRange(
+            WorkflowTask.Create(
+                WorkflowTaskKind.CaseStudyProperty,
+                "PO-SIBLING",
+                now,
+                title: "parent",
+                phase: WorkflowTaskPhase.Done,
+                assigneeRole: "case-specialist",
+                assigneeName: "cs",
+                assigneeId: "cs-1",
+                id: parentId,
+                propertyId: PropertyId),
+            inspection,
+            WorkflowTask.Create(
+                WorkflowTaskKind.PropertyAppraisal,
+                "PO-SIBLING",
+                now,
+                title: "تقييم",
+                phase: WorkflowTaskPhase.Done,
+                assigneeRole: "real-estate-appraiser",
+                assigneeName: "مقيم",
+                assigneeId: "val-1",
+                parentTaskId: parentId,
+                propertyId: PropertyId));
+        db.PartyTaskSubmissions.Add(new PartyTaskSubmission
+        {
+            Id = Guid.NewGuid(),
+            WorkflowTaskId = TaskId,
+            Kind = "field-inspection",
+            Status = PartyTaskSubmissionStatus.Submitted,
+            PropertyId = PropertyId,
+            PoNumber = "PO-SIBLING",
+            PayloadJson = """{"visitStatus":"done"}""",
+            SubmittedAtUtc = now,
+            CreatedAtUtc = now,
+            UpdatedAtUtc = now,
+        });
+        await db.SaveChangesAsync();
+
+        var service = CreateService(db);
+        var dto = await service.GetAsync(
+            TaskId,
+            new PartySubmissionActor
+            {
+                UserId = "val-user",
+                DisplayName = "مقيم",
+                PrototypeRole = "real-estate-appraiser",
+                DistributionAssigneeId = "val-1",
+            });
+
+        Assert.NotNull(dto);
+        Assert.Equal(TaskId.ToString(), dto!.TaskId);
+    }
+
+    [Fact]
+    public async Task Get_forbids_unrelated_appraiser_from_sibling_inspection()
+    {
+        var bundle = CreateDb();
+        var db = bundle.App;
+        var parentId = Guid.Parse("dddddddd-dddd-dddd-dddd-dddddddddddd");
+        var now = DateTime.UtcNow;
+        var inspection = WorkflowTask.Create(
+            WorkflowTaskKind.FieldInspection,
+            "PO-SIBLING-DENY",
+            now,
+            title: "معاينة",
+            phase: WorkflowTaskPhase.Done,
+            assigneeRole: "field-inspector",
+            assigneeName: "معاين",
+            assigneeId: "fi-1",
+            id: TaskId,
+            parentTaskId: parentId,
+            propertyId: PropertyId);
+        inspection.Complete(now);
+        db.WorkflowTasks.AddRange(
+            WorkflowTask.Create(
+                WorkflowTaskKind.CaseStudyProperty,
+                "PO-SIBLING-DENY",
+                now,
+                title: "parent",
+                phase: WorkflowTaskPhase.Done,
+                assigneeRole: "case-specialist",
+                assigneeName: "cs",
+                assigneeId: "cs-1",
+                id: parentId,
+                propertyId: PropertyId),
+            inspection,
+            WorkflowTask.Create(
+                WorkflowTaskKind.PropertyAppraisal,
+                "PO-SIBLING-DENY",
+                now,
+                title: "تقييم",
+                phase: WorkflowTaskPhase.Done,
+                assigneeRole: "real-estate-appraiser",
+                assigneeName: "مقيم",
+                assigneeId: "val-1",
+                parentTaskId: parentId,
+                propertyId: PropertyId));
+        db.PartyTaskSubmissions.Add(new PartyTaskSubmission
+        {
+            Id = Guid.NewGuid(),
+            WorkflowTaskId = TaskId,
+            Kind = "field-inspection",
+            Status = PartyTaskSubmissionStatus.Submitted,
+            PropertyId = PropertyId,
+            PoNumber = "PO-SIBLING-DENY",
+            PayloadJson = "{}",
+            SubmittedAtUtc = now,
+            CreatedAtUtc = now,
+            UpdatedAtUtc = now,
+        });
+        await db.SaveChangesAsync();
+
+        var service = CreateService(db);
+        var dto = await service.GetAsync(
+            TaskId,
+            new PartySubmissionActor
+            {
+                UserId = "other-val",
+                DisplayName = "مقيم آخر",
+                PrototypeRole = "real-estate-appraiser",
+                DistributionAssigneeId = "val-other",
+            });
+
+        Assert.Null(dto);
+    }
+
     private static void SeedTask(ApplicationDbContext db, string assigneeId)
     {
         var now = DateTime.UtcNow;

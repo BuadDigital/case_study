@@ -1,4 +1,5 @@
 import { getApiBase } from "./index";
+import { repositoryFetch as fetch } from "./write-repository";
 
 /** Decision 19.2 — admin-managed factor definition (تعريف + «ما لا يشمله»). */
 export type DifferenceFactorDefinitionDto = {

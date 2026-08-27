@@ -13,7 +13,7 @@ public class ValuationComparableSelectionRulesTests
     }
 
     [Fact]
-    public void MeetsMinimumAdopted_requires_two_adopted_flags()
+    public void MeetsMinimumAdopted_requires_one_adopted_per_logic_doc()
     {
         var rows = new[]
         {
@@ -23,15 +23,13 @@ public class ValuationComparableSelectionRulesTests
         Assert.False(ValuationComparableSelectionRules.MeetsMinimumAdopted(rows));
 
         rows[1].IsAdopted = true;
-        Assert.False(ValuationComparableSelectionRules.MeetsMinimumAdopted(rows));
-        rows[0].IsAdopted = true;
         Assert.True(ValuationComparableSelectionRules.MeetsMinimumAdopted(rows));
     }
 
     [Theory]
     [InlineData(new[] { false, false }, false)]
-    [InlineData(new[] { true }, false)]
-    [InlineData(new[] { false, true, false }, false)]
+    [InlineData(new[] { true }, true)]
+    [InlineData(new[] { false, true, false }, true)]
     [InlineData(new[] { true, true }, true)]
     public void MeetsMinimumAdopted_flags(bool[] flags, bool expected)
     {

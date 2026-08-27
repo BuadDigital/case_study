@@ -3,6 +3,7 @@ using RealEstateEval.Application;
 using RealEstateEval.Application.Abstractions;
 using RealEstateEval.Application.Contracts;
 using RealEstateEval.Domain;
+using RealEstateEval.Infrastructure.Data;
 using RealEstateEval.Infrastructure.Data.Contexts;
 
 namespace RealEstateEval.Infrastructure.Services;
@@ -21,15 +22,36 @@ public sealed class ValuationComparableSelectionService(
 
     public async Task<ValuationComparableSelectionListDto?> ListAsync(
         Guid valuationRequestId,
+        CancellationToken cancellationToken = default) =>
+        await ListAsync(
+            valuationRequestId,
+            ComparableSelectionContexts.Market,
+            cancellationToken);
+
+    public async Task<ValuationComparableSelectionListDto?> ListAsync(
+        Guid valuationRequestId,
+        string selectionContext,
         CancellationToken cancellationToken = default)
     {
         var request = await db.ValuationRequests.AsNoTracking()
             .FirstOrDefaultAsync(x => x.Id == valuationRequestId, cancellationToken);
         if (request is null) return null;
 
+        var context = ComparableSelectionContexts.Normalize(selectionContext);
+        if (context == ComparableSelectionContexts.Market)
+        {
+            // مقارنات روابط العقار وبذرة النموذج التفاعلي تتعايشان في البنك —
+            // البذرة لا تُحذف عند الاستيراد (بيانات النموذج هي مرجع العرض التجريبي).
+            await ImportPropertyLinkedComparablesAsync(request, cancellationToken);
+            await ComparableBankSeed.EnsureForValuationRequestAsync(
+                db, valuationRequestId, cancellationToken);
+        }
+
         var rows = await db.ValuationComparableSelections.AsNoTracking()
             .Include(x => x.AdjustmentLines)
-            .Where(x => x.ValuationRequestId == valuationRequestId)
+            .Where(x =>
+                x.ValuationRequestId == valuationRequestId
+                && x.SelectionContext == context)
             .OrderBy(x => x.SortOrder)
             .ThenBy(x => x.SelectedAtUtc)
             .ToListAsync(cancellationToken);
@@ -42,7 +64,7 @@ public sealed class ValuationComparableSelectionService(
         var today = DateOnly.FromDateTime(_time.UtcNow());
         var header = await db.ValuationMarketApproaches.AsNoTracking()
             .FirstOrDefaultAsync(x => x.ValuationRequestId == valuationRequestId, cancellationToken);
-        return BuildList(request, rows, comps, today, header);
+        return BuildList(request, rows, comps, today, header, context);
     }
 
     public async Task<(ValuationComparableSelectionListDto? Result, Dictionary<string, string>? Errors)>
@@ -92,8 +114,11 @@ public sealed class ValuationComparableSelectionService(
 
         if (errors.Count > 0) return (null, errors);
 
+        var context = ComparableSelectionContexts.Normalize(request.SelectionContext);
         var existing = await db.ValuationComparableSelections
-            .Where(x => x.ValuationRequestId == valuationRequestId)
+            .Where(x =>
+                x.ValuationRequestId == valuationRequestId
+                && x.SelectionContext == context)
             .ToListAsync(cancellationToken);
         db.ValuationComparableSelections.RemoveRange(existing);
 
@@ -113,6 +138,7 @@ public sealed class ValuationComparableSelectionService(
                 Id = selectionId,
                 ValuationRequestId = valuationRequestId,
                 ComparablePropertyId = it.ComparablePropertyId,
+                SelectionContext = context,
                 SortOrder = i,
                 IsAdopted = it.IsAdopted,
                 SelectedByUserId = selectedByUserId,
@@ -122,8 +148,9 @@ public sealed class ValuationComparableSelectionService(
                 db.ValuationComparableAdjustmentLines.Add(line);
         }
 
+        await EnsureMarketApproachHeaderAsync(valuationRequestId, cancellationToken);
         await db.SaveChangesAsync(cancellationToken);
-        return (await ListAsync(valuationRequestId, cancellationToken), null);
+        return (await ListAsync(valuationRequestId, context, cancellationToken), null);
     }
 
     public async Task<(ValuationComparableSelectionDto? Result, string? Error)> SetAdoptedAsync(
@@ -131,7 +158,8 @@ public sealed class ValuationComparableSelectionService(
         Guid comparablePropertyId,
         bool isAdopted,
         string selectedByUserId,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default,
+        string? selectionContext = null)
     {
         var vr = await db.ValuationRequests
             .FirstOrDefaultAsync(x => x.Id == valuationRequestId, cancellationToken);
@@ -139,27 +167,14 @@ public sealed class ValuationComparableSelectionService(
         if (vr.Status == ValuationRequestStatus.Done)
             return (null, "طلب التقييم مكتمل — لا يمكن تعديل المقارنات");
 
+        var context = ComparableSelectionContexts.Normalize(selectionContext);
         var row = await db.ValuationComparableSelections
             .Include(x => x.AdjustmentLines)
             .FirstOrDefaultAsync(
                 x => x.ValuationRequestId == valuationRequestId
-                    && x.ComparablePropertyId == comparablePropertyId,
+                    && x.ComparablePropertyId == comparablePropertyId
+                    && x.SelectionContext == context,
                 cancellationToken);
-
-        if (isAdopted)
-        {
- // اعتماد انتقائي بحد أقصى قابل للضبط.
-            var settings = await organizationSettings.GetInternalAsync(cancellationToken);
-            var cap = Math.Max(1, settings.Valuation.MaxAdoptedComparables);
-            var adoptedOthers = await db.ValuationComparableSelections
-                .CountAsync(
-                    x => x.ValuationRequestId == valuationRequestId
-                        && x.IsAdopted
-                        && x.ComparablePropertyId != comparablePropertyId,
-                    cancellationToken);
-            if (adoptedOthers >= cap)
-                return (null, $"بلغت الحد الأقصى للمقارنات المعتمدة ({cap}) — عدّله من إعدادات المؤسسة أو ألغِ اعتماد مقارن آخر");
-        }
 
         var now = _time.UtcNow();
         if (row is null)
@@ -171,7 +186,9 @@ public sealed class ValuationComparableSelectionService(
             if (comp is null) return (null, "المقارن غير موجود أو معطّل");
 
             var maxOrder = await db.ValuationComparableSelections
-                .Where(x => x.ValuationRequestId == valuationRequestId)
+                .Where(x =>
+                    x.ValuationRequestId == valuationRequestId
+                    && x.SelectionContext == context)
                 .Select(x => (int?)x.SortOrder)
                 .MaxAsync(cancellationToken) ?? -1;
 
@@ -181,6 +198,7 @@ public sealed class ValuationComparableSelectionService(
                 Id = selectionId,
                 ValuationRequestId = valuationRequestId,
                 ComparablePropertyId = comparablePropertyId,
+                SelectionContext = context,
                 SortOrder = maxOrder + 1,
                 IsAdopted = isAdopted,
                 SelectedByUserId = selectedByUserId,
@@ -202,10 +220,11 @@ public sealed class ValuationComparableSelectionService(
             }
             else
             {
-                EnsureDifferenceFactorLines(row);
+                EnsureDifferenceFactorLines(db, row);
             }
         }
 
+        await EnsureMarketApproachHeaderAsync(valuationRequestId, cancellationToken);
         await db.SaveChangesAsync(cancellationToken);
         return (await GetSelectionDtoAsync(row.Id, cancellationToken), null);
     }
@@ -213,7 +232,8 @@ public sealed class ValuationComparableSelectionService(
     public async Task<(bool Ok, string? Error)> RemoveAsync(
         Guid valuationRequestId,
         Guid comparablePropertyId,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default,
+        string? selectionContext = null)
     {
         var vr = await db.ValuationRequests
             .FirstOrDefaultAsync(x => x.Id == valuationRequestId, cancellationToken);
@@ -221,10 +241,12 @@ public sealed class ValuationComparableSelectionService(
         if (vr.Status == ValuationRequestStatus.Done)
             return (false, "طلب التقييم مكتمل — لا يمكن تعديل المقارنات");
 
+        var context = ComparableSelectionContexts.Normalize(selectionContext);
         var row = await db.ValuationComparableSelections
             .FirstOrDefaultAsync(
                 x => x.ValuationRequestId == valuationRequestId
-                    && x.ComparablePropertyId == comparablePropertyId,
+                    && x.ComparablePropertyId == comparablePropertyId
+                    && x.SelectionContext == context,
                 cancellationToken);
         if (row is null) return (false, "المقارن غير مختار");
 
@@ -266,6 +288,8 @@ public sealed class ValuationComparableSelectionService(
             });
         }
 
+        // مواصفة النموذج التفاعلي: «المنع يقع عند الاعتماد فقط — الإدخال الجزئي محفوظ كمسوّدة».
+        // المبررات تُطالب بها بوابات الإصدار والتنبيهات المنهجية، لا الحفظ.
         var lines = request.AdjustmentLines ?? [];
         var errors = new Dictionary<string, string>();
         for (var i = 0; i < lines.Count; i++)
@@ -278,10 +302,6 @@ public sealed class ValuationComparableSelectionService(
                 && string.IsNullOrWhiteSpace(line.LabelAr))
                 errors[$"adjustmentLines[{i}].labelAr"] = "تسمية العامل المضاف مطلوبة";
 
-            if (MarketApproachRules.RequiresRationale(line.Percent, line.IsIncluded)
-                && string.IsNullOrWhiteSpace(line.Rationale))
-                errors[$"adjustmentLines[{i}].rationale"] = "المبرر إلزامي عند نسبة غير صفرية";
-
             if (line.Percent is < -100m or > 100m)
                 errors[$"adjustmentLines[{i}].percent"] = "النسبة يجب أن تكون بين -100 و 100";
         }
@@ -292,10 +312,12 @@ public sealed class ValuationComparableSelectionService(
                 errors["weightPct"] = "الوزن اليدوي مطلوب";
             else if (request.WeightPct is < 0m or > 100m)
                 errors["weightPct"] = "الوزن يجب أن يكون بين 0 و 100";
- // Overriding the suggestion needs a written rationale.
-            if (string.IsNullOrWhiteSpace(request.WeightOverrideRationale))
-                errors["weightOverrideRationale"] = "مبرر تجاوز الوزن الآلي إلزامي";
         }
+
+        if (request.PriceOverrideSar is < 0m)
+            errors["priceOverrideSar"] = "سعر العقار يجب أن يكون ≥ 0";
+        if (request.AreaOverrideSqm is <= 0m)
+            errors["areaOverrideSqm"] = "مساحة المقارن يجب أن تكون أكبر من صفر";
 
         if (request.AreaAdjustmentMethod is not null
             && !AreaAdjustmentMethods.IsKnown(request.AreaAdjustmentMethod))
@@ -319,11 +341,19 @@ public sealed class ValuationComparableSelectionService(
                     : Guid.NewGuid(),
                 SelectionId = row.Id,
                 FactorKey = key,
-                LabelAr = string.IsNullOrWhiteSpace(line.LabelAr)
+                // العوامل المعرَّفة تحمل تسميتها القياسية دائماً — تسمية العميل تُقبل
+                // للعامل المخصص فقط (تحصين ضد تسميات مشوّهة الترميز).
+                LabelAr = key != MarketAdjustmentFactorKeys.Custom
+                          && MarketAdjustmentFactorKeys.IsKnown(key)
                     ? MarketAdjustmentFactorKeys.DefaultLabelAr(key)
-                    : line.LabelAr.Trim(),
+                    : string.IsNullOrWhiteSpace(line.LabelAr)
+                        ? MarketAdjustmentFactorKeys.DefaultLabelAr(key)
+                        : line.LabelAr.Trim(),
                 Percent = line.Percent,
                 Rationale = line.Rationale?.Trim() ?? "",
+                DescriptionAr = string.IsNullOrWhiteSpace(line.DescriptionAr)
+                    ? null
+                    : line.DescriptionAr.Trim(),
                 IsIncluded = line.IsIncluded,
                 SortOrder = line.SortOrder != 0 ? line.SortOrder : i,
             });
@@ -334,6 +364,8 @@ public sealed class ValuationComparableSelectionService(
         row.WeightOverrideRationale = request.WeightIsManual
             ? request.WeightOverrideRationale?.Trim()
             : null;
+        row.PriceOverrideSar = request.PriceOverrideSar;
+        row.AreaOverrideSqm = request.AreaOverrideSqm;
         if (request.AreaAdjustmentMethod is not null)
             row.AreaAdjustmentMethod = AreaAdjustmentMethods.Normalize(request.AreaAdjustmentMethod);
 
@@ -341,7 +373,14 @@ public sealed class ValuationComparableSelectionService(
         return (await GetSelectionDtoAsync(row.Id, cancellationToken), null);
     }
 
-    private static void EnsureDifferenceFactorLines(ValuationComparableSelection row)
+    /// <summary>
+    /// يضمن عوامل الاختلاف الافتراضية فقط (المساحة + الأربعة القياسية) — عوامل الكتالوج
+    /// تُضاف من الواجهة عند الحاجة. الإضافة عبر DbSet صراحةً: الإضافة عبر مجموعة التنقّل
+    /// بمعرّفات مولّدة مسبقاً يعتبرها EF تعديلاً لصفوف غير موجودة (UPDATE يصيب صفر صفوف → 409).
+    /// </summary>
+    private static void EnsureDifferenceFactorLines(
+        ValuationDbContext db,
+        ValuationComparableSelection row)
     {
         var existing = row.AdjustmentLines
             .Select(l => l.FactorKey)
@@ -350,10 +389,10 @@ public sealed class ValuationComparableSelectionService(
             ? 10
             : row.AdjustmentLines.Max(l => l.SortOrder) + 1;
         var added = 0;
-        foreach (var key in MarketAdjustmentFactorKeys.StandardDifferenceFactors)
+        foreach (var key in MarketAdjustmentFactorKeys.DefaultDifferenceFactors)
         {
             if (existing.Contains(key)) continue;
-            row.AdjustmentLines.Add(new ValuationComparableAdjustmentLine
+            db.ValuationComparableAdjustmentLines.Add(new ValuationComparableAdjustmentLine
             {
                 Id = Guid.NewGuid(),
                 SelectionId = row.Id,
@@ -381,7 +420,9 @@ public sealed class ValuationComparableSelectionService(
             .FirstAsync(x => x.Id == row.ValuationRequestId, cancellationToken);
         var all = await db.ValuationComparableSelections.AsNoTracking()
             .Include(x => x.AdjustmentLines)
-            .Where(x => x.ValuationRequestId == row.ValuationRequestId)
+            .Where(x =>
+                x.ValuationRequestId == row.ValuationRequestId
+                && x.SelectionContext == row.SelectionContext)
             .ToListAsync(cancellationToken);
         var comps = await db.ComparableProperties.AsNoTracking()
             .Where(c => all.Select(a => a.ComparablePropertyId).Contains(c.Id))
@@ -392,7 +433,9 @@ public sealed class ValuationComparableSelectionService(
             all,
             comps,
             DateOnly.FromDateTime(_time.UtcNow()),
-            await db.ValuationMarketApproaches.AsNoTracking().FirstOrDefaultAsync(x => x.ValuationRequestId == row.ValuationRequestId, cancellationToken));
+            await db.ValuationMarketApproaches.AsNoTracking()
+                .FirstOrDefaultAsync(x => x.ValuationRequestId == row.ValuationRequestId, cancellationToken),
+            row.SelectionContext);
         return list.Items.FirstOrDefault(i => i.Id == selectionId);
     }
 
@@ -418,10 +461,20 @@ public sealed class ValuationComparableSelectionService(
             .FirstOrDefaultAsync(x => x.ValuationRequestId == valuationRequestId, cancellationToken);
         if (header is null)
         {
+            var org = await organizationSettings.GetInternalAsync(cancellationToken);
             header = new ValuationMarketApproach
             {
                 Id = Guid.NewGuid(),
                 ValuationRequestId = valuationRequestId,
+                AreaFactorPct = org.Valuation.AreaFactorPct > 0
+                    ? org.Valuation.AreaFactorPct
+                    : AreaAdjustmentRules.DefaultAreaFactorPct,
+                AnnualMarketRatePct = org.Valuation.AnnualMarketRatePct >= 0
+                    ? org.Valuation.AnnualMarketRatePct
+                    : MarketApproachRules.DefaultAnnualMarketRatePct,
+                ValueRoundDecimals = org.Valuation.MarketValueRoundDecimals is >= 0 and <= 6
+                    ? org.Valuation.MarketValueRoundDecimals
+                    : MarketApproachRules.DefaultValueRoundDecimals,
             };
             db.ValuationMarketApproaches.Add(header);
         }
@@ -429,9 +482,17 @@ public sealed class ValuationComparableSelectionService(
         header.SubjectAreaSqm = request.SubjectAreaSqm;
         if (request.AdjustmentBasis is not null)
             header.AdjustmentBasis = MarketAdjustmentBasisKeys.Normalize(request.AdjustmentBasis);
+        if (request.AreaFactorPct is >= 0.1m and <= 50m)
+            header.AreaFactorPct = request.AreaFactorPct.Value;
+        if (request.AnnualMarketRatePct is >= 0m and <= 50m)
+            header.AnnualMarketRatePct = request.AnnualMarketRatePct.Value;
+        if (request.ValueRoundDecimals is >= 0 and <= 6)
+            header.ValueRoundDecimals = request.ValueRoundDecimals.Value;
         header.AnalysisNotes = string.IsNullOrWhiteSpace(request.AnalysisNotes)
             ? null
             : request.AnalysisNotes.Trim();
+        if (request.SubjectSpecs is not null)
+            header.SubjectSpecJson = SerializeSubjectSpecs(request.SubjectSpecs);
         header.UpdatedAtUtc = _time.UtcNow();
         await db.SaveChangesAsync(cancellationToken);
         return (await ListAsync(valuationRequestId, cancellationToken), null);
@@ -442,21 +503,48 @@ public sealed class ValuationComparableSelectionService(
         IReadOnlyList<ValuationComparableSelection> rows,
         IReadOnlyDictionary<Guid, ComparableProperty> comps,
         DateOnly valuationDate,
-        ValuationMarketApproach? header)
+        ValuationMarketApproach? header,
+        string selectionContext)
     {
         var adoptedRows = rows.Where(r => r.IsAdopted).ToList();
-        var sums = adoptedRows
-            .Select(r => MarketApproachRules.SumIncludedPercents(
-                r.AdjustmentLines.Where(l => l.IsIncluded).Select(l => l.Percent)))
-            .ToList();
-        // raw suggestions, then renormalized around manual overrides:
-        // partial overrides keep the total at 100 instead of blocking issuance.
-        var suggested = MarketApproachRules.RenormalizeSuggestions(
-            MarketApproachRules.SuggestWeights(sums),
-            adoptedRows.Select(r => r.WeightIsManual && r.WeightPct is not null).ToList(),
-            adoptedRows.Select(r => r.WeightPct ?? 0m).ToList());
-        var basis = MarketAdjustmentBasisKeys.Normalize(header?.AdjustmentBasis);
         var subjectAreaForSuggestion = header?.SubjectAreaSqm ?? 0m;
+        var areaFactor = header?.AreaFactorPct > 0
+            ? header.AreaFactorPct
+            : AreaAdjustmentRules.DefaultAreaFactorPct;
+        var marketRate = header?.AnnualMarketRatePct >= 0
+            ? header.AnnualMarketRatePct
+            : MarketApproachRules.DefaultAnnualMarketRatePct;
+        var areaMethod = AreaAdjustmentRules.ChooseMethod(
+            subjectAreaForSuggestion,
+            adoptedRows
+                .Where(r => comps.ContainsKey(r.ComparablePropertyId))
+                .Select(r => EffectiveCompValues(r, comps[r.ComparablePropertyId]).Area));
+
+        // أوزان المقارنات من مجموع عوامل الاختلاف فقط (areaAdj + Σ) — لا التسويات التسلسلية.
+        var factorsSums = adoptedRows
+            .Select(r =>
+            {
+                if (!comps.TryGetValue(r.ComparablePropertyId, out var comp))
+                    return 0m;
+                var areaAdj = AreaAdjustmentRules.SuggestPct(
+                    areaMethod,
+                    subjectAreaForSuggestion,
+                    EffectiveCompValues(r, comp).Area,
+                    areaFactor);
+                var otherDiff = MarketApproachRules.SumIncludedPercents(
+                    r.AdjustmentLines
+                        .Where(l =>
+                            l.IsIncluded
+                            && MarketAdjustmentFactorKeys.IsDifferenceFactor(l.FactorKey)
+                            && l.FactorKey != MarketAdjustmentFactorKeys.Area)
+                        .Select(l => l.Percent));
+                return areaAdj + otherDiff;
+            })
+            .ToList();
+        // مواصفة النموذج التفاعلي: الاقتراح الآلي كما هو (وحدات ٥٪)؛ التجاوز اليدوي يحل محل
+        // صف واحد فقط، واختلال المجموع عن ١٠٠٪ يظهر تنبيهاً يعالجه المقيّم بنفسه.
+        var suggested = MarketApproachRules.SuggestWeights(factorsSums);
+        var basis = MarketAdjustmentBasisKeys.Normalize(header?.AdjustmentBasis);
 
         var items = new List<ValuationComparableSelectionDto>();
         var weightPairs = new List<(decimal adjusted, decimal weight)>();
@@ -474,7 +562,17 @@ public sealed class ValuationComparableSelectionService(
                 adoptedIndex++;
             }
 
-            var market = BuildMarket(row, comp, valuationDate, suggestedForRow, basis, subjectAreaForSuggestion);
+            var market = BuildMarket(
+                row,
+                comp,
+                valuationDate,
+                suggestedForRow,
+                basis,
+                subjectAreaForSuggestion,
+                areaMethod,
+                areaFactor,
+                marketRate);
+            var eff = EffectiveCompValues(row, comp);
             items.Add(new ValuationComparableSelectionDto
             {
                 Id = row.Id,
@@ -486,6 +584,11 @@ public sealed class ValuationComparableSelectionService(
                 SelectedAtUtc = row.SelectedAtUtc.ToString("o"),
                 Comparable = ComparablePropertyMapping.ToDto(comp, valuationDate),
                 Market = market,
+                PriceOverrideSar = row.PriceOverrideSar,
+                AreaOverrideSqm = row.AreaOverrideSqm,
+                EffectivePriceSar = eff.Total,
+                EffectiveAreaSqm = eff.Area,
+                EffectivePricePerSqm = eff.Unit,
             });
 
             if (row.IsAdopted)
@@ -495,17 +598,22 @@ public sealed class ValuationComparableSelectionService(
         var effectiveWeights = weightPairs.Select(p => p.weight).ToList();
         var weighted = MarketApproachRules.WeightedUnitRate(weightPairs);
         var area = header?.SubjectAreaSqm;
+        var roundDecimals = header?.ValueRoundDecimals
+            ?? MarketApproachRules.DefaultValueRoundDecimals;
  // : whole-property basis yields the opinion directly — «دون ضرب في المساحة».
-        var opinion = basis == MarketAdjustmentBasisKeys.WholeProperty
+        // منطق-التكلفة §٣: مخرج الأسلوب خام بلا تقريب — التقريب مرة واحدة بعد التوفيق.
+        var opinionRaw = basis == MarketAdjustmentBasisKeys.WholeProperty
             ? weighted
             : area is > 0m
                 ? MarketOpinionRules.ComputeOpinionValue(weighted, area.Value)
                 : 0m;
+        var opinion = opinionRaw;
 
         return new ValuationComparableSelectionListDto
         {
             ValuationRequestId = request.Id,
             PropertyId = request.PropertyId,
+            SelectionContext = ComparableSelectionContexts.Normalize(selectionContext),
             AdoptedCount = adoptedRows.Count,
             MeetsMinimumAdoptedGate = ValuationComparableSelectionRules.MeetsMinimumAdopted(
                 rows.Select(r => r.IsAdopted)),
@@ -515,10 +623,150 @@ public sealed class ValuationComparableSelectionService(
             SubjectAreaSqm = area,
             AdjustmentBasis = basis,
             AdjustmentBasisLabelAr = MarketAdjustmentBasisKeys.LabelAr(basis),
+            MarketOpinionValueRaw = opinionRaw,
             MarketOpinionValue = opinion,
+            AreaFactorPct = areaFactor,
+            AnnualMarketRatePct = marketRate,
+            ValueRoundDecimals = roundDecimals,
             AnalysisNotes = header?.AnalysisNotes,
+            SubjectSpecs = ParseSubjectSpecs(header?.SubjectSpecJson),
             Items = items,
         };
+    }
+
+ /// <summary>compEdit: القيم الفعلية للمقارن بعد تجاوزات هذا التقييم — سعر المتر = الإجمالي ÷ المساحة.</summary>
+    private static (decimal Total, decimal Area, decimal Unit) EffectiveCompValues(
+        ValuationComparableSelection row,
+        ComparableProperty comp)
+    {
+        var total = row.PriceOverrideSar ?? comp.Price;
+        var area = row.AreaOverrideSqm ?? comp.AreaSqm;
+        var unit = area > 0m
+            ? Math.Round(total / area, 2, MidpointRounding.AwayFromZero)
+            : comp.PricePerSqm;
+        return (total, area, unit);
+    }
+
+    private static readonly System.Text.Json.JsonSerializerOptions SubjectSpecJsonOptions = new()
+    {
+        Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping,
+    };
+
+    private static IReadOnlyDictionary<string, string> ParseSubjectSpecs(string? json)
+    {
+        if (string.IsNullOrWhiteSpace(json)) return new Dictionary<string, string>();
+        try
+        {
+            return System.Text.Json.JsonSerializer
+                       .Deserialize<Dictionary<string, string>>(json)
+                   ?? new Dictionary<string, string>();
+        }
+        catch (System.Text.Json.JsonException)
+        {
+            return new Dictionary<string, string>();
+        }
+    }
+
+    private static string? SerializeSubjectSpecs(IReadOnlyDictionary<string, string>? specs)
+    {
+        if (specs is null) return null;
+        var clean = specs
+            .Where(kv => !string.IsNullOrWhiteSpace(kv.Key) && !string.IsNullOrWhiteSpace(kv.Value))
+            .ToDictionary(kv => kv.Key.Trim(), kv => kv.Value.Trim(), StringComparer.Ordinal);
+        return clean.Count == 0
+            ? null
+            : System.Text.Json.JsonSerializer.Serialize(clean, SubjectSpecJsonOptions);
+    }
+
+    private async Task<bool> ImportPropertyLinkedComparablesAsync(
+        ValuationRequest request,
+        CancellationToken cancellationToken)
+    {
+        if (!Guid.TryParse(request.PropertyId, out var propertyId) || propertyId == Guid.Empty)
+            return false;
+
+        var links = await db.PropertyComparableLinks.AsNoTracking()
+            .Where(x => x.PropertyId == propertyId)
+            .OrderBy(x => x.LinkedAtUtc)
+            .Select(x => x.ComparablePropertyId)
+            .ToListAsync(cancellationToken);
+        if (links.Count == 0) return false;
+
+        var existing = (await db.ValuationComparableSelections
+            .Where(x =>
+                x.ValuationRequestId == request.Id
+                && x.SelectionContext == ComparableSelectionContexts.Market)
+            .Select(x => x.ComparablePropertyId)
+            .ToListAsync(cancellationToken))
+            .ToHashSet();
+
+        var missing = links.Where(id => !existing.Contains(id)).Distinct().ToList();
+        if (missing.Count == 0) return true;
+
+        var activeIds = (await db.ComparableProperties.AsNoTracking()
+            .Where(c => missing.Contains(c.Id) && c.IsActive)
+            .Select(c => c.Id)
+            .ToListAsync(cancellationToken)).ToHashSet();
+
+        var maxOrder = await db.ValuationComparableSelections
+            .Where(x =>
+                x.ValuationRequestId == request.Id
+                && x.SelectionContext == ComparableSelectionContexts.Market)
+            .Select(x => (int?)x.SortOrder)
+            .MaxAsync(cancellationToken) ?? -1;
+
+        var now = _time.UtcNow();
+        var added = false;
+        foreach (var comparableId in missing)
+        {
+            if (!activeIds.Contains(comparableId)) continue;
+            var selectionId = Guid.NewGuid();
+            db.ValuationComparableSelections.Add(new ValuationComparableSelection
+            {
+                Id = selectionId,
+                ValuationRequestId = request.Id,
+                ComparablePropertyId = comparableId,
+                SelectionContext = ComparableSelectionContexts.Market,
+                SortOrder = ++maxOrder,
+                IsAdopted = true,
+                SelectedAtUtc = now,
+            });
+            foreach (var line in MarketApproachRules.CreateStandardMarketLines(selectionId))
+                db.ValuationComparableAdjustmentLines.Add(line);
+            added = true;
+        }
+
+        if (!added) return true;
+
+        await EnsureMarketApproachHeaderAsync(request.Id, cancellationToken);
+        await db.SaveChangesAsync(cancellationToken);
+        return true;
+    }
+
+    private async Task EnsureMarketApproachHeaderAsync(
+        Guid valuationRequestId,
+        CancellationToken cancellationToken)
+    {
+        var exists = await db.ValuationMarketApproaches
+            .AnyAsync(x => x.ValuationRequestId == valuationRequestId, cancellationToken);
+        if (exists) return;
+
+        var org = await organizationSettings.GetInternalAsync(cancellationToken);
+        db.ValuationMarketApproaches.Add(new ValuationMarketApproach
+        {
+            Id = Guid.NewGuid(),
+            ValuationRequestId = valuationRequestId,
+            AreaFactorPct = org.Valuation.AreaFactorPct > 0
+                ? org.Valuation.AreaFactorPct
+                : AreaAdjustmentRules.DefaultAreaFactorPct,
+            AnnualMarketRatePct = org.Valuation.AnnualMarketRatePct >= 0
+                ? org.Valuation.AnnualMarketRatePct
+                : MarketApproachRules.DefaultAnnualMarketRatePct,
+            ValueRoundDecimals = org.Valuation.MarketValueRoundDecimals is >= 0 and <= 6
+                ? org.Valuation.MarketValueRoundDecimals
+                : MarketApproachRules.DefaultValueRoundDecimals,
+            UpdatedAtUtc = _time.UtcNow(),
+        });
     }
 
     private static ValuationComparableMarketDto BuildMarket(
@@ -527,28 +775,47 @@ public sealed class ValuationComparableSelectionService(
         DateOnly valuationDate,
         decimal? suggestedWeightPct,
         string adjustmentBasis,
-        decimal subjectAreaSqm)
+        decimal subjectAreaSqm,
+        string areaMethod,
+        decimal areaFactorPct,
+        decimal annualMarketRatePct)
     {
         var ordered = row.AdjustmentLines.OrderBy(l => l.SortOrder).ToList();
+        var eff = EffectiveCompValues(row, comp);
+        var areaAdj = AreaAdjustmentRules.SuggestPct(
+            areaMethod, subjectAreaSqm, eff.Area, areaFactorPct);
+        var dealAgeMonths = MarketApproachRules.DealAgeMonths(comp.TransactionDate, valuationDate);
+        var suggestedMarket = MarketApproachRules.SuggestMarketConditionsPct(
+            dealAgeMonths, annualMarketRatePct);
+        var suggestedKind = MarketApproachRules.SuggestTransactionTypePct(
+            comp.TransactionKind, comp.PriceDescription);
+
         var sequentialPct = ordered
-            .Where(l => l.IsIncluded && MarketAdjustmentFactorKeys.IsSequential(l.FactorKey))
-            .Select(l => l.Percent)
+            .Where(l => MarketAdjustmentFactorKeys.IsSequential(l.FactorKey))
+            .Select(l => MarketApproachRules.EffectiveSequentialPercent(
+                l.FactorKey,
+                l.Percent,
+                l.Rationale,
+                l.IsIncluded,
+                suggestedMarket,
+                suggestedKind))
             .ToList();
         var differencePct = ordered
             .Where(l => l.IsIncluded && MarketAdjustmentFactorKeys.IsDifferenceFactor(l.FactorKey))
-            .Select(l => l.Percent)
+            .Select(l =>
+                l.FactorKey == MarketAdjustmentFactorKeys.Area ? areaAdj : l.Percent)
             .ToList();
 
- // : the chain runs on the whole deal price or the unit rate per the basis.
+ // : the chain runs on the whole deal price or the unit rate per the basis (بعد تجاوزات compEdit).
         var baseAmount = adjustmentBasis == MarketAdjustmentBasisKeys.WholeProperty
-            ? comp.Price
-            : comp.PricePerSqm;
+            ? eff.Total
+            : eff.Unit;
         var (afterSeq, diffSum, afterDiff) = MarketApproachRules.ApplyMarketUnitRate(
             baseAmount,
             sequentialPct,
             differencePct);
         var sumAll = MarketApproachRules.SumIncludedPercents(
-            ordered.Where(l => l.IsIncluded).Select(l => l.Percent));
+            sequentialPct.Concat(differencePct));
         var suggested = suggestedWeightPct ?? 0m;
         var effective = row.WeightIsManual && row.WeightPct is not null
             ? row.WeightPct.Value
@@ -557,23 +824,44 @@ public sealed class ValuationComparableSelectionService(
         return new ValuationComparableMarketDto
         {
             AdjustmentLines = ordered
-                .Select(l => new ValuationComparableAdjustmentLineDto
+                .Select(l =>
                 {
-                    Id = l.Id,
-                    FactorKey = l.FactorKey,
-                    LabelAr = l.LabelAr,
-                    Percent = l.Percent,
-                    Rationale = l.Rationale,
-                    IsIncluded = l.IsIncluded,
-                    SortOrder = l.SortOrder,
+                    var pct = l.FactorKey == MarketAdjustmentFactorKeys.Area
+                        ? areaAdj
+                        : MarketAdjustmentFactorKeys.IsSequential(l.FactorKey)
+                            ? MarketApproachRules.EffectiveSequentialPercent(
+                                l.FactorKey,
+                                l.Percent,
+                                l.Rationale,
+                                l.IsIncluded,
+                                suggestedMarket,
+                                suggestedKind)
+                            : l.Percent;
+                    // «مقترح حتى يُتجاوز»: نوع المقارن بلا نسبة مدخلة يعرض الافتراضي بأسلوب مقترح.
+                    var isSuggested =
+                        l.FactorKey == MarketAdjustmentFactorKeys.TransactionType
+                        && l.Percent == 0m;
+                    return new ValuationComparableAdjustmentLineDto
+                    {
+                        Id = l.Id,
+                        FactorKey = l.FactorKey,
+                        LabelAr = l.LabelAr,
+                        Percent = pct,
+                        Rationale = l.Rationale,
+                        DescriptionAr = l.DescriptionAr,
+                        IsIncluded = l.IsIncluded,
+                        SortOrder = l.SortOrder,
+                        IsSuggestedValue = isSuggested,
+                    };
                 })
                 .ToList(),
             SumSequentialPct = MarketApproachRules.SumIncludedPercents(sequentialPct),
             SumDifferencePct = diffSum,
             SumIncludedPct = sumAll,
             ExceedsLargeAdjustmentThreshold =
-                MarketApproachRules.ExceedsLargeAdjustmentThreshold(sumAll),
-            DealAgeMonths = MarketApproachRules.DealAgeMonths(comp.TransactionDate, valuationDate),
+                MarketApproachRules.ExceedsLargeAdjustmentThreshold(diffSum),
+            DealAgeMonths = dealAgeMonths,
+            SuggestedTransactionTypePct = suggestedKind,
             PricePerSqmAfterSequential = afterSeq,
             PricePerSqmAfterDifference = afterDiff,
             SuggestedWeightPct = suggested,
@@ -581,9 +869,8 @@ public sealed class ValuationComparableSelectionService(
             WeightIsManual = row.WeightIsManual,
             WeightPct = row.WeightPct,
             WeightOverrideRationale = row.WeightOverrideRationale,
-            AreaAdjustmentMethod = AreaAdjustmentMethods.Normalize(row.AreaAdjustmentMethod),
-            SuggestedAreaAdjustmentPct = AreaAdjustmentRules.SuggestPct(
-                row.AreaAdjustmentMethod, subjectAreaSqm, comp.AreaSqm),
+            AreaAdjustmentMethod = AreaAdjustmentMethods.Normalize(areaMethod),
+            SuggestedAreaAdjustmentPct = areaAdj,
         };
     }
 }

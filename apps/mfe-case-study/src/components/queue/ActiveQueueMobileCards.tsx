@@ -35,7 +35,10 @@ export type ActiveQueueMobileCardItem = {
   timerRatio?: number;
   tone?: ActiveQueueMobileCardTone;
   moreItems: RowMoreMenuItem[];
-  onOpen: () => void;
+  /** Whole-card open. Omit when only title / menu / PO should navigate. */
+  onOpen?: () => void;
+  /** Title-only open (e.g. deed) when `onOpen` is omitted. */
+  onTitleClick?: () => void;
   /** Show open-loading affordance on the title. */
   loading?: boolean;
   /** Outlook-style unread dot next to the title — new / returned / needs action. */
@@ -238,8 +241,8 @@ export function ActiveQueueMobileCards({
             style={{ animationDelay: `${Math.min(index, 8) * 40}ms` }}
           >
             <div
-              role="button"
-              tabIndex={0}
+              role={item.onOpen ? "button" : undefined}
+              tabIndex={item.onOpen ? 0 : undefined}
               aria-busy={item.loading || undefined}
               className={cn(
                 queueMobileCardShellClassName,
@@ -248,14 +251,19 @@ export function ActiveQueueMobileCards({
                   item.expanded &&
                   "rounded-b-none border-b-0",
                 item.loading && "ui-queue-card-opening pointer-events-none",
+                !item.onOpen && "cursor-default",
               )}
               onClick={item.onOpen}
-              onKeyDown={(e) => {
-                if (e.key === "Enter" || e.key === " ") {
-                  e.preventDefault();
-                  item.onOpen();
-                }
-              }}
+              onKeyDown={
+                item.onOpen
+                  ? (e) => {
+                      if (e.key === "Enter" || e.key === " ") {
+                        e.preventDefault();
+                        item.onOpen?.();
+                      }
+                    }
+                  : undefined
+              }
             >
               <span
                 className={cn(
@@ -286,7 +294,20 @@ export function ActiveQueueMobileCards({
               <div className="relative z-[1] min-w-0 flex-1 overflow-hidden">
                 <div className="flex items-center gap-1.5 truncate text-[13.5px] font-semibold leading-snug tracking-tight text-heading">
                   {item.unread ? <RowAttentionDot /> : null}
-                  <span className="truncate">{item.title}</span>
+                  {item.onTitleClick ? (
+                    <button
+                      type="button"
+                      className="min-w-0 truncate border-0 bg-transparent p-0 font-inherit text-start text-heading underline-offset-2 hover:underline"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        item.onTitleClick?.();
+                      }}
+                    >
+                      {item.title}
+                    </button>
+                  ) : (
+                    <span className="truncate">{item.title}</span>
+                  )}
                 </div>
                 {item.loading ? (
                   <span className="sr-only" role="status">

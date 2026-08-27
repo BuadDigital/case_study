@@ -51,6 +51,13 @@ public class WorkflowTaskDto
  /// Appraiser starts valuation only after this stamp — completed-but-unaccepted is monitor-only.
  /// </summary>
     public bool? FieldInspectionAccepted { get; set; }
+
+ /// <summary>
+ /// Engineering-survey / property-appraisal: id of the completed sibling field-inspection task.
+ /// Populated on list so parties can load inspection facts without seeing the sibling row.
+ /// Prefer specialist-accepted inspection when several completed siblings exist.
+ /// </summary>
+    public string? FieldInspectionTaskId { get; set; }
 }
 
 public class PatchWorkflowTaskDistributionRequest

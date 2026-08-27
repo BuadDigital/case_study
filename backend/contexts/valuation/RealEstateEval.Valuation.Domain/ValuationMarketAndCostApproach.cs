@@ -11,7 +11,15 @@ public class ValuationMarketApproach
     public decimal? SubjectAreaSqm { get; set; }
  /// <summary>one decision per valuation; changes the whole calc path.</summary>
     public string AdjustmentBasis { get; set; } = MarketAdjustmentBasisKeys.PricePerSqm;
+    /// <summary>Frozen methodology coeff — مساحة (٪). Changing org defaults must not rewrite past valuations.</summary>
+    public decimal AreaFactorPct { get; set; } = AreaAdjustmentRules.DefaultAreaFactorPct;
+    /// <summary>Frozen methodology coeff — معدل سوق سنوي (٪) لاقتراح ظروف السوق.</summary>
+    public decimal AnnualMarketRatePct { get; set; } = MarketApproachRules.DefaultAnnualMarketRatePct;
+    /// <summary>Frozen — أسّ تقريب قيمة السوق (١٠^ن). افتراضي ٤ → أقرب ١٠٬٠٠٠.</summary>
+    public int ValueRoundDecimals { get; set; } = MarketApproachRules.DefaultValueRoundDecimals;
     public string? AnalysisNotes { get; set; }
+ /// <summary>JSON — أوصاف العقار محل التقييم لكل عامل اختلاف (subjSpec في النموذج التفاعلي).</summary>
+    public string? SubjectSpecJson { get; set; }
     public DateTime UpdatedAtUtc { get; set; }
 
     public ValuationRequest? ValuationRequest { get; set; }
@@ -261,11 +269,34 @@ public static class RepeatedFloorRules
 
 public static class MarketOpinionRules
 {
+    /// <summary>سعر المتر × المساحة — قبل تقريب قاعدة التسويات.</summary>
     public static decimal ComputeOpinionValue(decimal weightedPricePerSqm, decimal subjectAreaSqm)
     {
         if (subjectAreaSqm <= 0m || weightedPricePerSqm < 0m) return 0m;
         return Math.Round(weightedPricePerSqm * subjectAreaSqm, 2, MidpointRounding.AwayFromZero);
     }
+
+    /// <summary>
+    /// منطق-التسويات: marketValue = round(landValRaw / 10^decimals) × 10^decimals.
+    /// decimals=0 → أقرب ريال؛ الافتراضي ٤ → أقرب ١٠٬٠٠٠.
+    /// </summary>
+    public static decimal RoundMarketValue(
+        decimal landValRaw,
+        int decimals = MarketApproachRules.DefaultValueRoundDecimals)
+    {
+        var d = Math.Clamp(decimals, 0, 6);
+        if (d == 0)
+            return Math.Round(landValRaw, MidpointRounding.AwayFromZero);
+        var power = 1m;
+        for (var i = 0; i < d; i++) power *= 10m;
+        return Math.Round(landValRaw / power, MidpointRounding.AwayFromZero) * power;
+    }
+
+    public static decimal ComputeRoundedOpinionValue(
+        decimal weightedPricePerSqm,
+        decimal subjectAreaSqm,
+        int decimals = MarketApproachRules.DefaultValueRoundDecimals) =>
+        RoundMarketValue(ComputeOpinionValue(weightedPricePerSqm, subjectAreaSqm), decimals);
 }
 
 public static class CostApproachRules
@@ -273,12 +304,75 @@ public static class CostApproachRules
     public static decimal LineTotal(decimal areaSqm, decimal unitCostSar) =>
         Math.Round(Math.Max(0m, areaSqm) * Math.Max(0m, unitCostSar), 2, MidpointRounding.AwayFromZero);
 
+ /// <summary>
+ /// مواصفة النموذج التفاعلي: نسبة البناء تُطبَّق على الكمية لبنود م² (فارغة = ١٠٠٪) —
+ /// «المسطح الفعلي» يدخل في الإجمالي ومسطحات البناء.
+ /// </summary>
+    public static decimal EffectiveQuantity(decimal quantity, string? unit, decimal? buildRatioPct)
+    {
+        var q = Math.Max(0m, quantity);
+        if (CostLineUnits.Normalize(unit) != CostLineUnits.Sqm) return q;
+        if (buildRatioPct is not { } bp) return q;
+        var pct = Math.Clamp(bp, 0m, 100m);
+        return Math.Round(q * pct / 100m, 2, MidpointRounding.AwayFromZero);
+    }
+
+ /// <summary>
+ /// مواصفة النموذج التفاعلي: بند «الأدوار المتكررة» بتكلفة وحدة فارغة/صفر يرث سعر متر «الدور الأول».
+ /// </summary>
+    public static decimal InheritedUnitCost(
+        string? itemKey,
+        decimal unitCostSar,
+        decimal firstFloorUnitCostSar)
+    {
+        if (CostLineItemKeys.Normalize(itemKey) == CostLineItemKeys.RepeatedFloors
+            && unitCostSar <= 0m
+            && firstFloorUnitCostSar > 0m)
+        {
+            return firstFloorUnitCostSar;
+        }
+
+        return Math.Max(0m, unitCostSar);
+    }
+
     public static decimal SumDirectCost(IEnumerable<(decimal area, decimal unit, bool included)> lines) =>
         lines.Where(l => l.included).Sum(l => LineTotal(l.area, l.unit));
 
- /// <summary>Buildings (direct cost) + imported land .</summary>
-    public static decimal CostOpinionWithLand(decimal directCostTotal, decimal landValueFromMarket) =>
-        Math.Round(Math.Max(0m, directCostTotal) + Math.Max(0m, landValueFromMarket), 2, MidpointRounding.AwayFromZero);
+ /// <summary>سعر المتر بعد غير المباشرة لكل بند: total × (1 + indirect٪) ÷ الكمية.</summary>
+    public static decimal NetUnitRateWithIndirect(decimal lineTotal, decimal quantity, decimal indirectSumPct)
+    {
+        if (lineTotal <= 0m || quantity <= 0m) return 0m;
+        return Math.Round(
+            lineTotal * (1m + Math.Max(0m, indirectSumPct) / 100m) / quantity,
+            2, MidpointRounding.AwayFromZero);
+    }
+
+ /// <summary>
+ /// مواصفة النموذج التفاعلي (costCompute): costValue = landPart + netValue دائماً —
+ /// الأرض غير المقدَّرة تدخل صفراً (landPart = 0) والمؤشر الجزئي يظهر ويُحجَب الاعتماد
+ /// بالبوابات لا بتصفير القيمة. «مبنى فقط» = netValue وحدها.
+ /// </summary>
+    public static decimal CostOpinionForScope(
+        decimal buildingsAfterDepreciation,
+        decimal landValue,
+        bool landEstimateComplete,
+        bool buildingOnlyScope)
+    {
+        var landPart = !buildingOnlyScope && landEstimateComplete
+            ? Math.Max(0m, landValue)
+            : 0m;
+        return Math.Round(
+            buildingsAfterDepreciation + landPart,
+            2,
+            MidpointRounding.AwayFromZero);
+    }
+
+ /// <summary>Land (عند اكتمالها، وإلا صفر) + المباني بعد الإهلاك — بلا تصفير كلي.</summary>
+    public static decimal CostOpinionWithLand(
+        decimal buildingsAfterDepreciation,
+        decimal landValue,
+        bool landEstimateComplete) =>
+        CostOpinionForScope(buildingsAfterDepreciation, landValue, landEstimateComplete, buildingOnlyScope: false);
 
  /// <summary>unit rate after the use-restriction discount (clamped 0–100%).</summary>
     public static decimal LandUnitRateAfterDiscount(decimal unitRateSar, decimal discountPct)
@@ -347,13 +441,16 @@ public static class CostApproachRules
     public static decimal TotalObsolescencePct(decimal? physicalPct, decimal functionalPct, decimal externalPct) =>
         Math.Round((physicalPct ?? 0m) + Math.Max(0m, functionalPct) + Math.Max(0m, externalPct), 2, MidpointRounding.AwayFromZero);
 
- /// <summary>depreciation on total cost; clamped 0–100% so value stays non-negative.</summary>
+ /// <summary>
+ /// مواصفة النموذج التفاعلي: الإهلاك غير مقيَّد بسقف ١٠٠٪ — تجاوز التقادم ١٠٠٪ يُنتج
+ /// قيمة مباني سالبة ويحجبه التنبيه المنهجي m4 عند الاعتماد لا الرياضيات.
+ /// </summary>
     public static decimal DepreciationValue(decimal totalCostWithIndirect, decimal totalObsolescencePct) =>
         Math.Round(
-            Math.Max(0m, totalCostWithIndirect) * Math.Clamp(totalObsolescencePct, 0m, 100m) / 100m,
+            Math.Max(0m, totalCostWithIndirect) * Math.Max(0m, totalObsolescencePct) / 100m,
             2, MidpointRounding.AwayFromZero);
 
- /// <summary>buildings value after depreciation (المباني دون الأرض).</summary>
+ /// <summary>buildings value after depreciation (المباني دون الأرض) — قد تكون سالبة عند تقادم > ١٠٠٪.</summary>
     public static decimal BuildingsAfterDepreciation(decimal totalCostWithIndirect, decimal depreciationValue) =>
-        Math.Round(Math.Max(0m, totalCostWithIndirect - depreciationValue), 2, MidpointRounding.AwayFromZero);
+        Math.Round(totalCostWithIndirect - depreciationValue, 2, MidpointRounding.AwayFromZero);
 }

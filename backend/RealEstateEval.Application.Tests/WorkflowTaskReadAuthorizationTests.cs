@@ -187,6 +187,7 @@ public class WorkflowTaskReadAuthorizationTests
         Assert.Single(rows);
         Assert.Equal("engineering-survey", rows[0].Kind);
         Assert.True(rows[0].FieldInspectionCompleted);
+        Assert.Equal(inspection.Id.ToString(), rows[0].FieldInspectionTaskId);
     }
 
     [Fact]
@@ -246,6 +247,7 @@ public class WorkflowTaskReadAuthorizationTests
         Assert.Equal("property-appraisal", rows[0].Kind);
         Assert.True(rows[0].FieldInspectionCompleted);
         Assert.False(rows[0].FieldInspectionAccepted);
+        Assert.Equal(inspection.Id.ToString(), rows[0].FieldInspectionTaskId);
     }
 
     [Fact]
@@ -319,6 +321,7 @@ public class WorkflowTaskReadAuthorizationTests
         Assert.Equal("property-appraisal", rows[0].Kind);
         Assert.True(rows[0].FieldInspectionCompleted);
         Assert.True(rows[0].FieldInspectionAccepted);
+        Assert.Equal(inspection.Id.ToString(), rows[0].FieldInspectionTaskId);
     }
 
     [Fact]
@@ -375,6 +378,7 @@ public class WorkflowTaskReadAuthorizationTests
         Assert.Single(rows);
         Assert.Equal("property-appraisal", rows[0].Kind);
         Assert.False(rows[0].FieldInspectionCompleted);
+        Assert.Null(rows[0].FieldInspectionTaskId);
     }
 
     private static ApplicationDbContext CreateDb()

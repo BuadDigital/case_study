@@ -498,6 +498,7 @@ export {
   testOrganizationCommunication,
   emptyValuationReportSettings,
   VALUATION_REPORT_HTML_DEFAULTS,
+  isNoExternalSpecialistAssumption,
   applyIvsDateToStandards,
   type OrganizationBrandingSettings,
   type OrganizationCommunicationsSettings,

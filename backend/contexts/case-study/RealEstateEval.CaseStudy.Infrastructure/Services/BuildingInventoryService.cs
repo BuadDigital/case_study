@@ -70,29 +70,46 @@ public class BuildingInventoryService(ICaseStudyRepository db,
 
         prop.HasStructuresToValue = answer;
 
-        db.BuildingInventoryLines.RemoveRange(prop.BuildingInventoryLines);
-        prop.BuildingInventoryLines.Clear();
-
+        // Upsert in place — re-adding rows with pre-set GUIDs through the tracked
+        // navigation makes EF mark them Modified (UPDATE 0 rows → global 409).
+        var existingById = prop.BuildingInventoryLines.ToDictionary(l => l.Id);
+        var keep = new HashSet<Guid>();
         var now = _time.UtcNow();
         if (answer == HasStructuresToValueValues.Yes)
         {
             var order = 0;
             foreach (var line in lines)
             {
-                prop.BuildingInventoryLines.Add(new BuildingInventoryLine
+                var lineId = line.Id is Guid g && g != Guid.Empty ? g : Guid.NewGuid();
+                if (existingById.TryGetValue(lineId, out var row))
                 {
-                    Id = line.Id is Guid g && g != Guid.Empty ? g : Guid.NewGuid(),
-                    PropertyId = prop.Id,
-                    SortOrder = order++,
-                    StructureKind = line.StructureKind.Trim(),
-                    Label = line.Label.Trim(),
-                    AreaSqm = string.IsNullOrWhiteSpace(line.AreaSqm) ? null : line.AreaSqm.Trim(),
-                    Notes = string.IsNullOrWhiteSpace(line.Notes) ? null : line.Notes.Trim(),
-                    CreatedAtUtc = now,
-                    UpdatedAtUtc = now,
-                });
+                    row.SortOrder = order++;
+                    row.StructureKind = line.StructureKind.Trim();
+                    row.Label = line.Label.Trim();
+                    row.AreaSqm = string.IsNullOrWhiteSpace(line.AreaSqm) ? null : line.AreaSqm.Trim();
+                    row.Notes = string.IsNullOrWhiteSpace(line.Notes) ? null : line.Notes.Trim();
+                    row.UpdatedAtUtc = now;
+                }
+                else
+                {
+                    db.BuildingInventoryLines.Add(new BuildingInventoryLine
+                    {
+                        Id = lineId,
+                        PropertyId = prop.Id,
+                        SortOrder = order++,
+                        StructureKind = line.StructureKind.Trim(),
+                        Label = line.Label.Trim(),
+                        AreaSqm = string.IsNullOrWhiteSpace(line.AreaSqm) ? null : line.AreaSqm.Trim(),
+                        Notes = string.IsNullOrWhiteSpace(line.Notes) ? null : line.Notes.Trim(),
+                        CreatedAtUtc = now,
+                        UpdatedAtUtc = now,
+                    });
+                }
+                keep.Add(lineId);
             }
         }
+        db.BuildingInventoryLines.RemoveRange(
+            prop.BuildingInventoryLines.Where(l => !keep.Contains(l.Id)).ToList());
 
         await db.SaveChangesAsync(cancellationToken);
 

@@ -44,6 +44,8 @@ export function validateEvaluatorSubmission(input: {
   assetDataVarianceNotes?: string;
   independenceDeclared?: boolean;
   reportWorkers?: EvaluatorReportWorker[];
+  /** When approaches panel is source of truth — skip manual land/building. */
+  skipManualLandBuilding?: boolean;
 }): EvaluatorValidationErrors {
   const errors: EvaluatorValidationErrors = {};
   const {
@@ -52,20 +54,23 @@ export function validateEvaluatorSubmission(input: {
     buildingValue = "",
     forcedSaleDiscountPct = "",
     valueBasisKey = "",
+    skipManualLandBuilding = false,
   } = input;
 
-  const land = parseEvaluatorAmount(landValue);
-  if (!landValue.trim()) {
-    errors.land_value = "مطلوب إدخال قيمة الأرض.";
-  } else if (land == null || land < 0) {
-    errors.land_value = "يجب أن تكون قيمة الأرض رقماً صحيحاً (≥ 0).";
-  }
+  if (!skipManualLandBuilding) {
+    const land = parseEvaluatorAmount(landValue);
+    if (!landValue.trim()) {
+      errors.land_value = "مطلوب إدخال قيمة الأرض.";
+    } else if (land == null || land < 0) {
+      errors.land_value = "يجب أن تكون قيمة الأرض رقماً صحيحاً (≥ 0).";
+    }
 
-  const building = parseEvaluatorAmount(buildingValue);
-  if (!buildingValue.trim()) {
-    errors.building_value = "مطلوب إدخال قيمة المباني (صفر للأراضي).";
-  } else if (building == null || building < 0) {
-    errors.building_value = "يجب أن تكون قيمة المباني رقماً صحيحاً (≥ 0).";
+    const building = parseEvaluatorAmount(buildingValue);
+    if (!buildingValue.trim()) {
+      errors.building_value = "مطلوب إدخال قيمة المباني (صفر للأراضي).";
+    } else if (building == null || building < 0) {
+      errors.building_value = "يجب أن تكون قيمة المباني رقماً صحيحاً (≥ 0).";
+    }
   }
 
   if (valueBasisKey === "liquidation") {

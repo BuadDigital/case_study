@@ -116,14 +116,13 @@ public sealed class ValuationReconciliationService(
             }
         }
 
+        // «المنع يقع عند الاعتماد فقط — الإدخال الجزئي محفوظ كمسوّدة»:
+        // المبررات ومجموع الأوزان تفرضها بوابات الإصدار والتنبيهات، لا الحفظ.
         var methods = request.Methods ?? [];
         var errors = new Dictionary<string, string>();
 
-        if (string.IsNullOrWhiteSpace(request.MethodsRationale))
-            errors["methodsRationale"] = "مبرر استخدام طرق التقييم مطلوب";
-
-        if (request.FinalRoundDecimals is < 0 or > 4)
-            errors["finalRoundDecimals"] = "خانات التقريب يجب أن تكون بين 0 و 4";
+        if (request.FinalRoundDecimals is < 0 or > 6)
+            errors["finalRoundDecimals"] = "أسّ التقريب يجب أن يكون بين 0 و 6 (تقريب لأقرب ١٠^ن ريال)";
 
         if (request.LiquidationDiscountPct is < 0m or > 100m)
             errors["liquidationDiscountPct"] = "نسبة الخصم يجب أن تكون بين 0 و 100";
@@ -142,11 +141,12 @@ public sealed class ValuationReconciliationService(
         else if (premiseKey is not null && !ValuePremiseKeys.IsCompatible(basisKey, premiseKey))
             errors["valuePremiseKey"] = "فرضية القيمة غير متوافقة مع أساس القيمة المختار";
 
+        // مواصفة النموذج التفاعلي: الخصم يتبع أساس «قيمة التصفية» مباشرة؛
+        // الفرضية غير المدخلة تُملأ آلياً بـ«البيع القسري».
         if (string.Equals(basisKey, BasisOfValueKeys.Liquidation, StringComparison.Ordinal)
-            && request.LiquidationDiscountPct > 0m
             && premiseKey is null)
         {
-            errors["valuePremiseKey"] = "فرضية القيمة مطلوبة عند خصم التصفية";
+            premiseKey = ValuePremiseKeys.Forced;
         }
 
         if (request.LiquidationDiscountPct > 0m
@@ -184,17 +184,7 @@ public sealed class ValuationReconciliationService(
 
             if (m.WeightPct is < 0m or > 100m)
                 errors[$"methods[{i}].weightPct"] = "نسبة المشاركة يجب أن تكون بين 0 و 100";
-
-            if (ReconciliationRules.RequiresWeightRationale(m.WeightPct, m.IsIncluded)
-                && string.IsNullOrWhiteSpace(m.Rationale))
-            {
-                errors[$"methods[{i}].rationale"] = "مبرر نسبة المشاركة إلزامي";
-            }
         }
-
-        var includedWeights = methods.Where(m => m.IsIncluded).Select(m => m.WeightPct);
-        if (methods.Any(m => m.IsIncluded) && !ReconciliationRules.WeightsSumTo100(includedWeights))
-            errors["weightSum"] = "مجموع نسب المشاركة يجب أن يساوي 100٪";
 
         if (errors.Count > 0) return (null, errors);
 
@@ -216,9 +206,12 @@ public sealed class ValuationReconciliationService(
             db.ValuationReconciliations.Add(entity);
         }
 
-        db.ValuationReconciliationMethodLines.RemoveRange(entity.Methods);
-        entity.Methods.Clear();
-
+        // Upsert by approach kind — navigation-adds with pre-set GUIDs get marked
+        // Modified by EF's graph heuristic (UPDATE 0 rows → global 409) on re-saves.
+        var methodsByKind = entity.Methods
+            .GroupBy(x => x.ApproachKind)
+            .ToDictionary(g => g.Key, g => g.First());
+        var keepKinds = new HashSet<string>();
         for (var i = 0; i < methods.Count; i++)
         {
             var m = methods[i];
@@ -226,19 +219,34 @@ public sealed class ValuationReconciliationService(
             var value = string.Equals(kind, ValuationApproachKinds.Cost, StringComparison.Ordinal)
                 ? costValue
                 : marketValue;
+            var sortOrder = m.SortOrder != 0 ? m.SortOrder : i;
 
-            entity.Methods.Add(new ValuationReconciliationMethodLine
+            if (methodsByKind.TryGetValue(kind, out var row))
             {
-                Id = m.Id is { } id && id != Guid.Empty ? id : Guid.NewGuid(),
-                ReconciliationId = entity.Id,
-                ApproachKind = kind,
-                ApproachValue = value,
-                WeightPct = m.WeightPct,
-                Rationale = m.Rationale?.Trim() ?? "",
-                IsIncluded = m.IsIncluded,
-                SortOrder = m.SortOrder != 0 ? m.SortOrder : i,
-            });
+                row.ApproachValue = value;
+                row.WeightPct = m.WeightPct;
+                row.Rationale = m.Rationale?.Trim() ?? "";
+                row.IsIncluded = m.IsIncluded;
+                row.SortOrder = sortOrder;
+            }
+            else
+            {
+                db.ValuationReconciliationMethodLines.Add(new ValuationReconciliationMethodLine
+                {
+                    Id = Guid.NewGuid(),
+                    ReconciliationId = entity.Id,
+                    ApproachKind = kind,
+                    ApproachValue = value,
+                    WeightPct = m.WeightPct,
+                    Rationale = m.Rationale?.Trim() ?? "",
+                    IsIncluded = m.IsIncluded,
+                    SortOrder = sortOrder,
+                });
+            }
+            keepKinds.Add(kind);
         }
+        db.ValuationReconciliationMethodLines.RemoveRange(
+            entity.Methods.Where(x => !keepKinds.Contains(x.ApproachKind)).ToList());
 
         entity.MethodsRationale = request.MethodsRationale.Trim();
         entity.FinalRoundDecimals = request.FinalRoundDecimals;
@@ -339,7 +347,8 @@ public sealed class ValuationReconciliationService(
         if (string.Equals(basis, BasisOfValueKeys.Liquidation, StringComparison.OrdinalIgnoreCase)
             && string.IsNullOrWhiteSpace(premise))
         {
-            premise = ValuePremiseKeys.Orderly;
+            // خصم البيع القسري (مواصفة النموذج التفاعلي) — الفرضية الافتراضية للتصفية.
+            premise = ValuePremiseKeys.Forced;
         }
         var discountPct = entity?.LiquidationDiscountPct ?? 0m;
         var (before, final, applied) = ReconciliationRules.FinalOpinionWithOptionalDiscount(
@@ -359,7 +368,7 @@ public sealed class ValuationReconciliationService(
             WeightSumPct = weightSum,
             WeightsSumTo100 = includedMethods.Count == 0
                 || ReconciliationRules.WeightsSumTo100(includedMethods.Select(m => m.WeightPct)),
-            MeetsMultiMethodGate = ReconciliationRules.MeetsMultiMethodGate(includedMethods),
+            MeetsMultiMethodGate = ReconciliationRules.MeetsMultiMethodGate(enabledKinds.Count),
             WeightedValue = weighted,
             FinalRoundDecimals = decimals,
             FinalOpinionValue = final,

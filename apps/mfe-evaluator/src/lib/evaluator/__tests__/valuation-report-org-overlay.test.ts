@@ -22,7 +22,13 @@ function orgWithReport(
       smtpPort: 587,
     },
     sla: { defaultBusinessDays: 4, privateSectorBusinessDays: 10 },
-    valuation: { maxAdoptedComparables: 3, comparableTimeGapMonths: 6 },
+    valuation: {
+      maxAdoptedComparables: 3,
+      comparableTimeGapMonths: 6,
+      areaFactorPct: 5,
+      annualMarketRatePct: 4,
+      marketValueRoundDecimals: 4,
+    },
     valuationReport: { ...emptyValuationReportSettings(), ...patch },
     updatedAtUtc: "2026-08-19T00:00:00.000Z",
   };

@@ -53,6 +53,28 @@ public class ValuationReportNarrativeRulesTests
     }
 
     [Fact]
+    public void Special_assumptions_drop_library_denial_when_specialist_used()
+    {
+        var libraryDenial =
+            "لم يستعن المقيّم بأي أخصائي أو مؤسسة خدمات أثناء تنفيذ مهمة التقييم، وجميع الإجراءات والتحليلات اللازمة نُفّذت بواسطة فريق العمل بإدارة التقييم.";
+        var text = ValuationReportNarrativeRules.SpecialAssumptionsBody(
+            hasStructures: true,
+            deedKindLabelAr: null,
+            basisLabelAr: null,
+            premiseLabelAr: null,
+            restrictionsLine: null,
+            inspectionReservationLine: null,
+            externalSpecialistUsed: true,
+            externalSpecialistDetails: "خبير إنشائي — تقدير العمر الاقتصادي",
+            selectedAssumptions: [libraryDenial, "تم افتراض بأن قطعة الأرض ليست زائدة تنظيمية."]);
+
+        Assert.Contains("خبير إنشائي", text);
+        Assert.Contains("زائدة تنظيمية", text);
+        Assert.DoesNotContain("لم يستعن المقيّم", text);
+        Assert.DoesNotContain("مؤسسة خدمات", text);
+    }
+
+    [Fact]
     public void Comparables_map_lists_points()
     {
         var text = ValuationReportNarrativeRules.ComparablesMapBody(

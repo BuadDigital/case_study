@@ -164,6 +164,10 @@ export function OrganizationDataView() {
   const selectedCertId = filled(company.certifiedValuerId, "certified");
 
   const licExp = filled(company.practiceLicenseExpiresAt, D.practiceLicenseExpiresAt!);
+  const licIssued = filled(
+    company.practiceLicenseIssuedAt,
+    D.practiceLicenseIssuedAt!,
+  );
   const daysLeft = daysUntil(licExp);
   const warn = daysLeft != null && daysLeft <= 120;
   const licStripText =
@@ -190,6 +194,10 @@ export function OrganizationDataView() {
       practiceLicenseNumber: filled(
         company.practiceLicenseNumber,
         D.practiceLicenseNumber!,
+      ),
+      practiceLicenseIssuedAt: filled(
+        company.practiceLicenseIssuedAt,
+        D.practiceLicenseIssuedAt!,
       ),
       practiceLicenseExpiresAt: filled(
         company.practiceLicenseExpiresAt,
@@ -330,6 +338,18 @@ export function OrganizationDataView() {
                 disabled={!canEdit}
                 value={licNo}
                 onChange={(e) => patchCompany({ practiceLicenseNumber: e.target.value })}
+              />
+            </div>
+            <div className="flex flex-col">
+              <Label size="field">تاريخ إصدار الترخيص</Label>
+              <Input
+                type="date"
+                dir="ltr"
+                disabled={!canEdit}
+                value={licIssued}
+                onChange={(e) =>
+                  patchCompany({ practiceLicenseIssuedAt: e.target.value })
+                }
               />
             </div>
             <div className="flex flex-col">

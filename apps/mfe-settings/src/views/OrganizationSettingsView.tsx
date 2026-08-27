@@ -147,7 +147,7 @@ function emptySettings(): OrganizationSettingsDto {
       smtpPasswordConfigured: false,
     },
     sla: { defaultBusinessDays: 4, privateSectorBusinessDays: 10 },
-    valuation: { maxAdoptedComparables: 3, comparableTimeGapMonths: 6 },
+    valuation: { maxAdoptedComparables: 3, comparableTimeGapMonths: 6, areaFactorPct: 5, annualMarketRatePct: 4, marketValueRoundDecimals: 4 },
     valuationReport: emptyValuationReportSettings(),
     updatedAtUtc: new Date().toISOString(),
   };
@@ -737,6 +737,80 @@ export function OrganizationSettingsView() {
                         valuation: {
                           ...d.valuation,
                           comparableTimeGapMonths: Number(e.target.value) || 6,
+                        },
+                      }))
+                    }
+                  />
+                </div>
+                <div className={opsFld}>
+                  <label htmlFor="org-area-factor" className={opsTfLbl}>
+                    معامل تسوية المساحة ٪ (areaFactor) — منطق التسويات
+                  </label>
+                  <input
+                    id="org-area-factor"
+                    className={opsFldControl}
+                    type="number"
+                    min={0.1}
+                    max={50}
+                    step={0.1}
+                    dir="ltr"
+                    value={String(draft.valuation.areaFactorPct ?? 5)}
+                    disabled={!canEdit}
+                    onChange={(e) =>
+                      setDraft((d) => ({
+                        ...d,
+                        valuation: {
+                          ...d.valuation,
+                          areaFactorPct: Number(e.target.value) || 5,
+                        },
+                      }))
+                    }
+                  />
+                </div>
+                <div className={opsFld}>
+                  <label htmlFor="org-mkt-rate" className={opsTfLbl}>
+                    معدل تغير السوق السنوي ٪ (mktRate) — اقتراح ظروف السوق
+                  </label>
+                  <input
+                    id="org-mkt-rate"
+                    className={opsFldControl}
+                    type="number"
+                    min={0}
+                    max={50}
+                    step={0.1}
+                    dir="ltr"
+                    value={String(draft.valuation.annualMarketRatePct ?? 4)}
+                    disabled={!canEdit}
+                    onChange={(e) =>
+                      setDraft((d) => ({
+                        ...d,
+                        valuation: {
+                          ...d.valuation,
+                          annualMarketRatePct: Number(e.target.value) || 0,
+                        },
+                      }))
+                    }
+                  />
+                </div>
+                <div className={opsFld}>
+                  <label htmlFor="org-value-round" className={opsTfLbl}>
+                    أسّ تقريب قيمة السوق (١٠^ن) — منطق التسويات
+                  </label>
+                  <input
+                    id="org-value-round"
+                    className={opsFldControl}
+                    type="number"
+                    min={0}
+                    max={6}
+                    dir="ltr"
+                    value={String(draft.valuation.marketValueRoundDecimals ?? 4)}
+                    disabled={!canEdit}
+                    onChange={(e) =>
+                      setDraft((d) => ({
+                        ...d,
+                        valuation: {
+                          ...d.valuation,
+                          marketValueRoundDecimals: Number(e.target.value) || 0,
                         },
                       }))
                     }

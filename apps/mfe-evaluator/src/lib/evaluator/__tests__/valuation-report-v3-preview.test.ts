@@ -21,6 +21,42 @@ const SAMPLE = `<!DOCTYPE html><html><head><style>
 </section>
 </body></html>`;
 
+describe("valuation report v3 header meta and page numbers", () => {
+  it("overwrites template sample header with dashes when meta is empty", () => {
+    const html = prepareValuationReportV3Html(
+      `<section class="page pg">
+        <div class="pg-meta">رقم التقرير: 047789<br>التاريخ: 2026/06/03<br>رمز إيداع التقرير:</div>
+        <div class="pg-num">صفحة 1 من 20</div>
+      </section>
+      <section class="page pg">
+        <div class="pg-meta">رقم التقرير: 047789<br>التاريخ: 2026/06/03<br>رمز إيداع التقرير:</div>
+        <div class="pg-num">صفحة 7 من 20</div>
+      </section>`,
+      {},
+      "print",
+    );
+    expect(html).not.toContain("047789");
+    expect(html).not.toContain("2026/06/03");
+    expect(html).toContain("رقم التقرير: —");
+    // الترقيم من عدد الصفحات الفعلي لا من أرقام القالب المثبتة.
+    expect(html).toContain("صفحة 1 من 2");
+    expect(html).toContain("صفحة 2 من 2");
+    expect(html).not.toContain("من 20");
+  });
+
+  it("prints real report number, date, and deposit code in every header", () => {
+    const html = prepareValuationReportV3Html(
+      `<section class="page pg"><div class="pg-meta">رقم التقرير: 047789</div></section>`,
+      { reportNo: "TQ202608260452", reportDate: "2026-08-26", depositCode: "DEP-99" },
+      "print",
+    );
+    expect(html).toContain("رقم التقرير: TQ202608260452");
+    expect(html).toContain("التاريخ: 2026/08/26");
+    expect(html).toContain("رمز إيداع التقرير: DEP-99");
+    expect(html).not.toContain("047789");
+  });
+});
+
 describe("valuation report v3 print branding", () => {
   it("applies letterhead margins, stamp size, and signatures from settings", () => {
     const html = prepareValuationReportV3Html(
@@ -82,6 +118,8 @@ describe("valuation report v3 print branding", () => {
           stampUrl: "data:image/png;base64,stamp",
           stampWidthCm: 3.2,
           stampHeightCm: 2.8,
+          signatureWidthCm: 5,
+          signatureHeightCm: 2.2,
         },
         valuers: [
           {
@@ -100,7 +138,72 @@ describe("valuation report v3 print branding", () => {
     expect(html).toContain("width:3.2cm!important");
     expect(html).toContain("height:2.8cm!important");
     expect(html).toContain("data:image/png;base64,emad");
+    expect(html).toContain("width:5cm!important");
+    expect(html).toContain("height:2.2cm!important");
     expect(html).not.toContain("assets/ejadah-stamp.png");
+  });
+
+  it("does not paint the missing stock signature file on approval", () => {
+    const html = prepareValuationReportV3Html(
+      `<section class="page pg">
+        <h2>إعتماد تقرير التقييم</h2>
+        <table>
+          <tr><td class="k">الاسم</td><td class="v">عماد رشيد الرشيد</td></tr>
+          <tr><td class="k">التوقيع</td><td class="v"></td><td class="k">ختم المنشأة</td><td class="v"></td></tr>
+        </table>
+      </section>`,
+      {
+        branding: {
+          ...BRAND_IDENTITY_DEFAULTS,
+          signatureUrl: "/case-study/ejadah-signature.png",
+          stampUrl: "data:image/png;base64,stamp",
+        },
+        valuers: [
+          {
+            id: "v1",
+            nameAr: "عماد رشيد صالح الرشيد",
+            role: "certified",
+            isActive: true,
+            signatureUrl: "/case-study/ejadah-signature.png",
+          },
+        ],
+      },
+      "screen",
+    );
+
+    expect(html).not.toContain("ejadah-signature.png");
+    expect(html).toContain('alt="ختم المنشأة"');
+  });
+
+  it("uses branding signature on approval when certified only has the stock path", () => {
+    const html = prepareValuationReportV3Html(
+      `<section class="page pg">
+        <h2>إعتماد تقرير التقييم</h2>
+        <table>
+          <tr><td class="k">الاسم</td><td class="v">عماد رشيد الرشيد</td></tr>
+          <tr><td class="k">التوقيع</td><td class="v"></td></tr>
+        </table>
+      </section>`,
+      {
+        branding: {
+          ...BRAND_IDENTITY_DEFAULTS,
+          signatureUrl: "data:image/png;base64,branded-sign",
+        },
+        valuers: [
+          {
+            id: "v1",
+            nameAr: "عماد رشيد صالح الرشيد",
+            role: "certified",
+            isActive: true,
+            signatureUrl: "/case-study/ejadah-signature.png",
+          },
+        ],
+      },
+      "screen",
+    );
+
+    expect(html).toContain("data:image/png;base64,branded-sign");
+    expect(html).not.toContain("ejadah-signature.png");
   });
 
   it("scopes screen CSS so sidebar links stay visible", () => {

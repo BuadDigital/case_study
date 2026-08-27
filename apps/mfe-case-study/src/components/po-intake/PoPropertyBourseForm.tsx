@@ -137,9 +137,29 @@ export function PoPropertyBourseForm({
           />
           <RegField
             id="area"
-            label="المساحة"
+            label="المساحة (م²)"
+            dir="ltr"
+            inputMode="decimal"
             value={property.area}
+            error={fieldErrors.area}
             onChange={(v) => onPatch("area", v)}
+            placeholder="مثال: 900"
+          />
+          <RegField
+            id="classification"
+            label="التصنيف"
+            value={property.classification}
+            error={fieldErrors.classification}
+            onChange={(v) => onPatch("classification", v)}
+            placeholder="أرض · مبنى · وحدة داخل مبنى…"
+          />
+          <RegField
+            id="property_type"
+            label="النوع / الاستخدام"
+            value={property.propertyType}
+            error={fieldErrors.propertyType}
+            onChange={(v) => onPatch("propertyType", v)}
+            placeholder="سكني · تجاري · فيلا…"
           />
           {showDeedVitalityFlow ? null : (
             <RegSelect

@@ -174,6 +174,8 @@ export type WorkflowTask = {
   fieldInspectionCompleted?: boolean;
   /** Server flag on property-appraisal: sibling inspection package specialist-accepted. */
   fieldInspectionAccepted?: boolean;
+  /** Completed sibling field-inspection task id (server). */
+  fieldInspectionTaskId?: string;
 };
 
 export function notifyTasksChanged(): void {
@@ -213,6 +215,7 @@ function dtoToTask(dto: WorkflowTaskDto): WorkflowTask {
       typeof dto.fieldInspectionAccepted === "boolean"
         ? dto.fieldInspectionAccepted
         : undefined,
+    fieldInspectionTaskId: dto.fieldInspectionTaskId?.trim() || undefined,
   };
 }
 

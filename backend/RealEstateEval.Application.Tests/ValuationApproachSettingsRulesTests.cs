@@ -118,6 +118,25 @@ public class ValuationApproachSettingsRulesTests
     }
 
     [Fact]
+    public void No_specialist_library_clause_is_detected()
+    {
+        Assert.True(ValuationApproachSettingsRules.IsNoExternalSpecialistAssumption(
+            "لم يستعن المقيّم بأي أخصائي أو مؤسسة خدمات أثناء تنفيذ مهمة التقييم، وجميع الإجراءات والتحليلات اللازمة نُفّذت بواسطة فريق العمل بإدارة التقييم."));
+        Assert.True(ValuationApproachSettingsRules.IsNoExternalSpecialistAssumption(
+            "لم يستعن المقيّم بأي أخصائي خارجي"));
+        Assert.False(ValuationApproachSettingsRules.IsNoExternalSpecialistAssumption(
+            "تم افتراض بأن قطعة الأرض ليست زائدة تنظيمية."));
+
+        var kept = ValuationApproachSettingsRules.WithoutNoExternalSpecialistAssumptions(
+        [
+            "بند ESG",
+            "لم يستعن المقيّم بأي أخصائي خارجي في أداء مهمة التقييم هذه.",
+            "تم افتراض عدم وجود نزع على قطعة الأرض في تاريخ التقييم.",
+        ]);
+        Assert.Equal(new[] { "بند ESG", "تم افتراض عدم وجود نزع على قطعة الأرض في تاريخ التقييم." }, kept);
+    }
+
+    [Fact]
     public void Defaults_disable_cost_for_land_only()
     {
         var land = ValuationApproachSettingsRules.Defaults(Guid.NewGuid(), "أرض تجارية");

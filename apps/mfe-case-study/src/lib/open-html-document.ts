@@ -53,10 +53,18 @@ export function openHtmlDocumentInNewTab(
             return;
           }
           let remaining = images.length;
+          let settled = false;
+          const settle = () => {
+            if (settled) return;
+            settled = true;
+            resolve();
+          };
           const done = () => {
             remaining -= 1;
-            if (remaining <= 0) resolve();
+            if (remaining <= 0) settle();
           };
+          // Hard cap — never leave print stuck on "Loading preview…"
+          window.setTimeout(settle, 8000);
           for (const img of images) {
             if (img.complete) {
               done();

@@ -385,9 +385,12 @@ describe("valuation report live fill from intake", () => {
         landUnitRateFromMarket: 2000,
         landAreaSqm: 400,
         landValueFromMarket: 800_000,
+        landEstimateComplete: true,
       } as never,
     });
+    expect(fill.cells["سعر متر الأرض من مقارنات الأراضي الفضاء"]).toBe("2,000");
     expect(fill.cells["سعر المتر المستورد من طريقة المقارنة"]).toBe("2,000");
+    expect(fill.landAppendixNote).toContain("الملحق (أ)");
     expect(fill.cells["مساحة الأرض (م²)"]).toBe("400");
     expect(fill.cells["قيمة الأرض"]).toBe("800,000");
 
@@ -881,5 +884,67 @@ describe("valuation report live fill from intake", () => {
     expect(dom.querySelector('[data-sec="19"]')?.textContent).toContain(
       "القيمة بطريقة المقارنة",
     );
+  });
+});
+
+describe("report org texts and frozen template artifacts", () => {
+  function domFor(html: string): Document {
+    return new DOMParser().parseFromString(html, "text/html");
+  }
+
+  it("replaces sections 3/4/5/31/32 from org texts and fills §33 location", () => {
+    const draft = createEvaluatorDraft({
+      taskId: "t1",
+      propertyId: "p1",
+      poNumber: "PO-1",
+    });
+    draft.appraisalDate = "2026-08-27";
+    const fill = buildValuationReportLiveFill({
+      draft,
+      property: { city: "الجموم", district: "السنابل" } as never,
+      keyInputsText: "مدخل أ\nمدخل ب",
+      professionalStandardsText: "معايير سارية من {{ivsDate}}.",
+      independenceText: "نص الاستقلالية من الإعدادات.",
+      termsText: "بند شروط وحيد من الإعدادات.",
+      restrictionsText: "بند قيود وحيد من الإعدادات.",
+    });
+    expect(fill.keyInputsBullets).toEqual(["مدخل أ", "مدخل ب"]);
+    expect(fill.standardsParagraphs[0]).toContain("31 يناير 2025");
+    expect(fill.reportDateSlash).toBe("2026/08/27");
+    expect(fill.locationLabel).toBe("الجموم - السنابل");
+
+    const dom = domFor(`
+      <section class="sec" data-sec="3"><ul><li>نقطة عيّنة</li></ul></section>
+      <section class="sec" data-sec="4"><p>نص عيّنة قديم</p></section>
+      <section class="sec" data-sec="5"><p>نص عيّنة قديم</p></section>
+      <section class="sec" data-sec="31"><ul><li>بند عيّنة بتاريخ (2026/06/03).</li></ul></section>
+      <section class="sec" data-sec="32"><ul><li>بند عيّنة</li></ul></section>
+      <section class="sec" data-sec="33"><table><tr><td class="k">الموقع</td><td class="v">جدة - الصوارى</td></tr></table></section>
+    `);
+    applyValuationReportLiveFill(dom, fill);
+    expect(dom.querySelector('[data-sec="3"]')?.textContent).toContain("مدخل أ");
+    expect(dom.querySelector('[data-sec="3"]')?.textContent).not.toContain("نقطة عيّنة");
+    expect(dom.querySelector('[data-sec="4"]')?.textContent).toContain("31 يناير 2025");
+    expect(dom.querySelector('[data-sec="5"]')?.textContent).toContain("الاستقلالية");
+    expect(dom.querySelector('[data-sec="31"]')?.textContent).not.toContain("2026/06/03");
+    expect(dom.querySelector('[data-sec="32"]')?.textContent).toContain("بند قيود وحيد");
+    expect(dom.querySelector('[data-sec="33"]')?.textContent).toContain("الجموم - السنابل");
+    expect(dom.querySelector('[data-sec="33"]')?.textContent).not.toContain("الصوارى");
+  });
+
+  it("scrubs the frozen 2026/06/03 date when org terms are empty", () => {
+    const draft = createEvaluatorDraft({
+      taskId: "t1",
+      propertyId: "p1",
+      poNumber: "PO-1",
+    });
+    draft.appraisalDate = "2026-08-27";
+    const fill = buildValuationReportLiveFill({ draft });
+    const dom = domFor(
+      `<section class="sec" data-sec="31"><ul><li>صالح لمدة (90) يومًا من تاريخ التقرير (2026/06/03).</li></ul></section>`,
+    );
+    applyValuationReportLiveFill(dom, fill);
+    expect(dom.querySelector('[data-sec="31"]')?.textContent).toContain("2026/08/27");
+    expect(dom.querySelector('[data-sec="31"]')?.textContent).not.toContain("2026/06/03");
   });
 });

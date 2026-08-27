@@ -40,6 +40,8 @@ export type WorkflowTaskDto = {
   fieldInspectionCompleted?: boolean | null;
   /** Property-appraisal: sibling inspection package specialist-accepted (server). */
   fieldInspectionAccepted?: boolean | null;
+  /** Completed sibling field-inspection task id (server; for loading facts without list visibility). */
+  fieldInspectionTaskId?: string | null;
 };
 
 export type ConfirmTaskDistributionResponseDto = {

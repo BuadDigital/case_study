@@ -1,4 +1,5 @@
 import { getApiBase } from "./index";
+import { repositoryFetch as fetch } from "./write-repository";
 import type { ComparablePropertyDto } from "./comparable-properties";
 
 export type ValuationComparableAdjustmentLineDto = {
@@ -7,8 +8,12 @@ export type ValuationComparableAdjustmentLineDto = {
   labelAr: string;
   percent: number;
   rationale: string;
+  /** compSpec: وصف المقارن لهذا العامل («وصف المقارن…»). */
+  descriptionAr?: string | null;
   isIncluded: boolean;
   sortOrder: number;
+  /** true = القيمة المعروضة افتراضي مقترح لم يدخله المقيّم — تُعرض بأسلوب «مقترح». */
+  isSuggestedValue?: boolean;
 };
 
 export type ValuationComparableMarketDto = {
@@ -16,8 +21,12 @@ export type ValuationComparableMarketDto = {
   sumSequentialPct: number;
   sumDifferencePct: number;
   sumIncludedPct: number;
+  /** |factorsSum| > 35% — التبرير إلزامي (مواصفة النموذج التفاعلي). */
   exceedsLargeAdjustmentThreshold: boolean;
+  /** عمر الصفقة بالأشهر — يُعرض للاستدلال؛ تسوية ظروف السوق يدوية. */
   dealAgeMonths: number;
+  /** افتراضي تسوية نوع المقارن: منفذة ٠ · عرض −٥ · حد −٨ · سوم +٦. */
+  suggestedTransactionTypePct?: number;
   pricePerSqmAfterSequential: number;
   pricePerSqmAfterDifference: number;
   suggestedWeightPct: number;
@@ -26,9 +35,9 @@ export type ValuationComparableMarketDto = {
   weightPct?: number | null;
   /** Decision 19.3 — required when weightIsManual. */
   weightOverrideRationale?: string | null;
- /** multiplier | amthal. */
+ /** multiplier | amthal — table-wide auto choice. */
   areaAdjustmentMethod: string;
- /** computed suggestion (provisional until v3). */
+ /** Auto area adjustment % (amthal/مضاعف). */
   suggestedAreaAdjustmentPct: number;
 };
 
@@ -42,11 +51,20 @@ export type ValuationComparableSelectionDto = {
   selectedAtUtc: string;
   comparable: ComparablePropertyDto;
   market?: ValuationComparableMarketDto | null;
+  /** compEdit: تجاوزات هذا التقييم لسعر/مساحة المقارن — لا تمس البنك المشترك. */
+  priceOverrideSar?: number | null;
+  areaOverrideSqm?: number | null;
+  /** القيم الفعلية بعد التجاوزات. */
+  effectivePriceSar?: number;
+  effectiveAreaSqm?: number;
+  effectivePricePerSqm?: number;
 };
 
 export type ValuationComparableSelectionListDto = {
   valuationRequestId: string;
   propertyId: string;
+  /** market | land_within_cost */
+  selectionContext?: string;
   adoptedCount: number;
   meetsMinimumAdoptedGate: boolean;
   weightsSumTo100: boolean;
@@ -55,8 +73,19 @@ export type ValuationComparableSelectionListDto = {
  /** price_per_sqm | whole_property. */
   adjustmentBasis: string;
   adjustmentBasisLabelAr: string;
+  /** Per-m²: weighted × area. Whole-property: weighted — قبل التقريب. */
+  marketOpinionValueRaw?: number;
+  /** منطق-التسويات: بعد التقريب لأقرب ١٠^ن. */
   marketOpinionValue: number;
+  /** Frozen area factor ٪ for this valuation. */
+  areaFactorPct?: number;
+  /** Frozen annual market rate ٪ for mkt suggestion. */
+  annualMarketRatePct?: number;
+  /** Frozen أسّ تقريب قيمة السوق (١٠^ن). */
+  valueRoundDecimals?: number;
   analysisNotes?: string | null;
+  /** subjSpec: أوصاف العقار محل التقييم لكل عامل اختلاف. */
+  subjectSpecs?: Record<string, string>;
   items: ValuationComparableSelectionDto[];
 };
 
@@ -64,7 +93,12 @@ export type SaveValuationMarketApproachRequest = {
   subjectAreaSqm?: number | null;
  /** price_per_sqm (default) | whole_property. */
   adjustmentBasis?: string | null;
+  areaFactorPct?: number | null;
+  annualMarketRatePct?: number | null;
+  valueRoundDecimals?: number | null;
   analysisNotes?: string | null;
+  /** subjSpec — null يبقي المخزّن. */
+  subjectSpecs?: Record<string, string> | null;
 };
 
 export type ValuationCostLineDto = {
@@ -84,7 +118,15 @@ export type ValuationCostLineDto = {
  /** quantity derives from first floor × count. */
   repeatedFloorCount?: number | null;
   unitCostSar: number;
+  /** تكلفة الوحدة الفعلية — ترث سعر متر «الدور الأول» عند تركها فارغة لبند المتكررة. */
+  effectiveUnitCostSar?: number;
+  /** true = «موروثة من الدور الأول». */
+  unitCostInherited?: boolean;
+  /** الكمية الفعلية بعد نسبة البناء — «المسطح N م²». */
+  effectiveQuantity?: number;
   lineTotal: number;
+  /** سعر المتر بعد غير المباشرة. */
+  netUnitRateWithIndirect?: number;
   rationale: string;
   isIncluded: boolean;
   sortOrder: number;
@@ -93,9 +135,11 @@ export type ValuationCostLineDto = {
 export type ValuationCostApproachDto = {
   valuationRequestId: string;
   propertyId: string;
- /** market weighted unit rate imported at land import (locked). */
+ /** weighted unit rate from land_within_cost comps. */
   landUnitRateFromMarket: number;
   landAreaSqm: number;
+  /** true when land comps produced a unit rate. */
+  landEstimateComplete?: boolean;
   useRestrictionDiscountPct: number;
   useRestrictionRationale?: string | null;
   apartmentLandShareSqm?: number | null;
@@ -125,8 +169,13 @@ export type ValuationCostApproachDto = {
   totalObsolescencePct: number;
   depreciationValue: number;
   buildingsValueAfterDepreciation: number;
+  /** مؤشر الأسلوب وفق النطاق: أرض ومبنى = أرض + مبانٍ؛ مبنى فقط = المباني بعد الإهلاك. */
   costOpinionWithLand: number;
   costOpinionBuildingsOnly: number;
+  /** land_and_building | building_only. */
+  costScopeKey?: string;
+  /** Σ الكمية الفعلية لبنود م² في مجموعة المسطحات. */
+  buildingAreaSqm?: number;
   analysisNotes?: string | null;
   lines: ValuationCostLineDto[];
 };
@@ -168,7 +217,8 @@ export type SaveValuationCostLineRequest = {
 export type SaveValuationCostApproachRequest = {
   lines: SaveValuationCostLineRequest[];
   analysisNotes?: string | null;
-  importLandFromMarket?: boolean;
+  /** Refresh land unit rate from land_within_cost comps (not market). */
+  refreshLandFromLandComps?: boolean;
  /** 0–100, default 0. */
   useRestrictionDiscountPct?: number;
  /** required when the discount is above zero. */
@@ -265,12 +315,18 @@ export type SaveValuationComparableAdjustmentLineRequest = {
   labelAr?: string | null;
   percent: number;
   rationale?: string | null;
+  /** compSpec: وصف المقارن لهذا العامل. */
+  descriptionAr?: string | null;
   isIncluded?: boolean;
   sortOrder?: number;
 };
 
 export type SaveValuationComparableMarketRequest = {
   adjustmentLines: SaveValuationComparableAdjustmentLineRequest[];
+  /** compEdit: تجاوز سعر العقار الإجمالي — null يمسح التجاوز. */
+  priceOverrideSar?: number | null;
+  /** compEdit: تجاوز مساحة المقارن (م²) — null يمسح التجاوز. */
+  areaOverrideSqm?: number | null;
   weightPct?: number | null;
   weightIsManual?: boolean;
   /** Decision 19.3 — required when weightIsManual. */
@@ -297,6 +353,9 @@ export type ValuationApproachSettingsDto = {
   /** replacement | reproduction. */
   costBasisKey: string;
   costBasisLabelAr: string;
+  /** نطاق التقييم بالتكلفة: land_and_building (افتراضي) | building_only. */
+  costScopeKey?: string;
+  costScopeLabelAr?: string;
   /** comparison_unit | quantity_survey | lump_sum | per_item. */
   costMeasurementUnitKey: string;
   costMeasurementUnitLabelAr: string;
@@ -326,6 +385,8 @@ export type SaveValuationApproachSettingsRequest = {
   costApproachEnabled: boolean;
   incomeApproachEnabled?: boolean;
   costBasisKey?: string | null;
+  /** land_and_building (افتراضي) | building_only. */
+  costScopeKey?: string | null;
   costMeasurementUnitKey?: string | null;
   adjustmentsEditUnlocked?: boolean;
   /** إلزامي (§4ج-5). */
@@ -442,11 +503,15 @@ export async function ensureOpenValuationRequestByProperty(
 export async function listValuationComparableSelections(
   config: ValuationSelectionsApiConfig,
   valuationRequestId: string,
+  selectionContext: string = "market",
 ): Promise<Result<ValuationComparableSelectionListDto>> {
   const base = config.baseUrl ?? getApiBase();
   try {
+    const qs = new URLSearchParams();
+    if (selectionContext) qs.set("selectionContext", selectionContext);
+    const q = qs.toString();
     const res = await fetch(
-      `${base}/api/valuation-requests/${valuationRequestId}/comparable-selections`,
+      `${base}/api/valuation-requests/${valuationRequestId}/comparable-selections${q ? `?${q}` : ""}`,
       { headers: headers(config.token) },
     );
     if (res.status === 401) return { ok: false, kind: "auth" };
@@ -462,6 +527,7 @@ export async function replaceValuationComparableSelections(
   config: ValuationSelectionsApiConfig,
   valuationRequestId: string,
   items: ValuationComparableSelectionItemRequest[],
+  selectionContext: string = "market",
 ): Promise<Result<ValuationComparableSelectionListDto>> {
   const base = config.baseUrl ?? getApiBase();
   try {
@@ -470,7 +536,7 @@ export async function replaceValuationComparableSelections(
       {
         method: "PUT",
         headers: headers(config.token),
-        body: JSON.stringify({ items }),
+        body: JSON.stringify({ items, selectionContext }),
       },
     );
     if (res.status === 401) return { ok: false, kind: "auth" };
@@ -504,15 +570,17 @@ export async function setValuationComparableAdopted(
   valuationRequestId: string,
   comparablePropertyId: string,
   isAdopted: boolean,
+  selectionContext: string = "market",
 ): Promise<Result<ValuationComparableSelectionDto>> {
   const base = config.baseUrl ?? getApiBase();
   try {
+    const qs = new URLSearchParams({ selectionContext });
     const res = await fetch(
-      `${base}/api/valuation-requests/${valuationRequestId}/comparable-selections/${comparablePropertyId}/adopt`,
+      `${base}/api/valuation-requests/${valuationRequestId}/comparable-selections/${comparablePropertyId}/adopt?${qs}`,
       {
         method: "POST",
         headers: headers(config.token),
-        body: JSON.stringify({ isAdopted }),
+        body: JSON.stringify({ isAdopted, selectionContext }),
       },
     );
     if (res.status === 401) return { ok: false, kind: "auth" };
@@ -540,11 +608,13 @@ export async function removeValuationComparableSelection(
   config: ValuationSelectionsApiConfig,
   valuationRequestId: string,
   comparablePropertyId: string,
+  selectionContext: string = "market",
 ): Promise<Result<null>> {
   const base = config.baseUrl ?? getApiBase();
   try {
+    const qs = new URLSearchParams({ selectionContext });
     const res = await fetch(
-      `${base}/api/valuation-requests/${valuationRequestId}/comparable-selections/${comparablePropertyId}`,
+      `${base}/api/valuation-requests/${valuationRequestId}/comparable-selections/${comparablePropertyId}?${qs}`,
       { method: "DELETE", headers: headers(config.token) },
     );
     if (res.status === 401) return { ok: false, kind: "auth" };

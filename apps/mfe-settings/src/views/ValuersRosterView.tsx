@@ -2,7 +2,6 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
-  BRAND_IDENTITY_DEFAULTS,
   CERTIFIED_VALUER_HTML_DEFAULTS,
   VALUER_ROSTER_HTML_DEFAULTS,
   VALUER_ROSTER_MEMBERSHIP_OPTIONS,
@@ -68,8 +67,15 @@ function catLabel(value: string | null | undefined): string {
   );
 }
 
+/** Stock prototype asset — not a real uploaded signature. */
+function isStockSignatureUrl(url: string | null | undefined): boolean {
+  const u = (url ?? "").trim();
+  return !u || u.endsWith("ejadah-signature.png");
+}
+
 function sigOk(row: OrganizationValuerRosterEntry): boolean {
-  return Boolean(row.signatureUrl?.trim());
+  const u = row.signatureUrl?.trim();
+  return Boolean(u) && !isStockSignatureUrl(u);
 }
 
 function pickImage(onPicked: (dataUrl: string, name: string, kb: number) => void): void {
@@ -122,10 +128,13 @@ function overlayCertified(
       evaluator.membershipExpiresAt,
       filled(row.membershipExpiresAt, html.membershipExpiresAt ?? ""),
     ),
-    signatureUrl:
-      row.signatureUrl?.trim() ||
-      branding.signatureUrl?.trim() ||
-      BRAND_IDENTITY_DEFAULTS.signatureUrl,
+    signatureUrl: (() => {
+      const own = row.signatureUrl?.trim() ?? "";
+      if (own && !own.endsWith("ejadah-signature.png")) return own;
+      const brand = branding.signatureUrl?.trim() ?? "";
+      if (brand && !brand.endsWith("ejadah-signature.png")) return brand;
+      return null;
+    })(),
     role: "certified",
   };
 }
@@ -146,7 +155,11 @@ function initialRows(org: OrganizationSettingsDto): OrganizationValuerRosterEntr
     return {
       ...v,
       role: v.role === "certified" ? "valuer" : v.role,
-      signatureUrl: v.signatureUrl?.trim() ? v.signatureUrl : null,
+      signatureUrl: (() => {
+        const u = v.signatureUrl?.trim() ?? "";
+        if (!u || u.endsWith("ejadah-signature.png")) return null;
+        return v.signatureUrl;
+      })(),
     };
   });
 }
@@ -164,28 +177,40 @@ function newValuer(): OrganizationValuerRosterEntry {
   };
 }
 
+function completenessGaps(
+  v: OrganizationValuerRosterEntry,
+  today: string,
+): string[] {
+  const gaps: string[] = [];
+  const name = v.nameAr.trim();
+  if (!name || name.includes("أكمل البيانات")) gaps.push("الاسم");
+  if (!v.role?.trim()) gaps.push("الدور");
+  if (!v.membershipCategory?.trim()) gaps.push("فئة العضوية");
+  if (!v.membershipNumber?.trim()) gaps.push("رقم العضوية");
+  if (!isIsoDate(v.membershipExpiresAt)) gaps.push("سريان العضوية");
+  else if (v.membershipExpiresAt! < today) gaps.push("عضوية منتهية");
+  if (!sigOk(v)) gaps.push("التوقيع");
+  return gaps;
+}
+
+function isRowComplete(v: OrganizationValuerRosterEntry, today: string): boolean {
+  return completenessGaps(v, today).length === 0;
+}
+
 function rowStatus(v: OrganizationValuerRosterEntry, today: string): {
   label: string;
   tone: BadgeTone;
   blockReason: string | null;
 } {
-  const expired = isIsoDate(v.membershipExpiresAt) && v.membershipExpiresAt! < today;
-  const missingSig = !sigOk(v);
   if (!v.isActive) {
     return { label: "معطّل — يدوي", tone: "default", blockReason: null };
   }
-  if (expired) {
+  const gaps = completenessGaps(v, today);
+  if (gaps.length > 0) {
     return {
-      label: "معطّل — النظام",
-      tone: "danger",
-      blockReason: "عضوية منتهية — يُمنع الإصدار باسمه",
-    };
-  }
-  if (missingSig) {
-    return {
-      label: "معطّل — النظام",
-      tone: "warning",
-      blockReason: "التوقيع غير مرفوع — يُمنع الإصدار باسمه",
+      label: "غير مكتمل",
+      tone: gaps.includes("عضوية منتهية") ? "danger" : "warning",
+      blockReason: `أكمل: ${gaps.join(" · ")} — يُمنع الإصدار باسمه`,
     };
   }
   return { label: "فعّال", tone: "success", blockReason: null };
@@ -210,6 +235,7 @@ export function ValuersRosterView() {
   const canEdit = useCapability("manage-system-config");
   const [org, setOrg] = useState<OrganizationSettingsDto | null>(null);
   const [rows, setRows] = useState<OrganizationValuerRosterEntry[]>([]);
+  const [baseline, setBaseline] = useState<OrganizationValuerRosterEntry[]>([]);
   const [query, setQuery] = useState("");
   const [editingId, setEditingId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -222,6 +248,15 @@ export function ValuersRosterView() {
     confirm: string;
     onConfirm: () => void;
   } | null>(null);
+
+  const applyRows = (next: OrganizationValuerRosterEntry[], nextBaseline?: OrganizationValuerRosterEntry[]) => {
+    const base = nextBaseline ?? baseline;
+    setRows(next);
+    if (nextBaseline) setBaseline(nextBaseline);
+    setDirty(
+      JSON.stringify(next) !== JSON.stringify(base),
+    );
+  };
 
   const reload = useCallback(async () => {
     const config = organizationSettingsApiConfig();
@@ -239,7 +274,9 @@ export function ValuersRosterView() {
     }
     setError(null);
     setOrg(res.data);
-    setRows(initialRows(res.data));
+    const next = initialRows(res.data);
+    setRows(next);
+    setBaseline(next.map((r) => ({ ...r })));
     setDirty(false);
     setEditingId(null);
   }, []);
@@ -249,22 +286,102 @@ export function ValuersRosterView() {
   }, [reload]);
 
   const mark = (next: OrganizationValuerRosterEntry[]) => {
-    setRows(next);
-    setDirty(true);
+    applyRows(next);
   };
 
-  const patch = (id: string, patch: Partial<OrganizationValuerRosterEntry>) => {
-    mark(
-      rows.map((v) => {
-        if (v.id !== id) {
-          if (patch.role === "certified" && v.role === "certified") {
-            return { ...v, role: "valuer" };
-          }
-          return v;
-        }
-        return { ...v, ...patch };
-      }),
-    );
+  const certifiedHolderId = useMemo(
+    () => rows.find((v) => v.role === "certified")?.id ?? null,
+    [rows],
+  );
+
+  const patch = (id: string, next: Partial<OrganizationValuerRosterEntry>) => {
+    if (next.role === "certified") {
+      const holder = rows.find((v) => v.role === "certified");
+      if (holder && holder.id !== id) {
+        showToast(
+          `دور «مقيم معتمد» محجوز لـ «${holder.nameAr}» — لا يمكن إسناده لغيره.`,
+          "error",
+        );
+        return;
+      }
+    }
+    if (
+      next.role != null &&
+      next.role !== "certified" &&
+      rows.find((v) => v.id === id)?.role === "certified"
+    ) {
+      showToast(
+        "لا يمكن سحب دور «مقيم معتمد» بعد إسناده — عطّل الحساب إن لزم دون تغيير الدور.",
+        "error",
+      );
+      return;
+    }
+    mark(rows.map((v) => (v.id === id ? { ...v, ...next } : v)));
+  };
+
+  const discardOrRemove = (id: string): OrganizationValuerRosterEntry[] => {
+    const saved = baseline.find((b) => b.id === id);
+    if (!saved) {
+      const next = rows.filter((r) => r.id !== id);
+      mark(next);
+      if (editingId === id) setEditingId(null);
+      return next;
+    }
+    const next = rows.map((r) => (r.id === id ? { ...saved } : r));
+    mark(next);
+    if (editingId === id) setEditingId(null);
+    return next;
+  };
+
+  const confirmDiscardOrRemove = (id: string) => {
+    const row = rows.find((r) => r.id === id);
+    if (!row) return;
+    const isNew = !baseline.some((b) => b.id === id);
+    const isEditing = editingId === id;
+
+    if (!isNew && !isEditing && row.role === "certified") {
+      showToast(
+        "لا يمكن حذف المقيّم المعتمد — الدور محجوز بعد إسناده. يمكنك تعطيل الحساب فقط.",
+        "error",
+      );
+      return;
+    }
+
+    if (isNew) {
+      setModal({
+        title: "إزالة الصف",
+        body: `إزالة «${row.nameAr}» من القائمة؟ سيُحفظ السجل فوراً.`,
+        confirm: "إزالة وحفظ",
+        onConfirm: () => {
+          const next = discardOrRemove(id);
+          void persistRows(next);
+        },
+      });
+      return;
+    }
+
+    if (isEditing) {
+      setModal({
+        title: "إلغاء التعديل",
+        body: `إلغاء تعديلات «${row.nameAr}» والرجوع للقيم المحفوظة؟`,
+        confirm: "إلغاء التعديل",
+        onConfirm: () => {
+          discardOrRemove(id);
+        },
+      });
+      return;
+    }
+
+    setModal({
+      title: "حذف مقيّم",
+      body: `حذف «${row.nameAr}» من السجل وحفظ التغيير فوراً. لن يظهر في التقارير الجديدة.`,
+      confirm: "حذف وحفظ",
+      onConfirm: () => {
+        const next = rows.filter((r) => r.id !== id);
+        if (editingId === id) setEditingId(null);
+        void persistRows(next);
+      },
+    });
   };
 
   const visible = useMemo(() => {
@@ -275,10 +392,44 @@ export function ValuersRosterView() {
   const today = todayIso();
   const certMsg = certBlockMessage(rows, today);
 
-  async function persist() {
+  const incompleteActive = useMemo(() => {
+    return rows.filter((v) => v.isActive && !isRowComplete(v, today));
+  }, [rows, today]);
+
+  const canAddValuer = incompleteActive.length === 0 && editingId == null;
+
+  function tryAddValuer() {
+    if (editingId) {
+      showToast("أنهِ تعديل الصف الحالي («تم») قبل إضافة مقيّم جديد.", "error");
+      return;
+    }
+    if (incompleteActive.length > 0) {
+      const sample = incompleteActive.slice(0, 2).map((v) => {
+        const gaps = completenessGaps(v, today);
+        return `«${v.nameAr}» (${gaps.join(" · ")})`;
+      });
+      const more =
+        incompleteActive.length > 2
+          ? ` و${incompleteActive.length - 2} آخرين`
+          : "";
+      showToast(
+        `أكمل بيانات المقيّمين الحاليين قبل الإضافة: ${sample.join("؛ ")}${more}.`,
+        "error",
+      );
+      return;
+    }
+    const row = newValuer();
+    mark([...rows, row]);
+    setEditingId(row.id);
+  }
+
+  async function persistRows(
+    nextRows: OrganizationValuerRosterEntry[],
+    successToast = "تم الحفظ وقُيّد في سجل التدقيق.",
+  ) {
     const config = organizationSettingsApiConfig();
-    if (!config || !org) return;
-    const certified = rows.find((v) => v.role === "certified") ?? rows[0];
+    if (!config || !org) return false;
+    const certified = nextRows.find((v) => v.role === "certified") ?? nextRows[0];
     const nextEvaluator: OrganizationEvaluatorSettings = {
       ...org.evaluator,
       name: certified?.nameAr ?? org.evaluator.name,
@@ -298,26 +449,55 @@ export function ValuersRosterView() {
       signatureUrl:
         certified?.signatureUrl?.trim() ||
         org.branding.signatureUrl ||
-        BRAND_IDENTITY_DEFAULTS.signatureUrl,
+        "",
     };
     setSaving(true);
     const res = await saveOrganizationSettings(config, {
       company: nextCompany,
       evaluator: nextEvaluator,
-      valuers: rows,
+      valuers: nextRows,
       branding: nextBranding,
     });
     setSaving(false);
     if (!res.ok) {
       showToast(res.message ?? "تعذّر حفظ سجل المقيّمين", "error");
-      return;
+      return false;
     }
     setOrg(res.data);
-    setRows(initialRows(res.data));
+    const next = initialRows(res.data);
+    setRows(next);
+    setBaseline(next.map((r) => ({ ...r })));
     setDirty(false);
     setEditingId(null);
     await refreshOrgCache();
-    showToast("تم الحفظ وقُيّد في سجل التدقيق.", "success");
+    showToast(successToast, "success");
+    return true;
+  }
+
+  function finishEdit(id: string) {
+    const row = rows.find((r) => r.id === id);
+    if (!row) {
+      setEditingId(null);
+      return;
+    }
+    if (row.isActive && !isRowComplete(row, today)) {
+      const gaps = completenessGaps(row, today);
+      showToast(`أكمل البيانات قبل «تم»: ${gaps.join(" · ")}.`, "error");
+      return;
+    }
+    void persistRows(rows, "تم الحفظ.");
+  }
+
+  function toggleActive(id: string) {
+    const row = rows.find((r) => r.id === id);
+    if (!row) return;
+    const nextRows = rows.map((v) =>
+      v.id === id ? { ...v, isActive: !v.isActive } : v,
+    );
+    void persistRows(
+      nextRows,
+      row.isActive ? "تم التعطيل والحفظ." : "تم التفعيل والحفظ.",
+    );
   }
 
   if (loading) {
@@ -359,26 +539,29 @@ export function ValuersRosterView() {
         {canEdit ? (
           <Button
             variant="default"
-            onClick={() => {
-              const row = newValuer();
-              mark([...rows, row]);
-              setEditingId(row.id);
-            }}
+            disabled={!canAddValuer}
+            title={
+              !canAddValuer
+                ? editingId
+                  ? "أنهِ تعديل الصف الحالي قبل الإضافة"
+                  : "أكمل بيانات كل المقيّمين الفعّالين قبل الإضافة"
+                : undefined
+            }
+            onClick={() => tryAddValuer()}
           >
             إضافة مقيّم
           </Button>
         ) : null}
       </div>
 
-      <Card className="overflow-hidden">
-        <Table className="tabular-nums">
+      <Card className="overflow-x-auto">
+        <Table className="min-w-[56rem] tabular-nums">
           <THead>
             <Tr hoverable={false}>
               <Th>الاسم</Th>
               <Th>الدور في النظام</Th>
               <Th>فئة العضوية</Th>
               <Th>رقم العضوية</Th>
-              <Th>إصدار الترخيص</Th>
               <Th>سريان العضوية</Th>
               <Th>التوقيع</Th>
               <Th>الحالة</Th>
@@ -395,7 +578,7 @@ export function ValuersRosterView() {
                   <Td className="min-w-[12rem] align-top">
                     {editing ? (
                       <Input
-                        className="h-[30px] min-w-[11rem] py-0 text-xs"
+                        className="min-w-[11rem] !h-9 !py-0 !leading-9 text-[12.5px]"
                         value={v.nameAr}
                         disabled={!canEdit}
                         onChange={(e) => patch(v.id, { nameAr: e.target.value })}
@@ -421,15 +604,32 @@ export function ValuersRosterView() {
                       </>
                     )}
                   </Td>
-                  <Td>
+                  <Td className="min-w-[11rem] align-middle whitespace-nowrap">
                     {editing ? (
                       <Select
-                        className="h-[30px] py-0 text-xs"
+                        className="min-w-[11rem] text-[12.5px]"
+                        style={{
+                          height: 36,
+                          paddingTop: 0,
+                          paddingBottom: 0,
+                          lineHeight: "36px",
+                        }}
                         value={v.role}
-                        disabled={!canEdit}
+                        disabled={!canEdit || isCert}
+                        title={
+                          isCert
+                            ? "دور «مقيم معتمد» محجوز بعد إسناده ولا يمكن تغييره"
+                            : certifiedHolderId
+                              ? "دور «مقيم معتمد» مسند لمقيّم آخر"
+                              : undefined
+                        }
                         onChange={(e) => patch(v.id, { role: e.target.value })}
                       >
-                        {VALUER_SYS_ROLES.map((r) => (
+                        {VALUER_SYS_ROLES.filter((r) => {
+                          if (r.value !== "certified") return true;
+                          if (isCert) return true;
+                          return !certifiedHolderId;
+                        }).map((r) => (
                           <option key={r.value} value={r.value}>
                             {r.label}
                           </option>
@@ -439,10 +639,16 @@ export function ValuersRosterView() {
                       roleLabel(v.role)
                     )}
                   </Td>
-                  <Td>
+                  <Td className="min-w-[12rem] align-middle whitespace-nowrap">
                     {editing ? (
                       <Select
-                        className="h-[30px] py-0 text-xs"
+                        className="min-w-[12rem] text-[12.5px]"
+                        style={{
+                          height: 36,
+                          paddingTop: 0,
+                          paddingBottom: 0,
+                          lineHeight: "36px",
+                        }}
                         value={v.membershipCategory ?? ""}
                         disabled={!canEdit}
                         onChange={(e) =>
@@ -464,7 +670,7 @@ export function ValuersRosterView() {
                     {editing ? (
                       <Input
                         dir="ltr"
-                        className="h-[30px] max-w-[8rem] py-0 text-xs"
+                        className="max-w-[8rem] !h-9 !py-0 !leading-9 text-[12.5px]"
                         value={v.membershipNumber ?? ""}
                         disabled={!canEdit}
                         onChange={(e) =>
@@ -480,25 +686,7 @@ export function ValuersRosterView() {
                       <Input
                         type="date"
                         dir="ltr"
-                        className="h-[30px] py-0 text-xs"
-                        value={
-                          isIsoDate(v.licenseIssuedAt) ? v.licenseIssuedAt! : ""
-                        }
-                        disabled={!canEdit}
-                        onChange={(e) =>
-                          patch(v.id, { licenseIssuedAt: e.target.value })
-                        }
-                      />
-                    ) : (
-                      <bdi>{v.licenseIssuedAt || "—"}</bdi>
-                    )}
-                  </Td>
-                  <Td>
-                    {editing ? (
-                      <Input
-                        type="date"
-                        dir="ltr"
-                        className="h-[30px] py-0 text-xs"
+                        className="!h-9 !py-0 !leading-9 text-[12.5px]"
                         value={
                           isIsoDate(v.membershipExpiresAt)
                             ? v.membershipExpiresAt!
@@ -514,65 +702,99 @@ export function ValuersRosterView() {
                     )}
                   </Td>
                   <Td>
-                    {sigOk(v) ? (
-                      <Badge tone="success">مرفوع</Badge>
-                    ) : canEdit ? (
-                      <Button
-                        variant="default"
-                        size="sm"
-                        onClick={() =>
-                          pickImage((url, name, kb) => {
-                            setModal({
-                              title: "رفع توقيع المقيّم",
-                              body: `توقيع «${v.nameAr}» يُطبع في التقارير الجديدة، والرفع يُقيَّد في سجل التدقيق. الملف: ${name} (${kb}KB).`,
-                              confirm: "متابعة الرفع",
-                              onConfirm: () => patch(v.id, { signatureUrl: url }),
-                            });
-                          })
-                        }
-                      >
-                        رفع التوقيع
-                      </Button>
-                    ) : (
-                      <Badge tone="warning">غير مرفوع</Badge>
-                    )}
+                    <div className="flex flex-col items-start gap-1">
+                      {sigOk(v) && !editing ? (
+                        <Badge tone="success">مرفوع</Badge>
+                      ) : null}
+                      {canEdit && (editing || !sigOk(v)) ? (
+                        <Button
+                          variant="default"
+                          size="sm"
+                          onClick={() =>
+                            pickImage((url, name, kb) => {
+                              setModal({
+                                title: sigOk(v)
+                                  ? "استبدال توقيع المقيّم"
+                                  : "رفع توقيع المقيّم",
+                                body: `توقيع «${v.nameAr}» يُطبع في التقارير الجديدة، والرفع يُقيَّد في سجل التدقيق. الملف: ${name} (${kb}KB).`,
+                                confirm: "متابعة الرفع",
+                                onConfirm: () => {
+                                  const nextRows = rows.map((r) =>
+                                    r.id === v.id
+                                      ? { ...r, signatureUrl: url }
+                                      : r,
+                                  );
+                                  void persistRows(nextRows, "تم رفع التوقيع والحفظ.");
+                                },
+                              });
+                            })
+                          }
+                        >
+                          {sigOk(v) ? "استبدال التوقيع" : "رفع التوقيع"}
+                        </Button>
+                      ) : null}
+                    </div>
                   </Td>
                   <Td>
                     <Badge tone={status.tone}>{status.label}</Badge>
                   </Td>
                   <Td className="whitespace-nowrap">
                     {canEdit ? (
-                      <>
+                      <div className="flex flex-wrap items-center gap-0.5">
                         <Button
                           variant="ghost"
                           size="sm"
-                          onClick={() =>
-                            setEditingId(editing ? null : v.id)
-                          }
+                          disabled={saving}
+                          onClick={() => {
+                            if (editing) finishEdit(v.id);
+                            else setEditingId(v.id);
+                          }}
                         >
                           {editing ? "تم" : "تعديل"}
-                        </Button>{" "}
+                        </Button>
                         <Button
                           variant="ghost"
                           size="sm"
+                          disabled={saving}
                           onClick={() => {
-                            const doIt = () =>
-                              patch(v.id, { isActive: !v.isActive });
                             if (v.isActive) {
                               setModal({
                                 title: "تعطيل مقيّم",
-                                body: `«${v.nameAr}» يبقى مرتبطاً بسجلاته في سجل التدقيق. التعطيل يمنع إسناده لأي معاملة جديدة.`,
-                                confirm: "تعطيل",
-                                onConfirm: doIt,
+                                body: `«${v.nameAr}» يبقى مرتبطاً بسجلاته في سجل التدقيق. التعطيل يُحفظ فوراً ويمنع إسناده لأي معاملة جديدة.`,
+                                confirm: "تعطيل وحفظ",
+                                onConfirm: () => toggleActive(v.id),
                               });
                             } else {
-                              doIt();
+                              toggleActive(v.id);
                             }
                           }}
                         >
                           {v.isActive ? "تعطيل" : "تفعيل"}
                         </Button>
-                      </>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          disabled={saving}
+                          className="min-w-[1.75rem] px-1.5 text-danger-text"
+                          title={
+                            !baseline.some((b) => b.id === v.id)
+                              ? "إزالة الصف"
+                              : editing
+                                ? "إلغاء التعديل"
+                                : "حذف"
+                          }
+                          aria-label={
+                            !baseline.some((b) => b.id === v.id)
+                              ? "إزالة الصف"
+                              : editing
+                                ? "إلغاء التعديل"
+                                : "حذف"
+                          }
+                          onClick={() => confirmDiscardOrRemove(v.id)}
+                        >
+                          ×
+                        </Button>
+                      </div>
                     ) : null}
                   </Td>
                 </Tr>
@@ -582,22 +804,19 @@ export function ValuersRosterView() {
         </Table>
       </Card>
       <p className="mx-0.5 mt-2.5 text-[11.5px] text-text-3">
-        لا حذف — التعطيل يحفظ ارتباط السجلات بسجل التدقيق. «فئة العضوية» صفة مهنية من الهيئة،
-        و«الدور في النظام» صلاحية تمنحها المنشأة.
+        «تم» و«تعطيل» و«×» تحفظ مباشرة بعد التأكيد — لا حاجة لزر حفظ منفصل. أكمل بيانات كل مقيّم
+        فعّال قبل إضافة آخر. دور «مقيم معتمد» يُسند مرة ويُحجز.
       </p>
 
-      {canEdit ? (
-        <div className="mt-4 flex flex-wrap items-center justify-end gap-2.5">
-          {dirty ? (
-            <span className="flex items-center gap-1.5 text-[11.5px] text-amber-text">
-              <span className="size-1.5 rounded-full bg-warning" />
-              تعديل غير محفوظ
-            </span>
-          ) : null}
-          <Button variant="primary" loading={saving} onClick={() => void persist()}>
-            حفظ
-          </Button>
+      {saving ? (
+        <div className="mt-3 flex items-center justify-end gap-2 text-[12px] text-text-3">
+          <Spinner />
+          جاري الحفظ…
         </div>
+      ) : dirty ? (
+        <p className="mt-3 text-end text-[11.5px] text-amber-text">
+          تعديلات معلّقة — اضغط «تم» لحفظ الصف.
+        </p>
       ) : null}
 
       {modal ? (

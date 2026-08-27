@@ -184,6 +184,8 @@ export type ActiveTransactionQueueConfig = {
   ) => WorkflowTask[];
   /** Override row ⋮ menu (e.g. appraiser recall). */
   buildRowMoreItems?: (ctx: ActiveQueueRowMoreContext) => RowMoreMenuItem[];
+  /** When true, table/card row click does nothing; deed, PO, and ⋮ stay clickable. */
+  disableRowOpen?: boolean;
   /** Enable «إرجاع لمرحلة سابقة» in the default ⋮ menu. */
   allowPhaseRevert?: boolean;
   /** Enable «نسخ من معاملة سابقة» in the default ⋮ menu (target = this row). */
@@ -1288,7 +1290,9 @@ export function ActiveTransactionQueueView({
               : `صك ${row.deedLabel}`
             : `مهمة ${task.id}`;
         const meta = [
-          { text: formatPoDisplay(task.poNumber), kind: "po" as const },
+          config.disableRowOpen
+            ? null
+            : { text: formatPoDisplay(task.poNumber), kind: "po" as const },
           row.city !== "—" ? { text: row.city, kind: "place" as const } : null,
           row.district !== "—"
             ? { text: row.district, kind: "place" as const }
@@ -1297,13 +1301,19 @@ export function ActiveTransactionQueueView({
             ? { text: row.propertyType, kind: "type" as const }
             : null,
         ].filter((v): v is NonNullable<typeof v> => Boolean(v));
+        const openDetail = () =>
+          handleDistributionRowClick(task, property?.id);
         return {
           id: task.id,
           title: deed,
           meta,
-          tone: "new",
+          tone: "new" as const,
           moreItems: resolveRowMoreItems(task, property?.id),
-          onOpen: () => handleDistributionRowClick(task, property?.id),
+          onOpen: config.disableRowOpen ? undefined : openDetail,
+          onTitleClick: config.disableRowOpen ? openDetail : undefined,
+          footer: config.disableRowOpen ? (
+            <PoNumber value={task.poNumber} link className="text-[12px]" />
+          ) : undefined,
           loading: isTaskOpening(task.id),
         };
       });
@@ -1370,6 +1380,7 @@ export function ActiveTransactionQueueView({
     handleRowClick,
     handleDistributionRowClick,
     isTaskOpening,
+    config.disableRowOpen,
   ]);
 
   const hasRail =
@@ -1691,9 +1702,11 @@ export function ActiveTransactionQueueView({
                         <Th>المساحة</Th>
                         {showPartyColumns ? (
                           <>
+                            <Th className="w-[7.5rem] min-w-[7.5rem]">
+                              المكتب الهندسي
+                            </Th>
                             <Th className="w-[7.5rem] min-w-[7.5rem]">المعاين</Th>
                             <Th className="w-[7.5rem] min-w-[7.5rem]">المقيم</Th>
-                            <Th className="w-[7.5rem] min-w-[7.5rem]">المكتب الهندسي</Th>
                           </>
                         ) : null}
                         <ThAction aria-label="المزيد" />
@@ -1735,8 +1748,14 @@ export function ActiveTransactionQueueView({
                               isTaskOpening(task.id) &&
                                 "ui-queue-row-opening pointer-events-none",
                             )}
-                            onClick={() =>
-                              handleDistributionRowClick(task, property?.id)
+                            onClick={
+                              config.disableRowOpen
+                                ? undefined
+                                : () =>
+                                    handleDistributionRowClick(
+                                      task,
+                                      property?.id,
+                                    )
                             }
                           >
                             <Td className="whitespace-nowrap">
@@ -2463,9 +2482,11 @@ export function ActiveTransactionQueueView({
                 )}
               >
                 {config.tableHint ??
-                  (useFullPage
-                    ? "اضغط الصف لفتح دراسة الحالة."
-                    : "اضغط الصف للفتح أو الإغلاق.")}
+                  (config.disableRowOpen
+                    ? "افتح عبر رقم الصك أو أمر العمل أو قائمة ⋮."
+                    : useFullPage
+                      ? "اضغط الصف لفتح دراسة الحالة."
+                      : "اضغط الصف للفتح أو الإغلاق.")}
               </QueueTableHint>
             </>
           )}

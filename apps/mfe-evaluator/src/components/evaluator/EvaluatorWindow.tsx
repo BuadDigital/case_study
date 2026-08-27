@@ -1,6 +1,11 @@
 "use client";
 
 import { InlineLoadingSkeleton, Spinner, cn, useToast } from "@platform/ui-kit";
+import {
+  getOpenValuationRequestByProperty,
+  getValuationIssuanceGates,
+} from "@platform/api-client";
+import { getAuthSession } from "@platform/auth-client";
 import dynamic from "next/dynamic";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { WorkflowTask } from "@case-study/mfe";
@@ -210,6 +215,11 @@ export function EvaluatorWindow({
       return false;
     }
 
+    const choices = draft.reportChoices;
+    const methodOn = (key?: string) =>
+      Boolean(key?.trim()) && key !== "__unused__";
+    const approachesOn =
+      methodOn(choices?.marketMethodKey) || methodOn(choices?.costMethodKey);
     const errors = validateEvaluatorSubmission({
       taskId: task.id,
       evaluatorPrice: draft.evaluatorPrice,
@@ -221,6 +231,7 @@ export function EvaluatorWindow({
       assetDataVarianceNotes: draft.assetDataVarianceNotes,
       independenceDeclared: draft.independenceDeclared,
       reportWorkers: draft.reportWorkers,
+      skipManualLandBuilding: approachesOn,
     });
     setFieldErrors(errors);
     if (Object.keys(errors).length > 0) {
@@ -231,6 +242,36 @@ export function EvaluatorWindow({
       setActiveTab("report");
       scheduleScrollToFormField(firstEvaluatorErrorTarget(errors), 120);
       return false;
+    }
+
+    // مواصفة النموذج التفاعلي: «المنع يقع عند الاعتماد فقط» — الاعتماد يحترم بوابات
+    // الإصدار والتنبيهات المنهجية فعلياً، لا عرضاً فقط.
+    const session = getAuthSession();
+    if (session?.token && task.propertyId) {
+      try {
+        const open = await getOpenValuationRequestByProperty(
+          { token: session.token },
+          task.propertyId,
+        );
+        if (open.ok && open.data?.id) {
+          const gatesRes = await getValuationIssuanceGates(
+            { token: session.token },
+            open.data.id,
+          );
+          if (gatesRes.ok && !gatesRes.data.allowsIssuance) {
+            const reason =
+              gatesRes.data.blockingReasonsAr[0] ??
+              "شروط الإصدار غير مستوفاة";
+            const message = `الاعتماد ممنوع — ${reason}`;
+            setFormError(message);
+            showToast(message, "error");
+            setActiveTab("report");
+            return false;
+          }
+        }
+      } catch {
+        // تعذّر فحص البوابات (شبكة) — الخادم سيرفض الإصدار غير المستوفي لاحقاً.
+      }
     }
 
     if (saveTimer.current) {

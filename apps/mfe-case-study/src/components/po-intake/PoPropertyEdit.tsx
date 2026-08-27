@@ -270,28 +270,24 @@ export function PoPropertyEdit({
         />
       </RegistrationFormCard>
 
-      {property.bourseDataCompleted || hasBourseDetailFields(property) ? (
-        <RegistrationFormCard
-          title="بيانات البورصة"
-          subtitle={
-            property.bourseDataCompleted
-              ? "يمكن تعديلها هنا أو من استعلام البورصة"
-              : "مُعبَّأة من معاملة سابقة — راجع وعدّل ما تغيّر ثم احفظ (تصبح معتمدة لهذه المعاملة)"
-          }
-        >
-          <PoPropertyBourseForm
-            property={property}
-            fieldErrors={fieldErrors}
-            onPatch={patchProperty}
-            poNumber={poNumber}
-          />
-        </RegistrationFormCard>
-      ) : (
-        <Note tone="info">
-          بيانات البورصة غير مكتملة — أكملها من «استعلام البورصة» في القائمة
-          الجانبية.
-        </Note>
-      )}
+      <RegistrationFormCard
+        title="بيانات الموقع والمساحة"
+        subtitle="المدينة والحي والمساحة والتصنيف والحدود — قابلة للتعديل هنا مباشرة"
+      >
+        <PoPropertyBourseForm
+          property={property}
+          fieldErrors={fieldErrors}
+          onPatch={patchProperty}
+          poNumber={poNumber}
+          showIntroNote={false}
+        />
+        {!property.bourseDataCompleted && !hasBourseDetailFields(property) ? (
+          <Note tone="info" className="mt-3">
+            بيانات البورصة الرسمية لم تُكتمل بعد — يمكنك تعبئة المساحة والموقع
+            يدوياً هنا، أو إكمالها لاحقاً من «استعلام البورصة».
+          </Note>
+        ) : null}
+      </RegistrationFormCard>
     </PoEditShell>
   );
 }

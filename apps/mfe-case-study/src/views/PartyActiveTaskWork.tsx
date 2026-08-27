@@ -504,7 +504,9 @@ export function PartyActiveTaskWork({
     const surveyTaskId =
       findSiblingSurveyTask(task, allWorkflowTasks)?.id ?? null;
     const inspectionTaskId =
-      findSiblingInspectionTask(task, allWorkflowTasks)?.id ?? null;
+      task.fieldInspectionTaskId?.trim() ||
+      findSiblingInspectionTask(task, allWorkflowTasks)?.id ||
+      null;
     const showDecree = record
       ? requiresAssignmentDecree(record.assignmentType)
       : false;

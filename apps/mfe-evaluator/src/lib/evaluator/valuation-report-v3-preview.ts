@@ -55,10 +55,20 @@ function applyMeta(dom: Document, meta: ValuationReportV3Meta) {
   const reportNo = (meta.reportNo ?? "").trim();
   const date = slashDate(meta.reportDate) || "—";
   const deposit = (meta.depositCode ?? "").trim() || "";
-  if (!reportNo && !meta.reportDate) return;
+  // تُكتب الترويسة دائماً — «—» عند الفراغ حتى لا تتسرب أرقام العيّنة من القالب.
   const html = `رقم التقرير: ${escHtml(reportNo || "—")}<br>التاريخ: ${escHtml(date)}<br>رمز إيداع التقرير: ${escHtml(deposit)}`;
   dom.querySelectorAll(".pg-meta").forEach((el) => {
     el.innerHTML = html;
+  });
+}
+
+/** ترقيم الصفحات من الواقع — القالب يثبّت «صفحة N من 20» يدوياً. */
+function renumberPages(dom: Document) {
+  const pages = [...dom.querySelectorAll("section.page.pg")];
+  const total = pages.length;
+  pages.forEach((page, i) => {
+    const num = page.querySelector(".pg-num");
+    if (num) num.textContent = `صفحة ${i + 1} من ${total}`;
   });
 }
 
@@ -146,6 +156,7 @@ function fillCellImage(
   const img = cell.ownerDocument.createElement("img");
   img.src = src;
   img.alt = alt;
+  img.classList.add("org-signature");
   img.style.objectFit = "contain";
   img.style.maxWidth = "100%";
   if (widthCm && heightCm) {
@@ -157,6 +168,19 @@ function fillCellImage(
   cell.replaceChildren(img);
 }
 
+/** Missing prototype asset — never paint it (shows as a broken image icon). */
+function isUsableSignatureUrl(url: string | null | undefined): boolean {
+  const t = (url ?? "").trim();
+  if (!t) return false;
+  return !t.endsWith("ejadah-signature.png");
+}
+
+function resolveSignatureUrl(raw: string | null | undefined, origin = ""): string {
+  const t = (raw ?? "").trim();
+  if (!isUsableSignatureUrl(t)) return "";
+  return assetUrl(t, origin);
+}
+
 function applySignatures(
   dom: Document,
   branding: OrganizationBrandingSettings,
@@ -164,24 +188,31 @@ function applySignatures(
   origin = "",
 ) {
   const roster = valuers.filter((v) => v.isActive !== false);
-  const brandSig = assetUrl((branding.signatureUrl ?? "").trim(), origin);
-  const certified = roster.find(
-    (v) => v.role === "certified" && Boolean(v.signatureUrl?.trim()),
+  const brandSig = resolveSignatureUrl(branding.signatureUrl, origin);
+  const certified = roster.find((v) => v.role === "certified");
+  const fallbackSig =
+    resolveSignatureUrl(certified?.signatureUrl, origin) || brandSig;
+  const sigW = mm(
+    branding.signatureWidthCm,
+    BRAND_IDENTITY_DEFAULTS.signatureWidthCm!,
   );
-  const fallbackSig = assetUrl(
-    (certified?.signatureUrl ?? "").trim() ||
-      (brandSig && !brandSig.endsWith("ejadah-signature.png") ? brandSig : ""),
-    origin,
+  const sigH = mm(
+    branding.signatureHeightCm,
+    BRAND_IDENTITY_DEFAULTS.signatureHeightCm!,
   );
 
   const findSig = (name: string): string | null => {
     const n = normName(name);
     if (!n) return null;
     const hit = roster.find(
-      (v) => Boolean(v.signatureUrl?.trim()) && namesMatch(v.nameAr, n),
+      (v) =>
+        isUsableSignatureUrl(v.signatureUrl) && namesMatch(v.nameAr, n),
     );
-    return assetUrl(hit?.signatureUrl?.trim() ?? "", origin) || null;
+    return resolveSignatureUrl(hit?.signatureUrl, origin) || null;
   };
+
+  const paint = (cell: Element, url: string) =>
+    fillCellImage(cell, url, "التوقيع", sigW, sigH);
 
   for (const table of dom.querySelectorAll("table")) {
     const rows = [...table.querySelectorAll("tr")];
@@ -202,7 +233,7 @@ function applySignatures(
       const cell = sigCells[i];
       if (!cell) return;
       const url = findSig(nameCell.textContent ?? "");
-      if (url) fillCellImage(cell, url, "التوقيع");
+      if (url) paint(cell, url);
     });
   }
 
@@ -210,15 +241,38 @@ function applySignatures(
     (h.textContent ?? "").includes("إعتماد"),
   );
   const approveTable = approve?.nextElementSibling;
-  if (approveTable?.tagName === "TABLE" && fallbackSig) {
-    const sigRow = [...approveTable.querySelectorAll("tr")].find((r) =>
+  if (approveTable?.tagName === "TABLE") {
+    const rows = [...approveTable.querySelectorAll("tr")];
+    const nameRow = rows.find((r) =>
+      [...r.querySelectorAll("td.k")].some(
+        (td) => normName(td.textContent ?? "") === "الاسم",
+      ),
+    );
+    const sigRow = rows.find((r) =>
       [...r.querySelectorAll("td.k")].some(
         (td) => normName(td.textContent ?? "") === "التوقيع",
       ),
     );
     const cell = valueCellsAfterLabel(sigRow ?? approveTable, "التوقيع")[0];
-    if (cell && !cell.querySelector("img")) {
-      fillCellImage(cell, fallbackSig, "التوقيع");
+    if (cell) {
+      const existing = cell.querySelector("img");
+      const existingSrc = existing?.getAttribute("src") ?? "";
+      if (!existing || !isUsableSignatureUrl(existingSrc)) {
+        const byName = nameRow
+          ? findSig(
+              valueCellsAfterLabel(nameRow, "الاسم")[0]?.textContent ?? "",
+            )
+          : null;
+        const src = byName || fallbackSig;
+        if (src) paint(cell, src);
+        else cell.replaceChildren();
+      } else if (existing instanceof HTMLImageElement) {
+        existing.classList.add("org-signature");
+        existing.style.width = `${sigW}cm`;
+        existing.style.height = `${sigH}cm`;
+        existing.style.maxWidth = "100%";
+        existing.style.objectFit = "contain";
+      }
     }
   }
 }
@@ -229,6 +283,15 @@ function stampBoxCss(prefix: string, widthCm: number, heightCm: number): string 
     `width:${widthCm}cm!important;height:${heightCm}cm!important;` +
     `max-width:none!important;max-height:none!important;object-fit:contain}` +
     `${prefix} tr:has(img.org-stamp) td.v{height:auto!important;min-height:${heightCm}cm}`
+  );
+}
+
+function signatureBoxCss(prefix: string, widthCm: number, heightCm: number): string {
+  return (
+    `${prefix} img.org-signature,${prefix} img[alt="التوقيع"]{` +
+    `width:${widthCm}cm!important;height:${heightCm}cm!important;` +
+    `max-width:100%!important;max-height:none!important;object-fit:contain}` +
+    `${prefix} tr:has(img.org-signature) td.v{height:auto!important;min-height:${heightCm}cm}`
   );
 }
 
@@ -328,7 +391,12 @@ function applyBrandIdentity(
     `.page.pg > *:not(.lh-slice):not(.pg-num):not(.pg-meta){position:relative;z-index:1}` +
     `.val-rpt-v3 .pg-meta{position:absolute;top:8mm;inset-inline-start:${Math.max(6, padStart + 4)}mm;inset-inline-end:auto;right:auto;z-index:2}` +
     `.val-rpt-v3 .pg-num{position:absolute!important;top:calc(${footTop}mm + 1px)!important;bottom:auto!important;left:auto!important;right:auto!important;inset-inline-start:${padStart}mm!important;inset-inline-end:auto!important;z-index:2;text-align:start;transform:translateX(-4px)}` +
-    stampBoxCss(".val-rpt-v3", mm(branding.stampWidthCm, BRAND_IDENTITY_DEFAULTS.stampWidthCm!), mm(branding.stampHeightCm, BRAND_IDENTITY_DEFAULTS.stampHeightCm!))
+    stampBoxCss(".val-rpt-v3", mm(branding.stampWidthCm, BRAND_IDENTITY_DEFAULTS.stampWidthCm!), mm(branding.stampHeightCm, BRAND_IDENTITY_DEFAULTS.stampHeightCm!)) +
+    signatureBoxCss(
+      ".val-rpt-v3",
+      mm(branding.signatureWidthCm, BRAND_IDENTITY_DEFAULTS.signatureWidthCm!),
+      mm(branding.signatureHeightCm, BRAND_IDENTITY_DEFAULTS.signatureHeightCm!),
+    )
   );
 }
 
@@ -454,6 +522,7 @@ export function prepareValuationReportV3Html(
       valuers: meta.valuers,
     });
   }
+  renumberPages(dom);
   const branding = meta.branding ?? BRAND_IDENTITY_DEFAULTS;
   const valuers = meta.valuers ?? [];
 
@@ -463,11 +532,19 @@ export function prepareValuationReportV3Html(
     applyStampAndSignatures(dom, branding, valuers, origin);
     const stampW = mm(branding.stampWidthCm, BRAND_IDENTITY_DEFAULTS.stampWidthCm!);
     const stampH = mm(branding.stampHeightCm, BRAND_IDENTITY_DEFAULTS.stampHeightCm!);
+    const sigW = mm(
+      branding.signatureWidthCm,
+      BRAND_IDENTITY_DEFAULTS.signatureWidthCm!,
+    );
+    const sigH = mm(
+      branding.signatureHeightCm,
+      BRAND_IDENTITY_DEFAULTS.signatureHeightCm!,
+    );
     const screenCss = scopeCss(authored, ".val-rpt-screen");
     const pages = [...dom.querySelectorAll("section.page.pg")]
       .map((p) => p.outerHTML)
       .join("\n");
-    return `<style>${screenCss}\n${SCREEN_CHROME}\n${stampBoxCss(".val-rpt-screen", stampW, stampH)}</style><div class="val-rpt-screen" dir="rtl">${pages}</div>`;
+    return `<style>${screenCss}\n${SCREEN_CHROME}\n${stampBoxCss(".val-rpt-screen", stampW, stampH)}\n${signatureBoxCss(".val-rpt-screen", sigW, sigH)}</style><div class="val-rpt-screen" dir="rtl">${pages}</div>`;
   }
 
   const brandCss = applyBrandIdentity(dom, branding, valuers, origin);
@@ -477,10 +554,11 @@ export function prepareValuationReportV3Html(
     .join("\n");
   const base = origin ? `<base href="${escHtml(`${origin.replace(/\/$/, "")}/`)}"/>` : "";
 
+  // No fonts.googleapis.com — LAN/HTTP print tabs often hang Chrome's
+  // "Loading preview…" waiting on blocked or slow webfonts.
   return `<!DOCTYPE html><html lang="ar" dir="rtl"><head><meta charset="utf-8"/>
 ${base}
 <title>تقرير التقييم</title>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&family=IBM+Plex+Sans:wght@400;500&display=swap">
 <style>${printCss}\n${brandCss}\n${PRINT_CHROME}</style></head>
 <body class="val-rpt-v3">${pages}</body></html>`;
 }

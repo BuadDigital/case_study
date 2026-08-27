@@ -27,6 +27,19 @@ describe("filterSpecialAssumptionBullets", () => {
       filterSpecialAssumptionBullets(["أ", "ب"], [false, false]),
     ).toEqual([]);
   });
+
+  it("drops the no-specialist library clause when an external specialist is used", () => {
+    const library = [
+      "افتراض ESG",
+      "لم يستعن المقيّم بأي أخصائي أو مؤسسة خدمات أثناء تنفيذ مهمة التقييم، وجميع الإجراءات والتحليلات اللازمة نُفّذت بواسطة فريق العمل بإدارة التقييم.",
+      "ليست زائدة تنظيمية",
+    ];
+    expect(
+      filterSpecialAssumptionBullets(library, [true, true, true], {
+        dropNoSpecialistClause: true,
+      }),
+    ).toEqual(["افتراض ESG", "ليست زائدة تنظيمية"]);
+  });
 });
 
 describe("§29 special assumption live fill", () => {
@@ -82,5 +95,26 @@ describe("§29 special assumption live fill", () => {
     );
     applyValuationReportLiveFill(dom, fill);
     expect(dom.querySelectorAll('[data-sec="29"] li')).toHaveLength(0);
+  });
+
+  it("omits the no-specialist clause from the printed report when a specialist is used", () => {
+    const draft = createEvaluatorDraft({
+      taskId: "t1",
+      propertyId: "p1",
+      poNumber: "PO-1",
+    });
+    const fill = buildValuationReportLiveFill({
+      draft,
+      specialAssumptionLibrary: [
+        "افتراض ESG",
+        "لم يستعن المقيّم بأي أخصائي أو مؤسسة خدمات أثناء تنفيذ مهمة التقييم، وجميع الإجراءات والتحليلات اللازمة نُفّذت بواسطة فريق العمل بإدارة التقييم.",
+        "ليست زائدة تنظيمية",
+      ],
+      externalSpecialistUsed: true,
+    });
+    expect(fill.specialAssumptionBullets).toEqual([
+      "افتراض ESG",
+      "ليست زائدة تنظيمية",
+    ]);
   });
 });

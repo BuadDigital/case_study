@@ -13,22 +13,78 @@ public class MarketApproachRulesTests
     }
 
     [Fact]
-    public void Sum_and_threshold()
+    public void Sum_and_thresholds_match_prototype_spec()
     {
         Assert.Equal(40m, MarketApproachRules.SumIncludedPercents([10m, 30m]));
-        Assert.True(MarketApproachRules.ExceedsLargeAdjustmentThreshold(40m));
+        // مواصفة النموذج التفاعلي: عتبة واحدة ±٣٥٪ — التبرير إلزامي.
+        Assert.True(MarketApproachRules.ExceedsLargeAdjustmentThreshold(36m));
+        Assert.True(MarketApproachRules.ExceedsLargeAdjustmentThreshold(-36m));
         Assert.False(MarketApproachRules.ExceedsLargeAdjustmentThreshold(35m));
     }
 
     [Fact]
-    public void DealAgeMonths_non_negative()
+    public void DealAgeMonths_uses_days_over_30_44()
     {
+        // 91 يوم ≈ 2.99 شهر → 3
         Assert.Equal(
-            14,
-            MarketApproachRules.DealAgeMonths(new DateOnly(2025, 6, 1), new DateOnly(2026, 8, 16)));
+            3,
+            MarketApproachRules.DealAgeMonths(new DateOnly(2026, 1, 1), new DateOnly(2026, 4, 2)));
         Assert.Equal(
             0,
             MarketApproachRules.DealAgeMonths(new DateOnly(2026, 8, 16), new DateOnly(2026, 7, 1)));
+    }
+
+    [Fact]
+    public void RoundMarketValue_nearest_power_of_ten()
+    {
+        Assert.Equal(2_220_000m, MarketOpinionRules.RoundMarketValue(2_217_020m, 4));
+        Assert.Equal(2_217_020m, MarketOpinionRules.RoundMarketValue(2_217_020.4m, 0));
+    }
+
+    [Fact]
+    public void SuggestTransactionTypePct_matches_prototype_kind_defaults()
+    {
+        // KIND_DEFAULT: منفذة ٠ · عرض −٥ · حد −٨ · سوم +٦.
+        Assert.Equal(0m, MarketApproachRules.SuggestTransactionTypePct("executed", null));
+        Assert.Equal(-5m, MarketApproachRules.SuggestTransactionTypePct("offer", null));
+        Assert.Equal(-8m, MarketApproachRules.SuggestTransactionTypePct("offer", "asking"));
+        Assert.Equal(6m, MarketApproachRules.SuggestTransactionTypePct("offer", "som"));
+    }
+
+    [Fact]
+    public void EffectiveSequentialPercent_market_manual_kind_suggested()
+    {
+        // ظروف السوق يدوية — لا اقتراح يحل محل الصفر.
+        Assert.Equal(
+            0m,
+            MarketApproachRules.EffectiveSequentialPercent(
+                MarketAdjustmentFactorKeys.Market, 0m, "", true, 2.5m, -5m));
+        Assert.Equal(
+            3m,
+            MarketApproachRules.EffectiveSequentialPercent(
+                MarketAdjustmentFactorKeys.Market, 3m, "ارتفاع السوق", true, 2.5m, -5m));
+        // نوع المقارن غير المدخل يأخذ الافتراضي المقترح.
+        Assert.Equal(
+            -5m,
+            MarketApproachRules.EffectiveSequentialPercent(
+                MarketAdjustmentFactorKeys.TransactionType, 0m, "", true, 2.5m, -5m));
+        // كتابة المبرر وحدها لا تلغي الافتراضي المقترح — النسبة المدخلة هي المُلغي الوحيد.
+        Assert.Equal(
+            -5m,
+            MarketApproachRules.EffectiveSequentialPercent(
+                MarketAdjustmentFactorKeys.TransactionType, 0m, "عرض موثوق", true, 2.5m, -5m));
+        Assert.Equal(
+            -3m,
+            MarketApproachRules.EffectiveSequentialPercent(
+                MarketAdjustmentFactorKeys.TransactionType, -3m, "", true, 2.5m, -5m));
+    }
+
+    [Fact]
+    public void SuggestMarketConditionsPct_from_annual_rate()
+    {
+        // 4% × 6 / 12 = 2
+        Assert.Equal(2m, MarketApproachRules.SuggestMarketConditionsPct(6));
+        Assert.Equal(0m, MarketApproachRules.SuggestMarketConditionsPct(0));
     }
 
     [Fact]
@@ -38,6 +94,24 @@ public class MarketApproachRulesTests
         Assert.Equal(2, weights.Count);
         Assert.True(weights[0] > weights[1]);
         Assert.True(MarketApproachRules.WeightsSumTo100(weights));
+    }
+
+    [Fact]
+    public void SuggestWeights_quantized_to_five_percent_units()
+    {
+        // مواصفة النموذج التفاعلي: ٢٠ وحدة × ٥٪ بالباقي الأكبر.
+        var weights = MarketApproachRules.SuggestWeights([0m, 0.5m, 12m]);
+        Assert.Equal(100m, weights.Sum());
+        Assert.All(weights, w => Assert.Equal(0m, w % 5m));
+    }
+
+    [Fact]
+    public void SuggestWeights_uses_epsilon_half()
+    {
+        // score0 = 1/(0.5+0)=2; score1 = 1/(0.5+0.5)=1 → 65 أو 70 مقابل 35 أو 30 (وحدات ٥٪)
+        var weights = MarketApproachRules.SuggestWeights([0m, 0.5m]);
+        Assert.True(weights[0] > weights[1]);
+        Assert.Equal(100m, weights.Sum());
     }
 
     [Fact]
@@ -82,10 +156,11 @@ public class MarketApproachRulesTests
         var lines = MarketApproachRules.CreateStandardMarketLines(Guid.NewGuid());
         Assert.Equal(
             MarketAdjustmentFactorKeys.StandardSequential.Length
-                + MarketAdjustmentFactorKeys.StandardDifferenceFactors.Length,
+                + MarketAdjustmentFactorKeys.DefaultDifferenceFactors.Length,
             lines.Count);
         Assert.Contains(lines, l => l.FactorKey == MarketAdjustmentFactorKeys.Location);
         Assert.Contains(lines, l => l.FactorKey == MarketAdjustmentFactorKeys.Financing);
+        Assert.DoesNotContain(lines, l => l.FactorKey == MarketAdjustmentFactorKeys.Zoning);
     }
 
     [Fact]
@@ -109,34 +184,51 @@ public class MarketApproachRulesTests
     [Fact]
     public void Area_adjustment_sign_smaller_comparable_negative()
     {
- // note: المقارن الأصغر يأخذ تسوية سالبة والأكبر موجبة.
-        Assert.True(AreaAdjustmentRules.SuggestPct("multiplier", 400m, 300m) < 0m);
-        Assert.True(AreaAdjustmentRules.SuggestPct("multiplier", 400m, 500m) > 0m);
+        // نسبة ٢ → مضاعف واحد × ٥٪؛ المقارن الأصغر سالب والأكبر موجب
+        Assert.Equal(-5m, AreaAdjustmentRules.SuggestPct("multiplier", 400m, 200m));
+        Assert.Equal(5m, AreaAdjustmentRules.SuggestPct("multiplier", 400m, 800m));
         Assert.Equal(0m, AreaAdjustmentRules.SuggestPct("multiplier", 400m, 400m));
     }
 
     [Fact]
-    public void Renormalize_scales_auto_suggestions_around_manual_overrides()
+    public void Area_multiplier_matches_methodology_table()
     {
- // manual 50% on comp 1; comps 2+3 split the remaining 50 pro-rata.
-        var result = MarketApproachRules.RenormalizeSuggestions(
-            rawSuggestions: [40m, 40m, 20m],
-            isManual: [true, false, false],
-            manualWeights: [50m, 0m, 0m]);
-
-        Assert.Equal(50m, result[0]);
-        Assert.Equal(100m, result.Sum());
- // 40:20 ratio over the 50 remainder → 33.33 / 16.67.
-        Assert.True(Math.Abs(result[1] - 33.33m) < 0.02m);
-        Assert.True(Math.Abs(result[2] - 16.67m) < 0.02m);
+        // مواصفة: نسبة ٤ → log₂=٢ → ١٠٪؛ المقارن الأصغر سالب
+        Assert.Equal(-10m, AreaAdjustmentRules.SuggestPct("multiplier", 900m, 200m));
+        // نسبة ≈١٫٩٩٤ → round(log₂)≈١ → ٥٪
+        Assert.Equal(
+            -5m,
+            AreaAdjustmentRules.SuggestPct("multiplier", 900m, 900m / 1.994m));
+        // نسبة ≈١٫٢٥٦ → round(log₂)≈٠ → ٠٪
+        Assert.Equal(
+            0m,
+            AreaAdjustmentRules.SuggestPct("multiplier", 900m, 900m / 1.256m));
     }
 
     [Fact]
-    public void Renormalize_all_manual_keeps_manual_values()
+    public void Area_amthal_uses_ratio_minus_one()
     {
-        var result = MarketApproachRules.RenormalizeSuggestions(
-            [50m, 50m], [true, true], [60m, 40m]);
-        Assert.Equal(new[] { 60m, 40m }, result);
+        // r = 1.5 → (1.5−1)×٥ = ٢٫٥٪؛ المقارن أكبر → موجب
+        Assert.Equal(2.5m, AreaAdjustmentRules.SuggestPct("amthal", 600m, 900m));
+    }
+
+    [Fact]
+    public void Area_choose_method_table_wide()
+    {
+        // مقارن بنسبة ٤٫٥ يفرض المضاعف على الجميع
+        Assert.Equal(
+            AreaAdjustmentMethods.Multiplier,
+            AreaAdjustmentRules.ChooseMethod(900m, [800m, 600m, 1050m, 200m]));
+        Assert.Equal(
+            AreaAdjustmentMethods.Amthal,
+            AreaAdjustmentRules.ChooseMethod(900m, [800m, 600m, 1050m]));
+    }
+
+    [Fact]
+    public void Area_adjustment_guards_zero_areas()
+    {
+        Assert.Equal(0m, AreaAdjustmentRules.SuggestPct("multiplier", 0m, 500m));
+        Assert.Equal(0m, AreaAdjustmentRules.SuggestPct("multiplier", 400m, 0m));
     }
 
     [Fact]
@@ -151,15 +243,5 @@ public class MarketApproachRulesTests
         Assert.Null(ComparablePropertyRules.PricePerSqmAnomalyNote(9000m, [1000m]));
  // Zero rate always flags.
         Assert.NotNull(ComparablePropertyRules.PricePerSqmAnomalyNote(0m, []));
-    }
-
-    [Fact]
-    public void Area_adjustment_caps_and_guards()
-    {
- // Negative side approaches −10 asymptotically (ratio → 0 ⇒ raw → −10).
-        Assert.Equal(-9m, AreaAdjustmentRules.SuggestPct("amthal", 400m, 40m));
-        Assert.Equal(10m, AreaAdjustmentRules.SuggestPct("amthal", 100m, 1000m));
-        Assert.Equal(0m, AreaAdjustmentRules.SuggestPct("multiplier", 0m, 500m));
-        Assert.Equal(0m, AreaAdjustmentRules.SuggestPct("multiplier", 400m, 0m));
     }
 }

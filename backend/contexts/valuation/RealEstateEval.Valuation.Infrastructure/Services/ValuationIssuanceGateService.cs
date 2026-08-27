@@ -67,7 +67,14 @@ public sealed class ValuationIssuanceGateService(
             }
         }
 
-        var market = await selections.ListAsync(valuationRequestId, cancellationToken);
+        var market = await selections.ListAsync(
+            valuationRequestId,
+            ComparableSelectionContexts.Market,
+            cancellationToken);
+        var landWithinCost = await selections.ListAsync(
+            valuationRequestId,
+            ComparableSelectionContexts.LandWithinCost,
+            cancellationToken);
         var cost = await costApproach.GetAsync(valuationRequestId, cancellationToken);
         var recon = await reconciliation.GetAsync(valuationRequestId, cancellationToken);
         var hasReconSaved = !string.IsNullOrWhiteSpace(recon?.MethodsRationale)
@@ -80,8 +87,12 @@ public sealed class ValuationIssuanceGateService(
  // (bare land defaults it off; land with structures keeps it available).
         var approachSettings = await valuation.ValuationApproachSettings.AsNoTracking()
             .FirstOrDefaultAsync(x => x.ValuationRequestId == valuationRequestId, cancellationToken);
+        var marketApproachEnabled = approachSettings?.MarketApproachEnabled ?? true;
         var costApproachEnabled = approachSettings?.CostApproachEnabled
             ?? ValuationApproachSettingsRules.CanEnableCostApproach(vr.PropertyType, hasStructures);
+        // نطاق «مبنى فقط»: قسم الأرض مخفي — بواباته لا تنطبق.
+        var costLandRelevant = costApproachEnabled
+            && !CostScopeKeys.IsBuildingOnly(approachSettings?.CostScopeKey);
 
         var checks = new List<ValuationIssuanceGateCheck>
         {
@@ -99,10 +110,31 @@ public sealed class ValuationIssuanceGateService(
                     .ToList(),
                 today),
             ValuationIssuanceGateRules.DeedNatureMatch(deedKind, matchOutcome),
-            ValuationIssuanceGateRules.MinAdoptedComparables(market?.AdoptedCount ?? 0),
-            ValuationIssuanceGateRules.ComparableWeights(
-                market?.WeightsSumTo100 ?? true,
+            ValuationIssuanceGateRules.MinAdoptedComparablesForApproach(
+                "market",
+                "مقارنات أسلوب السوق",
+                marketApproachEnabled,
                 market?.AdoptedCount ?? 0),
+            ValuationIssuanceGateRules.MinAdoptedComparablesForApproach(
+                "land_within_cost",
+                "مقارنات الأرض ضمن التكلفة",
+                costLandRelevant,
+                landWithinCost?.AdoptedCount ?? 0),
+            ValuationIssuanceGateRules.CostLandEstimateComplete(
+                costLandRelevant,
+                cost?.LandEstimateComplete == true),
+            ValuationIssuanceGateRules.ComparableWeights(
+                "market",
+                "أوزان مقارنات أسلوب السوق = 100٪",
+                marketApproachEnabled,
+                market?.WeightsSumTo100 ?? true,
+                marketApproachEnabled ? market?.AdoptedCount ?? 0 : 0),
+            ValuationIssuanceGateRules.ComparableWeights(
+                "land_within_cost",
+                "أوزان مقارنات الأرض ضمن التكلفة = 100٪",
+                costLandRelevant,
+                landWithinCost?.WeightsSumTo100 ?? true,
+                costLandRelevant ? landWithinCost?.AdoptedCount ?? 0 : 0),
             ValuationIssuanceGateRules.ReconciliationWeights(
                 hasReconSaved,
                 recon?.WeightsSumTo100 ?? false),

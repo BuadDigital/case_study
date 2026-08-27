@@ -1,4 +1,5 @@
 import { getApiBase } from "./index";
+import { repositoryFetch as fetch } from "./write-repository";
 
 /** Decision 20 — grouped-property linking (العقار المجمع). */
 export type PropertyGroupMemberDto = {

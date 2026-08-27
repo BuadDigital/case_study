@@ -1,10 +1,11 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   getApiBase,
   getValuationLists,
   VALUATION_REPORT_HTML_DEFAULTS as REPORT_DEFAULTS,
+  isNoExternalSpecialistAssumption,
   type OrganizationSettingsDto,
   type ValuationListItemDto,
   type ValuationListsDto,
@@ -34,7 +35,6 @@ import {
   seedReportChoicesFromAssignment,
 } from "../../lib/evaluator/evaluator-window-data";
 import { basisOfValueLabelArForAssignment } from "@platform/app-shared/prototype/assignment-valuation-defaults";
-import { EvaluatorLinkedComparablesBlock } from "./EvaluatorLinkedComparablesBlock";
 import dynamic from "next/dynamic";
 import { inspectionFactChips } from "./EvaluatorInspectionFactsSection";
 import { computePropertyTotal } from "../../lib/evaluator/value-estimation";
@@ -225,6 +225,7 @@ export function EvaluatorValuationReportTab({
   );
   const [primaryPhoto, setPrimaryPhoto] =
     useState<PropertyDetailDocumentEntry | null>(null);
+  const [specialistUsed, setSpecialistUsed] = useState(false);
   const { data: record } = usePoRecordQuery(draft.poNumber);
 
   const choices = draft.reportChoices ?? emptyReportChoices();
@@ -275,7 +276,10 @@ export function EvaluatorValuationReportTab({
   const bases = enabledList(lists?.lists, "valueBases");
   const methods = enabledList(lists?.lists, "methods");
   const attachments = enabledList(lists?.lists, "attachments");
-  const specials = vr.specialAssumptionLibrary.filter((x) => x.trim());
+  const specials = useMemo(
+    () => vr.specialAssumptionLibrary.filter((x) => x.trim()),
+    [vr.specialAssumptionLibrary],
+  );
   const assumptionOn =
     choices.specialAssumptionOn.length >= specials.length
       ? choices.specialAssumptionOn
@@ -305,6 +309,21 @@ export function EvaluatorValuationReportTab({
     [bases, choices, methods, onChange],
   );
 
+  const specialistUsedRef = useRef(false);
+  useEffect(() => {
+    const wasUsed = specialistUsedRef.current;
+    specialistUsedRef.current = specialistUsed;
+    if (specials.length === 0) return;
+    const next = specials.map((item, i) => {
+      if (!isNoExternalSpecialistAssumption(item)) return assumptionOn[i] ?? true;
+      if (specialistUsed) return false;
+      if (wasUsed) return true;
+      return assumptionOn[i] ?? true;
+    });
+    const unchanged = next.every((v, i) => v === (assumptionOn[i] ?? true));
+    if (!unchanged) patch({ specialAssumptionOn: next });
+  }, [assumptionOn, patch, specialistUsed, specials]);
+
   const patchValues = useCallback(
     (partial: {
       landValue?: string;
@@ -326,6 +345,14 @@ export function EvaluatorValuationReportTab({
       onDraftPatch?.(next);
     },
     [draft.buildingValue, draft.landValue, onDraftPatch],
+  );
+
+  const syncFinalOpinion = useCallback(
+    (value: number) => {
+      if (!onDraftPatch || !Number.isFinite(value) || value <= 0) return;
+      onDraftPatch({ evaluatorPrice: String(Math.round(value)) });
+    },
+    [onDraftPatch],
   );
 
   useEffect(() => {
@@ -353,6 +380,27 @@ export function EvaluatorValuationReportTab({
     });
   }, [choices, draft.valueBasis, patch, record]);
 
+  // Seed report method keys from lists when empty — approaches are chosen in ValuationWorkShell.
+  useEffect(() => {
+    if (disabled || !methods.length) return;
+    const marketDefault = methodsForApproach(methods, "أسلوب السوق")[0]?.key;
+    const costDefault = methodsForApproach(methods, "أسلوب التكلفة")[0]?.key;
+    const next: Partial<EvaluatorReportChoices> = {};
+    if (!choices.marketMethodKey && marketDefault) {
+      next.marketMethodKey = marketDefault;
+    }
+    if (!choices.costMethodKey && costDefault) {
+      next.costMethodKey = costDefault;
+    }
+    if (Object.keys(next).length) patch(next);
+  }, [
+    choices.costMethodKey,
+    choices.marketMethodKey,
+    disabled,
+    methods,
+    patch,
+  ]);
+
   if (loading) {
     return (
       <div className="flex items-center justify-center gap-2 py-16 text-text-3">
@@ -362,19 +410,10 @@ export function EvaluatorValuationReportTab({
     );
   }
 
-  const methodOpts = (approach: string) => [
-    { value: UNUSED, label: "غير مستخدم" },
-    ...methodsForApproach(methods, approach).map((m) => ({
-      value: m.key,
-      label: m.name,
-    })),
-  ];
   const noteClassName = "mb-2 text-[11px] leading-relaxed text-text-3";
   const inspectionChips = inspectionFactChips(inspector);
-  const marketOn = approachUsed(choices.marketMethodKey);
-  const costOn = approachUsed(choices.costMethodKey);
   const incomeOn = approachUsed(choices.incomeMethodKey);
-  const showWorkPanel = marketOn || costOn;
+  const showWorkPanel = Boolean(property?.id);
   const liquidation = choices.valueBasisKey === "liquidation";
   const err = (key: string) => fieldErrors?.[key];
 
@@ -404,63 +443,37 @@ export function EvaluatorValuationReportTab({
         ) : null}
       </div>
 
-      <ValCard title="أسلوب وطريقة التقييم المستخدمة">
-        <p className={noteClassName}>
-          اختيار المقيم. حقائق المعاينة والحصر وأمر العمل أعلاه معلومات — لا تُعاد كتابتها.
-        </p>
-        <ValFieldsGrid min={180}>
-          <div className="min-w-0">
-            <div className={valLabelClassName}>أسلوب السوق</div>
-            <Pick
-              disabled={disabled}
-              value={choices.marketMethodKey}
-              onChange={(marketMethodKey) => patch({ marketMethodKey })}
-              options={methodOpts("أسلوب السوق")}
-            />
-          </div>
-          <div className="min-w-0">
-            <div className={valLabelClassName}>أسلوب التكلفة</div>
-            <Pick
-              disabled={disabled}
-              value={choices.costMethodKey}
-              onChange={(costMethodKey) => patch({ costMethodKey })}
-              options={methodOpts("أسلوب التكلفة")}
-            />
-          </div>
-          <div className="min-w-0">
-            <div className={valLabelClassName}>أسلوب الدخل</div>
-            <Pick
-              disabled={disabled}
-              value={choices.incomeMethodKey}
-              onChange={(incomeMethodKey) => patch({ incomeMethodKey })}
-              options={methodOpts("أسلوب الدخل")}
-            />
-          </div>
-        </ValFieldsGrid>
-      </ValCard>
-
-      <ValCard title="العقارات المقارنة">
-        <p className={noteClassName}>
-          ربط الأخصائي — للعلم. الاعتماد والتسويات وأسعار التكلفة في اللوحة أدناه عند استخدام
-          أسلوب السوق أو التكلفة.
-        </p>
-        <EvaluatorLinkedComparablesBlock propertyId={property?.id} />
-      </ValCard>
-
       {showWorkPanel && property?.id ? (
-        <ValCard title="اعتماد المقارنات وأسلوب التكلفة">
-          <p className={noteClassName}>
-            عمل المقيم: اعتماد المقارن، التسويات، بنود التكلفة والإهلاك. الخريطة وجدول
-            التسويات يُولَّدان هنا وعند طباعة التقرير.
-          </p>
+        <div className="mb-6">
           <EvaluatorComparableSelectionPanel
             propertyId={property.id}
             poNumber={draft.poNumber}
             assignmentType={assignmentType ?? undefined}
             districtHint={property.district}
+            property={{
+              area: property.area,
+              district: property.district,
+              city: property.city,
+              deedNumber: property.deedNumber,
+              propertyType: property.propertyType,
+              classification: property.classification,
+            }}
+            onFinalOpinionChange={syncFinalOpinion}
+            onExternalSpecialistUsedChange={setSpecialistUsed}
           />
-        </ValCard>
+        </div>
       ) : null}
+
+      <div
+        className="mb-4 mt-6 flex items-center gap-2.5"
+        aria-label="حقول تقرير التقييم"
+      >
+        <span className="h-[17px] w-[3px] rounded-full bg-gold" aria-hidden />
+        <h3 className="m-0 text-[14px] font-extrabold text-heading">
+          حقول التقرير والسرد
+        </h3>
+        <span className="flex-1 border-t border-border" aria-hidden />
+      </div>
 
       {incomeOn ? (
         <ValCard title="أسلوب الدخل">
@@ -532,18 +545,6 @@ export function EvaluatorValuationReportTab({
         />
       </ValCard>
 
-      <ValCard title="ترجيح أساليب التقييم">
-        <p className={noteClassName}>المبرر يُطبع في التقرير. الأوزان تُحفظ مع الترجيح في لوحة العمل.</p>
-        <textarea
-          className={cn(valInputClassName, "min-h-[88px] resize-y")}
-          disabled={disabled}
-          rows={3}
-          placeholder="مبرر استخدام طرق التقييم"
-          value={choices.methodsRationale}
-          onChange={(e) => patch({ methodsRationale: e.target.value })}
-        />
-      </ValCard>
-
       <ValCard title="نطاق البحث">
         <p className={noteClassName}>
           النقاط الثابتة من إعدادات التقرير. أضف ملاحظات خاصة بهذه المعاملة إن وُجدت.
@@ -560,41 +561,12 @@ export function EvaluatorValuationReportTab({
         />
       </ValCard>
 
-      <ValCard title="القيمة النهائية للعقار">
-        <p className={noteClassName}>رأي المقيم. المجموع يُحدَّث من الأرض والمباني إن وُجدت.</p>
+      <ValCard title="رأي القيمة عند التسليم">
+        <p className={noteClassName}>
+          يُملأ تلقائياً من شاشة «رأي القيمة النهائي» أعلاه. عدّله هنا فقط إن لزم قبل
+          الإرسال.
+        </p>
         <ValFieldsGrid min={160}>
-          <div className="min-w-0">
-            <label className={valLabelClassName} htmlFor="inf-land">
-              قيمة الأرض (ر.س.)
-            </label>
-            <input
-              id="inf-land"
-              className={cn(valInputClassName, err("land_value") && invalidControlClass)}
-              disabled={disabled}
-              dir="ltr"
-              value={draft.landValue}
-              onChange={(e) => patchValues({ landValue: e.target.value })}
-            />
-            {err("land_value") ? (
-              <p className="mt-1 text-[11px] text-danger-text">{err("land_value")}</p>
-            ) : null}
-          </div>
-          <div className="min-w-0">
-            <label className={valLabelClassName} htmlFor="inf-building">
-              قيمة المباني (ر.س.)
-            </label>
-            <input
-              id="inf-building"
-              className={cn(valInputClassName, err("building_value") && invalidControlClass)}
-              disabled={disabled}
-              dir="ltr"
-              value={draft.buildingValue}
-              onChange={(e) => patchValues({ buildingValue: e.target.value })}
-            />
-            {err("building_value") ? (
-              <p className="mt-1 text-[11px] text-danger-text">{err("building_value")}</p>
-            ) : null}
-          </div>
           <div className="min-w-0">
             <label className={valLabelClassName} htmlFor="inf-total">
               رأي القيمة (ر.س.)
@@ -641,24 +613,28 @@ export function EvaluatorValuationReportTab({
 
       <ValCard title="الافتراضات الخاصة">
         <p className={noteClassName}>أزل العبارة التي لا تصح على هذا العقار. يُطبع المُبقى فقط.</p>
-        <ul className="m-0 flex list-none flex-col gap-2 p-0">
-          {specials.map((item, i) => (
-            <li key={i}>
-              <label className="flex items-start gap-2 text-[12.5px] text-text">
-                <input
-                  type="checkbox"
-                  disabled={disabled}
-                  checked={assumptionOn[i] ?? true}
-                  onChange={(e) => {
-                    const next = [...assumptionOn];
-                    next[i] = e.target.checked;
-                    patch({ specialAssumptionOn: next });
-                  }}
-                />
-                <span>{item}</span>
-              </label>
-            </li>
-          ))}
+        <ul className="m-0 list-none overflow-hidden rounded-[var(--radius)] border border-border p-0">
+          {specials.map((item, i) => {
+            if (specialistUsed && isNoExternalSpecialistAssumption(item)) return null;
+            return (
+              <li key={i} className="border-b border-border last:border-b-0">
+                <label className="flex cursor-pointer items-start gap-2.5 bg-surface px-3 py-2.5 text-[12.5px] leading-relaxed text-text transition-colors hover:bg-row-hover">
+                  <input
+                    type="checkbox"
+                    className="mt-0.5 size-4 shrink-0 cursor-pointer accent-[var(--ink)]"
+                    disabled={disabled}
+                    checked={assumptionOn[i] ?? true}
+                    onChange={(e) => {
+                      const next = [...assumptionOn];
+                      next[i] = e.target.checked;
+                      patch({ specialAssumptionOn: next });
+                    }}
+                  />
+                  <span>{item}</span>
+                </label>
+              </li>
+            );
+          })}
         </ul>
       </ValCard>
 
@@ -709,9 +685,10 @@ export function EvaluatorValuationReportTab({
         <p className={noteClassName}>اختر المرفق ليُطبع — من قائمة مرفقات التقرير.</p>
         <div className="flex flex-col gap-2">
           {attachments.map((row) => (
-            <label key={row.id} className="flex items-center gap-2 text-[12px] text-text">
+            <label key={row.id} className="flex cursor-pointer items-center gap-2.5 text-[12.5px] text-text">
               <input
                 type="checkbox"
+                className="size-4 shrink-0 cursor-pointer accent-[var(--ink)]"
                 disabled={disabled}
                 checked={choices.printAttachmentKeys.includes(row.key)}
                 onChange={(e) => {

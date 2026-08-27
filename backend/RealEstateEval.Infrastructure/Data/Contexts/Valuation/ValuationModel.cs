@@ -104,12 +104,15 @@ internal static class ValuationModel
         {
             e.ToTable("ValuationComparableSelections", DatabaseSchemas.Valuation);
             e.Property(x => x.SelectedByUserId).HasMaxLength(128);
+            e.Property(x => x.SelectionContext).HasMaxLength(32).IsRequired();
             e.Property(x => x.WeightPct).HasPrecision(9, 4);
             e.Property(x => x.WeightOverrideRationale).HasMaxLength(2000);
             e.Property(x => x.AreaAdjustmentMethod).HasMaxLength(32).IsRequired();
-            e.HasIndex(x => new { x.ValuationRequestId, x.ComparablePropertyId })
+            e.Property(x => x.PriceOverrideSar).HasPrecision(18, 2);
+            e.Property(x => x.AreaOverrideSqm).HasPrecision(18, 2);
+            e.HasIndex(x => new { x.ValuationRequestId, x.ComparablePropertyId, x.SelectionContext })
                 .IsUnique()
-                .HasDatabaseName("IX_ValuationComparableSelections_Request_Comp");
+                .HasDatabaseName("IX_ValuationComparableSelections_Request_Comp_Context");
             e.HasIndex(x => x.ValuationRequestId);
             e.HasOne(x => x.ValuationRequest)
                 .WithMany()
@@ -132,6 +135,7 @@ internal static class ValuationModel
             e.Property(x => x.LabelAr).HasMaxLength(128).IsRequired();
             e.Property(x => x.Percent).HasPrecision(9, 4);
             e.Property(x => x.Rationale).HasMaxLength(2000);
+            e.Property(x => x.DescriptionAr).HasMaxLength(500);
             e.HasIndex(x => x.SelectionId);
         });
 
@@ -140,7 +144,11 @@ internal static class ValuationModel
             e.ToTable("ValuationMarketApproaches", DatabaseSchemas.Valuation);
             e.Property(x => x.SubjectAreaSqm).HasPrecision(18, 2);
             e.Property(x => x.AdjustmentBasis).HasMaxLength(32).IsRequired();
+            e.Property(x => x.AreaFactorPct).HasPrecision(9, 4);
+            e.Property(x => x.AnnualMarketRatePct).HasPrecision(9, 4);
+            e.Property(x => x.ValueRoundDecimals);
             e.Property(x => x.AnalysisNotes).HasMaxLength(4000);
+            e.Property(x => x.SubjectSpecJson).HasMaxLength(4000);
             e.HasIndex(x => x.ValuationRequestId).IsUnique();
             e.HasOne(x => x.ValuationRequest)
                 .WithMany()
@@ -152,6 +160,10 @@ internal static class ValuationModel
         {
             e.ToTable("ValuationApproachSettings", DatabaseSchemas.Valuation);
             e.Property(x => x.CostBasisKey).HasMaxLength(32).IsRequired();
+            e.Property(x => x.CostScopeKey)
+                .HasMaxLength(32)
+                .IsRequired()
+                .HasDefaultValue(CostScopeKeys.LandAndBuilding);
             e.Property(x => x.CostMeasurementUnitKey).HasMaxLength(32).IsRequired();
             e.Property(x => x.ValuationPurposeKey).HasMaxLength(32);
             e.Property(x => x.ValuationPurposeNote).HasMaxLength(2000);

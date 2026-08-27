@@ -100,6 +100,12 @@ public sealed class OrganizationSettingsService : IOrganizationSettingsService
             throw new ArgumentOutOfRangeException(nameof(v.MaxAdoptedComparables), "الحد الأقصى للمقارنات المعتمدة يجب أن يكون بين 1 و 20.");
         if (v.ComparableTimeGapMonths is < 1 or > 60)
             throw new ArgumentOutOfRangeException(nameof(v.ComparableTimeGapMonths), "عتبة الفارق الزمني يجب أن تكون بين 1 و 60 شهراً.");
+        if (v.AreaFactorPct is < 0.1m or > 50m)
+            throw new ArgumentOutOfRangeException(nameof(v.AreaFactorPct), "معامل المساحة يجب أن يكون بين 0.1 و 50٪.");
+        if (v.AnnualMarketRatePct is < 0m or > 50m)
+            throw new ArgumentOutOfRangeException(nameof(v.AnnualMarketRatePct), "معدل تغير السوق السنوي يجب أن يكون بين 0 و 50٪.");
+        if (v.MarketValueRoundDecimals is < 0 or > 6)
+            throw new ArgumentOutOfRangeException(nameof(v.MarketValueRoundDecimals), "أسّ تقريب قيمة السوق يجب أن يكون بين 0 و 6.");
     }
 
     private static void ValidateBranding(OrganizationBrandingSettingsDto b)
@@ -115,6 +121,10 @@ public sealed class OrganizationSettingsService : IOrganizationSettingsService
             throw new ArgumentOutOfRangeException(nameof(b.StampWidthCm), "عرض الختم يجب أن يكون بين 0.5 و 20 سم.");
         if (b.StampHeightCm is > 0 and (< 0.5m or > 20m))
             throw new ArgumentOutOfRangeException(nameof(b.StampHeightCm), "ارتفاع الختم يجب أن يكون بين 0.5 و 20 سم.");
+        if (b.SignatureWidthCm is > 0 and (< 0.5m or > 20m))
+            throw new ArgumentOutOfRangeException(nameof(b.SignatureWidthCm), "عرض التوقيع يجب أن يكون بين 0.5 و 20 سم.");
+        if (b.SignatureHeightCm is > 0 and (< 0.5m or > 20m))
+            throw new ArgumentOutOfRangeException(nameof(b.SignatureHeightCm), "ارتفاع التوقيع يجب أن يكون بين 0.5 و 20 سم.");
         Mm(b.LetterheadHeadMm, "الهامش الأعلى", 297);
         Mm(b.LetterheadFootTopMm, "الهامش الأسفل", 297);
         Mm(b.LetterheadPadMm, "الهامش الأيسر", 210);

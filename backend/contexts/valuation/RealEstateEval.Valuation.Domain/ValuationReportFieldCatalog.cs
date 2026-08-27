@@ -236,7 +236,7 @@ public static class ValuationReportFieldCatalog
         new("adj.40061", "تسوية الأرض -  سعر متر الأرض بالنسبة للمقارنات 2", ValuationReportFieldSourceKind.Computed, ValuationReportFieldValueType.Percent, "خلية تسوية مسطّحة — تُسطَّح من بنك المقارنات لاحقًا"),
         new("adj.40063", "تسوية الأرض -  سعر متر الأرض بالنسبة للمقارنات 4", ValuationReportFieldSourceKind.Computed, ValuationReportFieldValueType.Percent, "خلية تسوية مسطّحة — تُسطَّح من بنك المقارنات لاحقًا"),
         new("adj.40065", "تسوية الأرض -  سعر متر الأرض بالنسبة للمقارنات 6", ValuationReportFieldSourceKind.Computed, ValuationReportFieldValueType.Percent, "خلية تسوية مسطّحة — تُسطَّح من بنك المقارنات لاحقًا"),
-        new("cost.land_value_from_market", "قيمة الارض بطرقية التسوية", ValuationReportFieldSourceKind.Computed, ValuationReportFieldValueType.Money, "من رأي السوق"),
+        new("cost.land_value_from_market", "قيمة الأرض من مقارنات الأراضي الفضاء", ValuationReportFieldSourceKind.Computed, ValuationReportFieldValueType.Money, "من جدول land_within_cost ضمن أسلوب التكلفة"),
         new("pending.50016", "ملاحظات العيوب 2", ValuationReportFieldSourceKind.Deferred, ValuationReportFieldValueType.Text, "لم يُربط بعد"),
         new("pending.50017", "ملاحظات العيوب 3", ValuationReportFieldSourceKind.Deferred, ValuationReportFieldValueType.Text, "لم يُربط بعد"),
         new("comp1.transaction_date", "تاريخ البيع 1 - عروض بيع لأراضي مماثلة", ValuationReportFieldSourceKind.Platform, ValuationReportFieldValueType.Date, null),

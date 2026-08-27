@@ -13,6 +13,8 @@ export type OrganizationCompanySettings = {
   address?: string | null;
   commercialRegistration?: string | null;
   practiceLicenseNumber?: string | null;
+  /** ISO date — إصدار ترخيص مزاولة المنشأة. */
+  practiceLicenseIssuedAt?: string | null;
   practiceLicenseExpiresAt?: string | null;
   certifiedValuerId?: string | null;
   email?: string | null;
@@ -26,6 +28,7 @@ export const ORG_COMPANY_DEFAULTS: OrganizationCompanySettings = {
   commercialRegistration: "1010456789",
   taxNumber: "310123456700003",
   practiceLicenseNumber: "1302",
+  practiceLicenseIssuedAt: "2022-03-10",
   practiceLicenseExpiresAt: "2027-03-10",
   certifiedValuerId: "certified",
   address: "الرياض — حي الصحافة، طريق الملك فهد، مبنى 7443",
@@ -65,10 +68,10 @@ export const VALUER_ROSTER_MEMBERSHIP_OPTIONS = [
 
 /** الدور في النظام — صلاحية المنشأة، لا صفة الهيئة. */
 export const VALUER_SYS_ROLES = [
-  { value: "certified", label: "معتمد" },
+  { value: "certified", label: "مقيم معتمد" },
   { value: "valuer", label: "مقيم عقاري" },
   { value: "reviewer", label: "مقيم عقاري مراجع" },
-  { value: "assistant", label: "مساعد" },
+  { value: "assistant", label: "مساعد مقيم" },
 ] as const;
 
 /** بيانات المقيم المعتمد — المصدر: الإعدادات v2.dc.html `cv`. */
@@ -158,6 +161,9 @@ export type OrganizationBrandingSettings = {
   logoWhiteUrl?: string | null;
   stampWidthCm?: number | null;
   stampHeightCm?: number | null;
+  /** Signature size on A4 (cm) — approval / participants tables. */
+  signatureWidthCm?: number | null;
+  signatureHeightCm?: number | null;
   letterheadHeadMm?: number | null;
   letterheadFootTopMm?: number | null;
   letterheadPadMm?: number | null;
@@ -182,7 +188,9 @@ export const BRAND_IDENTITY_DEFAULTS: OrganizationBrandingSettings = {
   logoColorUrl: "/case-study/logo.svg",
   logoWhiteUrl: "/case-study/logo-sidebar.svg",
   stampWidthCm: 4,
-  stampHeightCm: 4,
+  stampHeightCm: 2,
+  signatureWidthCm: 4,
+  signatureHeightCm: 2,
   letterheadHeadMm: 41,
   letterheadFootTopMm: 270,
   letterheadPadMm: 17,
@@ -222,6 +230,12 @@ export type OrganizationValuationSettings = {
   maxAdoptedComparables: number;
   /** ق-4: عتبة الفارق الزمني بالأشهر لتنبيه تسوية الزمن (m20). */
   comparableTimeGapMonths: number;
+  /** معامل تسوية المساحة ٪ (منطق-التسويات). */
+  areaFactorPct: number;
+  /** معدل تغير السوق السنوي ٪ لاقتراح ظروف السوق. */
+  annualMarketRatePct: number;
+  /** أسّ تقريب قيمة السوق (١٠^ن) — منطق-التسويات. */
+  marketValueRoundDecimals: number;
 };
 
 /** تبويب «تقرير التقييم» (القرار 25 طبقة ب) — ثوابت ونصوص تُعبَّأ مرة. */
@@ -323,6 +337,13 @@ export const VALUATION_REPORT_HTML_DEFAULTS: OrganizationValuationReportSettings
     "تم افتراض عدم وجود إيقاف على تراخيص البناء على العقار المراد تقييمه.",
   ],
 };
+
+/** Matches the org-library clause and the shorter backend denial. */
+const NO_EXTERNAL_SPECIALIST_ASSUMPTION_MARKER = "لم يستعن المقيّم بأي أخصائي";
+
+export function isNoExternalSpecialistAssumption(text: string): boolean {
+  return text.replace(/\s+/g, " ").trim().includes(NO_EXTERNAL_SPECIALIST_ASSUMPTION_MARKER);
+}
 
 export function applyIvsDateToStandards(text: string, ivsDate: string): string {
   const date = ivsDate.trim() || "31 يناير 2025";
@@ -497,6 +518,7 @@ function normalizeSettings(raw: Record<string, unknown>): OrganizationSettingsDt
       address: (company.address ?? company.Address ?? null) as string | null,
       commercialRegistration: (company.commercialRegistration ?? company.CommercialRegistration ?? null) as string | null,
       practiceLicenseNumber: (company.practiceLicenseNumber ?? company.PracticeLicenseNumber ?? null) as string | null,
+      practiceLicenseIssuedAt: (company.practiceLicenseIssuedAt ?? company.PracticeLicenseIssuedAt ?? null) as string | null,
       practiceLicenseExpiresAt: (company.practiceLicenseExpiresAt ?? company.PracticeLicenseExpiresAt ?? null) as string | null,
       certifiedValuerId: (company.certifiedValuerId ?? company.CertifiedValuerId ?? null) as string | null,
       email: (company.email ?? company.Email ?? null) as string | null,
@@ -528,6 +550,14 @@ function normalizeSettings(raw: Record<string, unknown>): OrganizationSettingsDt
       logoWhiteUrl: (branding.logoWhiteUrl ?? branding.LogoWhiteUrl ?? null) as | string | null,
       stampWidthCm: numOr( branding.stampWidthCm ?? branding.StampWidthCm, BRAND_IDENTITY_DEFAULTS.stampWidthCm! ),
       stampHeightCm: numOr( branding.stampHeightCm ?? branding.StampHeightCm, BRAND_IDENTITY_DEFAULTS.stampHeightCm! ),
+      signatureWidthCm: numOr(
+        branding.signatureWidthCm ?? branding.SignatureWidthCm,
+        BRAND_IDENTITY_DEFAULTS.signatureWidthCm!,
+      ),
+      signatureHeightCm: numOr(
+        branding.signatureHeightCm ?? branding.SignatureHeightCm,
+        BRAND_IDENTITY_DEFAULTS.signatureHeightCm!,
+      ),
       letterheadHeadMm: numOr( branding.letterheadHeadMm ?? branding.LetterheadHeadMm, BRAND_IDENTITY_DEFAULTS.letterheadHeadMm! ),
       letterheadFootTopMm: numOr( branding.letterheadFootTopMm ?? branding.LetterheadFootTopMm, BRAND_IDENTITY_DEFAULTS.letterheadFootTopMm! ),
       letterheadPadMm: numOr( branding.letterheadPadMm ?? branding.LetterheadPadMm, BRAND_IDENTITY_DEFAULTS.letterheadPadMm! ),
@@ -556,6 +586,17 @@ function normalizeSettings(raw: Record<string, unknown>): OrganizationSettingsDt
       ),
       comparableTimeGapMonths: Number(
         valuation.comparableTimeGapMonths ?? valuation.ComparableTimeGapMonths ?? 6,
+      ),
+      areaFactorPct: Number(
+        valuation.areaFactorPct ?? valuation.AreaFactorPct ?? 5,
+      ),
+      annualMarketRatePct: Number(
+        valuation.annualMarketRatePct ?? valuation.AnnualMarketRatePct ?? 4,
+      ),
+      marketValueRoundDecimals: Number(
+        valuation.marketValueRoundDecimals ??
+          valuation.MarketValueRoundDecimals ??
+          4,
       ),
     },
     valuationReport: normalizeValuationReport(
