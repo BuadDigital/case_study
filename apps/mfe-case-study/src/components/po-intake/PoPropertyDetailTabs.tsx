@@ -152,11 +152,7 @@ function docExtLabel(doc: PropertyDetailDocumentEntry): string {
   return ext.slice(0, 4) || "DOC";
 }
 
-function DocumentRow({
-  doc,
-}: {
-  doc: PropertyDetailDocumentEntry;
-}) {
+function DocumentRow({ doc }: { doc: PropertyDetailDocumentEntry }) {
   const ext = docExtLabel(doc);
 
   return (
@@ -225,7 +221,8 @@ function DocumentsTab({
       ))}
       <p className="m-0 text-[11.5px] text-text-3">
         تُرفع المستندات من كل طرف تحت قسمه — التقرير المساحي من المكتب الهندسي
-        عند إصداره، وتقرير المعاينة عند اكتمالها.
+        عند إصداره، وتقرير المعاينة عند اكتمالها. مرفقات التقرير يحدّدها الأخصائي
+        من تبويب تقييم العقار.
       </p>
     </>
   );

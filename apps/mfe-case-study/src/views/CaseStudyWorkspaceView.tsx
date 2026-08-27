@@ -12,6 +12,7 @@ import {
 } from "@platform/ui-kit";
 import { CaseStudyForm } from "../components/case-study/CaseStudyForm";
 import { CaseStudyPropertyComparablesTab } from "../components/case-study/CaseStudyPropertyComparablesTab";
+import { SpecialistValuationReportInputs } from "../components/po-intake/SpecialistValuationReportInputs";
 import { PropertyDetailHero } from "../components/po-intake/PropertyDetailHero";
 import { PropertyTransactionTimeline } from "../components/po-intake/PropertyTransactionTimeline";
 import { usePrototype } from "@platform/app-shared/contexts/PrototypeContext";
@@ -24,6 +25,7 @@ import {
   usePoRecordQuery,
   useWorkflowTasksQuery,
 } from "../query/case-study-queries";
+import { usePropertyDetailDocuments } from "../query/property-detail-documents-query";
 
 export type CaseStudyWorkspacePartiesExtrasProps = {
   task: WorkflowTask;
@@ -41,6 +43,64 @@ function caseStudyWorkspaceFallbackPath(task: WorkflowTask | null): string {
   return activeCaseStudyPath();
 }
 
+function relatedTaskId(
+  tasks: WorkflowTask[],
+  propertyId: string,
+  kind: WorkflowTask["kind"],
+): string | null {
+  return (
+    tasks.find((t) => t.propertyId === propertyId && t.kind === kind)?.id ??
+    null
+  );
+}
+
+function CaseStudyAppraisalPanel({
+  property,
+  poNumber,
+  tasks,
+}: {
+  property: NonNullable<ReturnType<typeof findPropertyForTask>>;
+  poNumber: string;
+  tasks: WorkflowTask[];
+}) {
+  const surveyTaskId = relatedTaskId(tasks, property.id, "engineering-survey");
+  const appraisalTaskId = relatedTaskId(
+    tasks,
+    property.id,
+    "property-appraisal",
+  );
+  const inspectionTaskId = relatedTaskId(
+    tasks,
+    property.id,
+    "field-inspection",
+  );
+  const propertyDocumentSections = usePropertyDetailDocuments({
+    property,
+    showDecree: true,
+    poNumber,
+    surveyTaskId,
+    appraisalTaskId,
+    inspectionTaskId,
+  });
+  const propertyDocuments = useMemo(
+    () => propertyDocumentSections.flatMap((s) => s.documents),
+    [propertyDocumentSections],
+  );
+
+  return (
+    <div className="pt-5">
+      <SpecialistValuationReportInputs
+        propertyId={property.id}
+        documents={propertyDocuments}
+      />
+      <CaseStudyPropertyComparablesTab
+        property={property}
+        poNumber={poNumber}
+      />
+    </div>
+  );
+}
+
 export function CaseStudyWorkspaceView({
   taskId,
   renderPartiesExtras,
@@ -50,7 +110,9 @@ export function CaseStudyWorkspaceView({
     props: CaseStudyWorkspacePartiesExtrasProps,
   ) => ReactNode;
 }) {
-  const [workspaceTab, setWorkspaceTab] = useState<"study" | "appraisal">("study");
+  const [workspaceTab, setWorkspaceTab] = useState<"study" | "appraisal">(
+    "study",
+  );
   const router = useRouter();
   const { role } = usePrototype();
   const {
@@ -159,7 +221,6 @@ export function CaseStudyWorkspaceView({
     );
   }
 
-  // Same chrome as تفاصيل العقار — canvas + card + timeline
   return (
     <div
       id="view-case-study-workspace"
@@ -204,9 +265,10 @@ export function CaseStudyWorkspaceView({
                 requestDateSeed={record.receivedFromEnfathAt}
               />
             ) : (
-              <CaseStudyPropertyComparablesTab
+              <CaseStudyAppraisalPanel
                 property={property}
                 poNumber={record.poNumber}
+                tasks={tasks ?? []}
               />
             )}
             {renderPartiesExtras ? (

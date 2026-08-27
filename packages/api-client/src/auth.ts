@@ -81,6 +81,8 @@ export async function revokeAuthSession(
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ refreshToken }),
       keepalive: true,
+      // Localhost / dead API must not trap the UI logout path.
+      signal: AbortSignal.timeout(2500),
     });
   } catch {
     // Logout is local-first; a failed revoke only leaves the token to expire.

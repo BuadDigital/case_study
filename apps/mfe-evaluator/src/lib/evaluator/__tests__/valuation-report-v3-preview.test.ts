@@ -58,6 +58,50 @@ describe("valuation report v3 header meta and page numbers", () => {
 });
 
 describe("valuation report v3 print branding", () => {
+  it("paints a distinct signature per participant column from the roster", () => {
+    const html = prepareValuationReportV3Html(
+      `<section class="page pg">
+        <section class="sec" data-sec="26">
+          <table class="ctr">
+            <tr><td class="k">الاسم</td><td class="v">مشارك أول</td><td class="v">مشارك ثان</td></tr>
+            <tr><td class="k">التوقيع</td><td class="v"></td><td class="v"></td></tr>
+          </table>
+        </section>
+      </section>`,
+      {
+        branding: { ...BRAND_IDENTITY_DEFAULTS, signatureUrl: "data:image/png;base64,brand" },
+        valuers: [
+          {
+            id: "v1",
+            nameAr: "معتمد",
+            role: "certified",
+            isActive: true,
+            signatureUrl: "data:image/png;base64,certified-only",
+          },
+          {
+            id: "v2",
+            nameAr: "مشارك أول",
+            role: "valuer",
+            isActive: true,
+            signatureUrl: "data:image/png;base64,sig-one",
+          },
+          {
+            id: "v3",
+            nameAr: "مشارك ثان",
+            role: "reviewer",
+            isActive: true,
+            signatureUrl: "data:image/png;base64,sig-two",
+          },
+        ],
+      },
+      "screen",
+    );
+    expect(html).toContain("data:image/png;base64,sig-one");
+    expect(html).toContain("data:image/png;base64,sig-two");
+    expect(html).not.toContain("data:image/png;base64,certified-only");
+    expect(html).toContain("height:1.5cm!important");
+  });
+
   it("applies letterhead margins, stamp size, and signatures from settings", () => {
     const html = prepareValuationReportV3Html(
       SAMPLE,
@@ -138,8 +182,8 @@ describe("valuation report v3 print branding", () => {
     expect(html).toContain("width:3.2cm!important");
     expect(html).toContain("height:2.8cm!important");
     expect(html).toContain("data:image/png;base64,emad");
-    expect(html).toContain("width:5cm!important");
     expect(html).toContain("height:2.2cm!important");
+    expect(html).toContain("width:auto!important");
     expect(html).not.toContain("assets/ejadah-stamp.png");
   });
 

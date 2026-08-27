@@ -7,6 +7,8 @@ const ASSIGNEE_DISPLAY_FALLBACKS: Record<string, string> = {
   "fi-ahmed": "أحمد سعيد",
   "gov-firas": "فراس كمرين",
   "val-abdullah": "عبدالله الكثيري",
+  "val-ayman": "أيمن أحمد مجرشي",
+  "val-assaf": "محمد العساف",
   "eo-jeddah": "مكتب جدة للمساحة",
 };
 

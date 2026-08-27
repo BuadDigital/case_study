@@ -833,11 +833,12 @@ export const VALUATION_REPORT_TAB_SECTIONS: readonly ReportTabSection[] = [
   {
     n: "26",
     title: "المشاركون في إعداد التقرير",
-    hint: "تُحرَّر أسماء العاملين في بيانات الرفع لإنفاذ.",
+    hint: "ثلاثة ثابتون من سجل المقيّمين + الرابع من توزيع المعاملات (المقيم المسند).",
     fields: [
-      { id: "worker-1", label: "المعد / المشارك 1", span: 2 },
-      { id: "worker-2", label: "المراجع / المشارك 2", span: 2 },
-      { id: "worker-3", label: "المشارك 3", span: 2 },
+      { id: "worker-1", label: "المشارك الثابت 1", span: 2 },
+      { id: "worker-2", label: "المشارك الثابت 2", span: 2 },
+      { id: "worker-3", label: "المشارك الثابت 3", span: 2 },
+      { id: "worker-4", label: "المقيم المسند", span: 2 },
     ],
   },
   {

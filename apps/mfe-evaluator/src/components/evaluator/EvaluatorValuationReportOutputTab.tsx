@@ -127,7 +127,10 @@ function effectiveValuationDate(input: {
   const draftDate = input.draft.appraisalDate || input.draft.reportIssueDate;
   if (draftDate.trim()) return draftDate;
   if (input.settings?.valuationDateMode === "retrospective") {
-    return (input.settings.retrospectiveDate ?? "").trim();
+    const start = (input.settings.retrospectiveDate ?? "").trim();
+    const end = (input.settings.retrospectiveDateEnd ?? "").trim();
+    if (start && end) return `${start} — ${end}`;
+    return start;
   }
   return (input.inspector?.inspectionDate ?? "").trim();
 }
@@ -137,11 +140,14 @@ export function EvaluatorValuationReportOutputTab({
   property,
   inspectionTaskId,
   surveyTaskId,
+  assignedAppraiserName,
 }: {
   draft: EvaluatorSubmission;
   property?: PoPropertyIntake | null;
   inspectionTaskId?: string | null;
   surveyTaskId?: string | null;
+  /** من توزيع المعاملات — يُطبع عموداً رابعاً في المشاركين. */
+  assignedAppraiserName?: string | null;
 }) {
   const [screenHtml, setScreenHtml] = useState<string | null>(null);
   const [org, setOrg] = useState<OrganizationSettingsDto | null>(null);
@@ -358,6 +364,7 @@ export function EvaluatorValuationReportOutputTab({
                 inspector,
                 settings: approachSettings,
               }),
+              assignedAppraiserName,
               survey,
               photoSlots: isLandInspectionContext({
                 vacantLand: inspector?.vacantLand,
@@ -373,7 +380,9 @@ export function EvaluatorValuationReportOutputTab({
               ivsStandardsText: vr.ivsStandards,
               glossaryText: vr.glossary,
               researchScopeText: vr.researchScopeText,
-              specialAssumptionLibrary: vr.specialAssumptionLibrary,
+              selectedSpecialAssumptions: approachSettings?.isSaved
+                ? approachSettings.selectedAssumptions
+                : undefined,
               externalSpecialistUsed: approachSettings?.externalSpecialistUsed,
               finishingLuxuryText: vr.finishingLuxury,
               finishingMediumText: vr.finishingMedium,
@@ -407,6 +416,7 @@ export function EvaluatorValuationReportOutputTab({
     // Including it re-triggered the effect after setOrg and caused a fetch loop.
   }, [
     approachSettings,
+    assignedAppraiserName,
     clients,
     cost,
     deedSlot,
@@ -471,6 +481,7 @@ export function EvaluatorValuationReportOutputTab({
               inspector,
               settings: approachSettings,
             }),
+            assignedAppraiserName,
             survey,
             photoSlots: isLandInspectionContext({
               vacantLand: inspector?.vacantLand,
@@ -486,7 +497,9 @@ export function EvaluatorValuationReportOutputTab({
             ivsStandardsText: vr.ivsStandards,
             glossaryText: vr.glossary,
             researchScopeText: vr.researchScopeText,
-            specialAssumptionLibrary: vr.specialAssumptionLibrary,
+            selectedSpecialAssumptions: approachSettings?.isSaved
+              ? approachSettings.selectedAssumptions
+              : undefined,
             externalSpecialistUsed: approachSettings?.externalSpecialistUsed,
             finishingLuxuryText: vr.finishingLuxury,
             finishingMediumText: vr.finishingMedium,
@@ -519,6 +532,7 @@ export function EvaluatorValuationReportOutputTab({
     }
   }, [
     approachSettings,
+    assignedAppraiserName,
     clients,
     cost,
     deedSlot,

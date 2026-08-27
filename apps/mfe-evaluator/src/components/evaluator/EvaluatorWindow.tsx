@@ -40,7 +40,6 @@ import { EngInfo,
   ValTabBar,
   valCardClassName,
   valPpHeadClassName,
-  valPrimaryBtnClassName,
 } from "./EvaluatorHtmlPrimitives";
 
 export type EvaluatorWindowTab = "report" | "output";
@@ -474,36 +473,21 @@ export function EvaluatorWindow({
           )}
         >
           {activeTab === "report" ? (
-            <>
             <EvaluatorValuationReportTab
               draft={draft}
               disabled={formDisabled}
               property={summary.property}
               inspectionTaskId={summary.inspectionTaskId}
+              surveyTaskId={summary.surveyTaskId}
+              appraisalTaskId={task.id}
               assignmentType={task.assignmentType}
               fieldErrors={fieldErrors}
               onChange={onReportChoicesChange}
               onDraftPatch={onDraftPatch}
+              onSubmit={() => void submit()}
+              submitting={submitting}
+              showSubmit={!formDisabled}
             />
-            {!formDisabled ? (
-              <div className="mt-5">
-                <button
-                  type="button"
-                  className={valPrimaryBtnClassName}
-                  disabled={submitting}
-                  aria-busy={submitting || undefined}
-                  onClick={() => void submit()}
-                >
-                  {submitting ? <Spinner /> : null}
-                  <span>
-                    {submitting
-                      ? "جاري الاعتماد…"
-                      : "اعتماد التقييم وإرسال للأخصائي"}
-                  </span>
-                </button>
-              </div>
-            ) : null}
-            </>
           ) : null}
 
           {activeTab === "output" ? (
@@ -512,6 +496,7 @@ export function EvaluatorWindow({
               property={summary.property}
               inspectionTaskId={summary.inspectionTaskId}
               surveyTaskId={summary.surveyTaskId}
+              assignedAppraiserName={task.assigneeName}
             />
           ) : null}
         </div>

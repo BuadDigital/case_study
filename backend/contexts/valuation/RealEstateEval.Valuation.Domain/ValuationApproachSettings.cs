@@ -50,7 +50,10 @@ public class ValuationApproachSettings
  /// إصدار التقرير) أو «أثر رجعي» يحدده المقيّم يدوياً بتاريخ ومبرر إلزاميين.
  /// </summary>
     public string ValuationDateMode { get; set; } = ValuationDateModes.Issue;
+    /// <summary>تاريخ الأثر الرجعي (أو بداية الفترة).</summary>
     public DateOnly? RetrospectiveDate { get; set; }
+    /// <summary>نهاية فترة الأثر الرجعي — فارغ = تاريخ محدد واحد.</summary>
+    public DateOnly? RetrospectiveDateEnd { get; set; }
     public string? RetrospectiveRationale { get; set; }
 
  /// <summary>JSON — بنود الافتراضات الخاصة المنتقاة/المضافة (نصوص مجمّدة لا معرفات).</summary>
@@ -243,7 +246,8 @@ public static class ValuationApproachSettingsRules
         DateOnly? retrospectiveDate = null,
         string? retrospectiveRationale = null,
         IReadOnlySet<string>? allowedPurposeKeys = null,
-        string? costScopeKey = null)
+        string? costScopeKey = null,
+        DateOnly? retrospectiveDateEnd = null)
     {
         var errors = new Dictionary<string, string>();
 
@@ -263,13 +267,17 @@ public static class ValuationApproachSettingsRules
         if (externalSpecialistUsed && string.IsNullOrWhiteSpace(externalSpecialistDetails))
             errors["externalSpecialistDetails"] = "توضيح الاستعانة بالأخصائي الخارجي إلزامي عند «نعم»";
 
- // تاريخ التقييم: الأثر الرجعي = تاريخ يدوي + مبرر إلزامي (+ سجل تدقيق).
+ // تاريخ التقييم: الأثر الرجعي = تاريخ (أو فترة بين تاريخين).
         if (ValuationDateModes.Normalize(valuationDateMode) == ValuationDateModes.Retrospective)
         {
             if (retrospectiveDate is null)
                 errors["retrospectiveDate"] = "تاريخ التقييم بالأثر الرجعي إلزامي";
-            if (string.IsNullOrWhiteSpace(retrospectiveRationale))
-                errors["retrospectiveRationale"] = "مبرر الأثر الرجعي إلزامي";
+            if (retrospectiveDateEnd is { } end)
+            {
+                if (retrospectiveDate is { } start && end < start)
+                    errors["retrospectiveDateEnd"] =
+                        "تاريخ نهاية الفترة يجب ألا يسبق تاريخ البداية";
+            }
         }
 
         if (!marketEnabled && !costEnabled && !incomeEnabled)

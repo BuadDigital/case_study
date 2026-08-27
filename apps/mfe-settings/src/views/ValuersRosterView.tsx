@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   CERTIFIED_VALUER_HTML_DEFAULTS,
   VALUER_ROSTER_HTML_DEFAULTS,
@@ -235,6 +235,8 @@ export function ValuersRosterView() {
   const canEdit = useCapability("manage-system-config");
   const [org, setOrg] = useState<OrganizationSettingsDto | null>(null);
   const [rows, setRows] = useState<OrganizationValuerRosterEntry[]>([]);
+  const rowsRef = useRef(rows);
+  rowsRef.current = rows;
   const [baseline, setBaseline] = useState<OrganizationValuerRosterEntry[]>([]);
   const [query, setQuery] = useState("");
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -702,7 +704,14 @@ export function ValuersRosterView() {
                     )}
                   </Td>
                   <Td>
-                    <div className="flex flex-col items-start gap-1">
+                    <div className="flex flex-col items-start gap-1.5">
+                      {sigOk(v) ? (
+                        <img
+                          src={v.signatureUrl!}
+                          alt={`توقيع ${v.nameAr}`}
+                          className="h-9 max-w-[7rem] object-contain object-right"
+                        />
+                      ) : null}
                       {sigOk(v) && !editing ? (
                         <Badge tone="success">مرفوع</Badge>
                       ) : null}
@@ -712,6 +721,7 @@ export function ValuersRosterView() {
                           size="sm"
                           onClick={() =>
                             pickImage((url, name, kb) => {
+                              const valuerId = v.id;
                               setModal({
                                 title: sigOk(v)
                                   ? "استبدال توقيع المقيّم"
@@ -719,8 +729,9 @@ export function ValuersRosterView() {
                                 body: `توقيع «${v.nameAr}» يُطبع في التقارير الجديدة، والرفع يُقيَّد في سجل التدقيق. الملف: ${name} (${kb}KB).`,
                                 confirm: "متابعة الرفع",
                                 onConfirm: () => {
-                                  const nextRows = rows.map((r) =>
-                                    r.id === v.id
+                                  // أحدث صفوف — تجنّب سباق الرفع الذي يفقد تواقيع الآخرين.
+                                  const nextRows = rowsRef.current.map((r) =>
+                                    r.id === valuerId
                                       ? { ...r, signatureUrl: url }
                                       : r,
                                   );

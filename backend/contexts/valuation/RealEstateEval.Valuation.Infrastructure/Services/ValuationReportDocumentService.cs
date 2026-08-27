@@ -380,6 +380,14 @@ public sealed class ValuationReportDocumentService(
         return ymd;
     }
 
+    private static string? FormatRetrospectiveDateDisplay(ValuationApproachSettings? settings)
+    {
+        if (settings?.RetrospectiveDate is not { } start) return null;
+        var startText = ValuationReportDisplayRules.FormatGregorianDate(start);
+        if (settings.RetrospectiveDateEnd is not { } end) return startText;
+        return $"{startText} — {ValuationReportDisplayRules.FormatGregorianDate(end)}";
+    }
+
     private static IReadOnlyDictionary<string, string?> BuildFields(
         string key,
         ValuationRequest vr,
@@ -478,9 +486,7 @@ public sealed class ValuationReportDocumentService(
  // تاريخ التقييم بنوعيه: إصدار القيمة (آلي = تاريخ التقرير) أو أثر رجعي يدوي.
                 d["valuationDateMode"] = ValuationDateModes.LabelAr(
                     approachSettings?.ValuationDateMode);
-                d["valuationDate"] = approachSettings?.RetrospectiveDate is { } retro
-                    ? ValuationReportDisplayRules.FormatGregorianDate(retro)
-                    : null;
+                d["valuationDate"] = FormatRetrospectiveDateDisplay(approachSettings);
  // client from the registry + report users + derived usage sentence.
                 d["clientName"] = clientNameAr;
                 d["reportUsers"] = reportUserNames is { Count: > 0 }
@@ -690,8 +696,12 @@ public sealed class ValuationReportDocumentService(
                 var retrospectiveLine =
                     approachSettings?.ValuationDateMode == ValuationDateModes.Retrospective
                     && approachSettings.RetrospectiveDate is { } retroDate
-                        ? "قُيّم العقار بأثر رجعي بتاريخ "
-                          + ValuationReportDisplayRules.FormatGregorianDate(retroDate)
+                        ? "قُيّم العقار بأثر رجعي "
+                          + (
+                              approachSettings.RetrospectiveDateEnd is { } retroEnd
+                                  ? $"للفترة من {ValuationReportDisplayRules.FormatGregorianDate(retroDate)} إلى {ValuationReportDisplayRules.FormatGregorianDate(retroEnd)}"
+                                  : $"بتاريخ {ValuationReportDisplayRules.FormatGregorianDate(retroDate)}"
+                            )
                           + (string.IsNullOrWhiteSpace(approachSettings.RetrospectiveRationale)
                               ? "."
                               : $"؛ المبرر: {approachSettings.RetrospectiveRationale}.")

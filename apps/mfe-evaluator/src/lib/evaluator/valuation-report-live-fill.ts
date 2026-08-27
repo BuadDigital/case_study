@@ -291,6 +291,8 @@ export type ValuationReportLiveFill = {
   isLand: boolean;
   propertyDescription: string;
   reportWorkers: EvaluatorReportWorker[];
+  /** §26 — المقيم المسند من توزيع المعاملات (العمود الرابع). */
+  assignedAppraiserName: string;
   /** §34 — up to 12 field photos (data URLs). */
   photoSlots: ValuationReportSlotAttachment[];
   /** §35 — survey document (image or PDF data URL). */
@@ -363,6 +365,8 @@ export function buildValuationReportLiveFill(input: {
   reportType?: string | null;
   currency?: string | null;
   effectiveValuationDate?: string | null;
+  /** المقيم المسند من توزيع المعاملات — عمود المشاركين الرابع. */
+  assignedAppraiserName?: string | null;
   survey?: ValuationReportSurveyBounds | null;
   photoSlots?: ValuationReportSlotAttachment[] | null;
   surveySlot?: ValuationReportSlotAttachment | null;
@@ -372,7 +376,13 @@ export function buildValuationReportLiveFill(input: {
   ivsStandardsText?: string | null;
   glossaryText?: string | null;
   researchScopeText?: string | null;
-  /** Org special-assumption library; filtered by `reportChoices.specialAssumptionOn`. */
+  /**
+   * Selected special assumptions from approach settings (source of truth).
+   * `undefined` = not provided (keep HTML template).
+   * `[]` = none selected (clear printed list).
+   */
+  selectedSpecialAssumptions?: string[] | null;
+  /** @deprecated Prefer `selectedSpecialAssumptions` from approach settings. */
   specialAssumptionLibrary?: string[] | null;
   /** When true, drop the library clause that denies using an external specialist. */
   externalSpecialistUsed?: boolean;
@@ -1070,17 +1080,19 @@ export function buildValuationReportLiveFill(input: {
     isLand,
     propertyDescription: (inspector?.propertyDescription ?? "").trim(),
     reportWorkers: draft.reportWorkers ?? [],
+    assignedAppraiserName: (input.assignedAppraiserName ?? "").trim(),
     photoSlots: input.photoSlots ?? [],
     surveySlot: input.surveySlot ?? null,
     deedSlot: input.deedSlot ?? null,
     comparableMapSlot,
     searchScopeNotes: (draft.searchScopeNotes ?? "").trim(),
     researchScopeBullets: linesFromOrgText(input.researchScopeText),
-    specialAssumptionBullets: filterSpecialAssumptionBullets(
-      input.specialAssumptionLibrary,
-      choices.specialAssumptionOn,
-      { dropNoSpecialistClause: Boolean(input.externalSpecialistUsed) },
-    ),
+    specialAssumptionBullets: resolveSpecialAssumptionBullets({
+      selected: input.selectedSpecialAssumptions,
+      library: input.specialAssumptionLibrary,
+      toggles: choices.specialAssumptionOn,
+      dropNoSpecialistClause: Boolean(input.externalSpecialistUsed),
+    }),
     ivsPairs: pairsFromOrgLines(input.ivsStandardsText),
     glossaryPairs: pairsFromOrgLines(input.glossaryText),
     keyInputsBullets: linesFromOrgText(input.keyInputsText),
@@ -1111,7 +1123,31 @@ export function buildValuationReportLiveFill(input: {
 }
 
 /**
- * Org library filtered by per-case toggles.
+ * Prefer approach-settings `selectedSpecialAssumptions` when provided.
+ * Legacy fallback: org library filtered by `reportChoices.specialAssumptionOn`.
+ * `null` = no selection source → keep HTML template.
+ * `[]` = none selected → clear the printed list.
+ */
+export function resolveSpecialAssumptionBullets(input: {
+  selected?: string[] | null;
+  library?: string[] | null;
+  toggles?: boolean[] | null;
+  dropNoSpecialistClause?: boolean;
+}): string[] | null {
+  if (input.selected !== undefined && input.selected !== null) {
+    const items = input.selected.map((x) => x.trim()).filter(Boolean);
+    if (input.dropNoSpecialistClause) {
+      return items.filter((item) => !isNoExternalSpecialistAssumption(item));
+    }
+    return items;
+  }
+  return filterSpecialAssumptionBullets(input.library, input.toggles, {
+    dropNoSpecialistClause: input.dropNoSpecialistClause,
+  });
+}
+
+/**
+ * Org library filtered by per-case toggles (legacy draft path).
  * `null` = no library → keep HTML template.
  * `[]` = all unchecked → clear the printed list.
  */
@@ -1231,12 +1267,150 @@ function workerJobTitle(
   return "";
 }
 
+function rowValueCells(row: Element): Element[] {
+  return [...row.children].filter(
+    (el): el is HTMLTableCellElement =>
+      el instanceof HTMLTableCellElement &&
+      (el.classList.contains("v") || el.classList.contains("num")),
+  );
+}
+
 function fillRowValues(row: Element | undefined, values: string[]) {
   if (!row) return;
-  const cells = [...row.querySelectorAll("td.v, td.num")];
-  cells.forEach((cell, i) => {
+  rowValueCells(row).forEach((cell, i) => {
     cell.textContent = values[i] ?? "—";
   });
+}
+
+type ParticipantFill = {
+  name: string;
+  title: string;
+  category: string;
+  membership: string;
+  membershipExpires: string;
+  signatureUrl: string;
+};
+
+/** §26 — ثلاثة مشاركون ثابتون من السجل + الرابع من توزيع المعاملات (المقيم المسند). */
+export const FIXED_REPORT_PARTICIPANT_NAMES = [
+  "سليمان عبد الله الصالحي",
+  "سالم الغريب",
+  "أيمن أحمد مجرشي",
+] as const;
+
+function participantFromRoster(
+  name: string,
+  roster: OrganizationValuerRosterEntry[],
+  fallbackRole: string,
+): ParticipantFill {
+  const hit = roster.find((v) => peopleNameMatch(v.nameAr, name));
+  return {
+    name: (hit?.nameAr || name).trim(),
+    title: hit
+      ? valuerRoleLabel(hit.role)
+      : workerJobTitle(fallbackRole, undefined),
+    category: membershipCategoryLabel(hit?.membershipCategory),
+    membership: (hit?.membershipNumber ?? "").trim(),
+    membershipExpires: slashDateFromIso(hit?.membershipExpiresAt),
+    signatureUrl: (hit?.signatureUrl ?? "").trim(),
+  };
+}
+
+/** §26 — ثلاثة ثابتون + عمود رابع من إسناد التقييم في توزيع المعاملات. */
+export function resolveReportParticipants(
+  _workers: EvaluatorReportWorker[] | undefined,
+  valuers: OrganizationValuerRosterEntry[] | null | undefined,
+  assignedAppraiserName?: string | null,
+): ParticipantFill[] {
+  const roster = (valuers ?? []).filter((v) => v.isActive !== false);
+  const fixed = FIXED_REPORT_PARTICIPANT_NAMES.map((name) =>
+    participantFromRoster(name, roster, "مراجع"),
+  );
+  const assignee = (assignedAppraiserName ?? "").trim();
+  if (!assignee) return [...fixed];
+  if (fixed.some((p) => peopleNameMatch(p.name, assignee))) return [...fixed];
+  return [...fixed, participantFromRoster(assignee, roster, "معد")];
+}
+
+/** يوسّع/يقلّص أعمدة جدول المشاركين حسب العدد الفعلي من النظام. */
+function syncParticipantColumns(table: Element, count: number) {
+  const cols = Math.max(count, 1);
+  const doc = table.ownerDocument;
+  if (!doc) return;
+  for (const row of table.querySelectorAll("tr")) {
+    const labelCell = [...row.children].find(
+      (el) => el instanceof HTMLTableCellElement && el.classList.contains("k"),
+    );
+    if (!labelCell) continue;
+    const label = normLabel(labelCell.textContent ?? "");
+    const isNum = label.includes("رقم") || label.includes("تاريخ");
+    const isSig = label === "التوقيع";
+    const valueCells = rowValueCells(row);
+    while (valueCells.length > cols) {
+      valueCells.pop()?.remove();
+    }
+    while (valueCells.length < cols) {
+      const td = doc.createElement("td");
+      td.className = isNum ? "v num" : "v";
+      if (isSig) td.setAttribute("style", "height:52px");
+      row.appendChild(td);
+      valueCells.push(td);
+    }
+  }
+}
+
+/** يساوي عرض أعمدة المشاركين (باستثناء عمود التسمية). */
+function equalizeParticipantColumns(table: Element, count: number) {
+  const cols = Math.max(count, 1);
+  if (table instanceof HTMLElement) {
+    table.style.tableLayout = "fixed";
+    table.style.width = "100%";
+    table.classList.add("ctr");
+  }
+  const labelPct = 18;
+  const valuePct = (100 - labelPct) / cols;
+  for (const row of table.querySelectorAll("tr")) {
+    const labelCell = [...row.children].find(
+      (el) => el instanceof HTMLTableCellElement && el.classList.contains("k"),
+    );
+    if (labelCell instanceof HTMLElement) {
+      labelCell.style.width = `${labelPct}%`;
+    }
+    for (const cell of rowValueCells(row)) {
+      if (cell instanceof HTMLElement) {
+        cell.style.width = `${valuePct}%`;
+      }
+    }
+  }
+}
+
+/** يدرج صف التسمية إن غاب عن القالب (تحت رقم العضوية). */
+function ensureParticipantLabeledRow(
+  table: Element,
+  label: string,
+  afterLabel: string,
+  cellClass: string,
+): Element | undefined {
+  const rows = [...table.querySelectorAll("tr")];
+  const existing = rows.find(
+    (r) => normLabel(r.querySelector("td.k")?.textContent ?? "") === label,
+  );
+  if (existing) return existing;
+  const after = rows.find(
+    (r) =>
+      normLabel(r.querySelector("td.k")?.textContent ?? "") === afterLabel,
+  );
+  const doc = table.ownerDocument;
+  if (!doc || !after) return undefined;
+  const tr = doc.createElement("tr");
+  const k = doc.createElement("td");
+  k.className = "k";
+  k.textContent = label;
+  const v = doc.createElement("td");
+  v.className = cellClass;
+  tr.append(k, v);
+  after.after(tr);
+  return tr;
 }
 
 function fillParticipants(
@@ -1244,48 +1418,71 @@ function fillParticipants(
   workers: EvaluatorReportWorker[] | undefined,
   valuers: OrganizationValuerRosterEntry[] | null | undefined,
   branch: string,
+  assignedAppraiserName?: string | null,
 ) {
-  const named = (workers ?? []).filter(
-    (w) => w.role !== "معتمد" && (w.name ?? "").trim(),
+  const people = resolveReportParticipants(
+    workers,
+    valuers,
+    assignedAppraiserName,
   );
-  const roster = (valuers ?? []).filter((v) => v.isActive !== false);
-  const people = named.length
-    ? named.slice(0, 3).map((w) => {
-        const hit = roster.find((v) => peopleNameMatch(v.nameAr, w.name));
-        return {
-          name: w.name.trim(),
-          title: workerJobTitle(w.role, hit?.role),
-          category: membershipCategoryLabel(hit?.membershipCategory),
-          membership: (hit?.membershipNumber || w.licenseNumber || "").trim(),
-        };
-      })
-    : roster
-        .filter((v) => v.role !== "certified")
-        .slice(0, 3)
-        .map((v) => ({
-          name: v.nameAr,
-          title: valuerRoleLabel(v.role),
-          category: membershipCategoryLabel(v.membershipCategory),
-          membership: (v.membershipNumber ?? "").trim(),
-        }));
   const tables = [...sec.querySelectorAll("table")];
   const table = tables[0];
   if (!table) return;
+  ensureParticipantLabeledRow(
+    table,
+    "تاريخ انتهاء العضوية",
+    "رقم العضوية",
+    "v num",
+  );
+  syncParticipantColumns(table, people.length);
+  equalizeParticipantColumns(table, people.length);
   const byLabel = (label: string) =>
     [...table.querySelectorAll("tr")].find(
       (r) => normLabel(r.querySelector("td.k")?.textContent ?? "") === label,
     );
-  const cols = Math.max(
-    [...(byLabel("الاسم")?.querySelectorAll("td.v") ?? [])].length,
-    3,
-  );
-  const pad = (pick: (p: (typeof people)[0]) => string) =>
-    Array.from({ length: cols }, (_, i) => dash(people[i] ? pick(people[i]!) : ""));
+  const cols = Math.max(people.length, 1);
+  const pad = (pick: (p: ParticipantFill) => string) =>
+    Array.from({ length: cols }, (_, i) =>
+      dash(people[i] ? pick(people[i]!) : ""),
+    );
   fillRowValues(byLabel("الاسم"), pad((p) => p.name));
   fillRowValues(byLabel("المسمى الوظيفي"), pad((p) => p.title));
   fillRowValues(byLabel("فئة العضوية"), pad((p) => p.category));
   fillRowValues(byLabel("رقم العضوية"), pad((p) => p.membership));
+  fillRowValues(
+    byLabel("تاريخ انتهاء العضوية"),
+    pad((p) => p.membershipExpires),
+  );
   fillRowValues(byLabel("فرع التقييم"), pad(() => branch));
+  // التوقيع من نفس صف المشارك (بالفهرس) — ارتفاع ثابت 1.5سم وعرض متناسب.
+  const sigRow = byLabel("التوقيع");
+  if (sigRow) {
+    const cells = rowValueCells(sigRow);
+    cells.forEach((cell, i) => {
+      const url = (people[i]?.signatureUrl ?? "").trim();
+      if (!url || url.endsWith("ejadah-signature.png")) {
+        cell.replaceChildren();
+        return;
+      }
+      const doc = cell.ownerDocument;
+      if (!doc) return;
+      const img = doc.createElement("img");
+      img.src = url;
+      img.alt = "التوقيع";
+      img.classList.add("org-signature-roster");
+      img.style.objectFit = "contain";
+      img.style.maxWidth = "100%";
+      img.style.height = "1.5cm";
+      img.style.width = "auto";
+      img.style.display = "block";
+      img.style.marginInline = "auto";
+      if (cell instanceof HTMLElement) {
+        cell.style.textAlign = "center";
+        cell.style.verticalAlign = "middle";
+      }
+      cell.replaceChildren(img);
+    });
+  }
 }
 
 function fillApprovalTable(sec: Element, fill: ValuationReportLiveFill) {
@@ -2173,6 +2370,7 @@ export function applyValuationReportLiveFill(
       fill.reportWorkers,
       extras?.valuers,
       extras?.valuationBranch || fill.cells["فرع التقييم"] || "",
+      fill.assignedAppraiserName,
     );
     fillApprovalTable(people, fill);
   }

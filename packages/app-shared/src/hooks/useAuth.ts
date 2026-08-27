@@ -30,20 +30,29 @@ export function useAuth() {
     rolePages,
     logout() {
       void (async () => {
+        const refreshToken = session?.refreshToken;
+        const userId = session?.user?.id;
         try {
           const { purgeOfflineData, closeOfflineDb } = await import(
             "@platform/offline-client"
           );
-          if (session?.user?.id) {
-            await purgeOfflineData(session.user.id, "logout");
-            await closeOfflineDb();
+          if (userId) {
+            await Promise.race([
+              (async () => {
+                await purgeOfflineData(userId, "logout");
+                await closeOfflineDb();
+              })(),
+              new Promise<void>((resolve) => {
+                window.setTimeout(resolve, 2000);
+              }),
+            ]);
           }
         } catch {
           /* ignore */
         }
-        if (session?.refreshToken) void revokeAuthSession(session.refreshToken);
+        if (refreshToken) void revokeAuthSession(refreshToken);
         clearAuthSession();
-        window.location.href = "/login";
+        window.location.assign("/login");
       })();
     },
   };

@@ -371,6 +371,8 @@ export type ValuationApproachSettingsDto = {
   valuationDateMode: string;
   valuationDateModeLabelAr: string;
   retrospectiveDate?: string | null;
+  /** yyyy-MM-dd — نهاية الفترة؛ فارغ = تاريخ محدد. */
+  retrospectiveDateEnd?: string | null;
   retrospectiveRationale?: string | null;
   /** بنود الافتراضات المنتقاة/المضافة (نصوص مجمّدة). */
   selectedAssumptions: string[];
@@ -396,8 +398,10 @@ export type SaveValuationApproachSettingsRequest = {
   externalSpecialistDetails?: string | null;
   /** issue (افتراضي) | retrospective. */
   valuationDateMode?: string | null;
-  /** yyyy-MM-dd — إلزامي عند retrospective. */
+  /** yyyy-MM-dd — إلزامي عند retrospective (أو بداية الفترة). */
   retrospectiveDate?: string | null;
+  /** yyyy-MM-dd — نهاية الفترة؛ فارغ = تاريخ محدد. */
+  retrospectiveDateEnd?: string | null;
   retrospectiveRationale?: string | null;
   selectedAssumptions?: string[] | null;
 };

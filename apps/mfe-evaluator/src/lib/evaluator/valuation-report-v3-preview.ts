@@ -131,14 +131,16 @@ function namesMatch(a: string, b: string): boolean {
 function valueCellsAfterLabel(row: Element, label: string): Element[] {
   const cells = [...row.children];
   const out: Element[] = [];
+  const isValue = (el: Element) =>
+    el.classList.contains("v") || el.classList.contains("num");
   for (let i = 0; i < cells.length; i++) {
     const cell = cells[i];
     if (
       cell.classList.contains("k") &&
       normName(cell.textContent ?? "") === label
     ) {
-      for (let j = i + 1; j < cells.length && cells[j].classList.contains("v"); j++) {
-        out.push(cells[j]);
+      for (let j = i + 1; j < cells.length && isValue(cells[j]!); j++) {
+        out.push(cells[j]!);
       }
       break;
     }
@@ -146,24 +148,41 @@ function valueCellsAfterLabel(row: Element, label: string): Element[] {
   return out;
 }
 
+const PARTICIPANT_SIGNATURE_HEIGHT_CM = 1.5;
+
 function fillCellImage(
   cell: Element,
   src: string,
   alt: string,
   widthCm?: number,
   heightCm?: number,
+  className = "org-signature",
 ) {
   const img = cell.ownerDocument.createElement("img");
   img.src = src;
   img.alt = alt;
-  img.classList.add("org-signature");
+  img.classList.add(className);
   img.style.objectFit = "contain";
   img.style.maxWidth = "100%";
-  if (widthCm && heightCm) {
-    img.style.width = `${widthCm}cm`;
+  img.style.display = "block";
+  img.style.marginInline = "auto";
+  if (heightCm && heightCm > 0) {
+    // الارتفاع مضبوط — العرض يتبع نسبة أبعاد الصورة الأصلية.
     img.style.height = `${heightCm}cm`;
+    img.style.width = "auto";
+    if (widthCm && widthCm > 0) {
+      img.style.maxWidth = `${widthCm}cm`;
+    }
+  } else if (widthCm && widthCm > 0) {
+    img.style.width = `${widthCm}cm`;
+    img.style.height = "auto";
   } else {
     img.style.height = "40px";
+    img.style.width = "auto";
+  }
+  if (cell instanceof HTMLElement) {
+    cell.style.textAlign = "center";
+    cell.style.verticalAlign = "middle";
   }
   cell.replaceChildren(img);
 }
@@ -192,10 +211,6 @@ function applySignatures(
   const certified = roster.find((v) => v.role === "certified");
   const fallbackSig =
     resolveSignatureUrl(certified?.signatureUrl, origin) || brandSig;
-  const sigW = mm(
-    branding.signatureWidthCm,
-    BRAND_IDENTITY_DEFAULTS.signatureWidthCm!,
-  );
   const sigH = mm(
     branding.signatureHeightCm,
     BRAND_IDENTITY_DEFAULTS.signatureHeightCm!,
@@ -203,7 +218,12 @@ function applySignatures(
 
   const findSig = (name: string): string | null => {
     const n = normName(name);
-    if (!n) return null;
+    if (!n || n === "—") return null;
+    const exact = roster.find(
+      (v) =>
+        isUsableSignatureUrl(v.signatureUrl) && normName(v.nameAr) === n,
+    );
+    if (exact) return resolveSignatureUrl(exact.signatureUrl, origin);
     const hit = roster.find(
       (v) =>
         isUsableSignatureUrl(v.signatureUrl) && namesMatch(v.nameAr, n),
@@ -211,8 +231,15 @@ function applySignatures(
     return resolveSignatureUrl(hit?.signatureUrl, origin) || null;
   };
 
-  const paint = (cell: Element, url: string) =>
-    fillCellImage(cell, url, "التوقيع", sigW, sigH);
+  /** المشاركون: التوقيع من نفس صف السجل بالفهرس (لا إعادة مطابقة غامضة). */
+  const rosterParticipants = roster.filter((v) => v.role !== "certified");
+
+  const paint = (
+    cell: Element,
+    url: string,
+    heightCm: number,
+    className?: string,
+  ) => fillCellImage(cell, url, "التوقيع", undefined, heightCm, className);
 
   for (const table of dom.querySelectorAll("table")) {
     const rows = [...table.querySelectorAll("tr")];
@@ -229,11 +256,37 @@ function applySignatures(
     if (!nameRow || !sigRow) continue;
     const names = valueCellsAfterLabel(nameRow, "الاسم");
     const sigCells = valueCellsAfterLabel(sigRow, "التوقيع");
+    // جدول الاعتماد: عمود اسم واحد — اتركه لكتلة الاعتماد أدناه إن وُجدت صفته/الختم.
+    const isApprovalLayout = names.length <= 1 && Boolean(
+      [...table.querySelectorAll("td.k")].some(
+        (td) => normName(td.textContent ?? "") === "ختم المنشأة",
+      ),
+    );
     names.forEach((nameCell, i) => {
       const cell = sigCells[i];
       if (!cell) return;
-      const url = findSig(nameCell.textContent ?? "");
-      if (url) paint(cell, url);
+      const cellName = nameCell.textContent ?? "";
+      let url: string | null = null;
+      if (!isApprovalLayout) {
+        const byIndex = rosterParticipants[i];
+        if (
+          byIndex &&
+          isUsableSignatureUrl(byIndex.signatureUrl) &&
+          (normName(byIndex.nameAr) === normName(cellName) ||
+            namesMatch(byIndex.nameAr, cellName))
+        ) {
+          url = resolveSignatureUrl(byIndex.signatureUrl, origin);
+        }
+      }
+      if (!url) url = findSig(cellName);
+      if (url) {
+        paint(
+          cell,
+          url,
+          isApprovalLayout ? sigH : PARTICIPANT_SIGNATURE_HEIGHT_CM,
+          isApprovalLayout ? "org-signature" : "org-signature-roster",
+        );
+      } else cell.replaceChildren();
     });
   }
 
@@ -264,14 +317,21 @@ function applySignatures(
             )
           : null;
         const src = byName || fallbackSig;
-        if (src) paint(cell, src);
+        if (src) paint(cell, src, sigH, "org-signature");
         else cell.replaceChildren();
       } else if (existing instanceof HTMLImageElement) {
         existing.classList.add("org-signature");
-        existing.style.width = `${sigW}cm`;
+        existing.classList.remove("org-signature-roster");
         existing.style.height = `${sigH}cm`;
+        existing.style.width = "auto";
         existing.style.maxWidth = "100%";
         existing.style.objectFit = "contain";
+        existing.style.display = "block";
+        existing.style.marginInline = "auto";
+        if (cell instanceof HTMLElement) {
+          cell.style.textAlign = "center";
+          cell.style.verticalAlign = "middle";
+        }
       }
     }
   }
@@ -280,18 +340,29 @@ function applySignatures(
 function stampBoxCss(prefix: string, widthCm: number, heightCm: number): string {
   return (
     `${prefix} img.org-stamp,${prefix} img[alt="ختم المنشأة"]{` +
+    `display:block!important;margin-inline:auto!important;` +
     `width:${widthCm}cm!important;height:${heightCm}cm!important;` +
     `max-width:none!important;max-height:none!important;object-fit:contain}` +
-    `${prefix} tr:has(img.org-stamp) td.v{height:auto!important;min-height:${heightCm}cm}`
+    `${prefix} tr:has(img.org-stamp) td.v,${prefix} tr:has(img[alt="ختم المنشأة"]) td.v{` +
+    `height:auto!important;min-height:${heightCm}cm;text-align:center!important;vertical-align:middle!important}`
   );
 }
 
-function signatureBoxCss(prefix: string, widthCm: number, heightCm: number): string {
+function signatureBoxCss(prefix: string, certifiedHeightCm: number): string {
+  const rosterH = PARTICIPANT_SIGNATURE_HEIGHT_CM;
   return (
-    `${prefix} img.org-signature,${prefix} img[alt="التوقيع"]{` +
-    `width:${widthCm}cm!important;height:${heightCm}cm!important;` +
+    `${prefix} img.org-signature-roster,${prefix} img.org-signature,${prefix} img[alt="التوقيع"]{` +
+    `display:block!important;margin-inline:auto!important;` +
     `max-width:100%!important;max-height:none!important;object-fit:contain}` +
-    `${prefix} tr:has(img.org-signature) td.v{height:auto!important;min-height:${heightCm}cm}`
+    `${prefix} img.org-signature-roster{` +
+    `height:${rosterH}cm!important;width:auto!important}` +
+    `${prefix} tr:has(img.org-signature-roster) td.v,${prefix} tr:has(img.org-signature-roster) td.num{` +
+    `height:auto!important;min-height:${rosterH}cm;text-align:center!important;vertical-align:middle!important}` +
+    `${prefix} img.org-signature:not(.org-signature-roster),${prefix} img[alt="التوقيع"]:not(.org-signature-roster){` +
+    `height:${certifiedHeightCm}cm!important;width:auto!important}` +
+    `${prefix} tr:has(img.org-signature:not(.org-signature-roster)) td.v,` +
+    `${prefix} tr:has(img.org-signature:not(.org-signature-roster)) td.num{` +
+    `height:auto!important;min-height:${certifiedHeightCm}cm;text-align:center!important;vertical-align:middle!important}`
   );
 }
 
@@ -332,8 +403,12 @@ function applyStampAndSignatures(
     stampImg.style.setProperty("max-width", "none", "important");
     stampImg.style.setProperty("max-height", "none", "important");
     stampImg.style.objectFit = "contain";
+    stampImg.style.display = "block";
+    stampImg.style.marginInline = "auto";
     const cell = stampImg.closest("td");
     if (cell instanceof HTMLElement) {
+      cell.style.textAlign = "center";
+      cell.style.verticalAlign = "middle";
       const row = cell.parentElement;
       row?.querySelectorAll("td.v").forEach((td) => {
         if (!(td instanceof HTMLElement)) return;
@@ -394,7 +469,6 @@ function applyBrandIdentity(
     stampBoxCss(".val-rpt-v3", mm(branding.stampWidthCm, BRAND_IDENTITY_DEFAULTS.stampWidthCm!), mm(branding.stampHeightCm, BRAND_IDENTITY_DEFAULTS.stampHeightCm!)) +
     signatureBoxCss(
       ".val-rpt-v3",
-      mm(branding.signatureWidthCm, BRAND_IDENTITY_DEFAULTS.signatureWidthCm!),
       mm(branding.signatureHeightCm, BRAND_IDENTITY_DEFAULTS.signatureHeightCm!),
     )
   );
@@ -422,6 +496,14 @@ html,body{margin:0;direction:rtl}
 .val-rpt-v3 .image-ph{
   display:grid;place-items:center;border:1px dashed var(--border-md);background:var(--surface-2);
   color:#6b6b66;font-size:11px;text-align:center;box-sizing:border-box;
+}
+.val-rpt-v3 [data-sec="26"] table.ctr{
+  table-layout:fixed!important;width:100%!important;
+}
+.val-rpt-v3 [data-sec="26"] table.ctr td.k{width:18%!important}
+.val-rpt-v3 [data-sec="26"] table.ctr td.v,
+.val-rpt-v3 [data-sec="26"] table.ctr td.num{
+  text-align:center!important;vertical-align:middle!important;
 }
 @page{size:A4;margin:0}
 @media print{
@@ -458,6 +540,14 @@ const SCREEN_CHROME = `
   color:#6b6b66;font-size:11px;text-align:center;box-sizing:border-box;
 }
 .val-rpt-screen img[alt="التوقيع"]{object-fit:contain;max-width:100%}
+.val-rpt-screen [data-sec="26"] table.ctr{
+  table-layout:fixed!important;width:100%!important;
+}
+.val-rpt-screen [data-sec="26"] table.ctr td.k{width:18%!important}
+.val-rpt-screen [data-sec="26"] table.ctr td.v,
+.val-rpt-screen [data-sec="26"] table.ctr td.num{
+  text-align:center!important;vertical-align:middle!important;
+}
 `;
 
 function scopeCss(css: string, scope: string): string {
@@ -520,6 +610,7 @@ export function prepareValuationReportV3Html(
   if (meta.live) {
     applyValuationReportLiveFill(dom, meta.live, {
       valuers: meta.valuers,
+      valuationBranch: meta.live.cells["فرع التقييم"] || undefined,
     });
   }
   renumberPages(dom);
@@ -532,10 +623,6 @@ export function prepareValuationReportV3Html(
     applyStampAndSignatures(dom, branding, valuers, origin);
     const stampW = mm(branding.stampWidthCm, BRAND_IDENTITY_DEFAULTS.stampWidthCm!);
     const stampH = mm(branding.stampHeightCm, BRAND_IDENTITY_DEFAULTS.stampHeightCm!);
-    const sigW = mm(
-      branding.signatureWidthCm,
-      BRAND_IDENTITY_DEFAULTS.signatureWidthCm!,
-    );
     const sigH = mm(
       branding.signatureHeightCm,
       BRAND_IDENTITY_DEFAULTS.signatureHeightCm!,
@@ -544,7 +631,7 @@ export function prepareValuationReportV3Html(
     const pages = [...dom.querySelectorAll("section.page.pg")]
       .map((p) => p.outerHTML)
       .join("\n");
-    return `<style>${screenCss}\n${SCREEN_CHROME}\n${stampBoxCss(".val-rpt-screen", stampW, stampH)}\n${signatureBoxCss(".val-rpt-screen", sigW, sigH)}</style><div class="val-rpt-screen" dir="rtl">${pages}</div>`;
+    return `<style>${screenCss}\n${SCREEN_CHROME}\n${stampBoxCss(".val-rpt-screen", stampW, stampH)}\n${signatureBoxCss(".val-rpt-screen", sigH)}</style><div class="val-rpt-screen" dir="rtl">${pages}</div>`;
   }
 
   const brandCss = applyBrandIdentity(dom, branding, valuers, origin);

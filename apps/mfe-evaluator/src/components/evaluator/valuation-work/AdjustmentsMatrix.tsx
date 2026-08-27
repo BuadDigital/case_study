@@ -755,6 +755,25 @@ export const AdjustmentsMatrix = memo(function AdjustmentsMatrix({
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
   const basis = selection.adjustmentBasis || "price_per_sqm";
   const isUnit = basis !== "whole_property";
+  /** عند أساس قيمة العقار: weightedPricePerSqm يحمل الإجمالي — المتر = الإجمالي ÷ المساحة. */
+  const pricePerSqmDisplay = (() => {
+    if (isUnit) return selection.weightedPricePerSqm;
+    // مساحة المعاملة (من الـ UI) أولى من قيمة الخادم القديمة إن اختلفت.
+    const fromUi = Number(String(subjectArea ?? "").replace(",", "."));
+    const area =
+      (Number.isFinite(fromUi) && fromUi > 0 ? fromUi : null) ??
+      (selection.subjectAreaSqm != null && selection.subjectAreaSqm > 0
+        ? selection.subjectAreaSqm
+        : null) ??
+      0;
+    const opinion =
+      selection.marketOpinionValue ?? selection.weightedPricePerSqm ?? 0;
+    if (!(area > 0) || !(opinion > 0)) return null;
+    return opinion / area;
+  })();
+  const opinionRaw =
+    selection.marketOpinionValueRaw ?? selection.marketOpinionValue;
+  const opinionFinal = selection.marketOpinionValue;
   const areaMethod =
     adopted[0]?.market?.areaAdjustmentMethod === "multiplier"
       ? "طريقة المضاعف — آلية"
@@ -1516,13 +1535,16 @@ export const AdjustmentsMatrix = memo(function AdjustmentsMatrix({
             {fmt(selection.weightedPricePerSqm)}
           </div>
           <div style={{ fontWeight: 400, fontSize: 11.5, color: C.faint, marginTop: 7 }}>
-            {isUnit ? "ريال / م²" : "ريال — قبل الضرب في المساحة"}
+            {isUnit ? "ريال / م²" : "ريال — متوسط مرجّح لقيم المقارنات"}
           </div>
           <div
             style={{ fontWeight: 700, fontSize: 11.5, color: C.goldText, marginTop: 5 }}
           >
             قيمة المتر المربع:{" "}
-            <span dir="ltr">{fmt(selection.weightedPricePerSqm)}</span> ر.س/م²
+            <span dir="ltr">
+              {pricePerSqmDisplay != null ? fmt(pricePerSqmDisplay) : "—"}
+            </span>{" "}
+            ر.س/م²
           </div>
         </div>
         <div
@@ -1535,7 +1557,7 @@ export const AdjustmentsMatrix = memo(function AdjustmentsMatrix({
           <div
             style={{ fontWeight: 500, fontSize: 12, color: C.muted, marginBottom: 9 }}
           >
-            قيمة الأرض قبل التقريب
+            {isUnit ? "قيمة الأرض قبل التقريب" : "قيمة العقار قبل التقريب"}
           </div>
           <div
             dir="ltr"
@@ -1547,10 +1569,12 @@ export const AdjustmentsMatrix = memo(function AdjustmentsMatrix({
               textAlign: "start",
             }}
           >
-            {fmt(selection.marketOpinionValueRaw ?? selection.marketOpinionValue)}
+            {fmt(opinionRaw)}
           </div>
           <div style={{ fontWeight: 400, fontSize: 11.5, color: C.faint, marginTop: 7 }}>
-            سعر المتر × مساحة العقار
+            {isUnit
+              ? "سعر المتر بعد التسوية × مساحة العقار"
+              : "أساس الكل — بلا ضرب في المساحة (يساوي المتوسط المرجّح)"}
           </div>
         </div>
         <div
@@ -1584,10 +1608,10 @@ export const AdjustmentsMatrix = memo(function AdjustmentsMatrix({
               textAlign: "start",
             }}
           >
-            {fmt(selection.marketOpinionValue)}
+            {fmt(opinionFinal)}
           </div>
           <div style={{ fontWeight: 400, fontSize: 11.5, color: C.faint, marginTop: 7 }}>
-            بلا تقريب هنا — التقريب مرة واحدة بعد التوفيق النهائي (منطق-التكلفة)
+            بلا تقريب هنا — التقريب مرة واحدة بعد التوفيق النهائي
           </div>
         </div>
       </div>
@@ -1705,7 +1729,7 @@ export const AdjustmentsMatrix = memo(function AdjustmentsMatrix({
               color: C.goldText,
             }}
           >
-            {fmt(selection.weightedPricePerSqm)}
+            {pricePerSqmDisplay != null ? fmt(pricePerSqmDisplay) : "—"}
           </div>
         </div>
       </div>

@@ -85,6 +85,9 @@ public sealed class ValuationApproachSettingsService(
         DateOnly? retroDate = null;
         if (DateOnly.TryParse(request.RetrospectiveDate?.Trim(), out var parsedRetro))
             retroDate = parsedRetro;
+        DateOnly? retroDateEnd = null;
+        if (DateOnly.TryParse(request.RetrospectiveDateEnd?.Trim(), out var parsedRetroEnd))
+            retroDateEnd = parsedRetroEnd;
 
         var errors = ValuationApproachSettingsRules.Validate(
             request.MarketApproachEnabled,
@@ -102,7 +105,8 @@ public sealed class ValuationApproachSettingsService(
             retroDate,
             request.RetrospectiveRationale,
             await AllowedPurposeKeysAsync(cancellationToken),
-            costScopeKey: request.CostScopeKey);
+            costScopeKey: request.CostScopeKey,
+            retrospectiveDateEnd: retroDateEnd);
         if (errors.Count > 0) return (null, errors);
 
         var row = await db.ValuationApproachSettings
@@ -135,8 +139,11 @@ public sealed class ValuationApproachSettingsService(
         var dateMode = ValuationDateModes.Normalize(request.ValuationDateMode);
         row.ValuationDateMode = dateMode;
         row.RetrospectiveDate = dateMode == ValuationDateModes.Retrospective ? retroDate : null;
+        row.RetrospectiveDateEnd =
+            dateMode == ValuationDateModes.Retrospective ? retroDateEnd : null;
         row.RetrospectiveRationale = dateMode == ValuationDateModes.Retrospective
-            ? request.RetrospectiveRationale!.Trim()
+            && !string.IsNullOrWhiteSpace(request.RetrospectiveRationale)
+            ? request.RetrospectiveRationale.Trim()
             : null;
         var selectedAssumptions = request.SelectedAssumptions ?? [];
         if (request.ExternalSpecialistUsed)
@@ -204,6 +211,7 @@ public sealed class ValuationApproachSettingsService(
             ValuationDateMode = effective.ValuationDateMode,
             ValuationDateModeLabelAr = ValuationDateModes.LabelAr(effective.ValuationDateMode),
             RetrospectiveDate = effective.RetrospectiveDate?.ToString("yyyy-MM-dd"),
+            RetrospectiveDateEnd = effective.RetrospectiveDateEnd?.ToString("yyyy-MM-dd"),
             RetrospectiveRationale = effective.RetrospectiveRationale,
             SelectedAssumptions = ValuationApproachSettingsRules.ParseAssumptions(
                 effective.SelectedAssumptionsJson),

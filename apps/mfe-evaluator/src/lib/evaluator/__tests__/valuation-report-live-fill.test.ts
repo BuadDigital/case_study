@@ -139,6 +139,30 @@ describe("valuation report live fill from intake", () => {
     expect(next.marketMethodKey).toBe("comparison");
   });
 
+  it("does not force liquidation defaults when assignment type is unknown", () => {
+    const existing = {
+      ...emptyReportChoices(),
+      purposeKey: "sale",
+      valueBasisKey: "market",
+      premiseKey: "current",
+    };
+    const next = seedReportChoicesFromAssignment("", null, existing);
+    expect(next.valueBasisKey).toBe("market");
+    expect(next.purposeKey).toBe("sale");
+    expect(next.premiseKey).toBe("current");
+  });
+
+  it("keeps a compatible premise when reseeding the same basis", () => {
+    const next = seedReportChoicesFromAssignment("تنفيذ", null, {
+      ...emptyReportChoices(),
+      purposeKey: "auction_liquidation",
+      valueBasisKey: "liquidation",
+      premiseKey: "forced",
+    });
+    expect(next.valueBasisKey).toBe("liquidation");
+    expect(next.premiseKey).toBe("forced");
+  });
+
   it("uses orderly premise when the PO is execution/liquidation", () => {
     const draft = createEvaluatorDraft({
       taskId: "t1",
@@ -688,22 +712,12 @@ describe("valuation report live fill from intake", () => {
     ).toBe("—");
   });
 
-  it("fills report workers into the participants table and blanks extra columns", () => {
+  it("fills fixed roster participants plus assigned appraiser as fourth column", () => {
     const draft = createEvaluatorDraft({
       taskId: "t1",
       propertyId: "p1",
       poNumber: "PO-1",
     });
-    draft.reportWorkers = [
-      {
-        id: "w1",
-        role: "معد",
-        name: "عبدالله الكثيري",
-        licenseNumber: "",
-        licenseDate: "",
-        licenseFileName: null,
-      },
-    ];
     const fill = buildValuationReportLiveFill({
       draft,
       certifiedName: "عماد رشيد الرشيد",
@@ -711,6 +725,7 @@ describe("valuation report live fill from intake", () => {
       certifiedMembershipCategory: "fellow",
       certifiedTitle: "الرئيس التنفيذي",
       valuationBranch: "فرع العقار",
+      assignedAppraiserName: "عبدالله الكثيري",
     });
     const dom = new DOMParser().parseFromString(
       `<section data-sec="26">
@@ -732,10 +747,38 @@ describe("valuation report live fill from intake", () => {
     applyValuationReportLiveFill(dom, fill, {
       valuers: [
         {
+          id: "v3",
+          nameAr: "سليمان عبد الله الصالحي",
+          membershipNumber: "1220000919",
+          membershipCategory: "associate",
+          membershipExpiresAt: "2026-12-31",
+          role: "reviewer",
+          isActive: true,
+        },
+        {
+          id: "v4",
+          nameAr: "سالم الغريب",
+          membershipNumber: "1220000845",
+          membershipCategory: "fellow",
+          membershipExpiresAt: "2027-12-31",
+          role: "reviewer",
+          isActive: true,
+        },
+        {
+          id: "v5",
+          nameAr: "أيمن أحمد مجرشي",
+          membershipNumber: "1210002040",
+          membershipCategory: "associate",
+          membershipExpiresAt: "2026-12-31",
+          role: "assistant",
+          isActive: true,
+        },
+        {
           id: "v2",
           nameAr: "عبدالله الكثيري",
           membershipNumber: "1220001583",
           membershipCategory: "associate",
+          membershipExpiresAt: "2027-01-20",
           role: "valuer",
           isActive: true,
         },
@@ -745,18 +788,128 @@ describe("valuation report live fill from intake", () => {
     const names = [
       ...dom.querySelectorAll('[data-sec="26"] table.ctr tr')[0].querySelectorAll("td.v"),
     ].map((td) => td.textContent);
-    expect(names).toEqual(["عبدالله الكثيري", "—", "—"]);
-    expect(dom.querySelector('[data-sec="26"] table.ctr')?.textContent).toContain(
-      "مقيم عقاري",
-    );
+    expect(names).toEqual([
+      "سليمان عبد الله الصالحي",
+      "سالم الغريب",
+      "أيمن أحمد مجرشي",
+      "عبدالله الكثيري",
+    ]);
     expect(dom.querySelector('[data-sec="26"] table.ctr')?.textContent).toContain(
       "1220001583",
+    );
+    expect(dom.querySelector('[data-sec="26"] table.ctr')?.textContent).toContain(
+      "تاريخ انتهاء العضوية",
+    );
+    expect(dom.querySelector('[data-sec="26"] table.ctr')?.textContent).toContain(
+      "2027/01/20",
     );
     const approve = [...dom.querySelectorAll('[data-sec="26"] h2')]
       .find((h) => h.textContent?.includes("إعتماد"))
       ?.nextElementSibling;
     expect(approve?.textContent).toContain("عماد رشيد الرشيد");
     expect(approve?.textContent).toContain("1210000003");
+  });
+
+  it("keeps only the three fixed participants when assignment is empty", () => {
+    const draft = createEvaluatorDraft({
+      taskId: "t1",
+      propertyId: "p1",
+      poNumber: "PO-1",
+    });
+    draft.reportWorkers = [
+      {
+        id: "w1",
+        role: "معد",
+        name: "",
+        licenseNumber: "",
+        licenseDate: "",
+        licenseFileName: null,
+      },
+    ];
+    const fill = buildValuationReportLiveFill({
+      draft,
+      valuationBranch: "فرع العقار",
+      assignedAppraiserName: "",
+    });
+    const dom = new DOMParser().parseFromString(
+      `<section data-sec="26">
+        <table class="ctr">
+          <tr><td class="k">الاسم</td><td class="v">عبدالله الكثيري</td><td class="v">سليمان</td><td class="v">سالم</td></tr>
+          <tr><td class="k">المسمى الوظيفي</td><td class="v">x</td><td class="v">x</td><td class="v">x</td></tr>
+          <tr><td class="k">فئة العضوية</td><td class="v">x</td><td class="v">x</td><td class="v">x</td></tr>
+          <tr><td class="k">رقم العضوية</td><td class="num">x</td><td class="num">x</td><td class="num">x</td></tr>
+          <tr><td class="k">فرع التقييم</td><td class="v">x</td><td class="v">x</td><td class="v">x</td></tr>
+          <tr><td class="k">التوقيع</td><td class="v"></td><td class="v"></td><td class="v"></td></tr>
+        </table>
+      </section>`,
+      "text/html",
+    );
+    applyValuationReportLiveFill(dom, fill, {
+      valuers: [
+        {
+          id: "v1",
+          nameAr: "معتمد النظام",
+          role: "certified",
+          isActive: true,
+          membershipNumber: "1",
+        },
+        {
+          id: "v3",
+          nameAr: "سليمان عبد الله الصالحي",
+          role: "reviewer",
+          isActive: true,
+          membershipNumber: "200",
+          membershipCategory: "fellow",
+          membershipExpiresAt: "2026-12-31",
+        },
+        {
+          id: "v4",
+          nameAr: "سالم الغريب",
+          role: "reviewer",
+          isActive: true,
+          membershipNumber: "300",
+          membershipExpiresAt: "2027-06-15",
+        },
+        {
+          id: "v5",
+          nameAr: "أيمن أحمد مجرشي",
+          role: "assistant",
+          isActive: true,
+          membershipNumber: "400",
+          membershipExpiresAt: "2026-12-31",
+        },
+        {
+          id: "v2",
+          nameAr: "عبدالله الكثيري",
+          role: "valuer",
+          isActive: true,
+          membershipNumber: "100",
+          membershipCategory: "associate",
+        },
+      ],
+      valuationBranch: "فرع العقار",
+    });
+    const names = [
+      ...dom.querySelectorAll('[data-sec="26"] table.ctr tr')[0].querySelectorAll("td.v"),
+    ].map((td) => td.textContent);
+    expect(names).toEqual([
+      "سليمان عبد الله الصالحي",
+      "سالم الغريب",
+      "أيمن أحمد مجرشي",
+    ]);
+    expect(dom.querySelector('[data-sec="26"] table.ctr')?.textContent).not.toContain(
+      "عبدالله الكثيري",
+    );
+    expect(dom.querySelector('[data-sec="26"] table.ctr')?.textContent).not.toContain(
+      "معتمد النظام",
+    );
+    expect(dom.querySelector('[data-sec="26"] table.ctr')?.textContent).toContain("400");
+    expect(dom.querySelector('[data-sec="26"] table.ctr')?.textContent).toContain(
+      "2027/06/15",
+    );
+    expect(dom.querySelector('[data-sec="26"] table.ctr')?.textContent).toContain(
+      "2026/12/31",
+    );
   });
 
   it("wires defects, deal type, and adjustment rows without sharing أخرى", () => {

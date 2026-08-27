@@ -106,7 +106,7 @@ export type EvaluatorReportChoices = {
 const EMPTY_ESG: EvaluatorEsgGroup = {
   none: true,
   selected: [],
-  notes: "",
+  notes: "لا يوجد تأثير للعوامل على القيمة التقديرية للعقار.",
 };
 
 export { defaultPremiseKeyForBasis };
@@ -117,6 +117,8 @@ export function seedReportChoicesFromAssignment(
   existing?: EvaluatorReportChoices | null,
 ): EvaluatorReportChoices {
   const base = existing ?? emptyReportChoices();
+  // بدون نوع إسناد معروف لا نفرض «تصفية» — ذلك كان يظهر خصم التصفية ثم يختفي.
+  if (!(assignmentType ?? "").trim()) return base;
   const purposeKey = valuationPurposeKeyForAssignment(
     assignmentType,
     subClientId,
@@ -125,7 +127,13 @@ export function seedReportChoicesFromAssignment(
     assignmentType,
     subClientId,
   );
-  const premiseKey = defaultPremiseKeyForBasis(valueBasisKey);
+  const premiseCompatible =
+    valueBasisKey === "liquidation"
+      ? base.premiseKey === "orderly" || base.premiseKey === "forced"
+      : base.premiseKey === "hau" || base.premiseKey === "current";
+  const premiseKey = premiseCompatible
+    ? base.premiseKey
+    : defaultPremiseKeyForBasis(valueBasisKey);
   return { ...base, purposeKey, valueBasisKey, premiseKey };
 }
 

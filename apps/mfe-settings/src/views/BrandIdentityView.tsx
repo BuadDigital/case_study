@@ -222,7 +222,6 @@ export function BrandIdentityView() {
   const padStart = mm(brand.letterheadPadStartMm, D.letterheadPadStartMm!);
   const stampW = mm(brand.stampWidthCm, D.stampWidthCm!);
   const stampH = mm(brand.stampHeightCm, D.stampHeightCm!);
-  const sigW = mm(brand.signatureWidthCm, D.signatureWidthCm!);
   const sigH = mm(brand.signatureHeightCm, D.signatureHeightCm!);
 
   const logoMeta = useMemo(
@@ -552,43 +551,33 @@ export function BrandIdentityView() {
                 }}
               />
             </div>
-            <div className="grid min-w-[14rem] flex-1 grid-cols-2 gap-2.5">
-              <div className="flex flex-col">
-                <Label size="field">عرض التوقيع في A4 (cm)</Label>
-                <Input
-                  className={fieldCls}
-                  type="number"
-                  dir="ltr"
-                  disabled={!canEdit}
-                  value={String(sigW)}
-                  onChange={(e) =>
-                    mark("sig", {
-                      ...brand,
-                      signatureWidthCm: Number(e.target.value),
-                    })
-                  }
-                />
-              </div>
-              <div className="flex flex-col">
+            <div className="grid min-w-[14rem] flex-1 grid-cols-1 gap-2.5">
+              <div className="flex max-w-[12rem] flex-col">
                 <Label size="field">ارتفاع التوقيع في A4 (cm)</Label>
                 <Input
                   className={fieldCls}
                   type="number"
                   dir="ltr"
+                  min={0.5}
+                  max={8}
+                  step={0.1}
                   disabled={!canEdit}
                   value={String(sigH)}
-                  onChange={(e) =>
+                  onChange={(e) => {
+                    const n = Number.parseFloat(e.target.value);
+                    if (!Number.isFinite(n) || n <= 0) return;
                     mark("sig", {
                       ...brand,
-                      signatureHeightCm: Number(e.target.value),
-                    })
-                  }
+                      signatureHeightCm: Math.round(n * 10) / 10,
+                    });
+                  }}
                 />
               </div>
-              <p className="col-span-2 m-0 text-[11.5px] leading-relaxed text-text-3">
-                المقاس يسري على الصفحات المطبوعة فقط — رفع التوقيع نفسه من هنا.
+              <p className="m-0 text-[11.5px] leading-relaxed text-text-3">
+                توقيع الاعتماد فقط — التحكم بالارتفاع (مثل 1.5) والعرض يتناسب مع
+                الصورة. تواقيع المشاركين في التقرير بارتفاع ثابت 1.5 سم دون ضبط.
               </p>
-              <div className="col-span-2">
+              <div>
                 <Button
                   variant="default"
                   size="sm"
@@ -613,7 +602,7 @@ export function BrandIdentityView() {
             </div>
           </CardBody>
           <div className={cardFootCls}>
-            <span>يُطبع في المشاركين (26) وإعتماد التقرير (27)</span>
+            <span>يُطبع في إعتماد التقرير (27) — تواقيع المشاركين (26) بارتفاع ثابت 1.5 سم</span>
             <Button
               variant="primary"
               size="sm"

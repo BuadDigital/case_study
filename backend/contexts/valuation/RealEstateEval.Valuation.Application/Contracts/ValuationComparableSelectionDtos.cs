@@ -502,8 +502,10 @@ public class ValuationApproachSettingsDto
  /// <summary>تاريخ التقييم: issue (آلي — إصدار القيمة) | retrospective (يدوي بمبرر).</summary>
     public string ValuationDateMode { get; init; } = "issue";
     public string ValuationDateModeLabelAr { get; init; } = "";
- /// <summary>yyyy-MM-dd عند الأثر الرجعي.</summary>
+ /// <summary>yyyy-MM-dd عند الأثر الرجعي (أو بداية الفترة).</summary>
     public string? RetrospectiveDate { get; init; }
+    /// <summary>yyyy-MM-dd — نهاية الفترة إن وُجدت؛ فارغ = تاريخ محدد.</summary>
+    public string? RetrospectiveDateEnd { get; init; }
     public string? RetrospectiveRationale { get; init; }
 
  /// <summary>البنود المنتقاة/المضافة (نصوص مجمّدة مع التقييم).</summary>
@@ -550,9 +552,13 @@ public class SaveValuationApproachSettingsRequest
     [MaxLength(16)]
     public string? ValuationDateMode { get; init; }
 
- /// <summary>yyyy-MM-dd — إلزامي عند retrospective.</summary>
+ /// <summary>yyyy-MM-dd — إلزامي عند retrospective (أو بداية الفترة).</summary>
     [MaxLength(16)]
     public string? RetrospectiveDate { get; init; }
+
+ /// <summary>yyyy-MM-dd — نهاية الفترة؛ فارغ = تاريخ محدد.</summary>
+    [MaxLength(16)]
+    public string? RetrospectiveDateEnd { get; init; }
 
     [MaxLength(2000)]
     public string? RetrospectiveRationale { get; init; }

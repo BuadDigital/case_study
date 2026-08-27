@@ -694,7 +694,10 @@ export function esgCell(
   group: EvaluatorReportChoices["esgEnv"] | undefined,
 ): string {
   if (!group) return "";
-  if (group.none) return "لا يوجد أثر جوهري";
+  if (group.none) {
+    const notes = (group.notes ?? "").trim();
+    return notes || "لا يوجد تأثير للعوامل على القيمة التقديرية للعقار.";
+  }
   const bits = [...(group.selected ?? [])];
   const notes = (group.notes ?? "").trim();
   if (notes) bits.push(notes);

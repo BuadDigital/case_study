@@ -1,12 +1,12 @@
 "use client";
 
-import { Fragment, useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from "react";
+import { Fragment, useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import {
   getApiBase,
   ensureOpenValuationRequestByProperty,
   listComparableProperties,
+  suggestComparablePropertiesByProximity,
   listValuationComparableSelections,
-  removeValuationComparableSelection,
   saveValuationComparableMarket,
   saveValuationCostApproach,
   saveValuationMarketApproach,
@@ -37,7 +37,7 @@ import {
   type ValuationIssuanceGatesDto,
 } from "@platform/api-client";
 import { getAuthSession } from "@platform/auth-client";
-import { cn, useToast } from "@platform/ui-kit";
+import { cn, Spinner, useToast } from "@platform/ui-kit";
 import {
   VALUE_BASIS_OPTIONS,
   basisOfValueKeyForAssignment,
@@ -45,28 +45,22 @@ import {
 } from "@platform/app-shared/prototype/assignment-valuation-defaults";
 import { amountWordsOrZero } from "../../../lib/evaluator/value-estimation";
 import { openValuationReportPreview } from "../../../lib/evaluator/valuation-report-preview";
+import type { PoPropertyIntake } from "@case-study/mfe/lib/prototype/po-intake-data";
+import type {
+  EvaluatorReportChoices,
+  EvaluatorSubmission,
+} from "../../../lib/evaluator/evaluator-window-data";
+import { createEvaluatorDraft } from "../../../lib/evaluator/evaluator-window-data";
+import { EvaluatorFinalReviewTab } from "../EvaluatorFinalReviewTab";
 import { AdjustmentsMatrix } from "./AdjustmentsMatrix";
 
-/* ─── design tokens — نقرأ متغيرات النظام مباشرة كي تطابق الشاشات هوية إجادة (والوضع الداكن). */
-const C = {
-  page: "var(--bg)",
-  card: "var(--surface)",
-  border: "var(--border)",
-  borderStrong: "var(--border-md)",
-  gold: "var(--gold)",
-  goldSoft: "var(--gold-soft)",
-  goldText: "var(--gold-d)",
-  /* نص العناوين — يتبدّل للفاتح في الوضع الداكن؛ التعبئات الكحلية تستخدم var(--ink) مباشرة. */
-  ink: "var(--heading)",
-  inkFill: "var(--ink)",
-  muted: "var(--text-2)",
-  faint: "var(--text-3)",
-  soft: "var(--surface-2)",
-  softAlt: "var(--surface-2)",
-  body: "var(--text-1)",
-  danger: "var(--red)",
-  dangerText: "var(--red-text)",
-} as const;
+/* ─── Tailwind class tokens (identity via @theme CSS vars) ─── */
+const vwInputClassName =
+  "w-full rounded-[var(--radius)] border border-border-md bg-surface-2 px-3 py-2.5 text-[13px] font-semibold text-text outline-none";
+const vwThClassName =
+  "whitespace-nowrap border-b-2 border-gold bg-surface-2 px-4 py-3.5 text-center text-[12px] font-bold text-heading";
+const vwTdClassName =
+  "border-b border-border px-4 py-3 text-center text-[12.5px] text-text";
 
 const LAND_WITHIN_COST = "land_within_cost";
 const MARKET_CONTEXT = "market";
@@ -191,7 +185,7 @@ function costLineComputed(
   };
 }
 
-type ScreenId = "basic" | "market" | "cost" | "final";
+type ScreenId = "basic" | "market" | "cost" | "final" | "review";
 
 export type ValuationWorkPropertyHint = {
   area?: string;
@@ -208,8 +202,20 @@ export type ValuationWorkShellProps = {
   assignmentType?: string;
   districtHint?: string;
   onFinalOpinionChange?: (finalOpinionValue: number) => void;
-  onExternalSpecialistUsedChange?: (used: boolean) => void;
   property?: ValuationWorkPropertyHint;
+  /** Full intake row when available (final-review screen). */
+  intakeProperty?: PoPropertyIntake | null;
+  draft?: EvaluatorSubmission;
+  disabled?: boolean;
+  fieldErrors?: Record<string, string>;
+  onDraftPatch?: (patch: {
+    evaluatorPrice?: string;
+    forcedSaleDiscountPct?: string;
+  }) => void;
+  onReportChoicesPatch?: (patch: Partial<EvaluatorReportChoices>) => void;
+  onSubmit?: () => void;
+  submitting?: boolean;
+  showSubmit?: boolean;
 };
 
 function apiConfig() {
@@ -267,22 +273,16 @@ function areaRatio(
 function Card({
   children,
   className,
-  style,
 }: {
   children: ReactNode;
   className?: string;
-  style?: CSSProperties;
 }) {
   return (
     <div
-      className={cn("mb-5 overflow-hidden", className)}
-      style={{
-        background: C.card,
-        border: `1px solid ${C.border}`,
-        borderRadius: "var(--radius-lg)",
-        boxShadow: "var(--shadow)",
-        ...style,
-      }}
+      className={cn(
+        "mb-5 overflow-hidden rounded-[var(--radius-lg)] border border-border bg-surface shadow-card",
+        className,
+      )}
     >
       {children}
     </div>
@@ -290,19 +290,12 @@ function Card({
 }
 
 function CardPad({ children }: { children: ReactNode }) {
-  return <div style={{ padding: "18px 22px 22px" }}>{children}</div>;
+  return <div className="px-[22px] pb-[22px] pt-[18px]">{children}</div>;
 }
 
 function CardTitle({ children }: { children: ReactNode }) {
   return (
-    <div
-      style={{
-        fontWeight: 800,
-        fontSize: 14.5,
-        color: C.ink,
-        marginBottom: 16,
-      }}
-    >
+    <div className="mb-4 text-[14.5px] font-extrabold text-heading">
       {children}
     </div>
   );
@@ -310,95 +303,91 @@ function CardTitle({ children }: { children: ReactNode }) {
 
 function FieldLabel({ children }: { children: ReactNode }) {
   return (
-    <span style={{ fontWeight: 500, fontSize: 11.5, color: C.muted }}>
-      {children}
-    </span>
+    <span className="text-[11.5px] font-medium text-text-2">{children}</span>
   );
 }
 
-const inputStyle: CSSProperties = {
-  padding: "10px 12px",
-  border: `1px solid ${C.borderStrong}`,
-  borderRadius: "var(--radius)",
-  background: C.soft,
-  color: C.body,
-  fontWeight: 600,
-  fontSize: 13,
-  width: "100%",
-};
-
-const thStyle: CSSProperties = {
-  padding: "13px 16px",
-  textAlign: "center",
-  fontWeight: 700,
-  fontSize: 12,
-  color: C.ink,
-  background: C.soft,
-  borderBottom: `2px solid ${C.gold}`,
-  whiteSpace: "nowrap",
-};
-
-const tdStyle: CSSProperties = {
-  padding: "12px 16px",
-  textAlign: "center",
-  borderBottom: `1px solid ${C.border}`,
-  fontSize: 12.5,
-  color: C.body,
-};
-
-/** HTML `.grid` cols — finance-ui.css comparable bank table. */
+/** HTML `.grid` cols — finance-ui.css comparable bank table (+ مسافة كم). */
 const BANK_COLS =
-  "70px minmax(132px,1.1fr) minmax(100px,.9fr) minmax(122px,1fr) 112px minmax(96px,.85fr) minmax(108px,.95fr) 92px 88px minmax(84px,.75fr) minmax(128px,1.15fr)";
+  "70px minmax(132px,1.1fr) minmax(100px,.9fr) minmax(122px,1fr) 112px minmax(96px,.85fr) minmax(108px,.95fr) 92px 88px 72px minmax(84px,.75fr) minmax(120px,1.1fr)";
+
+const BANK_CANDIDATE_POOL = 40;
+const BANK_DISPLAY_LIMIT = 6;
+
+/** أقرب مساحة لعقار التقييم أولاً، ثم أقرب مسافة إن وُجدت. */
+function rankBankCandidatesByArea(
+  items: { comparable: ComparablePropertyDto; distanceKm?: number | null }[],
+  subjectSqm: number | null,
+  limit = BANK_DISPLAY_LIMIT,
+): ComparablePropertyDto[] {
+  const ranked = [...items].sort((a, b) => {
+    if (subjectSqm != null && subjectSqm > 0) {
+      const da = Math.abs((a.comparable.areaSqm || 0) - subjectSqm);
+      const db = Math.abs((b.comparable.areaSqm || 0) - subjectSqm);
+      if (da !== db) return da - db;
+    }
+    const distA = a.distanceKm ?? Number.POSITIVE_INFINITY;
+    const distB = b.distanceKm ?? Number.POSITIVE_INFINITY;
+    if (distA !== distB) return distA - distB;
+    return (b.comparable.transactionDate || "").localeCompare(
+      a.comparable.transactionDate || "",
+    );
+  });
+  return ranked.slice(0, limit).map((x) => x.comparable);
+}
+
+function parseSubjectAreaSqm(
+  subjectAreaField: string,
+  propertyArea?: string,
+): number | null {
+  const fromUi = Number(String(subjectAreaField ?? "").replace(",", "."));
+  if (Number.isFinite(fromUi) && fromUi > 0) return fromUi;
+  const fromProp = Number(String(propertyArea ?? "").replace(",", "."));
+  if (Number.isFinite(fromProp) && fromProp > 0) return fromProp;
+  return null;
+}
 
 /** صف دفتر القيمة (invoiceRows) — تسمية وملاحظة يميناً وقيمة يساراً. */
 function LedgerRow({
   label,
   note,
   value,
-  valueColor,
+  valueClassName,
   strong,
 }: {
   label: string;
   note?: string;
   value: string;
-  valueColor?: string;
+  valueClassName?: string;
   strong?: boolean;
 }) {
   return (
     <div
-      style={{
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "space-between",
-        gap: 10,
-        padding: "11px 16px",
-        borderBottom: `1px solid ${C.border}`,
-        background: strong ? C.soft : C.card,
-      }}
+      className={cn(
+        "flex items-center justify-between gap-2.5 border-b border-border px-4 py-[11px]",
+        strong ? "bg-surface-2" : "bg-surface",
+      )}
     >
       <div>
         <div
-          style={{
-            fontWeight: strong ? 800 : 700,
-            fontSize: 12.5,
-            color: C.ink,
-          }}
+          className={cn(
+            "text-[12.5px] text-heading",
+            strong ? "font-extrabold" : "font-bold",
+          )}
         >
           {label}
         </div>
         {note ? (
-          <div style={{ fontSize: 10.5, color: C.faint, marginTop: 2 }}>
-            {note}
-          </div>
+          <div className="mt-0.5 text-[10.5px] text-text-3">{note}</div>
         ) : null}
       </div>
       <span
         dir="ltr"
-        style={{
-          fontWeight: 800,
-          fontSize: strong ? 15 : 13.5,
-          color: valueColor ?? C.ink,
-        }}
+        className={cn(
+          "font-extrabold text-heading",
+          strong ? "text-[15px]" : "text-[13.5px]",
+          valueClassName,
+        )}
       >
         {value}
       </span>
@@ -469,18 +458,13 @@ function ToggleChip({
       type="button"
       disabled={disabled}
       onClick={onClick}
-      style={{
-        padding: "9px 15px",
-        border: `1px solid ${active ? C.gold : C.borderStrong}`,
-        borderRadius: "var(--radius)",
-        background: active ? C.goldSoft : C.card,
-        color: active ? C.goldText : C.muted,
-        fontWeight: 700,
-        fontSize: 12,
-        cursor: disabled ? "not-allowed" : "pointer",
-        opacity: disabled ? 0.55 : 1,
-        transition: "background .15s, color .15s, border-color .15s",
-      }}
+      className={cn(
+        "rounded-[var(--radius)] border px-[15px] py-[9px] text-[12px] font-bold transition-[background,color,border-color] duration-150",
+        active
+          ? "border-gold bg-gold-soft text-gold-d"
+          : "border-border-md bg-surface text-text-2",
+        disabled ? "cursor-not-allowed opacity-55" : "cursor-pointer",
+      )}
     >
       {children}
     </button>
@@ -501,22 +485,10 @@ function PrimaryBtn({
       type="button"
       disabled={disabled}
       onClick={onClick}
-      style={{
-        display: "inline-flex",
-        alignItems: "center",
-        gap: 7,
-        padding: "10px 16px",
-        border: "none",
-        borderRadius: "var(--radius)",
-        background: C.inkFill,
-        color: "#fff",
-        fontWeight: 700,
-        fontSize: 13,
-        cursor: disabled ? "not-allowed" : "pointer",
-        opacity: disabled ? 0.55 : 1,
-        boxShadow: "var(--shadow)",
-        transition: "background .15s",
-      }}
+      className={cn(
+        "inline-flex items-center gap-[7px] rounded-[var(--radius)] border-none bg-ink px-4 py-2.5 text-[13px] font-bold text-white shadow-card transition-colors duration-150",
+        disabled ? "cursor-not-allowed opacity-55" : "cursor-pointer",
+      )}
     >
       {children}
     </button>
@@ -537,21 +509,10 @@ function GhostBtn({
       type="button"
       disabled={disabled}
       onClick={onClick}
-      style={{
-        display: "inline-flex",
-        alignItems: "center",
-        gap: 7,
-        height: 36,
-        padding: "0 13px",
-        border: `1px solid ${C.borderStrong}`,
-        borderRadius: "var(--radius)",
-        background: C.card,
-        color: C.muted,
-        fontWeight: 500,
-        fontSize: 12.5,
-        cursor: disabled ? "not-allowed" : "pointer",
-        opacity: disabled ? 0.55 : 1,
-      }}
+      className={cn(
+        "inline-flex h-9 items-center gap-[7px] rounded-[var(--radius)] border border-border-md bg-surface px-[13px] text-[12.5px] font-medium text-text-2",
+        disabled ? "cursor-not-allowed opacity-55" : "cursor-pointer",
+      )}
     >
       {children}
     </button>
@@ -686,14 +647,20 @@ export function ValuationWorkShell({
   assignmentType,
   districtHint,
   onFinalOpinionChange,
-  onExternalSpecialistUsedChange,
   property,
+  intakeProperty = null,
+  draft,
+  disabled = false,
+  fieldErrors,
+  onDraftPatch,
+  onReportChoicesPatch,
+  onSubmit,
+  submitting = false,
+  showSubmit = false,
 }: ValuationWorkShellProps) {
   const { showToast } = useToast();
   const onFinalOpinionChangeRef = useRef(onFinalOpinionChange);
   onFinalOpinionChangeRef.current = onFinalOpinionChange;
-  const onExternalSpecialistUsedChangeRef = useRef(onExternalSpecialistUsedChange);
-  onExternalSpecialistUsedChangeRef.current = onExternalSpecialistUsedChange;
   const [screen, setScreen] = useState<ScreenId>("basic");
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -707,6 +674,9 @@ export function ValuationWorkShell({
   const [landSelection, setLandSelection] =
     useState<ValuationComparableSelectionListDto | null>(null);
   const [candidates, setCandidates] = useState<ComparablePropertyDto[]>([]);
+  const [candidateDistanceKm, setCandidateDistanceKm] = useState<
+    Record<string, number>
+  >({});
   const [q, setQ] = useState("");
   const [subjectArea, setSubjectArea] = useState("");
   const [adjustmentBasis, setAdjustmentBasis] = useState("price_per_sqm");
@@ -744,10 +714,10 @@ export function ValuationWorkShell({
   const [asSpecialistUsed, setAsSpecialistUsed] = useState(false);
   const [asSpecialistDetails, setAsSpecialistDetails] = useState("");
   const [asDateMode, setAsDateMode] = useState("issue");
+  const [asRetroKind, setAsRetroKind] = useState<"single" | "range">("single");
   const [asRetroDate, setAsRetroDate] = useState("");
-  const [asRetroRationale, setAsRetroRationale] = useState("");
+  const [asRetroDateEnd, setAsRetroDateEnd] = useState("");
   const [asAssumptions, setAsAssumptions] = useState<string[]>([]);
-  const [asFreeAssumption, setAsFreeAssumption] = useState("");
 
   const [cost, setCost] = useState<ValuationCostApproachDto | null>(null);
   const [costDraft, setCostDraft] = useState<ValuationCostLineDto[]>([]);
@@ -777,7 +747,9 @@ export function ValuationWorkShell({
   const [methodsRationale, setMethodsRationale] = useState("");
   const [finalRoundDecimals, setFinalRoundDecimals] = useState("0");
   const [basisOfValueKey, setBasisOfValueKey] = useState(() =>
-    basisOfValueKeyForAssignment(assignmentType),
+    assignmentType?.trim()
+      ? basisOfValueKeyForAssignment(assignmentType)
+      : "market",
   );
   const [valuePremiseKey, setValuePremiseKey] = useState("");
   const [basisOptions, setBasisOptions] = useState(VALUE_BASIS_OPTIONS);
@@ -794,13 +766,11 @@ export function ValuationWorkShell({
 
   const officialValuationDate =
     asDateMode === "retrospective" && asRetroDate.trim()
-      ? asRetroDate
+      ? asRetroKind === "range" && asRetroDateEnd.trim()
+        ? `${asRetroDate} — ${asRetroDateEnd}`
+        : asRetroDate
       : null;
   const valDate = officialValuationDate ?? "عند الاعتماد";
-
-  useEffect(() => {
-    onExternalSpecialistUsedChangeRef.current?.(asSpecialistUsed);
-  }, [asSpecialistUsed]);
 
   useEffect(() => {
     const config = apiConfig();
@@ -834,6 +804,8 @@ export function ValuationWorkShell({
       if (premises.length) setPremiseOptions(premises);
     });
   }, []);
+
+  const subjectAreaSyncedRef = useRef<string | null>(null);
 
   const reload = useCallback(async (opts?: { silent?: boolean }) => {
     const config = apiConfig();
@@ -889,12 +861,67 @@ export function ValuationWorkShell({
     // كل استجابة تُطبَّق فور وصولها — علامة الاعتماد لا تنتظر أبطأ نداء (بوابات الإصدار).
     const selP = listValuationComparableSelections(config, requestId, MARKET_CONTEXT);
     const landP = listValuationComparableSelections(config, requestId, LAND_WITHIN_COST);
-    const bankP = listComparableProperties(config, {
-      q: q || undefined,
-      district: districtHint || property?.district || undefined,
-      take: 40,
-      forPropertyId: propertyId.trim() || undefined,
-    });
+    // بنك العرض: مرشحون ضمن ٥ كم، ثم ترتيب حسب أقرب مساحة لعقار التقييم — ٦ للعرض.
+    // البحث النصي يجلب دفعة ثم يُرتَّب بنفس معيار المساحة.
+    const bankP = (async () => {
+      const subjectSqm = parseSubjectAreaSqm(subjectArea, property?.area);
+      const search = q.trim();
+      if (search) {
+        const listed = await listComparableProperties(config, {
+          q: search,
+          district: districtHint || property?.district || undefined,
+          take: BANK_CANDIDATE_POOL,
+          forPropertyId: propertyId.trim() || undefined,
+        });
+        if (!listed.ok) return listed;
+        return {
+          ok: true as const,
+          data: rankBankCandidatesByArea(
+            listed.data.map((comparable) => ({ comparable })),
+            subjectSqm,
+          ),
+          distances: {} as Record<string, number>,
+        };
+      }
+      const prox = await suggestComparablePropertiesByProximity(config, {
+        propertyId: propertyId.trim() || undefined,
+        take: BANK_CANDIDATE_POOL,
+        maxDistanceKm: 5,
+        district: districtHint || property?.district || undefined,
+        propertyType: property?.propertyType?.trim() || undefined,
+      });
+      if (prox.ok && prox.data.items.length > 0) {
+        const distances: Record<string, number> = {};
+        for (const row of prox.data.items) {
+          distances[row.comparable.id] = row.distanceKm;
+        }
+        return {
+          ok: true as const,
+          data: rankBankCandidatesByArea(
+            prox.data.items.map((row) => ({
+              comparable: row.comparable,
+              distanceKm: row.distanceKm,
+            })),
+            subjectSqm,
+          ),
+          distances,
+        };
+      }
+      const listed = await listComparableProperties(config, {
+        district: districtHint || property?.district || undefined,
+        take: BANK_CANDIDATE_POOL,
+        forPropertyId: propertyId.trim() || undefined,
+      });
+      if (!listed.ok) return listed;
+      return {
+        ok: true as const,
+        data: rankBankCandidatesByArea(
+          listed.data.map((comparable) => ({ comparable })),
+          subjectSqm,
+        ),
+        distances: {} as Record<string, number>,
+      };
+    })();
     const costP = getValuationCostApproach(config, requestId);
     const reconP = getValuationReconciliation(config, requestId);
     const gatesP = getValuationIssuanceGates(config, requestId);
@@ -904,7 +931,11 @@ export function ValuationWorkShell({
       setLandSelection(landSelRes.ok ? landSelRes.data : null),
     );
     void bankP.then((bankRes) => {
-      if (bankRes.ok) setCandidates(bankRes.data);
+      if (!bankRes.ok) return;
+      setCandidates(bankRes.data);
+      setCandidateDistanceKm(
+        "distances" in bankRes && bankRes.distances ? bankRes.distances : {},
+      );
     });
     void gatesP.then((gatesRes) => setGates(gatesRes.ok ? gatesRes.data : null));
 
@@ -934,12 +965,27 @@ export function ValuationWorkShell({
       setAsSpecialistDetails(settingsRes.data.externalSpecialistDetails ?? "");
       setAsDateMode(settingsRes.data.valuationDateMode || "issue");
       setAsRetroDate(settingsRes.data.retrospectiveDate ?? "");
-      setAsRetroRationale(settingsRes.data.retrospectiveRationale ?? "");
+      setAsRetroDateEnd(settingsRes.data.retrospectiveDateEnd ?? "");
+      setAsRetroKind(
+        settingsRes.data.retrospectiveDateEnd?.trim() ? "range" : "single",
+      );
       const loadedAssumptions = settingsRes.data.selectedAssumptions ?? [];
+      const library = settingsRes.data.assumptionLibrary ?? [];
+      const visibleLibrary = library.filter(
+        (clause) =>
+          !settingsRes.data.externalSpecialistUsed ||
+          !isNoExternalSpecialistAssumption(clause),
+      );
+      // عند غياب اختيار محفوظ: كل بنود الافتراضات الخاصة مختارة افتراضياً.
+      const useAllByDefault = loadedAssumptions.length === 0;
       setAsAssumptions(
-        settingsRes.data.externalSpecialistUsed
-          ? loadedAssumptions.filter((x) => !isNoExternalSpecialistAssumption(x))
-          : loadedAssumptions,
+        useAllByDefault
+          ? visibleLibrary
+          : settingsRes.data.externalSpecialistUsed
+            ? loadedAssumptions.filter(
+                (x) => !isNoExternalSpecialistAssumption(x),
+              )
+            : loadedAssumptions,
       );
       }
     } else {
@@ -970,6 +1016,26 @@ export function ValuationWorkShell({
       setDescriptionDraft({});
       setSubjectSpecDraft({});
       setLandRationaleDraft({});
+
+      // مساحة المعاملة من العقار أولى من مساحة أسلوب السوق القديمة على الخادم.
+      const txNum = Number(transactionArea.replace(",", "."));
+      const serverArea = selRes.data.subjectAreaSqm;
+      const syncKey = `${requestId}:${txNum}`;
+      if (
+        transactionArea &&
+        Number.isFinite(txNum) &&
+        txNum > 0 &&
+        (serverArea == null || Math.abs(Number(serverArea) - txNum) > 0.001) &&
+        subjectAreaSyncedRef.current !== syncKey
+      ) {
+        subjectAreaSyncedRef.current = syncKey;
+        const syncRes = await saveValuationMarketApproach(config, requestId, {
+          subjectAreaSqm: txNum,
+          adjustmentBasis: selRes.data.adjustmentBasis || "price_per_sqm",
+          analysisNotes: selRes.data.analysisNotes ?? null,
+        });
+        if (syncRes.ok) setSelection(syncRes.data);
+      }
     }
 
     if (costRes.ok) {
@@ -1036,17 +1102,20 @@ export function ValuationWorkShell({
       setReconMethods(reconRes.data.methods);
       setMethodsRationale(reconRes.data.methodsRationale ?? "");
       setFinalRoundDecimals(String(reconRes.data.finalRoundDecimals ?? 0));
-      const nextBasis =
-        reconRes.data.basisOfValueKey ||
-        basisOfValueKeyForAssignment(assignmentType);
-      setBasisOfValueKey(nextBasis);
-      let nextPremise = reconRes.data.valuePremiseKey || "";
-      if (nextBasis === "liquidation") {
-        if (nextPremise !== "orderly" && nextPremise !== "forced") {
-          nextPremise = "orderly";
+      // أساس القيمة من أمر العمل (PO) فقط — لا يُستبدل بما حُفظ سابقاً في التسوية.
+      if (assignmentType?.trim()) {
+        const nextBasis = basisOfValueKeyForAssignment(assignmentType);
+        setBasisOfValueKey(nextBasis);
+        let nextPremise = reconRes.data.valuePremiseKey || "";
+        if (nextBasis === "liquidation") {
+          if (nextPremise !== "orderly" && nextPremise !== "forced") {
+            nextPremise = "orderly";
+          }
         }
+        setValuePremiseKey(nextPremise);
+      } else {
+        setValuePremiseKey(reconRes.data.valuePremiseKey || "");
       }
-      setValuePremiseKey(nextPremise);
       setLiquidationDiscountPct(String(reconRes.data.liquidationDiscountPct ?? 0));
       setLiquidationDiscountRationale(
         reconRes.data.liquidationDiscountRationale ?? "",
@@ -1074,12 +1143,14 @@ export function ValuationWorkShell({
       setReconMethods([]);
       setMethodsRationale("");
       setFinalRoundDecimals("0");
-      setBasisOfValueKey(basisOfValueKeyForAssignment(assignmentType));
-      setValuePremiseKey(
-        basisOfValueKeyForAssignment(assignmentType) === "liquidation"
-          ? "orderly"
-          : "",
-      );
+      if (assignmentType?.trim()) {
+        setBasisOfValueKey(basisOfValueKeyForAssignment(assignmentType));
+        setValuePremiseKey(
+          basisOfValueKeyForAssignment(assignmentType) === "liquidation"
+            ? "orderly"
+            : "",
+        );
+      }
       setLiquidationDiscountPct("0");
       setLiquidationDiscountRationale("");
       setAlertOverrides({});
@@ -1089,6 +1160,7 @@ export function ValuationWorkShell({
     districtHint,
     q,
     assignmentType,
+    subjectArea,
     property?.area,
     property?.district,
     property?.propertyType,
@@ -1100,8 +1172,26 @@ export function ValuationWorkShell({
   // Initial + property identity — avoid re-running when parent passes a new callback each render.
   useEffect(() => {
     valuationRequestIdRef.current = null;
+    subjectAreaSyncedRef.current = null;
     void reloadRef.current();
   }, [propertyId]);
+
+  // أساس القيمة دائماً من أمر العمل (PO) — لا نفرض تصفية عند غياب النوع.
+  useEffect(() => {
+    if (!assignmentType?.trim()) return;
+    const next = basisOfValueKeyForAssignment(assignmentType);
+    setBasisOfValueKey(next);
+    if (next === "liquidation") {
+      setValuePremiseKey((prev) =>
+        prev === "orderly" || prev === "forced" ? prev : "orderly",
+      );
+    } else {
+      setLiquidationDiscountPct("0");
+      setValuePremiseKey((prev) =>
+        prev === "orderly" || prev === "forced" ? "current" : prev,
+      );
+    }
+  }, [assignmentType]);
 
   // Soft refresh when bank search query changes (no full-screen blank).
   useEffect(() => {
@@ -1216,7 +1306,7 @@ export function ValuationWorkShell({
         comp: c,
       });
     }
-    return rows;
+    return rows.slice(0, BANK_DISPLAY_LIMIT);
   }, [selection, candidates, selectedIds]);
 
   const landBankRows = useMemo(() => {
@@ -1246,7 +1336,7 @@ export function ValuationWorkShell({
         comp: c,
       });
     }
-    return rows;
+    return rows.slice(0, BANK_DISPLAY_LIMIT);
   }, [landSelection, candidates, landSelectedIds]);
 
   const subjectAreaNum = Number(subjectArea.replace(",", ".")) || null;
@@ -1267,6 +1357,7 @@ export function ValuationWorkShell({
           asCostEnabled && (approachSettings?.costApproachAllowed ?? true),
       },
       { id: "final", label: "رأي القيمة النهائي", show: true },
+      { id: "review", label: "المراجعة النهائية", show: true },
     ];
 
   useEffect(() => {
@@ -1289,16 +1380,34 @@ export function ValuationWorkShell({
           barSubLabel: "الحالة",
           barSubValue: settingsSaved ? "إعدادات محفوظة" : "يلزم حفظ الإعدادات",
         };
-      case "market":
+      case "market": {
+        const fromUi = Number(String(subjectArea ?? "").replace(",", "."));
+        const area =
+          (Number.isFinite(fromUi) && fromUi > 0 ? fromUi : null) ??
+          (selection?.subjectAreaSqm != null && selection.subjectAreaSqm > 0
+            ? selection.subjectAreaSqm
+            : null) ??
+          0;
+        const opinion = selection?.marketOpinionValue ?? 0;
+        const isUnitBasis =
+          (selection?.adjustmentBasis || "price_per_sqm") !== "whole_property";
+        const perSqm =
+          isUnitBasis
+            ? selection?.weightedPricePerSqm
+            : area > 0 && opinion > 0
+              ? opinion / area
+              : null;
         return {
           crumbMid: "أسلوب السوق",
           crumbLast: "طريقة المقارنة",
           title: "التقييم بطريقة المقارنة",
           barMainLabel: "القيمة النهائية للعقار",
           barMainValue: `${fmt(selection?.marketOpinionValue)} ر.س`,
-          barSubLabel: "قيمة المتر المرجحة",
-          barSubValue: `${fmt(selection?.weightedPricePerSqm)} ر.س/م²`,
+          barSubLabel: "قيمة المتر المربع",
+          barSubValue:
+            perSqm != null ? `${fmt(perSqm)} ر.س/م²` : "—",
         };
+      }
       case "cost":
         return {
           crumbMid: "أسلوب التكلفة",
@@ -1314,7 +1423,6 @@ export function ValuationWorkShell({
             : "—",
         };
       case "final":
-      default:
         return {
           crumbMid: "التوفيق",
           crumbLast: "رأي القيمة النهائي",
@@ -1324,8 +1432,28 @@ export function ValuationWorkShell({
           barSubLabel: "بعد التقريب",
           barSubValue: amountWordsOrZero(recon?.finalOpinionValue ?? 0),
         };
+      case "review":
+        return {
+          crumbMid: "التوفيق",
+          crumbLast: "المراجعة النهائية",
+          title: "المراجعة النهائية",
+          barMainLabel: "الرأي النهائي",
+          barMainValue: `${fmt(recon?.finalOpinionValue)} ر.س`,
+          barSubLabel: "قبل الاعتماد",
+          barSubValue: "رأي القيمة · الافتراضات · ESG",
+        };
+      default:
+        return {
+          crumbMid: "إعداد التقييم",
+          crumbLast: "البيانات الأساسية",
+          title: "البيانات الأساسية",
+          barMainLabel: "طلب التقييم",
+          barMainValue: displayId ?? "—",
+          barSubLabel: "الحالة",
+          barSubValue: settingsSaved ? "إعدادات محفوظة" : "يلزم حفظ الإعدادات",
+        };
     }
-  }, [screen, displayId, settingsSaved, selection, cost, recon]);
+  }, [screen, displayId, settingsSaved, selection, cost, recon, subjectArea]);
 
   async function adopt(
     compId: string,
@@ -1374,28 +1502,50 @@ export function ValuationWorkShell({
     await reload({ silent: true }); // توفيق الأوزان والاقتراحات
   }
 
-  async function remove(compId: string, context: string = MARKET_CONTEXT) {
-    const config = apiConfig();
-    if (!config || !valuationRequestId) return;
-    setSaving(true);
-    const res = await removeValuationComparableSelection(
-      config,
-      valuationRequestId,
-      compId,
-      context,
-    );
-    setSaving(false);
-    if (!res.ok) {
-      showToast("تعذّر إزالة المقارن", "error");
-      return;
-    }
-    await reload({ silent: true });
-  }
-
   async function saveApproachSettings() {
     const config = apiConfig();
     if (!config || !valuationRequestId) return;
+    if (asDateMode === "retrospective") {
+      if (!asRetroDate.trim()) {
+        showToast("تاريخ الأثر الرجعي إلزامي", "error");
+        return;
+      }
+      if (asRetroKind === "range") {
+        if (!asRetroDateEnd.trim()) {
+          showToast("حدّد تاريخ نهاية الفترة", "error");
+          return;
+        }
+        if (asRetroDateEnd < asRetroDate) {
+          showToast("تاريخ النهاية يجب ألا يسبق تاريخ البداية", "error");
+          return;
+        }
+      }
+    }
     setSaving(true);
+    const latest = await getValuationApproachSettings(config, valuationRequestId);
+    let selectedAssumptions = latest.ok
+      ? [...(latest.data.selectedAssumptions ?? [])]
+      : [...asAssumptions];
+    const library = latest.ok
+      ? latest.data.assumptionLibrary
+      : approachSettings?.assumptionLibrary ?? [];
+    if (asSpecialistUsed) {
+      selectedAssumptions = selectedAssumptions.filter(
+        (x) => !isNoExternalSpecialistAssumption(x),
+      );
+    } else {
+      const clause = library.find(isNoExternalSpecialistAssumption);
+      if (clause && !selectedAssumptions.includes(clause)) {
+        selectedAssumptions = [...selectedAssumptions, clause];
+      }
+    }
+    // عند غياب اختيار محفوظ بعد الجلب: كل البنود الظاهرة افتراضياً.
+    if (selectedAssumptions.length === 0 && library.length > 0) {
+      selectedAssumptions = library.filter(
+        (clause) =>
+          !asSpecialistUsed || !isNoExternalSpecialistAssumption(clause),
+      );
+    }
     const res = await saveValuationApproachSettings(config, valuationRequestId, {
       marketApproachEnabled: asMarketEnabled,
       costApproachEnabled: asCostEnabled && (approachSettings?.costApproachAllowed ?? true),
@@ -1411,11 +1561,12 @@ export function ValuationWorkShell({
       externalSpecialistDetails: asSpecialistDetails.trim() || null,
       valuationDateMode: asDateMode,
       retrospectiveDate: asDateMode === "retrospective" ? asRetroDate || null : null,
-      retrospectiveRationale:
-        asDateMode === "retrospective" ? asRetroRationale.trim() || null : null,
-      selectedAssumptions: asSpecialistUsed
-        ? asAssumptions.filter((x) => !isNoExternalSpecialistAssumption(x))
-        : asAssumptions,
+      retrospectiveDateEnd:
+        asDateMode === "retrospective" && asRetroKind === "range"
+          ? asRetroDateEnd || null
+          : null,
+      retrospectiveRationale: null,
+      selectedAssumptions,
     });
     setSaving(false);
     if (!res.ok) {
@@ -2149,7 +2300,9 @@ export function ValuationWorkShell({
     setReconMethods(res.data.methods);
     setMethodsRationale(res.data.methodsRationale ?? "");
     setFinalRoundDecimals(String(res.data.finalRoundDecimals ?? 0));
-    setBasisOfValueKey(res.data.basisOfValueKey || "market");
+    if (assignmentType?.trim()) {
+      setBasisOfValueKey(basisOfValueKeyForAssignment(assignmentType));
+    }
     setValuePremiseKey(res.data.valuePremiseKey || "");
     setLiquidationDiscountPct(String(res.data.liquidationDiscountPct ?? 0));
     setLiquidationDiscountRationale(res.data.liquidationDiscountRationale ?? "");
@@ -2303,189 +2456,61 @@ export function ValuationWorkShell({
     const isLandKind = approachSettings?.isLandPropertyType ?? false;
     return (
       <>
-        {/* بيانات العقار محل التقييم — مواصفة النموذج التفاعلي */}
-        <Card>
-          <CardPad>
-            <CardTitle>بيانات العقار محل التقييم</CardTitle>
-            <div
-              style={{
-                display: "grid",
-                gridTemplateColumns: "repeat(3, 1fr)",
-                gap: 14,
-              }}
-            >
-              <label style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                <FieldLabel>مساحة الأرض (م²)</FieldLabel>
-                <input
-                  dir="ltr"
-                  value={subjectArea}
-                  onChange={(e) =>
-                    setSubjectArea(e.target.value.replace(/[^\d.]/g, ""))
-                  }
-                  onBlur={() => void saveSubjectArea()}
-                  style={{ ...inputStyle, textAlign: "center" }}
-                />
-                <span style={{ fontSize: 10.5, color: C.faint }}>
-                  أساس المقارنة وتسوية المساحة في أسلوب السوق
-                </span>
-              </label>
-              <div>
-                <FieldLabel>نوع العقار</FieldLabel>
-                <div
-                  style={{
-                    marginTop: 6,
-                    fontWeight: 700,
-                    fontSize: 13.5,
-                    color: C.ink,
-                  }}
-                >
-                  {approachSettings?.propertyType || "—"}
-                </div>
-                <span style={{ fontSize: 10.5, color: C.faint }}>
-                  من أمر العمل — «أرض» تعطّل أسلوب التكلفة (ق-3)
-                </span>
-              </div>
-              <div>
-                <FieldLabel>المدينة / الحي</FieldLabel>
-                <div
-                  style={{
-                    marginTop: 6,
-                    fontWeight: 700,
-                    fontSize: 13.5,
-                    color: C.ink,
-                  }}
-                >
-                  {[property?.city, property?.district ?? districtHint]
-                    .filter(Boolean)
-                    .join(" · ") || "—"}
-                </div>
-                <span style={{ fontSize: 10.5, color: C.faint }}>
-                  تاريخ التقييم: {officialValuationDate ?? "عند الاعتماد"}
-                </span>
-              </div>
-            </div>
-          </CardPad>
-        </Card>
-
-        {/* أساس القيمة المستخدم */}
-        <Card>
-          <CardPad>
-            <CardTitle>أساس القيمة المستخدم</CardTitle>
-            <p style={{ fontSize: 11.5, color: C.goldText, marginBottom: 10 }}>
-              خصم البيع القسري لا يُفعَّل إلا مع «قيمة التصفية».
-            </p>
-            <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-              {basisOptions.map((o) => (
-                <ToggleChip
-                  key={o.value}
-                  active={basisOfValueKey === o.value}
-                  disabled={saving}
-                  onClick={() => {
-                    setBasisOfValueKey(o.value);
-                    if (o.value === "liquidation") {
-                      if (
-                        valuePremiseKey !== "orderly" &&
-                        valuePremiseKey !== "forced"
-                      )
-                        setValuePremiseKey("forced");
-                    } else {
-                      // اختيار أساس غير التصفية يصفّر خصم البيع القسري.
-                      setLiquidationDiscountPct("0");
-                      if (
-                        valuePremiseKey === "orderly" ||
-                        valuePremiseKey === "forced"
-                      )
-                        setValuePremiseKey("current");
-                    }
-                  }}
-                >
-                  {o.label}
-                </ToggleChip>
-              ))}
-            </div>
-            <p style={{ fontSize: 10.5, color: C.faint, marginTop: 10 }}>
-              يُثبَّت الأساس مع حفظ رأي القيمة النهائي.
-            </p>
-          </CardPad>
-        </Card>
-
         <Card>
           <CardPad>
             <CardTitle>أساليب وطرق التقييم المستخدمة</CardTitle>
             {!approachSettings?.costApproachAllowed ? (
-              <p style={{ fontSize: 11.5, color: C.goldText, marginBottom: 12 }}>
+              <p className="mb-3 text-[11.5px] text-gold-d">
                 ق-3: أرض بلا إنشاءات — أسلوب التكلفة لا ينطبق.
               </p>
             ) : null}
-            <div
-              style={{
-                display: "grid",
-                gridTemplateColumns: "repeat(3, 1fr)",
-                gap: 12,
-                marginBottom: 16,
-              }}
-            >
+            <div className="mb-4 grid grid-cols-3 gap-3">
               <label
-                style={{
-                  display: "flex",
-                  alignItems: "flex-start",
-                  gap: 10,
-                  padding: "13px 14px",
-                  border: `1px solid ${asMarketEnabled ? C.gold : C.borderStrong}`,
-                  borderRadius: 10,
-                  background: asMarketEnabled ? C.goldSoft : C.card,
-                  cursor: "pointer",
-                }}
+                className={cn(
+                  "flex cursor-pointer items-start gap-2.5 rounded-[10px] border px-3.5 py-[13px]",
+                  asMarketEnabled
+                    ? "border-gold bg-gold-soft"
+                    : "border-border-md bg-surface",
+                )}
               >
                 <input
                   type="checkbox"
                   checked={asMarketEnabled}
                   onChange={(e) => setAsMarketEnabled(e.target.checked)}
-                  style={{ width: 17, height: 17, accentColor: C.ink, marginTop: 2 }}
+                  className="mt-0.5 size-[17px] accent-[var(--ink)]"
                 />
                 <div>
-                  <div style={{ fontWeight: 700, fontSize: 12.5, color: C.ink }}>
+                  <div className="text-[12.5px] font-bold text-heading">
                     أسلوب السوق
                   </div>
-                  <div style={{ fontWeight: 400, fontSize: 11, color: C.faint, marginTop: 3 }}>
+                  <div className="mt-[3px] text-[11px] font-normal text-text-3">
                     طريقة المقارنة — يقارن العقار كوحدة غير مجزّأة بصفقات مشابهة
                   </div>
                 </div>
               </label>
               <label
-                style={{
-                  display: "flex",
-                  alignItems: "flex-start",
-                  gap: 10,
-                  padding: "13px 14px",
-                  border: `1px solid ${
-                    asCostEnabled && approachSettings?.costApproachAllowed
-                      ? C.gold
-                      : C.borderStrong
-                  }`,
-                  borderRadius: 10,
-                  background:
-                    asCostEnabled && approachSettings?.costApproachAllowed
-                      ? C.goldSoft
-                      : C.card,
-                  cursor: approachSettings?.costApproachAllowed
-                    ? "pointer"
-                    : "not-allowed",
-                  opacity: approachSettings?.costApproachAllowed ? 1 : 0.55,
-                }}
+                className={cn(
+                  "flex items-start gap-2.5 rounded-[10px] border px-3.5 py-[13px]",
+                  asCostEnabled && approachSettings?.costApproachAllowed
+                    ? "border-gold bg-gold-soft"
+                    : "border-border-md bg-surface",
+                  approachSettings?.costApproachAllowed
+                    ? "cursor-pointer"
+                    : "cursor-not-allowed opacity-55",
+                )}
               >
                 <input
                   type="checkbox"
                   checked={asCostEnabled && !!approachSettings?.costApproachAllowed}
                   disabled={saving || !approachSettings?.costApproachAllowed}
                   onChange={(e) => setAsCostEnabled(e.target.checked)}
-                  style={{ width: 17, height: 17, accentColor: C.ink, marginTop: 2 }}
+                  className="mt-0.5 size-[17px] accent-[var(--ink)]"
                 />
                 <div>
-                  <div style={{ fontWeight: 700, fontSize: 12.5, color: C.ink }}>
+                  <div className="text-[12.5px] font-bold text-heading">
                     أسلوب التكلفة
                   </div>
-                  <div style={{ fontWeight: 400, fontSize: 11, color: C.faint, marginTop: 3 }}>
+                  <div className="mt-[3px] text-[11px] font-normal text-text-3">
                     {isLandKind && !approachSettings?.costApproachAllowed
                       ? "لا ينطبق: الأرض لا تُقيَّم بالتكلفة"
                       : "أسلوب مركّب إلزامياً: قيمة الأرض بالمقارنات + تكلفة الإحلال ناقصاً الإهلاك — لا يُلغى أحد المكوّنين منفرداً"}
@@ -2494,29 +2519,19 @@ export function ValuationWorkShell({
               </label>
               <label
                 title="قيد الإنشاء — غير متاح بعد"
-                style={{
-                  display: "flex",
-                  alignItems: "flex-start",
-                  gap: 10,
-                  padding: "13px 14px",
-                  border: `1px solid ${C.borderStrong}`,
-                  borderRadius: 10,
-                  background: C.card,
-                  cursor: "not-allowed",
-                  opacity: 0.55,
-                }}
+                className="flex cursor-not-allowed items-start gap-2.5 rounded-[10px] border border-border-md bg-surface px-3.5 py-[13px] opacity-55"
               >
                 <input
                   type="checkbox"
                   checked={false}
                   disabled
-                  style={{ width: 17, height: 17, marginTop: 2 }}
+                  className="mt-0.5 size-[17px]"
                 />
                 <div>
-                  <div style={{ fontWeight: 700, fontSize: 12.5, color: C.ink }}>
+                  <div className="text-[12.5px] font-bold text-heading">
                     أسلوب الدخل
                   </div>
-                  <div style={{ fontWeight: 400, fontSize: 11, color: C.faint, marginTop: 3 }}>
+                  <div className="mt-[3px] text-[11px] font-normal text-text-3">
                     قيد الإنشاء — غير متاح بعد
                   </div>
                 </div>
@@ -2524,21 +2539,15 @@ export function ValuationWorkShell({
             </div>
 
             {asCostEnabled && approachSettings?.costApproachAllowed ? (
-              <p style={{ fontSize: 11.5, color: C.goldText, marginBottom: 12 }}>
+              <p className="mb-3 text-[11.5px] text-gold-d">
                 طريقة المقاول تستلزم تقييم أرض المبنى بطريقة المقارنة.
               </p>
             ) : null}
 
             {asCostEnabled && approachSettings?.costApproachAllowed ? (
-              <div
-                style={{
-                  borderTop: `1px solid ${C.border}`,
-                  paddingTop: 16,
-                  marginBottom: 16,
-                }}
-              >
+              <div className="mb-4 border-t border-border pt-4">
                 <FieldLabel>نطاق التقييم بالتكلفة</FieldLabel>
-                <div style={{ display: "flex", gap: 8, flexWrap: "wrap", margin: "8px 0 6px" }}>
+                <div className="my-2 mb-1.5 flex flex-wrap gap-2">
                   <ToggleChip
                     active={asCostScope !== "building_only"}
                     disabled={saving}
@@ -2554,13 +2563,13 @@ export function ValuationWorkShell({
                     مبنى فقط
                   </ToggleChip>
                 </div>
-                <p style={{ fontSize: 10.5, color: C.faint, margin: "0 0 14px" }}>
+                <p className="mb-3.5 mt-0 text-[10.5px] text-text-3">
                   {asCostScope === "building_only"
                     ? "«مبنى فقط» يخفي قسم تقدير الأرض ويجعل مؤشر الأسلوب = تكلفة الإحلال ناقصاً الإهلاك."
                     : "«أرض ومبنى» يستلزم تقدير الأرض بالمقارنات داخل أسلوب التكلفة."}
                 </p>
                 <FieldLabel>طريقة تقدير التكلفة</FieldLabel>
-                <div style={{ display: "flex", gap: 8, flexWrap: "wrap", margin: "8px 0 6px" }}>
+                <div className="my-2 mb-1.5 flex flex-wrap gap-2">
                   <ToggleChip
                     active={asCostBasis === "replacement"}
                     disabled={saving}
@@ -2576,38 +2585,18 @@ export function ValuationWorkShell({
                     إعادة الإنتاج
                   </ToggleChip>
                 </div>
-                <p style={{ fontSize: 10.5, color: C.faint, margin: "0 0 14px" }}>
+                <p className="mb-3.5 mt-0 text-[10.5px] text-text-3">
                   {asCostBasis === "reproduction"
                     ? "تكلفة إنتاج نسخة طبق الأصل بالمواد والتصميم نفسيهما — تُستخدم للمباني التراثية والخاصة."
                     : "تكلفة إنشاء بديل بمنفعة مكافئة بمواد وطرق اليوم."}
                 </p>
-                <FieldLabel>وحدة قياس التكلفة</FieldLabel>
-                <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 8 }}>
-                  {(
-                    [
-                      ["comparison_unit", "وحدة المقارنة"],
-                      ["quantity_survey", "المسح الكمي"],
-                      ["lump_sum", "المبلغ المقطوع"],
-                      ["per_item", "كل بند على حدة"],
-                    ] as const
-                  ).map(([k, label]) => (
-                    <ToggleChip
-                      key={k}
-                      active={asCostUnit === k}
-                      disabled={saving}
-                      onClick={() => setAsCostUnit(k)}
-                    >
-                      {label}
-                    </ToggleChip>
-                  ))}
-                </div>
               </div>
             ) : null}
 
-            <div style={{ marginBottom: 14 }}>
+            <div className="mb-3.5">
               <FieldLabel>تاريخ التقييم — نوعان</FieldLabel>
-              <div style={{ display: "flex", gap: 16, marginTop: 8, flexWrap: "wrap" }}>
-                <label style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12.5 }}>
+              <div className="mt-2 flex flex-wrap gap-4">
+                <label className="flex items-center gap-1.5 text-[12.5px]">
                   <input
                     type="radio"
                     checked={asDateMode !== "retrospective"}
@@ -2615,7 +2604,7 @@ export function ValuationWorkShell({
                   />
                   تاريخ إصدار القيمة
                 </label>
-                <label style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12.5 }}>
+                <label className="flex items-center gap-1.5 text-[12.5px]">
                   <input
                     type="radio"
                     checked={asDateMode === "retrospective"}
@@ -2625,40 +2614,62 @@ export function ValuationWorkShell({
                 </label>
               </div>
               {asDateMode === "retrospective" ? (
-                <div
-                  style={{
-                    display: "grid",
-                    gridTemplateColumns: "11rem 1fr",
-                    gap: 10,
-                    marginTop: 10,
-                  }}
-                >
-                  <input
-                    type="date"
-                    dir="ltr"
-                    value={asRetroDate}
-                    onChange={(e) => setAsRetroDate(e.target.value)}
-                    style={inputStyle}
-                  />
-                  <input
-                    placeholder="مبرر الأثر الرجعي"
-                    value={asRetroRationale}
-                    onChange={(e) => setAsRetroRationale(e.target.value)}
-                    style={{ ...inputStyle, fontWeight: 500 }}
-                  />
+                <div className="mt-2.5 flex flex-col gap-2.5">
+                  <div className="flex flex-wrap gap-4">
+                    <label className="flex items-center gap-1.5 text-[12.5px]">
+                      <input
+                        type="radio"
+                        checked={asRetroKind === "single"}
+                        onChange={() => {
+                          setAsRetroKind("single");
+                          setAsRetroDateEnd("");
+                        }}
+                      />
+                      تاريخ محدد
+                    </label>
+                    <label className="flex items-center gap-1.5 text-[12.5px]">
+                      <input
+                        type="radio"
+                        checked={asRetroKind === "range"}
+                        onChange={() => setAsRetroKind("range")}
+                      />
+                      فترة بين تاريخين
+                    </label>
+                  </div>
+                  {asRetroKind === "single" ? (
+                    <input
+                      type="date"
+                      dir="ltr"
+                      value={asRetroDate}
+                      onChange={(e) => setAsRetroDate(e.target.value)}
+                      className={cn(vwInputClassName, "max-w-[11rem]")}
+                    />
+                  ) : (
+                    <div className="grid grid-cols-[11rem_11rem] gap-2.5 max-sm:grid-cols-1">
+                      <input
+                        type="date"
+                        dir="ltr"
+                        aria-label="من تاريخ"
+                        value={asRetroDate}
+                        onChange={(e) => setAsRetroDate(e.target.value)}
+                        className={vwInputClassName}
+                      />
+                      <input
+                        type="date"
+                        dir="ltr"
+                        aria-label="إلى تاريخ"
+                        value={asRetroDateEnd}
+                        min={asRetroDate || undefined}
+                        onChange={(e) => setAsRetroDateEnd(e.target.value)}
+                        className={vwInputClassName}
+                      />
+                    </div>
+                  )}
                 </div>
               ) : null}
             </div>
 
-            <label
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: 8,
-                fontSize: 12.5,
-                marginBottom: 8,
-              }}
-            >
+            <label className="mb-2 flex items-center gap-2 text-[12.5px]">
               <input
                 type="checkbox"
                 className="size-4 shrink-0 cursor-pointer accent-[var(--ink)]"
@@ -2666,22 +2677,7 @@ export function ValuationWorkShell({
                 onChange={(e) => {
                   const used = e.target.checked;
                   setAsSpecialistUsed(used);
-                  if (used) {
-                    setAsAssumptions((prev) =>
-                      prev.filter((x) => !isNoExternalSpecialistAssumption(x)),
-                    );
-                    return;
-                  }
-                  const clause = approachSettings?.assumptionLibrary?.find(
-                    isNoExternalSpecialistAssumption,
-                  );
-                  if (clause) {
-                    setAsAssumptions((prev) =>
-                      prev.includes(clause) ? prev : [...prev, clause],
-                    );
-                  }
                 }}
-                style={{ accentColor: C.ink }}
               />
               استُعين بأخصائي خارجي (IVS 101)
             </label>
@@ -2690,80 +2686,15 @@ export function ValuationWorkShell({
                 placeholder="الأخصائي، دوره، ونتيجته"
                 value={asSpecialistDetails}
                 onChange={(e) => setAsSpecialistDetails(e.target.value)}
-                style={{ ...inputStyle, fontWeight: 500, marginBottom: 14 }}
+                className={cn(vwInputClassName, "mb-3.5 font-medium")}
               />
-            ) : null}
-
-            {(approachSettings?.assumptionLibrary?.length ?? 0) > 0 ? (
-              <div style={{ marginBottom: 14 }}>
-                <FieldLabel>الافتراضات الخاصة</FieldLabel>
-                <div className="mt-2 overflow-hidden rounded-[var(--radius)] border border-border">
-                  {approachSettings!.assumptionLibrary
-                    .filter(
-                      (clause) =>
-                        !asSpecialistUsed || !isNoExternalSpecialistAssumption(clause),
-                    )
-                    .map((clause) => (
-                    <label
-                      key={clause}
-                      className="flex cursor-pointer items-start gap-2.5 border-b border-border bg-surface px-3 py-2.5 text-[12.5px] leading-relaxed text-text transition-colors last:border-b-0 hover:bg-row-hover"
-                    >
-                      <input
-                        type="checkbox"
-                        className="mt-0.5 size-4 shrink-0 cursor-pointer accent-[var(--ink)]"
-                        checked={asAssumptions.includes(clause)}
-                        onChange={(e) =>
-                          setAsAssumptions((prev) =>
-                            e.target.checked
-                              ? [...prev, clause]
-                              : prev.filter((x) => x !== clause),
-                          )
-                        }
-                      />
-                      <span>{clause}</span>
-                    </label>
-                  ))}
-                </div>
-                <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
-                  <input
-                    placeholder="بند افتراض إضافي"
-                    value={asFreeAssumption}
-                    onChange={(e) => setAsFreeAssumption(e.target.value)}
-                    style={{ ...inputStyle, fontWeight: 500, flex: 1 }}
-                  />
-                  <GhostBtn
-                    disabled={saving || !asFreeAssumption.trim()}
-                    onClick={() => {
-                      const t = asFreeAssumption.trim();
-                      if (
-                        t &&
-                        !asAssumptions.includes(t) &&
-                        !(asSpecialistUsed && isNoExternalSpecialistAssumption(t))
-                      )
-                        setAsAssumptions((prev) => [...prev, t]);
-                      setAsFreeAssumption("");
-                    }}
-                  >
-                    إضافة
-                  </GhostBtn>
-                </div>
-              </div>
             ) : null}
 
             <PrimaryBtn disabled={saving} onClick={() => void saveApproachSettings()}>
               حفظ إعدادات التقييم
             </PrimaryBtn>
             {!settingsSaved ? (
-              <p
-                style={{
-                  marginTop: 12,
-                  padding: "8px 10px",
-                  borderRadius: "var(--radius)",
-                  background: "var(--amber-light)",
-                  color: "var(--amber-text)",
-                  fontSize: 11.5,
-                }}
-              >
+              <p className="mt-3 rounded-[var(--radius)] bg-[var(--amber-light)] px-2.5 py-2 text-[11.5px] text-[var(--amber-text)]">
                 احفظ إعدادات التقييم أولاً لفتح شاشات العمل (السوق، التكلفة، الترجيح).
               </p>
             ) : null}
@@ -2793,7 +2724,7 @@ export function ValuationWorkShell({
               {adoptedCount} من {MAX_ADOPTED_COMPARABLES} معتمدة
             </span>
             <span className="hidden text-[11.5px] text-text-3 md:inline">
-              لا حدّ زمني على المقارنات المخزّنة — تسوية ظروف السوق تعالج فارق الزمن
+              ضمن ٥ كم من الموقع — يُرتَّب حسب أقرب مساحة لعقار التقييم، ثم المسافة
             </span>
           </div>
           {context === MARKET_CONTEXT ? (
@@ -2809,7 +2740,7 @@ export function ValuationWorkShell({
             </span>
           )}
         </div>
-        <Card style={{ marginBottom: 24 }}>
+        <Card className="mb-6">
           <div className="overflow-x-auto rounded-xl">
             <div className="min-w-[1180px]">
               <div
@@ -2825,6 +2756,7 @@ export function ValuationWorkShell({
                 <BankTh>سعر العقار</BankTh>
                 <BankTh>المساحة (م²)</BankTh>
                 <BankTh>نسبة المساحة</BankTh>
+                <BankTh>المسافة</BankTh>
                 <BankTh>الحي</BankTh>
                 <BankTh>المصدر</BankTh>
               </div>
@@ -2846,17 +2778,6 @@ export function ValuationWorkShell({
                       }
                       className="size-[17px] cursor-pointer accent-[var(--ink)]"
                     />
-                    {row.selected && !row.adopted ? (
-                      <button
-                        type="button"
-                        title="إزالة من الاختيار"
-                        disabled={saving}
-                        onClick={() => void remove(row.comp.id, context)}
-                        className="ms-2 cursor-pointer border-0 bg-transparent text-[14px] text-text-3"
-                      >
-                        ×
-                      </button>
-                    ) : null}
                   </BankTd>
                   <BankTd>
                     <span
@@ -2970,13 +2891,12 @@ export function ValuationWorkShell({
                       return (
                         <span
                           dir="ltr"
-                          className="text-[13.5px] font-bold"
-                          style={{
-                            color:
-                              ratio != null && ratio >= 2
-                                ? C.dangerText
-                                : C.ink,
-                          }}
+                          className={cn(
+                            "text-[13.5px] font-bold",
+                            ratio != null && ratio >= 2
+                              ? "text-red-text"
+                              : "text-heading",
+                          )}
                           title={
                             ratio != null && ratio >= 2
                               ? "نسبة ≥ ٢ — تُفعِّل طريقة المضاعف على الجدول كاملاً"
@@ -2984,6 +2904,18 @@ export function ValuationWorkShell({
                           }
                         >
                           {areaRatio(subjectSqm, effArea)}
+                        </span>
+                      );
+                    })()}
+                  </BankTd>
+                  <BankTd>
+                    {(() => {
+                      const km = candidateDistanceKm[row.comp.id];
+                      return (
+                        <span dir="ltr" className="text-[12.5px] text-text-2">
+                          {km != null && Number.isFinite(km)
+                            ? `${km.toFixed(km < 1 ? 2 : 1)} كم`
+                            : "—"}
                         </span>
                       );
                     })()}
@@ -3017,7 +2949,7 @@ export function ValuationWorkShell({
       return (
         <Card>
           <CardPad>
-            <p style={{ color: C.muted, fontSize: 13 }}>
+            <p className="text-[13px] text-text-2">
               احفظ إعدادات التقييم من شاشة البيانات الأساسية أولاً.
             </p>
           </CardPad>
@@ -3028,7 +2960,7 @@ export function ValuationWorkShell({
       return (
         <Card>
           <CardPad>
-            <p style={{ color: C.muted, fontSize: 13 }}>
+            <p className="text-[13px] text-text-2">
               أسلوب السوق غير مفعّل في إعدادات التقييم.
             </p>
           </CardPad>
@@ -3104,25 +3036,16 @@ export function ValuationWorkShell({
 
         <Card>
           <CardPad>
-            <div
-              style={{
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "space-between",
-                gap: 10,
-                marginBottom: 12,
-              }}
-            >
-              <span style={{ fontWeight: 800, fontSize: 14.5, color: C.ink }}>
+            <div className="mb-3 flex items-center justify-between gap-2.5">
+              <span className="text-[14.5px] font-extrabold text-heading">
                 تحليل التسويات
               </span>
-              <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+              <div className="flex items-center gap-2.5">
                 <span
-                  style={{
-                    fontSize: 11,
-                    fontWeight: 600,
-                    color: narrativeDirty ? C.dangerText : C.goldText,
-                  }}
+                  className={cn(
+                    "text-[11px] font-semibold",
+                    narrativeDirty ? "text-red-text" : "text-gold-d",
+                  )}
                 >
                   {narrativeDirty
                     ? "نص محرَّر يدوياً — لا يتحدث تلقائياً"
@@ -3155,18 +3078,7 @@ export function ValuationWorkShell({
               value={narrativeDirty ? analysisNotes : autoNarrative}
               onChange={(e) => setAnalysisNotes(e.target.value)}
               onBlur={() => void saveSubjectArea()}
-              style={{
-                width: "100%",
-                padding: "14px 16px",
-                border: `1px solid ${C.border}`,
-                borderRadius: 9,
-                background: C.soft,
-                color: C.body,
-                fontWeight: 500,
-                fontSize: 13,
-                lineHeight: 2,
-                resize: "vertical",
-              }}
+              className="w-full resize-y rounded-[9px] border border-border bg-surface-2 px-4 py-3.5 text-[13px] font-medium leading-[2] text-text"
             />
           </CardPad>
         </Card>
@@ -3179,7 +3091,7 @@ export function ValuationWorkShell({
       return (
         <Card>
           <CardPad>
-            <p style={{ color: C.muted, fontSize: 13 }}>
+            <p className="text-[13px] text-text-2">
               {!settingsSaved
                 ? "احفظ إعدادات التقييم أولاً."
                 : "أسلوب التكلفة غير مفعّل أو غير منطبق."}
@@ -3442,42 +3354,22 @@ export function ValuationWorkShell({
 
     return (
       <>
-        <div
-          style={{
-            position: "sticky",
-            top: 0,
-            zIndex: 14,
-            background: C.page,
-            padding: "4px 0 10px",
-          }}
-        >
-          <div
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: 16,
-              flexWrap: "wrap",
-              background: C.card,
-              border: `1px solid ${C.borderStrong}`,
-              borderRadius: 10,
-              padding: "9px 18px",
-              boxShadow: "0 8px 20px -18px rgba(18,40,76,.4)",
-            }}
-          >
-            <span style={{ fontWeight: 800, fontSize: 13, color: C.ink }}>
+        <div className="sticky top-0 z-[14] bg-[var(--page,#f7f5f0)] py-1 pb-2.5">
+          <div className="flex flex-wrap items-center gap-4 rounded-[10px] border border-border-md bg-surface px-[18px] py-[9px] shadow-[0_8px_20px_-18px_rgba(18,40,76,.4)]">
+            <span className="text-[13px] font-extrabold text-heading">
               أسلوب التكلفة
             </span>
-            <span style={{ fontSize: 11.5, color: C.faint }}>
+            <span className="text-[11.5px] text-text-3">
               أرض{" "}
               <b
                 dir="ltr"
-                style={{
-                  color: buildingOnly
-                    ? C.faint
+                className={cn(
+                  buildingOnly
+                    ? "text-text-3"
                     : landComplete
-                      ? C.ink
-                      : C.dangerText,
-                }}
+                      ? "text-heading"
+                      : "text-red-text",
+                )}
               >
                 {buildingOnly
                   ? "غير مشمولة"
@@ -3486,39 +3378,30 @@ export function ValuationWorkShell({
                     : "— بانتظار المقارنات"}
               </b>
             </span>
-            <span style={{ fontSize: 11.5, color: C.faint }}>
+            <span className="text-[11.5px] text-text-3">
               إحلال{" "}
-              <b dir="ltr" style={{ color: C.ink }}>
+              <b dir="ltr" className="text-heading">
                 {fmt(cost?.totalCostWithIndirect)}
               </b>
             </span>
-            <span style={{ fontSize: 11.5, color: C.faint }}>
+            <span className="text-[11.5px] text-text-3">
               إهلاك{" "}
-              <b dir="ltr" style={{ color: C.dangerText }}>
+              <b dir="ltr" className="text-red-text">
                 {fmt(cost?.depreciationValue)}
               </b>
             </span>
-            <span
-              style={{
-                marginInlineStart: "auto",
-                display: "flex",
-                alignItems: "baseline",
-                gap: 9,
-              }}
-            >
-              <span style={{ fontWeight: 700, fontSize: 11.5, color: C.goldText }}>
+            <span className="ms-auto flex items-baseline gap-[9px]">
+              <span className="text-[11.5px] font-bold text-gold-d">
                 {buildingOnly
                   ? "تكلفة الإحلال − الإهلاك ="
                   : "أرض + إحلال − إهلاك ="}
               </span>
               <span
                 dir="ltr"
-                style={{
-                  fontWeight: 800,
-                  fontSize: 17,
-                  color:
-                    buildingOnly || landComplete ? C.ink : C.dangerText,
-                }}
+                className={cn(
+                  "text-[17px] font-extrabold",
+                  buildingOnly || landComplete ? "text-heading" : "text-red-text",
+                )}
               >
                 {buildingOnly || landComplete
                   ? fmt(cost?.costOpinionWithLand)
@@ -3532,7 +3415,7 @@ export function ValuationWorkShell({
           <CardPad>
             <CardTitle>طريقة التكلفة وأسلوب التقدير</CardTitle>
             <FieldLabel>أساس التكلفة</FieldLabel>
-            <div style={{ display: "flex", gap: 8, flexWrap: "wrap", margin: "8px 0 14px" }}>
+            <div className="my-2 mb-3.5 flex flex-wrap gap-2">
               <ToggleChip
                 active={asCostBasis === "replacement"}
                 disabled={saving}
@@ -3549,7 +3432,7 @@ export function ValuationWorkShell({
               </ToggleChip>
             </div>
             <FieldLabel>وحدة التقدير</FieldLabel>
-            <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 8 }}>
+            <div className="mt-2 flex flex-wrap gap-2">
               {(
                 [
                   ["comparison_unit", "وحدة المقارنة"],
@@ -3568,7 +3451,7 @@ export function ValuationWorkShell({
                 </ToggleChip>
               ))}
             </div>
-            <div style={{ marginTop: 14 }}>
+            <div className="mt-3.5">
               <GhostBtn
                 disabled={saving}
                 onClick={() => void saveApproachSettings()}
@@ -3581,32 +3464,13 @@ export function ValuationWorkShell({
 
         {!buildingOnly ? (
         <>
-        <div
-          style={{
-            display: "flex",
-            alignItems: "flex-start",
-            gap: 11,
-            padding: "13px 16px",
-            borderRadius: 10,
-            background: C.goldSoft,
-            border: `1px solid ${C.borderStrong}`,
-            marginBottom: 16,
-          }}
-        >
-          <span
-            style={{
-              width: 3,
-              height: 30,
-              borderRadius: 99,
-              background: C.gold,
-              flexShrink: 0,
-            }}
-          />
+        <div className="mb-4 flex items-start gap-[11px] rounded-[10px] border border-border-md bg-gold-soft px-4 py-[13px]">
+          <span className="h-[30px] w-[3px] shrink-0 rounded-full bg-gold" />
           <div>
-            <div style={{ fontWeight: 800, fontSize: 13, color: C.ink }}>
+            <div className="text-[13px] font-extrabold text-heading">
               تقدير قيمة الأرض فضاءً
             </div>
-            <div style={{ fontWeight: 400, fontSize: 11.5, color: C.goldText, marginTop: 2 }}>
+            <div className="mt-0.5 text-[11.5px] font-normal text-gold-d">
               مكوّن داخل أسلوب التكلفة — ناتجه قيمة الأرض ولا يدخل التوفيق بين
               الأساليب. مقارناته أراضٍ خام مستقلة عن مقارنات أسلوب السوق.
             </div>
@@ -3680,20 +3544,14 @@ export function ValuationWorkShell({
         <Card>
           <CardPad>
             <CardTitle>قيمة الأرض</CardTitle>
-            <div
-              style={{
-                display: "grid",
-                gridTemplateColumns: "repeat(4, 1fr)",
-                gap: 14,
-              }}
-            >
+            <div className="grid grid-cols-4 gap-3.5">
               <div>
                 <FieldLabel>سعر المتر من مقارنات الأرض</FieldLabel>
-                <div dir="ltr" style={{ fontWeight: 800, fontSize: 16, color: C.ink, marginTop: 6 }}>
+                <div dir="ltr" className="mt-1.5 text-base font-extrabold text-heading">
                   {landComplete ? fmt(cost?.landUnitRateFromMarket) : "—"}
                 </div>
               </div>
-              <label style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+              <label className="flex flex-col gap-1.5">
                 <FieldLabel>خصم تقييد الاستخدام ٪</FieldLabel>
                 <input
                   dir="ltr"
@@ -3701,11 +3559,11 @@ export function ValuationWorkShell({
                   onChange={(e) =>
                     setUseRestrictionPct(e.target.value.replace(/[^\d.]/g, ""))
                   }
-                  style={{ ...inputStyle, textAlign: "center" }}
+                  className={cn(vwInputClassName, "text-center")}
                 />
               </label>
               {(approachSettings?.propertyType ?? "").includes("شقة") ? (
-                <label style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                <label className="flex flex-col gap-1.5">
                   <FieldLabel>حصة الشقة من الأرض (م²)</FieldLabel>
                   <input
                     dir="ltr"
@@ -3715,7 +3573,7 @@ export function ValuationWorkShell({
                     onChange={(e) =>
                       setApartmentLandShare(e.target.value.replace(/[^\d.]/g, ""))
                     }
-                    style={{ ...inputStyle, textAlign: "center" }}
+                    className={cn(vwInputClassName, "text-center")}
                   />
                 </label>
               ) : null}
@@ -3723,7 +3581,7 @@ export function ValuationWorkShell({
                 <FieldLabel>سعر المتر بعد الخصم</FieldLabel>
                 <div
                   dir="ltr"
-                  style={{ fontWeight: 800, fontSize: 16, color: C.goldText, marginTop: 6 }}
+                  className="mt-1.5 text-base font-extrabold text-gold-d"
                 >
                   {landComplete ? fmt(cost?.landUnitRateAfterDiscount) : "—"}
                 </div>
@@ -3732,12 +3590,10 @@ export function ValuationWorkShell({
                 <FieldLabel>قيمة الأرض</FieldLabel>
                 <div
                   dir="ltr"
-                  style={{
-                    fontWeight: 800,
-                    fontSize: 18,
-                    color: landComplete ? C.ink : C.dangerText,
-                    marginTop: 6,
-                  }}
+                  className={cn(
+                    "mt-1.5 text-lg font-extrabold",
+                    landComplete ? "text-heading" : "text-red-text",
+                  )}
                 >
                   {landComplete ? fmt(cost?.landValueFromMarket) : "غير مكتمل"}
                 </div>
@@ -3747,50 +3603,27 @@ export function ValuationWorkShell({
               placeholder="مبرر تقييد الاستخدام…"
               value={useRestrictionRationale}
               onChange={(e) => setUseRestrictionRationale(e.target.value)}
-              style={{
-                ...inputStyle,
-                fontWeight: 500,
-                marginTop: 12,
-                borderStyle: "dashed",
-                background: C.soft,
-                color: C.muted,
-              }}
+              className={cn(
+                vwInputClassName,
+                "mt-3 border-dashed bg-surface-2 font-medium text-text-2",
+              )}
             />
           </CardPad>
         </Card>
         </>
         ) : (
-          <div
-            style={{
-              padding: "12px 16px",
-              borderRadius: 10,
-              background: C.soft,
-              border: `1px solid ${C.border}`,
-              marginBottom: 16,
-              fontSize: 12.5,
-              color: C.muted,
-            }}
-          >
+          <div className="mb-4 rounded-[10px] border border-border bg-surface-2 px-4 py-3 text-[12.5px] text-text-2">
             النطاق «مبنى فقط» — قسم تقدير الأرض مخفي ومؤشر الأسلوب = تكلفة الإحلال
             ناقصاً الإهلاك. يُغيَّر النطاق من شاشة البيانات الأساسية.
           </div>
         )}
 
-        <div
-          style={{
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "space-between",
-            gap: 10,
-            flexWrap: "wrap",
-            marginBottom: 12,
-          }}
-        >
-          <div style={{ display: "flex", alignItems: "baseline", gap: 10 }}>
-            <h2 style={{ fontWeight: 800, fontSize: 17, margin: 0, color: C.ink }}>
+        <div className="mb-3 flex flex-wrap items-center justify-between gap-2.5">
+          <div className="flex items-baseline gap-2.5">
+            <h2 className="m-0 text-[17px] font-extrabold text-heading">
               بنود التكلفة المباشرة
             </h2>
-            <span style={{ fontSize: 11.5, color: C.faint }}>
+            <span className="text-[11.5px] text-text-3">
               البنود موجبة فقط — النقص عن السائد يُعالَج تقادماً وظيفياً · أضف البند
               من صف «اختر البند» في نهاية كل مجموعة
             </span>
@@ -3800,34 +3633,28 @@ export function ValuationWorkShell({
           </GhostBtn>
         </div>
 
-        <Card style={{ marginBottom: 24 }}>
-          <div style={{ overflowX: "auto" }}>
-            <table
-              style={{
-                width: "100%",
-                borderCollapse: "collapse",
-                minWidth: 900,
-              }}
-            >
+        <Card className="mb-6">
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[900px] border-collapse">
               <thead>
                 <tr>
-                  <th style={{ ...thStyle, textAlign: "start" }}>البند</th>
-                  <th style={thStyle}>
+                  <th className={cn(vwThClassName, "text-start")}>البند</th>
+                  <th className={vwThClassName}>
                     المساحة / العدد
-                    <div style={{ fontWeight: 400, fontSize: 10, color: C.faint }}>
+                    <div className="text-[10px] font-normal text-text-3">
                       · نسبة البناء
                     </div>
                   </th>
-                  <th style={thStyle}>الوحدة</th>
-                  <th style={thStyle}>سعر المتر / تكلفة الوحدة</th>
-                  <th style={thStyle}>
+                  <th className={vwThClassName}>الوحدة</th>
+                  <th className={vwThClassName}>سعر المتر / تكلفة الوحدة</th>
+                  <th className={vwThClassName}>
                     الإجمالي
-                    <div style={{ fontWeight: 400, fontSize: 10, color: C.faint }}>
+                    <div className="text-[10px] font-normal text-text-3">
                       سعر المتر بعد غير المباشرة
                     </div>
                   </th>
-                  <th style={{ ...thStyle, textAlign: "start" }}>مبرر التقدير</th>
-                  <th style={thStyle} />
+                  <th className={cn(vwThClassName, "text-start")}>مبرر التقدير</th>
+                  <th className={vwThClassName} />
                 </tr>
               </thead>
               <tbody>
@@ -3841,29 +3668,13 @@ export function ValuationWorkShell({
                     <tr>
                       <td
                         colSpan={5}
-                        style={{
-                          padding: "9px 16px",
-                          background: C.goldSoft,
-                          borderBottom: `1px solid ${C.borderStrong}`,
-                          fontWeight: 800,
-                          fontSize: 12.5,
-                          color: C.ink,
-                          textAlign: "start",
-                        }}
+                        className="border-b border-border-md bg-gold-soft px-4 py-[9px] text-start text-[12.5px] font-extrabold text-heading"
                       >
                         {groupTitle}
                       </td>
                       <td
                         colSpan={2}
-                        style={{
-                          padding: "9px 16px",
-                          background: C.goldSoft,
-                          borderBottom: `1px solid ${C.borderStrong}`,
-                          fontWeight: 800,
-                          fontSize: 13,
-                          color: C.goldText,
-                          textAlign: "end",
-                        }}
+                        className="border-b border-border-md bg-gold-soft px-4 py-[9px] text-end text-[13px] font-extrabold text-gold-d"
                       >
                         <span dir="ltr">{fmt(subtotal)}</span>
                       </td>
@@ -3889,20 +3700,12 @@ export function ValuationWorkShell({
                             if (dragCostId) moveCostLine(dragCostId, idx);
                             setDragCostId(null);
                           }}
-                          style={
-                            dragCostId === line.id
-                              ? { opacity: 0.45 }
-                              : undefined
+                          className={
+                            dragCostId === line.id ? "opacity-45" : undefined
                           }
                         >
-                          <td style={{ ...tdStyle, textAlign: "start" }}>
-                            <div
-                              style={{
-                                display: "flex",
-                                alignItems: "flex-start",
-                                gap: 6,
-                              }}
-                            >
+                          <td className={cn(vwTdClassName, "text-start")}>
+                            <div className="flex items-start gap-1.5">
                               <span
                                 draggable
                                 title="اسحب لإعادة الترتيب داخل المجموعة"
@@ -3911,19 +3714,11 @@ export function ValuationWorkShell({
                                   e.dataTransfer.effectAllowed = "move";
                                 }}
                                 onDragEnd={() => setDragCostId(null)}
-                                style={{
-                                  cursor: "grab",
-                                  color: C.faint,
-                                  fontSize: 13,
-                                  lineHeight: 1,
-                                  paddingTop: 11,
-                                  userSelect: "none",
-                                  flexShrink: 0,
-                                }}
+                                className="shrink-0 cursor-grab select-none pt-[11px] text-[13px] leading-none text-text-3"
                               >
                                 ⋮⋮
                               </span>
-                              <div style={{ flex: 1, minWidth: 0 }}>
+                              <div className="min-w-0 flex-1">
                             <select
                               value={line.itemKey || "custom"}
                               onChange={(e) => {
@@ -3947,12 +3742,10 @@ export function ValuationWorkShell({
                                       : opt?.label ?? line.label,
                                 });
                               }}
-                              style={{
-                                ...inputStyle,
-                                fontWeight: 700,
-                                fontSize: 12.5,
-                                padding: "8px 10px",
-                              }}
+                              className={cn(
+                                vwInputClassName,
+                                "px-2.5 py-2 text-[12.5px] font-bold",
+                              )}
                             >
                               {COST_ITEM_OPTIONS.filter(
                                 (o) =>
@@ -3977,39 +3770,26 @@ export function ValuationWorkShell({
                                 onChange={(e) =>
                                   patchLine({ label: e.target.value })
                                 }
-                                style={{
-                                  ...inputStyle,
-                                  marginTop: 4,
-                                  fontWeight: 500,
-                                  fontSize: 12,
-                                  padding: "6px 9px",
-                                }}
+                                className={cn(
+                                  vwInputClassName,
+                                  "mt-1 px-[9px] py-1.5 text-xs font-medium",
+                                )}
                               />
                             ) : null}
                               </div>
                             </div>
                           </td>
-                          <td style={tdStyle}>
+                          <td className={vwTdClassName}>
                             {comp.isLump ? (
-                              <span
-                                style={{
-                                  fontSize: 12,
-                                  fontWeight: 700,
-                                  color: C.goldText,
-                                }}
-                              >
+                              <span className="text-xs font-bold text-gold-d">
                                 مبلغ مقطوع
                               </span>
                             ) : comp.isRepeated ? (
                               <label
                                 title="عدد الأدوار المتكررة — الكمية تُشتق من مسطح الدور الأول × العدد"
-                                style={{
-                                  display: "inline-flex",
-                                  alignItems: "center",
-                                  gap: 6,
-                                }}
+                                className="inline-flex items-center gap-1.5"
                               >
-                                <span style={{ fontSize: 10.5, color: C.faint }}>
+                                <span className="text-[10.5px] text-text-3">
                                   عدد
                                 </span>
                                 <input
@@ -4024,15 +3804,7 @@ export function ValuationWorkShell({
                                         ) || 0,
                                     })
                                   }
-                                  style={{
-                                    width: 46,
-                                    padding: "8px 4px",
-                                    border: `1px solid ${C.borderStrong}`,
-                                    borderRadius: 7,
-                                    textAlign: "center",
-                                    fontWeight: 700,
-                                    fontSize: 12.5,
-                                  }}
+                                  className="w-[46px] rounded-[7px] border border-border-md px-1 py-2 text-center text-[12.5px] font-bold"
                                 />
                               </label>
                             ) : (
@@ -4047,27 +3819,13 @@ export function ValuationWorkShell({
                                       ) || 0,
                                   })
                                 }
-                                style={{
-                                  width: 66,
-                                  padding: "8px 4px",
-                                  border: `1px solid ${C.borderStrong}`,
-                                  borderRadius: 7,
-                                  textAlign: "center",
-                                  fontWeight: 700,
-                                  fontSize: 12.5,
-                                }}
+                                className="w-[66px] rounded-[7px] border border-border-md px-1 py-2 text-center text-[12.5px] font-bold"
                               />
                             )}
                             {comp.usesPct ? (
                               <label
                                 title="نسبة البناء (٪) — فارغة = ١٠٠٪"
-                                style={{
-                                  display: "flex",
-                                  alignItems: "center",
-                                  justifyContent: "center",
-                                  gap: 4,
-                                  marginTop: 4,
-                                }}
+                                className="mt-1 flex items-center justify-center gap-1"
                               >
                                 <input
                                   dir="ltr"
@@ -4088,19 +3846,9 @@ export function ValuationWorkShell({
                                         : null,
                                     });
                                   }}
-                                  style={{
-                                    width: 46,
-                                    padding: "4px 3px",
-                                    border: `1px dashed ${C.border}`,
-                                    borderRadius: 6,
-                                    textAlign: "center",
-                                    fontWeight: 700,
-                                    fontSize: 11,
-                                    color: C.goldText,
-                                    background: C.soft,
-                                  }}
+                                  className="w-[46px] rounded-md border border-dashed border-border bg-surface-2 px-[3px] py-1 text-center text-[11px] font-bold text-gold-d"
                                 />
-                                <span style={{ fontSize: 10, color: C.faint }}>
+                                <span className="text-[10px] text-text-3">
                                   ٪
                                 </span>
                               </label>
@@ -4108,28 +3856,16 @@ export function ValuationWorkShell({
                             {comp.usesPct &&
                             line.buildRatioPct != null &&
                             line.buildRatioPct !== 100 ? (
-                              <div
-                                style={{
-                                  fontSize: 10,
-                                  color: C.goldText,
-                                  marginTop: 2,
-                                }}
-                              >
+                              <div className="mt-0.5 text-[10px] text-gold-d">
                                 المسطح <span dir="ltr">{fmt(comp.qty, 1)}</span> م²
                               </div>
                             ) : comp.isRepeated ? (
-                              <div
-                                style={{
-                                  fontSize: 10,
-                                  color: C.faint,
-                                  marginTop: 2,
-                                }}
-                              >
+                              <div className="mt-0.5 text-[10px] text-text-3">
                                 الكمية <span dir="ltr">{fmt(comp.qty, 1)}</span> م²
                               </div>
                             ) : null}
                           </td>
-                          <td style={tdStyle}>
+                          <td className={vwTdClassName}>
                             <select
                               value={line.unit || "sqm"}
                               onChange={(e) =>
@@ -4139,12 +3875,7 @@ export function ValuationWorkShell({
                                     e.target.value === "lump" ? 1 : line.areaSqm,
                                 })
                               }
-                              style={{
-                                padding: "8px 10px",
-                                border: `1px solid ${C.borderStrong}`,
-                                borderRadius: 7,
-                                fontSize: 12.5,
-                              }}
+                              className="rounded-[7px] border border-border-md px-2.5 py-2 text-[12.5px]"
                             >
                               {COST_UNIT_OPTIONS.map((o) => (
                                 <option key={o.key} value={o.key}>
@@ -4153,7 +3884,7 @@ export function ValuationWorkShell({
                               ))}
                             </select>
                           </td>
-                          <td style={tdStyle}>
+                          <td className={vwTdClassName}>
                             <input
                               dir="ltr"
                               value={
@@ -4168,40 +3899,23 @@ export function ValuationWorkShell({
                                     Number(e.target.value.replace(",", ".")) || 0,
                                 })
                               }
-                              style={{
-                                width: 110,
-                                padding: 8,
-                                border: `1px solid ${comp.inherited ? C.border : C.borderStrong}`,
-                                borderRadius: 7,
-                                textAlign: "center",
-                                fontWeight: 700,
-                                fontSize: 13,
-                                background: comp.inherited ? C.soft : C.card,
-                                color: comp.inherited ? C.goldText : C.ink,
-                              }}
+                              className={cn(
+                                "w-[110px] rounded-[7px] border p-2 text-center text-[13px] font-bold",
+                                comp.inherited
+                                  ? "border-border bg-surface-2 text-gold-d"
+                                  : "border-border-md bg-surface text-heading",
+                              )}
                             />
                             {comp.inherited ? (
-                              <div
-                                style={{
-                                  fontSize: 10,
-                                  color: C.goldText,
-                                  marginTop: 2,
-                                }}
-                              >
+                              <div className="mt-0.5 text-[10px] text-gold-d">
                                 موروثة من الدور الأول
                               </div>
                             ) : null}
                           </td>
-                          <td style={{ ...tdStyle, fontWeight: 800, color: C.ink }}>
+                          <td className={cn(vwTdClassName, "font-extrabold text-heading")}>
                             <span dir="ltr">{fmt(comp.rawTotal)}</span>
                             {comp.rawTotal > 0 && comp.qty > 0 ? (
-                              <div
-                                style={{
-                                  fontSize: 10,
-                                  color: C.faint,
-                                  marginTop: 2,
-                                }}
-                              >
+                              <div className="mt-0.5 text-[10px] text-text-3">
                                 <span dir="ltr">
                                   {fmt(
                                     (comp.rawTotal *
@@ -4213,23 +3927,17 @@ export function ValuationWorkShell({
                               </div>
                             ) : null}
                           </td>
-                          <td style={{ ...tdStyle, textAlign: "start" }}>
+                          <td className={cn(vwTdClassName, "text-start")}>
                             <input
                               value={line.rationale}
                               onChange={(e) =>
                                 patchLine({ rationale: e.target.value })
                               }
                               placeholder="أساس التقدير…"
-                              style={{
-                                width: "100%",
-                                padding: "8px 10px",
-                                border: `1px solid ${C.border}`,
-                                borderRadius: 7,
-                                fontSize: 12,
-                              }}
+                              className="w-full rounded-[7px] border border-border px-2.5 py-2 text-xs"
                             />
                           </td>
-                          <td style={tdStyle}>
+                          <td className={vwTdClassName}>
                             <button
                               type="button"
                               disabled={saving}
@@ -4238,15 +3946,7 @@ export function ValuationWorkShell({
                                   costDraft.filter((_, i) => i !== idx),
                                 )
                               }
-                              style={{
-                                width: 24,
-                                height: 24,
-                                border: `1px solid ${C.border}`,
-                                borderRadius: 6,
-                                background: C.card,
-                                color: C.faint,
-                                cursor: "pointer",
-                              }}
+                              className="size-6 cursor-pointer rounded-md border border-border bg-surface text-text-3"
                             >
                               ×
                             </button>
@@ -4254,42 +3954,14 @@ export function ValuationWorkShell({
                         </tr>
                         {/* شريط إدراج بين الصفوف (hover-insert) — بند مخصص يرث المجموعة */}
                         <tr>
-                          <td colSpan={7} style={{ padding: 0, border: 0 }}>
-                            <div
-                              style={{
-                                height: 10,
-                                display: "flex",
-                                justifyContent: "center",
-                                alignItems: "center",
-                              }}
-                            >
+                          <td colSpan={7} className="border-0 p-0">
+                            <div className="flex h-2.5 items-center justify-center">
                               <button
                                 type="button"
                                 disabled={saving}
                                 title="إدراج بند مخصص هنا"
                                 onClick={() => insertCostLineAfter(idx)}
-                                onMouseEnter={(e) => {
-                                  e.currentTarget.style.opacity = "1";
-                                }}
-                                onMouseLeave={(e) => {
-                                  e.currentTarget.style.opacity = "0.12";
-                                }}
-                                style={{
-                                  opacity: 0.12,
-                                  width: 18,
-                                  height: 18,
-                                  display: "grid",
-                                  placeItems: "center",
-                                  border: `1px solid ${C.gold}`,
-                                  borderRadius: 99,
-                                  background: C.goldSoft,
-                                  color: C.goldText,
-                                  fontWeight: 700,
-                                  fontSize: 12,
-                                  lineHeight: 1,
-                                  cursor: "pointer",
-                                  transition: "opacity .12s",
-                                }}
+                                className="grid size-[18px] place-items-center rounded-full border border-gold bg-gold-soft text-xs font-bold leading-none text-gold-d opacity-[0.12] transition-opacity duration-[120ms] hover:opacity-100"
                               >
                                 +
                               </button>
@@ -4299,15 +3971,9 @@ export function ValuationWorkShell({
                         </Fragment>
                       );
                     })}
-                    <tr style={{ background: C.softAlt }}>
-                      <td colSpan={7} style={{ padding: "8px 16px" }}>
-                        <div
-                          style={{
-                            display: "flex",
-                            alignItems: "center",
-                            gap: 10,
-                          }}
-                        >
+                    <tr className="bg-surface-2">
+                      <td colSpan={7} className="px-4 py-2">
+                        <div className="flex items-center gap-2.5">
                           <select
                             value=""
                             onChange={(e) => {
@@ -4332,15 +3998,7 @@ export function ValuationWorkShell({
                                   opt.key === "repeated_floors" ? 2 : null,
                               });
                             }}
-                            style={{
-                              padding: "7px 10px",
-                              border: `1px dashed ${C.borderStrong}`,
-                              borderRadius: 7,
-                              fontSize: 12,
-                              color: C.goldText,
-                              background: C.card,
-                              minWidth: 170,
-                            }}
+                            className="min-w-[170px] rounded-[7px] border border-dashed border-border-md bg-surface px-2.5 py-[7px] text-xs text-gold-d"
                           >
                             <option value="">اختر البند</option>
                             <option value="__custom">+ بند مخصص…</option>
@@ -4350,7 +4008,7 @@ export function ValuationWorkShell({
                               </option>
                             ))}
                           </select>
-                          <span style={{ fontSize: 11, color: C.faint }}>
+                          <span className="text-[11px] text-text-3">
                             تُفتح بقية الحقول بعد اختيار البند
                           </span>
                         </div>
@@ -4361,34 +4019,19 @@ export function ValuationWorkShell({
               </tbody>
             </table>
           </div>
-          <div
-            style={{
-              display: "flex",
-              justifyContent: "space-between",
-              padding: "12px 16px",
-              background: C.soft,
-              borderTop: `1px solid ${C.border}`,
-            }}
-          >
-            <span style={{ fontSize: 12, color: C.muted }}>مجموع البنود = التكلفة المباشرة</span>
-            <span dir="ltr" style={{ fontWeight: 800, fontSize: 16, color: C.ink }}>
+          <div className="flex justify-between border-t border-border bg-surface-2 px-4 py-3">
+            <span className="text-xs text-text-2">مجموع البنود = التكلفة المباشرة</span>
+            <span dir="ltr" className="text-base font-extrabold text-heading">
               {fmt(directTotal)}
             </span>
           </div>
         </Card>
 
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: "1.2fr 1fr",
-            gap: 18,
-            marginBottom: 24,
-          }}
-        >
-          <Card style={{ marginBottom: 0 }}>
+        <div className="mb-6 grid grid-cols-[1.2fr_1fr] gap-[18px]">
+          <Card className="mb-0">
             <CardPad>
               <CardTitle>التكاليف غير المباشرة</CardTitle>
-              <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+              <div className="flex flex-col gap-2.5">
                 {INDIRECT_COST_ITEMS.map((item) => {
                   const pctNum =
                     Number(
@@ -4397,16 +4040,9 @@ export function ValuationWorkShell({
                   return (
                     <div
                       key={item.key}
-                      style={{ display: "flex", alignItems: "center", gap: 10 }}
+                      className="flex items-center gap-2.5"
                     >
-                      <span
-                        style={{
-                          fontSize: 12.5,
-                          color: C.muted,
-                          width: 170,
-                          flexShrink: 0,
-                        }}
-                      >
+                      <span className="w-[170px] shrink-0 text-[12.5px] text-text-2">
                         {item.label}
                       </span>
                       <input
@@ -4421,26 +4057,12 @@ export function ValuationWorkShell({
                             },
                           }))
                         }
-                        style={{
-                          flex: 1,
-                          padding: "6px 9px",
-                          border: `1px dashed ${C.border}`,
-                          borderRadius: 7,
-                          background: C.soft,
-                          fontSize: 11.5,
-                        }}
+                        className="flex-1 rounded-[7px] border border-dashed border-border bg-surface-2 px-[9px] py-1.5 text-[11.5px]"
                       />
                       <span
                         dir="ltr"
                         title="المبلغ = التكلفة المباشرة × النسبة"
-                        style={{
-                          width: 92,
-                          textAlign: "end",
-                          fontSize: 11.5,
-                          fontWeight: 700,
-                          color: C.goldText,
-                          flexShrink: 0,
-                        }}
+                        className="w-[92px] shrink-0 text-end text-[11.5px] font-bold text-gold-d"
                       >
                         {fmt((directTotal * pctNum) / 100)}
                       </span>
@@ -4460,102 +4082,65 @@ export function ValuationWorkShell({
                             },
                           }))
                         }
-                        style={{
-                          width: 70,
-                          padding: 7,
-                          border: `1px solid ${C.borderStrong}`,
-                          borderRadius: 7,
-                          textAlign: "center",
-                          fontWeight: 700,
-                          fontSize: 13,
-                        }}
+                        className="w-[70px] rounded-[7px] border border-border-md p-[7px] text-center text-[13px] font-bold"
                       />
                     </div>
                   );
                 })}
-                <div
-                  style={{
-                    display: "flex",
-                    gap: 8,
-                    alignItems: "flex-end",
-                    paddingTop: 10,
-                    borderTop: `1px solid ${C.border}`,
-                  }}
-                >
-                  <label style={{ display: "flex", flexDirection: "column", gap: 4, flex: 1 }}>
+                <div className="flex items-end gap-2 border-t border-border pt-2.5">
+                  <label className="flex flex-1 flex-col gap-1">
                     <FieldLabel>معدل التمويل السنوي ٪</FieldLabel>
                     <input
                       dir="ltr"
                       value={financingRate}
                       onChange={(e) => setFinancingRate(e.target.value)}
-                      style={{ ...inputStyle, textAlign: "center" }}
+                      className={cn(vwInputClassName, "text-center")}
                     />
                   </label>
-                  <label style={{ display: "flex", flexDirection: "column", gap: 4, flex: 1 }}>
+                  <label className="flex flex-1 flex-col gap-1">
                     <FieldLabel>مدة التنفيذ (أشهر)</FieldLabel>
                     <input
                       dir="ltr"
                       value={financingMonths}
                       onChange={(e) => setFinancingMonths(e.target.value)}
-                      style={{ ...inputStyle, textAlign: "center" }}
+                      className={cn(vwInputClassName, "text-center")}
                     />
                   </label>
                 </div>
-                <div style={{ fontSize: 11, color: C.faint }}>
+                <div className="text-[11px] text-text-3">
                   التمويل: معدل سنوي × (المدة ÷ ١٢) × ٥٠٪ ={" "}
-                  <b dir="ltr" style={{ color: C.goldText }}>
+                  <b dir="ltr" className="text-gold-d">
                     {(Math.round(financingPctLocal * 100) / 100).toFixed(2)}٪
                   </b>{" "}
                   · مبلغه{" "}
-                  <b dir="ltr" style={{ color: C.goldText }}>
+                  <b dir="ltr" className="text-gold-d">
                     {fmt((directTotal * financingPctLocal) / 100)}
                   </b>
                 </div>
-                <div
-                  style={{
-                    display: "flex",
-                    justifyContent: "space-between",
-                    alignItems: "center",
-                    padding: "10px 13px",
-                    background: C.soft,
-                    border: `1px solid ${C.border}`,
-                    borderRadius: 9,
-                  }}
-                >
-                  <span style={{ fontWeight: 700, fontSize: 12.5, color: C.ink }}>
+                <div className="flex items-center justify-between rounded-[9px] border border-border bg-surface-2 px-[13px] py-2.5">
+                  <span className="text-[12.5px] font-bold text-heading">
                     مجموع النسب غير المباشرة
                   </span>
                   <span
                     dir="ltr"
-                    style={{
-                      fontWeight: 800,
-                      fontSize: 15,
-                      color: indirectSumLocal > 45 ? C.dangerText : C.ink,
-                    }}
+                    className={cn(
+                      "text-[15px] font-extrabold",
+                      indirectSumLocal > 45 ? "text-red-text" : "text-heading",
+                    )}
                   >
                     {(Math.round(indirectSumLocal * 100) / 100).toFixed(2)}٪
                   </span>
                 </div>
                 {indirectSumLocal > 45 ? (
-                  <div style={{ fontSize: 11.5, fontWeight: 700, color: C.dangerText }}>
+                  <div className="text-[11.5px] font-bold text-red-text">
                     مجموع النسب غير المباشرة يتجاوز ٤٥٪ — يستلزم مراجعة
                   </div>
                 ) : null}
-                <div
-                  style={{
-                    display: "flex",
-                    justifyContent: "space-between",
-                    alignItems: "center",
-                    padding: "10px 13px",
-                    background: C.goldSoft,
-                    border: `1px solid ${C.borderStrong}`,
-                    borderRadius: 9,
-                  }}
-                >
-                  <span style={{ fontWeight: 800, fontSize: 12.5, color: C.ink }}>
+                <div className="flex items-center justify-between rounded-[9px] border border-border-md bg-gold-soft px-[13px] py-2.5">
+                  <span className="text-[12.5px] font-extrabold text-heading">
                     التكلفة الإجمالية
                   </span>
-                  <span dir="ltr" style={{ fontWeight: 800, fontSize: 16, color: C.ink }}>
+                  <span dir="ltr" className="text-base font-extrabold text-heading">
                     {fmt(totalCostLocal)}
                   </span>
                 </div>
@@ -4563,10 +4148,10 @@ export function ValuationWorkShell({
             </CardPad>
           </Card>
 
-          <Card style={{ marginBottom: 0 }}>
+          <Card className="mb-0">
             <CardPad>
               <CardTitle>العمر والإهلاك</CardTitle>
-              <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+              <div className="flex flex-col gap-2.5">
                 {(
                   [
                     ["العمر الفعلي (سنة)", actualAge, setActualAge, null, null],
@@ -4596,16 +4181,9 @@ export function ValuationWorkShell({
                 ).map(([label, val, setVal, just, setJust]) => (
                   <div
                     key={label}
-                    style={{ display: "flex", alignItems: "center", gap: 8 }}
+                    className="flex items-center gap-2"
                   >
-                    <span
-                      style={{
-                        fontSize: 12.5,
-                        color: C.muted,
-                        width: 128,
-                        flexShrink: 0,
-                      }}
-                    >
+                    <span className="w-32 shrink-0 text-[12.5px] text-text-2">
                       {label}
                     </span>
                     {setJust ? (
@@ -4617,108 +4195,50 @@ export function ValuationWorkShell({
                         }
                         value={just ?? ""}
                         onChange={(e) => setJust(e.target.value)}
-                        style={{
-                          flex: 1,
-                          padding: "6px 9px",
-                          border: `1px dashed ${C.border}`,
-                          borderRadius: 7,
-                          background: C.soft,
-                          fontSize: 11.5,
-                        }}
+                        className="flex-1 rounded-[7px] border border-dashed border-border bg-surface-2 px-[9px] py-1.5 text-[11.5px]"
                       />
                     ) : (
-                      <span style={{ flex: 1 }} />
+                      <span className="flex-1" />
                     )}
                     <input
                       dir="ltr"
                       value={val}
                       onChange={(e) => setVal(e.target.value)}
-                      style={{
-                        width: 78,
-                        padding: 7,
-                        border: `1px solid ${C.borderStrong}`,
-                        borderRadius: 7,
-                        textAlign: "center",
-                        fontWeight: 700,
-                        flexShrink: 0,
-                      }}
+                      className="w-[78px] shrink-0 rounded-[7px] border border-border-md p-[7px] text-center font-bold"
                     />
                   </div>
                 ))}
-                <div
-                  style={{
-                    display: "grid",
-                    gridTemplateColumns: "1fr 1fr",
-                    gap: 8,
-                  }}
-                >
-                  <div
-                    style={{
-                      padding: "9px 12px",
-                      background: C.soft,
-                      border: `1px solid ${C.border}`,
-                      borderRadius: 9,
-                      fontSize: 11.5,
-                      color: C.muted,
-                    }}
-                  >
+                <div className="grid grid-cols-2 gap-2">
+                  <div className="rounded-[9px] border border-border bg-surface-2 px-3 py-[9px] text-[11.5px] text-text-2">
                     التقادم المادي{" "}
-                    <b dir="ltr" style={{ color: C.ink }}>
+                    <b dir="ltr" className="text-heading">
                       {cost?.physicalObsolescencePct != null
                         ? `${cost.physicalObsolescencePct}٪`
                         : "—"}
                     </b>
                   </div>
-                  <div
-                    style={{
-                      padding: "9px 12px",
-                      background: C.soft,
-                      border: `1px solid ${C.border}`,
-                      borderRadius: 9,
-                      fontSize: 11.5,
-                      color: C.muted,
-                    }}
-                  >
+                  <div className="rounded-[9px] border border-border bg-surface-2 px-3 py-[9px] text-[11.5px] text-text-2">
                     مجموع التقادم{" "}
                     <b
                       dir="ltr"
-                      style={{
-                        color:
-                          (cost?.totalObsolescencePct ?? 0) > 100
-                            ? C.dangerText
-                            : C.ink,
-                      }}
+                      className={cn(
+                        (cost?.totalObsolescencePct ?? 0) > 100
+                          ? "text-red-text"
+                          : "text-heading",
+                      )}
                     >
                       {cost ? `${cost.totalObsolescencePct}٪` : "—"}
                     </b>
                   </div>
-                  <div
-                    style={{
-                      padding: "9px 12px",
-                      background: C.soft,
-                      border: `1px solid ${C.border}`,
-                      borderRadius: 9,
-                      fontSize: 11.5,
-                      color: C.muted,
-                    }}
-                  >
+                  <div className="rounded-[9px] border border-border bg-surface-2 px-3 py-[9px] text-[11.5px] text-text-2">
                     قيمة الإهلاك{" "}
-                    <b dir="ltr" style={{ color: C.dangerText }}>
+                    <b dir="ltr" className="text-red-text">
                       {fmt(cost?.depreciationValue)}
                     </b>
                   </div>
-                  <div
-                    style={{
-                      padding: "9px 12px",
-                      background: C.goldSoft,
-                      border: `1px solid ${C.borderStrong}`,
-                      borderRadius: 9,
-                      fontSize: 11.5,
-                      color: C.muted,
-                    }}
-                  >
+                  <div className="rounded-[9px] border border-border-md bg-gold-soft px-3 py-[9px] text-[11.5px] text-text-2">
                     المباني بعد الإهلاك{" "}
-                    <b dir="ltr" style={{ color: C.ink }}>
+                    <b dir="ltr" className="text-heading">
                       {fmt(cost?.buildingsValueAfterDepreciation)}
                     </b>
                   </div>
@@ -4729,29 +4249,23 @@ export function ValuationWorkShell({
         </div>
 
         {/* النتائج والتوصيات — مواصفة النموذج التفاعلي */}
-        <h2 style={{ fontWeight: 800, fontSize: 17, margin: "0 0 12px", color: C.ink }}>
+        <h2 className="mb-3 mt-0 text-[17px] font-extrabold text-heading">
           النتائج والتوصيات
         </h2>
-        <Card style={{ marginBottom: 24 }}>
-          <div style={{ display: "flex", alignItems: "stretch" }}>
-            <div
-              style={{
-                flex: 1,
-                padding: "18px 22px",
-                borderInlineEnd: `1px solid ${C.border}`,
-              }}
-            >
-              <div style={{ fontWeight: 500, fontSize: 12, color: C.muted, marginBottom: 9 }}>
+        <Card className="mb-6">
+          <div className="flex items-stretch">
+            <div className="flex-1 border-e border-border px-[22px] py-[18px]">
+              <div className="mb-[9px] text-xs font-medium text-text-2">
                 سعر متر المباني للعقار
               </div>
-              <div dir="ltr" style={{ fontWeight: 800, fontSize: 24, lineHeight: 1, color: C.ink }}>
+              <div dir="ltr" className="text-2xl font-extrabold leading-none text-heading">
                 {buildAreaLocal > 0 ? fmt(totalCostLocal / buildAreaLocal) : "—"}
               </div>
-              <div style={{ fontSize: 11.5, color: C.faint, marginTop: 7 }}>
+              <div className="mt-[7px] text-[11.5px] text-text-3">
                 قبل الإهلاك · التكلفة الإجمالية ÷{" "}
                 <span dir="ltr">{fmt(buildAreaLocal, 1)}</span> م² مسطحات
               </div>
-              <div style={{ fontWeight: 700, fontSize: 11.5, color: C.goldText, marginTop: 5 }}>
+              <div className="mt-[5px] text-[11.5px] font-bold text-gold-d">
                 بعد الإهلاك:{" "}
                 <span dir="ltr">
                   {buildAreaLocal > 0 ? fmt(netValueLocal / buildAreaLocal) : "—"}
@@ -4759,34 +4273,18 @@ export function ValuationWorkShell({
                 ر.س / م²
               </div>
             </div>
-            <div
-              style={{
-                flex: 1.4,
-                padding: "18px 22px",
-                background: C.soft,
-                position: "relative",
-              }}
-            >
-              <span
-                style={{
-                  position: "absolute",
-                  top: 0,
-                  insetInlineStart: 0,
-                  width: 3,
-                  height: "100%",
-                  background: C.gold,
-                }}
-              />
-              <div style={{ fontWeight: 700, fontSize: 12, color: C.ink, marginBottom: 9 }}>
+            <div className="relative flex-[1.4] bg-surface-2 px-[22px] py-[18px]">
+              <span className="absolute start-0 top-0 h-full w-[3px] bg-gold" />
+              <div className="mb-[9px] text-xs font-bold text-heading">
                 ناتج أسلوب التكلفة — المباني دون الأرض
               </div>
-              <div dir="ltr" style={{ fontWeight: 800, fontSize: 24, lineHeight: 1, color: C.ink }}>
+              <div dir="ltr" className="text-2xl font-extrabold leading-none text-heading">
                 {fmt(netValueLocal)}
               </div>
-              <div style={{ fontSize: 11.5, color: C.faint, marginTop: 7 }}>
+              <div className="mt-[7px] text-[11.5px] text-text-3">
                 التكلفة الإجمالية − الإهلاك · بلا تقريب
               </div>
-              <div style={{ fontWeight: 700, fontSize: 11.5, color: C.goldText, marginTop: 5 }}>
+              <div className="mt-[5px] text-[11.5px] font-bold text-gold-d">
                 {buildingOnly
                   ? "النطاق «مبنى فقط» — هذا هو مؤشر الأسلوب"
                   : landComplete
@@ -4799,25 +4297,16 @@ export function ValuationWorkShell({
 
         <Card>
           <CardPad>
-            <div
-              style={{
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "space-between",
-                gap: 10,
-                marginBottom: 12,
-              }}
-            >
-              <span style={{ fontWeight: 800, fontSize: 14.5, color: C.ink }}>
+            <div className="mb-3 flex items-center justify-between gap-2.5">
+              <span className="text-[14.5px] font-extrabold text-heading">
                 تحليل التكلفة
               </span>
-              <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+              <div className="flex items-center gap-2.5">
                 <span
-                  style={{
-                    fontSize: 11,
-                    fontWeight: 600,
-                    color: costNarrativeDirty ? C.dangerText : C.goldText,
-                  }}
+                  className={cn(
+                    "text-[11px] font-semibold",
+                    costNarrativeDirty ? "text-red-text" : "text-gold-d",
+                  )}
                 >
                   {costNarrativeDirty
                     ? "نص محرَّر يدوياً — لا يتحدث تلقائياً"
@@ -4837,77 +4326,45 @@ export function ValuationWorkShell({
               rows={10}
               value={costNarrativeDirty ? costAnalysisNotes : costNarrativeAuto}
               onChange={(e) => setCostAnalysisNotes(e.target.value)}
-              style={{
-                width: "100%",
-                padding: "14px 16px",
-                border: `1px solid ${C.border}`,
-                borderRadius: 9,
-                background: C.soft,
-                color: C.body,
-                fontWeight: 500,
-                fontSize: 13,
-                lineHeight: 2,
-                resize: "vertical",
-              }}
+              className="w-full resize-y rounded-[9px] border border-border bg-surface-2 px-4 py-3.5 text-[13px] font-medium leading-[2] text-text"
             />
           </CardPad>
         </Card>
 
-        <Card style={{ marginBottom: 24 }}>
-          <div
-            style={{
-              padding: "12px 22px",
-              borderBottom: `1px solid ${C.border}`,
-              fontWeight: 800,
-              fontSize: 13.5,
-              color: C.ink,
-            }}
-          >
+        <Card className="mb-6">
+          <div className="border-b border-border px-[22px] py-3 text-[13.5px] font-extrabold text-heading">
             تنبيهات أسلوب التكلفة
           </div>
           {costAlerts.map((a, i) => (
             <div
               key={i}
               role={a.kind === "error" ? "alert" : "status"}
-              style={{
-                display: "flex",
-                alignItems: "flex-start",
-                gap: 10,
-                padding: "11px 22px",
-                borderBottom: `1px solid ${C.border}`,
-              }}
+              className="flex items-start gap-2.5 border-b border-border px-[22px] py-[11px]"
             >
               <span
-                style={{
-                  width: 9,
-                  height: 9,
-                  borderRadius: 99,
-                  marginTop: 5,
-                  flexShrink: 0,
-                  background:
-                    a.kind === "error"
-                      ? C.danger
-                      : a.kind === "warn"
-                        ? "#d9a441"
-                        : "#3f8f5f",
-                }}
+                className={cn(
+                  "mt-[5px] size-[9px] shrink-0 rounded-full",
+                  a.kind === "error"
+                    ? "bg-red"
+                    : a.kind === "warn"
+                      ? "bg-[#d9a441]"
+                      : "bg-[#3f8f5f]",
+                )}
               />
               <div>
                 <div
-                  style={{
-                    fontWeight: 700,
-                    fontSize: 12.5,
-                    color:
-                      a.kind === "error"
-                        ? C.dangerText
-                        : a.kind === "warn"
-                          ? "#a07a24"
-                          : "#3f8f5f",
-                  }}
+                  className={cn(
+                    "text-[12.5px] font-bold",
+                    a.kind === "error"
+                      ? "text-red-text"
+                      : a.kind === "warn"
+                        ? "text-[#a07a24]"
+                        : "text-[#3f8f5f]",
+                  )}
                 >
                   {a.title}
                 </div>
-                <div style={{ fontSize: 11.5, color: C.muted, marginTop: 2 }}>
+                <div className="mt-0.5 text-[11.5px] text-text-2">
                   {a.body}
                 </div>
               </div>
@@ -4922,12 +4379,51 @@ export function ValuationWorkShell({
     );
   }
 
+  function renderReview() {
+    const reviewDraft =
+      draft ??
+      createEvaluatorDraft({
+        taskId: "",
+        propertyId,
+        poNumber: poNumber ?? "",
+        assignmentType,
+      });
+    return (
+      <>
+        <EvaluatorFinalReviewTab
+          draft={reviewDraft}
+          disabled={disabled}
+          property={intakeProperty}
+          assignmentType={assignmentType}
+          fieldErrors={fieldErrors}
+          onDraftPatch={onDraftPatch}
+          onReportChoicesPatch={onReportChoicesPatch}
+        />
+        {showSubmit ? (
+          <div className="mt-5">
+            <PrimaryBtn
+              disabled={disabled || submitting}
+              onClick={() => onSubmit?.()}
+            >
+              {submitting ? <Spinner /> : null}
+              <span>
+                {submitting
+                  ? "جاري الاعتماد…"
+                  : "اعتماد التقييم وإرسال للأخصائي"}
+              </span>
+            </PrimaryBtn>
+          </div>
+        ) : null}
+      </>
+    );
+  }
+
   function renderFinal() {
     if (!settingsSaved) {
       return (
         <Card>
           <CardPad>
-            <p style={{ color: C.muted, fontSize: 13 }}>
+            <p className="text-[13px] text-text-2">
               احفظ إعدادات التقييم أولاً لفتح رأي القيمة النهائي.
             </p>
           </CardPad>
@@ -4958,36 +4454,24 @@ export function ValuationWorkShell({
       <>
         {!sole ? (
           <>
-            <div
-              style={{
-                display: "flex",
-                justifyContent: "space-between",
-                marginBottom: 12,
-              }}
-            >
-              <h2 style={{ fontWeight: 800, fontSize: 17, margin: 0, color: C.ink }}>
+            <div className="mb-3 flex justify-between">
+              <h2 className="m-0 text-[17px] font-extrabold text-heading">
                 التوفيق بين مؤشرات الأساليب
               </h2>
-              <span style={{ fontSize: 12, color: C.faint }}>
+              <span className="text-xs text-text-3">
                 مجموع نسب المشاركة يجب أن يساوي ١٠٠٪
               </span>
             </div>
-            <Card style={{ marginBottom: 24 }}>
-              <div style={{ overflowX: "auto" }}>
-                <table
-                  style={{
-                    width: "100%",
-                    borderCollapse: "collapse",
-                    minWidth: 900,
-                  }}
-                >
+            <Card className="mb-6">
+              <div className="overflow-x-auto">
+                <table className="w-full min-w-[900px] border-collapse">
                   <thead>
                     <tr>
-                      <th style={{ ...thStyle, textAlign: "start" }}>الأسلوب</th>
-                      <th style={thStyle}>القيمة الناتجة</th>
-                      <th style={thStyle}>نسبة المشاركة (٪)</th>
-                      <th style={thStyle}>القيمة بعد المشاركة</th>
-                      <th style={{ ...thStyle, textAlign: "start" }}>مبرر</th>
+                      <th className={cn(vwThClassName, "text-start")}>الأسلوب</th>
+                      <th className={vwThClassName}>القيمة الناتجة</th>
+                      <th className={vwThClassName}>نسبة المشاركة (٪)</th>
+                      <th className={vwThClassName}>القيمة بعد المشاركة</th>
+                      <th className={cn(vwThClassName, "text-start")}>مبرر</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -4995,9 +4479,9 @@ export function ValuationWorkShell({
                       const incomplete = !methodComplete(m.approachKind);
                       return (
                       <tr key={m.approachKind}>
-                        <td style={{ ...tdStyle, textAlign: "start" }}>
-                          <div style={{ fontWeight: 700, color: C.ink }}>{m.labelAr}</div>
-                          <div style={{ fontSize: 10.5, color: C.faint, marginTop: 2 }}>
+                        <td className={cn(vwTdClassName, "text-start")}>
+                          <div className="font-bold text-heading">{m.labelAr}</div>
+                          <div className="mt-0.5 text-[10.5px] text-text-3">
                             {m.approachKind === "cost"
                               ? buildingOnlyScope
                                 ? "مبنى فقط — تكلفة الإحلال ناقصاً الإهلاك"
@@ -5005,16 +4489,16 @@ export function ValuationWorkShell({
                               : "مؤشر قيمة من طريقة المقارنة"}
                           </div>
                         </td>
-                        <td style={{ ...tdStyle, fontWeight: 800 }}>
+                        <td className={cn(vwTdClassName, "font-extrabold")}>
                           {incomplete ? (
-                            <span style={{ color: C.dangerText, fontSize: 12.5 }}>
+                            <span className="text-[12.5px] text-red-text">
                               غير مكتمل
                             </span>
                           ) : (
                             <span dir="ltr">{fmt(m.approachValue)}</span>
                           )}
                         </td>
-                        <td style={tdStyle}>
+                        <td className={vwTdClassName}>
                           <input
                             dir="ltr"
                             type="number"
@@ -5032,30 +4516,24 @@ export function ValuationWorkShell({
                               };
                               setReconMethods(next);
                             }}
-                            style={{
-                              width: 82,
-                              padding: 8,
-                              border: `1px solid ${reconWeightsBad ? C.danger : C.borderStrong}`,
-                              borderRadius: 7,
-                              textAlign: "center",
-                              fontWeight: 700,
-                              background: reconWeightsBad
-                                ? "rgba(192,85,61,.07)"
-                                : C.card,
-                              color: reconWeightsBad ? C.dangerText : C.ink,
-                            }}
+                            className={cn(
+                              "w-[82px] rounded-[7px] border p-2 text-center font-bold",
+                              reconWeightsBad
+                                ? "border-red bg-[rgba(192,85,61,.07)] text-red-text"
+                                : "border-border-md bg-surface text-heading",
+                            )}
                           />
                         </td>
-                        <td style={{ ...tdStyle, fontWeight: 800 }}>
+                        <td className={cn(vwTdClassName, "font-extrabold")}>
                           {incomplete ? (
-                            <span style={{ color: C.faint }}>—</span>
+                            <span className="text-text-3">—</span>
                           ) : (
                             <span dir="ltr">
                               {fmt((m.approachValue * m.weightPct) / 100)}
                             </span>
                           )}
                         </td>
-                        <td style={{ ...tdStyle, textAlign: "start" }}>
+                        <td className={cn(vwTdClassName, "text-start")}>
                           <input
                             value={m.rationale ?? ""}
                             onChange={(e) => {
@@ -5064,13 +4542,7 @@ export function ValuationWorkShell({
                               setReconMethods(next);
                             }}
                             placeholder="مبرر نسبة المشاركة…"
-                            style={{
-                              width: "100%",
-                              padding: "8px 10px",
-                              border: `1px solid ${C.border}`,
-                              borderRadius: 7,
-                              fontSize: 12,
-                            }}
+                            className="w-full rounded-[7px] border border-border px-2.5 py-2 text-xs"
                           />
                         </td>
                       </tr>
@@ -5079,31 +4551,21 @@ export function ValuationWorkShell({
                   </tbody>
                 </table>
               </div>
-              <div
-                style={{
-                  display: "flex",
-                  justifyContent: "space-between",
-                  padding: "12px 16px",
-                  background: C.soft,
-                  borderTop: `1px solid ${C.border}`,
-                }}
-              >
+              <div className="flex justify-between border-t border-border bg-surface-2 px-4 py-3">
                 <span
-                  style={{
-                    fontWeight: 700,
-                    fontSize: 12.5,
-                    color: reconWeightsBad ? C.dangerText : "#3f8f5f",
-                  }}
+                  className={cn(
+                    "text-[12.5px] font-bold",
+                    reconWeightsBad ? "text-red-text" : "text-[#3f8f5f]",
+                  )}
                 >
                   مجموع نسب المشاركة: {weightSumLocal}٪
                   {reconWeightsBad ? " — يجب أن يساوي ١٠٠٪" : ""}
                 </span>
                 <span
-                  style={{
-                    fontWeight: 700,
-                    fontSize: 13,
-                    color: reconWeightsBad ? C.dangerText : C.ink,
-                  }}
+                  className={cn(
+                    "text-[13px] font-bold",
+                    reconWeightsBad ? "text-red-text" : "text-heading",
+                  )}
                 >
                   القيمة المرجّحة:{" "}
                   <span dir="ltr">{fmt(weightedLocal)}</span> ريال
@@ -5114,23 +4576,17 @@ export function ValuationWorkShell({
         ) : (
           <Card>
             <CardPad>
-              <p style={{ fontSize: 12.5, color: C.muted, marginBottom: 12 }}>
+              <p className="mb-3 text-[12.5px] text-text-2">
                 أسلوب واحد مفعّل — لا توفيق بين مؤشرات (n = 1). القيمة النهائية = مؤشر
                 الأسلوب الوحيد بوزن ١٠٠٪.
               </p>
               {reconMethods.map((m) => (
                 <div
                   key={m.approachKind}
-                  style={{
-                    padding: "12px 14px",
-                    borderRadius: 10,
-                    background: C.goldSoft,
-                    border: `1px solid ${C.borderStrong}`,
-                    marginBottom: 8,
-                  }}
+                  className="mb-2 rounded-[10px] border border-border-md bg-gold-soft px-3.5 py-3"
                 >
-                  <div style={{ fontWeight: 700, color: C.ink }}>{m.labelAr}</div>
-                  <div style={{ fontSize: 12, color: C.muted, marginTop: 4 }}>
+                  <div className="font-bold text-heading">{m.labelAr}</div>
+                  <div className="mt-1 text-xs text-text-2">
                     <span dir="ltr">{fmt(m.approachValue)}</span> ر.س · وزن ١٠٠٪
                   </div>
                 </div>
@@ -5141,86 +4597,26 @@ export function ValuationWorkShell({
 
         <Card>
           <CardPad>
-            <div style={{ position: "relative", paddingInlineStart: 12 }}>
-              <span
-                style={{
-                  position: "absolute",
-                  top: 0,
-                  insetInlineStart: 0,
-                  width: 3,
-                  height: "100%",
-                  background: C.gold,
-                  borderRadius: 99,
-                }}
-              />
-              <div
-                style={{
-                  display: "flex",
-                  justifyContent: "space-between",
-                  marginBottom: 14,
-                  flexWrap: "wrap",
-                  gap: 8,
-                }}
-              >
-                <div style={{ fontWeight: 800, fontSize: 14, color: C.ink }}>
+            <div className="relative ps-3">
+              <span className="absolute start-0 top-0 h-full w-[3px] rounded-full bg-gold" />
+              <div className="mb-3.5 flex flex-wrap justify-between gap-2">
+                <div className="text-sm font-extrabold text-heading">
                   الرأي النهائي للقيمة
                 </div>
-                <div style={{ fontSize: 11.5, color: C.faint }}>
+                <div className="text-[11.5px] text-text-3">
                   {officialValuationDate
                     ? `قيمة العقار محل التقييم في تاريخ ${officialValuationDate}`
                     : "قيمة العقار محل التقييم — يُثبَّت التاريخ عند اعتماد التقييم"}
                 </div>
               </div>
 
-              <div
-                style={{
-                  display: "grid",
-                  gridTemplateColumns: "1fr 1fr",
-                  gap: 12,
-                  marginBottom: 16,
-                }}
-              >
-                <label style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                  <FieldLabel>أساس القيمة</FieldLabel>
-                  <select
-                    value={basisOfValueKey}
-                    onChange={(e) => {
-                      const next = e.target.value;
-                      setBasisOfValueKey(next);
-                      // مواصفة النموذج: خصم البيع القسري لا يُفعَّل إلا مع «قيمة التصفية»
-                      // — تغيير الأساس يصفّر الخصم.
-                      if (next === "liquidation") {
-                        if (
-                          valuePremiseKey !== "orderly" &&
-                          valuePremiseKey !== "forced"
-                        ) {
-                          setValuePremiseKey("forced");
-                        }
-                      } else {
-                        setLiquidationDiscountPct("0");
-                        if (
-                          valuePremiseKey === "orderly" ||
-                          valuePremiseKey === "forced"
-                        ) {
-                          setValuePremiseKey("current");
-                        }
-                      }
-                    }}
-                    style={{ ...inputStyle, fontWeight: 500, cursor: "pointer" }}
-                  >
-                    {basisOptions.map((o) => (
-                      <option key={o.value} value={o.value}>
-                        {o.label}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-                <label style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+              <div className="mb-4 grid grid-cols-1 gap-3">
+                <label className="flex flex-col gap-1.5">
                   <FieldLabel>فرضية القيمة</FieldLabel>
                   <select
                     value={valuePremiseKey}
                     onChange={(e) => setValuePremiseKey(e.target.value)}
-                    style={{ ...inputStyle, fontWeight: 500, cursor: "pointer" }}
+                    className={cn(vwInputClassName, "cursor-pointer font-medium")}
                   >
                     <option value="">— اختر —</option>
                     {(premiseOptions.length
@@ -5248,14 +4644,7 @@ export function ValuationWorkShell({
               </div>
 
               {/* دفتر القيمة — مواصفة النموذج التفاعلي (invoiceRows) */}
-              <div
-                style={{
-                  border: `1px solid ${C.border}`,
-                  borderRadius: 10,
-                  overflow: "hidden",
-                  marginBottom: 16,
-                }}
-              >
+              <div className="mb-4 overflow-hidden rounded-[10px] border border-border">
                 {soleCost && !buildingOnlyScope ? (
                   <>
                     <LedgerRow
@@ -5292,7 +4681,7 @@ export function ValuationWorkShell({
                           : `وزنه ${m.weightPct}٪`
                       }
                       value={done ? fmt(m.approachValue) : "غير مكتمل"}
-                      valueColor={done ? undefined : C.dangerText}
+                      valueClassName={done ? undefined : "text-red-text"}
                     />
                   );
                 })}
@@ -5305,21 +4694,12 @@ export function ValuationWorkShell({
                   />
                 ) : null}
                 {isLiquidation ? (
-                  <div
-                    style={{
-                      display: "flex",
-                      alignItems: "center",
-                      gap: 10,
-                      padding: "11px 16px",
-                      borderBottom: `1px solid ${C.border}`,
-                      background: "var(--red-light)",
-                    }}
-                  >
-                    <div style={{ flex: 1 }}>
-                      <div style={{ fontWeight: 700, fontSize: 12.5, color: C.dangerText }}>
+                  <div className="flex items-center gap-2.5 border-b border-border bg-[var(--red-light)] px-4 py-[11px]">
+                    <div className="flex-1">
+                      <div className="text-[12.5px] font-bold text-red-text">
                         − خصم البيع القسري
                       </div>
-                      <div style={{ fontSize: 10.5, color: C.faint, marginTop: 2 }}>
+                      <div className="mt-0.5 text-[10.5px] text-text-3">
                         ٪ من القيمة قبل الخصم
                       </div>
                     </div>
@@ -5329,14 +4709,7 @@ export function ValuationWorkShell({
                       onChange={(e) =>
                         setLiquidationDiscountRationale(e.target.value)
                       }
-                      style={{
-                        flex: 1.2,
-                        padding: "6px 9px",
-                        border: `1px dashed ${C.border}`,
-                        borderRadius: 7,
-                        background: C.card,
-                        fontSize: 11.5,
-                      }}
+                      className="flex-[1.2] rounded-[7px] border border-dashed border-border bg-surface px-[9px] py-1.5 text-[11.5px]"
                     />
                     <input
                       dir="ltr"
@@ -5346,43 +4719,22 @@ export function ValuationWorkShell({
                       step={5}
                       value={liquidationDiscountPct}
                       onChange={(e) => setLiquidationDiscountPct(e.target.value)}
-                      style={{
-                        width: 66,
-                        padding: 7,
-                        border: `1px solid ${C.borderStrong}`,
-                        borderRadius: 7,
-                        textAlign: "center",
-                        fontWeight: 700,
-                      }}
+                      className="w-[66px] rounded-[7px] border border-border-md p-[7px] text-center font-bold"
                     />
                     <span
                       dir="ltr"
-                      style={{
-                        width: 110,
-                        textAlign: "end",
-                        fontWeight: 800,
-                        fontSize: 13.5,
-                        color: C.dangerText,
-                      }}
+                      className="w-[110px] text-end text-[13.5px] font-extrabold text-red-text"
                     >
                       −{fmt(forcedCut)}
                     </span>
                   </div>
                 ) : null}
-                <div
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: 10,
-                    padding: "11px 16px",
-                    borderBottom: `1px solid ${C.border}`,
-                  }}
-                >
-                  <div style={{ flex: 1 }}>
-                    <div style={{ fontWeight: 700, fontSize: 12.5, color: C.ink }}>
+                <div className="flex items-center gap-2.5 border-b border-border px-4 py-[11px]">
+                  <div className="flex-1">
+                    <div className="text-[12.5px] font-bold text-heading">
                       تقريب القيمة
                     </div>
-                    <div style={{ fontSize: 10.5, color: C.faint, marginTop: 2 }}>
+                    <div className="mt-0.5 text-[10.5px] text-text-3">
                       {roundNote}
                     </div>
                   </div>
@@ -5394,42 +4746,21 @@ export function ValuationWorkShell({
                     step={1}
                     value={finalRoundDecimals}
                     onChange={(e) => setFinalRoundDecimals(e.target.value)}
-                    style={{
-                      width: 66,
-                      padding: 7,
-                      border: `1px solid ${C.borderStrong}`,
-                      borderRadius: 7,
-                      textAlign: "center",
-                      fontWeight: 700,
-                    }}
+                    className="w-[66px] rounded-[7px] border border-border-md p-[7px] text-center font-bold"
                   />
                 </div>
-                <div
-                  style={{
-                    display: "flex",
-                    alignItems: "baseline",
-                    justifyContent: "space-between",
-                    gap: 10,
-                    padding: "14px 16px",
-                    background: C.goldSoft,
-                  }}
-                >
-                  <div style={{ fontWeight: 800, fontSize: 14, color: C.ink }}>
+                <div className="flex items-baseline justify-between gap-2.5 bg-gold-soft px-4 py-3.5">
+                  <div className="text-sm font-extrabold text-heading">
                     = القيمة النهائية
                   </div>
-                  <div style={{ textAlign: "end" }}>
+                  <div className="text-end">
                     <div
                       dir="ltr"
-                      style={{
-                        fontWeight: 800,
-                        fontSize: 32,
-                        color: C.ink,
-                        letterSpacing: "-0.02em",
-                      }}
+                      className="text-[32px] font-extrabold tracking-[-0.02em] text-heading"
                     >
                       {fmt(finalLocal)}
                     </div>
-                    <div style={{ fontSize: 11.5, color: C.faint, marginTop: 3 }}>
+                    <div className="mt-[3px] text-[11.5px] text-text-3">
                       ريال سعودي · كتابةً: {amountWordsOrZero(finalLocal)}
                     </div>
                   </div>
@@ -5437,25 +4768,16 @@ export function ValuationWorkShell({
               </div>
 
               {/* نص الرأي النهائي — آلي حتى يُحرَّر */}
-              <div
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "space-between",
-                  gap: 10,
-                  marginBottom: 8,
-                }}
-              >
-                <span style={{ fontWeight: 700, fontSize: 12.5, color: C.ink }}>
+              <div className="mb-2 flex items-center justify-between gap-2.5">
+                <span className="text-[12.5px] font-bold text-heading">
                   نص الرأي النهائي (مبرر استخدام الطرق)
                 </span>
-                <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                <div className="flex items-center gap-2.5">
                   <span
-                    style={{
-                      fontSize: 11,
-                      fontWeight: 600,
-                      color: opinionDirty ? C.dangerText : C.goldText,
-                    }}
+                    className={cn(
+                      "text-[11px] font-semibold",
+                      opinionDirty ? "text-red-text" : "text-gold-d",
+                    )}
                   >
                     {opinionDirty
                       ? "نص محرَّر يدوياً — لا يتحدث تلقائياً"
@@ -5472,22 +4794,11 @@ export function ValuationWorkShell({
                 rows={6}
                 value={opinionDirty ? methodsRationale : opinionAuto}
                 onChange={(e) => setMethodsRationale(e.target.value)}
-                style={{
-                  width: "100%",
-                  padding: "12px 14px",
-                  border: `1px solid ${C.border}`,
-                  borderRadius: 9,
-                  background: C.soft,
-                  color: C.body,
-                  fontWeight: 500,
-                  fontSize: 12.5,
-                  lineHeight: 1.9,
-                  resize: "vertical",
-                }}
+                className="w-full resize-y rounded-[9px] border border-border bg-surface-2 px-3.5 py-3 text-[12.5px] font-medium leading-[1.9] text-text"
               />
             </div>
 
-            <div style={{ marginTop: 18, display: "flex", gap: 10, flexWrap: "wrap" }}>
+            <div className="mt-[18px] flex flex-wrap gap-2.5">
               <PrimaryBtn
                 disabled={saving || reconMethods.length === 0}
                 onClick={() => void saveReconciliation()}
@@ -5505,66 +4816,52 @@ export function ValuationWorkShell({
           <Card>
             <CardPad>
               <CardTitle>اعتماد التقييم — شروط الإصدار</CardTitle>
-              <p style={{ fontSize: 11.5, color: C.faint, marginBottom: 10 }}>
+              <p className="mb-2.5 text-[11.5px] text-text-3">
                 المنع يقع عند الاعتماد فقط — الإدخال الجزئي محفوظ كمسوّدة.
               </p>
-              <p style={{ fontSize: 13, color: C.body, marginBottom: 10 }}>
+              <p className="mb-2.5 text-[13px] text-text">
                 الحالة:{" "}
-                <strong style={{ color: gates.allowsIssuance ? "#2f7a4d" : C.dangerText }}>
+                <strong
+                  className={cn(
+                    gates.allowsIssuance ? "text-[#2f7a4d]" : "text-red-text",
+                  )}
+                >
                   {gates.allowsIssuance
                     ? "كل شروط الاعتماد مستوفاة ✓"
                     : "الاعتماد ممنوع ✗"}
                 </strong>
               </p>
-              <ul style={{ listStyle: "none", margin: 0, padding: 0 }}>
+              <ul className="m-0 list-none p-0">
                 {gates.gates.map((g) => (
                   <li
                     key={g.code}
-                    style={{
-                      display: "flex",
-                      gap: 8,
-                      fontSize: 12.5,
-                      marginBottom: 6,
-                      color: g.passed ? C.body : C.dangerText,
-                    }}
+                    className={cn(
+                      "mb-1.5 flex gap-2 text-[12.5px]",
+                      g.passed ? "text-text" : "text-red-text",
+                    )}
                   >
                     <span>{g.passed ? "✓" : "✗"}</span>
                     <span>{g.labelAr}</span>
                     {g.detailAr ? (
-                      <span style={{ color: C.faint }}>— {g.detailAr}</span>
+                      <span className="text-text-3">— {g.detailAr}</span>
                     ) : null}
                   </li>
                 ))}
               </ul>
 
               {/* التنبيهات المنهجية (21) — المعالجة بمبرر نصي أو إقرار حسب فئة التنبيه */}
-              <div
-                style={{
-                  marginTop: 16,
-                  paddingTop: 14,
-                  borderTop: `1px solid ${C.border}`,
-                }}
-              >
-                <div
-                  style={{
-                    display: "flex",
-                    alignItems: "baseline",
-                    justifyContent: "space-between",
-                    gap: 10,
-                    marginBottom: 10,
-                    flexWrap: "wrap",
-                  }}
-                >
-                  <span style={{ fontWeight: 800, fontSize: 13.5, color: C.ink }}>
+              <div className="mt-4 border-t border-border pt-3.5">
+                <div className="mb-2.5 flex flex-wrap items-baseline justify-between gap-2.5">
+                  <span className="text-[13.5px] font-extrabold text-heading">
                     التنبيهات المنهجية
                   </span>
-                  <span style={{ fontSize: 11, color: C.faint }}>
+                  <span className="text-[11px] text-text-3">
                     {gates.methodologyAlertsNoteAr} · تُحفَظ المعالجات مع «حفظ
                     التوفيق والرأي النهائي»
                   </span>
                 </div>
                 {gates.methodologyAlerts.filter((a) => a.triggered).length === 0 ? (
-                  <div style={{ fontSize: 12.5, color: "#2f7a4d", fontWeight: 700 }}>
+                  <div className="text-[12.5px] font-bold text-[#2f7a4d]">
                     ✓ لا تنبيهات منهجية مفعّلة
                   </div>
                 ) : (
@@ -5580,53 +4877,32 @@ export function ValuationWorkShell({
                       return (
                         <div
                           key={a.code}
-                          style={{
-                            display: "flex",
-                            flexDirection: "column",
-                            gap: 6,
-                            padding: "10px 12px",
-                            marginBottom: 8,
-                            borderRadius: 9,
-                            border: `1px solid ${a.blocksIssuance ? C.danger : C.border}`,
-                            background: a.blocksIssuance ? "var(--red-light)" : C.soft,
-                          }}
+                          className={cn(
+                            "mb-2 flex flex-col gap-1.5 rounded-[9px] border px-3 py-2.5",
+                            a.blocksIssuance
+                              ? "border-red bg-[var(--red-light)]"
+                              : "border-border bg-surface-2",
+                          )}
                         >
-                          <div
-                            style={{
-                              display: "flex",
-                              alignItems: "center",
-                              gap: 8,
-                              flexWrap: "wrap",
-                            }}
-                          >
+                          <div className="flex flex-wrap items-center gap-2">
                             <span
-                              style={{
-                                width: 9,
-                                height: 9,
-                                borderRadius: 99,
-                                flexShrink: 0,
-                                background: a.isHard
-                                  ? C.danger
+                              className={cn(
+                                "size-[9px] shrink-0 rounded-full",
+                                a.isHard
+                                  ? "bg-red"
                                   : a.blocksIssuance
-                                    ? "#d9a441"
-                                    : "#3f8f5f",
-                              }}
+                                    ? "bg-[#d9a441]"
+                                    : "bg-[#3f8f5f]",
+                              )}
                             />
-                            <span
-                              style={{ fontWeight: 700, fontSize: 12.5, color: C.ink }}
-                            >
+                            <span className="text-[12.5px] font-bold text-heading">
                               {a.number}. {a.labelAr}
                             </span>
                             <span
-                              style={{
-                                fontSize: 10.5,
-                                fontWeight: 700,
-                                padding: "2px 8px",
-                                borderRadius: 99,
-                                background: C.card,
-                                border: `1px solid ${C.border}`,
-                                color: a.isHard ? C.dangerText : C.goldText,
-                              }}
+                              className={cn(
+                                "rounded-full border border-border bg-surface px-2 py-0.5 text-[10.5px] font-bold",
+                                a.isHard ? "text-red-text" : "text-gold-d",
+                              )}
                             >
                               {a.isHard
                                 ? "حاجب"
@@ -5635,7 +4911,7 @@ export function ValuationWorkShell({
                                   : "يتطلب إقراراً"}
                             </span>
                             {a.detailAr ? (
-                              <span style={{ fontSize: 11.5, color: C.muted }}>
+                              <span className="text-[11.5px] text-text-2">
                                 {a.detailAr}
                               </span>
                             ) : null}
@@ -5653,26 +4929,11 @@ export function ValuationWorkShell({
                                   },
                                 }))
                               }
-                              style={{
-                                padding: "7px 10px",
-                                border: `1px dashed ${C.borderStrong}`,
-                                borderRadius: 7,
-                                background: C.card,
-                                fontSize: 12,
-                              }}
+                              className="rounded-[7px] border border-dashed border-border-md bg-surface px-2.5 py-[7px] text-xs"
                             />
                           ) : null}
                           {needsAck ? (
-                            <label
-                              style={{
-                                display: "inline-flex",
-                                alignItems: "center",
-                                gap: 8,
-                                fontSize: 12,
-                                color: C.body,
-                                cursor: "pointer",
-                              }}
-                            >
+                            <label className="inline-flex cursor-pointer items-center gap-2 text-xs text-text">
                               <input
                                 type="checkbox"
                                 checked={ov.acknowledged}
@@ -5686,13 +4947,13 @@ export function ValuationWorkShell({
                                     },
                                   }))
                                 }
-                                style={{ width: 15, height: 15 }}
+                                className="size-[15px]"
                               />
                               أقرّ بالاطلاع على هذا التنبيه والوعي بأثره
                             </label>
                           ) : null}
                           {a.isHard ? (
-                            <span style={{ fontSize: 11, color: C.dangerText }}>
+                            <span className="text-[11px] text-red-text">
                               تنبيه حاجب — يُعالَج بتصحيح المدخلات نفسها لا
                               بالتجاوز.
                             </span>
@@ -5710,74 +4971,22 @@ export function ValuationWorkShell({
   }
 
   return (
-    <div
-      dir="rtl"
-      style={{
-        position: "relative",
-        minHeight: 480,
-      }}
-    >
+    <div dir="rtl" className="relative min-h-[480px]">
       {/* رأس مساحة العمل وأشرطة الشاشات — بطاقة واحدة عائمة بلغة بطاقات النظام. */}
-      <div
-        style={{
-          background: C.card,
-          border: `1px solid ${C.border}`,
-          borderRadius: "var(--radius-lg)",
-          boxShadow: "var(--shadow)",
-          overflow: "hidden",
-        }}
-      >
-      <header
-        style={{
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
-          gap: 18,
-          padding: "14px 22px",
-          borderBottom: `1px solid ${C.border}`,
-        }}
-      >
-        <h1
-          style={{
-            fontWeight: 800,
-            fontSize: 17,
-            margin: 0,
-            color: C.ink,
-            letterSpacing: "-0.01em",
-          }}
-        >
+      <div className="overflow-hidden rounded-[var(--radius-lg)] border border-border bg-surface shadow-card">
+      <header className="flex items-center justify-between gap-[18px] border-b border-border px-[22px] py-3.5">
+        <h1 className="m-0 text-[17px] font-extrabold tracking-[-0.01em] text-heading">
           {pageMeta.title}
         </h1>
-        <div
-          style={{
-            display: "flex",
-            alignItems: "center",
-            gap: 7,
-            height: 38,
-            padding: "0 13px",
-            border: `1px solid ${C.borderStrong}`,
-            borderRadius: "var(--radius)",
-            background: C.soft,
-            color: C.muted,
-            fontSize: 13,
-            fontWeight: 500,
-          }}
-        >
+        <div className="flex h-[38px] items-center gap-[7px] rounded-[var(--radius)] border border-border-md bg-surface-2 px-[13px] text-[13px] font-medium text-text-2">
           <span>تاريخ التقييم</span>
-          <b dir="ltr" style={{ color: C.ink }}>
+          <b dir="ltr" className="text-heading">
             {valDate}
           </b>
         </div>
       </header>
 
-      <nav
-        style={{
-          display: "flex",
-          gap: 6,
-          padding: "12px 22px",
-          flexWrap: "wrap",
-        }}
-      >
+      <nav className="flex flex-wrap gap-1.5 px-[22px] py-3">
         {navItems
           .filter((n) => n.show)
           .map((n) => {
@@ -5787,37 +4996,22 @@ export function ValuationWorkShell({
                 key={n.id}
                 type="button"
                 onClick={() => setScreen(n.id)}
-                style={{
-                  display: "inline-flex",
-                  alignItems: "center",
-                  gap: 8,
-                  padding: "8px 14px",
-                  borderRadius: 99,
-                  border: `1px solid ${active ? C.inkFill : C.borderStrong}`,
-                  background: active ? C.inkFill : C.card,
-                  color: active ? "#fff" : C.body,
-                  fontWeight: 700,
-                  fontSize: 12.5,
-                  cursor: "pointer",
-                }}
+                className={cn(
+                  "inline-flex cursor-pointer items-center gap-2 rounded-full border px-3.5 py-2 text-[12.5px] font-bold",
+                  active
+                    ? "border-ink bg-ink text-white"
+                    : "border-border-md bg-surface text-text",
+                )}
               >
                 {n.label}
                 {n.badge != null ? (
                   <span
-                    style={{
-                      minWidth: 17,
-                      height: 17,
-                      borderRadius: 99,
-                      display: "grid",
-                      placeItems: "center",
-                      padding: "0 5px",
-                      background: active
-                        ? "rgba(200,181,145,.35)"
-                        : C.goldSoft,
-                      color: active ? "#fff" : C.goldText,
-                      fontWeight: 700,
-                      fontSize: 9.5,
-                    }}
+                    className={cn(
+                      "grid h-[17px] min-w-[17px] place-items-center rounded-full px-[5px] text-[9.5px] font-bold",
+                      active
+                        ? "bg-[rgba(200,181,145,.35)] text-white"
+                        : "bg-gold-soft text-gold-d",
+                    )}
                   >
                     {n.badge}
                   </span>
@@ -5828,9 +5022,9 @@ export function ValuationWorkShell({
       </nav>
       </div>
 
-      <div style={{ padding: "18px 0 8px", position: "relative" }}>
+      <div className="relative py-[18px] pb-2">
         {error ? (
-          <p style={{ color: C.dangerText, fontSize: 12.5, marginBottom: 12 }}>
+          <p className="mb-3 text-[12.5px] text-red-text">
             {error}
           </p>
         ) : null}
@@ -5844,13 +5038,7 @@ export function ValuationWorkShell({
               >
                 <div className="p-[18px_22px]">
                   <div className="h-4 w-44 animate-pulse rounded-md bg-[var(--navy-soft)]" />
-                  <div
-                    className="mt-4 grid gap-3"
-                    style={{
-                      gridTemplateColumns:
-                        "repeat(auto-fit, minmax(180px, 1fr))",
-                    }}
-                  >
+                  <div className="mt-4 grid grid-cols-[repeat(auto-fit,minmax(180px,1fr))] gap-3">
                     {[0, 1, 2].map((j) => (
                       <div key={j} className="min-w-0">
                         <div className="h-3 w-24 animate-pulse rounded bg-[var(--navy-soft)]" />
@@ -5870,66 +5058,31 @@ export function ValuationWorkShell({
         {!loading && screen === "market" ? renderMarket() : null}
         {!loading && screen === "cost" ? renderCost() : null}
         {!loading && screen === "final" ? renderFinal() : null}
+        {!loading && screen === "review" ? renderReview() : null}
       </div>
 
       {/* شريحة القيم الملخّصة — لا تظهر أثناء التحميل ولا على شاشة الإعدادات (لا قيم بعد). */}
       {loading || screen === "basic" ? null : (
-      <div
-        style={{
-          position: "sticky",
-          bottom: 16,
-          marginInlineStart: 16,
-          marginBottom: 8,
-          zIndex: 40,
-          display: "inline-flex",
-          alignItems: "center",
-          gap: 14,
-          padding: "10px 16px",
-          borderRadius: "var(--radius-lg)",
-          background: C.card,
-          border: `1px solid ${C.borderStrong}`,
-          borderInlineStart: `3px solid ${C.gold}`,
-          boxShadow: "var(--shadow-lg)",
-          maxWidth: "calc(100% - 32px)",
-        }}
-      >
+      <div className="sticky bottom-4 z-40 mb-2 ms-4 inline-flex max-w-[calc(100%-32px)] items-center gap-3.5 rounded-[var(--radius-lg)] border border-border-md border-s-[3px] border-s-gold bg-surface px-4 py-2.5 shadow-lg">
         <div>
-          <div style={{ fontWeight: 600, fontSize: 10.5, color: C.faint }}>
+          <div className="text-[10.5px] font-semibold text-text-3">
             {pageMeta.barMainLabel}
           </div>
           <div
             dir="ltr"
-            style={{
-              fontWeight: 800,
-              fontSize: 19,
-              lineHeight: 1.25,
-              textAlign: "start",
-              color: C.ink,
-            }}
+            className="text-start text-[19px] font-extrabold leading-tight text-heading"
           >
             {pageMeta.barMainValue}
           </div>
         </div>
-        <div
-          style={{
-            width: 1,
-            height: 30,
-            background: C.border,
-          }}
-        />
+        <div className="h-[30px] w-px bg-border" />
         <div>
-          <div style={{ fontWeight: 600, fontSize: 10.5, color: C.faint }}>
+          <div className="text-[10.5px] font-semibold text-text-3">
             {pageMeta.barSubLabel}
           </div>
           <div
             dir="ltr"
-            style={{
-              fontWeight: 700,
-              fontSize: 14,
-              lineHeight: 1.25,
-              textAlign: "start",
-              color: C.goldText,
-            }}
+            className="text-start text-sm font-bold leading-tight text-gold-d"
           >
             {pageMeta.barSubValue}
           </div>

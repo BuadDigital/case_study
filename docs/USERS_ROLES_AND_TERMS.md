@@ -76,6 +76,8 @@ exist in a real deployment.
 | `osama@ejadah.dev` | `osama` | `user1234` | أسامة الصالحي | أخصائي دراسة حالة | `case-specialist` |
 | `feras@ejadah.dev` | `feras` | `user1234` | فراس كمرين | مراجع حكومي | `government-reviewer` |
 | `abdullah.kathiri@ejadah.dev` | `abdullah` | `user1234` | عبدالله الكثيري | مقيم عقاري | `real-estate-appraiser` |
+| `ayman.majrashi@ejadah.dev` | `ayman` | `user1234` | أيمن أحمد مجرشي | مقيم عقاري | `real-estate-appraiser` |
+| `mohammed.assaf@ejadah.dev` | `assaf` | `user1234` | محمد العساف | مقيم عقاري | `real-estate-appraiser` |
 | `ahmed@ejadah.dev` | `ahmed` | `user1234` | أحمد سعيد | معاين ميداني | `field-inspector` |
 | `abdullah.abdulmane@ejadah.dev` | `abdullah_m` | `user1234` | عبدالله عبدالمانع | معاين ميداني | `field-inspector` |
 | `eman@ejadah.dev` | `eman` | `user1234` | إيمان النهدي | موظف الشؤون المالية | `financial-officer` |
@@ -92,6 +94,8 @@ exist in a real deployment.
 | `osama` | إدارة التقييم العقاري | قسم دراسة الحالة | محرر | دوام كامل | Internal | `HR`, `Editor` | — | — |
 | `feras` | إدارة التقييم العقاري | قسم دراسة الحالة | محرر | دوام كامل | Internal | `HR`, `Editor` | `gov-firas` | — |
 | `abdullah` | إدارة التقييم العقاري | قسم تقييم الأفراد | محرر | دوام كامل | Internal | `HR`, `Editor` | `val-abdullah` | — |
+| `ayman` | إدارة التقييم العقاري | قسم تقييم الأفراد | محرر | دوام كامل | Internal | `HR`, `Editor` | `val-ayman` | — |
+| `assaf` | إدارة التقييم العقاري | قسم تقييم الأفراد | محرر | دوام كامل | Internal | `HR`, `Editor` | `val-assaf` | — |
 | `ahmed` | إدارة التقييم العقاري | قسم تقييم الأفراد | محرر | متعاون | Freelance | `HR`, `Editor` | `fi-ahmed` | `FI-002` |
 | `abdullah_m` | إدارة التقييم العقاري | قسم تقييم الأفراد | محرر | دوام كامل | Internal | `HR`, `Editor` | `fi-abdullah-abdulmane` | `FI-001` |
 | `eman` | الإدارة المالية | قسم المحاسبة | محرر | دوام كامل | Internal | `HR`, `Editor` | — | — |

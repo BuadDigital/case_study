@@ -148,6 +148,26 @@ export const VALUER_ROSTER_HTML_DEFAULTS: OrganizationValuerRosterEntry[] = [
     isActive: true,
     signatureUrl: null,
   },
+  {
+    id: "v5",
+    nameAr: "أيمن أحمد مجرشي",
+    membershipNumber: "1210002040",
+    membershipCategory: "associate",
+    membershipExpiresAt: "2026-12-31",
+    role: "assistant",
+    isActive: true,
+    signatureUrl: null,
+  },
+  {
+    id: "v6",
+    nameAr: "محمد العساف",
+    membershipNumber: "1210003474",
+    membershipCategory: "associate",
+    membershipExpiresAt: "2027-12-31",
+    role: "valuer",
+    isActive: true,
+    signatureUrl: null,
+  },
 ];
 
 export type OrganizationBrandingSettings = {

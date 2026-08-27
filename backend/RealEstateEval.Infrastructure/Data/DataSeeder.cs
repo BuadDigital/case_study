@@ -362,6 +362,58 @@ public static class DataSeeder
 
         new(
 
+            "ayman",
+
+            "ayman.majrashi@ejadah.dev",
+
+            "user1234",
+
+            "أيمن أحمد مجرشي",
+
+            "مقيم عقاري",
+
+            "دوام كامل",
+
+            "إدارة التقييم العقاري",
+
+            "قسم تقييم الأفراد",
+
+            "محرر",
+
+            ContractType.Internal,
+
+            DepartmentRoles.Hr,
+
+            "Editor"),
+
+        new(
+
+            "assaf",
+
+            "mohammed.assaf@ejadah.dev",
+
+            "user1234",
+
+            "محمد العساف",
+
+            "مقيم عقاري",
+
+            "دوام كامل",
+
+            "إدارة التقييم العقاري",
+
+            "قسم تقييم الأفراد",
+
+            "محرر",
+
+            ContractType.Internal,
+
+            DepartmentRoles.Hr,
+
+            "Editor"),
+
+        new(
+
             "ahmed",
 
             "ahmed@ejadah.dev",
@@ -513,6 +565,8 @@ public static class DataSeeder
         {
             ["feras@ejadah.dev"] = "gov-firas",
             ["abdullah.kathiri@ejadah.dev"] = "val-abdullah",
+            ["ayman.majrashi@ejadah.dev"] = "val-ayman",
+            ["mohammed.assaf@ejadah.dev"] = "val-assaf",
             ["ahmed@ejadah.dev"] = "fi-ahmed",
             ["abdullah.abdulmane@ejadah.dev"] = "fi-abdullah-abdulmane",
             ["survey.jeddah@ejadah.dev"] = "eo-jeddah",
@@ -536,11 +590,13 @@ public static class DataSeeder
             ["abdulrahman"] = "+966500000003",
             ["osama"] = "+966500000004",
             ["feras"] = "+966500000005",
+            ["ayman"] = "+966500000006",
             ["abdullah"] = "+966500000007",
             ["ahmed"] = "+966500000008",
             ["abdullah_m"] = "+966500000009",
             ["eman"] = "+966500000010",
             ["jeddah_survey"] = "+966500000011",
+            ["assaf"] = "+966500000012",
         };
 
     private static readonly Dictionary<string, string[]> ReviewerCityCoverageByEmail =

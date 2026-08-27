@@ -1077,9 +1077,13 @@ function ProfileMenu({
                 type="button"
                 role="menuitem"
                 className="flex w-full items-center gap-2.5 rounded-md px-2.5 py-2 text-[13px] font-semibold text-danger-text transition-colors hover:bg-[color-mix(in_srgb,var(--red)_10%,transparent)] max-lg:min-h-11 [&>svg]:size-4 [&>svg]:shrink-0"
+                onPointerDown={(e) => {
+                  // Keep the menu item click from racing the outside-dismiss listener.
+                  e.stopPropagation();
+                }}
                 onClick={() => {
                   setOpen(false);
-                  onLogout();
+                  void onLogout();
                 }}
                 data-no-action-toast
               >
@@ -1392,7 +1396,12 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     const userId = session?.user?.id;
     if (userId) {
       try {
-        const pending = await countPendingOutbox(userId);
+        const pending = await Promise.race([
+          countPendingOutbox(userId),
+          new Promise<number>((resolve) => {
+            window.setTimeout(() => resolve(0), 800);
+          }),
+        ]);
         if (pending > 0) {
           const proceed = window.confirm(
             `هناك ${pending} عناصر لم تُرفع بعد. أبقِ النظام مفتوحاً حتى تكتمل.\nهل تريد تسجيل الخروج على أي حال؟`,
@@ -1404,26 +1413,34 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       }
     }
 
-    await unsubscribeFromPushSafe();
+    // Network / push / IDB must not block leaving — fire best-effort then navigate hard.
+    void unsubscribeFromPushSafe();
     if (session?.refreshToken) {
-      try {
-        await revokeAuthSession(session.refreshToken);
-      } catch {
-        /* continue */
-      }
+      void revokeAuthSession(session.refreshToken);
     }
     if (userId) {
-      try {
-        await purgeOfflineData(userId, "logout");
-        await closeOfflineDb();
-      } catch {
-        /* continue */
-      }
+      void (async () => {
+        try {
+          await Promise.race([
+            (async () => {
+              await purgeOfflineData(userId, "logout");
+              await closeOfflineDb();
+            })(),
+            new Promise<void>((resolve) => {
+              window.setTimeout(resolve, 2000);
+            }),
+          ]);
+        } catch {
+          /* ignore */
+        }
+      })();
     }
+
     clearAuthSession();
     queryClient.clear();
-    router.replace("/login");
-  }, [queryClient, router]);
+    // Soft router.replace can stall behind hung fetches on localhost.
+    window.location.assign("/login");
+  }, [queryClient]);
 
   // These are reset to false at the start of each render, which is correct —
   // they track sidebar insertion within the current JSX pass only.

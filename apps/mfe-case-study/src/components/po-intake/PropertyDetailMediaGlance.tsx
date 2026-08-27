@@ -14,6 +14,11 @@ import { PropertyLocationMapGlance } from "./PropertyLocationMapGlance";
 const goldSoft =
   "rounded border border-transparent bg-[color-mix(in_srgb,#f1ece2_45%,transparent)]";
 
+export type PropertyGlanceFact = {
+  label: string;
+  value: string;
+};
+
 /**
  * Case Study.html basic-tab media strip: main photo + description | map + coords.
  */
@@ -24,6 +29,10 @@ export function PropertyDetailMediaGlance({
   latitude,
   longitude,
   showCoordinates = true,
+  valueBasisLabel,
+  valuePremiseLabel,
+  valuationPurposeLabel,
+  reportUsersLabel,
 }: {
   property?: PoPropertyIntake | null;
   primaryPhoto?: PropertyDetailDocumentEntry | null;
@@ -31,12 +40,55 @@ export function PropertyDetailMediaGlance({
   latitude?: string | null;
   longitude?: string | null;
   showCoordinates?: boolean;
+  /** أساس القيمة المستخدم — يُعرض تحت وصف العقار (من أمر العمل). */
+  valueBasisLabel?: string | null;
+  /** فرضية القيمة — تحت أساس القيمة. */
+  valuePremiseLabel?: string | null;
+  /** الغرض من التقييم — تحت أساس القيمة. */
+  valuationPurposeLabel?: string | null;
+  /** مستخدمو التقرير — تحت أساس القيمة. */
+  reportUsersLabel?: string | null;
 }) {
   const hasPhoto = Boolean(primaryPhoto?.dataUrl);
   const description = property
     ? buildPropertyDescriptionLine(property, inspectorDescription)
     : inspectorDescription?.trim() ||
       "يُحدَّث الوصف التفصيلي من تقرير المعاين.";
+
+  const assignmentFacts: PropertyGlanceFact[] = [
+    valueBasisLabel?.trim()
+      ? { label: "أساس القيمة المستخدم", value: valueBasisLabel.trim() }
+      : null,
+    valuePremiseLabel?.trim()
+      ? { label: "فرضية القيمة", value: valuePremiseLabel.trim() }
+      : null,
+    valuationPurposeLabel?.trim()
+      ? { label: "الغرض من التقييم", value: valuationPurposeLabel.trim() }
+      : null,
+    reportUsersLabel?.trim()
+      ? { label: "مستخدمو التقرير", value: reportUsersLabel.trim() }
+      : null,
+  ].filter((f): f is PropertyGlanceFact => Boolean(f));
+
+  const descriptionBlock = (
+    <>
+      <div className="mb-[3px] text-[10.5px] text-text-3">وصف العقار</div>
+      <p className="m-0 text-xs font-semibold leading-[1.7] text-pretty text-text">
+        {description}
+      </p>
+      {assignmentFacts.map((fact) => (
+        <div
+          key={fact.label}
+          className="mt-2.5 border-t border-border/60 pt-2.5"
+        >
+          <div className="mb-[3px] text-[10.5px] text-text-3">{fact.label}</div>
+          <p className="m-0 text-xs font-semibold leading-[1.7] text-pretty text-text">
+            {fact.value}
+          </p>
+        </div>
+      ))}
+    </>
+  );
 
   return (
     <div className="mb-1 grid grid-cols-1 gap-3 sm:grid-cols-[minmax(0,1fr)_minmax(0,3fr)]">
@@ -78,10 +130,7 @@ export function PropertyDetailMediaGlance({
         </button>
         {showCoordinates ? (
           <div className={cn("mt-2 flex-1 px-3 py-2", goldSoft)}>
-            <div className="mb-[3px] text-[10.5px] text-text-3">وصف العقار</div>
-            <p className="m-0 text-xs font-semibold leading-[1.7] text-pretty text-text">
-              {description}
-            </p>
+            {descriptionBlock}
           </div>
         ) : null}
       </div>
@@ -94,10 +143,7 @@ export function PropertyDetailMediaGlance({
       />
       {!showCoordinates ? (
         <div className={cn("sm:col-span-2 px-3 py-2", goldSoft)}>
-          <div className="mb-[3px] text-[10.5px] text-text-3">وصف العقار</div>
-          <p className="m-0 text-xs font-semibold leading-[1.7] text-pretty text-text">
-            {description}
-          </p>
+          {descriptionBlock}
         </div>
       ) : null}
     </div>

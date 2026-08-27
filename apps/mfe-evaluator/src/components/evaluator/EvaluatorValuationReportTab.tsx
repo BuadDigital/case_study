@@ -4,8 +4,9 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   getApiBase,
   getValuationLists,
+  listClients,
   VALUATION_REPORT_HTML_DEFAULTS as REPORT_DEFAULTS,
-  isNoExternalSpecialistAssumption,
+  type ClientDto,
   type OrganizationSettingsDto,
   type ValuationListItemDto,
   type ValuationListsDto,
@@ -18,6 +19,25 @@ import type { PoPropertyIntake } from "@case-study/mfe/lib/prototype/po-intake-d
 import { subClientIdFromReportUsers } from "@case-study/mfe/lib/prototype/po-intake-data";
 import { usePoRecordQuery } from "@case-study/mfe/query/case-study-queries";
 import { PropertyDetailMediaGlance } from "@case-study/mfe/components/po-intake/PropertyDetailMediaGlance";
+import {
+  VALUATION_PRINT_KEYS_CHANGED_EVENT,
+  loadSpecialistPrintAttachmentKeys,
+} from "@case-study/mfe/lib/prototype/valuation-print-attachment-keys";
+import {
+  VALUATION_SPECIALIST_ESG_CHANGED_EVENT,
+  loadSpecialistEsgInputs,
+  type SpecialistEsgGroup,
+  type SpecialistEsgInputs,
+} from "@case-study/mfe/lib/prototype/valuation-report-specialist-esg";
+import {
+  VALUATION_SPECIALIST_SEARCH_SCOPE_CHANGED_EVENT,
+  loadSpecialistSearchScopeNotes,
+} from "@case-study/mfe/lib/prototype/valuation-report-specialist-search-scope";
+import {
+  VALUATION_SPECIALIST_FINISHING_CHANGED_EVENT,
+  loadSpecialistFinishingLevel,
+  type SpecialistFinishingLevel,
+} from "@case-study/mfe/lib/prototype/valuation-report-specialist-finishing";
 import { prefetchInspectorWorkspacePhotos } from "@case-study/mfe/lib/prototype/inspector-photo-upload";
 import {
   collectFieldInspectionDocumentsFromSubmission,
@@ -25,7 +45,6 @@ import {
   type PropertyDetailDocumentEntry,
 } from "@case-study/mfe/lib/prototype/property-detail-documents";
 import { cn, Spinner } from "@platform/ui-kit";
-import { invalidControlClass } from "@platform/app-shared/form-ux";
 import type {
   EvaluatorReportChoices,
   EvaluatorSubmission,
@@ -34,7 +53,12 @@ import {
   emptyReportChoices,
   seedReportChoicesFromAssignment,
 } from "../../lib/evaluator/evaluator-window-data";
-import { basisOfValueLabelArForAssignment } from "@platform/app-shared/prototype/assignment-valuation-defaults";
+import {
+  basisOfValueLabelArForAssignment,
+  valuationPurposeLabelArForAssignment,
+  valuePremiseLabelArForAssignment,
+} from "@platform/app-shared/prototype/assignment-valuation-defaults";
+import { formatValuationReportUsers } from "../../lib/evaluator/valuation-report-live-fill";
 import dynamic from "next/dynamic";
 import { inspectionFactChips } from "./EvaluatorInspectionFactsSection";
 import { computePropertyTotal } from "../../lib/evaluator/value-estimation";
@@ -44,8 +68,6 @@ import {
   valChipClassName,
   valInputClassName,
   valLabelClassName,
-  valTableTdClassName,
-  valTableThClassName,
 } from "./EvaluatorHtmlPrimitives";
 
 const UNUSED = "__unused__";
@@ -57,17 +79,6 @@ const EvaluatorComparableSelectionPanel = dynamic(
     ),
   { ssr: false },
 );
-const ESG_ENV = ["كفاءة الطاقة", "أخطار الموقع والمناخ", "المباني الخضراء"];
-const ESG_SOC = [
-  "جودة التصاميم ورفاهية المسكن",
-  "الإسهام المجتمعي للعقار",
-  "الخدمات المتوفرة في الموقع",
-];
-const ESG_GOV = [
-  "الامتثال التنظيمي",
-  "الإدارة الفعالة لبيانات العقار",
-  "مقومات تشغيل العقار",
-];
 
 function enabledList(
   lists: Record<string, ValuationListItemDto[]> | undefined,
@@ -90,104 +101,12 @@ function approachUsed(key: string | null | undefined): boolean {
   return Boolean(key && key !== UNUSED);
 }
 
-function Pick({
-  value,
-  options,
-  disabled,
-  onChange,
-  placeholder = "اختر…",
-}: {
-  value: string;
-  options: { value: string; label: string }[];
-  disabled?: boolean;
-  onChange: (next: string) => void;
-  placeholder?: string;
-}) {
+function esgGroupsEqual(a: SpecialistEsgGroup, b: SpecialistEsgGroup): boolean {
   return (
-    <select
-      className={valInputClassName}
-      disabled={disabled}
-      value={value}
-      onChange={(e) => onChange(e.target.value)}
-    >
-      <option value="">{placeholder}</option>
-      {options.map((option) => (
-        <option key={option.value} value={option.value}>
-          {option.label}
-        </option>
-      ))}
-    </select>
-  );
-}
-
-function EsgRow({
-  label,
-  factors,
-  none,
-  selected,
-  notes,
-  disabled,
-  onChange,
-}: {
-  label: string;
-  factors: string[];
-  none: boolean;
-  selected: string[];
-  notes: string;
-  disabled?: boolean;
-  onChange: (next: { none: boolean; selected: string[]; notes: string }) => void;
-}) {
-  return (
-    <tr>
-      <td className={cn(valTableTdClassName, "align-middle font-semibold text-text-2")}>
-        {label}
-      </td>
-      <td className={valTableTdClassName}>
-        <label className="mb-1.5 flex items-center gap-1.5 text-[12px]">
-          <input
-            type="checkbox"
-            disabled={disabled}
-            checked={none}
-            onChange={(e) =>
-              onChange({
-                none: e.target.checked,
-                selected: e.target.checked ? [] : selected,
-                notes,
-              })
-            }
-          />
-          لا يوجد
-        </label>
-        {factors.map((factor) => (
-          <label key={factor} className="flex items-center gap-1.5 text-[12px]">
-            <input
-              type="checkbox"
-              disabled={disabled || none}
-              checked={!none && selected.includes(factor)}
-              onChange={(e) => {
-                const next = e.target.checked
-                  ? [...selected, factor]
-                  : selected.filter((x) => x !== factor);
-                onChange({ none: false, selected: next, notes });
-              }}
-            />
-            {factor}
-          </label>
-        ))}
-      </td>
-      <td className={valTableTdClassName}>
-        <textarea
-          className={cn(valInputClassName, "resize-y")}
-          rows={3}
-          disabled={disabled || none}
-          placeholder="وصف الأثر — لكل عامل مختار"
-          value={notes}
-          onChange={(e) =>
-            onChange({ none, selected, notes: e.target.value })
-          }
-        />
-      </td>
-    </tr>
+    a.none === b.none &&
+    a.notes === b.notes &&
+    a.selected.length === b.selected.length &&
+    a.selected.every((x, i) => x === b.selected[i])
   );
 }
 
@@ -196,15 +115,22 @@ export function EvaluatorValuationReportTab({
   disabled = false,
   property,
   inspectionTaskId,
+  surveyTaskId,
+  appraisalTaskId,
   assignmentType,
   onChange,
   onDraftPatch,
   fieldErrors,
+  onSubmit,
+  submitting = false,
+  showSubmit = false,
 }: {
   draft: EvaluatorSubmission;
   disabled?: boolean;
   property?: PoPropertyIntake | null;
   inspectionTaskId?: string | null;
+  surveyTaskId?: string | null;
+  appraisalTaskId?: string | null;
   assignmentType?: string | null;
   onChange?: (choices: EvaluatorReportChoices, extras?: { valueBasis?: string; valuationMethod?: string }) => void;
   onDraftPatch?: (patch: {
@@ -215,6 +141,9 @@ export function EvaluatorValuationReportTab({
     searchScopeNotes?: string;
   }) => void;
   fieldErrors?: Record<string, string>;
+  onSubmit?: () => void;
+  submitting?: boolean;
+  showSubmit?: boolean;
 }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -225,10 +154,88 @@ export function EvaluatorValuationReportTab({
   );
   const [primaryPhoto, setPrimaryPhoto] =
     useState<PropertyDetailDocumentEntry | null>(null);
-  const [specialistUsed, setSpecialistUsed] = useState(false);
+  const [clients, setClients] = useState<ClientDto[]>([]);
+  const [specialistKeys, setSpecialistKeys] = useState<string[]>(() =>
+    loadSpecialistPrintAttachmentKeys(property?.id ?? draft.propertyId),
+  );
+  const [specialistEsg, setSpecialistEsg] = useState<SpecialistEsgInputs>(() =>
+    loadSpecialistEsgInputs(property?.id ?? draft.propertyId),
+  );
+  const [specialistSearchScope, setSpecialistSearchScope] = useState(() =>
+    loadSpecialistSearchScopeNotes(property?.id ?? draft.propertyId),
+  );
+  const [specialistFinishing, setSpecialistFinishing] =
+    useState<SpecialistFinishingLevel>(() =>
+      loadSpecialistFinishingLevel(property?.id ?? draft.propertyId),
+    );
   const { data: record } = usePoRecordQuery(draft.poNumber);
 
   const choices = draft.reportChoices ?? emptyReportChoices();
+  const choicesRef = useRef(choices);
+  choicesRef.current = choices;
+
+  useEffect(() => {
+    const propertyId = property?.id ?? draft.propertyId;
+    const refreshKeys = () =>
+      setSpecialistKeys(loadSpecialistPrintAttachmentKeys(propertyId));
+    const refreshEsg = () => setSpecialistEsg(loadSpecialistEsgInputs(propertyId));
+    const refreshSearchScope = () =>
+      setSpecialistSearchScope(loadSpecialistSearchScopeNotes(propertyId));
+    const refreshFinishing = () =>
+      setSpecialistFinishing(loadSpecialistFinishingLevel(propertyId));
+    refreshKeys();
+    refreshEsg();
+    refreshSearchScope();
+    refreshFinishing();
+    const onChangeKeys = (ev: Event) => {
+      const detail = (ev as CustomEvent<{ propertyId?: string }>).detail;
+      if (detail?.propertyId && detail.propertyId !== propertyId) return;
+      refreshKeys();
+    };
+    const onChangeEsg = (ev: Event) => {
+      const detail = (ev as CustomEvent<{ propertyId?: string }>).detail;
+      if (detail?.propertyId && detail.propertyId !== propertyId) return;
+      refreshEsg();
+    };
+    const onChangeSearchScope = (ev: Event) => {
+      const detail = (ev as CustomEvent<{ propertyId?: string }>).detail;
+      if (detail?.propertyId && detail.propertyId !== propertyId) return;
+      refreshSearchScope();
+    };
+    const onChangeFinishing = (ev: Event) => {
+      const detail = (ev as CustomEvent<{ propertyId?: string }>).detail;
+      if (detail?.propertyId && detail.propertyId !== propertyId) return;
+      refreshFinishing();
+    };
+    window.addEventListener(VALUATION_PRINT_KEYS_CHANGED_EVENT, onChangeKeys);
+    window.addEventListener(VALUATION_SPECIALIST_ESG_CHANGED_EVENT, onChangeEsg);
+    window.addEventListener(
+      VALUATION_SPECIALIST_SEARCH_SCOPE_CHANGED_EVENT,
+      onChangeSearchScope,
+    );
+    window.addEventListener(
+      VALUATION_SPECIALIST_FINISHING_CHANGED_EVENT,
+      onChangeFinishing,
+    );
+    return () => {
+      window.removeEventListener(
+        VALUATION_PRINT_KEYS_CHANGED_EVENT,
+        onChangeKeys,
+      );
+      window.removeEventListener(
+        VALUATION_SPECIALIST_ESG_CHANGED_EVENT,
+        onChangeEsg,
+      );
+      window.removeEventListener(
+        VALUATION_SPECIALIST_SEARCH_SCOPE_CHANGED_EVENT,
+        onChangeSearchScope,
+      );
+      window.removeEventListener(
+        VALUATION_SPECIALIST_FINISHING_CHANGED_EVENT,
+        onChangeFinishing,
+      );
+    };
+  }, [draft.propertyId, property?.id]);
 
   useEffect(() => {
     let cancelled = false;
@@ -242,14 +249,16 @@ export function EvaluatorValuationReportTab({
     void Promise.all([
       ensureOrganizationSettingsLoaded(),
       getValuationLists({ token: session.token, baseUrl: getApiBase() }),
+      listClients({ token: session.token, baseUrl: getApiBase() }),
       inspectionTaskId
         ? fetchInspectorWorkspace(inspectionTaskId)
         : Promise.resolve(null),
-    ]).then(async ([loadedOrg, listRes, ws]) => {
+    ]).then(async ([loadedOrg, listRes, clientsRes, ws]) => {
       if (cancelled) return;
       setOrg(loadedOrg);
       if (listRes.ok) setLists(listRes.data);
       else setError("تعذّر تحميل قوائم التقييم");
+      if (clientsRes.ok) setClients(clientsRes.data);
       setInspector(ws);
       if (!ws) {
         setPrimaryPhoto(null);
@@ -274,16 +283,35 @@ export function EvaluatorValuationReportTab({
     [org],
   );
   const bases = enabledList(lists?.lists, "valueBases");
+  const purposes = enabledList(lists?.lists, "purposes");
+  const premises = enabledList(lists?.lists, "premises");
   const methods = enabledList(lists?.lists, "methods");
-  const attachments = enabledList(lists?.lists, "attachments");
-  const specials = useMemo(
-    () => vr.specialAssumptionLibrary.filter((x) => x.trim()),
-    [vr.specialAssumptionLibrary],
-  );
-  const assumptionOn =
-    choices.specialAssumptionOn.length >= specials.length
-      ? choices.specialAssumptionOn
-      : specials.map((_, i) => choices.specialAssumptionOn[i] ?? true);
+
+  const assignmentTypeResolved =
+    assignmentType ?? record?.assignmentType ?? null;
+  const assignmentSubClientId = record
+    ? subClientIdFromReportUsers(record.reportUserClientIds)
+    : undefined;
+  const valueBasisDisplay =
+    draft.valueBasis ||
+    bases.find((b) => b.key === choices.valueBasisKey)?.name ||
+    basisOfValueLabelArForAssignment(
+      assignmentTypeResolved,
+      assignmentSubClientId,
+    );
+  const valuePremiseDisplay =
+    premises.find((p) => p.key === choices.premiseKey)?.name ||
+    valuePremiseLabelArForAssignment(
+      assignmentTypeResolved,
+      assignmentSubClientId,
+    );
+  const valuationPurposeDisplay =
+    purposes.find((p) => p.key === choices.purposeKey)?.name ||
+    valuationPurposeLabelArForAssignment(
+      assignmentTypeResolved,
+      assignmentSubClientId,
+    );
+  const reportUsersDisplay = formatValuationReportUsers(record, clients);
 
   const patch = useCallback(
     (
@@ -308,21 +336,43 @@ export function EvaluatorValuationReportTab({
     },
     [bases, choices, methods, onChange],
   );
+  const patchRef = useRef(patch);
+  patchRef.current = patch;
 
-  const specialistUsedRef = useRef(false);
+  // صب من الأخصائي → مسودة التقرير (للطباعة) — ESG والمرفقات ونطاق البحث والتشطيب.
   useEffect(() => {
-    const wasUsed = specialistUsedRef.current;
-    specialistUsedRef.current = specialistUsed;
-    if (specials.length === 0) return;
-    const next = specials.map((item, i) => {
-      if (!isNoExternalSpecialistAssumption(item)) return assumptionOn[i] ?? true;
-      if (specialistUsed) return false;
-      if (wasUsed) return true;
-      return assumptionOn[i] ?? true;
-    });
-    const unchanged = next.every((v, i) => v === (assumptionOn[i] ?? true));
-    if (!unchanged) patch({ specialAssumptionOn: next });
-  }, [assumptionOn, patch, specialistUsed, specials]);
+    if (disabled || loading) return;
+    const current = choicesRef.current;
+    const keysSame =
+      current.printAttachmentKeys.length === specialistKeys.length &&
+      specialistKeys.every((k) => current.printAttachmentKeys.includes(k));
+    const esgSame =
+      esgGroupsEqual(current.esgEnv, specialistEsg.esgEnv) &&
+      esgGroupsEqual(current.esgSoc, specialistEsg.esgSoc) &&
+      esgGroupsEqual(current.esgGov, specialistEsg.esgGov);
+    const finishingSame = current.finishingLevel === specialistFinishing;
+    if (!keysSame || !esgSame || !finishingSame) {
+      patchRef.current({
+        printAttachmentKeys: specialistKeys,
+        esgEnv: specialistEsg.esgEnv,
+        esgSoc: specialistEsg.esgSoc,
+        esgGov: specialistEsg.esgGov,
+        finishingLevel: specialistFinishing,
+      });
+    }
+  }, [disabled, loading, specialistEsg, specialistFinishing, specialistKeys]);
+
+  useEffect(() => {
+    if (disabled || loading) return;
+    if ((draft.searchScopeNotes ?? "") === specialistSearchScope) return;
+    onDraftPatch?.({ searchScopeNotes: specialistSearchScope });
+  }, [
+    disabled,
+    draft.searchScopeNotes,
+    loading,
+    onDraftPatch,
+    specialistSearchScope,
+  ]);
 
   const patchValues = useCallback(
     (partial: {
@@ -356,29 +406,36 @@ export function EvaluatorValuationReportTab({
   );
 
   useEffect(() => {
-    if (!record) return;
-    const sub = subClientIdFromReportUsers(record.reportUserClientIds);
-    const seeded = seedReportChoicesFromAssignment(
-      record.assignmentType,
-      sub,
-      choices,
-    );
-    const expectedBasis = basisOfValueLabelArForAssignment(
-      record.assignmentType,
-      sub,
-    );
+    const type = (assignmentType ?? record?.assignmentType ?? "").trim();
+    if (!type) return;
+    const sub = record
+      ? subClientIdFromReportUsers(record.reportUserClientIds)
+      : undefined;
+    const current = choicesRef.current;
+    const seeded = seedReportChoicesFromAssignment(type, sub, current);
+    const expectedBasis = basisOfValueLabelArForAssignment(type, sub);
     if (
-      seeded.purposeKey === choices.purposeKey &&
-      seeded.valueBasisKey === choices.valueBasisKey &&
-      seeded.premiseKey === choices.premiseKey &&
+      seeded.purposeKey === current.purposeKey &&
+      seeded.valueBasisKey === current.valueBasisKey &&
+      seeded.premiseKey === current.premiseKey &&
       (draft.valueBasis || "") === expectedBasis
     ) {
       return;
     }
-    patch(seeded, {
-      valueBasis: expectedBasis,
-    });
-  }, [choices, draft.valueBasis, patch, record]);
+    patchRef.current(
+      {
+        purposeKey: seeded.purposeKey,
+        valueBasisKey: seeded.valueBasisKey,
+        premiseKey: seeded.premiseKey,
+      },
+      { valueBasis: expectedBasis },
+    );
+  }, [
+    assignmentType,
+    record?.assignmentType,
+    record?.reportUserClientIds,
+    draft.valueBasis,
+  ]);
 
   // Seed report method keys from lists when empty — approaches are chosen in ValuationWorkShell.
   useEffect(() => {
@@ -414,8 +471,6 @@ export function EvaluatorValuationReportTab({
   const inspectionChips = inspectionFactChips(inspector);
   const incomeOn = approachUsed(choices.incomeMethodKey);
   const showWorkPanel = Boolean(property?.id);
-  const liquidation = choices.valueBasisKey === "liquidation";
-  const err = (key: string) => fieldErrors?.[key];
 
   return (
     <div dir="rtl">
@@ -431,6 +486,10 @@ export function EvaluatorValuationReportTab({
           latitude={inspector?.mapLatitude}
           longitude={inspector?.mapLongitude}
           showCoordinates={false}
+          valueBasisLabel={valueBasisDisplay}
+          valuePremiseLabel={valuePremiseDisplay}
+          valuationPurposeLabel={valuationPurposeDisplay}
+          reportUsersLabel={reportUsersDisplay}
         />
         {inspectionChips.length > 0 ? (
           <div className="mt-2 flex flex-wrap gap-1.5">
@@ -458,252 +517,82 @@ export function EvaluatorValuationReportTab({
               propertyType: property.propertyType,
               classification: property.classification,
             }}
+            intakeProperty={property}
             onFinalOpinionChange={syncFinalOpinion}
-            onExternalSpecialistUsedChange={setSpecialistUsed}
+            draft={draft}
+            disabled={disabled}
+            fieldErrors={fieldErrors}
+            onDraftPatch={onDraftPatch}
+            onReportChoicesPatch={(patch) => {
+              const current = draft.reportChoices ?? emptyReportChoices();
+              onChange?.({ ...current, ...patch });
+            }}
+            onSubmit={onSubmit}
+            submitting={submitting}
+            showSubmit={showSubmit}
           />
         </div>
       ) : null}
 
-      <div
-        className="mb-4 mt-6 flex items-center gap-2.5"
-        aria-label="حقول تقرير التقييم"
-      >
-        <span className="h-[17px] w-[3px] rounded-full bg-gold" aria-hidden />
-        <h3 className="m-0 text-[14px] font-extrabold text-heading">
-          حقول التقرير والسرد
-        </h3>
-        <span className="flex-1 border-t border-border" aria-hidden />
-      </div>
-
       {incomeOn ? (
-        <ValCard title="أسلوب الدخل">
-          <p className={noteClassName}>يظهر فقط عند اختيار أسلوب الدخل.</p>
-          <ValFieldsGrid min={160}>
-            <div className="min-w-0">
-              <div className={valLabelClassName}>دخل سنوي (ر.س.)</div>
-              <input
-                className={valInputClassName}
-                disabled={disabled}
-                dir="ltr"
-                value={choices.incomeAnnual}
-                onChange={(e) => patch({ incomeAnnual: e.target.value })}
-              />
-            </div>
-            <div className="min-w-0">
-              <div className={valLabelClassName}>نسبة الشغور ٪</div>
-              <input
-                className={valInputClassName}
-                disabled={disabled}
-                dir="ltr"
-                value={choices.incomeVacancyPct}
-                onChange={(e) => patch({ incomeVacancyPct: e.target.value })}
-              />
-            </div>
-            <div className="min-w-0">
-              <div className={valLabelClassName}>نسبة التشغيل ٪</div>
-              <input
-                className={valInputClassName}
-                disabled={disabled}
-                dir="ltr"
-                value={choices.incomeOpexPct}
-                onChange={(e) => patch({ incomeOpexPct: e.target.value })}
-              />
-            </div>
-            <div className="min-w-0">
-              <div className={valLabelClassName}>معدل الرسملة ٪</div>
-              <input
-                className={valInputClassName}
-                disabled={disabled}
-                dir="ltr"
-                value={choices.incomeCapRatePct}
-                onChange={(e) => patch({ incomeCapRatePct: e.target.value })}
-              />
-            </div>
-          </ValFieldsGrid>
-        </ValCard>
-      ) : null}
-
-      <ValCard title="مستوى تشطيبات البناء">
-        <p className={noteClassName}>
-          المستوى المختار يُظلَّل في التقرير. أوصاف الفاخر/المتوسط/العادي من إعدادات المنشأة.
-        </p>
-        <Pick
-          disabled={disabled}
-          value={choices.finishingLevel || ""}
-          onChange={(finishingLevel) =>
-            patch({
-              finishingLevel: finishingLevel as EvaluatorReportChoices["finishingLevel"],
-            })
-          }
-          options={[
-            { value: "", label: "— اختر المستوى —" },
-            { value: "luxury", label: "تشطيب فاخر" },
-            { value: "medium", label: "تشطيب متوسط" },
-            { value: "ordinary", label: "تشطيب عادي" },
-            { value: "none", label: "بدون تشطيب" },
-          ]}
-        />
-      </ValCard>
-
-      <ValCard title="نطاق البحث">
-        <p className={noteClassName}>
-          النقاط الثابتة من إعدادات التقرير. أضف ملاحظات خاصة بهذه المعاملة إن وُجدت.
-        </p>
-        <textarea
-          className={cn(valInputClassName, "min-h-[72px] resize-y")}
-          disabled={disabled}
-          rows={3}
-          placeholder="ملاحظات نطاق البحث (إن وُجدت)"
-          value={draft.searchScopeNotes}
-          onChange={(e) =>
-            onDraftPatch?.({ searchScopeNotes: e.target.value })
-          }
-        />
-      </ValCard>
-
-      <ValCard title="رأي القيمة عند التسليم">
-        <p className={noteClassName}>
-          يُملأ تلقائياً من شاشة «رأي القيمة النهائي» أعلاه. عدّله هنا فقط إن لزم قبل
-          الإرسال.
-        </p>
-        <ValFieldsGrid min={160}>
-          <div className="min-w-0">
-            <label className={valLabelClassName} htmlFor="inf-total">
-              رأي القيمة (ر.س.)
-            </label>
-            <input
-              id="inf-total"
-              className={cn(valInputClassName, err("evaluator_price") && invalidControlClass)}
-              disabled={disabled}
-              dir="ltr"
-              value={draft.evaluatorPrice}
-              onChange={(e) => patchValues({ evaluatorPrice: e.target.value })}
-            />
-            {err("evaluator_price") ? (
-              <p className="mt-1 text-[11px] text-danger-text">{err("evaluator_price")}</p>
-            ) : null}
+        <>
+          <div
+            className="mb-4 mt-6 flex items-center gap-2.5"
+            aria-label="حقول تقرير التقييم"
+          >
+            <span className="h-[17px] w-[3px] rounded-full bg-gold" aria-hidden />
+            <h3 className="m-0 text-[14px] font-extrabold text-heading">
+              حقول التقرير والسرد
+            </h3>
+            <span className="flex-1 border-t border-border" aria-hidden />
           </div>
-          {liquidation ? (
-            <div className="min-w-0">
-              <label className={valLabelClassName} htmlFor="inf-discount">
-                خصم التصفية ٪
-              </label>
-              <input
-                id="inf-discount"
-                className={cn(
-                  valInputClassName,
-                  err("forced_sale_discount") && invalidControlClass,
-                )}
-                disabled={disabled}
-                dir="ltr"
-                value={draft.forcedSaleDiscountPct}
-                onChange={(e) =>
-                  patchValues({ forcedSaleDiscountPct: e.target.value })
-                }
-              />
-              {err("forced_sale_discount") ? (
-                <p className="mt-1 text-[11px] text-danger-text">
-                  {err("forced_sale_discount")}
-                </p>
-              ) : null}
-            </div>
-          ) : null}
-        </ValFieldsGrid>
-      </ValCard>
-
-      <ValCard title="الافتراضات الخاصة">
-        <p className={noteClassName}>أزل العبارة التي لا تصح على هذا العقار. يُطبع المُبقى فقط.</p>
-        <ul className="m-0 list-none overflow-hidden rounded-[var(--radius)] border border-border p-0">
-          {specials.map((item, i) => {
-            if (specialistUsed && isNoExternalSpecialistAssumption(item)) return null;
-            return (
-              <li key={i} className="border-b border-border last:border-b-0">
-                <label className="flex cursor-pointer items-start gap-2.5 bg-surface px-3 py-2.5 text-[12.5px] leading-relaxed text-text transition-colors hover:bg-row-hover">
-                  <input
-                    type="checkbox"
-                    className="mt-0.5 size-4 shrink-0 cursor-pointer accent-[var(--ink)]"
-                    disabled={disabled}
-                    checked={assumptionOn[i] ?? true}
-                    onChange={(e) => {
-                      const next = [...assumptionOn];
-                      next[i] = e.target.checked;
-                      patch({ specialAssumptionOn: next });
-                    }}
-                  />
-                  <span>{item}</span>
-                </label>
-              </li>
-            );
-          })}
-        </ul>
-      </ValCard>
-
-      <ValCard title="العوامل البيئية والاجتماعية والحوكمة (ESG)">
-        <div className="overflow-x-auto">
-          <table className="w-full min-w-[560px] border-collapse">
-            <thead>
-              <tr>
-                <th className={cn(valTableThClassName, "w-[16%] text-start")}>المجموعة</th>
-                <th className={cn(valTableThClassName, "w-[34%] text-start")}>العوامل</th>
-                <th className={cn(valTableThClassName, "text-start")}>وصف الأثر</th>
-              </tr>
-            </thead>
-            <tbody>
-              <EsgRow
-                label="التأثيرات البيئية"
-                factors={ESG_ENV}
-                none={choices.esgEnv.none}
-                selected={choices.esgEnv.selected}
-                notes={choices.esgEnv.notes}
-                disabled={disabled}
-                onChange={(esgEnv) => patch({ esgEnv })}
-              />
-              <EsgRow
-                label="التأثيرات الاجتماعية"
-                factors={ESG_SOC}
-                none={choices.esgSoc.none}
-                selected={choices.esgSoc.selected}
-                notes={choices.esgSoc.notes}
-                disabled={disabled}
-                onChange={(esgSoc) => patch({ esgSoc })}
-              />
-              <EsgRow
-                label="تأثيرات الحوكمة"
-                factors={ESG_GOV}
-                none={choices.esgGov.none}
-                selected={choices.esgGov.selected}
-                notes={choices.esgGov.notes}
-                disabled={disabled}
-                onChange={(esgGov) => patch({ esgGov })}
-              />
-            </tbody>
-          </table>
-        </div>
-      </ValCard>
-
-      <ValCard title="التقرير المساحي">
-        <p className={noteClassName}>اختر المرفق ليُطبع — من قائمة مرفقات التقرير.</p>
-        <div className="flex flex-col gap-2">
-          {attachments.map((row) => (
-            <label key={row.id} className="flex cursor-pointer items-center gap-2.5 text-[12.5px] text-text">
-              <input
-                type="checkbox"
-                className="size-4 shrink-0 cursor-pointer accent-[var(--ink)]"
-                disabled={disabled}
-                checked={choices.printAttachmentKeys.includes(row.key)}
-                onChange={(e) => {
-                  const printAttachmentKeys = e.target.checked
-                    ? [...choices.printAttachmentKeys, row.key]
-                    : choices.printAttachmentKeys.filter((k) => k !== row.key);
-                  patch({ printAttachmentKeys });
-                }}
-              />
-              {row.name}
-              {row.isRequired ? " (إلزامي)" : ""}
-            </label>
-          ))}
-        </div>
-      </ValCard>
+          <ValCard title="أسلوب الدخل">
+            <p className={noteClassName}>يظهر فقط عند اختيار أسلوب الدخل.</p>
+            <ValFieldsGrid min={160}>
+              <div className="min-w-0">
+                <div className={valLabelClassName}>دخل سنوي (ر.س.)</div>
+                <input
+                  className={valInputClassName}
+                  disabled={disabled}
+                  dir="ltr"
+                  value={choices.incomeAnnual}
+                  onChange={(e) => patch({ incomeAnnual: e.target.value })}
+                />
+              </div>
+              <div className="min-w-0">
+                <div className={valLabelClassName}>نسبة الشغور ٪</div>
+                <input
+                  className={valInputClassName}
+                  disabled={disabled}
+                  dir="ltr"
+                  value={choices.incomeVacancyPct}
+                  onChange={(e) => patch({ incomeVacancyPct: e.target.value })}
+                />
+              </div>
+              <div className="min-w-0">
+                <div className={valLabelClassName}>نسبة التشغيل ٪</div>
+                <input
+                  className={valInputClassName}
+                  disabled={disabled}
+                  dir="ltr"
+                  value={choices.incomeOpexPct}
+                  onChange={(e) => patch({ incomeOpexPct: e.target.value })}
+                />
+              </div>
+              <div className="min-w-0">
+                <div className={valLabelClassName}>معدل الرسملة ٪</div>
+                <input
+                  className={valInputClassName}
+                  disabled={disabled}
+                  dir="ltr"
+                  value={choices.incomeCapRatePct}
+                  onChange={(e) => patch({ incomeCapRatePct: e.target.value })}
+                />
+              </div>
+            </ValFieldsGrid>
+          </ValCard>
+        </>
+      ) : null}
     </div>
   );
 }

@@ -704,9 +704,8 @@ export function ProfessionalValuationReportView() {
             onToggle={() => toggle("30")}
           >
             <p className="sysnote">
-              بند اختياري — تظهر للمقيم المجموعات الثلاث، ولكل مجموعة ثلاثة عوامل: إما «لا يوجد»
-              أو اختيار عامل واحد أو أكثر، ووصف الأثر يكتبه المقيم لكل عامل مختار. لا يُطبع في
-              التقرير إلا ما اختير.
+              بند اختياري — يعبّئها الأخصائي من مستندات العقار (المجموعات الثلاث)، وتظهر للمقيّم
+              للعرض فقط وتُطبع في التقرير.
             </p>
             <table>
               <thead>
@@ -725,7 +724,7 @@ export function ProfessionalValuationReportView() {
                     كفاءة الطاقة · أخطار الموقع والمناخ · المباني الخضراء
                     <div className="esg-or">أو «لا يوجد»</div>
                   </td>
-                  <Auto>إدخال — يكتبه المقيم لكل عامل مختار</Auto>
+                  <Auto>إدخال — يكتبه الأخصائي عند وجود تأثير</Auto>
                 </tr>
                 <tr>
                   <td className="k" style={{ whiteSpace: "normal", verticalAlign: "middle" }}>
@@ -736,7 +735,7 @@ export function ProfessionalValuationReportView() {
                     الموقع
                     <div className="esg-or">أو «لا يوجد»</div>
                   </td>
-                  <Auto>إدخال — يكتبه المقيم لكل عامل مختار</Auto>
+                  <Auto>إدخال — يكتبه الأخصائي عند وجود تأثير</Auto>
                 </tr>
                 <tr>
                   <td className="k" style={{ whiteSpace: "normal", verticalAlign: "middle" }}>
@@ -746,7 +745,7 @@ export function ProfessionalValuationReportView() {
                     الامتثال التنظيمي · الإدارة الفعالة لبيانات العقار · مقومات تشغيل العقار
                     <div className="esg-or">أو «لا يوجد»</div>
                   </td>
-                  <Auto>إدخال — يكتبه المقيم لكل عامل مختار</Auto>
+                  <Auto>إدخال — يكتبه الأخصائي عند وجود تأثير</Auto>
                 </tr>
               </tbody>
             </table>
@@ -835,8 +834,8 @@ export function ProfessionalValuationReportView() {
         <section className="rpt-page">
           <Sec n="35" title="التقرير المساحي" open={isOpen("35")} onToggle={() => toggle("35")}>
             <p className="sysnote">
-              من المرفقات — مستند يرفعه المستخدمون على النظام، ويختاره المقيم أو الأخصائي بعلامة صح
-              من المتوفر ليظهر في التقرير. قائمة المرفقات وإلزاميتها من تبويب «مرفقات التقرير» في
+              من المرفقات — مستند يرفعه المستخدمون على النظام، ويختاره الأخصائي بعلامة «للتقرير»
+              من مستندات العقار ليظهر في التقرير. قائمة المرفقات وإلزاميتها من تبويب «مرفقات التقرير» في
               قوائم التقييم. <strong>شرط الظهور:</strong> يُطبع فقط إذا اختير.
             </p>
           </Sec>
@@ -845,8 +844,8 @@ export function ProfessionalValuationReportView() {
         <section className="rpt-page">
           <Sec n="36" title="صك الملكية" open={isOpen("36")} onToggle={() => toggle("36")}>
             <p className="sysnote">
-              من المرفقات — مستند يرفعه المستخدمون على النظام، ويختاره المقيم أو الأخصائي بعلامة صح
-              ليظهر في التقرير. قائمة المرفقات وإلزاميتها من تبويب «مرفقات التقرير» في قوائم
+              من المرفقات — مستند يرفعه المستخدمون على النظام، ويختاره الأخصائي بعلامة «للتقرير»
+              من مستندات العقار ليظهر في التقرير. قائمة المرفقات وإلزاميتها من تبويب «مرفقات التقرير» في قوائم
               التقييم.
             </p>
           </Sec>

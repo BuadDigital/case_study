@@ -63,23 +63,38 @@ public class ValuationApproachSettingsRulesTests
     }
 
     [Fact]
-    public void Retrospective_valuation_date_needs_date_and_rationale()
+    public void Retrospective_valuation_date_needs_date()
     {
- // قرار عمر 2026-08-17: نوعان — إصدار القيمة (آلي) أو أثر رجعي يدوي بمبرر.
+ // قرار عمر 2026-08-17: نوعان — إصدار القيمة (آلي) أو أثر رجعي يدوي.
         var missing = ValuationApproachSettingsRules.Validate(
             true, true, false, null, null, "فيلا",
             valuationPurposeKey: ValuationPurposeKeys.JudicialExecution,
             valuationDateMode: ValuationDateModes.Retrospective);
         Assert.Contains("retrospectiveDate", missing.Keys);
-        Assert.Contains("retrospectiveRationale", missing.Keys);
+        Assert.DoesNotContain("retrospectiveRationale", missing.Keys);
 
         var ok = ValuationApproachSettingsRules.Validate(
             true, true, false, null, null, "فيلا",
             valuationPurposeKey: ValuationPurposeKeys.JudicialExecution,
             valuationDateMode: ValuationDateModes.Retrospective,
-            retrospectiveDate: new DateOnly(2026, 6, 1),
-            retrospectiveRationale: "طلب المحكمة قيمة بتاريخ الحجز");
+            retrospectiveDate: new DateOnly(2026, 6, 1));
         Assert.Empty(ok);
+
+        var badRange = ValuationApproachSettingsRules.Validate(
+            true, true, false, null, null, "فيلا",
+            valuationPurposeKey: ValuationPurposeKeys.JudicialExecution,
+            valuationDateMode: ValuationDateModes.Retrospective,
+            retrospectiveDate: new DateOnly(2026, 6, 10),
+            retrospectiveDateEnd: new DateOnly(2026, 6, 1));
+        Assert.Contains("retrospectiveDateEnd", badRange.Keys);
+
+        var okRange = ValuationApproachSettingsRules.Validate(
+            true, true, false, null, null, "فيلا",
+            valuationPurposeKey: ValuationPurposeKeys.JudicialExecution,
+            valuationDateMode: ValuationDateModes.Retrospective,
+            retrospectiveDate: new DateOnly(2026, 6, 1),
+            retrospectiveDateEnd: new DateOnly(2026, 6, 10));
+        Assert.Empty(okRange);
 
  // وضع «إصدار القيمة» لا يطلب شيئاً.
         var issue = ValuationApproachSettingsRules.Validate(

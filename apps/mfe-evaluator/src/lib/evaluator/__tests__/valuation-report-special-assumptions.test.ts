@@ -3,11 +3,9 @@ import {
   applyValuationReportLiveFill,
   buildValuationReportLiveFill,
   filterSpecialAssumptionBullets,
+  resolveSpecialAssumptionBullets,
 } from "../valuation-report-live-fill";
-import {
-  createEvaluatorDraft,
-  emptyReportChoices,
-} from "../evaluator-window-data";
+import { createEvaluatorDraft } from "../evaluator-window-data";
 
 describe("filterSpecialAssumptionBullets", () => {
   it("returns null when library is empty (keep template)", () => {
@@ -42,20 +40,41 @@ describe("filterSpecialAssumptionBullets", () => {
   });
 });
 
+describe("resolveSpecialAssumptionBullets", () => {
+  it("prefers selected assumptions from approach settings", () => {
+    expect(
+      resolveSpecialAssumptionBullets({
+        selected: ["محفوظ 1", "محفوظ 2"],
+        library: ["قديم 1", "قديم 2", "قديم 3"],
+        toggles: [true, false, true],
+      }),
+    ).toEqual(["محفوظ 1", "محفوظ 2"]);
+  });
+
+  it("returns empty array when none selected", () => {
+    expect(resolveSpecialAssumptionBullets({ selected: [] })).toEqual([]);
+  });
+
+  it("falls back to library toggles when selected is omitted", () => {
+    expect(
+      resolveSpecialAssumptionBullets({
+        library: ["أ", "ب"],
+        toggles: [true, false],
+      }),
+    ).toEqual(["أ"]);
+  });
+});
+
 describe("§29 special assumption live fill", () => {
-  it("prints only checked assumptions from the org library", () => {
+  it("prints selected assumptions from approach settings", () => {
     const draft = createEvaluatorDraft({
       taskId: "t1",
       propertyId: "p1",
       poNumber: "PO-1",
     });
-    draft.reportChoices = {
-      ...emptyReportChoices(),
-      specialAssumptionOn: [true, false, true],
-    };
     const fill = buildValuationReportLiveFill({
       draft,
-      specialAssumptionLibrary: ["افتراض 1", "افتراض 2", "افتراض 3"],
+      selectedSpecialAssumptions: ["افتراض 1", "افتراض 3"],
     });
     expect(fill.specialAssumptionBullets).toEqual(["افتراض 1", "افتراض 3"]);
 
@@ -73,19 +92,15 @@ describe("§29 special assumption live fill", () => {
     ).toEqual(["افتراض 1", "افتراض 3"]);
   });
 
-  it("clears the list when every toggle is off", () => {
+  it("clears the list when selection is empty", () => {
     const draft = createEvaluatorDraft({
       taskId: "t1",
       propertyId: "p1",
       poNumber: "PO-1",
     });
-    draft.reportChoices = {
-      ...emptyReportChoices(),
-      specialAssumptionOn: [false, false],
-    };
     const fill = buildValuationReportLiveFill({
       draft,
-      specialAssumptionLibrary: ["أ", "ب"],
+      selectedSpecialAssumptions: [],
     });
     expect(fill.specialAssumptionBullets).toEqual([]);
 
@@ -97,7 +112,7 @@ describe("§29 special assumption live fill", () => {
     expect(dom.querySelectorAll('[data-sec="29"] li')).toHaveLength(0);
   });
 
-  it("omits the no-specialist clause from the printed report when a specialist is used", () => {
+  it("omits the no-specialist clause when a specialist is used", () => {
     const draft = createEvaluatorDraft({
       taskId: "t1",
       propertyId: "p1",
@@ -105,7 +120,7 @@ describe("§29 special assumption live fill", () => {
     });
     const fill = buildValuationReportLiveFill({
       draft,
-      specialAssumptionLibrary: [
+      selectedSpecialAssumptions: [
         "افتراض ESG",
         "لم يستعن المقيّم بأي أخصائي أو مؤسسة خدمات أثناء تنفيذ مهمة التقييم، وجميع الإجراءات والتحليلات اللازمة نُفّذت بواسطة فريق العمل بإدارة التقييم.",
         "ليست زائدة تنظيمية",

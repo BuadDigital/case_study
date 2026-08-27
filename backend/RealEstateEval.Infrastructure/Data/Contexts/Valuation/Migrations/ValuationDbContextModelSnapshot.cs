@@ -330,6 +330,9 @@ namespace RealEstateEval.Infrastructure.Data.Contexts.Valuation.Migrations
                     b.Property<DateOnly?>("RetrospectiveDate")
                         .HasColumnType("date");
 
+                    b.Property<DateOnly?>("RetrospectiveDateEnd")
+                        .HasColumnType("date");
+
                     b.Property<string>("RetrospectiveRationale")
                         .HasMaxLength(2000)
                         .HasColumnType("character varying(2000)");
