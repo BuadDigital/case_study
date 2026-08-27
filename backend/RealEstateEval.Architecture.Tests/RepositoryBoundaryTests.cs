@@ -84,21 +84,9 @@ public class RepositoryBoundaryTests
                 "operations",
                 "RealEstateEval.Operations.Infrastructure",
                 "Services")))
-            .Concat(new[]
-            {
-                RepoPaths.Combine("backend", "RealEstateEval.Infrastructure", "Services", "CaseStudyLookup.cs"),
-                RepoPaths.Combine("backend", "RealEstateEval.Infrastructure", "Services", "CaseStudyCommands.cs"),
-                RepoPaths.Combine(
-                    "backend",
-                    "RealEstateEval.Infrastructure",
-                    "Services",
-                    "CaseStudyPropertyPoNumberLookup.cs"),
-                RepoPaths.Combine(
-                    "backend",
-                    "RealEstateEval.Infrastructure",
-                    "Services",
-                    "WorkflowAssigneeLookup.cs"),
-            });
+            ;
+        // A8: the case-study lookup/commands/mapper services moved into the context's
+        // Services directory above, so no stray global-Infrastructure paths remain to scan.
 
         var violations = files
             .Where(File.Exists)
