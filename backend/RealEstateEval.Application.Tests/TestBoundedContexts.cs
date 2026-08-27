@@ -85,7 +85,7 @@ internal static class TestBoundedContexts
         var identity = TestInspectorFeeServiceFactory.ShareIdentity(app);
         timeline ??= new PropertyTimelineService(cs, new FailureLookup(bundle.Failures));
         notifications ??= new NullNotificationService();
-        recipients ??= NotificationRecipientResolver.ForContexts(cs, identity);
+        recipients ??= TestNotificationRecipients.ForContexts(cs, identity);
         tasks ??= new WorkflowTaskShellPatcher(cs);
         labels ??= new UserLabelLookup(identity);
         return new FailureService(
@@ -110,7 +110,7 @@ internal static class TestBoundedContexts
         var identity = TestInspectorFeeServiceFactory.ShareIdentity(app);
         timeline ??= new PropertyTimelineService(cs, new FailureLookup(failures));
         notifications ??= new NullNotificationService();
-        recipients ??= NotificationRecipientResolver.ForContexts(cs, identity);
+        recipients ??= TestNotificationRecipients.ForContexts(cs, identity);
         tasks ??= new WorkflowTaskShellPatcher(cs);
         labels ??= new UserLabelLookup(identity);
         return new FailureService(
@@ -151,7 +151,7 @@ internal static class TestBoundedContexts
             CreateAccessHolds(app, failures),
             new KeyEnvelopePeopleResolver(identity),
             new NullNotificationService(),
-            NotificationRecipientResolver.ForContexts(cs, identity));
+            TestNotificationRecipients.ForContexts(cs, identity));
     }
 
     public static PropertyKeyGateResolver CreateKeyGate(ApplicationDbContext app, OperationsDbContext ops) =>

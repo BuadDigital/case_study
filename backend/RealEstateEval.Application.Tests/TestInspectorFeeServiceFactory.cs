@@ -49,7 +49,7 @@ internal static class TestInspectorFeeServiceFactory
                 Fin,
                 Identity,
                 notifications ?? new NullNotificationService(),
-                recipients ?? NotificationRecipientResolver.ForContexts(CaseStudy, Identity),
+                recipients ?? TestNotificationRecipients.ForContexts(CaseStudy, Identity),
                 Pricing());
 
         public async ValueTask DisposeAsync()
@@ -118,7 +118,7 @@ internal static class TestInspectorFeeServiceFactory
         CreateSibling<FailuresDbContext>(db, options => new FailuresDbContext(options));
 
     public static NotificationRecipientResolver CreateRecipients(DbContext db) =>
-        NotificationRecipientResolver.ForContexts(ShareCaseStudy(db), ShareIdentity(db));
+        TestNotificationRecipients.ForContexts(ShareCaseStudy(db), ShareIdentity(db));
 
     public static PropertyTimelineService CreateTimeline(DbContext db) =>
         new(ShareCaseStudy(db), new FailureLookup(ShareFailures(db)));
