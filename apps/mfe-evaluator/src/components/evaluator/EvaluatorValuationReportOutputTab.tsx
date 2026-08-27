@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { Button, Spinner } from "@platform/ui-kit";
 import { ensureOrganizationSettingsLoaded } from "@platform/app-shared/organization/organization-settings-cache";
 import {
@@ -135,6 +136,86 @@ function effectiveValuationDate(input: {
   return (input.inspector?.inspectionDate ?? "").trim();
 }
 
+/** حِزمة بيانات تبويب مخرجات التقرير — استعلام واحد قابل للتخزين المؤقت:
+ * التنقل بين التبويبات خلال staleTime لا يعيد إطلاق ٧+ نداءات. */
+async function loadReportOutputBundle(input: {
+  property: PoPropertyIntake | null | undefined;
+  poNumber: string;
+  inspectionTaskId: string | null;
+  surveyTaskId: string | null;
+}) {
+  const propertyId = (input.property?.id ?? "").trim();
+  const inspectorP = input.inspectionTaskId
+    ? fetchInspectorWorkspace(input.inspectionTaskId)
+    : Promise.resolve(null);
+  const emptyAttach = {
+    photos: [] as ValuationReportSlotAttachment[],
+    survey: null as ValuationReportSlotAttachment | null,
+    deed: null as ValuationReportSlotAttachment | null,
+    siteMap: null as ValuationReportSlotAttachment | null,
+  };
+  const session = getAuthSession();
+  if (!session?.token) {
+    return {
+      inspector: await inspectorP,
+      inventoryLines: [] as BuildingInventoryLineDto[],
+      lists: null,
+      clients: [] as ClientDto[],
+      approaches: null,
+      survey: null,
+      attach: emptyAttach,
+    };
+  }
+  const config: ValuationApiConfig = {
+    token: session.token,
+    baseUrl: getApiBase(),
+  };
+  const inventoryP =
+    input.poNumber && propertyId
+      ? getBuildingInventory(config, input.poNumber, propertyId)
+      : Promise.resolve(null);
+  const labelsP = Promise.all([getValuationLists(config), listClients(config)]);
+  const approachesP = loadValuationApproaches(config, input.property);
+  const surveyP = input.surveyTaskId
+    ? getPartyTaskSubmission(config, input.surveyTaskId)
+    : Promise.resolve(null);
+  // صور المعاينة مرتبطة بمعرّف المهمة — تُجمع من مسودة المعاين وتُمرَّر للمحمّل.
+  const attachmentsP = inspectorP.then((ws) =>
+    propertyId
+      ? loadValuationReportPrintAttachments(config, propertyId, true, {
+          inspectorPhotoIds: collectInspectorPhotoAttachmentIds(ws),
+        })
+      : emptyAttach,
+  );
+  const [ws, invRes, [listsRes, clientsRes], approaches, surveyRes, attach] =
+    await Promise.all([
+      inspectorP,
+      inventoryP,
+      labelsP,
+      approachesP,
+      surveyP,
+      attachmentsP,
+    ]);
+  return {
+    inspector: ws,
+    inventoryLines:
+      input.poNumber && propertyId && invRes?.ok
+        ? invRes.data.lines ?? []
+        : ([] as BuildingInventoryLineDto[]),
+    lists: listsRes.ok ? listsRes.data.lists : null,
+    clients: clientsRes.ok ? clientsRes.data : ([] as ClientDto[]),
+    approaches,
+    survey:
+      surveyRes && "ok" in surveyRes && surveyRes.ok
+        ? surveyBoundsFromPayload(
+            surveyRes.data.payload as Record<string, unknown>,
+          )
+        : null,
+    attach,
+  };
+}
+
+
 export function EvaluatorValuationReportOutputTab({
   draft,
   property,
@@ -190,128 +271,170 @@ export function EvaluatorValuationReportOutputTab({
     basisDefinition?: string;
   }>({});
 
+  const outputQuery = useQuery({
+    queryKey: [
+      "evaluator-report-output",
+      property?.id ?? "",
+      draft.poNumber,
+      inspectionTaskId ?? "",
+      surveyTaskId ?? "",
+    ],
+    queryFn: () =>
+      loadReportOutputBundle({
+        property,
+        poNumber: draft.poNumber,
+        inspectionTaskId: inspectionTaskId ?? null,
+        surveyTaskId: surveyTaskId ?? null,
+      }),
+    staleTime: 60_000,
+    gcTime: 10 * 60_000,
+  });
+  const outputBundle = outputQuery.data;
+
   useEffect(() => {
-    let cancelled = false;
-    const propertyId = (property?.id ?? "").trim();
-    const inspectorP = inspectionTaskId
-      ? fetchInspectorWorkspace(inspectionTaskId)
-      : Promise.resolve(null);
-
-    const session = getAuthSession();
-    if (!session?.token) {
-      void inspectorP.then((ws) => {
-        if (!cancelled) setInspector(ws);
+    if (!outputBundle) return;
+    setInspector(outputBundle.inspector);
+    setInventoryLines(outputBundle.inventoryLines);
+    const lists = outputBundle.lists;
+    if (lists) {
+      const find = (kind: string, key: string) =>
+        (lists[kind] ?? []).find((it) => it.isEnabled && it.key === key);
+      const purpose = find("purposes", poKeys.purposeKey);
+      const basis = find("valueBases", poKeys.valueBasisKey);
+      const premise = find("premises", poKeys.premiseKey);
+      setListLabels({
+        purpose: purpose?.name,
+        basis: basis?.name,
+        premise: premise?.name,
+        basisDefinition: (basis?.cells[0] ?? "").trim(),
       });
-      return () => {
-        cancelled = true;
-      };
     }
-
-    const config: ValuationApiConfig = {
-      token: session.token,
-      baseUrl: getApiBase(),
-    };
-    const inventoryP =
-      draft.poNumber && propertyId
-        ? getBuildingInventory(config, draft.poNumber, propertyId)
-        : Promise.resolve(null);
-    const labelsP = Promise.all([
-      getValuationLists(config),
-      listClients(config),
-    ]);
-    const approachesP = loadValuationApproaches(config, property);
-    const surveyP = surveyTaskId
-      ? getPartyTaskSubmission(config, surveyTaskId)
-      : Promise.resolve(null);
-    // صور المعاينة مرتبطة بمعرّف المهمة — تُجمع من مسودة المعاين وتُمرَّر للمحمّل.
-    const attachmentsP = inspectorP.then((ws) =>
-      propertyId
-        ? loadValuationReportPrintAttachments(config, propertyId, true, {
-            inspectorPhotoIds: collectInspectorPhotoAttachmentIds(ws),
-          })
-        : {
-            photos: [] as ValuationReportSlotAttachment[],
-            survey: null as ValuationReportSlotAttachment | null,
-            deed: null as ValuationReportSlotAttachment | null,
-            siteMap: null as ValuationReportSlotAttachment | null,
-          },
+    if (outputBundle.approaches) {
+      setMarket(outputBundle.approaches.market);
+      setLandMarket(outputBundle.approaches.landMarket);
+      setCost(outputBundle.approaches.cost);
+      setRecon(outputBundle.approaches.recon);
+      setApproachSettings(outputBundle.approaches.settings);
+    }
+    setSurvey(outputBundle.survey);
+    const attach = outputBundle.attach;
+    const land = isLandInspectionContext({
+      vacantLand: outputBundle.inspector?.vacantLand,
+      assetSubject: outputBundle.inspector?.featureValues?.assetSubject,
+      classification: property?.classification,
+      propertyType: property?.propertyType,
+    });
+    setPhotoSlots(
+      land && attach.photos.length > 6 ? attach.photos.slice(0, 6) : attach.photos,
     );
-
-    void Promise.all([
-      inspectorP,
-      inventoryP,
-      labelsP,
-      approachesP,
-      surveyP,
-      attachmentsP,
-    ]).then(
-      ([ws, invRes, [listsRes, clientsRes], approaches, surveyRes, attach]) => {
-        if (cancelled) return;
-        setInspector(ws);
-        if (draft.poNumber && propertyId) {
-          if (invRes?.ok) setInventoryLines(invRes.data.lines ?? []);
-        } else {
-          setInventoryLines([]);
-        }
-        if (clientsRes.ok) setClients(clientsRes.data);
-        if (listsRes.ok) {
-          const lists = listsRes.data.lists;
-          const find = (kind: string, key: string) =>
-            (lists[kind] ?? []).find((i) => i.isEnabled && i.key === key);
-          const purpose = find("purposes", poKeys.purposeKey);
-          const basis = find("valueBases", poKeys.valueBasisKey);
-          const premise = find("premises", poKeys.premiseKey);
-          setListLabels({
-            purpose: purpose?.name,
-            basis: basis?.name,
-            premise: premise?.name,
-            basisDefinition: (basis?.cells[0] ?? "").trim(),
-          });
-        }
-        setMarket(approaches.market);
-        setLandMarket(approaches.landMarket);
-        setCost(approaches.cost);
-        setRecon(approaches.recon);
-        setApproachSettings(approaches.settings);
-        setSurvey(
-          surveyRes && "ok" in surveyRes && surveyRes.ok
-            ? surveyBoundsFromPayload(
-                surveyRes.data.payload as Record<string, unknown>,
-              )
-            : null,
-        );
-        const land = isLandInspectionContext({
-          vacantLand: ws?.vacantLand,
-          assetSubject: ws?.featureValues?.assetSubject,
-          classification: property?.classification,
-          propertyType: property?.propertyType,
-        });
-        // Re-fetch with accurate structure budget when inspector arrives as land.
-        if (land && attach.photos.length > 6) {
-          setPhotoSlots(attach.photos.slice(0, 6));
-        } else {
-          setPhotoSlots(attach.photos);
-        }
-        setSurveySlot(attach.survey);
-        setDeedSlot(attach.deed);
-        setSiteMapSlot(attach.siteMap);
-      },
-    );
-
-    return () => {
-      cancelled = true;
-    };
+    setSurveySlot(attach.survey);
+    setDeedSlot(attach.deed);
+    setSiteMapSlot(attach.siteMap);
   }, [
-    draft.poNumber,
-    inspectionTaskId,
+    outputBundle,
     poKeys.premiseKey,
     poKeys.purposeKey,
     poKeys.valueBasisKey,
-    property?.area,
-    property?.id,
+    property?.classification,
     property?.propertyType,
-    surveyTaskId,
   ]);
+
+  /** جسم طلب التقرير المشترك بين معاينة الشاشة ونسخة الطباعة — كان منسوخاً بالكامل (~70 سطراً). */
+  const buildReportMeta = useCallback(
+    (loaded: Awaited<ReturnType<typeof ensureOrganizationSettingsLoaded>>) => {
+      const ev = loaded?.evaluator ?? {};
+      const vr = { ...REPORT_DEFAULTS, ...(loaded?.valuationReport ?? {}) };
+      return {
+        reportNo: draft.reportNo,
+        reportDate: draft.appraisalDate || draft.reportIssueDate,
+        // رمز الإيداع: المسودة أولاً ثم ما حفظته شاشة إيداع نفاذ لهذا العقار.
+        depositCode:
+          draft.depositCode || loadInfathDeposit(property?.id ?? "").depositCode,
+        live: buildValuationReportLiveFill({
+          draft,
+          record,
+          property,
+          inspector,
+          inventoryLines,
+          market,
+          landMarket,
+          cost,
+          recon,
+          clients,
+          purposeLabel: listLabels.purpose,
+          basisLabel: listLabels.basis,
+          premiseLabel: listLabels.premise,
+          basisDefinition: listLabels.basisDefinition,
+          // بلا احتياطي عيّنة — إعدادات المنشأة أو «—» في التقرير.
+          certifiedName: ev.name,
+          certifiedLicense: ev.licenseNumber,
+          certifiedMembershipNumber: ev.membershipNumber,
+          certifiedIssuedAt: ev.licenseIssuedAt,
+          certifiedExpires: ev.licenseExpiresHijri,
+          certifiedMembershipCategory: ev.membershipCategory,
+          certifiedTitle: ev.title,
+          certifiedMembershipExpires: ev.membershipExpiresAt,
+          valuationBranch: vr.valuationBranch,
+          reportType: vr.reportType,
+          currency: vr.currency,
+          effectiveValuationDate: effectiveValuationDate({
+            draft,
+            inspector,
+            settings: approachSettings,
+          }),
+          assignedAppraiserName,
+          survey,
+          photoSlots: isLandInspectionContext({
+            vacantLand: inspector?.vacantLand,
+            assetSubject: inspector?.featureValues?.assetSubject,
+            classification: property?.classification,
+            propertyType: property?.propertyType,
+          })
+            ? photoSlots.slice(0, 6)
+            : photoSlots,
+          surveySlot,
+          deedSlot,
+          siteMapSlot,
+          ivsStandardsText: vr.ivsStandards,
+          glossaryText: vr.glossary,
+          researchScopeText: vr.researchScopeText,
+          selectedSpecialAssumptions: approachSettings?.isSaved
+            ? approachSettings.selectedAssumptions
+            : undefined,
+          externalSpecialistUsed: approachSettings?.externalSpecialistUsed,
+          finishingLuxuryText: vr.finishingLuxury,
+          finishingMediumText: vr.finishingMedium,
+          finishingOrdinaryText: vr.finishingOrdinary,
+          keyInputsText: vr.keyInputsText,
+          professionalStandardsText: vr.professionalStandards,
+          independenceText: vr.independence,
+          termsText: vr.terms,
+          restrictionsText: vr.restrictions,
+        }),
+      };
+    },
+    [
+      approachSettings,
+      assignedAppraiserName,
+      clients,
+      cost,
+      deedSlot,
+      draft,
+      inspector,
+      inventoryLines,
+      landMarket,
+      listLabels,
+      market,
+      photoSlots,
+      property,
+      recon,
+      record,
+      siteMapSlot,
+      survey,
+      surveySlot,
+    ],
+  );
+
 
   useEffect(() => {
     if (draft.poNumber && poQuery.isPending) return;
@@ -322,77 +445,9 @@ export function EvaluatorValuationReportOutputTab({
       .then((loaded) => {
         if (cancelled) return null;
         if (loaded) setOrg(loaded);
-        const ev = loaded?.evaluator ?? {};
-        const vr = { ...REPORT_DEFAULTS, ...(loaded?.valuationReport ?? {}) };
         return fetchValuationReportV3Html(
           {
-            reportNo: draft.reportNo,
-            reportDate: draft.appraisalDate || draft.reportIssueDate,
-            // رمز الإيداع: المسودة أولاً ثم ما حفظته شاشة إيداع نفاذ لهذا العقار.
-            depositCode:
-              draft.depositCode ||
-              loadInfathDeposit(property?.id ?? "").depositCode,
-            live: buildValuationReportLiveFill({
-              draft,
-              record,
-              property,
-              inspector,
-              inventoryLines,
-              market,
-              landMarket,
-              cost,
-              recon,
-              clients,
-              purposeLabel: listLabels.purpose,
-              basisLabel: listLabels.basis,
-              premiseLabel: listLabels.premise,
-              basisDefinition: listLabels.basisDefinition,
-              // بلا احتياطي عيّنة — إعدادات المنشأة أو «—» في التقرير.
-              certifiedName: ev.name,
-              certifiedLicense: ev.licenseNumber,
-              certifiedMembershipNumber: ev.membershipNumber,
-              certifiedIssuedAt: ev.licenseIssuedAt,
-              certifiedExpires: ev.licenseExpiresHijri,
-              certifiedMembershipCategory: ev.membershipCategory,
-              certifiedTitle: ev.title,
-              certifiedMembershipExpires: ev.membershipExpiresAt,
-              valuationBranch: vr.valuationBranch,
-              reportType: vr.reportType,
-              currency: vr.currency,
-              effectiveValuationDate: effectiveValuationDate({
-                draft,
-                inspector,
-                settings: approachSettings,
-              }),
-              assignedAppraiserName,
-              survey,
-              photoSlots: isLandInspectionContext({
-                vacantLand: inspector?.vacantLand,
-                assetSubject: inspector?.featureValues?.assetSubject,
-                classification: property?.classification,
-                propertyType: property?.propertyType,
-              })
-                ? photoSlots.slice(0, 6)
-                : photoSlots,
-              surveySlot,
-              deedSlot,
-              siteMapSlot,
-              ivsStandardsText: vr.ivsStandards,
-              glossaryText: vr.glossary,
-              researchScopeText: vr.researchScopeText,
-              selectedSpecialAssumptions: approachSettings?.isSaved
-                ? approachSettings.selectedAssumptions
-                : undefined,
-              externalSpecialistUsed: approachSettings?.externalSpecialistUsed,
-              finishingLuxuryText: vr.finishingLuxury,
-              finishingMediumText: vr.finishingMedium,
-              finishingOrdinaryText: vr.finishingOrdinary,
-              keyInputsText: vr.keyInputsText,
-              professionalStandardsText: vr.professionalStandards,
-              independenceText: vr.independence,
-              termsText: vr.terms,
-              restrictionsText: vr.restrictions,
-            }),
+            ...buildReportMeta(loaded),
             branding: loaded?.branding ?? null,
             valuers: loaded?.valuers ?? [],
           },
@@ -414,102 +469,16 @@ export function EvaluatorValuationReportOutputTab({
     };
     // Intentionally omit `org`: this effect loads org and builds HTML.
     // Including it re-triggered the effect after setOrg and caused a fetch loop.
-  }, [
-    approachSettings,
-    assignedAppraiserName,
-    clients,
-    cost,
-    deedSlot,
-    draft,
-    inspector,
-    inventoryLines,
-    listLabels,
-    market,
-    landMarket,
-    photoSlots,
-    poQuery.isPending,
-    property,
-    recon,
-    record,
-    siteMapSlot,
-    survey,
-    surveySlot,
-  ]);
+  }, [buildReportMeta, draft.poNumber, poQuery.isPending]);
 
   const print = useCallback(async () => {
     setPrinting(true);
     try {
       const loaded = await ensureOrganizationSettingsLoaded({ force: true });
       if (loaded) setOrg(loaded);
-      const ev = loaded?.evaluator ?? {};
-      const vr = { ...REPORT_DEFAULTS, ...(loaded?.valuationReport ?? {}) };
       const html = await fetchValuationReportV3Html(
         {
-          reportNo: draft.reportNo,
-          reportDate: draft.appraisalDate || draft.reportIssueDate,
-          depositCode:
-            draft.depositCode ||
-            loadInfathDeposit(property?.id ?? "").depositCode,
-          live: buildValuationReportLiveFill({
-            draft,
-            record,
-            property,
-            inspector,
-            inventoryLines,
-            market,
-            landMarket,
-            cost,
-            recon,
-            clients,
-            purposeLabel: listLabels.purpose,
-            basisLabel: listLabels.basis,
-            premiseLabel: listLabels.premise,
-            basisDefinition: listLabels.basisDefinition,
-            certifiedName: ev.name,
-            certifiedLicense: ev.licenseNumber,
-            certifiedMembershipNumber: ev.membershipNumber,
-            certifiedIssuedAt: ev.licenseIssuedAt,
-            certifiedExpires: ev.licenseExpiresHijri,
-            certifiedMembershipCategory: ev.membershipCategory,
-            certifiedTitle: ev.title,
-            certifiedMembershipExpires: ev.membershipExpiresAt,
-            valuationBranch: vr.valuationBranch,
-            reportType: vr.reportType,
-            currency: vr.currency,
-            effectiveValuationDate: effectiveValuationDate({
-              draft,
-              inspector,
-              settings: approachSettings,
-            }),
-            assignedAppraiserName,
-            survey,
-            photoSlots: isLandInspectionContext({
-              vacantLand: inspector?.vacantLand,
-              assetSubject: inspector?.featureValues?.assetSubject,
-              classification: property?.classification,
-              propertyType: property?.propertyType,
-            })
-              ? photoSlots.slice(0, 6)
-              : photoSlots,
-            surveySlot,
-            deedSlot,
-            siteMapSlot,
-            ivsStandardsText: vr.ivsStandards,
-            glossaryText: vr.glossary,
-            researchScopeText: vr.researchScopeText,
-            selectedSpecialAssumptions: approachSettings?.isSaved
-              ? approachSettings.selectedAssumptions
-              : undefined,
-            externalSpecialistUsed: approachSettings?.externalSpecialistUsed,
-            finishingLuxuryText: vr.finishingLuxury,
-            finishingMediumText: vr.finishingMedium,
-            finishingOrdinaryText: vr.finishingOrdinary,
-            keyInputsText: vr.keyInputsText,
-            professionalStandardsText: vr.professionalStandards,
-            independenceText: vr.independence,
-            termsText: vr.terms,
-            restrictionsText: vr.restrictions,
-          }),
+          ...buildReportMeta(loaded),
           branding: loaded?.branding ?? org?.branding ?? null,
           valuers: loaded?.valuers ?? org?.valuers ?? [],
         },
@@ -530,26 +499,7 @@ export function EvaluatorValuationReportOutputTab({
     } finally {
       setPrinting(false);
     }
-  }, [
-    approachSettings,
-    assignedAppraiserName,
-    clients,
-    cost,
-    deedSlot,
-    draft,
-    inspector,
-    inventoryLines,
-    listLabels,
-    market,
-    org,
-    photoSlots,
-    property,
-    recon,
-    record,
-    siteMapSlot,
-    survey,
-    surveySlot,
-  ]);
+  }, [buildReportMeta, org]);
 
   if (error && !screenHtml) {
     return <p className="m-0 text-[13px] text-[#b42318]">{error}</p>;

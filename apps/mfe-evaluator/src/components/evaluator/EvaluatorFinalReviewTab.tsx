@@ -13,7 +13,10 @@ import {
 import { getAuthSession } from "@platform/auth-client";
 import { cn, Spinner, useToast } from "@platform/ui-kit";
 import { invalidControlClass } from "@platform/app-shared/form-ux";
-import { usePoRecordQuery } from "@case-study/mfe/query/case-study-queries";
+import {
+  usePoRecordQuery,
+  useWorkflowTasksQuery,
+} from "@case-study/mfe/query/case-study-queries";
 import { usePropertyDetailDocuments } from "@case-study/mfe/query/property-detail-documents-query";
 import { subClientIdFromReportUsers } from "@case-study/mfe/lib/prototype/po-intake-data";
 import type { PoPropertyIntake } from "@case-study/mfe/lib/prototype/po-intake-data";
@@ -38,6 +41,7 @@ import type {
 } from "../../lib/evaluator/evaluator-window-data";
 import { emptyReportChoices } from "../../lib/evaluator/evaluator-window-data";
 import { buildValuationPrintAttachmentRows } from "../../lib/evaluator/valuation-report-property-attachments";
+import { apiConfig } from "./valuation-work/lib/shell-utils";
 import {
   ValCard,
   ValFieldsGrid,
@@ -47,12 +51,6 @@ import {
   valTableTdClassName,
   valTableThClassName,
 } from "./EvaluatorHtmlPrimitives";
-
-function apiConfig() {
-  const session = getAuthSession();
-  if (!session?.token) return null;
-  return { token: session.token, baseUrl: getApiBase() };
-}
 
 function esgGroupsEqual(a: SpecialistEsgGroup, b: SpecialistEsgGroup): boolean {
   return (
@@ -175,10 +173,18 @@ export function EvaluatorFinalReviewTab({
 
   const propertyId = property?.id ?? draft.propertyId;
 
+  // مصادر مرفقات التقرير تحتاج معرّفات مهام الرفع/المعاينة — بدونها لا تُجلب المستندات.
+  const { data: workflowTasks } = useWorkflowTasksQuery();
+  const relatedTaskId = (kind: "engineering-survey" | "field-inspection") =>
+    workflowTasks?.find((t) => t.propertyId === propertyId && t.kind === kind)
+      ?.id ?? null;
   const documentSections = usePropertyDetailDocuments({
     property: property!,
     showDecree: true,
     poNumber: draft.poNumber,
+    surveyTaskId: relatedTaskId("engineering-survey"),
+    appraisalTaskId: draft.taskId || null,
+    inspectionTaskId: relatedTaskId("field-inspection"),
     enabled: Boolean(property?.id),
   });
   const propertyDocuments = useMemo(

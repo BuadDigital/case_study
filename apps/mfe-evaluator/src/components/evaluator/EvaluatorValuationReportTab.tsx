@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import {
   getApiBase,
   getValuationLists,
@@ -109,6 +110,49 @@ function esgGroupsEqual(a: SpecialistEsgGroup, b: SpecialistEsgGroup): boolean {
     a.selected.every((x, i) => x === b.selected[i])
   );
 }
+
+/** حِزمة بيانات تبويب تقييم العقار — استعلام واحد قابل للتخزين المؤقت. */
+async function loadReportTabBundle(inspectionTaskId: string | null) {
+  const session = getAuthSession();
+  if (!session?.token) {
+    return {
+      authError: true as const,
+      org: null,
+      lists: null,
+      listsFailed: false,
+      clients: [] as ClientDto[],
+      inspector: null,
+      primaryPhoto: null,
+    };
+  }
+  const config = { token: session.token, baseUrl: getApiBase() };
+  const [loadedOrg, listRes, clientsRes, ws] = await Promise.all([
+    ensureOrganizationSettingsLoaded(),
+    getValuationLists(config),
+    listClients(config),
+    inspectionTaskId
+      ? fetchInspectorWorkspace(inspectionTaskId)
+      : Promise.resolve(null),
+  ]);
+  let primaryPhoto: ReturnType<typeof pickPrimaryPropertyDetailPhoto> = null;
+  if (ws) {
+    await prefetchInspectorWorkspacePhotos(ws);
+    const photos = collectFieldInspectionDocumentsFromSubmission(ws).filter(
+      (doc) => doc.kind === "image",
+    );
+    primaryPhoto = pickPrimaryPropertyDetailPhoto(photos);
+  }
+  return {
+    authError: false as const,
+    org: loadedOrg,
+    lists: listRes.ok ? listRes.data : null,
+    listsFailed: !listRes.ok,
+    clients: clientsRes.ok ? clientsRes.data : ([] as ClientDto[]),
+    inspector: ws,
+    primaryPhoto,
+  };
+}
+
 
 export function EvaluatorValuationReportTab({
   draft,
@@ -237,55 +281,39 @@ export function EvaluatorValuationReportTab({
     };
   }, [draft.propertyId, property?.id]);
 
+  const tabQuery = useQuery({
+    queryKey: ["evaluator-report-tab", inspectionTaskId ?? ""],
+    queryFn: () => loadReportTabBundle(inspectionTaskId ?? null),
+    staleTime: 60_000,
+    gcTime: 10 * 60_000,
+  });
+  const tabBundle = tabQuery.data;
+
   useEffect(() => {
-    let cancelled = false;
-    const session = getAuthSession();
-    if (!session?.token) {
-      setLoading(false);
+    if (!tabBundle) return;
+    if (tabBundle.authError) {
       setError("يلزم تسجيل الدخول");
+      setLoading(false);
       return;
     }
-    setLoading(true);
-    void Promise.all([
-      ensureOrganizationSettingsLoaded(),
-      getValuationLists({ token: session.token, baseUrl: getApiBase() }),
-      listClients({ token: session.token, baseUrl: getApiBase() }),
-      inspectionTaskId
-        ? fetchInspectorWorkspace(inspectionTaskId)
-        : Promise.resolve(null),
-    ]).then(async ([loadedOrg, listRes, clientsRes, ws]) => {
-      if (cancelled) return;
-      setOrg(loadedOrg);
-      if (listRes.ok) setLists(listRes.data);
-      else setError("تعذّر تحميل قوائم التقييم");
-      if (clientsRes.ok) setClients(clientsRes.data);
-      setInspector(ws);
-      if (!ws) {
-        setPrimaryPhoto(null);
-        setLoading(false);
-        return;
-      }
-      await prefetchInspectorWorkspacePhotos(ws);
-      if (cancelled) return;
-      const photos = collectFieldInspectionDocumentsFromSubmission(ws).filter(
-        (doc) => doc.kind === "image",
-      );
-      setPrimaryPhoto(pickPrimaryPropertyDetailPhoto(photos));
-      setLoading(false);
-    });
-    return () => {
-      cancelled = true;
-    };
-  }, [inspectionTaskId]);
+    setOrg(tabBundle.org);
+    if (tabBundle.lists) setLists(tabBundle.lists);
+    else if (tabBundle.listsFailed) setError("تعذّر تحميل قوائم التقييم");
+    setClients(tabBundle.clients);
+    setInspector(tabBundle.inspector);
+    setPrimaryPhoto(tabBundle.primaryPhoto);
+    setLoading(false);
+  }, [tabBundle]);
 
   const vr = useMemo(
     () => ({ ...REPORT_DEFAULTS, ...(org?.valuationReport ?? {}) }),
     [org],
   );
-  const bases = enabledList(lists?.lists, "valueBases");
-  const purposes = enabledList(lists?.lists, "purposes");
-  const premises = enabledList(lists?.lists, "premises");
-  const methods = enabledList(lists?.lists, "methods");
+  // هويات مستقرة — كانت تُعاد كمصفوفات جديدة كل رسم فتعيد تشغيل مؤثر البذر أدناه.
+  const bases = useMemo(() => enabledList(lists?.lists, "valueBases"), [lists]);
+  const purposes = useMemo(() => enabledList(lists?.lists, "purposes"), [lists]);
+  const premises = useMemo(() => enabledList(lists?.lists, "premises"), [lists]);
+  const methods = useMemo(() => enabledList(lists?.lists, "methods"), [lists]);
 
   const assignmentTypeResolved =
     assignmentType ?? record?.assignmentType ?? null;
@@ -449,13 +477,13 @@ export function EvaluatorValuationReportTab({
     if (!choices.costMethodKey && costDefault) {
       next.costMethodKey = costDefault;
     }
-    if (Object.keys(next).length) patch(next);
+    // patchRef بدل patch — هوية patch تتجدد مع كل تعديل خيارات وكانت تعيد تشغيل المؤثر.
+    if (Object.keys(next).length) patchRef.current(next);
   }, [
     choices.costMethodKey,
     choices.marketMethodKey,
     disabled,
     methods,
-    patch,
   ]);
 
   if (loading) {

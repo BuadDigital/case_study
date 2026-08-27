@@ -434,14 +434,16 @@ export function evaluatorStatusLabel(status: EvaluatorSubmissionStatus): string 
   return "مكتمل";
 }
 
+const PRICE_FORMAT = new Intl.NumberFormat("en-US", {
+  style: "currency",
+  currency: "SAR",
+  maximumFractionDigits: 2,
+});
+
 export function formatEvaluatorPriceDisplay(raw: string): string {
   const n = Number.parseFloat(raw.replace(/,/g, ""));
   if (!Number.isFinite(n) || n <= 0) return "—";
-  return new Intl.NumberFormat("en-US", {
-    style: "currency",
-    currency: "SAR",
-    maximumFractionDigits: 2,
-  }).format(n);
+  return PRICE_FORMAT.format(n);
 }
 
 export function checklistAnswerLabel(value: boolean | null): string {

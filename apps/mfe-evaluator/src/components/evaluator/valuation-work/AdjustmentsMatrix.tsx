@@ -1,31 +1,13 @@
 "use client";
 
-import { memo, useMemo, useState, type CSSProperties, type ReactNode } from "react";
+import { memo, useMemo, useState, type ReactNode } from "react";
+import { cn } from "@platform/ui-kit";
 import type {
   ValuationComparableAdjustmentLineDto,
   ValuationComparableSelectionDto,
   ValuationComparableSelectionListDto,
 } from "@platform/api-client";
-
-/* متغيرات النظام مباشرة — تطابق هوية إجادة والوضع الداكن. */
-const C = {
-  ink: "var(--heading)",
-  inkFill: "var(--ink)",
-  navy3: "var(--navy-3)",
-  gold: "var(--gold)",
-  goldText: "var(--gold-d)",
-  goldSoft: "var(--gold-soft)",
-  soft: "var(--surface-2)",
-  softAlt: "var(--surface-2)",
-  border: "var(--border)",
-  borderStrong: "var(--border-md)",
-  muted: "var(--text-2)",
-  faint: "var(--text-3)",
-  body: "var(--text-1)",
-  danger: "var(--red)",
-  dangerText: "var(--red-text)",
-  card: "var(--surface)",
-} as const;
+import { fmt } from "./lib/shell-utils";
 
 const SEQUENTIAL = new Set(["financing", "market", "transaction_type"]);
 const AUTO_AREA = "area";
@@ -89,24 +71,16 @@ const FACTOR_META: Record<
 /** عوامل الاختلاف التي لا تحمل خلية وصف/عمود عقار قابل للتحرير (الموقع من المدينة/الحي، والمثالية رقمية). */
 const NO_SPEC_KEYS = new Set(["location"]);
 
-function fmt(n: number | null | undefined, digits = 0): string {
-  if (n == null || !Number.isFinite(n)) return "—";
-  return n.toLocaleString("en-US", {
-    maximumFractionDigits: digits,
-    minimumFractionDigits: digits > 0 ? Math.min(digits, 2) : 0,
-  });
-}
-
 function pct(n: number): string {
   const rounded = Math.round(n * 100) / 100;
   const sign = rounded > 0 ? "+" : "";
   return `${sign}${rounded.toFixed(2)}%`;
 }
 
-function pctColor(n: number): string {
-  if (n > 0) return "#2f7a4d";
-  if (n < 0) return C.dangerText;
-  return C.muted;
+function pctClass(n: number): string {
+  if (n > 0) return "text-[#2f7a4d]";
+  if (n < 0) return "text-danger-text";
+  return "text-text-2";
 }
 
 function metaFor(factorKey: string, labelAr?: string) {
@@ -129,83 +103,28 @@ function effArea(item: ValuationComparableSelectionDto): number {
   return item.effectiveAreaSqm ?? item.comparable.areaSqm;
 }
 
-/* ─── أنماط ثابتة على مستوى الوحدة (لا يعاد إنشاؤها مع كل رسم) ─── */
-const thBand: CSSProperties = {
-  padding: "13px 16px",
-  textAlign: "start",
-  fontWeight: 700,
-  fontSize: 12,
-  color: C.ink,
-  background: C.soft,
-  borderBottom: `2px solid ${C.gold}`,
-};
-const thComp: CSSProperties = {
-  padding: "11px 12px",
-  textAlign: "center",
-  fontWeight: 700,
-  fontSize: 12,
-  color: C.ink,
-  minWidth: 126,
-  background: C.soft,
-  borderBottom: `2px solid ${C.gold}`,
-  borderInlineStart: `1px solid ${C.border}`,
-};
-const tdLabel: CSSProperties = {
-  padding: "9px 16px",
-  textAlign: "start",
-  verticalAlign: "top",
-  borderBottom: `1px solid ${C.border}`,
-};
-const tdSubj: CSSProperties = {
-  padding: "7px 10px",
-  textAlign: "center",
-  verticalAlign: "middle",
-  background: C.soft,
-  borderBottom: `1px solid ${C.border}`,
-  borderInline: `1px solid ${C.border}`,
-  minWidth: 150,
-};
-const tdCell: CSSProperties = {
-  padding: "7px 10px",
-  textAlign: "center",
-  verticalAlign: "middle",
-  borderBottom: `1px solid ${C.border}`,
-  borderInlineStart: `1px solid ${C.border}`,
-};
-const tdJust: CSSProperties = {
-  padding: "7px 12px",
-  textAlign: "start",
-  verticalAlign: "middle",
-  borderBottom: `1px solid ${C.border}`,
-  borderInlineStart: `1px solid ${C.border}`,
-  minWidth: 230,
-};
-const noteStyle: CSSProperties = {
-  fontWeight: 400,
-  fontSize: 10,
-  color: C.faint,
-  marginTop: 3,
-};
-
-function inputStyle(opts: {
-  locked?: boolean;
-  muted?: boolean;
-  border?: string;
-  bg?: string;
-  color?: string;
-}): CSSProperties {
-  return {
-    width: 96,
-    padding: "7px 8px",
-    border: `1px solid ${opts.border ?? C.borderStrong}`,
-    borderRadius: 7,
-    textAlign: "center",
-    background: opts.bg ?? (opts.locked || opts.muted ? C.soft : C.card),
-    color: opts.color ?? (opts.muted ? C.goldText : C.ink),
-    fontWeight: 700,
-    fontSize: 13,
-  };
-}
+/* ─── أصناف ثابتة على مستوى الوحدة — رموز النظام (هوية إجادة والوضع الداكن) عبر Tailwind ─── */
+const thBandClass =
+  "border-b-2 border-b-gold bg-surface-2 px-4 py-[13px] text-start text-[12px] font-bold text-heading";
+const thCompBaseClass =
+  "min-w-[126px] border-b-2 border-b-gold px-3 py-[11px] text-center text-[12px] font-bold text-heading";
+const thCompClass = cn(
+  thCompBaseClass,
+  "border-s border-s-border bg-surface-2",
+);
+const tdLabelClass =
+  "border-b border-border px-4 py-[9px] text-start align-top";
+const tdSubjClass =
+  "min-w-[150px] border-x border-b border-border bg-surface-2 px-2.5 py-[7px] text-center align-middle";
+const tdCellClass =
+  "border-b border-s border-border px-2.5 py-[7px] text-center align-middle";
+const tdJustClass =
+  "min-w-[230px] border-b border-s border-border px-3 py-[7px] text-start align-middle";
+const noteClass = "mt-[3px] text-[10px] font-normal text-text-3";
+const cellInputBaseClass =
+  "w-24 rounded-[7px] border px-2 py-[7px] text-center text-[13px] font-bold";
+const panelCardClass =
+  "mb-6 overflow-hidden rounded-xl border border-border bg-surface shadow-card";
 
 /* ─── مكوّنات خلايا على مستوى الوحدة —
    تعريفها داخل المكوّن الأب يجعل React يعيد تركيبها بالكامل مع كل رسم
@@ -253,31 +172,17 @@ function LabelCell({
   onDelete?: () => void;
 }) {
   return (
-    <td style={tdLabel}>
-      <div style={{ display: "flex", alignItems: "flex-start", gap: 8 }}>
-        <div style={{ flex: 1, minWidth: 0 }}>
+    <td className={tdLabelClass}>
+      <div className="flex items-start gap-2">
+        <div className="min-w-0 flex-1">
           <div
             title={tip || definition || undefined}
-            style={{
-              fontWeight: 700,
-              fontSize: 12.5,
-              color: C.ink,
-              cursor: "default",
-              lineHeight: 1.35,
-            }}
+            className="cursor-default text-[12.5px] font-bold leading-[1.35] text-heading"
           >
             {label}
           </div>
           {hint ? (
-            <div
-              style={{
-                fontWeight: 400,
-                fontSize: 10.5,
-                color: C.faint,
-                marginTop: 1,
-                lineHeight: 1.4,
-              }}
-            >
+            <div className="mt-px text-[10.5px] font-normal leading-[1.4] text-text-3">
               {hint}
             </div>
           ) : null}
@@ -292,22 +197,10 @@ function LabelCell({
             }
             disabled={locked}
             onClick={onPick}
-            style={{
-              marginInlineStart: "auto",
-              width: 24,
-              height: 24,
-              flexShrink: 0,
-              display: "grid",
-              placeItems: "center",
-              border: `1px solid ${picked ? C.gold : C.border}`,
-              borderRadius: 99,
-              background: picked ? C.goldSoft : C.card,
-              color: C.goldText,
-              fontWeight: 700,
-              fontSize: 13,
-              cursor: locked ? "not-allowed" : "pointer",
-              lineHeight: 1,
-            }}
+            className={cn(
+              "ms-auto grid size-6 shrink-0 cursor-pointer place-items-center rounded-full border text-[13px] font-bold leading-none text-gold-d disabled:cursor-not-allowed",
+              picked ? "border-gold bg-gold-soft" : "border-border bg-surface",
+            )}
           >
             {picked ? "●" : ""}
           </button>
@@ -322,36 +215,20 @@ function LabelCell({
             }
             disabled={locked}
             onClick={onToggle}
-            style={{
-              width: 24,
-              height: 24,
-              display: "grid",
-              placeItems: "center",
-              border: `1px solid ${included === false ? C.border : C.gold}`,
-              borderRadius: 7,
-              background: included === false ? C.card : C.goldSoft,
-              color: C.goldText,
-              fontWeight: 700,
-              fontSize: 13,
-              cursor: locked ? "not-allowed" : "pointer",
-              lineHeight: 1,
-              flexShrink: 0,
-            }}
+            className={cn(
+              "grid size-6 shrink-0 cursor-pointer place-items-center rounded-[7px] border text-[13px] font-bold leading-none text-gold-d disabled:cursor-not-allowed",
+              included === false
+                ? "border-border bg-surface"
+                : "border-gold bg-gold-soft",
+            )}
           >
             {included === false ? "" : "✓"}
           </button>
         ) : null}
         {deleteKey && onDelete && onConfirmDelete ? (
           confirmDelete === deleteKey ? (
-            <span
-              style={{
-                display: "inline-flex",
-                alignItems: "center",
-                gap: 4,
-                flexShrink: 0,
-              }}
-            >
-              <span style={{ fontSize: 10.5, fontWeight: 700, color: C.danger }}>
+            <span className="inline-flex shrink-0 items-center gap-1">
+              <span className="text-[10.5px] font-bold text-danger">
                 حذف؟
               </span>
               <button
@@ -362,20 +239,7 @@ function LabelCell({
                   onConfirmDelete(null);
                   onDelete();
                 }}
-                style={{
-                  width: 22,
-                  height: 22,
-                  display: "grid",
-                  placeItems: "center",
-                  border: `1px solid ${C.danger}`,
-                  borderRadius: 7,
-                  background: "var(--red-light)",
-                  color: C.dangerText,
-                  fontWeight: 700,
-                  fontSize: 12,
-                  cursor: "pointer",
-                  lineHeight: 1,
-                }}
+                className="grid size-[22px] cursor-pointer place-items-center rounded-[7px] border border-danger bg-danger-bg text-[12px] font-bold leading-none text-danger-text disabled:cursor-not-allowed"
               >
                 ✓
               </button>
@@ -383,20 +247,7 @@ function LabelCell({
                 type="button"
                 title="إلغاء"
                 onClick={() => onConfirmDelete(null)}
-                style={{
-                  width: 22,
-                  height: 22,
-                  display: "grid",
-                  placeItems: "center",
-                  border: `1px solid ${C.border}`,
-                  borderRadius: 7,
-                  background: C.card,
-                  color: C.muted,
-                  fontWeight: 700,
-                  fontSize: 12,
-                  cursor: "pointer",
-                  lineHeight: 1,
-                }}
+                className="grid size-[22px] cursor-pointer place-items-center rounded-[7px] border border-border bg-surface text-[12px] font-bold leading-none text-text-2"
               >
                 ×
               </button>
@@ -407,21 +258,7 @@ function LabelCell({
               title="حذف البند من الجدول"
               disabled={locked}
               onClick={() => onConfirmDelete(deleteKey)}
-              style={{
-                width: 24,
-                height: 24,
-                display: "grid",
-                placeItems: "center",
-                border: `1px solid ${C.border}`,
-                borderRadius: 7,
-                background: C.card,
-                color: C.faint,
-                fontWeight: 700,
-                fontSize: 13,
-                cursor: locked ? "not-allowed" : "pointer",
-                lineHeight: 1,
-                flexShrink: 0,
-              }}
+              className="grid size-6 shrink-0 cursor-pointer place-items-center rounded-[7px] border border-border bg-surface text-[13px] font-bold leading-none text-text-3 disabled:cursor-not-allowed"
             >
               ×
             </button>
@@ -429,27 +266,13 @@ function LabelCell({
         ) : null}
       </div>
       {offNote ? (
-        <div
-          style={{
-            fontWeight: 600,
-            fontSize: 10.5,
-            color: C.danger,
-            marginTop: 3,
-          }}
-        >
+        <div className="mt-[3px] text-[10.5px] font-semibold text-danger">
           {offNote}
         </div>
       ) : null}
       {areaFactor != null && onAreaFactorChange ? (
-        <label
-          style={{
-            display: "flex",
-            alignItems: "center",
-            gap: 7,
-            marginTop: 6,
-          }}
-        >
-          <span style={{ fontWeight: 500, fontSize: 10.5, color: C.goldText }}>
+        <label className="mt-1.5 flex items-center gap-[7px]">
+          <span className="text-[10.5px] font-medium text-gold-d">
             نسبة التسوية لكل مثل أو مضاعف (٪)
           </span>
           <input
@@ -461,17 +284,7 @@ function LabelCell({
             disabled={locked}
             defaultValue={String(areaFactor)}
             onBlur={(e) => onAreaFactorChange(e.target.value)}
-            style={{
-              width: 64,
-              padding: "5px 7px",
-              border: `1px solid ${C.borderStrong}`,
-              borderRadius: 7,
-              textAlign: "center",
-              background: C.card,
-              color: C.ink,
-              fontWeight: 700,
-              fontSize: 12,
-            }}
+            className="w-16 rounded-[7px] border border-border-md bg-surface px-[7px] py-[5px] text-center text-[12px] font-bold text-heading"
           />
         </label>
       ) : null}
@@ -481,11 +294,9 @@ function LabelCell({
 
 function SubjCell({ value, note }: { value: string; note?: string }) {
   return (
-    <td style={tdSubj}>
-      <span style={{ fontWeight: 700, fontSize: 12.5, color: C.goldText }}>
-        {value}
-      </span>
-      {note ? <div style={noteStyle}>{note}</div> : null}
+    <td className={tdSubjClass}>
+      <span className="text-[12.5px] font-bold text-gold-d">{value}</span>
+      {note ? <div className={noteClass}>{note}</div> : null}
     </td>
   );
 }
@@ -504,10 +315,10 @@ function JustCell({
   onSave?: (factorKey: string) => void;
 }) {
   if (!factorKey || !onDraft || !onSave) {
-    return <td style={tdJust} />;
+    return <td className={tdJustClass} />;
   }
   return (
-    <td style={tdJust}>
+    <td className={tdJustClass}>
       <input
         type="text"
         value={value ?? ""}
@@ -515,16 +326,7 @@ function JustCell({
         placeholder="مبرّر التسوية؟"
         onChange={(e) => onDraft(factorKey, e.target.value)}
         onBlur={() => onSave(factorKey)}
-        style={{
-          width: "100%",
-          padding: "7px 10px",
-          border: `1px solid ${C.border}`,
-          borderRadius: 7,
-          background: C.card,
-          color: C.body,
-          fontWeight: 500,
-          fontSize: 12,
-        }}
+        className="w-full rounded-[7px] border border-border bg-surface px-2.5 py-[7px] text-[12px] font-medium text-text"
       />
     </td>
   );
@@ -533,26 +335,24 @@ function JustCell({
 function CompReadonly({
   value,
   note,
-  color,
-  font,
+  valueClassName = "text-heading",
 }: {
   value: string;
   note?: string;
-  color?: string;
-  font?: string;
+  valueClassName?: string;
 }) {
   return (
-    <td style={tdCell}>
+    <td className={tdCellClass}>
       <span
         dir="ltr"
-        style={{
-          font: font ?? "800 14px Tajawal, sans-serif",
-          color: color ?? C.ink,
-        }}
+        className={cn(
+          "font-[Tajawal,sans-serif] text-[14px] font-extrabold",
+          valueClassName,
+        )}
       >
         {value}
       </span>
-      {note ? <div style={noteStyle}>{note}</div> : null}
+      {note ? <div className={noteClass}>{note}</div> : null}
     </td>
   );
 }
@@ -579,7 +379,7 @@ function CompInput({
   onSave?: () => void;
 }) {
   return (
-    <td style={tdCell}>
+    <td className={tdCellClass}>
       <input
         dir="ltr"
         type="text"
@@ -587,15 +387,15 @@ function CompInput({
         value={value}
         onChange={(e) => onDraft(cellKey, e.target.value)}
         onBlur={() => onSave?.()}
-        style={inputStyle({
-          locked: disabled,
-          muted: muted || disabled,
-          border: muted || auto ? C.border : C.borderStrong,
-          bg: muted || disabled ? C.soft : C.card,
-          color: muted || auto ? C.goldText : C.ink,
-        })}
+        className={cn(
+          cellInputBaseClass,
+          muted || auto
+            ? "border-border text-gold-d"
+            : "border-border-md text-heading",
+          muted || disabled ? "bg-surface-2" : "bg-surface",
+        )}
       />
-      {note ? <div style={noteStyle}>{note}</div> : null}
+      {note ? <div className={noteClass}>{note}</div> : null}
       {extra}
     </td>
   );
@@ -616,25 +416,17 @@ function AddFactorRow({
   if (!options.length) return null;
   const current = options.find((o) => o.factorKey === selected) ?? options[0];
   return (
-    <tr style={{ background: C.softAlt }}>
-      <td colSpan={colSpan} style={{ padding: "10px 16px" }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-          <span style={{ fontSize: 12, fontWeight: 600, color: C.muted }}>
+    <tr className="bg-surface-2">
+      <td colSpan={colSpan} className="px-4 py-2.5">
+        <div className="flex items-center gap-2.5">
+          <span className="text-[12px] font-semibold text-text-2">
             إضافة عامل اختلاف
           </span>
           <select
             disabled={locked}
             value={current.factorKey}
             onChange={(e) => setSelected(e.target.value)}
-            style={{
-              padding: "7px 10px",
-              border: `1px solid ${C.borderStrong}`,
-              borderRadius: "var(--radius-sm)",
-              fontSize: 12.5,
-              color: C.ink,
-              background: C.card,
-              minWidth: 180,
-            }}
+            className="min-w-[180px] rounded-[var(--radius-sm)] border border-border-md bg-surface px-2.5 py-[7px] text-[12.5px] text-heading"
           >
             {options.map((o) => (
               <option key={o.factorKey} value={o.factorKey}>
@@ -646,17 +438,7 @@ function AddFactorRow({
             type="button"
             disabled={locked}
             onClick={() => onAdd(current.factorKey, current.labelAr)}
-            style={{
-              padding: "7px 14px",
-              border: "none",
-              borderRadius: "var(--radius-sm)",
-              background: C.inkFill,
-              color: "#fff",
-              fontWeight: 700,
-              fontSize: 12.5,
-              cursor: locked ? "not-allowed" : "pointer",
-              opacity: locked ? 0.55 : 1,
-            }}
+            className="cursor-pointer rounded-[var(--radius-sm)] border-none bg-ink px-3.5 py-[7px] text-[12.5px] font-bold text-white disabled:cursor-not-allowed disabled:opacity-55"
           >
             إضافة
           </button>
@@ -676,22 +458,27 @@ export type AdjustmentsMatrixProps = {
   city?: string;
   district?: string;
   valuationDate?: string;
-  matrixDraft: Record<string, string>;
-  weightDraft: Record<string, string>;
-  rationaleDraft: Record<string, string>;
   factorDefinitions: Record<string, string>;
-  onMatrixDraft: (key: string, value: string) => void;
-  onWeightDraft: (id: string, value: string) => void;
-  onRationaleDraft: (factorKey: string, value: string) => void;
-  onSaveCell: (item: ValuationComparableSelectionDto, factorKey: string) => void;
-  onSaveWeight: (item: ValuationComparableSelectionDto) => void;
-  onSaveRationale: (factorKey: string) => void;
+  /** حفظ خلية تسوية — يعيد true عند النجاح فتُمسح مسودة الخلية. */
+  onSaveCell: (
+    item: ValuationComparableSelectionDto,
+    factorKey: string,
+    raw: string,
+  ) => Promise<boolean>;
+  /** حفظ الوزن اليدوي — يعيد true عند النجاح فتُمسح مسودة الوزن. */
+  onSaveWeight: (
+    item: ValuationComparableSelectionDto,
+    rawPct: string,
+    weightRationale: string,
+  ) => Promise<boolean>;
+  onSaveRationale: (factorKey: string, text: string) => void;
   onToggleIncluded: (
     item: ValuationComparableSelectionDto,
     factorKey: string,
   ) => void;
   onChangeBasis: (basis: "price_per_sqm" | "whole_property") => void;
-  onResetWeights: () => void;
+  /** يعيد true عند النجاح فتُمسح مسودات الأوزان لتظهر الاقتراحات الجديدة. */
+  onResetWeights: () => Promise<boolean>;
   onAreaFactorChange?: (value: string) => void;
   onAddFactor?: (factorKey: string, labelAr: string) => void;
   onRemoveFactor?: (factorKey: string) => void;
@@ -700,8 +487,6 @@ export type AdjustmentsMatrixProps = {
   onRemoveSequential?: (factorKey: string) => void;
   onRestoreSequential?: (factorKey: string) => void;
   /** compSpec: وصف المقارن لكل خلية عامل اختلاف. */
-  descriptionDraft?: Record<string, string>;
-  onDescriptionDraft?: (key: string, value: string) => void;
   onSaveDescription?: (
     item: ValuationComparableSelectionDto,
     factorKey: string,
@@ -709,8 +494,6 @@ export type AdjustmentsMatrixProps = {
   ) => void;
   /** subjSpec: وصف العقار محل التقييم لكل عامل اختلاف. */
   subjectSpecs?: Record<string, string>;
-  subjectSpecDraft?: Record<string, string>;
-  onSubjectSpecDraft?: (factorKey: string, value: string) => void;
   onSaveSubjectSpec?: (factorKey: string, text: string) => void;
 };
 
@@ -724,13 +507,7 @@ export const AdjustmentsMatrix = memo(function AdjustmentsMatrix({
   city,
   district,
   valuationDate,
-  matrixDraft,
-  weightDraft,
-  rationaleDraft,
   factorDefinitions,
-  onMatrixDraft,
-  onWeightDraft,
-  onRationaleDraft,
   onSaveCell,
   onSaveWeight,
   onSaveRationale,
@@ -743,16 +520,35 @@ export const AdjustmentsMatrix = memo(function AdjustmentsMatrix({
   catalogFactors,
   onRemoveSequential,
   onRestoreSequential,
-  descriptionDraft,
-  onDescriptionDraft,
   onSaveDescription,
   subjectSpecs,
-  subjectSpecDraft,
-  onSubjectSpecDraft,
   onSaveSubjectSpec,
 }: AdjustmentsMatrixProps) {
   /** حذف بخطوتين — «حذف؟ ✓ ×» (خانة تأكيد واحدة في كل لحظة كما في النموذج). */
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
+  /* المسودات محلية — الكتابة هنا لا تعيد رسم صدفة التقييم؛ الحفظ عند blur كما كان،
+     ولا حفظ عند مغادرة حقل لم يُلمس (كانت تُحفَظ أصفار/فراغات فوق قيم الخادم). */
+  const [matrixDraft, setMatrixDraft] = useState<Record<string, string>>({});
+  const [weightDraft, setWeightDraft] = useState<Record<string, string>>({});
+  const [rationaleDraft, setRationaleDraft] = useState<Record<string, string>>({});
+  const [descriptionDraft, setDescriptionDraft] = useState<Record<string, string>>({});
+  const [subjectSpecDraft, setSubjectSpecDraft] = useState<Record<string, string>>({});
+  const clearDraft = (
+    set: (
+      updater: (prev: Record<string, string>) => Record<string, string>,
+    ) => void,
+    key: string,
+  ) =>
+    set((prev) => {
+      const next = { ...prev };
+      delete next[key];
+      return next;
+    });
+  const saveRationale = (factorKey: string) => {
+    const text = rationaleDraft[factorKey];
+    if (text == null) return;
+    onSaveRationale(factorKey, text);
+  };
   const basis = selection.adjustmentBasis || "price_per_sqm";
   const isUnit = basis !== "whole_property";
   /** عند أساس قيمة العقار: weightedPricePerSqm يحمل الإجمالي — المتر = الإجمالي ÷ المساحة. */
@@ -833,17 +629,7 @@ export const AdjustmentsMatrix = memo(function AdjustmentsMatrix({
 
   if (adopted.length === 0) {
     return (
-      <div
-        style={{
-          background: C.card,
-          border: `1px solid ${C.border}`,
-          borderRadius: 12,
-          padding: "18px 22px",
-          marginBottom: 24,
-          color: C.faint,
-          fontSize: 13,
-        }}
-      >
+      <div className="mb-6 rounded-xl border border-border bg-surface px-[22px] py-[18px] text-[13px] text-text-3">
         اعتمد مقارناً واحداً على الأقل لفتح جدول التسويات.
       </div>
     );
@@ -895,24 +681,16 @@ export const AdjustmentsMatrix = memo(function AdjustmentsMatrix({
 
   return (
     <>
-      <div
-        style={{
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
-          gap: 16,
-          marginBottom: 12,
-        }}
-      >
-        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-          <h2 style={{ fontWeight: 800, fontSize: 17, margin: 0, color: C.ink }}>
+      <div className="mb-3 flex items-center justify-between gap-4">
+        <div className="flex items-center gap-2.5">
+          <h2 className="m-0 text-[17px] font-extrabold text-heading">
             جدول التسويات
           </h2>
-          <span style={{ fontWeight: 400, fontSize: 12, color: C.faint }}>
+          <span className="text-[12px] font-normal text-text-3">
             مرّر على اسم البند لقراءة تعريفه وحدوده
           </span>
         </div>
-        <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+        <div className="flex flex-wrap items-center gap-2">
           {removedSequential.map((k) => (
             <button
               key={k}
@@ -920,19 +698,7 @@ export const AdjustmentsMatrix = memo(function AdjustmentsMatrix({
               disabled={saving || locked}
               onClick={() => onRestoreSequential?.(k)}
               title="استعادة البند المحذوف بقيمه الافتراضية"
-              style={{
-                display: "inline-flex",
-                alignItems: "center",
-                gap: 5,
-                padding: "8px 12px",
-                border: `1px dashed ${C.gold}`,
-                borderRadius: "var(--radius)",
-                background: C.goldSoft,
-                color: C.goldText,
-                fontWeight: 700,
-                fontSize: 12,
-                cursor: locked || saving ? "not-allowed" : "pointer",
-              }}
+              className="inline-flex cursor-pointer items-center gap-[5px] rounded-[var(--radius)] border border-dashed border-gold bg-gold-soft px-3 py-2 text-[12px] font-bold text-gold-d disabled:cursor-not-allowed"
             >
               ↺ استعادة {metaFor(k).label}
             </button>
@@ -940,86 +706,46 @@ export const AdjustmentsMatrix = memo(function AdjustmentsMatrix({
           <button
             type="button"
             disabled={saving || locked}
-            onClick={onResetWeights}
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: 7,
-              padding: "10px 16px",
-              border: "none",
-              borderRadius: 9,
-              background: C.inkFill,
-              color: "#fff",
-              fontWeight: 700,
-              fontSize: 13,
-              cursor: locked || saving ? "not-allowed" : "pointer",
-              boxShadow: "var(--shadow)",
-              opacity: locked || saving ? 0.55 : 1,
-            }}
+            onClick={() =>
+              void onResetWeights().then((ok) => ok && setWeightDraft({}))
+            }
+            className="flex cursor-pointer items-center gap-[7px] rounded-[9px] border-none bg-ink px-4 py-2.5 text-[13px] font-bold text-white shadow-card disabled:cursor-not-allowed disabled:opacity-55"
           >
             إعادة ضبط الأوزان
           </button>
         </div>
       </div>
 
-      <div
-        style={{
-          background: C.card,
-          border: `1px solid ${C.border}`,
-          borderRadius: 12,
-          boxShadow:
-            "0 1px 2px rgba(18,40,76,.03),0 6px 16px -18px rgba(18,40,76,.10)",
-          overflow: "hidden",
-          marginBottom: 24,
-        }}
-      >
-        <div style={{ overflowX: "auto" }}>
-          <table
-            style={{ width: "100%", borderCollapse: "collapse", minWidth: 1100 }}
-          >
+      <div className={panelCardClass}>
+        <div className="overflow-x-auto">
+          <table className="w-full min-w-[1100px] border-collapse">
             <thead>
               <tr>
-                <th style={{ ...thBand, width: 230 }}>البند</th>
+                <th className={cn(thBandClass, "w-[230px]")}>البند</th>
                 <th
-                  style={{
-                    ...thComp,
-                    background: C.goldSoft,
-                    borderInline: `1px solid ${C.borderStrong}`,
-                  }}
+                  className={cn(
+                    thCompBaseClass,
+                    "border-x border-x-border-md bg-gold-soft",
+                  )}
                 >
                   <div>العقار محل التقييم</div>
-                  <div
-                    style={{
-                      fontWeight: 400,
-                      fontSize: 10.5,
-                      color: C.goldText,
-                      marginTop: 3,
-                    }}
-                  >
+                  <div className="mt-[3px] text-[10.5px] font-normal text-gold-d">
                     أساس المقارنة
                   </div>
                 </th>
                 {adopted.map((item) => (
-                  <th key={item.id} style={thComp}>
+                  <th key={item.id} className={thCompClass}>
                     <div dir="ltr">{item.comparable.referenceCode}</div>
-                    <div
-                      style={{
-                        fontWeight: 400,
-                        fontSize: 10.5,
-                        color: C.faint,
-                        marginTop: 3,
-                      }}
-                    >
+                    <div className="mt-[3px] text-[10.5px] font-normal text-text-3">
                       {item.comparable.transactionKindLabelAr}
                     </div>
                   </th>
                 ))}
                 <th
-                  style={{
-                    ...thBand,
-                    minWidth: 230,
-                    borderInlineStart: `1px solid ${C.border}`,
-                  }}
+                  className={cn(
+                    thBandClass,
+                    "min-w-[230px] border-s border-s-border",
+                  )}
                 >
                   مبرر التسوية
                 </th>
@@ -1027,7 +753,7 @@ export const AdjustmentsMatrix = memo(function AdjustmentsMatrix({
             </thead>
             <tbody>
               {/* أساس: قيمة العقار */}
-              <tr style={{ background: isUnit ? C.softAlt : C.card }}>
+              <tr className={isUnit ? "bg-surface-2" : "bg-surface"}>
                 <LabelCell
                   label="قيمة العقار المقارن"
                   hint="إجمالي الصفقة (ريال) — التسويات على قيمة العقار كاملة"
@@ -1043,14 +769,14 @@ export const AdjustmentsMatrix = memo(function AdjustmentsMatrix({
                     key={item.id}
                     value={fmt(effPrice(item))}
                     note={item.comparable.transactionDate}
-                    color={!isUnit ? C.ink : C.faint}
+                    valueClassName={!isUnit ? "text-heading" : "text-text-3"}
                   />
                 ))}
                 <JustCell />
               </tr>
 
               {/* أساس: سعر المتر */}
-              <tr style={{ background: isUnit ? C.card : C.softAlt }}>
+              <tr className={isUnit ? "bg-surface" : "bg-surface-2"}>
                 <LabelCell
                   label="سعر متر المقارن"
                   hint="ريال / م² — سعر المتر يُضرب في مساحة العقار آخر المطاف"
@@ -1066,7 +792,7 @@ export const AdjustmentsMatrix = memo(function AdjustmentsMatrix({
                     key={item.id}
                     value={fmt(effUnit(item))}
                     note={item.comparable.transactionDate}
-                    color={isUnit ? C.ink : C.faint}
+                    valueClassName={isUnit ? "text-heading" : "text-text-3"}
                   />
                 ))}
                 <JustCell />
@@ -1084,7 +810,7 @@ export const AdjustmentsMatrix = memo(function AdjustmentsMatrix({
                 return (
                   <tr
                     key={factorKey}
-                    style={{ background: included ? C.card : C.softAlt }}
+                    className={included ? "bg-surface" : "bg-surface-2"}
                   >
                     <LabelCell
                       label={meta.label}
@@ -1148,10 +874,20 @@ export const AdjustmentsMatrix = memo(function AdjustmentsMatrix({
                                   ].join(" · ")
                                 : undefined
                           }
-                          onDraft={onMatrixDraft}
+                          onDraft={(key, value) =>
+                            setMatrixDraft((prev) => ({ ...prev, [key]: value }))
+                          }
                           onSave={
                             included2
-                              ? () => onSaveCell(item, factorKey)
+                              ? () => {
+                                  const raw = matrixDraft[cellKey];
+                                  if (raw == null) return;
+                                  void onSaveCell(item, factorKey, raw).then(
+                                    (ok) =>
+                                      ok &&
+                                      clearDraft(setMatrixDraft, cellKey),
+                                  );
+                                }
                               : undefined
                           }
                         />
@@ -1161,15 +897,17 @@ export const AdjustmentsMatrix = memo(function AdjustmentsMatrix({
                       factorKey={factorKey}
                       value={justValue(factorKey)}
                       locked={locked}
-                      onDraft={onRationaleDraft}
-                      onSave={onSaveRationale}
+                      onDraft={(key, value) =>
+                        setRationaleDraft((prev) => ({ ...prev, [key]: value }))
+                      }
+                      onSave={saveRationale}
                     />
                   </tr>
                 );
               })}
 
               {/* بعد التسلسل */}
-              <tr style={{ background: C.soft }}>
+              <tr className="bg-surface-2">
                 <LabelCell
                   label="السعر بعد التسويات التسلسلية"
                   hint="ضربية بالترتيب"
@@ -1206,7 +944,7 @@ export const AdjustmentsMatrix = memo(function AdjustmentsMatrix({
                     <CompReadonly
                       key={item.id}
                       value={pct(adj)}
-                      color={pctColor(adj)}
+                      valueClassName={pctClass(adj)}
                       note={`${fmt(effArea(item))} م²`}
                     />
                   );
@@ -1215,8 +953,10 @@ export const AdjustmentsMatrix = memo(function AdjustmentsMatrix({
                   factorKey="area"
                   value={justValue("area")}
                   locked={locked}
-                  onDraft={onRationaleDraft}
-                  onSave={onSaveRationale}
+                  onDraft={(key, value) =>
+                    setRationaleDraft((prev) => ({ ...prev, [key]: value }))
+                  }
+                  onSave={saveRationale}
                 />
               </tr>
 
@@ -1243,7 +983,7 @@ export const AdjustmentsMatrix = memo(function AdjustmentsMatrix({
                 return (
                   <tr
                     key={factorKey}
-                    style={{ background: included ? C.card : C.softAlt }}
+                    className={included ? "bg-surface" : "bg-surface-2"}
                   >
                     <LabelCell
                       label={meta.label}
@@ -1266,33 +1006,26 @@ export const AdjustmentsMatrix = memo(function AdjustmentsMatrix({
                       }
                     />
                     {subjEditable ? (
-                      <td style={tdSubj}>
+                      <td className={tdSubjClass}>
                         <input
                           type="text"
                           disabled={locked}
                           placeholder="وصف العقار…"
                           value={
-                            subjectSpecDraft?.[factorKey] ??
+                            subjectSpecDraft[factorKey] ??
                             subjectSpecs?.[factorKey] ??
                             ""
                           }
                           onChange={(e) =>
-                            onSubjectSpecDraft?.(factorKey, e.target.value)
+                            setSubjectSpecDraft((prev) => ({
+                              ...prev,
+                              [factorKey]: e.target.value,
+                            }))
                           }
                           onBlur={(e) =>
                             onSaveSubjectSpec?.(factorKey, e.target.value)
                           }
-                          style={{
-                            width: "100%",
-                            padding: "6px 8px",
-                            border: `1px dashed ${C.borderStrong}`,
-                            borderRadius: 7,
-                            textAlign: "center",
-                            background: C.card,
-                            color: C.goldText,
-                            fontWeight: 700,
-                            fontSize: 12,
-                          }}
+                          className="w-full rounded-[7px] border border-dashed border-border-md bg-surface px-2 py-1.5 text-center text-[12px] font-bold text-gold-d"
                         />
                       </td>
                     ) : (
@@ -1312,10 +1045,20 @@ export const AdjustmentsMatrix = memo(function AdjustmentsMatrix({
                           }
                           disabled={locked || !included}
                           muted={!included}
-                          onDraft={onMatrixDraft}
+                          onDraft={(key, value) =>
+                            setMatrixDraft((prev) => ({ ...prev, [key]: value }))
+                          }
                           onSave={
                             included
-                              ? () => onSaveCell(item, factorKey)
+                              ? () => {
+                                  const raw = matrixDraft[cellKey];
+                                  if (raw == null) return;
+                                  void onSaveCell(item, factorKey, raw).then(
+                                    (ok) =>
+                                      ok &&
+                                      clearDraft(setMatrixDraft, cellKey),
+                                  );
+                                }
                               : undefined
                           }
                           note={
@@ -1332,28 +1075,20 @@ export const AdjustmentsMatrix = memo(function AdjustmentsMatrix({
                                 disabled={locked}
                                 placeholder="وصف المقارن…"
                                 value={
-                                  descriptionDraft?.[descKey] ??
+                                  descriptionDraft[descKey] ??
                                   line?.descriptionAr ??
                                   ""
                                 }
                                 onChange={(e) =>
-                                  onDescriptionDraft?.(descKey, e.target.value)
+                                  setDescriptionDraft((prev) => ({
+                                    ...prev,
+                                    [descKey]: e.target.value,
+                                  }))
                                 }
                                 onBlur={(e) =>
                                   onSaveDescription(item, factorKey, e.target.value)
                                 }
-                                style={{
-                                  width: 110,
-                                  marginTop: 4,
-                                  padding: "4px 6px",
-                                  border: `1px dashed ${C.border}`,
-                                  borderRadius: 6,
-                                  textAlign: "center",
-                                  background: C.card,
-                                  color: C.muted,
-                                  fontWeight: 500,
-                                  fontSize: 10.5,
-                                }}
+                                className="mt-1 w-[110px] rounded-md border border-dashed border-border bg-surface px-1.5 py-1 text-center text-[10.5px] font-medium text-text-2"
                               />
                             ) : null
                           }
@@ -1364,8 +1099,10 @@ export const AdjustmentsMatrix = memo(function AdjustmentsMatrix({
                       factorKey={factorKey}
                       value={justValue(factorKey)}
                       locked={locked}
-                      onDraft={onRationaleDraft}
-                      onSave={onSaveRationale}
+                      onDraft={(key, value) =>
+                        setRationaleDraft((prev) => ({ ...prev, [key]: value }))
+                      }
+                      onSave={saveRationale}
                     />
                   </tr>
                 );
@@ -1381,7 +1118,7 @@ export const AdjustmentsMatrix = memo(function AdjustmentsMatrix({
               ) : null}
 
               {/* مجموع */}
-              <tr style={{ background: C.soft }}>
+              <tr className="bg-surface-2">
                 <LabelCell
                   label="مجموع نسب التسويات"
                   hint="الصافي بإشاراته"
@@ -1396,7 +1133,7 @@ export const AdjustmentsMatrix = memo(function AdjustmentsMatrix({
                     <CompReadonly
                       key={item.id}
                       value={pct(sum)}
-                      color={over ? C.dangerText : pctColor(sum)}
+                      valueClassName={over ? "text-danger-text" : pctClass(sum)}
                       note={over ? "التبرير إلزامي" : undefined}
                     />
                   );
@@ -1445,22 +1182,38 @@ export const AdjustmentsMatrix = memo(function AdjustmentsMatrix({
                             ""),
                     );
                   return (
-                    <td key={item.id} style={tdCell}>
+                    <td key={item.id} className={tdCellClass}>
                       <input
                         dir="ltr"
                         type="text"
                         disabled={locked}
                         value={display}
-                        onChange={(e) => onWeightDraft(item.id, e.target.value)}
-                        onBlur={() => onSaveWeight(item)}
-                        style={inputStyle({
-                          muted: !manual,
-                          border: manual ? C.borderStrong : C.border,
-                          bg: manual ? C.card : C.soft,
-                          color: manual ? C.ink : C.goldText,
-                        })}
+                        onChange={(e) =>
+                          setWeightDraft((prev) => ({
+                            ...prev,
+                            [item.id]: e.target.value,
+                          }))
+                        }
+                        onBlur={() => {
+                          const raw = weightDraft[item.id];
+                          if (raw == null) return;
+                          void onSaveWeight(
+                            item,
+                            raw,
+                            rationaleDraft["weight"] ?? "",
+                          ).then(
+                            (ok) =>
+                              ok && clearDraft(setWeightDraft, item.id),
+                          );
+                        }}
+                        className={cn(
+                          cellInputBaseClass,
+                          manual
+                            ? "border-border-md bg-surface text-heading"
+                            : "border-border bg-surface-2 text-gold-d",
+                        )}
                       />
-                      <div style={noteStyle}>
+                      <div className={noteClass}>
                         {manual
                           ? "تجاوز يدوي"
                           : `مقترح ${item.market?.suggestedWeightPct ?? "—"}%`}
@@ -1472,13 +1225,15 @@ export const AdjustmentsMatrix = memo(function AdjustmentsMatrix({
                   factorKey="weight"
                   value={justValue("weight")}
                   locked={locked}
-                  onDraft={onRationaleDraft}
-                  onSave={onSaveRationale}
+                  onDraft={(key, value) =>
+                    setRationaleDraft((prev) => ({ ...prev, [key]: value }))
+                  }
+                  onSave={saveRationale}
                 />
               </tr>
 
               {/* بعد الوزن */}
-              <tr style={{ background: C.soft }}>
+              <tr className="bg-surface-2">
                 <LabelCell
                   label="القيمة بعد الوزن النسبي"
                   hint={isUnit ? "ريال / م²" : "ريال — قيمة العقار"}
@@ -1497,49 +1252,21 @@ export const AdjustmentsMatrix = memo(function AdjustmentsMatrix({
       </div>
 
       {/* مخرجات تحت الجدول */}
-      <div
-        style={{
-          display: "flex",
-          alignItems: "stretch",
-          background: C.card,
-          border: `1px solid ${C.border}`,
-          borderRadius: 12,
-          boxShadow:
-            "0 1px 2px rgba(18,40,76,.03),0 6px 16px -18px rgba(18,40,76,.10)",
-          overflow: "hidden",
-          marginBottom: 24,
-        }}
-      >
-        <div
-          style={{
-            flex: 1,
-            padding: "18px 22px",
-            borderInlineEnd: `1px solid ${C.border}`,
-          }}
-        >
-          <div
-            style={{ fontWeight: 500, fontSize: 12, color: C.muted, marginBottom: 9 }}
-          >
+      <div className={cn(panelCardClass, "flex items-stretch")}>
+        <div className="flex-1 border-e border-border px-[22px] py-[18px]">
+          <div className="mb-[9px] text-[12px] font-medium text-text-2">
             {isUnit ? "قيمة المتر بعد التسوية" : "قيمة العقار بعد التسوية"}
           </div>
           <div
             dir="ltr"
-            style={{
-              fontWeight: 800,
-              fontSize: 24,
-              lineHeight: 1,
-              color: C.ink,
-              textAlign: "start",
-            }}
+            className="text-start text-[24px] font-extrabold leading-none text-heading"
           >
             {fmt(selection.weightedPricePerSqm)}
           </div>
-          <div style={{ fontWeight: 400, fontSize: 11.5, color: C.faint, marginTop: 7 }}>
+          <div className="mt-[7px] text-[11.5px] font-normal text-text-3">
             {isUnit ? "ريال / م²" : "ريال — متوسط مرجّح لقيم المقارنات"}
           </div>
-          <div
-            style={{ fontWeight: 700, fontSize: 11.5, color: C.goldText, marginTop: 5 }}
-          >
+          <div className="mt-[5px] text-[11.5px] font-bold text-gold-d">
             قيمة المتر المربع:{" "}
             <span dir="ltr">
               {pricePerSqmDisplay != null ? fmt(pricePerSqmDisplay) : "—"}
@@ -1547,187 +1274,92 @@ export const AdjustmentsMatrix = memo(function AdjustmentsMatrix({
             ر.س/م²
           </div>
         </div>
-        <div
-          style={{
-            flex: 1,
-            padding: "18px 22px",
-            borderInlineEnd: `1px solid ${C.border}`,
-          }}
-        >
-          <div
-            style={{ fontWeight: 500, fontSize: 12, color: C.muted, marginBottom: 9 }}
-          >
+        <div className="flex-1 border-e border-border px-[22px] py-[18px]">
+          <div className="mb-[9px] text-[12px] font-medium text-text-2">
             {isUnit ? "قيمة الأرض قبل التقريب" : "قيمة العقار قبل التقريب"}
           </div>
           <div
             dir="ltr"
-            style={{
-              fontWeight: 800,
-              fontSize: 24,
-              lineHeight: 1,
-              color: C.ink,
-              textAlign: "start",
-            }}
+            className="text-start text-[24px] font-extrabold leading-none text-heading"
           >
             {fmt(opinionRaw)}
           </div>
-          <div style={{ fontWeight: 400, fontSize: 11.5, color: C.faint, marginTop: 7 }}>
+          <div className="mt-[7px] text-[11.5px] font-normal text-text-3">
             {isUnit
               ? "سعر المتر بعد التسوية × مساحة العقار"
               : "أساس الكل — بلا ضرب في المساحة (يساوي المتوسط المرجّح)"}
           </div>
         </div>
-        <div
-          style={{
-            flex: 1.4,
-            padding: "18px 22px",
-            background: C.soft,
-            position: "relative",
-          }}
-        >
-          <span
-            style={{
-              position: "absolute",
-              top: 0,
-              insetInlineStart: 0,
-              width: 3,
-              height: "100%",
-              background: C.gold,
-            }}
-          />
-          <div style={{ fontWeight: 700, fontSize: 12, color: C.ink, marginBottom: 9 }}>
+        <div className="relative flex-[1.4] bg-surface-2 px-[22px] py-[18px]">
+          <span className="absolute start-0 top-0 h-full w-[3px] bg-gold" />
+          <div className="mb-[9px] text-[12px] font-bold text-heading">
             مؤشر أسلوب السوق (خام)
           </div>
           <div
             dir="ltr"
-            style={{
-              fontWeight: 800,
-              fontSize: 24,
-              lineHeight: 1,
-              color: C.ink,
-              textAlign: "start",
-            }}
+            className="text-start text-[24px] font-extrabold leading-none text-heading"
           >
             {fmt(opinionFinal)}
           </div>
-          <div style={{ fontWeight: 400, fontSize: 11.5, color: C.faint, marginTop: 7 }}>
+          <div className="mt-[7px] text-[11.5px] font-normal text-text-3">
             بلا تقريب هنا — التقريب مرة واحدة بعد التوفيق النهائي
           </div>
         </div>
       </div>
 
       {/* لوحة التنبيهات — مواصفة النموذج التفاعلي */}
-      <div
-        style={{
-          background: C.card,
-          border: `1px solid ${C.border}`,
-          borderRadius: 12,
-          boxShadow:
-            "0 1px 2px rgba(18,40,76,.03),0 6px 16px -18px rgba(18,40,76,.10)",
-          overflow: "hidden",
-          marginBottom: 24,
-        }}
-      >
-        <div
-          style={{
-            padding: "12px 22px",
-            borderBottom: `1px solid ${C.border}`,
-            fontWeight: 800,
-            fontSize: 13.5,
-            color: C.ink,
-          }}
-        >
+      <div className={panelCardClass}>
+        <div className="border-b border-border px-[22px] py-3 text-[13.5px] font-extrabold text-heading">
           تنبيهات جدول التسويات
         </div>
         {alerts.map((a, i) => (
           <div
             key={i}
             role={a.kind === "error" ? "alert" : "status"}
-            style={{
-              display: "flex",
-              alignItems: "flex-start",
-              gap: 10,
-              padding: "11px 22px",
-              borderBottom: `1px solid ${C.border}`,
-            }}
+            className="flex items-start gap-2.5 border-b border-border px-[22px] py-[11px]"
           >
             <span
-              style={{
-                width: 9,
-                height: 9,
-                borderRadius: 99,
-                marginTop: 5,
-                flexShrink: 0,
-                background: a.kind === "error" ? C.danger : "#3f8f5f",
-              }}
+              className={cn(
+                "mt-[5px] size-[9px] shrink-0 rounded-full",
+                a.kind === "error" ? "bg-danger" : "bg-[#3f8f5f]",
+              )}
             />
             <div>
               <div
-                style={{
-                  fontWeight: 700,
-                  fontSize: 12.5,
-                  color: a.kind === "error" ? C.dangerText : "#3f8f5f",
-                }}
+                className={cn(
+                  "text-[12.5px] font-bold",
+                  a.kind === "error" ? "text-danger-text" : "text-[#3f8f5f]",
+                )}
               >
                 {a.title}
               </div>
-              <div style={{ fontSize: 11.5, color: C.muted, marginTop: 2 }}>
-                {a.body}
-              </div>
+              <div className="mt-0.5 text-[11.5px] text-text-2">{a.body}</div>
             </div>
           </div>
         ))}
       </div>
 
       {/* شريط عائم مطابق للتصميم */}
-      <div
-        style={{
-          position: "fixed",
-          bottom: 22,
-          left: 41,
-          zIndex: 40,
-          display: "flex",
-          alignItems: "center",
-          gap: 14,
-          padding: "10px 16px",
-          borderRadius: "var(--radius-lg)",
-          background: C.card,
-          border: `1px solid ${C.borderStrong}`,
-          borderInlineStart: `3px solid ${C.gold}`,
-          boxShadow: "var(--shadow-lg)",
-        }}
-      >
+      <div className="fixed bottom-[22px] left-[41px] z-40 flex items-center gap-3.5 rounded-[var(--radius-lg)] border-y border-e border-s-[3px] border-y-border-md border-e-border-md border-s-gold bg-surface px-4 py-2.5 shadow-lg">
         <div>
-          <div style={{ fontWeight: 600, fontSize: 10.5, color: C.faint }}>
+          <div className="text-[10.5px] font-semibold text-text-3">
             القيمة النهائية للعقار
           </div>
           <div
             dir="ltr"
-            style={{
-              fontWeight: 800,
-              fontSize: 19,
-              lineHeight: 1.25,
-              textAlign: "start",
-              color: C.ink,
-            }}
+            className="text-start text-[19px] font-extrabold leading-[1.25] text-heading"
           >
             {fmt(selection.marketOpinionValue)}
           </div>
         </div>
-        <div style={{ width: 1, height: 30, background: C.border }} />
+        <div className="h-[30px] w-px bg-border" />
         <div>
-          <div style={{ fontWeight: 600, fontSize: 10.5, color: C.faint }}>
+          <div className="text-[10.5px] font-semibold text-text-3">
             قيمة المتر المربع
           </div>
           <div
             dir="ltr"
-            style={{
-              fontWeight: 700,
-              fontSize: 14,
-              lineHeight: 1.25,
-              textAlign: "start",
-              color: C.goldText,
-            }}
+            className="text-start text-[14px] font-bold leading-[1.25] text-gold-d"
           >
             {pricePerSqmDisplay != null ? fmt(pricePerSqmDisplay) : "—"}
           </div>

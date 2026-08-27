@@ -31,7 +31,6 @@ export * from "./lib/evaluator/evaluator-validation";
 export * from "./lib/evaluator/evaluator-report-attachments";
 export * from "./lib/evaluator/evaluator-deposit-attachments";
 export * from "./lib/evaluator/valuation-report-number";
-export * from "./lib/evaluator/valuation-report-tab-sections";
 export * from "./lib/evaluator/valuation-report-org-overlay";
 export * from "./lib/evaluator/evaluator-inspection-gate";
 export * from "./lib/evaluator/evaluator-queue";

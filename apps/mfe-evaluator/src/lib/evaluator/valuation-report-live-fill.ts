@@ -56,6 +56,7 @@ import {
   existsFromYesNo,
   existsIf,
 } from "./valuation-report-sheet-facts";
+import { escHtml } from "./html-escape";
 import type { ValuationReportSlotAttachment } from "./valuation-report-print-attachments";
 import {
   linesFromOrgText,
@@ -1050,7 +1051,7 @@ export function buildValuationReportLiveFill(input: {
           dashSheet(formatMoneyCell(eff.price)),
           dashSheet(formatMoneyCell(eff.pricePerSqm)),
           item.market
-            ? dashSheet(`${item.market.effectiveWeightPct}`)
+            ? dashSheet(formatSheetPct(item.market.effectiveWeightPct))
             : "—",
         ],
       };
@@ -2026,14 +2027,6 @@ function formatFinishingHtml(text: string): string {
       return escHtml(line);
     })
     .join("<br>");
-}
-
-function escHtml(text: string): string {
-  return text
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;");
 }
 
 function fillFinishingLevelSection(

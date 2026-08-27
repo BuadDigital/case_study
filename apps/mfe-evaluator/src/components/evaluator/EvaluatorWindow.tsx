@@ -105,6 +105,8 @@ export function EvaluatorWindow({
   const [submitting, setSubmitting] = useState(false);
   const [activeTab, setActiveTab] = useState<EvaluatorWindowTab>(initialTab);
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  /** يزداد مع كل تعديل محلي — استجابة حفظ أقدم لا تكتب فوق حروف كُتبت أثناء رحلتها. */
+  const editVersionRef = useRef(0);
 
   const locked = isEvaluatorFormLocked(draft.status);
   const formDisabled = locked || !gate.ready;
@@ -138,9 +140,13 @@ export function EvaluatorWindow({
       planImageMetadata?: EvaluatorPlanImageMetadata,
     ) => {
       if (locked) return;
+      const versionAtSave = editVersionRef.current;
       void updateEvaluatorDraft(task.id, patch, reportMetadata, planImageMetadata)
         .then((updated) => {
-          if (updated) setDraft(updated);
+          // تعديل أحدث وقع أثناء رحلة الحفظ؟ تجاهل الاستجابة — حفظ تالٍ مجدول أصلاً.
+          if (updated && editVersionRef.current === versionAtSave) {
+            setDraft(updated);
+          }
         })
         .catch((err: unknown) => {
           showToast(
@@ -154,6 +160,7 @@ export function EvaluatorWindow({
 
   const scheduleAutosave = useCallback(
     (patch: Parameters<typeof persistDraft>[0]) => {
+      editVersionRef.current += 1;
       if (saveTimer.current) clearTimeout(saveTimer.current);
       saveTimer.current = setTimeout(() => persistDraft(patch), 400);
     },

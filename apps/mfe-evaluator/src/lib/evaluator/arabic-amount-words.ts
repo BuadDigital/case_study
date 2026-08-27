@@ -142,11 +142,19 @@ export function amountToArabicWords(raw: string | number): string {
   return negative ? `سالب ${text}` : text;
 }
 
+// Intl.NumberFormat construction is expensive — cache one formatter per shape
+// (the report build formats 100+ money cells per run).
+const AMOUNT_FORMAT_INT = new Intl.NumberFormat("en-US", {
+  maximumFractionDigits: 2,
+  minimumFractionDigits: 0,
+});
+const AMOUNT_FORMAT_FRACTION = new Intl.NumberFormat("en-US", {
+  maximumFractionDigits: 2,
+  minimumFractionDigits: 2,
+});
+
 export function formatAmountNumberDisplay(raw: string | number): string {
   const n = typeof raw === "number" ? raw : parseAmountNumber(raw);
   if (n == null) return "—";
-  return new Intl.NumberFormat("en-US", {
-    maximumFractionDigits: 2,
-    minimumFractionDigits: Number.isInteger(n) ? 0 : 2,
-  }).format(n);
+  return (Number.isInteger(n) ? AMOUNT_FORMAT_INT : AMOUNT_FORMAT_FRACTION).format(n);
 }

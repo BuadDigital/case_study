@@ -170,7 +170,9 @@ async function stampReservedReportNumber(
     if (!reportNo.trim()) return submission;
     const saved = await saveEvaluatorSubmission({ ...submission, reportNo });
     return saved ?? { ...submission, reportNo };
-  } catch {
+  } catch (err) {
+    // حجز رقم التقرير أفضل-جهد — فشله لا يمنع فتح المسودة، لكنه لم يعد صامتاً.
+    console.warn("تعذّر حجز رقم تقرير التقييم", err);
     return submission;
   }
 }
@@ -264,11 +266,17 @@ export async function submitEvaluatorSubmission(
     return { ok: true, submission: current };
   }
 
-  await saveEvaluatorSubmission({
+  const saved = await saveEvaluatorSubmission({
     ...current,
     status: "draft",
     updatedAtUtc: new Date().toISOString(),
   });
+  if (!saved) {
+    return {
+      ok: false,
+      message: "تعذّر حفظ المسودة قبل الإرسال — تحقق من الاتصال ثم أعد المحاولة",
+    };
+  }
 
   const submitted = await submitPartySubmission(taskId);
   if (!submitted.ok) {

@@ -1,12 +1,5 @@
 import type { ValuationReportDocumentDto } from "@platform/api-client";
-
-function esc(text: string): string {
-  return text
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;");
-}
+import { escHtml as esc } from "./html-escape";
 
 function field(doc: ValuationReportDocumentDto, sectionNumber: number, key: string): string {
   const section = doc.sections.find((s) => s.number === sectionNumber);

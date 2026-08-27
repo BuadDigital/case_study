@@ -10,13 +10,8 @@ import {
 
 const V3_TEMPLATE_URL = "/ejadah/valuation-report-v3.html";
 
-export function escHtml(text: string): string {
-  return text
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;");
-}
+export { escHtml } from "./html-escape";
+import { escHtml } from "./html-escape";
 
 export type ValuationReportV3Meta = {
   reportNo?: string;
@@ -650,13 +645,29 @@ ${base}
 <body class="val-rpt-v3">${pages}</body></html>`;
 }
 
+// النموذج (~20 صفحة) ثابت خلال الجلسة — جلبه مرة واحدة يوفر جولة شبكة مع كل
+// إعادة بناء للمعاينة؛ فشل الجلب لا يعلق الذاكرة والمحاولة التالية تعيد الجلب.
+let templateTextPromise: Promise<string> | null = null;
+function fetchTemplateText(): Promise<string> {
+  if (!templateTextPromise) {
+    templateTextPromise = fetch(V3_TEMPLATE_URL, { cache: "no-cache" }).then(
+      async (res) => {
+        if (!res.ok) {
+          throw new Error(`تعذّر تحميل نموذج تقرير التقييم (${res.status})`);
+        }
+        return res.text();
+      },
+    );
+    templateTextPromise.catch(() => {
+      templateTextPromise = null;
+    });
+  }
+  return templateTextPromise;
+}
+
 export async function fetchValuationReportV3Html(
   meta: ValuationReportV3Meta = {},
   mode: ValuationReportV3Mode = "print",
 ): Promise<string> {
-  const res = await fetch(V3_TEMPLATE_URL, { cache: "no-cache" });
-  if (!res.ok) {
-    throw new Error(`تعذّر تحميل نموذج تقرير التقييم (${res.status})`);
-  }
-  return prepareValuationReportV3Html(await res.text(), meta, mode);
+  return prepareValuationReportV3Html(await fetchTemplateText(), meta, mode);
 }
