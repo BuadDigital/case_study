@@ -19,8 +19,10 @@ export function openPropertyPhotosPdfPrint(
   const withData = photos.filter((p) => p.dataUrl?.startsWith("data:"));
   if (withData.length === 0 || typeof window === "undefined") return false;
 
-  const win = window.open("", "_blank", "noopener,noreferrer,width=960,height=720");
+  // «noopener» ضمن الخصائص يجعل window.open يعيد null — نفتح بمقبض ثم نقطع opener.
+  const win = window.open("", "_blank", "width=960,height=720");
   if (!win) return false;
+  win.opener = null;
 
   const figures = withData
     .map(

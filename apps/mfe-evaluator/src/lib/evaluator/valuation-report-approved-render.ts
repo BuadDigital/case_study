@@ -564,8 +564,11 @@ export async function openApprovedValuationReportPreview(
   templateUrl = doc.approvedTemplateUrl || "/ejadah/report-template-approved.html",
 ): Promise<void> {
   const merged = await buildApprovedValuationReportHtml(doc, extras, templateUrl);
-  const w = window.open("", "_blank", "noopener,noreferrer,width=980,height=1100");
+  // «noopener» ضمن الخصائص يجعل window.open يعيد null بحكم المواصفة — نحتاج المقبض
+  // للكتابة، ونقطع صلة opener يدوياً بعده.
+  const w = window.open("", "_blank", "width=980,height=1100");
   if (!w) throw new Error("المتصفح منع فتح نافذة استعراض تقرير التقييم");
+  w.opener = null;
   w.document.open();
   w.document.write(merged);
   w.document.close();

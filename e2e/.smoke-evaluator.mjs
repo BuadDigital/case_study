@@ -141,6 +141,24 @@ try {
   step("final screen renders (ledger + gates)", gatesVisible);
   await shot("04-final");
 
+  // lazy preview chain: first click must dynamic-import the builder and open a tab, no error toast
+  const previewBtn = page.getByRole("button", { name: "معاينة التقرير" }).first();
+  if (await previewBtn.isVisible().catch(() => false)) {
+    const popupP = page.context().waitForEvent("page", { timeout: 25000 }).catch(() => null);
+    await previewBtn.click();
+    const popup = await popupP;
+    const errToast = await page
+      .getByText("تعذّر فتح استعراض تقرير التقييم")
+      .first()
+      .isVisible()
+      .catch(() => false);
+    step("lazy report preview opens", !!popup && !errToast, popup ? "popup opened" : "no popup");
+    if (popup) await popup.close().catch(() => {});
+  } else {
+    step("lazy report preview opens", false, "preview button not visible");
+  }
+
+
   // ── review screen (FinalReviewTab — attachments fix) ──
   await clickNav("المراجعة النهائية");
   await page.getByText("رأي القيمة عند التسليم").first().waitFor({ timeout: 30000 });
