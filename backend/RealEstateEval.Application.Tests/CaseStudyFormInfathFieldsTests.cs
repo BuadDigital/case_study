@@ -1,6 +1,8 @@
 using Microsoft.EntityFrameworkCore;
 using RealEstateEval.Application.Contracts;
 using RealEstateEval.Infrastructure.Services;
+using RealEstateEval.CaseStudy.Infrastructure.Services;
+using RealEstateEval.CaseStudy.Application.Contracts;
 
 namespace RealEstateEval.Application.Tests;
 

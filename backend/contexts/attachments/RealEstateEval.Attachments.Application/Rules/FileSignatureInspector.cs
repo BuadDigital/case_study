@@ -1,4 +1,4 @@
-namespace RealEstateEval.Application.Rules;
+namespace RealEstateEval.Attachments.Application.Rules;
 
 /// <summary>Formats the platform is willing to store and serve back.</summary>
 public enum DetectedFileFormat

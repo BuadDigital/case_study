@@ -1,8 +1,12 @@
 using RealEstateEval.Application.Abstractions;
 using RealEstateEval.Application.Contracts;
 using RealEstateEval.Domain;
+using RealEstateEval.CaseStudy.Application.Abstractions;
+using RealEstateEval.CaseStudy.Application.Contracts;
+using RealEstateEval.CaseStudy.Domain;
+using RealEstateEval.Application;
 
-namespace RealEstateEval.Application.Services;
+namespace RealEstateEval.CaseStudy.Application.Services;
 
 public class ClientService(IClientRepository clients, TimeProvider? time = null) : IClientService
 {

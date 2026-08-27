@@ -7,6 +7,9 @@ using RealEstateEval.Infrastructure.Data.Contexts;
 using RealEstateEval.Infrastructure.Integration;
 using RealEstateEval.Infrastructure.Notifications;
 using RealEstateEval.Infrastructure.Services;
+using RealEstateEval.CaseStudy.Infrastructure.Data.Contexts;
+using RealEstateEval.Platform.Infrastructure.Services;
+using RealEstateEval.Platform.Infrastructure.Notifications;
 
 namespace RealEstateEval.Application.Tests;
 

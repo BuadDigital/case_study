@@ -1,7 +1,8 @@
 using Microsoft.EntityFrameworkCore;
 using RealEstateEval.Domain;
+using RealEstateEval.Operations.Domain;
 
-namespace RealEstateEval.Infrastructure.Data.Contexts;
+namespace RealEstateEval.Operations.Infrastructure.Data.Contexts;
 
 /// <summary>
 /// Write context for the Operations bounded context :

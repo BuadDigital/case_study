@@ -1,5 +1,13 @@
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using RealEstateEval.Operations.Infrastructure;
+using RealEstateEval.Financial.Infrastructure;
+using RealEstateEval.CaseStudy.Infrastructure;
+using RealEstateEval.Valuation.Infrastructure;
+using RealEstateEval.Failures.Infrastructure;
+using RealEstateEval.Identity.Infrastructure;
+using RealEstateEval.Platform.Infrastructure;
+using RealEstateEval.Attachments.Infrastructure;
 
 namespace RealEstateEval.Infrastructure;
 
@@ -31,7 +39,7 @@ public static class DevSeedProvider
  // Seed-time audit entries land on the Platform database, as they did when the
  // registration service could take PlatformDbContext directly (A8 unwind).
         services.AddScoped<RealEstateEval.Application.Abstractions.IAuditLogAppend,
-            RealEstateEval.Infrastructure.Services.PlatformAuditLogAppend>();
+            RealEstateEval.Platform.Infrastructure.Services.PlatformAuditLogAppend>();
         return services.BuildServiceProvider();
     }
  /// <summary>
@@ -77,7 +85,7 @@ public static class DevSeedProvider
         services.AddIdentityApplicationServices();
  // Reset/registration audit lands on the Platform database like the old god-context reset.
         services.AddScoped<Application.Abstractions.IAuditLogAppend,
-            Infrastructure.Services.PlatformAuditLogAppend>();
+            Platform.Infrastructure.Services.PlatformAuditLogAppend>();
         return services.BuildServiceProvider();
     }
 }

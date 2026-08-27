@@ -4,7 +4,7 @@ using RealEstateEval.Infrastructure.Data.Contexts;
 
 #nullable disable
 
-namespace RealEstateEval.Infrastructure.Data.Contexts.Valuation.Migrations;
+namespace RealEstateEval.Valuation.Infrastructure.Data.Contexts.Valuation.Migrations;
 
 /// <summary>أثر رجعي: تاريخ محدد أو فترة بين تاريخين (RetrospectiveDateEnd).</summary>
 [DbContext(typeof(ValuationDbContext))]

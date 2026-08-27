@@ -4,7 +4,7 @@
     <TargetFramework>net10.0</TargetFramework>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
-    <RootNamespace>RealEstateEval.Infrastructure</RootNamespace>
+    <RootNamespace>RealEstateEval.Platform.Infrastructure</RootNamespace>
   </PropertyGroup>
 
     <ItemGroup>
@@ -25,4 +25,11 @@
     <EmbeddedResource Include="Data\Seed\regions_cities.json" />
   </ItemGroup>
 
+  <ItemGroup>
+    <!-- Design-time only: lets dotnet ef regenerate this stream's snapshot in place. -->
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="10.0.8">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
+  </ItemGroup>
 </Project>

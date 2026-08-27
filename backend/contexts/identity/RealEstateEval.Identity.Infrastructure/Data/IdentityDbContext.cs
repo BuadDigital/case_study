@@ -1,8 +1,10 @@
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 using RealEstateEval.Domain;
+using RealEstateEval.Identity.Domain;
+using RealEstateEval.Infrastructure.Data.Contexts;
 
-namespace RealEstateEval.Infrastructure.Data.Contexts;
+namespace RealEstateEval.Identity.Infrastructure.Data.Contexts;
 
 /// <summary>
 /// Write context for the Identity bounded context.

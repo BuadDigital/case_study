@@ -3,8 +3,9 @@ using RealEstateEval.Application.Abstractions;
 using RealEstateEval.Application.Contracts;
 using RealEstateEval.Application.Rules;
 using RealEstateEval.Infrastructure.Data.Contexts;
+using RealEstateEval.CaseStudy.Application.Abstractions;
 
-namespace RealEstateEval.Infrastructure.Services;
+namespace RealEstateEval.CaseStudy.Infrastructure.Services;
 
 public sealed class WorkOrderVisibilityFilter : IWorkOrderVisibilityFilter
 {

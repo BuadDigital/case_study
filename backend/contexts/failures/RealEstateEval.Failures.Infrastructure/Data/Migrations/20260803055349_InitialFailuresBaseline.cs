@@ -2,7 +2,7 @@
 
 #nullable disable
 
-namespace RealEstateEval.Infrastructure.Data.Contexts.Failures.Migrations;
+namespace RealEstateEval.Failures.Infrastructure.Data.Contexts.Failures.Migrations;
 
 /// <summary>
 /// Empty baseline. The <c>failures</c> tables already exist from the legacy stream;

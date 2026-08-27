@@ -1,7 +1,8 @@
 using RealEstateEval.Application.Contracts;
 using RealEstateEval.Domain;
+using RealEstateEval.CaseStudy.Domain;
 
-namespace RealEstateEval.Application.Rules;
+namespace RealEstateEval.CaseStudy.Application.Rules;
 
 /// <summary>
 /// Slot / child-task factory helpers and phase title rules for workflow sync.

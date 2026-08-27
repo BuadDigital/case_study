@@ -1,4 +1,4 @@
-namespace RealEstateEval.Domain;
+namespace RealEstateEval.Operations.Domain;
 
 /// <summary>
 /// Operations task kind (طبقة المهام). Persisted as the wire string — see

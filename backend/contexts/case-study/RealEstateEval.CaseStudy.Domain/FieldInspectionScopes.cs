@@ -1,4 +1,4 @@
-namespace RealEstateEval.Domain;
+namespace RealEstateEval.CaseStudy.Domain;
 
 public static class FieldInspectionScopes
 {

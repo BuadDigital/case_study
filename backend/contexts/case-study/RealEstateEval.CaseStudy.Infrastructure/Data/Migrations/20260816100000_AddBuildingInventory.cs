@@ -4,7 +4,7 @@ using RealEstateEval.Infrastructure.Data.Contexts;
 
 #nullable disable
 
-namespace RealEstateEval.Infrastructure.Data.Contexts.CaseStudy.Migrations;
+namespace RealEstateEval.CaseStudy.Infrastructure.Data.Contexts.CaseStudy.Migrations;
 
 [DbContext(typeof(CaseStudyDbContext))]
 [Migration("20260816100000_AddBuildingInventory")]

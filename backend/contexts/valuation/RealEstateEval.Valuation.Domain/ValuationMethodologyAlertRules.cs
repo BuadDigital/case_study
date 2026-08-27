@@ -1,4 +1,6 @@
-﻿namespace RealEstateEval.Domain;
+﻿using RealEstateEval.Domain;
+
+namespace RealEstateEval.Valuation.Domain;
 
 /// <summary>
 /// Methodology alerts — 21 per package v2 (القرار 16 + 24 + ق-4 + ق-7):

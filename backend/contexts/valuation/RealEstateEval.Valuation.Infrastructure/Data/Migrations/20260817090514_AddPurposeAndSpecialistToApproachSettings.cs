@@ -2,7 +2,7 @@
 
 #nullable disable
 
-namespace RealEstateEval.Infrastructure.Data.Contexts.Valuation.Migrations
+namespace RealEstateEval.Valuation.Infrastructure.Data.Contexts.Valuation.Migrations
 {
     /// <inheritdoc />
     public partial class AddPurposeAndSpecialistToApproachSettings : Migration

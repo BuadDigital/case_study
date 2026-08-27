@@ -1,4 +1,4 @@
-namespace RealEstateEval.Domain;
+namespace RealEstateEval.Valuation.Domain;
 
 public static class PropertyComparableLinkRules
 {

@@ -1,4 +1,4 @@
-namespace RealEstateEval.Domain;
+namespace RealEstateEval.Financial.Domain;
 
 /// <summary>Named party-fee pricing schedule. Exactly one row per category should be <see cref="IsActive"/> (category default).</summary>
 public class PartyFeePricingTable

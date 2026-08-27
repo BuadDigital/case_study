@@ -8,6 +8,9 @@ using RealEstateEval.Infrastructure.Integration;
 using RealEstateEval.Infrastructure.Notifications;
 using RealEstateEval.Infrastructure.Services;
 using RealEstateEval.Shared.Contracts;
+using RealEstateEval.Platform.Infrastructure.Services;
+using RealEstateEval.Platform.Infrastructure.Integration;
+using RealEstateEval.Platform.Infrastructure.Notifications;
 
 namespace RealEstateEval.Application.Tests;
 

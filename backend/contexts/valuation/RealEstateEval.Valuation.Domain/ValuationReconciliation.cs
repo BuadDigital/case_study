@@ -1,4 +1,4 @@
-namespace RealEstateEval.Domain;
+namespace RealEstateEval.Valuation.Domain;
 
 /// <summary>Approach kinds that can participate in reconciliation (income deferred).</summary>
 public static class ValuationApproachKinds

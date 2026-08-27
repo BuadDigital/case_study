@@ -8,6 +8,10 @@ using RealEstateEval.Infrastructure.Integration;
 using RealEstateEval.Infrastructure.Notifications;
 using RealEstateEval.Infrastructure.Services;
 using RealEstateEval.Shared.Contracts;
+using RealEstateEval.CaseStudy.Infrastructure.Data.Contexts;
+using RealEstateEval.Identity.Infrastructure.Data.Contexts;
+using RealEstateEval.CaseStudy.Infrastructure.Services;
+using RealEstateEval.CaseStudy.Domain;
 
 namespace RealEstateEval.Application.Tests;
 

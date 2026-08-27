@@ -2,6 +2,8 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Options;
 using RealEstateEval.Application.Abstractions;
 using RealEstateEval.Application.Contracts;
+using RealEstateEval.Failures.Application.Abstractions;
+using RealEstateEval.Failures.Application.Contracts;
 
 namespace RealEstateEval.Infrastructure.Services;
 

@@ -8,8 +8,12 @@ using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Identity;
 using RealEstateEval.Domain;
 using RealEstateEval.Infrastructure.Data;
+using RealEstateEval.Identity.Infrastructure.Services;
+using RealEstateEval.Identity.Application.Abstractions;
+using RealEstateEval.Infrastructure;
+using RealEstateEval.Identity.Infrastructure.Data.Contexts;
 
-namespace RealEstateEval.Infrastructure;
+namespace RealEstateEval.Identity.Infrastructure;
 
 /// <summary>
 /// Context-local registration for the Identity bounded context (A8): auth sessions, password

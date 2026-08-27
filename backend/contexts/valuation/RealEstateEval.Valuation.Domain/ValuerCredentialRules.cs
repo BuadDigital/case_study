@@ -1,4 +1,4 @@
-namespace RealEstateEval.Domain;
+namespace RealEstateEval.Valuation.Domain;
 
 /// <summary>
 /// Dual license + membership gate for report issuance (/ ).

@@ -2,7 +2,7 @@
 
 #nullable disable
 
-namespace RealEstateEval.Infrastructure.Data.Contexts.Valuation.Migrations;
+namespace RealEstateEval.Valuation.Infrastructure.Data.Contexts.Valuation.Migrations;
 
 /// <summary>
 /// Empty baseline. The <c>valuation</c> tables and the shared <c>messaging.OutboxMessages</c>

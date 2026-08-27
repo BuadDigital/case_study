@@ -1,6 +1,7 @@
 using RealEstateEval.Application.Contracts;
+using RealEstateEval.Valuation.Application.Contracts;
 
-namespace RealEstateEval.Application.Abstractions;
+namespace RealEstateEval.Valuation.Application.Abstractions;
 
 public interface IValuationReconciliationService
 {

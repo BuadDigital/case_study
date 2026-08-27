@@ -1,8 +1,9 @@
 using Microsoft.EntityFrameworkCore;
 using RealEstateEval.Domain;
 using RealEstateEval.Infrastructure.Data;
+using RealEstateEval.CaseStudy.Domain;
 
-namespace RealEstateEval.Infrastructure.Data.Contexts;
+namespace RealEstateEval.CaseStudy.Infrastructure.Data.Contexts;
 
 /// <summary>
 /// Case Study–owned tables in the <c>case_study</c> schema. Does not map operations tasks (D2)

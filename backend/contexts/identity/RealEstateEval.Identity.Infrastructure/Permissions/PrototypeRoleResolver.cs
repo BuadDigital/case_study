@@ -1,6 +1,6 @@
 using RealEstateEval.Domain;
 
-namespace RealEstateEval.Infrastructure.Permissions;
+namespace RealEstateEval.Identity.Infrastructure.Permissions;
 
 /// <summary>
 /// Resolves the one canonical product role stored on the user profile.

@@ -2,6 +2,9 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using RealEstateEval.Application.Abstractions;
 using RealEstateEval.Infrastructure.Services;
+using RealEstateEval.Attachments.Application.Abstractions;
+using RealEstateEval.Failures.Application.Abstractions;
+using RealEstateEval.Operations.Application.Abstractions;
 
 namespace RealEstateEval.Infrastructure;
 

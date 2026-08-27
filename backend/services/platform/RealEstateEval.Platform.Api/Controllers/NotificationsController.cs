@@ -7,6 +7,7 @@ using RealEstateEval.Application.Abstractions;
 using RealEstateEval.Application.Contracts;
 using RealEstateEval.Infrastructure.Notifications;
 using RealEstateEval.Shared.Web;
+using RealEstateEval.Platform.Infrastructure.Notifications;
 
 namespace RealEstateEval.Platform.Api.Controllers;
 

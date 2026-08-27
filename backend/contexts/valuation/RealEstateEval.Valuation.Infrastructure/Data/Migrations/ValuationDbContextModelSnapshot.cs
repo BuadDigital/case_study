@@ -4,11 +4,11 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
-using RealEstateEval.Infrastructure.Data.Contexts;
+using RealEstateEval.Valuation.Infrastructure.Data.Contexts;
 
 #nullable disable
 
-namespace RealEstateEval.Infrastructure.Data.Contexts.Valuation.Migrations
+namespace RealEstateEval.Valuation.Infrastructure.Data.Contexts.Valuation.Migrations
 {
     [DbContext(typeof(ValuationDbContext))]
     partial class ValuationDbContextModelSnapshot : ModelSnapshot
@@ -25,7 +25,60 @@ namespace RealEstateEval.Infrastructure.Data.Contexts.Valuation.Migrations
             modelBuilder.HasSequence<int>("ValuationRequestDisplayId", "valuation")
                 .StartsAt(445L);
 
-            modelBuilder.Entity("RealEstateEval.Domain.ComparableProperty", b =>
+            modelBuilder.Entity("RealEstateEval.Domain.OutboxMessage", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("AttemptCount")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime?>("DeadLetteredAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Error")
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)");
+
+                    b.Property<string>("EventType")
+                        .IsRequired()
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)");
+
+                    b.Property<string>("LockedBy")
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)");
+
+                    b.Property<DateTime?>("LockedUntilUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("PayloadJson")
+                        .IsRequired()
+                        .HasColumnType("jsonb");
+
+                    b.Property<DateTime?>("ProcessedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CreatedAtUtc");
+
+                    b.HasIndex("ProcessedAtUtc");
+
+                    b.HasIndex(new[] { "CreatedAtUtc" }, "IX_OutboxMessages_Pending_CreatedAtUtc")
+                        .HasFilter("\"ProcessedAtUtc\" IS NULL AND \"DeadLetteredAtUtc\" IS NULL");
+
+                    b.ToTable("OutboxMessages", "messaging", t =>
+                        {
+                            t.ExcludeFromMigrations();
+                        });
+                });
+
+            modelBuilder.Entity("RealEstateEval.Valuation.Domain.ComparableProperty", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
@@ -182,7 +235,7 @@ namespace RealEstateEval.Infrastructure.Data.Contexts.Valuation.Migrations
                     b.ToTable("ComparableProperties", "valuation");
                 });
 
-            modelBuilder.Entity("RealEstateEval.Domain.EvaluatorRecallRecord", b =>
+            modelBuilder.Entity("RealEstateEval.Valuation.Domain.EvaluatorRecallRecord", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
@@ -240,60 +293,7 @@ namespace RealEstateEval.Infrastructure.Data.Contexts.Valuation.Migrations
                     b.ToTable("EvaluatorRecallRecords", "valuation");
                 });
 
-            modelBuilder.Entity("RealEstateEval.Domain.OutboxMessage", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid");
-
-                    b.Property<int>("AttemptCount")
-                        .HasColumnType("integer");
-
-                    b.Property<DateTime>("CreatedAtUtc")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<DateTime?>("DeadLetteredAtUtc")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<string>("Error")
-                        .HasMaxLength(2000)
-                        .HasColumnType("character varying(2000)");
-
-                    b.Property<string>("EventType")
-                        .IsRequired()
-                        .HasMaxLength(128)
-                        .HasColumnType("character varying(128)");
-
-                    b.Property<string>("LockedBy")
-                        .HasMaxLength(128)
-                        .HasColumnType("character varying(128)");
-
-                    b.Property<DateTime?>("LockedUntilUtc")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<string>("PayloadJson")
-                        .IsRequired()
-                        .HasColumnType("jsonb");
-
-                    b.Property<DateTime?>("ProcessedAtUtc")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("CreatedAtUtc");
-
-                    b.HasIndex("ProcessedAtUtc");
-
-                    b.HasIndex(new[] { "CreatedAtUtc" }, "IX_OutboxMessages_Pending_CreatedAtUtc")
-                        .HasFilter("\"ProcessedAtUtc\" IS NULL AND \"DeadLetteredAtUtc\" IS NULL");
-
-                    b.ToTable("OutboxMessages", "messaging", t =>
-                        {
-                            t.ExcludeFromMigrations();
-                        });
-                });
-
-            modelBuilder.Entity("RealEstateEval.Domain.PropertyComparableLink", b =>
+            modelBuilder.Entity("RealEstateEval.Valuation.Domain.PropertyComparableLink", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
@@ -329,7 +329,7 @@ namespace RealEstateEval.Infrastructure.Data.Contexts.Valuation.Migrations
                     b.ToTable("PropertyComparableLinks", "valuation");
                 });
 
-            modelBuilder.Entity("RealEstateEval.Domain.ValuationApproachSettings", b =>
+            modelBuilder.Entity("RealEstateEval.Valuation.Domain.ValuationApproachSettings", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
@@ -412,7 +412,7 @@ namespace RealEstateEval.Infrastructure.Data.Contexts.Valuation.Migrations
                     b.ToTable("ValuationApproachSettings", "valuation");
                 });
 
-            modelBuilder.Entity("RealEstateEval.Domain.ValuationComparableAdjustmentLine", b =>
+            modelBuilder.Entity("RealEstateEval.Valuation.Domain.ValuationComparableAdjustmentLine", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
@@ -457,7 +457,7 @@ namespace RealEstateEval.Infrastructure.Data.Contexts.Valuation.Migrations
                     b.ToTable("ValuationComparableAdjustmentLines", "valuation");
                 });
 
-            modelBuilder.Entity("RealEstateEval.Domain.ValuationComparableSelection", b =>
+            modelBuilder.Entity("RealEstateEval.Valuation.Domain.ValuationComparableSelection", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
@@ -524,7 +524,7 @@ namespace RealEstateEval.Infrastructure.Data.Contexts.Valuation.Migrations
                     b.ToTable("ValuationComparableSelections", "valuation");
                 });
 
-            modelBuilder.Entity("RealEstateEval.Domain.ValuationCostApproach", b =>
+            modelBuilder.Entity("RealEstateEval.Valuation.Domain.ValuationCostApproach", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
@@ -614,7 +614,7 @@ namespace RealEstateEval.Infrastructure.Data.Contexts.Valuation.Migrations
                     b.ToTable("ValuationCostApproaches", "valuation");
                 });
 
-            modelBuilder.Entity("RealEstateEval.Domain.ValuationCostLine", b =>
+            modelBuilder.Entity("RealEstateEval.Valuation.Domain.ValuationCostLine", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
@@ -679,7 +679,7 @@ namespace RealEstateEval.Infrastructure.Data.Contexts.Valuation.Migrations
                     b.ToTable("ValuationCostLines", "valuation");
                 });
 
-            modelBuilder.Entity("RealEstateEval.Domain.ValuationIndirectCostItem", b =>
+            modelBuilder.Entity("RealEstateEval.Valuation.Domain.ValuationIndirectCostItem", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
@@ -711,7 +711,7 @@ namespace RealEstateEval.Infrastructure.Data.Contexts.Valuation.Migrations
                     b.ToTable("ValuationIndirectCostItems", "valuation");
                 });
 
-            modelBuilder.Entity("RealEstateEval.Domain.ValuationMarketApproach", b =>
+            modelBuilder.Entity("RealEstateEval.Valuation.Domain.ValuationMarketApproach", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
@@ -759,7 +759,7 @@ namespace RealEstateEval.Infrastructure.Data.Contexts.Valuation.Migrations
                     b.ToTable("ValuationMarketApproaches", "valuation");
                 });
 
-            modelBuilder.Entity("RealEstateEval.Domain.ValuationReconciliation", b =>
+            modelBuilder.Entity("RealEstateEval.Valuation.Domain.ValuationReconciliation", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
@@ -807,7 +807,7 @@ namespace RealEstateEval.Infrastructure.Data.Contexts.Valuation.Migrations
                     b.ToTable("ValuationReconciliations", "valuation");
                 });
 
-            modelBuilder.Entity("RealEstateEval.Domain.ValuationReconciliationMethodLine", b =>
+            modelBuilder.Entity("RealEstateEval.Valuation.Domain.ValuationReconciliationMethodLine", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
@@ -847,7 +847,7 @@ namespace RealEstateEval.Infrastructure.Data.Contexts.Valuation.Migrations
                     b.ToTable("ValuationReconciliationMethodLines", "valuation");
                 });
 
-            modelBuilder.Entity("RealEstateEval.Domain.ValuationRequest", b =>
+            modelBuilder.Entity("RealEstateEval.Valuation.Domain.ValuationRequest", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
@@ -911,9 +911,9 @@ namespace RealEstateEval.Infrastructure.Data.Contexts.Valuation.Migrations
                     b.ToTable("ValuationRequests", "valuation");
                 });
 
-            modelBuilder.Entity("RealEstateEval.Domain.PropertyComparableLink", b =>
+            modelBuilder.Entity("RealEstateEval.Valuation.Domain.PropertyComparableLink", b =>
                 {
-                    b.HasOne("RealEstateEval.Domain.ComparableProperty", "ComparableProperty")
+                    b.HasOne("RealEstateEval.Valuation.Domain.ComparableProperty", "ComparableProperty")
                         .WithMany()
                         .HasForeignKey("ComparablePropertyId")
                         .OnDelete(DeleteBehavior.Restrict)
@@ -922,9 +922,9 @@ namespace RealEstateEval.Infrastructure.Data.Contexts.Valuation.Migrations
                     b.Navigation("ComparableProperty");
                 });
 
-            modelBuilder.Entity("RealEstateEval.Domain.ValuationApproachSettings", b =>
+            modelBuilder.Entity("RealEstateEval.Valuation.Domain.ValuationApproachSettings", b =>
                 {
-                    b.HasOne("RealEstateEval.Domain.ValuationRequest", "ValuationRequest")
+                    b.HasOne("RealEstateEval.Valuation.Domain.ValuationRequest", "ValuationRequest")
                         .WithMany()
                         .HasForeignKey("ValuationRequestId")
                         .OnDelete(DeleteBehavior.Cascade)
@@ -933,9 +933,9 @@ namespace RealEstateEval.Infrastructure.Data.Contexts.Valuation.Migrations
                     b.Navigation("ValuationRequest");
                 });
 
-            modelBuilder.Entity("RealEstateEval.Domain.ValuationComparableAdjustmentLine", b =>
+            modelBuilder.Entity("RealEstateEval.Valuation.Domain.ValuationComparableAdjustmentLine", b =>
                 {
-                    b.HasOne("RealEstateEval.Domain.ValuationComparableSelection", "Selection")
+                    b.HasOne("RealEstateEval.Valuation.Domain.ValuationComparableSelection", "Selection")
                         .WithMany("AdjustmentLines")
                         .HasForeignKey("SelectionId")
                         .OnDelete(DeleteBehavior.Cascade)
@@ -944,15 +944,15 @@ namespace RealEstateEval.Infrastructure.Data.Contexts.Valuation.Migrations
                     b.Navigation("Selection");
                 });
 
-            modelBuilder.Entity("RealEstateEval.Domain.ValuationComparableSelection", b =>
+            modelBuilder.Entity("RealEstateEval.Valuation.Domain.ValuationComparableSelection", b =>
                 {
-                    b.HasOne("RealEstateEval.Domain.ComparableProperty", "ComparableProperty")
+                    b.HasOne("RealEstateEval.Valuation.Domain.ComparableProperty", "ComparableProperty")
                         .WithMany()
                         .HasForeignKey("ComparablePropertyId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
-                    b.HasOne("RealEstateEval.Domain.ValuationRequest", "ValuationRequest")
+                    b.HasOne("RealEstateEval.Valuation.Domain.ValuationRequest", "ValuationRequest")
                         .WithMany()
                         .HasForeignKey("ValuationRequestId")
                         .OnDelete(DeleteBehavior.Cascade)
@@ -963,9 +963,9 @@ namespace RealEstateEval.Infrastructure.Data.Contexts.Valuation.Migrations
                     b.Navigation("ValuationRequest");
                 });
 
-            modelBuilder.Entity("RealEstateEval.Domain.ValuationCostApproach", b =>
+            modelBuilder.Entity("RealEstateEval.Valuation.Domain.ValuationCostApproach", b =>
                 {
-                    b.HasOne("RealEstateEval.Domain.ValuationRequest", "ValuationRequest")
+                    b.HasOne("RealEstateEval.Valuation.Domain.ValuationRequest", "ValuationRequest")
                         .WithMany()
                         .HasForeignKey("ValuationRequestId")
                         .OnDelete(DeleteBehavior.Cascade)
@@ -974,9 +974,9 @@ namespace RealEstateEval.Infrastructure.Data.Contexts.Valuation.Migrations
                     b.Navigation("ValuationRequest");
                 });
 
-            modelBuilder.Entity("RealEstateEval.Domain.ValuationCostLine", b =>
+            modelBuilder.Entity("RealEstateEval.Valuation.Domain.ValuationCostLine", b =>
                 {
-                    b.HasOne("RealEstateEval.Domain.ValuationCostApproach", "CostApproach")
+                    b.HasOne("RealEstateEval.Valuation.Domain.ValuationCostApproach", "CostApproach")
                         .WithMany("Lines")
                         .HasForeignKey("CostApproachId")
                         .OnDelete(DeleteBehavior.Cascade)
@@ -985,9 +985,9 @@ namespace RealEstateEval.Infrastructure.Data.Contexts.Valuation.Migrations
                     b.Navigation("CostApproach");
                 });
 
-            modelBuilder.Entity("RealEstateEval.Domain.ValuationIndirectCostItem", b =>
+            modelBuilder.Entity("RealEstateEval.Valuation.Domain.ValuationIndirectCostItem", b =>
                 {
-                    b.HasOne("RealEstateEval.Domain.ValuationCostApproach", "CostApproach")
+                    b.HasOne("RealEstateEval.Valuation.Domain.ValuationCostApproach", "CostApproach")
                         .WithMany("IndirectItems")
                         .HasForeignKey("CostApproachId")
                         .OnDelete(DeleteBehavior.Cascade)
@@ -996,9 +996,9 @@ namespace RealEstateEval.Infrastructure.Data.Contexts.Valuation.Migrations
                     b.Navigation("CostApproach");
                 });
 
-            modelBuilder.Entity("RealEstateEval.Domain.ValuationMarketApproach", b =>
+            modelBuilder.Entity("RealEstateEval.Valuation.Domain.ValuationMarketApproach", b =>
                 {
-                    b.HasOne("RealEstateEval.Domain.ValuationRequest", "ValuationRequest")
+                    b.HasOne("RealEstateEval.Valuation.Domain.ValuationRequest", "ValuationRequest")
                         .WithMany()
                         .HasForeignKey("ValuationRequestId")
                         .OnDelete(DeleteBehavior.Cascade)
@@ -1007,9 +1007,9 @@ namespace RealEstateEval.Infrastructure.Data.Contexts.Valuation.Migrations
                     b.Navigation("ValuationRequest");
                 });
 
-            modelBuilder.Entity("RealEstateEval.Domain.ValuationReconciliation", b =>
+            modelBuilder.Entity("RealEstateEval.Valuation.Domain.ValuationReconciliation", b =>
                 {
-                    b.HasOne("RealEstateEval.Domain.ValuationRequest", "ValuationRequest")
+                    b.HasOne("RealEstateEval.Valuation.Domain.ValuationRequest", "ValuationRequest")
                         .WithMany()
                         .HasForeignKey("ValuationRequestId")
                         .OnDelete(DeleteBehavior.Cascade)
@@ -1018,9 +1018,9 @@ namespace RealEstateEval.Infrastructure.Data.Contexts.Valuation.Migrations
                     b.Navigation("ValuationRequest");
                 });
 
-            modelBuilder.Entity("RealEstateEval.Domain.ValuationReconciliationMethodLine", b =>
+            modelBuilder.Entity("RealEstateEval.Valuation.Domain.ValuationReconciliationMethodLine", b =>
                 {
-                    b.HasOne("RealEstateEval.Domain.ValuationReconciliation", "Reconciliation")
+                    b.HasOne("RealEstateEval.Valuation.Domain.ValuationReconciliation", "Reconciliation")
                         .WithMany("Methods")
                         .HasForeignKey("ReconciliationId")
                         .OnDelete(DeleteBehavior.Cascade)
@@ -1029,19 +1029,19 @@ namespace RealEstateEval.Infrastructure.Data.Contexts.Valuation.Migrations
                     b.Navigation("Reconciliation");
                 });
 
-            modelBuilder.Entity("RealEstateEval.Domain.ValuationComparableSelection", b =>
+            modelBuilder.Entity("RealEstateEval.Valuation.Domain.ValuationComparableSelection", b =>
                 {
                     b.Navigation("AdjustmentLines");
                 });
 
-            modelBuilder.Entity("RealEstateEval.Domain.ValuationCostApproach", b =>
+            modelBuilder.Entity("RealEstateEval.Valuation.Domain.ValuationCostApproach", b =>
                 {
                     b.Navigation("IndirectItems");
 
                     b.Navigation("Lines");
                 });
 
-            modelBuilder.Entity("RealEstateEval.Domain.ValuationReconciliation", b =>
+            modelBuilder.Entity("RealEstateEval.Valuation.Domain.ValuationReconciliation", b =>
                 {
                     b.Navigation("Methods");
                 });

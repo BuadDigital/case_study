@@ -9,7 +9,7 @@ using RealEstateEval.Infrastructure.Data.Contexts;
 
 #nullable disable
 
-namespace RealEstateEval.Infrastructure.Data.Contexts.Platform.Migrations
+namespace RealEstateEval.Platform.Infrastructure.Data.Contexts.Platform.Migrations
 {
     [DbContext(typeof(PlatformDbContext))]
     [Migration("20260802063249_AddOrganizationSettings")]

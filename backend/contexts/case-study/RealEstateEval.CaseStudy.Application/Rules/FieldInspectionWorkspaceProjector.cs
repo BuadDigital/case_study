@@ -1,8 +1,10 @@
 using System.Globalization;
 using System.Text.Json;
 using RealEstateEval.Domain;
+using RealEstateEval.CaseStudy.Domain;
+using RealEstateEval.Application.Rules;
 
-namespace RealEstateEval.Application.Rules;
+namespace RealEstateEval.CaseStudy.Application.Rules;
 
 public static class FieldInspectionWorkspaceProjector
 {

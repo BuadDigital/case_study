@@ -6,8 +6,12 @@ using RealEstateEval.Application.Contracts;
 using RealEstateEval.Domain;
 using RealEstateEval.Infrastructure.Caching;
 using RealEstateEval.Infrastructure.Data.Contexts;
+using RealEstateEval.Platform.Application.Abstractions;
+using RealEstateEval.Platform.Infrastructure.Data.Contexts;
+using RealEstateEval.Platform.Application.Contracts;
+using RealEstateEval.Platform.Domain;
 
-namespace RealEstateEval.Infrastructure.Services;
+namespace RealEstateEval.Platform.Infrastructure.Services;
 
 public sealed class CourtsService : ICourtsService
 {

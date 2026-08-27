@@ -2,6 +2,8 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Options;
 using RealEstateEval.Application.Abstractions;
 using RealEstateEval.Application.Contracts;
+using RealEstateEval.Attachments.Application.Abstractions;
+using RealEstateEval.Attachments.Application.Contracts;
 namespace RealEstateEval.Infrastructure.Services;
 
 public sealed class HttpAttachmentLookup(

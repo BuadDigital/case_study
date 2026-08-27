@@ -1,4 +1,4 @@
-namespace RealEstateEval.Infrastructure.Data;
+namespace RealEstateEval.Platform.Infrastructure.Data;
 
 /// <summary>
 /// Default report attachment types — صك، رفع مساحي، كروكي تنظيمي، رخصة المباني (ف).

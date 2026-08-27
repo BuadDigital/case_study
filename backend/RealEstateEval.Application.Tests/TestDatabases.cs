@@ -1,6 +1,14 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Storage;
 using RealEstateEval.Infrastructure.Data.Contexts;
+using RealEstateEval.Attachments.Infrastructure.Data.Contexts;
+using RealEstateEval.Platform.Infrastructure.Data.Contexts;
+using RealEstateEval.Valuation.Infrastructure.Data.Contexts;
+using RealEstateEval.CaseStudy.Infrastructure.Data.Contexts;
+using RealEstateEval.Identity.Infrastructure.Data.Contexts;
+using RealEstateEval.Failures.Infrastructure.Data.Contexts;
+using RealEstateEval.Operations.Infrastructure.Data.Contexts;
+using RealEstateEval.Financial.Infrastructure.Data.Contexts;
 
 namespace RealEstateEval.Application.Tests;
 

@@ -1,4 +1,4 @@
-namespace RealEstateEval.Domain;
+namespace RealEstateEval.Attachments.Domain;
 
 /// <summary>
 /// Routes property-library uploads onto valuation-report sections from the upload scope.

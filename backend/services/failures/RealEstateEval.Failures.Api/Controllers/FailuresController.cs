@@ -4,6 +4,8 @@ using RealEstateEval.Application.Abstractions;
 using RealEstateEval.Application.Contracts;
 using RealEstateEval.Shared.Web;
 using RealEstateEval.Shared.Web.Authorization;
+using RealEstateEval.Failures.Application.Contracts;
+using RealEstateEval.Failures.Application.Abstractions;
 namespace RealEstateEval.Failures.Api.Controllers;
 
 [ApiController]

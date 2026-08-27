@@ -1,4 +1,4 @@
-namespace RealEstateEval.Domain;
+namespace RealEstateEval.Platform.Domain;
 
 /// <summary>
 /// Singleton organization / system settings (company, evaluator, branding, communications, SLA).

@@ -3,7 +3,7 @@ using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable
 
-namespace RealEstateEval.Infrastructure.Data.Contexts.Attachments.Migrations
+namespace RealEstateEval.Attachments.Infrastructure.Data.Contexts.Attachments.Migrations
 {
  /// <inheritdoc />
     public partial class AddPhotoMetadata : Migration

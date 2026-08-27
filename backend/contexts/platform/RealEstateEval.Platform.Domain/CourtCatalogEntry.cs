@@ -1,4 +1,4 @@
-namespace RealEstateEval.Domain;
+namespace RealEstateEval.Platform.Domain;
 
 public class CourtCatalogEntry
 {

@@ -1,4 +1,6 @@
-namespace RealEstateEval.Domain;
+using RealEstateEval.Domain;
+
+namespace RealEstateEval.Valuation.Domain;
 
 /// <summary>
 /// Maps priced cost-approach (or inventory area) lines into cost_line.* / inventory.* field keys.

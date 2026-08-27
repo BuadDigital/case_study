@@ -1,6 +1,7 @@
 using RealEstateEval.Application.Contracts;
+using RealEstateEval.Attachments.Application.Contracts;
 
-namespace RealEstateEval.Application.Abstractions;
+namespace RealEstateEval.Attachments.Application.Abstractions;
 
 public interface IAttachmentService
 {

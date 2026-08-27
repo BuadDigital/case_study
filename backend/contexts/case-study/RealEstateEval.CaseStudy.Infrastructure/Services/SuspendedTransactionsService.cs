@@ -2,8 +2,11 @@
 using RealEstateEval.Application.Abstractions;
 using RealEstateEval.Application.Contracts;
 using RealEstateEval.Infrastructure.Data.Contexts;
+using RealEstateEval.CaseStudy.Application.Abstractions;
+using RealEstateEval.Failures.Application.Abstractions;
+using RealEstateEval.Infrastructure.Services;
 
-namespace RealEstateEval.Infrastructure.Services;
+namespace RealEstateEval.CaseStudy.Infrastructure.Services;
 
 public sealed class SuspendedTransactionsService : ISuspendedTransactionsService
 {

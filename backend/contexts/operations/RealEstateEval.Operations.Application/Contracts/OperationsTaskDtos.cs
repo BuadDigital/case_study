@@ -1,6 +1,6 @@
 using System.ComponentModel.DataAnnotations;
 
-namespace RealEstateEval.Application.Contracts;
+namespace RealEstateEval.Operations.Application.Contracts;
 
 public class OperationsTaskLetterRowDto
 {

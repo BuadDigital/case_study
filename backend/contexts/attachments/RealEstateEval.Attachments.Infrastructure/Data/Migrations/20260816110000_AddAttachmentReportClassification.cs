@@ -4,7 +4,7 @@ using RealEstateEval.Infrastructure.Data.Contexts;
 
 #nullable disable
 
-namespace RealEstateEval.Infrastructure.Data.Contexts.Attachments.Migrations;
+namespace RealEstateEval.Attachments.Infrastructure.Data.Contexts.Attachments.Migrations;
 
 [DbContext(typeof(AttachmentsDbContext))]
 [Migration("20260816110000_AddAttachmentReportClassification")]

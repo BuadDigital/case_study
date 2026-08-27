@@ -1,4 +1,6 @@
-﻿namespace RealEstateEval.Domain;
+﻿using RealEstateEval.Domain;
+
+namespace RealEstateEval.Valuation.Domain;
 
 /// <summary>
 /// One sequential / difference-factor adjustment line on a selected comparable.

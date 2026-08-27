@@ -4,11 +4,11 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
-using RealEstateEval.Infrastructure.Data.Contexts;
+using RealEstateEval.Identity.Infrastructure.Data.Contexts;
 
 #nullable disable
 
-namespace RealEstateEval.Infrastructure.Data.Contexts.Identity.Migrations
+namespace RealEstateEval.Identity.Infrastructure.Data.Contexts.Identity.Migrations
 {
     [DbContext(typeof(IdentityDbContext))]
     partial class IdentityDbContextModelSnapshot : ModelSnapshot
@@ -368,52 +368,6 @@ namespace RealEstateEval.Infrastructure.Data.Contexts.Identity.Migrations
                     b.ToTable("ProcServiceProviderProfiles", "identity");
                 });
 
-            modelBuilder.Entity("RealEstateEval.Domain.RefreshToken", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid");
-
-                    b.Property<DateTime>("CreatedAtUtc")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<DateTime>("ExpiresAtUtc")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<DateTime?>("RevokedAtUtc")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<string>("RevokedReason")
-                        .HasMaxLength(128)
-                        .HasColumnType("character varying(128)");
-
-                    b.Property<Guid>("SessionId")
-                        .HasColumnType("uuid");
-
-                    b.Property<string>("TokenHash")
-                        .IsRequired()
-                        .HasMaxLength(64)
-                        .HasColumnType("character varying(64)");
-
-                    b.Property<string>("UserId")
-                        .IsRequired()
-                        .HasMaxLength(450)
-                        .HasColumnType("character varying(450)");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("ExpiresAtUtc");
-
-                    b.HasIndex("SessionId");
-
-                    b.HasIndex("TokenHash")
-                        .IsUnique();
-
-                    b.HasIndex("UserId");
-
-                    b.ToTable("RefreshTokens", "identity");
-                });
-
             modelBuilder.Entity("RealEstateEval.Domain.UserProfile", b =>
                 {
                     b.Property<string>("UserId")
@@ -530,6 +484,52 @@ namespace RealEstateEval.Infrastructure.Data.Contexts.Identity.Migrations
                         });
                 });
 
+            modelBuilder.Entity("RealEstateEval.Identity.Domain.RefreshToken", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime>("ExpiresAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime?>("RevokedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("RevokedReason")
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)");
+
+                    b.Property<Guid>("SessionId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("TokenHash")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<string>("UserId")
+                        .IsRequired()
+                        .HasMaxLength(450)
+                        .HasColumnType("character varying(450)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ExpiresAtUtc");
+
+                    b.HasIndex("SessionId");
+
+                    b.HasIndex("TokenHash")
+                        .IsUnique();
+
+                    b.HasIndex("UserId");
+
+                    b.ToTable("RefreshTokens", "identity");
+                });
+
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityRoleClaim<string>", b =>
                 {
                     b.HasOne("Microsoft.AspNetCore.Identity.IdentityRole", null)
@@ -603,15 +603,6 @@ namespace RealEstateEval.Infrastructure.Data.Contexts.Identity.Migrations
                     b.Navigation("Profile");
                 });
 
-            modelBuilder.Entity("RealEstateEval.Domain.RefreshToken", b =>
-                {
-                    b.HasOne("RealEstateEval.Domain.ApplicationUser", null)
-                        .WithMany()
-                        .HasForeignKey("UserId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-                });
-
             modelBuilder.Entity("RealEstateEval.Domain.UserProfile", b =>
                 {
                     b.HasOne("RealEstateEval.Domain.ApplicationUser", "User")
@@ -621,6 +612,15 @@ namespace RealEstateEval.Infrastructure.Data.Contexts.Identity.Migrations
                         .IsRequired();
 
                     b.Navigation("User");
+                });
+
+            modelBuilder.Entity("RealEstateEval.Identity.Domain.RefreshToken", b =>
+                {
+                    b.HasOne("RealEstateEval.Domain.ApplicationUser", null)
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
                 });
 
             modelBuilder.Entity("RealEstateEval.Domain.UserProfile", b =>

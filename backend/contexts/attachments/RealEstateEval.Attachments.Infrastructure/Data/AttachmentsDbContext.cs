@@ -1,7 +1,8 @@
 using Microsoft.EntityFrameworkCore;
 using RealEstateEval.Domain;
+using RealEstateEval.Attachments.Domain;
 
-namespace RealEstateEval.Infrastructure.Data.Contexts;
+namespace RealEstateEval.Attachments.Infrastructure.Data.Contexts;
 
 /// <summary>
 /// Write context for the Attachments bounded context.

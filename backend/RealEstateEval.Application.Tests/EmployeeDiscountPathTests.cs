@@ -2,6 +2,9 @@ using Microsoft.EntityFrameworkCore;
 using RealEstateEval.Application.Contracts;
 using RealEstateEval.Application.Rules;
 using RealEstateEval.Domain;
+using RealEstateEval.Financial.Domain;
+using RealEstateEval.Financial.Application.Rules;
+using RealEstateEval.CaseStudy.Domain;
 
 namespace RealEstateEval.Application.Tests;
 

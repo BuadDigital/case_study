@@ -1,6 +1,7 @@
 using System.Text.Json;
+using RealEstateEval.Domain;
 
-namespace RealEstateEval.Domain;
+namespace RealEstateEval.CaseStudy.Domain;
 
 /// <summary>وحدات لم تُعايَن — عدّاد + سبب كل حالة (القرار 24).</summary>
 public sealed record UninspectedUnitEntry(int Count, string Reason);

@@ -1,4 +1,4 @@
-namespace RealEstateEval.Domain;
+namespace RealEstateEval.Valuation.Domain;
 
 /// <summary>
 /// شاشة 1 — إعدادات التقييم الحاكمة (حصر v2 §ب-2): الأساليب المطبَّقة تتحكم بتبويبات

@@ -3,7 +3,7 @@ using System.Threading.Channels;
 using RealEstateEval.Application.Abstractions;
 using RealEstateEval.Application.Contracts;
 
-namespace RealEstateEval.Infrastructure.Notifications;
+namespace RealEstateEval.Platform.Infrastructure.Notifications;
 
 public sealed class NotificationRealtimeHub : INotificationRealtimePublisher
 {

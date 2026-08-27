@@ -1,4 +1,4 @@
-namespace RealEstateEval.Domain;
+namespace RealEstateEval.Financial.Domain;
 
 /// <summary>بند تحصيل أتعاب استلام مفاتيح من إنفاذ — مرتبط بظرف واحد.</summary>
 public class KeyReceiptFeeCharge

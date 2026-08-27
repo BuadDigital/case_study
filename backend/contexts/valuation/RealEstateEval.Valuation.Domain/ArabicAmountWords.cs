@@ -1,4 +1,4 @@
-namespace RealEstateEval.Domain;
+namespace RealEstateEval.Valuation.Domain;
 
 /// <summary>Arabic amount words (تفقيط) for report display and field code 65167.</summary>
 public static class ArabicAmountWords

@@ -1,8 +1,9 @@
 using Microsoft.EntityFrameworkCore;
 using RealEstateEval.Domain;
 using RealEstateEval.Infrastructure.Data;
+using RealEstateEval.Operations.Domain;
 
-namespace RealEstateEval.Infrastructure.Data.Contexts;
+namespace RealEstateEval.Operations.Infrastructure.Data.Contexts;
 
 /// <summary>
 /// Operations-owned tables: the <c>operations</c> schema plus task rows that still live in

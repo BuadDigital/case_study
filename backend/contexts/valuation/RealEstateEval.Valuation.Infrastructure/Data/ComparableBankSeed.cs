@@ -1,8 +1,10 @@
 using Microsoft.EntityFrameworkCore;
 using RealEstateEval.Domain;
 using RealEstateEval.Infrastructure.Data.Contexts;
+using RealEstateEval.Valuation.Infrastructure.Data.Contexts;
+using RealEstateEval.Valuation.Domain;
 
-namespace RealEstateEval.Infrastructure.Data;
+namespace RealEstateEval.Valuation.Infrastructure.Data;
 
 /// <summary>
 /// Demo bank + market adjustments from docs/_تقييم بطريقة المبيعات المشابهة

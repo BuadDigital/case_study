@@ -2,8 +2,9 @@ using RealEstateEval.Application.Abstractions;
 using RealEstateEval.Application.Contracts;
 using RealEstateEval.Domain;
 using System.Text.Json;
+using RealEstateEval.CaseStudy.Domain;
 
-namespace RealEstateEval.Infrastructure.Services;
+namespace RealEstateEval.CaseStudy.Infrastructure.Services;
 
 public static class WorkflowTaskMapper
 {

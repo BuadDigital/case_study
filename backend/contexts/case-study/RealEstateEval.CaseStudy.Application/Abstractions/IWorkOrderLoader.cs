@@ -1,6 +1,7 @@
 using RealEstateEval.Domain;
+using RealEstateEval.CaseStudy.Domain;
 
-namespace RealEstateEval.Application.Abstractions;
+namespace RealEstateEval.CaseStudy.Application.Abstractions;
 
 /// <summary>Loads work orders with properties/contacts for read and mutate paths.</summary>
 public interface IWorkOrderLoader

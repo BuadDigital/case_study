@@ -6,6 +6,7 @@ using RealEstateEval.Infrastructure.Data;
 using RealEstateEval.Infrastructure.Data.Contexts;
 using RealEstateEval.Infrastructure.Integration;
 using RealEstateEval.Infrastructure.Services;
+using RealEstateEval.Platform.Infrastructure.Services;
 
 namespace RealEstateEval.Application.Tests;
 

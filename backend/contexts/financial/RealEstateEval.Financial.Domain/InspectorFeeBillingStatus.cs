@@ -1,4 +1,4 @@
-namespace RealEstateEval.Domain;
+namespace RealEstateEval.Financial.Domain;
 
 /// <summary>
 /// Payment lifecycle for party fee rows (HTML proposal).

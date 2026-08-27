@@ -5,6 +5,16 @@ using RealEstateEval.Application.Rules;
 using RealEstateEval.Domain;
 using RealEstateEval.Infrastructure.Data.Contexts;
 using RealEstateEval.Infrastructure.Services;
+using RealEstateEval.Operations.Infrastructure.Data.Contexts;
+using RealEstateEval.Financial.Infrastructure.Data.Contexts;
+using RealEstateEval.Identity.Infrastructure.Data.Contexts;
+using RealEstateEval.Operations.Infrastructure.Services;
+using RealEstateEval.Operations.Application.Contracts;
+using RealEstateEval.Operations.Application.Rules;
+using RealEstateEval.Operations.Domain;
+using RealEstateEval.Financial.Domain;
+using RealEstateEval.Financial.Infrastructure.Services;
+using RealEstateEval.Identity.Infrastructure.Services;
 
 namespace RealEstateEval.Application.Tests;
 

@@ -8,8 +8,12 @@ using RealEstateEval.Application.Rules;
 using RealEstateEval.Domain;
 using RealEstateEval.Infrastructure.Caching;
 using RealEstateEval.Infrastructure.Data.Contexts;
+using RealEstateEval.Financial.Application.Abstractions;
+using RealEstateEval.Financial.Infrastructure.Data.Contexts;
+using RealEstateEval.Financial.Application.Contracts;
+using RealEstateEval.Financial.Domain;
 
-namespace RealEstateEval.Infrastructure.Services;
+namespace RealEstateEval.Financial.Infrastructure.Services;
 
 /// <summary>
 /// Financial summary. Owned fee/config tables live on <see cref="FinancialDbContext"/>;

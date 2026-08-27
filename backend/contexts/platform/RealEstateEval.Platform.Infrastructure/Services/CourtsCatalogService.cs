@@ -6,8 +6,12 @@ using RealEstateEval.Domain;
 using RealEstateEval.Infrastructure.Caching;
 using RealEstateEval.Infrastructure.Data;
 using RealEstateEval.Infrastructure.Data.Contexts;
+using RealEstateEval.Platform.Application.Abstractions;
+using RealEstateEval.Platform.Infrastructure.Data.Contexts;
+using RealEstateEval.Platform.Application.Contracts;
+using RealEstateEval.Platform.Domain;
 
-namespace RealEstateEval.Infrastructure.Services;
+namespace RealEstateEval.Platform.Infrastructure.Services;
 
 /// <summary>
 /// Legacy catalog shape (city + court + circuits[]) backed by Courts / CourtCircuits.

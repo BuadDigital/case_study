@@ -1,4 +1,4 @@
-namespace RealEstateEval.Domain;
+namespace RealEstateEval.Identity.Domain;
 
 /// <summary>Identity roles for organization setup accounts.</summary>
 public static class OrgRoles

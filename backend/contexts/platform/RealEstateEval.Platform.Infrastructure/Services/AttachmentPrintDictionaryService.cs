@@ -6,8 +6,11 @@ using RealEstateEval.Application.Contracts;
 using RealEstateEval.Domain;
 using RealEstateEval.Infrastructure.Data;
 using RealEstateEval.Infrastructure.Data.Contexts;
+using RealEstateEval.Platform.Infrastructure.Data.Contexts;
+using RealEstateEval.Platform.Infrastructure.Data;
+using RealEstateEval.Platform.Domain;
 
-namespace RealEstateEval.Infrastructure.Services;
+namespace RealEstateEval.Platform.Infrastructure.Services;
 
 public sealed class AttachmentPrintDictionaryService
     : IAttachmentPrintDictionaryService, IValuationListsService

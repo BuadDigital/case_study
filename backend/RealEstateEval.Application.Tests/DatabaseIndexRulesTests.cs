@@ -3,6 +3,12 @@ using Microsoft.EntityFrameworkCore.Metadata;
 using RealEstateEval.Domain;
 using RealEstateEval.Infrastructure.Data;
 using RealEstateEval.Infrastructure.Data.Contexts;
+using RealEstateEval.CaseStudy.Infrastructure.Data.Contexts;
+using RealEstateEval.Operations.Infrastructure.Data.Contexts;
+using RealEstateEval.CaseStudy.Domain;
+using RealEstateEval.Operations.Domain;
+using RealEstateEval.Valuation.Infrastructure.Data.Contexts;
+using RealEstateEval.Valuation.Domain;
 
 namespace RealEstateEval.Application.Tests;
 

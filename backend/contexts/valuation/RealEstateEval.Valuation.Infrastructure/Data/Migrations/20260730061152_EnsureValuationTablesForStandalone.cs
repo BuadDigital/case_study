@@ -4,7 +4,7 @@ using RealEstateEval.Infrastructure.Data.Contexts;
 
 #nullable disable
 
-namespace RealEstateEval.Infrastructure.Data.Contexts.Valuation.Migrations;
+namespace RealEstateEval.Valuation.Infrastructure.Data.Contexts.Valuation.Migrations;
 
 /// <summary>
 /// Empty valuation baseline assumed the shared database already had valuation tables and

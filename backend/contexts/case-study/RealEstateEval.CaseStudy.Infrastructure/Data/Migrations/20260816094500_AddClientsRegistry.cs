@@ -4,7 +4,7 @@ using RealEstateEval.Infrastructure.Data.Contexts;
 
 #nullable disable
 
-namespace RealEstateEval.Infrastructure.Data.Contexts.CaseStudy.Migrations;
+namespace RealEstateEval.CaseStudy.Infrastructure.Data.Contexts.CaseStudy.Migrations;
 
 /// <summary>سجل العملاء + ربط أمر العمل بالعميل ومستخدمي التقرير.</summary>
 [DbContext(typeof(CaseStudyDbContext))]

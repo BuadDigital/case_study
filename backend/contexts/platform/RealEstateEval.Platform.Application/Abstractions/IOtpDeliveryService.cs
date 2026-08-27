@@ -1,4 +1,4 @@
-namespace RealEstateEval.Application.Abstractions;
+namespace RealEstateEval.Platform.Application.Abstractions;
 
 public sealed record OtpDeliveryRequest(
     string Channel,

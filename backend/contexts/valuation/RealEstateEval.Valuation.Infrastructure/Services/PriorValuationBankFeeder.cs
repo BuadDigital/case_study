@@ -2,8 +2,11 @@ using Microsoft.EntityFrameworkCore;
 using RealEstateEval.Application.Abstractions;
 using RealEstateEval.Domain;
 using RealEstateEval.Infrastructure.Data.Contexts;
+using RealEstateEval.Valuation.Application.Abstractions;
+using RealEstateEval.Valuation.Infrastructure.Data.Contexts;
+using RealEstateEval.Valuation.Domain;
 
-namespace RealEstateEval.Infrastructure.Services;
+namespace RealEstateEval.Valuation.Infrastructure.Services;
 
 /// <summary>
 /// Harvests a completed valuation's subject into the shared bank as source

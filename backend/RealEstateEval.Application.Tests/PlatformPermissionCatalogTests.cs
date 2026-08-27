@@ -1,5 +1,5 @@
 using RealEstateEval.Application.Authorization;
-using RealEstateEval.Infrastructure.Permissions;
+using RealEstateEval.Identity.Infrastructure.Permissions;
 
 namespace RealEstateEval.Application.Tests;
 

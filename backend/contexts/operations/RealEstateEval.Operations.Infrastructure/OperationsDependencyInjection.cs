@@ -5,8 +5,12 @@ using RealEstateEval.Application.Abstractions;
 using RealEstateEval.Infrastructure.Services;
 using RealEstateEval.Infrastructure.Data;
 using RealEstateEval.Infrastructure.Data.Contexts;
+using RealEstateEval.Infrastructure;
+using RealEstateEval.Operations.Application.Abstractions;
+using RealEstateEval.Operations.Infrastructure.Services;
+using RealEstateEval.Operations.Infrastructure.Data.Contexts;
 
-namespace RealEstateEval.Infrastructure;
+namespace RealEstateEval.Operations.Infrastructure;
 
 /// <summary>
 /// Context-local registration for the Operations bounded context (A8): survey offices,

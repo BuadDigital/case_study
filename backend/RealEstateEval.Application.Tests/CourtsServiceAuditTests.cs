@@ -8,6 +8,10 @@ using RealEstateEval.Domain;
 using RealEstateEval.Infrastructure.Caching;
 using RealEstateEval.Infrastructure.Data.Contexts;
 using RealEstateEval.Infrastructure.Services;
+using RealEstateEval.Platform.Infrastructure.Data.Contexts;
+using RealEstateEval.Platform.Infrastructure.Services;
+using RealEstateEval.Platform.Application.Contracts;
+using RealEstateEval.Platform.Domain;
 
 namespace RealEstateEval.Application.Tests;
 

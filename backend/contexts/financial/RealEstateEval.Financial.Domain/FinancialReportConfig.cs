@@ -1,4 +1,4 @@
-namespace RealEstateEval.Domain;
+namespace RealEstateEval.Financial.Domain;
 
 /// <summary>Singleton financial dashboard payload (JSON).</summary>
 public class FinancialReportConfig

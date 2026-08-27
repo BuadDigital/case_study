@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Options;
 using RealEstateEval.Application.Contracts;
 using RealEstateEval.Infrastructure.Services;
+using RealEstateEval.Failures.Application.Contracts;
 
 namespace RealEstateEval.Reporting.Api.Services;
 

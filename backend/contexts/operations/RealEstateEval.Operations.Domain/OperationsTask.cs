@@ -1,4 +1,4 @@
-namespace RealEstateEval.Domain;
+namespace RealEstateEval.Operations.Domain;
 
 /// <summary>
 /// Operational task (طبقة المهام) — distinct from workflow party tasks. The status machine is

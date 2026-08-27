@@ -2,7 +2,7 @@
 
 #nullable disable
 
-namespace RealEstateEval.Infrastructure.Data.Contexts.Financial.Migrations;
+namespace RealEstateEval.Financial.Infrastructure.Data.Contexts.Financial.Migrations;
 
 /// <summary>
 /// Empty baseline. Financial tables (and D1 inspector-fee rows still in <c>case_study</c>)

@@ -1,6 +1,7 @@
 using RealEstateEval.Domain;
+using RealEstateEval.CaseStudy.Domain;
 
-namespace RealEstateEval.Application.Abstractions;
+namespace RealEstateEval.Financial.Application.Abstractions;
 
 /// <summary>
 /// Opens missing inspector-fee ledger lines for field-inspection / government-review tasks.

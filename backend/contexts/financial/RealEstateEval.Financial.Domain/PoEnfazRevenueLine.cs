@@ -1,4 +1,4 @@
-namespace RealEstateEval.Domain;
+namespace RealEstateEval.Financial.Domain;
 
 /// <summary>
 /// Enfaz (Infath) revenue entered by finance per property within a work order.

@@ -4,11 +4,11 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
-using RealEstateEval.Infrastructure.Data.Contexts;
+using RealEstateEval.Operations.Infrastructure.Data.Contexts;
 
 #nullable disable
 
-namespace RealEstateEval.Infrastructure.Data.Contexts.Operations.Migrations
+namespace RealEstateEval.Operations.Infrastructure.Data.Contexts.Operations.Migrations
 {
     [DbContext(typeof(OperationsDbContext))]
     partial class OperationsDbContextModelSnapshot : ModelSnapshot
@@ -22,7 +22,7 @@ namespace RealEstateEval.Infrastructure.Data.Contexts.Operations.Migrations
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
 
-            modelBuilder.Entity("RealEstateEval.Domain.KeyEnvelope", b =>
+            modelBuilder.Entity("RealEstateEval.Operations.Domain.KeyEnvelope", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
@@ -128,7 +128,7 @@ namespace RealEstateEval.Infrastructure.Data.Contexts.Operations.Migrations
                     b.ToTable("KeyEnvelopes", "operations");
                 });
 
-            modelBuilder.Entity("RealEstateEval.Domain.KeyEnvelopeAssignment", b =>
+            modelBuilder.Entity("RealEstateEval.Operations.Domain.KeyEnvelopeAssignment", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
@@ -180,7 +180,7 @@ namespace RealEstateEval.Infrastructure.Data.Contexts.Operations.Migrations
                     b.ToTable("KeyEnvelopeAssignments", "operations");
                 });
 
-            modelBuilder.Entity("RealEstateEval.Domain.KeyEnvelopeHandoff", b =>
+            modelBuilder.Entity("RealEstateEval.Operations.Domain.KeyEnvelopeHandoff", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
@@ -263,7 +263,7 @@ namespace RealEstateEval.Infrastructure.Data.Contexts.Operations.Migrations
                     b.ToTable("KeyEnvelopeHandoffs", "operations");
                 });
 
-            modelBuilder.Entity("RealEstateEval.Domain.KeyEnvelopeTimelineEntry", b =>
+            modelBuilder.Entity("RealEstateEval.Operations.Domain.KeyEnvelopeTimelineEntry", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
@@ -305,7 +305,7 @@ namespace RealEstateEval.Infrastructure.Data.Contexts.Operations.Migrations
                     b.ToTable("KeyEnvelopeTimelineEntries", "operations");
                 });
 
-            modelBuilder.Entity("RealEstateEval.Domain.OperationsTask", b =>
+            modelBuilder.Entity("RealEstateEval.Operations.Domain.OperationsTask", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
@@ -465,7 +465,7 @@ namespace RealEstateEval.Infrastructure.Data.Contexts.Operations.Migrations
                     b.ToTable("OperationsTasks", "case_study");
                 });
 
-            modelBuilder.Entity("RealEstateEval.Domain.OperationsTaskSequence", b =>
+            modelBuilder.Entity("RealEstateEval.Operations.Domain.OperationsTaskSequence", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
@@ -488,7 +488,7 @@ namespace RealEstateEval.Infrastructure.Data.Contexts.Operations.Migrations
                     b.ToTable("OperationsTaskSequences", "case_study");
                 });
 
-            modelBuilder.Entity("RealEstateEval.Domain.PropertyCourtAccess", b =>
+            modelBuilder.Entity("RealEstateEval.Operations.Domain.PropertyCourtAccess", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
@@ -568,7 +568,7 @@ namespace RealEstateEval.Infrastructure.Data.Contexts.Operations.Migrations
                     b.ToTable("PropertyCourtAccesses", "operations");
                 });
 
-            modelBuilder.Entity("RealEstateEval.Domain.PropertyKeyRecord", b =>
+            modelBuilder.Entity("RealEstateEval.Operations.Domain.PropertyKeyRecord", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
@@ -624,7 +624,7 @@ namespace RealEstateEval.Infrastructure.Data.Contexts.Operations.Migrations
                     b.ToTable("PropertyKeyRecords", "operations");
                 });
 
-            modelBuilder.Entity("RealEstateEval.Domain.SurveyOffice", b =>
+            modelBuilder.Entity("RealEstateEval.Operations.Domain.SurveyOffice", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
@@ -667,9 +667,9 @@ namespace RealEstateEval.Infrastructure.Data.Contexts.Operations.Migrations
                     b.ToTable("SurveyOffices", "operations");
                 });
 
-            modelBuilder.Entity("RealEstateEval.Domain.KeyEnvelopeAssignment", b =>
+            modelBuilder.Entity("RealEstateEval.Operations.Domain.KeyEnvelopeAssignment", b =>
                 {
-                    b.HasOne("RealEstateEval.Domain.KeyEnvelope", "Envelope")
+                    b.HasOne("RealEstateEval.Operations.Domain.KeyEnvelope", "Envelope")
                         .WithMany("Assignments")
                         .HasForeignKey("EnvelopeId")
                         .OnDelete(DeleteBehavior.Cascade)
@@ -678,9 +678,9 @@ namespace RealEstateEval.Infrastructure.Data.Contexts.Operations.Migrations
                     b.Navigation("Envelope");
                 });
 
-            modelBuilder.Entity("RealEstateEval.Domain.KeyEnvelopeHandoff", b =>
+            modelBuilder.Entity("RealEstateEval.Operations.Domain.KeyEnvelopeHandoff", b =>
                 {
-                    b.HasOne("RealEstateEval.Domain.KeyEnvelope", "Envelope")
+                    b.HasOne("RealEstateEval.Operations.Domain.KeyEnvelope", "Envelope")
                         .WithMany("Handoffs")
                         .HasForeignKey("EnvelopeId")
                         .OnDelete(DeleteBehavior.Cascade)
@@ -689,9 +689,9 @@ namespace RealEstateEval.Infrastructure.Data.Contexts.Operations.Migrations
                     b.Navigation("Envelope");
                 });
 
-            modelBuilder.Entity("RealEstateEval.Domain.KeyEnvelopeTimelineEntry", b =>
+            modelBuilder.Entity("RealEstateEval.Operations.Domain.KeyEnvelopeTimelineEntry", b =>
                 {
-                    b.HasOne("RealEstateEval.Domain.KeyEnvelope", "Envelope")
+                    b.HasOne("RealEstateEval.Operations.Domain.KeyEnvelope", "Envelope")
                         .WithMany("Timeline")
                         .HasForeignKey("EnvelopeId")
                         .OnDelete(DeleteBehavior.Cascade)
@@ -700,7 +700,7 @@ namespace RealEstateEval.Infrastructure.Data.Contexts.Operations.Migrations
                     b.Navigation("Envelope");
                 });
 
-            modelBuilder.Entity("RealEstateEval.Domain.KeyEnvelope", b =>
+            modelBuilder.Entity("RealEstateEval.Operations.Domain.KeyEnvelope", b =>
                 {
                     b.Navigation("Assignments");
 

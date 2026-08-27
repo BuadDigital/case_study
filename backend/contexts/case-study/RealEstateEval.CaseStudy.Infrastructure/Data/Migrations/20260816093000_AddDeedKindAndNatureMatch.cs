@@ -4,7 +4,7 @@ using RealEstateEval.Infrastructure.Data.Contexts;
 
 #nullable disable
 
-namespace RealEstateEval.Infrastructure.Data.Contexts.CaseStudy.Migrations;
+namespace RealEstateEval.CaseStudy.Infrastructure.Data.Contexts.CaseStudy.Migrations;
 
 /// <summary>
 /// Valuation package نوع الصك على العقار + مخرج مطابقة الصك/الطبيعة على دراسة الحالة.

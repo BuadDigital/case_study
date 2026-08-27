@@ -1,6 +1,6 @@
 using System.Text.Json;
 
-namespace RealEstateEval.Application.Abstractions;
+namespace RealEstateEval.CaseStudy.Application.Abstractions;
 
 public interface IFieldInspectionAttachmentVerifier
 {

@@ -1,4 +1,4 @@
-namespace RealEstateEval.Domain;
+namespace RealEstateEval.Financial.Domain;
 
 /// <summary>
 /// Finance follow-up attempt on an Enfaz revenue PO (design: followups[] on REV_TX).

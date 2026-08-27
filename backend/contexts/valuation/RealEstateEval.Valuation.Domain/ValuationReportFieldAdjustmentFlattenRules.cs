@@ -1,4 +1,6 @@
-namespace RealEstateEval.Domain;
+using RealEstateEval.Domain;
+
+namespace RealEstateEval.Valuation.Domain;
 
 /// <summary>
 /// Flattens bank comparable adjustments into report field keys for the three comparable slots.

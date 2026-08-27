@@ -1,6 +1,6 @@
 using System.Linq;
 
-namespace RealEstateEval.Domain;
+namespace RealEstateEval.Valuation.Domain;
 
 /// <summary>
 /// Final 27-section reading order (decisions log v2 — clean renumber 1–27).

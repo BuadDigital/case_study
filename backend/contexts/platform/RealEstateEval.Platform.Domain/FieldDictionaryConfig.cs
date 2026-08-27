@@ -1,4 +1,4 @@
-namespace RealEstateEval.Domain;
+namespace RealEstateEval.Platform.Domain;
 
 /// <summary>Singleton field dictionary state (fields, tags, screens).</summary>
 public class FieldDictionaryConfig

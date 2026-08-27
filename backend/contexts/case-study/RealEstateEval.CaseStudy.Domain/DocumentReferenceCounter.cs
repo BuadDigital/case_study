@@ -1,4 +1,4 @@
-namespace RealEstateEval.Domain;
+namespace RealEstateEval.CaseStudy.Domain;
 
 /// <summary>
 /// عدّاد ذرّي للترقيم المرجعي: (Dept + Type + Date YYMMDD) → Seq.

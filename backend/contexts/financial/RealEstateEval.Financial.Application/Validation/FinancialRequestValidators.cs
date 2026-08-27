@@ -1,7 +1,8 @@
 using FluentValidation;
 using RealEstateEval.Application.Contracts;
+using RealEstateEval.Application;
 
-namespace RealEstateEval.Application.Validation;
+namespace RealEstateEval.Financial.Application.Validation;
 
 // Financial-owned boundary validators (A8): party-fee pricing endpoints, which only the
 // financial host binds. Registered there via AddValidatorsFromAssemblyContaining.

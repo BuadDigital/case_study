@@ -1,4 +1,4 @@
-namespace RealEstateEval.Domain;
+namespace RealEstateEval.Operations.Domain;
 
 /// <summary>ظرف مفاتيح — وحدة التتبع الأساسية.</summary>
 public class KeyEnvelope

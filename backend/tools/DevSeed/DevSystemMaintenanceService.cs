@@ -5,6 +5,14 @@ using RealEstateEval.Application.Abstractions;
 using RealEstateEval.Application.Contracts;
 using RealEstateEval.Infrastructure.Data;
 using RealEstateEval.Infrastructure.Data.Contexts;
+using RealEstateEval.CaseStudy.Infrastructure.Data.Contexts;
+using RealEstateEval.Platform.Infrastructure.Data.Contexts;
+using RealEstateEval.Valuation.Infrastructure.Data.Contexts;
+using RealEstateEval.Failures.Infrastructure.Data.Contexts;
+using RealEstateEval.Operations.Infrastructure.Data.Contexts;
+using RealEstateEval.Financial.Infrastructure.Data.Contexts;
+using RealEstateEval.Attachments.Infrastructure.Data.Contexts;
+using RealEstateEval.Identity.Application.Abstractions;
 
 namespace RealEstateEval.Infrastructure.Services;
 

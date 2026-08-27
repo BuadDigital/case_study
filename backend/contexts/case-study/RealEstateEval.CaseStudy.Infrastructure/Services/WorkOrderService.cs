@@ -6,8 +6,11 @@ using RealEstateEval.Application.Rules;
 using RealEstateEval.Domain;
 using RealEstateEval.Infrastructure.Data.Contexts;
 using RealEstateEval.Infrastructure.Notifications;
+using RealEstateEval.CaseStudy.Application.Abstractions;
+using RealEstateEval.CaseStudy.Application.Rules;
+using RealEstateEval.CaseStudy.Domain;
 
-namespace RealEstateEval.Infrastructure.Services;
+namespace RealEstateEval.CaseStudy.Infrastructure.Services;
 
 /// <summary>
 /// Work-order façade: header lifecycle + create. Reads and property mutates live on collaborators.

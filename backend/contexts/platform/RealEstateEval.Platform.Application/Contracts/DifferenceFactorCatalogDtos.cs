@@ -1,4 +1,4 @@
-namespace RealEstateEval.Application.Contracts;
+namespace RealEstateEval.Platform.Application.Contracts;
 
 /// <summary>admin-managed factor definition (تعريف + ما لا يشمله).</summary>
 public class DifferenceFactorDefinitionDto

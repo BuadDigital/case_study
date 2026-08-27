@@ -2,7 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using RealEstateEval.Application.Abstractions;
 using RealEstateEval.Infrastructure.Data.Contexts;
 
-namespace RealEstateEval.Infrastructure.Services;
+namespace RealEstateEval.CaseStudy.Infrastructure.Services;
 
 /// <summary>Removes party submissions, fee ledgers, and inspection workspaces for workflow tasks.</summary>
 public sealed class WorkflowTaskCascadeCleanup

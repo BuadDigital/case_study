@@ -1,4 +1,4 @@
-namespace RealEstateEval.Domain;
+namespace RealEstateEval.CaseStudy.Domain;
 
 /// <summary>
 /// Client registry — required before opening a work order (valuation spec c-1).

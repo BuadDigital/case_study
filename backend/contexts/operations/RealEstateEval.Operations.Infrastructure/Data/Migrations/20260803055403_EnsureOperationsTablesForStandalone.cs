@@ -4,7 +4,7 @@ using RealEstateEval.Infrastructure.Data.Contexts;
 
 #nullable disable
 
-namespace RealEstateEval.Infrastructure.Data.Contexts.Operations.Migrations;
+namespace RealEstateEval.Operations.Infrastructure.Data.Contexts.Operations.Migrations;
 
 /// <summary>
 /// Empty operations baseline assumed the shared database already had operations tables and D2 task rows in case_study. A dedicated operations database has no legacy stream, so this creates those tables when they are missing.

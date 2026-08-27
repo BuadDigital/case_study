@@ -2,7 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using RealEstateEval.Application.Abstractions;
 using RealEstateEval.Infrastructure.Data.Contexts;
 
-namespace RealEstateEval.Infrastructure.Services;
+namespace RealEstateEval.CaseStudy.Infrastructure.Services;
 
 /// <summary>
 /// Phase-1 bridge for the one Case Study value the Valuation context still needs.

@@ -1,4 +1,4 @@
-namespace RealEstateEval.Domain;
+namespace RealEstateEval.Platform.Domain;
 
 /// <summary>سجل تدقيق لعمليات إدارة المحاكم والدوائر.</summary>
 public class CourtAuditLog

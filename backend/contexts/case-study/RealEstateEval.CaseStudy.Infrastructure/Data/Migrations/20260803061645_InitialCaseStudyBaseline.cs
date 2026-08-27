@@ -2,7 +2,7 @@
 
 #nullable disable
 
-namespace RealEstateEval.Infrastructure.Data.Contexts.CaseStudy.Migrations;
+namespace RealEstateEval.CaseStudy.Infrastructure.Data.Contexts.CaseStudy.Migrations;
 
 /// <summary>
 /// Empty baseline. Case Study–owned tables already exist from the legacy stream;

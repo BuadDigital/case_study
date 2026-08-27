@@ -1,7 +1,9 @@
 using FluentValidation;
 using RealEstateEval.Application.Contracts;
+using RealEstateEval.Platform.Application.Contracts;
+using RealEstateEval.Application.Validation;
 
-namespace RealEstateEval.Application.Validation;
+namespace RealEstateEval.Platform.Application.Validation;
 
 // Platform-owned boundary validators (A8): courts catalogs, organization settings, and
 // communication tests. Registered on the Platform host via AddValidatorsFromAssemblyContaining.

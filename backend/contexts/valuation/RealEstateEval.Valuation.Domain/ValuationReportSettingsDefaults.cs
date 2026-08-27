@@ -1,4 +1,4 @@
-namespace RealEstateEval.Domain;
+namespace RealEstateEval.Valuation.Domain;
 
 /// <summary>
 /// Default copy for organization settings tab «تقرير التقييم» (decision 25 layer B).

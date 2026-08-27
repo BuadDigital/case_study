@@ -5,8 +5,13 @@ using RealEstateEval.Infrastructure.Notifications;
 using RealEstateEval.Infrastructure.Services;
 using RealEstateEval.Infrastructure.Data;
 using RealEstateEval.Infrastructure.Data.Contexts;
+using RealEstateEval.Infrastructure;
+using RealEstateEval.Operations.Application.Abstractions;
+using RealEstateEval.Financial.Infrastructure.Services;
+using RealEstateEval.Financial.Application.Abstractions;
+using RealEstateEval.Financial.Infrastructure.Data.Contexts;
 
-namespace RealEstateEval.Infrastructure;
+namespace RealEstateEval.Financial.Infrastructure;
 
 /// <summary>
 /// Context-local registration for the Financial bounded context (A8): inspector fees,

@@ -5,8 +5,11 @@ using RealEstateEval.Application.Abstractions;
 using RealEstateEval.Application.Contracts;
 using RealEstateEval.Domain;
 using RealEstateEval.Infrastructure.Data.Contexts;
+using RealEstateEval.CaseStudy.Application.Abstractions;
+using RealEstateEval.CaseStudy.Application.Contracts;
+using RealEstateEval.CaseStudy.Domain;
 
-namespace RealEstateEval.Infrastructure.Services;
+namespace RealEstateEval.CaseStudy.Infrastructure.Services;
 
 /// <summary>
 /// حدود المعاينة (القرار 24 + ق-7): يعبّئها المعاين، وتغذي تنبيهي m18/m21

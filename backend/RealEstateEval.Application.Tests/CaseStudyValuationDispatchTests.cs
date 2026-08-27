@@ -6,6 +6,12 @@ using RealEstateEval.Infrastructure.Data.Contexts;
 using RealEstateEval.Infrastructure.Integration;
 using RealEstateEval.Infrastructure.Services;
 using RealEstateEval.Shared.Contracts;
+using RealEstateEval.CaseStudy.Infrastructure.Services;
+using RealEstateEval.CaseStudy.Infrastructure.Data.Contexts;
+using RealEstateEval.CaseStudy.Application.Contracts;
+using RealEstateEval.Valuation.Infrastructure.Services;
+using RealEstateEval.Valuation.Infrastructure.Integration;
+using RealEstateEval.CaseStudy.Domain;
 
 namespace RealEstateEval.Application.Tests;
 

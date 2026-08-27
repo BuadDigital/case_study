@@ -1,7 +1,9 @@
 using Microsoft.EntityFrameworkCore;
 using RealEstateEval.Domain;
+using RealEstateEval.Attachments.Domain;
+using RealEstateEval.Infrastructure.Data;
 
-namespace RealEstateEval.Infrastructure.Data.Contexts;
+namespace RealEstateEval.Attachments.Infrastructure.Data.Contexts;
 
 /// <summary>
 /// The <c>attachments</c> schema mapping. Applied by <see cref="AttachmentsDbContext"/>, which

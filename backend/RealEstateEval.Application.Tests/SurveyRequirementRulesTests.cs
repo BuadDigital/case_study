@@ -1,5 +1,7 @@
 using RealEstateEval.Application.Rules;
 using RealEstateEval.Domain;
+using RealEstateEval.CaseStudy.Domain;
+using RealEstateEval.CaseStudy.Application.Rules;
 
 namespace RealEstateEval.Application.Tests;
 

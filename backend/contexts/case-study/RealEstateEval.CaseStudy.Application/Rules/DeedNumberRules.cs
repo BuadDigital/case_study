@@ -1,6 +1,6 @@
 using System.Text;
 
-namespace RealEstateEval.Application.Rules;
+namespace RealEstateEval.CaseStudy.Application.Rules;
 
 /// <summary>
 /// Normalizes deed / registration numbers for prior-lookup matching.

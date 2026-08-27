@@ -1,4 +1,4 @@
-namespace RealEstateEval.Domain;
+namespace RealEstateEval.Financial.Domain;
 
 /// <summary>
 /// One engineering-survey area band. <see cref="MaxAreaM2"/> null = open-ended (above previous max).

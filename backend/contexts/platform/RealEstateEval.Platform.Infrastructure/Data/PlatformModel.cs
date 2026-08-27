@@ -1,7 +1,9 @@
 using Microsoft.EntityFrameworkCore;
 using RealEstateEval.Domain;
+using RealEstateEval.Platform.Domain;
+using RealEstateEval.Infrastructure.Data;
 
-namespace RealEstateEval.Infrastructure.Data.Contexts;
+namespace RealEstateEval.Platform.Infrastructure.Data.Contexts;
 
 /// <summary>
 /// The <c>platform</c> schema mapping: court catalogs, the geography catalog, and the two

@@ -4,7 +4,7 @@ using RealEstateEval.Infrastructure.Data.Contexts;
 
 #nullable disable
 
-namespace RealEstateEval.Infrastructure.Data.Contexts.Platform.Migrations;
+namespace RealEstateEval.Platform.Infrastructure.Data.Contexts.Platform.Migrations;
 
 /// <summary>
 /// Empty platform baseline assumed the shared database already had catalog tables.

@@ -3,6 +3,8 @@ using Microsoft.AspNetCore.Mvc;
 using RealEstateEval.Application.Abstractions;
 using RealEstateEval.Application.Contracts;
 using RealEstateEval.Shared.Web.Authorization;
+using RealEstateEval.Operations.Application.Contracts;
+using RealEstateEval.Operations.Application.Abstractions;
 
 namespace RealEstateEval.Operations.Api.Controllers;
 

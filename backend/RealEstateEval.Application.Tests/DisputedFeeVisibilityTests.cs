@@ -1,4 +1,6 @@
 using RealEstateEval.Domain;
+using RealEstateEval.CaseStudy.Domain;
+using RealEstateEval.Financial.Domain;
 
 namespace RealEstateEval.Application.Tests;
 

@@ -1,4 +1,4 @@
-namespace RealEstateEval.Domain;
+namespace RealEstateEval.Valuation.Domain;
 
 /// <summary>
 /// سياق جدول المقارنات — valuation-approaches-logic §5 و §7.

@@ -2,7 +2,7 @@
 
 #nullable disable
 
-namespace RealEstateEval.Infrastructure.Data.Contexts.Financial.Migrations
+namespace RealEstateEval.Financial.Infrastructure.Data.Contexts.Financial.Migrations
 {
  /// <inheritdoc />
     public partial class SyncFinancialAuditLog : Migration

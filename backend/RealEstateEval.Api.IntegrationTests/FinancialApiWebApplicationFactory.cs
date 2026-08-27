@@ -10,6 +10,8 @@ using RealEstateEval.Application.Abstractions;
 using RealEstateEval.Application.Contracts;
 using RealEstateEval.Domain;
 using RealEstateEval.Infrastructure.Data;
+using RealEstateEval.Financial.Application.Abstractions;
+using RealEstateEval.Financial.Application.Contracts;
 
 namespace RealEstateEval.Api.IntegrationTests;
 

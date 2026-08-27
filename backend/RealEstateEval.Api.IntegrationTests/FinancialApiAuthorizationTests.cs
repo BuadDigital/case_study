@@ -2,6 +2,7 @@ using System.Net;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using RealEstateEval.Application.Contracts;
+using RealEstateEval.Financial.Application.Contracts;
 
 namespace RealEstateEval.Api.IntegrationTests;
 

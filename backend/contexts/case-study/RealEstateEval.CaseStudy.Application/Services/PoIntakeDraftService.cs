@@ -2,8 +2,11 @@ using System.Text.Json;
 using RealEstateEval.Application.Abstractions;
 using RealEstateEval.Application.Contracts;
 using RealEstateEval.Domain;
+using RealEstateEval.CaseStudy.Application.Abstractions;
+using RealEstateEval.Application;
+using RealEstateEval.CaseStudy.Domain;
 
-namespace RealEstateEval.Application.Services;
+namespace RealEstateEval.CaseStudy.Application.Services;
 
 public sealed class PoIntakeDraftService(
     IPoIntakeDraftRepository drafts,

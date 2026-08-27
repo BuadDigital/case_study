@@ -1,7 +1,8 @@
 using RealEstateEval.Application.Contracts;
 using RealEstateEval.Domain;
+using RealEstateEval.Financial.Domain;
 
-namespace RealEstateEval.Application.Abstractions;
+namespace RealEstateEval.Financial.Application.Abstractions;
 
 /// <summary>
 /// Applies a billing-status transition to a tracked ledger (does not call SaveChanges).

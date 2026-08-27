@@ -4,11 +4,11 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
-using RealEstateEval.Infrastructure.Data.Contexts;
+using RealEstateEval.Attachments.Infrastructure.Data.Contexts;
 
 #nullable disable
 
-namespace RealEstateEval.Infrastructure.Data.Contexts.Attachments.Migrations
+namespace RealEstateEval.Attachments.Infrastructure.Data.Contexts.Attachments.Migrations
 {
     [DbContext(typeof(AttachmentsDbContext))]
     partial class AttachmentsDbContextModelSnapshot : ModelSnapshot
@@ -22,7 +22,7 @@ namespace RealEstateEval.Infrastructure.Data.Contexts.Attachments.Migrations
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
 
-            modelBuilder.Entity("RealEstateEval.Domain.FileAttachment", b =>
+            modelBuilder.Entity("RealEstateEval.Attachments.Domain.FileAttachment", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
@@ -73,7 +73,7 @@ namespace RealEstateEval.Infrastructure.Data.Contexts.Attachments.Migrations
                     b.ToTable("FileAttachments", "attachments");
                 });
 
-            modelBuilder.Entity("RealEstateEval.Domain.PhotoMetadata", b =>
+            modelBuilder.Entity("RealEstateEval.Attachments.Domain.PhotoMetadata", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()

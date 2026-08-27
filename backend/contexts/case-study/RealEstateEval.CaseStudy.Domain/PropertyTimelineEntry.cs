@@ -1,4 +1,6 @@
-namespace RealEstateEval.Domain;
+using RealEstateEval.Domain;
+
+namespace RealEstateEval.CaseStudy.Domain;
 
 /// <summary>Immutable audit row for property detail timeline / سجل الإجراءات.</summary>
 public class PropertyTimelineEntry

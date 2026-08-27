@@ -1,4 +1,4 @@
-namespace RealEstateEval.Domain;
+namespace RealEstateEval.CaseStudy.Domain;
 
 /// <summary>
 /// Legacy table for the retired internal-delegation-letters API.

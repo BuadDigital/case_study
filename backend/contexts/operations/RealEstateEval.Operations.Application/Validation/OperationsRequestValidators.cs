@@ -1,8 +1,10 @@
 using FluentValidation;
 using RealEstateEval.Application.Contracts;
 using RealEstateEval.Domain;
+using RealEstateEval.Operations.Application.Contracts;
+using RealEstateEval.Operations.Domain;
 
-namespace RealEstateEval.Application.Validation;
+namespace RealEstateEval.Operations.Application.Validation;
 
 // Operations-owned boundary validators (A8): operations tasks and key envelopes.
 // Registered on the Operations host via AddValidatorsFromAssemblyContaining.

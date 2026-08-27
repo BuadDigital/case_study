@@ -1,4 +1,6 @@
-namespace RealEstateEval.Domain;
+using RealEstateEval.Domain;
+
+namespace RealEstateEval.CaseStudy.Domain;
 
 /// <summary>
 /// A workflow task: either a case-study parent (one per property slot of a work order) or one

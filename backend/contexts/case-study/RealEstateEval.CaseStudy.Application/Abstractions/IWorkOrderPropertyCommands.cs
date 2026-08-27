@@ -1,7 +1,8 @@
 using RealEstateEval.Application.Contracts;
 using RealEstateEval.Domain;
+using RealEstateEval.CaseStudy.Domain;
 
-namespace RealEstateEval.Application.Abstractions;
+namespace RealEstateEval.CaseStudy.Application.Abstractions;
 
 /// <summary>Property-level mutations and Enfath mapping for work orders.</summary>
 public interface IWorkOrderPropertyCommands

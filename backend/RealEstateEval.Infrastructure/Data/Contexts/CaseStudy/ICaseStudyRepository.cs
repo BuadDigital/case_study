@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.ChangeTracking;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using RealEstateEval.Domain;
+using RealEstateEval.CaseStudy.Domain;
 
 namespace RealEstateEval.Infrastructure.Data.Contexts;
 

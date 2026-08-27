@@ -5,7 +5,7 @@ using RealEstateEval.Infrastructure.Data.Contexts;
 
 #nullable disable
 
-namespace RealEstateEval.Infrastructure.Data.Contexts.Financial.Migrations
+namespace RealEstateEval.Financial.Infrastructure.Data.Contexts.Financial.Migrations
 {
     [DbContext(typeof(FinancialDbContext))]
     [Migration("20260810090000_CourtVisitPricingFromGovernmentReview")]

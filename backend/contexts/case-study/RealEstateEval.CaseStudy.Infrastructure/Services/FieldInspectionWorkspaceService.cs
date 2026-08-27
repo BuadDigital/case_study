@@ -4,8 +4,10 @@ using RealEstateEval.Application.Contracts;
 using RealEstateEval.Application.Rules;
 using RealEstateEval.Domain;
 using RealEstateEval.Infrastructure.Data.Contexts;
+using RealEstateEval.CaseStudy.Application.Abstractions;
+using RealEstateEval.CaseStudy.Domain;
 
-namespace RealEstateEval.Infrastructure.Services;
+namespace RealEstateEval.CaseStudy.Infrastructure.Services;
 
 public sealed class FieldInspectionWorkspaceService : IFieldInspectionWorkspaceService
 {

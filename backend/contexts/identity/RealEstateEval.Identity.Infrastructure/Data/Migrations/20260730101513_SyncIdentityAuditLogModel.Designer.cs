@@ -9,7 +9,7 @@ using RealEstateEval.Infrastructure.Data.Contexts;
 
 #nullable disable
 
-namespace RealEstateEval.Infrastructure.Data.Contexts.Identity.Migrations
+namespace RealEstateEval.Identity.Infrastructure.Data.Contexts.Identity.Migrations
 {
     [DbContext(typeof(IdentityDbContext))]
     [Migration("20260730101513_SyncIdentityAuditLogModel")]

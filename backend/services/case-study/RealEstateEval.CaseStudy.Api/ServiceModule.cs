@@ -10,6 +10,9 @@ using RealEstateEval.Infrastructure.Integration;
 using RealEstateEval.Infrastructure.Services;
 using RealEstateEval.Infrastructure.Web;
 using RealEstateEval.Shared.Web;
+using RealEstateEval.CaseStudy.Infrastructure;
+using RealEstateEval.CaseStudy.Application.Validation;
+using RealEstateEval.CaseStudy.Infrastructure.Data.Contexts;
 
 namespace RealEstateEval.CaseStudy.Api;
 

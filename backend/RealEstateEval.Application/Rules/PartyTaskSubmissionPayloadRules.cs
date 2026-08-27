@@ -1,5 +1,6 @@
 using System.Text.Json;
 using RealEstateEval.Domain;
+using RealEstateEval.CaseStudy.Domain;
 
 namespace RealEstateEval.Application.Rules;
 

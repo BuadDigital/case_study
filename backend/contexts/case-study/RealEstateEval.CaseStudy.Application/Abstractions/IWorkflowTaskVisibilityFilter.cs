@@ -1,7 +1,8 @@
 using RealEstateEval.Application.Contracts;
 using RealEstateEval.Domain;
+using RealEstateEval.CaseStudy.Domain;
 
-namespace RealEstateEval.Application.Abstractions;
+namespace RealEstateEval.CaseStudy.Application.Abstractions;
 
 /// <summary>
 /// Applies party / staff visibility rules to workflow-task queries.

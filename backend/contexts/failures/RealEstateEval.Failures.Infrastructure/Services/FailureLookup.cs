@@ -3,8 +3,13 @@ using RealEstateEval.Application.Abstractions;
 using RealEstateEval.Application.Contracts;
 using RealEstateEval.Domain;
 using RealEstateEval.Infrastructure.Data.Contexts;
+using RealEstateEval.Failures.Application.Abstractions;
+using RealEstateEval.Failures.Infrastructure.Data.Contexts;
+using RealEstateEval.Failures.Application.Contracts;
+using RealEstateEval.Failures.Domain;
+using RealEstateEval.Infrastructure.Services;
 
-namespace RealEstateEval.Infrastructure.Services;
+namespace RealEstateEval.Failures.Infrastructure.Services;
 
 public sealed class FailureLookup(FailuresDbContext db) : IFailureLookup
 {

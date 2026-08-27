@@ -2,8 +2,9 @@ using QuestPDF.Fluent;
 using QuestPDF.Helpers;
 using QuestPDF.Infrastructure;
 using RealEstateEval.Application.Contracts;
+using RealEstateEval.Valuation.Application.Contracts;
 
-namespace RealEstateEval.Infrastructure.Services;
+namespace RealEstateEval.Valuation.Infrastructure.Services;
 
 /// <summary>Builds the issued Arabic RTL valuation report PDF from the live document DTO.</summary>
 public static class ValuationReportPdfGenerator

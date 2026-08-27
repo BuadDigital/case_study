@@ -4,7 +4,7 @@ using RealEstateEval.Infrastructure.Data.Contexts;
 
 #nullable disable
 
-namespace RealEstateEval.Infrastructure.Data.Contexts.Financial.Migrations;
+namespace RealEstateEval.Financial.Infrastructure.Data.Contexts.Financial.Migrations;
 
 /// <summary>
 /// Empty financial baseline assumed the shared database already had financial tables and D1 inspector-fee rows in case_study. A dedicated financial database has no legacy stream, so this creates those tables (and the mapped audit.AuditLogs table) when they are missing.

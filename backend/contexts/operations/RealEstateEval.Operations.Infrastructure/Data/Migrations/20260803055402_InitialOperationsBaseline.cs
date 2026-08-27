@@ -2,7 +2,7 @@
 
 #nullable disable
 
-namespace RealEstateEval.Infrastructure.Data.Contexts.Operations.Migrations;
+namespace RealEstateEval.Operations.Infrastructure.Data.Contexts.Operations.Migrations;
 
 /// <summary>
 /// Empty baseline. Operations tables (and D2 tasks still in <c>case_study</c>) already exist

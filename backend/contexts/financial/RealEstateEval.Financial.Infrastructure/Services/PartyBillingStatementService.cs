@@ -8,8 +8,12 @@ using RealEstateEval.Application.Rules;
 using RealEstateEval.Domain;
 using RealEstateEval.Infrastructure.Data.Contexts;
 using RealEstateEval.Infrastructure.Notifications;
+using RealEstateEval.Financial.Domain;
+using RealEstateEval.Financial.Infrastructure.Data.Contexts;
+using RealEstateEval.Attachments.Application.Abstractions;
+using RealEstateEval.Operations.Application.Abstractions;
 
-namespace RealEstateEval.Infrastructure.Services;
+namespace RealEstateEval.Financial.Infrastructure.Services;
 
 public class PartyBillingStatementService : IPartyBillingStatementService
 {

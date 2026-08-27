@@ -1,7 +1,9 @@
 using Microsoft.EntityFrameworkCore;
 using RealEstateEval.Domain;
+using RealEstateEval.Financial.Domain;
+using RealEstateEval.Infrastructure.Data.Contexts;
 
-namespace RealEstateEval.Infrastructure.Data.Contexts;
+namespace RealEstateEval.Financial.Infrastructure.Data.Contexts;
 
 /// <summary>
 /// Write context for the Financial bounded context.

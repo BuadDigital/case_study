@@ -1,4 +1,6 @@
-namespace RealEstateEval.Domain;
+using RealEstateEval.Domain;
+
+namespace RealEstateEval.Valuation.Domain;
 
 /// <summary>Hard / soft issuance checks before native report submit.</summary>
 public static class ValuationIssuanceGateCodes

@@ -2,8 +2,10 @@ using Microsoft.EntityFrameworkCore;
 using RealEstateEval.Application.Abstractions;
 using RealEstateEval.Domain;
 using RealEstateEval.Infrastructure.Data.Contexts;
+using RealEstateEval.Identity.Infrastructure.Data.Contexts;
+using RealEstateEval.Infrastructure.Services;
 
-namespace RealEstateEval.Infrastructure.Services;
+namespace RealEstateEval.Identity.Infrastructure.Services;
 
 /// <summary>
 /// D10: user-label resolution reads the Identity owner context. Hosts without an Identity

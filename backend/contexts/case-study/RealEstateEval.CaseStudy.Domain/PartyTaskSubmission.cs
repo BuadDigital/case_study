@@ -1,4 +1,4 @@
-namespace RealEstateEval.Domain;
+namespace RealEstateEval.CaseStudy.Domain;
 
 /// <summary>Party work submission for child workflow tasks (survey, appraisal, review, etc.).</summary>
 public class PartyTaskSubmission

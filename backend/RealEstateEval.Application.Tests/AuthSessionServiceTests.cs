@@ -6,6 +6,9 @@ using RealEstateEval.Application.Abstractions;
 using RealEstateEval.Domain;
 using RealEstateEval.Infrastructure;
 using RealEstateEval.Infrastructure.Data.Contexts;
+using RealEstateEval.Identity.Infrastructure.Data.Contexts;
+using RealEstateEval.Identity.Application.Abstractions;
+using RealEstateEval.Identity.Infrastructure;
 
 namespace RealEstateEval.Application.Tests;
 

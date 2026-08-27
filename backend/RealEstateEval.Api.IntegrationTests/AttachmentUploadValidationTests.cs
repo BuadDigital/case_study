@@ -4,6 +4,7 @@ using System.Net.Http.Json;
 using System.Text;
 using System.Text.Json;
 using RealEstateEval.Application.Contracts;
+using RealEstateEval.Attachments.Application.Contracts;
 
 namespace RealEstateEval.Api.IntegrationTests;
 

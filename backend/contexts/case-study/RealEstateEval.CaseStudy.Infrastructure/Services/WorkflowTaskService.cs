@@ -1,7 +1,8 @@
 using RealEstateEval.Application.Abstractions;
 using RealEstateEval.Application.Contracts;
+using RealEstateEval.CaseStudy.Application.Abstractions;
 
-namespace RealEstateEval.Infrastructure.Services;
+namespace RealEstateEval.CaseStudy.Infrastructure.Services;
 
 /// <summary>
 /// Workflow task façade. Query, distribution, phase, and slot sync live on collaborators.

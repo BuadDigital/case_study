@@ -7,8 +7,12 @@ using RealEstateEval.Application.Rules;
 using RealEstateEval.Domain;
 using RealEstateEval.Infrastructure.Data.Contexts;
 using RealEstateEval.Infrastructure.Notifications;
+using RealEstateEval.CaseStudy.Domain;
+using RealEstateEval.Financial.Domain;
+using RealEstateEval.Financial.Infrastructure.Data.Contexts;
+using RealEstateEval.Financial.Application.Abstractions;
 
-namespace RealEstateEval.Infrastructure.Services;
+namespace RealEstateEval.Financial.Infrastructure.Services;
 
 /// <summary>
 /// Facade for inspector-fee use cases. Heavy write/query/transition work lives in collaborators.

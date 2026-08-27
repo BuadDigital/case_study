@@ -1,4 +1,6 @@
-﻿namespace RealEstateEval.Domain;
+﻿using RealEstateEval.Domain;
+
+namespace RealEstateEval.Financial.Domain;
 
 /// <summary>
 /// Monthly payee billing document (مسير / أمر صرف) — stages 6–8.

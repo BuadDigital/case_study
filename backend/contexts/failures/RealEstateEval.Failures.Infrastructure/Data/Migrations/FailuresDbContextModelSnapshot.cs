@@ -4,11 +4,11 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
-using RealEstateEval.Infrastructure.Data.Contexts;
+using RealEstateEval.Failures.Infrastructure.Data.Contexts;
 
 #nullable disable
 
-namespace RealEstateEval.Infrastructure.Data.Contexts.Failures.Migrations
+namespace RealEstateEval.Failures.Infrastructure.Data.Contexts.Failures.Migrations
 {
     [DbContext(typeof(FailuresDbContext))]
     partial class FailuresDbContextModelSnapshot : ModelSnapshot
@@ -22,7 +22,7 @@ namespace RealEstateEval.Infrastructure.Data.Contexts.Failures.Migrations
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
 
-            modelBuilder.Entity("RealEstateEval.Domain.FailureTypesCatalogConfig", b =>
+            modelBuilder.Entity("RealEstateEval.Failures.Domain.FailureTypesCatalogConfig", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
@@ -40,7 +40,7 @@ namespace RealEstateEval.Infrastructure.Data.Contexts.Failures.Migrations
                     b.ToTable("FailureTypesCatalogConfigs", "failures");
                 });
 
-            modelBuilder.Entity("RealEstateEval.Domain.PropertyFailure", b =>
+            modelBuilder.Entity("RealEstateEval.Failures.Domain.PropertyFailure", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()

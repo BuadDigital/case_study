@@ -4,7 +4,7 @@ using RealEstateEval.Application.Abstractions;
 using RealEstateEval.Application.Contracts;
 using RealEstateEval.Shared.Contracts;
 
-namespace RealEstateEval.Infrastructure.Integration;
+namespace RealEstateEval.Platform.Infrastructure.Integration;
 
 /// <summary>Pushes <see cref="IntegrationEventTypes.NotificationUserCreated"/> to connected SSE clients.</summary>
 public sealed class NotificationRealtimePushHandler

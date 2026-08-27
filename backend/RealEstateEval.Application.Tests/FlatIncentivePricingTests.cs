@@ -5,6 +5,9 @@ using RealEstateEval.Application.Rules;
 using RealEstateEval.Domain;
 using RealEstateEval.Infrastructure.Data.Contexts;
 using RealEstateEval.Infrastructure.Services;
+using RealEstateEval.CaseStudy.Domain;
+using RealEstateEval.Financial.Domain;
+using RealEstateEval.Financial.Infrastructure.Services;
 
 namespace RealEstateEval.Application.Tests;
 

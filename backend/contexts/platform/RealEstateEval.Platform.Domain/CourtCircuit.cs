@@ -1,4 +1,4 @@
-namespace RealEstateEval.Domain;
+namespace RealEstateEval.Platform.Domain;
 
 /// <summary>دائرة تابعة لمحكمة — لا حذف نهائي؛ يُعطَّل عبر IsActive.</summary>
 public class CourtCircuit

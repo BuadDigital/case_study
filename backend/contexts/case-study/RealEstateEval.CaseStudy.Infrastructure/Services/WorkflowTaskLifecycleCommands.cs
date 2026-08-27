@@ -7,8 +7,10 @@ using RealEstateEval.Domain;
 using RealEstateEval.Infrastructure.Data;
 using RealEstateEval.Infrastructure.Data.Contexts;
 using RealEstateEval.Infrastructure.Notifications;
+using RealEstateEval.CaseStudy.Application.Abstractions;
+using RealEstateEval.CaseStudy.Application.Rules;
 
-namespace RealEstateEval.Infrastructure.Services;
+namespace RealEstateEval.CaseStudy.Infrastructure.Services;
 
 public sealed class WorkflowTaskLifecycleCommands : IWorkflowTaskLifecycleCommands
 {

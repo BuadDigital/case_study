@@ -5,8 +5,12 @@ using RealEstateEval.Application.Abstractions;
 using RealEstateEval.Application.Rules;
 using RealEstateEval.Domain;
 using RealEstateEval.Infrastructure.Data.Contexts;
+using RealEstateEval.Financial.Application.Abstractions;
+using RealEstateEval.Financial.Infrastructure.Data.Contexts;
+using RealEstateEval.CaseStudy.Domain;
+using RealEstateEval.Financial.Domain;
 
-namespace RealEstateEval.Infrastructure.Services;
+namespace RealEstateEval.Financial.Infrastructure.Services;
 
 public sealed class InspectorFeeLedgerWriter : IInspectorFeeLedgerWriter
 {

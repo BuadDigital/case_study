@@ -4,8 +4,12 @@ using RealEstateEval.Application.Abstractions;
 using RealEstateEval.Application.Contracts;
 using RealEstateEval.Domain;
 using RealEstateEval.Infrastructure.Data.Contexts;
+using RealEstateEval.Valuation.Application.Abstractions;
+using RealEstateEval.Valuation.Infrastructure.Data.Contexts;
+using RealEstateEval.Valuation.Application.Contracts;
+using RealEstateEval.Valuation.Domain;
 
-namespace RealEstateEval.Infrastructure.Services;
+namespace RealEstateEval.Valuation.Infrastructure.Services;
 
 /// <summary>Method participation + round-once final opinion; liquidation discount when basis allows.</summary>
 public sealed class ValuationReconciliationService(

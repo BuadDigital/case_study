@@ -1,4 +1,4 @@
-namespace RealEstateEval.Domain;
+namespace RealEstateEval.Platform.Domain;
 
 /// <summary>حالة اعتماد المسمّى في دليل المواقع.</summary>
 public static class LocationCatalogStatuses

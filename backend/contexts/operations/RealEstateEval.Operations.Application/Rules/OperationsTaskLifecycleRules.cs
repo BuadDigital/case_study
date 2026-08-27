@@ -1,7 +1,9 @@
 using RealEstateEval.Application.Contracts;
 using RealEstateEval.Domain;
+using RealEstateEval.Operations.Domain;
+using RealEstateEval.Operations.Application.Contracts;
 
-namespace RealEstateEval.Application.Rules;
+namespace RealEstateEval.Operations.Application.Rules;
 
 /// <summary>
 /// Status transitions, scope validation, due-date defaults, and status comment text

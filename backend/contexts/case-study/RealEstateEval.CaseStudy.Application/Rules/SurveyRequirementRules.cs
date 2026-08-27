@@ -1,6 +1,7 @@
 using RealEstateEval.Domain;
+using RealEstateEval.CaseStudy.Domain;
 
-namespace RealEstateEval.Application.Rules;
+namespace RealEstateEval.CaseStudy.Application.Rules;
 
 /// <summary>
 /// When an engineering survey (رفع مساحي) is required for a property.

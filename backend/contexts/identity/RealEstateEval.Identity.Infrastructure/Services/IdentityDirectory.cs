@@ -3,8 +3,9 @@ using RealEstateEval.Application.Abstractions;
 using RealEstateEval.Application.Contracts;
 using RealEstateEval.Domain;
 using RealEstateEval.Infrastructure.Data.Contexts;
+using RealEstateEval.Identity.Infrastructure.Data.Contexts;
 
-namespace RealEstateEval.Infrastructure.Services;
+namespace RealEstateEval.Identity.Infrastructure.Services;
 
 public sealed class IdentityDirectory : IIdentityDirectory
 {

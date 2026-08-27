@@ -2,7 +2,7 @@
 
 #nullable disable
 
-namespace RealEstateEval.Infrastructure.Data.Contexts.Platform.Migrations
+namespace RealEstateEval.Platform.Infrastructure.Data.Contexts.Platform.Migrations
 {
  /// <summary>
  /// Moves the shared audit ledger out of the platform owner's schema. Identity, platform and

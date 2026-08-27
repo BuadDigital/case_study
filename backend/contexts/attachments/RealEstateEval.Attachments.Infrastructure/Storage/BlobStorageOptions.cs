@@ -1,4 +1,4 @@
-namespace RealEstateEval.Infrastructure.Storage;
+namespace RealEstateEval.Attachments.Infrastructure.Storage;
 
 public sealed class BlobStorageOptions
 {

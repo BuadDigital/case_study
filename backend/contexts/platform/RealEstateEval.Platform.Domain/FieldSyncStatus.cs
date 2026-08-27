@@ -1,4 +1,4 @@
-namespace RealEstateEval.Domain;
+namespace RealEstateEval.Platform.Domain;
 
 /// <summary>
 /// Field-device offline outbox heartbeat for the supervisor «ظروف معلّقة» board.

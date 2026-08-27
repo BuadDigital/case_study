@@ -3,7 +3,7 @@ using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable
 
-namespace RealEstateEval.Infrastructure.Data.Contexts.Platform.Migrations
+namespace RealEstateEval.Platform.Infrastructure.Data.Contexts.Platform.Migrations
 {
  /// <inheritdoc />
     public partial class AddGeneralAuditLog : Migration

@@ -1,4 +1,4 @@
-namespace RealEstateEval.Application.Rules;
+namespace RealEstateEval.Attachments.Application.Rules;
 
 /// <summary>
 /// Photo vs property location flags. Never blocks upload.

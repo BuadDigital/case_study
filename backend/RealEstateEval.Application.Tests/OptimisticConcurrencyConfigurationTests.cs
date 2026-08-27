@@ -9,6 +9,19 @@ using Microsoft.Extensions.Logging.Abstractions;
 using RealEstateEval.Domain;
 using RealEstateEval.Infrastructure.Data.Contexts;
 using RealEstateEval.Shared.Web.Middleware;
+using RealEstateEval.CaseStudy.Domain;
+using RealEstateEval.Financial.Domain;
+using RealEstateEval.Failures.Domain;
+using RealEstateEval.Valuation.Domain;
+using RealEstateEval.Operations.Domain;
+using RealEstateEval.Attachments.Infrastructure.Data.Contexts;
+using RealEstateEval.Platform.Infrastructure.Data.Contexts;
+using RealEstateEval.Valuation.Infrastructure.Data.Contexts;
+using RealEstateEval.CaseStudy.Infrastructure.Data.Contexts;
+using RealEstateEval.Identity.Infrastructure.Data.Contexts;
+using RealEstateEval.Failures.Infrastructure.Data.Contexts;
+using RealEstateEval.Operations.Infrastructure.Data.Contexts;
+using RealEstateEval.Financial.Infrastructure.Data.Contexts;
 
 namespace RealEstateEval.Application.Tests;
 

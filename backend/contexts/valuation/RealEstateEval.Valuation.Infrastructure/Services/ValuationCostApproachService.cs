@@ -4,8 +4,12 @@ using RealEstateEval.Application.Abstractions;
 using RealEstateEval.Application.Contracts;
 using RealEstateEval.Domain;
 using RealEstateEval.Infrastructure.Data.Contexts;
+using RealEstateEval.Valuation.Application.Abstractions;
+using RealEstateEval.Valuation.Infrastructure.Data.Contexts;
+using RealEstateEval.Valuation.Application.Contracts;
+using RealEstateEval.Valuation.Domain;
 
-namespace RealEstateEval.Infrastructure.Services;
+namespace RealEstateEval.Valuation.Infrastructure.Services;
 
 /// <summary>Contractor cost approach scaffold — land from market ; lines priced by appraiser.</summary>
 public sealed class ValuationCostApproachService(

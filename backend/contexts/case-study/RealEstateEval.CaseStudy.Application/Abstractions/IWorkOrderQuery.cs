@@ -1,6 +1,6 @@
 using RealEstateEval.Application.Contracts;
 
-namespace RealEstateEval.Application.Abstractions;
+namespace RealEstateEval.CaseStudy.Application.Abstractions;
 
 /// <summary>Read models for work orders and properties (visibility applied).</summary>
 public interface IWorkOrderQuery

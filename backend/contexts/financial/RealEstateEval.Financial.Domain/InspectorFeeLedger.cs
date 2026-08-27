@@ -1,4 +1,6 @@
-﻿namespace RealEstateEval.Domain;
+﻿using RealEstateEval.Domain;
+
+namespace RealEstateEval.Financial.Domain;
 
 /// <summary>
 /// Per-property party fee row.

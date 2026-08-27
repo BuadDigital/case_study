@@ -11,8 +11,9 @@ using RealEstateEval.Infrastructure.Notifications;
 using RealEstateEval.Shared.Contracts;
 using PushSub = RealEstateEval.Domain.PushSubscription;
 using RealEstateEval.Application;
+using RealEstateEval.Platform.Infrastructure.Notifications;
 
-namespace RealEstateEval.Infrastructure.Services;
+namespace RealEstateEval.Platform.Infrastructure.Services;
 
 /// <summary>Delivers a persisted notification to all enabled Web Push subscriptions for a user.</summary>
 public sealed class WebPushDeliveryHandler

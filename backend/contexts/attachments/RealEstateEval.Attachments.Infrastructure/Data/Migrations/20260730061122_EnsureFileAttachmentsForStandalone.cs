@@ -4,7 +4,7 @@ using RealEstateEval.Infrastructure.Data.Contexts;
 
 #nullable disable
 
-namespace RealEstateEval.Infrastructure.Data.Contexts.Attachments.Migrations;
+namespace RealEstateEval.Attachments.Infrastructure.Data.Contexts.Attachments.Migrations;
 
 /// <summary>
 /// The attachments baseline is empty because tables originally came from the legacy stream

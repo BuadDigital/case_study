@@ -1,6 +1,7 @@
 using RealEstateEval.Domain;
+using RealEstateEval.Operations.Domain;
 
-namespace RealEstateEval.Application.Rules;
+namespace RealEstateEval.Operations.Application.Rules;
 
 /// <summary>
 /// Key-envelope status / scenario / timeline label helpers.

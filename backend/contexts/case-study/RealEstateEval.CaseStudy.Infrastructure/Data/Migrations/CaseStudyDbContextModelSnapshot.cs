@@ -4,11 +4,11 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
-using RealEstateEval.Infrastructure.Data.Contexts;
+using RealEstateEval.CaseStudy.Infrastructure.Data.Contexts;
 
 #nullable disable
 
-namespace RealEstateEval.Infrastructure.Data.Contexts.CaseStudy.Migrations
+namespace RealEstateEval.CaseStudy.Infrastructure.Data.Contexts.CaseStudy.Migrations
 {
     [DbContext(typeof(CaseStudyDbContext))]
     partial class CaseStudyDbContextModelSnapshot : ModelSnapshot
@@ -22,7 +22,7 @@ namespace RealEstateEval.Infrastructure.Data.Contexts.CaseStudy.Migrations
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
 
-            modelBuilder.Entity("RealEstateEval.Domain.BuildingInventoryLine", b =>
+            modelBuilder.Entity("RealEstateEval.CaseStudy.Domain.BuildingInventoryLine", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
@@ -67,7 +67,7 @@ namespace RealEstateEval.Infrastructure.Data.Contexts.CaseStudy.Migrations
                     b.ToTable("BuildingInventoryLines", "case_study");
                 });
 
-            modelBuilder.Entity("RealEstateEval.Domain.CaseStudyForm", b =>
+            modelBuilder.Entity("RealEstateEval.CaseStudy.Domain.CaseStudyForm", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
@@ -227,7 +227,7 @@ namespace RealEstateEval.Infrastructure.Data.Contexts.CaseStudy.Migrations
                     b.ToTable("CaseStudyForms", "case_study");
                 });
 
-            modelBuilder.Entity("RealEstateEval.Domain.Client", b =>
+            modelBuilder.Entity("RealEstateEval.CaseStudy.Domain.Client", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
@@ -272,7 +272,7 @@ namespace RealEstateEval.Infrastructure.Data.Contexts.CaseStudy.Migrations
                     b.ToTable("Clients", "case_study");
                 });
 
-            modelBuilder.Entity("RealEstateEval.Domain.DocumentReferenceCounter", b =>
+            modelBuilder.Entity("RealEstateEval.CaseStudy.Domain.DocumentReferenceCounter", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
@@ -307,7 +307,7 @@ namespace RealEstateEval.Infrastructure.Data.Contexts.CaseStudy.Migrations
                     b.ToTable("DocumentReferenceCounters", "case_study");
                 });
 
-            modelBuilder.Entity("RealEstateEval.Domain.FieldInspectionWorkspace", b =>
+            modelBuilder.Entity("RealEstateEval.CaseStudy.Domain.FieldInspectionWorkspace", b =>
                 {
                     b.Property<Guid>("WorkflowTaskId")
                         .ValueGeneratedOnAdd()
@@ -390,7 +390,7 @@ namespace RealEstateEval.Infrastructure.Data.Contexts.CaseStudy.Migrations
                     b.ToTable("FieldInspectionWorkspaces", "case_study");
                 });
 
-            modelBuilder.Entity("RealEstateEval.Domain.InternalDelegationLetterSet", b =>
+            modelBuilder.Entity("RealEstateEval.CaseStudy.Domain.InternalDelegationLetterSet", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
@@ -416,7 +416,7 @@ namespace RealEstateEval.Infrastructure.Data.Contexts.CaseStudy.Migrations
                     b.ToTable("InternalDelegationLetterSets", "case_study");
                 });
 
-            modelBuilder.Entity("RealEstateEval.Domain.PartyTaskSubmission", b =>
+            modelBuilder.Entity("RealEstateEval.CaseStudy.Domain.PartyTaskSubmission", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
@@ -502,7 +502,7 @@ namespace RealEstateEval.Infrastructure.Data.Contexts.CaseStudy.Migrations
                     b.ToTable("PartyTaskSubmissions", "case_study");
                 });
 
-            modelBuilder.Entity("RealEstateEval.Domain.PoIntakeDraft", b =>
+            modelBuilder.Entity("RealEstateEval.CaseStudy.Domain.PoIntakeDraft", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
@@ -528,7 +528,7 @@ namespace RealEstateEval.Infrastructure.Data.Contexts.CaseStudy.Migrations
                     b.ToTable("PoIntakeDrafts", "case_study");
                 });
 
-            modelBuilder.Entity("RealEstateEval.Domain.PropertyContact", b =>
+            modelBuilder.Entity("RealEstateEval.CaseStudy.Domain.PropertyContact", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
@@ -562,7 +562,7 @@ namespace RealEstateEval.Infrastructure.Data.Contexts.CaseStudy.Migrations
                     b.ToTable("PropertyContacts", "case_study");
                 });
 
-            modelBuilder.Entity("RealEstateEval.Domain.PropertyGroup", b =>
+            modelBuilder.Entity("RealEstateEval.CaseStudy.Domain.PropertyGroup", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
@@ -580,7 +580,7 @@ namespace RealEstateEval.Infrastructure.Data.Contexts.CaseStudy.Migrations
                     b.ToTable("PropertyGroups", "case_study");
                 });
 
-            modelBuilder.Entity("RealEstateEval.Domain.PropertyGroupMember", b =>
+            modelBuilder.Entity("RealEstateEval.CaseStudy.Domain.PropertyGroupMember", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
@@ -627,7 +627,7 @@ namespace RealEstateEval.Infrastructure.Data.Contexts.CaseStudy.Migrations
                     b.ToTable("PropertyGroupMembers", "case_study");
                 });
 
-            modelBuilder.Entity("RealEstateEval.Domain.PropertyTimelineEntry", b =>
+            modelBuilder.Entity("RealEstateEval.CaseStudy.Domain.PropertyTimelineEntry", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
@@ -676,7 +676,7 @@ namespace RealEstateEval.Infrastructure.Data.Contexts.CaseStudy.Migrations
                     b.ToTable("PropertyTimelineEntries", "case_study");
                 });
 
-            modelBuilder.Entity("RealEstateEval.Domain.WorkOrder", b =>
+            modelBuilder.Entity("RealEstateEval.CaseStudy.Domain.WorkOrder", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
@@ -753,7 +753,7 @@ namespace RealEstateEval.Infrastructure.Data.Contexts.CaseStudy.Migrations
                     b.ToTable("WorkOrders", "case_study");
                 });
 
-            modelBuilder.Entity("RealEstateEval.Domain.WorkOrderProperty", b =>
+            modelBuilder.Entity("RealEstateEval.CaseStudy.Domain.WorkOrderProperty", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
@@ -1060,7 +1060,7 @@ namespace RealEstateEval.Infrastructure.Data.Contexts.CaseStudy.Migrations
                     b.ToTable("WorkOrderProperties", "case_study");
                 });
 
-            modelBuilder.Entity("RealEstateEval.Domain.WorkflowTask", b =>
+            modelBuilder.Entity("RealEstateEval.CaseStudy.Domain.WorkflowTask", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
@@ -1162,9 +1162,9 @@ namespace RealEstateEval.Infrastructure.Data.Contexts.CaseStudy.Migrations
                     b.ToTable("WorkflowTasks", "case_study");
                 });
 
-            modelBuilder.Entity("RealEstateEval.Domain.BuildingInventoryLine", b =>
+            modelBuilder.Entity("RealEstateEval.CaseStudy.Domain.BuildingInventoryLine", b =>
                 {
-                    b.HasOne("RealEstateEval.Domain.WorkOrderProperty", "Property")
+                    b.HasOne("RealEstateEval.CaseStudy.Domain.WorkOrderProperty", "Property")
                         .WithMany("BuildingInventoryLines")
                         .HasForeignKey("PropertyId")
                         .OnDelete(DeleteBehavior.Cascade)
@@ -1173,9 +1173,9 @@ namespace RealEstateEval.Infrastructure.Data.Contexts.CaseStudy.Migrations
                     b.Navigation("Property");
                 });
 
-            modelBuilder.Entity("RealEstateEval.Domain.PropertyContact", b =>
+            modelBuilder.Entity("RealEstateEval.CaseStudy.Domain.PropertyContact", b =>
                 {
-                    b.HasOne("RealEstateEval.Domain.WorkOrderProperty", "Property")
+                    b.HasOne("RealEstateEval.CaseStudy.Domain.WorkOrderProperty", "Property")
                         .WithMany("Contacts")
                         .HasForeignKey("PropertyId")
                         .OnDelete(DeleteBehavior.Cascade)
@@ -1184,9 +1184,9 @@ namespace RealEstateEval.Infrastructure.Data.Contexts.CaseStudy.Migrations
                     b.Navigation("Property");
                 });
 
-            modelBuilder.Entity("RealEstateEval.Domain.PropertyGroupMember", b =>
+            modelBuilder.Entity("RealEstateEval.CaseStudy.Domain.PropertyGroupMember", b =>
                 {
-                    b.HasOne("RealEstateEval.Domain.PropertyGroup", "Group")
+                    b.HasOne("RealEstateEval.CaseStudy.Domain.PropertyGroup", "Group")
                         .WithMany("Members")
                         .HasForeignKey("GroupId")
                         .OnDelete(DeleteBehavior.Cascade)
@@ -1195,9 +1195,9 @@ namespace RealEstateEval.Infrastructure.Data.Contexts.CaseStudy.Migrations
                     b.Navigation("Group");
                 });
 
-            modelBuilder.Entity("RealEstateEval.Domain.WorkOrder", b =>
+            modelBuilder.Entity("RealEstateEval.CaseStudy.Domain.WorkOrder", b =>
                 {
-                    b.HasOne("RealEstateEval.Domain.Client", "Client")
+                    b.HasOne("RealEstateEval.CaseStudy.Domain.Client", "Client")
                         .WithMany()
                         .HasForeignKey("ClientId")
                         .OnDelete(DeleteBehavior.Restrict);
@@ -1205,9 +1205,9 @@ namespace RealEstateEval.Infrastructure.Data.Contexts.CaseStudy.Migrations
                     b.Navigation("Client");
                 });
 
-            modelBuilder.Entity("RealEstateEval.Domain.WorkOrderProperty", b =>
+            modelBuilder.Entity("RealEstateEval.CaseStudy.Domain.WorkOrderProperty", b =>
                 {
-                    b.HasOne("RealEstateEval.Domain.WorkOrder", "WorkOrder")
+                    b.HasOne("RealEstateEval.CaseStudy.Domain.WorkOrder", "WorkOrder")
                         .WithMany("Properties")
                         .HasForeignKey("WorkOrderId")
                         .OnDelete(DeleteBehavior.Cascade)
@@ -1216,17 +1216,17 @@ namespace RealEstateEval.Infrastructure.Data.Contexts.CaseStudy.Migrations
                     b.Navigation("WorkOrder");
                 });
 
-            modelBuilder.Entity("RealEstateEval.Domain.PropertyGroup", b =>
+            modelBuilder.Entity("RealEstateEval.CaseStudy.Domain.PropertyGroup", b =>
                 {
                     b.Navigation("Members");
                 });
 
-            modelBuilder.Entity("RealEstateEval.Domain.WorkOrder", b =>
+            modelBuilder.Entity("RealEstateEval.CaseStudy.Domain.WorkOrder", b =>
                 {
                     b.Navigation("Properties");
                 });
 
-            modelBuilder.Entity("RealEstateEval.Domain.WorkOrderProperty", b =>
+            modelBuilder.Entity("RealEstateEval.CaseStudy.Domain.WorkOrderProperty", b =>
                 {
                     b.Navigation("BuildingInventoryLines");
 

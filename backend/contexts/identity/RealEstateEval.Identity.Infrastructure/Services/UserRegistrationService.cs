@@ -7,10 +7,13 @@ using RealEstateEval.Application.Contracts;
 using RealEstateEval.Domain;
 using RealEstateEval.Infrastructure.Data;
 using RealEstateEval.Infrastructure.Data.Contexts;
-using RealEstateEval.Infrastructure.Permissions;
+using RealEstateEval.Identity.Infrastructure.Permissions;
 using System.Text.RegularExpressions;
+using RealEstateEval.Identity.Application.Abstractions;
+using RealEstateEval.Identity.Infrastructure.Data.Contexts;
+using RealEstateEval.Identity.Domain;
 
-namespace RealEstateEval.Infrastructure.Services;
+namespace RealEstateEval.Identity.Infrastructure.Services;
 
 public class UserRegistrationService : IUserRegistrationService
 {

@@ -4,7 +4,7 @@
     <TargetFramework>net10.0</TargetFramework>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
-    <RootNamespace>RealEstateEval.Application</RootNamespace>
+    <RootNamespace>RealEstateEval.Identity.Application</RootNamespace>
   </PropertyGroup>
 
   <!-- No Identity.Domain project: the ASP.NET Identity entities are pinned to global

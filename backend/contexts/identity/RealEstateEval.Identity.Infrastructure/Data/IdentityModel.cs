@@ -1,8 +1,10 @@
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using RealEstateEval.Domain;
+using RealEstateEval.Infrastructure.Data;
+using RealEstateEval.Identity.Domain;
 
-namespace RealEstateEval.Infrastructure.Data.Contexts;
+namespace RealEstateEval.Identity.Infrastructure.Data.Contexts;
 
 /// <summary>
 /// The <c>identity</c> schema mapping. Applied by <see cref="IdentityDbContext"/>, which owns

@@ -1,7 +1,8 @@
 using FluentValidation;
 using RealEstateEval.Application.Contracts;
+using RealEstateEval.Failures.Application.Contracts;
 
-namespace RealEstateEval.Application.Validation;
+namespace RealEstateEval.Failures.Application.Validation;
 
 public sealed class CreateFailureRequestValidator : AbstractValidator<CreateFailureRequest>
 {

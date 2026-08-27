@@ -1,6 +1,6 @@
 using RealEstateEval.Application.Contracts;
 
-namespace RealEstateEval.Infrastructure.Data;
+namespace RealEstateEval.Platform.Infrastructure.Data;
 
 /// <summary>Default valuation reference lists — المصدر: الإعدادات v2.dc.html VAL_LISTS / REF_DEFAULTS.</summary>
 internal static class ValuationListsSeed

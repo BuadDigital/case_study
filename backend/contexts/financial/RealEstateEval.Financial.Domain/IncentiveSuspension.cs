@@ -1,4 +1,4 @@
-namespace RealEstateEval.Domain;
+namespace RealEstateEval.Financial.Domain;
 
 /// <summary>
 /// Withholds employee incentives for one user on one transaction (PO). Transaction-scoped;

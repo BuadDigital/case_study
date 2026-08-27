@@ -29,6 +29,16 @@ using RealEstateEval.Application.Contracts;
 using RealEstateEval.Infrastructure.Data;
 using RealEstateEval.Infrastructure.Data.Contexts;
 using RealEstateEval.Infrastructure.Services;
+using RealEstateEval.Failures.Application.Contracts;
+using RealEstateEval.Attachments.Application.Contracts;
+using RealEstateEval.Operations.Application.Contracts;
+using RealEstateEval.CaseStudy.Infrastructure.Data.Contexts;
+using RealEstateEval.CaseStudy.Infrastructure.Services;
+using RealEstateEval.Identity.Infrastructure.Data.Contexts;
+using RealEstateEval.Identity.Infrastructure.Services;
+using RealEstateEval.Failures.Infrastructure.Data.Contexts;
+using RealEstateEval.Failures.Application.Abstractions;
+using RealEstateEval.Failures.Infrastructure.Services;
 
 using AttachmentsMarker = AttachmentsApi::RealEstateEval.Attachments.Api.Controllers.AttachmentsController;
 using CaseStudyMarker = CaseStudyApi::RealEstateEval.CaseStudy.Api.Controllers.WorkflowTasksController;

@@ -3,7 +3,7 @@ using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable
 
-namespace RealEstateEval.Infrastructure.Data.Contexts.Operations.Migrations;
+namespace RealEstateEval.Operations.Infrastructure.Data.Contexts.Operations.Migrations;
 
 /// <summary>
 /// Revenue entitlement timestamp on KeyEnvelopes. Introduced on the legacy stream as part of

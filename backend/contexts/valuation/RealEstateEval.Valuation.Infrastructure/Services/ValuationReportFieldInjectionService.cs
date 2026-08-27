@@ -3,7 +3,15 @@ using RealEstateEval.Application.Abstractions;
 using RealEstateEval.Application.Contracts;
 using RealEstateEval.Domain;
 using RealEstateEval.Infrastructure.Data.Contexts;
-namespace RealEstateEval.Infrastructure.Services;
+using RealEstateEval.Valuation.Application.Abstractions;
+using RealEstateEval.Valuation.Infrastructure.Data.Contexts;
+using RealEstateEval.Attachments.Application.Abstractions;
+using RealEstateEval.Valuation.Application.Contracts;
+using RealEstateEval.Attachments.Application.Contracts;
+using RealEstateEval.Valuation.Domain;
+using RealEstateEval.CaseStudy.Domain;
+using RealEstateEval.Attachments.Domain;
+namespace RealEstateEval.Valuation.Infrastructure.Services;
 
 /// <summary>
 /// Builds valuation-report field payload from live context.

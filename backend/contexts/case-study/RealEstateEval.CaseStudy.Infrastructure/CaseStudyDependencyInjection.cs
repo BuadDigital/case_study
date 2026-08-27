@@ -2,14 +2,19 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using RealEstateEval.Application.Abstractions;
-using RealEstateEval.Application.Services;
+using RealEstateEval.CaseStudy.Application.Services;
 using RealEstateEval.Infrastructure.Integration;
-using RealEstateEval.Infrastructure.Persistence;
+using RealEstateEval.CaseStudy.Infrastructure.Persistence;
 using RealEstateEval.Infrastructure.Services;
 using RealEstateEval.Infrastructure.Data;
 using RealEstateEval.Infrastructure.Data.Contexts;
+using RealEstateEval.CaseStudy.Application.Abstractions;
+using RealEstateEval.CaseStudy.Infrastructure.Services;
+using RealEstateEval.Infrastructure;
+using RealEstateEval.CaseStudy.Infrastructure.Integration;
+using RealEstateEval.CaseStudy.Infrastructure.Data.Contexts;
 
-namespace RealEstateEval.Infrastructure;
+namespace RealEstateEval.CaseStudy.Infrastructure;
 
 /// <summary>
 /// Context-local registration for the Case Study bounded context (A8): work orders, workflow

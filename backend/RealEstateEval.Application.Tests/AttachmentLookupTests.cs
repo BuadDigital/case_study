@@ -3,6 +3,9 @@ using RealEstateEval.Application.Contracts;
 using RealEstateEval.Domain;
 using RealEstateEval.Infrastructure.Data.Contexts;
 using RealEstateEval.Infrastructure.Services;
+using RealEstateEval.Attachments.Domain;
+using RealEstateEval.Attachments.Infrastructure.Data.Contexts;
+using RealEstateEval.Attachments.Infrastructure.Services;
 
 namespace RealEstateEval.Application.Tests;
 

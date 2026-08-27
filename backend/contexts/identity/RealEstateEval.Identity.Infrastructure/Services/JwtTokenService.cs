@@ -6,8 +6,9 @@ using RealEstateEval.Application.Authorization;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
+using RealEstateEval.Identity.Application.Abstractions;
 
-namespace RealEstateEval.Infrastructure.Services;
+namespace RealEstateEval.Identity.Infrastructure.Services;
 
 public class JwtTokenService : IJwtTokenService
 {

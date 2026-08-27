@@ -200,3 +200,25 @@ The frozen legacy god context is gone from the codebase:
   entity moves into ctx Domain libraries, retirement of the near-empty global assemblies.
 - **Still production-gated:** the metrics window and the `realestate_eval_dev` leftover
   decision (do not drop — the tag + leftover are the restore pair).
+
+## Cosmetic cleanup — entity distribution, Domain retirement, namespace alignment (2026-08-28, late)
+
+- **Global Domain retired.** Every entity/rule moved to its owner context's Domain library
+  (case-study 18 files, financial 5, valuation 5, identity 2); messaging entities live
+  beside `MessagingModel`; pure cross-context statics (AuditLog, SupervisingDepartments,
+  WorkflowStatuses, DeedKindRules, InspectionScopeKeys, MarketAdjustmentFactorKeys,
+  ComparableProximityRules, BuildingStructureKinds) moved into `Shared.Contracts`. The
+  `RealEstateEval.Domain` project is deleted; guardrails keep it gone and pin ctx Domain
+  libraries to reference only the contracts leaf.
+- **Namespace alignment.** All 464 context-library files now declare
+  `RealEstateEval.<Ctx>.{Domain,Application,Infrastructure}`; RootNamespaces aligned;
+  consumers were fixed by a compiler-error-driven codemod (~650 using insertions /
+  qualified-name rewrites across services, tests, tools, shared libs).
+- **EF safety.** All eight context snapshots regenerated via the temp-migration recipe;
+  every temp migration was empty — the rename changed zero relational schema. Ctx
+  Infrastructure projects now carry the EF Design package (PrivateAssets) so
+  `dotnet ef migrations add --project <ctx> --startup-project <ctx>` works in place.
+- **Deliberate end state.** `RealEstateEval.Application` and `RealEstateEval.Infrastructure`
+  remain as the two explicitly-shared assemblies (cross-service abstractions/contracts/rules;
+  persistence/messaging/audit plumbing, `ApplicationUser`, shared services) plus the three
+  `shared/` libraries. Dissolving them is an ownership-design task, not cosmetics.

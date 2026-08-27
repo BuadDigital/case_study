@@ -1,4 +1,4 @@
-namespace RealEstateEval.Infrastructure.Permissions;
+namespace RealEstateEval.Identity.Infrastructure.Permissions;
 
 /// <summary>Server-side page + capability catalog (aligned with prototype <c>ROLES</c> in app-shared).</summary>
 public static class PlatformPermissionCatalog

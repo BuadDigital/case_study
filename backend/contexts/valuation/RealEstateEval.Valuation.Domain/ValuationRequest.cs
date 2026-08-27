@@ -1,4 +1,6 @@
-﻿namespace RealEstateEval.Domain;
+﻿using RealEstateEval.Domain;
+
+namespace RealEstateEval.Valuation.Domain;
 
 /// <summary>
 /// A valuation request dispatched for one property. Only one may be open per property, so the

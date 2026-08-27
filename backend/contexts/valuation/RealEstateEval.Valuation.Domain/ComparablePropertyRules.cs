@@ -1,4 +1,4 @@
-namespace RealEstateEval.Domain;
+namespace RealEstateEval.Valuation.Domain;
 
 /// <summary>Validation + price/m² + source-card helpers for the comparable bank scaffold.</summary>
 public static class ComparablePropertyRules

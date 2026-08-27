@@ -2,7 +2,7 @@ using RealEstateEval.Application.Contracts;
 using RealEstateEval.Domain;
 using System.Net.Mail;
 
-namespace RealEstateEval.Application.Rules;
+namespace RealEstateEval.CaseStudy.Application.Rules;
 
 public static class WorkOrderValidator
 {

@@ -1,6 +1,7 @@
 using RealEstateEval.Domain;
+using RealEstateEval.Operations.Domain;
 
-namespace RealEstateEval.Application.Rules;
+namespace RealEstateEval.Operations.Application.Rules;
 
 /// <summary>
 /// Work-hours reminder cadence for operations tasks (Sun–Thu, 08:00–17:00 Asia/Riyadh).

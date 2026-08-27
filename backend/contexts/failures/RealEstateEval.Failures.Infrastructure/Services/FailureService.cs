@@ -5,8 +5,13 @@ using RealEstateEval.Application.Contracts;
 using RealEstateEval.Application.Rules;
 using RealEstateEval.Domain;
 using RealEstateEval.Infrastructure.Data.Contexts;
+using RealEstateEval.Failures.Application.Abstractions;
+using RealEstateEval.Failures.Infrastructure.Data.Contexts;
+using RealEstateEval.Failures.Application.Contracts;
+using RealEstateEval.Failures.Domain;
+using RealEstateEval.Infrastructure.Services;
 
-namespace RealEstateEval.Infrastructure.Services;
+namespace RealEstateEval.Failures.Infrastructure.Services;
 
 public class FailureService : IFailureService
 {

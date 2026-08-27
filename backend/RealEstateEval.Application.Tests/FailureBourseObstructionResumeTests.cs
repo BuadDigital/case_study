@@ -2,6 +2,13 @@
 using RealEstateEval.Application.Contracts;
 using RealEstateEval.Domain;
 using RealEstateEval.Infrastructure.Services;
+using RealEstateEval.Failures.Application.Contracts;
+using RealEstateEval.Failures.Domain;
+using RealEstateEval.CaseStudy.Domain;
+using RealEstateEval.CaseStudy.Infrastructure.Services;
+using RealEstateEval.Failures.Infrastructure.Services;
+using RealEstateEval.Financial.Infrastructure.Services;
+using RealEstateEval.Identity.Infrastructure.Services;
 
 namespace RealEstateEval.Application.Tests;
 

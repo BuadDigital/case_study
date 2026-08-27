@@ -1,7 +1,9 @@
 using Microsoft.EntityFrameworkCore;
 using RealEstateEval.Domain;
+using RealEstateEval.Platform.Domain;
+using RealEstateEval.Infrastructure.Data.Contexts;
 
-namespace RealEstateEval.Infrastructure.Data.Contexts;
+namespace RealEstateEval.Platform.Infrastructure.Data.Contexts;
 
 /// <summary>
 /// Write context for the Platform catalogs : courts,

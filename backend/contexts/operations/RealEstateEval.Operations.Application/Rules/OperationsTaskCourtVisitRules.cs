@@ -1,6 +1,7 @@
 using RealEstateEval.Application.Contracts;
+using RealEstateEval.Operations.Application.Contracts;
 
-namespace RealEstateEval.Application.Rules;
+namespace RealEstateEval.Operations.Application.Rules;
 
 /// <summary>
 /// Court-visit result normalization and system comment fan-out for operations tasks.

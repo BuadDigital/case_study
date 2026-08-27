@@ -1,6 +1,7 @@
 using RealEstateEval.Application.Contracts;
+using RealEstateEval.Operations.Application.Contracts;
 
-namespace RealEstateEval.Application.Abstractions;
+namespace RealEstateEval.Operations.Application.Abstractions;
 
 public interface IOperationsTaskService
 {

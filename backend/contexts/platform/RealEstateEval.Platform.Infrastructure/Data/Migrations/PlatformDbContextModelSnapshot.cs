@@ -4,11 +4,11 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
-using RealEstateEval.Infrastructure.Data.Contexts;
+using RealEstateEval.Platform.Infrastructure.Data.Contexts;
 
 #nullable disable
 
-namespace RealEstateEval.Infrastructure.Data.Contexts.Platform.Migrations
+namespace RealEstateEval.Platform.Infrastructure.Data.Contexts.Platform.Migrations
 {
     [DbContext(typeof(PlatformDbContext))]
     partial class PlatformDbContextModelSnapshot : ModelSnapshot
@@ -21,45 +21,6 @@ namespace RealEstateEval.Infrastructure.Data.Contexts.Platform.Migrations
                 .HasAnnotation("Relational:MaxIdentifierLength", 63);
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
-
-            modelBuilder.Entity("RealEstateEval.Domain.AttachmentPrintDictionaryConfig", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid");
-
-                    b.Property<string>("CatalogJson")
-                        .IsRequired()
-                        .HasColumnType("jsonb");
-
-                    b.Property<DateTime>("UpdatedAtUtc")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.HasKey("Id");
-
-                    b.ToTable("AttachmentPrintDictionaryConfigs", "platform");
-                });
-
-            modelBuilder.Entity("RealEstateEval.Domain.DifferenceFactorCatalogConfig", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid");
-
-                    b.Property<string>("CatalogJson")
-                        .IsRequired()
-                        .HasColumnType("jsonb");
-
-                    b.Property<DateTime>("UpdatedAtUtc")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<int>("Version")
-                        .HasColumnType("integer");
-
-                    b.HasKey("Id");
-
-                    b.ToTable("DifferenceFactorCatalogConfigs", "platform");
-                });
 
             modelBuilder.Entity("RealEstateEval.Domain.AuditLog", b =>
                 {
@@ -111,7 +72,25 @@ namespace RealEstateEval.Infrastructure.Data.Contexts.Platform.Migrations
                     b.ToTable("AuditLogs", "audit");
                 });
 
-            modelBuilder.Entity("RealEstateEval.Domain.CaseStudyInfoRolesConfig", b =>
+            modelBuilder.Entity("RealEstateEval.Platform.Domain.AttachmentPrintDictionaryConfig", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("CatalogJson")
+                        .IsRequired()
+                        .HasColumnType("jsonb");
+
+                    b.Property<DateTime>("UpdatedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("AttachmentPrintDictionaryConfigs", "platform");
+                });
+
+            modelBuilder.Entity("RealEstateEval.Platform.Domain.CaseStudyInfoRolesConfig", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
@@ -133,7 +112,7 @@ namespace RealEstateEval.Infrastructure.Data.Contexts.Platform.Migrations
                     b.ToTable("CaseStudyInfoRolesConfigs", "platform");
                 });
 
-            modelBuilder.Entity("RealEstateEval.Domain.City", b =>
+            modelBuilder.Entity("RealEstateEval.Platform.Domain.City", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
@@ -219,7 +198,7 @@ namespace RealEstateEval.Infrastructure.Data.Contexts.Platform.Migrations
                     b.ToTable("Cities", "platform");
                 });
 
-            modelBuilder.Entity("RealEstateEval.Domain.Court", b =>
+            modelBuilder.Entity("RealEstateEval.Platform.Domain.Court", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
@@ -270,7 +249,7 @@ namespace RealEstateEval.Infrastructure.Data.Contexts.Platform.Migrations
                     b.ToTable("Courts", "platform");
                 });
 
-            modelBuilder.Entity("RealEstateEval.Domain.CourtAuditLog", b =>
+            modelBuilder.Entity("RealEstateEval.Platform.Domain.CourtAuditLog", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
@@ -312,7 +291,7 @@ namespace RealEstateEval.Infrastructure.Data.Contexts.Platform.Migrations
                     b.ToTable("CourtAuditLogs", "platform");
                 });
 
-            modelBuilder.Entity("RealEstateEval.Domain.CourtCatalogEntry", b =>
+            modelBuilder.Entity("RealEstateEval.Platform.Domain.CourtCatalogEntry", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
@@ -337,7 +316,7 @@ namespace RealEstateEval.Infrastructure.Data.Contexts.Platform.Migrations
                     b.ToTable("CourtCatalogEntries", "platform");
                 });
 
-            modelBuilder.Entity("RealEstateEval.Domain.CourtCircuit", b =>
+            modelBuilder.Entity("RealEstateEval.Platform.Domain.CourtCircuit", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
@@ -383,7 +362,28 @@ namespace RealEstateEval.Infrastructure.Data.Contexts.Platform.Migrations
                     b.ToTable("CourtCircuits", "platform");
                 });
 
-            modelBuilder.Entity("RealEstateEval.Domain.District", b =>
+            modelBuilder.Entity("RealEstateEval.Platform.Domain.DifferenceFactorCatalogConfig", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("CatalogJson")
+                        .IsRequired()
+                        .HasColumnType("jsonb");
+
+                    b.Property<DateTime>("UpdatedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("Version")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("DifferenceFactorCatalogConfigs", "platform");
+                });
+
+            modelBuilder.Entity("RealEstateEval.Platform.Domain.District", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
@@ -447,7 +447,7 @@ namespace RealEstateEval.Infrastructure.Data.Contexts.Platform.Migrations
                     b.ToTable("Districts", "platform");
                 });
 
-            modelBuilder.Entity("RealEstateEval.Domain.FieldDictionaryConfig", b =>
+            modelBuilder.Entity("RealEstateEval.Platform.Domain.FieldDictionaryConfig", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
@@ -465,7 +465,7 @@ namespace RealEstateEval.Infrastructure.Data.Contexts.Platform.Migrations
                     b.ToTable("FieldDictionaryConfigs", "platform");
                 });
 
-            modelBuilder.Entity("RealEstateEval.Domain.FieldSyncStatus", b =>
+            modelBuilder.Entity("RealEstateEval.Platform.Domain.FieldSyncStatus", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
@@ -505,7 +505,7 @@ namespace RealEstateEval.Infrastructure.Data.Contexts.Platform.Migrations
                     b.ToTable("FieldSyncStatuses", "platform");
                 });
 
-            modelBuilder.Entity("RealEstateEval.Domain.OrganizationSettings", b =>
+            modelBuilder.Entity("RealEstateEval.Platform.Domain.OrganizationSettings", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
@@ -523,7 +523,7 @@ namespace RealEstateEval.Infrastructure.Data.Contexts.Platform.Migrations
                     b.ToTable("OrganizationSettings", "platform");
                 });
 
-            modelBuilder.Entity("RealEstateEval.Domain.Region", b =>
+            modelBuilder.Entity("RealEstateEval.Platform.Domain.Region", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
@@ -572,14 +572,14 @@ namespace RealEstateEval.Infrastructure.Data.Contexts.Platform.Migrations
                     b.ToTable("Regions", "platform");
                 });
 
-            modelBuilder.Entity("RealEstateEval.Domain.City", b =>
+            modelBuilder.Entity("RealEstateEval.Platform.Domain.City", b =>
                 {
-                    b.HasOne("RealEstateEval.Domain.City", "MergedIntoCity")
+                    b.HasOne("RealEstateEval.Platform.Domain.City", "MergedIntoCity")
                         .WithMany()
                         .HasForeignKey("MergedIntoCityId")
                         .OnDelete(DeleteBehavior.Restrict);
 
-                    b.HasOne("RealEstateEval.Domain.Region", "Region")
+                    b.HasOne("RealEstateEval.Platform.Domain.Region", "Region")
                         .WithMany("Cities")
                         .HasForeignKey("RegionId")
                         .OnDelete(DeleteBehavior.Restrict)
@@ -590,9 +590,9 @@ namespace RealEstateEval.Infrastructure.Data.Contexts.Platform.Migrations
                     b.Navigation("Region");
                 });
 
-            modelBuilder.Entity("RealEstateEval.Domain.CourtCircuit", b =>
+            modelBuilder.Entity("RealEstateEval.Platform.Domain.CourtCircuit", b =>
                 {
-                    b.HasOne("RealEstateEval.Domain.Court", "Court")
+                    b.HasOne("RealEstateEval.Platform.Domain.Court", "Court")
                         .WithMany("Circuits")
                         .HasForeignKey("CourtId")
                         .OnDelete(DeleteBehavior.Restrict)
@@ -601,15 +601,15 @@ namespace RealEstateEval.Infrastructure.Data.Contexts.Platform.Migrations
                     b.Navigation("Court");
                 });
 
-            modelBuilder.Entity("RealEstateEval.Domain.District", b =>
+            modelBuilder.Entity("RealEstateEval.Platform.Domain.District", b =>
                 {
-                    b.HasOne("RealEstateEval.Domain.City", "City")
+                    b.HasOne("RealEstateEval.Platform.Domain.City", "City")
                         .WithMany("Districts")
                         .HasForeignKey("CityId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
-                    b.HasOne("RealEstateEval.Domain.District", "MergedIntoDistrict")
+                    b.HasOne("RealEstateEval.Platform.Domain.District", "MergedIntoDistrict")
                         .WithMany()
                         .HasForeignKey("MergedIntoDistrictId")
                         .OnDelete(DeleteBehavior.Restrict);
@@ -619,17 +619,17 @@ namespace RealEstateEval.Infrastructure.Data.Contexts.Platform.Migrations
                     b.Navigation("MergedIntoDistrict");
                 });
 
-            modelBuilder.Entity("RealEstateEval.Domain.City", b =>
+            modelBuilder.Entity("RealEstateEval.Platform.Domain.City", b =>
                 {
                     b.Navigation("Districts");
                 });
 
-            modelBuilder.Entity("RealEstateEval.Domain.Court", b =>
+            modelBuilder.Entity("RealEstateEval.Platform.Domain.Court", b =>
                 {
                     b.Navigation("Circuits");
                 });
 
-            modelBuilder.Entity("RealEstateEval.Domain.Region", b =>
+            modelBuilder.Entity("RealEstateEval.Platform.Domain.Region", b =>
                 {
                     b.Navigation("Cities");
                 });

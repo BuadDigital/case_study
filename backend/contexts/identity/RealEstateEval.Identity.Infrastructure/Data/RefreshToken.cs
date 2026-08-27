@@ -1,4 +1,4 @@
-namespace RealEstateEval.Domain;
+namespace RealEstateEval.Identity.Domain;
 
 /// <summary>
 /// Rotating refresh token. Only the SHA-256 hash of the value is persisted, so a

@@ -2,7 +2,7 @@
 
 #nullable disable
 
-namespace RealEstateEval.Infrastructure.Data.Contexts.Identity.Migrations;
+namespace RealEstateEval.Identity.Infrastructure.Data.Contexts.Identity.Migrations;
 
 /// <summary>
 /// Empty baseline. The <c>identity</c> tables already exist from the legacy stream;

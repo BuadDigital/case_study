@@ -1,6 +1,6 @@
 using RealEstateEval.Application.Contracts;
 
-namespace RealEstateEval.Application.Abstractions;
+namespace RealEstateEval.Identity.Application.Abstractions;
 
 /// <summary>
 /// Single owner of session lifetime: mints short-lived access tokens paired with a

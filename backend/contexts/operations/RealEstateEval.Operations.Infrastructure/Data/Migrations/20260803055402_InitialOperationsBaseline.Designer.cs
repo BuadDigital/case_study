@@ -9,7 +9,7 @@ using RealEstateEval.Infrastructure.Data.Contexts;
 
 #nullable disable
 
-namespace RealEstateEval.Infrastructure.Data.Contexts.Operations.Migrations
+namespace RealEstateEval.Operations.Infrastructure.Data.Contexts.Operations.Migrations
 {
     [DbContext(typeof(OperationsDbContext))]
     [Migration("20260803055402_InitialOperationsBaseline")]

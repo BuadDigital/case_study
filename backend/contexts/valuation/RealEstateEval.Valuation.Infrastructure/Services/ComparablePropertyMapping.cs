@@ -1,7 +1,9 @@
 using RealEstateEval.Application.Contracts;
 using RealEstateEval.Domain;
+using RealEstateEval.Valuation.Domain;
+using RealEstateEval.Valuation.Application.Contracts;
 
-namespace RealEstateEval.Infrastructure.Services;
+namespace RealEstateEval.Valuation.Infrastructure.Services;
 
 internal static class ComparablePropertyMapping
 {

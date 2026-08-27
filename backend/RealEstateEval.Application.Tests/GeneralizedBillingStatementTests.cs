@@ -6,6 +6,13 @@ using RealEstateEval.Application.Rules;
 using RealEstateEval.Domain;
 using RealEstateEval.Infrastructure.Notifications;
 using RealEstateEval.Infrastructure.Services;
+using RealEstateEval.Financial.Infrastructure.Services;
+using RealEstateEval.Financial.Domain;
+using RealEstateEval.CaseStudy.Domain;
+using RealEstateEval.Attachments.Domain;
+using RealEstateEval.Operations.Infrastructure.Services;
+using RealEstateEval.Identity.Infrastructure.Services;
+using RealEstateEval.CaseStudy.Infrastructure.Services;
 
 namespace RealEstateEval.Application.Tests;
 

@@ -6,6 +6,14 @@ using RealEstateEval.Infrastructure.Data.Contexts;
 using RealEstateEval.Infrastructure.Notifications;
 using RealEstateEval.Infrastructure.Services;
 using RealEstateEval.Application.Abstractions;
+using RealEstateEval.Failures.Infrastructure.Data.Contexts;
+using RealEstateEval.Operations.Infrastructure.Data.Contexts;
+using RealEstateEval.Failures.Infrastructure.Services;
+using RealEstateEval.Operations.Infrastructure.Services;
+using RealEstateEval.CaseStudy.Infrastructure.Data.Contexts;
+using RealEstateEval.CaseStudy.Infrastructure.Services;
+using RealEstateEval.Identity.Infrastructure.Services;
+using RealEstateEval.Financial.Infrastructure.Services;
 
 namespace RealEstateEval.Application.Tests;
 

@@ -2,7 +2,7 @@ using System.Text.Json;
 using RealEstateEval.Application.Contracts;
 using RealEstateEval.Domain;
 
-namespace RealEstateEval.Infrastructure.Services;
+namespace RealEstateEval.Identity.Infrastructure.Services;
 
 public static class RegistrationMapper
 {

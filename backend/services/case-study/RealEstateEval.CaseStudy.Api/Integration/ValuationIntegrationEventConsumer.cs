@@ -5,6 +5,7 @@ using RabbitMQ.Client.Events;
 using RealEstateEval.Application.Abstractions;
 using RealEstateEval.Infrastructure.Integration;
 using RealEstateEval.Shared.Contracts;
+using RealEstateEval.CaseStudy.Infrastructure.Integration;
 
 namespace RealEstateEval.CaseStudy.Api.Integration;
 

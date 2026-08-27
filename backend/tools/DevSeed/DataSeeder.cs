@@ -9,8 +9,22 @@ using RealEstateEval.Application;
 using RealEstateEval.Application.Contracts;
 using RealEstateEval.Domain;
 using RealEstateEval.Infrastructure.Data.Contexts;
-using RealEstateEval.Infrastructure.Permissions;
+using RealEstateEval.Identity.Infrastructure.Permissions;
 using RealEstateEval.Infrastructure.Services;
+using RealEstateEval.Operations.Infrastructure.Data.Contexts;
+using RealEstateEval.Valuation.Infrastructure.Data.Contexts;
+using RealEstateEval.Failures.Infrastructure.Data.Contexts;
+using RealEstateEval.Identity.Infrastructure.Data.Contexts;
+using RealEstateEval.Financial.Infrastructure.Data.Contexts;
+using RealEstateEval.CaseStudy.Infrastructure.Data.Contexts;
+using RealEstateEval.Identity.Domain;
+using RealEstateEval.Valuation.Infrastructure.Data;
+using RealEstateEval.Financial.Domain;
+using RealEstateEval.CaseStudy.Domain;
+using RealEstateEval.CaseStudy.Infrastructure.Services;
+using RealEstateEval.Operations.Domain;
+using RealEstateEval.Valuation.Domain;
+using RealEstateEval.Failures.Domain;
 
 namespace RealEstateEval.Infrastructure.Data;
 

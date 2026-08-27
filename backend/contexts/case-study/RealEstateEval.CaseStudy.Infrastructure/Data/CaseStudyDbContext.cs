@@ -1,7 +1,9 @@
 using Microsoft.EntityFrameworkCore;
 using RealEstateEval.Domain;
+using RealEstateEval.Infrastructure.Data.Contexts;
+using RealEstateEval.CaseStudy.Domain;
 
-namespace RealEstateEval.Infrastructure.Data.Contexts;
+namespace RealEstateEval.CaseStudy.Infrastructure.Data.Contexts;
 
 /// <summary>
 /// Write context for the Case Study bounded context.

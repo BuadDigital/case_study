@@ -1,6 +1,7 @@
 using RealEstateEval.Domain;
+using RealEstateEval.CaseStudy.Domain;
 
-namespace RealEstateEval.Application.Abstractions;
+namespace RealEstateEval.CaseStudy.Application.Abstractions;
 
 /// <summary>
 /// Persistence boundary for the client registry. Application code must not open

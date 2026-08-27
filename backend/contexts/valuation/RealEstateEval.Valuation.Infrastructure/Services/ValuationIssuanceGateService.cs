@@ -3,8 +3,15 @@ using RealEstateEval.Application.Abstractions;
 using RealEstateEval.Application.Contracts;
 using RealEstateEval.Domain;
 using RealEstateEval.Infrastructure.Data.Contexts;
+using RealEstateEval.Valuation.Application.Abstractions;
+using RealEstateEval.Valuation.Infrastructure.Data.Contexts;
+using RealEstateEval.Attachments.Application.Abstractions;
+using RealEstateEval.Valuation.Application.Contracts;
+using RealEstateEval.CaseStudy.Domain;
+using RealEstateEval.Valuation.Domain;
+using RealEstateEval.Attachments.Domain;
 
-namespace RealEstateEval.Infrastructure.Services;
+namespace RealEstateEval.Valuation.Infrastructure.Services;
 
 /// <summary>
 /// Aggregates credential + case-study match + gates + methodology alerts.

@@ -9,6 +9,14 @@ using RealEstateEval.Domain;
 using RealEstateEval.Infrastructure.Caching;
 using RealEstateEval.Infrastructure.Data.Contexts;
 using RealEstateEval.Infrastructure.Services;
+using RealEstateEval.Financial.Infrastructure.Services;
+using RealEstateEval.Financial.Infrastructure.Data.Contexts;
+using RealEstateEval.CaseStudy.Infrastructure.Data.Contexts;
+using RealEstateEval.Identity.Infrastructure.Data.Contexts;
+using RealEstateEval.Financial.Domain;
+using RealEstateEval.CaseStudy.Domain;
+using RealEstateEval.CaseStudy.Infrastructure.Services;
+using RealEstateEval.Identity.Infrastructure.Services;
 
 namespace RealEstateEval.Application.Tests;
 

@@ -1,7 +1,9 @@
 using Microsoft.EntityFrameworkCore;
 using RealEstateEval.Domain;
+using RealEstateEval.Valuation.Domain;
+using RealEstateEval.Infrastructure.Data;
 
-namespace RealEstateEval.Infrastructure.Data.Contexts;
+namespace RealEstateEval.Valuation.Infrastructure.Data.Contexts;
 
 /// <summary>
 /// The <c>valuation</c> schema mapping and the display-id sequence. Applied by

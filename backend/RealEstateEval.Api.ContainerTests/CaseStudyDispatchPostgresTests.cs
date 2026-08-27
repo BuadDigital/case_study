@@ -7,6 +7,8 @@ using Microsoft.EntityFrameworkCore;
 using RealEstateEval.Application.Contracts;
 using RealEstateEval.Domain;
 using RealEstateEval.Infrastructure.Data.Contexts;
+using RealEstateEval.CaseStudy.Infrastructure.Data.Contexts;
+using RealEstateEval.CaseStudy.Domain;
 
 using CaseStudyDispatchMarker = CaseStudyApi::RealEstateEval.CaseStudy.Api.Controllers.CaseStudyDispatchController;
 

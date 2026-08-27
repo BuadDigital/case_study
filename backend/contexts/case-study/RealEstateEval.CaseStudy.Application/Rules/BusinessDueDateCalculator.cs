@@ -1,4 +1,4 @@
-namespace RealEstateEval.Application.Rules;
+namespace RealEstateEval.CaseStudy.Application.Rules;
 
 /// <summary>
 /// أيام عمل (أحد–خميس). يوم الاستلام يوم 1 إن كان ضمن الدوام؛ بعد 17:00 أو عطلة → يبدأ من يوم العمل التالي.

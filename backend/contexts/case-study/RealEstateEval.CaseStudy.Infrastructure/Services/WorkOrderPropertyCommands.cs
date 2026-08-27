@@ -7,8 +7,13 @@ using RealEstateEval.Application.Rules;
 using RealEstateEval.Domain;
 using RealEstateEval.Infrastructure.Data;
 using RealEstateEval.Infrastructure.Data.Contexts;
+using RealEstateEval.CaseStudy.Application.Abstractions;
+using RealEstateEval.Failures.Application.Abstractions;
+using RealEstateEval.CaseStudy.Domain;
+using RealEstateEval.CaseStudy.Application.Rules;
+using RealEstateEval.Failures.Application.Contracts;
 
-namespace RealEstateEval.Infrastructure.Services;
+namespace RealEstateEval.CaseStudy.Infrastructure.Services;
 
 public sealed class WorkOrderPropertyCommands : IWorkOrderPropertyCommands
 {

@@ -2,8 +2,11 @@ using System.Globalization;
 using System.Text.Json;
 using RealEstateEval.Application.Contracts;
 using RealEstateEval.Domain;
+using RealEstateEval.Operations.Application.Contracts;
+using RealEstateEval.Operations.Domain;
+using RealEstateEval.Infrastructure.Services;
 
-namespace RealEstateEval.Infrastructure.Services;
+namespace RealEstateEval.Operations.Infrastructure.Services;
 
 /// <summary>Shared JSON options and DTO mapping for operations tasks.</summary>
 public static class OperationsTaskSerialization

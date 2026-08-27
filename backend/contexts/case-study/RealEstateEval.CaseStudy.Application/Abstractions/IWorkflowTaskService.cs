@@ -1,7 +1,7 @@
 using RealEstateEval.Application.Contracts;
 using RealEstateEval.Domain;
 
-namespace RealEstateEval.Application.Abstractions;
+namespace RealEstateEval.CaseStudy.Application.Abstractions;
 
 public interface IWorkflowTaskService
 {

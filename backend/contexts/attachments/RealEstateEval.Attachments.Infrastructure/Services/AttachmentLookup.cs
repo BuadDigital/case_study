@@ -3,8 +3,11 @@ using RealEstateEval.Application.Abstractions;
 using RealEstateEval.Application.Contracts;
 using RealEstateEval.Application.Rules;
 using RealEstateEval.Infrastructure.Data.Contexts;
+using RealEstateEval.Attachments.Application.Abstractions;
+using RealEstateEval.Attachments.Infrastructure.Data.Contexts;
+using RealEstateEval.Attachments.Application.Contracts;
 
-namespace RealEstateEval.Infrastructure.Services;
+namespace RealEstateEval.Attachments.Infrastructure.Services;
 
 public sealed class AttachmentLookup(AttachmentsDbContext db) : IAttachmentLookup
 {

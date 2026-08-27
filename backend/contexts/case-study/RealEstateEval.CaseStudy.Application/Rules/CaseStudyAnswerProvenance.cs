@@ -1,7 +1,8 @@
 using System.Text.Json;
 using RealEstateEval.Application.Contracts;
+using RealEstateEval.CaseStudy.Application.Contracts;
 
-namespace RealEstateEval.Application.Rules;
+namespace RealEstateEval.CaseStudy.Application.Rules;
 
 /// <summary>
 /// Diffs answer/remark maps and stamps provenance only for keys that changed.

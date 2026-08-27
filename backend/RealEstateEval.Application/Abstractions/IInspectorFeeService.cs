@@ -1,5 +1,6 @@
 using RealEstateEval.Application.Contracts;
 using RealEstateEval.Domain;
+using RealEstateEval.CaseStudy.Domain;
 
 namespace RealEstateEval.Application.Abstractions;
 

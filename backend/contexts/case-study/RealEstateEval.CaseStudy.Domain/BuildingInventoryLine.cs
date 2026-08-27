@@ -1,4 +1,6 @@
-namespace RealEstateEval.Domain;
+using RealEstateEval.Domain;
+
+namespace RealEstateEval.CaseStudy.Domain;
 
 /// <summary>
 /// Building/structure inventory line — single source for area details and cost items (spec ).

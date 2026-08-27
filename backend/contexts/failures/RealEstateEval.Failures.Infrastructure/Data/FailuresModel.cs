@@ -1,8 +1,9 @@
 using Microsoft.EntityFrameworkCore;
 using RealEstateEval.Domain;
 using RealEstateEval.Infrastructure.Data;
+using RealEstateEval.Failures.Domain;
 
-namespace RealEstateEval.Infrastructure.Data.Contexts;
+namespace RealEstateEval.Failures.Infrastructure.Data.Contexts;
 
 /// <summary>
 /// The <c>failures</c> schema mapping. Applied by <see cref="FailuresDbContext"/> (write path)

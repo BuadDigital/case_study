@@ -1,7 +1,10 @@
 using Microsoft.EntityFrameworkCore;
 using RealEstateEval.Domain;
+using RealEstateEval.Infrastructure.Data;
+using RealEstateEval.Valuation.Domain;
+using RealEstateEval.Infrastructure.Data.Contexts;
 
-namespace RealEstateEval.Infrastructure.Data.Contexts;
+namespace RealEstateEval.Valuation.Infrastructure.Data.Contexts;
 
 /// <summary>
 /// Write context for the Valuation bounded context.

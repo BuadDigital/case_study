@@ -1,7 +1,8 @@
 ﻿using FluentValidation;
 using RealEstateEval.Application.Contracts;
+using RealEstateEval.Attachments.Application.Contracts;
 
-namespace RealEstateEval.Application.Validation;
+namespace RealEstateEval.Attachments.Application.Validation;
 
 public sealed class UploadAttachmentRequestValidator : AbstractValidator<UploadAttachmentRequest>
 {

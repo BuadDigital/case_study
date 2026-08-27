@@ -11,6 +11,9 @@ using RealEstateEval.Application.Abstractions;
 using RealEstateEval.Application.Contracts;
 using RealEstateEval.Application.Rules;
 using RealEstateEval.Infrastructure.Data;
+using RealEstateEval.Attachments.Application.Abstractions;
+using RealEstateEval.Attachments.Application.Contracts;
+using RealEstateEval.Attachments.Application.Rules;
 
 namespace RealEstateEval.Api.IntegrationTests;
 

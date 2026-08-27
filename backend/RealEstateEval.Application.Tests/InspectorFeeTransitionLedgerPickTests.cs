@@ -1,5 +1,7 @@
 using RealEstateEval.Domain;
 using RealEstateEval.Infrastructure.Services;
+using RealEstateEval.Financial.Domain;
+using RealEstateEval.Financial.Infrastructure.Services;
 
 namespace RealEstateEval.Application.Tests;
 

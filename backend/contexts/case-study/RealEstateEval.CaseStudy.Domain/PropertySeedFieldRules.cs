@@ -1,4 +1,4 @@
-namespace RealEstateEval.Domain;
+namespace RealEstateEval.CaseStudy.Domain;
 
 /// <summary>Boundary type LOV — street · plot · passage · rail.</summary>
 public static class PropertyBoundaryTypes

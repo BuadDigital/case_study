@@ -6,8 +6,10 @@ using RealEstateEval.Domain;
 using RealEstateEval.Infrastructure.Data;
 using RealEstateEval.Infrastructure.Data.Contexts;
 using RealEstateEval.Shared.Contracts;
+using RealEstateEval.Valuation.Domain;
+using RealEstateEval.Valuation.Infrastructure.Data.Contexts;
 
-namespace RealEstateEval.Infrastructure.Services;
+namespace RealEstateEval.Valuation.Infrastructure.Services;
 
 public sealed class ValuationRequestService : IValuationRequestService
 {

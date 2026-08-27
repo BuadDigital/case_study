@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using RealEstateEval.Domain;
+using RealEstateEval.Operations.Domain;
 
 namespace RealEstateEval.Infrastructure.Data;
 
@@ -22,16 +23,16 @@ public static class DomainEnumConverters
     public static readonly ValueConverter<RealEstateEval.Domain.WorkflowTaskStatus, string> WorkflowTaskStatus =
         new(status => status.ToDbValue(), value => WorkflowTaskStatusValues.Parse(value));
 
-    public static readonly ValueConverter<RealEstateEval.Domain.OperationsTaskType, string> OperationsTaskType =
+    public static readonly ValueConverter<RealEstateEval.Operations.Domain.OperationsTaskType, string> OperationsTaskType =
         new(type => type.ToDbValue(), value => OperationsTaskTypeValues.Parse(value));
 
-    public static readonly ValueConverter<RealEstateEval.Domain.OperationsTaskScope, string> OperationsTaskScope =
+    public static readonly ValueConverter<RealEstateEval.Operations.Domain.OperationsTaskScope, string> OperationsTaskScope =
         new(scope => scope.ToDbValue(), value => OperationsTaskScopeValues.Parse(value));
 
-    public static readonly ValueConverter<RealEstateEval.Domain.OperationsTaskStatus, string> OperationsTaskStatus =
+    public static readonly ValueConverter<RealEstateEval.Operations.Domain.OperationsTaskStatus, string> OperationsTaskStatus =
         new(status => status.ToDbValue(), value => OperationsTaskStatusValues.Parse(value));
 
-    public static readonly ValueConverter<RealEstateEval.Domain.OperationsTaskPriority, string> OperationsTaskPriority =
+    public static readonly ValueConverter<RealEstateEval.Operations.Domain.OperationsTaskPriority, string> OperationsTaskPriority =
         new(priority => priority.ToDbValue(), value => OperationsTaskPriorityValues.Parse(value));
 
     public static readonly ValueConverter<RealEstateEval.Domain.ValuationRequestStatus, string> ValuationRequestStatus =

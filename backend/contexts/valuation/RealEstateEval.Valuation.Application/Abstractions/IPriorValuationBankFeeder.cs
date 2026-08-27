@@ -1,4 +1,4 @@
-namespace RealEstateEval.Application.Abstractions;
+namespace RealEstateEval.Valuation.Application.Abstractions;
 
 /// <summary>
 // / the shared bank includes prior transactions: a completed valuation's

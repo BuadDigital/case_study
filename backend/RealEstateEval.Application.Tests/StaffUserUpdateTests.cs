@@ -9,6 +9,10 @@ using RealEstateEval.Application.Contracts;
 using RealEstateEval.Domain;
 using RealEstateEval.Infrastructure;
 using RealEstateEval.Infrastructure.Data.Contexts;
+using RealEstateEval.Identity.Application.Abstractions;
+using RealEstateEval.Identity.Infrastructure.Data.Contexts;
+using RealEstateEval.Identity.Domain;
+using RealEstateEval.Identity.Infrastructure;
 
 namespace RealEstateEval.Application.Tests;
 

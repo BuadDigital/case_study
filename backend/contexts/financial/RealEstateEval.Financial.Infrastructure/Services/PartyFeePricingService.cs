@@ -6,8 +6,11 @@ using RealEstateEval.Application.Rules;
 using RealEstateEval.Domain;
 using RealEstateEval.Infrastructure.Data;
 using RealEstateEval.Infrastructure.Data.Contexts;
+using RealEstateEval.Financial.Domain;
+using RealEstateEval.Financial.Infrastructure.Data.Contexts;
+using RealEstateEval.Infrastructure.Services;
 
-namespace RealEstateEval.Infrastructure.Services;
+namespace RealEstateEval.Financial.Infrastructure.Services;
 
 public sealed class PartyFeePricingService : IPartyFeePricingService
 {

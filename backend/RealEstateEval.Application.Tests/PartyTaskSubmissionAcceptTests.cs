@@ -5,6 +5,14 @@ using RealEstateEval.Application.Contracts;
 using RealEstateEval.Domain;
 using RealEstateEval.Infrastructure.Data.Contexts;
 using RealEstateEval.Infrastructure.Services;
+using RealEstateEval.CaseStudy.Infrastructure.Data.Contexts;
+using RealEstateEval.Failures.Infrastructure.Data.Contexts;
+using RealEstateEval.Operations.Infrastructure.Data.Contexts;
+using RealEstateEval.CaseStudy.Infrastructure.Services;
+using RealEstateEval.CaseStudy.Application.Contracts;
+using RealEstateEval.CaseStudy.Domain;
+using RealEstateEval.Financial.Domain;
+using RealEstateEval.Failures.Infrastructure.Services;
 
 namespace RealEstateEval.Application.Tests;
 

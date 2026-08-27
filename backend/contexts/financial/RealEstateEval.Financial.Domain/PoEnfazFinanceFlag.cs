@@ -1,4 +1,4 @@
-namespace RealEstateEval.Domain;
+namespace RealEstateEval.Financial.Domain;
 
 /// <summary>
 /// Explicit finance lifecycle flag for an Enfaz tracking row (optional property scope).

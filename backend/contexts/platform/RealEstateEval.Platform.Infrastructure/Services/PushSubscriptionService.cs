@@ -6,8 +6,11 @@ using RealEstateEval.Application.Contracts;
 using RealEstateEval.Domain;
 using RealEstateEval.Infrastructure.Data.Contexts;
 using RealEstateEval.Infrastructure.Notifications;
+using RealEstateEval.Platform.Application.Abstractions;
+using RealEstateEval.Platform.Infrastructure.Notifications;
+using RealEstateEval.Platform.Application.Contracts;
 
-namespace RealEstateEval.Infrastructure.Services;
+namespace RealEstateEval.Platform.Infrastructure.Services;
 
 public sealed class PushSubscriptionService : IPushSubscriptionService
 {

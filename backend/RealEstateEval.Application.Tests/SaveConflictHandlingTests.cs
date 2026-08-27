@@ -3,6 +3,8 @@ using Npgsql;
 using RealEstateEval.Domain;
 using RealEstateEval.Infrastructure.Data;
 using RealEstateEval.Infrastructure.Data.Contexts;
+using RealEstateEval.Valuation.Domain;
+using RealEstateEval.Valuation.Infrastructure.Data.Contexts;
 
 namespace RealEstateEval.Application.Tests;
 

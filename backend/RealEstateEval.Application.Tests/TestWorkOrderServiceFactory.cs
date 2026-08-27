@@ -4,6 +4,12 @@ using RealEstateEval.Infrastructure.Data.Contexts;
 using RealEstateEval.Infrastructure.Notifications;
 using RealEstateEval.Infrastructure.Services;
 using Microsoft.Extensions.Options;
+using RealEstateEval.Failures.Application.Abstractions;
+using RealEstateEval.Failures.Infrastructure.Data.Contexts;
+using RealEstateEval.CaseStudy.Infrastructure.Services;
+using RealEstateEval.Failures.Infrastructure.Services;
+using RealEstateEval.Financial.Infrastructure.Services;
+using RealEstateEval.Identity.Infrastructure.Services;
 
 namespace RealEstateEval.Application.Tests;
 internal static class TestWorkOrderServiceFactory

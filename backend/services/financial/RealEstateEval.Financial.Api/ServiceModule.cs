@@ -4,6 +4,9 @@ using RealEstateEval.Infrastructure;
 using RealEstateEval.Infrastructure.Data.Contexts;
 using RealEstateEval.Infrastructure.Web;
 using RealEstateEval.Shared.Web;
+using RealEstateEval.Financial.Infrastructure;
+using RealEstateEval.Financial.Application.Validation;
+using RealEstateEval.Financial.Infrastructure.Data.Contexts;
 
 namespace RealEstateEval.Financial.Api;
 

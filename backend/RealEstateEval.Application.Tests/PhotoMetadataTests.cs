@@ -5,6 +5,11 @@ using RealEstateEval.Application.Rules;
 using RealEstateEval.Domain;
 using RealEstateEval.Infrastructure.Data.Contexts;
 using RealEstateEval.Infrastructure.Services;
+using RealEstateEval.Attachments.Infrastructure.Data.Contexts;
+using RealEstateEval.Attachments.Application.Abstractions;
+using RealEstateEval.Attachments.Infrastructure.Services;
+using RealEstateEval.Attachments.Application.Contracts;
+using RealEstateEval.Attachments.Application.Rules;
 
 namespace RealEstateEval.Application.Tests;
 

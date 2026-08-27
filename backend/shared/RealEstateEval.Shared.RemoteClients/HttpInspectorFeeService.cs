@@ -3,6 +3,7 @@ using Microsoft.Extensions.Options;
 using RealEstateEval.Application.Abstractions;
 using RealEstateEval.Application.Contracts;
 using RealEstateEval.Domain;
+using RealEstateEval.CaseStudy.Domain;
 
 namespace RealEstateEval.Infrastructure.Services;
 

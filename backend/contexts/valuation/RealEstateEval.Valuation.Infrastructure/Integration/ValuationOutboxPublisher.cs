@@ -1,8 +1,10 @@
 using Microsoft.Extensions.Logging;
 using RealEstateEval.Application.Abstractions;
 using RealEstateEval.Infrastructure.Data.Contexts;
+using RealEstateEval.Valuation.Infrastructure.Data.Contexts;
+using RealEstateEval.Infrastructure.Integration;
 
-namespace RealEstateEval.Infrastructure.Integration;
+namespace RealEstateEval.Valuation.Infrastructure.Integration;
 
 /// <summary>Outbox writer owned by the Valuation context (A8: lives beside its context).</summary>
 public sealed class ValuationOutboxPublisher(

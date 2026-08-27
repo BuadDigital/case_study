@@ -1,8 +1,9 @@
 using Microsoft.EntityFrameworkCore;
 using RealEstateEval.Application.Abstractions;
 using RealEstateEval.Infrastructure.Data.Contexts;
+using RealEstateEval.Financial.Infrastructure.Data.Contexts;
 
-namespace RealEstateEval.Infrastructure.Services;
+namespace RealEstateEval.Financial.Infrastructure.Services;
 
 public sealed class PoEnfazInvoiceLookup(FinancialDbContext db) : IPoEnfazInvoiceLookup
 {

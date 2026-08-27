@@ -128,13 +128,33 @@ shared in-memory store). Each context's `*Model.cs` mapping moved into its conte
 of the nine owner models is now the schema/ownership authority (with built-in
 shared-mapping drift checks), the legacy-token ban is total, and the legacy-only tests
 (snapshot drift, cutover freeze) are retired — suite is 54 tests.
-- **Remaining (unblocked by the archival, cosmetic/structural):** namespace alignment
-(`RealEstateEval.<Ctx>.*`), moving the shared Domain entities into ctx Domain libraries,
-and retiring the near-empty global Domain/Application/Infrastructure assemblies. This is
-now pure refactoring with no production coupling — schedule when wanted. **Production-side
-items still open:** the metrics window (§3) and the leftover `realestate_eval_dev`
-database decision (untouched; do not drop — with the code stream archived, the git tag +
-that leftover are the only restore pair).
+- ~~**Cosmetic cleanup**~~ **done 2026-08-28 (Omar: "finish the remaining cosmetic
+cleanup"):**
+  - **Entities distributed:** every remaining global Domain file moved to its owner —
+    case-study (18 files incl. WorkOrder/WorkflowTask/CaseStudyForm), financial (ledger +
+    pricing), valuation (rules + ArabicAmountWords), identity (RefreshToken/OrgRoles);
+    messaging entities beside `MessagingModel`; pure cross-context statics
+    (AuditLog, SupervisingDepartments, WorkflowStatuses, DeedKindRules, InspectionScopeKeys,
+    MarketAdjustmentFactorKeys, ComparableProximityRules, BuildingStructureKinds) into
+    `Shared.Contracts`.
+  - **`RealEstateEval.Domain` project retired** (deleted; guardrail
+    `TheGlobalDomainProjectStaysRetired` keeps it gone; ctx Domain libraries may reference
+    only the contracts leaf — enforced).
+  - **Namespace alignment done:** all 464 context-library files now declare
+    `RealEstateEval.<Ctx>.{Domain,Application,Infrastructure}` (RootNamespaces aligned);
+    consumers fixed by a compiler-driven codemod. All eight context migration snapshots
+    regenerated via empty temp migrations — **zero relational changes**, proving the
+    rename was purely cosmetic. Ctx Infrastructure projects carry the EF Design package
+    (PrivateAssets) so `dotnet ef` can resync snapshots in place.
+  - **Deliberate end state:** `RealEstateEval.Application` and
+    `RealEstateEval.Infrastructure` remain as the two explicitly-shared assemblies
+    (cross-service abstractions/contracts/rules; connection/persistence plumbing,
+    messaging + outbox + `MessagingDbContext`, audit mapping, `ApplicationUser`, shared
+    services). Renaming or dissolving them would churn every Dockerfile/CI path and needs
+    per-abstraction ownership decisions — not cosmetic; schedule separately if ever wanted.
+- **Production-side items still open:** the metrics window (§3) and the leftover
+`realestate_eval_dev` database decision (untouched; do not drop — with the code stream
+archived, the git tag + that leftover are the only restore pair).
 
 **2. Waiting on Omar:**
 

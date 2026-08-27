@@ -1,4 +1,4 @@
-namespace RealEstateEval.Domain;
+namespace RealEstateEval.Financial.Domain;
 
 /// <summary>
 /// أتعاب الزيارة — earned when an operations <c>court_visit</c> task is completed.

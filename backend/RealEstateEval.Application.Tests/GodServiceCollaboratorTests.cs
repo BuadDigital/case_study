@@ -2,6 +2,13 @@ using System.Text.Json;
 using RealEstateEval.Application.Contracts;
 using RealEstateEval.Application.Rules;
 using RealEstateEval.Domain;
+using RealEstateEval.Operations.Domain;
+using RealEstateEval.CaseStudy.Domain;
+using RealEstateEval.Operations.Application.Rules;
+using RealEstateEval.Operations.Application.Contracts;
+using RealEstateEval.Financial.Application.Rules;
+using RealEstateEval.Financial.Domain;
+using RealEstateEval.CaseStudy.Application.Rules;
 
 namespace RealEstateEval.Application.Tests;
 
@@ -166,11 +173,11 @@ public class GodServiceCollaboratorTests
     [Fact]
     public void Inspector_fee_stable_transaction_key_is_deterministic()
     {
-        var a = RealEstateEval.Infrastructure.Services.InspectorFeeLedgerResolver
+        var a = RealEstateEval.Financial.Infrastructure.Services.InspectorFeeLedgerResolver
             .StableGuidFromKey("tx:PO-orphan");
-        var b = RealEstateEval.Infrastructure.Services.InspectorFeeLedgerResolver
+        var b = RealEstateEval.Financial.Infrastructure.Services.InspectorFeeLedgerResolver
             .StableGuidFromKey("tx:PO-orphan");
-        var c = RealEstateEval.Infrastructure.Services.InspectorFeeLedgerResolver
+        var c = RealEstateEval.Financial.Infrastructure.Services.InspectorFeeLedgerResolver
             .StableGuidFromKey("tx:PO-other");
 
         Assert.Equal(a, b);
@@ -252,7 +259,7 @@ public class GodServiceCollaboratorTests
     [Fact]
     public void Workflow_visibility_hides_foreign_assignee()
     {
-        var filter = new RealEstateEval.Infrastructure.Services.WorkflowTaskVisibilityFilter();
+        var filter = new RealEstateEval.CaseStudy.Infrastructure.Services.WorkflowTaskVisibilityFilter();
         var tasks = new[]
         {
             FieldInspectionTask(Guid.NewGuid(), "mine", WorkflowTaskStatus.Open, assigneeId: "me"),

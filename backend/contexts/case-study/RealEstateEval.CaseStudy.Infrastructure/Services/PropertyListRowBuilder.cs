@@ -1,8 +1,10 @@
 using RealEstateEval.Application.Contracts;
 using RealEstateEval.Application.Rules;
 using RealEstateEval.Domain;
+using RealEstateEval.CaseStudy.Domain;
+using RealEstateEval.CaseStudy.Application.Rules;
 
-namespace RealEstateEval.Infrastructure.Services;
+namespace RealEstateEval.CaseStudy.Infrastructure.Services;
 
 /// <summary>
 /// Builds flat property list rows for dashboard tables without shipping full work-order DTOs.

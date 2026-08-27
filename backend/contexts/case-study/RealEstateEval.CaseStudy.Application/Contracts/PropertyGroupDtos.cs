@@ -1,6 +1,6 @@
 using System.ComponentModel.DataAnnotations;
 
-namespace RealEstateEval.Application.Contracts;
+namespace RealEstateEval.CaseStudy.Application.Contracts;
 
 /// <summary>grouped-property link member for display.</summary>
 public class PropertyGroupMemberDto

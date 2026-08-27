@@ -6,8 +6,9 @@ using RealEstateEval.Application.Contracts;
 using RealEstateEval.Domain;
 using RealEstateEval.Infrastructure.Data.Contexts;
 using RealEstateEval.Shared.Contracts;
+using RealEstateEval.CaseStudy.Application.Abstractions;
 
-namespace RealEstateEval.Infrastructure.Integration;
+namespace RealEstateEval.CaseStudy.Infrastructure.Integration;
 
 public sealed class ValuationReportWorkflowHandler
 {

@@ -3,7 +3,7 @@ using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable
 
-namespace RealEstateEval.Infrastructure.Data.Contexts.Financial.Migrations
+namespace RealEstateEval.Financial.Infrastructure.Data.Contexts.Financial.Migrations
 {
  /// <summary>
  /// Vendor invoice lifecycle on party billing statements.

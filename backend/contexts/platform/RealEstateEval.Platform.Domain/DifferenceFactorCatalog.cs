@@ -1,6 +1,7 @@
 using System.Text.Json;
+using RealEstateEval.Domain;
 
-namespace RealEstateEval.Domain;
+namespace RealEstateEval.Platform.Domain;
 
 /// <summary>
 /// Difference-factor definitions and their «ما لا يشمله» limits are

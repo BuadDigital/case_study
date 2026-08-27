@@ -1,4 +1,4 @@
-namespace RealEstateEval.Domain;
+namespace RealEstateEval.Financial.Domain;
 
 /// <summary>Audit log for inspector fee billing status changes.</summary>
 public class InspectorFeeTransition

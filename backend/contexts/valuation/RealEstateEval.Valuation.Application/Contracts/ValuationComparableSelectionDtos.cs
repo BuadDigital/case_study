@@ -1,6 +1,6 @@
 using System.ComponentModel.DataAnnotations;
 
-namespace RealEstateEval.Application.Contracts;
+namespace RealEstateEval.Valuation.Application.Contracts;
 
 public class ValuationComparableAdjustmentLineDto
 {

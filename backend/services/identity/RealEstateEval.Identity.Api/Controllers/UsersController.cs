@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Mvc;
 using RealEstateEval.Application.Abstractions;
 using RealEstateEval.Application.Contracts;
 using RealEstateEval.Shared.Web;
+using RealEstateEval.Identity.Application.Abstractions;
 
 namespace RealEstateEval.Identity.Api.Controllers;
 

@@ -1,5 +1,6 @@
 using System.Text;
 using RealEstateEval.Application.Rules;
+using RealEstateEval.Attachments.Application.Rules;
 
 namespace RealEstateEval.Application.Tests;
 

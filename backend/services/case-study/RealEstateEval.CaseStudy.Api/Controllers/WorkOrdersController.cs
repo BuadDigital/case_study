@@ -5,6 +5,7 @@ using RealEstateEval.Application.Contracts;
 using RealEstateEval.Application.Rules;
 using RealEstateEval.Shared.Web;
 using RealEstateEval.Shared.Web.Authorization;
+using RealEstateEval.CaseStudy.Application.Abstractions;
 
 namespace RealEstateEval.CaseStudy.Api.Controllers;
 

@@ -1,6 +1,6 @@
 using RealEstateEval.Application.Contracts;
 
-namespace RealEstateEval.Application.Abstractions;
+namespace RealEstateEval.CaseStudy.Application.Abstractions;
 
 /// <summary>
 /// Resolves which PO numbers a party actor may read on work-order lists.

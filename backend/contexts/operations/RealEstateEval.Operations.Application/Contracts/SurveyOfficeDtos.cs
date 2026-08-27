@@ -1,4 +1,4 @@
-namespace RealEstateEval.Application.Contracts;
+namespace RealEstateEval.Operations.Application.Contracts;
 
 public class SurveyOfficeDto
 {

@@ -1,4 +1,6 @@
-namespace RealEstateEval.Domain;
+using RealEstateEval.Domain;
+
+namespace RealEstateEval.CaseStudy.Domain;
 
 public class CaseStudyForm
 {

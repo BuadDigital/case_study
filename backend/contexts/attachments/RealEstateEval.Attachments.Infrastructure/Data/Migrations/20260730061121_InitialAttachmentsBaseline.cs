@@ -2,7 +2,7 @@
 
 #nullable disable
 
-namespace RealEstateEval.Infrastructure.Data.Contexts.Attachments.Migrations;
+namespace RealEstateEval.Attachments.Infrastructure.Data.Contexts.Attachments.Migrations;
 
 /// <summary>
 /// Empty baseline. The <c>attachments</c> tables already exist from the legacy stream;

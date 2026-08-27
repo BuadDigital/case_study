@@ -1,8 +1,9 @@
 using Microsoft.EntityFrameworkCore;
 using RealEstateEval.Domain;
 using RealEstateEval.Infrastructure.Data;
+using RealEstateEval.Financial.Domain;
 
-namespace RealEstateEval.Infrastructure.Data.Contexts;
+namespace RealEstateEval.Financial.Infrastructure.Data.Contexts;
 
 /// <summary>
 /// Financial-owned tables: the <c>financial</c> schema plus inspector-fee ledgers / transitions /

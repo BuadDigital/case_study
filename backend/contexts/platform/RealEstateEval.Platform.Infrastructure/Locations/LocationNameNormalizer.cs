@@ -2,7 +2,7 @@ using System.Globalization;
 using System.Text;
 using System.Text.RegularExpressions;
 
-namespace RealEstateEval.Infrastructure.Locations;
+namespace RealEstateEval.Platform.Infrastructure.Locations;
 
 /// <summary>تطبيع أسماء المواقع للبحث — مطابق لمواصفة المناطق/المدن v2.</summary>
 public static partial class LocationNameNormalizer

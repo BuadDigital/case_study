@@ -1,4 +1,4 @@
-namespace RealEstateEval.Domain;
+namespace RealEstateEval.Failures.Domain;
 
 /// <summary>
 /// Property failure (تعذر). Status transitions are owned here; side effects (timeline,

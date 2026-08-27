@@ -6,8 +6,13 @@ using RealEstateEval.Application.Rules;
 using RealEstateEval.Domain;
 using RealEstateEval.Infrastructure.Data.Contexts;
 using System.Text.Json;
+using RealEstateEval.CaseStudy.Application.Abstractions;
+using RealEstateEval.CaseStudy.Application.Contracts;
+using RealEstateEval.CaseStudy.Domain;
+using RealEstateEval.CaseStudy.Application.Rules;
+using RealEstateEval.Valuation.Domain;
 
-namespace RealEstateEval.Infrastructure.Services;
+namespace RealEstateEval.CaseStudy.Infrastructure.Services;
 
 public class CaseStudyFormService : ICaseStudyFormService
 {

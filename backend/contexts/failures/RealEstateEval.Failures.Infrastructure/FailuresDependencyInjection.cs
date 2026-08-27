@@ -5,8 +5,12 @@ using RealEstateEval.Application.Abstractions;
 using RealEstateEval.Infrastructure.Services;
 using RealEstateEval.Infrastructure.Data;
 using RealEstateEval.Infrastructure.Data.Contexts;
+using RealEstateEval.Infrastructure;
+using RealEstateEval.Failures.Application.Abstractions;
+using RealEstateEval.Failures.Infrastructure.Services;
+using RealEstateEval.Failures.Infrastructure.Data.Contexts;
 
-namespace RealEstateEval.Infrastructure;
+namespace RealEstateEval.Failures.Infrastructure;
 
 /// <summary>
 /// Context-local registration for the Failures bounded context (A8). The shared

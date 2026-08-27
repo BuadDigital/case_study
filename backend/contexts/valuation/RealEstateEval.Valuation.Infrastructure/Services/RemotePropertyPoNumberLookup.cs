@@ -1,6 +1,6 @@
 using RealEstateEval.Application.Abstractions;
 
-namespace RealEstateEval.Infrastructure.Services;
+namespace RealEstateEval.Valuation.Infrastructure.Services;
 
 /// <summary>
 /// PO-number resolution over the Case Study HTTP API for hosts without

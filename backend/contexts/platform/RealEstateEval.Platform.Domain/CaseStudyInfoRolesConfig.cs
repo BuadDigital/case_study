@@ -1,4 +1,4 @@
-namespace RealEstateEval.Domain;
+namespace RealEstateEval.Platform.Domain;
 
 /// <summary>Singleton admin config: question × party role matrix for case study forms.</summary>
 public class CaseStudyInfoRolesConfig

@@ -1,7 +1,8 @@
 using RealEstateEval.Application.Contracts;
 using RealEstateEval.Domain;
+using RealEstateEval.CaseStudy.Domain;
 
-namespace RealEstateEval.Application.Abstractions;
+namespace RealEstateEval.CaseStudy.Application.Abstractions;
 
 /// <summary>Keeps case-study property slots aligned with work-order expected counts.</summary>
 public interface IWorkflowTaskSlotSynchronizer

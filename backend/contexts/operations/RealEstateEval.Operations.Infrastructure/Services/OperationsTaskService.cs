@@ -2,8 +2,11 @@ using Microsoft.EntityFrameworkCore;
 using RealEstateEval.Application.Abstractions;
 using RealEstateEval.Application.Contracts;
 using RealEstateEval.Infrastructure.Data.Contexts;
+using RealEstateEval.Operations.Application.Abstractions;
+using RealEstateEval.Operations.Infrastructure.Data.Contexts;
+using RealEstateEval.Operations.Application.Contracts;
 
-namespace RealEstateEval.Infrastructure.Services;
+namespace RealEstateEval.Operations.Infrastructure.Services;
 
 /// <summary>
 /// Operations-task façade. Query, commands, and fees/notifications live on collaborators.

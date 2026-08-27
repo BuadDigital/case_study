@@ -2,6 +2,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using RealEstateEval.Infrastructure;
 using RealEstateEval.Infrastructure.Data;
+using RealEstateEval.Identity.Infrastructure;
 
 var login = args.Length > 0 ? args[0] : "ahmed";
 var root = Directory.GetCurrentDirectory();

@@ -5,8 +5,12 @@ using RealEstateEval.Application.Abstractions;
 using RealEstateEval.Application.Contracts;
 using RealEstateEval.Domain;
 using RealEstateEval.Infrastructure.Data.Contexts;
+using RealEstateEval.Failures.Application.Abstractions;
+using RealEstateEval.Failures.Infrastructure.Data.Contexts;
+using RealEstateEval.Failures.Application.Contracts;
+using RealEstateEval.Failures.Domain;
 
-namespace RealEstateEval.Infrastructure.Services;
+namespace RealEstateEval.Failures.Infrastructure.Services;
 
 public sealed class FailureTypesCatalogService : IFailureTypesCatalogService
 {

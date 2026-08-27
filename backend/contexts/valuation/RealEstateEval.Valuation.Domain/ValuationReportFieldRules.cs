@@ -1,4 +1,4 @@
-namespace RealEstateEval.Domain;
+namespace RealEstateEval.Valuation.Domain;
 
 /// <summary>Coverage helpers for valuation-report field payloads.</summary>
 public static class ValuationReportFieldRules

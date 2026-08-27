@@ -5,6 +5,8 @@ using RealEstateEval.Infrastructure;
 using RealEstateEval.Infrastructure.Data;
 using RealEstateEval.Infrastructure.Data.Contexts;
 using RealEstateEval.Infrastructure.Services;
+using RealEstateEval.Identity.Infrastructure.Data.Contexts;
+using RealEstateEval.Operations.Infrastructure.Data.Contexts;
 
 namespace RealEstateEval.Api.ContainerTests;
 

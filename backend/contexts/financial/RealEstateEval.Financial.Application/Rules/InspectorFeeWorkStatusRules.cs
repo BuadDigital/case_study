@@ -1,6 +1,7 @@
 using RealEstateEval.Domain;
+using RealEstateEval.CaseStudy.Domain;
 
-namespace RealEstateEval.Application.Rules;
+namespace RealEstateEval.Financial.Application.Rules;
 
 /// <summary>
 /// Derives party work-completion status for inspector fee ledgers from workflow tasks,

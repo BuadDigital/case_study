@@ -1,4 +1,4 @@
-namespace RealEstateEval.Application.Rules;
+namespace RealEstateEval.CaseStudy.Application.Rules;
 
 using RealEstateEval.Domain;
 

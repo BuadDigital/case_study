@@ -4,7 +4,7 @@ using RealEstateEval.Infrastructure.Data.Contexts;
 
 #nullable disable
 
-namespace RealEstateEval.Infrastructure.Data.Contexts.Identity.Migrations;
+namespace RealEstateEval.Identity.Infrastructure.Data.Contexts.Identity.Migrations;
 
 /// <summary>
 /// Empty identity baseline assumed the shared database already had ASP.NET Identity tables.

@@ -9,8 +9,15 @@ using RealEstateEval.Domain;
 using RealEstateEval.Infrastructure.Data;
 using RealEstateEval.Infrastructure.Data.Contexts;
 using RealEstateEval.Infrastructure.Notifications;
+using RealEstateEval.Operations.Application.Abstractions;
+using RealEstateEval.Operations.Infrastructure.Data.Contexts;
+using RealEstateEval.Attachments.Application.Abstractions;
+using RealEstateEval.Operations.Application.Contracts;
+using RealEstateEval.Operations.Domain;
+using RealEstateEval.Financial.Domain;
+using RealEstateEval.Operations.Application.Rules;
 
-namespace RealEstateEval.Infrastructure.Services;
+namespace RealEstateEval.Operations.Infrastructure.Services;
 
 public sealed class KeyEnvelopesService : IKeyEnvelopesService
 {

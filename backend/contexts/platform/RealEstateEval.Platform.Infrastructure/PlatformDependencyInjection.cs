@@ -7,8 +7,14 @@ using RealEstateEval.Infrastructure.Notifications;
 using RealEstateEval.Infrastructure.Services;
 using RealEstateEval.Infrastructure.Data;
 using RealEstateEval.Infrastructure.Data.Contexts;
+using RealEstateEval.Platform.Infrastructure.Services;
+using RealEstateEval.Platform.Application.Abstractions;
+using RealEstateEval.Infrastructure;
+using RealEstateEval.Platform.Infrastructure.Notifications;
+using RealEstateEval.Platform.Infrastructure.Integration;
+using RealEstateEval.Platform.Infrastructure.Data.Contexts;
 
-namespace RealEstateEval.Infrastructure;
+namespace RealEstateEval.Platform.Infrastructure;
 
 /// <summary>
 /// Context-local registration for the Platform bounded context (A8): the reference catalogs

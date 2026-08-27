@@ -1,6 +1,6 @@
 using System.Text.Json;
 
-namespace RealEstateEval.Domain;
+namespace RealEstateEval.CaseStudy.Domain;
 
 /// <summary>One deed owner from the structured transcription (الملاك وحصصهم).</summary>
 public sealed record DeedOwner(string Name, decimal? SharePct);

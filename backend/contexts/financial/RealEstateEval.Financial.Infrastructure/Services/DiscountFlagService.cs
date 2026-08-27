@@ -6,8 +6,12 @@ using RealEstateEval.Application.Contracts;
 using RealEstateEval.Application.Rules;
 using RealEstateEval.Domain;
 using RealEstateEval.Infrastructure.Data.Contexts;
+using RealEstateEval.Financial.Application.Abstractions;
+using RealEstateEval.Financial.Infrastructure.Data.Contexts;
+using RealEstateEval.Financial.Application.Contracts;
+using RealEstateEval.Financial.Domain;
 
-namespace RealEstateEval.Infrastructure.Services;
+namespace RealEstateEval.Financial.Infrastructure.Services;
 
 public sealed class DiscountFlagService : IDiscountFlagService
 {

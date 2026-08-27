@@ -1,6 +1,10 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using RealEstateEval.Domain;
 using RealEstateEval.Infrastructure.Services;
+using RealEstateEval.Failures.Infrastructure.Services;
+using RealEstateEval.Failures.Domain;
+using RealEstateEval.CaseStudy.Infrastructure.Services;
+using RealEstateEval.Identity.Infrastructure.Services;
 
 namespace RealEstateEval.Application.Tests;
 

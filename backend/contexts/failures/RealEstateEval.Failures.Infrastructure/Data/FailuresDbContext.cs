@@ -1,7 +1,8 @@
 using Microsoft.EntityFrameworkCore;
 using RealEstateEval.Domain;
+using RealEstateEval.Failures.Domain;
 
-namespace RealEstateEval.Infrastructure.Data.Contexts;
+namespace RealEstateEval.Failures.Infrastructure.Data.Contexts;
 
 /// <summary>
 /// Write context for the Failures bounded context.

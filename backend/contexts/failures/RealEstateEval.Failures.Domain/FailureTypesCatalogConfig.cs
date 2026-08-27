@@ -1,4 +1,4 @@
-namespace RealEstateEval.Domain;
+namespace RealEstateEval.Failures.Domain;
 
 /// <summary>Singleton failure types catalog (categories + problem types).</summary>
 public class FailureTypesCatalogConfig

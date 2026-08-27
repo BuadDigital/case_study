@@ -1,6 +1,6 @@
 using RealEstateEval.Application.Contracts;
 
-namespace RealEstateEval.Application.Abstractions;
+namespace RealEstateEval.Platform.Application.Abstractions;
 
 public interface IAuditLogQueryService
 {

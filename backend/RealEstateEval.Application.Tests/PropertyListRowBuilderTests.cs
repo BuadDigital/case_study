@@ -1,4 +1,5 @@
 using RealEstateEval.Domain;
+using RealEstateEval.CaseStudy.Domain;
 
 namespace RealEstateEval.Application.Tests;
 
@@ -27,7 +28,7 @@ public class PropertyListRowBuilderTests
       ],
     };
 
-    var items = Infrastructure.Services.PropertyListRowBuilder.Build(
+    var items = RealEstateEval.CaseStudy.Infrastructure.Services.PropertyListRowBuilder.Build(
       [order],
       new HashSet<string>(StringComparer.Ordinal));
 
@@ -64,7 +65,7 @@ public class PropertyListRowBuilderTests
       $"PO-200|{propertyId}",
     };
 
-    var items = Infrastructure.Services.PropertyListRowBuilder.Build(
+    var items = RealEstateEval.CaseStudy.Infrastructure.Services.PropertyListRowBuilder.Build(
       [order],
       failureKeys);
 
@@ -106,7 +107,7 @@ public class PropertyListRowBuilderTests
       ],
     };
 
-    var items = Infrastructure.Services.PropertyListRowBuilder.Build(
+    var items = RealEstateEval.CaseStudy.Infrastructure.Services.PropertyListRowBuilder.Build(
       [order],
       new HashSet<string>(StringComparer.Ordinal),
       tasksByProperty);
@@ -167,7 +168,7 @@ public class PropertyListRowBuilderTests
       ],
     };
 
-    var items = Infrastructure.Services.PropertyListRowBuilder.Build(
+    var items = RealEstateEval.CaseStudy.Infrastructure.Services.PropertyListRowBuilder.Build(
       [order],
       new HashSet<string>(StringComparer.Ordinal),
       tasksByProperty);

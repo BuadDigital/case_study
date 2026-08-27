@@ -2,7 +2,7 @@
 
 #nullable disable
 
-namespace RealEstateEval.Infrastructure.Data.Contexts.Platform.Migrations;
+namespace RealEstateEval.Platform.Infrastructure.Data.Contexts.Platform.Migrations;
 
 /// <summary>
 /// Empty baseline. The <c>platform</c> tables already exist from the legacy stream;

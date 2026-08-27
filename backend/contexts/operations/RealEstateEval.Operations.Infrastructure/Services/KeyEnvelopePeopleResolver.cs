@@ -2,8 +2,10 @@ using Microsoft.Extensions.DependencyInjection;
 using RealEstateEval.Application.Abstractions;
 using RealEstateEval.Application.Contracts;
 using RealEstateEval.Infrastructure.Data.Contexts;
+using RealEstateEval.Operations.Application.Abstractions;
+using RealEstateEval.Operations.Application.Contracts;
 
-namespace RealEstateEval.Infrastructure.Services;
+namespace RealEstateEval.Operations.Infrastructure.Services;
 
 public sealed class KeyEnvelopePeopleResolver : IKeyEnvelopePeopleResolver
 {

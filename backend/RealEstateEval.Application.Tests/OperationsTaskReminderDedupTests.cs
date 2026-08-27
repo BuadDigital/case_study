@@ -3,6 +3,13 @@ using RealEstateEval.Application.Contracts;
 using RealEstateEval.Domain;
 using RealEstateEval.Infrastructure.Data.Contexts;
 using RealEstateEval.Infrastructure.Services;
+using RealEstateEval.Operations.Infrastructure.Data.Contexts;
+using RealEstateEval.Platform.Infrastructure.Services;
+using RealEstateEval.Operations.Infrastructure.Services;
+using RealEstateEval.Operations.Application.Contracts;
+using RealEstateEval.Identity.Infrastructure.Data.Contexts;
+using RealEstateEval.Identity.Infrastructure.Services;
+using RealEstateEval.Financial.Infrastructure.Services;
 
 namespace RealEstateEval.Application.Tests;
 

@@ -4,9 +4,13 @@ using RealEstateEval.Application.Abstractions;
 using RealEstateEval.Infrastructure.Data;
 using RealEstateEval.Infrastructure.Data.Contexts;
 using RealEstateEval.Infrastructure.Services;
-using RealEstateEval.Infrastructure.Storage;
+using RealEstateEval.Attachments.Infrastructure.Storage;
+using RealEstateEval.Infrastructure;
+using RealEstateEval.Attachments.Application.Abstractions;
+using RealEstateEval.Attachments.Infrastructure.Services;
+using RealEstateEval.Attachments.Infrastructure.Data.Contexts;
 
-namespace RealEstateEval.Infrastructure;
+namespace RealEstateEval.Attachments.Infrastructure;
 
 /// <summary>
 /// Context-local registration for the Attachments bounded context (A8). The shared

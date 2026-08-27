@@ -3,7 +3,7 @@ using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable
 
-namespace RealEstateEval.Infrastructure.Data.Contexts.Identity.Migrations
+namespace RealEstateEval.Identity.Infrastructure.Data.Contexts.Identity.Migrations
 {
  /// <inheritdoc />
     public partial class UnifyUserModel : Migration

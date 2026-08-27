@@ -8,6 +8,8 @@ using RealEstateEval.Application.Contracts;
 using RealEstateEval.Domain;
 using RealEstateEval.Shared.Web;
 using RealEstateEval.Shared.Web.Authorization;
+using RealEstateEval.CaseStudy.Application.Abstractions;
+using RealEstateEval.Financial.Domain;
 
 namespace RealEstateEval.CaseStudy.Api.Controllers;
 

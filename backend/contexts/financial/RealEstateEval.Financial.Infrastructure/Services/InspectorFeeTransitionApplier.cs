@@ -5,8 +5,13 @@ using RealEstateEval.Application.Contracts;
 using RealEstateEval.Application.Rules;
 using RealEstateEval.Domain;
 using RealEstateEval.Infrastructure.Data.Contexts;
+using RealEstateEval.Financial.Application.Abstractions;
+using RealEstateEval.Financial.Infrastructure.Data.Contexts;
+using RealEstateEval.Financial.Domain;
+using RealEstateEval.Financial.Application.Rules;
+using RealEstateEval.CaseStudy.Domain;
 
-namespace RealEstateEval.Infrastructure.Services;
+namespace RealEstateEval.Financial.Infrastructure.Services;
 
 public sealed class InspectorFeeTransitionApplier : IInspectorFeeTransitionApplier
 {

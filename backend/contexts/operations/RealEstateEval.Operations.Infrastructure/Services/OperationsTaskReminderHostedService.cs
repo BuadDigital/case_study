@@ -2,8 +2,9 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using RealEstateEval.Application.Abstractions;
+using RealEstateEval.Operations.Application.Abstractions;
 
-namespace RealEstateEval.Infrastructure.Services;
+namespace RealEstateEval.Operations.Infrastructure.Services;
 
 /// <summary>Periodically auto-reminds active operations tasks within work hours.</summary>
 public sealed class OperationsTaskReminderHostedService : BackgroundService

@@ -4,7 +4,7 @@ using RealEstateEval.Infrastructure.Data.Contexts;
 
 #nullable disable
 
-namespace RealEstateEval.Infrastructure.Data.Contexts.Failures.Migrations;
+namespace RealEstateEval.Failures.Infrastructure.Data.Contexts.Failures.Migrations;
 
 /// <summary>
 /// Empty failures baseline assumed the shared database already had failures tables.

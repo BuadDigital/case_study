@@ -1,5 +1,8 @@
 using RealEstateEval.Application.Contracts;
 using RealEstateEval.Application.Rules;
+using RealEstateEval.Attachments.Application.Rules;
+using RealEstateEval.CaseStudy.Application.Contracts;
+using RealEstateEval.CaseStudy.Application.Rules;
 
 namespace RealEstateEval.Application.Tests;
 

@@ -1,4 +1,4 @@
-namespace RealEstateEval.Domain;
+namespace RealEstateEval.Attachments.Domain;
 
 public class FileAttachment
 {

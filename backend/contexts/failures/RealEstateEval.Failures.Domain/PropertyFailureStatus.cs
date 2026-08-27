@@ -1,4 +1,4 @@
-namespace RealEstateEval.Domain;
+namespace RealEstateEval.Failures.Domain;
 
 public static class PropertyFailureStatus
 {

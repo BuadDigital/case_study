@@ -1,8 +1,9 @@
 using RealEstateEval.Application.Abstractions;
 using RealEstateEval.Domain;
 using RealEstateEval.Infrastructure.Data.Contexts;
+using RealEstateEval.Platform.Infrastructure.Data.Contexts;
 
-namespace RealEstateEval.Infrastructure.Services;
+namespace RealEstateEval.Platform.Infrastructure.Services;
 
 public sealed class PlatformAuditLogAppend(PlatformDbContext db) : IAuditLogAppend
 {

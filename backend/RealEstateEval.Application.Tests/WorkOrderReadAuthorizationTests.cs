@@ -2,6 +2,8 @@ using Microsoft.EntityFrameworkCore;
 using RealEstateEval.Application.Contracts;
 using RealEstateEval.Domain;
 using RealEstateEval.Infrastructure.Data.Contexts;
+using RealEstateEval.CaseStudy.Infrastructure.Data.Contexts;
+using RealEstateEval.CaseStudy.Domain;
 
 namespace RealEstateEval.Application.Tests;
 
@@ -97,7 +99,7 @@ public class WorkOrderReadAuthorizationTests
     private static TestBoundedContexts.Bundle CreateDb() =>
         TestBoundedContexts.Create($"wo-read-auth-{Guid.NewGuid():N}");
 
-    private static RealEstateEval.Infrastructure.Services.WorkOrderService CreateService(
+    private static RealEstateEval.CaseStudy.Infrastructure.Services.WorkOrderService CreateService(
         TestBoundedContexts.Bundle bundle)
     {
         var db = bundle.CaseStudy;

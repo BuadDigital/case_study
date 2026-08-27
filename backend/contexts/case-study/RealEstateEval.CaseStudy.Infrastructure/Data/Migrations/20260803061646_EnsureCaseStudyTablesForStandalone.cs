@@ -4,7 +4,7 @@ using RealEstateEval.Infrastructure.Data.Contexts;
 
 #nullable disable
 
-namespace RealEstateEval.Infrastructure.Data.Contexts.CaseStudy.Migrations;
+namespace RealEstateEval.CaseStudy.Infrastructure.Data.Contexts.CaseStudy.Migrations;
 
 /// <summary>
 /// Empty case-study baseline assumed the shared database already had case_study owner tables. A dedicated case-study database has no legacy stream, so this creates the baseline tables when they are missing. Later case-study migrations create clients, inventory, and property groups on top of this.

@@ -9,7 +9,7 @@ using RealEstateEval.Infrastructure.Data.Contexts;
 
 #nullable disable
 
-namespace RealEstateEval.Infrastructure.Data.Contexts.Failures.Migrations
+namespace RealEstateEval.Failures.Infrastructure.Data.Contexts.Failures.Migrations
 {
     [DbContext(typeof(FailuresDbContext))]
     [Migration("20260803055349_InitialFailuresBaseline")]

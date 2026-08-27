@@ -1,4 +1,6 @@
-namespace RealEstateEval.Domain;
+using RealEstateEval.Domain;
+
+namespace RealEstateEval.CaseStudy.Domain;
 
 /// <summary>
 /// Operational dashboard metrics from live workflow tasks — not prototype numbers.

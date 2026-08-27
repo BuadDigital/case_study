@@ -1,4 +1,4 @@
-namespace RealEstateEval.Domain;
+namespace RealEstateEval.Platform.Domain;
 
 /// <summary>Singleton attachment print dictionary (types + property-type links + required).</summary>
 public class AttachmentPrintDictionaryConfig

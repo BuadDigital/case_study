@@ -1,4 +1,6 @@
-namespace RealEstateEval.Domain;
+using RealEstateEval.Domain;
+
+namespace RealEstateEval.Valuation.Domain;
 
 /// <summary>
 /// الغرض من التقييم وأساس القيمة وفرضية القيمة تُشتق من التصنيف الأساسي لأمر العمل
