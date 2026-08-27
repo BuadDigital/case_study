@@ -61,12 +61,7 @@ public sealed class ControllerBodyPostgresTests : IAsyncLifetime
             return;
 
         _connectionString = await _postgres.EnsureDatabaseAsync("controller_bodies");
-        await using var db = new ApplicationDbContext(
-            new DbContextOptionsBuilder<ApplicationDbContext>()
-                .UseNpgsql(_connectionString)
-                .Options);
-        await db.Database.MigrateAsync();
-        // Post-cutover columns (e.g. WorkOrder.ClientId) live in the per-context streams.
+        // A10: the nine context streams alone provision the schema.
         await BoundedContextStreamMigrator.ApplyAllStreamsAsync(_connectionString);
     }
 

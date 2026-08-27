@@ -21,40 +21,44 @@ public class DatabaseMigrationTests
 
     public DatabaseMigrationTests(PostgresFixture postgres) => _postgres = postgres;
 
+ /// <summary>
+ /// A10: the legacy stream is archived, so a fresh database must come up from the nine
+ /// bounded-context streams alone (each carries an Ensure*TablesForStandalone baseline).
+ /// </summary>
     [DockerFact]
-    public async Task Migrations_apply_to_an_empty_database_and_leave_nothing_pending()
+    public async Task Context_streams_provision_an_empty_database_and_leave_nothing_pending()
     {
         var connectionString = await _postgres.CreateDatabaseAsync("migrations_smoke");
-        await using var db = CreateContext(connectionString);
 
-        Assert.NotEmpty(await db.Database.GetPendingMigrationsAsync());
-
-        await db.Database.MigrateAsync();
-
-        Assert.Empty(await db.Database.GetPendingMigrationsAsync());
-        Assert.True(await db.Database.CanConnectAsync());
-
- // The legacy stream stops at the bounded-context cutover; the deploy migrator applies
- // the per-context streams on top (post-cutover columns like WorkOrder.ClientId live
- // there). Apply them all before proving the schema with queries.
         await BoundedContextStreamMigrator.ApplyAllStreamsAsync(connectionString);
 
- // A query per schema proves the migrations built tables, not just the history table.
-        Assert.Empty(await db.WorkOrders.AsNoTracking().ToListAsync());
-        Assert.Empty(await db.WorkflowTasks.AsNoTracking().ToListAsync());
-        Assert.Empty(await db.Users.AsNoTracking().ToListAsync());
+        foreach (var contextType in BoundedContextStreamMigrator.StreamTypes)
+        {
+            await using var stream = BoundedContextStreamMigrator.CreateStreamContext(
+                contextType, connectionString);
+            Assert.Empty(await stream.Database.GetPendingMigrationsAsync());
+        }
+
+ // A query per key schema proves the streams built tables, not just history rows.
+        await using var caseStudy = (CaseStudyDbContext)BoundedContextStreamMigrator
+            .CreateStreamContext(typeof(CaseStudyDbContext), connectionString);
+        Assert.Empty(await caseStudy.WorkOrders.AsNoTracking().ToListAsync());
+        Assert.Empty(await caseStudy.WorkflowTasks.AsNoTracking().ToListAsync());
+        await using var identity = (IdentityDbContext)BoundedContextStreamMigrator
+            .CreateStreamContext(typeof(IdentityDbContext), connectionString);
+        Assert.Empty(await identity.Users.AsNoTracking().ToListAsync());
     }
 
  /// <summary>
- /// The deploy runbook rolls back to a named migration, so the newest migration has to come
- /// off and go back on cleanly. (Rolling all the way back to <c>0</c> currently fails on data
- /// inserted by earlier migrations — see the rollback note in <c>backend/README.md</c>.)
+ /// The deploy runbook rolls back to a named migration per stream, so the newest migration
+ /// of a stream has to come off and go back on cleanly. Case Study is the busiest stream.
  /// </summary>
     [DockerFact]
-    public async Task The_newest_migration_can_be_rolled_back_and_reapplied()
+    public async Task The_newest_case_study_migration_can_be_rolled_back_and_reapplied()
     {
         var connectionString = await _postgres.CreateDatabaseAsync("migrations_rollback");
-        await using var db = CreateContext(connectionString);
+        await using var db = BoundedContextStreamMigrator.CreateStreamContext(
+            typeof(CaseStudyDbContext), connectionString);
 
         await db.Database.MigrateAsync();
 
@@ -76,7 +80,6 @@ public class DatabaseMigrationTests
 
         var services = new ServiceCollection();
         services.AddLogging(logging => logging.SetMinimumLevel(LogLevel.Warning));
-        services.AddDbContext<ApplicationDbContext>(options => options.UseNpgsql(connectionString));
         services.AddDbContext<AttachmentsDbContext>(options =>
             UseStream<AttachmentsDbContext>(options, connectionString));
         services.AddDbContext<PlatformDbContext>(options =>
@@ -101,11 +104,9 @@ public class DatabaseMigrationTests
         await using var provider = services.BuildServiceProvider();
 
  // The seeder writes identity and platform tables, so it needs every stream the deploy
- // migrator applies — the legacy one alone stops at the bounded-context cutover.
+ // migrator applies (A10: the streams alone provision the schema).
         await using (var scope = provider.CreateAsyncScope())
         {
-            await scope.ServiceProvider.GetRequiredService<ApplicationDbContext>()
-                .Database.MigrateAsync();
             foreach (var context in BoundedContextStreamMigrator.StreamTypes)
             {
                 await ((DbContext)scope.ServiceProvider.GetRequiredService(context))
@@ -121,7 +122,7 @@ public class DatabaseMigrationTests
         int seededUsers;
         await using (var scope = provider.CreateAsyncScope())
         {
-            var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+            var db = scope.ServiceProvider.GetRequiredService<IdentityDbContext>();
             seededUsers = await db.Users.CountAsync();
             Assert.True(seededUsers > 0, "the demo seed created no users");
         }
@@ -134,15 +135,10 @@ public class DatabaseMigrationTests
 
         await using (var scope = provider.CreateAsyncScope())
         {
-            var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+            var db = scope.ServiceProvider.GetRequiredService<IdentityDbContext>();
             Assert.Equal(seededUsers, await db.Users.CountAsync());
         }
     }
-
-    private static ApplicationDbContext CreateContext(string connectionString) =>
-        new(new DbContextOptionsBuilder<ApplicationDbContext>()
-            .UseNpgsql(connectionString)
-            .Options);
 
     private static void UseStream<TContext>(
         DbContextOptionsBuilder options,

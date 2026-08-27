@@ -32,13 +32,6 @@ public class SystemResetTests
             (key, value) => settings[key] = value, connectionString);
         var configuration = new ConfigurationBuilder().AddInMemoryCollection(settings).Build();
 
-        await using (var legacy = new ApplicationDbContext(
-            new DbContextOptionsBuilder<ApplicationDbContext>()
-                .UseNpgsql(connectionString)
-                .Options))
-        {
-            await legacy.Database.MigrateAsync();
-        }
         await BoundedContextStreamMigrator.ApplyAllStreamsAsync(connectionString);
 
         await using (var seedProvider = DevSeedProvider.CreateIdentityMaintenanceProvider(

@@ -33,14 +33,7 @@ public class ServiceReadinessContainerTests
         Assert.Equal(HttpStatusCode.ServiceUnavailable, beforeMigrating.StatusCode);
         Assert.Equal("migrations_pending", await ReadDatabaseStatusAsync(beforeMigrating));
 
-        await using var db = new ApplicationDbContext(
-            new DbContextOptionsBuilder<ApplicationDbContext>()
-                .UseNpgsql(connectionString)
-                .Options);
-        await db.Database.MigrateAsync();
-
-        // Since the dedicated-DB split, /ready checks the host's own migration stream —
-        // the legacy stream alone stops at the bounded-context cutover.
+        // /ready checks the host's own migration stream (A10: streams alone provision).
         await BoundedContextStreamMigrator.ApplyAllStreamsAsync(connectionString);
 
         var afterMigrating = await client.GetAsync("/ready");
