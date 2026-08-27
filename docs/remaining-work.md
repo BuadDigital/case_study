@@ -47,6 +47,12 @@ from 2026-08-20, so the deploy decision is back on the table):**
   and `property-groups/by-property` no longer 204s misses (TS client reads the body).
   **Lesson:** hand-written migrations must regenerate both snapshots and the ownership row —
   the suites only gate `main`.
+- **A8 retirement wave (2026-08-28, after the dev-reset restore):** reporting/work-order wire
+  contracts + shared enums → `Shared.Contracts` (Domain now references only that leaf);
+  case-study EF services → `CaseStudy.Infrastructure`; all owner-to-owner HTTP clients +
+  `AddRemote*` → new `shared/RealEstateEval.Shared.RemoteClients`; permission catalog/role
+  resolver → `Identity.Infrastructure`. Global assemblies are down to the legacy-context
+  compile surface + genuinely multi-context plumbing (see §1).
 - **Evaluator frontend wave (2026-08-27):** valuation workspace decomposed into memoized
   draft-owning sections (shell 5,097 → ~2,000 lines), scoped reloads/bundle trims/react-query
   tab caches, popup-`noopener` fix, plus a reusable Playwright smoke driver
@@ -84,17 +90,32 @@ at-a-glance). One deliberate deviation from the original wording: the `*Model.cs
 files stay global — the frozen legacy context maps every schema through them, and a single
 definition is what stops the two mappings drifting. They move only when the legacy context is
 archived (A10).
-- ~~**Hard-stay unwind**~~ **done 2026-08-28** (see at-a-glance). The reporting-shared DTO
-move to `Shared.Contracts` was re-scoped into the global-retirement item below: `WorkOrderDtos`
-leans on Domain enums and `Shared.Contracts` is deliberately a zero-reference leaf, so the move
-needs a contract design (move/duplicate the enums or stringify), not a file relocation.
-- **Namespace alignment + global Domain/Application/Infrastructure retirement — still open,
-and now the only A8 remainder.** Gated, not just queued: retirement requires archiving the
-frozen legacy context (blocked on the A10 metrics window + leftover-DB decision), relocating
-the deliberately-global shared services/HTTP clients per an ownership design, and the
-reporting-DTO contract question above. Namespace renames before that would break the
-zero-using-churn template for no runtime benefit. Do not start this without the A10 gates
-closed.
+- ~~**Hard-stay unwind**~~ **done 2026-08-28** (see at-a-glance).
+- ~~**Reporting-DTO contract question**~~ **resolved 2026-08-28**: the shared wire enums
+(`WorkOrderEnums`, `WorkflowTaskEnums`, `Enums`, `ValuationRequestStatus(es)`,
+`DomainWireStatuses`) and the reporting/work-order DTO files (`WorkOrderDtos`,
+`ReportingDtos`, `WorkflowTaskDtos`, `FieldInspectionWorkspaceDtos`, `PrototypeModulesDtos`,
+`PagedResultDto`) moved into `Shared.Contracts` with their declared namespaces unchanged.
+`Shared.Contracts` keeps zero project references; Domain now references only that leaf
+(`WorkOrderListStatus.Resolve` was rewritten scalar-shaped to drop its entity parameter).
+- **Pre-retirement relocation wave — done 2026-08-28:** case-study EF services
+(`CaseStudyLookup`/`CaseStudyCommands`/`CaseStudyPropertyPoNumberLookup`/`WorkflowTaskMapper`)
+moved into `CaseStudy.Infrastructure`; the owner-to-owner HTTP clients + `UpstreamServicesOptions`
++ `AddRemote*` registrations moved into the new `shared/RealEstateEval.Shared.RemoteClients`
+library (same namespaces, zero using churn; recorded in `boundary-baseline.json`);
+`PlatformPermissionCatalog`/`PrototypeRoleResolver` moved into `Identity.Infrastructure`.
+Deliberately still global: `PropertyAccessHoldService` (registered by two contexts),
+`DbContextTransaction` + `ICaseStudyRepository` (multi-context data plumbing),
+`NotificationRecipientResolver` (five consumer contexts), `ServiceHealthEndpoints` (needs
+global data/integration internals), messaging/outbox plumbing (Messaging stays global by
+design), and everything the frozen legacy context compiles against.
+- **Namespace alignment + final global Domain/Application/Infrastructure retirement — the
+only A8 remainder, and strictly A10-gated.** What is left in the global assemblies is now
+exactly the legacy-context compile surface (entities, `*Model.cs`, migrations, seed,
+`ApplicationUser`) plus the genuinely multi-context plumbing above. Retirement requires
+archiving the frozen legacy context (A10 metrics window + leftover-DB decision). Namespace
+renames before that would break the zero-using-churn template for no runtime benefit. Do
+not start this without the A10 gates closed.
 
 **2. Waiting on Omar:**
 

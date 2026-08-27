@@ -144,3 +144,30 @@ that script (or `down -v`) runs.
 | Capture production metrics baseline | operations | Comparison baseline |
 | Measure pooled-connection counts with multiple contexts | operations | Connection-growth risk |
 | Replace remaining Identity *reads* on ApplicationDbContext (fees, notifications, labels) | Phase 3 | Still cross-boundary LINQ |
+
+## A8 retirement wave (2026-08-28)
+
+Shrunk the global assemblies to the legacy-context compile surface plus genuinely
+multi-context plumbing:
+
+- **Shared.Contracts** now carries the reporting/work-order wire DTOs
+  (`WorkOrderDtos`, `ReportingDtos`, `WorkflowTaskDtos`, `FieldInspectionWorkspaceDtos`,
+  `PrototypeModulesDtos`, `PagedResultDto`) and the shared wire enums/status classes
+  (`WorkOrderEnums`, `WorkflowTaskEnums`, `Enums`, `ValuationRequestStatus(es)`,
+  `DomainWireStatuses`) with declared namespaces unchanged. It still has zero project
+  references; `RealEstateEval.Domain` now references only this leaf
+  (`WorkOrderListStatus.Resolve` became scalar-shaped to drop its entity parameter).
+- **shared/RealEstateEval.Shared.RemoteClients** (new) carries all 24 owner-to-owner HTTP
+  clients, `UpstreamServicesOptions`, `PersonLabelResolver`, and the `AddRemote*`
+  registrations (`RemoteClientRegistration`, namespace `RealEstateEval.Infrastructure`).
+  Global Infrastructure references it transitionally so hosts need no using churn.
+- **CaseStudy.Infrastructure** gained `CaseStudyLookup`, `CaseStudyCommands`,
+  `CaseStudyPropertyPoNumberLookup`, `WorkflowTaskMapper`;
+  **Identity.Infrastructure** gained `PlatformPermissionCatalog`, `PrototypeRoleResolver`.
+- Deliberately still global: `PropertyAccessHoldService`, `DbContextTransaction`,
+  `ICaseStudyRepository`, `NotificationRecipientResolver`, `ServiceHealthEndpoints`,
+  messaging/outbox plumbing, and the legacy-context compile surface (entities,
+  `*Model.cs`, migrations, seed, `ApplicationUser`) — these move only at A10 archival.
+
+Verified: Architecture 56, Application 920, Integration 214, Container 39, and
+`DbMigrate -- list` zero-pending on all nine context streams.
