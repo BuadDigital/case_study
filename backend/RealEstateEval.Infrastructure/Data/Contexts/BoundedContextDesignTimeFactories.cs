@@ -60,26 +60,11 @@ public sealed class IdentityDbContextDesignTimeFactory
         new(options);
 }
 
-public sealed class FailuresDbContextDesignTimeFactory
-    : BoundedContextDesignTimeFactory<FailuresDbContext>
-{
-    protected override FailuresDbContext Create(DbContextOptions<FailuresDbContext> options) =>
-        new(options);
-}
+// A8 physical move: FailuresDbContextDesignTimeFactory lives beside its context library.
 
-public sealed class OperationsDbContextDesignTimeFactory
-    : BoundedContextDesignTimeFactory<OperationsDbContext>
-{
-    protected override OperationsDbContext Create(DbContextOptions<OperationsDbContext> options) =>
-        new(options);
-}
+// A8 physical move: OperationsDbContextDesignTimeFactory lives beside its context library.
 
-public sealed class FinancialDbContextDesignTimeFactory
-    : BoundedContextDesignTimeFactory<FinancialDbContext>
-{
-    protected override FinancialDbContext Create(DbContextOptions<FinancialDbContext> options) =>
-        new(options);
-}
+// A8 physical move: FinancialDbContextDesignTimeFactory lives beside its context library.
 
 public sealed class CaseStudyDbContextDesignTimeFactory
     : BoundedContextDesignTimeFactory<CaseStudyDbContext>

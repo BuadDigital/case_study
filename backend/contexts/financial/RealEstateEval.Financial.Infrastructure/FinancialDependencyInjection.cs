@@ -3,6 +3,8 @@ using Microsoft.Extensions.DependencyInjection;
 using RealEstateEval.Application.Abstractions;
 using RealEstateEval.Infrastructure.Notifications;
 using RealEstateEval.Infrastructure.Services;
+using RealEstateEval.Infrastructure.Data;
+using RealEstateEval.Infrastructure.Data.Contexts;
 
 namespace RealEstateEval.Infrastructure;
 
@@ -56,4 +58,20 @@ public static class FinancialDependencyInjection
         services.AddScoped<IInspectorFeeService, InspectorFeeService>();
         return services;
     }
+ /// <summary>Financial write context. Prefers a dedicated Financial connection string.
+ /// A8 physical move: lives beside <see cref="FinancialDbContext"/> in the context library.</summary>
+    public static IServiceCollection AddFinancialPersistence(
+        this IServiceCollection services,
+        IConfiguration configuration,
+        string connectionString)
+    {
+        var financialConnection = BoundedContextConnections.Resolve(
+            configuration,
+            BoundedContextConnections.ServiceNames.Financial,
+            connectionString);
+        return services.AddBoundedContextPersistence<FinancialDbContext>(
+            configuration,
+            financialConnection);
+    }
+
 }

@@ -3,6 +3,8 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using RealEstateEval.Application.Abstractions;
 using RealEstateEval.Infrastructure.Services;
+using RealEstateEval.Infrastructure.Data;
+using RealEstateEval.Infrastructure.Data.Contexts;
 
 namespace RealEstateEval.Infrastructure;
 
@@ -33,4 +35,20 @@ public static class FailuresDependencyInjection
         services.AddScoped<IFailureTypesCatalogService, FailureTypesCatalogService>();
         return services;
     }
+ /// <summary>Failures write context. Prefers a dedicated Failures connection string.
+ /// A8 physical move: lives beside <see cref="FailuresDbContext"/> in the context library.</summary>
+    public static IServiceCollection AddFailuresPersistence(
+        this IServiceCollection services,
+        IConfiguration configuration,
+        string connectionString)
+    {
+        var failuresConnection = BoundedContextConnections.Resolve(
+            configuration,
+            BoundedContextConnections.ServiceNames.Failures,
+            connectionString);
+        return services.AddBoundedContextPersistence<FailuresDbContext>(
+            configuration,
+            failuresConnection);
+    }
+
 }

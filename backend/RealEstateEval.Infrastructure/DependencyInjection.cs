@@ -146,50 +146,14 @@ public static class DependencyInjection
         return services.AddBoundedContextPersistence<IdentityDbContext>(configuration, connectionString);
     }
 
- /// <summary>Failures write context. Prefers a dedicated Failures connection string.</summary>
-    public static IServiceCollection AddFailuresPersistence(
-        this IServiceCollection services,
-        IConfiguration configuration,
-        string connectionString)
-    {
-        var failuresConnection = BoundedContextConnections.Resolve(
-            configuration,
-            BoundedContextConnections.ServiceNames.Failures,
-            connectionString);
-        return services.AddBoundedContextPersistence<FailuresDbContext>(
-            configuration,
-            failuresConnection);
-    }
+ // A8 physical move: AddFailuresPersistence lives in FailuresDependencyInjection
+ // (contexts/failures) beside its DbContext.
 
- /// <summary>Operations write context. Prefers a dedicated Operations connection string.</summary>
-    public static IServiceCollection AddOperationsPersistence(
-        this IServiceCollection services,
-        IConfiguration configuration,
-        string connectionString)
-    {
-        var operationsConnection = BoundedContextConnections.Resolve(
-            configuration,
-            BoundedContextConnections.ServiceNames.Operations,
-            connectionString);
-        return services.AddBoundedContextPersistence<OperationsDbContext>(
-            configuration,
-            operationsConnection);
-    }
+ // A8 physical move: AddOperationsPersistence lives in OperationsDependencyInjection
+ // (contexts/operations) beside its DbContext.
 
- /// <summary>Financial write context. Prefers a dedicated Financial connection string.</summary>
-    public static IServiceCollection AddFinancialPersistence(
-        this IServiceCollection services,
-        IConfiguration configuration,
-        string connectionString)
-    {
-        var financialConnection = BoundedContextConnections.Resolve(
-            configuration,
-            BoundedContextConnections.ServiceNames.Financial,
-            connectionString);
-        return services.AddBoundedContextPersistence<FinancialDbContext>(
-            configuration,
-            financialConnection);
-    }
+ // A8 physical move: AddFinancialPersistence lives in FinancialDependencyInjection
+ // (contexts/financial) beside its DbContext.
 
  /// <summary>Case Study write context. Prefers a dedicated Case Study connection string.</summary>
     public static IServiceCollection AddCaseStudyPersistence(

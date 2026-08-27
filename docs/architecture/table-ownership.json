@@ -95,7 +95,7 @@
       "schemas": [
         "failures"
       ],
-      "migrations": "backend/RealEstateEval.Infrastructure/Data/Contexts/Failures/Migrations",
+      "migrations": "backend/contexts/failures/RealEstateEval.Failures.Infrastructure/Data/Migrations",
       "migrationsHistorySchema": "failures",
       "note": "Phase 1 extraction order, step 3. Write path is FailuresDbContext. After the Phase 4 cutover the failures schema lives on a dedicated database. Case Study and Operations call the Failures HTTP API instead of a second connection."
     },
@@ -107,7 +107,7 @@
       "schemas": [
         "operations"
       ],
-      "migrations": "backend/RealEstateEval.Infrastructure/Data/Contexts/Operations/Migrations",
+      "migrations": "backend/contexts/operations/RealEstateEval.Operations.Infrastructure/Data/Migrations",
       "migrationsHistorySchema": "operations",
       "note": "Phase 1 extraction order, step 3. Operations schema tables plus write path for OperationsTasks/Sequences (D2) still physically named in case_study. After the Phase 4 cutover those D2 tables live on the dedicated operations database, still in the case_study schema until a later relocate."
     },
@@ -119,7 +119,7 @@
       "schemas": [
         "financial"
       ],
-      "migrations": "backend/RealEstateEval.Infrastructure/Data/Contexts/Financial/Migrations",
+      "migrations": "backend/contexts/financial/RealEstateEval.Financial.Infrastructure/Data/Migrations",
       "migrationsHistorySchema": "financial",
       "note": "Phase 1 extraction order, step 4. financial schema plus D1 inspector-fee tables still physically named in case_study. After the Phase 4 cutover those D1 tables live on the dedicated financial database, still in the case_study schema until a later relocate."
     },

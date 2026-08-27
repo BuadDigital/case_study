@@ -8,7 +8,9 @@ namespace RealEstateEval.Infrastructure.Data.Contexts;
 /// The <c>failures</c> schema mapping. Applied by <see cref="FailuresDbContext"/> (write path)
 /// and by the legacy context (transitional Case Study / billing reads until owner APIs replace them).
 /// </summary>
-internal static class FailuresModel
+// A8: public — the owner context lives in its context library; this shared mapping stays
+// global beside the frozen legacy context (drift guard).
+public static class FailuresModel
 {
     public static ModelBuilder ApplyFailuresModel(this ModelBuilder builder, bool ownsMigrations = true)
     {

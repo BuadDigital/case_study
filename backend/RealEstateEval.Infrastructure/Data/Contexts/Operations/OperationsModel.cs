@@ -9,7 +9,9 @@ namespace RealEstateEval.Infrastructure.Data.Contexts;
 /// <c>case_study</c> physically (D2). Applied by <see cref="OperationsDbContext"/> (write path)
 /// and by the legacy context for transitional cross-boundary reads until owner APIs replace them.
 /// </summary>
-internal static class OperationsModel
+// A8: public — the owner context lives in its context library; this shared mapping stays
+// global beside the frozen legacy context (drift guard).
+public static class OperationsModel
 {
     public static ModelBuilder ApplyOperationsModel(this ModelBuilder builder, bool ownsMigrations = true)
     {

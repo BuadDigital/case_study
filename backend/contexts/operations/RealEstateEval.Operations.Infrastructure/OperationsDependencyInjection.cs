@@ -3,6 +3,8 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using RealEstateEval.Application.Abstractions;
 using RealEstateEval.Infrastructure.Services;
+using RealEstateEval.Infrastructure.Data;
+using RealEstateEval.Infrastructure.Data.Contexts;
 
 namespace RealEstateEval.Infrastructure;
 
@@ -53,4 +55,20 @@ public static class OperationsDependencyInjection
         services.AddHostedService<OperationsTaskReminderHostedService>();
         return services;
     }
+ /// <summary>Operations write context. Prefers a dedicated Operations connection string.
+ /// A8 physical move: lives beside <see cref="OperationsDbContext"/> in the context library.</summary>
+    public static IServiceCollection AddOperationsPersistence(
+        this IServiceCollection services,
+        IConfiguration configuration,
+        string connectionString)
+    {
+        var operationsConnection = BoundedContextConnections.Resolve(
+            configuration,
+            BoundedContextConnections.ServiceNames.Operations,
+            connectionString);
+        return services.AddBoundedContextPersistence<OperationsDbContext>(
+            configuration,
+            operationsConnection);
+    }
+
 }

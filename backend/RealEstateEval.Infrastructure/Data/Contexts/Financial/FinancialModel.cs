@@ -10,7 +10,9 @@ namespace RealEstateEval.Infrastructure.Data.Contexts;
 /// <see cref="FinancialDbContext"/> (write path) and by the legacy context for transitional
 /// cross-boundary reads until owner APIs replace them.
 /// </summary>
-internal static class FinancialModel
+// A8: public — the owner context lives in its context library; this shared mapping stays
+// global beside the frozen legacy context (drift guard).
+public static class FinancialModel
 {
     public static ModelBuilder ApplyFinancialModel(this ModelBuilder builder, bool ownsMigrations = true)
     {

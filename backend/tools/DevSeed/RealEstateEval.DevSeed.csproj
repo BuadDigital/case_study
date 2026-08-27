@@ -11,5 +11,8 @@
          physically, each context Infrastructure — nothing references this project except
          the Case Study dev host and the container tests. -->
     <ProjectReference Include="..\..\RealEstateEval.Infrastructure\RealEstateEval.Infrastructure.csproj" />
+    <ProjectReference Include="..\..\contexts\failures\RealEstateEval.Failures.Infrastructure\RealEstateEval.Failures.Infrastructure.csproj" />
+    <ProjectReference Include="..\..\contexts\operations\RealEstateEval.Operations.Infrastructure\RealEstateEval.Operations.Infrastructure.csproj" />
+    <ProjectReference Include="..\..\contexts\financial\RealEstateEval.Financial.Infrastructure\RealEstateEval.Financial.Infrastructure.csproj" />
   </ItemGroup>
 </Project>
