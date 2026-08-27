@@ -55,19 +55,8 @@ public class EfModelBoundaryTests
             + "\nThese generate cross-owner joins. Read through the owner instead.");
     }
 
-    [Fact]
-    public void ModelMatchesTheMigrationSnapshot()
-    {
-        var options = new DbContextOptionsBuilder<ApplicationDbContext>()
-            .UseNpgsql("Host=architecture-tests;Database=model_only;Username=none;Password=none")
-            .Options;
-
-        using var context = new ApplicationDbContext(options);
-
-        Assert.False(
-            context.Database.HasPendingModelChanges(),
-            "The model differs from ApplicationDbContextModelSnapshot. The legacy migration "
-            + "stream is the baseline that the deploy-time migrator applies before any "
- + "per-context stream (migration-stream rules), so it must never drift.");
-    }
+    // A10: the legacy-snapshot drift test is retired with the legacy context. Owner-stream
+    // snapshot drift is caught per stream by MigrationStreamTests and the container suite
+    // (EF10 fails MigrateAsync on PendingModelChangesWarning), and shared-mapping drift by
+    // the consistency checks inside EfModelFacts.
 }

@@ -15,11 +15,24 @@ internal static class BoundedContextFacts
     private const string PlaceholderConnection =
         "Host=architecture-tests;Database=model_only;Username=none;Password=none";
 
- /// <summary>Context name to a factory for its model. Legacy first, then the extracted ones.</summary>
+ /// <summary>The nine owner-context types, in migration apply order (A10: no legacy).</summary>
+    public static IReadOnlyList<Type> ContextTypes { get; } =
+    [
+        typeof(AttachmentsDbContext),
+        typeof(PlatformDbContext),
+        typeof(ValuationDbContext),
+        typeof(IdentityDbContext),
+        typeof(FailuresDbContext),
+        typeof(OperationsDbContext),
+        typeof(FinancialDbContext),
+        typeof(CaseStudyDbContext),
+        typeof(MessagingDbContext),
+    ];
+
+ /// <summary>Context name to a factory for its model, in apply order.</summary>
     public static IReadOnlyDictionary<string, Func<IModel>> ModelFactories { get; } =
         new Dictionary<string, Func<IModel>>(StringComparer.Ordinal)
         {
-            [nameof(ApplicationDbContext)] = () => EfModelFacts.Model,
             [nameof(AttachmentsDbContext)] = () =>
                 Build<AttachmentsDbContext>(options => new AttachmentsDbContext(options)),
             [nameof(PlatformDbContext)] = () =>

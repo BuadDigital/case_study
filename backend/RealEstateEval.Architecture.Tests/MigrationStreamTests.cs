@@ -7,15 +7,13 @@ namespace RealEstateEval.Architecture.Tests;
 
 /// <summary>
 /// bounded-context split guardrails for the migration architecture. Every stream belongs to
-/// exactly one context, the legacy stream is frozen at the catalogued cutover, and only the
-/// deploy-time migrator (or the development-only Case Study startup path) applies any of them.
+/// exactly one context (A10: the legacy stream is archived under git tag
+/// a10-legacy-stream-final), and only the deploy-time migrator (or the development-only
+/// Case Study startup path) applies any of them.
 /// </summary>
 public class MigrationStreamTests
 {
     private static readonly TableOwnershipCatalog Catalog = TableOwnershipCatalog.Instance;
-
-    private static readonly string LegacyStream =
-        RepoPaths.Combine("backend", "RealEstateEval.Infrastructure", "Data", "Migrations");
 
     private static readonly Regex TimestampedMigration = new(@"^\d{14}_", RegexOptions.Compiled);
 
@@ -90,46 +88,9 @@ public class MigrationStreamTests
  + ". Each context owns its migrations assembly and history table.");
     }
 
- /// <summary>
- /// Plan, as the catalog states it: the legacy stream is frozen for the
- /// schemas that have been extracted. A schema still on the legacy context may keep changing
- /// there — that is where its write path lives — but a legacy migration that reshaped an
- /// extracted schema would leave the two streams disagreeing about who shaped it last.
- /// </summary>
-    [Fact]
-    public void LegacyMigrationsAfterTheCutoverLeaveExtractedSchemasAlone()
-    {
-        var schemaLiteral = new Regex(@"(?:old)?[Ss]chema:\s*""(\w+)""", RegexOptions.Compiled);
-        var extracted = Catalog.ExtractedContexts
-            .SelectMany(context => context.Schemas)
-            .ToHashSet(StringComparer.Ordinal);
-        var failures = new List<string>();
-
-        foreach (var file in Directory.EnumerateFiles(LegacyStream, "*.cs"))
-        {
-            var name = Path.GetFileNameWithoutExtension(file);
-            if (name is null
-                || !TimestampedMigration.IsMatch(name)
-                || name.EndsWith(".Designer", StringComparison.Ordinal))
-            {
-                continue;
-            }
-
-            if (string.CompareOrdinal(name, BoundedContextMigrations.LegacyCutover) <= 0) continue;
-
-            foreach (Match match in schemaLiteral.Matches(File.ReadAllText(file)))
-            {
-                if (extracted.Contains(match.Groups[1].Value))
-                    failures.Add($"{name} shapes {match.Groups[1].Value}");
-            }
-        }
-
-        Assert.True(
-            failures.Count == 0,
-            "Legacy migrations added after the cutover reshape an extracted context's schema: "
-            + string.Join(", ", failures.Distinct(StringComparer.Ordinal))
- + ". That schema is shaped by its owner's stream now.");
-    }
+    // A10: the legacy-stream cutover freeze test is retired with the legacy stream itself
+    // (archived under git tag a10-legacy-stream-final). Each schema is shaped only by its
+    // owner's stream, which EveryMigrationBelongsToItsOwnStreamsContext enforces.
 
     [Fact]
     public void MigrationsOnlyTouchKnownSchemas()

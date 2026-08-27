@@ -43,9 +43,9 @@ public static class DependencyInjection
         return services;
     }
 
- // Phase 5: AddPersistence / AddLegacyApplicationPersistence removed — no runtime
- // composition registers ApplicationDbContext any more. The class survives only for
- // the frozen legacy migration stream (DbMigrate, design-time factory, guardrails).
+ // A10: the legacy god context is archived (git tag a10-legacy-stream-final carries its
+ // final stream). Owner contexts are the only persistence; shared model mappings and the
+ // audit/messaging plumbing below are all that remain here.
 
  // A8 physical move: AddAttachmentsPersistence lives in AttachmentsDependencyInjection
  // (contexts/attachments) beside its DbContext; the generic pool helper below is public
@@ -207,8 +207,7 @@ public static class DependencyInjection
         IHostEnvironment environment)
     {
         services.AddValidatedRabbitMqOptions(configuration, environment);
- // Phase 5: every calling host registers MessagingDbContext — the legacy
- // ApplicationDbContext fallback is gone.
+ // Phase 5: every calling host registers MessagingDbContext (no legacy fallback).
         services.AddScoped<IIntegrationEventPublisher, MessagingOutboxPublisher>();
         services.AddScoped<NotificationRecipientResolver>();
         services.AddScoped<INotificationRecipientResolver>(sp =>

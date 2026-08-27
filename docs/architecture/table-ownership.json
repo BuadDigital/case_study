@@ -30,14 +30,6 @@
   ],
   "contexts": [
     {
-      "name": "ApplicationDbContext",
-      "state": "legacy",
-      "owner": null,
-      "migrations": "backend/RealEstateEval.Infrastructure/Data/Migrations",
-      "migrationsHistorySchema": null,
-      "note": "Frozen legacy stream. Holds every slice that has not been extracted yet, plus read-only mappings of extracted tables that non-owner slices still query (removed in Phase 3). No migration added after legacyMigrationCutover may touch a schema owned by an extracted context."
-    },
-    {
       "name": "AttachmentsDbContext",
       "state": "extracted",
       "extractedOn": "2026-07-30",
@@ -1485,7 +1477,6 @@
       "status": "approved",
       "ownershipModel": "per-producer",
       "contexts": [
-        "ApplicationDbContext",
         "ValuationDbContext",
         "MessagingDbContext"
       ],
@@ -1502,7 +1493,6 @@
       "status": "approved",
       "ownershipModel": "per-consumer",
       "contexts": [
-        "ApplicationDbContext",
         "MessagingDbContext"
       ],
       "transactionGroup": "messaging.inbox",
@@ -1563,7 +1553,6 @@
       "status": "approved",
       "ownershipModel": "per-producer",
       "contexts": [
-        "ApplicationDbContext",
         "PlatformDbContext",
         "IdentityDbContext",
         "FinancialDbContext"

@@ -60,17 +60,15 @@ public class SchemaAccessBoundaryTests
     }
 
     [Fact]
-    public void LegacyContextIsNotUsedInNewPlaces()
+    public void LegacyContextIsNotUsedAnywhere()
     {
-        var added = SourceFacts.GodContextUsageOutsideInfrastructure
-            .Except(Baseline.GodContextUsageOutsideInfrastructure, StringComparer.Ordinal)
-            .ToList();
-
+        // A10: the god context is archived (git tag a10-legacy-stream-final). Nothing may
+        // mention it again — not even in comments — outside the Infrastructure project.
         Assert.True(
-            added.Count == 0,
-            "New direct use of ApplicationDbContext outside the Infrastructure project:\n  "
-            + string.Join("\n  ", added)
- + "\nbounded-context split removes the shared context; hosts and tools must not add call sites to it.");
+            SourceFacts.GodContextUsageOutsideInfrastructure.Count == 0,
+            "Use of the archived ApplicationDbContext token:\n  "
+            + string.Join("\n  ", SourceFacts.GodContextUsageOutsideInfrastructure)
+            + "\nThe legacy context no longer exists; use the owner contexts.");
     }
 
  /// <summary>

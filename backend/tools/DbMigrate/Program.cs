@@ -8,7 +8,7 @@ using RealEstateEval.Infrastructure.Data.Contexts;
 
 // Deploy-time EF migrator. Production apps must not run MigrateAsync at startup.
 //
-// A10: the frozen legacy ApplicationDbContext stream is archived — every database is
+// A10: the frozen legacy god-context stream is archived — every database is
 // provisioned and migrated from its own bounded-context stream (each stream carries an
 // Ensure*TablesForStandalone baseline). To migrate a restored pre-split database, check
 // out the git tag `a10-legacy-stream-final`, which still carries the legacy stream.

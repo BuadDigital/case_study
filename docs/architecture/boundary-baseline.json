@@ -458,7 +458,8 @@
       "platform"
     ],
     "backend/contexts/platform/RealEstateEval.Platform.Infrastructure/Services/DifferenceFactorCatalogService.cs": [
-      "audit"
+      "audit",
+      "platform"
     ],
     "backend/contexts/platform/RealEstateEval.Platform.Infrastructure/Services/FieldDictionaryService.cs": [
       "audit",
@@ -468,7 +469,8 @@
       "messaging"
     ],
     "backend/contexts/platform/RealEstateEval.Platform.Infrastructure/Services/OrganizationSettingsService.cs": [
-      "audit"
+      "audit",
+      "platform"
     ],
     "backend/contexts/platform/RealEstateEval.Platform.Infrastructure/Services/PushSubscriptionService.cs": [
       "messaging"
