@@ -8,7 +8,7 @@ import {
 import { getAuthSession } from "@platform/auth-client";
 import dynamic from "next/dynamic";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import type { WorkflowTask } from "@case-study/mfe";
+import type { WorkflowTask } from "@case-study/mfe/lib/prototype/tasks-storage";
 import { inspectionGateForAppraisal } from "../../lib/evaluator/evaluator-inspection-gate";
 import { createEvaluatorDraft } from "../../lib/evaluator/evaluator-window-data";
 import { hydrateEvaluatorSubmission, 

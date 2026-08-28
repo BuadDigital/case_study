@@ -1,5 +1,5 @@
 import type { RowMoreMenuItem } from "@case-study/mfe/components/ui/RowMoreMenu";
-import { getPropertyFailure } from "@failures/mfe";
+import { getPropertyFailure } from "@failures/mfe/lib/failures-repository";
 import type { PoPropertyIntake } from "./po-intake-data";
 import {
   poPropertyEditPath,

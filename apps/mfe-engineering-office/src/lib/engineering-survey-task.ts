@@ -1,4 +1,4 @@
-import type { WorkflowTask } from "@case-study/mfe";
+import type { WorkflowTask } from "@case-study/mfe/lib/prototype/tasks-storage";
 
 export function findSurveyChildForParent(
   parentTaskId: string,

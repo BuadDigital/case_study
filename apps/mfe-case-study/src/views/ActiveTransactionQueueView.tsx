@@ -42,7 +42,7 @@ import {
 import { PARTY_CASE_STUDY_FORM_CHANGED_EVENT } from "../lib/prototype/case-study-form-storage";
 import { getAuthSession } from "@platform/auth-client";
 import { usePrototype } from "@platform/app-shared/contexts/PrototypeContext";
-import { emptyCaseStudyInfoRolesConfig } from "@settings/mfe";
+import { emptyCaseStudyInfoRolesConfig } from "@settings/mfe/lib/prototype/case-study-info-roles-storage";
 import {
   useCaseStudyInfoRolesQuery,
   useStaffUsersQuery,

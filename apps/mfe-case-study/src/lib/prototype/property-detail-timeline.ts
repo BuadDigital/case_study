@@ -1,7 +1,5 @@
-import {
-  failuresForProperty,
-  getCachedFailuresList,
-} from "@failures/mfe";
+import { failuresForProperty } from "@failures/mfe/lib/failure-property-match";
+import { getCachedFailuresList } from "@failures/mfe/lib/failures-cache";
 import { failureStatusLabel } from "@failures/mfe/lib/failures-labels";
 import { formatInstantInRiyadh } from "./active-transactions-situation";
 import type { PoIntakeRecord, PoPropertyIntake } from "./po-intake-data";

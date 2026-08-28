@@ -1,6 +1,6 @@
 import type { PageId, RoleId } from "@platform/types";
 import { CASE_STUDY_READY_NAV } from "@platform/types";
-import type { WorkflowTask } from "@case-study/mfe";
+import type { WorkflowTask } from "@case-study/mfe/lib/prototype/tasks-storage";
 import { PARTY_ACTIVE_TRANSACTIONS_NAV } from "./party-task-pages";
 import { isInOrphanScreensSection } from "./orphan-screens-nav";
 

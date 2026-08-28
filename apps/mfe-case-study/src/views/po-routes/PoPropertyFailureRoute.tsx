@@ -6,12 +6,12 @@ import { ROLES } from "@platform/app-shared/prototype/constants";
 import { poPropertiesPath } from "../../lib/po-routes";
 import { prototypeKeys } from "@platform/app-shared/query/prototype-keys";
 import { usePrototype } from "@platform/app-shared/contexts/PrototypeContext";
+import { failureRaiserLabelForPartyRole } from "@failures/mfe/lib/failures-party-raiser-scope";
 import {
-  failureRaiserLabelForPartyRole,
   FAILURE_RAISER_SPECIALIST,
   FAILURE_RAISER_SUPERVISOR,
-  FailureReportForm,
-} from "@failures/mfe";
+} from "@failures/mfe/lib/failure-party-roles";
+import { FailureReportForm } from "@failures/mfe/components/failures/FailureReportForm";
 import { usePoRecordQuery } from "../../query/case-study-queries";
 
 export function PoPropertyFailureRoute({

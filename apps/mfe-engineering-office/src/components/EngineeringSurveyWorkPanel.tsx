@@ -5,13 +5,13 @@ import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
 import { InlineLoadingSkeleton, Spinner, cn, useToast } from "@platform/ui-kit";
 import type { PartyTaskPageDef } from "@platform/app-shared/prototype/party-task-pages";
-import type { WorkflowTask } from "@case-study/mfe";
+import type { WorkflowTask } from "@case-study/mfe/lib/prototype/tasks-storage";
 import { activeSurveyEntryPath } from "@case-study/mfe/lib/my-task-routes";
 import {
   emptyCaseStudyFormDraft,
   loadPartyCaseStudyFormDraft,
   savePartyCaseStudyFormDraft,
-} from "@case-study/mfe";
+} from "@case-study/mfe/lib/prototype/case-study-form-storage";
 import {
   surveyWorkGate,
   declarationPhoneGate,
@@ -23,10 +23,8 @@ import {
   useWorkflowTasksQuery,
 } from "@case-study/mfe/query/case-study-queries";
 import { useInspectorFeesQuery } from "@case-study/mfe/query/inspector-fees-queries";
-import {
-  blockingFailureForProperty,
-  failureRecordTitle,
-} from "@failures/mfe";
+import { blockingFailureForProperty } from "@failures/mfe/lib/failure-property-match";
+import { failureRecordTitle } from "@failures/mfe/lib/failures-labels";
 import { failureRaiserRoleForParty } from "@failures/mfe/lib/failure-party-roles";
 import { useFailuresQuery } from "@failures/mfe/query/failures-queries";
 import { isActiveFailureStatus } from "@failures/mfe/lib/failures-types";

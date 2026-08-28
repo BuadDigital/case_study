@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 
-vi.mock("@failures/mfe", () => ({
+vi.mock("@failures/mfe/lib/failures-api", () => ({
   getPropertyFailureFromCache: () => null,
 }));
 

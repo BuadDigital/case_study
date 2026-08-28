@@ -1,13 +1,13 @@
 import { notFound } from "next/navigation";
 import { PoPropertiesPageClient } from "@/components/po/PoPropertiesPageClient";
+import { PoHeaderEditRoute } from "@case-study/mfe/views/po-routes/PoHeaderEditRoute";
+import { PoPropertyDetailPage } from "@case-study/mfe/views/PoPropertyDetailPage";
+import { PoPropertyEditRoute } from "@case-study/mfe/views/po-routes/PoPropertyEditRoute";
+import { PoPropertyFailureRoute } from "@case-study/mfe/views/po-routes/PoPropertyFailureRoute";
 import {
-  PoHeaderEditRoute,
-  PoPropertyDetailPage,
-  PoPropertyEditRoute,
-  PoPropertyFailureRoute,
   PO_PROPERTY_SEGMENT,
   decodePoParam,
-} from "@case-study/mfe";
+} from "@case-study/mfe/lib/po-routes";
 
 function normalizeSegments(value: string | string[] | undefined): string[] {
   if (!value) return [];

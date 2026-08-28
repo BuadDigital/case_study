@@ -3,7 +3,7 @@ import {
   requirePrototypeModulesApiConfig,
   unwrapApiResult,
 } from "@platform/app-shared/prototype/prototype-modules-api-config";
-import { getPropertyFailureFromCache } from "@failures/mfe";
+import { getPropertyFailureFromCache } from "@failures/mfe/lib/failures-api";
 
 export const SUSPENDED_TRANSACTIONS_CHANGED_EVENT =
   "suspended-transactions-changed";

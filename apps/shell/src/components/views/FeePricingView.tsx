@@ -1,6 +1,6 @@
 "use client";
 
-import { FinancePartyFeePricing } from "@financial/mfe";
+import { FinancePartyFeePricing } from "@financial/mfe/components/FinancePartyFeePricing";
 import { PageShell } from "@platform/ui-kit";
 
 export function FeePricingView() {

@@ -36,7 +36,7 @@ import {
   isEvaluatorChecklistQuestionAssignedToAppraiser,
   type EvaluatorChecklistBooleanKey,
 } from "@evaluator/mfe/lib/evaluator/evaluator-checklist-case-study-sync";
-import type { CaseStudyInfoRolesMatrix } from "@settings/mfe";
+import type { CaseStudyInfoRolesMatrix } from "@settings/mfe/lib/prototype/case-study-info-roles-storage";
 import type {
   EngineeringSurveyChecklistAnswer,
   EngineeringSurveyChecklistRow,

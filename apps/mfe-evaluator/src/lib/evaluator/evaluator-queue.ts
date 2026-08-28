@@ -1,4 +1,4 @@
-import type { WorkflowTask } from "@case-study/mfe";
+import type { WorkflowTask } from "@case-study/mfe/lib/prototype/tasks-storage";
 import { isVisibleInAppraiserQueue } from "./evaluator-submission-storage";
 import { appraiserQueueStatusBadge } from "./evaluator-readiness";
 

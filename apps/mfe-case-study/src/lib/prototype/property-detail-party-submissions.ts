@@ -1,6 +1,6 @@
 import { mergeEvaluatorChecklistFromCaseStudy } from "@evaluator/mfe/lib/evaluator/evaluator-checklist-case-study-sync";
 import type { EvaluatorChecklistAnswers } from "@evaluator/mfe/lib/evaluator/evaluator-window-data";
-import { loadCaseStudyInfoRolesConfig } from "@settings/mfe";
+import { loadCaseStudyInfoRolesConfig } from "@settings/mfe/lib/prototype/case-study-info-roles-storage";
 import {
   loadCaseStudyFormDraft,
   loadPartyCaseStudyFormDraft,

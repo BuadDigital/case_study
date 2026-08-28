@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type { FailureRecord } from "@failures/mfe";
+import type { FailureRecord } from "@failures/mfe/lib/failures-types";
 import {
   isOperationsTaskBlockedByFailure,
   isOpsTaskFailurePauseReason,

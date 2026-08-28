@@ -1,8 +1,8 @@
 "use client";
 
-import type { PartyAppraisalExtensions } from "@case-study/mfe";
-import type { PoIntakeRecord } from "@case-study/mfe";
-import type { WorkflowTask } from "@case-study/mfe";
+import type { PartyAppraisalExtensions } from "@case-study/mfe/lib/party-appraisal-extensions";
+import type { PoIntakeRecord } from "@case-study/mfe/lib/prototype/po-intake-data";
+import type { WorkflowTask } from "@case-study/mfe/lib/prototype/tasks-storage";
 import { propertyAppraisalWorkspacePath } from "@case-study/mfe/lib/my-task-routes";
 import dynamic from "next/dynamic";
 

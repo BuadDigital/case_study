@@ -5,7 +5,7 @@ const suspendWorkflowTasksForProperty = vi.fn();
 const isPropertySuspended = vi.fn();
 const notifySuspendedTransactionsChanged = vi.fn();
 
-vi.mock("@failures/mfe", () => ({
+vi.mock("@failures/mfe/lib/failures-repository", () => ({
   suspendFailure: (...args: unknown[]) => suspendFailure(...args),
 }));
 

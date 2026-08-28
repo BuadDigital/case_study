@@ -1,5 +1,5 @@
-import type { FailureRecord } from "@failures/mfe";
-import { failuresForProperty } from "@failures/mfe";
+import type { FailureRecord } from "@failures/mfe/lib/failures-types";
+import { failuresForProperty } from "@failures/mfe/lib/failure-property-match";
 import type { PoPropertyIntake } from "./po-intake-data";
 import type { PropertyUiStatus } from "./po-intake-data";
 import { PropertyListRowStatuses } from "@platform/api-client";

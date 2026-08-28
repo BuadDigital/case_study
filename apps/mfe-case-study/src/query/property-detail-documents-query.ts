@@ -2,13 +2,11 @@
 
 import {
   fetchEngineeringSurveySubmission,
-  prefetchEngineeringSurveyDocuments,
   ENGINEERING_SURVEY_SUBMISSION_CHANGED_EVENT,
-} from "@engineering-office/mfe";
-import {
-  fetchEvaluatorSubmission,
-  prefetchEvaluatorReport,
-} from "@evaluator/mfe";
+} from "@engineering-office/mfe/lib/engineering-survey-submission-storage";
+import { prefetchEngineeringSurveyDocuments } from "@engineering-office/mfe/lib/engineering-survey-attachments";
+import { fetchEvaluatorSubmission } from "@evaluator/mfe/lib/evaluator/evaluator-submission-storage";
+import { prefetchEvaluatorReport } from "@evaluator/mfe/lib/evaluator/evaluator-report-attachments";
 import { useEffect, useRef, useState } from "react";
 import { EVALUATOR_SUBMISSION_CHANGED_EVENT } from "../lib/case-study-evaluator-events";
 import {

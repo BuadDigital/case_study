@@ -1,5 +1,5 @@
 import type { PageId, RoleId } from "@platform/types";
-import type { WorkflowTask, WorkflowTaskKind } from "@case-study/mfe";
+import type { WorkflowTask, WorkflowTaskKind } from "@case-study/mfe/lib/prototype/tasks-storage";
 
 export type PartyTaskPageDef = {
   pageId: PageId;

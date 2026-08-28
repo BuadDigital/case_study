@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import { cn } from "@platform/ui-kit";
+import { useTickingNow } from "@platform/app-shared/hooks/use-ticking-now";
 import {
   formatLiveDeliveryCountdown,
   isDeliveryCountdownUrgent,
@@ -18,18 +18,14 @@ export function DeliveryCountdown({
   /** PO finished → show em dash */
   terminal?: boolean;
 }) {
-  const [now, setNow] = useState(() => new Date());
-
-  useEffect(() => {
-    if (terminal || !dueIso.trim()) return;
-    const id = window.setInterval(() => setNow(new Date()), 1000);
-    return () => window.clearInterval(id);
-  }, [dueIso, terminal]);
+  // الساعة المشتركة — كانت كل خلية عدّ تنازلي تدير interval خاصاً بها.
+  const nowMs = useTickingNow();
 
   if (terminal) {
     return <span className={cn("text-[13px] font-medium text-text-3", className)}>—</span>;
   }
 
+  const now = new Date(nowMs);
   const label = formatLiveDeliveryCountdown(dueIso, now);
   const urgent = isDeliveryCountdownUrgent(dueIso, now);
 

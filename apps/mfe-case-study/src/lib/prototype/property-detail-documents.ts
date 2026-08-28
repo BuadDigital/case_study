@@ -3,8 +3,9 @@ import {
   openEngineeringSurveyDocumentPreview,
   downloadEngineeringSurveyDocument,
   type EngineeringSurveyDocumentEntry,
-} from "@engineering-office/mfe";
-import { getCachedEvaluatorDepositCertificate, getCachedEvaluatorReport } from "@evaluator/mfe";
+} from "@engineering-office/mfe/lib/engineering-survey-attachments";
+import { getCachedEvaluatorDepositCertificate } from "@evaluator/mfe/lib/evaluator/evaluator-deposit-attachments";
+import { getCachedEvaluatorReport } from "@evaluator/mfe/lib/evaluator/evaluator-report-attachments";
 import {
   getCachedPropertyDocMatching,
   isImageMime,

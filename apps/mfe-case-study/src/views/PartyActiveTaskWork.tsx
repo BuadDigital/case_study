@@ -58,7 +58,7 @@ import {
 } from "@platform/ui-kit";
 import { PropertyDetailHero } from "../components/po-intake/PropertyDetailHero";
 import { PropertyTransactionTimeline } from "../components/po-intake/PropertyTransactionTimeline";
-import { FailureRaisePanel } from "@failures/mfe";
+import { FailureRaisePanel } from "@failures/mfe/components/failures/FailureRaisePanel";
 import { failureRaiserRoleForParty } from "@failures/mfe/lib/failure-party-roles";
 
 const PARTY_FAILURE_RAISE_KINDS = new Set([

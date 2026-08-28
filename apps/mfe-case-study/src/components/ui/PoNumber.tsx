@@ -3,8 +3,8 @@
 import Link from "next/link";
 import { useQueryClient } from "@tanstack/react-query";
 import { cn } from "@platform/ui-kit";
-import { formatPoDisplay } from "@case-study/mfe";
-import { poPropertiesPath } from "@case-study/mfe";
+import { formatPoDisplay } from "@case-study/mfe/lib/prototype/po-intake-data";
+import { poPropertiesPath } from "@case-study/mfe/lib/po-routes";
 import { prefetchPoRecord } from "../../query/case-study-queries";
 
 const poNumBase =

@@ -7,7 +7,7 @@ import { computeBusinessDueDate, emptyProperty, formatPropertyDeedDisplay, hasBo
 import {
   contactsForApi,
 } from "../domain/po-intake/property-validation";
-import { deleteFailuresForPo } from "@failures/mfe";
+import { deleteFailuresForPo } from "@failures/mfe/lib/failures-repository";
 import {
   advanceTaskAfterBourseForProperty,
   advanceTaskAfterEnfath,

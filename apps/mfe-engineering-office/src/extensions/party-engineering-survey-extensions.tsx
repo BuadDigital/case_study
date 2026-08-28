@@ -1,8 +1,8 @@
 "use client";
 
-import type { PartyEngineeringSurveyExtensions } from "@case-study/mfe";
-import type { PoIntakeRecord } from "@case-study/mfe";
-import type { WorkflowTask } from "@case-study/mfe";
+import type { PartyEngineeringSurveyExtensions } from "@case-study/mfe/lib/party-engineering-survey-extensions";
+import type { PoIntakeRecord } from "@case-study/mfe/lib/prototype/po-intake-data";
+import type { WorkflowTask } from "@case-study/mfe/lib/prototype/tasks-storage";
 import { activeSurveyWorkspacePath } from "@case-study/mfe/lib/my-task-routes";
 import { EngineeringSurveyWorkPanel } from "../components/EngineeringSurveyWorkPanel";
 import { isEngineeringSurveyFormLocked } from "../lib/engineering-survey-data";

@@ -5,7 +5,10 @@ import { useQueryClient } from "@tanstack/react-query";
 import { AppModal } from "@case-study/mfe/components/ui/AppModal";
 import { prototypeKeys } from "@platform/app-shared/query/prototype-keys";
 import { Button, useToast } from "@platform/ui-kit";
-import { FailureRaiseFields, createFailure, failurePayloadFromProblemType, FAILURE_PROBLEM_TYPES, useFailureTypesQuery } from "@failures/mfe";
+import { FailureRaiseFields, failurePayloadFromProblemType } from "@failures/mfe/components/failures/FailureRaiseFields";
+import { createFailure } from "@failures/mfe/lib/failures-repository";
+import { FAILURE_PROBLEM_TYPES } from "@failures/mfe/lib/failure-types-data";
+import { useFailureTypesQuery } from "@failures/mfe/query/failure-types-queries";
 
 export function FailureRaiseModal({
   open,

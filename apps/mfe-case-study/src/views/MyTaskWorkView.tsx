@@ -47,7 +47,7 @@ import {
 import {
   FAILURE_RAISER_SPECIALIST,
   FAILURE_RAISER_SUPERVISOR,
-} from "@failures/mfe";
+} from "@failures/mfe/lib/failure-party-roles";
 import {
   advanceTaskAfterBourse,
   advanceTaskAfterEnfath,

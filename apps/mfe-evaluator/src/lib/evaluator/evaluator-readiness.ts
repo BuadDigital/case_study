@@ -1,4 +1,4 @@
-import type { WorkflowTask } from "@case-study/mfe";
+import type { WorkflowTask } from "@case-study/mfe/lib/prototype/tasks-storage";
 import { findSiblingInspectionTask } from "./evaluator-inspection-gate";
 import { loadEvaluatorSubmission } from "./evaluator-submission-storage";
 import { getPartyTaskRecall } from "@platform/app-shared/prototype/party-task-recall-storage";
