@@ -1,5 +1,6 @@
 import { getApiBase } from "./index";
 import { repositoryFetch as fetch } from "./write-repository";
+import { parseJson } from "./parse-json";
 
 export type ValuationListItemDto = {
   id: string;
@@ -40,9 +41,6 @@ function headers(token: string): HeadersInit {
   };
 }
 
-async function parseJson<T>(res: Response): Promise<T> {
-  return (await res.json()) as T;
-}
 
 function normalize(data: ValuationListsDto): ValuationListsDto {
   return {

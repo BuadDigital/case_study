@@ -23,3 +23,17 @@ export function dmy(iso: string | null | undefined): string {
   if (Number.isNaN(d.getTime())) return "—";
   return `${pad2(d.getDate())}/${pad2(d.getMonth() + 1)}/${d.getFullYear()}`;
 }
+
+/** تاريخ اليوم بالتقويم المحلي YYYY-MM-DD — نسخ toISOString كانت تنحرف يوماً بين منتصف الليل و03:00. */
+export function todayIso(): string {
+  const d = new Date();
+  return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
+}
+
+/** YYYY/MM/DD من طابع زمني (توقيت المتصفح) — "—" عند الغياب أو تعذّر التحليل. */
+export function ymd(raw: string | null | undefined): string {
+  if (!raw?.trim()) return "—";
+  const d = new Date(raw);
+  if (Number.isNaN(d.getTime())) return "—";
+  return `${d.getFullYear()}/${pad2(d.getMonth() + 1)}/${pad2(d.getDate())}`;
+}

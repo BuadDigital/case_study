@@ -1,3 +1,5 @@
+import { pickImage } from "../lib/org-settings-ui";
+import { todayIso } from "@platform/app-shared/format/date";
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -42,27 +44,7 @@ function mm(n: number | null | undefined, fallback: number): number {
   return Number.isFinite(v) && v >= 0 ? v : fallback;
 }
 
-function todayIso(): string {
-  return new Date().toISOString().slice(0, 10);
-}
 
-function pickImage(onPicked: (dataUrl: string, name: string, kb: number) => void): void {
-  const input = document.createElement("input");
-  input.type = "file";
-  input.accept = "image/png,image/jpeg,image/svg+xml";
-  input.onchange = () => {
-    const file = input.files?.[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = () => {
-      if (typeof reader.result === "string") {
-        onPicked(reader.result, file.name, Math.round(file.size / 1024));
-      }
-    };
-    reader.readAsDataURL(file);
-  };
-  input.click();
-}
 
 export function BrandIdentityView() {
   const { showToast } = useToast();

@@ -71,6 +71,7 @@ import {
   valInputClassName,
   valLabelClassName,
 } from "./EvaluatorHtmlPrimitives";
+import { apiConfig } from "@platform/app-shared/auth/api-config";
 
 const UNUSED = "__unused__";
 
@@ -114,8 +115,8 @@ function esgGroupsEqual(a: SpecialistEsgGroup, b: SpecialistEsgGroup): boolean {
 
 /** حِزمة بيانات تبويب تقييم العقار — استعلام واحد قابل للتخزين المؤقت. */
 async function loadReportTabBundle(inspectionTaskId: string | null) {
-  const session = getAuthSession();
-  if (!session?.token) {
+  const config = apiConfig();
+  if (!config) {
     return {
       authError: true as const,
       org: null,
@@ -126,7 +127,6 @@ async function loadReportTabBundle(inspectionTaskId: string | null) {
       primaryPhoto: null,
     };
   }
-  const config = { token: session.token, baseUrl: getApiBase() };
   const [loadedOrg, listRes, clientsRes, ws] = await Promise.all([
     ensureOrganizationSettingsLoaded(),
     getValuationLists(config),

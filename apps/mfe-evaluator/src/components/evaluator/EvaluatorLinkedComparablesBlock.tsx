@@ -9,6 +9,7 @@ import {
 import { getAuthSession } from "@platform/auth-client";
 import { cn } from "@platform/ui-kit";
 import { valTableTdClassName, valTableThClassName } from "./EvaluatorHtmlPrimitives";
+import { apiConfig } from "@platform/app-shared/auth/api-config";
 
 function dealLabel(item: PropertyComparableLinkItemDto): string {
   const row = item.comparable;
@@ -32,13 +33,13 @@ export function EvaluatorLinkedComparablesBlock({
   const [error, setError] = useState<string | null>(null);
 
   const load = useCallback(() => {
-    const session = getAuthSession();
-    if (!session?.token || !propertyId) {
+    const config = apiConfig();
+    if (!config || !propertyId) {
       setRows([]);
       return;
     }
     void listPropertyComparableLinks(
-      { token: session.token, baseUrl: getApiBase() },
+      config,
       propertyId,
     ).then((res) => {
       if (!res.ok) {

@@ -1,3 +1,4 @@
+import { todayIso } from "@platform/app-shared/format/date";
 /** Question banks for نموذج دراسة الحالة — labels من قاموس الحقول (API) مع افتراضيات محلية. */
 
 import {
@@ -112,5 +113,5 @@ export function caseStudyFormSummary(answers: Record<string, CaseStudyFormAnswer
 }
 
 export function todayIsoDate(): string {
-  return new Date().toISOString().slice(0, 10);
+  return todayIso();
 }

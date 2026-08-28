@@ -1,5 +1,6 @@
 import { getApiBase } from "./index";
 import { repositoryFetch as fetch } from "./write-repository";
+import { parseJson } from "./parse-json";
 
 export type ComparableSourceCardDto = {
   intakeChannel: string;
@@ -158,9 +159,6 @@ function headers(token: string): HeadersInit {
   };
 }
 
-async function parseJson<T>(res: Response): Promise<T> {
-  return (await res.json()) as T;
-}
 
 export async function listComparableProperties(
   config: ComparablePropertiesApiConfig,

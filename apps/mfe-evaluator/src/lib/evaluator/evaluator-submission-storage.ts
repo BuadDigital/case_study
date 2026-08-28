@@ -23,6 +23,7 @@ import {
 import { reservedValuationReportNumber } from "./valuation-report-number";
 import { getApiBase, ensureOpenValuationRequestByProperty } from "@platform/api-client";
 import { getAuthSession } from "@platform/auth-client";
+import { apiConfig } from "./api-config";
 
 export const EVALUATOR_SUBMISSION_CHANGED_EVENT = "evaluator-submission-changed";
 
@@ -153,11 +154,11 @@ async function stampReservedReportNumber(
   if (submission.reportNo.trim() || !submission.propertyId.trim()) {
     return submission;
   }
-  const session = getAuthSession();
-  if (!session?.token) return submission;
+  const config = apiConfig();
+  if (!config) return submission;
   try {
     const open = await ensureOpenValuationRequestByProperty(
-      { token: session.token, baseUrl: getApiBase() },
+      config,
       {
         propId: submission.propertyId,
         area: "—",

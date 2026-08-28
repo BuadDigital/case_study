@@ -39,6 +39,7 @@ import { useInspectorFeesQuery } from "../../query/inspector-fees-queries";
 import { useCourtVisitFeesQuery } from "../../query/operations-tasks-queries";
 import { EngFeesHtmlTabs, EngFeesSectionTitle } from "./EngFeesHtmlTabs";
 import { CourtVisitFeesPanel } from "./CourtVisitFeesPanel";
+import { ymd as formatYmd } from "@platform/app-shared/format/date";
 
 export type IndividualFeesVariant = "field-inspection" | "court-visit";
 
@@ -72,12 +73,6 @@ function fmtSar(n: number): string {
   return `${Number(n || 0).toLocaleString("en-US")} ر.س`;
 }
 
-function formatYmd(raw: string | null | undefined): string {
-  if (!raw?.trim()) return "—";
-  const d = new Date(raw);
-  if (Number.isNaN(d.getTime())) return "—";
-  return `${d.getFullYear()}/${String(d.getMonth() + 1).padStart(2, "0")}/${String(d.getDate()).padStart(2, "0")}`;
-}
 
 function deedParts(row: InspectorFeeRowDto): { deed: string; region: string } {
   const label = (row.propertyLabel || "").trim();

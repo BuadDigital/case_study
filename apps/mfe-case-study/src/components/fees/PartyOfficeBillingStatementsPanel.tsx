@@ -30,20 +30,12 @@ import {
 import type { PartyBillingStatementDto } from "@platform/api-client";
 import { EngFeesSectionTitle } from "./EngFeesHtmlTabs";
 import { VendorInvoicePdfField } from "./VendorInvoicePdfField";
+import { ymd as formatYmd } from "@platform/app-shared/format/date";
 
 function fmtSar(n: number): string {
   return `${Number(n || 0).toLocaleString("en-US")} ر.س`;
 }
 
-function formatYmd(raw: string | null | undefined): string {
-  if (!raw?.trim()) return "—";
-  const d = new Date(raw);
-  if (Number.isNaN(d.getTime())) return "—";
-  const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, "0");
-  const day = String(d.getDate()).padStart(2, "0");
-  return `${y}/${m}/${day}`;
-}
 
 function statementStatusMeta(s: PartyBillingStatementDto): {
   label: string;

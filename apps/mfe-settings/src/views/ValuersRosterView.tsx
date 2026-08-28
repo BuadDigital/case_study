@@ -40,14 +40,13 @@ import {
   type BadgeTone,
 } from "@platform/ui-kit";
 import { organizationSettingsApiConfig } from "../lib/settings-api-config";
+import { pickImage, refreshOrgCache } from "../lib/org-settings-ui";
+import { todayIso } from "@platform/app-shared/format/date";
 
 function filled(value: string | null | undefined, fallback: string): string {
   return value?.trim() ? value : fallback;
 }
 
-function todayIso(): string {
-  return new Date().toISOString().slice(0, 10);
-}
 
 const ISO_DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 
@@ -78,30 +77,7 @@ function sigOk(row: OrganizationValuerRosterEntry): boolean {
   return Boolean(u) && !isStockSignatureUrl(u);
 }
 
-function pickImage(onPicked: (dataUrl: string, name: string, kb: number) => void): void {
-  const input = document.createElement("input");
-  input.type = "file";
-  input.accept = "image/png,image/jpeg,image/svg+xml";
-  input.onchange = () => {
-    const file = input.files?.[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = () => {
-      if (typeof reader.result === "string") {
-        onPicked(reader.result, file.name, Math.round(file.size / 1024));
-      }
-    };
-    reader.readAsDataURL(file);
-  };
-  input.click();
-}
 
-async function refreshOrgCache() {
-  const { clearOrganizationSettingsCache, ensureOrganizationSettingsLoaded } =
-    await import("@platform/app-shared/organization/organization-settings-cache");
-  clearOrganizationSettingsCache();
-  await ensureOrganizationSettingsLoaded();
-}
 
 function overlayCertified(
   row: OrganizationValuerRosterEntry,

@@ -1,6 +1,7 @@
 import { getApiBase } from "./index";
 import { repositoryFetch as fetch } from "./write-repository";
 import { parseFieldErrorsFromResponse } from "./field-errors";
+import { parseJson } from "./parse-json";
 
 export type PrototypeModulesApiConfig = {
   baseUrl?: string;
@@ -23,9 +24,6 @@ function headers(token: string): HeadersInit {
   };
 }
 
-async function parseJson<T>(res: Response): Promise<T> {
-  return (await res.json()) as T;
-}
 
 // --- Field dictionary ---
 

@@ -1,3 +1,5 @@
+import { pickImage, refreshOrgCache } from "../lib/org-settings-ui";
+import { todayIso } from "@platform/app-shared/format/date";
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
@@ -41,9 +43,6 @@ function filled(value: string | null | undefined, fallback: string): string {
   return value?.trim() ? value : fallback;
 }
 
-function todayIso(): string {
-  return new Date().toISOString().slice(0, 10);
-}
 
 function daysUntil(iso: string): number | null {
   const end = new Date(`${iso}T00:00:00`);
@@ -53,30 +52,7 @@ function daysUntil(iso: string): number | null {
   return Math.round((end.getTime() - start.getTime()) / 86400000);
 }
 
-function pickImage(onPicked: (dataUrl: string, name: string, kb: number) => void): void {
-  const input = document.createElement("input");
-  input.type = "file";
-  input.accept = "image/png,image/jpeg,image/svg+xml";
-  input.onchange = () => {
-    const file = input.files?.[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = () => {
-      if (typeof reader.result === "string") {
-        onPicked(reader.result, file.name, Math.round(file.size / 1024));
-      }
-    };
-    reader.readAsDataURL(file);
-  };
-  input.click();
-}
 
-async function refreshOrgCache() {
-  const { clearOrganizationSettingsCache, ensureOrganizationSettingsLoaded } =
-    await import("@platform/app-shared/organization/organization-settings-cache");
-  clearOrganizationSettingsCache();
-  await ensureOrganizationSettingsLoaded();
-}
 
 export function OrganizationDataView() {
   const { showToast } = useToast();

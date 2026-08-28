@@ -42,17 +42,13 @@ import {
   finSelCtrl,
   finCaret,
 } from "../lib/finance-tw";
+import { todayIso } from "@platform/app-shared/format/date";
 
 // toLocaleString الافتراضي = حتى 3 كسور دون أصفار إلزامية — نحافظ على العرض نفسه.
 function money(n: number) {
   return fmtMax(Number(n || 0), 3);
 }
 
-function todayIso() {
-  const d = new Date();
-  const p = (n: number) => String(n).padStart(2, "0");
-  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
-}
 
 function periodFromIso(iso: string | null | undefined): string {
   if (!iso?.trim()) return "—";

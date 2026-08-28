@@ -1,6 +1,7 @@
 import { getApiBase } from "./index";
 import { repositoryFetch as fetch } from "./write-repository";
 import type { ComparablePropertyDto } from "./comparable-properties";
+import { parseJson } from "./parse-json";
 
 export type ValuationComparableAdjustmentLineDto = {
   id: string;
@@ -457,9 +458,6 @@ function headers(token: string): HeadersInit {
   };
 }
 
-async function parseJson<T>(res: Response): Promise<T> {
-  return (await res.json()) as T;
-}
 
 export async function getOpenValuationRequestByProperty(
   config: ValuationSelectionsApiConfig,

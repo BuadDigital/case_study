@@ -1,3 +1,4 @@
+import { apiConfig } from "@platform/app-shared/auth/api-config";
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
@@ -26,10 +27,10 @@ export function TransactionStateStrip({
   const [busy, setBusy] = useState(false);
 
   const load = useCallback(async () => {
-    const session = getAuthSession();
-    if (!session?.token) return;
+    const config = apiConfig();
+    if (!config) return;
     const res = await getTransactionState(
-      { token: session.token, baseUrl: getApiBase() },
+      config,
       workOrderId,
       propertyId,
     );
@@ -55,11 +56,11 @@ export function TransactionStateStrip({
     );
 
   const handover = async () => {
-    const session = getAuthSession();
-    if (!session?.token) return;
+    const config = apiConfig();
+    if (!config) return;
     setBusy(true);
     const res = await recordEnfazHandover(
-      { token: session.token, baseUrl: getApiBase() },
+      config,
       workOrderId,
       propertyId,
     );
