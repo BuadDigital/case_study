@@ -433,6 +433,8 @@ public class KeyEnvelopesServiceTests
             "معاين");
 
         var keys = TestBoundedContexts.CreatePropertyKeys(bundle);
+        // الإسقاط صار على حلقة الصيانة لا على القراءة — يُستدعى صراحةً هنا.
+        await keys.SyncProjectionAsync();
         var rows = await keys.ListAsync(null);
         var row = Assert.Single(
             rows,

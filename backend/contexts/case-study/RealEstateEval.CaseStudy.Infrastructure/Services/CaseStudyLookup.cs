@@ -33,11 +33,16 @@ public sealed class CaseStudyLookup(ICaseStudyRepository caseStudy) : ICaseStudy
             .ToDictionaryAsync(task => task.Id, task => task.Kind, cancellationToken);
     }
 
+ // سقف دفاعي أعلى بكثير من أي حجم واقعي — يحمي المسار العابر للخدمات من نمو
+ // غير محدود دون المساس بتقارير اليوم (الأحدث أولاً).
+    private const int MaxWorkOrderSummaries = 10_000;
+
     public async Task<IReadOnlyList<CaseStudyWorkOrderSummaryDto>> ListWorkOrderSummariesAsync(
         CancellationToken cancellationToken = default) =>
         await caseStudy.WorkOrders.AsNoTracking()
             .OrderByDescending(w => w.CreatedAtUtc)
             .ThenBy(w => w.PoNumber)
+            .Take(MaxWorkOrderSummaries)
             .Select(w => new CaseStudyWorkOrderSummaryDto
             {
                 Id = w.Id,

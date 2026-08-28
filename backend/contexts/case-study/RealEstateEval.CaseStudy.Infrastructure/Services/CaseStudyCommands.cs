@@ -228,17 +228,32 @@ public sealed class CaseStudyFailureCommands : ICaseStudyFailureCommands
                 t.Status != WorkflowTaskStatus.Completed)
             .ToListAsync(cancellationToken);
 
+ /* كانت حلقة PatchAsync: SELECT + SaveChanges لكل مهمة. الحجب لا يبلغ أياً من
+    الآثار الجانبية للـPatch (رسوم الإكمال تتطلب Completed، وإشعار الأخصائي يتطلب
+    Open) — فالتطبيق المباشر بحفظة واحدة مكافئ حرفياً. */
+        var nowUtc = _time.UtcNow();
         foreach (var task in tasks)
         {
-            await _tasks.PatchAsync(
-                task.Id,
-                new PatchWorkflowTaskRequest
-                {
-                    Status = WorkflowTaskStatusValues.Blocked,
-                    ObstructionReason = request.Reason,
-                },
-                cancellationToken);
+            task.ApplyShellPatch(
+                phase: null,
+                status: WorkflowTaskStatus.Blocked,
+                title: null,
+                assigneeRole: null,
+                assigneeName: null,
+                assigneeId: null,
+                assigneeIdProvided: false,
+                propertyId: null,
+                propertyIdProvided: false,
+                obstructionReason: string.IsNullOrWhiteSpace(request.Reason)
+                    ? null
+                    : request.Reason,
+                obstructionReasonProvided: request.Reason is not null,
+                obstructionPriorPhase: null,
+                obstructionPriorPhaseProvided: false,
+                distributionJson: null,
+                nowUtc: nowUtc);
         }
+        await _caseStudy.SaveChangesAsync(cancellationToken);
     }
 
     public async Task<CaseStudyHoldTaskResultDto?> BlockTaskForHoldAsync(

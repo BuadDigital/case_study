@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ensureOpenValuationRequestByProperty,
   getValuationApproachSettings,
@@ -123,6 +123,7 @@ export function EvaluatorFinalReviewTab({
   property,
   assignmentType,
   valuationRequestId: knownValuationRequestId,
+  approachSettings: approachSettingsFromShell,
   onDraftPatch,
   onReportChoicesPatch,
   fieldErrors,
@@ -133,6 +134,11 @@ export function EvaluatorFinalReviewTab({
   assignmentType?: string | null;
   /** من صدفة التقييم إن وُجد — يوفّر نداء ensure-open ثانياً لنفس العقار. */
   valuationRequestId?: string | null;
+  /**
+   * إعدادات التقييم من الصدفة إن وُجدت (null = فشل تحميل الصدفة) — تُغني عن
+   * جلب التبويب المكرر لنفس الإعدادات؛ undefined = وضع مستقل يجلب بنفسه.
+   */
+  approachSettings?: ValuationApproachSettingsDto | null;
   onDraftPatch?: (patch: {
     evaluatorPrice?: string;
     forcedSaleDiscountPct?: string;
@@ -281,7 +287,51 @@ export function EvaluatorFinalReviewTab({
     specialistKeys,
   ]);
 
+  /** بذر قائمة الافتراضات من الإعدادات — مشترك بين الوضع المستقل ووضع الصدفة. */
+  const seedAssumptions = useCallback((s: ValuationApproachSettingsDto) => {
+    const library = s.assumptionLibrary ?? [];
+    const loaded = s.selectedAssumptions ?? [];
+    const visible = library.filter(
+      (clause) =>
+        !s.externalSpecialistUsed || !isNoExternalSpecialistAssumption(clause),
+    );
+    const useAll = loaded.length === 0;
+    setAssumptions(
+      useAll
+        ? visible
+        : s.externalSpecialistUsed
+          ? loaded.filter((x) => !isNoExternalSpecialistAssumption(x))
+          : loaded,
+    );
+  }, []);
+
+  // وضع الصدفة: الإعدادات من الأب — لا جلب مكرر؛ البذر مرة لكل طلب فلا
+  // تُداس تعديلات المستخدم حين تعيد الصدفة تحميل إعداداتها.
+  const seededForRequestRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (approachSettingsFromShell === undefined) return;
+    setLoading(false);
+    if (!approachSettingsFromShell) {
+      setSettings(null);
+      setError("تعذّر تحميل إعدادات التقييم");
+      return;
+    }
+    setError(null);
+    setSettings(approachSettingsFromShell);
+    const seedKey = knownValuationRequestId ?? propertyId;
+    if (seededForRequestRef.current === seedKey) return;
+    seededForRequestRef.current = seedKey;
+    seedAssumptions(approachSettingsFromShell);
+  }, [
+    approachSettingsFromShell,
+    knownValuationRequestId,
+    propertyId,
+    seedAssumptions,
+  ]);
+
   const loadAssumptions = useCallback(async () => {
+    // وضع الصدفة — المؤثر أعلاه هو المصدر، لا جلب هنا.
+    if (approachSettingsFromShell !== undefined) return;
     const config = apiConfig();
     if (!config || !propertyId.trim()) {
       setLoading(false);
@@ -315,26 +365,14 @@ export function EvaluatorFinalReviewTab({
       return;
     }
     setSettings(res.data);
-    const library = res.data.assumptionLibrary ?? [];
-    const loaded = res.data.selectedAssumptions ?? [];
-    const visible = library.filter(
-      (clause) =>
-        !res.data.externalSpecialistUsed ||
-        !isNoExternalSpecialistAssumption(clause),
-    );
-    const useAll = loaded.length === 0;
-    setAssumptions(
-      useAll
-        ? visible
-        : res.data.externalSpecialistUsed
-          ? loaded.filter((x) => !isNoExternalSpecialistAssumption(x))
-          : loaded,
-    );
+    seedAssumptions(res.data);
   }, [
+    approachSettingsFromShell,
     knownValuationRequestId,
     property?.district,
     property?.propertyType,
     propertyId,
+    seedAssumptions,
   ]);
 
   useEffect(() => {

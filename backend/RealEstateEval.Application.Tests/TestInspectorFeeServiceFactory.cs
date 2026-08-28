@@ -269,7 +269,7 @@ internal static class TestInspectorFeeServiceFactory
         var lookup = new CaseStudyLookup(caseStudy);
         var resolver = new InspectorFeeLedgerResolver(lookup, new IdentityDirectory(identity));
         var writer = new InspectorFeeLedgerWriter(financial, lookup, pricing, resolver);
-        var summary = new InspectorFeeSummaryQuery(financial, lookup, new IdentityDirectory(identity), writer);
+        var summary = new InspectorFeeSummaryQuery(financial, lookup, new IdentityDirectory(identity));
         var transitions = new InspectorFeeTransitionApplier(financial, lookup, new AuditLogWriter());
         return new InspectorFeeService(
             lookup,

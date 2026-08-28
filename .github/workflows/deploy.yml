@@ -46,11 +46,21 @@ jobs:
       - name: Install Frontend Dependencies
         run: npm ci
 
+      # Barrel-root MFE imports drag every view of a package into the importer's
+      # chunk; the codebase reached zero and this keeps it there.
+      - name: Guard MFE Barrel Imports
+        run: npm run lint:barrel-imports
+
       - name: Typecheck Microfrontends (MFEs)
         run: npm run typecheck:mfes
 
       - name: Run Frontend Unit Tests
         run: npm run test:unit
+
+      # tsc cannot see "use client" ordering or RSC boundary violations —
+      # only a production build catches them (it found three latent breakers).
+      - name: Build Shell (production)
+        run: npm run build
 
   # ----------------------------------------------------
   # Job 1b: Backend build & tests (gates deploy on push to main)

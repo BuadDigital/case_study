@@ -57,6 +57,7 @@ public static class OperationsDependencyInjection
         services.AddScoped<IOperationsTaskCommands, OperationsTaskCommands>();
         services.AddScoped<IOperationsTaskService, OperationsTaskService>();
         services.AddHostedService<OperationsTaskReminderHostedService>();
+        services.AddHostedService<PropertyKeysProjectionHostedService>();
         return services;
     }
  /// <summary>Operations write context. Prefers a dedicated Operations connection string.

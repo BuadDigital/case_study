@@ -21,23 +21,16 @@ public sealed class InspectorFeeSummaryQuery : IInspectorFeeSummaryQuery
     private readonly FinancialDbContext _financial;
     private readonly ICaseStudyLookup _lookup;
     private readonly IIdentityDirectory _identity;
-    private readonly IInspectorFeeLedgerWriter _writer;
-    private readonly TimeProvider _time;
 
     [ActivatorUtilitiesConstructor]
     public InspectorFeeSummaryQuery(
         FinancialDbContext financial,
         ICaseStudyLookup lookup,
-        IIdentityDirectory identity,
-        IInspectorFeeLedgerWriter writer,
-        TimeProvider? time = null)
+        IIdentityDirectory identity)
     {
-        _time = time ?? TimeProvider.System;
-
         _financial = financial;
         _lookup = lookup;
         _identity = identity;
-        _writer = writer;
     }
 
 
@@ -52,9 +45,8 @@ public sealed class InspectorFeeSummaryQuery : IInspectorFeeSummaryQuery
         CancellationToken cancellationToken = default,
         string? supervisingDepartment = null)
     {
-        await _writer.BackfillMissingLedgersAsync(cancellationToken);
-        await SyncLedgerSnapshotsFromTasksAsync(cancellationToken);
-
+ // Backfill/snapshot-sync moved to InspectorFeeLedgerMaintenanceHostedService —
+ // a read must not load every ledger and possibly write on each screen poll.
         var query = _financial.InspectorFeeLedgers.AsNoTracking();
 
  // Applied to the query itself, before any row cap or projection, so a disputed line cannot
@@ -181,9 +173,6 @@ public sealed class InspectorFeeSummaryQuery : IInspectorFeeSummaryQuery
         Guid workflowTaskId,
         CancellationToken cancellationToken = default)
     {
-        await _writer.BackfillMissingLedgersAsync(cancellationToken);
-        await SyncLedgerSnapshotsFromTasksAsync(cancellationToken);
-
         var ledger = await _financial.InspectorFeeLedgers.AsNoTracking()
             .FirstOrDefaultAsync(x => x.WorkflowTaskId == workflowTaskId, cancellationToken);
         if (ledger is null) return null;
@@ -253,54 +242,6 @@ public sealed class InspectorFeeSummaryQuery : IInspectorFeeSummaryQuery
             ActorLabel = actorNames.GetValueOrDefault(t.ActorUserId),
             CreatedAtUtc = t.CreatedAtUtc,
         }).ToList();
-    }
-
-    private async Task SyncLedgerSnapshotsFromTasksAsync(CancellationToken cancellationToken)
-    {
-        var ledgers = await _financial.InspectorFeeLedgers.ToListAsync(cancellationToken);
-        if (ledgers.Count == 0) return;
-
-        var taskIds = ledgers.Select(l => l.WorkflowTaskId).Distinct().ToList();
-        var taskSnapshots = await _lookup.ListWorkflowTasksByIdsAsync(taskIds, cancellationToken);
-        var tasks = taskSnapshots.ToDictionary(t => t.Id, t => t.ToWorkflowTask());
-
-        var anyChanged = false;
-        var now = _time.UtcNow();
-        foreach (var ledger in ledgers)
-        {
-            if (!tasks.TryGetValue(ledger.WorkflowTaskId, out var task))
-                continue;
-
-            var rowChanged = false;
-
-            if (task.PropertyId is Guid propertyId && ledger.PropertyId != propertyId)
-            {
-                ledger.PropertyId = propertyId;
-                rowChanged = true;
-            }
-
-            if (ledger.PropertyOrdinal != task.PropertyOrdinal)
-            {
-                ledger.PropertyOrdinal = task.PropertyOrdinal;
-                rowChanged = true;
-            }
-
-            var taskAssignee = task.AssigneeId?.Trim();
-            var ledgerAssignee = ledger.AssigneeId?.Trim();
-            if (!string.Equals(taskAssignee, ledgerAssignee, StringComparison.Ordinal))
-            {
-                ledger.AssigneeId = string.IsNullOrEmpty(taskAssignee) ? null : taskAssignee;
-                rowChanged = true;
-            }
-
-            if (!rowChanged) continue;
-
-            ledger.UpdatedAtUtc = now;
-            anyChanged = true;
-        }
-
-        if (anyChanged)
-            await _financial.SaveChangesAsync(cancellationToken);
     }
 
     private async Task<List<InspectorFeeLedger>> FilterLedgersWithCompletedCaseStudyAsync(

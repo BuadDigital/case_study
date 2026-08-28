@@ -16,4 +16,10 @@ public interface IInspectorFeeLedgerWriter
  /// Backfill draft ledgers for tasks whose case-study is complete (engineering survey excluded).
  /// </summary>
     Task BackfillMissingLedgersAsync(CancellationToken cancellationToken = default);
+
+ /// <summary>
+ /// Mirrors task snapshot fields (property, ordinal, assignee) onto existing ledgers.
+ /// Runs from the maintenance loop — reads must not pay for it per request.
+ /// </summary>
+    Task SyncLedgerSnapshotsFromTasksAsync(CancellationToken cancellationToken = default);
 }

@@ -37,9 +37,10 @@ public sealed class DashboardOpsMetricsQueryService : IDashboardOpsMetricsQuery
                 t.Kind == WorkflowTaskKind.CaseStudyProperty
                 || t.Kind == WorkflowTaskKind.GovernmentReview
                 || t.Kind == WorkflowTaskKind.PropertyAppraisal)
+ // Active tasks are naturally bounded; completed ones grow forever — the metric
+ // window bounds every kind, not only case-study (the query stays capped as data ages).
             .Where(t =>
                 t.Status != WorkflowTaskStatus.Completed
-                || t.Kind != WorkflowTaskKind.CaseStudyProperty
                 || t.UpdatedAtUtc >= startUtc)
             .Select(t => new
             {

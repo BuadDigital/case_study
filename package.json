@@ -45,6 +45,7 @@
     "test:e2e:ui": "playwright test --ui",
     "test:e2e:install": "playwright install chromium",
     "test:unit": "vitest run",
+    "lint:barrel-imports": "node scripts/check-barrel-imports.mjs",
     "test:release": "dotnet test backend/RealEstateEval.slnx && npm run typecheck:mfes && node backend/scripts/release-verify.mjs && npm run test:unit && playwright test"
   },
   "devDependencies": {

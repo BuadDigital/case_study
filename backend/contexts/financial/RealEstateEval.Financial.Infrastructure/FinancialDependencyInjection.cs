@@ -46,6 +46,7 @@ public static class FinancialDependencyInjection
         services.AddScoped<IPoEnfazBillingService, PoEnfazBillingService>();
         services.AddScoped<IPartyBillingStatementService, PartyBillingStatementService>();
         services.AddHostedService<PartyBillingMonthVendorHostedService>();
+        services.AddHostedService<InspectorFeeLedgerMaintenanceHostedService>();
         services.AddScoped<IFinancialReportService, FinancialReportService>();
         services.AddScoped<IPartyFeePricingService, PartyFeePricingService>();
         services.AddScoped<IIncentiveSuspensionService, IncentiveSuspensionService>();

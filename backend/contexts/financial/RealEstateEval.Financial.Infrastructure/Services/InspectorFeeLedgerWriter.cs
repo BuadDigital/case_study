@@ -248,4 +248,54 @@ public sealed class InspectorFeeLedgerWriter : IInspectorFeeLedgerWriter
 
         await EnsureLedgersForTasksAsync(feeTasks, cancellationToken);
     }
+
+ /* كان يجري داخل استعلام الملخص مع كل GET (تحميل كل الدفاتر + كل المهام وكتابة
+    محتملة لكل استطلاع شاشة الأتعاب) — انتقل إلى حلقة الصيانة الخلفية. */
+    public async Task SyncLedgerSnapshotsFromTasksAsync(CancellationToken cancellationToken = default)
+    {
+        var ledgers = await _financial.InspectorFeeLedgers.ToListAsync(cancellationToken);
+        if (ledgers.Count == 0) return;
+
+        var taskIds = ledgers.Select(l => l.WorkflowTaskId).Distinct().ToList();
+        var taskSnapshots = await _lookup.ListWorkflowTasksByIdsAsync(taskIds, cancellationToken);
+        var tasks = taskSnapshots.ToDictionary(t => t.Id, t => t.ToWorkflowTask());
+
+        var anyChanged = false;
+        var now = _time.UtcNow();
+        foreach (var ledger in ledgers)
+        {
+            if (!tasks.TryGetValue(ledger.WorkflowTaskId, out var task))
+                continue;
+
+            var rowChanged = false;
+
+            if (task.PropertyId is Guid propertyId && ledger.PropertyId != propertyId)
+            {
+                ledger.PropertyId = propertyId;
+                rowChanged = true;
+            }
+
+            if (ledger.PropertyOrdinal != task.PropertyOrdinal)
+            {
+                ledger.PropertyOrdinal = task.PropertyOrdinal;
+                rowChanged = true;
+            }
+
+            var taskAssignee = task.AssigneeId?.Trim();
+            var ledgerAssignee = ledger.AssigneeId?.Trim();
+            if (!string.Equals(taskAssignee, ledgerAssignee, StringComparison.Ordinal))
+            {
+                ledger.AssigneeId = string.IsNullOrEmpty(taskAssignee) ? null : taskAssignee;
+                rowChanged = true;
+            }
+
+            if (!rowChanged) continue;
+
+            ledger.UpdatedAtUtc = now;
+            anyChanged = true;
+        }
+
+        if (anyChanged)
+            await _financial.SaveChangesAsync(cancellationToken);
+    }
 }

@@ -31,6 +31,10 @@ public sealed class HttpPropertyKeysService(
         return list;
     }
 
+    // الإسقاط شأن خدمة العمليات وحدها (حلقة الصيانة هناك) — لا مسار بعيد له.
+    public Task SyncProjectionAsync(CancellationToken cancellationToken = default) =>
+        Task.CompletedTask;
+
     public Task<PropertyKeyRecordDto?> GetAsync(
         Guid id,
         CancellationToken cancellationToken = default) =>

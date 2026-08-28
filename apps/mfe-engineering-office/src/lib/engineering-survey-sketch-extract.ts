@@ -299,17 +299,9 @@ export function mineBoundaryDescriptionsFromOcr(
   // Direction window mining (OCR often drops separators)
   for (const dir of DIR_ORDER) {
     if (isPlausibleBoundaryDescription(block[dir].description)) continue;
-    const dirTok = DIR_TOKEN_BY_DIR[dir];
 
     // Direct row: جهة + وصف anywhere in OCR soup (strongest)
-    const direct = [
-      ...flat.matchAll(
-        new RegExp(
-          `${dirTok}\\s*(?:الحد)?\\s*[:：\\-–—|•·]*\\s*(${DESC_TOKEN}|رقم\\s*[\\d٠-٩]{1,6}\\s*[-–ـ.]?\\s*س|(?:شارع|شاع|زع)\\s*عرض\\s*[\\d.٠-٩]+\\s*م?)`,
-          "gi",
-        ),
-      ),
-    ];
+    const direct = [...flat.matchAll(DIR_DIRECT_ROW_RE[dir])];
     if (direct.length > 0) {
       const last = direct[direct.length - 1]!;
       const f = formatDescription(last[1] ?? last[0] ?? "");
@@ -384,7 +376,7 @@ export function mineBoundaryDescriptionsFromOcr(
 function collectOrderedBoundaryDescriptions(flat: string): string[] {
   const hits: Array<{ i: number; end: number; t: string }> = [];
   const patterns: RegExp[] = [
-    new RegExp(DESC_TOKEN, "gi"),
+    DESC_TOKEN_GI_RE,
     /رقم\s*[\d٠-٩]{1,6}\s*[\\-–ـ.]+\s*س/gi,
     /شارع\s+[^\n\d]{1,45}?(?:بعرض|عرض)\s*[\d.٠-٩]+\s*م?/gi,
     /(?:شارع|شاع|زع|شايع)\s*(?:محدث\s*)?(?:بعرض|عرض)\s*[\d.٠-٩]+\s*م?/gi,
@@ -636,6 +628,21 @@ const DIR_NEAR_DESC_RE = Object.fromEntries(
     ),
   ]),
 ) as Record<DirKey, RegExp>;
+const DIR_DIRECT_ROW_RE = Object.fromEntries(
+  DIR_ORDER.map((dir) => [
+    dir,
+    new RegExp(
+      `${DIR_TOKEN_BY_DIR[dir]}\\s*(?:الحد)?\\s*[:：\\-–—|•·]*\\s*(${DESC_TOKEN}|رقم\\s*[\\d٠-٩]{1,6}\\s*[-–ـ.]?\\s*س|(?:شارع|شاع|زع)\\s*عرض\\s*[\\d.٠-٩]+\\s*م?)`,
+      "gi",
+    ),
+  ]),
+) as Record<DirKey, RegExp>;
+/** يُستخدم مع exec ذي الحالة — صفِّر lastIndex قبل كل استخدام. */
+const DIR_SELF_RE = Object.fromEntries(
+  DIR_ORDER.map((dir) => [dir, new RegExp(DIR_TOKEN_BY_DIR[dir], "gi")]),
+) as Record<DirKey, RegExp>;
+/** نسخة g المشتركة — matchAll ينسخ التعبير داخلياً فالمشاركة آمنة. */
+const DESC_TOKEN_GI_RE = new RegExp(DESC_TOKEN, "gi");
 
 /**
  * Croquis table column header "الطول/م" (and OCR variants).
@@ -700,16 +707,8 @@ export function parseFromLengthColumnTable(
     const flat = normalizeSketchText(body).replace(/\n+/g, " ");
 
     for (const dir of DIR_ORDER) {
-      const dirTok = DIR_TOKEN_BY_DIR[dir];
       // Full row under الطول/م column family: جهة + وصف + طول
-      const matches = [
-        ...flat.matchAll(
-          new RegExp(
-            `${dirTok}\\s*(?:الحد)?\\s*[:：\\-–—|•·]*\\s*(${DESC_TOKEN})\\s*[:：\\-–—|/]*\\s*${EDGE_LEN_TOKEN}`,
-            "gi",
-          ),
-        ),
-      ];
+      const matches = [...flat.matchAll(DIR_DESC_LEN_RE[dir])];
       if (matches.length > 0) {
         const last = matches[matches.length - 1]!;
         block[dir].description = formatDescription(last[1] ?? "");
@@ -720,14 +719,7 @@ export function parseFromLengthColumnTable(
       }
 
       // Direction + description only under header (length trailing elsewhere on row list)
-      const dOnly = [
-        ...flat.matchAll(
-          new RegExp(
-            `${dirTok}\\s*(?:الحد)?\\s*[:：\\-–—|•·]*\\s*(${DESC_TOKEN})`,
-            "gi",
-          ),
-        ),
-      ];
+      const dOnly = [...flat.matchAll(DIR_DESC_RE[dir])];
       if (dOnly.length > 0) {
         block[dir].description = formatDescription(
           dOnly[dOnly.length - 1]![1] ?? "",
@@ -745,7 +737,7 @@ export function parseFromLengthColumnTable(
 
     // Column dump under header: four descs then four decimals in N,S,E,W order
     if (lengthCount(block) < 3) {
-      const descs = [...flat.matchAll(new RegExp(DESC_TOKEN, "gi"))].map((x) =>
+      const descs = [...flat.matchAll(DESC_TOKEN_GI_RE)].map((x) =>
         formatDescription(x[0]),
       );
       const uniqueDescs: string[] = [];
@@ -818,7 +810,8 @@ export function sliceTextForDirection(
   const flat = normalizeSketchText(sourceText).replace(/\n+/g, " ");
   if (!flat) return "";
 
-  const selfRe = new RegExp(DIR_TOKEN_BY_DIR[dir], "gi");
+  const selfRe = DIR_SELF_RE[dir];
+  selfRe.lastIndex = 0;
   const hits: number[] = [];
   let m: RegExpExecArray | null;
   while ((m = selfRe.exec(flat)) !== null) {
@@ -1223,7 +1216,7 @@ function parseColumnarTableBody(sectionText: string): SketchBoundaryBlock | null
   if (new Set(dirsInOrder).size < 4) return null;
 
   // Unique descriptions in document order (first 4 distinct)
-  const descsRaw = [...n.matchAll(new RegExp(DESC_TOKEN, "gi"))].map((m) =>
+  const descsRaw = [...n.matchAll(DESC_TOKEN_GI_RE)].map((m) =>
     formatDescription(m[0]),
   );
   const descs: string[] = [];

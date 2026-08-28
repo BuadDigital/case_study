@@ -2,7 +2,7 @@
 
 import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { fmtMax } from "@platform/app-shared/format/number";
+import { formatSar } from "./FinancePartyBillingParts";
 import { prototypeKeys } from "@platform/app-shared/query/prototype-keys";
 import { loadInspectorFeesSummary } from "@platform/app-shared/prototype/inspector-fees-api";
 import { loadPartyBillingStatements } from "@platform/app-shared/prototype/party-billing-statements-api";
@@ -28,11 +28,6 @@ import {
   finTh,
   finThead,
 } from "../lib/finance-tw";
-
-// لاحقة ر.س دون أصفار كسور إلزامية — نبقيها محلياً حفاظاً على العرض نفسه.
-function formatSar(n: number) {
-  return `${fmtMax(n)} ر.س`;
-}
 
 /**
  * مستبعدة: بنود مخسومة/مستبعدة قبل الاستحقاق + مسيرات ملغاة (سجل).
