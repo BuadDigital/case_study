@@ -12,7 +12,7 @@ using RealEstateEval.Infrastructure.Services;
 
 namespace RealEstateEval.Financial.Infrastructure.Services;
 
-public sealed class PartyFeePricingService : IPartyFeePricingService
+public sealed partial class PartyFeePricingService : IPartyFeePricingService
 {
     private const int MaxPricingTables = 100;
     public static readonly Guid DefaultEngineeringTableId =
@@ -110,7 +110,7 @@ public sealed class PartyFeePricingService : IPartyFeePricingService
     {
         await EnsureAllCategoriesSeededAsync(cancellationToken);
         var category = PartyFeePricingCategories.Require(request.Category);
-        var name = NormalizeName(request.Name, category);
+        var name = PartyFeePricingRules.NormalizeName(request.Name, category);
         var pricingKind = string.IsNullOrWhiteSpace(request.PricingKind)
             ? PartyFeePricingKinds.DefaultForCategory(category)
             : PartyFeePricingKinds.Require(request.PricingKind.Trim());
@@ -119,7 +119,7 @@ public sealed class PartyFeePricingService : IPartyFeePricingService
                 ? PartyFeePricingManagers.Supervisor
                 : PartyFeePricingManagers.SystemAdmin)
             : PartyFeePricingManagers.Require(request.ManagedBy.Trim());
-        ValidateKindManagerPair(pricingKind, managedBy, category);
+        PartyFeePricingRules.ValidateKindManagerPair(pricingKind, managedBy, category);
 
         PartyFeePricingTable? source = null;
         if (pricingKind != PartyFeePricingKinds.Flat)
@@ -190,7 +190,7 @@ public sealed class PartyFeePricingService : IPartyFeePricingService
                 .Select(t => new EngineeringSurveyFeeRules.AreaFeeTier(t.MaxAreaM2, t.FeeSar))
                 .ToList();
             if (EngineeringSurveyFeeRules.HasTiers(sourceTiers))
-                ApplyTiersInMemory(table, sourceTiers!);
+                PartyFeePricingRules.ApplyTiersInMemory(table, sourceTiers!);
         }
 
         _db.PartyFeePricingTables.Add(table);
@@ -200,7 +200,7 @@ public sealed class PartyFeePricingService : IPartyFeePricingService
             nameof(PartyFeePricingTable),
             table.Id,
             before: null,
-            after: Snapshot(table));
+            after: PartyFeePricingSnapshots.Snapshot(table));
         await _db.SaveChangesAsync(cancellationToken);
         return await ToDtoAsync(table, cancellationToken);
     }
@@ -219,9 +219,9 @@ public sealed class PartyFeePricingService : IPartyFeePricingService
             throw new InvalidOperationException(
                 "لا يمكن تعديل جدول مرتبط بأطراف — احفظ التغيير كنسخة جديدة لإعادة ربطهم ذرّياً.");
         }
-        var before = Snapshot(table);
+        var before = PartyFeePricingSnapshots.Snapshot(table);
 
-        table.Name = NormalizeName(request.Name, table.Category);
+        table.Name = PartyFeePricingRules.NormalizeName(request.Name, table.Category);
         table.UpdatedAtUtc = _time.UtcNow();
         await ApplyRatesFromRequestAsync(table, request, cancellationToken);
 
@@ -257,7 +257,7 @@ public sealed class PartyFeePricingService : IPartyFeePricingService
         }
 
         var now = _time.UtcNow();
-        var sourceBefore = Snapshot(source);
+        var sourceBefore = PartyFeePricingSnapshots.Snapshot(source);
         var wasSourceActive = source.IsActive;
  // Insert the revision inactive first. Postgres rejects an INSERT of an active row while
  // the previous category default is still active (IX_PartyFeePricingTables_Category_OneActive).
@@ -265,7 +265,7 @@ public sealed class PartyFeePricingService : IPartyFeePricingService
         {
             Id = Guid.NewGuid(),
             Category = source.Category,
-            Name = NormalizeName(request.Name, source.Category),
+            Name = PartyFeePricingRules.NormalizeName(request.Name, source.Category),
             PricingKind = source.PricingKind,
             ManagedBy = source.ManagedBy,
             IsActive = false,
@@ -288,7 +288,7 @@ public sealed class PartyFeePricingService : IPartyFeePricingService
                 nameof(PartyFeePricingTable),
                 source.Id,
                 sourceBefore,
-                Snapshot(source));
+                PartyFeePricingSnapshots.Snapshot(source));
         }
 
         var categoryBefore = await _db.PartyFeePricingAssignments.AsNoTracking()
@@ -317,7 +317,7 @@ public sealed class PartyFeePricingService : IPartyFeePricingService
             nameof(PartyFeePricingTable),
             revision.Id,
             sourceBefore,
-            Snapshot(revision));
+            PartyFeePricingSnapshots.Snapshot(revision));
         AddAudit(
             actorId,
             "PRICING_ASSIGNMENTS_RELINKED",
@@ -330,7 +330,7 @@ public sealed class PartyFeePricingService : IPartyFeePricingService
 
         if (wasSourceActive)
         {
-            var revisionBeforeActivate = Snapshot(revision);
+            var revisionBeforeActivate = PartyFeePricingSnapshots.Snapshot(revision);
             revision.IsActive = true;
             revision.UpdatedAtUtc = _time.UtcNow();
             AddAudit(
@@ -339,7 +339,7 @@ public sealed class PartyFeePricingService : IPartyFeePricingService
                 nameof(PartyFeePricingTable),
                 revision.Id,
                 revisionBeforeActivate,
-                Snapshot(revision));
+                PartyFeePricingSnapshots.Snapshot(revision));
             await _db.SaveChangesAsync(cancellationToken);
         }
 
@@ -379,7 +379,7 @@ public sealed class PartyFeePricingService : IPartyFeePricingService
         {
             foreach (var other in others)
             {
-                var before = Snapshot(other);
+                var before = PartyFeePricingSnapshots.Snapshot(other);
                 other.IsActive = false;
                 other.UpdatedAtUtc = now;
                 AddAudit(
@@ -388,7 +388,7 @@ public sealed class PartyFeePricingService : IPartyFeePricingService
                     nameof(PartyFeePricingTable),
                     other.Id,
                     before,
-                    Snapshot(other));
+                    PartyFeePricingSnapshots.Snapshot(other));
             }
 
             if (others.Count > 0)
@@ -396,7 +396,7 @@ public sealed class PartyFeePricingService : IPartyFeePricingService
 
             if (!table.IsActive)
             {
-                var targetBefore = Snapshot(table);
+                var targetBefore = PartyFeePricingSnapshots.Snapshot(table);
                 table.IsActive = true;
                 table.UpdatedAtUtc = now;
                 AddAudit(
@@ -405,7 +405,7 @@ public sealed class PartyFeePricingService : IPartyFeePricingService
                     nameof(PartyFeePricingTable),
                     table.Id,
                     targetBefore,
-                    Snapshot(table));
+                    PartyFeePricingSnapshots.Snapshot(table));
                 await _db.SaveChangesAsync(ct);
             }
         }, cancellationToken);
@@ -435,7 +435,7 @@ public sealed class PartyFeePricingService : IPartyFeePricingService
 
         var wasActive = table.IsActive;
         var category = table.Category;
-        var deletedSnapshot = Snapshot(table);
+        var deletedSnapshot = PartyFeePricingSnapshots.Snapshot(table);
         _db.PartyFeePricingTables.Remove(table);
 
  // Promote the next table in the same SaveChanges so a failure cannot leave the
@@ -447,7 +447,7 @@ public sealed class PartyFeePricingService : IPartyFeePricingService
                 .Where(x => x.Id != id && x.Category == category)
                 .OrderBy(x => x.Name)
                 .FirstAsync(cancellationToken);
-            var nextBefore = Snapshot(next);
+            var nextBefore = PartyFeePricingSnapshots.Snapshot(next);
             next.IsActive = true;
             next.UpdatedAtUtc = _time.UtcNow();
             AddAudit(
@@ -456,7 +456,7 @@ public sealed class PartyFeePricingService : IPartyFeePricingService
                 nameof(PartyFeePricingTable),
                 next.Id,
                 nextBefore,
-                Snapshot(next));
+                PartyFeePricingSnapshots.Snapshot(next));
         }
 
         AddAudit(
@@ -565,7 +565,7 @@ public sealed class PartyFeePricingService : IPartyFeePricingService
         string? assigneeId = null,
         CancellationToken cancellationToken = default)
     {
-        var category = CategoryForTaskKind(taskKind);
+        var category = PartyFeePricingRules.CategoryForTaskKind(taskKind);
         if (category is null) return ResolvedPartyFee.Unresolved;
 
  // Employee incentives may only come from flat tables. An accidental party-rates assignment
@@ -591,7 +591,7 @@ public sealed class PartyFeePricingService : IPartyFeePricingService
 
         if (pricing is null) return ResolvedPartyFee.Unresolved;
 
-        var fee = ResolveFromDto(pricing, taskKind, partyType, areaM2);
+        var fee = PartyFeePricingRules.ResolveFromDto(pricing, taskKind, partyType, areaM2);
 
  // A table that priced nothing is not the source of anything, so it is not recorded as one.
         return fee is > 0m ? new ResolvedPartyFee(fee, pricing.Id) : ResolvedPartyFee.Unresolved;
@@ -639,62 +639,6 @@ public sealed class PartyFeePricingService : IPartyFeePricingService
         return flat is null ? null : await ToDtoAsync(flat, cancellationToken);
     }
 
-    public static decimal? ResolveFromDto(
-        PartyFeePricingDto pricing,
-        WorkflowTaskKind taskKind,
-        string partyType,
-        decimal? areaM2 = null)
-    {
-        if (taskKind == WorkflowTaskKind.EngineeringSurvey)
-        {
-            if (areaM2 is not > 0m) return null;
-            var tiers = (pricing.AreaTiers ?? [])
-                .OrderBy(t => t.SortOrder)
-                .Select(t => new EngineeringSurveyFeeRules.AreaFeeTier(t.MaxAreaM2, t.FeeSar))
-                .ToList();
-            return EngineeringSurveyFeeRules.ResolveFeeFromTiers(areaM2.Value, tiers);
-        }
-
- // Employee incentives only come from flat tables. A party-rates default must not silently
- // price them, and a flat table must not price cooperators out of cooperator columns.
-        if (pricing.PricingKind == PartyFeePricingKinds.Flat)
-        {
-            return InspectorFeeRules.IsEmployee(partyType)
-                ? Configured(pricing.FlatAmountSar)
-                : null;
-        }
-
-        if (InspectorFeeRules.IsEmployee(partyType))
-            return null;
-
-        if (taskKind == WorkflowTaskKind.GovernmentReview)
-            return Configured(pricing.CourtVisitFeeSar);
-
-        return partyType switch
-        {
-            InspectorFeeRules.TypeCooperatorOrganization =>
-                Configured(pricing.FieldInspectorOrganizationFeeSar),
-            InspectorFeeRules.TypeCooperatorIndividual
-                or InspectorFeeRules.TypeCooperatorLegacy =>
-                Configured(pricing.FieldInspectorIndividualFeeSar),
-            _ => null,
-        };
-    }
-
- /// <summary>
- /// An amount of zero means nobody set a rate, which is a different answer from "the rate is
- /// zero" — callers must treat it as unresolved and refuse to bill.
- /// </summary>
-    private static decimal? Configured(decimal amount) => amount > 0m ? amount : null;
-
-    private static string? CategoryForTaskKind(WorkflowTaskKind taskKind) => taskKind switch
-    {
-        WorkflowTaskKind.EngineeringSurvey => PartyFeePricingCategories.EngineeringSurvey,
-        WorkflowTaskKind.GovernmentReview => PartyFeePricingCategories.CourtVisit,
-        WorkflowTaskKind.FieldInspection => PartyFeePricingCategories.FieldInspector,
-        _ => null,
-    };
-
     private async Task<PartyFeePricingDto?> ResolveTableDtoForAssigneeAsync(
         string category,
         string? assigneeId,
@@ -726,112 +670,6 @@ public sealed class PartyFeePricingService : IPartyFeePricingService
             .Include(x => x.AreaTiers)
             .FirstOrDefaultAsync(x => x.Category == category && x.IsActive, cancellationToken);
         return fallback is null ? null : await ToDtoAsync(fallback, cancellationToken);
-    }
-
-    private async Task EnsureAllCategoriesSeededAsync(CancellationToken cancellationToken)
-    {
-        await EnsureCategorySeededAsync(
-            PartyFeePricingCategories.EngineeringSurvey,
-            DefaultEngineeringTableId,
-            "افتراضي",
-            cancellationToken);
-        await EnsureCategorySeededAsync(
-            PartyFeePricingCategories.CourtVisit,
-            DefaultCourtVisitTableId,
-            "افتراضي",
-            cancellationToken);
-        await EnsureCategorySeededAsync(
-            PartyFeePricingCategories.FieldInspector,
-            DefaultInspectorTableId,
-            "افتراضي",
-            cancellationToken);
-    }
-
-    private async Task EnsureCategorySeededAsync(
-        string category,
-        Guid defaultId,
-        string defaultName,
-        CancellationToken cancellationToken)
-    {
-        var active = await _db.PartyFeePricingTables
-            .Include(x => x.AreaTiers)
-            .FirstOrDefaultAsync(x => x.Category == category && x.IsActive, cancellationToken);
-        if (active is not null) return;
-
-        var any = await _db.PartyFeePricingTables
-            .Include(x => x.AreaTiers)
-            .Where(x => x.Category == category && x.PricingKind != PartyFeePricingKinds.Flat)
-            .OrderBy(x => x.Name)
-            .FirstOrDefaultAsync(cancellationToken);
-        if (any is not null)
-        {
-            var before = Snapshot(any);
-            any.IsActive = true;
-            any.UpdatedAtUtc = _time.UtcNow();
-            AddAudit(
-                "system",
-                "PRICING_TABLE_ACTIVATED",
-                nameof(PartyFeePricingTable),
-                any.Id,
-                before,
-                Snapshot(any));
-            await _db.SaveChangesAsync(cancellationToken);
-            return;
-        }
-
- // A placeholder so each category always has an active row for the pricing screen to edit.
- // It carries no amounts: an empty table must block fees, not quietly supply them. Migrating an
- // installation that predates the category split is the job of the migration that split it, not
- // of this placeholder — it used to copy amounts off whatever table was newest, across
- // categories.
-        var table = new PartyFeePricingTable
-        {
-            Id = defaultId,
-            Category = category,
-            Name = defaultName,
-            PricingKind = PartyFeePricingKinds.DefaultForCategory(category),
-            ManagedBy = PartyFeePricingManagers.SystemAdmin,
-            IsActive = true,
-            UpdatedAtUtc = _time.UtcNow(),
-        };
-
-        _db.PartyFeePricingTables.Add(table);
-        AddAudit(
-            "system",
-            "PRICING_TABLE_CREATED",
-            nameof(PartyFeePricingTable),
-            table.Id,
-            before: null,
-            after: Snapshot(table));
-        await _db.SaveChangesAsync(cancellationToken);
-    }
-
-    private async Task<PartyFeePricingDto> BuildMergedActiveDtoAsync(CancellationToken cancellationToken)
-    {
-        var engineering = await _db.PartyFeePricingTables.AsNoTracking()
-            .Include(x => x.AreaTiers)
-            .FirstAsync(x => x.Category == PartyFeePricingCategories.EngineeringSurvey && x.IsActive, cancellationToken);
-        var government = await _db.PartyFeePricingTables.AsNoTracking()
-            .FirstAsync(x => x.Category == PartyFeePricingCategories.CourtVisit && x.IsActive, cancellationToken);
-        var inspector = await _db.PartyFeePricingTables.AsNoTracking()
-            .FirstAsync(x => x.Category == PartyFeePricingCategories.FieldInspector && x.IsActive, cancellationToken);
-
-        var engDto = await ToDtoAsync(engineering, cancellationToken);
-        return new PartyFeePricingDto
-        {
-            Id = engineering.Id,
-            Category = PartyFeePricingCategories.EngineeringSurvey,
-            Name = engineering.Name,
-            PricingKind = engineering.PricingKind,
-            ManagedBy = engineering.ManagedBy,
-            IsActive = true,
-            AreaTiers = engDto.AreaTiers,
-            CourtVisitFeeSar = government.CourtVisitFeeSar,
-            FieldInspectorIndividualFeeSar = inspector.FieldInspectorIndividualFeeSar,
-            FieldInspectorOrganizationFeeSar = inspector.FieldInspectorOrganizationFeeSar,
-            FlatAmountSar = 0m,
-            UpdatedAtUtc = new[] { engineering.UpdatedAtUtc, government.UpdatedAtUtc, inspector.UpdatedAtUtc }.Max(),
-        };
     }
 
     private async Task<PartyFeePricingTable?> LoadTableAsync(
@@ -872,40 +710,6 @@ public sealed class PartyFeePricingService : IPartyFeePricingService
         _db.PartyFeePricingTiers.AddRange(newRows);
     }
 
-    private static IReadOnlyList<EngineeringSurveyFeeRules.AreaFeeTier> NormalizeRequestedTiers(
-        PartyFeePricingDto request)
-    {
-        var incoming = (request.AreaTiers ?? [])
-            .OrderBy(t => t.SortOrder)
-            .Select(t => new EngineeringSurveyFeeRules.AreaFeeTier(t.MaxAreaM2, t.FeeSar))
-            .ToList();
-        if (!EngineeringSurveyFeeRules.HasTiers(incoming))
-        {
-            throw new InvalidOperationException(
-                "جدول الرفع المساحي يجب أن يحتوي شريحة واحدة على الأقل.");
-        }
-
-        return EngineeringSurveyFeeRules.NormalizeTiers(incoming);
-    }
-
-    private static void ApplyTiersInMemory(
-        PartyFeePricingTable table,
-        IReadOnlyList<EngineeringSurveyFeeRules.AreaFeeTier> tiers)
-    {
-        var normalized = EngineeringSurveyFeeRules.NormalizeTiers(tiers);
-        for (var i = 0; i < normalized.Count; i++)
-        {
-            table.AreaTiers.Add(new PartyFeePricingTier
-            {
-                Id = Guid.NewGuid(),
-                TableId = table.Id,
-                SortOrder = i,
-                MaxAreaM2 = normalized[i].MaxAreaM2,
-                FeeSar = normalized[i].FeeSar,
-            });
-        }
-    }
-
     private PricingTableSnapshot SnapshotFromTrackedState(PartyFeePricingTable table)
     {
         var tiers = _db.ChangeTracker.Entries<PartyFeePricingTier>()
@@ -914,55 +718,7 @@ public sealed class PartyFeePricingService : IPartyFeePricingService
             .OrderBy(t => t.SortOrder)
             .Select(t => new PricingTierSnapshot(t.SortOrder, t.MaxAreaM2, t.FeeSar))
             .ToList();
-        return Snapshot(table, tiers);
-    }
-
-    private static PricingTableSnapshot Snapshot(PartyFeePricingTable table) =>
-        Snapshot(
-            table,
-            table.AreaTiers
-                .OrderBy(t => t.SortOrder)
-                .Select(t => new PricingTierSnapshot(t.SortOrder, t.MaxAreaM2, t.FeeSar))
-                .ToList());
-
-    private static PricingTableSnapshot Snapshot(
-        PartyFeePricingTable table,
-        IReadOnlyList<PricingTierSnapshot> tiers) =>
-        new(
-            table.Id,
-            table.Category,
-            table.Name,
-            table.PricingKind,
-            table.ManagedBy,
-            table.IsActive,
-            table.CourtVisitFeeSar,
-            table.FieldInspectorIndividualFeeSar,
-            table.FieldInspectorOrganizationFeeSar,
-            table.FlatAmountSar,
-            tiers);
-
-    private static void ValidateKindManagerPair(string pricingKind, string managedBy, string category)
-    {
-        if (pricingKind == PartyFeePricingKinds.Tiered
-            && category != PartyFeePricingCategories.EngineeringSurvey)
-        {
-            throw new InvalidOperationException(
-                "التسعير بالشرائح متاح لتصنيف الرفع المساحي فقط.");
-        }
-
-        if (pricingKind == PartyFeePricingKinds.Flat
-            && category == PartyFeePricingCategories.EngineeringSurvey)
-        {
-            throw new InvalidOperationException(
-                "حوافز المقطوع لا تُنشأ تحت تصنيف الرفع المساحي.");
-        }
-
-        if (managedBy == PartyFeePricingManagers.Supervisor
-            && pricingKind != PartyFeePricingKinds.Flat)
-        {
-            throw new InvalidOperationException(
-                "إدارة المشرف متاحة لجداول الحوافز المقطوعة فقط.");
-        }
+        return PartyFeePricingSnapshots.Snapshot(table, tiers);
     }
 
     private async Task ApplyRatesFromRequestAsync(
@@ -987,7 +743,7 @@ public sealed class PartyFeePricingService : IPartyFeePricingService
         switch (table.Category)
         {
             case PartyFeePricingCategories.EngineeringSurvey:
-                await ReplaceTiersAsync(table, NormalizeRequestedTiers(request), cancellationToken);
+                await ReplaceTiersAsync(table, PartyFeePricingRules.NormalizeRequestedTiers(request), cancellationToken);
                 break;
             case PartyFeePricingCategories.CourtVisit:
                 table.CourtVisitFeeSar = Math.Max(0m, request.CourtVisitFeeSar);
@@ -1020,7 +776,7 @@ public sealed class PartyFeePricingService : IPartyFeePricingService
         switch (table.Category)
         {
             case PartyFeePricingCategories.EngineeringSurvey:
-                ApplyTiersInMemory(table, NormalizeRequestedTiers(request));
+                PartyFeePricingRules.ApplyTiersInMemory(table, PartyFeePricingRules.NormalizeRequestedTiers(request));
                 break;
             case PartyFeePricingCategories.CourtVisit:
                 table.CourtVisitFeeSar = Math.Max(0m, request.CourtVisitFeeSar);
@@ -1043,44 +799,12 @@ public sealed class PartyFeePricingService : IPartyFeePricingService
         object? after)
     {
         _db.Set<AuditLog>().Add(_audit.Create(
-            NormalizeActor(actorId),
+            PartyFeePricingRules.NormalizeActor(actorId),
             action,
             entityType,
             entityId.ToString(),
             before,
             after));
-    }
-
-    private static string NormalizeActor(string? actorId) =>
-        string.IsNullOrWhiteSpace(actorId) ? "system" : actorId.Trim();
-
-    private sealed record PricingTableSnapshot(
-        Guid Id,
-        string Category,
-        string Name,
-        string PricingKind,
-        string ManagedBy,
-        bool IsActive,
-        decimal CourtVisitFeeSar,
-        decimal FieldInspectorIndividualFeeSar,
-        decimal FieldInspectorOrganizationFeeSar,
-        decimal FlatAmountSar,
-        IReadOnlyList<PricingTierSnapshot> AreaTiers);
-
-    private sealed record PricingTierSnapshot(
-        int SortOrder,
-        decimal? MaxAreaM2,
-        decimal FeeSar);
-
-    private sealed record PricingAssignmentSnapshot(Guid TableId, string AssigneeId);
-
-    private static string NormalizeName(string? name, string category)
-    {
-        var trimmed = (name ?? "").Trim();
-        if (!string.IsNullOrEmpty(trimmed))
-            return trimmed[..Math.Min(trimmed.Length, 128)];
-
-        return "افتراضي";
     }
 
     private async Task<PartyFeePricingDto> ToDtoAsync(

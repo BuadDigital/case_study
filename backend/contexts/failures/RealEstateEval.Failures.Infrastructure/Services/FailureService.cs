@@ -166,12 +166,12 @@ public class FailureService : IFailureService
                     $"failure:{entity.Id}:created",
                     "تسجيل تعذر",
                     $"{entity.Title} — {PropertyFailureStatus.LabelAr(entity.Status)}",
-                    "warn",
+                    PropertyTimelineTones.Warn,
                     now),
                 cancellationToken);
         }
 
-        if (entity.Severity == "internal")
+        if (entity.Severity == PropertyFailureSeverity.Internal)
             await ApplyInternalSideEffectsAsync(entity, cancellationToken);
 
         return (await ToDtoAsync(entity, cancellationToken), null);
@@ -190,7 +190,7 @@ public class FailureService : IFailureService
             PropertyId = request.PropertyId,
             DeedNumber = request.DeedNumber,
             ProblemTypeId = "deed-inactive",
-            Severity = "internal",
+            Severity = PropertyFailureSeverity.Internal,
             RaisedByRole = "الأخصائي",
             Title = "متعذر — الصك غير فعال",
             InternalNote = request.Reason.Trim(),
@@ -236,7 +236,7 @@ public class FailureService : IFailureService
             PropertyId = propertyId,
             DeedNumber = deedNumber,
             ProblemTypeId = problemTypeId,
-            Severity = "internal",
+            Severity = PropertyFailureSeverity.Internal,
             RaisedByRole = DocumentaryWorkflowRules.SystemRaiserRole,
             Title = title,
             InternalNote = note,
@@ -297,7 +297,7 @@ public class FailureService : IFailureService
                     $"failure:{entity.Id}:suspended",
                     "تعليق المعاملة",
                     entity.FinalNote,
-                    "warn",
+                    PropertyTimelineTones.Warn,
                     entity.SuspendedAtUtc!.Value),
                 cancellationToken);
         }
@@ -417,7 +417,7 @@ public class FailureService : IFailureService
             deedNumber,
             "محظر إخلاء — تعليق الدراسة",
             evictionProblemTypeId,
-            "internal",
+            PropertyFailureSeverity.Internal,
             DocumentaryWorkflowRules.SystemRaiserRole,
             "تسجيل محظر إخلاء من وحدة الظروف/مسار الدخول.",
             "عُلّقت الدراسة تلقائياً بسبب تسجيل محظر إخلاء.",
@@ -505,7 +505,7 @@ public class FailureService : IFailureService
             deedNumber,
             "مفتاح العقار غير مطابق",
             keyUnmatchedProblemTypeId,
-            "internal",
+            PropertyFailureSeverity.Internal,
             DocumentaryWorkflowRules.SystemRaiserRole,
             "تأكيد ميداني: المفتاح غير مطابق للصك.",
             resolvedSpecialist,
@@ -599,7 +599,9 @@ public class FailureService : IFailureService
     }
 
     private static string NormalizeSeverity(string severity) =>
-        severity.Trim().ToLowerInvariant() == "suspected" ? "suspected" : "internal";
+        severity.Trim().ToLowerInvariant() == PropertyFailureSeverity.Suspected
+            ? PropertyFailureSeverity.Suspected
+            : PropertyFailureSeverity.Internal;
 
     private static string ResolveTitle(CreateFailureRequest request)
     {
@@ -735,7 +737,7 @@ public class FailureService : IFailureService
             task.AssigneeId,
             "تعليق دراسة الحالة",
             reason,
-            "warn",
+            PropertyTimelineTones.Warn,
             $"case-study-blocked:{task.TaskId}",
             cancellationToken);
     }

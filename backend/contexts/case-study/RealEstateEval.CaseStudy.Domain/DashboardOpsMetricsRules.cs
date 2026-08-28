@@ -16,11 +16,11 @@ public static class DashboardOpsMetricsRules
     public const decimal GovernmentReviewSlaDays = 1.5m;
     public const decimal AppraisalSlaDays = 1.5m;
 
-    public const string StageEnfath = "enfath";
-    public const string StageBourse = "bourse";
-    public const string StageDistribution = "distribution";
-    public const string StageCaseStudy = "case-study";
-    public const string StageGovernmentReview = "government-review";
+    public const string StageEnfath = WorkflowTaskPhaseValues.Enfath;
+    public const string StageBourse = WorkflowTaskPhaseValues.Bourse;
+    public const string StageDistribution = WorkflowTaskPhaseValues.Distribution;
+    public const string StageCaseStudy = WorkflowTaskPhaseValues.CaseStudy;
+    public const string StageGovernmentReview = WorkflowTaskKindValues.GovernmentReview;
     public const string StageAppraisal = "appraisal";
 
     public sealed record TaskSnap(

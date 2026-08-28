@@ -45,15 +45,9 @@ public static class WorkflowTaskPhaseRules
         return string.IsNullOrEmpty(deed) ? "—" : deed;
     }
 
-    public static string PartyAssignedTitle(WorkflowTaskKind kind) => kind switch
-    {
-        WorkflowTaskKind.FieldInspection => "تعيين المعاين الميداني",
-        WorkflowTaskKind.EngineeringSurvey => "تعيين المكتب الهندسي",
-        WorkflowTaskKind.PropertyAppraisal => "تعيين المقيّم العقاري",
- // Legacy government-review children (no longer spawned).
-        WorkflowTaskKind.GovernmentReview => "تعيين المراجع الحكومي",
-        _ => "تعيين طرف",
-    };
+    // كانت نسخة حرفية من الخريطة المشتركة — منتِجان لنفس العنوان المخزّن في الجدول الزمني.
+    public static string PartyAssignedTitle(WorkflowTaskKind kind) =>
+        WorkflowTaskKindLabels.AssignedTitleAr(kind);
 
  /// <summary>The shell keys assignee display names by the wire kind value.</summary>
     public static string ResolveName(

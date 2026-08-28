@@ -12,10 +12,11 @@ using RealEstateEval.Financial.Domain;
 using RealEstateEval.Financial.Infrastructure.Data.Contexts;
 using RealEstateEval.Attachments.Application.Abstractions;
 using RealEstateEval.Operations.Application.Abstractions;
+using static RealEstateEval.Financial.Infrastructure.Services.PartyBillingRowMapper;
 
 namespace RealEstateEval.Financial.Infrastructure.Services;
 
-public class PartyBillingStatementService : IPartyBillingStatementService
+public partial class PartyBillingStatementService : IPartyBillingStatementService
 {
     private const int MaxListRows = 500;
     private const string RefDept = "FN";
@@ -136,7 +137,7 @@ public class PartyBillingStatementService : IPartyBillingStatementService
         var statementTasks = (await _lookup.ListWorkflowTasksByKindsAsync(
                 [.. StatementKinds],
                 cancellationToken))
-            .Select(task => new { task.Id, Kind = ParseKind(task.Kind) })
+            .Select(task => new { task.Id, Kind = PartyBillingRowMapper.ParseKind(task.Kind) })
             .Where(task => StatementKinds.Contains(task.Kind))
             .ToList();
         var kindByTaskId = statementTasks.ToDictionary(task => task.Id, task => task.Kind);
@@ -160,7 +161,7 @@ public class PartyBillingStatementService : IPartyBillingStatementService
 
  // Reassignment twins + multi-deed share one statement line (unique WorkflowTaskId).
  // Surface one ready row per task.
-        var ledgers = CollapseReadyLedgers(ledgerRows)
+        var ledgers = PartyBillingRowMapper.CollapseReadyLedgers(ledgerRows)
             .GroupBy(l => l.WorkflowTaskId)
             .Select(g => g
                 .OrderByDescending(l => l.UpdatedAtUtc)
@@ -182,7 +183,7 @@ public class PartyBillingStatementService : IPartyBillingStatementService
 
         var ledgerReady = ledgers
             .OrderByDescending(l => l.UpdatedAtUtc)
-            .Select(l => ToReadyDto(l, labels, kindByTask.GetValueOrDefault(l.WorkflowTaskId)))
+            .Select(l => PartyBillingRowMapper.ToReadyDto(l, labels, kindByTask.GetValueOrDefault(l.WorkflowTaskId)))
             .ToList();
 
         var remaining = Math.Max(0, MaxListRows - ledgerReady.Count);
@@ -204,7 +205,7 @@ public class PartyBillingStatementService : IPartyBillingStatementService
             .Take(remaining)
             .ToListAsync(cancellationToken);
 
-        var visitReady = visitCharges.Select(ToCourtVisitReadyDto).ToList();
+        var visitReady = visitCharges.Select(PartyBillingRowMapper.ToCourtVisitReadyDto).ToList();
         return ledgerReady
             .Concat(visitReady)
             .OrderByDescending(l => l.UpdatedAtUtc ?? l.AccruedAtUtc ?? DateTime.MinValue)
@@ -690,7 +691,7 @@ public class PartyBillingStatementService : IPartyBillingStatementService
         string actorUserId,
         CancellationToken cancellationToken = default)
     {
-        var taskIds = ParseTaskIds(request.WorkflowTaskIds);
+        var taskIds = PartyBillingRowMapper.ParseTaskIds(request.WorkflowTaskIds);
         var succeeded = new List<PartyBillingReadyLineDto>();
         var failed = new List<InspectorFeeTransitionErrorDto>();
 
@@ -761,7 +762,7 @@ public class PartyBillingStatementService : IPartyBillingStatementService
                 ActorUserId = actorUserId,
                 CreatedAtUtc = now,
             });
-            succeeded.Add(ToReadyDto(ledger, labels, kindByTask.GetValueOrDefault(taskId)));
+            succeeded.Add(PartyBillingRowMapper.ToReadyDto(ledger, labels, kindByTask.GetValueOrDefault(taskId)));
         }
 
         if (succeeded.Count > 0)
@@ -792,17 +793,24 @@ public class PartyBillingStatementService : IPartyBillingStatementService
         var created = new List<PartyBillingStatementDto>();
         var linesIncluded = 0;
 
-        foreach (var group in vendorReady)
-        {
-            var hasOpen = await _db.PartyBillingStatements.AsNoTracking().AnyAsync(
-                s => s.AssigneeId == group.Key
+ // استعلام واحد للمسيرات المفتوحة هذا الشهر بدل AnyAsync لكل مورّد.
+        var vendorIds = vendorReady.Select(g => g.Key).ToList();
+        var openThisMonth = (await _db.PartyBillingStatements.AsNoTracking()
+                .Where(s =>
+                    s.AssigneeId != null
+                    && vendorIds.Contains(s.AssigneeId)
                     && s.PayeeType == PartyBillingPayeeType.Vendor
                     && s.CreatedAtUtc >= monthStart
                     && (s.Status == PartyBillingStatementStatus.Draft
                         || s.Status == PartyBillingStatementStatus.Issued
-                        || s.Status == PartyBillingStatementStatus.InvoiceReceived),
-                cancellationToken);
-            if (hasOpen) continue;
+                        || s.Status == PartyBillingStatementStatus.InvoiceReceived))
+                .Select(s => s.AssigneeId!)
+                .ToListAsync(cancellationToken))
+            .ToHashSet(StringComparer.Ordinal);
+
+        foreach (var group in vendorReady)
+        {
+            if (openThisMonth.Contains(group.Key)) continue;
 
             var result = await CreateStatementAsync(
                 new CreatePartyBillingStatementRequest
@@ -836,140 +844,6 @@ public class PartyBillingStatementService : IPartyBillingStatementService
                 ? "لم يُنشأ أي مسير — قد تكون المسيرات مفتوحة مسبقاً لنفس الشهر."
                 : null,
         };
-    }
-
-    public async Task<(PartyBillingStatementDto? Statement, string? Error)> SubmitVendorInvoiceAsync(
-        Guid statementId,
-        SubmitVendorInvoiceRequest request,
-        string actorUserId,
-        CancellationToken cancellationToken = default)
-    {
-        var statement = await _db.PartyBillingStatements
-            .FirstOrDefaultAsync(s => s.Id == statementId, cancellationToken);
-        if (statement is null)
-            return (null, "مسير الصرف غير موجود.");
-        if (statement.PayeeType != PartyBillingPayeeType.Vendor)
-            return (null, "رفع الفاتورة للمورّدين فقط.");
-        if (statement.Status != PartyBillingStatementStatus.Issued)
-            return (null, "لا تُرفع فاتورة إلا على مسير أُرسل للمكتب.");
-
-        var invoiceNo = (request.InvoiceNumber ?? "").Trim();
-        if (invoiceNo.Length == 0)
-            return (null, "رقم الفاتورة مطلوب.");
-        if (!Guid.TryParse(request.AttachmentId, out var attachmentId))
-            return (null, "مرفق PDF الفاتورة مطلوب.");
-
-        var exists = await _attachments.ExistsAsync(attachmentId, actor: null, cancellationToken);
-        if (!exists)
-            return (null, "مرفق الفاتورة غير موجود.");
-
-        var now = _time.UtcNow();
-        statement.Status = PartyBillingStatementStatus.InvoiceReceived;
-        statement.VendorInvoiceNumber = invoiceNo;
-        statement.VendorInvoiceDate = request.InvoiceDate?.ToUniversalTime() ?? now.Date;
-        statement.VendorInvoiceAttachmentId = attachmentId;
-        statement.VendorInvoiceSubmittedAtUtc = now;
-        statement.VendorInvoiceSubmittedByUserId = actorUserId;
-        statement.VendorInvoiceMatchedAtUtc = null;
-        statement.VendorInvoiceMatchedByUserId = null;
-        statement.ExternalInvoiceNumber = invoiceNo;
-
-        await _db.SaveChangesAsync(cancellationToken);
-
-        var supervisors = await _recipients.ResolveUserIdsWithPrototypeRoleAsync(
-            "financial-officer",
-            cancellationToken);
-        if (supervisors.Count == 0)
-        {
-            supervisors = await _recipients.ResolveUserIdsWithPrototypeRoleAsync(
-                "section-supervisor",
-                cancellationToken);
-        }
-        if (supervisors.Count > 0)
-        {
-            await _notifications.CreateForUsersAsync(
-                supervisors,
-                new CreateUserNotificationRequest
-                {
-                    Title = "فاتورة مورّد واردة",
-                    Body = $"{statement.ReferenceNumber} — فاتورة {invoiceNo} بمبلغ مقفل {statement.TotalNetSar:0.##} ر.س",
-                    Category = "financial",
-                    Tone = "info",
-                    Href = $"/financial?area=costs&section=statements&statement={statement.Id}&party={Uri.EscapeDataString(statement.AssigneeId ?? "")}",
-                },
-                cancellationToken);
-        }
-
-        return (await GetStatementAsync(statementId, cancellationToken), null);
-    }
-
-    public async Task<(PartyBillingStatementDto? Statement, string? Error)> MatchVendorInvoiceAsync(
-        Guid statementId,
-        string actorUserId,
-        CancellationToken cancellationToken = default)
-    {
-        var statement = await _db.PartyBillingStatements
-            .FirstOrDefaultAsync(s => s.Id == statementId, cancellationToken);
-        if (statement is null)
-            return (null, "مسير الصرف غير موجود.");
-        if (statement.PayeeType != PartyBillingPayeeType.Vendor)
-            return (null, "المطابقة للمورّدين فقط.");
-        if (statement.Status != PartyBillingStatementStatus.InvoiceReceived)
-            return (null, "لا مطابقة إلا بعد ورود فاتورة.");
-        if (string.IsNullOrWhiteSpace(statement.VendorInvoiceNumber)
-            || statement.VendorInvoiceAttachmentId is null)
-            return (null, "بيانات الفاتورة ناقصة.");
-
-        statement.VendorInvoiceMatchedAtUtc = _time.UtcNow();
-        statement.VendorInvoiceMatchedByUserId = actorUserId;
-        await _db.SaveChangesAsync(cancellationToken);
-        return (await GetStatementAsync(statementId, cancellationToken), null);
-    }
-
-    public async Task<(PartyBillingStatementDto? Statement, string? Error)> RejectVendorInvoiceAsync(
-        Guid statementId,
-        RejectVendorInvoiceRequest request,
-        string actorUserId,
-        CancellationToken cancellationToken = default)
-    {
-        var statement = await _db.PartyBillingStatements
-            .FirstOrDefaultAsync(s => s.Id == statementId, cancellationToken);
-        if (statement is null)
-            return (null, "مسير الصرف غير موجود.");
-        if (statement.PayeeType != PartyBillingPayeeType.Vendor)
-            return (null, "إعادة الفاتورة للمورّدين فقط.");
-        if (statement.Status != PartyBillingStatementStatus.InvoiceReceived)
-            return (null, "لا إعادة إلا لفاتورة واردة.");
-
-        var reason = (request.Reason ?? "").Trim();
-        if (reason.Length < 3)
-            return (null, "سبب الإعادة للتصحيح إلزامي.");
-
-        var rejected = ParseRejected(statement.RejectedInvoicesJson);
-        rejected.Add(new PartyBillingRejectedInvoiceDto
-        {
-            InvoiceNumber = statement.VendorInvoiceNumber ?? "",
-            InvoiceDate = statement.VendorInvoiceDate,
-            AttachmentId = statement.VendorInvoiceAttachmentId?.ToString(),
-            Reason = reason,
-            RejectedByUserId = actorUserId,
-            RejectedAtUtc = _time.UtcNow(),
-        });
-
-        statement.RejectedInvoicesJson = SerializeRejected(rejected);
-        statement.VendorInvoiceNumber = null;
-        statement.VendorInvoiceDate = null;
-        statement.VendorInvoiceAttachmentId = null;
-        statement.VendorInvoiceSubmittedAtUtc = null;
-        statement.VendorInvoiceSubmittedByUserId = null;
-        statement.VendorInvoiceMatchedAtUtc = null;
-        statement.VendorInvoiceMatchedByUserId = null;
-        statement.ExternalInvoiceNumber = null;
-        statement.Status = PartyBillingStatementStatus.Issued;
-
-        await _db.SaveChangesAsync(cancellationToken);
-
-        return (await GetStatementAsync(statementId, cancellationToken), null);
     }
 
     public async Task<(PartyBillingStatementDto? Statement, string? Error)> CancelStatementAsync(
@@ -1052,7 +926,7 @@ public class PartyBillingStatementService : IPartyBillingStatementService
             if (forTask.Count == 0) return null;
             var bound = forTask.FirstOrDefault(l => l.PartyBillingStatementId == statementId);
             if (bound is not null) return bound;
-            return CollapseReadyLedgers(forTask).FirstOrDefault();
+            return PartyBillingRowMapper.CollapseReadyLedgers(forTask).FirstOrDefault();
         }
 
         var propertyIds = ledgerRows
@@ -1098,7 +972,7 @@ public class PartyBillingStatementService : IPartyBillingStatementService
                 VendorInvoiceSubmittedAtUtc = s.VendorInvoiceSubmittedAtUtc,
                 VendorInvoiceMatched = s.VendorInvoiceMatchedAtUtc.HasValue,
                 VendorInvoiceMatchedAtUtc = s.VendorInvoiceMatchedAtUtc,
-                RejectedInvoices = ParseRejected(s.RejectedInvoicesJson),
+                RejectedInvoices = PartyBillingRowMapper.ParseRejected(s.RejectedInvoicesJson),
                 CancelledAtUtc = s.CancelledAtUtc,
                 CancelReason = s.CancelReason,
                 Lines = stmtLines.Select(line =>
@@ -1171,64 +1045,6 @@ public class PartyBillingStatementService : IPartyBillingStatementService
         }
 
         return result;
-    }
-
-    private static PartyBillingReadyLineDto ToReadyDto(
-        InspectorFeeLedger ledger,
-        IReadOnlyDictionary<Guid, string> labels,
-        WorkflowTaskKind? kind)
-    {
-        var discount = Math.Max(0m, ledger.SupervisorDiscountSar);
-        var resolved = kind ?? WorkflowTaskKind.EngineeringSurvey;
-        var payeeType = PartyBillingPayeeType.FromTaskKind(resolved);
-        return new PartyBillingReadyLineDto
-        {
-            WorkflowTaskId = ledger.WorkflowTaskId.ToString(),
-            PropertyId = ledger.PropertyId?.ToString(),
-            PropertyLabel = ledger.PropertyId is { } pid && labels.TryGetValue(pid, out var label)
-                ? label
-                : ledger.PropertyOrdinal.ToString(),
-            PoNumber = ledger.PoNumber,
-            AssigneeId = ledger.AssigneeId,
-            TaskKind = resolved.ToDbValue(),
-            PayeeType = payeeType,
-            PayeeTypeLabel = PartyBillingPayeeType.Label(payeeType),
-            AgreedFeeSar = ledger.AgreedFeeSar,
-            SupervisorDiscountSar = discount,
-            NetFeeSar = InspectorFeeRules.NetFee(ledger.AgreedFeeSar, discount),
-            BillingStatus = ledger.BillingStatus,
-            BillingStatusLabel = InspectorFeeBillingRules.StatusLabel(ledger.BillingStatus),
-            AccruedAtUtc = ledger.AccruedAtUtc,
-            UpdatedAtUtc = ledger.UpdatedAtUtc,
-        };
-    }
-
-    private static PartyBillingReadyLineDto ToCourtVisitReadyDto(CourtVisitFeeCharge charge)
-    {
-        var label = string.IsNullOrWhiteSpace(charge.TaskDisplayId)
-            ? "زيارة محكمة"
-            : charge.TaskDisplayId.Trim();
-        if (!string.IsNullOrWhiteSpace(charge.CreditAssigneeName))
-            label = $"{label} — {charge.CreditAssigneeName.Trim()}";
-
-        return new PartyBillingReadyLineDto
-        {
-            WorkflowTaskId = charge.Id.ToString(),
-            PropertyId = null,
-            PropertyLabel = label,
-            PoNumber = charge.PoNumber ?? "",
-            AssigneeId = charge.CreditAssigneeId,
-            TaskKind = CourtVisitTaskKind,
-            PayeeType = PartyBillingPayeeType.Individual,
-            PayeeTypeLabel = PartyBillingPayeeType.Label(PartyBillingPayeeType.Individual),
-            AgreedFeeSar = charge.AmountSar,
-            SupervisorDiscountSar = 0m,
-            NetFeeSar = charge.AmountSar,
-            BillingStatus = InspectorFeeBillingStatus.AtFinance,
-            BillingStatusLabel = InspectorFeeBillingRules.StatusLabel(InspectorFeeBillingStatus.AtFinance),
-            AccruedAtUtc = charge.CreatedAtUtc,
-            UpdatedAtUtc = charge.UpdatedAtUtc,
-        };
     }
 
     private async Task<CreatePartyBillingStatementResponseDto> CreateCourtVisitStatementAsync(
@@ -1322,144 +1138,4 @@ public class PartyBillingStatementService : IPartyBillingStatementService
         };
     }
 
-    private static List<PartyBillingRejectedInvoiceDto> ParseRejected(string? json)
-    {
-        if (string.IsNullOrWhiteSpace(json)) return [];
-        try
-        {
-            return System.Text.Json.JsonSerializer.Deserialize<List<PartyBillingRejectedInvoiceDto>>(json)
-                ?? [];
-        }
-        catch (System.Text.Json.JsonException)
-        {
-            return [];
-        }
-    }
-
-    private static string? SerializeRejected(IReadOnlyList<PartyBillingRejectedInvoiceDto> items)
-    {
-        if (items.Count == 0) return null;
-        return System.Text.Json.JsonSerializer.Serialize(items);
-    }
-
-    private static List<Guid> ParseTaskIds(IReadOnlyList<string> raw) =>
-        raw.Select(id => Guid.TryParse(id, out var g) ? g : (Guid?)null)
-            .Where(g => g.HasValue)
-            .Select(g => g!.Value)
-            .Distinct()
-            .ToList();
-
- /// <summary>
- /// Keeps one ledger per workflow-task + property/deed so legacy reassignment twins
- /// (same task+property, different <see cref="InspectorFeeLedger.UserId"/>) do not
- /// duplicate ready lines or break statement creation counts.
- /// Prefers rows where UserId matches AssigneeId, then newest update.
- /// </summary>
-    internal static IEnumerable<InspectorFeeLedger> CollapseReadyLedgers(
-        IEnumerable<InspectorFeeLedger> ledgers) =>
-        ledgers
-            .GroupBy(l => (
-                l.WorkflowTaskId,
-                PropertyKey: l.PropertyId
-                    ?? (l.DeedId == Guid.Empty ? l.Id : l.DeedId)))
-            .Select(g => g
-                .OrderByDescending(l =>
-                    !string.IsNullOrWhiteSpace(l.AssigneeId)
-                    && string.Equals(
-                        l.UserId?.Trim(),
-                        l.AssigneeId.Trim(),
-                        StringComparison.Ordinal)
-                        ? 1
-                        : 0)
-                .ThenByDescending(l => l.UpdatedAtUtc)
-                .ThenByDescending(l => l.CreatedAtUtc)
-                .First());
-
-    private async Task<string> NextReferenceAsync(
-        DateTime nowUtc,
-        CancellationToken cancellationToken)
-    {
-        var dateKey = nowUtc.ToString("yyMMdd");
-        var (reference, error) = await _commands.AllocateDocumentReferenceAsync(
-            RefDept, RefType, dateKey, cancellationToken);
-        if (error is not null)
-            throw new InvalidOperationException(error);
-        if (string.IsNullOrWhiteSpace(reference))
-            throw new InvalidOperationException("تعذّر توليد رقم كشف الفوترة.");
-        return reference;
-    }
-
-    private async Task NotifyStatementIssuedAsync(
-        PartyBillingStatement statement,
-        int lineCount,
-        CancellationToken cancellationToken)
-    {
-        var supervisors = await _recipients.ResolveUserIdsWithPrototypeRoleAsync(
-            "section-supervisor",
-            cancellationToken);
-        if (supervisors.Count > 0)
-        {
-            await _notifications.CreateForUsersAsync(
-                supervisors,
-                new CreateUserNotificationRequest
-                {
-                    Title = "إصدار كشف فوترة مكتب هندسي",
-                    Body = $"صدر الكشف {statement.ReferenceNumber} ({lineCount} بند) — للاطلاع.",
-                    Tone = "info",
-                    Href = "/party-fees?variant=engineering-survey",
-                    Category = "financial",
-                    SourceEvent = $"eng-billing-issued:{statement.Id}",
-                },
-                cancellationToken);
-        }
-
-        var officeUserId = await _recipients.ResolveUserIdForDistributionAssigneeAsync(
-            statement.AssigneeId,
-            cancellationToken);
-        if (officeUserId is not null)
-        {
-            await _notifications.CreateForUserAsync(
-                officeUserId,
-                new CreateUserNotificationRequest
-                {
-                    Title = "كشف فوترة صادر",
-                    Body = $"وصلك الكشف {statement.ReferenceNumber} للاطلاع ({lineCount} بند).",
-                    Tone = "info",
-                    Href = "/party-fees?variant=engineering-survey",
-                    Category = "financial",
-                    SourceEvent = $"eng-billing-issued-office:{statement.Id}",
-                },
-                cancellationToken);
-        }
-    }
-
-    private async Task NotifyStatementClosedAsync(
-        PartyBillingStatement statement,
-        int lineCount,
-        CancellationToken cancellationToken)
-    {
-        var officeUserId = await _recipients.ResolveUserIdForDistributionAssigneeAsync(
-            statement.AssigneeId,
-            cancellationToken);
-        if (officeUserId is null) return;
-
-        await _notifications.CreateForUserAsync(
-            officeUserId,
-            new CreateUserNotificationRequest
-            {
-                Title = "تم صرف كشف الفوترة",
-                Body = $"أُقفل الكشف {statement.ReferenceNumber} كمصروف ({lineCount} بند).",
-                Tone = "success",
-                Href = "/party-fees?variant=engineering-survey",
-                Category = "financial",
-                SourceEvent = $"eng-billing-closed:{statement.Id}",
-            },
-            cancellationToken);
-    }
-
-    private static WorkflowTaskKind ParseKind(string? raw) =>
-        WorkflowTaskKindValues.TryParse(raw, out var kind)
-            || Enum.TryParse(raw, true, out kind)
-            ? kind
-            : WorkflowTaskKind.CaseStudyProperty;
 }

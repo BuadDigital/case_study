@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using RealEstateEval.Operations.Domain;
 
 namespace RealEstateEval.Operations.Application.Contracts;
 
@@ -19,7 +20,7 @@ public class KeyEnvelopeAssignmentDto
     public Guid Id { get; init; }
     public string DeedNumber { get; init; } = "";
     public Guid? PropertyId { get; init; }
-    public string Status { get; init; } = "pending";
+    public string Status { get; init; } = KeyAssignmentStatuses.Pending;
     public string? Notes { get; init; }
     public string? ConfirmedByName { get; init; }
     public DateTime? ConfirmedAtUtc { get; init; }
@@ -93,6 +94,7 @@ public class KeyEnvelopeFeeReportRowDto
     public Guid? ReceiptAttachmentId { get; init; }
  /// <summary>Null for an entitlement finance has not yet priced in enforcement billing.</summary>
     public decimal? FeeAmountSar { get; init; }
+    // "open" = KeyReceiptFeeStatuses.Open (Financial.Domain) — لا نستورد Domain سياقٍ آخر هنا.
     public string CollectionStatus { get; init; } = "open";
     public string? InvoiceReference { get; init; }
     public DateTime? CollectedAtUtc { get; init; }

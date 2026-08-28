@@ -8,4 +8,8 @@ public static class Texts
 {
     public static string? NullIfBlank(string? value) =>
         string.IsNullOrWhiteSpace(value) ? null : value.Trim();
+
+ /// <summary>الأرقام فقط — لتطبيع أرقام الجوال والمعرفات قبل المقارنة.</summary>
+    public static string DigitsOnly(string value) =>
+        new(value.Where(char.IsDigit).ToArray());
 }

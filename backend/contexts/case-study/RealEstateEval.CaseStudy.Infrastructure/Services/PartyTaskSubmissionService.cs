@@ -19,7 +19,7 @@ using RealEstateEval.CaseStudy.Application.Rules;
 
 namespace RealEstateEval.CaseStudy.Infrastructure.Services;
 
-public class PartyTaskSubmissionService : IPartyTaskSubmissionService
+public partial class PartyTaskSubmissionService : IPartyTaskSubmissionService
 {
  /// <summary>Party kinds that submit work through this service — everything but the parent.</summary>
     private static readonly HashSet<WorkflowTaskKind> AllowedKinds =
@@ -124,129 +124,112 @@ public class PartyTaskSubmissionService : IPartyTaskSubmissionService
             .Where(s => ids.Contains(s.WorkflowTaskId))
             .ToListAsync(cancellationToken);
 
+ // أعلام معاينة الأشقاء دفعةً — كانت حتى استعلامين لكل إرسال (١٠٠٠ نداء لقائمة ٥٠٠).
+        var flagsByTask = await LoadSiblingInspectionFlagsAsync(entities, cancellationToken);
         var result = new List<PartyTaskSubmissionDto>(entities.Count);
         foreach (var entity in entities)
-            result.Add(await ToDtoAsync(entity, cancellationToken));
+        {
+            var dto = ToDto(entity);
+            ApplyInspectionFlags(dto, entity, flagsByTask);
+            result.Add(dto);
+        }
         return result;
     }
 
-    private async Task<bool> CanReadTaskAsync(
-        Guid taskId,
-        PartySubmissionActor actor,
-        CancellationToken cancellationToken)
+ /// <summary>نفس دلالة ToDtoAsync للأعلام — من قواميس محمّلة سلفاً.</summary>
+    private static void ApplyInspectionFlags(
+        PartyTaskSubmissionDto dto,
+        PartyTaskSubmission entity,
+        IReadOnlyDictionary<Guid, (bool Completed, bool Accepted)> flagsByTask)
     {
-        if (PoRoleMatrixRules.CanManagePartySubmissions(actor.PrototypeRole)) return true;
+        var needsInspectionFlag =
+            entity.Kind is WorkflowTaskKindValues.EngineeringSurvey
+                or WorkflowTaskKindValues.PropertyAppraisal;
+        if (!needsInspectionFlag) return;
 
-        var task = await _db.WorkflowTasks
-            .AsNoTracking()
-            .Where(t => t.Id == taskId)
-            .Select(t => new
-            {
-                t.AssigneeId,
-                t.Kind,
-                t.Status,
-                t.PropertyId,
-                t.ParentTaskId,
-            })
-            .FirstOrDefaultAsync(cancellationToken);
-        if (task is null) return false;
-
-        if (PoRoleMatrixRules.CanReadPartyTask(
-            actor.PrototypeRole,
-            task.AssigneeId,
-            actor.UserId,
-            actor.DistributionAssigneeId))
-            return true;
-
-        // Appraisers / EO need completed sibling field-inspection facts for report & gates
-        // even though party visibility hides the inspection row from their task list.
-        return await CanReadCompletedSiblingFieldInspectionAsync(
-            task.Kind,
-            task.Status,
-            task.PropertyId,
-            task.ParentTaskId,
-            actor,
-            cancellationToken);
-    }
-
-    private async Task<List<Guid>> ReadableTaskIdsAsync(
-        IReadOnlyList<Guid> taskIds,
-        PartySubmissionActor actor,
-        CancellationToken cancellationToken)
-    {
-        var tasks = await _db.WorkflowTasks
-            .AsNoTracking()
-            .Where(t => taskIds.Contains(t.Id))
-            .Select(t => new
-            {
-                t.Id,
-                t.AssigneeId,
-                t.Kind,
-                t.Status,
-                t.PropertyId,
-                t.ParentTaskId,
-            })
-            .ToListAsync(cancellationToken);
-
-        var readable = new List<Guid>(tasks.Count);
-        foreach (var task in tasks)
+        if (entity.PropertyId is not null
+            && flagsByTask.TryGetValue(entity.WorkflowTaskId, out var flags))
         {
-            if (PoRoleMatrixRules.CanReadPartyTask(
-                actor.PrototypeRole,
-                task.AssigneeId,
-                actor.UserId,
-                actor.DistributionAssigneeId)
-                || await CanReadCompletedSiblingFieldInspectionAsync(
-                    task.Kind,
-                    task.Status,
-                    task.PropertyId,
-                    task.ParentTaskId,
-                    actor,
-                    cancellationToken))
-            {
-                readable.Add(task.Id);
-            }
+            dto.FieldInspectionCompleted = flags.Completed;
+            if (entity.Kind == WorkflowTaskKindValues.PropertyAppraisal)
+                dto.FieldInspectionAccepted = flags.Accepted;
+            return;
         }
 
-        return readable;
+        dto.FieldInspectionCompleted = false;
+        if (entity.Kind == WorkflowTaskKindValues.PropertyAppraisal)
+            dto.FieldInspectionAccepted = false;
     }
 
-    /// <summary>
-    /// Property-appraisal / engineering-survey assignees on the same parent+property may
-    /// read a completed field-inspection submission (party lists hide that sibling row).
-    /// </summary>
-    private async Task<bool> CanReadCompletedSiblingFieldInspectionAsync(
-        WorkflowTaskKind kind,
-        WorkflowTaskStatus status,
-        Guid? propertyId,
-        Guid? parentTaskId,
-        PartySubmissionActor actor,
+    private async Task<Dictionary<Guid, (bool Completed, bool Accepted)>> LoadSiblingInspectionFlagsAsync(
+        IReadOnlyList<PartyTaskSubmission> entities,
         CancellationToken cancellationToken)
     {
-        if (kind != WorkflowTaskKind.FieldInspection
-            || status != WorkflowTaskStatus.Completed
-            || propertyId is null
-            || parentTaskId is null)
-            return false;
+        var flags = new Dictionary<Guid, (bool Completed, bool Accepted)>();
+        var targets = entities
+            .Where(e =>
+                e.Kind is WorkflowTaskKindValues.EngineeringSurvey
+                    or WorkflowTaskKindValues.PropertyAppraisal
+                && e.PropertyId is not null)
+            .Select(e => (TaskId: e.WorkflowTaskId, PropertyId: e.PropertyId!.Value))
+            .Distinct()
+            .ToList();
+        if (targets.Count == 0) return flags;
 
-        var actorIds = new HashSet<string>(StringComparer.Ordinal);
-        if (!string.IsNullOrWhiteSpace(actor.UserId))
-            actorIds.Add(actor.UserId.Trim());
-        if (!string.IsNullOrWhiteSpace(actor.DistributionAssigneeId))
-            actorIds.Add(actor.DistributionAssigneeId.Trim());
-        if (actorIds.Count == 0) return false;
+        var taskIds = targets.Select(t => t.TaskId).Distinct().ToList();
+        var parentByTask = await _db.WorkflowTasks.AsNoTracking()
+            .Where(t => taskIds.Contains(t.Id))
+            .Select(t => new { t.Id, t.ParentTaskId })
+            .ToDictionaryAsync(t => t.Id, t => t.ParentTaskId, cancellationToken);
 
-        return await _db.WorkflowTasks
-            .AsNoTracking()
-            .AnyAsync(
-                t =>
-                    t.ParentTaskId == parentTaskId
-                    && t.PropertyId == propertyId
-                    && (t.Kind == WorkflowTaskKind.PropertyAppraisal
-                        || t.Kind == WorkflowTaskKind.EngineeringSurvey)
-                    && t.AssigneeId != null
-                    && actorIds.Contains(t.AssigneeId),
-                cancellationToken);
+        var parentIds = parentByTask.Values
+            .Where(p => p is not null)
+            .Select(p => p!.Value)
+            .Distinct()
+            .ToList();
+        if (parentIds.Count == 0) return flags;
+
+        var propertyIds = targets.Select(t => t.PropertyId).Distinct().ToList();
+        var completedInspections = await _db.WorkflowTasks.AsNoTracking()
+            .Where(t =>
+                t.ParentTaskId != null
+                && parentIds.Contains(t.ParentTaskId.Value)
+                && t.PropertyId != null
+                && propertyIds.Contains(t.PropertyId.Value)
+                && t.Kind == WorkflowTaskKind.FieldInspection
+                && t.Status == WorkflowTaskStatus.Completed)
+            .Select(t => new { t.Id, t.ParentTaskId, t.PropertyId })
+            .ToListAsync(cancellationToken);
+
+        var completedByPair = completedInspections
+            .GroupBy(t => (Parent: t.ParentTaskId!.Value, Property: t.PropertyId!.Value))
+            .ToDictionary(g => g.Key, g => g.Select(t => t.Id).ToList());
+
+        var inspectionIds = completedInspections.Select(t => t.Id).ToList();
+        var acceptedInspectionIds = inspectionIds.Count == 0
+            ? []
+            : (await _db.PartyTaskSubmissions.AsNoTracking()
+                .Where(s =>
+                    inspectionIds.Contains(s.WorkflowTaskId)
+                    && s.AcceptedAtUtc != null)
+                .Select(s => s.WorkflowTaskId)
+                .ToListAsync(cancellationToken))
+                .ToHashSet();
+
+        foreach (var target in targets)
+        {
+            if (parentByTask.GetValueOrDefault(target.TaskId) is not Guid parent) continue;
+            if (!completedByPair.TryGetValue((parent, target.PropertyId), out var siblings))
+            {
+                flags[target.TaskId] = (false, false);
+                continue;
+            }
+            flags[target.TaskId] = (
+                Completed: true,
+                Accepted: siblings.Any(acceptedInspectionIds.Contains));
+        }
+
+        return flags;
     }
 
     public async Task<(PartyTaskSubmissionDto? Result, Dictionary<string, string>? Errors)> SaveDraftAsync(
@@ -351,7 +334,7 @@ public class PartyTaskSubmissionService : IPartyTaskSubmissionService
         entity.Submit(now, actor?.UserId, actor?.DisplayName, task.AssigneeName);
         entity.PayloadJson = PartyTaskSubmissionPayloadRules.SetPayloadStatus(entity.PayloadJson, PartyTaskSubmissionStatus.Submitted, now);
 
-        if (entity.Kind == "field-inspection")
+        if (entity.Kind == WorkflowTaskKindValues.FieldInspection)
             await SyncFieldInspectionWorkspaceAsync(entity, cancellationToken);
 
  // Submission status and workflow completion must commit together; otherwise the
@@ -626,95 +609,6 @@ public class PartyTaskSubmissionService : IPartyTaskSubmissionService
 
     // B2: ختم القبول انتقل إلى الجذر — PartyTaskSubmission.Accept.
 
-    private async Task NotifyPartyAssigneeAsync(
-        WorkflowTask task,
-        string title,
-        string body,
-        string tone,
-        string sourceEvent,
-        string href,
-        CancellationToken cancellationToken)
-    {
-        var assigneeId = task.AssigneeId?.Trim();
-        if (string.IsNullOrWhiteSpace(assigneeId)) return;
-
-        var userId = await _recipients.ResolveUserIdForDistributionAssigneeAsync(
-            assigneeId,
-            cancellationToken);
-        if (string.IsNullOrWhiteSpace(userId)) return;
-
-        await _notifications.CreateForUserAsync(
-            userId,
-            new CreateUserNotificationRequest
-            {
-                Title = title,
-                Body = body,
-                Tone = tone,
-                Href = href,
-                Category = "workflow",
-                EntityType = "task",
-                EntityId = task.Id.ToString(),
-                SourceEvent = sourceEvent,
-            },
-            cancellationToken);
-    }
-
- /// <summary>
- /// Party submit (engineering office / inspector / evaluator) currently only notifies via a
- /// same-tab frontend window event, which never reaches the assigned case specialist or the
- /// section supervisor on their own sessions. Fan out server-side so both actually get an
- /// inbox notification when a party sends work in for review.
- /// </summary>
-    private async Task NotifySpecialistAndSupervisorOnSubmitAsync(
-        WorkflowTask task,
-        CancellationToken cancellationToken)
-    {
-        if (!SubmitNotificationText.TryGetValue(task.Kind, out var text)) return;
-        if (task.ParentTaskId is not Guid parentTaskId) return;
-
-        var parent = await _db.WorkflowTasks.AsNoTracking()
-            .FirstOrDefaultAsync(t => t.Id == parentTaskId, cancellationToken);
-        if (parent is null) return;
-
-        var userIds = new HashSet<string>(StringComparer.Ordinal);
-
-        var specialistAssigneeId = parent.AssigneeId?.Trim();
-        if (!string.IsNullOrWhiteSpace(specialistAssigneeId))
-        {
-            var specialistUserId = await _recipients.ResolveUserIdForDistributionAssigneeAsync(
-                specialistAssigneeId,
-                cancellationToken);
-            if (!string.IsNullOrWhiteSpace(specialistUserId))
-                userIds.Add(specialistUserId);
-        }
-
-        var supervisorUserIds = await _recipients.ResolveUserIdsWithPrototypeRoleAsync(
-            "section-supervisor",
-            cancellationToken);
-        foreach (var id in supervisorUserIds)
-            userIds.Add(id);
-
-        if (userIds.Count == 0) return;
-
-        var refLabel = task.PoNumber?.Trim();
-        var body = string.IsNullOrEmpty(refLabel) ? $"{text.Body}." : $"{text.Body} على {refLabel}.";
-
-        await _notifications.CreateForUsersAsync(
-            userIds,
-            new CreateUserNotificationRequest
-            {
-                Title = text.Title,
-                Body = body,
-                Tone = "info",
-                Href = $"/case-study/{Uri.EscapeDataString(parent.Id.ToString())}",
-                Category = "workflow",
-                EntityType = "task",
-                EntityId = parent.Id.ToString(),
-                SourceEvent = $"party-submitted:{task.Id}",
-            },
-            cancellationToken);
-    }
-
     private async Task<Dictionary<string, string>> ValidateForSubmitAsync(
         PartyTaskSubmission entity,
         CancellationToken cancellationToken)
@@ -730,7 +624,7 @@ public class PartyTaskSubmissionService : IPartyTaskSubmissionService
         try
         {
             using var doc = JsonDocument.Parse(entity.PayloadJson);
-            if (entity.Kind == "field-inspection")
+            if (entity.Kind == WorkflowTaskKindValues.FieldInspection)
             {
                 var attachmentErrors = await _fieldInspectionAttachments.VerifyAsync(
                     entity.WorkflowTaskId,
@@ -776,7 +670,7 @@ public class PartyTaskSubmissionService : IPartyTaskSubmissionService
 
         switch (entity.Kind)
         {
-            case "engineering-survey":
+            case WorkflowTaskKindValues.EngineeringSurvey:
             {
                 var inspectionCompleted = entity.PropertyId is Guid pid
                     && await IsSiblingFieldInspectionCompletedAsync(
@@ -812,7 +706,7 @@ public class PartyTaskSubmissionService : IPartyTaskSubmissionService
                 break;
             }
 
-            case "field-inspection":
+            case WorkflowTaskKindValues.FieldInspection:
             {
  // Informal map-URL access gate removed — tasks are not assigned without initial data.
  // Key envelopes remain tracked (payload keyAvailable) but do not block submit.
@@ -908,67 +802,6 @@ public class PartyTaskSubmissionService : IPartyTaskSubmissionService
             cancellationToken);
     }
 
-    /// <summary>
-    /// When the inspector submits field inspection, tell the sibling engineering-office
-    /// assignee that work on the property has started and survey can begin.
-    /// </summary>
-    private async Task NotifySiblingSurveyInspectionSubmittedAsync(
-        WorkflowTask inspectionTask,
-        CancellationToken cancellationToken)
-    {
-        if (inspectionTask.ParentTaskId is not Guid parentId
-            || inspectionTask.PropertyId is not Guid propertyId)
-            return;
-
-        var survey = await _db.WorkflowTasks.AsNoTracking()
-            .FirstOrDefaultAsync(
-                t => t.ParentTaskId == parentId
-                    && t.PropertyId == propertyId
-                    && t.Kind == WorkflowTaskKind.EngineeringSurvey,
-                cancellationToken);
-        if (survey is null) return;
-
-        var refLabel = inspectionTask.PoNumber?.Trim();
-        var body = string.IsNullOrEmpty(refLabel)
-            ? "رفع المعاين المعاينة الميدانية. يمكنك الآن بدء الرفع المساحي على العقار."
-            : $"رفع المعاين المعاينة الميدانية على {refLabel}. يمكنك الآن بدء الرفع المساحي على العقار.";
-
-        await NotifyPartyAssigneeAsync(
-            survey,
-            title: "بدء العمل على العقار — رُفعت المعاينة",
-            body: body,
-            tone: "info",
-            sourceEvent: $"field-inspection-submitted-survey:{inspectionTask.Id}",
-            href: $"/active-survey/{Uri.EscapeDataString(survey.Id.ToString())}",
-            cancellationToken);
-    }
-
-    private async Task NotifySiblingAppraiserInspectionAcceptedAsync(
-        WorkflowTask inspectionTask,
-        CancellationToken cancellationToken)
-    {
-        if (inspectionTask.ParentTaskId is not Guid parentId
-            || inspectionTask.PropertyId is not Guid propertyId)
-            return;
-
-        var appraisal = await _db.WorkflowTasks.AsNoTracking()
-            .FirstOrDefaultAsync(
-                t => t.ParentTaskId == parentId
-                    && t.PropertyId == propertyId
-                    && t.Kind == WorkflowTaskKind.PropertyAppraisal,
-                cancellationToken);
-        if (appraisal is null) return;
-
-        await NotifyPartyAssigneeAsync(
-            appraisal,
-            title: "بيانات المعاينة معتمدة — يمكن بدء التقييم",
-            body: "اعتمد الأخصائي بيانات الأطراف. يمكنك الآن حساب القيمة داخل النظام.",
-            tone: "success",
-            sourceEvent: $"field-inspection-accepted-appraiser:{inspectionTask.Id}",
-            href: $"/property-appraisal/{Uri.EscapeDataString(appraisal.Id.ToString())}",
-            cancellationToken);
-    }
-
     private async Task<PartyTaskSubmissionDto> ToUnsavedDraftDtoAsync(
         WorkflowTask task,
         CancellationToken cancellationToken)
@@ -995,14 +828,15 @@ public class PartyTaskSubmissionService : IPartyTaskSubmissionService
     {
         var dto = ToDto(entity);
         var needsInspectionFlag =
-            entity.Kind is "engineering-survey" or "property-appraisal";
+            entity.Kind is WorkflowTaskKindValues.EngineeringSurvey
+                or WorkflowTaskKindValues.PropertyAppraisal;
         if (needsInspectionFlag && entity.PropertyId is Guid propertyId)
         {
             dto.FieldInspectionCompleted = await IsSiblingFieldInspectionCompletedAsync(
                 entity.WorkflowTaskId,
                 propertyId,
                 cancellationToken);
-            if (entity.Kind == "property-appraisal")
+            if (entity.Kind == WorkflowTaskKindValues.PropertyAppraisal)
             {
                 dto.FieldInspectionAccepted = await IsSiblingFieldInspectionAcceptedAsync(
                     entity.WorkflowTaskId,
@@ -1013,7 +847,7 @@ public class PartyTaskSubmissionService : IPartyTaskSubmissionService
         else if (needsInspectionFlag)
         {
             dto.FieldInspectionCompleted = false;
-            if (entity.Kind == "property-appraisal")
+            if (entity.Kind == WorkflowTaskKindValues.PropertyAppraisal)
                 dto.FieldInspectionAccepted = false;
         }
 

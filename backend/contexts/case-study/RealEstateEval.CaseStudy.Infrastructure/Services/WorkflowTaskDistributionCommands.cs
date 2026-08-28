@@ -206,7 +206,7 @@ public sealed class WorkflowTaskDistributionCommands : IWorkflowTaskDistribution
         if (distribution.CaseSpecialist)
         {
             var specialistName =
-                names.TryGetValue("case-study-property", out var named) &&
+                names.TryGetValue(WorkflowTaskKindValues.CaseStudyProperty, out var named) &&
                 !string.IsNullOrWhiteSpace(named)
                     ? named.Trim()
                     : names.TryGetValue("case-specialist", out var named2) &&
@@ -238,7 +238,7 @@ public sealed class WorkflowTaskDistributionCommands : IWorkflowTaskDistribution
                     $"task:{parent.Id}:distribution",
                     "توزيع المعاملة",
                     null,
-                    "active",
+                    PropertyTimelineTones.Active,
                     now),
                 new(
                     parent.PoNumber,
@@ -246,7 +246,7 @@ public sealed class WorkflowTaskDistributionCommands : IWorkflowTaskDistribution
                     $"task:{parent.Id}:case-study",
                     "دراسة حالة العقار",
                     parent.AssigneeName,
-                    "active",
+                    PropertyTimelineTones.Active,
                     now),
             };
             if (distribution.CaseSpecialist)
@@ -257,7 +257,7 @@ public sealed class WorkflowTaskDistributionCommands : IWorkflowTaskDistribution
                     $"task:{parent.Id}:specialist-assigned",
                     "تعيين أخصائي دراسة الحالة",
                     parent.AssigneeName,
-                    "active",
+                    PropertyTimelineTones.Active,
                     now));
             }
             timelineEvents.AddRange(children.Select(child => new PropertyTimelineRecordRequest(
@@ -266,7 +266,7 @@ public sealed class WorkflowTaskDistributionCommands : IWorkflowTaskDistribution
                 $"party:{child.Id}:assigned",
                 WorkflowTaskPhaseRules.PartyAssignedTitle(child.Kind),
                 child.AssigneeName,
-                "active",
+                PropertyTimelineTones.Active,
                 child.CreatedAtUtc)));
             await _timeline.RecordManyAsync(timelineEvents, cancellationToken);
         }
@@ -366,7 +366,7 @@ public sealed class WorkflowTaskDistributionCommands : IWorkflowTaskDistribution
             if (!string.Equals(parent.AssigneeId, newAssigneeId, StringComparison.Ordinal))
             {
                 var specialistName =
-                    names.TryGetValue("case-study-property", out var named) &&
+                    names.TryGetValue(WorkflowTaskKindValues.CaseStudyProperty, out var named) &&
                     !string.IsNullOrWhiteSpace(named)
                         ? named.Trim()
                         : names.TryGetValue("case-specialist", out var named2) &&
@@ -385,7 +385,7 @@ public sealed class WorkflowTaskDistributionCommands : IWorkflowTaskDistribution
                         $"task:{parent.Id}:specialist-redistributed:{now.Ticks}",
                         "إعادة إسناد — أخصائي دراسة الحالة",
                         detail,
-                        "active",
+                        PropertyTimelineTones.Active,
                         now));
                 }
             }
@@ -418,7 +418,7 @@ public sealed class WorkflowTaskDistributionCommands : IWorkflowTaskDistribution
                     $"party:{child.Id}:redistributed:{now.Ticks}",
                     $"إعادة إسناد — {WorkflowTaskPhaseRules.PartyAssignedTitle(child.Kind)}",
                     detail,
-                    "active",
+                    PropertyTimelineTones.Active,
                     now));
             }
         }

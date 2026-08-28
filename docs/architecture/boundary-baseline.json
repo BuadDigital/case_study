@@ -420,6 +420,14 @@
       "case_study",
       "operations"
     ],
+    "backend/contexts/operations/RealEstateEval.Operations.Infrastructure/Services/KeyEnvelopesService.CourtAccess.cs": [
+      "case_study",
+      "operations"
+    ],
+    "backend/contexts/operations/RealEstateEval.Operations.Infrastructure/Services/KeyEnvelopesService.Fees.cs": [
+      "case_study",
+      "operations"
+    ],
     "backend/contexts/operations/RealEstateEval.Operations.Infrastructure/Services/OperationsTaskCommands.cs": [
       "case_study"
     ],

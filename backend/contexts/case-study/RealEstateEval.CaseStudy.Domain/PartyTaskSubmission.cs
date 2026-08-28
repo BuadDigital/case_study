@@ -8,7 +8,7 @@ public class PartyTaskSubmission
     public Guid Id { get; set; }
     public Guid WorkflowTaskId { get; set; }
     public string Kind { get; set; } = "";
-    public string Status { get; set; } = "draft";
+    public string Status { get; set; } = PartyTaskSubmissionStatus.Draft;
     public Guid? PropertyId { get; set; }
     public string? PoNumber { get; set; }
  /// <summary>JSON payload matching frontend submission types per kind.</summary>

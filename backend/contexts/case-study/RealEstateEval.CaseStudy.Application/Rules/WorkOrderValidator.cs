@@ -230,7 +230,7 @@ public static class WorkOrderValidator
     }
 
     private static string NormalizeIdentifierDigits(string value) =>
-        new string(value.Where(char.IsDigit).ToArray());
+        Texts.DigitsOnly(value);
 
     private static readonly HashSet<string> AllowedRestrictionTypes = new(StringComparer.Ordinal)
     {
@@ -283,7 +283,7 @@ public static class WorkOrderValidator
     private static List<string> SplitPhones(string? phone) =>
         (phone ?? "")
             .Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries)
-            .Select(p => new string(p.Where(char.IsDigit).ToArray()))
+            .Select(Texts.DigitsOnly)
             .Where(p => p.Length > 0)
             .ToList();
 

@@ -21,7 +21,7 @@ public static class PartyTaskSubmissionPayloadRules
 
             switch (entity.Kind)
             {
-                case "engineering-survey":
+                case WorkflowTaskKindValues.EngineeringSurvey:
                     if (!HasNonEmpty(root, "latitude") || !HasNonEmpty(root, "longitude"))
                         errors["coordinates"] = "الإحداثيات مطلوبة";
                     if (!HasNonEmpty(root, "surveyReportFileName"))
@@ -30,17 +30,17 @@ public static class PartyTaskSubmissionPayloadRules
                         errors["siteConfirmed"] = "يجب تأكيد الموقع";
                     break;
 
-                case "property-appraisal":
+                case WorkflowTaskKindValues.PropertyAppraisal:
                     foreach (var (key, message) in PropertyAppraisalSubmissionValidator.Validate(root))
                         errors[key] = message;
                     break;
 
-                case "government-review":
+                case WorkflowTaskKindValues.GovernmentReview:
  // Legacy kind — product surface removed; reject new submits.
                     errors["_"] = "مسار المراجعة الحكومية لم يعد مدعوماً";
                     break;
 
-                case "field-inspection":
+                case WorkflowTaskKindValues.FieldInspection:
                     foreach (var (key, message) in FieldInspectionSubmissionValidator.Validate(root))
                         errors[key] = message;
                     break;

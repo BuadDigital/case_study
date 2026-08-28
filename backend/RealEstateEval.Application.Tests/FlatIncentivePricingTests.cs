@@ -168,12 +168,12 @@ public class FlatIncentivePricingTests
         };
         Assert.Equal(
             275m,
-            PartyFeePricingService.ResolveFromDto(
+            PartyFeePricingRules.ResolveFromDto(
                 flat,
                 WorkflowTaskKind.FieldInspection,
                 InspectorFeeRules.TypeEmployee));
         Assert.Null(
-            PartyFeePricingService.ResolveFromDto(
+            PartyFeePricingRules.ResolveFromDto(
                 flat,
                 WorkflowTaskKind.FieldInspection,
                 InspectorFeeRules.TypeCooperatorIndividual));

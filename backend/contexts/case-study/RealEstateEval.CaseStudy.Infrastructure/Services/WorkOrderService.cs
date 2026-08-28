@@ -185,7 +185,7 @@ public class WorkOrderService : IWorkOrderService
                 "enfath",
                 "استلام من إنفاذ",
                 specialistDetail,
-                "done",
+                PropertyTimelineTones.Done,
                 enfathAt),
             new PropertyTimelineRecordRequest(
                 po,
@@ -193,7 +193,7 @@ public class WorkOrderService : IWorkOrderService
                 "due",
                 "موعد الاستحقاق",
                 null,
-                "muted",
+                PropertyTimelineTones.Muted,
                 dueAt),
         }).ToList();
         await _timeline.RecordManyAsync(timelineEvents, cancellationToken);
@@ -288,7 +288,7 @@ public class WorkOrderService : IWorkOrderService
             if (partySubs.Count > 0)
             {
                 var inspectionTaskIds = partySubs
-                    .Where(s => s.Kind == "field-inspection")
+                    .Where(s => s.Kind == WorkflowTaskKindValues.FieldInspection)
                     .Select(s => s.WorkflowTaskId)
                     .ToList();
                 if (inspectionTaskIds.Count > 0)

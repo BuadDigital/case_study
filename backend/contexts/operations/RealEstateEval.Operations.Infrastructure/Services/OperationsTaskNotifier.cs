@@ -434,16 +434,10 @@ public sealed class OperationsTaskNotifier
         if (creatorId.Length > 0)
             ids.Add(creatorId);
 
-        foreach (var role in StakeholderRoles)
+        foreach (var id in await ResolveStakeholderRoleUserIdsAsync(cancellationToken))
         {
-            var roleUsers = await _identity.ResolveUserIdsWithPrototypeRoleAsync(
-                role,
-                cancellationToken);
-            foreach (var id in roleUsers)
-            {
-                if (!string.IsNullOrWhiteSpace(id))
-                    ids.Add(id);
-            }
+            if (!string.IsNullOrWhiteSpace(id))
+                ids.Add(id);
         }
 
         var exclude = excludeUserId?.Trim() ?? "";
@@ -451,6 +445,24 @@ public sealed class OperationsTaskNotifier
             ids.Remove(exclude);
 
         return ids.ToList();
+    }
+
+    private IReadOnlyList<string>? _stakeholderRoleUserIds;
+
+ /// <summary>نداء واحد لكل دور في نطاق الطلب — سويعة التذكير كانت تكرره لكل مهمة.</summary>
+    private async Task<IReadOnlyList<string>> ResolveStakeholderRoleUserIdsAsync(
+        CancellationToken cancellationToken)
+    {
+        if (_stakeholderRoleUserIds is not null) return _stakeholderRoleUserIds;
+        var ids = new List<string>();
+        foreach (var role in StakeholderRoles)
+        {
+            ids.AddRange(await _identity.ResolveUserIdsWithPrototypeRoleAsync(
+                role,
+                cancellationToken));
+        }
+        _stakeholderRoleUserIds = ids;
+        return ids;
     }
 
     private async Task<string?> ResolveUserIdForAssigneeAsync(

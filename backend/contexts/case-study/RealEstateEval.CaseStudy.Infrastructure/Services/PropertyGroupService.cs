@@ -62,8 +62,6 @@ public sealed class PropertyGroupService : IPropertyGroupService
             .FirstOrDefaultAsync(p => p.Id == propertyId, cancellationToken);
         if (subject is null) return [];
 
-        var subjectInput = await BuildCandidateInputAsync(subject, cancellationToken);
-
         var alreadyLinked = await db.PropertyGroupMembers.AsNoTracking()
             .Where(m => m.IsActive)
             .Select(m => new { m.PropertyId, m.GroupId })
@@ -78,7 +76,18 @@ public sealed class PropertyGroupService : IPropertyGroupService
             .Take(500)
             .ToListAsync(cancellationToken);
 
+        // دفعة واحدة لإحداثيات المعاينة بدل استعلام لكل مرشح (كانت N+1 حتى 500 استعلام).
+        var inputs = await BuildCandidateInputsAsync(
+            candidates.Append(subject).ToList(), cancellationToken);
+        var subjectInput = inputs[subject.Id];
+
+        // كانت تُحمَّل كل أوامر العمل — نكتفي بأوامر المرشحين.
+        var candidateWorkOrderIds = candidates
+            .Select(c => c.WorkOrderId)
+            .Distinct()
+            .ToList();
         var poNumbers = await db.WorkOrders.AsNoTracking()
+            .Where(w => candidateWorkOrderIds.Contains(w.Id))
             .ToDictionaryAsync(w => w.Id, w => w.PoNumber, cancellationToken);
 
         var results = new List<PropertyGroupSuggestionDto>();
@@ -91,7 +100,7 @@ public sealed class PropertyGroupService : IPropertyGroupService
                 continue;
             }
 
-            var candidateInput = await BuildCandidateInputAsync(candidate, cancellationToken);
+            var candidateInput = inputs[candidate.Id];
             var signals = PropertyGroupRules.EvaluateSignals(subjectInput, candidateInput);
             if (signals.Count == 0) continue;
 
@@ -125,17 +134,22 @@ public sealed class PropertyGroupService : IPropertyGroupService
         if (propertyId == targetPropertyId)
             return (null, "لا يمكن ربط العقار بنفسه");
 
-        var subject = await db.WorkOrderProperties.AsNoTracking()
-            .FirstOrDefaultAsync(p => p.Id == propertyId, cancellationToken);
-        var target = await db.WorkOrderProperties.AsNoTracking()
-            .FirstOrDefaultAsync(p => p.Id == targetPropertyId, cancellationToken);
+        // زوجا التحميل في استعلامين بدل أربعة — نفس الجدول ونفس الشكل.
+        var pair = await db.WorkOrderProperties.AsNoTracking()
+            .Where(p => p.Id == propertyId || p.Id == targetPropertyId)
+            .ToListAsync(cancellationToken);
+        var subject = pair.FirstOrDefault(p => p.Id == propertyId);
+        var target = pair.FirstOrDefault(p => p.Id == targetPropertyId);
         if (subject is null || target is null)
             return (null, "العقار غير موجود");
 
-        var subjectMember = await db.PropertyGroupMembers
-            .FirstOrDefaultAsync(m => m.PropertyId == propertyId && m.IsActive, cancellationToken);
-        var targetMember = await db.PropertyGroupMembers
-            .FirstOrDefaultAsync(m => m.PropertyId == targetPropertyId && m.IsActive, cancellationToken);
+        var members = await db.PropertyGroupMembers
+            .Where(m =>
+                (m.PropertyId == propertyId || m.PropertyId == targetPropertyId) &&
+                m.IsActive)
+            .ToListAsync(cancellationToken);
+        var subjectMember = members.FirstOrDefault(m => m.PropertyId == propertyId);
+        var targetMember = members.FirstOrDefault(m => m.PropertyId == targetPropertyId);
 
         if (subjectMember is not null && targetMember is not null)
         {
@@ -153,10 +167,12 @@ public sealed class PropertyGroupService : IPropertyGroupService
             groupId = group.Id;
         }
 
-        var subjectInput = await BuildCandidateInputAsync(subject, cancellationToken);
-        var targetInput = await BuildCandidateInputAsync(target, cancellationToken);
+        var pairInputs = await BuildCandidateInputsAsync(pair, cancellationToken);
         var signals = string.Join(
-            ",", PropertyGroupRules.EvaluateSignals(subjectInput, targetInput));
+            ",",
+            PropertyGroupRules.EvaluateSignals(
+                pairInputs[subject.Id],
+                pairInputs[target.Id]));
 
         var actor = string.IsNullOrWhiteSpace(actorId) ? "unknown" : actorId;
         if (subjectMember is null)
@@ -232,22 +248,34 @@ public sealed class PropertyGroupService : IPropertyGroupService
         return (await BuildGroupDtoAsync(member.GroupId, cancellationToken), null);
     }
 
-    private async Task<PropertyGroupRules.CandidateInput> BuildCandidateInputAsync(
-        WorkOrderProperty prop,
+    /// <summary>إحداثيات أحدث معاينة لكل عقار في استعلام واحد — بدل استعلامٍ لكل عقار.</summary>
+    private async Task<Dictionary<Guid, PropertyGroupRules.CandidateInput>> BuildCandidateInputsAsync(
+        IReadOnlyCollection<WorkOrderProperty> props,
         CancellationToken cancellationToken)
     {
-        var workspace = await db.FieldInspectionWorkspaces.AsNoTracking()
-            .Where(w => w.PropertyId == prop.Id)
+        var ids = props.Select(p => p.Id).ToList();
+        var workspaces = await db.FieldInspectionWorkspaces.AsNoTracking()
+            .Where(w => w.PropertyId != null && ids.Contains(w.PropertyId.Value))
             .OrderByDescending(w => w.UpdatedAtUtc)
-            .Select(w => new { w.MapLatitude, w.MapLongitude })
-            .FirstOrDefaultAsync(cancellationToken);
+            .Select(w => new { w.PropertyId, w.MapLatitude, w.MapLongitude })
+            .ToListAsync(cancellationToken);
+        var latestByProperty = workspaces
+            .GroupBy(w => w.PropertyId!.Value)
+            .ToDictionary(g => g.Key, g => g.First());
 
-        return new PropertyGroupRules.CandidateInput(
-            prop.OwnerName,
-            prop.PlanNumber,
-            prop.PlotNumber,
-            workspace?.MapLatitude,
-            workspace?.MapLongitude);
+        var result = new Dictionary<Guid, PropertyGroupRules.CandidateInput>(props.Count);
+        foreach (var prop in props)
+        {
+            latestByProperty.TryGetValue(prop.Id, out var workspace);
+            result[prop.Id] = new PropertyGroupRules.CandidateInput(
+                prop.OwnerName,
+                prop.PlanNumber,
+                prop.PlotNumber,
+                workspace?.MapLatitude,
+                workspace?.MapLongitude);
+        }
+
+        return result;
     }
 
     private async Task<PropertyGroupDto?> BuildGroupDtoAsync(

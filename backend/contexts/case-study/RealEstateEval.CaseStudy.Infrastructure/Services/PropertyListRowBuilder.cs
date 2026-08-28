@@ -241,7 +241,7 @@ public static class PropertyListRowBuilder
     }
 
     private static string NormalizePhoneDigits(string phone) =>
-        new string(phone.Where(char.IsDigit).ToArray());
+        Texts.DigitsOnly(phone);
 
     private static string FirstNonEmpty(params string?[] values)
     {

@@ -157,7 +157,7 @@ public sealed class WorkflowTaskLifecycleCommands : IWorkflowTaskLifecycleComman
                 $"task:{entity.Id}:bourse-complete",
                 "اكتمال استعلام البورصة",
                 null,
-                "done",
+                PropertyTimelineTones.Done,
                 entity.UpdatedAtUtc,
                 cancellationToken);
         }
@@ -276,7 +276,7 @@ public sealed class WorkflowTaskLifecycleCommands : IWorkflowTaskLifecycleComman
                 $"task:{entity.Id}:phase-revert:{target.ToDbValue()}",
                 label,
                 null,
-                "active",
+                PropertyTimelineTones.Active,
                 entity.UpdatedAtUtc,
                 cancellationToken);
         }
@@ -587,7 +587,7 @@ public sealed class WorkflowTaskLifecycleCommands : IWorkflowTaskLifecycleComman
                     $"task:{entity.Id}:reopened",
                     "إعادة فتح المعاملة",
                     detail,
-                    "active",
+                    PropertyTimelineTones.Active,
                     entity.UpdatedAtUtc,
                     ct);
             }
@@ -598,7 +598,7 @@ public sealed class WorkflowTaskLifecycleCommands : IWorkflowTaskLifecycleComman
             entity.AssigneeId,
             "أُعيدت فتح معاملتك",
             $"أعاد المشرف فتح المعاملة: {detail}",
-            "warn",
+            PropertyTimelineTones.Warn,
             $"case-study-reopened:{entity.Id}:{entity.UpdatedAtUtc:O}",
             cancellationToken);
 
@@ -622,7 +622,7 @@ public sealed class WorkflowTaskLifecycleCommands : IWorkflowTaskLifecycleComman
             if (subs.Count > 0)
             {
                 var inspectionTaskIds = subs
-                    .Where(s => s.Kind == "field-inspection")
+                    .Where(s => s.Kind == WorkflowTaskKindValues.FieldInspection)
                     .Select(s => s.WorkflowTaskId)
                     .ToList();
                 if (inspectionTaskIds.Count > 0)

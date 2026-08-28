@@ -19,7 +19,7 @@ public class CaseStudyFormService : ICaseStudyFormService
     private static readonly JsonSerializerOptions JsonOpts = JsonDefaults.CamelCase;
 
     private const WorkflowTaskKind CaseStudyPropertyKind = WorkflowTaskKind.CaseStudyProperty;
-    private const string FormStatusSubmitted = "submitted";
+    private const string FormStatusSubmitted = CaseStudyFormStatuses.Submitted;
 
     private readonly ICaseStudyRepository _db;
     private readonly IWorkflowTaskService _workflowTasks;

@@ -7,6 +7,7 @@ using RealEstateEval.Valuation.Application.Abstractions;
 using RealEstateEval.Valuation.Application.Contracts;
 using RealEstateEval.Valuation.Domain;
 using RealEstateEval.Valuation.Infrastructure.Data.Contexts;
+using Microsoft.Extensions.Logging;
 
 namespace RealEstateEval.Valuation.Infrastructure.Services;
 
@@ -19,7 +20,8 @@ public sealed class ValuationReportIssuanceService(
     ValuationDbContext db,
     IValuationIssuanceGateService gates,
     IValuationReportDocumentService documents,
-    TimeProvider? time = null)
+    TimeProvider? time = null,
+    ILogger<ValuationReportIssuanceService>? logger = null)
     : IValuationReportIssuanceService
 {
     private readonly TimeProvider _time = time ?? TimeProvider.System;
@@ -49,6 +51,8 @@ public sealed class ValuationReportIssuanceService(
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
+            // التدهور الآمن مقصود — لكن العطل يجب أن يظهر في السجلات.
+            logger?.LogWarning(ex, "تعذّر تقييم بوابات إصدار تقرير التقييم للطلب {ValuationRequestId}", valuationRequestId);
         }
 
         return new ValuationReportIssuanceStateDto

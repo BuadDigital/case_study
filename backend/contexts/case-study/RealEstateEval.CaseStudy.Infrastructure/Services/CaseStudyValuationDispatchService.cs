@@ -146,7 +146,7 @@ public sealed class CaseStudyValuationDispatchService : ICaseStudyValuationDispa
                 $"valuation-request:{created.Id}:created",
                 "فتح مسار التقييم",
                 appraiser,
-                "done",
+                PropertyTimelineTones.Done,
                 _time.UtcNow(),
                 cancellationToken);
         }

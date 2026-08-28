@@ -327,7 +327,7 @@ public sealed class WorkOrderPropertyCommands : IWorkOrderPropertyCommands
             "property-bourse",
             "بيانات البورصة للعقار",
             string.IsNullOrEmpty(location) ? null : location,
-            "done",
+            PropertyTimelineTones.Done,
             bourseNow,
             cancellationToken);
 
