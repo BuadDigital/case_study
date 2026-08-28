@@ -85,15 +85,13 @@ public sealed class ValuationReportIssuanceService(
         if (document is null)
             return (null, new Dictionary<string, string> { ["_"] = "تعذّر بناء لقطة التقرير" });
 
-        var row = new ValuationReportIssuance
-        {
-            Id = Guid.NewGuid(),
-            ValuationRequestId = valuationRequestId,
-            DepositIssuedAtUtc = _time.UtcNow(),
-            DepositIssuedByUserId = issuedByUserId,
-            DocumentJson = JsonSerializer.Serialize(document, SnapshotJson),
-            DepositPdf = ValuationReportPdfGenerator.Generate(document),
-        };
+        // B2: انتقال التجميد داخل الجذر — الخدمة تجهّز اللقطة والمولّد فقط.
+        var row = ValuationReportIssuance.IssueDeposit(
+            valuationRequestId,
+            JsonSerializer.Serialize(document, SnapshotJson),
+            ValuationReportPdfGenerator.Generate(document),
+            issuedByUserId,
+            _time.UtcNow());
         db.ValuationReportIssuances.Add(row);
         await db.SaveChangesAsync(cancellationToken);
 
@@ -112,10 +110,6 @@ public sealed class ValuationReportIssuanceService(
         if (row is null)
             return (null, new Dictionary<string, string> { ["_"] = "أصدر نسخة الإيداع أولاً (ق-6-1)" });
 
-        var code = request.DepositCode.Trim();
-        if (code.Length == 0)
-            return (null, new Dictionary<string, string> { ["depositCode"] = "رمز الإيداع مطلوب" });
-
         byte[]? certificate = null;
         if (!string.IsNullOrWhiteSpace(request.CertificateContentBase64))
         {
@@ -132,29 +126,35 @@ public sealed class ValuationReportIssuanceService(
             }
         }
 
-        // الرمز والشهادة وحدهما خارج نطاق التجميد — إعادة التسجيل تصحيحاً مسموحة
+        // B2: انتقالات الشهادة/الرمز داخل الجذر — إعادة التسجيل تصحيحاً مسموحة
         // وتعيد توليد النسخة النهائية من اللقطة المجمّدة نفسها.
-        row.DepositCode = code;
-        row.CertificateFileName = request.CertificateFileName?.Trim();
-        row.CertificateContentType = request.CertificateContentType?.Trim();
-        if (certificate is not null)
-            row.CertificateContent = certificate;
-        row.CertificateUploadedAtUtc = _time.UtcNow();
-        row.CertificateUploadedByUserId = uploadedByUserId;
+        var certError = row.RegisterCertificate(
+            request.DepositCode,
+            request.CertificateFileName,
+            request.CertificateContentType,
+            certificate,
+            uploadedByUserId,
+            _time.UtcNow());
+        if (certError is not null)
+            return (null, new Dictionary<string, string> { ["depositCode"] = certError });
 
+        var code = row.DepositCode!;
         var frozen = WithDepositCode(row.DocumentJson, code);
         var document = frozen.Deserialize<ValuationReportDocumentDto>(SnapshotJson);
         if (document is null)
             return (null, new Dictionary<string, string> { ["_"] = "لقطة التقرير المجمّدة تالفة" });
 
-        row.FinalPdf = ValuationReportPdfGenerator.Generate(
-            document,
-            new ValuationReportPdfGenerator.IssuanceCertificateStamp(
-                code,
-                row.CertificateFileName,
-                row.CertificateContentType,
-                row.CertificateContent));
-        row.FinalIssuedAtUtc = _time.UtcNow();
+        var finalError = row.IssueFinal(
+            ValuationReportPdfGenerator.Generate(
+                document,
+                new ValuationReportPdfGenerator.IssuanceCertificateStamp(
+                    code,
+                    row.CertificateFileName,
+                    row.CertificateContentType,
+                    row.CertificateContent)),
+            _time.UtcNow());
+        if (finalError is not null)
+            return (null, new Dictionary<string, string> { ["_"] = finalError });
 
         // اكتمال الخطوة المهنية لتقرير التقييم (ق-9 يفصلها عن رفع إنفاذ الشامل).
         var vr = await db.ValuationRequests

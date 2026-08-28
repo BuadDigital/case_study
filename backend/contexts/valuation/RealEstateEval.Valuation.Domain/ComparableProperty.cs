@@ -77,6 +77,40 @@ public class ComparableProperty
     public bool IsExcludedFromSuggestions =>
         IsDuplicateTagged
         || !string.Equals(ReliabilityTag, ComparableReliabilityTags.Normal, StringComparison.Ordinal);
+
+ /// <summary>
+ /// B2/ق-3: منظومة الوسوم داخل الجذر — أي وسم مفعَّل يستلزم مبرراً جوهرياً (ق-8-2)،
+ /// والوسم مؤرَّخ باسم واضعه ويُمسح أثره عند إزالة كل الوسوم.
+ /// يعيد (اسم الحقل، الرسالة) عند الرفض.
+ /// </summary>
+    public (string Field, string MessageAr)? ApplyQualityTags(
+        string? reliabilityTag,
+        bool isDuplicateTagged,
+        string? tagRationale,
+        string? taggedByUserId,
+        DateTime nowUtc)
+    {
+        if (!ComparableReliabilityTags.IsKnown(reliabilityTag))
+            return ("reliabilityTag", "وسم الموثوقية غير معروف (عادي/شاذ/غير موثوق)");
+
+        var tag = ComparableReliabilityTags.Normalize(reliabilityTag);
+        var anyTag = isDuplicateTagged
+            || !string.Equals(tag, ComparableReliabilityTags.Normal, StringComparison.Ordinal);
+        if (anyTag && string.IsNullOrWhiteSpace(tagRationale))
+            return ("tagRationale", "مبرر الوسم إلزامي عند وسم شاذ/غير موثوق/مكرر");
+        if (anyTag && JustificationRules.IsTooShort(tagRationale))
+            return ("tagRationale", JustificationRules.TooShortMessageAr("مبرر الوسم"));
+
+        ReliabilityTag = tag;
+        IsDuplicateTagged = isDuplicateTagged;
+        TagRationale = anyTag ? tagRationale!.Trim() : null;
+        TaggedByUserId = anyTag
+            ? (string.IsNullOrWhiteSpace(taggedByUserId) ? "unknown" : taggedByUserId.Trim())
+            : null;
+        TaggedAtUtc = anyTag ? nowUtc : null;
+        UpdatedAtUtc = nowUtc;
+        return null;
+    }
 }
 
 /// <summary>ق-3/1 — وسم موثوقية المقارن: عادي · شاذ · غير موثوق.</summary>

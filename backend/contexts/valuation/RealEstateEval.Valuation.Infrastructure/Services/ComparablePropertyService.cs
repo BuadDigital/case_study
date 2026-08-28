@@ -208,33 +208,20 @@ public sealed class ComparablePropertyService(
         string taggedByUserId,
         CancellationToken cancellationToken = default)
     {
-        var errors = new Dictionary<string, string>();
-        if (!ComparableReliabilityTags.IsKnown(request.ReliabilityTag))
-            errors["reliabilityTag"] = "وسم الموثوقية غير معروف (عادي/شاذ/غير موثوق)";
-
-        var tag = ComparableReliabilityTags.Normalize(request.ReliabilityTag);
-        var anyTag = request.IsDuplicateTagged
-            || !string.Equals(tag, ComparableReliabilityTags.Normal, StringComparison.Ordinal);
- // ق-3: المبرر إلزامي عند أي وسم مفعَّل.
-        if (anyTag && string.IsNullOrWhiteSpace(request.TagRationale))
-            errors["tagRationale"] = "مبرر الوسم إلزامي عند وسم شاذ/غير موثوق/مكرر";
-
-        if (errors.Count > 0) return (null, errors);
-
         var entity = await db.ComparableProperties
             .FirstOrDefaultAsync(x => x.Id == id, cancellationToken);
         if (entity is null)
             return (null, new Dictionary<string, string> { ["_"] = "المقارن غير موجود" });
 
-        entity.ReliabilityTag = tag;
-        entity.IsDuplicateTagged = request.IsDuplicateTagged;
-        entity.TagRationale = anyTag ? request.TagRationale!.Trim() : null;
- // الوسم مؤرَّخ باسم واضعه (بطاقة مصدر) — يُمسح عند إزالة كل الوسوم.
-        entity.TaggedByUserId = anyTag
-            ? (string.IsNullOrWhiteSpace(taggedByUserId) ? "unknown" : taggedByUserId.Trim())
-            : null;
-        entity.TaggedAtUtc = anyTag ? _time.UtcNow() : null;
-        entity.UpdatedAtUtc = _time.UtcNow();
+        // B2/ق-3: قواعد الوسوم داخل الجذر — الخدمة تُنسّق فقط.
+        var tagError = entity.ApplyQualityTags(
+            request.ReliabilityTag,
+            request.IsDuplicateTagged,
+            request.TagRationale,
+            taggedByUserId,
+            _time.UtcNow());
+        if (tagError is not null)
+            return (null, new Dictionary<string, string> { [tagError.Value.Field] = tagError.Value.MessageAr });
 
         await db.SaveChangesAsync(cancellationToken);
         var anomaly = await ComputeAnomalyNoteAsync(entity, cancellationToken);

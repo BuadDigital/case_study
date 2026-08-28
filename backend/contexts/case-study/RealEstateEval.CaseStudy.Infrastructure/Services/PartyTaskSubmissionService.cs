@@ -283,15 +283,8 @@ public class PartyTaskSubmissionService : IPartyTaskSubmissionService
         var now = _time.UtcNow();
         if (entity is null)
         {
-            entity = new PartyTaskSubmission
-            {
-                Id = Guid.NewGuid(),
-                WorkflowTaskId = taskId,
-                Kind = task.Kind.ToDbValue(),
-                PropertyId = task.PropertyId,
-                PoNumber = task.PoNumber,
-                CreatedAtUtc = now,
-            };
+            entity = PartyTaskSubmission.CreateDraft(
+                taskId, task.Kind.ToDbValue(), task.PropertyId, task.PoNumber, now);
             _db.PartyTaskSubmissions.Add(entity);
         }
 
@@ -299,17 +292,15 @@ public class PartyTaskSubmissionService : IPartyTaskSubmissionService
             ? entity.PayloadJson
             : request.Payload.GetRawText();
 
-        var status = PartyTaskSubmissionPayloadRules.ExtractStatus(payloadJson) ?? entity.Status;
-        if (status is PartyTaskSubmissionStatus.Submitted)
-            return (null, new Dictionary<string, string> { ["_"] = "استخدم نقطة الإرسال لتقديم العمل" });
-
-        entity.PayloadJson = payloadJson;
-        entity.Status = status is PartyTaskSubmissionStatus.Reopened
-            ? PartyTaskSubmissionStatus.Reopened
-            : PartyTaskSubmissionStatus.Draft;
-        entity.PropertyId = task.PropertyId;
-        entity.PoNumber = task.PoNumber;
-        entity.UpdatedAtUtc = now;
+        // B2: قواعد الانتقال داخل الجذر — الخدمة تُنسّق فقط.
+        var draftError = entity.SaveDraft(
+            payloadJson,
+            PartyTaskSubmissionPayloadRules.ExtractStatus(payloadJson) ?? entity.Status,
+            task.PropertyId,
+            task.PoNumber,
+            now);
+        if (draftError is not null)
+            return (null, new Dictionary<string, string> { ["_"] = draftError });
 
         if (task.Kind == WorkflowTaskKind.FieldInspection)
             await SyncFieldInspectionWorkspaceAsync(entity, cancellationToken);
@@ -357,16 +348,7 @@ public class PartyTaskSubmissionService : IPartyTaskSubmissionService
             return (null, validationErrors);
 
         var now = _time.UtcNow();
-        entity.Status = PartyTaskSubmissionStatus.Submitted;
-        entity.SubmittedAtUtc = now;
-        entity.UpdatedAtUtc = now;
-        if (actor is not null)
-        {
-            entity.SubmittedByUserId = actor.UserId;
-            entity.SubmittedByName = string.IsNullOrWhiteSpace(actor.DisplayName)
-                ? task.AssigneeName
-                : actor.DisplayName.Trim();
-        }
+        entity.Submit(now, actor?.UserId, actor?.DisplayName, task.AssigneeName);
         entity.PayloadJson = PartyTaskSubmissionPayloadRules.SetPayloadStatus(entity.PayloadJson, PartyTaskSubmissionStatus.Submitted, now);
 
         if (entity.Kind == "field-inspection")
@@ -446,26 +428,16 @@ public class PartyTaskSubmissionService : IPartyTaskSubmissionService
         var entity = await _db.PartyTaskSubmissions
             .FirstOrDefaultAsync(s => s.WorkflowTaskId == taskId, cancellationToken);
 
-        if (entity is null || entity.Status != PartyTaskSubmissionStatus.Submitted)
+        if (entity is null)
             return (null, new Dictionary<string, string> { ["_"] = "لا يوجد إرسال مُكتمل لإعادته" });
 
         var now = _time.UtcNow();
-        entity.Status = PartyTaskSubmissionStatus.Reopened;
-        entity.ReturnNote = returnNote;
-        entity.SubmittedAtUtc = null;
- // Returning for correction voids the acceptance so the specialist can
- // accept the corrected outputs again.
-        entity.AcceptedAtUtc = null;
-        entity.AcceptedByUserId = null;
-        entity.AcceptedByName = null;
-        if (actor is not null)
-        {
-            entity.ReopenedByUserId = actor.UserId;
-            entity.ReopenedByName = string.IsNullOrWhiteSpace(actor.DisplayName)
-                ? null
-                : actor.DisplayName.Trim();
-        }
-        entity.UpdatedAtUtc = now;
+        // B2: الإعادة تُبطل القبول داخل الجذر — الخدمة تُنسّق الحزمة والمهمة فقط.
+        var returnError = entity.ReturnForCorrection(
+            returnNote, now, actor?.UserId, actor?.DisplayName);
+        if (returnError is not null)
+            return (null, new Dictionary<string, string> { ["_"] = returnError });
+
         entity.PayloadJson = PartyTaskSubmissionPayloadRules.SetPayloadReopened(entity.PayloadJson, returnNote, now);
 
         if (task.Kind == WorkflowTaskKind.FieldInspection)
@@ -573,7 +545,7 @@ public class PartyTaskSubmissionService : IPartyTaskSubmissionService
 
                     if (!alreadyAccepted)
                     {
-                        StampAcceptance(entity, actorUserId, actor.DisplayName);
+                        _ = entity.Accept(_time.UtcNow(), actorUserId, actor.DisplayName);
                         await _db.SaveChangesAsync(ct);
                     }
 
@@ -587,7 +559,7 @@ public class PartyTaskSubmissionService : IPartyTaskSubmissionService
         else if (!alreadyAccepted)
         {
  // Field inspection: إنفاذ package gate. Appraisal stamp is receive/acknowledge only.
-            StampAcceptance(entity, actorUserId, actor.DisplayName);
+            _ = entity.Accept(_time.UtcNow(), actorUserId, actor.DisplayName);
             await _db.SaveChangesAsync(cancellationToken);
         }
 
@@ -652,17 +624,7 @@ public class PartyTaskSubmissionService : IPartyTaskSubmissionService
         return (await ToDtoAsync(entity, cancellationToken), null);
     }
 
-    private void StampAcceptance(
-        PartyTaskSubmission entity,
-        string actorUserId,
-        string? displayName)
-    {
-        entity.AcceptedAtUtc = _time.UtcNow();
-        entity.AcceptedByUserId = actorUserId;
-        entity.AcceptedByName = string.IsNullOrWhiteSpace(displayName)
-            ? null
-            : displayName.Trim();
-    }
+    // B2: ختم القبول انتقل إلى الجذر — PartyTaskSubmission.Accept.
 
     private async Task NotifyPartyAssigneeAsync(
         WorkflowTask task,

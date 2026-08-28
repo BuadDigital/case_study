@@ -37,6 +37,61 @@ public class ValuationReportIssuance
  /// <summary>النسخة النهائية المتداولة — التقرير المجمّد + صفحة الشهادة + الرمز.</summary>
     public DateTime? FinalIssuedAtUtc { get; set; }
     public byte[]? FinalPdf { get; set; }
+
+    /* ─── B2: انتقالات ق-6 داخل الجذر — الخدمة تجهّز اللقطة والمولّدات وتُنسّق فقط ─── */
+
+ /// <summary>ق-6-1: التجميد وإصدار نسخة الإيداع — مرة واحدة لكل طلب.</summary>
+    public static ValuationReportIssuance IssueDeposit(
+        Guid valuationRequestId,
+        string documentJson,
+        byte[] depositPdf,
+        string? issuedByUserId,
+        DateTime nowUtc) => new()
+        {
+            Id = Guid.NewGuid(),
+            ValuationRequestId = valuationRequestId,
+            DepositIssuedAtUtc = nowUtc,
+            DepositIssuedByUserId = issuedByUserId,
+            DocumentJson = documentJson,
+            DepositPdf = depositPdf,
+        };
+
+ /// <summary>
+ /// ق-6-3: تسجيل الشهادة والرمز — خارج نطاق التجميد؛ إعادة التسجيل تصحيحاً مسموحة.
+ /// يعيد رسالة رفض عند رمز فارغ.
+ /// </summary>
+    public string? RegisterCertificate(
+        string depositCode,
+        string? certificateFileName,
+        string? certificateContentType,
+        byte[]? certificateContent,
+        string? uploadedByUserId,
+        DateTime nowUtc)
+    {
+        var code = depositCode.Trim();
+        if (code.Length == 0)
+            return "رمز الإيداع مطلوب";
+
+        DepositCode = code;
+        CertificateFileName = certificateFileName?.Trim();
+        CertificateContentType = certificateContentType?.Trim();
+        if (certificateContent is not null)
+            CertificateContent = certificateContent;
+        CertificateUploadedAtUtc = nowUtc;
+        CertificateUploadedByUserId = uploadedByUserId;
+        return null;
+    }
+
+ /// <summary>ق-6-4: النسخة النهائية لا تصدر قبل تسجيل الرمز.</summary>
+    public string? IssueFinal(byte[] finalPdf, DateTime nowUtc)
+    {
+        if (string.IsNullOrWhiteSpace(DepositCode))
+            return "سجّل رمز الإيداع أولاً (ق-6-3)";
+
+        FinalPdf = finalPdf;
+        FinalIssuedAtUtc = nowUtc;
+        return null;
+    }
 }
 
 /// <summary>مراحل ق-6 كما تُعرض للواجهة.</summary>
