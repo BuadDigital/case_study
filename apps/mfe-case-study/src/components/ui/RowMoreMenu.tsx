@@ -208,12 +208,13 @@ export function RowMoreMenu({
     enterRaf = requestAnimationFrame(() => setEntered(true));
 
     window.addEventListener("resize", placeMenu);
-    window.addEventListener("scroll", placeMenu, true);
+    // passive: المستمع لا يمنع التمرير — يسمح للمتصفح بعدم انتظاره (client-passive-event-listeners).
+    window.addEventListener("scroll", placeMenu, { capture: true, passive: true });
     return () => {
       cancelAnimationFrame(raf);
       cancelAnimationFrame(enterRaf);
       window.removeEventListener("resize", placeMenu);
-      window.removeEventListener("scroll", placeMenu, true);
+      window.removeEventListener("scroll", placeMenu, { capture: true });
     };
   }, [open, items.length]);
 

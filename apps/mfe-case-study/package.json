@@ -31,8 +31,6 @@
     "@platform/types": "*",
     "@settings/mfe": "*",
     "@tanstack/react-query": "^5.100.11",
-    "exifr": "^7.1.3",
-    "heic2any": "^0.0.4",
     "leaflet": "^1.9.4",
     "leaflet.markercluster": "^1.5.3",
     "pdfjs-dist": "^6.1.200"

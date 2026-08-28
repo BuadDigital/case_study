@@ -100,10 +100,17 @@ import {
   ActiveQueueMobileCards,
   type ActiveQueueMobileCardItem,
 } from "../components/queue/ActiveQueueMobileCards";
-import {
-  CreateOperationsTaskModal,
-  type CreateOperationsTaskPrefill,
-} from "../components/CreateOperationsTaskModal";
+import dynamic from "next/dynamic";
+import type { CreateOperationsTaskPrefill } from "../components/CreateOperationsTaskModal";
+
+// المودال ٩٣٤ سطراً ويُعرض عند الطلب فقط — لا يركب في حزمة الشاشة (bundle-dynamic-imports).
+const CreateOperationsTaskModal = dynamic(
+  () =>
+    import("../components/CreateOperationsTaskModal").then(
+      (m) => m.CreateOperationsTaskModal,
+    ),
+  { ssr: false },
+);
 import {
   TASKS_LIST_COLS,
   TASKS_LIST_FOOTER,

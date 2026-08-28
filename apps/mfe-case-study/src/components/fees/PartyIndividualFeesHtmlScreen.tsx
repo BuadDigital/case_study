@@ -539,12 +539,15 @@ export function PartyIndividualFeesHtmlScreen({
   }, [statements, fnSearch]);
 
   const invalidate = useCallback(async () => {
-    await queryClient.invalidateQueries({
-      queryKey: [...prototypeKeys.all, "inspector-fees"],
-    });
-    await queryClient.invalidateQueries({
-      queryKey: [...prototypeKeys.all, "party-billing"],
-    });
+    // مفتاحان مستقلان — بالتوازي (async-parallel).
+    await Promise.all([
+      queryClient.invalidateQueries({
+        queryKey: [...prototypeKeys.all, "inspector-fees"],
+      }),
+      queryClient.invalidateQueries({
+        queryKey: [...prototypeKeys.all, "party-billing"],
+      }),
+    ]);
   }, [queryClient]);
 
   const act = async (

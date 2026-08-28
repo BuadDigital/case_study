@@ -2,16 +2,8 @@
  * Renders page 1 of a PDF to a JPEG data URL for attachment thumbnails.
  */
 
-let workerReady = false;
+import { loadPdfJs } from "@platform/app-shared/media/load-pdfjs";
 
-async function loadPdfJs() {
-  const pdfjs = await import("pdfjs-dist");
-  if (!workerReady && typeof window !== "undefined") {
-    pdfjs.GlobalWorkerOptions.workerSrc = "/pdf.worker.min.mjs";
-    workerReady = true;
-  }
-  return pdfjs;
-}
 
 export async function pdfBlobToFirstPageDataUrl(
   blob: Blob,

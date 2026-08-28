@@ -102,10 +102,7 @@ import {
   ActiveQueueMobileCards,
   type ActiveQueueMobileCardItem,
 } from "../components/queue/ActiveQueueMobileCards";
-import {
-  CreateOperationsTaskModal,
-  type CreateOperationsTaskPrefill,
-} from "../components/CreateOperationsTaskModal";
+import type { CreateOperationsTaskPrefill } from "../components/CreateOperationsTaskModal";
 import {
   TASKS_LIST_COLS,
   TASKS_LIST_FOOTER,

@@ -37,7 +37,10 @@ import {
   queueTableRowClassName,
   useToast,
 } from "@platform/ui-kit";
-import { formatPoDisplay, PROPERTY_IDENTIFIER_COLUMN_LABEL } from "@case-study/mfe";
+import {
+  formatPoDisplay,
+  PROPERTY_IDENTIFIER_COLUMN_LABEL,
+} from "@case-study/mfe/lib/prototype/po-intake-data";
 import { poPropertyPath } from "@case-study/mfe/lib/po-routes";
 import { suspendPropertyTransaction } from "@case-study/mfe/lib/prototype/suspend-property-transaction";
 import { usePoRecordsQuery } from "@case-study/mfe/query/case-study-queries";

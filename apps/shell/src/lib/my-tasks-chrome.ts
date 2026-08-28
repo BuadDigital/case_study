@@ -1,4 +1,4 @@
-import { decodeTaskParam } from "@case-study/mfe";
+import { decodeTaskParam } from "@case-study/mfe/lib/my-task-routes";
 import { partyTaskPageDef } from "@platform/app-shared/prototype/party-task-pages";
 import type { PageId } from "@platform/types";
 

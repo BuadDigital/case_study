@@ -20,7 +20,7 @@ import {
 } from "@platform/ui-kit";
 import { useDistributionAssigneesQuery } from "@settings/mfe/query/settings-queries";
 import { displayPersonName as sharedDisplayPersonName } from "@platform/app-shared/prototype/person-display-name";
-import { PROPERTY_IDENTIFIER_COLUMN_LABEL } from "@case-study/mfe";
+import { PROPERTY_IDENTIFIER_COLUMN_LABEL } from "@case-study/mfe/lib/prototype/po-intake-data";
 import { getFieldInspectors } from "@case-study/mfe/lib/distribution-assignees";
 import {
   confirmEnvelopeAssignment,
@@ -1029,10 +1029,12 @@ function CourtAccessPanel({
     );
   }
 
+  // فهرس واحد بدل مسح خطي لكل عقار مرتبط (js-index-maps).
+  const accessByPropertyId = new Map(rows.map((r) => [r.propertyId, r]));
   return (
     <div className="space-y-2.5">
       {env.linkedProperties.map((p) => {
-        const access = rows.find((r) => r.propertyId === p.propertyId);
+        const access = accessByPropertyId.get(p.propertyId);
         const status = access?.studyHoldStatus || "none";
         const color = studyHoldColor(status);
         return (

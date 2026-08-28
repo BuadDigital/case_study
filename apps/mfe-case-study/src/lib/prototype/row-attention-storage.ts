@@ -26,10 +26,22 @@ function loadSeenMap(): RowAttentionSeenMap {
   }
 }
 
+/** سقف الإدخالات — كانت الخريطة تنمو بلا حد مع كل مهمة فُتحت يوماً (client-localstorage-schema). */
+const MAX_SEEN_ENTRIES = 600;
+
+function pruneSeenMap(map: RowAttentionSeenMap): RowAttentionSeenMap {
+  const entries = Object.entries(map);
+  if (entries.length <= MAX_SEEN_ENTRIES) return map;
+  // ترتيب تقريبي بالبصمة (تحمل طابعاً زمنياً في وسطها) — الطرد الخاطئ
+  // لا يكلف إلا إعادة إضاءة نقطة تنبيه، والمهم هو السقف نفسه.
+  entries.sort((a, b) => a[1].localeCompare(b[1]));
+  return Object.fromEntries(entries.slice(entries.length - MAX_SEEN_ENTRIES));
+}
+
 function saveSeenMap(map: RowAttentionSeenMap): void {
   if (typeof window === "undefined") return;
   try {
-    window.localStorage.setItem(SEEN_KEY, JSON.stringify(map));
+    window.localStorage.setItem(SEEN_KEY, JSON.stringify(pruneSeenMap(map)));
   } catch {
     // storage full/unavailable — dot just re-lights next render, non-fatal.
   }

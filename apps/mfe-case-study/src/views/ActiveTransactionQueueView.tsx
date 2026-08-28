@@ -323,22 +323,28 @@ export function ActiveTransactionQueueView({
   ]);
 
   const syncQueue = useCallback(async () => {
-    await queryClient.invalidateQueries({ queryKey: prototypeKeys.poRecords() });
-    await queryClient.invalidateQueries({
-      queryKey: prototypeKeys.workflowTasks(),
-    });
+    // مفاتيح مستقلة بالتوازي؛ إبطال workflowTasks يعيد الجلب بنفسه —
+    // refetchTasks الإضافي كان GET ثانياً مطابقاً (async-parallel).
+    const invalidations = [
+      queryClient.invalidateQueries({ queryKey: prototypeKeys.poRecords() }),
+      queryClient.invalidateQueries({ queryKey: prototypeKeys.workflowTasks() }),
+    ];
     if (config.allowPhaseRevert) {
-      await queryClient.invalidateQueries({
-        queryKey: prototypeKeys.pendingBourseItems(),
-      });
+      invalidations.push(
+        queryClient.invalidateQueries({
+          queryKey: prototypeKeys.pendingBourseItems(),
+        }),
+      );
     }
     if (needsInspectionWorkspaces) {
-      await queryClient.invalidateQueries({
-        queryKey: prototypeKeys.fieldInspectionWorkspaces(),
-      });
+      invalidations.push(
+        queryClient.invalidateQueries({
+          queryKey: prototypeKeys.fieldInspectionWorkspaces(),
+        }),
+      );
     }
+    await Promise.all(invalidations);
     bump((n) => n + 1);
-    await refetchTasks();
   }, [
     queryClient,
     refetchTasks,

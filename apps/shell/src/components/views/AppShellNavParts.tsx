@@ -48,16 +48,19 @@ import {
   type OrphanScreenNavItem,
 } from "@platform/app-shared/prototype/orphan-screens-nav";
 import { isPartyTaskPage } from "@platform/app-shared/prototype/party-task-pages";
-import { decodeTaskParam, isPartyTaskWorkPath } from "@case-study/mfe";
-import { findPropertyForTask } from "@case-study/mfe";
-import { formatPropertyDeedDisplay } from "@case-study/mfe";
+import {
+  decodeTaskParam,
+  isPartyTaskWorkPath,
+} from "@case-study/mfe/lib/my-task-routes";
+import { findPropertyForTask } from "@case-study/mfe/lib/prototype/my-task-row";
+import { formatPropertyDeedDisplay } from "@case-study/mfe/lib/prototype/po-intake-data";
 import { AppBreadcrumb } from "@/components/views/AppBreadcrumb";
 import { NotificationCenter } from "@/components/NotificationCenter";
 import { OfflineSyncCoordinator } from "@/components/OfflineSyncCoordinator";
 import { resolvePoChrome, buildPoPropertyWorkspaceSegments } from "@/lib/po-chrome";
 import { slashTrailToSegments } from "@/lib/breadcrumb";
 import { resolveMyTasksChrome } from "@/lib/my-tasks-chrome";
-import { EngineeringSurveyTopbarActions } from "@engineering-office/mfe";
+import { EngineeringSurveyTopbarActions } from "@engineering-office/mfe/components/EngineeringSurveyTopbarActions";
 import { useQuery } from "@tanstack/react-query";
 import { loadOperationsTasks } from "@case-study/mfe/lib/prototype/operations-tasks-storage";
 import { prototypeKeys } from "@platform/app-shared/query/prototype-keys";

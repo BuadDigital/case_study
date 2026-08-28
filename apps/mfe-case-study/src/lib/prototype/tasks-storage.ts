@@ -423,11 +423,11 @@ export async function linkNewPropertyToTaskSlot(
   if (!property.id) return null;
   const slots = await syncTaskSlotsForPo(record);
   if (!slots.ok) return { ok: false, error: slots.error };
-  const list = await loadWorkflowTasks();
-  const existing = caseStudyTaskForProperty(record.poNumber, property.id, list);
+  // slots.tasks هي نفس نتيجة poCaseTasks من قائمة محمّلة للتو —
+  // إعادة loadWorkflowTasks كانت GET ثانياً مطابقاً.
+  const tasks = slots.tasks;
+  const existing = caseStudyTaskForProperty(record.poNumber, property.id, tasks);
   if (existing) return { ok: true, task: existing };
-
-  const tasks = poCaseTasks(list, record.poNumber);
   const slot = tasks
     .filter((t) => !t.propertyId)
     .sort((a, b) => a.propertyOrdinal - b.propertyOrdinal)[0];

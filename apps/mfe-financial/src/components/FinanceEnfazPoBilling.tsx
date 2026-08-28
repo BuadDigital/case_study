@@ -199,10 +199,13 @@ export function FinanceEnfazPoBilling({
         return;
       }
       showToast("تم إصدار الفاتورة", "success");
-      await queryClient.invalidateQueries({
-        queryKey: [...prototypeKeys.all, "enfaz-billing"],
-      });
-      const downloaded = await downloadEnfazInvoicePdf(selectedPo);
+      // التنزيل لا يعتمد على الإبطال — بالتوازي كي لا يتأخر الـPDF (async-parallel).
+      const [, downloaded] = await Promise.all([
+        queryClient.invalidateQueries({
+          queryKey: [...prototypeKeys.all, "enfaz-billing"],
+        }),
+        downloadEnfazInvoicePdf(selectedPo),
+      ]);
       if (!downloaded) {
         showToast("صدرت الفاتورة لكن تعذّر تنزيل PDF", "info");
       }

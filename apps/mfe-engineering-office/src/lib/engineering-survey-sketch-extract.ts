@@ -4,6 +4,8 @@
  * Never fills: المساحة الإجمالية.
  */
 
+import { loadPdfJs } from "@platform/app-shared/media/load-pdfjs";
+
 
 export type SketchBoundarySide = {
   description: string;
@@ -99,32 +101,6 @@ function stripTotalArea(block: SketchBoundaryBlock): SketchBoundaryBlock {
   };
 }
 
-let workerReady = false;
-
-async function loadPdfJs() {
-  const pdfjs = await import("pdfjs-dist");
-  if (!workerReady && typeof window !== "undefined") {
-    // Prefer app static copy; fall back to package worker URL if missing/blocked.
-    const candidates = [
-      "/pdf.worker.min.mjs",
-      // Bundler-resolved absolute URL when webpack/turbopack can emit the asset
-      (() => {
-        try {
-          return new URL(
-            "pdfjs-dist/build/pdf.worker.min.mjs",
-            import.meta.url,
-          ).toString();
-        } catch {
-          return "";
-        }
-      })(),
-    ].filter(Boolean);
-    pdfjs.GlobalWorkerOptions.workerSrc =
-      candidates[0] ?? "/pdf.worker.min.mjs";
-    workerReady = true;
-  }
-  return pdfjs;
-}
 
 /** Normalize Arabic for matching (display uses cleaned but readable form). */
 export function normalizeSketchText(input: string): string {
@@ -631,6 +607,36 @@ const DESC_TOKEN_RE = new RegExp(DESC_TOKEN, "i");
 const EDGE_LEN_TOKEN =
   "([\\d٠-٩]+[.,][\\d٠-٩]{1,3}|[\\d٠-٩]{2,3}(?![\\d٠-٩.,]))";
 
+// أنماط الاتجاهات ثابتة المكونات — كانت تُبنى داخل الحلقات مع كل استدعاء
+// (js-hoist-regexp). matchAll ينسخ التعبير داخلياً فمشاركة علم g هنا آمنة.
+const DIR_DESC_LEN_RE = Object.fromEntries(
+  DIR_ORDER.map((dir) => [
+    dir,
+    new RegExp(
+      `${DIR_TOKEN_BY_DIR[dir]}\\s*(?:الحد)?\\s*[:：\\-–—|•·]*\\s*(${DESC_TOKEN})\\s*[:：\\-–—|/]*\\s*${EDGE_LEN_TOKEN}`,
+      "gi",
+    ),
+  ]),
+) as Record<DirKey, RegExp>;
+const DIR_DESC_RE = Object.fromEntries(
+  DIR_ORDER.map((dir) => [
+    dir,
+    new RegExp(
+      `${DIR_TOKEN_BY_DIR[dir]}\\s*(?:الحد)?\\s*[:：\\-–—|•·]*\\s*(${DESC_TOKEN})`,
+      "gi",
+    ),
+  ]),
+) as Record<DirKey, RegExp>;
+const DIR_NEAR_DESC_RE = Object.fromEntries(
+  DIR_ORDER.map((dir) => [
+    dir,
+    new RegExp(
+      `${DIR_TOKEN_BY_DIR[dir]}(?=[\\s\\S]{0,80}?${DESC_TOKEN})`,
+      "gi",
+    ),
+  ]),
+) as Record<DirKey, RegExp>;
+
 /**
  * Croquis table column header "الطول/م" (and OCR variants).
  * Presence anchors the real boundary table — not drawing edge labels.
@@ -1035,12 +1041,8 @@ export function extractDirectionalTableRows(
 
   // Build alternation of dirs that still captures which dir matched
   for (const dir of DIR_ORDER) {
-    const dirTok = DIR_TOKEN_BY_DIR[dir];
     // A) dir + وصف + طول  (authoritative)
-    const reA = new RegExp(
-      `${dirTok}\\s*(?:الحد)?\\s*[:：\\-–—|•·]*\\s*(${DESC_TOKEN})\\s*[:：\\-–—|/]*\\s*${EDGE_LEN_TOKEN}`,
-      "gi",
-    );
+    const reA = DIR_DESC_LEN_RE[dir];
     const matchesA = [...flat.matchAll(reA)];
     if (matchesA.length > 0) {
       const last = matchesA[matchesA.length - 1]!;
@@ -1052,10 +1054,7 @@ export function extractDirectionalTableRows(
     }
 
     // B) dir + وصف only — length filled later via adjacency
-    const reDesc = new RegExp(
-      `${dirTok}\\s*(?:الحد)?\\s*[:：\\-–—|•·]*\\s*(${DESC_TOKEN})`,
-      "gi",
-    );
+    const reDesc = DIR_DESC_RE[dir];
     const matchesD = [...flat.matchAll(reDesc)];
     if (matchesD.length > 0) {
       const last = matchesD[matchesD.length - 1]!;
@@ -1208,10 +1207,7 @@ function parseColumnarTableBody(sectionText: string): SketchBoundaryBlock | null
   const dirHits: Array<{ dir: DirKey; index: number }> = [];
   for (const dir of DIR_ORDER) {
     // Prefer last dir token that is followed shortly by a table description
-    const re = new RegExp(
-      `${DIR_TOKEN_BY_DIR[dir]}(?=[\\s\\S]{0,80}?${DESC_TOKEN})`,
-      "gi",
-    );
+    const re = DIR_NEAR_DESC_RE[dir];
     const all = [...n.matchAll(re)];
     if (all.length > 0) {
       const last = all[all.length - 1]!;

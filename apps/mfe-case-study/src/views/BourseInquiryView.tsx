@@ -234,13 +234,13 @@ export function BourseInquiryView() {
             specialist: ROLES[role]?.name ?? "أخصائي دراسة الحالة",
           });
           closeForm();
-          await queryClient.invalidateQueries({
-            queryKey: prototypeKeys.failures(),
-          });
-          await queryClient.invalidateQueries({
-            queryKey: prototypeKeys.workflowTasks(),
-          });
-          await refresh();
+          // refresh() يبطل workflowTasks بنفسه — بقي إبطال التعثرات بالتوازي معه.
+          await Promise.all([
+            queryClient.invalidateQueries({
+              queryKey: prototypeKeys.failures(),
+            }),
+            refresh(),
+          ]);
         } finally {
           setSaving(false);
         }

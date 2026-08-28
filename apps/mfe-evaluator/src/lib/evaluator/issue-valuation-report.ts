@@ -61,16 +61,17 @@ export async function previewGeneratedValuationReport(input: {
   propertyType?: string;
   appraiserName?: string;
 }): Promise<void> {
+  // فحص الجلسة الرخيص قبل نداءٍ يفتح طلب تقييم على الخادم (async-cheap-condition-before-await).
   const config = apiConfig();
+  if (!config) {
+    throw new Error("تعذّر فتح استعراض تقرير التقييم — تحقق من تسجيل الدخول.");
+  }
   const open = await ensureOpenValuationRequest({
     propertyId: input.propertyId,
     area: input.area,
     propertyType: input.propertyType,
     appraiserName: input.appraiserName,
   });
-  if (!config) {
-    throw new Error("تعذّر فتح استعراض تقرير التقييم — تحقق من تسجيل الدخول.");
-  }
   const res = await getValuationReportDocument(config, open.id);
   if (!res.ok) {
     throw new Error("تعذّر تحميل مستند التقرير.");
@@ -98,16 +99,17 @@ export async function snapshotIssuedValuationReport(input: {
   propertyType?: string;
   appraiserName?: string;
 }): Promise<void> {
+  // فحص الجلسة الرخيص قبل نداءٍ يفتح طلب تقييم على الخادم (async-cheap-condition-before-await).
   const config = apiConfig();
+  if (!config) {
+    throw new Error("تعذّر توليد تقرير التقييم — تحقق من تسجيل الدخول.");
+  }
   const open = await ensureOpenValuationRequest({
     propertyId: input.propertyId,
     area: input.area,
     propertyType: input.propertyType,
     appraiserName: input.appraiserName,
   });
-  if (!config) {
-    throw new Error("تعذّر توليد تقرير التقييم — تحقق من تسجيل الدخول.");
-  }
 
   const pdf = await getValuationReportPdf(config, open.id);
   if (!pdf.ok) {

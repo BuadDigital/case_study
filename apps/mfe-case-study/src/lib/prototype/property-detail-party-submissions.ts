@@ -84,12 +84,15 @@ export async function loadPropertyDetailPartySubmission(input: {
   }
 
   if (roleKey === "appraisal") {
-    const submission = await loadEvaluatorSubmissionSnapshot(child.id);
+    // الثلاثة مستقلة — بالتوازي بدل ثلاث رحلات متسلسلة (async-parallel).
+    const [submission, partyDraft, infoRoles] = await Promise.all([
+      loadEvaluatorSubmissionSnapshot(child.id),
+      loadPartyCaseStudyFormDraft(child.id),
+      loadCaseStudyInfoRolesConfig(),
+    ]);
     if (!submission) {
       return emptySubmission(roleKey, "لم يُقدَّم بعد");
     }
-    const partyDraft = await loadPartyCaseStudyFormDraft(child.id);
-    const infoRoles = await loadCaseStudyInfoRolesConfig();
     if (partyDraft?.savedAtUtc) {
       submission.checklist = mergeEvaluatorChecklistFromCaseStudy(
         submission.checklist as EvaluatorChecklistAnswers,

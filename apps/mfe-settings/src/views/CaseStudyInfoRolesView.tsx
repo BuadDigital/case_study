@@ -34,6 +34,14 @@ import {
   useCaseStudyInfoRolesQuery,
 } from "../query/settings-queries";
 
+// فهارس على مستوى الوحدة — كانت findIndex/find خطّيتين لكل سؤال معروض (js-index-maps).
+const QUESTION_INDEX_BY_KEY = new Map(
+  CASE_STUDY_QUESTION_CATALOG.map((q, i) => [q.key, i]),
+);
+const ROLE_TYPE_BY_ID = new Map(
+  CASE_STUDY_INFO_ROLE_TYPES.map((r) => [r.id, r]),
+);
+
 const ROLE_BTN_SELECTED: Record<string, string> = {
   primary: "border-[#C4B5FD] bg-[#F3EEFF] text-[#5B21B6]",
   secondary: "border-[#6EE7B7] bg-[#ECFDF5] text-[#065F46]",
@@ -329,13 +337,12 @@ export function CaseStudyInfoRolesView() {
 
         <div className="min-w-0">
           {secQuestions.map((q) => {
-            const globalNum =
-              CASE_STUDY_QUESTION_CATALOG.findIndex((x) => x.key === q.key) + 1;
+            const globalNum = (QUESTION_INDEX_BY_KEY.get(q.key) ?? -1) + 1;
             const open = openId === q.key;
             const chips = CASE_STUDY_INFO_PARTIES.flatMap((p) => {
               const role = config.matrix[q.key]?.[p.id];
               if (!role || role === "none") return [];
-              const rt = CASE_STUDY_INFO_ROLE_TYPES.find((r) => r.id === role);
+              const rt = ROLE_TYPE_BY_ID.get(role);
               return [{ party: p, role: rt! }];
             });
             return (

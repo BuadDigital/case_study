@@ -703,7 +703,11 @@ export async function submitInspectorWorkspace(
   | { ok: true; draft: InspectorWorkspaceDraft }
   | { ok: false; message: string; errors?: Record<string, string> }
 > {
+  // فحص الجلسة الرخيص قبل جلبٍ شبكي كان يضيع بلا جلسة (async-cheap-condition-before-await).
   const config = workOrdersApiConfig();
+  if (!config) {
+    return { ok: false, message: "يجب تسجيل الدخول أولاً" };
+  }
   const current =
     loadInspectorWorkspace(taskId) ?? (await fetchInspectorWorkspace(taskId));
   if (!current) {
@@ -711,10 +715,6 @@ export async function submitInspectorWorkspace(
   }
   if (current.status === "submitted") {
     return { ok: true, draft: current };
-  }
-
-  if (!config) {
-    return { ok: false, message: "يجب تسجيل الدخول أولاً" };
   }
 
   const saved = await saveInspectorWorkspaceDraft(current);

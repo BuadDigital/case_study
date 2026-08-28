@@ -9,7 +9,7 @@ import {
   fetchEvaluatorSubmission,
   prefetchEvaluatorReport,
 } from "@evaluator/mfe";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { EVALUATOR_SUBMISSION_CHANGED_EVENT } from "../lib/case-study-evaluator-events";
 import {
   prefetchPropertyDocAttachments,
@@ -59,6 +59,11 @@ export function usePropertyDetailDocuments(input: {
     () => (enabled ? collect() : []),
   );
 
+  // أحدث دالة تجميع عبر مرجع حي — يسمح باعتماد المفاتيح الأولية في التبعيات
+  // بدل هوية كائن العقار التي كانت تعيد إطلاق الجلب الكامل مع كل رسم.
+  const collectRef = useRef(collect);
+  collectRef.current = collect;
+
   useEffect(() => {
     if (!enabled) {
       setSections([]);
@@ -67,7 +72,7 @@ export function usePropertyDetailDocuments(input: {
 
     let cancelled = false;
     const refresh = () => {
-      if (!cancelled) setSections(collect());
+      if (!cancelled) setSections(collectRef.current());
     };
     refresh();
 
@@ -114,7 +119,9 @@ export function usePropertyDetailDocuments(input: {
     };
   }, [
     enabled,
-    property,
+    // مفتاح العقار لا هويته — كائن غير مُثبَّت من المستدعي كان يعيد كل الجلب مع كل رسم.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    property.id,
     showDecree,
     poNumber,
     surveyTaskId,

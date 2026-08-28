@@ -1,6 +1,7 @@
 "use client";
 
 import { memo, useEffect, useMemo, useRef, useState } from "react";
+import { useValuationListsQuery } from "@platform/app-shared/query/valuation-lists-query";
 import {
   activeValuationListOptions,
   getValuationLists,
@@ -177,17 +178,15 @@ export const FinalOpinionSection = memo(function FinalOpinionSection({
     URL.revokeObjectURL(url);
   };
 
+  // قوائم التقييم من الاستعلام المشترك — كان GET مكرراً مع تبويب المراجعة النهائية.
+  const { data: valuationLists } = useValuationListsQuery();
   useEffect(() => {
-    const config = apiConfig();
-    if (!config) return;
-    void getValuationLists(config).then((res) => {
-      if (!res.ok) return;
-      const bases = activeValuationListOptions(res.data.lists, "valueBases");
-      const premises = activeValuationListOptions(res.data.lists, "premises");
-      if (bases.length) setBasisOptions(bases);
-      if (premises.length) setPremiseOptions(premises);
-    });
-  }, []);
+    if (!valuationLists) return;
+    const bases = activeValuationListOptions(valuationLists.lists, "valueBases");
+    const premises = activeValuationListOptions(valuationLists.lists, "premises");
+    if (bases.length) setBasisOptions(bases);
+    if (premises.length) setPremiseOptions(premises);
+  }, [valuationLists]);
 
   // أساس القيمة دائماً من أمر العمل (PO) — لا نفرض تصفية عند غياب النوع.
   useEffect(() => {

@@ -2,7 +2,7 @@
 
 import { useQueryClient, type QueryClient } from "@tanstack/react-query";
 import type { PageId } from "@platform/types";
-import { loadPendingBourseItems } from "@case-study/mfe";
+import { loadPendingBourseItems } from "@case-study/mfe/lib/prototype/po-intake-storage";
 import { loadPoListRows, loadPropertyListItems } from "@platform/app-shared/prototype/work-orders-read";
 import { FAILURES_CHANGED_EVENT, loadFailuresQuery } from "@failures/mfe";
 import { CASE_STUDY_INFO_ROLES_CHANGED_EVENT, loadCaseStudyInfoRolesConfig } from "@settings/mfe";

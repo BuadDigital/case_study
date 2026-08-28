@@ -28,11 +28,14 @@ const queryDefaults = { staleTime: STALE_MS, gcTime: GC_MS };
 
 /** Loads POs from API and keeps workflow task slots in sync. */
 export async function loadPoRecordsWithTaskSync() {
-  const records = await loadPoRecords();
   // Quiet slot sync: keep primary-data task slots aligned without broadcasting
   // TASKS_CHANGED (that would re-invalidate workflow-tasks on every PO warm
   // and compete with page navigation). Mutating paths already notify.
-  const sync = await syncTasksFromPoRecords({ notify: false });
+  // المزامنة مستقلة عن السجلات — بالتوازي لا تسلسلاً (async-parallel).
+  const [records, sync] = await Promise.all([
+    loadPoRecords(),
+    syncTasksFromPoRecords({ notify: false }),
+  ]);
   if (!sync.ok) {
     throw new Error(sync.error);
   }

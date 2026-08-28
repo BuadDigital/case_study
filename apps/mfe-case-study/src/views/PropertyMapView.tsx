@@ -45,6 +45,16 @@ import type {
   PropertyMapMarker,
 } from "../components/property-map/PropertyMapCanvas";
 
+
+// فهرس على مستوى الوحدة للبذور المعروضة في نافذة العنقود (js-index-maps).
+const SEED_RECORD_BY_PREFIXED_ID = new Map<
+  string,
+  (typeof SEED_COMPARABLES)[number] | (typeof SEED_PROPERTIES)[number]
+>([
+  ...SEED_COMPARABLES.map((r) => [`c:${r.id}`, r] as const),
+  ...SEED_PROPERTIES.map((r) => [`p:${r.id}`, r] as const),
+]);
+
 const PropertyMapCanvas = dynamic(
   () =>
     import("../components/property-map/PropertyMapCanvas").then(
@@ -875,10 +885,7 @@ export function PropertyMapView() {
             </div>
             <ul className="p-1.5">
               {selection.ids.map((id) => {
-                const rec =
-                  id.startsWith("c:")
-                    ? SEED_COMPARABLES.find((r) => `c:${r.id}` === id)
-                    : SEED_PROPERTIES.find((r) => `p:${r.id}` === id);
+                const rec = SEED_RECORD_BY_PREFIXED_ID.get(id);
                 if (!rec) return null;
                 const isComp = "comparableType" in rec;
                 return (

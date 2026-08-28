@@ -19,7 +19,6 @@ import {
   notificationStorageKey,
   pushNotification,
   setNotificationStorageUser,
-  unreadNotificationCount,
   type AppNotification,
 } from "./notification-store";
 import { useValidAuthSession } from "../auth/use-auth-session";
@@ -67,7 +66,8 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
   const value = useMemo<NotificationContextValue>(
     () => ({
       items,
-      unreadCount: unreadNotificationCount(),
+      // من الذاكرة مباشرة — كانت تعيد قراءة/تحليل المخزن كاملاً مع كل تغيّر (js-cache-storage).
+      unreadCount: items.filter((n) => !n.read).length,
       push: pushNotification,
       markRead: markNotificationRead,
       remove: deleteNotification,

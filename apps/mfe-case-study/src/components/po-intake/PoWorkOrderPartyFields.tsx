@@ -1,5 +1,6 @@
 "use client";
 
+import { useMemo } from "react";
 import { type ClientDto } from "@platform/api-client";
 import { RegSelect } from "@platform/app-shared/registration/FormFields";
 import {
@@ -39,6 +40,17 @@ export function PoWorkOrderPartyFields({
 }) {
   const showSubClient = showsSubClientField(assignmentType, clientId);
 
+  // هوية مصفوفة الخيارات كانت تتجدد مع كل رسم وتمسح memo الحقل (rerender-memo).
+  const subClientOptions = useMemo(
+    () =>
+      INFATH_SUB_CLIENT_IDS.map((id) => ({
+        value: id,
+        label:
+          clients.find((c) => c.id === id)?.nameAr ?? "شركة نبر العقارية",
+      })),
+    [clients],
+  );
+
   return (
     <>
       <RegSelect
@@ -68,11 +80,7 @@ export function PoWorkOrderPartyFields({
           required
           value={subClientId || defaultSubClientId()}
           error={subClientError}
-          options={INFATH_SUB_CLIENT_IDS.map((id) => ({
-            value: id,
-            label:
-              clients.find((c) => c.id === id)?.nameAr ?? "شركة نبر العقارية",
-          }))}
+          options={subClientOptions}
           onChange={onSubClientChange}
         />
       ) : null}

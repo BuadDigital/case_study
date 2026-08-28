@@ -52,6 +52,7 @@ import {
   valTableTdClassName,
   valTableThClassName,
 } from "./EvaluatorHtmlPrimitives";
+import { useValuationListsQuery } from "@platform/app-shared/query/valuation-lists-query";
 
 function esgGroupsEqual(a: SpecialistEsgGroup, b: SpecialistEsgGroup): boolean {
   return (
@@ -222,30 +223,21 @@ export function EvaluatorFinalReviewTab({
     ),
   });
 
+  // قوائم التقييم من الاستعلام المشترك — كان GET مكرراً مع قسم الرأي النهائي.
+  const { data: valuationLists } = useValuationListsQuery();
   useEffect(() => {
-    let cancelled = false;
-    const session = getAuthSession();
-    if (!session?.token) return;
-    void getValuationLists({
-      token: session.token,
-      baseUrl: getApiBase(),
-    }).then((res) => {
-      if (cancelled || !res.ok) return;
-      const rows = (res.data.lists?.attachments ?? [])
-        .filter((r) => r.isEnabled)
-        .slice()
-        .sort((a, b) => a.sortOrder - b.sortOrder)
-        .map((r) => ({
-          key: r.key,
-          name: r.name,
-          isRequired: r.isRequired,
-        }));
-      setAttachmentCatalog(rows);
-    });
-    return () => {
-      cancelled = true;
-    };
-  }, []);
+    if (!valuationLists) return;
+    const rows = (valuationLists.lists?.attachments ?? [])
+      .filter((r) => r.isEnabled)
+      .slice()
+      .sort((a, b) => a.sortOrder - b.sortOrder)
+      .map((r) => ({
+        key: r.key,
+        name: r.name,
+        isRequired: r.isRequired,
+      }));
+    setAttachmentCatalog(rows);
+  }, [valuationLists]);
 
   // صب ESG والمرفقات من الأخصائي → مسودة التقرير للطباعة.
   useEffect(() => {

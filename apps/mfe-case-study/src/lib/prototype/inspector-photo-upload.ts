@@ -98,14 +98,14 @@ export async function prefetchInspectorWorkspacePhotos(
   const include = (approved: boolean) =>
     approved || draft.status === "submitted";
 
-  const jobs: Promise<unknown>[] = [];
+  const jobs: (() => Promise<unknown>)[] = [];
 
   for (const def of listServiceAmenityPhotoSlots(draft)) {
     const slot = draft.definedPhotos[def.id];
     if (!slot || slot.none) continue;
     for (const photo of slot.photos) {
       if (!include(photo.approved) || !photo.attachmentId) continue;
-      jobs.push(
+      jobs.push(() =>
         prefetchInspectorPhoto(taskId, `slot:${def.id}:${photo.id}`, {
           fileName: photo.fileName,
           mimeType: photo.mimeType,
@@ -118,7 +118,7 @@ export async function prefetchInspectorWorkspacePhotos(
 
   for (const photo of draft.freePhotos) {
     if (!include(photo.approved) || !photo.attachmentId) continue;
-    jobs.push(
+    jobs.push(() =>
       prefetchInspectorPhoto(taskId, `free:${photo.id}`, {
         fileName: photo.fileName,
         mimeType: photo.mimeType,
@@ -132,28 +132,34 @@ export async function prefetchInspectorWorkspacePhotos(
     draft.featurePhotoAttachments,
   )) {
     if (!attachment?.attachmentId) continue;
-    jobs.push(
-      prefetchInspectorPhoto(taskId, `feature:${key}`, attachment),
-    );
+    jobs.push(() => prefetchInspectorPhoto(taskId, `feature:${key}`, attachment));
   }
 
   for (const [key, attachment] of Object.entries(
     draft.componentPhotoAttachments,
   )) {
     if (!attachment?.attachmentId) continue;
-    jobs.push(
-      prefetchInspectorPhoto(taskId, `component:${key}`, attachment),
-    );
+    jobs.push(() => prefetchInspectorPhoto(taskId, `component:${key}`, attachment));
   }
 
   for (const obs of draft.observations) {
-    if (!obs.photo?.attachmentId) continue;
-    jobs.push(
-      prefetchInspectorPhoto(taskId, `observation:${obs.id}`, obs.photo),
-    );
+    const photo = obs.photo;
+    if (!photo?.attachmentId) continue;
+    jobs.push(() => prefetchInspectorPhoto(taskId, `observation:${obs.id}`, photo));
   }
 
-  await Promise.all(jobs);
+  // سقف تزامن — معاينة بخمسين صورة كانت تطلق كل التنزيلات دفعة واحدة
+  // فتشبع اتصالات المتصفح وتزاحم الطلبات الحرجة (js-request-idle-callback/scout F12).
+  const CONCURRENCY = 5;
+  let cursor = 0;
+  await Promise.all(
+    Array.from({ length: Math.min(CONCURRENCY, jobs.length) }, async () => {
+      while (cursor < jobs.length) {
+        const job = jobs[cursor++]!;
+        await job();
+      }
+    }),
+  );
 }
 
 export type UploadInspectorPhotoOptions = {

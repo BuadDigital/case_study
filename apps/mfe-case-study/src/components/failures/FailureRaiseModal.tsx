@@ -68,20 +68,15 @@ export function FailureRaiseModal({
         raisedByRole,
         specialist,
       });
-      await queryClient.invalidateQueries({
-        queryKey: prototypeKeys.failures(),
-      });
-      await queryClient.invalidateQueries({
-        queryKey: prototypeKeys.operationsTasks(),
-      });
       // poRecords / workflow for shells that filter by active failure — not
       // the whole prototype tree (avoids mass sidebar/finance refetch).
-      await queryClient.invalidateQueries({
-        queryKey: prototypeKeys.workflowTasks(),
-      });
-      await queryClient.invalidateQueries({
-        queryKey: prototypeKeys.poListRows(),
-      });
+      // مفاتيح مستقلة — تُبطل بالتوازي لا تسلسلاً (async-parallel).
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: prototypeKeys.failures() }),
+        queryClient.invalidateQueries({ queryKey: prototypeKeys.operationsTasks() }),
+        queryClient.invalidateQueries({ queryKey: prototypeKeys.workflowTasks() }),
+        queryClient.invalidateQueries({ queryKey: prototypeKeys.poListRows() }),
+      ]);
       showToast("تم رفع التعذر — سيظهر لأخصائي دراسة الحالة.", "success");
       onSubmitted?.();
       onClose();

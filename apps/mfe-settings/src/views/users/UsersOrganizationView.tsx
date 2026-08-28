@@ -350,8 +350,8 @@ export function UsersOrganizationView() {
         userName: result.result.userName,
       });
       setAdding(true);
+      // الإبطال يعيد جلب الاستعلام النشط بنفسه — refetch إضافي كان GET ثانياً مطابقاً.
       await queryClient.invalidateQueries({ queryKey: prototypeKeys.staffUsers() });
-      await refetch();
       showToast("تم إنشاء المستخدم بنجاح.", "success");
     } finally {
       setSaving(false);
@@ -395,8 +395,8 @@ export function UsersOrganizationView() {
         );
         return;
       }
+      // الإبطال يعيد جلب الاستعلام النشط بنفسه — refetch إضافي كان GET ثانياً مطابقاً.
       await queryClient.invalidateQueries({ queryKey: prototypeKeys.staffUsers() });
-      await refetch();
       showToast("تم تعطيل المستخدم.", "success");
     } finally {
       setDeletingId(null);
@@ -422,8 +422,8 @@ export function UsersOrganizationView() {
       }
 
       setEditingUser(null);
+      // الإبطال يعيد جلب الاستعلام النشط بنفسه — refetch إضافي كان GET ثانياً مطابقاً.
       await queryClient.invalidateQueries({ queryKey: prototypeKeys.staffUsers() });
-      await refetch();
       showToast("تم حفظ التعديلات.", "success");
       return null;
     } finally {
@@ -448,8 +448,8 @@ export function UsersOrganizationView() {
         );
         return;
       }
+      // الإبطال يعيد جلب الاستعلام النشط بنفسه — refetch إضافي كان GET ثانياً مطابقاً.
       await queryClient.invalidateQueries({ queryKey: prototypeKeys.staffUsers() });
-      await refetch();
       showToast("تم تفعيل المستخدم.", "success");
     } finally {
       setPendingActionId(null);
@@ -469,8 +469,8 @@ export function UsersOrganizationView() {
         );
         return;
       }
+      // الإبطال يعيد جلب الاستعلام النشط بنفسه — refetch إضافي كان GET ثانياً مطابقاً.
       await queryClient.invalidateQueries({ queryKey: prototypeKeys.staffUsers() });
-      await refetch();
       showToast("تم فك قفل الحساب.", "success");
     } finally {
       setPendingActionId(null);

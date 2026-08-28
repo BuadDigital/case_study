@@ -34,12 +34,16 @@ export async function reconcilePushSubscription(): Promise<void> {
   if (Notification.permission !== "granted") return;
   const config = authConfig();
   if (!config) return;
-  const pushConfig = await getPushConfig(config).catch(() => null);
+  // قراءة الاشتراك المحلي أرخص من نداء الشبكة وتُخرج مبكراً في الغالب —
+  // النداءان مستقلان فيجريان بالتوازي (async-cheap-condition-before-await).
+  const [existing, pushConfig] = await Promise.all([
+    getExistingSubscription(),
+    getPushConfig(config).catch(() => null),
+  ]);
+  if (!existing) return;
   if (!pushConfig?.ok || !pushConfig.data.enabled || !pushConfig.data.publicKey) {
     return;
   }
-  const existing = await getExistingSubscription();
-  if (!existing) return;
   const json = existing.toJSON();
   const keys = json.keys;
   if (!json.endpoint || !keys?.p256dh || !keys?.auth) return;

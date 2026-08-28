@@ -7,5 +7,6 @@
     "./audit": "./src/audit.ts",
     "./notifications": "./src/notifications.ts",
     "./push": "./src/push.ts"
-  }
+  },
+  "sideEffects": false
 }
