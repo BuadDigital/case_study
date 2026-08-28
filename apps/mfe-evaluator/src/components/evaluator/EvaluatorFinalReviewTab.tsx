@@ -122,6 +122,7 @@ export function EvaluatorFinalReviewTab({
   disabled = false,
   property,
   assignmentType,
+  valuationRequestId: knownValuationRequestId,
   onDraftPatch,
   onReportChoicesPatch,
   fieldErrors,
@@ -130,6 +131,8 @@ export function EvaluatorFinalReviewTab({
   disabled?: boolean;
   property?: PoPropertyIntake | null;
   assignmentType?: string | null;
+  /** من صدفة التقييم إن وُجد — يوفّر نداء ensure-open ثانياً لنفس العقار. */
+  valuationRequestId?: string | null;
   onDraftPatch?: (patch: {
     evaluatorPrice?: string;
     forcedSaleDiscountPct?: string;
@@ -175,16 +178,25 @@ export function EvaluatorFinalReviewTab({
 
   // مصادر مرفقات التقرير تحتاج معرّفات مهام الرفع/المعاينة — بدونها لا تُجلب المستندات.
   const { data: workflowTasks } = useWorkflowTasksQuery();
-  const relatedTaskId = (kind: "engineering-survey" | "field-inspection") =>
-    workflowTasks?.find((t) => t.propertyId === propertyId && t.kind === kind)
-      ?.id ?? null;
+  // مسار واحد على قائمة المهام بدل find مرتين في كل تصيير (js-combine-iterations).
+  const { surveyTaskId, inspectionTaskId } = useMemo(() => {
+    let surveyId: string | null = null;
+    let inspectionId: string | null = null;
+    for (const t of workflowTasks ?? []) {
+      if (t.propertyId !== propertyId) continue;
+      if (t.kind === "engineering-survey" && surveyId === null) surveyId = t.id;
+      else if (t.kind === "field-inspection" && inspectionId === null)
+        inspectionId = t.id;
+    }
+    return { surveyTaskId: surveyId, inspectionTaskId: inspectionId };
+  }, [workflowTasks, propertyId]);
   const documentSections = usePropertyDetailDocuments({
     property: property!,
     showDecree: true,
     poNumber: draft.poNumber,
-    surveyTaskId: relatedTaskId("engineering-survey"),
+    surveyTaskId,
     appraisalTaskId: draft.taskId || null,
-    inspectionTaskId: relatedTaskId("field-inspection"),
+    inspectionTaskId,
     enabled: Boolean(property?.id),
   });
   const propertyDocuments = useMemo(
@@ -201,6 +213,11 @@ export function EvaluatorFinalReviewTab({
       }),
     [attachmentCatalog, propertyDocuments, propertyId, specialistKeys],
   );
+  // ترشيح واحد بدل filter مرتين في نفس التصيير + Set بدل includes (js-combine-iterations).
+  const selectedPrintRows = useMemo(() => {
+    const keys = new Set(specialistKeys);
+    return printRows.filter((row) => keys.has(row.key));
+  }, [printRows, specialistKeys]);
 
   useEffect(() => {
     setSpecialistEsg(loadSpecialistEsgInputs(propertyId));
@@ -273,19 +290,24 @@ export function EvaluatorFinalReviewTab({
     }
     setLoading(true);
     setError(null);
-    const open = await ensureOpenValuationRequestByProperty(config, {
-      propId: propertyId.trim(),
-      area: property?.district?.trim() || "—",
-      type: property?.propertyType?.trim() || "—",
-      appraiser: "—",
-    });
-    if (!open.ok) {
-      setLoading(false);
-      setSettings(null);
-      setError("تعذّر فتح طلب التقييم");
-      return;
+    // الصدفة تملك المعرّف سلفاً — ensure-open كتابة create-if-missing لا تُكرَّر عبثاً.
+    let requestId = knownValuationRequestId ?? null;
+    if (!requestId) {
+      const open = await ensureOpenValuationRequestByProperty(config, {
+        propId: propertyId.trim(),
+        area: property?.district?.trim() || "—",
+        type: property?.propertyType?.trim() || "—",
+        appraiser: "—",
+      });
+      if (!open.ok) {
+        setLoading(false);
+        setSettings(null);
+        setError("تعذّر فتح طلب التقييم");
+        return;
+      }
+      requestId = open.data.id;
     }
-    const res = await getValuationApproachSettings(config, open.data.id);
+    const res = await getValuationApproachSettings(config, requestId);
     setLoading(false);
     if (!res.ok) {
       setSettings(null);
@@ -308,7 +330,12 @@ export function EvaluatorFinalReviewTab({
           ? loaded.filter((x) => !isNoExternalSpecialistAssumption(x))
           : loaded,
     );
-  }, [property?.district, property?.propertyType, propertyId]);
+  }, [
+    knownValuationRequestId,
+    property?.district,
+    property?.propertyType,
+    propertyId,
+  ]);
 
   useEffect(() => {
     void loadAssumptions();
@@ -559,8 +586,7 @@ export function EvaluatorFinalReviewTab({
           يحدّدها الأخصائي من مستندات العقار — تظهر هنا للعرض فقط.
         </p>
         <div className="flex flex-col gap-2">
-          {printRows
-            .filter((row) => specialistKeys.includes(row.key))
+          {selectedPrintRows
             .map((row) => {
               const docHint = row.docs[0];
               return (
@@ -588,9 +614,7 @@ export function EvaluatorFinalReviewTab({
               لم يحدد الأخصائي مرفقات للتقرير بعد.
             </p>
           ) : null}
-          {specialistKeys.length > 0 &&
-          printRows.filter((row) => specialistKeys.includes(row.key)).length ===
-            0 ? (
+          {specialistKeys.length > 0 && selectedPrintRows.length === 0 ? (
             <p className="m-0 text-[12px] text-text-3">
               المفاتيح المحددة غير موجودة في قوائم المرفقات الحالية.
             </p>

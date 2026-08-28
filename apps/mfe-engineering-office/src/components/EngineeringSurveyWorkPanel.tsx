@@ -56,14 +56,10 @@ import {
 } from "../lib/engineering-survey-validation";
 import { finalizeEngineeringSurveySubmission } from "../lib/finalize-engineering-survey-submission";
 import type { EngineeringSurveyWindowHostRefObject } from "../lib/engineering-survey-window-host";
-import {
-  extractSurveySketchFromPdf,
-  sketchExtractToEmptyFieldsPatch,
-  sketchNatureFieldsFromExtract,
-  sketchNatureFieldsFromDeedForm,
-  applyNatureSketchPatch,
-  type SurveySketchExtractResult,
-} from "../lib/engineering-survey-sketch-extract";
+// محلل الكروكي (~٢٣٠٠ سطر + محمّل pdfjs) يُجلب عند رفع PDF فقط — الاستيراد
+// الساكن كان يضعه في حزمة المسار الأولى لصفحتي الرفع المساحي (bundle-conditional).
+import type { SurveySketchExtractResult } from "../lib/engineering-survey-sketch-extract";
+const loadSketchExtract = () => import("../lib/engineering-survey-sketch-extract");
 import { EngineeringSurveyChecklist } from "./EngineeringSurveyChecklist";
 import { EngineeringSurveyPropertySummary } from "./EngineeringSurveyPropertySummary";
 import {
@@ -618,6 +614,8 @@ export function EngineeringSurveyWorkPanel({
 
         // Extraction is best-effort only — never fail the upload after the PDF is saved.
         try {
+          const { extractSurveySketchFromPdf, sketchExtractToEmptyFieldsPatch } =
+            await loadSketchExtract();
           // Croquis PDF only — no property/بورصة mix-in
           const extracted = await extractSurveySketchFromPdf(file);
           setLastSketchExtract(extracted);
@@ -938,25 +936,33 @@ export function EngineeringSurveyWorkPanel({
 
                     // عند «لا»: عبّئ أوصاف/أطوال الطبيعة من الكروكي (بدون مساحة)
                     if (next === "no" && localFields) {
-                      const fromExtract = lastSketchExtract
-                        ? sketchNatureFieldsFromExtract(lastSketchExtract)
-                        : sketchNatureFieldsFromDeedForm(localFields);
+                      void loadSketchExtract().then(
+                        ({
+                          sketchNatureFieldsFromExtract,
+                          sketchNatureFieldsFromDeedForm,
+                          applyNatureSketchPatch,
+                        }) => {
+                          const fromExtract = lastSketchExtract
+                            ? sketchNatureFieldsFromExtract(lastSketchExtract)
+                            : sketchNatureFieldsFromDeedForm(localFields);
 
-                      const { patch: naturePatch, appliedCount: natureN } =
-                        applyNatureSketchPatch(fromExtract, localFields, true);
-                      if (natureN > 0) {
-                        setLocalFields((prev) =>
-                          prev ? { ...prev, ...naturePatch } : prev,
-                        );
-                        schedulePersist(naturePatch);
-                        setSketchExtractNote(
-                          `تم تعبئة ${natureN} حقلاً حسب الطبيعة — المساحة الإجمالية يدوياً.`,
-                        );
-                        showToast(
-                          `طبيعة: ${natureN} حقل · المساحة يدوياً`,
-                          "success",
-                        );
-                      }
+                          const { patch: naturePatch, appliedCount: natureN } =
+                            applyNatureSketchPatch(fromExtract, localFields, true);
+                          if (natureN > 0) {
+                            setLocalFields((prev) =>
+                              prev ? { ...prev, ...naturePatch } : prev,
+                            );
+                            schedulePersist(naturePatch);
+                            setSketchExtractNote(
+                              `تم تعبئة ${natureN} حقلاً حسب الطبيعة — المساحة الإجمالية يدوياً.`,
+                            );
+                            showToast(
+                              `طبيعة: ${natureN} حقل · المساحة يدوياً`,
+                              "success",
+                            );
+                          }
+                        },
+                      );
                     }
                   }}
                 />

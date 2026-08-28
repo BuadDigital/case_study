@@ -58,11 +58,14 @@ function daysSince(iso: string | null | undefined): number | null {
   return Math.max(0, Math.floor((Date.now() - t) / 86_400_000));
 }
 
+/** منسّق مشترك — إنشاء Intl.DateTimeFormat لكل صف مكلف */
+const DATE_EN = new Intl.DateTimeFormat("en-GB");
+
 function formatDateNote(iso: string | null | undefined): string | null {
   if (!iso) return null;
   const t = Date.parse(iso);
   if (Number.isNaN(t)) return null;
-  return new Date(t).toLocaleDateString("en-GB");
+  return DATE_EN.format(t);
 }
 
 function href(target: FinanceNavTarget): string {

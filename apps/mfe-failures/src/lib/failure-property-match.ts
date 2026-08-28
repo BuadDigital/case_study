@@ -12,59 +12,73 @@ export type FailurePropertyRef = {
   deedNumber?: string;
 };
 
-function normalizedIds(values: Array<string | undefined>): string[] {
-  return [
-    ...new Set(
-      values
-        .map((value) => value?.trim())
-        .filter((value): value is string => Boolean(value)),
-    ),
-  ];
-}
-
+// مطابقة بلا تخصيص كائنات — تُستدعى لكل (عقار × تعذر) في تحميل قوائم العقارات،
+// وكانت Set + مصفوفتان لكل مقارنة (js-perf).
 export function failureMatchesProperty(
   failure: FailureRecord,
   ref: FailurePropertyRef,
 ): boolean {
   if (failure.poNumber.trim() !== ref.poNumber.trim()) return false;
 
-  const refIds = normalizedIds([ref.propertyId, ref.deedNumber]);
-  const failureIds = normalizedIds([failure.propertyId, failure.deedNumber]);
-  return failureIds.some((id) => refIds.includes(id));
+  const refProp = ref.propertyId?.trim() ?? "";
+  const refDeed = ref.deedNumber?.trim() ?? "";
+  const failureProp = failure.propertyId?.trim() ?? "";
+  const failureDeed = failure.deedNumber?.trim() ?? "";
+  if (failureProp && (failureProp === refProp || failureProp === refDeed)) {
+    return true;
+  }
+  return Boolean(
+    failureDeed && (failureDeed === refProp || failureDeed === refDeed),
+  );
 }
 
 export function failuresForProperty(
   failures: FailureRecord[],
   ref: FailurePropertyRef,
 ): FailureRecord[] {
-  return failures
-    .filter((failure) => failureMatchesProperty(failure, ref))
-    .sort(
-      (a, b) =>
-        new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime(),
-    );
+  const matched: FailureRecord[] = [];
+  for (const failure of failures) {
+    if (failureMatchesProperty(failure, ref)) matched.push(failure);
+  }
+  if (matched.length > 1) {
+    matched.sort((a, b) => Date.parse(b.updatedAt) - Date.parse(a.updatedAt));
+  }
+  return matched;
+}
+
+/** أحدث تعذر مطابق يحقق الشرط — مسار واحد بلا filter/sort (js-min-max-loop). */
+function newestMatchingFailure(
+  failures: FailureRecord[],
+  ref: FailurePropertyRef,
+  matchesStatus: (status: FailureRecord["status"]) => boolean,
+): FailureRecord | null {
+  let best: FailureRecord | null = null;
+  let bestTime = Number.NEGATIVE_INFINITY;
+  for (const failure of failures) {
+    if (!matchesStatus(failure.status)) continue;
+    if (!failureMatchesProperty(failure, ref)) continue;
+    const parsed = Date.parse(failure.updatedAt);
+    const time = Number.isNaN(parsed) ? Number.NEGATIVE_INFINITY : parsed;
+    if (best === null || time > bestTime) {
+      best = failure;
+      bestTime = time;
+    }
+  }
+  return best;
 }
 
 export function activeFailureForProperty(
   failures: FailureRecord[],
   ref: FailurePropertyRef,
 ): FailureRecord | null {
-  return (
-    failuresForProperty(failures, ref).find((failure) =>
-      isActiveFailureStatus(failure.status),
-    ) ?? null
-  );
+  return newestMatchingFailure(failures, ref, isActiveFailureStatus);
 }
 
 export function blockingFailureForProperty(
   failures: FailureRecord[],
   ref: FailurePropertyRef,
 ): FailureRecord | null {
-  return (
-    failuresForProperty(failures, ref).find((failure) =>
-      isBlockingFailureStatus(failure.status),
-    ) ?? null
-  );
+  return newestMatchingFailure(failures, ref, isBlockingFailureStatus);
 }
 
 export function historicalFailuresForProperty(

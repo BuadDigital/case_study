@@ -216,12 +216,22 @@ export async function loadQueuedDraftPayload<T>(
   return readLocalDraftPayload<T>(userId, kind, taskId);
 }
 
+/** Persistent storage only needs one request per session, not one per sync tick. */
+let persistentStorageRequest: Promise<boolean> | null = null;
+
+function requestPersistentStorageOnce(): Promise<boolean> {
+  if (!persistentStorageRequest) {
+    persistentStorageRequest = requestPersistentStorage();
+  }
+  return persistentStorageRequest;
+}
+
 export async function syncOfflineQueue(
   deps: OfflineSyncDeps,
 ): Promise<{ pending: number; failed: number }> {
   const userId = currentOfflineUserId();
   if (!userId) return { pending: 0, failed: 0 };
-  await requestPersistentStorage();
+  await requestPersistentStorageOnce();
   const result = await runOfflineSync(userId, deps);
   if (result.pending === 0 && result.failed === 0 && navigator.onLine) {
     await clearOfflineLease(userId);

@@ -1,14 +1,13 @@
-"use client";
+// مكوّن خادم — كانت الصفحة "use client" فقط لفك params (server-side).
+import { PartyActiveTaskWorkPage } from "@case-study/mfe/views/PartyActiveTaskWorkPage";
+import { decodeTaskParam } from "@case-study/mfe/lib/my-task-routes";
 
-import { use } from "react";
-import { PartyActiveTaskWorkPage, decodeTaskParam } from "@case-study/mfe";
-
-export default function PropertyInspectionWorkPage({
+export default async function PropertyInspectionWorkPage({
   params,
 }: {
   params: Promise<{ taskId: string }>;
 }) {
-  const { taskId } = use(params);
+  const { taskId } = await params;
   return (
     <PartyActiveTaskWorkPage
       pageId="property-inspection"

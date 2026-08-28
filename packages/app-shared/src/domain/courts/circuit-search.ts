@@ -158,9 +158,15 @@ export function circuitSearchRank(
 ): number | null {
   const q = query.trim();
   if (!q) return 0;
+  return rankWithNormalizedQuery(digitsOnly(q), stripArabicAl(q), item);
+}
 
-  const qDigits = digitsOnly(q);
-  const qText = stripArabicAl(q);
+/** تطبيع الاستعلام مرة واحدة خارج الحلقة — كان يعاد (٥+ تمريرات regex) لكل عنصر. */
+function rankWithNormalizedQuery(
+  qDigits: string,
+  qText: string,
+  item: CircuitSearchItem,
+): number | null {
   const hay = circuitHaystack(item);
   const noDigits = digitsOnly(item.circuitNo);
 
@@ -196,16 +202,18 @@ export function filterAndRankCircuits<T extends CircuitSearchItem>(
 ): T[] {
   const q = query.trim();
   if (!q) {
-    return [...circuits].sort((a, b) =>
-      circuitSortKey(a).localeCompare(circuitSortKey(b), "en", {
-        numeric: true,
-      }),
-    );
+    // decorate-sort-undecorate — كان المقارن يعيد اشتقاق المفتاح (regex) لطرفي كل مقارنة.
+    return circuits
+      .map((item) => ({ item, key: circuitSortKey(item) }))
+      .sort((a, b) => a.key.localeCompare(b.key, "en", { numeric: true }))
+      .map((r) => r.item);
   }
 
+  const qDigits = digitsOnly(q);
+  const qText = stripArabicAl(q);
   const ranked: { item: T; rank: number; key: string }[] = [];
   for (const item of circuits) {
-    const rank = circuitSearchRank(q, item);
+    const rank = rankWithNormalizedQuery(qDigits, qText, item);
     if (rank === null) continue;
     ranked.push({ item, rank, key: circuitSortKey(item) });
   }

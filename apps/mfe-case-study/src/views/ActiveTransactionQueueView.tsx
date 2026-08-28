@@ -30,6 +30,7 @@ import {
   TickingRemainingTimeCell,
 } from "@case-study/mfe/components/ui/RemainingTimeCell";
 import { useTickingMinute } from "@platform/app-shared/hooks/use-ticking-now";
+import { useViewportDesktop } from "@platform/app-shared/hooks/use-viewport-desktop";
 import type { RowMoreMenuItem } from "@case-study/mfe/components/ui/RowMoreMenu";
 import { buildActiveQueueRowMoreItems } from "../lib/prototype/active-queue-row-menu";
 import { CopyFromPriorTransactionModal } from "../components/po-intake/CopyFromPriorTransactionModal";
@@ -51,7 +52,6 @@ import type { PageId, RoleId } from "@platform/types";
 import { poPropertiesPath, poPropertyDetailPath } from "../lib/po-routes";
 import {
   buildDistributionTableRow,
-  buildPrimaryDataTableRow,
   compareQueueTasksOldestFirst,
   compareQueueTasksNewestFirst,
   compareQueueTasksByUpdatedNewestFirst,
@@ -86,7 +86,7 @@ import {
   buildDistributionQueueRowMeta,
   buildPrimaryQueueRowMeta,
   filterDistributionQueueRows,
-  filterPrimaryQueueRows,
+  filterPrimaryQueueRowMeta,
   resolveQueueTaskStatusBadge,
   uniqueSortedLabels,
 } from "../lib/prototype/active-queue-list-filters";
@@ -281,6 +281,9 @@ export function ActiveTransactionQueueView({
   // المؤقت نفسها، فلا يعاد بناء كل الصفوف كل ثانية (rerender-defer-reads).
   const nowMinuteMs = useTickingMinute();
   const now = useMemo(() => new Date(nowMinuteMs), [nowMinuteMs]);
+  // بعد الترطيب تركب شجرة واحدة فقط (بطاقات أو جدول) — display:none كان يخفي
+  // الرسم بينما الصفوف تُبنى مرتين في كل تصيير.
+  const isDesktopViewport = useViewportDesktop();
   const [panelOpen, setPanelOpen] = useState(() => Boolean(selectedId));
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
@@ -794,6 +797,44 @@ export function ActiveTransactionQueueView({
   // (rerender-use-deferred-value) — لا شبكة هنا، ترشيح محلي بحت.
   const deferredSearch = useDeferredValue(search);
 
+  // meta الصفوف المرشّحة — الجداول والبطاقات تقرأ الصف المبني منها بدل إعادة
+  // بناء buildPrimaryDataTableRow ٣-٤ مرات لكل مهمة في كل تصيير (js-combine-iterations).
+  const filteredPrimaryMeta = useMemo(() => {
+    if (isAllTransactionsTable || isDistributionTable) return [];
+    if (isPropertyAppraisalTable) {
+      const q = deferredSearch.trim();
+      const statusValue =
+        APPRAISAL_STATUS_FILTERS.find((o) => o.label === statusFilter)?.value ??
+        "";
+      return primaryRowMeta.filter((meta) => {
+        const cityDistrict = [meta.row.city, meta.row.district]
+          .filter((v) => v && v !== "—")
+          .join(" — ");
+        const hay = `${meta.row.deedLabel} ${cityDistrict} ${meta.row.propertySlot}`;
+        if (q && !hay.includes(q)) return false;
+        if (statusValue) {
+          const group = appraiserQueueStatusGroup(meta.task, tasks ?? []);
+          if (group !== statusValue) return false;
+        }
+        return true;
+      });
+    }
+    return filterPrimaryQueueRowMeta(primaryRowMeta, {
+      search: deferredSearch,
+      statusFilter,
+      typeFilter,
+    });
+  }, [
+    isAllTransactionsTable,
+    isDistributionTable,
+    isPropertyAppraisalTable,
+    primaryRowMeta,
+    tasks,
+    deferredSearch,
+    statusFilter,
+    typeFilter,
+  ]);
+
   const filteredListed = useMemo(() => {
     if (isAllTransactionsTable) {
       return filterAllTransactionsQueueRows(allTransactionsRowMeta, {
@@ -808,43 +849,13 @@ export function ActiveTransactionQueueView({
         typeFilter,
       });
     }
-    if (isPropertyAppraisalTable) {
-      const q = deferredSearch.trim();
-      const statusValue =
-        APPRAISAL_STATUS_FILTERS.find((o) => o.label === statusFilter)?.value ??
-        "";
-      return listed.filter((task) => {
-        const record = poByNumber.get(task.poNumber.trim());
-        const property = findPropertyForTask(record, task);
-        const row = buildPrimaryDataTableRow(task, property, record, now);
-        const cityDistrict = [row.city, row.district]
-          .filter((v) => v && v !== "—")
-          .join(" — ");
-        const hay = `${row.deedLabel} ${cityDistrict} ${row.propertySlot}`;
-        if (q && !hay.includes(q)) return false;
-        if (statusValue) {
-          const group = appraiserQueueStatusGroup(task, tasks ?? []);
-          if (group !== statusValue) return false;
-        }
-        return true;
-      });
-    }
-    return filterPrimaryQueueRows(primaryRowMeta, {
-      search: deferredSearch,
-      statusFilter,
-      typeFilter,
-    });
+    return filteredPrimaryMeta.map((meta) => meta.task);
   }, [
     isAllTransactionsTable,
     isDistributionTable,
-    isPropertyAppraisalTable,
     allTransactionsRowMeta,
     distributionRowMeta,
-    primaryRowMeta,
-    listed,
-    poByNumber,
-    now,
-    tasks,
+    filteredPrimaryMeta,
     deferredSearch,
     statusFilter,
     typeFilter,
@@ -1052,6 +1063,8 @@ export function ActiveTransactionQueueView({
   );
 
   const mobileQueueCardItems = useMemo((): ActiveQueueMobileCardItem[] => {
+    // شجرة الجوال لا تركب على الديسكتوب — لا داعي لبناء عناصرها.
+    if (isDesktopViewport === true) return [];
     if (isPropertyInspectionQueue) return [];
 
     if (isAllTransactionsTable) {
@@ -1124,10 +1137,7 @@ export function ActiveTransactionQueueView({
       });
     }
 
-    return filteredListed.map((task) => {
-      const record = poByNumber.get(task.poNumber.trim());
-      const property = findPropertyForTask(record, task);
-      const row = buildPrimaryDataTableRow(task, property, record, now);
+    return filteredPrimaryMeta.map(({ task, record, property, row }) => {
       const badge = resolveTaskBadge(task);
       const tone = toneFromLegacyBadge(badge?.className);
       const timer = formatRemainingDuration(record?.dueDateAt ?? "", now);
@@ -1176,11 +1186,13 @@ export function ActiveTransactionQueueView({
       };
     });
   }, [
+    isDesktopViewport,
     isPropertyInspectionQueue,
     isAllTransactionsTable,
     isDistributionTable,
     filteredAllTxMeta,
     filteredListed,
+    filteredPrimaryMeta,
     poByNumber,
     now,
     resolveRowMoreItems,
@@ -1221,7 +1233,7 @@ export function ActiveTransactionQueueView({
           ) : (
             <>
               {queueToolbar}
-              {isPropertyInspectionQueue ? (
+              {isDesktopViewport === true ? null : isPropertyInspectionQueue ? (
                 <div className="pb-3 lg:hidden max-lg:px-0">
                   <InspectorMobileQueue
                     tasks={filteredListed}
@@ -1249,6 +1261,7 @@ export function ActiveTransactionQueueView({
                   />
                 </div>
               )}
+              {isDesktopViewport === false ? null : (
               <div
                 className={cn(
                   queueTableWrapClassName,
@@ -1289,18 +1302,14 @@ export function ActiveTransactionQueueView({
                 ) : isEngineeringSurveyTable ? (
                   <EngineeringSurveyQueueTable
                     ctx={rowCtx}
-                    filteredListed={filteredListed}
-                    poByNumber={poByNumber}
-                    now={now}
+                    filteredMeta={filteredPrimaryMeta}
                     resolveTaskBadge={resolveTaskBadge}
                     statusColumnLabel={config.statusColumnLabel}
                   />
                 ) : isPropertyAppraisalTable ? (
                   <PropertyAppraisalQueueTable
                     ctx={rowCtx}
-                    filteredListed={filteredListed}
-                    poByNumber={poByNumber}
-                    now={now}
+                    filteredMeta={filteredPrimaryMeta}
                     tasks={tasks ?? []}
                     openPropertyDetail={openPropertyDetailFromQueue}
                     statusColumnLabel={config.statusColumnLabel}
@@ -1308,15 +1317,14 @@ export function ActiveTransactionQueueView({
                 ) : (
                   <PrimaryQueueTable
                     ctx={rowCtx}
-                    filteredListed={filteredListed}
-                    poByNumber={poByNumber}
-                    now={now}
+                    filteredMeta={filteredPrimaryMeta}
                     primaryHasLocation={primaryHasLocation}
                     renderStatusOrRemaining={renderStatusOrRemaining}
                     statusColumnLabel={config.statusColumnLabel}
                   />
                 )}
               </div>
+              )}
               <QueueTableHint
                 className={cn(
                   "hidden lg:block",

@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useDeferredValue, useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { fmtMax } from "@platform/app-shared/format/number";
 import { prototypeKeys } from "@platform/app-shared/query/prototype-keys";
@@ -101,6 +101,8 @@ export function FinancePartyBillingStatements({
     focusStatementId,
   );
   const [duesSearch, setDuesSearch] = useState("");
+  /** قيمة مؤجَّلة للفلترة — إدخال البحث يبقى فورياً دون حجب الكتابة */
+  const deferredDuesSearch = useDeferredValue(duesSearch);
   const [disbursementVoucher, setDisbursementVoucher] = useState("");
   const [transferReference, setTransferReference] = useState("");
   const [receiptRef, setReceiptRef] = useState("");
@@ -158,7 +160,7 @@ export function FinancePartyBillingStatements({
   }, [allStatements, mode]);
 
   const filteredDues = useMemo(() => {
-    const needle = duesSearch.trim().toLowerCase();
+    const needle = deferredDuesSearch.trim().toLowerCase();
     let list = readyLines;
     if (needle) {
       list = list.filter((l) => {
@@ -173,7 +175,7 @@ export function FinancePartyBillingStatements({
       if (aa >= 0 && bb >= 0 && aa !== bb) return bb - aa;
       return (a.propertyLabel || "").localeCompare(b.propertyLabel || "", "ar");
     });
-  }, [readyLines, duesSearch]);
+  }, [readyLines, deferredDuesSearch]);
 
   /** البنود القابلة للتحديد (صافي > صفر) — تُحسب مرة بدل تكرار filter */
   const payableDues = useMemo(
@@ -552,7 +554,7 @@ export function FinancePartyBillingStatements({
             <div className={finCard}>
               <div className={finEmpty}>
                 <div className={finEmptyT}>
-                  {duesSearch.trim()
+                  {deferredDuesSearch.trim()
                     ? "لا بنود مطابقة للبحث"
                     : "لا مستحقات قائمة — كل البنود مُدرجة في مستندات صرف"}
                 </div>

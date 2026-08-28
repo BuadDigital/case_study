@@ -61,7 +61,9 @@ import {
   valuePremiseLabelArForAssignment,
 } from "@platform/app-shared/prototype/assignment-valuation-defaults";
 import { formatValuationReportUsers } from "../../lib/evaluator/valuation-report-users";
-import dynamic from "next/dynamic";
+// استيراد ساكن — اللوحة هي محتوى التبويب الافتراضي نفسه، وكان dynamic يضيف
+// جولة جلب متسلسلة بعد الترطيب قبل أن يُرسم المحتوى الرئيس (bundle-dynamic-imports).
+import { EvaluatorComparableSelectionPanel } from "./EvaluatorComparableSelectionPanel";
 import { inspectionFactChips } from "./EvaluatorInspectionFactsSection";
 import { computePropertyTotal } from "../../lib/evaluator/value-estimation";
 import {
@@ -75,13 +77,8 @@ import { apiConfig } from "@platform/app-shared/auth/api-config";
 
 const UNUSED = "__unused__";
 
-const EvaluatorComparableSelectionPanel = dynamic(
-  () =>
-    import("./EvaluatorComparableSelectionPanel").then(
-      (m) => m.EvaluatorComparableSelectionPanel,
-    ),
-  { ssr: false },
-);
+// مرجع ثابت — [] جديدة كل تصيير تكسر اعتماديات الـmemo أدناه.
+const EMPTY_CLIENTS: ClientDto[] = [];
 
 function enabledList(
   lists: Record<string, ValuationListItemDto[]> | undefined,
@@ -190,16 +187,6 @@ export function EvaluatorValuationReportTab({
   submitting?: boolean;
   showSubmit?: boolean;
 }) {
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [org, setOrg] = useState<OrganizationSettingsDto | null>(null);
-  const [lists, setLists] = useState<ValuationListsDto | null>(null);
-  const [inspector, setInspector] = useState<InspectorWorkspaceDraft | null>(
-    null,
-  );
-  const [primaryPhoto, setPrimaryPhoto] =
-    useState<PropertyDetailDocumentEntry | null>(null);
-  const [clients, setClients] = useState<ClientDto[]>([]);
   const [specialistKeys, setSpecialistKeys] = useState<string[]>(() =>
     loadSpecialistPrintAttachmentKeys(property?.id ?? draft.propertyId),
   );
@@ -259,21 +246,20 @@ export function EvaluatorValuationReportTab({
   });
   const tabBundle = tabQuery.data;
 
-  useEffect(() => {
-    if (!tabBundle) return;
-    if (tabBundle.authError) {
-      setError("يلزم تسجيل الدخول");
-      setLoading(false);
-      return;
-    }
-    setOrg(tabBundle.org);
-    if (tabBundle.lists) setLists(tabBundle.lists);
-    else if (tabBundle.listsFailed) setError("تعذّر تحميل قوائم التقييم");
-    setClients(tabBundle.clients);
-    setInspector(tabBundle.inspector);
-    setPrimaryPhoto(tabBundle.primaryPhoto);
-    setLoading(false);
-  }, [tabBundle]);
+  // اشتقاق مباشر من الاستعلام — كانت سبع مرايا state تكتبها مؤثر واحد
+  // فتضيف commit إضافياً مع كل وصول بيانات (rerender-derived-state-no-effect).
+  const bundleAuthError = Boolean(tabBundle?.authError);
+  const loading = tabQuery.isPending;
+  const error = bundleAuthError
+    ? "يلزم تسجيل الدخول"
+    : tabBundle && !tabBundle.lists && tabBundle.listsFailed
+      ? "تعذّر تحميل قوائم التقييم"
+      : null;
+  const org = !bundleAuthError ? (tabBundle?.org ?? null) : null;
+  const lists = !bundleAuthError ? (tabBundle?.lists ?? null) : null;
+  const inspector = !bundleAuthError ? (tabBundle?.inspector ?? null) : null;
+  const primaryPhoto = !bundleAuthError ? (tabBundle?.primaryPhoto ?? null) : null;
+  const clients = (!bundleAuthError ? tabBundle?.clients : undefined) ?? EMPTY_CLIENTS;
 
   const vr = useMemo(
     () => ({ ...REPORT_DEFAULTS, ...(org?.valuationReport ?? {}) }),

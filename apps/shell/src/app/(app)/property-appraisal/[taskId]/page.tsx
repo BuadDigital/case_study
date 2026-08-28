@@ -1,20 +1,12 @@
-"use client";
+// مكوّن خادم — كانت الصفحة "use client" فقط لفك params (server-side).
+import { decodeTaskParam } from "@case-study/mfe/lib/my-task-routes";
+import { PropertyAppraisalWorkPageClient } from "../../../../components/party-tasks/PropertyAppraisalWorkPageClient";
 
-import { use } from "react";
-import { PartyActiveTaskWorkPage, decodeTaskParam } from "@case-study/mfe";
-import { partyAppraisalExtensions } from "@evaluator/mfe/extensions/party-appraisal-extensions";
-
-export default function PropertyAppraisalWorkPage({
+export default async function PropertyAppraisalWorkPage({
   params,
 }: {
   params: Promise<{ taskId: string }>;
 }) {
-  const { taskId } = use(params);
-  return (
-    <PartyActiveTaskWorkPage
-      pageId="property-appraisal"
-      taskId={decodeTaskParam(taskId)}
-      appraisalExtensions={partyAppraisalExtensions}
-    />
-  );
+  const { taskId } = await params;
+  return <PropertyAppraisalWorkPageClient taskId={decodeTaskParam(taskId)} />;
 }

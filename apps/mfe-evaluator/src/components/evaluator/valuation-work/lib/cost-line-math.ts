@@ -63,8 +63,13 @@ export function costGroupOf(line: ValuationCostLineDto): "area" | "extra" {
 export function costLineComputed(
   line: ValuationCostLineDto,
   all: ValuationCostLineDto[],
+  // null = «معروف أنه غائب» — يوفّر find لكل بند حين يمرره المستدعي (js-perf).
+  firstFloorHint?: ValuationCostLineDto | null,
 ) {
-  const firstFloor = all.find((l) => l.itemKey === "first_floor");
+  const firstFloor =
+    firstFloorHint === undefined
+      ? all.find((l) => l.itemKey === "first_floor")
+      : (firstFloorHint ?? undefined);
   const isRepeated = line.itemKey === "repeated_floors";
   const isLump = (line.unit || "sqm") === "lump";
   const base = isRepeated

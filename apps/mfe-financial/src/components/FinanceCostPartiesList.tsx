@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useDeferredValue, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { fmtMax } from "@platform/app-shared/format/number";
 import { prototypeKeys } from "@platform/app-shared/query/prototype-keys";
@@ -86,6 +86,8 @@ export function FinanceCostPartiesList({
   ) => void;
 }) {
   const [q, setQ] = useState("");
+  /** قيمة مؤجَّلة للفلترة — إدخال البحث يبقى فورياً دون حجب الكتابة */
+  const deferredQ = useDeferredValue(q);
   const { data: staffResult } = useStaffUsersQuery();
   const staffUsers = staffResult?.users ?? EMPTY_STAFF_USERS;
 
@@ -111,7 +113,7 @@ export function FinanceCostPartiesList({
   );
 
   const filtered = useMemo(() => {
-    const needle = q.trim().toLowerCase();
+    const needle = deferredQ.trim().toLowerCase();
     if (!needle) return parties;
     return parties.filter(
       (p) =>
@@ -119,7 +121,7 @@ export function FinanceCostPartiesList({
         p.assigneeId.toLowerCase().includes(needle) ||
         p.taskKindLabel.toLowerCase().includes(needle),
     );
-  }, [parties, q]);
+  }, [parties, deferredQ]);
 
   const pending =
     readyQuery.isPending || statementsQuery.isPending;

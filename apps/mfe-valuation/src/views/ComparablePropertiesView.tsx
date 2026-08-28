@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   createComparableProperty,
   deactivateComparableProperty,
@@ -43,6 +43,10 @@ const COMPARABLE_USAGE_OPTIONS = [
   "مختلط",
 ] as const;
 
+// إنشاء Intl.NumberFormat مكلف — مثيل واحد للوحدة بدل مثيلين لكل صف
+// في قائمة المئة (js-cache-function-results).
+const SAR_FORMAT = new Intl.NumberFormat("ar-SA");
+
 function emptyForm(): UpsertComparablePropertyRequest {
   return {
     comparablePropertyType: "",
@@ -66,48 +70,11 @@ function emptyForm(): UpsertComparablePropertyRequest {
   };
 }
 
-/**
- * Company-wide comparable bank CRUD.
- * Selection / adopt into a valuation request lives on the appraiser workspace (المقارنات tab).
- */
-export function ComparablePropertiesView() {
+/** نموذج الإضافة بحالته المحلية — كتابة حقل هنا كانت تعيد تصيير بطاقات القائمة المئة (rerender-defer-reads). */
+function AddComparableForm({ onCreated }: { onCreated: () => void }) {
   const { showToast } = useToast();
-  const [rows, setRows] = useState<ComparablePropertyDto[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [q, setQ] = useState("");
   const [form, setForm] = useState<UpsertComparablePropertyRequest>(emptyForm);
-  const [showForm, setShowForm] = useState(false);
-  // ق-3: محرر الوسوم — صف واحد مفتوح في كل مرة.
-  const [tagEditId, setTagEditId] = useState<string | null>(null);
-  const [tagDraft, setTagDraft] = useState({
-    reliabilityTag: "normal",
-    isDuplicateTagged: false,
-    tagRationale: "",
-  });
-
-  const reload = useCallback(async () => {
-    const config = apiConfig();
-    if (!config) {
-      setLoading(false);
-      setError("يلزم تسجيل الدخول");
-      return;
-    }
-    setLoading(true);
-    const res = await listComparableProperties(config, { q: q || undefined, take: 100 });
-    setLoading(false);
-    if (!res.ok) {
-      setError("تعذّر تحميل بنك المقارنات");
-      return;
-    }
-    setError(null);
-    setRows(res.data);
-  }, [q]);
-
-  useEffect(() => {
-    void reload();
-  }, [reload]);
+  const [saving, setSaving] = useState(false);
 
   async function onCreate() {
     const config = apiConfig();
@@ -129,24 +96,298 @@ export function ComparablePropertiesView() {
       anomaly ? "error" : "success",
     );
     setForm(emptyForm());
-    setShowForm(false);
-    await reload();
+    onCreated();
   }
 
-  function openTagEditor(row: ComparablePropertyDto) {
-    setTagEditId((cur) => (cur === row.id ? null : row.id));
-    setTagDraft({
-      reliabilityTag: row.reliabilityTag || "normal",
-      isDuplicateTagged: row.isDuplicateTagged,
-      tagRationale: row.tagRationale ?? "",
-    });
-  }
+  return (
+    <div className="space-y-3 rounded-lg border border-border bg-surface p-3">
+      <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+        <FormGroup>
+          <Label className="text-[10px]">نوع العقار المقارن *</Label>
+          {/* ق-3/5: قائمة مغلقة = قائمة نوع العقار محل التقييم */}
+          <Select
+            value={form.comparablePropertyType}
+            onChange={(e) =>
+              setForm((f) => ({
+                ...f,
+                comparablePropertyType: e.target.value,
+              }))
+            }
+            className="text-xs"
+          >
+            <option value="">— اختر —</option>
+            {COMPARABLE_TYPE_OPTIONS.map((t) => (
+              <option key={t} value={t}>
+                {t}
+              </option>
+            ))}
+            {form.comparablePropertyType &&
+            !COMPARABLE_TYPE_OPTIONS.includes(
+              form.comparablePropertyType as (typeof COMPARABLE_TYPE_OPTIONS)[number],
+            ) ? (
+              <option value={form.comparablePropertyType}>
+                {form.comparablePropertyType} (قديم)
+              </option>
+            ) : null}
+          </Select>
+        </FormGroup>
+        <FormGroup>
+          <Label className="text-[10px]">استخدام المقارن *</Label>
+          <Select
+            value={form.usage ?? ""}
+            onChange={(e) =>
+              setForm((f) => ({ ...f, usage: e.target.value }))
+            }
+            className="text-xs"
+          >
+            <option value="">— اختر —</option>
+            {COMPARABLE_USAGE_OPTIONS.map((u) => (
+              <option key={u} value={u}>
+                {u}
+              </option>
+            ))}
+          </Select>
+        </FormGroup>
+        <FormGroup>
+          <Label className="text-[10px]">نوع العملية *</Label>
+          <Select
+            value={form.transactionKind}
+            onChange={(e) =>
+              setForm((f) => ({ ...f, transactionKind: e.target.value }))
+            }
+            className="text-xs"
+          >
+            <option value="offer">عرض</option>
+            <option value="executed">تنفيذ</option>
+          </Select>
+        </FormGroup>
+        {form.transactionKind === "offer" ? (
+          <FormGroup>
+            <Label className="text-[10px]">وصف السعر *</Label>
+            <Select
+              value={form.priceDescription ?? "asking"}
+              onChange={(e) =>
+                setForm((f) => ({
+                  ...f,
+                  priceDescription: e.target.value,
+                }))
+              }
+              className="text-xs"
+            >
+              {/* ق-2: «قابل للتفاوض» أُسقطت من القوائم — السجلات القديمة تبقى مقروءة */}
+              <option value="asking">حد</option>
+              <option value="som">سوم</option>
+              {form.priceDescription === "negotiable" ? (
+                <option value="negotiable">تفاوض (قديم)</option>
+              ) : null}
+            </Select>
+          </FormGroup>
+        ) : null}
+        <FormGroup>
+          <Label className="text-[10px]">المصدر</Label>
+          <Select
+            value={form.source}
+            onChange={(e) =>
+              setForm((f) => ({ ...f, source: e.target.value }))
+            }
+            className="text-xs"
+          >
+            <option value="listing_platform">منصة إعلان</option>
+            <option value="bourse">بورصة</option>
+            <option value="field">ميدان</option>
+            <option value="prior_valuation">معاملة سابقة</option>
+            <option value="other">أخرى</option>
+          </Select>
+        </FormGroup>
+        <FormGroup>
+          <Label className="text-[10px]">رافد الإدخال</Label>
+          <Select
+            value={form.intakeChannel}
+            onChange={(e) =>
+              setForm((f) => ({ ...f, intakeChannel: e.target.value }))
+            }
+            className="text-xs"
+          >
+            <option value="office">مكتبي</option>
+            <option value="field">ميداني</option>
+            <option value="system">اقتراح النظام</option>
+          </Select>
+        </FormGroup>
+        <FormGroup>
+          <Label className="text-[10px]">تاريخ العملية *</Label>
+          <Input
+            type="date"
+            dir="ltr"
+            value={form.transactionDate}
+            onChange={(e) =>
+              setForm((f) => ({
+                ...f,
+                transactionDate: e.target.value,
+              }))
+            }
+            className="text-xs"
+          />
+        </FormGroup>
+        <FormGroup>
+          <Label className="text-[10px]">المساحة م² *</Label>
+          <Input
+            type="number"
+            dir="ltr"
+            value={form.areaSqm || ""}
+            onChange={(e) =>
+              setForm((f) => ({
+                ...f,
+                areaSqm: Number(e.target.value) || 0,
+              }))
+            }
+            className="text-xs"
+          />
+        </FormGroup>
+        <FormGroup>
+          <Label className="text-[10px]">السعر *</Label>
+          <Input
+            type="number"
+            dir="ltr"
+            value={form.price || ""}
+            onChange={(e) =>
+              setForm((f) => ({
+                ...f,
+                price: Number(e.target.value) || 0,
+              }))
+            }
+            className="text-xs"
+          />
+        </FormGroup>
+        <FormGroup>
+          <Label className="text-[10px]">الحي *</Label>
+          <Input
+            value={form.district}
+            onChange={(e) =>
+              setForm((f) => ({ ...f, district: e.target.value }))
+            }
+            className="text-xs"
+          />
+        </FormGroup>
+        <FormGroup>
+          <Label className="text-[10px]">المدينة</Label>
+          <Input
+            value={form.city ?? ""}
+            onChange={(e) =>
+              setForm((f) => ({ ...f, city: e.target.value }))
+            }
+            className="text-xs"
+          />
+        </FormGroup>
+        <FormGroup>
+          <Label className="text-[10px]">خط العرض *</Label>
+          <Input
+            type="number"
+            step="0.000001"
+            dir="ltr"
+            value={form.latitude}
+            onChange={(e) =>
+              setForm((f) => ({
+                ...f,
+                latitude: Number(e.target.value),
+              }))
+            }
+            className="text-xs"
+          />
+        </FormGroup>
+        <FormGroup>
+          <Label className="text-[10px]">خط الطول *</Label>
+          <Input
+            type="number"
+            step="0.000001"
+            dir="ltr"
+            value={form.longitude}
+            onChange={(e) =>
+              setForm((f) => ({
+                ...f,
+                longitude: Number(e.target.value),
+              }))
+            }
+            className="text-xs"
+          />
+        </FormGroup>
+        {form.transactionKind === "offer" ? (
+          <FormGroup>
+            <Label className="text-[10px]">رقم الإعلان</Label>
+            <Input
+              dir="ltr"
+              value={form.listingNumber ?? ""}
+              onChange={(e) =>
+                setForm((f) => ({
+                  ...f,
+                  listingNumber: e.target.value,
+                }))
+              }
+              className="text-xs"
+            />
+          </FormGroup>
+        ) : (
+          <FormGroup>
+            {/* ق-3/3: نظير رقم الإعلان — يجعل المنفّذة قابلة للتحقق */}
+            <Label className="text-[10px]">مرجع صفقة البورصة</Label>
+            <Input
+              dir="ltr"
+              value={form.transactionReference ?? ""}
+              onChange={(e) =>
+                setForm((f) => ({
+                  ...f,
+                  transactionReference: e.target.value,
+                }))
+              }
+              className="text-xs"
+            />
+          </FormGroup>
+        )}
+        <FormGroup className="sm:col-span-2">
+          <Label className="text-[10px]">الوصف</Label>
+          <Input
+            value={form.description ?? ""}
+            onChange={(e) =>
+              setForm((f) => ({ ...f, description: e.target.value }))
+            }
+            className="text-xs"
+          />
+        </FormGroup>
+      </div>
+      <Button
+        type="button"
+        variant="primary"
+        size="sm"
+        loading={saving}
+        disabled={saving}
+        onClick={() => void onCreate()}
+      >
+        حفظ في البنك
+      </Button>
+    </div>
+  );
+}
 
-  async function saveTags(id: string) {
+/** محرر الوسوم بحالته المحلية — الكتابة في المبرر كانت تعيد تصيير القائمة كلها. */
+function TagEditorRow({
+  row,
+  onSaved,
+}: {
+  row: ComparablePropertyDto;
+  onSaved: () => void;
+}) {
+  const { showToast } = useToast();
+  const [saving, setSaving] = useState(false);
+  const [tagDraft, setTagDraft] = useState(() => ({
+    reliabilityTag: row.reliabilityTag || "normal",
+    isDuplicateTagged: row.isDuplicateTagged,
+    tagRationale: row.tagRationale ?? "",
+  }));
+
+  async function saveTags() {
     const config = apiConfig();
     if (!config) return;
     setSaving(true);
-    const res = await setComparableQualityTags(config, id, {
+    const res = await setComparableQualityTags(config, row.id, {
       reliabilityTag: tagDraft.reliabilityTag,
       isDuplicateTagged: tagDraft.isDuplicateTagged,
       tagRationale: tagDraft.tagRationale.trim() || null,
@@ -157,9 +398,125 @@ export function ComparablePropertiesView() {
       return;
     }
     showToast("حُفظ الوسم — السجل يبقى موسوماً لا يُحذف", "success");
-    setTagEditId(null);
-    await reload();
+    onSaved();
   }
+
+  return (
+    <div className="mt-2 grid gap-2 rounded-md border border-border-md bg-surface-2 p-2 sm:grid-cols-[10rem_auto_1fr_auto]">
+      <FormGroup>
+        <Label className="text-[10px]">وسم الموثوقية</Label>
+        <Select
+          value={tagDraft.reliabilityTag}
+          disabled={saving}
+          onChange={(e) =>
+            setTagDraft((d) => ({
+              ...d,
+              reliabilityTag: e.target.value,
+            }))
+          }
+          className="text-xs"
+        >
+          <option value="normal">عادي</option>
+          <option value="anomalous">شاذ</option>
+          <option value="unreliable">غير موثوق</option>
+        </Select>
+      </FormGroup>
+      <label className="flex items-center gap-1.5 self-end pb-2 text-[11px] text-text-2">
+        <input
+          type="checkbox"
+          checked={tagDraft.isDuplicateTagged}
+          disabled={saving}
+          onChange={(e) =>
+            setTagDraft((d) => ({
+              ...d,
+              isDuplicateTagged: e.target.checked,
+            }))
+          }
+        />
+        مكرر (نفس العملية سُجّلت مرتين)
+      </label>
+      <FormGroup>
+        <Label className="text-[10px]">
+          مبرر الوسم (إلزامي عند أي وسم)
+        </Label>
+        <Input
+          value={tagDraft.tagRationale}
+          disabled={saving}
+          onChange={(e) =>
+            setTagDraft((d) => ({
+              ...d,
+              tagRationale: e.target.value,
+            }))
+          }
+          className="text-xs"
+        />
+      </FormGroup>
+      <div className="self-end">
+        <Button
+          type="button"
+          variant="primary"
+          size="sm"
+          loading={saving}
+          disabled={saving}
+          onClick={() => void saveTags()}
+        >
+          حفظ الوسم
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+/**
+ * Company-wide comparable bank CRUD.
+ * Selection / adopt into a valuation request lives on the appraiser workspace (المقارنات tab).
+ */
+export function ComparablePropertiesView() {
+  const { showToast } = useToast();
+  const [rows, setRows] = useState<ComparablePropertyDto[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [q, setQ] = useState("");
+  // ٢٨٠مل مماثلة لجدول بنك المقارنات — بلا مهلة كان كل حرف يطلق طلب take:100
+  // ويستبدل القائمة بـ«جاري التحميل» (client-swr-dedup / async).
+  const [debouncedQ, setDebouncedQ] = useState("");
+  const [showForm, setShowForm] = useState(false);
+  // ق-3: محرر الوسوم — صف واحد مفتوح في كل مرة.
+  const [tagEditId, setTagEditId] = useState<string | null>(null);
+  // يسقط الاستجابات المتأخرة عن آخر طلب — بلا هذا كانت نتيجة قديمة تكتب فوق الأحدث.
+  const requestSeqRef = useRef(0);
+
+  useEffect(() => {
+    const t = setTimeout(() => setDebouncedQ(q), 280);
+    return () => clearTimeout(t);
+  }, [q]);
+
+  const reload = useCallback(async () => {
+    const config = apiConfig();
+    if (!config) {
+      setLoading(false);
+      setError("يلزم تسجيل الدخول");
+      return;
+    }
+    const seq = ++requestSeqRef.current;
+    setLoading(true);
+    const res = await listComparableProperties(config, {
+      q: debouncedQ || undefined,
+      take: 100,
+    });
+    if (seq !== requestSeqRef.current) return;
+    setLoading(false);
+    if (!res.ok) {
+      setError("تعذّر تحميل بنك المقارنات");
+      return;
+    }
+    setError(null);
+    setRows(res.data);
+  }, [debouncedQ]);
+
+  useEffect(() => {
+    void reload();
+  }, [reload]);
 
   async function onDeactivate(id: string) {
     const config = apiConfig();
@@ -210,280 +567,23 @@ export function ComparablePropertiesView() {
         </div>
 
         {showForm ? (
-          <div className="space-y-3 rounded-lg border border-border bg-surface p-3">
-            <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
-              <FormGroup>
-                <Label className="text-[10px]">نوع العقار المقارن *</Label>
-                {/* ق-3/5: قائمة مغلقة = قائمة نوع العقار محل التقييم */}
-                <Select
-                  value={form.comparablePropertyType}
-                  onChange={(e) =>
-                    setForm((f) => ({
-                      ...f,
-                      comparablePropertyType: e.target.value,
-                    }))
-                  }
-                  className="text-xs"
-                >
-                  <option value="">— اختر —</option>
-                  {COMPARABLE_TYPE_OPTIONS.map((t) => (
-                    <option key={t} value={t}>
-                      {t}
-                    </option>
-                  ))}
-                  {form.comparablePropertyType &&
-                  !COMPARABLE_TYPE_OPTIONS.includes(
-                    form.comparablePropertyType as (typeof COMPARABLE_TYPE_OPTIONS)[number],
-                  ) ? (
-                    <option value={form.comparablePropertyType}>
-                      {form.comparablePropertyType} (قديم)
-                    </option>
-                  ) : null}
-                </Select>
-              </FormGroup>
-              <FormGroup>
-                <Label className="text-[10px]">استخدام المقارن *</Label>
-                <Select
-                  value={form.usage ?? ""}
-                  onChange={(e) =>
-                    setForm((f) => ({ ...f, usage: e.target.value }))
-                  }
-                  className="text-xs"
-                >
-                  <option value="">— اختر —</option>
-                  {COMPARABLE_USAGE_OPTIONS.map((u) => (
-                    <option key={u} value={u}>
-                      {u}
-                    </option>
-                  ))}
-                </Select>
-              </FormGroup>
-              <FormGroup>
-                <Label className="text-[10px]">نوع العملية *</Label>
-                <Select
-                  value={form.transactionKind}
-                  onChange={(e) =>
-                    setForm((f) => ({ ...f, transactionKind: e.target.value }))
-                  }
-                  className="text-xs"
-                >
-                  <option value="offer">عرض</option>
-                  <option value="executed">تنفيذ</option>
-                </Select>
-              </FormGroup>
-              {form.transactionKind === "offer" ? (
-                <FormGroup>
-                  <Label className="text-[10px]">وصف السعر *</Label>
-                  <Select
-                    value={form.priceDescription ?? "asking"}
-                    onChange={(e) =>
-                      setForm((f) => ({
-                        ...f,
-                        priceDescription: e.target.value,
-                      }))
-                    }
-                    className="text-xs"
-                  >
-                    {/* ق-2: «قابل للتفاوض» أُسقطت من القوائم — السجلات القديمة تبقى مقروءة */}
-                    <option value="asking">حد</option>
-                    <option value="som">سوم</option>
-                    {form.priceDescription === "negotiable" ? (
-                      <option value="negotiable">تفاوض (قديم)</option>
-                    ) : null}
-                  </Select>
-                </FormGroup>
-              ) : null}
-              <FormGroup>
-                <Label className="text-[10px]">المصدر</Label>
-                <Select
-                  value={form.source}
-                  onChange={(e) =>
-                    setForm((f) => ({ ...f, source: e.target.value }))
-                  }
-                  className="text-xs"
-                >
-                  <option value="listing_platform">منصة إعلان</option>
-                  <option value="bourse">بورصة</option>
-                  <option value="field">ميدان</option>
-                  <option value="prior_valuation">معاملة سابقة</option>
-                  <option value="other">أخرى</option>
-                </Select>
-              </FormGroup>
-              <FormGroup>
-                <Label className="text-[10px]">رافد الإدخال</Label>
-                <Select
-                  value={form.intakeChannel}
-                  onChange={(e) =>
-                    setForm((f) => ({ ...f, intakeChannel: e.target.value }))
-                  }
-                  className="text-xs"
-                >
-                  <option value="office">مكتبي</option>
-                  <option value="field">ميداني</option>
-                  <option value="system">اقتراح النظام</option>
-                </Select>
-              </FormGroup>
-              <FormGroup>
-                <Label className="text-[10px]">تاريخ العملية *</Label>
-                <Input
-                  type="date"
-                  dir="ltr"
-                  value={form.transactionDate}
-                  onChange={(e) =>
-                    setForm((f) => ({
-                      ...f,
-                      transactionDate: e.target.value,
-                    }))
-                  }
-                  className="text-xs"
-                />
-              </FormGroup>
-              <FormGroup>
-                <Label className="text-[10px]">المساحة م² *</Label>
-                <Input
-                  type="number"
-                  dir="ltr"
-                  value={form.areaSqm || ""}
-                  onChange={(e) =>
-                    setForm((f) => ({
-                      ...f,
-                      areaSqm: Number(e.target.value) || 0,
-                    }))
-                  }
-                  className="text-xs"
-                />
-              </FormGroup>
-              <FormGroup>
-                <Label className="text-[10px]">السعر *</Label>
-                <Input
-                  type="number"
-                  dir="ltr"
-                  value={form.price || ""}
-                  onChange={(e) =>
-                    setForm((f) => ({
-                      ...f,
-                      price: Number(e.target.value) || 0,
-                    }))
-                  }
-                  className="text-xs"
-                />
-              </FormGroup>
-              <FormGroup>
-                <Label className="text-[10px]">الحي *</Label>
-                <Input
-                  value={form.district}
-                  onChange={(e) =>
-                    setForm((f) => ({ ...f, district: e.target.value }))
-                  }
-                  className="text-xs"
-                />
-              </FormGroup>
-              <FormGroup>
-                <Label className="text-[10px]">المدينة</Label>
-                <Input
-                  value={form.city ?? ""}
-                  onChange={(e) =>
-                    setForm((f) => ({ ...f, city: e.target.value }))
-                  }
-                  className="text-xs"
-                />
-              </FormGroup>
-              <FormGroup>
-                <Label className="text-[10px]">خط العرض *</Label>
-                <Input
-                  type="number"
-                  step="0.000001"
-                  dir="ltr"
-                  value={form.latitude}
-                  onChange={(e) =>
-                    setForm((f) => ({
-                      ...f,
-                      latitude: Number(e.target.value),
-                    }))
-                  }
-                  className="text-xs"
-                />
-              </FormGroup>
-              <FormGroup>
-                <Label className="text-[10px]">خط الطول *</Label>
-                <Input
-                  type="number"
-                  step="0.000001"
-                  dir="ltr"
-                  value={form.longitude}
-                  onChange={(e) =>
-                    setForm((f) => ({
-                      ...f,
-                      longitude: Number(e.target.value),
-                    }))
-                  }
-                  className="text-xs"
-                />
-              </FormGroup>
-              {form.transactionKind === "offer" ? (
-                <FormGroup>
-                  <Label className="text-[10px]">رقم الإعلان</Label>
-                  <Input
-                    dir="ltr"
-                    value={form.listingNumber ?? ""}
-                    onChange={(e) =>
-                      setForm((f) => ({
-                        ...f,
-                        listingNumber: e.target.value,
-                      }))
-                    }
-                    className="text-xs"
-                  />
-                </FormGroup>
-              ) : (
-                <FormGroup>
-                  {/* ق-3/3: نظير رقم الإعلان — يجعل المنفّذة قابلة للتحقق */}
-                  <Label className="text-[10px]">مرجع صفقة البورصة</Label>
-                  <Input
-                    dir="ltr"
-                    value={form.transactionReference ?? ""}
-                    onChange={(e) =>
-                      setForm((f) => ({
-                        ...f,
-                        transactionReference: e.target.value,
-                      }))
-                    }
-                    className="text-xs"
-                  />
-                </FormGroup>
-              )}
-              <FormGroup className="sm:col-span-2">
-                <Label className="text-[10px]">الوصف</Label>
-                <Input
-                  value={form.description ?? ""}
-                  onChange={(e) =>
-                    setForm((f) => ({ ...f, description: e.target.value }))
-                  }
-                  className="text-xs"
-                />
-              </FormGroup>
-            </div>
-            <Button
-              type="button"
-              variant="primary"
-              size="sm"
-              loading={saving}
-              disabled={saving}
-              onClick={() => void onCreate()}
-            >
-              حفظ في البنك
-            </Button>
-          </div>
+          <AddComparableForm
+            onCreated={() => {
+              setShowForm(false);
+              void reload();
+            }}
+          />
         ) : null}
 
-        {loading ? (
-          <p className="text-sm text-text-2">جاري التحميل…</p>
-        ) : error ? (
+        {error ? (
           <Note tone="warn">{error}</Note>
         ) : rows.length === 0 ? (
-          <p className="text-sm text-text-2">لا مقارنات بعد.</p>
+          <p className="text-sm text-text-2">
+            {loading ? "جاري التحميل…" : "لا مقارنات بعد."}
+          </p>
         ) : (
-          <div className="space-y-2">
+          // القائمة السابقة تبقى ظاهرة أثناء إعادة الجلب — لا وميض «جاري التحميل».
+          <div className={cn("space-y-2", loading && "opacity-60")}>
             {rows.map((row) => (
               <article
                 key={row.id}
@@ -525,8 +625,8 @@ export function ComparablePropertiesView() {
                       · {row.district}
                       {row.city ? ` · ${row.city}` : ""} ·{" "}
                       {row.transactionDate} · {row.areaSqm} م² ·{" "}
-                      {row.price.toLocaleString("ar-SA")} ر.س ·{" "}
-                      {row.pricePerSqm.toLocaleString("ar-SA")} ر.س/م²
+                      {SAR_FORMAT.format(row.price)} ر.س ·{" "}
+                      {SAR_FORMAT.format(row.pricePerSqm)} ر.س/م²
                     </p>
                     <p className="mt-1 text-[10px] text-text-3">
                       بطاقة المصدر: {row.sourceCard.intakeChannelLabelAr} ·{" "}
@@ -544,7 +644,9 @@ export function ComparablePropertiesView() {
                     <Button
                       type="button"
                       size="sm"
-                      onClick={() => openTagEditor(row)}
+                      onClick={() =>
+                        setTagEditId((cur) => (cur === row.id ? null : row.id))
+                      }
                     >
                       {tagEditId === row.id ? "إغلاق الوسم" : "وسم الجودة"}
                     </Button>
@@ -570,68 +672,14 @@ export function ComparablePropertiesView() {
                 ) : null}
 
                 {tagEditId === row.id ? (
-                  <div className="mt-2 grid gap-2 rounded-md border border-border-md bg-surface-2 p-2 sm:grid-cols-[10rem_auto_1fr_auto]">
-                    <FormGroup>
-                      <Label className="text-[10px]">وسم الموثوقية</Label>
-                      <Select
-                        value={tagDraft.reliabilityTag}
-                        disabled={saving}
-                        onChange={(e) =>
-                          setTagDraft((d) => ({
-                            ...d,
-                            reliabilityTag: e.target.value,
-                          }))
-                        }
-                        className="text-xs"
-                      >
-                        <option value="normal">عادي</option>
-                        <option value="anomalous">شاذ</option>
-                        <option value="unreliable">غير موثوق</option>
-                      </Select>
-                    </FormGroup>
-                    <label className="flex items-center gap-1.5 self-end pb-2 text-[11px] text-text-2">
-                      <input
-                        type="checkbox"
-                        checked={tagDraft.isDuplicateTagged}
-                        disabled={saving}
-                        onChange={(e) =>
-                          setTagDraft((d) => ({
-                            ...d,
-                            isDuplicateTagged: e.target.checked,
-                          }))
-                        }
-                      />
-                      مكرر (نفس العملية سُجّلت مرتين)
-                    </label>
-                    <FormGroup>
-                      <Label className="text-[10px]">
-                        مبرر الوسم (إلزامي عند أي وسم)
-                      </Label>
-                      <Input
-                        value={tagDraft.tagRationale}
-                        disabled={saving}
-                        onChange={(e) =>
-                          setTagDraft((d) => ({
-                            ...d,
-                            tagRationale: e.target.value,
-                          }))
-                        }
-                        className="text-xs"
-                      />
-                    </FormGroup>
-                    <div className="self-end">
-                      <Button
-                        type="button"
-                        variant="primary"
-                        size="sm"
-                        loading={saving}
-                        disabled={saving}
-                        onClick={() => void saveTags(row.id)}
-                      >
-                        حفظ الوسم
-                      </Button>
-                    </div>
-                  </div>
+                  <TagEditorRow
+                    key={row.id}
+                    row={row}
+                    onSaved={() => {
+                      setTagEditId(null);
+                      void reload();
+                    }}
+                  />
                 ) : null}
               </article>
             ))}

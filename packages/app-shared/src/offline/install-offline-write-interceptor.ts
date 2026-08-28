@@ -219,13 +219,16 @@ export function installOfflineWriteInterceptor(): () => void {
       return next();
     }
 
-    const classified = await classifyWrite(request);
+    // Classification is only needed when offline — skip it on the hot online path.
     const offline =
       typeof navigator !== "undefined" && navigator.onLine === false;
 
-    if (offline && classified) {
-      await enqueueClassified(userId, classified);
-      throw new TypeError("Failed to fetch");
+    if (offline) {
+      const classified = await classifyWrite(request);
+      if (classified) {
+        await enqueueClassified(userId, classified);
+        throw new TypeError("Failed to fetch");
+      }
     }
 
     const response = await next();

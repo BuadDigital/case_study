@@ -15,6 +15,9 @@ type ActiveToast = {
 
 const activeToasts = new WeakMap<HTMLElement, ActiveToast>();
 
+/** Matches the progress-toast auto-dismiss in Toast.tsx — no point polling past it. */
+const WATCH_TIMEOUT_MS = 15_000;
+
 function isActionTrigger(element: HTMLElement | null): element is HTMLElement {
   if (!element) return false;
   if (element instanceof HTMLButtonElement) return true;
@@ -60,6 +63,7 @@ function watchActionElement(
   showSuccessToast?: (message: string) => void,
 ) {
   let sawBusy = elementLooksBusy(element);
+  const startedAt = Date.now();
 
   const observer = new MutationObserver(() => {
     const busy = elementLooksBusy(element);
@@ -79,6 +83,11 @@ function watchActionElement(
   const pollTimer = window.setInterval(() => {
     if (!document.contains(element)) {
       dismissFor(element, dismissToast, showSuccessToast);
+      return;
+    }
+    // Permanently-busy button: the toast already auto-dismissed — stop watching.
+    if (Date.now() - startedAt >= WATCH_TIMEOUT_MS) {
+      dismissFor(element, dismissToast);
       return;
     }
     const busy = elementLooksBusy(element);

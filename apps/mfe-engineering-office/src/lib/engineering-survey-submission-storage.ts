@@ -37,13 +37,22 @@ function notifyChanged(): void {
   dispatchPartySubmissionChanged(ENGINEERING_SURVEY_SUBMISSION_CHANGED_EVENT);
 }
 
+// الـDTO في الكاش مستقر المرجع حتى إعادة الجلب — التحويل (٤٠ حقلاً + ١٣ صف
+// فحص) كان يعاد لكل مهمة في الترشيح ولكل صف مرسوم (js-cache-function-results).
+const submissionByDto = new WeakMap<
+  NonNullable<ReturnType<typeof getCachedPartySubmission>>,
+  EngineeringSurveySubmission
+>();
+
 function dtoToSubmission(
   dto: ReturnType<typeof getCachedPartySubmission>,
 ): EngineeringSurveySubmission | null {
   if (!dto) return null;
+  const cached = submissionByDto.get(dto);
+  if (cached) return cached;
   const payload = payloadFromDto<EngineeringSurveySubmission>(dto);
   const checklist = normalizeEngineeringSurveyChecklist(payload.checklist);
-  return {
+  const submission: EngineeringSurveySubmission = {
     ...payload,
     taskId: dto.taskId,
     propertyId: payload.propertyId ?? dto.propertyId ?? "",
@@ -110,6 +119,8 @@ function dtoToSubmission(
           ? payload.fieldInspectionCompleted
           : undefined,
   };
+  submissionByDto.set(dto, submission);
+  return submission;
 }
 
 function submissionToPayload(

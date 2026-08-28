@@ -133,27 +133,35 @@ export async function uploadTaskScopedAttachment(
     sizeBytes: file.size,
   };
 
-  if (file.type.startsWith("image/") || file.type === "application/pdf") {
-    try {
-      preview.dataUrl = await blobToDataUrl(file);
-    } catch {
-      /* continue */
-    }
-  }
+  const wantsPreview =
+    file.type.startsWith("image/") || file.type === "application/pdf";
 
   if (config) {
-    await replaceScopeAttachments(scope, taskId);
+    // Single file read; encoding runs in parallel with clearing old attachments.
+    const [, contentBase64] = await Promise.all([
+      replaceScopeAttachments(scope, taskId),
+      fileToBase64(file),
+    ]);
+    if (wantsPreview) {
+      preview.dataUrl = `data:${preview.mimeType};base64,${contentBase64}`;
+    }
     const upload = await uploadAttachment(config, {
       scope,
       scopeKey: taskId,
       fileName: file.name,
       contentType: preview.mimeType,
-      contentBase64: await fileToBase64(file),
+      contentBase64,
     });
     if (!upload.ok) {
       return null;
     }
     preview.attachmentId = upload.data.id;
+  } else if (wantsPreview) {
+    try {
+      preview.dataUrl = await blobToDataUrl(file);
+    } catch {
+      /* continue */
+    }
   }
 
   previewCache.set(cacheKey(scope, taskId), preview);

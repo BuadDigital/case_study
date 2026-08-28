@@ -185,6 +185,7 @@ export function rewriteLocalAttachmentIds(
   return next;
 }
 
+/** Built once per sync run; processAttachment appends fresh server ids as uploads land. */
 async function buildLocalAttachmentMap(
   userId: string,
 ): Promise<Map<string, string>> {
@@ -208,9 +209,9 @@ async function buildLocalAttachmentMap(
       }
     }
   }
-  // Also check blobs that already have server ids
-  const { listOfflineBlobs } = await import("./store");
-  const blobs = await listOfflineBlobs(userId);
+  // Also check blobs that already have server ids (meta only — no byte decrypt).
+  const { listOfflineBlobMeta } = await import("./store");
+  const blobs = await listOfflineBlobMeta(userId);
   for (const blob of blobs) {
     if (blob.serverAttachmentId) {
       map.set(blob.id, blob.serverAttachmentId);
@@ -219,10 +220,23 @@ async function buildLocalAttachmentMap(
   return map;
 }
 
+function recordUploadedAttachment(
+  attachmentMap: Map<string, string>,
+  item: OfflineOutboxItem,
+  blobId: string,
+  serverAttachmentId: string,
+): void {
+  attachmentMap.set(blobId, serverAttachmentId);
+  if (item.localAttachmentId) {
+    attachmentMap.set(item.localAttachmentId, serverAttachmentId);
+  }
+}
+
 async function processAttachment(
   userId: string,
   item: OfflineOutboxItem,
   deps: OfflineSyncDeps,
+  attachmentMap: Map<string, string>,
 ): Promise<boolean> {
   const blob = await getOfflineBlob(userId, item.targetId);
   if (!blob) {
@@ -235,6 +249,12 @@ async function processAttachment(
     return false;
   }
   if (blob.serverAttachmentId) {
+    recordUploadedAttachment(
+      attachmentMap,
+      item,
+      blob.id,
+      blob.serverAttachmentId,
+    );
     await saveOutboxItem({
       ...item,
       status: "done",
@@ -263,6 +283,7 @@ async function processAttachment(
     return false;
   }
   await markBlobUploaded(userId, blob.id, result.attachmentId);
+  recordUploadedAttachment(attachmentMap, item, blob.id, result.attachmentId);
   await saveOutboxItem({
     ...item,
     status: "done",
@@ -277,9 +298,9 @@ async function processSave(
   userId: string,
   item: OfflineOutboxItem,
   deps: OfflineSyncDeps,
+  attachmentMap: Map<string, string>,
 ): Promise<boolean> {
-  const map = await buildLocalAttachmentMap(userId);
-  const payloadJson = rewriteLocalAttachmentIds(item.payloadJson, map);
+  const payloadJson = rewriteLocalAttachmentIds(item.payloadJson, attachmentMap);
   if (payloadJson.includes("local:")) {
     await saveOutboxItem({
       ...item,
@@ -351,6 +372,7 @@ async function processKeyEnvelopeCreate(
   userId: string,
   item: OfflineOutboxItem,
   deps: OfflineSyncDeps,
+  attachmentMap: Map<string, string>,
 ): Promise<boolean> {
   if (!deps.createKeyEnvelope) {
     await saveOutboxItem({
@@ -361,8 +383,7 @@ async function processKeyEnvelopeCreate(
     });
     return false;
   }
-  const map = await buildLocalAttachmentMap(userId);
-  const bodyJson = rewriteLocalAttachmentIds(item.payloadJson, map);
+  const bodyJson = rewriteLocalAttachmentIds(item.payloadJson, attachmentMap);
   if (bodyJson.includes("local:")) {
     await saveOutboxItem({
       ...item,
@@ -414,6 +435,7 @@ async function processKeyEnvelopeMutation(
     | "confirmKeyEnvelopeAssignment"
     | "createKeyEnvelopeHandoff"
     | "confirmKeyEnvelopeHandoff",
+  attachmentMap: Map<string, string>,
 ): Promise<boolean> {
   const fn = deps[mutate];
   if (!fn) {
@@ -454,10 +476,9 @@ async function processKeyEnvelopeMutation(
     return false;
   }
 
-  const map = await buildLocalAttachmentMap(userId);
   const payloadJson = rewriteLocalAttachmentIds(
     JSON.stringify({ ...payload, envelopeId }),
-    map,
+    attachmentMap,
   );
   if (payloadJson.includes("local:")) {
     await saveOutboxItem({
@@ -516,6 +537,11 @@ export async function runOfflineSync(
         return a.createdAtUtc.localeCompare(b.createdAtUtc);
       });
 
+    const attachmentMap =
+      items.length > 0
+        ? await buildLocalAttachmentMap(userId)
+        : new Map<string, string>();
+
     for (const item of items) {
       await saveOutboxItem({
         ...item,
@@ -524,19 +550,20 @@ export async function runOfflineSync(
       });
       let ok = false;
       if (item.kind === "attachment-upload") {
-        ok = await processAttachment(userId, item, deps);
+        ok = await processAttachment(userId, item, deps, attachmentMap);
       } else if (item.kind === "party-submission-save") {
-        ok = await processSave(userId, item, deps);
+        ok = await processSave(userId, item, deps, attachmentMap);
       } else if (item.kind === "party-submission-submit") {
         ok = await processSubmit(userId, item, deps);
       } else if (item.kind === "key-envelope-create") {
-        ok = await processKeyEnvelopeCreate(userId, item, deps);
+        ok = await processKeyEnvelopeCreate(userId, item, deps, attachmentMap);
       } else if (item.kind === "key-envelope-assignment-add") {
         ok = await processKeyEnvelopeMutation(
           userId,
           item,
           deps,
           "addKeyEnvelopeAssignment",
+          attachmentMap,
         );
       } else if (item.kind === "key-envelope-assignment-confirm") {
         ok = await processKeyEnvelopeMutation(
@@ -544,6 +571,7 @@ export async function runOfflineSync(
           item,
           deps,
           "confirmKeyEnvelopeAssignment",
+          attachmentMap,
         );
       } else if (item.kind === "key-envelope-handoff-create") {
         ok = await processKeyEnvelopeMutation(
@@ -551,6 +579,7 @@ export async function runOfflineSync(
           item,
           deps,
           "createKeyEnvelopeHandoff",
+          attachmentMap,
         );
       } else if (item.kind === "key-envelope-handoff-confirm") {
         ok = await processKeyEnvelopeMutation(
@@ -558,6 +587,7 @@ export async function runOfflineSync(
           item,
           deps,
           "confirmKeyEnvelopeHandoff",
+          attachmentMap,
         );
       } else {
         ok = false;

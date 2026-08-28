@@ -113,8 +113,6 @@ function parseChecklistRow(raw: unknown): EngineeringSurveyChecklistRow {
 export function normalizeEngineeringSurveyChecklist(
   raw: unknown,
 ): EngineeringSurveyChecklistRow[] {
-  const defaults = emptyChecklistRows();
-
   if (Array.isArray(raw)) {
     return ENGINEERING_SURVEY_CHECKLIST_ITEMS.map((_, index) =>
       parseChecklistRow(raw[index]),
@@ -132,7 +130,8 @@ export function normalizeEngineeringSurveyChecklist(
     }
   }
 
-  return defaults;
+  // ١٣ صفاً تُنشأ في مسار الاحتياط فقط — كانت تُخصَّص ثم تُهمل في المسار الشائع.
+  return emptyChecklistRows();
 }
 
 export function createEngineeringSurveyDraft(input: {

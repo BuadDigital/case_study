@@ -2,6 +2,7 @@
 
 import { memo, useEffect, useMemo, useRef, useState } from "react";
 import { useValuationListsQuery } from "@platform/app-shared/query/valuation-lists-query";
+import { fileToBase64 } from "@platform/app-shared/media/file-encoding";
 import {
   activeValuationListOptions,
   getValuationReportDocument,
@@ -75,10 +76,14 @@ export const FinalOpinionSection = memo(function FinalOpinionSection({
   );
   const [methodsRationale, setMethodsRationale] = useState("");
   const [finalRoundDecimals, setFinalRoundDecimals] = useState("0");
-  const [basisOfValueKey, setBasisOfValueKey] = useState(() =>
-    assignmentType?.trim()
-      ? basisOfValueKeyForAssignment(assignmentType)
-      : "market",
+  // اشتقاق صرف من نوع الإسناد — لا يضبطه المستخدم ولا يُستبدل بالمحفوظ
+  // (rerender-derived-state-no-effect؛ كان state تكتبه خمسة مواضع بنفس القيمة).
+  const basisOfValueKey = useMemo(
+    () =>
+      assignmentType?.trim()
+        ? basisOfValueKeyForAssignment(assignmentType)
+        : "market",
+    [assignmentType],
   );
   const [valuePremiseKey, setValuePremiseKey] = useState("");
   const [basisOptions, setBasisOptions] = useState(VALUE_BASIS_OPTIONS);
@@ -139,11 +144,9 @@ export const FinalOpinionSection = memo(function FinalOpinionSection({
     setIssuanceBusy(true);
     let certificateContentBase64: string | null = null;
     if (certificateFile) {
-      const buf = await certificateFile.arrayBuffer();
-      let binary = "";
-      const bytes = new Uint8Array(buf);
-      for (let i = 0; i < bytes.length; i++) binary += String.fromCharCode(bytes[i]!);
-      certificateContentBase64 = btoa(binary);
+      // ترميز مُقسّم عبر المساعد المشترك — الحلقة حرفاً حرفاً كانت تجمّد
+      // التبويب ثواني على صور الشهادات الكبيرة (js-perf).
+      certificateContentBase64 = await fileToBase64(certificateFile);
     }
     const res = await registerDepositCertificate(config, valuationRequestId, {
       depositCode: code,
@@ -191,7 +194,6 @@ export const FinalOpinionSection = memo(function FinalOpinionSection({
   useEffect(() => {
     if (!assignmentType?.trim()) return;
     const next = basisOfValueKeyForAssignment(assignmentType);
-    setBasisOfValueKey(next);
     if (next === "liquidation") {
       setValuePremiseKey((prev) =>
         prev === "orderly" || prev === "forced" ? prev : "orderly",
@@ -233,7 +235,6 @@ export const FinalOpinionSection = memo(function FinalOpinionSection({
       setMethodsRationale("");
       setFinalRoundDecimals("0");
       if (assignmentType?.trim()) {
-        setBasisOfValueKey(basisOfValueKeyForAssignment(assignmentType));
         setValuePremiseKey(
           basisOfValueKeyForAssignment(assignmentType) === "liquidation"
             ? "orderly"
@@ -251,7 +252,6 @@ export const FinalOpinionSection = memo(function FinalOpinionSection({
     // أساس القيمة من أمر العمل (PO) فقط — لا يُستبدل بما حُفظ سابقاً في التسوية.
     if (assignmentType?.trim()) {
       const nextBasis = basisOfValueKeyForAssignment(assignmentType);
-      setBasisOfValueKey(nextBasis);
       let nextPremise = recon.valuePremiseKey || "";
       if (nextBasis === "liquidation") {
         if (nextPremise !== "orderly" && nextPremise !== "forced") {
@@ -421,9 +421,6 @@ export const FinalOpinionSection = memo(function FinalOpinionSection({
     setReconMethods(res.data.methods);
     setMethodsRationale(res.data.methodsRationale ?? "");
     setFinalRoundDecimals(String(res.data.finalRoundDecimals ?? 0));
-    if (assignmentType?.trim()) {
-      setBasisOfValueKey(basisOfValueKeyForAssignment(assignmentType));
-    }
     setValuePremiseKey(res.data.valuePremiseKey || "");
     setLiquidationDiscountPct(String(res.data.liquidationDiscountPct ?? 0));
     setLiquidationDiscountRationale(res.data.liquidationDiscountRationale ?? "");
@@ -475,6 +472,11 @@ export const FinalOpinionSection = memo(function FinalOpinionSection({
   const opinionDirty =
     methodsRationale.trim().length > 0 &&
     methodsRationale.trim() !== opinionAuto.trim();
+
+  // مسار واحد بدل filter مرتين في نفس التصيير (js-combine-iterations).
+  const triggeredAlerts = gates
+    ? gates.methodologyAlerts.filter((a) => a.triggered)
+    : [];
 
   return (
     <>
@@ -886,13 +888,12 @@ export const FinalOpinionSection = memo(function FinalOpinionSection({
                   التوفيق والرأي النهائي»
                 </span>
               </div>
-              {gates.methodologyAlerts.filter((a) => a.triggered).length === 0 ? (
+              {triggeredAlerts.length === 0 ? (
                 <div className="text-[12.5px] font-bold text-[#2f7a4d]">
                   ✓ لا تنبيهات منهجية مفعّلة
                 </div>
               ) : (
-                gates.methodologyAlerts
-                  .filter((a) => a.triggered)
+                triggeredAlerts
                   .map((a) => {
                     const ov = alertOverrides[a.code] ?? {
                       overrideRationale: "",

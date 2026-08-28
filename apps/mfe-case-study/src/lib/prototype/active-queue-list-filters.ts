@@ -4,9 +4,10 @@ import {
   buildDistributionTableRow,
   buildPrimaryDataTableRow,
   findPropertyForTask,
+  type PrimaryDataTableRow,
   type RemainingTimeState,
 } from "./my-task-row";
-import type { PoIntakeRecord } from "./po-intake-data";
+import type { PoIntakeRecord, PoPropertyIntake } from "./po-intake-data";
 import type { WorkflowTask } from "./tasks-storage";
 import { fieldInspectionTaskStatusBadge } from "./field-inspection-work-queue";
 
@@ -43,6 +44,10 @@ export function resolveQueueTaskStatusFilterLabel(
 
 export type PrimaryQueueRowMeta = {
   task: WorkflowTask;
+  /** السجل والعقار والصف المبني — تُحمل هنا فلا يعيد أي مستهلك بناءها لكل صف. */
+  record: PoIntakeRecord | undefined;
+  property: PoPropertyIntake | null;
+  row: PrimaryDataTableRow;
   deed: string;
   assignmentType: string;
   city: string;
@@ -63,6 +68,9 @@ export function buildPrimaryQueueRowMeta(
     const badge = resolveBadge(task);
     return {
       task,
+      record,
+      property,
+      row,
       deed: row.propertySlot,
       assignmentType: row.assignmentType,
       city: row.city,
@@ -72,30 +80,29 @@ export function buildPrimaryQueueRowMeta(
   });
 }
 
-export function filterPrimaryQueueRows(
+/** يعيد الـmeta نفسها — المستهلكون (الجداول/البطاقات) يقرأون الصف المبني بدل إعادة بنائه. */
+export function filterPrimaryQueueRowMeta(
   rows: PrimaryQueueRowMeta[],
   filters: {
     search: string;
     statusFilter: string;
     typeFilter: string;
   },
-): WorkflowTask[] {
+): PrimaryQueueRowMeta[] {
   const q = filters.search.trim().toLowerCase();
-  return rows
-    .filter((row) => {
-      if (filters.typeFilter && row.assignmentType !== filters.typeFilter) {
-        return false;
-      }
-      if (filters.statusFilter && row.statusLabel !== filters.statusFilter) {
-        return false;
-      }
-      if (!q) return true;
-      const hay = [row.deed, row.assignmentType, row.city, row.district]
-        .join(" ")
-        .toLowerCase();
-      return hay.includes(q);
-    })
-    .map((row) => row.task);
+  return rows.filter((row) => {
+    if (filters.typeFilter && row.assignmentType !== filters.typeFilter) {
+      return false;
+    }
+    if (filters.statusFilter && row.statusLabel !== filters.statusFilter) {
+      return false;
+    }
+    if (!q) return true;
+    const hay = [row.deed, row.assignmentType, row.city, row.district]
+      .join(" ")
+      .toLowerCase();
+    return hay.includes(q);
+  });
 }
 
 export type DistributionQueueRowMeta = {

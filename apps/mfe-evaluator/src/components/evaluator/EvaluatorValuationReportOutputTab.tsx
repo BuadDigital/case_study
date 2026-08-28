@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Button, Spinner } from "@platform/ui-kit";
 import { ensureOrganizationSettingsLoaded } from "@platform/app-shared/organization/organization-settings-cache";
@@ -85,6 +85,11 @@ async function loadValuationApproaches(
     settings: settingsRes.ok ? settingsRes.data : null,
   };
 }
+
+// مراجع ثابتة — [] جديدة كل تصيير كانت ستهزّ اعتماديات buildReportMeta.
+const EMPTY_OUTPUT_CLIENTS: ClientDto[] = [];
+const EMPTY_INVENTORY_LINES: BuildingInventoryLineDto[] = [];
+const EMPTY_PHOTO_SLOTS: ValuationReportSlotAttachment[] = [];
 
 function surveyBoundsFromPayload(
   payload: Record<string, unknown> | null | undefined,
@@ -232,44 +237,12 @@ export function EvaluatorValuationReportOutputTab({
 }) {
   const [screenHtml, setScreenHtml] = useState<string | null>(null);
   const [org, setOrg] = useState<OrganizationSettingsDto | null>(null);
-  const [clients, setClients] = useState<ClientDto[]>([]);
-  const [inspector, setInspector] = useState<InspectorWorkspaceDraft | null>(
-    null,
-  );
-  const [inventoryLines, setInventoryLines] = useState<
-    BuildingInventoryLineDto[]
-  >([]);
-  const [market, setMarket] =
-    useState<ValuationComparableSelectionListDto | null>(null);
-  const [landMarket, setLandMarket] =
-    useState<ValuationComparableSelectionListDto | null>(null);
-  const [cost, setCost] = useState<ValuationCostApproachDto | null>(null);
-  const [recon, setRecon] = useState<ValuationReconciliationDto | null>(null);
-  const [approachSettings, setApproachSettings] =
-    useState<ValuationApproachSettingsDto | null>(null);
-  const [survey, setSurvey] = useState<ValuationReportSurveyBounds | null>(
-    null,
-  );
-  const [photoSlots, setPhotoSlots] = useState<ValuationReportSlotAttachment[]>(
-    [],
-  );
-  const [surveySlot, setSurveySlot] =
-    useState<ValuationReportSlotAttachment | null>(null);
-  const [deedSlot, setDeedSlot] =
-    useState<ValuationReportSlotAttachment | null>(null);
-  const [siteMapSlot, setSiteMapSlot] =
-    useState<ValuationReportSlotAttachment | null>(null);
+  const clients = EMPTY_OUTPUT_CLIENTS;
   const [error, setError] = useState<string | null>(null);
   const [printing, setPrinting] = useState(false);
   const poQuery = usePoRecordQuery(draft.poNumber);
   const record = poQuery.data;
   const poKeys = assignmentValuationFromPo(record);
-  const [listLabels, setListLabels] = useState<{
-    purpose?: string;
-    basis?: string;
-    premise?: string;
-    basisDefinition?: string;
-  }>({});
 
   const outputQuery = useQuery({
     queryKey: [
@@ -291,53 +264,62 @@ export function EvaluatorValuationReportOutputTab({
   });
   const outputBundle = outputQuery.data;
 
-  useEffect(() => {
-    if (!outputBundle) return;
-    setInspector(outputBundle.inspector);
-    setInventoryLines(outputBundle.inventoryLines);
-    const lists = outputBundle.lists;
-    if (lists) {
-      const find = (kind: string, key: string) =>
-        (lists[kind] ?? []).find((it) => it.isEnabled && it.key === key);
-      const purpose = find("purposes", poKeys.purposeKey);
-      const basis = find("valueBases", poKeys.valueBasisKey);
-      const premise = find("premises", poKeys.premiseKey);
-      setListLabels({
-        purpose: purpose?.name,
-        basis: basis?.name,
-        premise: premise?.name,
-        basisDefinition: (basis?.cells[0] ?? "").trim(),
-      });
+  // اشتقاق مباشر من الحزمة — كانت ١٢ مراية state يكتبها مؤثر واحد، وكائن
+  // listLabels الجديد كل مرة كان يهزّ buildReportMeta فيولّد التقرير مرتين
+  // (rerender-derived-state-no-effect).
+  const inspector = outputBundle?.inspector ?? null;
+  const inventoryLines = outputBundle?.inventoryLines ?? EMPTY_INVENTORY_LINES;
+  const market = outputBundle?.approaches?.market ?? null;
+  const landMarket = outputBundle?.approaches?.landMarket ?? null;
+  const cost = outputBundle?.approaches?.cost ?? null;
+  const recon = outputBundle?.approaches?.recon ?? null;
+  const approachSettings = outputBundle?.approaches?.settings ?? null;
+  const survey = outputBundle?.survey ?? null;
+  const surveySlot = outputBundle?.attach.survey ?? null;
+  const deedSlot = outputBundle?.attach.deed ?? null;
+  const siteMapSlot = outputBundle?.attach.siteMap ?? null;
+
+  const listLabels = useMemo(() => {
+    const lists = outputBundle?.lists;
+    if (!lists) {
+      return {} as {
+        purpose?: string;
+        basis?: string;
+        premise?: string;
+        basisDefinition?: string;
+      };
     }
-    if (outputBundle.approaches) {
-      setMarket(outputBundle.approaches.market);
-      setLandMarket(outputBundle.approaches.landMarket);
-      setCost(outputBundle.approaches.cost);
-      setRecon(outputBundle.approaches.recon);
-      setApproachSettings(outputBundle.approaches.settings);
-    }
-    setSurvey(outputBundle.survey);
-    const attach = outputBundle.attach;
+    const find = (kind: string, key: string) =>
+      (lists[kind] ?? []).find((it) => it.isEnabled && it.key === key);
+    const purpose = find("purposes", poKeys.purposeKey);
+    const basis = find("valueBases", poKeys.valueBasisKey);
+    const premise = find("premises", poKeys.premiseKey);
+    return {
+      purpose: purpose?.name,
+      basis: basis?.name,
+      premise: premise?.name,
+      basisDefinition: (basis?.cells[0] ?? "").trim(),
+    };
+  }, [
+    outputBundle,
+    poKeys.premiseKey,
+    poKeys.purposeKey,
+    poKeys.valueBasisKey,
+  ]);
+
+  const photoSlots = useMemo(() => {
+    const attach = outputBundle?.attach;
+    if (!attach) return EMPTY_PHOTO_SLOTS;
     const land = isLandInspectionContext({
       vacantLand: outputBundle.inspector?.vacantLand,
       assetSubject: outputBundle.inspector?.featureValues?.assetSubject,
       classification: property?.classification,
       propertyType: property?.propertyType,
     });
-    setPhotoSlots(
-      land && attach.photos.length > 6 ? attach.photos.slice(0, 6) : attach.photos,
-    );
-    setSurveySlot(attach.survey);
-    setDeedSlot(attach.deed);
-    setSiteMapSlot(attach.siteMap);
-  }, [
-    outputBundle,
-    poKeys.premiseKey,
-    poKeys.purposeKey,
-    poKeys.valueBasisKey,
-    property?.classification,
-    property?.propertyType,
-  ]);
+    return land && attach.photos.length > 6
+      ? attach.photos.slice(0, 6)
+      : attach.photos;
+  }, [outputBundle, property?.classification, property?.propertyType]);
 
   /** جسم طلب التقرير المشترك بين معاينة الشاشة ونسخة الطباعة — كان منسوخاً بالكامل (~70 سطراً). */
   const buildReportMeta = useCallback(
@@ -438,6 +420,9 @@ export function EvaluatorValuationReportOutputTab({
 
   useEffect(() => {
     if (draft.poNumber && poQuery.isPending) return;
+    // لا توليد للتقرير قبل وصول حزمة المخرجات — كان يُبنى مرة بحقول فارغة
+    // ثم يُعاد بناؤه كاملاً عند وصول البيانات (async-cheap-condition-before-await).
+    if (!outputQuery.isSuccess) return;
     let cancelled = false;
     setError(null);
     // Use the shared cache — do not force-refetch (that caused a request storm).
@@ -469,7 +454,7 @@ export function EvaluatorValuationReportOutputTab({
     };
     // Intentionally omit `org`: this effect loads org and builds HTML.
     // Including it re-triggered the effect after setOrg and caused a fetch loop.
-  }, [buildReportMeta, draft.poNumber, poQuery.isPending]);
+  }, [buildReportMeta, draft.poNumber, poQuery.isPending, outputQuery.isSuccess]);
 
   const print = useCallback(async () => {
     setPrinting(true);

@@ -1,6 +1,6 @@
-import { apiConfig } from "@platform/app-shared/auth/api-config";
 "use client";
 
+import { apiConfig } from "@platform/app-shared/auth/api-config";
 import { useCallback, useEffect, useState } from "react";
 import { Button, cn, useToast } from "@platform/ui-kit";
 import { getAuthSession } from "@platform/auth-client";

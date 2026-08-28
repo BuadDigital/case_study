@@ -131,11 +131,14 @@ export function groupRowsByInvoice(
     .sort((a, b) => a.invoiceNumber.localeCompare(b.invoiceNumber, "en"));
 }
 
+/** منسّق مشترك — إنشاء Intl.DateTimeFormat لكل صف مكلف */
+const DATE_EN = new Intl.DateTimeFormat("en-GB");
+
 export function formatDateEn(iso: string | null | undefined): string {
   if (!iso) return "—";
   const t = Date.parse(iso);
   if (Number.isNaN(t)) return "—";
-  return new Date(t).toLocaleDateString("en-GB");
+  return DATE_EN.format(t);
 }
 
 export function uniqueCities(rows: EnfazTrackingRowDto[]): string[] {

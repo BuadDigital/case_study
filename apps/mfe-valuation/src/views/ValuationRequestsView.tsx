@@ -1,7 +1,8 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useMemo, useState } from "react";
+import { useDeferredValue, useMemo, useState } from "react";
+import { useViewportDesktop } from "@platform/app-shared/hooks/use-viewport-desktop";
 import { listWorkflowTasks } from "@platform/api-client";
 import { usePrototype } from "@platform/app-shared/contexts/PrototypeContext";
 import { isSuperAdmin } from "@platform/app-shared/prototype/prototype-role-access";
@@ -79,6 +80,10 @@ export function ValuationRequestsView() {
   const [openingPropId, setOpeningPropId] = useState<string | null>(null);
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState<StatusFilter>("all");
+  // الإدخال فوري والترشيح مؤجل إطاراً — ترشيح محلي بحت (rerender-use-deferred-value).
+  const deferredSearch = useDeferredValue(search);
+  // بعد الترطيب تركب شجرة واحدة فقط (جدول أو بطاقات) — كانتا تُبنيان معاً.
+  const isDesktopViewport = useViewportDesktop();
 
   const { done, prog, failed } = useMemo(() => {
     let done = 0;
@@ -94,17 +99,20 @@ export function ValuationRequestsView() {
   const ready = !isPending;
 
   const rows = useMemo(() => {
-    const q = search.trim();
+    const q = deferredSearch.trim();
+    // شروط قصيرة الدائرة بدل join(" ") — كانت مصفوفة + سلسلة لكل صف لكل حرف.
     return vr.filter((v) => {
       const okS = status === "all" || v.status === status;
       const okQ =
         !q ||
-        [v.id, v.propId, v.area, v.type, v.appraiser]
-          .join(" ")
-          .includes(q);
+        v.id.includes(q) ||
+        v.propId.includes(q) ||
+        v.area.includes(q) ||
+        v.type.includes(q) ||
+        v.appraiser.includes(q);
       return okS && okQ;
     });
-  }, [vr, search, status]);
+  }, [vr, deferredSearch, status]);
 
   const handleSubmitReport = async (recordId: string) => {
     const ok = window.confirm("تأكيد رفع تقرير التقييم وإرساله لدراسة الحالة؟");
@@ -287,6 +295,8 @@ export function ValuationRequestsView() {
           </div>
         </div>
 
+        {/* بعد الترطيب تركب شجرة واحدة فقط (جدول أو بطاقات) — كانتا تُبنيان معاً. */}
+        {isDesktopViewport === false ? null : (
         <Table pending={!ready} wrapClassName="hidden lg:block">
           <THead>
             <Tr hoverable={false}>
@@ -381,7 +391,9 @@ export function ValuationRequestsView() {
             )}
           </TBody>
         </Table>
+        )}
 
+        {isDesktopViewport === true ? null : (
         <div className="p-3 lg:hidden">
           {!ready ? (
             mobileLoadingSkeleton
@@ -403,6 +415,9 @@ export function ValuationRequestsView() {
                     key={v.recordId}
                     className={cn(
                       "overflow-hidden rounded-[14px] border border-border border-s-[3px] bg-surface px-3.5 py-3.5 shadow-[0_2px_8px_rgba(15,52,96,0.06)]",
+                      // قائمة غير مسقوفة — تخطي تخطيط/رسم ما هو خارج الشاشة
+                      // (rendering-content-visibility؛ لا بوابات ولا قياسات).
+                      "[content-visibility:auto] [contain-intrinsic-size:auto_130px]",
                       tone,
                     )}
                   >
@@ -464,6 +479,7 @@ export function ValuationRequestsView() {
             </ul>
           )}
         </div>
+        )}
       </SubpagePanel>
     </ReportPageBody>
   );

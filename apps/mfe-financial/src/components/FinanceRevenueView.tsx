@@ -1,6 +1,12 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import {
+  useCallback,
+  useDeferredValue,
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
 import { useQuery } from "@tanstack/react-query";
 import { fmt } from "@platform/app-shared/format/number";
 import { prototypeKeys } from "@platform/app-shared/query/prototype-keys";
@@ -89,6 +95,8 @@ export function FinanceRevenueView({
   onFocusPo: (po: string | null, forStage?: RevenueStage) => void;
 }) {
   const [search, setSearch] = useState("");
+  /** قيمة مؤجَّلة للفلترة — إدخال البحث يبقى فورياً دون حجب الكتابة */
+  const deferredSearch = useDeferredValue(search);
   const [period, setPeriod] = useState<"all" | "30" | "90">("all");
   const [city, setCity] = useState("all");
   const [collapsed, setCollapsed] = useState<Record<string, boolean>>({});
@@ -118,10 +126,10 @@ export function FinanceRevenueView({
   const filteredBuckets = useMemo(() => {
     const next = {} as Record<RevenueStage, EnfazTrackingRowDto[]>;
     for (const s of REVENUE_STAGES) {
-      next[s.id] = filterRows(buckets[s.id] ?? [], search, city, period);
+      next[s.id] = filterRows(buckets[s.id] ?? [], deferredSearch, city, period);
     }
     return next;
-  }, [buckets, search, city, period]);
+  }, [buckets, deferredSearch, city, period]);
 
   const counts = useMemo(() => {
     const next: Partial<Record<RevenueStage, number>> = {};

@@ -239,30 +239,32 @@ function SubjCell({ value, note }: { value: string; note?: string }) {
   );
 }
 
-/** ق-8-1: مبرر على مستوى العامل + لوحة «تخصيص لمقارن بعينه» عند الاختلاف. */
+/** ق-8-1: مبرر على مستوى العامل + لوحة «تخصيص لمقارن بعينه» عند الاختلاف.
+    المسودة داخل الخلية — الكتابة كانت تعيد تصيير الجدول كله لكل حرف (rerender-defer-reads). */
 function JustCell({
   factorKey,
   value,
   locked,
-  onDraft,
-  onSave,
+  onCommit,
   overrides,
   onSaveOverride,
 }: {
   factorKey?: string;
   value?: string;
   locked?: boolean;
-  onDraft?: (factorKey: string, value: string) => void;
-  onSave?: (factorKey: string) => void;
+  /** عند blur بقيمة متغيرة فقط؛ إرجاع false يُبقي المسودة (فشل الحفظ). */
+  onCommit?: (factorKey: string, text: string) => Promise<boolean> | void;
   overrides?: { id: string; label: string; value: string }[];
   onSaveOverride?: (selectionId: string, factorKey: string, text: string) => void;
 }) {
   const [showOverrides, setShowOverrides] = useState(false);
   const [overrideDraft, setOverrideDraft] = useState<Record<string, string>>({});
-  if (!factorKey || !onDraft || !onSave) {
+  const [draft, setDraft] = useState<string | null>(null);
+  if (!factorKey || !onCommit) {
     return <td className={tdJustClass} />;
   }
-  const text = value ?? "";
+  const committed = value ?? "";
+  const text = draft ?? committed;
   // ق-8-2: المبرر الصوري (أقصر من الحد) لا يُحفظ.
   const tooShort =
     text.trim().length > 0 && text.trim().length < JUSTIFICATION_MIN_LENGTH;
@@ -276,9 +278,16 @@ function JustCell({
         value={text}
         disabled={locked}
         placeholder="مبرّر التسوية (يغطي كل المقارنات)؟"
-        onChange={(e) => onDraft(factorKey, e.target.value)}
+        onChange={(e) => setDraft(e.target.value)}
         onBlur={() => {
-          if (!tooShort) onSave(factorKey);
+          if (draft == null || tooShort) return;
+          if (draft === committed) {
+            setDraft(null);
+            return;
+          }
+          void Promise.resolve(onCommit(factorKey, draft)).then((ok) => {
+            if (ok !== false) setDraft(null);
+          });
         }}
         className={cn(
           "w-full rounded-[7px] border bg-surface px-2.5 py-[7px] text-[12px] font-medium text-text",
@@ -380,8 +389,7 @@ function CompInput({
   auto,
   note,
   extra,
-  onDraft,
-  onSave,
+  onCommit,
 }: {
   cellKey: string;
   value: string;
@@ -390,18 +398,30 @@ function CompInput({
   auto?: boolean;
   note?: string;
   extra?: ReactNode;
-  onDraft: (key: string, value: string) => void;
-  onSave?: () => void;
+  /** عند blur بقيمة متغيرة فقط؛ إرجاع false يُبقي المسودة (فشل الحفظ). */
+  onCommit?: (key: string, raw: string) => Promise<boolean> | void;
 }) {
+  // المسودة داخل الخلية — كانت في الأب فيعاد تصيير ~١٢٠ مكوناً لكل حرف
+  // (rerender-defer-reads)؛ الحفظ عند blur لما تغيّر فقط كما كان.
+  const [draft, setDraft] = useState<string | null>(null);
   return (
     <td className={tdCellClass}>
       <input
         dir="ltr"
         type="text"
         disabled={disabled}
-        value={value}
-        onChange={(e) => onDraft(cellKey, e.target.value)}
-        onBlur={() => onSave?.()}
+        value={draft ?? value}
+        onChange={(e) => setDraft(e.target.value)}
+        onBlur={() => {
+          if (draft == null) return;
+          if (draft === value || !onCommit) {
+            setDraft(null);
+            return;
+          }
+          void Promise.resolve(onCommit(cellKey, draft)).then((ok) => {
+            if (ok !== false) setDraft(null);
+          });
+        }}
         className={cn(
           cellInputBaseClass,
           muted || auto
@@ -412,6 +432,84 @@ function CompInput({
       />
       {note ? <div className={noteClass}>{note}</div> : null}
       {extra}
+    </td>
+  );
+}
+
+/** حقل نصي بمسودة محلية — يلتزم عند blur لما تغيّر فقط (وصف المقارن/العقار). */
+function InlineDraftInput({
+  value,
+  disabled,
+  placeholder,
+  className,
+  onCommit,
+}: {
+  value: string;
+  disabled?: boolean;
+  placeholder?: string;
+  className?: string;
+  onCommit: (text: string) => void;
+}) {
+  const [draft, setDraft] = useState<string | null>(null);
+  return (
+    <input
+      type="text"
+      disabled={disabled}
+      placeholder={placeholder}
+      value={draft ?? value}
+      onChange={(e) => setDraft(e.target.value)}
+      onBlur={() => {
+        if (draft == null) return;
+        const text = draft;
+        setDraft(null);
+        if (text !== value) onCommit(text);
+      }}
+      className={className}
+    />
+  );
+}
+
+/** خلية الوزن النسبي بمسودتها المحلية — نفس عقد الالتزام عند blur. */
+function WeightCell({
+  value,
+  manual,
+  suggestedNote,
+  locked,
+  onCommit,
+}: {
+  value: string;
+  manual: boolean | undefined;
+  suggestedNote: string;
+  locked: boolean;
+  onCommit: (raw: string) => Promise<boolean> | void;
+}) {
+  const [draft, setDraft] = useState<string | null>(null);
+  return (
+    <td className={tdCellClass}>
+      <input
+        dir="ltr"
+        type="text"
+        disabled={locked}
+        value={draft ?? value}
+        onChange={(e) => setDraft(e.target.value)}
+        onBlur={() => {
+          if (draft == null) return;
+          if (draft === value) {
+            setDraft(null);
+            return;
+          }
+          void Promise.resolve(onCommit(draft)).then((ok) => {
+            if (ok !== false) setDraft(null);
+          });
+        }}
+        className={cn(
+          cellInputBaseClass,
+          manual
+            ? "border-border-md bg-surface text-heading"
+            : "border-border bg-surface-2 text-gold-d",
+        )}
+      />
+      <div className={noteClass}>{manual ? "تجاوز يدوي" : suggestedNote}</div>
     </td>
   );
 }
@@ -504,29 +602,11 @@ export const AdjustmentsMatrix = memo(function AdjustmentsMatrix({
 }: AdjustmentsMatrixProps) {
   /** حذف بخطوتين — «حذف؟ ✓ ×» (خانة تأكيد واحدة في كل لحظة كما في النموذج). */
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
-  /* المسودات محلية — الكتابة هنا لا تعيد رسم صدفة التقييم؛ الحفظ عند blur كما كان،
-     ولا حفظ عند مغادرة حقل لم يُلمس (كانت تُحفَظ أصفار/فراغات فوق قيم الخادم). */
-  const [matrixDraft, setMatrixDraft] = useState<Record<string, string>>({});
-  const [weightDraft, setWeightDraft] = useState<Record<string, string>>({});
-  const [rationaleDraft, setRationaleDraft] = useState<Record<string, string>>({});
-  const [descriptionDraft, setDescriptionDraft] = useState<Record<string, string>>({});
-  const [subjectSpecDraft, setSubjectSpecDraft] = useState<Record<string, string>>({});
-  const clearDraft = (
-    set: (
-      updater: (prev: Record<string, string>) => Record<string, string>,
-    ) => void,
-    key: string,
-  ) =>
-    set((prev) => {
-      const next = { ...prev };
-      delete next[key];
-      return next;
-    });
-  const saveRationale = (factorKey: string) => {
-    const text = rationaleDraft[factorKey];
-    if (text == null) return;
-    void dispatch({ type: "save-rationale", factorKey, text });
-  };
+  /* المسودات داخل خلاياها (CompInput/JustCell/WeightCell/InlineDraftInput) —
+     كانت خمس خرائط هنا فيعاد تصيير الجدول كله (~١٢٠ مكوناً) مع كل حرف
+     (rerender-defer-reads)؛ الحفظ عند blur لما تغيّر فقط، ولا حفظ لحقل لم يُلمس. */
+  const saveRationale = (factorKey: string, text: string) =>
+    dispatch({ type: "save-rationale", factorKey, text });
   const saveLineRationale = (
     selectionId: string,
     factorKey: string,
@@ -581,6 +661,12 @@ export const AdjustmentsMatrix = memo(function AdjustmentsMatrix({
     return 0;
   };
 
+  // كاش أسطر التخصيص لكل عامل — يتصفّر مع تغيّر المعتمدين/الأسطر.
+  const overridesCacheRef = useMemo(
+    () => new Map<string, { id: string; label: string; value: string }[]>(),
+    [adopted, linesByItem],
+  );
+
   const factorKeysFromData = useMemo(() => {
     const keys: string[] = [];
     const seen = new Set<string>();
@@ -626,18 +712,24 @@ export const AdjustmentsMatrix = memo(function AdjustmentsMatrix({
     (selection.factorRationales ?? []).map((r) => [r.factorKey, r.rationaleAr]),
   );
   const justValue = (factorKey: string) =>
-    rationaleDraft[factorKey] ??
     factorRationaleByKey.get(factorKey) ??
     lineOf(adopted[0]!, factorKey)?.rationale ??
     "";
 
-  /** ق-8-1: أسطر التخصيص لكل مقارن — تُعرض تحت مبرر العامل عند الطلب. */
-  const overridesFor = (factorKey: string) =>
-    adopted.map((item, i) => ({
-      id: item.id,
-      label: `مقارن ${i + 1}`,
-      value: lineOf(item, factorKey)?.rationale ?? "",
-    }));
+  /** ق-8-1: أسطر التخصيص لكل مقارن — تُعرض تحت مبرر العامل عند الطلب.
+      كاش لكل عامل — كانت مصفوفة كائنات جديدة لكل JustCell مع كل تصيير (js-cache-function-results). */
+  const overridesFor = (factorKey: string) => {
+    let cached = overridesCacheRef.get(factorKey);
+    if (!cached) {
+      cached = adopted.map((item, i) => ({
+        id: item.id,
+        label: `مقارن ${i + 1}`,
+        value: lineOf(item, factorKey)?.rationale ?? "",
+      }));
+      overridesCacheRef.set(factorKey, cached);
+    }
+    return cached;
+  };
 
   const largeComps = adopted.filter(
     (i) => i.market?.exceedsLargeAdjustmentThreshold,
@@ -707,11 +799,7 @@ export const AdjustmentsMatrix = memo(function AdjustmentsMatrix({
           <button
             type="button"
             disabled={saving || locked}
-            onClick={() =>
-              void dispatch({ type: "reset-weights" }).then(
-                (ok) => ok && setWeightDraft({}),
-              )
-            }
+            onClick={() => void dispatch({ type: "reset-weights" })}
             className="flex cursor-pointer items-center gap-[7px] rounded-[9px] border-none bg-ink px-4 py-2.5 text-[13px] font-bold text-white shadow-card disabled:cursor-not-allowed disabled:opacity-55"
           >
             إعادة ضبط الأوزان
@@ -877,10 +965,7 @@ export const AdjustmentsMatrix = memo(function AdjustmentsMatrix({
                         <CompInput
                           key={item.id}
                           cellKey={cellKey}
-                          value={
-                            matrixDraft[cellKey] ??
-                            String(linePct(item, factorKey))
-                          }
+                          value={String(linePct(item, factorKey))}
                           disabled={locked || !included2}
                           muted={suggested || !included2}
                           note={
@@ -893,25 +978,15 @@ export const AdjustmentsMatrix = memo(function AdjustmentsMatrix({
                                   ].join(" · ")
                                 : undefined
                           }
-                          onDraft={(key, value) =>
-                            setMatrixDraft((prev) => ({ ...prev, [key]: value }))
-                          }
-                          onSave={
+                          onCommit={
                             included2
-                              ? () => {
-                                  const raw = matrixDraft[cellKey];
-                                  if (raw == null) return;
-                                  void dispatch({
+                              ? (_key, raw) =>
+                                  dispatch({
                                     type: "save-cell",
                                     item,
                                     factorKey,
                                     raw,
-                                  }).then(
-                                    (ok) =>
-                                      ok &&
-                                      clearDraft(setMatrixDraft, cellKey),
-                                  );
-                                }
+                                  })
                               : undefined
                           }
                         />
@@ -921,10 +996,7 @@ export const AdjustmentsMatrix = memo(function AdjustmentsMatrix({
                       factorKey={factorKey}
                       value={justValue(factorKey)}
                       locked={locked}
-                      onDraft={(key, value) =>
-                        setRationaleDraft((prev) => ({ ...prev, [key]: value }))
-                      }
-                      onSave={saveRationale}
+                      onCommit={saveRationale}
                       overrides={overridesFor(factorKey)}
                       onSaveOverride={saveLineRationale}
                     />
@@ -981,10 +1053,7 @@ export const AdjustmentsMatrix = memo(function AdjustmentsMatrix({
                   factorKey={AUTO_AREA_KEY}
                   value={justValue(AUTO_AREA_KEY)}
                   locked={locked}
-                  onDraft={(key, value) =>
-                    setRationaleDraft((prev) => ({ ...prev, [key]: value }))
-                  }
-                  onSave={saveRationale}
+                  onCommit={saveRationale}
                   overrides={overridesFor(AUTO_AREA_KEY)}
                   onSaveOverride={saveLineRationale}
                 />
@@ -1043,26 +1112,15 @@ export const AdjustmentsMatrix = memo(function AdjustmentsMatrix({
                     />
                     {subjEditable ? (
                       <td className={tdSubjClass}>
-                        <input
-                          type="text"
+                        <InlineDraftInput
                           disabled={locked}
                           placeholder="وصف العقار…"
-                          value={
-                            subjectSpecDraft[factorKey] ??
-                            subjectSpecs?.[factorKey] ??
-                            ""
-                          }
-                          onChange={(e) =>
-                            setSubjectSpecDraft((prev) => ({
-                              ...prev,
-                              [factorKey]: e.target.value,
-                            }))
-                          }
-                          onBlur={(e) =>
+                          value={subjectSpecs?.[factorKey] ?? ""}
+                          onCommit={(text) =>
                             void dispatch({
                               type: "save-subject-spec",
                               factorKey,
-                              text: e.target.value,
+                              text,
                             })
                           }
                           className="w-full rounded-[7px] border border-dashed border-border-md bg-surface px-2 py-1.5 text-center text-[12px] font-bold text-gold-d"
@@ -1079,31 +1137,18 @@ export const AdjustmentsMatrix = memo(function AdjustmentsMatrix({
                         <CompInput
                           key={item.id}
                           cellKey={cellKey}
-                          value={
-                            matrixDraft[cellKey] ??
-                            String(linePct(item, factorKey))
-                          }
+                          value={String(linePct(item, factorKey))}
                           disabled={locked || !included}
                           muted={!included}
-                          onDraft={(key, value) =>
-                            setMatrixDraft((prev) => ({ ...prev, [key]: value }))
-                          }
-                          onSave={
+                          onCommit={
                             included
-                              ? () => {
-                                  const raw = matrixDraft[cellKey];
-                                  if (raw == null) return;
-                                  void dispatch({
+                              ? (_key, raw) =>
+                                  dispatch({
                                     type: "save-cell",
                                     item,
                                     factorKey,
                                     raw,
-                                  }).then(
-                                    (ok) =>
-                                      ok &&
-                                      clearDraft(setMatrixDraft, cellKey),
-                                  );
-                                }
+                                  })
                               : undefined
                           }
                           note={
@@ -1113,27 +1158,17 @@ export const AdjustmentsMatrix = memo(function AdjustmentsMatrix({
                           }
                           extra={
                             specEnabled ? (
-                              <input
-                                type="text"
+                              <InlineDraftInput
+                                key={descKey}
                                 disabled={locked}
                                 placeholder="وصف المقارن…"
-                                value={
-                                  descriptionDraft[descKey] ??
-                                  line?.descriptionAr ??
-                                  ""
-                                }
-                                onChange={(e) =>
-                                  setDescriptionDraft((prev) => ({
-                                    ...prev,
-                                    [descKey]: e.target.value,
-                                  }))
-                                }
-                                onBlur={(e) =>
+                                value={line?.descriptionAr ?? ""}
+                                onCommit={(text) =>
                                   void dispatch({
                                     type: "save-description",
                                     item,
                                     factorKey,
-                                    text: e.target.value,
+                                    text,
                                   })
                                 }
                                 className="mt-1 w-[110px] rounded-md border border-dashed border-border bg-surface px-1.5 py-1 text-center text-[10.5px] font-medium text-text-2"
@@ -1147,10 +1182,7 @@ export const AdjustmentsMatrix = memo(function AdjustmentsMatrix({
                       factorKey={factorKey}
                       value={justValue(factorKey)}
                       locked={locked}
-                      onDraft={(key, value) =>
-                        setRationaleDraft((prev) => ({ ...prev, [key]: value }))
-                      }
-                      onSave={saveRationale}
+                      onCommit={saveRationale}
                       overrides={overridesFor(factorKey)}
                       onSaveOverride={saveLineRationale}
                     />
@@ -1222,66 +1254,39 @@ export const AdjustmentsMatrix = memo(function AdjustmentsMatrix({
                 <SubjCell value="—" />
                 {adopted.map((item) => {
                   const manual = item.market?.weightIsManual;
-                  const display =
-                    weightDraft[item.id] ??
-                    String(
-                      manual
-                        ? (item.market?.weightPct ??
-                            item.market?.effectiveWeightPct ??
-                            "")
-                        : (item.market?.suggestedWeightPct ??
-                            item.market?.effectiveWeightPct ??
-                            ""),
-                    );
+                  const display = String(
+                    manual
+                      ? (item.market?.weightPct ??
+                          item.market?.effectiveWeightPct ??
+                          "")
+                      : (item.market?.suggestedWeightPct ??
+                          item.market?.effectiveWeightPct ??
+                          ""),
+                  );
                   return (
-                    <td key={item.id} className={tdCellClass}>
-                      <input
-                        dir="ltr"
-                        type="text"
-                        disabled={locked}
-                        value={display}
-                        onChange={(e) =>
-                          setWeightDraft((prev) => ({
-                            ...prev,
-                            [item.id]: e.target.value,
-                          }))
-                        }
-                        onBlur={() => {
-                          const raw = weightDraft[item.id];
-                          if (raw == null) return;
-                          void dispatch({
-                            type: "save-weight",
-                            item,
-                            rawPct: raw,
-                            weightRationale: rationaleDraft["weight"] ?? "",
-                          }).then(
-                            (ok) =>
-                              ok && clearDraft(setWeightDraft, item.id),
-                          );
-                        }}
-                        className={cn(
-                          cellInputBaseClass,
-                          manual
-                            ? "border-border-md bg-surface text-heading"
-                            : "border-border bg-surface-2 text-gold-d",
-                        )}
-                      />
-                      <div className={noteClass}>
-                        {manual
-                          ? "تجاوز يدوي"
-                          : `مقترح ${item.market?.suggestedWeightPct ?? "—"}%`}
-                      </div>
-                    </td>
+                    <WeightCell
+                      key={item.id}
+                      value={display}
+                      manual={manual}
+                      suggestedNote={`مقترح ${item.market?.suggestedWeightPct ?? "—"}%`}
+                      locked={locked}
+                      onCommit={(raw) =>
+                        dispatch({
+                          type: "save-weight",
+                          item,
+                          rawPct: raw,
+                          // آخر مبرر ملتزم — مسودة الخلية تلتزم بنفسها عند blur.
+                          weightRationale: justValue("weight"),
+                        })
+                      }
+                    />
                   );
                 })}
                 <JustCell
                   factorKey="weight"
                   value={justValue("weight")}
                   locked={locked}
-                  onDraft={(key, value) =>
-                    setRationaleDraft((prev) => ({ ...prev, [key]: value }))
-                  }
-                  onSave={saveRationale}
+                  onCommit={saveRationale}
                 />
               </tr>
 

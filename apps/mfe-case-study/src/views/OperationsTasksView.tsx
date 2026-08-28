@@ -55,6 +55,7 @@ import {
 } from "../lib/prototype/operations-task-display";
 import { resolveSlaTimerRatio } from "../lib/prototype/my-task-row";
 import { useTickingMinute } from "@platform/app-shared/hooks/use-ticking-now";
+import { useViewportDesktop } from "@platform/app-shared/hooks/use-viewport-desktop";
 import {
   canManageOperationsTasks,
   canRemindOperationsTasks,
@@ -323,6 +324,8 @@ export function OperationsTasksView() {
   // دقّة الدقيقة تكفي لمنطق الشاشة — العدّادات الثانوية (DueCell وبطاقات الجوال)
   // تشترك بالساعة بنفسها، فلا يعاد بناء كل الصفوف كل ثانية (rerender-defer-reads).
   const now = useTickingMinute();
+  // بعد الترطيب تركب شجرة واحدة فقط (جدول أو بطاقات) — كانتا تُبنيان معاً.
+  const isDesktopViewport = useViewportDesktop();
   const commentFileInputRef = useRef<HTMLInputElement>(null);
   const closeFileInputRef = useRef<HTMLInputElement>(null);
   const selAllRef = useRef<HTMLInputElement>(null);
@@ -1027,6 +1030,7 @@ export function OperationsTasksView() {
   );
 
   const mobileCardItems = useMemo((): ActiveQueueMobileCardItem[] => {
+    if (isDesktopViewport === true) return [];
     return visibleTasks.map((task) => {
       const cd = taskCountdown(task.dueAt, task.status, now);
       const active = isActiveOperationsTask(task);
@@ -1100,7 +1104,7 @@ export function OperationsTasksView() {
         ) : undefined,
       };
     });
-  }, [visibleTasks, now, rowMenu, selectedIds]);
+  }, [isDesktopViewport, visibleTasks, now, rowMenu, selectedIds]);
 
   const isAssignee = useMemo(() => {
     if (!detail) return false;
@@ -1869,7 +1873,8 @@ export function OperationsTasksView() {
       {error ? <Note tone="danger">{error}</Note> : null}
 
       <OperationalPanel className="min-h-0 flex-1 overflow-hidden !rounded-[12px] p-0 max-lg:border-0 max-lg:bg-transparent max-lg:!rounded-none max-lg:shadow-none">
-        {/* Desktop table */}
+        {/* Desktop table — بعد الترطيب تركب شجرة واحدة فقط (rendering). */}
+        {isDesktopViewport === false ? null : (
         <div className="hidden overflow-x-auto lg:block">
           <div className="min-w-[900px]">
             <div className={opsThead} style={{ gridTemplateColumns: TASKS_LIST_COLS }}>
@@ -2034,18 +2039,21 @@ export function OperationsTasksView() {
             )}
           </div>
         </div>
+        )}
 
         {/* Mobile card list */}
-        <div className="px-3 pb-3 lg:hidden max-lg:px-0">
-          <ActiveQueueMobileCards
-            items={mobileCardItems}
-            emptyMessage={
-              useIndependentQueue
-                ? "لا توجد مهام مسندة إليك."
-                : "لا توجد مهام مطابقة."
-            }
-          />
-        </div>
+        {isDesktopViewport === true ? null : (
+          <div className="px-3 pb-3 lg:hidden max-lg:px-0">
+            <ActiveQueueMobileCards
+              items={mobileCardItems}
+              emptyMessage={
+                useIndependentQueue
+                  ? "لا توجد مهام مسندة إليك."
+                  : "لا توجد مهام مطابقة."
+              }
+            />
+          </div>
+        )}
         <TasksSectionNote>{TASKS_LIST_FOOTER}</TasksSectionNote>
       </OperationalPanel>
 

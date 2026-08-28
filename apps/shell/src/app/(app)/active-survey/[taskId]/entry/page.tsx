@@ -1,21 +1,14 @@
-"use client";
+// مكوّن خادم — كانت الصفحة "use client" فقط لفك params (server-side).
+import { decodeTaskParam } from "@case-study/mfe/lib/my-task-routes";
+import { EngineeringSurveyWorkPageClient } from "../../../../../components/party-tasks/EngineeringSurveyWorkPageClient";
 
-import { use } from "react";
-import { PartyActiveTaskWorkPage, decodeTaskParam } from "@case-study/mfe";
-import { partyEngineeringSurveyExtensions } from "@engineering-office/mfe";
-
-export default function ActiveSurveyEntryPage({
+export default async function ActiveSurveyEntryPage({
   params,
 }: {
   params: Promise<{ taskId: string }>;
 }) {
-  const { taskId } = use(params);
+  const { taskId } = await params;
   return (
-    <PartyActiveTaskWorkPage
-      pageId="active-survey"
-      taskId={decodeTaskParam(taskId)}
-      engineeringSurveyExtensions={partyEngineeringSurveyExtensions}
-      engineeringSurveyEntry
-    />
+    <EngineeringSurveyWorkPageClient taskId={decodeTaskParam(taskId)} entry />
   );
 }

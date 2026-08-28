@@ -51,6 +51,11 @@ const nextConfig: NextConfig = {
       "@engineering-office/mfe",
       "@failures/mfe",
       "@settings/mfe",
+      "@survey/mfe",
+      "@financial/mfe",
+      "@keys/mfe",
+      "@dashboard/mfe",
+      "@valuation/mfe",
     ],
   },
   /**

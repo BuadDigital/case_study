@@ -10,7 +10,7 @@ import {
 } from "@platform/app-shared/prototype/party-billing-statements-api";
 import type { FinanceNavArea } from "@platform/app-shared/prototype/financial-nav";
 import { usePrototype } from "@platform/app-shared/contexts/PrototypeContext";
-import { buildFinanceMyTasks } from "@financial/mfe";
+import { buildFinanceMyTasks } from "@financial/mfe/lib/finance-my-tasks";
 import { bucketRevenueRows } from "@financial/mfe/lib/finance-revenue-stages";
 
 /**

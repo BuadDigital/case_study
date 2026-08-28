@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useDeferredValue, useEffect, useMemo, useState, Fragment } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { usePrototype } from "@platform/app-shared/contexts/PrototypeContext";
+import { useViewportDesktop } from "@platform/app-shared/hooks/use-viewport-desktop";
 import { prototypeKeys } from "@platform/app-shared/query/prototype-keys";
 import { isSuperAdmin } from "@platform/app-shared/prototype/prototype-role-access";
 import type { RoleId } from "@platform/types";
@@ -127,6 +128,8 @@ export function FailuresView() {
     return map;
   }, [poRecords]);
   const [search, setSearch] = useState("");
+  // بعد الترطيب تركب شجرة واحدة فقط (جدول أو بطاقات) — كانتا تُبنيان معاً.
+  const isDesktopViewport = useViewportDesktop();
   const [expandedId, setExpandedId] = useState<string | null>(highlightId);
   const [supervisorNote, setSupervisorNote] = useState<Record<string, string>>(
     {},
@@ -598,6 +601,7 @@ export function FailuresView() {
   }
 
   const mobileCardItems = useMemo((): ActiveQueueMobileCardItem[] => {
+    if (isDesktopViewport === true) return [];
     return filteredItems.map((f) => {
       const active = isActiveFailureStatus(f.status);
       const statusColor = failureListStatusColor(f.status, f.severity);
@@ -646,6 +650,7 @@ export function FailuresView() {
       };
     });
   }, [
+    isDesktopViewport,
     filteredItems,
     expandedId,
     highlightId,
@@ -793,6 +798,7 @@ export function FailuresView() {
       ) : null}
 
       <OperationalPanel className="shrink-0 overflow-visible max-lg:border-0 max-lg:bg-transparent max-lg:shadow-none max-lg:rounded-none">
+        {isDesktopViewport === false ? null : (
         <div className="hidden lg:block">
           <Table pending={!isFetched}>
             <THead>
@@ -885,17 +891,20 @@ export function FailuresView() {
             </TBody>
           </Table>
         </div>
+        )}
 
-        <div className="lg:hidden max-lg:px-0">
-          <ActiveQueueMobileCards
-            items={mobileCardItems}
-            pending={!isFetched}
-            emptyMessage={
-              partyScopedFailuresEmptyLine(role) ??
-              "لا توجد تعذرات — سجّل تعذراً من شاشة العقارات."
-            }
-          />
-        </div>
+        {isDesktopViewport === true ? null : (
+          <div className="lg:hidden max-lg:px-0">
+            <ActiveQueueMobileCards
+              items={mobileCardItems}
+              pending={!isFetched}
+              emptyMessage={
+                partyScopedFailuresEmptyLine(role) ??
+                "لا توجد تعذرات — سجّل تعذراً من شاشة العقارات."
+              }
+            />
+          </div>
+        )}
       </OperationalPanel>
 
       <QueueTableHint className="hidden lg:block">

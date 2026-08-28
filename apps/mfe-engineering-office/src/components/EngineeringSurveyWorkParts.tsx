@@ -2,90 +2,10 @@
 
 /** أجزاء لوحة عمل الرفع المساحي — أنواع ومساعدات على مستوى الوحدة، نُقلت حرفياً (SRP). */
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import dynamic from "next/dynamic";
-import { useRouter } from "next/navigation";
-import { InlineLoadingSkeleton, Spinner, cn, useToast } from "@platform/ui-kit";
-import type { PartyTaskPageDef } from "@platform/app-shared/prototype/party-task-pages";
-import type { WorkflowTask } from "@case-study/mfe";
-import { activeSurveyEntryPath } from "@case-study/mfe/lib/my-task-routes";
-import {
-  emptyCaseStudyFormDraft,
-  loadPartyCaseStudyFormDraft,
-  savePartyCaseStudyFormDraft,
-} from "@case-study/mfe";
-import {
-  surveyWorkGate,
-  declarationPhoneGate,
-  hasAnyPartyPhone,
-} from "@case-study/mfe/lib/prototype/documentary-workflow-gates";
-import { usePrototype } from "@platform/app-shared/contexts/PrototypeContext";
-import {
-  usePoRecordQuery,
-  useWorkflowTasksQuery,
-} from "@case-study/mfe/query/case-study-queries";
-import { useInspectorFeesQuery } from "@case-study/mfe/query/inspector-fees-queries";
-import {
-  blockingFailureForProperty,
-  failureRecordTitle,
-} from "@failures/mfe";
-import { failureRaiserRoleForParty } from "@failures/mfe/lib/failure-party-roles";
-import { useFailuresQuery } from "@failures/mfe/query/failures-queries";
-import { isActiveFailureStatus } from "@failures/mfe/lib/failures-types";
-import {
-  createEngineeringSurveyDraft,
-  isEngineeringSurveyFormLocked,
-  type EngineeringSurveySubmission,
-} from "../lib/engineering-survey-data";
-import {
-  fetchEngineeringSurveySubmission,
-  getOrCreateEngineeringSurveyDraft,
-  loadEngineeringSurveySubmission,
-  updateEngineeringSurveyDraft,
-} from "../lib/engineering-survey-submission-storage";
-import {
-  cacheEngineeringSurveyFile,
-  clearEngineeringSurveyFile,
-} from "../lib/engineering-survey-attachments";
-import { scheduleScrollToFormField } from "@platform/app-shared/form-ux";
-import {
-  engineeringInvalidControlClass,
-  firstEngineeringSurveyError,
-  firstEngineeringSurveyErrorTarget,
-  validateEngineeringSurveySubmission,
-  isPlattedPropertyWithPlot,
-  type EngineeringSurveyFieldErrors,
-} from "../lib/engineering-survey-validation";
-import { finalizeEngineeringSurveySubmission } from "../lib/finalize-engineering-survey-submission";
-import type { EngineeringSurveyWindowHostRefObject } from "../lib/engineering-survey-window-host";
-import {
-  extractSurveySketchFromPdf,
-  sketchExtractToEmptyFieldsPatch,
-  sketchNatureFieldsFromExtract,
-  sketchNatureFieldsFromDeedForm,
-  applyNatureSketchPatch,
-  type SurveySketchExtractResult,
-} from "../lib/engineering-survey-sketch-extract";
-import { EngineeringSurveyChecklist } from "./EngineeringSurveyChecklist";
-import { EngineeringSurveyPropertySummary } from "./EngineeringSurveyPropertySummary";
-import {
-  applyChecklistToCaseStudyAnswers,
-  caseStudyAnswersChanged,
-} from "../lib/engineering-survey-checklist-sync";
-import { isEngineeringSurveyTransactionActive } from "../lib/engineering-survey-transaction-active";
-import {
-  EngField,
-  EngInfo,
-  EngSection,
-  EngStatusPill,
-  EngTabBar,
-  EngUploadBox,
-  ENG_STATUS_COLORS,
-  engCardClassName,
-  engInputClassName,
-  engLabelClassName,
-  engPrimaryBtnClassName,
-} from "./EngineeringSurveyHtmlPrimitives";
+import { InlineLoadingSkeleton } from "@platform/ui-kit";
+import type { EngineeringSurveySubmission } from "../lib/engineering-survey-data";
+import type { EngineeringSurveyFieldErrors } from "../lib/engineering-survey-validation";
 
 export type WorkTab = "property" | "survey" | "fees" | "notes" | "failures";
 

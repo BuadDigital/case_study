@@ -35,10 +35,10 @@ import { PartyAssigneeCell } from "../components/ui/PartyAssigneeCell";
 import { HoverPortalCard } from "../components/ui/HoverPortalCard";
 import {
   buildDistributionTableRow,
-  buildPrimaryDataTableRow,
   findPropertyForTask,
   type RemainingTimeState,
 } from "../lib/prototype/my-task-row";
+import type { PrimaryQueueRowMeta } from "../lib/prototype/active-queue-list-filters";
 import { INSPECTION_TABLE_TYPE } from "../lib/prototype/queue-table-type";
 import type { PoIntakeRecord } from "../lib/prototype/po-intake-data";
 import { PROPERTY_IDENTIFIER_COLUMN_LABEL } from "../lib/prototype/po-intake-data";
@@ -725,16 +725,12 @@ export function DistributionQueueTable({
 
 export function EngineeringSurveyQueueTable({
   ctx,
-  filteredListed,
-  poByNumber,
-  now,
+  filteredMeta,
   resolveTaskBadge,
   statusColumnLabel,
 }: {
   ctx: QueueRowContext;
-  filteredListed: WorkflowTask[];
-  poByNumber: Map<string, PoIntakeRecord>;
-  now: Date;
+  filteredMeta: PrimaryQueueRowMeta[];
   resolveTaskBadge: (task: WorkflowTask) => QueueStatusBadge;
   statusColumnLabel: string | undefined;
 }) {
@@ -758,7 +754,7 @@ export function EngineeringSurveyQueueTable({
       <TBody>
         {ctx.showSkeleton ? (
           <SkeletonTableRows rows={6} cols={7} />
-        ) : filteredListed.length === 0 ? (
+        ) : filteredMeta.length === 0 ? (
           <Tr hoverable={false}>
             <Td
               colSpan={7}
@@ -768,10 +764,8 @@ export function EngineeringSurveyQueueTable({
             </Td>
           </Tr>
         ) : (
-          filteredListed.map((task) => {
-            const record = poByNumber.get(task.poNumber.trim());
-            const property = findPropertyForTask(record, task);
-            const row = buildPrimaryDataTableRow(task, property, record, now);
+          // الصف مبني مسبقاً في الـmeta — لا إعادة بناء لكل تصيير (js-combine-iterations).
+          filteredMeta.map(({ task, record, property, row }) => {
             const active = ctx.selectedId === task.id;
             const moreItems = ctx.resolveRowMoreItems(task, property?.id);
             const contact =
@@ -932,17 +926,13 @@ export function EngineeringSurveyQueueTable({
 
 export function PropertyAppraisalQueueTable({
   ctx,
-  filteredListed,
-  poByNumber,
-  now,
+  filteredMeta,
   tasks,
   openPropertyDetail,
   statusColumnLabel,
 }: {
   ctx: QueueRowContext;
-  filteredListed: WorkflowTask[];
-  poByNumber: Map<string, PoIntakeRecord>;
-  now: Date;
+  filteredMeta: PrimaryQueueRowMeta[];
   tasks: WorkflowTask[];
   openPropertyDetail: (task: WorkflowTask, propertyId: string | undefined) => void;
   statusColumnLabel: string | undefined;
@@ -967,7 +957,7 @@ export function PropertyAppraisalQueueTable({
       <TBody>
         {ctx.showSkeleton ? (
           <SkeletonTableRows rows={6} cols={7} />
-        ) : filteredListed.length === 0 ? (
+        ) : filteredMeta.length === 0 ? (
           <Tr hoverable={false}>
             <Td
               colSpan={7}
@@ -977,10 +967,8 @@ export function PropertyAppraisalQueueTable({
             </Td>
           </Tr>
         ) : (
-          filteredListed.map((task) => {
-            const record = poByNumber.get(task.poNumber.trim());
-            const property = findPropertyForTask(record, task);
-            const row = buildPrimaryDataTableRow(task, property, record, now);
+          // الصف مبني مسبقاً في الـmeta — لا إعادة بناء لكل تصيير.
+          filteredMeta.map(({ task, record, property, row }) => {
             const active = ctx.selectedId === task.id;
             const moreItems = ctx.resolveRowMoreItems(task, property?.id);
             const cityDistrict = [row.city, row.district]
@@ -1192,17 +1180,13 @@ export function PropertyAppraisalQueueTable({
 
 export function PrimaryQueueTable({
   ctx,
-  filteredListed,
-  poByNumber,
-  now,
+  filteredMeta,
   primaryHasLocation,
   renderStatusOrRemaining,
   statusColumnLabel,
 }: {
   ctx: QueueRowContext;
-  filteredListed: WorkflowTask[];
-  poByNumber: Map<string, PoIntakeRecord>;
-  now: Date;
+  filteredMeta: PrimaryQueueRowMeta[];
   primaryHasLocation: boolean;
   renderStatusOrRemaining: (
     task: WorkflowTask,
@@ -1236,10 +1220,8 @@ export function PrimaryQueueTable({
             }
           />
         ) : (
-          filteredListed.map((task) => {
-            const record = poByNumber.get(task.poNumber.trim());
-            const property = findPropertyForTask(record, task);
-            const row = buildPrimaryDataTableRow(task, property, record, now);
+          // الصف مبني مسبقاً في الـmeta — لا إعادة بناء لكل تصيير.
+          filteredMeta.map(({ task, property, row }) => {
             const active = ctx.selectedId === task.id;
             const moreItems = ctx.resolveRowMoreItems(task, property?.id);
             const isStudyLabel = row.propertySlot.startsWith("قيد الدراسة");

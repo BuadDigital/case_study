@@ -1717,6 +1717,7 @@ export function ValuationWorkShell({
           disabled={disabled}
           property={intakeProperty}
           assignmentType={assignmentType}
+          valuationRequestId={valuationRequestId}
           fieldErrors={fieldErrors}
           onDraftPatch={onDraftPatch}
           onReportChoicesPatch={onReportChoicesPatch}

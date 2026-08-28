@@ -297,6 +297,9 @@ export function FinancePartyFeePricing() {
     return categoryParties.filter((p) => ids.has(p.id));
   }, [categoryParties, draft.assignedAssigneeIds]);
 
+  /** عضوية مسودة الإسناد — Set بدل includes داخل حلقة العرض */
+  const assignSet = useMemo(() => new Set(assignDraft), [assignDraft]);
+
   const draftMatchesCategory =
     Boolean(draft.id) &&
     (draft.category === selectedCategory || !draft.category);
@@ -1048,7 +1051,7 @@ export function FinancePartyFeePricing() {
                 </Note>
               ) : (
                 categoryParties.map((party) => {
-                  const checked = assignDraft.includes(party.id);
+                  const checked = assignSet.has(party.id);
                   return (
                     <label
                       key={party.id}

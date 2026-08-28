@@ -1,7 +1,7 @@
-import { pickImage, refreshOrgCache } from "../lib/org-settings-ui";
-import { todayIso } from "@platform/app-shared/format/date";
 "use client";
 
+import { pickImage, refreshOrgCache } from "../lib/org-settings-ui";
+import { todayIso } from "@platform/app-shared/format/date";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import {

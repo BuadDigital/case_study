@@ -1,16 +1,12 @@
-"use client";
+// مكوّن خادم — كانت الصفحة "use client" فقط لفك params (server-side).
+import { CaseStudyWorkspaceView } from "@case-study/mfe/views/CaseStudyWorkspaceView";
+import { decodeTaskParam } from "@case-study/mfe/lib/my-task-routes";
 
-import { use } from "react";
-import {
-  CaseStudyWorkspaceView,
-  decodeTaskParam,
-} from "@case-study/mfe";
-
-export default function CaseStudyWorkspacePage({
+export default async function CaseStudyWorkspacePage({
   params,
 }: {
   params: Promise<{ taskId: string }>;
 }) {
-  const { taskId } = use(params);
+  const { taskId } = await params;
   return <CaseStudyWorkspaceView taskId={decodeTaskParam(taskId)} />;
 }

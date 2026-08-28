@@ -1,6 +1,6 @@
 "use client";
 
-import { Fragment, memo, useEffect, useRef, useState } from "react";
+import { Fragment, memo, useEffect, useMemo, useRef, useState } from "react";
 import {
   getBuildingInventory,
   saveValuationCostApproach,
@@ -233,21 +233,45 @@ export const CostApproachSection = memo(function CostApproachSection({
   const landComplete = !!cost?.landEstimateComplete;
 
   // حسابات محلية حية بقواعد النموذج التفاعلي (الخادم يعيد الحساب عند الحفظ).
-  const computedLines = costDraft.map((l) => costLineComputed(l, costDraft));
-  const directTotal = computedLines.reduce((s, c) => s + c.total, 0);
-  const areaSubtotal = computedLines.reduce(
-    (s, c) => (c.inArea ? s + c.total : s),
-    0,
-  );
-  const extraSubtotal = directTotal - areaSubtotal;
-  const buildAreaLocal = computedLines.reduce(
-    (s, c, i) =>
-      c.inArea && (costDraft[i].unit || "sqm") === "sqm" &&
-      costDraft[i].isIncluded !== false
-        ? s + c.qty
-        : s,
-    0,
-  );
+  // useMemo + مسار واحد بدل map + ثلاثة reduce يعاد تشغيلها مع كل حرف في أي
+  // حقل بالشاشة، مع تمرير الدور الأول مرة بدل find لكل بند (rerender-memo).
+  const {
+    firstFloorLine,
+    computedLines,
+    directTotal,
+    areaSubtotal,
+    extraSubtotal,
+    buildAreaLocal,
+  } = useMemo(() => {
+    const firstFloorLine =
+      costDraft.find((l) => l.itemKey === "first_floor") ?? null;
+    const computedLines = costDraft.map((l) =>
+      costLineComputed(l, costDraft, firstFloorLine),
+    );
+    let directTotal = 0;
+    let areaSubtotal = 0;
+    let buildAreaLocal = 0;
+    computedLines.forEach((c, i) => {
+      directTotal += c.total;
+      if (c.inArea) {
+        areaSubtotal += c.total;
+        if (
+          (costDraft[i].unit || "sqm") === "sqm" &&
+          costDraft[i].isIncluded !== false
+        ) {
+          buildAreaLocal += c.qty;
+        }
+      }
+    });
+    return {
+      firstFloorLine,
+      computedLines,
+      directTotal,
+      areaSubtotal,
+      extraSubtotal: directTotal - areaSubtotal,
+      buildAreaLocal,
+    };
+  }, [costDraft]);
   const financingPctLocal =
     ((Number(financingRate.replace(",", ".")) || 0) *
       ((Number.parseInt(financingMonths, 10) || 0) / 12)) *
@@ -259,7 +283,10 @@ export const CostApproachSection = memo(function CostApproachSection({
       0,
     ) + financingPctLocal;
   const totalCostLocal = directTotal * (1 + indirectSumLocal / 100);
-  const usedItemKeys = new Set(costDraft.map((l) => l.itemKey));
+  const usedItemKeys = useMemo(
+    () => new Set(costDraft.map((l) => l.itemKey)),
+    [costDraft],
+  );
   const ghostOptionsFor = (group: "area" | "extra") =>
     COST_ITEM_OPTIONS.filter(
       (o) =>
@@ -344,8 +371,7 @@ export const CostApproachSection = memo(function CostApproachSection({
     if (
       l.itemKey === "repeated_floors" &&
       l.unitCostSar > 0 &&
-      l.unitCostSar !==
-        (costDraft.find((f) => f.itemKey === "first_floor")?.unitCostSar ?? 0) &&
+      l.unitCostSar !== (firstFloorLine?.unitCostSar ?? 0) &&
       !l.rationale.trim()
     ) {
       costAlerts.push({
@@ -394,8 +420,13 @@ export const CostApproachSection = memo(function CostApproachSection({
     });
 
   // تحليل التكلفة الآلي — buildCostNarrative من النموذج التفاعلي.
-  const noJust = "لم يتم تبريره";
-  const costNarrativeAuto = [
+  // memo + قِصر دائرة: النص متعدد الكيلوبايتات كان يُبنى مع كل حرف ثم يُهمل
+  // كلياً متى كان الحقل محرَّراً يدوياً (rerender-memo).
+  const costNarrativeDirty = costAnalysisNotes.trim().length > 0;
+  const costNarrativeAuto = useMemo(() => {
+    if (costNarrativeDirty) return "";
+    const noJust = "لم يتم تبريره";
+    return [
     `طريقة التكلفة: ${costBasisKey === "reproduction" ? "إعادة الإنتاج" : "الإحلال"}.`,
     (Number(useRestrictionPct.replace(",", ".")) || 0) > 0
       ? `خصم تقييد الاستخدام: ${useRestrictionPct}٪ — ${useRestrictionRationale.trim() || noJust}.`
@@ -425,9 +456,26 @@ export const CostApproachSection = memo(function CostApproachSection({
         `• التقادم الخارجي (${externalObs || "0"}٪) — ${externalObsRationale.trim() || noJust}`,
       ].join("\n"),
   ]
-    .filter(Boolean)
-    .join("\n\n");
-  const costNarrativeDirty = costAnalysisNotes.trim().length > 0;
+      .filter(Boolean)
+      .join("\n\n");
+  }, [
+    costNarrativeDirty,
+    costBasisKey,
+    useRestrictionPct,
+    useRestrictionRationale,
+    costDraft,
+    indirectDraft,
+    financingRate,
+    financingMonths,
+    actualAge,
+    economicAge,
+    lifeExtension,
+    lifeExtensionBasis,
+    functionalObs,
+    functionalObsRationale,
+    externalObs,
+    externalObsRationale,
+  ]);
 
   const blankCostLine = (
     partial: Partial<ValuationCostLineDto>,

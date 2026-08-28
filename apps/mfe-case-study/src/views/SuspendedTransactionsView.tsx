@@ -31,6 +31,7 @@ import {
 } from "@platform/ui-kit";
 import { getAuthSession } from "@platform/auth-client";
 import { useTickingMinute } from "@platform/app-shared/hooks/use-ticking-now";
+import { useViewportDesktop } from "@platform/app-shared/hooks/use-viewport-desktop";
 import { usePrototype } from "@platform/app-shared/contexts/PrototypeContext";
 import { useStaffUsersQuery } from "@settings/mfe/query/settings-queries";
 import { PARTY_TASK_PAGES } from "@platform/app-shared/prototype/party-task-pages";
@@ -121,6 +122,8 @@ export function SuspendedTransactionsView() {
   // نفسها، فلا يعاد بناء الصفوف كل ثانية (rerender-defer-reads).
   const nowMinuteMs = useTickingMinute();
   const now = useMemo(() => new Date(nowMinuteMs), [nowMinuteMs]);
+  // بعد الترطيب تركب شجرة واحدة فقط (بطاقات أو جدول) — كانتا تُبنيان معاً.
+  const isDesktopViewport = useViewportDesktop();
   const [isOpening, startOpen] = useTransition();
   const [openingId, setOpeningId] = useState<string | null>(null);
 
@@ -194,6 +197,7 @@ export function SuspendedTransactionsView() {
   const queuePending = !isFetched;
 
   const mobileCardItems = useMemo((): ActiveQueueMobileCardItem[] => {
+    if (isDesktopViewport === true) return [];
     return sortedItems.map((item) => {
       const record = poByNumber.get(item.poNumber.trim());
       const remaining = resolveRemainingTime(record?.dueDateAt ?? "", now);
@@ -228,7 +232,7 @@ export function SuspendedTransactionsView() {
         loading: openingId === item.id,
       };
     });
-  }, [sortedItems, poByNumber, now, router, openingId]);
+  }, [isDesktopViewport, sortedItems, poByNumber, now, router, openingId]);
 
   return (
     <PageShell variant="canvas" className="min-h-0 flex-1">
@@ -352,13 +356,16 @@ export function SuspendedTransactionsView() {
             />
           ) : (
             <>
-              <div className="pb-3 lg:hidden">
-                <ActiveQueueMobileCards
-                  items={mobileCardItems}
-                  pending={queuePending}
-                  emptyMessage="لا توجد معاملات معلقة."
-                />
-              </div>
+              {isDesktopViewport === true ? null : (
+                <div className="pb-3 lg:hidden">
+                  <ActiveQueueMobileCards
+                    items={mobileCardItems}
+                    pending={queuePending}
+                    emptyMessage="لا توجد معاملات معلقة."
+                  />
+                </div>
+              )}
+              {isDesktopViewport === false ? null : (
               <div className={cn(queueTableWrapClassName, "hidden lg:block")}>
                 <Table pending={queuePending}>
                   <THead>
@@ -430,6 +437,7 @@ export function SuspendedTransactionsView() {
                   </TBody>
                 </Table>
               </div>
+              )}
               <QueueTableHint className="hidden lg:block">
                 اضغط الصف لعرض تفاصيل العقار — ⋮ عقارات أمر العمل · تفاصيل
                 العقار.

@@ -1,7 +1,7 @@
-import { pickImage } from "../lib/org-settings-ui";
-import { todayIso } from "@platform/app-shared/format/date";
 "use client";
 
+import { pickImage } from "../lib/org-settings-ui";
+import { todayIso } from "@platform/app-shared/format/date";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   BRAND_IDENTITY_DEFAULTS,

@@ -177,13 +177,16 @@ export default function LoginPage() {
   // redirect to /login?from=... and Next caches it — after login, clicking
   // that nav item then replays the cached redirect back to the login page.
 
+  // One interval for the whole countdown — depending on resendLeft itself
+  // would tear down and recreate the timer every second.
+  const otpTimerActive = resendLeft > 0;
   useEffect(() => {
-    if (resendLeft <= 0) return;
+    if (!otpTimerActive) return;
     const id = window.setInterval(() => {
       setResendLeft((n) => (n <= 1 ? 0 : n - 1));
     }, 1000);
     return () => window.clearInterval(id);
-  }, [resendLeft]);
+  }, [otpTimerActive]);
 
   function startOtpTimer() {
     setResendLeft(30);
