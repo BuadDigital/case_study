@@ -7,6 +7,7 @@
 
 import { useEffect, useState } from "react";
 import type { PartyBillingStatementDto } from "@platform/api-client";
+import { fmtMax } from "@platform/app-shared/format/number";
 import {
   openPartyBillingAttachment,
   runMatchVendorInvoice,
@@ -34,13 +35,6 @@ function formatInvoiceDate(raw: string | null | undefined): string {
   const m = String(d.getMonth() + 1).padStart(2, "0");
   const day = String(d.getDate()).padStart(2, "0");
   return `${y}-${m}-${day}`;
-}
-
-function formatSar(n: number): string {
-  return n.toLocaleString("en-US", {
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 2,
-  });
 }
 
 function attachmentLabel(s: PartyBillingStatementDto): string {
@@ -215,7 +209,7 @@ export function FinanceVendorInvoiceMatchModal({
                   ],
                   [
                     "قيمتها (مقفلة على المسير)",
-                    formatSar(lockedTotal),
+                    fmtMax(lockedTotal),
                     true,
                   ],
                 ] as const

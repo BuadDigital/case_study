@@ -175,6 +175,18 @@ public static class PlatformModel
             e.Property(x => x.NotesJson).HasColumnType("jsonb");
         });
 
+        // قرار 23: سجل نسخ حزمة النصوص المعيارية — صفوف غير قابلة للتعديل، نسخة واحدة للحزمة.
+        builder.Entity<ValuationReportTextPackage>(e =>
+        {
+            if (ownsMigrations)
+                e.ToTable("ValuationReportTextPackages", DatabaseSchemas.Platform);
+            else
+                e.ToTable("ValuationReportTextPackages", DatabaseSchemas.Platform, t => t.ExcludeFromMigrations());
+            e.Property(x => x.TextsJson).IsRequired();
+            e.Property(x => x.CreatedByUserId).HasMaxLength(128);
+            e.HasIndex(x => x.Version).IsUnique();
+        });
+
         builder.Entity<OrganizationSettings>(e =>
         {
             if (ownsMigrations)

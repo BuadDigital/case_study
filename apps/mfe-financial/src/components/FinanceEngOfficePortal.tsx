@@ -8,6 +8,7 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import Link from "next/link";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { fmtMax } from "@platform/app-shared/format/number";
 import { prototypeKeys } from "@platform/app-shared/query/prototype-keys";
 import { resolvePartyName } from "@platform/app-shared/fees/party-fee-meta";
 import {
@@ -42,8 +43,9 @@ import {
   finCaret,
 } from "../lib/finance-tw";
 
+// toLocaleString الافتراضي = حتى 3 كسور دون أصفار إلزامية — نحافظ على العرض نفسه.
 function money(n: number) {
-  return Number(n || 0).toLocaleString("en-US");
+  return fmtMax(Number(n || 0), 3);
 }
 
 function todayIso() {

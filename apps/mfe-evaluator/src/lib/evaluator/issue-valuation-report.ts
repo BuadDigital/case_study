@@ -1,19 +1,12 @@
 import {
   ensureOpenValuationRequestByProperty,
-  getApiBase,
   getValuationReportDocument,
   getValuationReportPdf,
   type ValuationRequestLiteDto,
 } from "@platform/api-client";
-import { getAuthSession } from "@platform/auth-client";
+import { apiConfig } from "./api-config";
 import { cacheIssuedValuationReport } from "./evaluator-report-attachments";
 import { reservedValuationReportNumber } from "./valuation-report-number";
-
-function apiConfig() {
-  const session = getAuthSession();
-  if (!session?.token) return null;
-  return { token: session.token, baseUrl: getApiBase() };
-}
 
 function openFailureMessage(
   kind: "auth" | "network" | "server" | "validation" | "not_found",

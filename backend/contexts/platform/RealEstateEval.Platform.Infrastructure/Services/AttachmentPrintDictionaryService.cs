@@ -17,11 +17,7 @@ public sealed class AttachmentPrintDictionaryService
 {
     private static readonly Guid SingletonId = AttachmentPrintDictionarySeed.SingletonId;
 
-    private static readonly JsonSerializerOptions JsonOptions = new()
-    {
-        PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
-        PropertyNameCaseInsensitive = true,
-    };
+    private static readonly JsonSerializerOptions JsonOptions = JsonDefaults.CamelCaseInsensitive;
 
     private readonly PlatformDbContext _db;
     private readonly TimeProvider _time;

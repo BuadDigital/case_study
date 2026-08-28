@@ -353,7 +353,7 @@ public sealed class FinancialReportService : IFinancialReportService
                         : nameByAssigneeId.GetValueOrDefault(group.Key, group.Key),
                     Type = CostTypeCode(dominantType),
                     Cost = FormatSar(group.Sum(row => row.Total)),
-                    Category = CategoryLabel(dominantKind),
+                    Category = WorkflowTaskKindLabels.CategoryLabelAr(dominantKind),
                 };
             })
             .OrderBy(r => r.Name, StringComparer.Ordinal)
@@ -443,15 +443,6 @@ public sealed class FinancialReportService : IFinancialReportService
                 => "free",
             _ => "ext",
         };
-
-    private static string CategoryLabel(WorkflowTaskKind? kind) => kind switch
-    {
-        WorkflowTaskKind.FieldInspection => "معاينة",
-        WorkflowTaskKind.EngineeringSurvey => "رفع مساحي",
-        WorkflowTaskKind.GovernmentReview => "مراجعة حكومية",
-        WorkflowTaskKind.PropertyAppraisal => "تقييم",
-        _ => "أخرى",
-    };
 
     private static string FormatSar(decimal amount) =>
         $"{amount.ToString("N0", ArCulture)} ر.س";

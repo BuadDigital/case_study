@@ -16,6 +16,12 @@ public sealed class OrganizationSettingsDto
 /// <summary>تبويب تقرير التقييم — الطبقة ب (القرار 25): ثوابت ونصوص تُعبَّأ مرة وتُستهلك في كل تقرير.</summary>
 public sealed class OrganizationValuationReportSettingsDto
 {
+ /// <summary>
+ /// قرار 23: رقم حزمة النصوص المعيارية/القانونية — نسخة واحدة للحزمة كلها؛ أي تعديل
+ /// في الكتلة المُدارة يصدر حزمة جديدة. محسوب من سجل النسخ لا مخزّن في الإعدادات.
+ /// </summary>
+    public int TextPackageVersion { get; set; } = 1;
+
     public string ReportType { get; init; } = "";
     public string Currency { get; init; } = "";
     public string ValuationBranch { get; init; } = "";

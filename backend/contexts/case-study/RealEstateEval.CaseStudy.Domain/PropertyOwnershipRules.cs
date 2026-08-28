@@ -1,4 +1,5 @@
 using System.Text.Json;
+using RealEstateEval.Domain;
 
 namespace RealEstateEval.CaseStudy.Domain;
 
@@ -33,7 +34,7 @@ public static class OwnershipTypes
 /// </summary>
 public static class OwnershipTypeRules
 {
-    private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web);
+    private static readonly JsonSerializerOptions JsonOptions = JsonDefaults.Web;
 
  /// <summary>
  /// Derivation order per the decision: قيد رهن ⟵ مرهون · ملاك بحصص ⟵ مشاع ·

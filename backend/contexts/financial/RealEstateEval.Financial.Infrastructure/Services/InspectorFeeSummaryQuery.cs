@@ -326,7 +326,7 @@ public sealed class InspectorFeeSummaryQuery : IInspectorFeeSummaryQuery
 
         if (nonEng.Count == 0) return engVisible;
 
-        var readyPropertyIds = await GetCompletedCaseStudyPropertyIdsAsync(
+        var readyPropertyIds = await _lookup.GetCompletedCaseStudyPropertyIdsAsync(
             nonEng.Select(l => l.PropertyId),
             cancellationToken);
         var nonEngVisible = nonEng
@@ -334,21 +334,6 @@ public sealed class InspectorFeeSummaryQuery : IInspectorFeeSummaryQuery
             .ToList();
 
         return engVisible.Concat(nonEngVisible).ToList();
-    }
-
-    private async Task<HashSet<Guid>> GetCompletedCaseStudyPropertyIdsAsync(
-        IEnumerable<Guid?> propertyIds,
-        CancellationToken cancellationToken)
-    {
-        var ids = propertyIds
-            .Where(id => id.HasValue)
-            .Select(id => id!.Value)
-            .Distinct()
-            .ToList();
-        if (ids.Count == 0) return [];
-
-        var ready = await _lookup.ListCompletedCaseStudyPropertyIdsAsync(cancellationToken);
-        return ready.Where(ids.Contains).ToHashSet();
     }
 
     private async Task<Dictionary<Guid, string>> BuildPropertyLabelsAsync(

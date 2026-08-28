@@ -1,12 +1,5 @@
 import type { PropertyDetailDocumentEntry } from "./property-detail-documents";
-
-function esc(s: string): string {
-  return s
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;");
-}
+import { escapeHtml as esc } from "@platform/app-shared/lib/html-escape";
 
 /**
  * Opens a print-ready window of property photos (user can Save as PDF).

@@ -5,6 +5,10 @@ import {
   uploadAttachment,
 } from "@platform/api-client";
 import { prototypeModulesApiConfig } from "./prototype-modules-api-config";
+import {
+  blobToDataUrl,
+  fileToBase64,
+} from "@platform/app-shared/media/file-encoding";
 
 export type TaskAttachmentPreview = {
   fileName: string;
@@ -18,33 +22,6 @@ const previewCache = new Map<string, TaskAttachmentPreview>();
 
 function cacheKey(scope: string, taskId: string): string {
   return `${scope}:${taskId}`;
-}
-
-function readAsDataUrl(file: File): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => resolve(String(reader.result ?? ""));
-    reader.onerror = () => reject(reader.error);
-    reader.readAsDataURL(file);
-  });
-}
-
-function blobToDataUrl(blob: Blob): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => resolve(String(reader.result ?? ""));
-    reader.onerror = () => reject(reader.error);
-    reader.readAsDataURL(blob);
-  });
-}
-
-async function fileToBase64(file: File): Promise<string> {
-  const bytes = new Uint8Array(await file.arrayBuffer());
-  let binary = "";
-  for (let i = 0; i < bytes.length; i += 1) {
-    binary += String.fromCharCode(bytes[i]!);
-  }
-  return btoa(binary);
 }
 
 async function replaceScopeAttachments(
@@ -158,7 +135,7 @@ export async function uploadTaskScopedAttachment(
 
   if (file.type.startsWith("image/") || file.type === "application/pdf") {
     try {
-      preview.dataUrl = await readAsDataUrl(file);
+      preview.dataUrl = await blobToDataUrl(file);
     } catch {
       /* continue */
     }

@@ -1,5 +1,6 @@
 using System.Globalization;
 using System.Text.Json;
+using RealEstateEval.Domain;
 
 namespace RealEstateEval.Application.Rules;
 
@@ -403,7 +404,7 @@ public static class FieldInspectionSubmissionValidator
     }
 
     private static bool HasPhotoFileName(JsonElement element) =>
-        HasNonEmptyString(element, "fileName") || HasNonEmptyString(element, "fileName");
+        HasNonEmptyString(element, "fileName");
 
     private static bool TryParseCoord(string raw, out double value)
     {
@@ -414,20 +415,12 @@ public static class FieldInspectionSubmissionValidator
             out value);
     }
 
-    private static string ReadString(JsonElement element, string name)
-    {
-        if (!element.TryGetProperty(name, out var prop))
-            return "";
-        return prop.ValueKind == JsonValueKind.String ? prop.GetString()?.Trim() ?? "" : "";
-    }
+    private static string ReadString(JsonElement element, string name) =>
+        JsonElementReader.ReadString(element, name);
 
     private static bool HasNonEmptyString(JsonElement element, string name) =>
-        !string.IsNullOrWhiteSpace(ReadString(element, name));
+        JsonElementReader.HasNonEmptyString(element, name);
 
-    private static bool GetBool(JsonElement element, string name)
-    {
-        if (!element.TryGetProperty(name, out var prop))
-            return false;
-        return prop.ValueKind == JsonValueKind.True;
-    }
+    private static bool GetBool(JsonElement element, string name) =>
+        JsonElementReader.GetBool(element, name);
 }

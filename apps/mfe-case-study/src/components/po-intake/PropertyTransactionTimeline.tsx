@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useMemo, type ReactNode } from "react";
+import { useMemo, type ReactNode } from "react";
+import { useWindowEvents } from "@platform/app-shared/hooks/useWindowEvents";
 import { useQueryClient } from "@tanstack/react-query";
 import { prototypeKeys } from "@platform/app-shared/query/prototype-keys";
 import { cn } from "@platform/ui-kit";
@@ -139,21 +140,16 @@ export function PropertyTransactionTimeline({
   const timelineQuery = usePropertyTimelineQuery(poNumber, property.id);
   const queryClient = useQueryClient();
 
-  useEffect(() => {
-    const invalidate = () => {
-      void queryClient.invalidateQueries({
-        queryKey: prototypeKeys.propertyTimeline(poNumber, property.id),
-      });
-    };
-    window.addEventListener(TASKS_CHANGED_EVENT, invalidate);
-    window.addEventListener(WORK_ORDERS_CHANGED_EVENT, invalidate);
-    window.addEventListener(FAILURES_CHANGED_EVENT, invalidate);
-    return () => {
-      window.removeEventListener(TASKS_CHANGED_EVENT, invalidate);
-      window.removeEventListener(WORK_ORDERS_CHANGED_EVENT, invalidate);
-      window.removeEventListener(FAILURES_CHANGED_EVENT, invalidate);
-    };
-  }, [queryClient, poNumber, property.id]);
+  const invalidateTimeline = () => {
+    void queryClient.invalidateQueries({
+      queryKey: prototypeKeys.propertyTimeline(poNumber, property.id),
+    });
+  };
+  useWindowEvents({
+    [TASKS_CHANGED_EVENT]: invalidateTimeline,
+    [WORK_ORDERS_CHANGED_EVENT]: invalidateTimeline,
+    [FAILURES_CHANGED_EVENT]: invalidateTimeline,
+  });
 
   const task = useMemo(
     () => caseStudyTaskForProperty(poNumber, property.id, tasks),

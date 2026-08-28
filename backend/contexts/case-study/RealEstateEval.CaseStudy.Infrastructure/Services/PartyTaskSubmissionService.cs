@@ -380,7 +380,7 @@ public class PartyTaskSubmissionService : IPartyTaskSubmissionService
                 task.PoNumber,
                 propertyId,
                 $"party:{taskId}:submitted",
-                PartySubmittedTitle(entity.Kind),
+                WorkflowTaskKindLabels.SubmittedTitleAr(entity.Kind),
                 actorLabel,
                 "done",
                 now,
@@ -1053,14 +1053,4 @@ public class PartyTaskSubmissionService : IPartyTaskSubmissionService
             UpdatedAtUtc = entity.UpdatedAtUtc.ToString("O"),
         };
     }
-
-    private static string PartySubmittedTitle(string kind) => kind switch
-    {
-        "field-inspection" => "إتمام المعاينة الميدانية",
-        "engineering-survey" => "إتمام الرفع المساحي",
-        "property-appraisal" => "إتمام التقييم العقاري",
- // Legacy government-review submissions (product surface removed).
-        "government-review" => "إتمام المراجعة الحكومية",
-        _ => "إتمام عمل الطرف",
-    };
 }

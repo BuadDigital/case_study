@@ -3,6 +3,7 @@
 import { useEffect, useRef } from "react";
 import "./leaflet.css";
 import type { LayerKey, MapCoords } from "../../lib/prototype/map-locations-logic";
+import { escapeHtml } from "@platform/app-shared/lib/html-escape";
 
 export type PropertyMapMarker = {
   id: string;
@@ -133,13 +134,7 @@ function clusterIconHtml(kind: LayerKey, count: number): string {
   return `<div style="width:${size}px;height:${size}px;${shape};background:${colors.bg};box-shadow:0 0 0 5px ${colors.ring},0 2px 10px rgba(18,40,76,.4);display:grid;place-items:center"><span style="${inner}color:${colors.fg};font:700 ${count < 100 ? 12 : 11}px Tajawal,sans-serif">${count.toLocaleString("en-US")}</span></div>`;
 }
 
-function escapeHtml(text: string): string {
-  return text
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;");
-}
+// تهريب HTML من المصدر الموحّد في app-shared.
 
 function leafletNs(mod: typeof import("leaflet")): LeafletNS {
   const withDefault = mod as typeof import("leaflet") & {

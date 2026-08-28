@@ -63,6 +63,10 @@ import {
   linePercent,
   marketSaveBody,
 } from "./lib/market-save-mappers";
+import {
+  runMatrixAction,
+  type MatrixDispatch,
+} from "./lib/matrix-actions";
 import { apiConfig, fmt, JUSTIFICATION_MIN_LENGTH } from "./lib/shell-utils";
 
 const LAND_WITHIN_COST = "land_within_cost";
@@ -199,6 +203,35 @@ export function ValuationWorkShell({
 
   const subjectAreaSyncedRef = useRef<string | null>(null);
 
+  /** مساحة المعاملة من العقار أولى من مساحة أسلوب السوق القديمة على الخادم —
+      مزامنة واحدة لكل (طلب، مساحة) كي لا تتكرر مع كل تحميل. */
+  async function syncSubjectAreaFromTransaction(
+    config: NonNullable<ReturnType<typeof apiConfig>>,
+    requestId: string,
+    transactionArea: string,
+    sel: ValuationComparableSelectionListDto,
+  ) {
+    const txNum = Number(transactionArea.replace(",", "."));
+    const serverArea = sel.subjectAreaSqm;
+    const syncKey = `${requestId}:${txNum}`;
+    if (
+      !transactionArea ||
+      !Number.isFinite(txNum) ||
+      txNum <= 0 ||
+      (serverArea != null && Math.abs(Number(serverArea) - txNum) <= 0.001) ||
+      subjectAreaSyncedRef.current === syncKey
+    ) {
+      return;
+    }
+    subjectAreaSyncedRef.current = syncKey;
+    const syncRes = await saveValuationMarketApproach(config, requestId, {
+      subjectAreaSqm: txNum,
+      adjustmentBasis: sel.adjustmentBasis || "price_per_sqm",
+      analysisNotes: sel.analysisNotes ?? null,
+    });
+    if (syncRes.ok) setSelection(syncRes.data);
+  }
+
   const reload = useCallback(
     async (opts?: { silent?: boolean; scope?: "full" | "derived" }) => {
     const config = apiConfig();
@@ -319,26 +352,12 @@ export function ValuationWorkShell({
       setAdjustmentBasis(selRes.data.adjustmentBasis || "price_per_sqm");
       setAnalysisNotes(selRes.data.analysisNotes ?? "");
       // مسودات الجداول محلية داخل مكوّناتها — لا شيء يُمسح هنا.
-
-      // مساحة المعاملة من العقار أولى من مساحة أسلوب السوق القديمة على الخادم.
-      const txNum = Number(transactionArea.replace(",", "."));
-      const serverArea = selRes.data.subjectAreaSqm;
-      const syncKey = `${requestId}:${txNum}`;
-      if (
-        transactionArea &&
-        Number.isFinite(txNum) &&
-        txNum > 0 &&
-        (serverArea == null || Math.abs(Number(serverArea) - txNum) > 0.001) &&
-        subjectAreaSyncedRef.current !== syncKey
-      ) {
-        subjectAreaSyncedRef.current = syncKey;
-        const syncRes = await saveValuationMarketApproach(config, requestId, {
-          subjectAreaSqm: txNum,
-          adjustmentBasis: selRes.data.adjustmentBasis || "price_per_sqm",
-          analysisNotes: selRes.data.analysisNotes ?? null,
-        });
-        if (syncRes.ok) setSelection(syncRes.data);
-      }
+      await syncSubjectAreaFromTransaction(
+        config,
+        requestId,
+        transactionArea,
+        selRes.data,
+      );
     }
 
     if (costRes.ok) {
@@ -1400,7 +1419,8 @@ export function ValuationWorkShell({
     await reload({ silent: true, scope: "derived" });
   }
 
-  /* ─── مقابض مستقرة لجدول التسويات — حتى يعمل memo على الجدول رغم إعادة رسم الصدفة.
+  /* ─── مرسل أوامر جدول التسويات — مرجع مستقر واحد لكل سياق بدل ٢١ مقبضاً،
+     فيصمد memo الجدول رغم إعادة رسم الصدفة (Command/Strategy).
      الدوال المعلنة أعلاه دوال مرفوعة (hoisted) فمراجعها هنا صحيحة. ─── */
   const matrixOps = {
     saveMatrixCell,
@@ -1420,132 +1440,12 @@ export function ValuationWorkShell({
   };
   const matrixOpsRef = useRef(matrixOps);
   matrixOpsRef.current = matrixOps;
-  const onSaveCellStable = useCallback(
-    (item: ValuationComparableSelectionDto, factorKey: string, raw: string) =>
-      matrixOpsRef.current.saveMatrixCell(item, factorKey, raw),
+  const dispatchMarketMatrix = useCallback<MatrixDispatch>(
+    (action) => runMatrixAction(matrixOpsRef.current, MARKET_CONTEXT, action),
     [],
   );
-  const onSaveWeightStable = useCallback(
-    (
-      item: ValuationComparableSelectionDto,
-      rawPct: string,
-      weightRationale: string,
-    ) => matrixOpsRef.current.saveWeight(item, rawPct, weightRationale),
-    [],
-  );
-  const onSaveRationaleMarket = useCallback(
-    (factorKey: string, text: string) => {
-      void matrixOpsRef.current.saveFactorRationale(
-        factorKey,
-        text,
-        MARKET_CONTEXT,
-      );
-    },
-    [],
-  );
-  const onSaveRationaleLand = useCallback((factorKey: string, text: string) => {
-    void matrixOpsRef.current.saveFactorRationale(
-      factorKey,
-      text,
-      LAND_WITHIN_COST,
-    );
-  }, []);
-  const onSaveLineRationaleMarket = useCallback(
-    (selectionId: string, factorKey: string, text: string) => {
-      void matrixOpsRef.current.saveLineRationaleOverride(
-        selectionId,
-        factorKey,
-        text,
-        MARKET_CONTEXT,
-      );
-    },
-    [],
-  );
-  const onSaveLineRationaleLand = useCallback(
-    (selectionId: string, factorKey: string, text: string) => {
-      void matrixOpsRef.current.saveLineRationaleOverride(
-        selectionId,
-        factorKey,
-        text,
-        LAND_WITHIN_COST,
-      );
-    },
-    [],
-  );
-  const onToggleIncludedStable = useCallback(
-    (item: ValuationComparableSelectionDto, factorKey: string) => {
-      void matrixOpsRef.current.toggleFactorIncluded(item, factorKey);
-    },
-    [],
-  );
-  const onChangeBasisStable = useCallback(
-    (basis: "price_per_sqm" | "whole_property") => {
-      void matrixOpsRef.current.changeAdjustmentBasis(basis);
-    },
-    [],
-  );
-  const onResetWeightsMarket = useCallback(
-    () => matrixOpsRef.current.resetWeights(MARKET_CONTEXT),
-    [],
-  );
-  const onResetWeightsLand = useCallback(
-    () => matrixOpsRef.current.resetWeights(LAND_WITHIN_COST),
-    [],
-  );
-  const onAreaFactorStable = useCallback((value: string) => {
-    void matrixOpsRef.current.saveAreaFactorPct(value);
-  }, []);
-  const onAddFactorMarket = useCallback((factorKey: string, labelAr: string) => {
-    void matrixOpsRef.current.addDifferenceFactor(factorKey, labelAr);
-  }, []);
-  const onAddFactorLand = useCallback((factorKey: string, labelAr: string) => {
-    void matrixOpsRef.current.addDifferenceFactor(
-      factorKey,
-      labelAr,
-      LAND_WITHIN_COST,
-    );
-  }, []);
-  const onRemoveFactorMarket = useCallback((factorKey: string) => {
-    void matrixOpsRef.current.removeDifferenceFactor(factorKey);
-  }, []);
-  const onRemoveFactorLand = useCallback((factorKey: string) => {
-    void matrixOpsRef.current.removeDifferenceFactor(
-      factorKey,
-      LAND_WITHIN_COST,
-    );
-  }, []);
-  const onRemoveSequentialMarket = useCallback((factorKey: string) => {
-    void matrixOpsRef.current.removeSequentialFactor(factorKey);
-  }, []);
-  const onRemoveSequentialLand = useCallback((factorKey: string) => {
-    void matrixOpsRef.current.removeSequentialFactor(
-      factorKey,
-      LAND_WITHIN_COST,
-    );
-  }, []);
-  const onRestoreSequentialMarket = useCallback((factorKey: string) => {
-    void matrixOpsRef.current.restoreSequentialFactor(factorKey);
-  }, []);
-  const onRestoreSequentialLand = useCallback((factorKey: string) => {
-    void matrixOpsRef.current.restoreSequentialFactor(
-      factorKey,
-      LAND_WITHIN_COST,
-    );
-  }, []);
-  const onSaveDescriptionStable = useCallback(
-    (
-      item: ValuationComparableSelectionDto,
-      factorKey: string,
-      text: string,
-    ) => {
-      void matrixOpsRef.current.saveCellDescription(item, factorKey, text);
-    },
-    [],
-  );
-  const onSaveSubjectSpecStable = useCallback(
-    (factorKey: string, text: string) => {
-      void matrixOpsRef.current.saveSubjectSpec(factorKey, text);
-    },
+  const dispatchLandMatrix = useCallback<MatrixDispatch>(
+    (action) => runMatrixAction(matrixOpsRef.current, LAND_WITHIN_COST, action),
     [],
   );
 
@@ -1600,22 +1500,10 @@ export function ValuationWorkShell({
             district={property?.district ?? districtHint}
             valuationDate={officialValuationDate ?? undefined}
             factorDefinitions={factorDefinitions}
-            onSaveCell={onSaveCellStable}
-            onSaveWeight={onSaveWeightStable}
-            onSaveRationale={onSaveRationaleMarket}
-            onSaveLineRationale={onSaveLineRationaleMarket}
-            onToggleIncluded={onToggleIncludedStable}
-            onChangeBasis={onChangeBasisStable}
-            onResetWeights={onResetWeightsMarket}
-            onAreaFactorChange={onAreaFactorStable}
-            onAddFactor={onAddFactorMarket}
-            onRemoveFactor={onRemoveFactorMarket}
             catalogFactors={catalogFactorOptions}
-            onRemoveSequential={onRemoveSequentialMarket}
-            onRestoreSequential={onRestoreSequentialMarket}
-            onSaveDescription={onSaveDescriptionStable}
             subjectSpecs={subjectSpecs}
-            onSaveSubjectSpec={onSaveSubjectSpecStable}
+            canEditSubjectSpec
+            dispatch={dispatchMarketMatrix}
           />
         ) : null}
 
@@ -1796,20 +1684,8 @@ export function ValuationWorkShell({
             district={property?.district ?? districtHint}
             valuationDate={officialValuationDate ?? undefined}
             factorDefinitions={factorDefinitions}
-            onSaveCell={onSaveCellStable}
-            onSaveWeight={onSaveWeightStable}
-            onSaveRationale={onSaveRationaleLand}
-            onSaveLineRationale={onSaveLineRationaleLand}
-            onToggleIncluded={onToggleIncludedStable}
-            onChangeBasis={onChangeBasisStable}
-            onResetWeights={onResetWeightsLand}
-            onAreaFactorChange={onAreaFactorStable}
-            onAddFactor={onAddFactorLand}
-            onRemoveFactor={onRemoveFactorLand}
             catalogFactors={catalogFactorOptions}
-            onRemoveSequential={onRemoveSequentialLand}
-            onRestoreSequential={onRestoreSequentialLand}
-            onSaveDescription={onSaveDescriptionStable}
+            dispatch={dispatchLandMatrix}
           />
         ) : null}
 

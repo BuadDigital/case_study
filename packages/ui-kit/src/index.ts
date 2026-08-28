@@ -91,3 +91,9 @@ export {
   OperationalToolbarSearch,
   OperationalToolbarSelect,
 } from "./components/OperationalToolbar";
+export {
+  KpiAlertIcon,
+  KpiCheckIcon,
+  KpiClipboardIcon,
+  KpiClockIcon,
+} from "./icons/kpi-icons";

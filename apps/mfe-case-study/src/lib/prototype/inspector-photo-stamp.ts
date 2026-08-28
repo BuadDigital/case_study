@@ -1,17 +1,10 @@
+import { blobToDataUrl } from "@platform/app-shared/media/file-encoding";
+
 function loadImage(img: HTMLImageElement, src: string): Promise<void> {
   return new Promise((resolve, reject) => {
     img.onload = () => resolve();
     img.onerror = () => reject(new Error("تعذّر تحميل الصورة للختم"));
     img.src = src;
-  });
-}
-
-function readAsDataUrl(file: File): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => resolve(String(reader.result ?? ""));
-    reader.onerror = () => reject(reader.error);
-    reader.readAsDataURL(file);
   });
 }
 
@@ -22,7 +15,7 @@ export async function burnInspectorPhotoStamp(
 ): Promise<File> {
   if (!stamp.trim() || typeof document === "undefined") return file;
 
-  const dataUrl = await readAsDataUrl(file);
+  const dataUrl = await blobToDataUrl(file);
   const img = new Image();
   await loadImage(img, dataUrl);
 

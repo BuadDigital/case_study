@@ -1,4 +1,5 @@
 import type { PoRow } from "@platform/app-shared/prototype/constants";
+import { toLatinDigits } from "@platform/app-shared/lib/arabic-digits";
 import type { PropertyListItem } from "@platform/app-shared/prototype/work-orders-read";
 
 export type PoListSearchMode = "all" | "po" | "deed" | "text";
@@ -77,12 +78,6 @@ export function buildPoListDisplay(
     view: "po" as const,
     item: { ...item, deeds: deedsForPo(item.row.id, deedIndex) },
   }));
-}
-
-const ARABIC_DIGITS = "٠١٢٣٤٥٦٧٨٩";
-
-function toLatinDigits(value: string): string {
-  return value.replace(/[٠-٩]/g, (ch) => String(ARABIC_DIGITS.indexOf(ch)));
 }
 
 /** Normalize deed tokens for fuzzy compare (006, صك 006, leading zeros). */

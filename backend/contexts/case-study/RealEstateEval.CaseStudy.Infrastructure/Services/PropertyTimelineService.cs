@@ -335,7 +335,7 @@ public sealed class PropertyTimelineService : IPropertyTimelineService
                         poNumber,
                         propertyId,
                         $"party:{child.Id}:assigned",
-                        PartyAssignedTitle(child.Kind),
+                        WorkflowTaskKindLabels.AssignedTitleAr(child.Kind),
                         child.AssigneeName,
                         child.Status == WorkflowTaskStatus.Completed ? PropertyTimelineTones.Done : PropertyTimelineTones.Active,
                         child.CreatedAtUtc,
@@ -397,7 +397,7 @@ public sealed class PropertyTimelineService : IPropertyTimelineService
                         poNumber,
                         propertyId,
                         $"party:{submission.WorkflowTaskId}:submitted",
-                        PartySubmittedTitle(submission.Kind),
+                        WorkflowTaskKindLabels.SubmittedTitleAr(submission.Kind),
                         child?.AssigneeName,
                         PropertyTimelineTones.Done,
                         submission.SubmittedAtUtc.Value,
@@ -432,8 +432,8 @@ public sealed class PropertyTimelineService : IPropertyTimelineService
 
         foreach (var failure in failures)
         {
-            var createdAt = ParseUtc(failure.CreatedAt) ?? recordedAt;
-            var updatedAt = ParseUtc(failure.UpdatedAt) ?? createdAt;
+            var createdAt = IsoTimestamps.ParseUtc(failure.CreatedAt) ?? recordedAt;
+            var updatedAt = IsoTimestamps.ParseUtc(failure.UpdatedAt) ?? createdAt;
             var failureId = Guid.TryParse(failure.Id, out var parsedId) ? parsedId : Guid.Empty;
             AddEvent(
                 events,
@@ -441,7 +441,7 @@ public sealed class PropertyTimelineService : IPropertyTimelineService
                 propertyId,
                 $"failure:{failureId}:created",
                 "تسجيل تعذر",
-                $"{failure.Title} — {FailureStatusLabel(failure.Status)}",
+                $"{failure.Title} — {PropertyFailureStatus.LabelAr(failure.Status)}",
                 PropertyTimelineTones.Warn,
                 createdAt,
                 recordedAt);
@@ -503,20 +503,6 @@ public sealed class PropertyTimelineService : IPropertyTimelineService
     private static DateTime DateOnlyToUtc(DateOnly date) =>
         date.ToDateTime(TimeOnly.MinValue, DateTimeKind.Utc);
 
-    private static DateTime? ParseUtc(string? value)
-    {
-        if (!DateTime.TryParse(
-                value,
-                null,
-                System.Globalization.DateTimeStyles.RoundtripKind,
-                out var parsed))
-        {
-            return null;
-        }
-
-        return parsed.Kind == DateTimeKind.Utc ? parsed : DateTime.SpecifyKind(parsed, DateTimeKind.Unspecified);
-    }
-
     private static string NormalizeTone(string tone) => PropertyTimelineTones.Normalize(tone);
 
     private static string TaskPhaseLabel(WorkflowTaskPhase phase) => phase switch
@@ -527,36 +513,5 @@ public sealed class PropertyTimelineService : IPropertyTimelineService
         WorkflowTaskPhase.CaseStudy => "دراسة حالة العقار",
         WorkflowTaskPhase.Obstruction => "تعذر — بانتظار المشرف",
         _ => "مكتملة",
-    };
-
-    private static string PartyAssignedTitle(WorkflowTaskKind kind) => kind switch
-    {
-        WorkflowTaskKind.FieldInspection => "تعيين المعاين الميداني",
-        WorkflowTaskKind.EngineeringSurvey => "تعيين المكتب الهندسي",
-        WorkflowTaskKind.PropertyAppraisal => "تعيين المقيّم العقاري",
- // Legacy government-review child tasks (no longer spawned).
-        WorkflowTaskKind.GovernmentReview => "تعيين المراجع الحكومي",
-        _ => "تعيين طرف",
-    };
-
-    private static string PartySubmittedTitle(string kind) => kind switch
-    {
-        "field-inspection" => "إتمام المعاينة الميدانية",
-        "engineering-survey" => "إتمام الرفع المساحي",
-        "property-appraisal" => "إتمام التقييم العقاري",
- // Legacy government-review submissions (product surface removed).
-        "government-review" => "إتمام المراجعة الحكومية",
-        _ => "إتمام عمل الطرف",
-    };
-
-    private static string FailureStatusLabel(string status) => status switch
-    {
-        PropertyFailureStatus.Internal => "داخلي",
-        PropertyFailureStatus.Review => "قيد المراجعة",
-        PropertyFailureStatus.Approved => "معتمد",
-        PropertyFailureStatus.Returned => "مُعاد",
-        PropertyFailureStatus.Resolved => "محلول",
-        PropertyFailureStatus.Suspended => "معلق",
-        _ => status,
     };
 }

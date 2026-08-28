@@ -15,7 +15,7 @@ public sealed class OrganizationSettingsService : IOrganizationSettingsService
 {
  // Distinct from CaseStudyInfoRoles / FieldDictionary singleton rows.
     private static readonly Guid SingletonId = Guid.Parse("c3d4e5f6-a7b8-9012-cdef-345678901234");
-    private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web);
+    private static readonly JsonSerializerOptions JsonOptions = JsonDefaults.Web;
 
     private readonly PlatformDbContext _db;
     private readonly IAuditLogWriter _audit;
@@ -41,7 +41,17 @@ public sealed class OrganizationSettingsService : IOrganizationSettingsService
     {
         var row = await _db.OrganizationSettings.AsNoTracking()
             .FirstOrDefaultAsync(cancellationToken);
-        return row is null ? Defaults() : FromRow(row);
+        var dto = row is null ? Defaults() : FromRow(row);
+
+        // قرار 23: الحزمة الشُحنة (الافتراضية) نسخة 1 ضمنياً؛ سجل النسخ يبدأ فعلياً مع
+        // أول حفظ يمس الكتلة المُدارة.
+        var latestVersion = await _db.ValuationReportTextPackages.AsNoTracking()
+            .OrderByDescending(p => p.Version)
+            .Select(p => (int?)p.Version)
+            .FirstOrDefaultAsync(cancellationToken);
+        dto.ValuationReport.TextPackageVersion =
+            latestVersion ?? ReportTextPackageRules.InitialVersion;
+        return dto;
     }
 
     public async Task<OrganizationSettingsDto> SaveAsync(
@@ -58,6 +68,13 @@ public sealed class OrganizationSettingsService : IOrganizationSettingsService
 
         var row = await _db.OrganizationSettings.FirstOrDefaultAsync(cancellationToken);
         var now = _time.UtcNow();
+
+        // قرار 23: أي تعديل في الكتلة المُدارة للنصوص يصدر حزمة نصوص جديدة كاملة برقم
+        // نسخة واحد للحزمة — سجل نسخ غير قابل للتعديل.
+        var textPackageVersion = await EnsureTextPackageVersionAsync(
+            current.ValuationReport, next.ValuationReport, actorId, now, cancellationToken);
+        next.ValuationReport.TextPackageVersion = textPackageVersion;
+
         var payload = JsonSerializer.Serialize(next, JsonOptions);
 
         if (row is null)
@@ -77,6 +94,8 @@ public sealed class OrganizationSettingsService : IOrganizationSettingsService
         }
 
         next = FromRow(row);
+        // إعادة البناء عبر التطبيع تُسقط الرقم المحسوب — يُعاد ختمه من السجل.
+        next.ValuationReport.TextPackageVersion = textPackageVersion;
  // Audit without secret values — only configuration shape.
         _db.AuditLogs.Add(_audit.Create(
             string.IsNullOrWhiteSpace(actorId) ? "system" : actorId,
@@ -96,6 +115,76 @@ public sealed class OrganizationSettingsService : IOrganizationSettingsService
         if (sla.PrivateSectorBusinessDays < 1 || sla.PrivateSectorBusinessDays > 60)
             throw new ArgumentOutOfRangeException(nameof(sla.PrivateSectorBusinessDays), "مهلة القطاع الخاص يجب أن تكون بين 1 و 60 يوم عمل.");
     }
+
+ /// <summary>
+ /// قرار 23: الكتلة المُدارة = الحقول الستة (معايير مهنية/استقلالية/قيود/شروط/IVS/مسرد).
+ /// الحزمة الشُحنة تُسجَّل «نسخة 1» عند أول مساس بالكتلة، وأي اختلاف لاحق يضيف نسخة
+ /// جديدة كاملة — الصفوف لا تُعدَّل أبداً.
+ /// </summary>
+    private async Task<int> EnsureTextPackageVersionAsync(
+        OrganizationValuationReportSettingsDto current,
+        OrganizationValuationReportSettingsDto next,
+        string actorId,
+        DateTime nowUtc,
+        CancellationToken cancellationToken)
+    {
+        var latest = await _db.ValuationReportTextPackages.AsNoTracking()
+            .OrderByDescending(p => p.Version)
+            .FirstOrDefaultAsync(cancellationToken);
+
+        var nextJson = CanonicalTextsJson(next);
+
+        if (latest is null)
+        {
+            var currentJson = CanonicalTextsJson(current);
+            _db.ValuationReportTextPackages.Add(new ValuationReportTextPackage
+            {
+                Id = Guid.NewGuid(),
+                Version = ReportTextPackageRules.InitialVersion,
+                TextsJson = currentJson,
+                CreatedAtUtc = nowUtc,
+                CreatedByUserId = null, // الحزمة الشُحنة — ليست تعديل مستخدم.
+            });
+            if (string.Equals(nextJson, currentJson, StringComparison.Ordinal))
+                return ReportTextPackageRules.InitialVersion;
+
+            _db.ValuationReportTextPackages.Add(new ValuationReportTextPackage
+            {
+                Id = Guid.NewGuid(),
+                Version = ReportTextPackageRules.InitialVersion + 1,
+                TextsJson = nextJson,
+                CreatedAtUtc = nowUtc,
+                CreatedByUserId = string.IsNullOrWhiteSpace(actorId) ? null : actorId,
+            });
+            return ReportTextPackageRules.InitialVersion + 1;
+        }
+
+        if (string.Equals(nextJson, latest.TextsJson, StringComparison.Ordinal))
+            return latest.Version;
+
+        var version = latest.Version + 1;
+        _db.ValuationReportTextPackages.Add(new ValuationReportTextPackage
+        {
+            Id = Guid.NewGuid(),
+            Version = version,
+            TextsJson = nextJson,
+            CreatedAtUtc = nowUtc,
+            CreatedByUserId = string.IsNullOrWhiteSpace(actorId) ? null : actorId,
+        });
+        return version;
+    }
+
+ /// <summary>ترتيب ثابت للمقارنة الحرفية — الحقول الستة فقط (لا رقم النسخة).</summary>
+    private static string CanonicalTextsJson(OrganizationValuationReportSettingsDto vr) =>
+        JsonSerializer.Serialize(new
+        {
+            professionalStandards = vr.ProfessionalStandards ?? "",
+            independence = vr.Independence ?? "",
+            restrictions = vr.Restrictions ?? "",
+            terms = vr.Terms ?? "",
+            ivsStandards = vr.IvsStandards ?? "",
+            glossary = vr.Glossary ?? "",
+        }, JsonOptions);
 
     private static void ValidateValuation(OrganizationValuationSettingsDto v)
     {

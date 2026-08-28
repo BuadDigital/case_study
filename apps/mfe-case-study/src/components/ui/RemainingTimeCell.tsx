@@ -1,8 +1,5 @@
 import type { RemainingTimeState } from "@case-study/mfe";
-
-function pad2(n: number): string {
-  return String(n).padStart(2, "0");
-}
+import { pad2 } from "@platform/app-shared/format/date";
 
 export function RemainingTimeCell({ state }: { state: RemainingTimeState }) {
   if (state.status === "missing") {

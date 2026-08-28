@@ -20,6 +20,7 @@ import {
 } from "@platform/api-client";
 import { apiErrorMessage, resolveApiError, type MutationResult, } from "@platform/app-shared/prototype/work-orders-api-config";
 import { processEvidencePhoto } from "@platform/app-shared/media/process-evidence-photo";
+import { fileToBase64 } from "@platform/app-shared/media/file-encoding";
 import { currentOfflineUserId, isBrowserOffline, uploadAttachmentWithOfflineFallback } from "@platform/app-shared/offline/offline-write";
 import { beginOfflineLease, enqueueOutbox, type OutboxKind } from "@platform/offline-client";
 import { prototypeModulesApiConfig } from "@platform/app-shared/prototype/prototype-modules-api-config";
@@ -177,17 +178,6 @@ export async function fetchLinkedPropertiesByRequestNumber(
   const result = await listKeyEnvelopeLinkedProperties(config, trimmed);
   if (!result.ok) return fail(result, "تعذّر تحميل العقارات المرتبطة");
   return { ok: true, data: result.data };
-}
-
-async function fileToBase64(file: File): Promise<string> {
-  const buffer = await file.arrayBuffer();
-  const bytes = new Uint8Array(buffer);
-  let binary = "";
-  const chunk = 0x8000;
-  for (let i = 0; i < bytes.length; i += chunk) {
-    binary += String.fromCharCode(...bytes.subarray(i, i + chunk));
-  }
-  return btoa(binary);
 }
 
 const MAX_IMAGE_INPUT_BYTES = 20 * 1024 * 1024;

@@ -8,10 +8,7 @@ namespace RealEstateEval.CaseStudy.Infrastructure.Services;
 
 public static class WorkflowTaskMapper
 {
-    private static readonly JsonSerializerOptions JsonOpts = new()
-    {
-        PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
-    };
+    private static readonly JsonSerializerOptions JsonOpts = JsonDefaults.CamelCase;
 
     public static WorkflowTaskDto ToDto(WorkflowTask entity)
     {

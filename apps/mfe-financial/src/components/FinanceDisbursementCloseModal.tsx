@@ -7,6 +7,7 @@
 
 import { useEffect, useState } from "react";
 import type { PartyBillingStatementDto } from "@platform/api-client";
+import { fmtMax } from "@platform/app-shared/format/number";
 import {
   openPartyBillingAttachment,
   runClosePartyBillingStatement,
@@ -25,13 +26,6 @@ import {
 } from "@platform/ui-kit";
 import { statementDisplayTotal } from "../lib/finance-cost-parties";
 import { finGhost, finNote, finPrimary } from "../lib/finance-tw";
-
-function formatSar(n: number): string {
-  return n.toLocaleString("en-US", {
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 2,
-  });
-}
 
 export function FinanceDisbursementCloseModal({
   statement,
@@ -214,7 +208,7 @@ export function FinanceDisbursementCloseModal({
               <div className="px-3.5 py-3">
                 <div className="mb-1 text-[11px] text-text-3">المبلغ ر.س</div>
                 <div className="text-[13px] font-bold text-heading" dir="ltr">
-                  {formatSar(total)}
+                  {fmtMax(total)}
                 </div>
               </div>
             </div>

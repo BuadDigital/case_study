@@ -3,30 +3,26 @@ import type {
   ValuationComparableAdjustmentLineDto,
   ValuationComparableSelectionDto,
 } from "@platform/api-client";
+import {
+  AUTO_AREA_KEY,
+  FACTOR_REGISTRY,
+  SEQUENTIAL_SET,
+} from "./factor-registry";
 
-export const SEQUENTIAL_KEYS = new Set(["financing", "market", "transaction_type"]);
-export const AUTO_AREA_KEYS = new Set(["area"]);
-export const DEFAULT_DIFFERENCE_KEYS = new Set([
-  "ideal_area",
-  "location",
-  "attraction",
-  "access",
-  "street_count",
-  "street_lengths",
-]);
+// مشتقات من سجل العوامل — عامل جديد يُضاف هناك مرة واحدة فيصل هنا تلقائياً.
+export const SEQUENTIAL_KEYS = SEQUENTIAL_SET;
+export const AUTO_AREA_KEYS = new Set([AUTO_AREA_KEY]);
+export const DEFAULT_DIFFERENCE_KEYS = new Set(
+  Object.entries(FACTOR_REGISTRY)
+    .filter(([k, d]) => !d.sequential && k !== AUTO_AREA_KEY)
+    .map(([k]) => k),
+);
 
-export const STANDARD_FACTORS: { factorKey: string; labelAr: string }[] = [
-  { factorKey: "financing", labelAr: "تسوية شروط التمويل" },
-  { factorKey: "market", labelAr: "تسوية ظروف السوق" },
-  { factorKey: "transaction_type", labelAr: "تسوية نوع المقارن" },
-  { factorKey: "area", labelAr: "المساحة" },
-  { factorKey: "ideal_area", labelAr: "المساحة المثالية" },
-  { factorKey: "location", labelAr: "الموقع" },
-  { factorKey: "attraction", labelAr: "عامل الجذب للموقع" },
-  { factorKey: "access", labelAr: "سهولة الوصول" },
-  { factorKey: "street_count", labelAr: "عدد الشوارع" },
-  { factorKey: "street_lengths", labelAr: "أطوال الشوارع" },
-];
+export const STANDARD_FACTORS: { factorKey: string; labelAr: string }[] =
+  Object.entries(FACTOR_REGISTRY).map(([factorKey, d]) => ({
+    factorKey,
+    labelAr: d.label,
+  }));
 
 export function buildFactorRows(
   adopted: ValuationComparableSelectionDto[],

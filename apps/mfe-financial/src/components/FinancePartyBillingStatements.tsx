@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { fmtMax } from "@platform/app-shared/format/number";
 import { prototypeKeys } from "@platform/app-shared/query/prototype-keys";
 import {
   loadPartyBillingReadyLines,
@@ -69,8 +70,9 @@ import { FinanceReceiptUploadField } from "./FinanceReceiptUploadField";
 const EMPTY_READY_LINES: PartyBillingReadyLineDto[] = [];
 const EMPTY_STATEMENTS: PartyBillingStatementDto[] = [];
 
+// لاحقة ر.س دون أصفار كسور إلزامية — نبقيها محلياً حفاظاً على العرض نفسه.
 function formatSar(n: number) {
-  return `${n.toLocaleString("en-US", { maximumFractionDigits: 2 })} ر.س`;
+  return `${fmtMax(n)} ر.س`;
 }
 
 function formatInvoiceDate(raw: string | null | undefined): string {

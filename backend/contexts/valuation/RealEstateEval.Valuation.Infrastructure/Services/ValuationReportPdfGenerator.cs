@@ -72,6 +72,11 @@ public static class ValuationReportPdfGenerator
 
                 page.Content().PaddingTop(16).Column(col =>
                 {
+                    // قرار 23: سطر واحد يوسم الحزمة كلها — «النصوص المعيارية — الحزمة نسخة N».
+                    col.Item().PaddingBottom(6)
+                        .Text($"النصوص المعيارية/القانونية — الحزمة نسخة {doc.TextPackageVersion}")
+                        .FontSize(8).FontColor(Colors.Grey.Darken1);
+
                     if (!string.IsNullOrWhiteSpace(doc.FinalOpinionDisplay))
                     {
                         col.Item().Text($"الرأي النهائي للقيمة: {doc.FinalOpinionDisplay}")

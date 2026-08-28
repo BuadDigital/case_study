@@ -22,11 +22,7 @@ namespace RealEstateEval.Operations.Infrastructure.Services;
 public sealed class KeyEnvelopesService : IKeyEnvelopesService
 {
     private const int MaxListRows = 500;
-    private static readonly JsonSerializerOptions JsonOpts = new()
-    {
-        PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
-        PropertyNameCaseInsensitive = true,
-    };
+    private static readonly JsonSerializerOptions JsonOpts = JsonDefaults.CamelCaseInsensitive;
 
     private readonly OperationsDbContext _ops;
     private readonly ICaseStudyLookup _caseStudy;
@@ -924,8 +920,7 @@ public sealed class KeyEnvelopesService : IKeyEnvelopesService
     private static Guid? EmptyToNull(Guid? id) =>
         id is null || id == Guid.Empty ? null : id;
 
-    private static string? NullIfBlank(string? value) =>
-        string.IsNullOrWhiteSpace(value) ? null : value.Trim();
+    private static string? NullIfBlank(string? value) => Texts.NullIfBlank(value);
 
  /// <summary>
  /// Resolves the case specialist for a property's case-study parent task and

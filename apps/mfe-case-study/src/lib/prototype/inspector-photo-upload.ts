@@ -24,39 +24,16 @@ import {
   type EvidencePhotoExif,
 } from "./process-evidence-photo";
 import { parseCoord } from "@platform/app-shared/media/photo-location";
+import {
+  blobToDataUrl,
+  fileToBase64,
+} from "@platform/app-shared/media/file-encoding";
 
 const SCOPE = "field-inspection-photo";
 /** Pre-process ceiling; after compress the upload is ≤ 1 MB. */
 const MAX_IMAGE_BYTES = 20 * 1024 * 1024;
 
 const previewCache = new Map<string, string>();
-
-function readAsDataUrl(file: File): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => resolve(String(reader.result ?? ""));
-    reader.onerror = () => reject(reader.error);
-    reader.readAsDataURL(file);
-  });
-}
-
-async function fileToBase64(file: File): Promise<string> {
-  const bytes = new Uint8Array(await file.arrayBuffer());
-  let binary = "";
-  for (let i = 0; i < bytes.length; i += 1) {
-    binary += String.fromCharCode(bytes[i]!);
-  }
-  return btoa(binary);
-}
-
-function blobToDataUrl(blob: Blob): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => resolve(String(reader.result ?? ""));
-    reader.onerror = () => reject(reader.error);
-    reader.readAsDataURL(blob);
-  });
-}
 
 export function inspectorPhotoCacheKey(
   taskId: string,
@@ -303,7 +280,7 @@ export async function uploadInspectorPhotoFromFile(
   };
 
   try {
-    const dataUrl = await readAsDataUrl(uploadFile);
+    const dataUrl = await blobToDataUrl(uploadFile);
     setInspectorPhotoDataUrl(taskId, photoRef, dataUrl);
   } catch {
     /* preview optional */

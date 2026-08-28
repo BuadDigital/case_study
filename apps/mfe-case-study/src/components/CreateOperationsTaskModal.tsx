@@ -8,6 +8,7 @@ import {
   type CreateOperationsTaskRequest,
   type OperationsTaskLetterRowDto,
 } from "@platform/api-client";
+import { pad2 } from "@platform/app-shared/format/date";
 import type { StaffUser } from "@platform/app-shared/prototype/constants";
 import { prototypeModulesApiConfig } from "@platform/app-shared/prototype/prototype-modules-api-config";
 import { AppModal } from "./ui/AppModal";
@@ -80,10 +81,6 @@ const DEFAULT_TITLES: Record<string, string> = {
   court_visit: "زيارة محكمة",
   general: "مهمة عامة",
 };
-
-function pad2(n: number): string {
-  return String(n).padStart(2, "0");
-}
 
 function toLocalDateValue(d: Date): string {
   return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;

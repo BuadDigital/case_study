@@ -20,6 +20,7 @@ import {
 } from "../../lib/evaluator/evaluator-submission-storage";
 import { PartyRecallAdvisorySection } from "@case-study/mfe/components/party-tasks/PartyRecallAdvisorySection";
 import { PARTY_TASK_RECALL_CHANGED_EVENT } from "@platform/app-shared/prototype/party-task-recall-storage";
+import { useWindowEvents } from "@platform/app-shared/hooks/useWindowEvents";
 import {
   checklistAnswerLabel,
   EVALUATOR_CONDITIONAL_QUESTIONS,
@@ -75,17 +76,12 @@ export function EvaluatorAdvisoryPanel({
     [parentTask.id, propertyId, tasks, refreshKey],
   );
 
-  useEffect(() => {
-    const refresh = () => setRefreshKey((k) => k + 1);
-    window.addEventListener(EVALUATOR_SUBMISSION_CHANGED_EVENT, refresh);
-    window.addEventListener(PARTY_TASK_RECALL_CHANGED_EVENT, refresh);
-    window.addEventListener(PARTY_CASE_STUDY_FORM_CHANGED_EVENT, refresh);
-    return () => {
-      window.removeEventListener(EVALUATOR_SUBMISSION_CHANGED_EVENT, refresh);
-      window.removeEventListener(PARTY_TASK_RECALL_CHANGED_EVENT, refresh);
-      window.removeEventListener(PARTY_CASE_STUDY_FORM_CHANGED_EVENT, refresh);
-    };
-  }, []);
+  const bumpRefresh = () => setRefreshKey((k) => k + 1);
+  useWindowEvents({
+    [EVALUATOR_SUBMISSION_CHANGED_EVENT]: bumpRefresh,
+    [PARTY_TASK_RECALL_CHANGED_EVENT]: bumpRefresh,
+    [PARTY_CASE_STUDY_FORM_CHANGED_EVENT]: bumpRefresh,
+  });
 
   useEffect(() => {
     if (!appraisalTask) {

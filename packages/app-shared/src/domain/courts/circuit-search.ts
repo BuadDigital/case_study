@@ -1,19 +1,13 @@
 /** بحث وترتيب دوائر المحكمة — مواصفة circuit_select_field_spec. */
 
-const ARABIC_DIGITS = "٠١٢٣٤٥٦٧٨٩";
-
 export type CircuitSearchItem = {
   id: string;
   circuitNo: string;
   circuitName?: string | null;
 };
 
-export function toLatinDigits(value: string): string {
-  return value.replace(/[٠-٩]/g, (ch) => {
-    const i = ARABIC_DIGITS.indexOf(ch);
-    return i >= 0 ? String(i) : ch;
-  });
-}
+import { toLatinDigits } from "../../lib/arabic-digits";
+export { toLatinDigits };
 
 export function normalizeArabicSearchText(value: string): string {
   let s = toLatinDigits(value).trim().toLowerCase();

@@ -13,6 +13,5 @@ public interface IWorkOrderLoader
 
     static string NormalizePo(string poNumber) => poNumber.Trim();
 
-    static string? NormalizeOptionalText(string? value) =>
-        string.IsNullOrWhiteSpace(value) ? null : value.Trim();
+    static string? NormalizeOptionalText(string? value) => Texts.NullIfBlank(value);
 }

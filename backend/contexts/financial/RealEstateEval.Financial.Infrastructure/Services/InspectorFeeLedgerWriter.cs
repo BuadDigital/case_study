@@ -164,7 +164,7 @@ public sealed class InspectorFeeLedgerWriter : IInspectorFeeLedgerWriter
             .ToList();
         if (feeTasks.Count == 0) return;
 
-        var readyPropertyIds = await GetCompletedCaseStudyPropertyIdsAsync(
+        var readyPropertyIds = await _lookup.GetCompletedCaseStudyPropertyIdsAsync(
             feeTasks.Select(t => t.PropertyId),
             cancellationToken);
 
@@ -178,20 +178,5 @@ public sealed class InspectorFeeLedgerWriter : IInspectorFeeLedgerWriter
         if (feeTasks.Count == 0) return;
 
         await EnsureLedgersForTasksAsync(feeTasks, cancellationToken);
-    }
-
-    private async Task<HashSet<Guid>> GetCompletedCaseStudyPropertyIdsAsync(
-        IEnumerable<Guid?> propertyIds,
-        CancellationToken cancellationToken)
-    {
-        var ids = propertyIds
-            .Where(id => id.HasValue)
-            .Select(id => id!.Value)
-            .Distinct()
-            .ToList();
-        if (ids.Count == 0) return [];
-
-        var ready = await _lookup.ListCompletedCaseStudyPropertyIdsAsync(cancellationToken);
-        return ready.Where(ids.Contains).ToHashSet();
     }
 }

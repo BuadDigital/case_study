@@ -3,6 +3,7 @@
 import {
   getCachedOrganizationBranding,
   getCachedOrganizationCompanyName,
+  getCachedOrganizationSettings,
 } from "@platform/app-shared/organization/organization-settings-cache";
 import {
   DEFAULT_CASE_STUDY_QUESTION_CATALOG,
@@ -32,16 +33,18 @@ export function caseStudyProviderName(): string {
 
 export const CASE_STUDY_REPORT_TITLE = "نموذج دراسة الحالة";
 export const CASE_STUDY_REPORT_SUBTITLE = "منصة إدارة التقييم العقاري";
-/** معتمد التقرير — ثابت في التقرير (ليس أخصائي الإسناد من أمر العمل). */
-export const CASE_STUDY_REPORT_APPROVER_NAME = "عماد رشيد الرشيد";
+const DEFAULT_APPROVER_NAME = "عماد رشيد الرشيد";
+/** معتمد التقرير = المقيّم المعتمد من إعدادات المنشأة (قرار 25) — ليس أخصائي الإسناد من أمر العمل. */
+export function caseStudyApproverName(): string {
+  const name = getCachedOrganizationSettings()?.evaluator.name?.trim();
+  return name || DEFAULT_APPROVER_NAME;
+}
 export function caseStudySignatureImage(): string {
   return getCachedOrganizationBranding()?.signatureUrl || DEFAULT_SIGNATURE;
 }
 export function caseStudyStampImage(): string {
   return getCachedOrganizationBranding()?.stampUrl || DEFAULT_STAMP;
 }
-export const CASE_STUDY_SIGNATURE_IMAGE = DEFAULT_SIGNATURE;
-export const CASE_STUDY_STAMP_IMAGE = DEFAULT_STAMP;
 
 /** نص ثابت أسفل جداول الصك والرفع المساحي — مطابق للنموذج الورقي. */
 export const CASE_STUDY_SECTION_REMARKS_HINT =

@@ -1,5 +1,5 @@
-import { getApiBase, type WorkOrdersApiConfig } from "@platform/api-client";
-import { getAuthSession } from "@platform/auth-client";
+import type { WorkOrdersApiConfig } from "@platform/api-client";
+import { apiConfig } from "../auth/api-config";
 
 export const WORK_ORDERS_CHANGED_EVENT = "work-orders-changed";
 
@@ -10,9 +10,8 @@ export function notifyWorkOrdersChanged(): void {
 }
 
 export function workOrdersApiConfig(): WorkOrdersApiConfig | null {
-  const session = getAuthSession();
-  if (!session?.token) return null;
-  return { token: session.token, baseUrl: getApiBase() };
+  // نفس بناء apiConfig الموحّد — نُبقي الاسم والنوع للسطح القائم.
+  return apiConfig();
 }
 
 /** First non-empty message from a field error (string or ASP.NET string[]). */

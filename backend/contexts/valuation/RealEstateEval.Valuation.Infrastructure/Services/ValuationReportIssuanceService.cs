@@ -1,3 +1,4 @@
+using RealEstateEval.Domain;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using Microsoft.EntityFrameworkCore;
@@ -23,10 +24,7 @@ public sealed class ValuationReportIssuanceService(
 {
     private readonly TimeProvider _time = time ?? TimeProvider.System;
 
-    private static readonly JsonSerializerOptions SnapshotJson = new()
-    {
-        PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
-    };
+    private static readonly JsonSerializerOptions SnapshotJson = JsonDefaults.CamelCase;
 
     public async Task<ValuationReportIssuanceStateDto?> GetStateAsync(
         Guid valuationRequestId,

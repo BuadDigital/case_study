@@ -884,6 +884,21 @@
       "note": "Singleton org settings written by OrganizationSettingsService on PlatformDbContext."
     },
     {
+      "table": "ValuationReportTextPackages",
+      "schema": "platform",
+      "dbSet": "ValuationReportTextPackages",
+      "entity": "ValuationReportTextPackage",
+      "owner": "platform",
+      "status": "approved",
+      "ownershipModel": "single-owner",
+      "contexts": [
+        "PlatformDbContext"
+      ],
+      "transactionGroup": "platform.config",
+      "decision": null,
+      "note": "قرار 23: immutable version registry of the standard/legal text package — one version for the whole block; any edit issues a new package."
+    },
+    {
       "table": "FieldSyncStatuses",
       "schema": "platform",
       "dbSet": "FieldSyncStatuses",

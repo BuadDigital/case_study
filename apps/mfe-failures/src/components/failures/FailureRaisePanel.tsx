@@ -18,7 +18,7 @@ import {
   groupSimilarFailureRecords,
   isPanelBlockingFailure,
 } from "../../lib/failures-labels";
-import { formatDateAr } from "@case-study/mfe";
+import { formatDateAr } from "@platform/app-shared/format/date";
 import { useFailuresQuery } from "../../query/failures-queries";
 import {
   FailureRaiseFields,

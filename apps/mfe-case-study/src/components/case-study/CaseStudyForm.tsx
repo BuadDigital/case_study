@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { useWindowEvents } from "@platform/app-shared/hooks/useWindowEvents";
 import {
   Button,
   FormGroup,
@@ -343,23 +344,18 @@ export function CaseStudyForm({
     );
   }, [isParty, partyAnswersByKey]);
 
-  useEffect(() => {
-    if (isParty) return;
-    const refresh = () => setPartyRevision((n) => n + 1);
-    window.addEventListener("focus", refresh);
-    window.addEventListener(CASE_STUDY_INFO_ROLES_CHANGED_EVENT, refresh);
-    window.addEventListener(PARTY_CASE_STUDY_FORM_CHANGED_EVENT, refresh);
-    window.addEventListener(EVALUATOR_SUBMISSION_CHANGED_EVENT, refresh);
-    return () => {
-      window.removeEventListener("focus", refresh);
-      window.removeEventListener(CASE_STUDY_INFO_ROLES_CHANGED_EVENT, refresh);
-      window.removeEventListener(
-        PARTY_CASE_STUDY_FORM_CHANGED_EVENT,
-        refresh,
-      );
-      window.removeEventListener(EVALUATOR_SUBMISSION_CHANGED_EVENT, refresh);
-    };
-  }, [isParty]);
+  // أطراف النموذج لا تتابع تغيّرات بقية الأطراف — المستمعون للأخصائي فقط.
+  const refreshPartyRevision = () => setPartyRevision((n) => n + 1);
+  useWindowEvents(
+    isParty
+      ? {}
+      : {
+          focus: refreshPartyRevision,
+          [CASE_STUDY_INFO_ROLES_CHANGED_EVENT]: refreshPartyRevision,
+          [PARTY_CASE_STUDY_FORM_CHANGED_EVENT]: refreshPartyRevision,
+          [EVALUATOR_SUBMISSION_CHANGED_EVENT]: refreshPartyRevision,
+        },
+  );
 
   const canEditKey = useCallback(
     (key: string) => {

@@ -13,6 +13,7 @@ import {
 import { getAuthSession } from "@platform/auth-client";
 import { cn, Spinner, useToast } from "@platform/ui-kit";
 import { invalidControlClass } from "@platform/app-shared/form-ux";
+import { useWindowEvents } from "@platform/app-shared/hooks/useWindowEvents";
 import {
   usePoRecordQuery,
   useWorkflowTasksQuery,
@@ -203,32 +204,23 @@ export function EvaluatorFinalReviewTab({
   );
 
   useEffect(() => {
-    const refreshEsg = () =>
-      setSpecialistEsg(loadSpecialistEsgInputs(propertyId));
-    const refreshKeys = () =>
-      setSpecialistKeys(loadSpecialistPrintAttachmentKeys(propertyId));
-    refreshEsg();
-    refreshKeys();
-    const onChangeEsg = (ev: Event) => {
-      const detail = (ev as CustomEvent<{ propertyId?: string }>).detail;
-      if (detail?.propertyId && detail.propertyId !== propertyId) return;
-      refreshEsg();
-    };
-    const onChangeKeys = (ev: Event) => {
-      const detail = (ev as CustomEvent<{ propertyId?: string }>).detail;
-      if (detail?.propertyId && detail.propertyId !== propertyId) return;
-      refreshKeys();
-    };
-    window.addEventListener(VALUATION_SPECIALIST_ESG_CHANGED_EVENT, onChangeEsg);
-    window.addEventListener(VALUATION_PRINT_KEYS_CHANGED_EVENT, onChangeKeys);
-    return () => {
-      window.removeEventListener(
-        VALUATION_SPECIALIST_ESG_CHANGED_EVENT,
-        onChangeEsg,
-      );
-      window.removeEventListener(VALUATION_PRINT_KEYS_CHANGED_EVENT, onChangeKeys);
-    };
+    setSpecialistEsg(loadSpecialistEsgInputs(propertyId));
+    setSpecialistKeys(loadSpecialistPrintAttachmentKeys(propertyId));
   }, [propertyId]);
+  // تجدد مدخلات الأخصائي المتزامنة عبر أحداث window — عقار آخر لا يعنينا.
+  const ifThisProperty = (refresh: () => void) => (ev: Event) => {
+    const detail = (ev as CustomEvent<{ propertyId?: string }>).detail;
+    if (detail?.propertyId && detail.propertyId !== propertyId) return;
+    refresh();
+  };
+  useWindowEvents({
+    [VALUATION_SPECIALIST_ESG_CHANGED_EVENT]: ifThisProperty(() =>
+      setSpecialistEsg(loadSpecialistEsgInputs(propertyId)),
+    ),
+    [VALUATION_PRINT_KEYS_CHANGED_EVENT]: ifThisProperty(() =>
+      setSpecialistKeys(loadSpecialistPrintAttachmentKeys(propertyId)),
+    ),
+  });
 
   useEffect(() => {
     let cancelled = false;

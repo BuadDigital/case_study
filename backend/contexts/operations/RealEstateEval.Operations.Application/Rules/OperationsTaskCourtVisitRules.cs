@@ -1,5 +1,6 @@
 using RealEstateEval.Application.Contracts;
 using RealEstateEval.Operations.Application.Contracts;
+using RealEstateEval.Domain;
 
 namespace RealEstateEval.Operations.Application.Rules;
 
@@ -124,6 +125,5 @@ public static class OperationsTaskCourtVisitRules
             _ => result.Kind,
         };
 
-    private static string? NullIfBlank(string? value) =>
-        string.IsNullOrWhiteSpace(value) ? null : value.Trim();
+    private static string? NullIfBlank(string? value) => Texts.NullIfBlank(value);
 }

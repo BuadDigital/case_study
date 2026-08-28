@@ -1,3 +1,5 @@
+using RealEstateEval.Domain;
+
 namespace RealEstateEval.Valuation.Domain;
 
 /// <summary>
@@ -307,10 +309,7 @@ public static class ValuationApproachSettingsRules
 
  // ─── الافتراضات الخاصة (مكتبة الانتقاء تُدار في إعدادات تبويب تقرير التقييم) ───
 
-    private static readonly System.Text.Json.JsonSerializerOptions AssumptionsJsonOptions = new()
-    {
-        Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping,
-    };
+    private static readonly System.Text.Json.JsonSerializerOptions AssumptionsJsonOptions = JsonDefaults.RelaxedEscaping;
 
  /// <summary>
  /// بند نفي الأخصائي في مكتبة الافتراضات — يُسقط عند اختيار «استُعين بأخصائي خارجي».

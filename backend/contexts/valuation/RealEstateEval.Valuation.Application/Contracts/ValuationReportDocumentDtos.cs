@@ -80,6 +80,8 @@ public class ValuationReportDocumentDto
     public string? MethodsRationale { get; init; }
     public bool AllowsIssuance { get; init; }
     public string TextLayerNoteAr { get; init; } = "النصوص المعيارية/القانونية تُجمَّد برقم نسخة عند الإصدار — القالب البصري النهائي يعتمد report-template-approved.html عند توفره.";
+ /// <summary>قرار 23: رقم حزمة النصوص — نسخة واحدة للحزمة كلها، تُجمَّد لحظة الإصدار.</summary>
+    public int TextPackageVersion { get; init; } = 1;
  /// <summary>Public URL of the approved letterhead HTML (shell static asset).</summary>
     public string ApprovedTemplateUrl { get; init; } = "/ejadah/report-template-approved.html";
  /// <summary>Org-settings letterhead (3-slice render); null keeps the template's baked one.</summary>

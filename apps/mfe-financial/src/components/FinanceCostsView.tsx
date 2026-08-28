@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { fmtMax } from "@platform/app-shared/format/number";
 import { prototypeKeys } from "@platform/app-shared/query/prototype-keys";
 import {
   loadPartyBillingReadyLines,
@@ -28,10 +29,9 @@ import { FinanceCostPartiesList } from "./FinanceCostPartiesList";
 
 const EMPTY_STAFF_USERS: StaffUser[] = [];
 
+// لاحقة ر.س دون أصفار كسور إلزامية — نبقيها محلياً حفاظاً على العرض نفسه.
 function fmtSar(n: number) {
-  return `${n.toLocaleString("en-US", {
-    maximumFractionDigits: 2,
-  })} ر.س`;
+  return `${fmtMax(n)} ر.س`;
 }
 
 function AccountHeader({ party }: { party: FinanceCostParty }) {

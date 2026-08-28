@@ -16,10 +16,7 @@ namespace RealEstateEval.Platform.Infrastructure.Services;
 
 public sealed class RegionsService : IRegionsService
 {
-    private static readonly JsonSerializerOptions JsonOpts = new()
-    {
-        PropertyNameCaseInsensitive = true,
-    };
+    private static readonly JsonSerializerOptions JsonOpts = JsonDefaults.CaseInsensitive;
 
     private readonly PlatformDbContext _db;
     private readonly ApiResponseCache _cache;

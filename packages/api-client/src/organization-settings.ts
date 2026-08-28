@@ -260,6 +260,8 @@ export type OrganizationValuationSettings = {
 
 /** تبويب «تقرير التقييم» (القرار 25 طبقة ب) — ثوابت ونصوص تُعبَّأ مرة. */
 export type OrganizationValuationReportSettings = {
+  /** قرار 23: رقم حزمة النصوص المعيارية — نسخة واحدة للحزمة كلها؛ أي تعديل يصدر حزمة جديدة. */
+  textPackageVersion?: number;
   reportType: string;
   currency: string;
   valuationBranch: string;
@@ -478,12 +480,15 @@ function pickStr(
 }
 
 function normalizeValuationReport( raw: Record<string, unknown> ): OrganizationValuationReportSettings {
+  const versionRaw = raw.textPackageVersion ?? raw.TextPackageVersion;
   const libraryRaw =
     raw.specialAssumptionLibrary ?? raw.SpecialAssumptionLibrary;
   const library = Array.isArray(libraryRaw)
     ? libraryRaw.filter((item): item is string => typeof item === "string")
     : [];
   return {
+    // قرار 23: رقم حزمة النصوص المعيارية — نسخة واحدة للحزمة كلها.
+    textPackageVersion: typeof versionRaw === 'number' ? versionRaw : 1,
     reportType: pickStr(raw, "reportType", "ReportType"),
     currency: pickStr(raw, "currency", "Currency"),
     valuationBranch: pickStr(raw, "valuationBranch", "ValuationBranch"),

@@ -1,3 +1,4 @@
+import { pad2 } from "@platform/app-shared/format/date";
 import { dueDateToDeadline } from "./po-intake-data";
 import { resolveRemainingTime } from "./my-task-row";
 
@@ -10,10 +11,6 @@ const WEEKDAY_AR = [
   "الجمعة",
   "السبت",
 ] as const;
-
-function pad2(n: number): string {
-  return String(n).padStart(2, "0");
-}
 
 function daysWord(days: number): string {
   if (days === 1) return "يوم";

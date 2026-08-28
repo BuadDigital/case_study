@@ -8,68 +8,15 @@ import type {
   ValuationComparableSelectionListDto,
 } from "@platform/api-client";
 import { fmt, JUSTIFICATION_MIN_LENGTH } from "./lib/shell-utils";
-
-const SEQUENTIAL = new Set(["financing", "market", "transaction_type"]);
-const AUTO_AREA = "area";
-
-const FACTOR_META: Record<
-  string,
-  { label: string; hint: string; tip: string }
-> = {
-  financing: {
-    label: "تسوية شروط التمويل",
-    hint: "نسبة ٪ — تسلسلية",
-    tip: "أثر شروط البيع والتمويل غير النقدية على السعر المرصود.",
-  },
-  market: {
-    label: "تسوية ظروف السوق",
-    hint: "تُدخل يدوياً — يظهر عمر الصفقة للاستدلال",
-    tip: "فرق الزمن بين تاريخ المقارن وتاريخ التقييم — يقدّرها المقيّم يدوياً.",
-  },
-  transaction_type: {
-    label: "تسوية نوع المقارن",
-    hint: "صفقة / عرض / حد / سوم",
-    tip: "الفرق بين سعر المقارن وسعر السوق بحسب نوعه.",
-  },
-  area: {
-    label: "المساحة",
-    hint: "آلية",
-    tip: "فرق مساحة القطعة عن مساحة المقارن، مقيساً بطريقة المضاعف أو الأمثال. المقارن الأصغر يأخذ تسوية سالبة والأكبر موجبة.",
-  },
-  ideal_area: {
-    label: "المساحة المثالية",
-    hint: "قرب المساحة من السائد في الحي",
-    tip: "قرب مساحة القطعة من المساحة السائدة للاستخدام في الحي. لا يشمل الفرق العددي في المساحة.",
-  },
-  location: {
-    label: "الموقع",
-    hint: "أفضلية الحي أو المنطقة",
-    tip: "أفضلية الحي أو المنطقة مقارنةً بغيرها. لا يشمل القرب من معلم محدد.",
-  },
-  attraction: {
-    label: "عامل الجذب للموقع",
-    hint: "القرب من معلم أو مرفق يرفع الطلب",
-    tip: "القرب من معلم أو مرفق محدد يرفع الطلب.",
-  },
-  access: {
-    label: "سهولة الوصول",
-    hint: "موضع القطعة داخل نسيج الحي",
-    tip: "موضع القطعة داخل نسيج الحي وسهولة بلوغها.",
-  },
-  street_count: {
-    label: "عدد الشوارع",
-    hint: "عدد الواجهات المطلة",
-    tip: "عدد الشوارع المطلة عليها القطعة. لا يشمل عرضها.",
-  },
-  street_lengths: {
-    label: "أطوال الشوارع",
-    hint: "عرض الشوارع وأطوال الواجهات",
-    tip: "عرض الشوارع المطلة على القطعة وأطوال واجهاتها عليها.",
-  },
-};
-
-/** عوامل الاختلاف التي لا تحمل خلية وصف/عمود عقار قابل للتحرير (الموقع من المدينة/الحي، والمثالية رقمية). */
-const NO_SPEC_KEYS = new Set(["location"]);
+import {
+  AUTO_AREA_KEY,
+  SEQUENTIAL_KEYS,
+  SEQUENTIAL_SET,
+  factorDescriptor,
+  factorHasSpecCell,
+  factorMeta,
+} from "./lib/factor-registry";
+import type { MatrixDispatch } from "./lib/matrix-actions";
 
 function pct(n: number): string {
   const rounded = Math.round(n * 100) / 100;
@@ -81,15 +28,6 @@ function pctClass(n: number): string {
   if (n > 0) return "text-[#2f7a4d]";
   if (n < 0) return "text-danger-text";
   return "text-text-2";
-}
-
-function metaFor(factorKey: string, labelAr?: string) {
-  const m = FACTOR_META[factorKey];
-  return {
-    label: labelAr || m?.label || factorKey,
-    hint: m?.hint ?? "",
-    tip: m?.tip ?? "",
-  };
 }
 
 /** compEdit: القيم الفعلية للمقارن بعد تجاوزات هذا التقييم. */
@@ -536,48 +474,16 @@ export type AdjustmentsMatrixProps = {
   district?: string;
   valuationDate?: string;
   factorDefinitions: Record<string, string>;
-  /** حفظ خلية تسوية — يعيد true عند النجاح فتُمسح مسودة الخلية. */
-  onSaveCell: (
-    item: ValuationComparableSelectionDto,
-    factorKey: string,
-    raw: string,
-  ) => Promise<boolean>;
-  /** حفظ الوزن اليدوي — يعيد true عند النجاح فتُمسح مسودة الوزن. */
-  onSaveWeight: (
-    item: ValuationComparableSelectionDto,
-    rawPct: string,
-    weightRationale: string,
-  ) => Promise<boolean>;
-  onSaveRationale: (factorKey: string, text: string) => void;
-  onToggleIncluded: (
-    item: ValuationComparableSelectionDto,
-    factorKey: string,
-  ) => void;
-  onChangeBasis: (basis: "price_per_sqm" | "whole_property") => void;
-  /** يعيد true عند النجاح فتُمسح مسودات الأوزان لتظهر الاقتراحات الجديدة. */
-  onResetWeights: () => Promise<boolean>;
-  onAreaFactorChange?: (value: string) => void;
-  onAddFactor?: (factorKey: string, labelAr: string) => void;
-  onRemoveFactor?: (factorKey: string) => void;
   catalogFactors?: { factorKey: string; labelAr: string }[];
-  /** حذف تسوية تسلسلية (تمويل/نوع) — تُستعاد عبر شريحة «↺ استعادة». */
-  onRemoveSequential?: (factorKey: string) => void;
-  onRestoreSequential?: (factorKey: string) => void;
-  /** compSpec: وصف المقارن لكل خلية عامل اختلاف. */
-  onSaveDescription?: (
-    item: ValuationComparableSelectionDto,
-    factorKey: string,
-    text: string,
-  ) => void;
   /** subjSpec: وصف العقار محل التقييم لكل عامل اختلاف. */
   subjectSpecs?: Record<string, string>;
-  onSaveSubjectSpec?: (factorKey: string, text: string) => void;
-  /** ق-8-1: تخصيص مبرر لمقارن بعينه — سطر التسوية يحمل التخصيص فقط. */
-  onSaveLineRationale?: (
-    selectionId: string,
-    factorKey: string,
-    text: string,
-  ) => void;
+  /** سياق السوق يحرّر وصف العقار؛ سياق الأرض ضمن التكلفة لا. */
+  canEditSubjectSpec?: boolean;
+  /**
+   * الأمر الواحد بدل ١٥ مقبضاً — يعيد نجاح التنفيذ حيث تُمسح المسودة عنده.
+   * مرجع مستقر واحد فيصمد memo الجدول أمام إعادة رسم الصدفة.
+   */
+  dispatch: MatrixDispatch;
 };
 
 export const AdjustmentsMatrix = memo(function AdjustmentsMatrix({
@@ -591,22 +497,10 @@ export const AdjustmentsMatrix = memo(function AdjustmentsMatrix({
   district,
   valuationDate,
   factorDefinitions,
-  onSaveCell,
-  onSaveWeight,
-  onSaveRationale,
-  onToggleIncluded,
-  onChangeBasis,
-  onResetWeights,
-  onAreaFactorChange,
-  onAddFactor,
-  onRemoveFactor,
   catalogFactors,
-  onRemoveSequential,
-  onRestoreSequential,
-  onSaveDescription,
   subjectSpecs,
-  onSaveSubjectSpec,
-  onSaveLineRationale,
+  canEditSubjectSpec,
+  dispatch,
 }: AdjustmentsMatrixProps) {
   /** حذف بخطوتين — «حذف؟ ✓ ×» (خانة تأكيد واحدة في كل لحظة كما في النموذج). */
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
@@ -631,8 +525,13 @@ export const AdjustmentsMatrix = memo(function AdjustmentsMatrix({
   const saveRationale = (factorKey: string) => {
     const text = rationaleDraft[factorKey];
     if (text == null) return;
-    onSaveRationale(factorKey, text);
+    void dispatch({ type: "save-rationale", factorKey, text });
   };
+  const saveLineRationale = (
+    selectionId: string,
+    factorKey: string,
+    text: string,
+  ) => void dispatch({ type: "save-line-rationale", selectionId, factorKey, text });
   const basis = selection.adjustmentBasis || "price_per_sqm";
   const isUnit = basis !== "whole_property";
   /** عند أساس قيمة العقار: weightedPricePerSqm يحمل الإجمالي — المتر = الإجمالي ÷ المساحة. */
@@ -677,7 +576,8 @@ export const AdjustmentsMatrix = memo(function AdjustmentsMatrix({
   const linePct = (item: ValuationComparableSelectionDto, factorKey: string) => {
     const line = lineOf(item, factorKey);
     if (line) return line.percent;
-    if (factorKey === AUTO_AREA) return item.market?.suggestedAreaAdjustmentPct ?? 0;
+    if (factorKey === AUTO_AREA_KEY)
+      return item.market?.suggestedAreaAdjustmentPct ?? 0;
     return 0;
   };
 
@@ -694,15 +594,17 @@ export const AdjustmentsMatrix = memo(function AdjustmentsMatrix({
     return keys;
   }, [adopted]);
 
-  // الصفوف التسلسلية من البيانات — بند محذوف يختفي وتظهر شريحة استعادته.
-  const sequentialKeys = ["financing", "market", "transaction_type"].filter(
-    (k) => k === "market" || factorKeysFromData.includes(k),
+  // الصفوف التسلسلية من السجل — بند محذوف يختفي وتظهر شريحة استعادته.
+  const sequentialKeys = SEQUENTIAL_KEYS.filter(
+    (k) =>
+      factorDescriptor(k)?.alwaysPresent || factorKeysFromData.includes(k),
   );
-  const removedSequential = ["financing", "transaction_type"].filter(
-    (k) => !factorKeysFromData.includes(k),
+  const removedSequential = SEQUENTIAL_KEYS.filter(
+    (k) =>
+      !factorDescriptor(k)?.alwaysPresent && !factorKeysFromData.includes(k),
   );
   const differenceKeys = factorKeysFromData.filter(
-    (k) => !SEQUENTIAL.has(k) && k !== AUTO_AREA,
+    (k) => !SEQUENTIAL_SET.has(k) && k !== AUTO_AREA_KEY,
   );
 
   function afterWeight(item: ValuationComparableSelectionDto): number {
@@ -731,13 +633,11 @@ export const AdjustmentsMatrix = memo(function AdjustmentsMatrix({
 
   /** ق-8-1: أسطر التخصيص لكل مقارن — تُعرض تحت مبرر العامل عند الطلب. */
   const overridesFor = (factorKey: string) =>
-    onSaveLineRationale
-      ? adopted.map((item, i) => ({
-          id: item.id,
-          label: `مقارن ${i + 1}`,
-          value: lineOf(item, factorKey)?.rationale ?? "",
-        }))
-      : undefined;
+    adopted.map((item, i) => ({
+      id: item.id,
+      label: `مقارن ${i + 1}`,
+      value: lineOf(item, factorKey)?.rationale ?? "",
+    }));
 
   const largeComps = adopted.filter(
     (i) => i.market?.exceedsLargeAdjustmentThreshold,
@@ -774,8 +674,8 @@ export const AdjustmentsMatrix = memo(function AdjustmentsMatrix({
   const addableFactors = (catalogFactors ?? []).filter(
     (f) =>
       !differenceKeys.includes(f.factorKey) &&
-      !SEQUENTIAL.has(f.factorKey) &&
-      f.factorKey !== AUTO_AREA,
+      !SEQUENTIAL_SET.has(f.factorKey) &&
+      f.factorKey !== AUTO_AREA_KEY,
   );
 
   return (
@@ -795,18 +695,22 @@ export const AdjustmentsMatrix = memo(function AdjustmentsMatrix({
               key={k}
               type="button"
               disabled={saving || locked}
-              onClick={() => onRestoreSequential?.(k)}
+              onClick={() =>
+                void dispatch({ type: "restore-sequential", factorKey: k })
+              }
               title="استعادة البند المحذوف بقيمه الافتراضية"
               className="inline-flex cursor-pointer items-center gap-[5px] rounded-[var(--radius)] border border-dashed border-gold bg-gold-soft px-3 py-2 text-[12px] font-bold text-gold-d disabled:cursor-not-allowed"
             >
-              ↺ استعادة {metaFor(k).label}
+              ↺ استعادة {factorMeta(k).label}
             </button>
           ))}
           <button
             type="button"
             disabled={saving || locked}
             onClick={() =>
-              void onResetWeights().then((ok) => ok && setWeightDraft({}))
+              void dispatch({ type: "reset-weights" }).then(
+                (ok) => ok && setWeightDraft({}),
+              )
             }
             className="flex cursor-pointer items-center gap-[7px] rounded-[9px] border-none bg-ink px-4 py-2.5 text-[13px] font-bold text-white shadow-card disabled:cursor-not-allowed disabled:opacity-55"
           >
@@ -860,7 +764,9 @@ export const AdjustmentsMatrix = memo(function AdjustmentsMatrix({
                   locked={locked}
                   pickable
                   picked={!isUnit}
-                  onPick={() => onChangeBasis("whole_property")}
+                  onPick={() =>
+                    void dispatch({ type: "change-basis", basis: "whole_property" })
+                  }
                 />
                 <SubjCell value="المطلوب تقديره" note="مخرج التقييم" />
                 {adopted.map((item) => (
@@ -883,7 +789,9 @@ export const AdjustmentsMatrix = memo(function AdjustmentsMatrix({
                   locked={locked}
                   pickable
                   picked={isUnit}
-                  onPick={() => onChangeBasis("price_per_sqm")}
+                  onPick={() =>
+                    void dispatch({ type: "change-basis", basis: "price_per_sqm" })
+                  }
                 />
                 <SubjCell value="المطلوب تقديره" note="مخرج التقييم" />
                 {adopted.map((item) => (
@@ -899,13 +807,14 @@ export const AdjustmentsMatrix = memo(function AdjustmentsMatrix({
 
               {/* تسلسلية */}
               {sequentialKeys.map((factorKey) => {
-                const meta = metaFor(
+                const desc = factorDescriptor(factorKey);
+                const meta = factorMeta(
                   factorKey,
                   lineOf(adopted[0]!, factorKey)?.labelAr,
                 );
                 const included =
                   lineOf(adopted[0]!, factorKey)?.isIncluded !== false;
-                const deletable = factorKey !== "market";
+                const deletable = desc?.deletable === true;
                 return (
                   <tr
                     key={factorKey}
@@ -921,26 +830,37 @@ export const AdjustmentsMatrix = memo(function AdjustmentsMatrix({
                       included={included}
                       onToggle={() => {
                         const first = adopted[0];
-                        if (first) onToggleIncluded(first, factorKey);
+                        if (first)
+                          void dispatch({
+                            type: "toggle-included",
+                            item: first,
+                            factorKey,
+                          });
                       }}
                       offNote={
                         included ? undefined : "غير محتسب في السعر التسلسلي"
                       }
-                      deleteKey={
-                        deletable && onRemoveSequential ? factorKey : undefined
-                      }
+                      deleteKey={deletable ? factorKey : undefined}
                       confirmDelete={confirmDelete}
                       onConfirmDelete={setConfirmDelete}
                       onDelete={
-                        deletable && onRemoveSequential
-                          ? () => onRemoveSequential(factorKey)
+                        deletable
+                          ? () =>
+                              void dispatch({
+                                type: "remove-sequential",
+                                factorKey,
+                              })
                           : undefined
                       }
                     />
                     <SubjCell
-                      value={factorKey === "market" ? "تاريخ التقييم" : "—"}
+                      value={
+                        desc?.subjectCell === "valuation-date"
+                          ? "تاريخ التقييم"
+                          : "—"
+                      }
                       note={
-                        factorKey === "market"
+                        desc?.subjectCell === "valuation-date"
                           ? valuationDate || undefined
                           : undefined
                       }
@@ -949,7 +869,7 @@ export const AdjustmentsMatrix = memo(function AdjustmentsMatrix({
                       // «مقترح» من الخادم — المسودة المهيّأة ليست إدخالاً يدوياً.
                       const line = lineOf(item, factorKey);
                       const suggested =
-                        factorKey === "transaction_type" &&
+                        desc?.compNote === "kind-suggested" &&
                         line?.isSuggestedValue === true;
                       const included2 = line?.isIncluded !== false;
                       const cellKey = `${item.id}:${factorKey}`;
@@ -964,9 +884,9 @@ export const AdjustmentsMatrix = memo(function AdjustmentsMatrix({
                           disabled={locked || !included2}
                           muted={suggested || !included2}
                           note={
-                            factorKey === "market"
+                            desc?.compNote === "deal-age"
                               ? `عمر الصفقة ${item.market?.dealAgeMonths ?? "—"} شهراً`
-                              : factorKey === "transaction_type"
+                              : desc?.compNote === "kind-suggested"
                                 ? [
                                     item.comparable.transactionKindLabelAr,
                                     suggested ? "مقترح" : "تجاوز يدوي",
@@ -981,7 +901,12 @@ export const AdjustmentsMatrix = memo(function AdjustmentsMatrix({
                               ? () => {
                                   const raw = matrixDraft[cellKey];
                                   if (raw == null) return;
-                                  void onSaveCell(item, factorKey, raw).then(
+                                  void dispatch({
+                                    type: "save-cell",
+                                    item,
+                                    factorKey,
+                                    raw,
+                                  }).then(
                                     (ok) =>
                                       ok &&
                                       clearDraft(setMatrixDraft, cellKey),
@@ -1001,7 +926,7 @@ export const AdjustmentsMatrix = memo(function AdjustmentsMatrix({
                       }
                       onSave={saveRationale}
                       overrides={overridesFor(factorKey)}
-                      onSaveOverride={onSaveLineRationale}
+                      onSaveOverride={saveLineRationale}
                     />
                   </tr>
                 );
@@ -1028,12 +953,14 @@ export const AdjustmentsMatrix = memo(function AdjustmentsMatrix({
               {/* المساحة */}
               <tr>
                 <LabelCell
-                  label="المساحة"
+                  label={factorMeta(AUTO_AREA_KEY).label}
                   hint={areaMethod}
-                  tip={FACTOR_META.area.tip}
+                  tip={factorMeta(AUTO_AREA_KEY).tip}
                   locked={locked}
-                  areaFactor={onAreaFactorChange ? areaFactor : undefined}
-                  onAreaFactorChange={onAreaFactorChange}
+                  areaFactor={areaFactor}
+                  onAreaFactorChange={(value) =>
+                    void dispatch({ type: "area-factor-change", value })
+                  }
                 />
                 <SubjCell
                   value={`${fmt(Number(subjectArea.replace(",", ".")) || null)} م²`}
@@ -1051,38 +978,39 @@ export const AdjustmentsMatrix = memo(function AdjustmentsMatrix({
                   );
                 })}
                 <JustCell
-                  factorKey="area"
-                  value={justValue("area")}
+                  factorKey={AUTO_AREA_KEY}
+                  value={justValue(AUTO_AREA_KEY)}
                   locked={locked}
                   onDraft={(key, value) =>
                     setRationaleDraft((prev) => ({ ...prev, [key]: value }))
                   }
                   onSave={saveRationale}
-                  overrides={overridesFor("area")}
-                  onSaveOverride={onSaveLineRationale}
+                  overrides={overridesFor(AUTO_AREA_KEY)}
+                  onSaveOverride={saveLineRationale}
                 />
               </tr>
 
               {/* عوامل الاختلاف */}
               {differenceKeys.map((factorKey) => {
-                const meta = metaFor(
+                const desc = factorDescriptor(factorKey);
+                const meta = factorMeta(
                   factorKey,
                   lineOf(adopted[0]!, factorKey)?.labelAr,
                 );
                 const included =
                   lineOf(adopted[0]!, factorKey)?.isIncluded !== false;
-                const specEnabled = !NO_SPEC_KEYS.has(factorKey);
+                const specEnabled = factorHasSpecCell(factorKey);
                 let subjVal = "—";
                 let subjNote: string | undefined;
-                if (factorKey === "ideal_area") {
+                if (desc?.subjectCell === "ideal-area") {
                   subjVal = `${fmt(Number(idealArea.replace(",", ".")) || Number(subjectArea.replace(",", ".")) || null)} م²`;
                   subjNote = "السائدة في الحي";
-                } else if (factorKey === "location") {
+                } else if (desc?.subjectCell === "location") {
                   subjVal = district || "—";
                   subjNote = city;
                 }
                 const subjEditable =
-                  specEnabled && factorKey !== "ideal_area" && !!onSaveSubjectSpec;
+                  specEnabled && !desc?.subjectCell && !!canEditSubjectSpec;
                 return (
                   <tr
                     key={factorKey}
@@ -1098,14 +1026,19 @@ export const AdjustmentsMatrix = memo(function AdjustmentsMatrix({
                       included={included}
                       onToggle={() => {
                         const first = adopted[0];
-                        if (first) onToggleIncluded(first, factorKey);
+                        if (first)
+                          void dispatch({
+                            type: "toggle-included",
+                            item: first,
+                            factorKey,
+                          });
                       }}
                       offNote={included ? undefined : "غير محتسب في المجموع"}
-                      deleteKey={onRemoveFactor ? factorKey : undefined}
+                      deleteKey={factorKey}
                       confirmDelete={confirmDelete}
                       onConfirmDelete={setConfirmDelete}
-                      onDelete={
-                        onRemoveFactor ? () => onRemoveFactor(factorKey) : undefined
+                      onDelete={() =>
+                        void dispatch({ type: "remove-factor", factorKey })
                       }
                     />
                     {subjEditable ? (
@@ -1126,7 +1059,11 @@ export const AdjustmentsMatrix = memo(function AdjustmentsMatrix({
                             }))
                           }
                           onBlur={(e) =>
-                            onSaveSubjectSpec?.(factorKey, e.target.value)
+                            void dispatch({
+                              type: "save-subject-spec",
+                              factorKey,
+                              text: e.target.value,
+                            })
                           }
                           className="w-full rounded-[7px] border border-dashed border-border-md bg-surface px-2 py-1.5 text-center text-[12px] font-bold text-gold-d"
                         />
@@ -1156,7 +1093,12 @@ export const AdjustmentsMatrix = memo(function AdjustmentsMatrix({
                               ? () => {
                                   const raw = matrixDraft[cellKey];
                                   if (raw == null) return;
-                                  void onSaveCell(item, factorKey, raw).then(
+                                  void dispatch({
+                                    type: "save-cell",
+                                    item,
+                                    factorKey,
+                                    raw,
+                                  }).then(
                                     (ok) =>
                                       ok &&
                                       clearDraft(setMatrixDraft, cellKey),
@@ -1165,14 +1107,12 @@ export const AdjustmentsMatrix = memo(function AdjustmentsMatrix({
                               : undefined
                           }
                           note={
-                            factorKey === "location"
+                            desc?.subjectCell === "location"
                               ? `${item.comparable.district || "—"} · ${city || ""}`
                               : undefined
                           }
                           extra={
-                            factorKey !== "location" &&
-                            specEnabled &&
-                            onSaveDescription ? (
+                            specEnabled ? (
                               <input
                                 type="text"
                                 disabled={locked}
@@ -1189,7 +1129,12 @@ export const AdjustmentsMatrix = memo(function AdjustmentsMatrix({
                                   }))
                                 }
                                 onBlur={(e) =>
-                                  onSaveDescription(item, factorKey, e.target.value)
+                                  void dispatch({
+                                    type: "save-description",
+                                    item,
+                                    factorKey,
+                                    text: e.target.value,
+                                  })
                                 }
                                 className="mt-1 w-[110px] rounded-md border border-dashed border-border bg-surface px-1.5 py-1 text-center text-[10.5px] font-medium text-text-2"
                               />
@@ -1207,18 +1152,20 @@ export const AdjustmentsMatrix = memo(function AdjustmentsMatrix({
                       }
                       onSave={saveRationale}
                       overrides={overridesFor(factorKey)}
-                      onSaveOverride={onSaveLineRationale}
+                      onSaveOverride={saveLineRationale}
                     />
                   </tr>
                 );
               })}
 
-              {onAddFactor && addableFactors.length > 0 ? (
+              {addableFactors.length > 0 ? (
                 <AddFactorRow
                   options={addableFactors}
                   locked={locked}
                   colSpan={3 + adopted.length}
-                  onAdd={onAddFactor}
+                  onAdd={(factorKey, labelAr) =>
+                    void dispatch({ type: "add-factor", factorKey, labelAr })
+                  }
                 />
               ) : null}
 
@@ -1302,11 +1249,12 @@ export const AdjustmentsMatrix = memo(function AdjustmentsMatrix({
                         onBlur={() => {
                           const raw = weightDraft[item.id];
                           if (raw == null) return;
-                          void onSaveWeight(
+                          void dispatch({
+                            type: "save-weight",
                             item,
-                            raw,
-                            rationaleDraft["weight"] ?? "",
-                          ).then(
+                            rawPct: raw,
+                            weightRationale: rationaleDraft["weight"] ?? "",
+                          }).then(
                             (ok) =>
                               ok && clearDraft(setWeightDraft, item.id),
                           );

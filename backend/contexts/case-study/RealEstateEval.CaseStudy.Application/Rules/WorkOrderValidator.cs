@@ -55,66 +55,21 @@ public static class WorkOrderValidator
         var errors = new Dictionary<string, string>();
         PropertyIdentifierTypeLabels.TryParseApiValue(dto.IdentifierType, out var idType);
 
+        // خاص بكل مسار: تحقق المعرف + تاريخ الصك (استعلام البورصة) أو خطاب التفويض (الصك/السجل).
         if (idType == PropertyIdentifierType.BourseInquiry)
         {
             ValidateIdentifierNumber(dto, idType, errors);
-
-            if (AssignmentTypeRules.RequiresRequestNumber(assignmentType) &&
-                dto.HasRequestNumber &&
-                string.IsNullOrWhiteSpace(dto.RequestNumber))
-                errors["requestNumber"] = "رقم الطلب مطلوب";
-            if (string.IsNullOrWhiteSpace(dto.AssignmentMandateNumber))
-                errors["assignmentMandateNumber"] = "رقم التكليف مطلوب";
-            if (string.IsNullOrWhiteSpace(dto.AssignmentMandateDate))
-                errors["assignmentMandateDate"] = "تاريخ التكليف مطلوب";
             if (string.IsNullOrWhiteSpace(dto.DeedDate))
                 errors["deedDate"] = "تاريخ الصك مطلوب";
-            if (string.IsNullOrWhiteSpace(dto.OwnerName))
-                errors["ownerName"] = "اسم المالك مطلوب";
-            if (AssignmentTypeRules.RequiresCourtAndCircuit(assignmentType))
-            {
-                if (string.IsNullOrWhiteSpace(dto.Court))
-                    errors["court"] = "المحكمة مطلوبة";
-                if (string.IsNullOrWhiteSpace(dto.Circuit))
-                    errors["circuit"] = "الدائرة مطلوبة";
-            }
-
-            if (!string.IsNullOrWhiteSpace(dto.DeedNumber) &&
-                deedExistsInPo(dto.DeedNumber.Trim(), excludePropertyId))
-            {
-                errors["deedNumber"] = "رقم الصك مسجّل مسبقاً في هذا أمر العمل";
-            }
         }
         else
         {
             ValidateDeedOrRealEstateReg(dto, errors);
-
-            if (AssignmentTypeRules.RequiresRequestNumber(assignmentType) &&
-                dto.HasRequestNumber &&
-                string.IsNullOrWhiteSpace(dto.RequestNumber))
-                errors["requestNumber"] = "رقم الطلب مطلوب";
-            if (string.IsNullOrWhiteSpace(dto.AssignmentMandateNumber))
-                errors["assignmentMandateNumber"] = "رقم التكليف مطلوب";
-            if (string.IsNullOrWhiteSpace(dto.AssignmentMandateDate))
-                errors["assignmentMandateDate"] = "تاريخ التكليف مطلوب";
-            if (string.IsNullOrWhiteSpace(dto.OwnerName))
-                errors["ownerName"] = "اسم المالك مطلوب";
-            if (AssignmentTypeRules.RequiresCourtAndCircuit(assignmentType))
-            {
-                if (string.IsNullOrWhiteSpace(dto.Court))
-                    errors["court"] = "المحكمة مطلوبة";
-                if (string.IsNullOrWhiteSpace(dto.Circuit))
-                    errors["circuit"] = "الدائرة مطلوبة";
-            }
             if (dto.DelegationLetterFileNames.All(string.IsNullOrWhiteSpace))
                 errors["delegationLetterFileNames"] = "خطاب التفويض مطلوب";
-
-            if (!string.IsNullOrWhiteSpace(dto.DeedNumber) &&
-                deedExistsInPo(dto.DeedNumber.Trim(), excludePropertyId))
-            {
-                errors["deedNumber"] = "رقم الصك مسجّل مسبقاً في هذا أمر العمل";
-            }
         }
+
+        ValidateSharedEnfathFields(dto, assignmentType, excludePropertyId, deedExistsInPo, errors);
 
  // ق-11: رقم الطلب ≠ رقم الصك تحوّل من قيد منع إلى تحقق تحذيري — التطابق الحرفي
  // وارد مصادفة وليس دليل خطأ قاطعاً؛ التنبيه في الواجهة والمُدخل يؤكد ويمضي.
@@ -127,6 +82,39 @@ public static class WorkOrderValidator
         ValidateContacts(dto, AssignmentTypeRules.RequiresContacts(assignmentType), errors);
 
         return errors;
+    }
+
+ /// <summary>الحقول المشتركة بين مسارَي إنفاذ (استعلام بورصة / صك أو سجل) — كانت مكررة في الفرعين.</summary>
+    private static void ValidateSharedEnfathFields(
+        WorkOrderPropertyDto dto,
+        AssignmentType assignmentType,
+        Guid? excludePropertyId,
+        Func<string, Guid?, bool> deedExistsInPo,
+        Dictionary<string, string> errors)
+    {
+        if (AssignmentTypeRules.RequiresRequestNumber(assignmentType) &&
+            dto.HasRequestNumber &&
+            string.IsNullOrWhiteSpace(dto.RequestNumber))
+            errors["requestNumber"] = "رقم الطلب مطلوب";
+        if (string.IsNullOrWhiteSpace(dto.AssignmentMandateNumber))
+            errors["assignmentMandateNumber"] = "رقم التكليف مطلوب";
+        if (string.IsNullOrWhiteSpace(dto.AssignmentMandateDate))
+            errors["assignmentMandateDate"] = "تاريخ التكليف مطلوب";
+        if (string.IsNullOrWhiteSpace(dto.OwnerName))
+            errors["ownerName"] = "اسم المالك مطلوب";
+        if (AssignmentTypeRules.RequiresCourtAndCircuit(assignmentType))
+        {
+            if (string.IsNullOrWhiteSpace(dto.Court))
+                errors["court"] = "المحكمة مطلوبة";
+            if (string.IsNullOrWhiteSpace(dto.Circuit))
+                errors["circuit"] = "الدائرة مطلوبة";
+        }
+
+        if (!string.IsNullOrWhiteSpace(dto.DeedNumber) &&
+            deedExistsInPo(dto.DeedNumber.Trim(), excludePropertyId))
+        {
+            errors["deedNumber"] = "رقم الصك مسجّل مسبقاً في هذا أمر العمل";
+        }
     }
 
  /// <summary>مرحلة البورصة — استعلام البورصة.</summary>

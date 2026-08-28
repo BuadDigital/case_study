@@ -4,7 +4,7 @@ import {
 } from "./case-study-question-catalog";
 import {
   caseStudyProviderName,
-  CASE_STUDY_REPORT_APPROVER_NAME,
+  caseStudyApproverName,
   CASE_STUDY_REPORT_TITLE,
   CASE_STUDY_TABLE_HEADERS,
   caseStudyAnswerKey,
@@ -120,7 +120,7 @@ export function buildCaseStudyReportApproval(
     providerName: caseStudyProviderName(),
     declarationText: `نقر ${caseStudyProviderName()} بصحة ما ورد في النموذج أعلاه مع تحمل كافة المسؤولية نحو ذلك.`,
     deedNumber,
-    approverName: CASE_STUDY_REPORT_APPROVER_NAME,
+    approverName: caseStudyApproverName(),
     reportDate: reportDateIso ? formatDateAr(reportDateIso) : "—",
     reportDateIso,
     requestNumber,

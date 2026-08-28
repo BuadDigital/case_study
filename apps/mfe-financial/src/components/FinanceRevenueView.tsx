@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { fmt } from "@platform/app-shared/format/number";
 import { prototypeKeys } from "@platform/app-shared/query/prototype-keys";
 import { loadEnfazTracking } from "@platform/app-shared/prototype/enfaz-billing-api";
 import type { EnfazTrackingRowDto } from "@platform/api-client";
@@ -65,15 +66,9 @@ import { FinanceEnfazFollowupsPanel } from "./FinanceEnfazFollowupsPanel";
 
 const EMPTY_TRACKING_ROWS: EnfazTrackingRowDto[] = [];
 
-function fmtNum(n: number, digits = 2) {
-  return n.toLocaleString("en-US", {
-    minimumFractionDigits: digits,
-    maximumFractionDigits: digits,
-  });
-}
-
+// الصحيح بلا كسور والكسري بكسرين — يختلف عن fmtSar المشتركة التي تثبّت الكسور دائماً.
 function fmtSar(n: number) {
-  return `${fmtNum(n, n % 1 === 0 ? 0 : 2)} ر.س`;
+  return `${fmt(n, n % 1 === 0 ? 0 : 2)} ر.س`;
 }
 
 function filterRows(
@@ -329,7 +324,7 @@ function StudyTable({
                       {" — "}
                       أتعاب{" "}
                       <b className="font-bold text-heading" dir="ltr">
-                        {feesKnown ? fmtNum(feesSum) : "—"}
+                        {feesKnown ? fmt(feesSum, 2) : "—"}
                       </b>{" "}
                       ر.س
                     </span>
@@ -561,7 +556,7 @@ function BillingAssistantTable({
                     <span className="text-[11px] text-text-3">
                       {group.length} معاملة · الإجمالي المستحق{" "}
                       <b className="text-heading" dir="ltr">
-                        {fmtNum(sGross)}
+                        {fmt(sGross, 2)}
                       </b>{" "}
                       ر.س
                     </span>
@@ -617,29 +612,29 @@ function BillingAssistantTable({
                         </div>
                         <div className={finTd}>
                           <span className={finMuted} dir="ltr">
-                            {fmtNum(a.key)}
+                            {fmt(a.key, 2)}
                           </span>
                         </div>
                         <div className={finTd}>
                           <span className="text-xs text-text" dir="ltr">
-                            {fmtNum(a.taxable)}
+                            {fmt(a.taxable, 2)}
                           </span>
                         </div>
                         <div className={finTd}>
                           <span className={finMuted} dir="ltr">
-                            {fmtNum(a.vat)}
+                            {fmt(a.vat, 2)}
                           </span>
                         </div>
                         <div className={finTd}>
                           <span className="text-xs text-text" dir="ltr">
-                            {fmtNum(a.withVat)}
+                            {fmt(a.withVat, 2)}
                           </span>
                         </div>
                         <div className={finTd}>
                           <span className="inline-flex items-center gap-2.5">
                             <FeeFlags row={row} />
                             <span className="text-[12.5px] font-bold text-heading" dir="ltr">
-                              {fmtNum(a.total)}
+                              {fmt(a.total, 2)}
                             </span>
                           </span>
                         </div>
@@ -659,27 +654,27 @@ function BillingAssistantTable({
                   <div className={finTd} />
                   <div className={finTd}>
                     <span className="text-[11.5px] font-bold text-text-2" dir="ltr">
-                      {fmtNum(sKey)}
+                      {fmt(sKey, 2)}
                     </span>
                   </div>
                   <div className={finTd}>
                     <span className="text-[11.5px] font-bold text-text" dir="ltr">
-                      {fmtNum(sBase)}
+                      {fmt(sBase, 2)}
                     </span>
                   </div>
                   <div className={finTd}>
                     <span className="text-[11.5px] font-bold text-text-2" dir="ltr">
-                      {fmtNum(sVat)}
+                      {fmt(sVat, 2)}
                     </span>
                   </div>
                   <div className={finTd}>
                     <span className="text-[11.5px] font-bold text-text" dir="ltr">
-                      {fmtNum(sBase + sVat)}
+                      {fmt(sBase + sVat, 2)}
                     </span>
                   </div>
                   <div className={finTd}>
                     <span className="text-[12.5px] font-extrabold text-heading" dir="ltr">
-                      {fmtNum(sGross)}
+                      {fmt(sGross, 2)}
                     </span>
                   </div>
                 </div>
@@ -760,7 +755,7 @@ function CollectionTable({
                     <span className="text-[11px] text-text-3">
                       {group.rows.length} معاملة · الإجمالي{" "}
                       <b className="text-heading" dir="ltr">
-                        {fmtNum(sG)}
+                        {fmt(sG, 2)}
                       </b>{" "}
                       ر.س · عمر المستحق {age} يوماً
                       {fu > 0 ? ` · ${fu} متابعة` : ""}
@@ -809,17 +804,17 @@ function CollectionTable({
                         </div>
                         <div className={finTd}>
                           <span className="text-xs text-text" dir="ltr">
-                            {fmtNum(a.taxable)}
+                            {fmt(a.taxable, 2)}
                           </span>
                         </div>
                         <div className={finTd}>
                           <span className={finMuted} dir="ltr">
-                            {fmtNum(a.vat)}
+                            {fmt(a.vat, 2)}
                           </span>
                         </div>
                         <div className={finTd}>
                           <span className="text-[12.5px] font-bold text-heading" dir="ltr">
-                            {fmtNum(a.total)}
+                            {fmt(a.total, 2)}
                           </span>
                         </div>
                       </div>
@@ -836,17 +831,17 @@ function CollectionTable({
                   <div className={finTd} />
                   <div className={finTd}>
                     <span className="text-[11.5px] font-bold text-text" dir="ltr">
-                      {fmtNum(sB)}
+                      {fmt(sB, 2)}
                     </span>
                   </div>
                   <div className={finTd}>
                     <span className="text-[11.5px] font-bold text-text-2" dir="ltr">
-                      {fmtNum(sV)}
+                      {fmt(sV, 2)}
                     </span>
                   </div>
                   <div className={finTd}>
                     <span className="text-[12.5px] font-extrabold text-heading" dir="ltr">
-                      {fmtNum(sG)}
+                      {fmt(sG, 2)}
                     </span>
                   </div>
                 </div>
@@ -1212,7 +1207,7 @@ export function FinanceRevenueView({
           >
             تسجيل فاتورة للمحدد
             {selectedRows.length
-              ? ` (${selectedRows.length} — ${fmtNum(selectedTotal)} ر.س)`
+              ? ` (${selectedRows.length} — ${fmt(selectedTotal, 2)} ر.س)`
               : ""}
           </button>
           <span className="text-[11px] text-text-3">

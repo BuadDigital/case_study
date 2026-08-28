@@ -12,16 +12,14 @@ using RealEstateEval.Shared.Contracts;
 using PushSub = RealEstateEval.Domain.PushSubscription;
 using RealEstateEval.Application;
 using RealEstateEval.Platform.Infrastructure.Notifications;
+using RealEstateEval.Domain;
 
 namespace RealEstateEval.Platform.Infrastructure.Services;
 
 /// <summary>Delivers a persisted notification to all enabled Web Push subscriptions for a user.</summary>
 public sealed class WebPushDeliveryHandler
 {
-    private static readonly JsonSerializerOptions JsonOpts = new()
-    {
-        PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
-    };
+    private static readonly JsonSerializerOptions JsonOpts = JsonDefaults.CamelCase;
 
     private readonly MessagingDbContext _db;
     private readonly WebPushOptions _options;

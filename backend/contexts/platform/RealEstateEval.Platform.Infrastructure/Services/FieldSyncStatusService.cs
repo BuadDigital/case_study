@@ -18,7 +18,7 @@ public sealed class FieldSyncStatusService(PlatformDbContext db,
     private readonly TimeProvider _time = time ?? TimeProvider.System;
 
     private static readonly TimeSpan StaleAfter = TimeSpan.FromHours(2);
-    private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web);
+    private static readonly JsonSerializerOptions JsonOptions = JsonDefaults.Web;
 
     public async Task UpsertAsync(
         string userId,

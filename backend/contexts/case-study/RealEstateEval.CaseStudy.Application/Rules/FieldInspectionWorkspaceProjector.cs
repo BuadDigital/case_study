@@ -165,20 +165,11 @@ public static class FieldInspectionWorkspaceProjector
         return true;
     }
 
-    private static string? NullIfEmpty(string value) =>
-        string.IsNullOrWhiteSpace(value) ? null : value.Trim();
+    private static string? NullIfEmpty(string value) => Texts.NullIfBlank(value);
 
-    private static string ReadString(JsonElement element, string name)
-    {
-        if (!element.TryGetProperty(name, out var prop) || prop.ValueKind != JsonValueKind.String)
-            return "";
-        return prop.GetString()?.Trim() ?? "";
-    }
+    private static string ReadString(JsonElement element, string name) =>
+        JsonElementReader.ReadString(element, name);
 
-    private static bool GetBool(JsonElement element, string name)
-    {
-        if (!element.TryGetProperty(name, out var prop))
-            return false;
-        return prop.ValueKind == JsonValueKind.True;
-    }
+    private static bool GetBool(JsonElement element, string name) =>
+        JsonElementReader.GetBool(element, name);
 }

@@ -572,6 +572,34 @@ namespace RealEstateEval.Platform.Infrastructure.Data.Contexts.Platform.Migratio
                     b.ToTable("Regions", "platform");
                 });
 
+            modelBuilder.Entity("RealEstateEval.Platform.Domain.ValuationReportTextPackage", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("CreatedByUserId")
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)");
+
+                    b.Property<string>("TextsJson")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<int>("Version")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Version")
+                        .IsUnique();
+
+                    b.ToTable("ValuationReportTextPackages", "platform");
+                });
+
             modelBuilder.Entity("RealEstateEval.Platform.Domain.City", b =>
                 {
                     b.HasOne("RealEstateEval.Platform.Domain.City", "MergedIntoCity")

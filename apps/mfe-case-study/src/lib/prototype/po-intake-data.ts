@@ -1,5 +1,6 @@
 /** PO intake wizard — steps and reference lists (from system requirements v1.2). */
 
+import { toLatinDigits } from "@platform/app-shared/lib/arabic-digits";
 import {
   basisOfValueKeyForAssignment,
   basisOfValueLabelArForAssignment,
@@ -443,12 +444,6 @@ export function formatPendingBourseDeedDisplay(item: {
 
 export const DEED_NUMBER_DIGIT_LENGTH = 12;
 export const REAL_ESTATE_REG_NUMBER_DIGIT_LENGTH = 16;
-
-const ARABIC_DIGITS = "٠١٢٣٤٥٦٧٨٩";
-
-function toLatinDigits(value: string): string {
-  return value.replace(/[٠-٩]/g, (ch) => String(ARABIC_DIGITS.indexOf(ch)));
-}
 
 export function requiredPropertyIdentifierDigitLength(
   identifierType: PropertyIdentifierType,
@@ -1127,21 +1122,5 @@ export function isPastDue(dueIso: string): boolean {
   return due < today;
 }
 
-/** DD/MM/YYYY with Western digits (0-9) for Arabic UI. */
-export function formatDateAr(iso: string): string {
-  if (!iso) return "—";
-  const day = iso.trim().slice(0, 10);
-  const parts = day.split("-").map(Number);
-  if (parts.length === 3 && !parts.some((n) => Number.isNaN(n))) {
-    const [y, m, d] = parts;
-    const dd = String(d).padStart(2, "0");
-    const mm = String(m).padStart(2, "0");
-    return `${dd}/${mm}/${y}`;
-  }
-  const parsed = new Date(`${iso}T12:00:00`);
-  if (Number.isNaN(parsed.getTime())) return iso;
-  const dd = String(parsed.getDate()).padStart(2, "0");
-  const mm = String(parsed.getMonth() + 1).padStart(2, "0");
-  const y = parsed.getFullYear();
-  return `${dd}/${mm}/${y}`;
-}
+/** DD/MM/YYYY with Western digits (0-9) for Arabic UI — انتقل إلى الحزمة المشتركة. */
+export { formatDateAr } from "@platform/app-shared/format/date";

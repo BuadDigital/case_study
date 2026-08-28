@@ -3,6 +3,7 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using System.Collections.Concurrent;
 using System.Text.Json;
+using RealEstateEval.Domain;
 
 namespace RealEstateEval.Infrastructure.Caching;
 
@@ -15,10 +16,7 @@ public sealed class RedisCacheOptions
 
 public sealed class ApiResponseCache
 {
-    private static readonly JsonSerializerOptions JsonOpts = new()
-    {
-        PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
-    };
+    private static readonly JsonSerializerOptions JsonOpts = JsonDefaults.CamelCase;
 
  /// <summary>
  /// In-flight rebuilds, so a cold or expired key costs one query per process instead of

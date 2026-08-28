@@ -783,10 +783,7 @@ public sealed class ValuationComparableSelectionService(
         return (total, area, unit);
     }
 
-    private static readonly System.Text.Json.JsonSerializerOptions SubjectSpecJsonOptions = new()
-    {
-        Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping,
-    };
+    private static readonly System.Text.Json.JsonSerializerOptions SubjectSpecJsonOptions = JsonDefaults.RelaxedEscaping;
 
     private static IReadOnlyDictionary<string, string> ParseSubjectSpecs(string? json)
     {

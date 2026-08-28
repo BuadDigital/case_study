@@ -165,7 +165,7 @@ public class FailureService : IFailureService
                     propertyId,
                     $"failure:{entity.Id}:created",
                     "تسجيل تعذر",
-                    $"{entity.Title} — {FailureStatusLabel(entity.Status)}",
+                    $"{entity.Title} — {PropertyFailureStatus.LabelAr(entity.Status)}",
                     "warn",
                     now),
                 cancellationToken);
@@ -620,17 +620,6 @@ public class FailureService : IFailureService
             errors["specialist"] = "اسم الأخصائي مطلوب";
         return errors;
     }
-
-    private static string FailureStatusLabel(string status) => status switch
-    {
-        PropertyFailureStatus.Internal => "داخلي",
-        PropertyFailureStatus.Review => "قيد المراجعة",
-        PropertyFailureStatus.Approved => "معتمد",
-        PropertyFailureStatus.Returned => "مُعاد",
-        PropertyFailureStatus.Resolved => "محلول",
-        PropertyFailureStatus.Suspended => "معلق",
-        _ => status,
-    };
 
     private async Task NotifyFailureSubmittedAsync(
         PropertyFailure entity,

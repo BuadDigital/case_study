@@ -536,7 +536,7 @@ public sealed class WorkflowTaskDistributionCommands : IWorkflowTaskDistribution
                 ? TaskHref(single.Kind, single.Id)
                 : "/active-primary-data";
             var body = single is not null
-                ? $"أُسندت إليك مهمة جديدة: {TaskNotificationLabel(single.Kind)} على {refLabel}."
+                ? $"أُسندت إليك مهمة جديدة: {WorkflowTaskKindLabels.NotificationLabelAr(single.Kind)} على {refLabel}."
                 : $"أُسندت إليك {assignedTasks.Count} مهام جديدة على {refLabel}.";
 
             requestsByUser[userId] = new CreateUserNotificationRequest
@@ -556,14 +556,6 @@ public sealed class WorkflowTaskDistributionCommands : IWorkflowTaskDistribution
 
         await _notifications.CreateForUsersAsync(requestsByUser, cancellationToken);
     }
-
-    private static string TaskNotificationLabel(WorkflowTaskKind kind) => kind switch
-    {
-        WorkflowTaskKind.FieldInspection => "معاينة العقار",
-        WorkflowTaskKind.EngineeringSurvey => "الرفع المساحي",
-        WorkflowTaskKind.PropertyAppraisal => "تقييم العقار",
-        _ => "مهمة جديدة",
-    };
 
     private static string TaskHref(WorkflowTaskKind kind, Guid taskId)
     {

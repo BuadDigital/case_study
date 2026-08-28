@@ -1027,8 +1027,7 @@ public class UserRegistrationService : IUserRegistrationService
         return $"+{digits}";
     }
 
-    private static string? Clean(string? value) =>
-        string.IsNullOrWhiteSpace(value) ? null : value.Trim();
+    private static string? Clean(string? value) => Texts.NullIfBlank(value);
 
     private async Task<string> AllocateUniqueUserNameAsync(
         string normalizedEmail,

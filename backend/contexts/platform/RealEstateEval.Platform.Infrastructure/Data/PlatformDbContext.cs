@@ -32,6 +32,8 @@ public sealed class PlatformDbContext(DbContextOptions<PlatformDbContext> option
         Set<DifferenceFactorCatalogConfig>();
     public DbSet<CaseStudyInfoRolesConfig> CaseStudyInfoRolesConfigs => Set<CaseStudyInfoRolesConfig>();
     public DbSet<OrganizationSettings> OrganizationSettings => Set<OrganizationSettings>();
+    public DbSet<ValuationReportTextPackage> ValuationReportTextPackages =>
+        Set<ValuationReportTextPackage>();
     public DbSet<FieldSyncStatus> FieldSyncStatuses => Set<FieldSyncStatus>();
 
     protected override void OnModelCreating(ModelBuilder builder) =>

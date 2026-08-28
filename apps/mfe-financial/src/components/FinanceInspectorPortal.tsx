@@ -7,6 +7,8 @@
 
 import { useMemo, useState, type ReactNode } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { dmy } from "@platform/app-shared/format/date";
+import { fmtMax } from "@platform/app-shared/format/number";
 import { prototypeKeys } from "@platform/app-shared/query/prototype-keys";
 import {
   buildAssigneeStaffIndex,
@@ -65,16 +67,9 @@ const COST_ST: Record<PortalLine["st"], { t: string; cls: string }> = {
 const cols =
   "min-w-[720px] grid-cols-[minmax(180px,1.6fr)_minmax(120px,0.9fr)_minmax(110px,0.9fr)_minmax(130px,1fr)]";
 
+// toLocaleString الافتراضي = حتى 3 كسور دون أصفار إلزامية — نحافظ على العرض نفسه.
 function money(n: number) {
-  return Number(n || 0).toLocaleString("en-US");
-}
-
-function dmy(iso: string | null | undefined): string {
-  if (!iso?.trim()) return "—";
-  const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return "—";
-  const p = (n: number) => String(n).padStart(2, "0");
-  return `${p(d.getDate())}/${p(d.getMonth() + 1)}/${d.getFullYear()}`;
+  return fmtMax(Number(n || 0), 3);
 }
 
 function isFieldInspectionLine(taskKind: string | null | undefined) {

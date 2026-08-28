@@ -1,5 +1,7 @@
 /** Client-side static map for §18 — subject + adopted comparables. */
 
+import { escHtml } from "./html-escape";
+
 export type ComparablesMapPin = {
   lat: number;
   lng: number;
@@ -83,12 +85,7 @@ export function buildComparablesMapSvgDataUrl(
     return { x, y };
   };
 
-  const esc = (s: string) =>
-    s
-      .replace(/&/g, "&amp;")
-      .replace(/</g, "&lt;")
-      .replace(/>/g, "&gt;")
-      .replace(/"/g, "&quot;");
+  const esc = escHtml;
 
   const grid: string[] = [];
   for (let i = 0; i <= 4; i++) {

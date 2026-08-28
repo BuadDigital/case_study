@@ -1,4 +1,5 @@
 import type { OperationsTaskDto } from "@platform/api-client";
+import { pad2 } from "@platform/app-shared/format/date";
 import type { InternalDelegationLetter } from "./internal-delegation-letters";
 import { printInternalDelegationLetter } from "./internal-delegation-letter-html";
 import type { DelegationAgentInfo } from "./internal-delegation-letters";
@@ -72,10 +73,6 @@ const WH_NOON = 12;
 const DAY_MS = 86_400_000;
 /** Asia/Riyadh has no DST — match OperationsTaskReminderCalculator. */
 const RIYADH_OFFSET_MS = 3 * 60 * 60 * 1000;
-
-function pad2(n: number): string {
-  return String(n).padStart(2, "0");
-}
 
 type RiyadhWall = {
   y: number;

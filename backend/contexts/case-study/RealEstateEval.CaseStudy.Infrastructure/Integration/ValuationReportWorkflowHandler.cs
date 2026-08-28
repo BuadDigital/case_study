@@ -12,10 +12,7 @@ namespace RealEstateEval.CaseStudy.Infrastructure.Integration;
 
 public sealed class ValuationReportWorkflowHandler
 {
-    private static readonly JsonSerializerOptions JsonOpts = new()
-    {
-        PropertyNameCaseInsensitive = true,
-    };
+    private static readonly JsonSerializerOptions JsonOpts = JsonDefaults.CaseInsensitive;
 
     private readonly ICaseStudyRepository _db;
     private readonly IWorkflowTaskService _tasks;

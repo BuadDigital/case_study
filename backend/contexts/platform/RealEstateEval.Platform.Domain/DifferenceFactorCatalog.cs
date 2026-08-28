@@ -27,7 +27,7 @@ public sealed record DifferenceFactorDefinition(
 
 public static class DifferenceFactorCatalog
 {
-    private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web);
+    private static readonly JsonSerializerOptions JsonOptions = JsonDefaults.Web;
 
     public static IReadOnlyList<DifferenceFactorDefinition> Parse(string? json)
     {

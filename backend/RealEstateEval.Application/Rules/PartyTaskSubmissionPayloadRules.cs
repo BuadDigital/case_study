@@ -9,11 +9,7 @@ namespace RealEstateEval.Application.Rules;
 /// </summary>
 public static class PartyTaskSubmissionPayloadRules
 {
-    private static readonly JsonSerializerOptions JsonOpts = new()
-    {
-        PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
-        PropertyNameCaseInsensitive = true,
-    };
+    private static readonly JsonSerializerOptions JsonOpts = JsonDefaults.CamelCaseInsensitive;
 
     public static Dictionary<string, string> ValidateForSubmit(PartyTaskSubmission entity)
     {

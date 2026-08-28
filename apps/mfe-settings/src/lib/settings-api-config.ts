@@ -1,44 +1,28 @@
-import {
-  getApiBase,
-  type CaseStudyInfoRolesApiConfig,
-  type CourtsApiConfig,
-  type OrganizationSettingsApiConfig,
-  type RegionsApiConfig,
+import type {
+  CaseStudyInfoRolesApiConfig,
+  CourtsApiConfig,
+  OrganizationSettingsApiConfig,
+  RegionsApiConfig,
 } from "@platform/api-client";
-import { getAuthSession } from "@platform/auth-client";
+import { apiConfig } from "@platform/app-shared/auth/api-config";
 
+// أسماء لكل مجال بالنوع المطابق — البناء نفسه من المصدر الموحّد.
 export function courtsApiConfig(): CourtsApiConfig | null {
-  const session = getAuthSession();
-  if (!session?.token) return null;
-  return { token: session.token, baseUrl: getApiBase() };
+  return apiConfig();
 }
 
 export function regionsApiConfig(): RegionsApiConfig | null {
-  const session = getAuthSession();
-  if (!session?.token) return null;
-  return { token: session.token, baseUrl: getApiBase() };
+  return apiConfig();
 }
 
 export function caseStudyInfoRolesApiConfig(): CaseStudyInfoRolesApiConfig | null {
-  const session = getAuthSession();
-  if (!session?.token) return null;
-  return { token: session.token, baseUrl: getApiBase() };
+  return apiConfig();
 }
 
 export function organizationSettingsApiConfig(): OrganizationSettingsApiConfig | null {
-  const session = getAuthSession();
-  if (!session?.token) return null;
-  return { token: session.token, baseUrl: getApiBase() };
+  return apiConfig();
 }
 
-export function apiErrorMessage(
-  kind: string,
-  fallback = "تعذّر الاتصال بالخادم",
-): string {
-  if (kind === "auth") return "يجب تسجيل الدخول أولاً";
-  if (kind === "network") return "تعذّر الاتصال بالخادم — تحقق من تشغيل API";
-  if (kind === "validation") return "يرجى مراجعة الحقول المطلوبة";
-  if (kind === "server") return "حدث خطأ في الخادم — حاول لاحقاً";
-  if (kind === "not_found") return "لم يُعثر على أمر العمل";
-  return fallback;
-}
+// كانت نسخة متشعبة تُسقط فرعي forbidden/conflict فتبتلع 403/409 —
+// الرسائل من المصدر الموحّد في app-shared.
+export { apiErrorMessage } from "@platform/app-shared/prototype/work-orders-api-config";

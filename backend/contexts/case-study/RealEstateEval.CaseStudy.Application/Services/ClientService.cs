@@ -137,8 +137,7 @@ public class ClientService(IClientRepository clients, TimeProvider? time = null)
         return errors;
     }
 
-    private static string? Normalize(string? value) =>
-        string.IsNullOrWhiteSpace(value) ? null : value.Trim();
+    private static string? Normalize(string? value) => Texts.NullIfBlank(value);
 
     private static ClientDto ToDto(Client c) => new()
     {

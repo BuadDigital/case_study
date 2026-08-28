@@ -1,5 +1,6 @@
 using System.Globalization;
 using System.Text.Json;
+using RealEstateEval.Domain;
 
 namespace RealEstateEval.Application.Rules;
 
@@ -165,34 +166,12 @@ public static class FieldInspectionPayloadAttachments
         refs.Add(new FieldInspectionAttachmentRef(id, photoRef));
     }
 
-    private static string ReadString(JsonElement element, string name)
-    {
-        if (!element.TryGetProperty(name, out var prop) || prop.ValueKind != JsonValueKind.String)
-            return "";
-        return prop.GetString()?.Trim() ?? "";
-    }
+    private static string ReadString(JsonElement element, string name) =>
+        JsonElementReader.ReadString(element, name);
 
-    private static int ReadInt(JsonElement element, string name)
-    {
-        if (!element.TryGetProperty(name, out var prop))
-            return 0;
-        return prop.ValueKind switch
-        {
-            JsonValueKind.Number when prop.TryGetInt32(out var n) => n,
-            JsonValueKind.String when int.TryParse(
-                prop.GetString(),
-                NumberStyles.Integer,
-                CultureInfo.InvariantCulture,
-                out var parsed) => parsed,
-            _ => 0,
-        };
-    }
+    private static int ReadInt(JsonElement element, string name) =>
+        JsonElementReader.ReadInt(element, name);
 
-    private static bool TryReadGuid(JsonElement element, string name, out Guid id)
-    {
-        id = Guid.Empty;
-        if (!element.TryGetProperty(name, out var prop) || prop.ValueKind != JsonValueKind.String)
-            return false;
-        return Guid.TryParse(prop.GetString(), out id);
-    }
+    private static bool TryReadGuid(JsonElement element, string name, out Guid id) =>
+        JsonElementReader.TryReadGuid(element, name, out id);
 }

@@ -6,6 +6,7 @@ import {
   type PrototypeModulesApiConfig,
 } from "@platform/api-client";
 import type { InspectorWorkspaceDraft } from "@case-study/mfe/lib/prototype/inspector-workspace-data";
+import { blobToDataUrl } from "@platform/app-shared/media/file-encoding";
 
 /** Mirrors backend `AttachmentPrintRules` for client-side report fill. */
 export function attachmentTypeKeyFromScope(scope: string | null | undefined): string | null {
@@ -76,15 +77,6 @@ function slashCaptureDate(iso: string | null | undefined): string {
   const t = (iso ?? "").trim();
   const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(t);
   return m ? `${m[1]}/${m[2]}/${m[3]}` : "";
-}
-
-function blobToDataUrl(blob: Blob): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => resolve(String(reader.result ?? ""));
-    reader.onerror = () => reject(reader.error);
-    reader.readAsDataURL(blob);
-  });
 }
 
 function classifyRows(

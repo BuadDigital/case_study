@@ -14,11 +14,7 @@ public sealed record UninspectedUnitEntry(int Count, string Reason);
 /// </summary>
 public static class InspectionLimitsRules
 {
-    private static readonly JsonSerializerOptions JsonOptions = new()
-    {
-        PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
-        PropertyNameCaseInsensitive = true,
-    };
+    private static readonly JsonSerializerOptions JsonOptions = JsonDefaults.CamelCaseInsensitive;
 
     public static Dictionary<string, string> Validate(
         string? scopeKey,

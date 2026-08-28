@@ -4,6 +4,7 @@ import { useCallback, useMemo, useState, type ReactNode } from "react";
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { fmtMax } from "@platform/app-shared/format/number";
 import { prototypeKeys } from "@platform/app-shared/query/prototype-keys";
 import { loadEnfazTracking } from "@platform/app-shared/prototype/enfaz-billing-api";
 import {
@@ -35,13 +36,6 @@ const FinanceVendorInvoiceMatchModal = dynamic(
 );
 
 const EMPTY_STATEMENTS: PartyBillingStatementDto[] = [];
-
-function fmtSar(n: number) {
-  return n.toLocaleString("en-US", {
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 2,
-  });
-}
 
 /** أيقونة KPI مربّعة — توكنات finance-tw */
 function KpiIco({
@@ -159,7 +153,7 @@ function TaskRow({
           className="text-[14px] font-extrabold tabular-nums text-[#102B4E]"
           dir="ltr"
         >
-          {fmtSar(task.amountSar)}
+          {fmtMax(task.amountSar)}
         </span>
       </div>
       <div className="flex items-center justify-center px-3 py-3.5 text-center">
@@ -351,7 +345,7 @@ export function FinanceMyTasks() {
           </div>
           <div className="mt-2 flex items-center justify-end gap-1.5 text-[12px] text-[#a4a6ad]">
             <span className="inline-block h-1.5 w-1.5 rounded-full bg-[#a4906f]" />
-            <span dir="ltr">{fmtSar(kpi.collectAmountSar)}</span>
+            <span dir="ltr">{fmtMax(kpi.collectAmountSar)}</span>
             <span>ر.س</span>
           </div>
         </div>

@@ -11,11 +11,7 @@ namespace RealEstateEval.Operations.Infrastructure.Services;
 /// <summary>Shared JSON options and DTO mapping for operations tasks.</summary>
 public static class OperationsTaskSerialization
 {
-    public static readonly JsonSerializerOptions JsonOpts = new()
-    {
-        PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
-        PropertyNameCaseInsensitive = true,
-    };
+    public static readonly JsonSerializerOptions JsonOpts = JsonDefaults.CamelCaseInsensitive;
 
     public static string FormatDueLabel(DateTime dueAtUtc) =>
         dueAtUtc.ToString("yyyy-MM-dd HH:mm", CultureInfo.InvariantCulture) + " UTC";

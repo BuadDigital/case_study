@@ -1,4 +1,5 @@
 import exifr from "exifr";
+import { blobToDataUrl } from "./file-encoding";
 
 export type EvidencePhotoExif = {
   latitude?: number | null;
@@ -77,15 +78,6 @@ function loadImage(src: string): Promise<HTMLImageElement> {
   });
 }
 
-function readAsDataUrl(file: Blob): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => resolve(String(reader.result ?? ""));
-    reader.onerror = () => reject(reader.error);
-    reader.readAsDataURL(file);
-  });
-}
-
 async function canvasToJpegBlob(
   canvas: HTMLCanvasElement,
   quality: number,
@@ -101,7 +93,7 @@ async function canvasToJpegBlob(
 export async function compressEvidenceImage(file: File): Promise<File> {
   if (typeof document === "undefined") return file;
 
-  const dataUrl = await readAsDataUrl(file);
+  const dataUrl = await blobToDataUrl(file);
   const img = await loadImage(dataUrl);
   const srcW = img.naturalWidth || img.width;
   const srcH = img.naturalHeight || img.height;

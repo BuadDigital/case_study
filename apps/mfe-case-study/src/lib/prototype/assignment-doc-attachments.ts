@@ -6,6 +6,10 @@ import {
 } from "@platform/api-client";
 import { prototypeModulesApiConfig } from "@platform/app-shared/prototype/prototype-modules-api-config";
 import {
+  blobToDataUrl,
+  fileToBase64,
+} from "@platform/app-shared/media/file-encoding";
+import {
   pdfBlobToFirstPageDataUrl,
   pdfFileToFirstPageDataUrl,
 } from "./pdf-first-page-preview";
@@ -162,33 +166,6 @@ export async function removeCachedPropertyDoc(
   if (match) await deleteAttachment(config, match.id);
 }
 
-function readAsDataUrl(file: File): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => resolve(String(reader.result ?? ""));
-    reader.onerror = () => reject(reader.error);
-    reader.readAsDataURL(file);
-  });
-}
-
-function blobToDataUrl(blob: Blob): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => resolve(String(reader.result ?? ""));
-    reader.onerror = () => reject(reader.error);
-    reader.readAsDataURL(blob);
-  });
-}
-
-async function fileToBase64(file: File): Promise<string> {
-  const bytes = new Uint8Array(await file.arrayBuffer());
-  let binary = "";
-  for (let i = 0; i < bytes.length; i += 1) {
-    binary += String.fromCharCode(bytes[i]!);
-  }
-  return btoa(binary);
-}
-
 async function replaceScopeAttachments(
   scope: string,
   key: string,
@@ -209,7 +186,7 @@ async function buildPreviewPayload(file: File): Promise<CachedAssignmentDoc> {
   };
   if (file.type.startsWith("image/") && file.size <= MAX_IMAGE_BYTES) {
     try {
-      payload.dataUrl = await readAsDataUrl(file);
+      payload.dataUrl = await blobToDataUrl(file);
     } catch {
       /* metadata only */
     }

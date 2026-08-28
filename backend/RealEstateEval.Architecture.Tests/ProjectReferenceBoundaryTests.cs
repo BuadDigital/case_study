@@ -49,6 +49,32 @@ public class ProjectReferenceBoundaryTests
         }
     }
 
+    /// <summary>
+    /// Successor to the retired DomainHasNoAspNetIdentityPackageReference, widened: Domain
+    /// libraries and the contracts leaf carry NO NuGet packages at all — no ASP.NET
+    /// Identity, no EF, nothing. Entities and wire contracts stay pure C#.
+    /// </summary>
+    [Fact]
+    public void DomainLibrariesAndContractsLeafHaveNoPackageReferences()
+    {
+        var projects = Directory
+            .EnumerateFiles(RepoPaths.Combine("backend", "contexts"), "*.Domain.csproj", SearchOption.AllDirectories)
+            .Append(RepoPaths.Combine(
+                "backend", "shared", "RealEstateEval.Shared.Contracts",
+                "RealEstateEval.Shared.Contracts.csproj"));
+
+        foreach (var project in projects)
+        {
+            var text = File.ReadAllText(project);
+            Assert.False(
+                text.Contains("<PackageReference", StringComparison.Ordinal)
+                || text.Contains("<FrameworkReference", StringComparison.Ordinal),
+                $"{RepoPaths.Relative(project)} gained a package/framework reference; Domain "
+                + "and contracts stay dependency-free (ASP.NET Identity, EF, etc. belong in "
+                + "Infrastructure).");
+        }
+    }
+
     [Fact]
     public void SharedContractsHasNoProjectReferences() =>
         Assert.Empty(ReferencesOf(

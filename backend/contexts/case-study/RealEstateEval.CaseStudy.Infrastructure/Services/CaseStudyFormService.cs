@@ -16,10 +16,7 @@ namespace RealEstateEval.CaseStudy.Infrastructure.Services;
 
 public class CaseStudyFormService : ICaseStudyFormService
 {
-    private static readonly JsonSerializerOptions JsonOpts = new()
-    {
-        PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
-    };
+    private static readonly JsonSerializerOptions JsonOpts = JsonDefaults.CamelCase;
 
     private const WorkflowTaskKind CaseStudyPropertyKind = WorkflowTaskKind.CaseStudyProperty;
     private const string FormStatusSubmitted = "submitted";

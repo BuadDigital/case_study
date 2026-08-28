@@ -356,6 +356,5 @@ public class WorkflowTask
 
     private void Touch(DateTime nowUtc) => UpdatedAtUtc = nowUtc;
 
-    private static string? NullIfBlank(string? value) =>
-        string.IsNullOrWhiteSpace(value) ? null : value.Trim();
+    private static string? NullIfBlank(string? value) => Texts.NullIfBlank(value);
 }

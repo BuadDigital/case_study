@@ -1,3 +1,4 @@
+import { pad2 } from "@platform/app-shared/format/date";
 import type { PoIntakeRecord, PoPropertyIntake } from "./po-intake-data";
 import {
   BOURSE_INQUIRY_IDENTIFIER_STATUS,
@@ -47,10 +48,6 @@ export type RemainingTimeState =
       minutes: number;
       seconds: number;
     };
-
-function pad2(n: number): string {
-  return String(n).padStart(2, "0");
-}
 
 /** Countdown to PO SLA deadline (end of due business day at 17:00). */
 export function resolveRemainingTime(

@@ -4,13 +4,12 @@ import { useCallback, useEffect, useState } from "react";
 import {
   createComparableProperty,
   deactivateComparableProperty,
-  getApiBase,
   listComparableProperties,
   setComparableQualityTags,
   type ComparablePropertyDto,
   type UpsertComparablePropertyRequest,
 } from "@platform/api-client";
-import { getAuthSession } from "@platform/auth-client";
+import { apiConfig } from "@platform/app-shared/auth/api-config";
 import {
   Button,
   FormGroup,
@@ -25,11 +24,6 @@ import {
   useToast,
 } from "@platform/ui-kit";
 
-function apiConfig() {
-  const session = getAuthSession();
-  if (!session?.token) return null;
-  return { token: session.token, baseUrl: getApiBase() };
-}
 
 // ق-3/5: قوائم مغلقة موحدة مع قوائم العقار محل التقييم — لا نص حر.
 const COMPARABLE_TYPE_OPTIONS = [

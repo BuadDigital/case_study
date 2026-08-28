@@ -27,23 +27,13 @@ import {
   apiErrorMessage,
   resolveApiError,
 } from "./work-orders-api-config";
+import { fileToBase64 } from "@platform/app-shared/media/file-encoding";
 
 /** Attachments scope for transfer-receipt files on party billing close-out. */
 export const ENG_BILLING_TRANSFER_RECEIPT_SCOPE =
   "eng-billing-transfer-receipt";
 
 export const PARTY_BILLING_VENDOR_INVOICE_SCOPE = "party-billing-vendor-invoice";
-
-async function fileToBase64(file: File): Promise<string> {
-  const buffer = await file.arrayBuffer();
-  const bytes = new Uint8Array(buffer);
-  let binary = "";
-  const chunk = 0x8000;
-  for (let i = 0; i < bytes.length; i += chunk) {
-    binary += String.fromCharCode(...bytes.subarray(i, i + chunk));
-  }
-  return btoa(binary);
-}
 
 export async function loadPartyBillingReadyLines(
   assigneeId?: string,

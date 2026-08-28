@@ -462,8 +462,7 @@ public sealed class ComparablePropertyService(
     private static string BuildReferenceCode(Guid id) =>
         $"CMP-{id.ToString("N")[..8].ToUpperInvariant()}";
 
-    private static string? Normalize(string? value) =>
-        string.IsNullOrWhiteSpace(value) ? null : value.Trim();
+    private static string? Normalize(string? value) => Texts.NullIfBlank(value);
 
     private static ComparablePropertyDto ToDto(ComparableProperty row, DateOnly today) =>
         ComparablePropertyMapping.ToDto(row, today);

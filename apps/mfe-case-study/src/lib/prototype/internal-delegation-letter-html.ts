@@ -4,24 +4,19 @@ import type {
 } from "./internal-delegation-letters";
 import { openHtmlDocumentInNewTab } from "../open-html-document";
 import {
-  CASE_STUDY_SIGNATURE_IMAGE,
-  CASE_STUDY_STAMP_IMAGE,
+  caseStudyProviderName,
+  caseStudySignatureImage,
+  caseStudyStampImage,
 } from "./case-study-form-data";
+import { getCachedOrganizationSettings } from "@platform/app-shared/organization/organization-settings-cache";
+import { escapeHtml } from "@platform/app-shared/lib/html-escape";
 import { PROPERTY_IDENTIFIER_COLUMN_LABEL } from "./po-intake-data";
 
-const COMPANY_NAME = "شركة إجادة المهنية للتقييم";
-const COMPANY_CR = "4030297680";
-const LETTERHEAD_PATH = "/case-study/ejadah-letterhead.png";
+// افتراضيات عند برود كاش إعدادات المنشأة فقط — المصدر الحاكم أصول المنشأة المشتركة (قرار 25).
+const DEFAULT_COMPANY_CR = "4030297680";
+const DEFAULT_LETTERHEAD_PATH = "/case-study/ejadah-letterhead.png";
 const NAVY = "#0F2A4E";
 const MUTED = "#555";
-
-function escapeHtml(value: string): string {
-  return value
-    .replaceAll("&", "&amp;")
-    .replaceAll("<", "&lt;")
-    .replaceAll(">", "&gt;")
-    .replaceAll('"', "&quot;");
-}
 
 /** Blob print windows need absolute asset URLs. */
 function assetUrl(path: string): string {
@@ -48,9 +43,15 @@ export function printInternalDelegationLetter(
   const agentNationality = agent?.nationality?.trim() || "—";
   const agentId = agent?.nationalId?.trim() || "—";
   const agentMobile = agent?.mobile?.trim() || "—";
-  const bg = escapeHtml(assetUrl(LETTERHEAD_PATH));
-  const stamp = escapeHtml(assetUrl(CASE_STUDY_STAMP_IMAGE));
-  const signature = escapeHtml(assetUrl(CASE_STUDY_SIGNATURE_IMAGE));
+  const org = getCachedOrganizationSettings();
+  const companyName = caseStudyProviderName();
+  const companyCr =
+    org?.company.commercialRegistration?.trim() || DEFAULT_COMPANY_CR;
+  const letterhead =
+    org?.branding?.letterheadUrl?.trim() || DEFAULT_LETTERHEAD_PATH;
+  const bg = escapeHtml(assetUrl(letterhead));
+  const stamp = escapeHtml(assetUrl(caseStudyStampImage()));
+  const signature = escapeHtml(assetUrl(caseStudySignatureImage()));
 
   const rows = rowsSource
     .map(
@@ -326,8 +327,8 @@ export function printInternalDelegationLetter(
 
       <p class="body">
         بالإشارة إلى الموضوع أعلاه وبناءً على التفويض الصادر من مركز الإسناد والتصفية (إنفاذ) المذكورة أدناه،
-        نفوض نحن <span class="b">${escapeHtml(COMPANY_NAME)}</span>
-        سجل تجاري رقم <span class="b">${escapeHtml(COMPANY_CR)}</span>
+        نفوض نحن <span class="b">${escapeHtml(companyName)}</span>
+        سجل تجاري رقم <span class="b">${escapeHtml(companyCr)}</span>
         السيد <span class="b">${escapeHtml(agentName)}</span>
         <span class="b">${escapeHtml(agentNationality)}</span> الجنسية،
         ويحمل الهوية الوطنية رقم <span class="b">${escapeHtml(agentId)}</span>

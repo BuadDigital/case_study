@@ -1,6 +1,7 @@
 using System.Text.Json;
 using RealEstateEval.Application.Contracts;
 using RealEstateEval.CaseStudy.Application.Contracts;
+using RealEstateEval.Domain;
 
 namespace RealEstateEval.CaseStudy.Application.Rules;
 
@@ -15,10 +16,7 @@ public static class CaseStudyAnswerProvenance
     public const string ComponentsRemarksKey = "__componentsRemarks";
     public const string OccupancyRemarksKey = "__occupancyRemarks";
 
-    private static readonly JsonSerializerOptions JsonOpts = new()
-    {
-        PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
-    };
+    private static readonly JsonSerializerOptions JsonOpts = JsonDefaults.CamelCase;
 
     public static Dictionary<string, AnswerProvenanceEntryDto> Parse(string? json)
     {

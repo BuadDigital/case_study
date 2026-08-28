@@ -32,13 +32,8 @@ export function caseStudyReportAssetUrl(
   return `${origin.replace(/\/$/, "")}${path}`;
 }
 
-export function escapeCaseStudyReportHtml(text: string): string {
-  return text
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;");
-}
+import { escapeHtml as escapeCaseStudyReportHtml } from "@platform/app-shared/lib/html-escape";
+export { escapeCaseStudyReportHtml };
 
 function renderCb(checked: boolean): string {
   return `<span class="csrd-cb${checked ? " csrd-cb--on" : ""}" aria-hidden="true">${checked ? "☑" : "☐"}</span>`;

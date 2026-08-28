@@ -14,6 +14,7 @@ import {
 } from "@platform/api-client";
 import { getAuthSession } from "@platform/auth-client";
 import { ensureOrganizationSettingsLoaded } from "@platform/app-shared/organization/organization-settings-cache";
+import { useWindowEvents } from "@platform/app-shared/hooks/useWindowEvents";
 import { fetchInspectorWorkspace } from "@case-study/mfe/lib/prototype/inspector-workspace-storage";
 import type { InspectorWorkspaceDraft } from "@case-study/mfe/lib/prototype/inspector-workspace-data";
 import type { PoPropertyIntake } from "@case-study/mfe/lib/prototype/po-intake-data";
@@ -218,68 +219,37 @@ export function EvaluatorValuationReportTab({
   const choicesRef = useRef(choices);
   choicesRef.current = choices;
 
+  const specialistPropertyId = property?.id ?? draft.propertyId;
   useEffect(() => {
-    const propertyId = property?.id ?? draft.propertyId;
-    const refreshKeys = () =>
-      setSpecialistKeys(loadSpecialistPrintAttachmentKeys(propertyId));
-    const refreshEsg = () => setSpecialistEsg(loadSpecialistEsgInputs(propertyId));
-    const refreshSearchScope = () =>
-      setSpecialistSearchScope(loadSpecialistSearchScopeNotes(propertyId));
-    const refreshFinishing = () =>
-      setSpecialistFinishing(loadSpecialistFinishingLevel(propertyId));
-    refreshKeys();
-    refreshEsg();
-    refreshSearchScope();
-    refreshFinishing();
-    const onChangeKeys = (ev: Event) => {
-      const detail = (ev as CustomEvent<{ propertyId?: string }>).detail;
-      if (detail?.propertyId && detail.propertyId !== propertyId) return;
-      refreshKeys();
-    };
-    const onChangeEsg = (ev: Event) => {
-      const detail = (ev as CustomEvent<{ propertyId?: string }>).detail;
-      if (detail?.propertyId && detail.propertyId !== propertyId) return;
-      refreshEsg();
-    };
-    const onChangeSearchScope = (ev: Event) => {
-      const detail = (ev as CustomEvent<{ propertyId?: string }>).detail;
-      if (detail?.propertyId && detail.propertyId !== propertyId) return;
-      refreshSearchScope();
-    };
-    const onChangeFinishing = (ev: Event) => {
-      const detail = (ev as CustomEvent<{ propertyId?: string }>).detail;
-      if (detail?.propertyId && detail.propertyId !== propertyId) return;
-      refreshFinishing();
-    };
-    window.addEventListener(VALUATION_PRINT_KEYS_CHANGED_EVENT, onChangeKeys);
-    window.addEventListener(VALUATION_SPECIALIST_ESG_CHANGED_EVENT, onChangeEsg);
-    window.addEventListener(
-      VALUATION_SPECIALIST_SEARCH_SCOPE_CHANGED_EVENT,
-      onChangeSearchScope,
+    setSpecialistKeys(loadSpecialistPrintAttachmentKeys(specialistPropertyId));
+    setSpecialistEsg(loadSpecialistEsgInputs(specialistPropertyId));
+    setSpecialistSearchScope(
+      loadSpecialistSearchScopeNotes(specialistPropertyId),
     );
-    window.addEventListener(
-      VALUATION_SPECIALIST_FINISHING_CHANGED_EVENT,
-      onChangeFinishing,
-    );
-    return () => {
-      window.removeEventListener(
-        VALUATION_PRINT_KEYS_CHANGED_EVENT,
-        onChangeKeys,
-      );
-      window.removeEventListener(
-        VALUATION_SPECIALIST_ESG_CHANGED_EVENT,
-        onChangeEsg,
-      );
-      window.removeEventListener(
-        VALUATION_SPECIALIST_SEARCH_SCOPE_CHANGED_EVENT,
-        onChangeSearchScope,
-      );
-      window.removeEventListener(
-        VALUATION_SPECIALIST_FINISHING_CHANGED_EVENT,
-        onChangeFinishing,
-      );
-    };
-  }, [draft.propertyId, property?.id]);
+    setSpecialistFinishing(loadSpecialistFinishingLevel(specialistPropertyId));
+  }, [specialistPropertyId]);
+  // تجدد مدخلات الأخصائي المتزامنة عبر أحداث window — عقار آخر لا يعنينا.
+  const ifThisProperty = (refresh: () => void) => (ev: Event) => {
+    const detail = (ev as CustomEvent<{ propertyId?: string }>).detail;
+    if (detail?.propertyId && detail.propertyId !== specialistPropertyId) return;
+    refresh();
+  };
+  useWindowEvents({
+    [VALUATION_PRINT_KEYS_CHANGED_EVENT]: ifThisProperty(() =>
+      setSpecialistKeys(loadSpecialistPrintAttachmentKeys(specialistPropertyId)),
+    ),
+    [VALUATION_SPECIALIST_ESG_CHANGED_EVENT]: ifThisProperty(() =>
+      setSpecialistEsg(loadSpecialistEsgInputs(specialistPropertyId)),
+    ),
+    [VALUATION_SPECIALIST_SEARCH_SCOPE_CHANGED_EVENT]: ifThisProperty(() =>
+      setSpecialistSearchScope(
+        loadSpecialistSearchScopeNotes(specialistPropertyId),
+      ),
+    ),
+    [VALUATION_SPECIALIST_FINISHING_CHANGED_EVENT]: ifThisProperty(() =>
+      setSpecialistFinishing(loadSpecialistFinishingLevel(specialistPropertyId)),
+    ),
+  });
 
   const tabQuery = useQuery({
     queryKey: ["evaluator-report-tab", inspectionTaskId ?? ""],
