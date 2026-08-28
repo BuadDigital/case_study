@@ -50,6 +50,8 @@ public static class ValuationDependencyInjection
         services.AddScoped<IValuationReconciliationService, ValuationReconciliationService>();
         services.AddScoped<IValuationIssuanceGateService, ValuationIssuanceGateService>();
         services.AddScoped<IValuationReportDocumentService, ValuationReportDocumentService>();
+        // ق-6: الإصدار ثنائي المرحلة + شهادة الإيداع.
+        services.AddScoped<IValuationReportIssuanceService, ValuationReportIssuanceService>();
         services.AddScoped<IValuationReportFieldInjectionService, ValuationReportFieldInjectionService>();
         services.AddScoped<IPriorValuationBankFeeder, PriorValuationBankFeeder>();
         return services;

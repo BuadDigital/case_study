@@ -43,6 +43,8 @@ public static class CaseStudyDependencyInjection
         services.AddScoped<IFieldInspectionWorkspaceService, FieldInspectionWorkspaceService>();
         services.AddScoped<IFieldInspectionAttachmentVerifier, FieldInspectionAttachmentVerifier>();
         services.AddScoped<IPropertyTimelineService, PropertyTimelineService>();
+        // ق-9: آلة حالات المعاملة المشتقة + رفع إنفاذ الشامل.
+        services.AddScoped<ITransactionStateService, TransactionStateService>();
         services.AddScoped<IWorkflowTaskShellPatcher, WorkflowTaskShellPatcher>();
         services.AddScoped<IPropertyAccessHoldService, PropertyAccessHoldService>();
         return services;

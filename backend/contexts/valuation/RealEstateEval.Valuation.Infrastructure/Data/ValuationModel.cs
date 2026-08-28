@@ -143,6 +143,23 @@ public static class ValuationModel
             e.HasIndex(x => x.SelectionId);
         });
 
+        // ق-6: الإصدار ثنائي المرحلة — لقطة التقرير المجمّدة + النسختان (الإيداع/النهائية).
+        builder.Entity<ValuationReportIssuance>(e =>
+        {
+            e.ToTable("ValuationReportIssuances", DatabaseSchemas.Valuation);
+            e.Property(x => x.DepositIssuedByUserId).HasMaxLength(128);
+            e.Property(x => x.DocumentJson).IsRequired();
+            e.Property(x => x.DepositCode).HasMaxLength(128);
+            e.Property(x => x.CertificateFileName).HasMaxLength(512);
+            e.Property(x => x.CertificateContentType).HasMaxLength(128);
+            e.Property(x => x.CertificateUploadedByUserId).HasMaxLength(128);
+            e.HasIndex(x => x.ValuationRequestId).IsUnique();
+            e.HasOne<ValuationRequest>()
+                .WithMany()
+                .HasForeignKey(x => x.ValuationRequestId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
         // ق-8-1: مبرر واحد على مستوى العامل يغطي كل المقارنات؛ سطر التسوية يحمل التخصيص فقط.
         builder.Entity<ValuationAdjustmentFactorRationale>(e =>
         {

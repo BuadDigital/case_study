@@ -84,6 +84,9 @@ public sealed class ValuationApproachSettingsService(
             return (null, new Dictionary<string, string> { ["_"] = "طلب التقييم غير موجود" });
         if (vr.Status == ValuationRequestStatus.Done)
             return (null, new Dictionary<string, string> { ["_"] = "طلب التقييم مكتمل" });
+        // ق-6: بعد صدور نسخة الإيداع يتجمّد التقرير كاملاً — الرمز والشهادة فقط خارج التجميد.
+        if (await ValuationReportFreeze.IsFrozenAsync(db, vr.Id, cancellationToken))
+            return (null, new Dictionary<string, string> { ["_"] = ValuationReportFreeze.FrozenMessageAr });
 
         var (hasStructures, assignmentType) = await PropertyContextAsync(vr, cancellationToken);
         DateOnly? retroDate = null;

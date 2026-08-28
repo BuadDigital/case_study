@@ -1124,6 +1124,127 @@ export async function getValuationReportPdf(
   }
 }
 
+/* ─── ق-6: الإصدار ثنائي المرحلة + شهادة الإيداع ─── */
+
+export type ValuationReportIssuanceStateDto = {
+  valuationRequestId: string;
+  /** draft | deposit_issued | final_issued */
+  stage: string;
+  allowsDepositIssue: boolean;
+  blockingReasonsAr: string[];
+  depositIssuedAtUtc?: string | null;
+  depositCode?: string | null;
+  certificateFileName?: string | null;
+  certificateUploadedAtUtc?: string | null;
+  finalIssuedAtUtc?: string | null;
+  hasDepositPdf: boolean;
+  hasFinalPdf: boolean;
+};
+
+export async function getReportIssuanceState(
+  config: ValuationSelectionsApiConfig,
+  valuationRequestId: string,
+): Promise<Result<ValuationReportIssuanceStateDto>> {
+  const base = config.baseUrl ?? getApiBase();
+  try {
+    const res = await fetch(
+      `${base}/api/valuation-requests/${valuationRequestId}/report-issuance`,
+      { headers: headers(config.token) },
+    );
+    if (res.status === 401) return { ok: false, kind: "auth" };
+    if (res.status === 404) return { ok: false, kind: "not_found" };
+    if (!res.ok) return { ok: false, kind: "server" };
+    return { ok: true, data: await parseJson<ValuationReportIssuanceStateDto>(res) };
+  } catch {
+    return { ok: false, kind: "network" };
+  }
+}
+
+async function postIssuance(
+  config: ValuationSelectionsApiConfig,
+  url: string,
+  body?: unknown,
+): Promise<Result<ValuationReportIssuanceStateDto>> {
+  try {
+    const res = await fetch(url, {
+      method: "POST",
+      headers: headers(config.token),
+      body: body === undefined ? undefined : JSON.stringify(body),
+    });
+    if (res.status === 401) return { ok: false, kind: "auth" };
+    if (res.status === 400) {
+      const payload = (await res.json().catch(() => null)) as {
+        errors?: Record<string, string>;
+        message?: string;
+      } | null;
+      return {
+        ok: false,
+        kind: "validation",
+        message: payload?.errors
+          ? Object.values(payload.errors)[0]
+          : (payload?.message ?? "تعذّر تنفيذ خطوة الإصدار"),
+        errors: payload?.errors,
+      };
+    }
+    if (!res.ok) return { ok: false, kind: "server" };
+    return { ok: true, data: await parseJson<ValuationReportIssuanceStateDto>(res) };
+  } catch {
+    return { ok: false, kind: "network" };
+  }
+}
+
+/** ق-6-1: عند اكتمال الحواجب — تجميد كامل + توليد نسخة الإيداع (خانة الرمز فارغة). */
+export function issueDepositVersion(
+  config: ValuationSelectionsApiConfig,
+  valuationRequestId: string,
+): Promise<Result<ValuationReportIssuanceStateDto>> {
+  const base = config.baseUrl ?? getApiBase();
+  return postIssuance(
+    config,
+    `${base}/api/valuation-requests/${valuationRequestId}/report-issuance/deposit`,
+  );
+}
+
+/** ق-6-3/4: تسجيل الشهادة والرمز — يولّد النسخة النهائية بصفحة الشهادة والرمز في الميتا. */
+export function registerDepositCertificate(
+  config: ValuationSelectionsApiConfig,
+  valuationRequestId: string,
+  body: {
+    depositCode: string;
+    certificateFileName?: string | null;
+    certificateContentType?: string | null;
+    certificateContentBase64?: string | null;
+  },
+): Promise<Result<ValuationReportIssuanceStateDto>> {
+  const base = config.baseUrl ?? getApiBase();
+  return postIssuance(
+    config,
+    `${base}/api/valuation-requests/${valuationRequestId}/report-issuance/certificate`,
+    body,
+  );
+}
+
+/** تنزيل نسخة الإيداع أو النسخة النهائية PDF. */
+export async function getIssuancePdf(
+  config: ValuationSelectionsApiConfig,
+  valuationRequestId: string,
+  kind: "deposit" | "final",
+): Promise<Result<Blob>> {
+  const base = config.baseUrl ?? getApiBase();
+  try {
+    const res = await fetch(
+      `${base}/api/valuation-requests/${valuationRequestId}/report-issuance/${kind}-pdf`,
+      { headers: { Authorization: `Bearer ${config.token}`, Accept: "application/pdf" } },
+    );
+    if (res.status === 401) return { ok: false, kind: "auth" };
+    if (res.status === 404) return { ok: false, kind: "not_found" };
+    if (!res.ok) return { ok: false, kind: "server" };
+    return { ok: true, data: await res.blob() };
+  } catch {
+    return { ok: false, kind: "network" };
+  }
+}
+
 export type ValuationReportFieldDto = {
   fieldKey: string;
   labelAr: string;

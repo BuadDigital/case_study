@@ -121,6 +121,10 @@ public class WorkOrderProperty
     public string? RemoteInspectionApprovedBy { get; set; }
     public DateTime? RemoteInspectionApprovedAtUtc { get; set; }
 
+ /// <summary>ق-9 (الختام الثاني): رفع المعاملة على إنفاذ — التسليم الشامل بعد شهادة الإيداع.</summary>
+    public DateTime? EnfazHandoverAtUtc { get; set; }
+    public string? EnfazHandoverByUserId { get; set; }
+
  /// <summary>Soft-removed from transaction queues; still listed on the work-order property list.</summary>
     public bool IsRemoved { get; set; }
 

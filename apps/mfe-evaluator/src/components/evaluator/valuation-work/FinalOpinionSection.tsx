@@ -6,10 +6,15 @@ import {
   getValuationLists,
   getValuationReportDocument,
   saveValuationReconciliation,
+  getReportIssuanceState,
+  issueDepositVersion,
+  registerDepositCertificate,
+  getIssuancePdf,
   type ValuationCostApproachDto,
   type ValuationIssuanceGatesDto,
   type ValuationReconciliationDto,
   type ValuationReconciliationMethodDto,
+  type ValuationReportIssuanceStateDto,
 } from "@platform/api-client";
 import { cn, useToast } from "@platform/ui-kit";
 import {
@@ -86,6 +91,91 @@ export const FinalOpinionSection = memo(function FinalOpinionSection({
   const [alertOverrides, setAlertOverrides] = useState<
     Record<string, { overrideRationale: string; acknowledged: boolean }>
   >({});
+
+  /* ─── ق-6: الإصدار ثنائي المرحلة + شهادة الإيداع ─── */
+  const [issuance, setIssuance] = useState<ValuationReportIssuanceStateDto | null>(null);
+  const [issuanceBusy, setIssuanceBusy] = useState(false);
+  const [depositCodeDraft, setDepositCodeDraft] = useState("");
+  const [certificateFile, setCertificateFile] = useState<File | null>(null);
+
+  const refreshIssuance = async () => {
+    const config = apiConfig();
+    if (!config || !valuationRequestId) return;
+    const res = await getReportIssuanceState(config, valuationRequestId);
+    if (res.ok) {
+      setIssuance(res.data);
+      if (res.data.depositCode) setDepositCodeDraft(res.data.depositCode);
+    }
+  };
+
+  useEffect(() => {
+    void refreshIssuance();
+    // الحالة تُنعَّش أيضاً بعد حفظ الترجيح (تغيّر الحواجب).
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [valuationRequestId, gates?.allowsIssuance]);
+
+  const issueDeposit = async () => {
+    const config = apiConfig();
+    if (!config || !valuationRequestId) return;
+    setIssuanceBusy(true);
+    const res = await issueDepositVersion(config, valuationRequestId);
+    setIssuanceBusy(false);
+    if (!res.ok) {
+      showToast(res.message ?? "تعذّر إصدار نسخة الإيداع", "error");
+      return;
+    }
+    setIssuance(res.data);
+    showToast("صدرت نسخة الإيداع — التقرير مجمّد (ق-6)", "success");
+  };
+
+  const registerCertificate = async () => {
+    const config = apiConfig();
+    if (!config || !valuationRequestId) return;
+    const code = depositCodeDraft.trim();
+    if (!code) {
+      showToast("أدخل رمز الإيداع من شهادة منصة قيمة", "error");
+      return;
+    }
+    setIssuanceBusy(true);
+    let certificateContentBase64: string | null = null;
+    if (certificateFile) {
+      const buf = await certificateFile.arrayBuffer();
+      let binary = "";
+      const bytes = new Uint8Array(buf);
+      for (let i = 0; i < bytes.length; i++) binary += String.fromCharCode(bytes[i]!);
+      certificateContentBase64 = btoa(binary);
+    }
+    const res = await registerDepositCertificate(config, valuationRequestId, {
+      depositCode: code,
+      certificateFileName: certificateFile?.name ?? null,
+      certificateContentType: certificateFile?.type ?? null,
+      certificateContentBase64,
+    });
+    setIssuanceBusy(false);
+    if (!res.ok) {
+      showToast(res.message ?? "تعذّر تسجيل الشهادة", "error");
+      return;
+    }
+    setIssuance(res.data);
+    showToast("سُجِّلت الشهادة وصدرت النسخة النهائية (ق-6)", "success");
+  };
+
+  const downloadIssuancePdf = async (kind: "deposit" | "final") => {
+    const config = apiConfig();
+    if (!config || !valuationRequestId) return;
+    const res = await getIssuancePdf(config, valuationRequestId, kind);
+    if (!res.ok) {
+      showToast("تعذّر تنزيل النسخة", "error");
+      return;
+    }
+    const url = URL.createObjectURL(res.data);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download =
+      kind === "deposit" ? "نسخة-الإيداع.pdf" : "النسخة-النهائية.pdf";
+    a.click();
+    URL.revokeObjectURL(url);
+  };
 
   useEffect(() => {
     const config = apiConfig();
@@ -918,6 +1008,105 @@ export const FinalOpinionSection = memo(function FinalOpinionSection({
                   })
               )}
             </div>
+          </CardPad>
+        </Card>
+      ) : null}
+
+      {/* ق-6: الإصدار ثنائي المرحلة + شهادة الإيداع */}
+      {issuance ? (
+        <Card>
+          <CardPad>
+            <CardTitle>الإصدار ثنائي المرحلة — شهادة الإيداع (ق-6)</CardTitle>
+            <p className="mb-2.5 text-[11.5px] text-text-3">
+              نسخة الإيداع تُجمِّد التقرير كاملاً وتُرفع يدوياً في منصة قيمة؛ ثم تُسجَّل
+              شهادة الإيداع ورمزها فتصدر النسخة النهائية (صفحة الشهادة مرفقة والرمز في
+              الميتا). الرمز والشهادة وحدهما خارج نطاق التجميد.
+            </p>
+
+            {issuance.stage === "draft" ? (
+              <div className="flex flex-col gap-2">
+                {!issuance.allowsDepositIssue && issuance.blockingReasonsAr.length > 0 ? (
+                  <ul className="m-0 list-disc ps-5 text-[11.5px] text-red-text">
+                    {issuance.blockingReasonsAr.slice(0, 5).map((r) => (
+                      <li key={r}>{r}</li>
+                    ))}
+                  </ul>
+                ) : null}
+                <div>
+                  <PrimaryBtn
+                    disabled={issuanceBusy || !issuance.allowsDepositIssue}
+                    onClick={() => void issueDeposit()}
+                  >
+                    إصدار نسخة الإيداع (تجميد التقرير)
+                  </PrimaryBtn>
+                </div>
+              </div>
+            ) : (
+              <div className="flex flex-col gap-2.5">
+                <p className="m-0 text-[12.5px] text-text">
+                  الحالة:{" "}
+                  <strong className="text-[#2f7a4d]">
+                    {issuance.stage === "final_issued"
+                      ? "النسخة النهائية صادرة ✓"
+                      : "نسخة الإيداع صادرة — التقرير مجمّد بانتظار الشهادة"}
+                  </strong>
+                  {issuance.depositCode ? (
+                    <span className="ms-2 text-text-2" dir="ltr">
+                      {issuance.depositCode}
+                    </span>
+                  ) : null}
+                </p>
+
+                <div className="flex flex-wrap items-center gap-2">
+                  <GhostBtn
+                    disabled={!issuance.hasDepositPdf}
+                    onClick={() => void downloadIssuancePdf("deposit")}
+                  >
+                    تنزيل نسخة الإيداع (PDF)
+                  </GhostBtn>
+                  {issuance.hasFinalPdf ? (
+                    <GhostBtn onClick={() => void downloadIssuancePdf("final")}>
+                      تنزيل النسخة النهائية (PDF)
+                    </GhostBtn>
+                  ) : null}
+                </div>
+
+                <div className="mt-1 flex flex-wrap items-end gap-2 rounded-[9px] border border-dashed border-border-md bg-surface-2 p-3">
+                  <label className="flex flex-col gap-1 text-[11.5px] text-text-2">
+                    رمز الإيداع (من شهادة قيمة)
+                    <input
+                      dir="ltr"
+                      value={depositCodeDraft}
+                      onChange={(e) => setDepositCodeDraft(e.target.value)}
+                      className="w-52 rounded-[7px] border border-border bg-surface px-2.5 py-[7px] text-xs"
+                      placeholder="QYM-…"
+                    />
+                  </label>
+                  <label className="flex flex-col gap-1 text-[11.5px] text-text-2">
+                    مستند الشهادة (صورة تدخل صفحةً في النسخة النهائية)
+                    <input
+                      type="file"
+                      accept="image/*,.pdf"
+                      onChange={(e) => setCertificateFile(e.target.files?.[0] ?? null)}
+                      className="text-[11px]"
+                    />
+                  </label>
+                  <PrimaryBtn
+                    disabled={issuanceBusy || !depositCodeDraft.trim()}
+                    onClick={() => void registerCertificate()}
+                  >
+                    {issuance.stage === "final_issued"
+                      ? "تحديث الشهادة/الرمز وإعادة إصدار النهائية"
+                      : "تسجيل الشهادة وإصدار النسخة النهائية"}
+                  </PrimaryBtn>
+                </div>
+                {issuance.certificateFileName ? (
+                  <p className="m-0 text-[11px] text-text-3">
+                    الشهادة المحفوظة: {issuance.certificateFileName}
+                  </p>
+                ) : null}
+              </div>
+            )}
           </CardPad>
         </Card>
       ) : null}

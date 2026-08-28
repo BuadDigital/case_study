@@ -1154,6 +1154,21 @@
       "note": "ق-8-1: factor-level adjustment rationales (one per factor covering all comparables; lines hold overrides only)."
     },
     {
+      "table": "ValuationReportIssuances",
+      "schema": "valuation",
+      "dbSet": "ValuationReportIssuances",
+      "entity": "ValuationReportIssuance",
+      "owner": "valuation",
+      "status": "approved",
+      "ownershipModel": "single-owner",
+      "contexts": [
+        "ValuationDbContext"
+      ],
+      "transactionGroup": "valuation.requests",
+      "decision": null,
+      "note": "ق-6: two-phase issuance — frozen report snapshot, deposit PDF, deposit certificate + code, final PDF."
+    },
+    {
       "table": "ValuationMarketApproaches",
       "schema": "valuation",
       "dbSet": "ValuationMarketApproaches",

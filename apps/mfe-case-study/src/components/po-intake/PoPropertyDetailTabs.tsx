@@ -21,6 +21,7 @@ import { PropertyDetailEnfathUpload } from "./PropertyDetailEnfathUpload";
 import { PropertyDetailFinanceTab } from "./PropertyDetailFinanceTab";
 import { PropertyDetailSurveyNotesTab, buildPartyRemarksSections } from "./PropertyDetailSurveyNotesTab";
 import { PropertyTransactionTimeline } from "./PropertyTransactionTimeline";
+import { TransactionStateStrip } from "./TransactionStateStrip";
 import { PropertyDetailMobileGlance } from "./PropertyDetailMobileGlance";
 import { PropertyDetailMediaGlance } from "./PropertyDetailMediaGlance";
 import { PropertyDetailInspectionTab } from "./PropertyDetailInspectionTab";
@@ -804,6 +805,8 @@ export function PoPropertyDetailTabs({
 
   return (
     <div className="flex min-h-0 min-w-0 flex-1 flex-col">
+      {/* ق-9: شريط حالة المعاملة — الحالة مشتقة من حالات الأطراف، ويظهر من ينتظر من. */}
+      <TransactionStateStrip workOrderId={record.id} propertyId={property.id} />
       <PropertyDetailMobileGlance
         poNumber={poNumber}
         property={property}

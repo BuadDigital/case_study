@@ -11,7 +11,18 @@ public static class ValuationReportPdfGenerator
 {
     private static bool _licenseConfigured;
 
-    public static byte[] Generate(ValuationReportDocumentDto doc)
+    /// <summary>
+    /// ق-6-4: بيانات شهادة الإيداع للنسخة النهائية — الصفحة المرفقة + الرمز في ميتا الصفحات.
+    /// </summary>
+    public sealed record IssuanceCertificateStamp(
+        string DepositCode,
+        string? CertificateFileName,
+        string? CertificateContentType,
+        byte[]? CertificateContent);
+
+    public static byte[] Generate(
+        ValuationReportDocumentDto doc,
+        IssuanceCertificateStamp? certificate = null)
     {
         EnsureLicense();
 
@@ -143,8 +154,68 @@ public static class ValuationReportPdfGenerator
                     text.CurrentPageNumber();
                     text.Span(" من ");
                     text.TotalPages();
+                    // ق-6-4: الرمز يتعبأ في ميتا الصفحات — النسخة النهائية فقط.
+                    if (certificate is not null)
+                        text.Span($" · رمز الإيداع: {certificate.DepositCode}");
                 });
             });
+
+            // ق-6-4: صفحة شهادة الإيداع تدخل التقرير صفحةً مرفقة (قرار سليمان النصي) —
+            // الشهادة والرمز وحدهما خارج نطاق التجميد.
+            if (certificate is not null)
+            {
+                container.Page(page =>
+                {
+                    page.Size(PageSizes.A4);
+                    page.Margin(36);
+                    page.DefaultTextStyle(x => x
+                        .FontFamily(Fonts.Tahoma, Fonts.Arial, "Noto Sans Arabic", "DejaVu Sans")
+                        .FontSize(10));
+                    page.ContentFromRightToLeft();
+
+                    page.Header().AlignCenter().Text("شهادة الإيداع — منصة قيمة")
+                        .Bold().FontSize(16);
+
+                    page.Content().PaddingTop(16).Column(col =>
+                    {
+                        col.Item().Text($"رمز الإيداع: {certificate.DepositCode}")
+                            .SemiBold().FontSize(12);
+                        if (!string.IsNullOrWhiteSpace(certificate.CertificateFileName))
+                        {
+                            col.Item().PaddingTop(4)
+                                .Text($"مستند الشهادة: {certificate.CertificateFileName}")
+                                .FontColor(Colors.Grey.Darken1);
+                        }
+
+                        var isImage = certificate.CertificateContent is { Length: > 0 }
+                            && (certificate.CertificateContentType ?? "")
+                                .StartsWith("image/", StringComparison.OrdinalIgnoreCase);
+                        if (isImage)
+                        {
+                            col.Item().PaddingTop(12).AlignCenter()
+                                .MaxHeight(640)
+                                .Image(certificate.CertificateContent!)
+                                .FitArea();
+                        }
+                        else
+                        {
+                            col.Item().PaddingTop(12)
+                                .Text("الشهادة محفوظة مستنداً في ملف المعاملة (صيغة غير صورية) — "
+                                      + "هذه الصفحة مرجعها ورمزها.")
+                                .FontColor(Colors.Grey.Darken1);
+                        }
+                    });
+
+                    page.Footer().AlignCenter().Text(text =>
+                    {
+                        text.Span("صفحة ");
+                        text.CurrentPageNumber();
+                        text.Span(" من ");
+                        text.TotalPages();
+                        text.Span($" · رمز الإيداع: {certificate.DepositCode}");
+                    });
+                });
+            }
         }).GeneratePdf();
 
         static IContainer HeaderCell(IContainer c) =>

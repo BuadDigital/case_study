@@ -806,3 +806,91 @@ export async function deleteWorkOrderProperty(
     return { ok: false, kind: "network" };
   }
 }
+
+/* ─── ق-9: حالة المعاملة المشتقة + رفع إنفاذ الشامل ─── */
+
+export type TransactionStageStateDto = {
+  key: string;
+  labelAr: string;
+  status: string;
+  statusLabelAr: string;
+};
+
+export type TransactionPartyStateDto = {
+  key: string;
+  labelAr: string;
+  status: string;
+  statusLabelAr: string;
+  waitingOn: string[];
+  waitingOnLabelsAr: string[];
+};
+
+export type TransactionStateDto = {
+  workOrderId: string;
+  propertyId: string;
+  stages: TransactionStageStateDto[];
+  parties: TransactionPartyStateDto[];
+  overallStatus: string;
+  overallStatusLabelAr: string;
+  waitingSummaryAr: string;
+  allowsEnfazHandover: boolean;
+  enfazHandoverAtUtc?: string | null;
+  handoverPackageAr: string[];
+};
+
+/** ق-9: شبكة حالة المعاملة — الشاشة تعرض من ينتظر من. */
+export async function getTransactionState(
+  config: WorkOrdersApiConfig,
+  workOrderId: string,
+  propertyId: string,
+): Promise<
+  | { ok: true; data: TransactionStateDto }
+  | { ok: false; kind: "auth" | "not_found" | "server" | "network"; message?: string }
+> {
+  const base = config.baseUrl ?? getApiBase();
+  try {
+    const res = await fetch(
+      `${base}/api/work-orders/${workOrderId}/properties/${propertyId}/transaction-state`,
+      { headers: headers(config.token) },
+    );
+    if (res.status === 401) return { ok: false, kind: "auth" };
+    if (res.status === 404) return { ok: false, kind: "not_found" };
+    if (!res.ok) return { ok: false, kind: "server" };
+    return { ok: true, data: (await res.json()) as TransactionStateDto };
+  } catch {
+    return { ok: false, kind: "network" };
+  }
+}
+
+/** ق-9 (الختام الثاني): رفع المعاملة على إنفاذ — بعد شهادة الإيداع واكتمال الأطراف. */
+export async function recordEnfazHandover(
+  config: WorkOrdersApiConfig,
+  workOrderId: string,
+  propertyId: string,
+): Promise<
+  | { ok: true; data: TransactionStateDto }
+  | { ok: false; kind: "auth" | "server" | "network"; message?: string }
+> {
+  const base = config.baseUrl ?? getApiBase();
+  try {
+    const res = await fetch(
+      `${base}/api/work-orders/${workOrderId}/properties/${propertyId}/transaction-state/enfaz-handover`,
+      { method: "POST", headers: headers(config.token) },
+    );
+    if (res.status === 401) return { ok: false, kind: "auth" };
+    if (!res.ok) {
+      const payload = (await res.json().catch(() => null)) as {
+        errors?: Record<string, string>;
+        message?: string;
+      } | null;
+      return {
+        ok: false,
+        kind: "server",
+        message: payload?.errors ? Object.values(payload.errors)[0] : payload?.message,
+      };
+    }
+    return { ok: true, data: (await res.json()) as TransactionStateDto };
+  } catch {
+    return { ok: false, kind: "network" };
+  }
+}

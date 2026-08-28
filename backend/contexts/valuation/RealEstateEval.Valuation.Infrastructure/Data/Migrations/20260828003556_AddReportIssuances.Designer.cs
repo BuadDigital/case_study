@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using RealEstateEval.Valuation.Infrastructure.Data.Contexts;
@@ -11,9 +12,11 @@ using RealEstateEval.Valuation.Infrastructure.Data.Contexts;
 namespace RealEstateEval.Valuation.Infrastructure.Data.Contexts.Valuation.Migrations
 {
     [DbContext(typeof(ValuationDbContext))]
-    partial class ValuationDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260828003556_AddReportIssuances")]
+    partial class AddReportIssuances
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder

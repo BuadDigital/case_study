@@ -50,6 +50,9 @@ public sealed class ValuationCostApproachService(
             return (null, new Dictionary<string, string> { ["_"] = "طلب التقييم غير موجود" });
         if (vr.Status == ValuationRequestStatus.Done)
             return (null, new Dictionary<string, string> { ["_"] = "طلب التقييم مكتمل" });
+        // ق-6: بعد صدور نسخة الإيداع يتجمّد التقرير كاملاً — الرمز والشهادة فقط خارج التجميد.
+        if (await ValuationReportFreeze.IsFrozenAsync(db, vr.Id, cancellationToken))
+            return (null, new Dictionary<string, string> { ["_"] = ValuationReportFreeze.FrozenMessageAr });
 
  // ق-2/ق-3 المعدَّل: cost tab is closed when the approach is off (bare land defaults it off;
  // land WITH structures opens it for the structure lines only — spec v2 §3).

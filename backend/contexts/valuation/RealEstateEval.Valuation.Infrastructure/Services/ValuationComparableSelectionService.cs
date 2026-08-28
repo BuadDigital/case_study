@@ -93,6 +93,9 @@ public sealed class ValuationComparableSelectionService(
             return (null, new Dictionary<string, string> { ["_"] = "طلب التقييم غير موجود" });
         if (vr.Status == ValuationRequestStatus.Done)
             return (null, new Dictionary<string, string> { ["_"] = "طلب التقييم مكتمل — لا يمكن تعديل المبررات" });
+        // ق-6: بعد صدور نسخة الإيداع يتجمّد التقرير كاملاً — الرمز والشهادة فقط خارج التجميد.
+        if (await ValuationReportFreeze.IsFrozenAsync(db, vr.Id, cancellationToken))
+            return (null, new Dictionary<string, string> { ["_"] = ValuationReportFreeze.FrozenMessageAr });
 
         var approachSettings = await db.ValuationApproachSettings.AsNoTracking()
             .FirstOrDefaultAsync(x => x.ValuationRequestId == valuationRequestId, cancellationToken);
@@ -180,6 +183,9 @@ public sealed class ValuationComparableSelectionService(
 
         if (vr.Status == ValuationRequestStatus.Done)
             return (null, new Dictionary<string, string> { ["_"] = "طلب التقييم مكتمل — لا يمكن تعديل المقارنات" });
+        // ق-6: بعد صدور نسخة الإيداع يتجمّد التقرير كاملاً — الرمز والشهادة فقط خارج التجميد.
+        if (await ValuationReportFreeze.IsFrozenAsync(db, vr.Id, cancellationToken))
+            return (null, new Dictionary<string, string> { ["_"] = ValuationReportFreeze.FrozenMessageAr });
 
         var items = request.Items ?? [];
         var seen = new HashSet<Guid>();
@@ -265,6 +271,9 @@ public sealed class ValuationComparableSelectionService(
         if (vr is null) return (null, "طلب التقييم غير موجود");
         if (vr.Status == ValuationRequestStatus.Done)
             return (null, "طلب التقييم مكتمل — لا يمكن تعديل المقارنات");
+        // ق-6: بعد صدور نسخة الإيداع يتجمّد التقرير كاملاً — الرمز والشهادة فقط خارج التجميد.
+        if (await ValuationReportFreeze.IsFrozenAsync(db, vr.Id, cancellationToken))
+            return (null, ValuationReportFreeze.FrozenMessageAr);
 
         var context = ComparableSelectionContexts.Normalize(selectionContext);
         var row = await db.ValuationComparableSelections
@@ -339,6 +348,9 @@ public sealed class ValuationComparableSelectionService(
         if (vr is null) return (false, "طلب التقييم غير موجود");
         if (vr.Status == ValuationRequestStatus.Done)
             return (false, "طلب التقييم مكتمل — لا يمكن تعديل المقارنات");
+        // ق-6: بعد صدور نسخة الإيداع يتجمّد التقرير كاملاً — الرمز والشهادة فقط خارج التجميد.
+        if (await ValuationReportFreeze.IsFrozenAsync(db, vr.Id, cancellationToken))
+            return (false, ValuationReportFreeze.FrozenMessageAr);
 
         var context = ComparableSelectionContexts.Normalize(selectionContext);
         var row = await db.ValuationComparableSelections
@@ -367,6 +379,9 @@ public sealed class ValuationComparableSelectionService(
             return (null, new Dictionary<string, string> { ["_"] = "طلب التقييم غير موجود" });
         if (vr.Status == ValuationRequestStatus.Done)
             return (null, new Dictionary<string, string> { ["_"] = "طلب التقييم مكتمل — لا يمكن تعديل التسويات" });
+        // ق-6: بعد صدور نسخة الإيداع يتجمّد التقرير كاملاً — الرمز والشهادة فقط خارج التجميد.
+        if (await ValuationReportFreeze.IsFrozenAsync(db, vr.Id, cancellationToken))
+            return (null, new Dictionary<string, string> { ["_"] = ValuationReportFreeze.FrozenMessageAr });
 
         var row = await db.ValuationComparableSelections
             .Include(x => x.AdjustmentLines)
@@ -560,6 +575,9 @@ public sealed class ValuationComparableSelectionService(
             return (null, new Dictionary<string, string> { ["_"] = "طلب التقييم غير موجود" });
         if (vr.Status == ValuationRequestStatus.Done)
             return (null, new Dictionary<string, string> { ["_"] = "طلب التقييم مكتمل" });
+        // ق-6: بعد صدور نسخة الإيداع يتجمّد التقرير كاملاً — الرمز والشهادة فقط خارج التجميد.
+        if (await ValuationReportFreeze.IsFrozenAsync(db, vr.Id, cancellationToken))
+            return (null, new Dictionary<string, string> { ["_"] = ValuationReportFreeze.FrozenMessageAr });
 
         if (request.SubjectAreaSqm is < 0m)
             return (null, new Dictionary<string, string> { ["subjectAreaSqm"] = "المساحة يجب أن تكون ≥ 0" });
