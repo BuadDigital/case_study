@@ -612,6 +612,8 @@ export {
   setValuationComparableAdopted,
   removeValuationComparableSelection,
   saveValuationComparableMarket,
+  saveAdjustmentFactorRationale,
+  type ValuationAdjustmentFactorRationaleDto,
   saveValuationMarketApproach,
   getValuationCostApproach,
   saveValuationCostApproach,

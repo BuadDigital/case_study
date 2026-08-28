@@ -24,3 +24,6 @@ export function fmt(n: number | null | undefined, digits = 0): string {
   }
   return formatter.format(n);
 }
+
+/** ق-8-2: الحد الأدنى لطول المبرر — يطابق JustificationRules.MinLength في الخادم. */
+export const JUSTIFICATION_MIN_LENGTH = 10;

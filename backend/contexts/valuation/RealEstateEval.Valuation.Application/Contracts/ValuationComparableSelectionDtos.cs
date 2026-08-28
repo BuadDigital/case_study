@@ -103,7 +103,30 @@ public class ValuationComparableSelectionListDto
  /// <summary>أوصاف العقار محل التقييم لكل عامل (subjSpec) — factorKey → نص.</summary>
     public IReadOnlyDictionary<string, string> SubjectSpecs { get; init; } =
         new Dictionary<string, string>();
+ /// <summary>ق-8-1: مبررات على مستوى العامل — factorKey → المبرر؛ سطر المقارن يحمل التخصيص فقط.</summary>
+    public IReadOnlyList<ValuationAdjustmentFactorRationaleDto> FactorRationales { get; init; } = [];
     public IReadOnlyList<ValuationComparableSelectionDto> Items { get; init; } = [];
+}
+
+/// <summary>ق-8-1: مبرر عامل التسوية (يغطي كل المقارنات ما دام المنطق واحداً).</summary>
+public class ValuationAdjustmentFactorRationaleDto
+{
+    public required string SelectionContext { get; init; }
+    public required string FactorKey { get; init; }
+    public string RationaleAr { get; init; } = "";
+}
+
+public class SaveAdjustmentFactorRationaleRequest
+{
+    [Required, MaxLength(32)]
+    public string SelectionContext { get; init; } = "market";
+
+    [Required, MaxLength(32)]
+    public string FactorKey { get; init; } = "";
+
+ /// <summary>فارغ = مسح مبرر العامل؛ غير الفارغ يخضع للحد الأدنى (ق-8-2).</summary>
+    [MaxLength(2000)]
+    public string? RationaleAr { get; init; }
 }
 
 public class SaveValuationMarketApproachRequest

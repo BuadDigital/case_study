@@ -47,4 +47,12 @@ public interface IValuationComparableSelectionService
         Guid valuationRequestId,
         SaveValuationMarketApproachRequest request,
         CancellationToken cancellationToken = default);
+
+ /// <summary>ق-8-1: مبرر عامل التسوية الواحد (فارغ = مسح؛ الحد الأدنى ق-8-2).</summary>
+    Task<(ValuationAdjustmentFactorRationaleDto? Result, Dictionary<string, string>? Errors)>
+        SaveFactorRationaleAsync(
+            Guid valuationRequestId,
+            SaveAdjustmentFactorRationaleRequest request,
+            string? updatedByUserId,
+            CancellationToken cancellationToken = default);
 }

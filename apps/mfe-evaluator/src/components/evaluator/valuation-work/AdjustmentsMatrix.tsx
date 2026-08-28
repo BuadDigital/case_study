@@ -7,7 +7,7 @@ import type {
   ValuationComparableSelectionDto,
   ValuationComparableSelectionListDto,
 } from "@platform/api-client";
-import { fmt } from "./lib/shell-utils";
+import { fmt, JUSTIFICATION_MIN_LENGTH } from "./lib/shell-utils";
 
 const SEQUENTIAL = new Set(["financing", "market", "transaction_type"]);
 const AUTO_AREA = "area";
@@ -301,33 +301,110 @@ function SubjCell({ value, note }: { value: string; note?: string }) {
   );
 }
 
+/** ق-8-1: مبرر على مستوى العامل + لوحة «تخصيص لمقارن بعينه» عند الاختلاف. */
 function JustCell({
   factorKey,
   value,
   locked,
   onDraft,
   onSave,
+  overrides,
+  onSaveOverride,
 }: {
   factorKey?: string;
   value?: string;
   locked?: boolean;
   onDraft?: (factorKey: string, value: string) => void;
   onSave?: (factorKey: string) => void;
+  overrides?: { id: string; label: string; value: string }[];
+  onSaveOverride?: (selectionId: string, factorKey: string, text: string) => void;
 }) {
+  const [showOverrides, setShowOverrides] = useState(false);
+  const [overrideDraft, setOverrideDraft] = useState<Record<string, string>>({});
   if (!factorKey || !onDraft || !onSave) {
     return <td className={tdJustClass} />;
   }
+  const text = value ?? "";
+  // ق-8-2: المبرر الصوري (أقصر من الحد) لا يُحفظ.
+  const tooShort =
+    text.trim().length > 0 && text.trim().length < JUSTIFICATION_MIN_LENGTH;
+  const overrideCount = (overrides ?? []).filter(
+    (o) => (overrideDraft[o.id] ?? o.value).trim().length > 0,
+  ).length;
   return (
     <td className={tdJustClass}>
       <input
         type="text"
-        value={value ?? ""}
+        value={text}
         disabled={locked}
-        placeholder="مبرّر التسوية؟"
+        placeholder="مبرّر التسوية (يغطي كل المقارنات)؟"
         onChange={(e) => onDraft(factorKey, e.target.value)}
-        onBlur={() => onSave(factorKey)}
-        className="w-full rounded-[7px] border border-border bg-surface px-2.5 py-[7px] text-[12px] font-medium text-text"
+        onBlur={() => {
+          if (!tooShort) onSave(factorKey);
+        }}
+        className={cn(
+          "w-full rounded-[7px] border bg-surface px-2.5 py-[7px] text-[12px] font-medium text-text",
+          tooShort ? "border-danger" : "border-border",
+        )}
       />
+      {tooShort ? (
+        <div className="mt-1 text-[10.5px] font-semibold text-danger">
+          الحد الأدنى {JUSTIFICATION_MIN_LENGTH} أحرف (ق-8)
+        </div>
+      ) : null}
+      {overrides && overrides.length > 0 && onSaveOverride ? (
+        <>
+          <button
+            type="button"
+            disabled={locked}
+            onClick={() => setShowOverrides((v) => !v)}
+            className="mt-1 text-[10.5px] font-semibold text-text-3 hover:text-text"
+          >
+            تخصيص لمقارن بعينه{overrideCount > 0 ? ` (${overrideCount})` : ""}{" "}
+            {showOverrides ? "▴" : "▾"}
+          </button>
+          {showOverrides ? (
+            <div className="mt-1.5 space-y-1.5">
+              {overrides.map((o) => {
+                const draft = overrideDraft[o.id] ?? o.value;
+                const overrideTooShort =
+                  draft.trim().length > 0 &&
+                  draft.trim().length < JUSTIFICATION_MIN_LENGTH;
+                return (
+                  <div key={o.id}>
+                    <input
+                      type="text"
+                      value={draft}
+                      disabled={locked}
+                      placeholder={`${o.label} — يرث مبرر العامل`}
+                      onChange={(e) =>
+                        setOverrideDraft((prev) => ({
+                          ...prev,
+                          [o.id]: e.target.value,
+                        }))
+                      }
+                      onBlur={() => {
+                        if (overrideTooShort) return;
+                        if (draft !== o.value)
+                          onSaveOverride(o.id, factorKey, draft);
+                      }}
+                      className={cn(
+                        "w-full rounded-[6px] border bg-surface-2 px-2 py-1 text-[11px] text-text",
+                        overrideTooShort ? "border-danger" : "border-border",
+                      )}
+                    />
+                    {overrideTooShort ? (
+                      <div className="mt-0.5 text-[10px] font-semibold text-danger">
+                        الحد الأدنى {JUSTIFICATION_MIN_LENGTH} أحرف
+                      </div>
+                    ) : null}
+                  </div>
+                );
+              })}
+            </div>
+          ) : null}
+        </>
+      ) : null}
     </td>
   );
 }
@@ -495,6 +572,12 @@ export type AdjustmentsMatrixProps = {
   /** subjSpec: وصف العقار محل التقييم لكل عامل اختلاف. */
   subjectSpecs?: Record<string, string>;
   onSaveSubjectSpec?: (factorKey: string, text: string) => void;
+  /** ق-8-1: تخصيص مبرر لمقارن بعينه — سطر التسوية يحمل التخصيص فقط. */
+  onSaveLineRationale?: (
+    selectionId: string,
+    factorKey: string,
+    text: string,
+  ) => void;
 };
 
 export const AdjustmentsMatrix = memo(function AdjustmentsMatrix({
@@ -523,6 +606,7 @@ export const AdjustmentsMatrix = memo(function AdjustmentsMatrix({
   onSaveDescription,
   subjectSpecs,
   onSaveSubjectSpec,
+  onSaveLineRationale,
 }: AdjustmentsMatrixProps) {
   /** حذف بخطوتين — «حذف؟ ✓ ×» (خانة تأكيد واحدة في كل لحظة كما في النموذج). */
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
@@ -635,10 +719,25 @@ export const AdjustmentsMatrix = memo(function AdjustmentsMatrix({
     );
   }
 
+  // ق-8-1: مبرر العامل من جدوله المستقل؛ مبرر السطر القديم يظهر كتوافق خلفي فقط.
+  const factorRationaleByKey = new Map(
+    (selection.factorRationales ?? []).map((r) => [r.factorKey, r.rationaleAr]),
+  );
   const justValue = (factorKey: string) =>
     rationaleDraft[factorKey] ??
+    factorRationaleByKey.get(factorKey) ??
     lineOf(adopted[0]!, factorKey)?.rationale ??
     "";
+
+  /** ق-8-1: أسطر التخصيص لكل مقارن — تُعرض تحت مبرر العامل عند الطلب. */
+  const overridesFor = (factorKey: string) =>
+    onSaveLineRationale
+      ? adopted.map((item, i) => ({
+          id: item.id,
+          label: `مقارن ${i + 1}`,
+          value: lineOf(item, factorKey)?.rationale ?? "",
+        }))
+      : undefined;
 
   const largeComps = adopted.filter(
     (i) => i.market?.exceedsLargeAdjustmentThreshold,
@@ -901,6 +1000,8 @@ export const AdjustmentsMatrix = memo(function AdjustmentsMatrix({
                         setRationaleDraft((prev) => ({ ...prev, [key]: value }))
                       }
                       onSave={saveRationale}
+                      overrides={overridesFor(factorKey)}
+                      onSaveOverride={onSaveLineRationale}
                     />
                   </tr>
                 );
@@ -957,6 +1058,8 @@ export const AdjustmentsMatrix = memo(function AdjustmentsMatrix({
                     setRationaleDraft((prev) => ({ ...prev, [key]: value }))
                   }
                   onSave={saveRationale}
+                  overrides={overridesFor("area")}
+                  onSaveOverride={onSaveLineRationale}
                 />
               </tr>
 
@@ -1103,6 +1206,8 @@ export const AdjustmentsMatrix = memo(function AdjustmentsMatrix({
                         setRationaleDraft((prev) => ({ ...prev, [key]: value }))
                       }
                       onSave={saveRationale}
+                      overrides={overridesFor(factorKey)}
+                      onSaveOverride={onSaveLineRationale}
                     />
                   </tr>
                 );

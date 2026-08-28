@@ -29,7 +29,7 @@ import {
   vwTdClassName,
   vwThClassName,
 } from "./atoms";
-import { apiConfig, fmt } from "./lib/shell-utils";
+import { apiConfig, fmt, JUSTIFICATION_MIN_LENGTH } from "./lib/shell-utils";
 
 /**
  * شاشة رأي القيمة النهائي — تملك مسودات التوفيق (الأوزان، المبررات، أساس القيمة،
@@ -855,20 +855,37 @@ export const FinalOpinionSection = memo(function FinalOpinionSection({
                           ) : null}
                         </div>
                         {needsRationale ? (
-                          <input
-                            value={ov.overrideRationale}
-                            placeholder="المبرر النصي لتجاوز التنبيه…"
-                            onChange={(e) =>
-                              setAlertOverrides((prev) => ({
-                                ...prev,
-                                [a.code]: {
-                                  overrideRationale: e.target.value,
-                                  acknowledged: prev[a.code]?.acknowledged ?? false,
-                                },
-                              }))
-                            }
-                            className="rounded-[7px] border border-dashed border-border-md bg-surface px-2.5 py-[7px] text-xs"
-                          />
+                          <>
+                            <input
+                              value={ov.overrideRationale}
+                              placeholder={`المبرر النصي لتجاوز التنبيه (${JUSTIFICATION_MIN_LENGTH} أحرف فأكثر)…`}
+                              onChange={(e) =>
+                                setAlertOverrides((prev) => ({
+                                  ...prev,
+                                  [a.code]: {
+                                    overrideRationale: e.target.value,
+                                    acknowledged: prev[a.code]?.acknowledged ?? false,
+                                  },
+                                }))
+                              }
+                              className={cn(
+                                "rounded-[7px] border border-dashed bg-surface px-2.5 py-[7px] text-xs",
+                                ov.overrideRationale.trim().length > 0 &&
+                                  ov.overrideRationale.trim().length <
+                                    JUSTIFICATION_MIN_LENGTH
+                                  ? "border-danger"
+                                  : "border-border-md",
+                              )}
+                            />
+                            {ov.overrideRationale.trim().length > 0 &&
+                            ov.overrideRationale.trim().length <
+                              JUSTIFICATION_MIN_LENGTH ? (
+                              <span className="text-[10.5px] font-semibold text-danger">
+                                المبرر الصوري لا يفك التنبيه — الحد الأدنى{" "}
+                                {JUSTIFICATION_MIN_LENGTH} أحرف (ق-8)
+                              </span>
+                            ) : null}
+                          </>
                         ) : null}
                         {needsAck ? (
                           <label className="inline-flex cursor-pointer items-center gap-2 text-xs text-text">

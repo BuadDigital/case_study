@@ -1139,6 +1139,21 @@
       "note": "Per-comparable adjustment lines for the market approach."
     },
     {
+      "table": "ValuationAdjustmentFactorRationales",
+      "schema": "valuation",
+      "dbSet": "ValuationAdjustmentFactorRationales",
+      "entity": "ValuationAdjustmentFactorRationale",
+      "owner": "valuation",
+      "status": "approved",
+      "ownershipModel": "single-owner",
+      "contexts": [
+        "ValuationDbContext"
+      ],
+      "transactionGroup": "valuation.requests",
+      "decision": null,
+      "note": "ق-8-1: factor-level adjustment rationales (one per factor covering all comparables; lines hold overrides only)."
+    },
+    {
       "table": "ValuationMarketApproaches",
       "schema": "valuation",
       "dbSet": "ValuationMarketApproaches",

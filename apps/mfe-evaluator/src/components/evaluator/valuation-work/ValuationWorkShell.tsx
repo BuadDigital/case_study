@@ -6,6 +6,7 @@ import {
   ensureOpenValuationRequestByProperty,
   listValuationComparableSelections,
   saveValuationComparableMarket,
+  saveAdjustmentFactorRationale,
   saveValuationMarketApproach,
   getValuationCostApproach,
   getValuationApproachSettings,
@@ -62,7 +63,7 @@ import {
   linePercent,
   marketSaveBody,
 } from "./lib/market-save-mappers";
-import { apiConfig, fmt } from "./lib/shell-utils";
+import { apiConfig, fmt, JUSTIFICATION_MIN_LENGTH } from "./lib/shell-utils";
 
 const LAND_WITHIN_COST = "land_within_cost";
 const MARKET_CONTEXT = "market";
@@ -1147,38 +1148,74 @@ export function ValuationWorkShell({
       await reload({ silent: true, scope: "derived" });
       return;
     }
+    // ق-8-1: مبرر واحد على مستوى العامل — طلب واحد بدل التوزيع على كل المقارنات؛
+    // مبررات الأسطر تبقى «تخصيصاً لمقارن بعينه» تُحرَّر من خلية المقارن.
+    if (text.length > 0 && text.length < JUSTIFICATION_MIN_LENGTH) {
+      showToast(
+        `المبرر أقصر من الحد الأدنى (${JUSTIFICATION_MIN_LENGTH} أحرف) — اكتب مبرراً جوهرياً (ق-8)`,
+        "error",
+      );
+      return;
+    }
     setSaving(true);
-    const results = await Promise.all(
-      adoptedFor(context).map((item) => {
-        const rawLine = item.market?.adjustmentLines?.find(
-          (l) => l.factorKey === factorKey,
-        );
-        const lines = ensureLinesForSave(
-          item,
-          factorKey,
-          linePercent(item, factorKey),
-          factorRowsFor(context),
-        ).map((l, i) => ({
-          ...lineForSave(item, l, i),
-          // كتابة المبرر وحدها لا تحوّل «المقترح» إلى إدخال يدوي بنسبة مخزّنة.
-          percent:
-            l.factorKey === factorKey && rawLine?.isSuggestedValue
-              ? 0
-              : lineForSave(item, l, i).percent,
-          rationale: l.factorKey === factorKey ? text : l.rationale,
-        }));
-        return saveValuationComparableMarket(
-          config,
-          valuationRequestId,
-          item.id,
-          marketSaveBody(item, lines),
-        );
-      }),
+    const res = await saveAdjustmentFactorRationale(config, valuationRequestId, {
+      selectionContext: context,
+      factorKey,
+      rationaleAr: text || null,
+    });
+    setSaving(false);
+    if (!res.ok) {
+      showToast(res.message ?? "تعذّر حفظ مبرر التسوية", "error");
+    }
+    await reload({ silent: true, scope: "derived" });
+  }
+
+  /** ق-8-1: تخصيص مبرر لمقارن بعينه — يكتب سطر التسوية لذلك المقارن فقط. */
+  async function saveLineRationaleOverride(
+    selectionId: string,
+    factorKey: string,
+    rawText: string,
+    context: string = MARKET_CONTEXT,
+  ) {
+    const config = apiConfig();
+    if (!config || !valuationRequestId || adjustmentsLocked) return;
+    const text = rawText.trim();
+    if (text.length > 0 && text.length < JUSTIFICATION_MIN_LENGTH) {
+      showToast(
+        `المبرر أقصر من الحد الأدنى (${JUSTIFICATION_MIN_LENGTH} أحرف) — اكتب مبرراً جوهرياً (ق-8)`,
+        "error",
+      );
+      return;
+    }
+    const item = adoptedFor(context).find((i) => i.id === selectionId);
+    if (!item) return;
+    const rawLine = item.market?.adjustmentLines?.find(
+      (l) => l.factorKey === factorKey,
+    );
+    const lines = ensureLinesForSave(
+      item,
+      factorKey,
+      linePercent(item, factorKey),
+      factorRowsFor(context),
+    ).map((l, i) => ({
+      ...lineForSave(item, l, i),
+      // كتابة التخصيص وحدها لا تحوّل «المقترح» إلى إدخال يدوي بنسبة مخزّنة.
+      percent:
+        l.factorKey === factorKey && rawLine?.isSuggestedValue
+          ? 0
+          : lineForSave(item, l, i).percent,
+      rationale: l.factorKey === factorKey ? text : l.rationale,
+    }));
+    setSaving(true);
+    const res = await saveValuationComparableMarket(
+      config,
+      valuationRequestId,
+      item.id,
+      marketSaveBody(item, lines),
     );
     setSaving(false);
-    const failed = results.find((r) => !r.ok);
-    if (failed && !failed.ok) {
-      showToast(failed.message ?? "تعذّر حفظ مبرر التسوية", "error");
+    if (!res.ok) {
+      showToast(res.message ?? "تعذّر حفظ تخصيص المبرر", "error");
     }
     await reload({ silent: true, scope: "derived" });
   }
@@ -1369,6 +1406,7 @@ export function ValuationWorkShell({
     saveMatrixCell,
     saveWeight,
     saveFactorRationale,
+    saveLineRationaleOverride,
     toggleFactorIncluded,
     changeAdjustmentBasis,
     resetWeights,
@@ -1412,6 +1450,28 @@ export function ValuationWorkShell({
       LAND_WITHIN_COST,
     );
   }, []);
+  const onSaveLineRationaleMarket = useCallback(
+    (selectionId: string, factorKey: string, text: string) => {
+      void matrixOpsRef.current.saveLineRationaleOverride(
+        selectionId,
+        factorKey,
+        text,
+        MARKET_CONTEXT,
+      );
+    },
+    [],
+  );
+  const onSaveLineRationaleLand = useCallback(
+    (selectionId: string, factorKey: string, text: string) => {
+      void matrixOpsRef.current.saveLineRationaleOverride(
+        selectionId,
+        factorKey,
+        text,
+        LAND_WITHIN_COST,
+      );
+    },
+    [],
+  );
   const onToggleIncludedStable = useCallback(
     (item: ValuationComparableSelectionDto, factorKey: string) => {
       void matrixOpsRef.current.toggleFactorIncluded(item, factorKey);
@@ -1543,6 +1603,7 @@ export function ValuationWorkShell({
             onSaveCell={onSaveCellStable}
             onSaveWeight={onSaveWeightStable}
             onSaveRationale={onSaveRationaleMarket}
+            onSaveLineRationale={onSaveLineRationaleMarket}
             onToggleIncluded={onToggleIncludedStable}
             onChangeBasis={onChangeBasisStable}
             onResetWeights={onResetWeightsMarket}
@@ -1738,6 +1799,7 @@ export function ValuationWorkShell({
             onSaveCell={onSaveCellStable}
             onSaveWeight={onSaveWeightStable}
             onSaveRationale={onSaveRationaleLand}
+            onSaveLineRationale={onSaveLineRationaleLand}
             onToggleIncluded={onToggleIncludedStable}
             onChangeBasis={onChangeBasisStable}
             onResetWeights={onResetWeightsLand}

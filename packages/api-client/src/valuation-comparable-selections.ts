@@ -86,7 +86,16 @@ export type ValuationComparableSelectionListDto = {
   analysisNotes?: string | null;
   /** subjSpec: أوصاف العقار محل التقييم لكل عامل اختلاف. */
   subjectSpecs?: Record<string, string>;
+  /** ق-8-1: مبررات على مستوى العامل — سطر المقارن يحمل التخصيص فقط. */
+  factorRationales?: ValuationAdjustmentFactorRationaleDto[];
   items: ValuationComparableSelectionDto[];
+};
+
+/** ق-8-1: مبرر عامل التسوية الواحد (يغطي كل المقارنات). */
+export type ValuationAdjustmentFactorRationaleDto = {
+  selectionContext: string;
+  factorKey: string;
+  rationaleAr: string;
 };
 
 export type SaveValuationMarketApproachRequest = {
@@ -665,6 +674,47 @@ export async function saveValuationComparableMarket(
     return {
       ok: true,
       data: await parseJson<ValuationComparableSelectionDto>(res),
+    };
+  } catch {
+    return { ok: false, kind: "network" };
+  }
+}
+
+/** ق-8-1: حفظ/مسح مبرر عامل التسوية الواحد — فارغ يمسح؛ الحد الأدنى ١٠ أحرف (ق-8-2). */
+export async function saveAdjustmentFactorRationale(
+  config: ValuationSelectionsApiConfig,
+  valuationRequestId: string,
+  body: { selectionContext: string; factorKey: string; rationaleAr: string | null },
+): Promise<Result<ValuationAdjustmentFactorRationaleDto>> {
+  const base = config.baseUrl ?? getApiBase();
+  try {
+    const res = await fetch(
+      `${base}/api/valuation-requests/${valuationRequestId}/adjustment-factor-rationale`,
+      {
+        method: "PUT",
+        headers: headers(config.token),
+        body: JSON.stringify(body),
+      },
+    );
+    if (res.status === 401) return { ok: false, kind: "auth" };
+    if (res.status === 400) {
+      const payload = (await res.json().catch(() => null)) as {
+        errors?: Record<string, string>;
+        message?: string;
+      } | null;
+      return {
+        ok: false,
+        kind: "validation",
+        message: payload?.errors
+          ? Object.values(payload.errors)[0]
+          : (payload?.message ?? "المبرر غير صالح"),
+        errors: payload?.errors,
+      };
+    }
+    if (!res.ok) return { ok: false, kind: "server" };
+    return {
+      ok: true,
+      data: await parseJson<ValuationAdjustmentFactorRationaleDto>(res),
     };
   } catch {
     return { ok: false, kind: "network" };

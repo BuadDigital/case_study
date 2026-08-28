@@ -143,6 +143,23 @@ public static class ValuationModel
             e.HasIndex(x => x.SelectionId);
         });
 
+        // ق-8-1: مبرر واحد على مستوى العامل يغطي كل المقارنات؛ سطر التسوية يحمل التخصيص فقط.
+        builder.Entity<ValuationAdjustmentFactorRationale>(e =>
+        {
+            e.ToTable("ValuationAdjustmentFactorRationales", DatabaseSchemas.Valuation);
+            e.Property(x => x.SelectionContext).HasMaxLength(32).IsRequired();
+            e.Property(x => x.FactorKey).HasMaxLength(32).IsRequired();
+            e.Property(x => x.RationaleAr).HasMaxLength(2000).IsRequired();
+            e.Property(x => x.UpdatedByUserId).HasMaxLength(128);
+            e.HasIndex(x => new { x.ValuationRequestId, x.SelectionContext, x.FactorKey })
+                .IsUnique()
+                .HasDatabaseName("IX_ValuationAdjFactorRationales_Request_Context_Factor");
+            e.HasOne<ValuationRequest>()
+                .WithMany()
+                .HasForeignKey(x => x.ValuationRequestId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
         builder.Entity<ValuationMarketApproach>(e =>
         {
             e.ToTable("ValuationMarketApproaches", DatabaseSchemas.Valuation);

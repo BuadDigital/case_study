@@ -69,7 +69,101 @@ public sealed class ValuationComparableSelectionService(
         var today = DateOnly.FromDateTime(_time.UtcNow());
         var header = await db.ValuationMarketApproaches.AsNoTracking()
             .FirstOrDefaultAsync(x => x.ValuationRequestId == valuationRequestId, cancellationToken);
-        return BuildList(request, rows, comps, today, header, context);
+        var factorRationales = await db.ValuationAdjustmentFactorRationales.AsNoTracking()
+            .Where(x => x.ValuationRequestId == valuationRequestId && x.SelectionContext == context)
+            .OrderBy(x => x.FactorKey)
+            .ToListAsync(cancellationToken);
+        return BuildList(request, rows, comps, today, header, context, factorRationales);
+    }
+
+ /// <summary>
+ /// ق-8-1: حفظ مبرر عامل التسوية الواحد (يغطي كل المقارنات) — فارغ يمسح المبرر،
+ /// وغير الفارغ يخضع للحد الأدنى (ق-8-2).
+ /// </summary>
+    public async Task<(ValuationAdjustmentFactorRationaleDto? Result, Dictionary<string, string>? Errors)>
+        SaveFactorRationaleAsync(
+            Guid valuationRequestId,
+            SaveAdjustmentFactorRationaleRequest request,
+            string? updatedByUserId,
+            CancellationToken cancellationToken = default)
+    {
+        var vr = await db.ValuationRequests
+            .FirstOrDefaultAsync(x => x.Id == valuationRequestId, cancellationToken);
+        if (vr is null)
+            return (null, new Dictionary<string, string> { ["_"] = "طلب التقييم غير موجود" });
+        if (vr.Status == ValuationRequestStatus.Done)
+            return (null, new Dictionary<string, string> { ["_"] = "طلب التقييم مكتمل — لا يمكن تعديل المبررات" });
+
+        var approachSettings = await db.ValuationApproachSettings.AsNoTracking()
+            .FirstOrDefaultAsync(x => x.ValuationRequestId == valuationRequestId, cancellationToken);
+        if (approachSettings is { AdjustmentsEditUnlocked: false })
+        {
+            return (null, new Dictionary<string, string>
+            {
+                ["_"] = "صلاحية تحرير التسويات معطَّلة — تُفعَّل من إعدادات التقييم (شاشة 1)",
+            });
+        }
+
+        var context = ComparableSelectionContexts.Normalize(request.SelectionContext);
+        var factorKey = request.FactorKey.Trim();
+        if (factorKey.Length == 0)
+            return (null, new Dictionary<string, string> { ["factorKey"] = "مفتاح العامل مطلوب" });
+
+        var rationale = request.RationaleAr?.Trim() ?? "";
+        if (JustificationRules.IsTooShort(rationale))
+        {
+            return (null, new Dictionary<string, string>
+            {
+                ["rationaleAr"] = JustificationRules.TooShortMessageAr("مبرر التسوية"),
+            });
+        }
+
+        var row = await db.ValuationAdjustmentFactorRationales
+            .FirstOrDefaultAsync(
+                x => x.ValuationRequestId == valuationRequestId
+                     && x.SelectionContext == context
+                     && x.FactorKey == factorKey,
+                cancellationToken);
+
+        if (rationale.Length == 0)
+        {
+            if (row is not null)
+            {
+                db.ValuationAdjustmentFactorRationales.Remove(row);
+                await db.SaveChangesAsync(cancellationToken);
+            }
+
+            return (new ValuationAdjustmentFactorRationaleDto
+            {
+                SelectionContext = context,
+                FactorKey = factorKey,
+                RationaleAr = "",
+            }, null);
+        }
+
+        if (row is null)
+        {
+            row = new ValuationAdjustmentFactorRationale
+            {
+                Id = Guid.NewGuid(),
+                ValuationRequestId = valuationRequestId,
+                SelectionContext = context,
+                FactorKey = factorKey,
+            };
+            db.ValuationAdjustmentFactorRationales.Add(row);
+        }
+
+        row.RationaleAr = rationale;
+        row.UpdatedAtUtc = _time.UtcNow();
+        row.UpdatedByUserId = updatedByUserId;
+        await db.SaveChangesAsync(cancellationToken);
+
+        return (new ValuationAdjustmentFactorRationaleDto
+        {
+            SelectionContext = context,
+            FactorKey = factorKey,
+            RationaleAr = rationale,
+        }, null);
     }
 
     public async Task<(ValuationComparableSelectionListDto? Result, Dictionary<string, string>? Errors)>
@@ -309,6 +403,11 @@ public sealed class ValuationComparableSelectionService(
 
             if (line.Percent is < -100m or > 100m)
                 errors[$"adjustmentLines[{i}].percent"] = "النسبة يجب أن تكون بين -100 و 100";
+
+            // ق-8-2: التخصيص الفارغ يرث مبرر العامل، لكن الصوري (أقصر من الحد) مرفوض.
+            if (JustificationRules.IsTooShort(line.Rationale))
+                errors[$"adjustmentLines[{i}].rationale"] =
+                    JustificationRules.TooShortMessageAr("مبرر التسوية للمقارن");
         }
 
         if (request.WeightIsManual)
@@ -317,6 +416,10 @@ public sealed class ValuationComparableSelectionService(
                 errors["weightPct"] = "الوزن اليدوي مطلوب";
             else if (request.WeightPct is < 0m or > 100m)
                 errors["weightPct"] = "الوزن يجب أن يكون بين 0 و 100";
+
+            if (JustificationRules.IsTooShort(request.WeightOverrideRationale))
+                errors["weightOverrideRationale"] =
+                    JustificationRules.TooShortMessageAr("مبرر الوزن اليدوي");
         }
 
         if (request.PriceOverrideSar is < 0m)
@@ -440,7 +543,8 @@ public sealed class ValuationComparableSelectionService(
             DateOnly.FromDateTime(_time.UtcNow()),
             await db.ValuationMarketApproaches.AsNoTracking()
                 .FirstOrDefaultAsync(x => x.ValuationRequestId == row.ValuationRequestId, cancellationToken),
-            row.SelectionContext);
+            row.SelectionContext,
+            factorRationales: []);
         return list.Items.FirstOrDefault(i => i.Id == selectionId);
     }
 
@@ -509,7 +613,8 @@ public sealed class ValuationComparableSelectionService(
         IReadOnlyDictionary<Guid, ComparableProperty> comps,
         DateOnly valuationDate,
         ValuationMarketApproach? header,
-        string selectionContext)
+        string selectionContext,
+        IReadOnlyList<ValuationAdjustmentFactorRationale> factorRationales)
     {
         var adoptedRows = rows.Where(r => r.IsAdopted).ToList();
         var subjectAreaForSuggestion = header?.SubjectAreaSqm ?? 0m;
@@ -635,6 +740,14 @@ public sealed class ValuationComparableSelectionService(
             ValueRoundDecimals = roundDecimals,
             AnalysisNotes = header?.AnalysisNotes,
             SubjectSpecs = ParseSubjectSpecs(header?.SubjectSpecJson),
+            FactorRationales = factorRationales
+                .Select(r => new ValuationAdjustmentFactorRationaleDto
+                {
+                    SelectionContext = r.SelectionContext,
+                    FactorKey = r.FactorKey,
+                    RationaleAr = r.RationaleAr,
+                })
+                .ToList(),
             Items = items,
         };
     }

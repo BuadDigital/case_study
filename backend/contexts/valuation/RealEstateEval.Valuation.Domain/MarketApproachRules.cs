@@ -141,6 +141,15 @@ public static class MarketApproachRules
     }
 
  /// <summary>
+ /// ق-8-1: مبرر السطر «تخصيص لمقارن بعينه» — إن كان فارغاً يرث مبرر العامل.
+ /// </summary>
+    public static string EffectiveRationale(string? lineOverride, string? factorRationale)
+    {
+        var overrideText = lineOverride?.Trim() ?? "";
+        return overrideText.Length > 0 ? overrideText : factorRationale?.Trim() ?? "";
+    }
+
+ /// <summary>
  /// مواصفة النموذج التفاعلي: score = 1 / (|fSum| + 0.5) ثم توزيع ٢٠ وحدة × ٥٪
  /// بطريقة الباقي الأكبر — فالمجموع ١٠٠٪ بالبناء والأوزان مضاعفات ٥٪.
  /// Input must be difference-factor sums (areaAdj + Σ factors), not sequential.

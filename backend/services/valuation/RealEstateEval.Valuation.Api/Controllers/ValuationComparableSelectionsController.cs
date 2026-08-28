@@ -70,6 +70,24 @@ public class ValuationComparableSelectionsController : ControllerBase
         return Ok(result);
     }
 
+    /// <summary>ق-8-1: مبرر واحد على مستوى العامل يغطي كل المقارنات — حفظ/مسح.</summary>
+    [HttpPut("~/api/valuation-requests/{valuationRequestId:guid}/adjustment-factor-rationale")]
+    [Authorize(Policy = CapabilityPolicyNames.SubmitValuationReport)]
+    public async Task<ActionResult<ValuationAdjustmentFactorRationaleDto>> SaveFactorRationale(
+        Guid valuationRequestId,
+        [FromBody] SaveAdjustmentFactorRationaleRequest request,
+        CancellationToken ct)
+    {
+        var (result, errors) = await _selections.SaveFactorRationaleAsync(
+            valuationRequestId,
+            request,
+            ActorClaims.Id(User),
+            ct);
+        if (errors is not null)
+            return this.FieldErrorsProblem(errors);
+        return Ok(result);
+    }
+
     [HttpPut("~/api/valuation-requests/{valuationRequestId:guid}/market-approach")]
     [Authorize(Policy = CapabilityPolicyNames.SubmitValuationReport)]
     public async Task<ActionResult<ValuationComparableSelectionListDto>> SaveMarketApproach(

@@ -363,8 +363,9 @@ public static class ValuationMethodologyAlertRules
         if (!resolutions.TryGetValue(code, out var r))
             return false;
 
+        // ق-8-2: المبرر الصوري (أقصر من الحد الأدنى) لا يفك تنبيهاً «بمبرر».
         if (ValuationMethodologyAlertSeverity.RequiresRationale(number))
-            return !string.IsNullOrWhiteSpace(r.OverrideRationale);
+            return JustificationRules.IsAcceptable(r.OverrideRationale);
 
         if (ValuationMethodologyAlertSeverity.RequiresAcknowledgement(number))
             return r.Acknowledged;
