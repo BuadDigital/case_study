@@ -16,12 +16,8 @@ public sealed class WorkflowTaskLifecycleCommands : IWorkflowTaskLifecycleComman
 {
     private const WorkflowTaskKind CaseStudyPropertyKind = WorkflowTaskKind.CaseStudyProperty;
 
-    private static readonly HashSet<string> SectionSupervisorOrAboveRoles = new(StringComparer.OrdinalIgnoreCase)
-    {
-        "section-supervisor",
-        "general-manager",
-        "cdo",
-    };
+    private static readonly HashSet<string> SectionSupervisorOrAboveRoles =
+        new(StaffRoleIds.SectionSupervisorOrAbove, StringComparer.OrdinalIgnoreCase);
 
     private readonly ICaseStudyRepository _db;
     private readonly IInspectorFeeService _inspectorFees;

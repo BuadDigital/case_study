@@ -50,18 +50,7 @@ public sealed class PasswordAuthenticationService(
         return await sessions.IssueForUserIdAsync(user.Id, cancellationToken);
     }
 
- /// <summary>Accepts +9665…, 9665…, 05…, or bare 5XXXXXXXX.</summary>
-    private static string? NormalizeLoginMobile(string raw)
-    {
-        var digits = Regex.Replace(raw, @"\D", "");
-        if (digits.StartsWith("00966", StringComparison.Ordinal))
-            digits = digits[2..];
-        if (digits.StartsWith("966", StringComparison.Ordinal))
-            digits = digits[3..];
-        if (digits.StartsWith('0'))
-            digits = digits[1..];
-        if (digits.Length != 9 || digits[0] != '5')
-            return null;
-        return $"+966{digits}";
-    }
+ /// <summary>العقد الموحّد مع التسجيل — SaudiMobiles.Normalize (ق٣).</summary>
+    private static string? NormalizeLoginMobile(string raw) =>
+        SaudiMobiles.Normalize(raw);
 }

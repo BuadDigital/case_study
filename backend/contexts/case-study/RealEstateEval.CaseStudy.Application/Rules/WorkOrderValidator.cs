@@ -1,6 +1,5 @@
 using RealEstateEval.Application.Contracts;
 using RealEstateEval.Domain;
-using System.Net.Mail;
 
 namespace RealEstateEval.CaseStudy.Application.Rules;
 
@@ -299,16 +298,6 @@ public static class WorkOrderValidator
             errors["assignmentSpecialistEmail"] = "صيغة الإيميل غير صالحة";
     }
 
-    private static bool IsValidEmail(string email)
-    {
-        try
-        {
-            _ = new MailAddress(email.Trim());
-            return true;
-        }
-        catch
-        {
-            return false;
-        }
-    }
+    // التحقق الموحّد — كان MailAddress هنا وregex في سياق الهوية بقبولين مختلفين.
+    private static bool IsValidEmail(string email) => Texts.IsValidEmail(email.Trim());
 }

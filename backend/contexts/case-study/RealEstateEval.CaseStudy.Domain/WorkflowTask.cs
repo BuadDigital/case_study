@@ -21,7 +21,7 @@ public class WorkflowTask
     public int PropertyOrdinal { get; private set; } = 1;
     public string Title { get; private set; } = "";
     public WorkflowTaskPhase Phase { get; private set; } = WorkflowTaskPhase.Enfath;
-    public string AssigneeRole { get; private set; } = "case-specialist";
+    public string AssigneeRole { get; private set; } = StaffRoleIds.CaseSpecialist;
     public string AssigneeName { get; private set; } = "أخصائي دراسة الحالة";
     public string? AssigneeId { get; private set; }
     public Guid? ParentTaskId { get; private set; }
@@ -50,7 +50,7 @@ public class WorkflowTask
         string title = "",
         WorkflowTaskPhase phase = WorkflowTaskPhase.Enfath,
         WorkflowTaskStatus status = WorkflowTaskStatus.Open,
-        string assigneeRole = "case-specialist",
+        string assigneeRole = StaffRoleIds.CaseSpecialist,
         string assigneeName = "أخصائي دراسة الحالة",
         Guid? id = null,
         Guid? propertyId = null,

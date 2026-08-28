@@ -12,4 +12,10 @@ public static class Texts
  /// <summary>الأرقام فقط — لتطبيع أرقام الجوال والمعرفات قبل المقارنة.</summary>
     public static string DigitsOnly(string value) =>
         new(value.Where(char.IsDigit).ToArray());
+
+ /// <summary>تحقق البريد الموحّد — كان MailAddress في سياقٍ وregex في آخر بقبولين مختلفين.</summary>
+    public static bool IsValidEmail(string email) =>
+        System.Text.RegularExpressions.Regex.IsMatch(
+            email,
+            @"^[^@\s]+@[^@\s]+\.[^@\s]+$");
 }

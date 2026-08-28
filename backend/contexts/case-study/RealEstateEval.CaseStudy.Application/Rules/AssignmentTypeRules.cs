@@ -39,16 +39,6 @@ public static class AssignmentTypeRules
             ? Math.Max(1, privateSectorBusinessDays)
             : Math.Max(1, defaultBusinessDays);
 
-    public static string PrimaryLabel(AssignmentType type) =>
-        type == AssignmentType.PrivateSector ? "خاص" : "تنفيذ";
-
-    public static string SecondaryLabel(AssignmentType type) => type switch
-    {
-        AssignmentType.Estates => "تركات",
-        AssignmentType.PrivateSector => "خاص",
-        _ => "تنفيذ",
-    };
-
-    public static string CompositeTag(AssignmentType type) =>
-        $"{PrimaryLabel(type)} / {SecondaryLabel(type)}";
+    // PrimaryLabel/SecondaryLabel/CompositeTag حُذفت: صفر مستدعين، وكانت تستخدم
+    // «خاص» بينما التسمية القانونية «قطاع خاص» في AssignmentTypeLabels.
 }

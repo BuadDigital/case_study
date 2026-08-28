@@ -16,9 +16,9 @@ public sealed class OperationsTaskNotifier
 {
     private static readonly string[] StakeholderRoles =
     [
-        "section-supervisor",
+        StaffRoleIds.SectionSupervisor,
  // general managers often oversee case study — keep in ops lifecycle loop
-        "general-manager",
+        StaffRoleIds.GeneralManager,
     ];
 
     private readonly OperationsDbContext _ops;

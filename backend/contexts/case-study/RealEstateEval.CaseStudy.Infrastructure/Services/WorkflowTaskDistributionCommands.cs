@@ -18,12 +18,8 @@ public sealed class WorkflowTaskDistributionCommands : IWorkflowTaskDistribution
 {
     private const WorkflowTaskKind CaseStudyPropertyKind = WorkflowTaskKind.CaseStudyProperty;
 
-    private static readonly HashSet<string> SectionSupervisorOrAboveRoles = new(StringComparer.OrdinalIgnoreCase)
-    {
-        "section-supervisor",
-        "general-manager",
-        "cdo",
-    };
+    private static readonly HashSet<string> SectionSupervisorOrAboveRoles =
+        new(StaffRoleIds.SectionSupervisorOrAbove, StringComparer.OrdinalIgnoreCase);
 
     private readonly ICaseStudyRepository _caseStudy;
     private readonly IFailureLookup _failureLookup;
@@ -168,7 +164,7 @@ public sealed class WorkflowTaskDistributionCommands : IWorkflowTaskDistribution
         children.Add(WorkflowTaskPhaseRules.SpawnChild(
             parent,
             WorkflowTaskKind.FieldInspection,
-            "field-inspector",
+            StaffRoleIds.FieldInspector,
             WorkflowTaskPhaseRules.ResolveName(
                 names,
                 WorkflowTaskKind.FieldInspection,
@@ -179,7 +175,7 @@ public sealed class WorkflowTaskDistributionCommands : IWorkflowTaskDistribution
         children.Add(WorkflowTaskPhaseRules.SpawnChild(
             parent,
             WorkflowTaskKind.PropertyAppraisal,
-            "real-estate-appraiser",
+            StaffRoleIds.RealEstateAppraiser,
             WorkflowTaskPhaseRules.ResolveName(
                 names,
                 WorkflowTaskKind.PropertyAppraisal,
@@ -193,7 +189,7 @@ public sealed class WorkflowTaskDistributionCommands : IWorkflowTaskDistribution
             children.Add(WorkflowTaskPhaseRules.SpawnChild(
                 parent,
                 WorkflowTaskKind.EngineeringSurvey,
-                "engineering-office",
+                StaffRoleIds.EngineeringOffice,
                 WorkflowTaskPhaseRules.ResolveName(
                     names,
                     WorkflowTaskKind.EngineeringSurvey,
@@ -209,14 +205,14 @@ public sealed class WorkflowTaskDistributionCommands : IWorkflowTaskDistribution
                 names.TryGetValue(WorkflowTaskKindValues.CaseStudyProperty, out var named) &&
                 !string.IsNullOrWhiteSpace(named)
                     ? named.Trim()
-                    : names.TryGetValue("case-specialist", out var named2) &&
+                    : names.TryGetValue(StaffRoleIds.CaseSpecialist, out var named2) &&
                       !string.IsNullOrWhiteSpace(named2)
                         ? named2.Trim()
                         : "أخصائي دراسة حالة";
             parent.Assign(
                 distribution.CaseSpecialistId,
                 specialistName,
-                "case-specialist",
+                StaffRoleIds.CaseSpecialist,
                 now);
         }
 
@@ -346,11 +342,11 @@ public sealed class WorkflowTaskDistributionCommands : IWorkflowTaskDistribution
         var mappings =
             new (bool Enabled, WorkflowTaskKind Kind, string Role, string AssigneeId, string Fallback)[]
         {
-            (true, WorkflowTaskKind.FieldInspection, "field-inspector",
+            (true, WorkflowTaskKind.FieldInspection, StaffRoleIds.FieldInspector,
                 distribution.InspectorId, "معاين ميداني"),
-            (true, WorkflowTaskKind.PropertyAppraisal, "real-estate-appraiser",
+            (true, WorkflowTaskKind.PropertyAppraisal, StaffRoleIds.RealEstateAppraiser,
                 distribution.ValuatorId, "مقيم عقاري"),
-            (distribution.EngineeringOffice, WorkflowTaskKind.EngineeringSurvey, "engineering-office",
+            (distribution.EngineeringOffice, WorkflowTaskKind.EngineeringSurvey, StaffRoleIds.EngineeringOffice,
                 distribution.EngineeringOfficeId, "مكتب هندسي"),
         };
 
@@ -369,11 +365,11 @@ public sealed class WorkflowTaskDistributionCommands : IWorkflowTaskDistribution
                     names.TryGetValue(WorkflowTaskKindValues.CaseStudyProperty, out var named) &&
                     !string.IsNullOrWhiteSpace(named)
                         ? named.Trim()
-                        : names.TryGetValue("case-specialist", out var named2) &&
+                        : names.TryGetValue(StaffRoleIds.CaseSpecialist, out var named2) &&
                           !string.IsNullOrWhiteSpace(named2)
                             ? named2.Trim()
                             : "أخصائي دراسة حالة";
-                parent.Assign(newAssigneeId, specialistName, "case-specialist", now);
+                parent.Assign(newAssigneeId, specialistName, StaffRoleIds.CaseSpecialist, now);
                 if (parent.PropertyId is Guid propertyId)
                 {
                     var detail = string.IsNullOrWhiteSpace(actorName)

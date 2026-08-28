@@ -177,7 +177,7 @@ public sealed class CaseStudyFailureCommands : ICaseStudyFailureCommands
             {
                 Phase = WorkflowTaskPhaseValues.Obstruction,
                 ObstructionPriorPhase = priorPhase,
-                AssigneeRole = "section-supervisor",
+                AssigneeRole = StaffRoleIds.SectionSupervisor,
                 AssigneeName = "مشرف دراسة الحالة",
                 Status = WorkflowTaskStatusValues.Blocked,
                 ObstructionReason = request.Reason.Trim(),
@@ -201,7 +201,7 @@ public sealed class CaseStudyFailureCommands : ICaseStudyFailureCommands
             new PatchWorkflowTaskRequest
             {
                 Phase = resumePhase.ToDbValue(),
-                AssigneeRole = "case-specialist",
+                AssigneeRole = StaffRoleIds.CaseSpecialist,
                 AssigneeName = "أخصائي دراسة الحالة",
                 Status = WorkflowTaskStatusValues.Open,
                 ObstructionReason = "",

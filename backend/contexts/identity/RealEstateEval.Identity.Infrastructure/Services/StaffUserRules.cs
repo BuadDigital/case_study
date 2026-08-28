@@ -27,8 +27,8 @@ internal static class StaffUserRules
             : null;
     }
 
-    internal static Dictionary<string, string> FormError(string message) =>
-        new(StringComparer.Ordinal) { ["_form"] = message };
+    internal static Dictionary<string, string> FormError(string message, string field = "_form") =>
+        new(StringComparer.Ordinal) { [field] = message };
 
     internal static string? ResolveOptional(string? requested, string? current) =>
         requested is null
@@ -47,8 +47,8 @@ internal static class StaffUserRules
             errors["email"] = "صيغة البريد الإلكتروني غير صحيحة.";
         if (string.IsNullOrWhiteSpace(request.Mobile))
             errors["mobile"] = "رقم الجوال مطلوب.";
-        else if (!Regex.IsMatch(NormalizeMobile(request.Mobile), @"^\+[1-9]\d{8,14}$"))
-            errors["mobile"] = "صيغة رقم الجوال غير صحيحة.";
+        else if (NormalizeMobile(request.Mobile) is null)
+            errors["mobile"] = "صيغة رقم الجوال السعودي غير صحيحة (05XXXXXXXX).";
         if (string.IsNullOrWhiteSpace(request.City))
             errors["city"] = "المدينة مطلوبة.";
         if (string.IsNullOrWhiteSpace(request.NationalId))
@@ -75,21 +75,11 @@ internal static class StaffUserRules
         return errors;
     }
 
-    private static bool IsValidEmail(string email) => Regex.IsMatch(email, @"^[^@\s]+@[^@\s]+\.[^@\s]+$");
+    private static bool IsValidEmail(string email) => Texts.IsValidEmail(email);
 
-    internal static string NormalizeMobile(string mobile)
-    {
-        var digits = Regex.Replace(mobile, @"\D", "");
-        if (digits.StartsWith("00966", StringComparison.Ordinal))
-            digits = digits[2..];
-        if (digits.StartsWith("966", StringComparison.Ordinal))
-            return $"+{digits}";
-        if (digits.StartsWith("05", StringComparison.Ordinal) && digits.Length == 10)
-            return $"+966{digits[1..]}";
-        if (digits.StartsWith('5') && digits.Length == 9)
-            return $"+966{digits}";
-        return $"+{digits}";
-    }
+ // ق٣: التطبيع السعودي الصارم الموحّد مع الدخول — SaudiMobiles.Normalize.
+    internal static string? NormalizeMobile(string mobile) =>
+        SaudiMobiles.Normalize(mobile);
 
     internal static string DeriveUserNameFromEmail(string normalizedEmail)
     {

@@ -99,7 +99,8 @@ public partial class UserRegistrationService : IUserRegistrationService
         var jobTitle = PrototypeRoleResolver.JobTitleForRoleId(roleId)!;
         var defaults = StaffRoleDefaults.For(roleId);
         var normalizedEmail = request.Email.Trim().ToLowerInvariant();
-        var normalizedMobile = StaffUserRules.NormalizeMobile(request.Mobile);
+        // التحقق أعلاه ضمن ValidateCreateStaffRequest يضمن جوالاً سعودياً صالحاً.
+        var normalizedMobile = StaffUserRules.NormalizeMobile(request.Mobile)!;
         var displayName = request.DisplayName.Trim();
         var nationalId = request.NationalId.Trim();
 
@@ -267,6 +268,10 @@ public partial class UserRegistrationService : IUserRegistrationService
         var mobile = request.Mobile is null
             ? user.PhoneNumber
             : StaffUserRules.NormalizeMobile(request.Mobile);
+        // ق٣: جوال مُدخل بصيغة غير سعودية يُرفض — لا يُخزَّن رقم لا يمكن الدخول به.
+        if (request.Mobile is not null && mobile is null)
+            return (null, StaffUserRules.FormError(
+                "صيغة رقم الجوال السعودي غير صحيحة (05XXXXXXXX).", "mobile"));
         var city = request.City is null ? profile.City : request.City.Trim();
         var nationalId = request.NationalId is null
             ? profile.NationalId
