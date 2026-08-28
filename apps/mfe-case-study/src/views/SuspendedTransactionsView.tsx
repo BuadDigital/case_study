@@ -30,13 +30,14 @@ import {
   queueTableWrapClassName,
 } from "@platform/ui-kit";
 import { getAuthSession } from "@platform/auth-client";
+import { useTickingMinute } from "@platform/app-shared/hooks/use-ticking-now";
 import { usePrototype } from "@platform/app-shared/contexts/PrototypeContext";
 import { useStaffUsersQuery } from "@settings/mfe/query/settings-queries";
 import { PARTY_TASK_PAGES } from "@platform/app-shared/prototype/party-task-pages";
 import { isSuperAdmin } from "@platform/app-shared/prototype/prototype-role-access";
 import type { RoleId } from "@platform/types";
 import { PoNumber } from "../components/ui/PoNumber";
-import { RemainingTimeCell } from "../components/ui/RemainingTimeCell";
+import { TickingRemainingTimeCell } from "../components/ui/RemainingTimeCell";
 import { RowMoreMenu } from "../components/ui/RowMoreMenu";
 import type { RowMoreMenuItem } from "../components/ui/RowMoreMenu";
 import { InteractiveDeedCell } from "../components/ui/InteractiveDeedCell";
@@ -50,7 +51,7 @@ import {
   PROPERTY_IDENTIFIER_COLUMN_LABEL,
   type PoIntakeRecord,
 } from "../lib/prototype/po-intake-data";
-import { resolveRemainingTime, formatRemainingDuration } from "../lib/prototype/my-task-row";
+import { remainingTimerTick, resolveRemainingTime, formatRemainingDuration } from "../lib/prototype/my-task-row";
 import { poPropertiesPath, poPropertyPath } from "../lib/po-routes";
 import {
   propertySuspensionKey,
@@ -116,7 +117,10 @@ export function SuspendedTransactionsView() {
   const { data: tasks = [] } = useWorkflowTasksQuery();
   const { data: staffResult } = useStaffUsersQuery();
   const staffUsers = staffResult?.users ?? [];
-  const [now, setNow] = useState(() => new Date());
+  // دقّة الدقيقة تكفي للمؤشرات والفرز — العدّاد الثانوي يعيش في خلية المؤقت
+  // نفسها، فلا يعاد بناء الصفوف كل ثانية (rerender-defer-reads).
+  const nowMinuteMs = useTickingMinute();
+  const now = useMemo(() => new Date(nowMinuteMs), [nowMinuteMs]);
   const [isOpening, startOpen] = useTransition();
   const [openingId, setOpeningId] = useState<string | null>(null);
 
@@ -132,11 +136,6 @@ export function SuspendedTransactionsView() {
     const t = window.setTimeout(() => setOpeningId(null), 400);
     return () => window.clearTimeout(t);
   }, [isOpening, openingId]);
-
-  useEffect(() => {
-    const tick = setInterval(() => setNow(new Date()), 1000);
-    return () => clearInterval(tick);
-  }, []);
 
   const poByNumber = useMemo(() => {
     const map = new Map<string, PoIntakeRecord>();
@@ -218,6 +217,10 @@ export function SuspendedTransactionsView() {
             ? overdue
               ? "متأخرة"
               : `متبقي ${timer.remainingDuration}`
+            : undefined,
+        timerTick:
+          timer.remainingDuration !== "—"
+            ? remainingTimerTick(record?.dueDateAt ?? "")
             : undefined,
         timerOverdue: overdue,
         moreItems: buildSuspendedRowMoreItems(item, router),
@@ -374,10 +377,6 @@ export function SuspendedTransactionsView() {
                     ) : (
                       sortedItems.map((item) => {
                         const record = poByNumber.get(item.poNumber.trim());
-                        const remaining = resolveRemainingTime(
-                          record?.dueDateAt ?? "",
-                          now,
-                        );
                         const assignmentType =
                           record?.assignmentType?.trim() || "—";
                         const assignmentSpecialist =
@@ -417,7 +416,9 @@ export function SuspendedTransactionsView() {
                               {assignmentSpecialist}
                             </Td>
                             <Td>
-                              <RemainingTimeCell state={remaining} />
+                              <TickingRemainingTimeCell
+                                dueIso={record?.dueDateAt ?? ""}
+                              />
                             </Td>
                             <TdAction>
                               <RowMoreMenu items={moreItems} />

@@ -3,7 +3,7 @@
 import { InlineLoadingSkeleton, Note } from "@platform/ui-kit";
 import { useMemo } from "react";
 import { CaseStudyForm } from "./CaseStudyForm";
-import { partyIdForRoleId } from "@settings/mfe";
+import { partyIdForRoleId } from "@settings/mfe/lib/prototype/case-study-info-roles-data";
 import { findPropertyForTask } from "../../lib/prototype/my-task-row";
 import type { PartyTaskPageDef } from "@platform/app-shared/prototype/party-task-pages";
 import type { WorkflowTask } from "../../lib/prototype/tasks-storage";

@@ -459,19 +459,25 @@ export function FinanceMyTasks() {
         </div>
       )}
 
-      <FinanceVendorInvoiceMatchModal
-        open={Boolean(matchStatementId)}
-        statement={matchStatement}
-        onClose={closeMatchModal}
-        onDone={invalidateBilling}
-        onMatched={goToCostsAfterMatch}
-      />
-      <FinanceDisbursementCloseModal
-        open={Boolean(closeStatementId)}
-        statement={closeStatement}
-        onClose={closeCloseModal}
-        onDone={invalidateBilling}
-      />
+      {/* تركيب مشروط — الركوب الدائم كان يجلب حزمتي النافذتين عند فتح الشاشة
+          رغم التقسيم (bundle-conditional). */}
+      {matchStatementId ? (
+        <FinanceVendorInvoiceMatchModal
+          open={Boolean(matchStatementId)}
+          statement={matchStatement}
+          onClose={closeMatchModal}
+          onDone={invalidateBilling}
+          onMatched={goToCostsAfterMatch}
+        />
+      ) : null}
+      {closeStatementId ? (
+        <FinanceDisbursementCloseModal
+          open={Boolean(closeStatementId)}
+          statement={closeStatement}
+          onClose={closeCloseModal}
+          onDone={invalidateBilling}
+        />
+      ) : null}
     </div>
   );
 }

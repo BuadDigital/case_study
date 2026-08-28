@@ -2,7 +2,8 @@
 
 import { useMemo } from "react";
 import { usePrototype } from "@platform/app-shared/contexts/PrototypeContext";
-import { countOpenFailuresForPartyRole, type FailureRecord } from "@failures/mfe";
+import { countOpenFailuresForPartyRole } from "@failures/mfe/lib/failures-party-raiser-scope";
+import type { FailureRecord } from "@failures/mfe/lib/failures-types";
 import { useFailuresQuery } from "@/lib/query/prototype-queries";
 
 const EMPTY_FAILURES: FailureRecord[] = [];

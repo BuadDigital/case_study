@@ -2,124 +2,40 @@
 
 /** أجزاء شاشة مهام العمليات — مكوّنات ومساعدات على مستوى الوحدة، نُقلت حرفياً من الشاشة (SRP). */
 
-import { useCallback, useEffect, useMemo, useRef, useState, type RefObject } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
-import {
-  Input,
-  KpiBand,
-  KpiCell,
-  MobileKpiStatCards,
-  Note,
-  OperationalPanel,
-  OperationalToolbarPrimaryButton,
-  OperationalToolbarSearch,
-  OperationalToolbarSelect,
-  PageShell,
-  PanelSkeleton,
-  Select,
-  StatusPill,
-  Textarea,
-  cn,
-  useToast,
-  Spinner,
-} from "@platform/ui-kit";
-import { usePrototype } from "@platform/app-shared/contexts/PrototypeContext";
+import { type RefObject } from "react";
+import { Input, Note, Select, StatusPill, Textarea, cn, Spinner } from "@platform/ui-kit";
 import { pad2 } from "@platform/app-shared/format/date";
+import { useTickingNow } from "@platform/app-shared/hooks/use-ticking-now";
 import type { StaffUser } from "@platform/app-shared/prototype/constants";
 import { displayPersonName } from "@platform/app-shared/prototype/person-display-name";
-import { useStaffUsersQuery, useDistributionAssigneesQuery } from "@settings/mfe/query/settings-queries";
-import { usePoRecordsQuery } from "../query/case-study-queries";
 import { PROPERTY_IDENTIFIER_COLUMN_LABEL } from "../lib/prototype/po-intake-data";
-import { useOperationsTasksQuery } from "../query/operations-tasks-queries";
 import {
-  addOperationsTaskCommentRecord,
   isActiveOperationsTask,
-  isTerminalOperationsTask,
-  patchOperationsTaskRecord,
-  reassignOperationsTaskRecord,
-  remindOperationsTaskRecord,
   type OperationsTask,
 } from "../lib/prototype/operations-tasks-storage";
 import {
   OPERATIONS_TASK_PRIORITY_COLORS,
   OPERATIONS_TASK_PRIORITY_LABELS,
   OPERATIONS_TASK_REMIND_LABELS,
-  OPERATIONS_TASK_SCOPE_LABELS,
   OPERATIONS_TASK_STATUS_COLORS,
-  OPERATIONS_TASK_STATUS_LABELS,
   OPERATIONS_TASK_TYPE_ICON_PATHS,
   TASK_STEPPER_STEPS,
   formatTaskDueLabel,
-  isTerminalOperationsTaskStatus,
-  operationsTaskLinkLabel,
   operationsTaskPriorityLabel,
-  operationsTaskReceiptLabel,
-  operationsTaskScopeLabel,
   operationsTaskStatusLabel,
-  operationsTaskTypeLabel,
-  printOperationsTaskDelegationLetter,
   remindCountdownLabelForTask,
   taskCountdown,
   taskStepperIndex,
   taskUrgency,
 } from "../lib/prototype/operations-task-display";
-import { resolveSlaTimerRatio } from "../lib/prototype/my-task-row";
-import {
-  canManageOperationsTasks,
-  canRemindOperationsTasks,
-  operationsTasksUseAssigneeScope,
-} from "../lib/prototype/operations-task-roles";
-import { failureTargetsForOperationsTask } from "../lib/prototype/operations-task-failure-targets";
-import type { OperationsTaskFailureTarget } from "../lib/prototype/operations-task-failure-targets";
-import {
-  isOperationsTaskBlockedByFailure,
-  isOpsTaskFailurePauseReason,
-  OPS_TASK_FAILURE_PAUSE_REASON,
-} from "../lib/prototype/operations-task-failure-obstruction";
-import {
-  GOVERNMENT_REVIEWER_FAILURE_RAISER,
-  useFailuresQuery,
-} from "@failures/mfe";
-import { FailureRaiseModal } from "../components/failures/FailureRaiseModal";
-import { agentInfoFromStaff } from "../lib/prototype/internal-delegation-letters";
-import {
-  partyAccountForRole,
-  partyAccountForViewer,
-  type DistributionAssignee,
-} from "../lib/prototype/distribution-parties";
+import { type DistributionAssignee } from "../lib/prototype/distribution-parties";
 import { assigneesForOperationsTaskType } from "../lib/prototype/operations-task-assignees";
 import {
   downloadTaskAttachmentAsync,
   uploadTaskScopedAttachment,
 } from "@platform/app-shared/prototype/task-attachments-api";
-import { AppModal } from "../components/ui/AppModal";
-import {
-  RowMoreMenu,
-  RowMoreMenuIcons,
-  type RowMoreMenuItem,
-} from "../components/ui/RowMoreMenu";
-import {
-  ActiveQueueMobileCards,
-  type ActiveQueueMobileCardItem,
-} from "../components/queue/ActiveQueueMobileCards";
-import type { CreateOperationsTaskPrefill } from "../components/CreateOperationsTaskModal";
-import {
-  TASKS_LIST_COLS,
-  TASKS_LIST_FOOTER,
-  TasksEmptyRows,
-  TasksKpiActiveIcon,
-  TasksKpiCompletedIcon,
-  TasksKpiCreatedIcon,
-  TasksKpiInProgressIcon,
-  TasksSectionNote,
-  TasksShowAllEye,
-  tasksDescClassName,
-} from "../components/tasks/TasksHtmlPrimitives";
-import { ReassignOperationsTaskModal } from "../components/tasks/ReassignOperationsTaskModal";
 import {
   opsAttachBtn,
-  opsBulk,
-  opsBulkClear,
   opsBtnGhost,
   opsBtnPrimary,
   opsCdDot,
@@ -141,20 +57,12 @@ import {
   opsCmtEvent,
   opsDueCd,
   opsDueCdOver,
-  opsDotSep,
   opsFileSize,
-  opsBulkCount,
-  opsListCount,
   opsLetterRow,
-  opsTypeIconSm,
-  opsRowTitle,
-  opsRowMeta,
   opsEmptyHint,
   opsEventAv,
   opsFileChip,
   opsFileChipFx,
-  opsFilters,
-  opsGridRow,
   opsHeadRow,
   opsIconBoxGold,
   opsLetterBodyPad,
@@ -164,21 +72,6 @@ import {
   opsLetterSub,
   opsLetterTitle,
   opsMutedHint,
-  opsPpBadge,
-  opsPpCell,
-  opsPpCellK,
-  opsPpCellV,
-  opsPpHead,
-  opsPpMeta,
-  opsPpSummary,
-  opsPpTitle,
-  opsReceiptConfirmBtn,
-  opsReceiptConfirmWrap,
-  opsRemindBtn,
-  opsRemindCard,
-  opsRemindMini,
-  opsShowAllBtn,
-  opsShowAllBtnOn,
   opsStep,
   opsStepDot,
   opsStepDotActive,
@@ -190,15 +83,7 @@ import {
   opsStepLblOn,
   opsStepLine,
   opsStepLineOn,
-  opsTd,
-  opsTdC,
-  opsTh,
-  opsThStart,
   opsThead,
-  opsTkCheck,
-  opsTkCheckInput,
-  opsToolbar,
-  opsTfActions,
   opsTfChip,
   opsTfLbl,
   opsTfSeg,
@@ -1046,7 +931,9 @@ export function TaskStatusPill({ status }: { status: string }) {
   );
 }
 
-export function DueCell({ task, now }: { task: OperationsTask; now: number }) {
+// العدّاد يشترك بالساعة بنفسه — الشاشة تُبنى بدقّة الدقيقة فقط (rerender-defer-reads).
+export function DueCell({ task }: { task: OperationsTask }) {
+  const now = useTickingNow();
   const cd = taskCountdown(task.dueAt, task.status, now);
   const urgency = taskUrgency(task.dueAt, task.status, now);
   if (!isActiveOperationsTask(task)) {
@@ -1079,6 +966,12 @@ export function DueCell({ task, now }: { task: OperationsTask; now: number }) {
       </span>
     </div>
   );
+}
+
+/** عدّاد «التذكير القادم خلال …» — ورقة تشترك بالساعة بدل تحديث لوحة التفاصيل كاملة كل ثانية. */
+export function TickingRemindCountdown({ task }: { task: OperationsTask }) {
+  const now = useTickingNow();
+  return <>{remindCountdownLabelForTask(task, now)}</>;
 }
 
 export function TaskStepper({ status }: { status: string }) {

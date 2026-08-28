@@ -1,5 +1,11 @@
-import type { RemainingTimeState } from "@case-study/mfe";
+"use client";
+
 import { pad2 } from "@platform/app-shared/format/date";
+import { useTickingNow } from "@platform/app-shared/hooks/use-ticking-now";
+import {
+  resolveRemainingTime,
+  type RemainingTimeState,
+} from "../../lib/prototype/my-task-row";
 
 export function RemainingTimeCell({ state }: { state: RemainingTimeState }) {
   if (state.status === "missing") {
@@ -26,4 +32,13 @@ export function RemainingTimeCell({ state }: { state: RemainingTimeState }) {
       {days}.{pad2(hours)}.{pad2(minutes)}.{pad2(seconds)}
     </span>
   );
+}
+
+/**
+ * عدّاد يتحدث كل ثانية داخل الخلية نفسها — الاشتراك بالساعة هنا وليس في الشاشة،
+ * فلا يعاد بناء كل الصفوف مع كل ثانية (rerender-defer-reads).
+ */
+export function TickingRemainingTimeCell({ dueIso }: { dueIso: string }) {
+  const nowMs = useTickingNow();
+  return <RemainingTimeCell state={resolveRemainingTime(dueIso, new Date(nowMs))} />;
 }

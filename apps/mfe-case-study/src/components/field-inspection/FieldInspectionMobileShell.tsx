@@ -8,7 +8,7 @@ import {
   type RefObject,
 } from "react";
 import { Button, cn } from "@platform/ui-kit";
-import { FailureRaisePanel } from "@failures/mfe";
+import { FailureRaisePanel } from "@failures/mfe/components/failures/FailureRaisePanel";
 import { failureRaiserRoleForParty } from "@failures/mfe/lib/failure-party-roles";
 import type { PartyTaskPageDef } from "@platform/app-shared/prototype/party-task-pages";
 import type { WorkflowTask } from "../../lib/prototype/tasks-storage";

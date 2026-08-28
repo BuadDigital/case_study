@@ -3,6 +3,7 @@
 import { useRouter, useSearchParams } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
 import {
+  useDeferredValue,
   useEffect,
   useLayoutEffect,
   useMemo,
@@ -425,33 +426,43 @@ export function PoListView() {
     }
     return counts;
   }, [deedIndex]);
+  // الإدخال فوري والترشيح مؤجل إطاراً — ترشيح محلي بحت (rerender-use-deferred-value).
+  const deferredSearch = useDeferredValue(search);
   const searchMode = useMemo(() => classifyPoListSearch(search), [search]);
+  const deferredSearchMode = useMemo(
+    () => classifyPoListSearch(deferredSearch),
+    [deferredSearch],
+  );
   const searchModeLabel = poListSearchModeLabel(searchMode);
   const statsReady = rows !== undefined && !rowsPending;
 
   const kpi = useMemo(() => {
     if (!statsReady) return undefined;
-    const active = list.filter((p) => !isPoListStatusTerminal(p.status));
-    const overdue = active.filter(
-      (p) => p.dueDate && isPastDue(p.dueDate),
-    ).length;
-    const dueSoon = active.filter(
-      (p) => p.dueDate && isDueWithin48(p.dueDate),
-    ).length;
-    const doneProps = list.reduce((n, p) => n + (p.done ?? 0), 0);
-    return { active: active.length, overdue, dueSoon, doneProps };
+    // مسار واحد على القائمة يحسب العدّادات الأربعة (js-combine-iterations).
+    let active = 0;
+    let overdue = 0;
+    let dueSoon = 0;
+    let doneProps = 0;
+    for (const p of list) {
+      doneProps += p.done ?? 0;
+      if (isPoListStatusTerminal(p.status)) continue;
+      active += 1;
+      if (p.dueDate && isPastDue(p.dueDate)) overdue += 1;
+      if (p.dueDate && isDueWithin48(p.dueDate)) dueSoon += 1;
+    }
+    return { active, overdue, dueSoon, doneProps };
   }, [list, statsReady]);
 
-  const assignmentTypes = useMemo(
-    () =>
-      [...new Set(list.map((p) => p.type).filter((t) => t && t !== "—"))].sort(
-        (a, b) => a.localeCompare(b, "ar"),
-      ),
-    [list],
-  );
+  const assignmentTypes = useMemo(() => {
+    const types = new Set<string>();
+    for (const p of list) {
+      if (p.type && p.type !== "—") types.add(p.type);
+    }
+    return [...types].sort((a, b) => a.localeCompare(b, "ar"));
+  }, [list]);
 
   const filtered = useMemo(() => {
-    const q = search.trim();
+    const q = deferredSearch.trim();
     let result = buildPoListDisplay(list, q, deedIndex).filter((entry) => {
       const row = entry.view === "po" ? entry.item.row : entry.item.row;
       const matchStatus = !statusFilter || row.status === statusFilter;
@@ -459,6 +470,8 @@ export function PoListView() {
       return matchStatus && matchType;
     });
 
+    // فهرس ترتيب واحد بدل findIndex داخل المقارن — كان O(n²·log n) (js-index-maps).
+    const orderById = new Map(list.map((r, i) => [r.id, i]));
     result = [...result].sort((a, b) => {
       const rowA = a.view === "po" ? a.item.row : a.item.row;
       const rowB = b.view === "po" ? b.item.row : b.item.row;
@@ -469,9 +482,7 @@ export function PoListView() {
         if (createdA && createdB) {
           cmp = createdA.localeCompare(createdB);
         } else {
-          cmp =
-            list.findIndex((r) => r.id === rowA.id) -
-            list.findIndex((r) => r.id === rowB.id);
+          cmp = (orderById.get(rowA.id) ?? -1) - (orderById.get(rowB.id) ?? -1);
         }
         if (cmp === 0) {
           cmp = rowA.id.localeCompare(rowB.id);
@@ -493,9 +504,10 @@ export function PoListView() {
     });
 
     return result;
-  }, [list, search, deedIndex, statusFilter, typeFilter, sortKey, sortDir]);
+  }, [list, deferredSearch, deedIndex, statusFilter, typeFilter, sortKey, sortDir]);
 
-  const propertyDeedView = searchMode === "deed" && search.trim().length > 0;
+  const propertyDeedView =
+    deferredSearchMode === "deed" && deferredSearch.trim().length > 0;
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
   const safePage = Math.min(page, totalPages);

@@ -2,7 +2,7 @@
 
 import { PartyActiveTaskView } from "@case-study/mfe";
 import { partyEngineeringSurveyExtensions } from "@engineering-office/mfe";
-import { partyAppraisalExtensions } from "@evaluator/mfe";
+import { partyAppraisalExtensions } from "@evaluator/mfe/extensions/party-appraisal-extensions";
 import type { PageId } from "@platform/types";
 
 export function PartyActiveTaskViewHost({ pageId }: { pageId: PageId }) {

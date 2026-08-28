@@ -4,7 +4,17 @@ import type { PartyAppraisalExtensions } from "@case-study/mfe";
 import type { PoIntakeRecord } from "@case-study/mfe";
 import type { WorkflowTask } from "@case-study/mfe";
 import { propertyAppraisalWorkspacePath } from "@case-study/mfe/lib/my-task-routes";
-import { AppraiserUploadTab } from "../components/evaluator/AppraiserUploadTab";
+import dynamic from "next/dynamic";
+
+// نافذة عمل المقيّم (~٥٫٨ ألف سطر عبر صدفة التقييم) تركب فقط حين يفتح المقيّم
+// مهمته — تحميلها الساكن كان يضعها في حزمة صفحات مهام كل الأطراف (bundle-dynamic-imports).
+const AppraiserUploadTab = dynamic(
+  () =>
+    import("../components/evaluator/AppraiserUploadTab").then(
+      (m) => m.AppraiserUploadTab,
+    ),
+  { ssr: false },
+);
 import { buildAppraiserQueueRowMoreItems } from "../lib/evaluator/appraiser-queue-row-menu";
 import { appraiserTaskStatusBadge, canAppraiserOpenTask, filterAppraiserListedTasks } from "../lib/evaluator/evaluator-queue";
 import { PARTY_TASK_RECALL_CHANGED_EVENT, PARTY_TASK_RECALL_HYDRATED_EVENT, hydratePartyTaskRecalls } from "@platform/app-shared/prototype/party-task-recall-storage";

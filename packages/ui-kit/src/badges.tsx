@@ -41,21 +41,21 @@ export function StatusPill({
   );
 }
 
+// نتائج ثابتة على مستوى الوحدة — تُستدعى لكل صف/بطاقة، وكائن جديد في كل استدعاء
+// كان يمنع ثبات هوية style على StatusPill (js-cache-function-results).
+const LEGACY_DONE_STYLE: StatusPillStyle = Object.freeze({ base: "#3f8f5f", fg: "#2f7a4d" });
+const LEGACY_FAIL_STYLE: StatusPillStyle = Object.freeze({ base: "var(--red)", fg: "var(--red-text)" });
+const LEGACY_PROG_STYLE: StatusPillStyle = Object.freeze({ base: "var(--gold)", fg: "var(--gold-d)" });
+const LEGACY_NEW_STYLE: StatusPillStyle = Object.freeze({ base: "var(--blue)", fg: "var(--blue-text)" });
+const LEGACY_DEFAULT_STYLE: StatusPillStyle = Object.freeze({ base: "var(--heading)", fg: "var(--heading)" });
+
 /** Maps queue legacy classes (`b-done`, `b-prog`, …) to new-look status colors. */
 export function queueLegacyStatusStyle(className: string): StatusPillStyle {
-  if (className.includes("done")) {
-    return { base: "#3f8f5f", fg: "#2f7a4d" };
-  }
-  if (className.includes("fail")) {
-    return { base: "var(--red)", fg: "var(--red-text)" };
-  }
-  if (className.includes("prog")) {
-    return { base: "var(--gold)", fg: "var(--gold-d)" };
-  }
-  if (className.includes("new")) {
-    return { base: "var(--blue)", fg: "var(--blue-text)" };
-  }
-  return { base: "var(--heading)", fg: "var(--heading)" };
+  if (className.includes("done")) return LEGACY_DONE_STYLE;
+  if (className.includes("fail")) return LEGACY_FAIL_STYLE;
+  if (className.includes("prog")) return LEGACY_PROG_STYLE;
+  if (className.includes("new")) return LEGACY_NEW_STYLE;
+  return LEGACY_DEFAULT_STYLE;
 }
 
 /** Mirrors `sb()` in system_prototype_4.html */

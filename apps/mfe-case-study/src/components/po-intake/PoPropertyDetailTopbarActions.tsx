@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { useMemo } from "react";
 import { Button, cn, useToast } from "@platform/ui-kit";
 import { usePrototype } from "@platform/app-shared/contexts/PrototypeContext";
-import { getPropertyFailure } from "@failures/mfe";
+import { getPropertyFailure } from "@failures/mfe/lib/failures-repository";
 import { canEditProperty, canRaisePropertyFailure } from "../../lib/prototype/po-roles";
 import {
   poPropertyDetailPath,

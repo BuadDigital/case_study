@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useCallback, useEffect, useMemo, useState, Fragment } from "react";
+import { useCallback, useDeferredValue, useEffect, useMemo, useState, Fragment } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { usePrototype } from "@platform/app-shared/contexts/PrototypeContext";
 import { prototypeKeys } from "@platform/app-shared/query/prototype-keys";
@@ -67,7 +67,6 @@ import {
   failureRecordTitle,
 } from "../lib/failures-labels";
 import {
-  countOpenFailures,
   isActiveFailureStatus,
   type FailureRecord,
 } from "../lib/failures-types";
@@ -164,11 +163,19 @@ export function FailuresView() {
   }, [queryClient, refetch]);
 
   const stats = useMemo(() => {
-    const open = countOpenFailures(visibleItems);
+    // مسار واحد يحسب العدّادات الأربعة — كان countOpenFailures مساراً ثانياً
+    // كاملاً على نفس المصفوفة (js-combine-iterations).
+    let open = 0;
     let review = 0;
     let closed = 0;
     let total = 0;
     for (const f of visibleItems) {
+      if (
+        isActiveFailureStatus(f.status) &&
+        (f.status === "internal" || f.status === "review" || f.status === "returned")
+      ) {
+        open += 1;
+      }
       if (f.status === "review") review += 1;
       else if (f.status === "approved" || f.status === "resolved") closed += 1;
       if (f.status !== "suspended") total += 1;
@@ -194,8 +201,11 @@ export function FailuresView() {
       });
   }, [visibleItems]);
 
+  // الإدخال فوري والترشيح مؤجل إطاراً — ترشيح محلي بحت (rerender-use-deferred-value).
+  const deferredSearch = useDeferredValue(search);
+
   const filteredItems = useMemo(() => {
-    const q = search.trim().toLowerCase();
+    const q = deferredSearch.trim().toLowerCase();
     if (!q) return sortedItems;
     return sortedItems.filter((f) => {
       const hay = [
@@ -211,7 +221,7 @@ export function FailuresView() {
         .toLowerCase();
       return hay.includes(q);
     });
-  }, [sortedItems, search]);
+  }, [sortedItems, deferredSearch]);
 
   async function runBusy(
     key: string,

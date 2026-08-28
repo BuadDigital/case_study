@@ -92,6 +92,11 @@ const RegisterKeyEnvelopeModal = dynamic(
   { ssr: false },
 );
 
+// كانت تركب دائماً فتُجلب الحزمة عند فتح الشاشة رغم التقسيم — تركب الآن عند
+// الفتح فقط، مع تحميل مسبق عند التحويم على الزر (bundle-preload).
+const preloadRegisterKeyEnvelopeModal = () =>
+  void import("../components/RegisterKeyEnvelopeModal");
+
 function PlusIcon() {
   return (
     <svg
@@ -479,17 +484,19 @@ export function KeysView() {
           onOpenEnvelope={(id) => openEnvelope(id)}
           onBack={backToList}
         />
-        <RegisterKeyEnvelopeModal
-          open={registerOpen}
-          busy={false}
-          onClose={closeRegisterModal}
-          initialRequestNumber={registerRequestPrefill}
-          operationsTaskId={registerTaskId}
-          onRegistered={(id) => {
-            invalidateEnvelopes();
-            openEnvelope(id);
-          }}
-        />
+        {registerOpen ? (
+          <RegisterKeyEnvelopeModal
+            open={registerOpen}
+            busy={false}
+            onClose={closeRegisterModal}
+            initialRequestNumber={registerRequestPrefill}
+            operationsTaskId={registerTaskId}
+            onRegistered={(id) => {
+              invalidateEnvelopes();
+              openEnvelope(id);
+            }}
+          />
+        ) : null}
       </PageShell>
     );
   }
@@ -650,6 +657,8 @@ export function KeysView() {
             <OperationalToolbarPrimaryButton
               className="h-[38px] max-lg:w-full"
               onClick={() => setRegisterOpen(true)}
+              onMouseEnter={preloadRegisterKeyEnvelopeModal}
+              onFocus={preloadRegisterKeyEnvelopeModal}
             >
               <PlusIcon />
               تسجيل ظرف مفاتيح
@@ -767,17 +776,19 @@ export function KeysView() {
         </p>
       ) : null}
 
-      <RegisterKeyEnvelopeModal
-        open={registerOpen}
-        busy={false}
-        onClose={closeRegisterModal}
-        initialRequestNumber={registerRequestPrefill}
-        operationsTaskId={registerTaskId}
-        onRegistered={(id) => {
-          invalidateEnvelopes();
-          openEnvelope(id);
-        }}
-      />
+      {registerOpen ? (
+        <RegisterKeyEnvelopeModal
+          open={registerOpen}
+          busy={false}
+          onClose={closeRegisterModal}
+          initialRequestNumber={registerRequestPrefill}
+          operationsTaskId={registerTaskId}
+          onRegistered={(id) => {
+            invalidateEnvelopes();
+            openEnvelope(id);
+          }}
+        />
+      ) : null}
       {pendingDelete ? (
         <ModalOverlay onClick={() => setPendingDelete(null)}>
           <ModalCard

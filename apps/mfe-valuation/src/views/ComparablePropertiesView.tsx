@@ -489,6 +489,9 @@ export function ComparablePropertiesView() {
                 key={row.id}
                 className={cn(
                   "rounded-lg border border-border bg-surface p-3",
+                  // ١٠٠ بطاقة غنية دفعة واحدة — تخطي تخطيط/رسم ما هو خارج
+                  // الشاشة (rendering-content-visibility؛ لا بوابات ولا قياسات).
+                  "[content-visibility:auto] [contain-intrinsic-size:auto_150px]",
                   !row.isActive && "opacity-60",
                 )}
               >

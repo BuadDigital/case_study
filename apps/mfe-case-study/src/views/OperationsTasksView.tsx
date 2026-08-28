@@ -1,9 +1,8 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState, type RefObject } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
-  Input,
   KpiBand,
   KpiCell,
   MobileKpiStatCards,
@@ -14,20 +13,19 @@ import {
   OperationalToolbarSelect,
   PageShell,
   PanelSkeleton,
-  Select,
   StatusPill,
-  Textarea,
   cn,
   useToast,
   Spinner,
 } from "@platform/ui-kit";
 import { usePrototype } from "@platform/app-shared/contexts/PrototypeContext";
-import { pad2 } from "@platform/app-shared/format/date";
 import type { StaffUser } from "@platform/app-shared/prototype/constants";
 import { displayPersonName } from "@platform/app-shared/prototype/person-display-name";
-import { useStaffUsersQuery, useDistributionAssigneesQuery } from "@settings/mfe/query/settings-queries";
+import {
+  useStaffUsersQuery,
+  useDistributionAssigneesQuery,
+} from "@settings/mfe/query/settings-queries";
 import { usePoRecordsQuery } from "../query/case-study-queries";
-import { PROPERTY_IDENTIFIER_COLUMN_LABEL } from "../lib/prototype/po-intake-data";
 import { useOperationsTasksQuery } from "../query/operations-tasks-queries";
 import {
   addOperationsTaskCommentRecord,
@@ -40,13 +38,10 @@ import {
 } from "../lib/prototype/operations-tasks-storage";
 import {
   OPERATIONS_TASK_PRIORITY_COLORS,
-  OPERATIONS_TASK_PRIORITY_LABELS,
   OPERATIONS_TASK_REMIND_LABELS,
   OPERATIONS_TASK_SCOPE_LABELS,
   OPERATIONS_TASK_STATUS_COLORS,
   OPERATIONS_TASK_STATUS_LABELS,
-  OPERATIONS_TASK_TYPE_ICON_PATHS,
-  TASK_STEPPER_STEPS,
   formatTaskDueLabel,
   isTerminalOperationsTaskStatus,
   operationsTaskLinkLabel,
@@ -56,12 +51,10 @@ import {
   operationsTaskStatusLabel,
   operationsTaskTypeLabel,
   printOperationsTaskDelegationLetter,
-  remindCountdownLabelForTask,
   taskCountdown,
-  taskStepperIndex,
-  taskUrgency,
 } from "../lib/prototype/operations-task-display";
 import { resolveSlaTimerRatio } from "../lib/prototype/my-task-row";
+import { useTickingMinute } from "@platform/app-shared/hooks/use-ticking-now";
 import {
   canManageOperationsTasks,
   canRemindOperationsTasks,
@@ -74,28 +67,13 @@ import {
   isOpsTaskFailurePauseReason,
   OPS_TASK_FAILURE_PAUSE_REASON,
 } from "../lib/prototype/operations-task-failure-obstruction";
-import {
-  GOVERNMENT_REVIEWER_FAILURE_RAISER,
-  useFailuresQuery,
-} from "@failures/mfe";
+import { GOVERNMENT_REVIEWER_FAILURE_RAISER } from "@failures/mfe/lib/failure-party-roles";
+import { useFailuresQuery } from "@failures/mfe/query/failures-queries";
 import { FailureRaiseModal } from "../components/failures/FailureRaiseModal";
 import { agentInfoFromStaff } from "../lib/prototype/internal-delegation-letters";
-import {
-  partyAccountForRole,
-  partyAccountForViewer,
-  type DistributionAssignee,
-} from "../lib/prototype/distribution-parties";
-import { assigneesForOperationsTaskType } from "../lib/prototype/operations-task-assignees";
-import {
-  downloadTaskAttachmentAsync,
-  uploadTaskScopedAttachment,
-} from "@platform/app-shared/prototype/task-attachments-api";
+import { partyAccountForRole, partyAccountForViewer } from "../lib/prototype/distribution-parties";
 import { AppModal } from "../components/ui/AppModal";
-import {
-  RowMoreMenu,
-  RowMoreMenuIcons,
-  type RowMoreMenuItem,
-} from "../components/ui/RowMoreMenu";
+import { RowMoreMenu, RowMoreMenuIcons, type RowMoreMenuItem } from "../components/ui/RowMoreMenu";
 import {
   ActiveQueueMobileCards,
   type ActiveQueueMobileCardItem,
@@ -111,6 +89,9 @@ const CreateOperationsTaskModal = dynamic(
     ),
   { ssr: false },
 );
+// تحميل مسبق عند التحويم على زر الإنشاء — يختفي زمن جلب الحزمة (bundle-preload).
+const preloadCreateOperationsTaskModal = () =>
+  void import("../components/CreateOperationsTaskModal");
 import {
   TASKS_LIST_COLS,
   TASKS_LIST_FOOTER,
@@ -232,6 +213,7 @@ import {
   TaskStatusPill,
   DueCell,
   TaskStepper,
+  TickingRemindCountdown,
   CommentThread,
   LetterTable,
 } from "./OperationsTasksViewParts";
@@ -338,15 +320,12 @@ export function OperationsTasksView() {
   const [reassignError, setReassignError] = useState<string | null>(null);
   const [govFailureTarget, setGovFailureTarget] =
     useState<OperationsTaskFailureTarget | null>(null);
-  const [now, setNow] = useState(() => Date.now());
+  // دقّة الدقيقة تكفي لمنطق الشاشة — العدّادات الثانوية (DueCell وبطاقات الجوال)
+  // تشترك بالساعة بنفسها، فلا يعاد بناء كل الصفوف كل ثانية (rerender-defer-reads).
+  const now = useTickingMinute();
   const commentFileInputRef = useRef<HTMLInputElement>(null);
   const closeFileInputRef = useRef<HTMLInputElement>(null);
   const selAllRef = useRef<HTMLInputElement>(null);
-
-  useEffect(() => {
-    const id = window.setInterval(() => setNow(Date.now()), 1000);
-    return () => window.clearInterval(id);
-  }, []);
 
   useEffect(() => {
     if (!deepLinkTaskId) return;
@@ -1086,6 +1065,13 @@ export function OperationsTasksView() {
               ? cd.txt
               : undefined
           : undefined,
+        timerTick: active
+          ? (nowMs: number) => {
+              const t = taskCountdown(task.dueAt, task.status, nowMs);
+              if (t.txt === "—" || t.txt === "متوقفة") return null;
+              return { label: t.over ? "متأخرة" : t.txt, overdue: t.over };
+            }
+          : undefined,
         timerOverdue: active ? cd.over : undefined,
         timerRatio: active
           ? resolveSlaTimerRatio(task.dueAt, task.createdAt ?? "", new Date(now))
@@ -1341,7 +1327,7 @@ export function OperationsTasksView() {
                     OPERATIONS_TASK_REMIND_LABELS.medium}{" "}
                   — التذكير القادم خلال{" "}
                   <span className="font-bold text-heading" dir="ltr">
-                    {remindCountdownLabelForTask(detail, now)}
+                    <TickingRemindCountdown task={detail} />
                   </span>
                   {nSent ? ` · أُرسل ${nSent} تذكير` : ""}
                 </div>
@@ -1836,6 +1822,8 @@ export function OperationsTasksView() {
               setCreatePrefill(null);
               setCreateOpen(true);
             }}
+            onMouseEnter={preloadCreateOperationsTaskModal}
+            onFocus={preloadCreateOperationsTaskModal}
           >
             <PlusIcon />
             <span>إنشاء مهمة</span>
@@ -2016,7 +2004,7 @@ export function OperationsTasksView() {
                       </div>
                     </div>
                     <div className={opsTd}>
-                      <DueCell task={task} now={now} />
+                      <DueCell task={task} />
                     </div>
                     <div className={cn(opsTd, opsTdC)}>
                       <TaskStatusPill status={task.status} />
@@ -2061,23 +2049,26 @@ export function OperationsTasksView() {
         <TasksSectionNote>{TASKS_LIST_FOOTER}</TasksSectionNote>
       </OperationalPanel>
 
-      <CreateOperationsTaskModal
-        open={createOpen}
-        poRecords={poRecords}
-        staffUsers={staffUsers}
-        staffLoadError={staffLoadError}
-        staffLoading={staffLoading}
-        prefill={createPrefill}
-        onClose={() => {
-          setCreateOpen(false);
-          setCreatePrefill(null);
-        }}
-        onCreated={(taskId) => {
-          setSelectedId(taskId);
-          setDetailId(taskId);
-          void refetch();
-        }}
-      />
+      {/* تركيب مشروط — الركوب الدائم كان يجلب الحزمة عند فتح الشاشة رغم التقسيم. */}
+      {createOpen ? (
+        <CreateOperationsTaskModal
+          open={createOpen}
+          poRecords={poRecords}
+          staffUsers={staffUsers}
+          staffLoadError={staffLoadError}
+          staffLoading={staffLoading}
+          prefill={createPrefill}
+          onClose={() => {
+            setCreateOpen(false);
+            setCreatePrefill(null);
+          }}
+          onCreated={(taskId) => {
+            setSelectedId(taskId);
+            setDetailId(taskId);
+            void refetch();
+          }}
+        />
+      ) : null}
 
       <AppModal
         open={closeOpen}

@@ -121,6 +121,8 @@ export function BourseInquiryView() {
   );
 
   const refresh = useCallback(async () => {
+    // إبطال pendingBourseItems يعيد جلب الاستعلام النشط بنفسه —
+    // refetch الإضافي كان GET ثانياً مطابقاً.
     await Promise.all([
       queryClient.invalidateQueries({
         queryKey: prototypeKeys.pendingBourseItems(),
@@ -129,8 +131,7 @@ export function BourseInquiryView() {
         queryKey: prototypeKeys.workflowTasks(),
       }),
     ]);
-    await refetch();
-  }, [queryClient, refetch]);
+  }, [queryClient]);
 
   const patchProperty = useCallback(
     <K extends keyof PoPropertyIntake>(key: K, value: PoPropertyIntake[K]) => {

@@ -1,12 +1,14 @@
 "use client";
 
 import { useCallback, useEffect } from "react";
-import { PoPropertiesPage } from "@case-study/mfe";
+import { PoPropertiesPage } from "@case-study/mfe/views/PoPropertiesPage";
 import type { PoPropertyRowMoreContext } from "@case-study/mfe/lib/prototype/po-properties-row-menu";
 import type { RowMoreMenuItem } from "@case-study/mfe/components/ui/RowMoreMenu";
 import { usePrototype } from "@platform/app-shared/contexts/PrototypeContext";
 import { useToast } from "@platform/ui-kit";
-import { buildAppraiserRecallMenuItems, EVALUATOR_SUBMISSION_CHANGED_EVENT, PARTY_TASK_RECALL_CHANGED_EVENT } from "@evaluator/mfe";
+import { buildAppraiserRecallMenuItems } from "@evaluator/mfe/lib/evaluator/appraiser-recall-menu-items";
+import { EVALUATOR_SUBMISSION_CHANGED_EVENT } from "@evaluator/mfe/lib/evaluator/evaluator-submission-storage";
+import { PARTY_TASK_RECALL_CHANGED_EVENT } from "@platform/app-shared/prototype/party-task-recall-storage";
 import { useWorkflowTasksQuery } from "@/lib/query/prototype-queries";
 
 export function PoPropertiesPageClient({ poNumber }: { poNumber: string }) {

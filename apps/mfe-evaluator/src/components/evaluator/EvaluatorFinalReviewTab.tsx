@@ -3,21 +3,15 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   ensureOpenValuationRequestByProperty,
-  getApiBase,
   getValuationApproachSettings,
-  getValuationLists,
   isNoExternalSpecialistAssumption,
   saveValuationApproachSettings,
   type ValuationApproachSettingsDto,
 } from "@platform/api-client";
-import { getAuthSession } from "@platform/auth-client";
 import { cn, Spinner, useToast } from "@platform/ui-kit";
 import { invalidControlClass } from "@platform/app-shared/form-ux";
 import { useWindowEvents } from "@platform/app-shared/hooks/useWindowEvents";
-import {
-  usePoRecordQuery,
-  useWorkflowTasksQuery,
-} from "@case-study/mfe/query/case-study-queries";
+import { usePoRecordQuery, useWorkflowTasksQuery } from "@case-study/mfe/query/case-study-queries";
 import { usePropertyDetailDocuments } from "@case-study/mfe/query/property-detail-documents-query";
 import { subClientIdFromReportUsers } from "@case-study/mfe/lib/prototype/po-intake-data";
 import type { PoPropertyIntake } from "@case-study/mfe/lib/prototype/po-intake-data";
@@ -35,13 +29,17 @@ import {
   VALUATION_PRINT_KEYS_CHANGED_EVENT,
   loadSpecialistPrintAttachmentKeys,
 } from "@case-study/mfe/lib/prototype/valuation-print-attachment-keys";
-import { basisOfValueKeyForAssignment } from "@platform/app-shared/prototype/assignment-valuation-defaults";
+import {
+  basisOfValueKeyForAssignment,
+} from "@platform/app-shared/prototype/assignment-valuation-defaults";
 import type {
   EvaluatorReportChoices,
   EvaluatorSubmission,
 } from "../../lib/evaluator/evaluator-window-data";
 import { emptyReportChoices } from "../../lib/evaluator/evaluator-window-data";
-import { buildValuationPrintAttachmentRows } from "../../lib/evaluator/valuation-report-property-attachments";
+import {
+  buildValuationPrintAttachmentRows,
+} from "../../lib/evaluator/valuation-report-property-attachments";
 import { apiConfig } from "./valuation-work/lib/shell-utils";
 import {
   ValCard,

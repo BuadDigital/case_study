@@ -1,8 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { getApiBase, getValuationLists } from "@platform/api-client";
-import { getAuthSession } from "@platform/auth-client";
+import { useValuationListsQuery } from "@platform/app-shared/query/valuation-lists-query";
 import {
   loadSpecialistPrintAttachmentKeys,
   printKeyForPropertyDocument,
@@ -32,22 +31,17 @@ function SpecialistAttachmentsEditor({
   const [selectedKeys, setSelectedKeys] = useState(() =>
     loadSpecialistPrintAttachmentKeys(propertyId),
   );
-  const [catalog, setCatalog] = useState<CatalogRow[]>([]);
+  // قوائم التقييم عبر الاستعلام المشترك بدل جلب مباشر في useEffect —
+  // نفس الكاش الذي تستخدمه شاشة المراجعة النهائية (client-swr-dedup).
+  const { data: valuationLists } = useValuationListsQuery();
 
   useEffect(() => {
     setSelectedKeys(loadSpecialistPrintAttachmentKeys(propertyId));
   }, [propertyId]);
 
-  useEffect(() => {
-    let cancelled = false;
-    const session = getAuthSession();
-    if (!session?.token) return;
-    void getValuationLists({
-      token: session.token,
-      baseUrl: getApiBase(),
-    }).then((res) => {
-      if (cancelled || !res.ok) return;
-      const rows = (res.data.lists?.attachments ?? [])
+  const catalog = useMemo<CatalogRow[]>(
+    () =>
+      (valuationLists?.lists?.attachments ?? [])
         .filter((r) => r.isEnabled)
         .slice()
         .sort((a, b) => a.sortOrder - b.sortOrder)
@@ -55,13 +49,9 @@ function SpecialistAttachmentsEditor({
           key: r.key,
           name: r.name,
           isRequired: r.isRequired,
-        }));
-      setCatalog(rows);
-    });
-    return () => {
-      cancelled = true;
-    };
-  }, []);
+        })),
+    [valuationLists],
+  );
 
   const docsByKey = useMemo(() => {
     const map = new Map<string, PropertyDetailDocumentEntry[]>();

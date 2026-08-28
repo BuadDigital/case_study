@@ -4,8 +4,12 @@ import { useQueryClient, type QueryClient } from "@tanstack/react-query";
 import type { PageId } from "@platform/types";
 import { loadPendingBourseItems } from "@case-study/mfe/lib/prototype/po-intake-storage";
 import { loadPoListRows, loadPropertyListItems } from "@platform/app-shared/prototype/work-orders-read";
-import { FAILURES_CHANGED_EVENT, loadFailuresQuery } from "@failures/mfe";
-import { CASE_STUDY_INFO_ROLES_CHANGED_EVENT, loadCaseStudyInfoRolesConfig } from "@settings/mfe";
+import { FAILURES_CHANGED_EVENT } from "@failures/mfe/lib/failures-events";
+import { loadFailuresQuery } from "@failures/mfe/lib/failures-repository";
+import {
+  CASE_STUDY_INFO_ROLES_CHANGED_EVENT,
+  loadCaseStudyInfoRolesConfig,
+} from "@settings/mfe/lib/prototype/case-study-info-roles-storage";
 import { loadPoRecordsWithTaskSync, loadWorkflowTasksForQuery, TASKS_CHANGED_EVENT, WORK_ORDERS_CHANGED_EVENT } from "@case-study/mfe/query/case-study-queries";
 import { loadSuspendedTransactions } from "@case-study/mfe/lib/prototype/suspended-transactions-storage";
 import { loadFailureTypesCatalog } from "@failures/mfe/lib/failure-types-storage";

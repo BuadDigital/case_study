@@ -40,6 +40,8 @@ function roleFromPermissions(
   return "general-manager";
 }
 
+const EMPTY_CAPABILITIES: string[] = [];
+
 export function PrototypeProvider({ children }: { children: React.ReactNode }) {
   // useSyncExternalStore keeps hasSession in sync after silent refresh / logout,
   // including the first client paint after a hard navigation into a deep link.
@@ -89,7 +91,9 @@ export function PrototypeProvider({ children }: { children: React.ReactNode }) {
     permissions?.identityRoles,
   ]);
 
-  const capabilities = permissions?.capabilities ?? [];
+  // مرجع ثابت — [] جديدة كل تصيير كانت تكسر useMemo قيمة السياق قبل المصادقة
+  // فتتغير هوية القيمة لكل مستهلكي usePrototype (rerender-dependencies).
+  const capabilities = permissions?.capabilities ?? EMPTY_CAPABILITIES;
 
   const rolePages = useMemo(() => {
     if (!permissionsResolved) return [];

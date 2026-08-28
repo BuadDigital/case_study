@@ -107,6 +107,19 @@ export function formatRemainingDuration(
   };
 }
 
+/** نص مؤقت البطاقة — تستدعيه ورقة الساعة داخل البطاقة كل ثانية (timerTick). */
+export function remainingTimerTick(
+  dueIso: string,
+): (nowMs: number) => { label: string; overdue: boolean } | null {
+  return (nowMs) => {
+    const t = formatRemainingDuration(dueIso, new Date(nowMs));
+    if (t.remainingDuration === "—") return null;
+    return t.remainingOverdue
+      ? { label: "متأخرة", overdue: true }
+      : { label: `متبقي ${t.remainingDuration}`, overdue: false };
+  };
+}
+
 /** Unregistered / bourse-inquiry slot — e.g. «قيد الدراسة 1». */
 export function formatPropertySlotOnPo(
   task: WorkflowTask,

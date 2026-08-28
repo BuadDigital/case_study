@@ -73,6 +73,13 @@ const UserProfileModal = dynamic(
   { ssr: false },
 );
 
+// تحميل مسبق عند التحويم/التركيز — بدونها ينتظر المستخدم جلب الحزمة بعد النقر
+// مباشرة (bundle-preload). أزرار الصفوف تُحوَّم قبل النقر عادةً.
+const preloadEditStaffUserModal = () =>
+  void import("../../components/EditStaffUserModal");
+const preloadUserProfileModal = () =>
+  void import("../../components/UserProfileModal");
+
 const ROLE_OPTIONS = adminStaffRoleOptions();
 const ROLE_SELECT_OPTIONS = ROLE_OPTIONS.map((o) => ({
   value: o.value,
@@ -563,6 +570,8 @@ export function UsersOrganizationView() {
                           type="button"
                           className="cursor-pointer border-0 bg-transparent p-0 text-start font-medium text-inherit hover:text-gold-d"
                           onClick={() => setProfileUser(user)}
+                          onMouseEnter={preloadUserProfileModal}
+                          onFocus={preloadUserProfileModal}
                         >
                           {user.name}
                         </button>
@@ -584,6 +593,8 @@ export function UsersOrganizationView() {
                               variant="ghost"
                               size="sm"
                               onClick={() => setEditingUser(user)}
+                              onMouseEnter={preloadEditStaffUserModal}
+                              onFocus={preloadEditStaffUserModal}
                             >
                               تعديل
                             </Button>{" "}

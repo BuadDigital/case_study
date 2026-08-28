@@ -23,13 +23,18 @@ import { CaseStudyProgressDonut } from "./CaseStudyProgressDonut";
 import { CaseStudyMatrixTable } from "./CaseStudyMatrixTable";
 import { CaseStudyDeedNatureMatchSection } from "./CaseStudyDeedNatureMatchSection";
 import { CaseStudyInfathSpecialistSection } from "./CaseStudyInfathSpecialistSection";
-import { canPartyAnswerQuestion, canSpecialistApproveQuestion, CASE_STUDY_INFO_ROLES_CHANGED_EVENT,
+import {
+  canPartyAnswerQuestion,
+  canSpecialistApproveQuestion,
+  CASE_STUDY_INFO_ROLES_CHANGED_EVENT,
   emptyCaseStudyInfoRolesConfig,
   isCaseStudyQuestionVisibleToSpecialist,
   isPartyQuestionVisible,
+} from "@settings/mfe/lib/prototype/case-study-info-roles-storage";
+import {
   partyById,
   type CaseStudyInfoPartyId,
-} from "@settings/mfe";
+} from "@settings/mfe/lib/prototype/case-study-info-roles-data";
 import {
   collectPartyAnswersByQuestion,
   type PartyQuestionContribution,

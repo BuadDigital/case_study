@@ -3,14 +3,14 @@
 import { useEffect, useMemo, useState } from "react";
 import { RegistrationFormCard } from "@platform/app-shared/registration/RegistrationFormCard";
 import { Button, cn, InlineLoadingSkeleton } from "@platform/ui-kit";
-import { emptyCaseStudyInfoRolesConfig } from "@settings/mfe";
+import { emptyCaseStudyInfoRolesConfig } from "@settings/mfe/lib/prototype/case-study-info-roles-storage";
 import { useCaseStudyInfoRolesQuery } from "@settings/mfe/query/settings-queries";
-import type { WorkflowTask } from "@case-study/mfe";
+import type { WorkflowTask } from "@case-study/mfe/lib/prototype/tasks-storage";
 import {
   loadPartyCaseStudyFormDraft,
   PARTY_CASE_STUDY_FORM_CHANGED_EVENT,
   type CaseStudyFormDraft,
-} from "@case-study/mfe";
+} from "@case-study/mfe/lib/prototype/case-study-form-storage";
 import { findAppraisalChildForParent } from "../../lib/evaluator/evaluator-inspection-gate";
 import { openEvaluatorReportPreview } from "../../lib/evaluator/evaluator-report-attachments";
 import {

@@ -1,6 +1,7 @@
 "use client";
 
 import type { ReactNode } from "react";
+import { useTickingNow } from "@platform/app-shared/hooks/use-ticking-now";
 import {
   StatusPill,
   cn,
@@ -14,6 +15,33 @@ import {
 import { RowAttentionDot } from "../ui/RowAttentionDot";
 
 export type ActiveQueueMobileCardTone = "new" | "pending" | "returned" | "done";
+
+/** ورقة المؤقت: تشترك بالساعة بنفسها فلا يتجاوز التحديث الثانوي حدود الخلية. */
+function TickingCardTimerText({
+  tick,
+  fallbackLabel,
+  fallbackOverdue,
+}: {
+  tick: (nowMs: number) => { label: string; overdue: boolean } | null;
+  fallbackLabel?: string;
+  fallbackOverdue?: boolean;
+}) {
+  const nowMs = useTickingNow();
+  const live = tick(nowMs);
+  const label = live?.label ?? fallbackLabel;
+  const overdue = live?.overdue ?? fallbackOverdue;
+  if (!label) return null;
+  return (
+    <span
+      className={cn(
+        "max-w-full truncate text-end text-[10px] font-semibold tabular-nums leading-tight",
+        overdue ? "text-danger-text" : "text-text-3",
+      )}
+    >
+      {label}
+    </span>
+  );
+}
 
 export type ActiveQueueMobileCardMeta = {
   text: string;
@@ -33,6 +61,11 @@ export type ActiveQueueMobileCardItem = {
   timerOverdue?: boolean;
   /** Remaining fraction 0–1 for the SLA bar (HTML timer-bar). */
   timerRatio?: number;
+  /**
+   * حين تُمرَّر، نص المؤقت يتحدث كل ثانية داخل الخلية فقط (rerender-defer-reads)
+   * بدل إعادة بناء كل البطاقات — timerLabel يبقى القيمة الأولية/الاحتياطية.
+   */
+  timerTick?: (nowMs: number) => { label: string; overdue: boolean } | null;
   tone?: ActiveQueueMobileCardTone;
   moreItems: RowMoreMenuItem[];
   /** Whole-card open. Omit when only title / menu / PO should navigate. */
@@ -234,6 +267,11 @@ export function ActiveQueueMobileCards({
             id={item.anchorId}
             className={cn(
               "ui-animate-fade-in w-full min-w-0 max-w-full",
+              // القوائم غير محدودة الطول — تخطي تخطيط/رسم البطاقات خارج الشاشة
+              // (rendering-content-visibility). يُستثنى ما له anchorId لأن
+              // scrollIntoView السلس يحتاج مواضع دقيقة (تمييز التعذرات).
+              !item.anchorId &&
+                "[content-visibility:auto] [contain-intrinsic-size:auto_112px]",
               Boolean(item.expandedPanel) && "overflow-hidden rounded-[14px]",
               item.muted && "opacity-70",
               item.shellClassName,
@@ -367,14 +405,22 @@ export function ActiveQueueMobileCards({
                       <div className="h-full w-full rounded-full bg-red" />
                     </div>
                   )}
-                  <span
-                    className={cn(
-                      "max-w-full truncate text-end text-[10px] font-semibold tabular-nums leading-tight",
-                      item.timerOverdue ? "text-danger-text" : "text-text-3",
-                    )}
-                  >
-                    {item.timerLabel}
-                  </span>
+                  {item.timerTick ? (
+                    <TickingCardTimerText
+                      tick={item.timerTick}
+                      fallbackLabel={item.timerLabel}
+                      fallbackOverdue={item.timerOverdue}
+                    />
+                  ) : (
+                    <span
+                      className={cn(
+                        "max-w-full truncate text-end text-[10px] font-semibold tabular-nums leading-tight",
+                        item.timerOverdue ? "text-danger-text" : "text-text-3",
+                      )}
+                    >
+                      {item.timerLabel}
+                    </span>
+                  )}
                 </div>
               ) : null}
 

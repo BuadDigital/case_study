@@ -4,7 +4,6 @@ import { memo, useEffect, useMemo, useRef, useState } from "react";
 import { useValuationListsQuery } from "@platform/app-shared/query/valuation-lists-query";
 import {
   activeValuationListOptions,
-  getValuationLists,
   getValuationReportDocument,
   saveValuationReconciliation,
   getReportIssuanceState,

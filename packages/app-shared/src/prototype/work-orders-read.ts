@@ -1,4 +1,4 @@
-import { getPropertyFailure } from "@failures/mfe";
+import { getPropertyFailure } from "@failures/mfe/lib/failures-repository";
 import type { PoRow, PropertyRow } from "./constants";
 import { normalizePoListStatus } from "./po-list-status";
 import type {

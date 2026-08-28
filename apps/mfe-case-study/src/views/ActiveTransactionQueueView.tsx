@@ -3,6 +3,7 @@
 import type { MutableRefObject, ReactNode } from "react";
 import {
   useCallback,
+  useDeferredValue,
   useEffect,
   useMemo,
   useRef,
@@ -24,7 +25,11 @@ import {
   useToast,
 } from "@platform/ui-kit";
 import { PoNumber } from "@case-study/mfe/components/ui/PoNumber";
-import { RemainingTimeCell } from "@case-study/mfe/components/ui/RemainingTimeCell";
+import {
+  RemainingTimeCell,
+  TickingRemainingTimeCell,
+} from "@case-study/mfe/components/ui/RemainingTimeCell";
+import { useTickingMinute } from "@platform/app-shared/hooks/use-ticking-now";
 import type { RowMoreMenuItem } from "@case-study/mfe/components/ui/RowMoreMenu";
 import { buildActiveQueueRowMoreItems } from "../lib/prototype/active-queue-row-menu";
 import { CopyFromPriorTransactionModal } from "../components/po-intake/CopyFromPriorTransactionModal";
@@ -52,6 +57,7 @@ import {
   compareQueueTasksByUpdatedNewestFirst,
   findPropertyForTask,
   formatRemainingDuration,
+  remainingTimerTick,
   resolveSlaTimerRatio,
 } from "../lib/prototype/my-task-row";
 import type { PoIntakeRecord } from "../lib/prototype/po-intake-data";
@@ -271,7 +277,10 @@ export function ActiveTransactionQueueView({
     "تعذّر تحميل قائمة المعاملات";
   const queueReady = tasksFetched && poRecordsFetched && !queueLoadError;
   const queuePending = !tasksFetched || !poRecordsFetched;
-  const [now, setNow] = useState(() => new Date());
+  // دقّة الدقيقة تكفي لبناء الصفوف والفلاتر — العدّاد الثانوي يعيش في خلايا
+  // المؤقت نفسها، فلا يعاد بناء كل الصفوف كل ثانية (rerender-defer-reads).
+  const nowMinuteMs = useTickingMinute();
+  const now = useMemo(() => new Date(nowMinuteMs), [nowMinuteMs]);
   const [panelOpen, setPanelOpen] = useState(() => Boolean(selectedId));
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
@@ -351,11 +360,6 @@ export function ActiveTransactionQueueView({
     needsInspectionWorkspaces,
     config.allowPhaseRevert,
   ]);
-
-  useEffect(() => {
-    const tick = setInterval(() => setNow(new Date()), 1000);
-    return () => clearInterval(tick);
-  }, []);
 
   useEffect(() => {
     const events = config.refreshOnWindowEvents;
@@ -701,9 +705,12 @@ export function ActiveTransactionQueueView({
           />
         );
       }
+      const dueIso = poByNumber.get(task.poNumber.trim())?.dueDateAt ?? "";
+      // العدّاد الثانوي يتحدث داخل الخلية — الصف نفسه يُبنى بدقّة الدقيقة فقط.
+      if (dueIso) return <TickingRemainingTimeCell dueIso={dueIso} />;
       return <RemainingTimeCell state={remainingTime} />;
     },
-    [config, inspectionWorkspaceByTaskId, submissionCacheGen],
+    [config, inspectionWorkspaceByTaskId, submissionCacheGen, poByNumber],
   );
 
   const isPropertyInspectionQueue =
@@ -742,67 +749,67 @@ export function ActiveTransactionQueueView({
     return buildDistributionQueueRowMeta(listed, poByNumber);
   }, [isDistributionTable, listed, poByNumber]);
 
-  /* أعمدة المدينة/الحي تُخفى عندما لا تحمل أي بيانات في هذه المرحلة — «—» في كل صف ضجيج. */
-  const primaryHasLocation = useMemo(
-    () =>
-      primaryRowMeta.some(
-        (m) =>
-          (m.city && m.city !== "—") || (m.district && m.district !== "—"),
-      ),
-    [primaryRowMeta],
-  );
-
-  const assignmentTypes = useMemo(
-    () =>
-      uniqueSortedLabels(
-        isAllTransactionsTable
-          ? allTransactionsRowMeta.map((row) => row.assignmentType)
-          : isDistributionTable
-            ? distributionRowMeta.map((row) => row.assignmentType)
-            : primaryRowMeta.map((row) => row.assignmentType),
-      ),
-    [
-      isAllTransactionsTable,
-      isDistributionTable,
-      allTransactionsRowMeta,
-      distributionRowMeta,
-      primaryRowMeta,
-    ],
-  );
-
-  const statusOptions = useMemo(
-    () =>
-      isPropertyAppraisalTable
+  /* أعمدة المدينة/الحي تُخفى عندما لا تحمل أي بيانات في هذه المرحلة — «—» في كل صف ضجيج.
+     مسار واحد على الصفوف يجمع خيارات النوع والحالة وفحص الموقع معاً (js-combine-iterations). */
+  const { primaryHasLocation, assignmentTypes, statusOptions } = useMemo(() => {
+    let hasLocation = false;
+    const types: string[] = [];
+    const statuses: string[] = [];
+    if (isAllTransactionsTable) {
+      for (const row of allTransactionsRowMeta) {
+        types.push(row.assignmentType);
+        statuses.push(row.phaseLabel);
+      }
+    } else if (isDistributionTable) {
+      for (const row of distributionRowMeta) types.push(row.assignmentType);
+    } else {
+      for (const row of primaryRowMeta) {
+        types.push(row.assignmentType);
+        statuses.push(row.statusLabel);
+        if (
+          (row.city && row.city !== "—") ||
+          (row.district && row.district !== "—")
+        ) {
+          hasLocation = true;
+        }
+      }
+    }
+    return {
+      primaryHasLocation: hasLocation,
+      assignmentTypes: uniqueSortedLabels(types),
+      statusOptions: isPropertyAppraisalTable
         ? APPRAISAL_STATUS_FILTERS.map((o) => o.label)
-        : uniqueSortedLabels(
-            isAllTransactionsTable
-              ? allTransactionsRowMeta.map((row) => row.phaseLabel)
-              : primaryRowMeta.map((row) => row.statusLabel),
-          ),
-    [
-      isPropertyAppraisalTable,
-      isAllTransactionsTable,
-      allTransactionsRowMeta,
-      primaryRowMeta,
-    ],
-  );
+        : uniqueSortedLabels(statuses),
+    };
+  }, [
+    isAllTransactionsTable,
+    isDistributionTable,
+    isPropertyAppraisalTable,
+    allTransactionsRowMeta,
+    distributionRowMeta,
+    primaryRowMeta,
+  ]);
+
+  // الكتابة في البحث تبقى فورية بينما ترشيح القوائم غير المحدودة يتأخر إطاراً
+  // (rerender-use-deferred-value) — لا شبكة هنا، ترشيح محلي بحت.
+  const deferredSearch = useDeferredValue(search);
 
   const filteredListed = useMemo(() => {
     if (isAllTransactionsTable) {
       return filterAllTransactionsQueueRows(allTransactionsRowMeta, {
-        search,
+        search: deferredSearch,
         statusFilter,
         typeFilter,
       });
     }
     if (isDistributionTable) {
       return filterDistributionQueueRows(distributionRowMeta, {
-        search,
+        search: deferredSearch,
         typeFilter,
       });
     }
     if (isPropertyAppraisalTable) {
-      const q = search.trim();
+      const q = deferredSearch.trim();
       const statusValue =
         APPRAISAL_STATUS_FILTERS.find((o) => o.label === statusFilter)?.value ??
         "";
@@ -823,7 +830,7 @@ export function ActiveTransactionQueueView({
       });
     }
     return filterPrimaryQueueRows(primaryRowMeta, {
-      search,
+      search: deferredSearch,
       statusFilter,
       typeFilter,
     });
@@ -838,7 +845,7 @@ export function ActiveTransactionQueueView({
     poByNumber,
     now,
     tasks,
-    search,
+    deferredSearch,
     statusFilter,
     typeFilter,
   ]);
@@ -1151,6 +1158,9 @@ export function ActiveTransactionQueueView({
           ? timer.remainingOverdue
             ? "متأخرة"
             : `متبقي ${timer.remainingDuration}`
+          : undefined,
+        timerTick: showTimer
+          ? remainingTimerTick(record?.dueDateAt ?? "")
           : undefined,
         timerOverdue: showTimer ? timer.remainingOverdue : undefined,
         timerRatio: showTimer

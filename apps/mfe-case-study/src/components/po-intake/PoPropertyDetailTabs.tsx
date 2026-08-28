@@ -2,11 +2,12 @@
 
 import { useRouter } from "next/navigation";
 import { useSearchParams } from "next/navigation";
-import { findSurveyChildForParent } from "@engineering-office/mfe";
+import { findSurveyChildForParent } from "@engineering-office/mfe/lib/engineering-survey-task";
 import { useMemo, useState, useEffect } from "react";
-import { failuresForProperty, useFailuresQuery } from "@failures/mfe";
+import { failuresForProperty } from "@failures/mfe/lib/failure-property-match";
+import { useFailuresQuery } from "@failures/mfe/query/failures-queries";
 import { failureStatusLabel } from "@failures/mfe/lib/failures-labels";
-import type { FailureRecord } from "@failures/mfe";
+import type { FailureRecord } from "@failures/mfe/lib/failures-types";
 import { Button, cn, Tab, TabBar, TabPanel } from "@platform/ui-kit";
 import { usePrototype } from "@platform/app-shared/contexts/PrototypeContext";
 import { canViewPropertyTimelineRail } from "../../lib/prototype/po-roles";

@@ -10,9 +10,9 @@ import { ROLES } from "@platform/app-shared/prototype/constants";
 import {
   FAILURE_RAISER_SPECIALIST,
   FAILURE_RAISER_SUPERVISOR,
-  isBlockingFailureStatus,
-  useFailuresQuery,
-} from "@failures/mfe";
+} from "@failures/mfe/lib/failure-party-roles";
+import { isBlockingFailureStatus } from "@failures/mfe/lib/failures-types";
+import { useFailuresQuery } from "@failures/mfe/query/failures-queries";
 import {
   emptyProperty,
   formatPoDisplay,

@@ -9,7 +9,7 @@ import {
 import { notifyTasksChanged } from "@case-study/mfe/lib/prototype/tasks-storage";
 import { dispatchPartySubmissionChanged } from "@platform/app-shared/prototype/party-submission-changed-event";
 import { dispatchWorkflowSubmitted, EVALUATOR_SUBMITTED_EVENT } from "@platform/app-shared/prototype/party-workflow-events";
-import { loadPartyCaseStudyFormDraft } from "@case-study/mfe";
+import { loadPartyCaseStudyFormDraft } from "@case-study/mfe/lib/prototype/case-study-form-storage";
 import { mergeEvaluatorChecklistFromCaseStudy } from "./evaluator-checklist-case-study-sync";
 import { basisOfValueLabelArForAssignment } from "@platform/app-shared/prototype/assignment-valuation-defaults";
 import {

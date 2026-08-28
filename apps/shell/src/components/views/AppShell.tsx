@@ -1,11 +1,8 @@
 "use client";
-import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { NavIcon } from "@/components/views/NavIcon";
 import { EjadaLogo } from "@/components/views/EjadaLogo";
-import { ThemeSwitch } from "@/components/views/ThemeSwitch";
 import { usePrototype } from "@platform/app-shared/contexts/PrototypeContext";
 import {
   prefetchPoRecord,
@@ -13,43 +10,19 @@ import {
   usePoRecordQuery,
   useWorkflowTasksQuery,
 } from "@/lib/query/prototype-queries";
-import type { PageId, RoleId } from "@platform/types";
+import type { PageId } from "@platform/types";
+import { PAGE_BREADCRUMB, PAGE_TITLES, ROLES } from "@platform/app-shared/prototype/constants";
 import {
-  NAV,
-  PAGE_BREADCRUMB,
-  PAGE_TITLES,
-  ROLES,
-} from "@platform/app-shared/prototype/constants";
-import {
-  ACTIVE_TRANSACTIONS_GROUP,
-  ACTIVE_TRANSACTIONS_GROUP_ICON,
   activeTransactionNavForRole,
-  type ActiveTransactionNavItem,
-  isInActiveTransactionsSection,
   isPartyFeesUnderActiveTransactions,
 } from "@platform/app-shared/prototype/active-transactions";
 import {
-  SYSTEM_SETTINGS_GROUP,
-  SYSTEM_SETTINGS_GROUP_ICON,
   settingsNavTreeForRole,
-  isInSystemSettingsSection,
-  isSettingsNavItemActive,
   organizationSettingsLeafTitle,
-  type SettingsNavTreeNode,
-  type SystemSettingsNavItem,
 } from "@platform/app-shared/prototype/system-settings-nav";
-import {
-  ORPHAN_SCREENS_GROUP,
-  ORPHAN_SCREENS_GROUP_ICON,
-  orphanScreensNavForRole,
-  isInOrphanScreensSection,
-  type OrphanScreenNavItem,
-} from "@platform/app-shared/prototype/orphan-screens-nav";
+import { orphanScreensNavForRole } from "@platform/app-shared/prototype/orphan-screens-nav";
 import { isPartyTaskPage } from "@platform/app-shared/prototype/party-task-pages";
-import {
-  decodeTaskParam,
-  isPartyTaskWorkPath,
-} from "@case-study/mfe/lib/my-task-routes";
+import { decodeTaskParam, isPartyTaskWorkPath } from "@case-study/mfe/lib/my-task-routes";
 import { findPropertyForTask } from "@case-study/mfe/lib/prototype/my-task-row";
 import { formatPropertyDeedDisplay } from "@case-study/mfe/lib/prototype/po-intake-data";
 import { AppBreadcrumb } from "@/components/views/AppBreadcrumb";
@@ -58,22 +31,16 @@ import { OfflineSyncCoordinator } from "@/components/OfflineSyncCoordinator";
 import { resolvePoChrome, buildPoPropertyWorkspaceSegments } from "@/lib/po-chrome";
 import { slashTrailToSegments } from "@/lib/breadcrumb";
 import { resolveMyTasksChrome } from "@/lib/my-tasks-chrome";
-import { EngineeringSurveyTopbarActions } from "@engineering-office/mfe/components/EngineeringSurveyTopbarActions";
+import {
+  EngineeringSurveyTopbarActions,
+} from "@engineering-office/mfe/components/EngineeringSurveyTopbarActions";
 import { useQuery } from "@tanstack/react-query";
 import { loadOperationsTasks } from "@case-study/mfe/lib/prototype/operations-tasks-storage";
 import { prototypeKeys } from "@platform/app-shared/query/prototype-keys";
 import {
-  FINANCIAL_GROUP,
-  FINANCIAL_GROUP_ICON,
-  FINANCIAL_NAV_LEAVES,
-  FINANCIAL_TOGGLE_LABEL,
   financeLeafForArea,
-  financialHref,
-  isFinanceCoreArea,
-  isInFinancialSection,
   parseFinanceNavArea,
   showFinancialNavGroup,
-  type FinanceNavArea,
 } from "@platform/app-shared/prototype/financial-nav";
 import { useFinanceNavBadges } from "@/lib/query/use-finance-nav-badges";
 import { useActiveTransactionNavBadges } from "@/lib/query/use-active-transaction-nav-badges";
@@ -82,16 +49,9 @@ import { PoNumber } from "@case-study/mfe/components/ui/PoNumber";
 import { cn } from "@platform/ui-kit";
 import { clearAuthSession, getAuthSession } from "@platform/auth-client";
 import { revokeAuthSession } from "@platform/api-client";
-import {
-  closeOfflineDb,
-  countPendingOutbox,
-  purgeOfflineData,
-} from "@platform/offline-client";
+import { closeOfflineDb, countPendingOutbox, purgeOfflineData } from "@platform/offline-client";
 import { unsubscribeFromPushSafe } from "@/lib/push-logout";
-import {
-  PullToRefreshIndicator,
-  usePullToRefresh,
-} from "@/components/PullToRefresh";
+import { PullToRefreshIndicator, usePullToRefresh } from "@/components/PullToRefresh";
 import { useAppDataRefresh } from "@/hooks/useAppDataRefresh";
 import {
   TopbarSvgIcon,

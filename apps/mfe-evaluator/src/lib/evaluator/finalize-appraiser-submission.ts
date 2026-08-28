@@ -1,7 +1,7 @@
 import {
   loadPartyCaseStudyFormDraft,
   savePartyCaseStudyFormDraft,
-} from "@case-study/mfe";
+} from "@case-study/mfe/lib/prototype/case-study-form-storage";
 import {
   loadEvaluatorSubmission,
   saveEvaluatorSubmission,

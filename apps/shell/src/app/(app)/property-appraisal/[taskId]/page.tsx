@@ -2,7 +2,7 @@
 
 import { use } from "react";
 import { PartyActiveTaskWorkPage, decodeTaskParam } from "@case-study/mfe";
-import { partyAppraisalExtensions } from "@evaluator/mfe";
+import { partyAppraisalExtensions } from "@evaluator/mfe/extensions/party-appraisal-extensions";
 
 export default function PropertyAppraisalWorkPage({
   params,
