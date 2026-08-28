@@ -22,7 +22,22 @@ Status values: **todo** · **in progress** · **blocked** · **deferred** · **d
 
 
 
-## Remaining work at a glance — updated 2026-08-28 (early morning)
+## Remaining work at a glance — updated 2026-08-28 (night)
+
+**TL;DR after the 2026-08-28 marathon:** the architecture split is COMPLETE (A8+A10+cleanup —
+legacy context deleted, global Domain retired, namespaces aligned to `RealEstateEval.<Ctx>.*`),
+the dev system reset works again, and the v2 product queue شبه مقفل (ق-8+ق-6+ق-9 shipped;
+بقي قرارا 25 و23). What's left is Omar-side (deploy decision, metrics window, leftover-DB
+decision, validators ownership), product-side (E6 policy, قرارا 25/23, ورشة الرجوع/التجميد
+الحقلي لِق-9), and open-ended quality tracks (F6/B2). `dev` head: `471407ae`.
+
+- **Namespace/cleanup wave (late 2026-08-28):** global `RealEstateEval.Domain` deleted
+  (entities distributed to ctx Domains, pure statics to `Shared.Contracts`), all 464
+  context files renamed to `RealEstateEval.<Ctx>.{Domain,Application,Infrastructure}`,
+  all eight snapshots resynced with EMPTY temp migrations. Suite counts since:
+  Architecture 54 / Application 936 / Integration 214 / Container 39.
+- **Feature wave (late 2026-08-28):** ق-8 هندسة المبررات + ق-6 الإصدار ثنائي المرحلة +
+  ق-9 آلة الحالات — details in §4.
 
 **2026-08-27/28 wave (on `dev`, NOT yet on production — `main`/production remain `d880b070`
 from 2026-08-20, so the deploy decision is back on the table):**
@@ -184,8 +199,22 @@ decision; it is the A7 restore source. Do **not** drop it, do **not** point the 
 - B2 (more aggregates) and F6 (broader controller-body coverage) — open-ended, no gate.
 
 **4. Product queue (separate track, governed by** `docs/ejadah-cursor-package-v2`**):**
-ق-8 هندسة المبررات ← ق-6 الإصدار ثنائي المرحلة ← ق-9 آلة الحالات + المكتب الهندسي ← أصول
-المنشأة المشتركة (قرار 25) ← منظومة النصوص (قرار 23).
+- ~~ق-8 هندسة المبررات~~ **done 2026-08-28** (`b982c3df`): مبرر على مستوى العامل
+  (`ValuationAdjustmentFactorRationale` + هجرة رفع النصوص المكررة) + تخصيص لمقارن بعينه في
+  المصفوفة + حد أدنى ١٠ أحرف (`JustificationRules`) يسري على مبررات التسويات والأوزان
+  وفكّ تنبيهات «بمبرر» (`IsResolved` يرفض الصوري).
+- ~~ق-6 الإصدار ثنائي المرحلة~~ **done 2026-08-28** (`471407ae`): `ValuationReportIssuance`
+  — نسخة الإيداع تجمّد التقرير (لقطة JSON + PDF بخانة رمز فارغة، حارس تجميد على ٩ مسارات
+  كتابة) ثم تسجيل شهادة قيمة ورمزها يولّد النسخة النهائية من نفس اللقطة حرفياً (صفحة
+  الشهادة مرفقة + الرمز في الميتا وحقله) ويقفل طلب التقييم. لوحة كاملة في المراجعة
+  النهائية؛ الرمز والشهادة وحدهما خارج التجميد.
+- ~~ق-9 آلة الحالات + المكتب الهندسي~~ **done 2026-08-28** (نفس الدفعة): `TransactionStateRules`
+  (شبكة توزيع واعتماديات — المعاين عقدة المفتاح، الأخصائي ينتظر الجميع، ختام بخطوتين:
+  شهادة الإيداع ثم رفع إنفاذ الشامل بأعمدة `EnfazHandover*` وقيد زمني) + شريط حالة
+  المعاملة أعلى تفاصيل العقار يعرض «من ينتظر من» وزر الرفع عند الجاهزية. دور المكتب
+  الهندسي كان قائماً سلفاً (engineering-office + EngineeringSurvey + mfe-engineering-office).
+  المتبقي للورشة التكميلية: حالات الرجوع/إعادة الفتح ونطاق التجميد الحقلي.
+- **المتبقي:** أصول المنشأة المشتركة (قرار 25) ← منظومة النصوص بنسخة الحزمة (قرار 23).
 
 Local run reminders: nine dedicated DBs + DbMigrate (the Failures schema is **not** migrated by
 CS startup) + the upstream APIs Case Study calls. Run `npm run dev:api:run` from a human
@@ -369,8 +398,8 @@ Do **not** delete empty baselines or Sync no-ops once they exist in a stream peo
 3. **Production metrics window** — capture p95 / connection-pool / outbox metrics (section A
   gates block); afterwards decide the `realestate_eval_dev` retirement (backup first — it is
    the A7 restore source).
-4. **Product queue** — ق-8 ← ق-6 ← ق-9 per the v2 package, any time; it does not conflict
-  with the A8 tail.
+4. ~~**Product queue** — ق-8 ← ق-6 ← ق-9~~ **done 2026-08-28** (§4); remaining: أصول
+  المنشأة المشتركة (قرار 25) ← منظومة النصوص (قرار 23).
 5. **Open-ended / parallel:** F6 controller-body coverage, B2 aggregates (~~dev-reset
   redesign~~ done 2026-08-28), E6 after product defines deadline/escalation rules.
 6. **Standing "do nots":** no `ApplicationDbContext` on request hosts; no cross-context EF
