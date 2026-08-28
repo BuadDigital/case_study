@@ -593,6 +593,102 @@ public sealed class ControllerBodyPostgresTests : IAsyncLifetime
         Assert.Equal(HttpStatusCode.OK, keyReceipt.StatusCode);
     }
 
+ /// <summary>
+ /// F6 — ق-8/ق-6: مبرر العامل (حد أدنى ١٠ أحرف + الحفظ والقراءة) والإصدار ثنائي المرحلة
+ /// (حالة المسودة، رفض الإيداع قبل الحواجب، 404 للنسخ غير المولّدة) على Postgres حقيقي.
+ /// </summary>
+    [DockerFact]
+    public async Task Valuation_factor_rationale_and_report_issuance_execute()
+    {
+        using var factory = Factory<ValuationMarker>("Valuation");
+        using var client = factory.CreateClient();
+
+        using var createRequest = AuthorizedPost(
+            "/api/valuation-requests",
+            new SaveValuationRequestRequest
+            {
+                PropId = Guid.NewGuid().ToString(),
+                Area = "جدة",
+                Type = "فيلا",
+                Appraiser = "مقيم الاختبار",
+                Status = "progress",
+                Date = "2026-08-28",
+            });
+        var create = await client.SendAsync(createRequest);
+        Assert.Equal(HttpStatusCode.Created, create.StatusCode);
+        using var created = JsonDocument.Parse(await create.Content.ReadAsStringAsync());
+        var valuationRequestId = created.RootElement.GetProperty("id").GetGuid();
+
+        // ق-8-2: المبرر الصوري مرفوض.
+        using var shortRationale = AuthorizedPut(
+            $"/api/valuation-requests/{valuationRequestId:D}/adjustment-factor-rationale",
+            new { selectionContext = "market", factorKey = "financing", rationaleAr = "قصير" });
+        var tooShort = await client.SendAsync(shortRationale);
+        Assert.Equal(HttpStatusCode.BadRequest, tooShort.StatusCode);
+        Assert.Equal("application/problem+json", tooShort.Content.Headers.ContentType?.MediaType);
+
+        // ق-8-1: مبرر واحد للعامل — يُحفظ ويظهر في حمولة المقارنات.
+        using var saveRationale = AuthorizedPut(
+            $"/api/valuation-requests/{valuationRequestId:D}/adjustment-factor-rationale",
+            new
+            {
+                selectionContext = "market",
+                factorKey = "financing",
+                rationaleAr = "شروط التمويل مماثلة لكل المقارنات",
+            });
+        var saved = await client.SendAsync(saveRationale);
+        Assert.Equal(HttpStatusCode.OK, saved.StatusCode);
+        // (قراءة قائمة المقارنات تتطلب منصة upstream حيّة لإعدادات المنشأة — خارج نطاق
+        // عزل الحاوية؛ الإثبات هنا عبر جسم الحفظ الراجع من Postgres.)
+        var savedBody = await saved.Content.ReadAsStringAsync();
+        Assert.Contains("شروط التمويل مماثلة لكل المقارنات", savedBody);
+        Assert.Contains("financing", savedBody);
+
+        // ق-6: مسودة — الحواجب غير مكتملة فلا إيداع، ولا نسخ مولّدة بعد.
+        using var stateRequest = AuthorizedGet(
+            $"/api/valuation-requests/{valuationRequestId:D}/report-issuance");
+        var state = await client.SendAsync(stateRequest);
+        Assert.Equal(HttpStatusCode.OK, state.StatusCode);
+        using var stateDoc = JsonDocument.Parse(await state.Content.ReadAsStringAsync());
+        Assert.Equal("draft", stateDoc.RootElement.GetProperty("stage").GetString());
+        Assert.False(stateDoc.RootElement.GetProperty("allowsDepositIssue").GetBoolean());
+
+        using var depositRequest = AuthorizedPost(
+            $"/api/valuation-requests/{valuationRequestId:D}/report-issuance/deposit",
+            new { });
+        var deposit = await client.SendAsync(depositRequest);
+        Assert.Equal(HttpStatusCode.BadRequest, deposit.StatusCode);
+        Assert.Equal("application/problem+json", deposit.Content.Headers.ContentType?.MediaType);
+
+        using var pdfRequest = AuthorizedGet(
+            $"/api/valuation-requests/{valuationRequestId:D}/report-issuance/deposit-pdf");
+        var pdf = await client.SendAsync(pdfRequest);
+        Assert.Equal(HttpStatusCode.NotFound, pdf.StatusCode);
+    }
+
+ /// <summary>
+ /// F6 — ق-9: شبكة حالة المعاملة ورفع إنفاذ — 404 للمجهول، ورفض الرفع قبل الجاهزية
+ /// برسالة مشكلة، على Postgres حقيقي.
+ /// </summary>
+    [DockerFact]
+    public async Task Case_study_transaction_state_and_handover_guards_execute()
+    {
+        using var factory = Factory<CaseStudyMarker>("CaseStudy");
+        using var client = factory.CreateClient();
+
+        using var missingState = AuthorizedGet(
+            $"/api/work-orders/{Guid.NewGuid():D}/properties/{Guid.NewGuid():D}/transaction-state");
+        var missing = await client.SendAsync(missingState);
+        Assert.Equal(HttpStatusCode.NotFound, missing.StatusCode);
+
+        using var handoverRequest = AuthorizedPost(
+            $"/api/work-orders/{Guid.NewGuid():D}/properties/{Guid.NewGuid():D}/transaction-state/enfaz-handover",
+            new { });
+        var handover = await client.SendAsync(handoverRequest);
+        Assert.Equal(HttpStatusCode.BadRequest, handover.StatusCode);
+        Assert.Equal("application/problem+json", handover.Content.Headers.ContentType?.MediaType);
+    }
+
     private RealDatabaseApiFactory<TMarker> Factory<TMarker>(string serviceName)
         where TMarker : class =>
         new(_connectionString, serviceName);

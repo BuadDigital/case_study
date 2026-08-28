@@ -42,13 +42,24 @@ public sealed class ValuationReportIssuanceService(
         if (row is not null)
             return ToState(row, allowsDepositIssue: false, blockingReasons: []);
 
-        var gateState = await gates.EvaluateAsync(valuationRequestId, cancellationToken);
+        // عرض الحالة يتدهور بأمان عند تعذّر تقييم الحواجب (خدمة upstream غير متاحة) —
+        // الإصدار الفعلي يبقى مشروطاً بتقييم ناجح في IssueDepositAsync.
+        ValuationIssuanceGatesDto? gateState = null;
+        try
+        {
+            gateState = await gates.EvaluateAsync(valuationRequestId, cancellationToken);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+        }
+
         return new ValuationReportIssuanceStateDto
         {
             ValuationRequestId = valuationRequestId,
             Stage = ReportIssuanceStages.Draft,
             AllowsDepositIssue = gateState?.AllowsIssuance == true,
-            BlockingReasonsAr = gateState?.BlockingReasonsAr ?? [],
+            BlockingReasonsAr = gateState?.BlockingReasonsAr
+                ?? ["تعذّر تقييم بوابات الإصدار — تحقق من توافر الخدمات"],
         };
     }
 
@@ -68,10 +79,20 @@ public sealed class ValuationReportIssuanceService(
         if (existing is not null)
             return (null, new Dictionary<string, string> { ["_"] = "نسخة الإيداع صادرة سلفاً — التقرير مجمّد (ق-6)" });
 
-        // ق-6-1: لا إصدار إلا باكتمال الحواجب.
-        var gateState = await gates.EvaluateAsync(valuationRequestId, cancellationToken);
+        // ق-6-1: لا إصدار إلا باكتمال الحواجب — تعذّر التقييم نفسه يمنع الإصدار برسالة
+        // واضحة بدل انهيار الطلب.
+        ValuationIssuanceGatesDto? gateState;
+        try
+        {
+            gateState = await gates.EvaluateAsync(valuationRequestId, cancellationToken);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            gateState = null;
+        }
+
         if (gateState is null)
-            return (null, new Dictionary<string, string> { ["_"] = "تعذّر تقييم بوابات الإصدار" });
+            return (null, new Dictionary<string, string> { ["_"] = "تعذّر تقييم بوابات الإصدار — تحقق من توافر الخدمات ثم أعد المحاولة" });
         if (!gateState.AllowsIssuance)
         {
             return (null, new Dictionary<string, string>
