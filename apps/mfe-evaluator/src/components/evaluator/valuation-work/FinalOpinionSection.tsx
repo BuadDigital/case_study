@@ -10,6 +10,7 @@ import {
   getReportIssuanceState,
   issueDepositVersion,
   registerDepositCertificate,
+  reopenReportIssuance,
   getIssuancePdf,
   type ValuationCostApproachDto,
   type ValuationIssuanceGatesDto,
@@ -102,6 +103,8 @@ export const FinalOpinionSection = memo(function FinalOpinionSection({
   const [issuanceBusy, setIssuanceBusy] = useState(false);
   const [depositCodeDraft, setDepositCodeDraft] = useState("");
   const [certificateFile, setCertificateFile] = useState<File | null>(null);
+  // تكميلية ق-9 (ر2): سبب إعادة فتح دور التقييم بعد الإيداع.
+  const [reopenReason, setReopenReason] = useState("");
 
   const refreshIssuance = async () => {
     const config = apiConfig();
@@ -161,6 +164,33 @@ export const FinalOpinionSection = memo(function FinalOpinionSection({
     }
     setIssuance(res.data);
     showToast("سُجِّلت الشهادة وصدرت النسخة النهائية (ق-6)", "success");
+  };
+
+  // ر2: النسخة المودعة لا تُعدَّل — تُعلَّم «ملغاة — حلّت محلها نسخة أحدث» وتبقى
+  // بالملف، ويُفتح دور تقييم جديد ينتهي بنسخة إيداع N+1 (موافقة مشرف القسم شرط الخادم).
+  const reopenIssuance = async () => {
+    const config = apiConfig();
+    if (!config || !valuationRequestId) return;
+    const reason = reopenReason.trim();
+    if (reason.length < JUSTIFICATION_MIN_LENGTH) {
+      showToast(
+        `سبب إعادة الفتح لا يقل عن ${JUSTIFICATION_MIN_LENGTH} أحرف (ق-8)`,
+        "error",
+      );
+      return;
+    }
+    setIssuanceBusy(true);
+    const res = await reopenReportIssuance(config, valuationRequestId, reason);
+    setIssuanceBusy(false);
+    if (!res.ok) {
+      showToast(res.message ?? "تعذّر إعادة فتح دور التقييم", "error");
+      return;
+    }
+    setIssuance(res.data);
+    setReopenReason("");
+    setDepositCodeDraft("");
+    setCertificateFile(null);
+    showToast("أُعيد فتح دور التقييم — النسخة السابقة ملغاة وتبقى بالملف (ر2)", "success");
   };
 
   const downloadIssuancePdf = async (kind: "deposit" | "final") => {
@@ -1022,6 +1052,17 @@ export const FinalOpinionSection = memo(function FinalOpinionSection({
               الميتا). الرمز والشهادة وحدهما خارج نطاق التجميد.
             </p>
 
+            {issuance.supersededCount > 0 ? (
+              <p className="mb-2 text-[11.5px] text-amber-text">
+                {issuance.supersededCount} نسخة إيداع ملغاة «حلّت محلها نسخة أحدث» تبقى
+                في ملف المعاملة (ر2) —{" "}
+                {issuance.stage === "draft"
+                  ? `الدور الجديد ${issuance.version} قيد العمل`
+                  : `الساري هو الدور ${issuance.version}`}
+                .
+              </p>
+            ) : null}
+
             {issuance.stage === "draft" ? (
               <div className="flex flex-col gap-2">
                 {!issuance.allowsDepositIssue && issuance.blockingReasonsAr.length > 0 ? (
@@ -1104,6 +1145,30 @@ export const FinalOpinionSection = memo(function FinalOpinionSection({
                     الشهادة المحفوظة: {issuance.certificateFileName}
                   </p>
                 ) : null}
+
+                {/* تكميلية ق-9 (ر2): إعادة فتح دور التقييم — بموافقة مشرف القسم */}
+                <div className="mt-1 flex flex-wrap items-end gap-2 rounded-[9px] border border-dashed border-red bg-surface-2 p-3">
+                  <label className="flex min-w-64 flex-1 flex-col gap-1 text-[11.5px] text-text-2">
+                    إعادة فتح دور التقييم (ر2) — سبب إلزامي (
+                    {JUSTIFICATION_MIN_LENGTH}+ أحرف)؛ النسخة المودعة تُعلَّم ملغاة وتبقى
+                    بالملف، ويصدر الدور {issuance.version + 1} بإيداع جديد في قيمة
+                    <input
+                      value={reopenReason}
+                      onChange={(e) => setReopenReason(e.target.value)}
+                      className="rounded-[7px] border border-border bg-surface px-2.5 py-[7px] text-xs"
+                      placeholder="مثال: صفقة مسجلة أحدث غيّرت قيمة المقارنات"
+                    />
+                  </label>
+                  <GhostBtn
+                    disabled={
+                      issuanceBusy ||
+                      reopenReason.trim().length < JUSTIFICATION_MIN_LENGTH
+                    }
+                    onClick={() => void reopenIssuance()}
+                  >
+                    إعادة فتح الدور (مشرف القسم)
+                  </GhostBtn>
+                </div>
               </div>
             )}
           </CardPad>

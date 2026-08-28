@@ -1398,7 +1398,7 @@ export function OperationsTasksView() {
                       "min-h-9 px-3.5 py-2 text-[12.5px] max-lg:w-full max-lg:min-h-11 max-lg:justify-center",
                     )}
                     onClick={() =>
-                      printOperationsTaskDelegationLetter(
+                      void printOperationsTaskDelegationLetter(
                         detail,
                         agentInfoFromStaff(reviewerStaff),
                       )

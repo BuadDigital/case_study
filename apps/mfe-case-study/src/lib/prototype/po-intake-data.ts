@@ -840,6 +840,8 @@ export function formatPropertyTypeLine(property: Pick<
 
 export type PoPropertyIntake = {
   id: string;
+  /** ورشة الترقيم: الرقم المرجعي الداخلي للمعاملة TX-{سنة}-{تسلسل ٥}. */
+  referenceNumber?: string | null;
   identifierType: PropertyIdentifierType;
   deedNumber: string;
   requestNumber: string;

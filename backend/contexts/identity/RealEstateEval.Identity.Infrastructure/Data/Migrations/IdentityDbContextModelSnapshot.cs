@@ -368,6 +368,35 @@ namespace RealEstateEval.Identity.Infrastructure.Data.Contexts.Identity.Migratio
                     b.ToTable("ProcServiceProviderProfiles", "identity");
                 });
 
+            modelBuilder.Entity("RealEstateEval.Domain.ReferenceSequence", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("LastValue")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("Prefix")
+                        .IsRequired()
+                        .HasMaxLength(8)
+                        .HasColumnType("character varying(8)");
+
+                    b.Property<DateTime>("UpdatedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("Year")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Prefix", "Year")
+                        .IsUnique()
+                        .HasDatabaseName("UX_identity_ReferenceSequences_Prefix_Year");
+
+                    b.ToTable("IdentityReferenceSequences", "identity");
+                });
+
             modelBuilder.Entity("RealEstateEval.Domain.UserProfile", b =>
                 {
                     b.Property<string>("UserId")
@@ -432,6 +461,10 @@ namespace RealEstateEval.Identity.Infrastructure.Data.Contexts.Identity.Migratio
                     b.Property<string>("PermissionLevel")
                         .HasMaxLength(64)
                         .HasColumnType("character varying(64)");
+
+                    b.Property<string>("ReferenceNumber")
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)");
 
                     b.Property<int>("RegistrationSource")
                         .HasColumnType("integer");

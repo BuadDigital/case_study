@@ -38,15 +38,47 @@ public class ValuationReportIssuance
     public DateTime? FinalIssuedAtUtc { get; set; }
     public byte[]? FinalPdf { get; set; }
 
+ /* ─── تكميلية ق-9 (ر2): نسخ الإيداع N+1 — الساري هو غير المُلغى، والملغى يبقى بالملف ─── */
+
+ /// <summary>رقم دور التقييم — يبدأ من 1 ويرتفع مع كل إعادة فتح (ر2).</summary>
+    public int Version { get; set; } = 1;
+
+ /// <summary>لحظة الإلغاء «حلّت محلها نسخة أحدث» — null تعني النسخة السارية.</summary>
+    public DateTime? SupersededAtUtc { get; set; }
+    public string? SupersededByUserId { get; set; }
+ /// <summary>سبب إعادة الفتح — إلزامي بحد ق-8-2 (١٠ أحرف).</summary>
+    public string? SupersededReason { get; set; }
+
+ /// <summary>النسخة السارية = غير الملغاة.</summary>
+    public bool IsActive => SupersededAtUtc is null;
+
+ /// <summary>
+ /// ر2: إلغاء النسخة (لا حذف صلب) — النسخة المودعة لا تُعدَّل، وتُعلَّم
+ /// «ملغاة — حلّت محلها نسخة أحدث» ويبقى ملفها في المعاملة.
+ /// </summary>
+    public string? Supersede(string? byUserId, string reason, DateTime nowUtc)
+    {
+        if (SupersededAtUtc is not null)
+            return "هذه النسخة ملغاة سلفاً — حلّت محلها نسخة أحدث";
+        if (!JustificationRules.IsAcceptable(reason))
+            return JustificationRules.TooShortMessageAr("سبب إعادة الفتح");
+
+        SupersededAtUtc = nowUtc;
+        SupersededByUserId = byUserId;
+        SupersededReason = reason.Trim();
+        return null;
+    }
+
     /* ─── B2: انتقالات ق-6 داخل الجذر — الخدمة تجهّز اللقطة والمولّدات وتُنسّق فقط ─── */
 
- /// <summary>ق-6-1: التجميد وإصدار نسخة الإيداع — مرة واحدة لكل طلب.</summary>
+ /// <summary>ق-6-1: التجميد وإصدار نسخة الإيداع — نسخة سارية واحدة لكل طلب (ر2: الدور N+1).</summary>
     public static ValuationReportIssuance IssueDeposit(
         Guid valuationRequestId,
         string documentJson,
         byte[] depositPdf,
         string? issuedByUserId,
-        DateTime nowUtc) => new()
+        DateTime nowUtc,
+        int version = 1) => new()
         {
             Id = Guid.NewGuid(),
             ValuationRequestId = valuationRequestId,
@@ -54,6 +86,7 @@ public class ValuationReportIssuance
             DepositIssuedByUserId = issuedByUserId,
             DocumentJson = documentJson,
             DepositPdf = depositPdf,
+            Version = version,
         };
 
  /// <summary>

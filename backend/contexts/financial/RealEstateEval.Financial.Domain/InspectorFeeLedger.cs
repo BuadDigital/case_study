@@ -74,6 +74,14 @@ public class InspectorFeeLedger
  /// Null until acceptance; re-uploads after accrual do not create a new fee.
  /// </summary>
     public DateTime? AccruedAtUtc { get; set; }
+ /// <summary>
+ /// E6: negotiation deadline stamped on entering disputed (10 business days, Riyadh).
+ /// Cleared on any exit from disputed or when the discount changes — clearing it is
+ /// what cancels the pending reminders (the sweep only reads live values).
+ /// </summary>
+    public DateTime? DisputeDeadlineUtc { get; set; }
+ /// <summary>CSV of E6 stages already notified (reminder-2d, reminder-0d, escalation).</summary>
+    public string? DisputeNotifiedStages { get; set; }
     public DateTime CreatedAtUtc { get; set; }
     public DateTime UpdatedAtUtc { get; set; }
 

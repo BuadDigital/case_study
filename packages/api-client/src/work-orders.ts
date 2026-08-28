@@ -28,6 +28,8 @@ export type DeedOwnerDto = {
 
 export type WorkOrderPropertyDto = {
   id?: string;
+  /** ورشة الترقيم: الرقم المرجعي الداخلي للمعاملة TX-{سنة}-{تسلسل ٥} — يملكه الخادم. */
+  referenceNumber?: string | null;
   identifierType: string;
   deedNumber: string;
   requestNumber?: string;

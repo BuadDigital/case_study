@@ -575,6 +575,15 @@ export function UsersOrganizationView() {
                         >
                           {user.name}
                         </button>
+                        {/* ورشة الترقيم (بند البتّ 5): الرقم المرجعي يظهر لا يُخفى. */}
+                        {user.referenceNumber ? (
+                          <span
+                            className="block text-[10px] text-text-3"
+                            dir="ltr"
+                          >
+                            {user.referenceNumber}
+                          </span>
+                        ) : null}
                       </Td>
                       <Td>{user.role}</Td>
                       <Td>{deptLabel(user)}</Td>

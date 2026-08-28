@@ -18,10 +18,15 @@ public sealed class TransactionStateService(
     ICaseStudyRepository db,
     IValuationRequestService valuationRequests,
     IPropertyTimelineService timeline,
-    TimeProvider? time = null)
+    TimeProvider? time = null,
+    IAuditLogWriter? audit = null,
+    IAuditLogAppend? auditLog = null)
     : ITransactionStateService
 {
     private readonly TimeProvider _time = time ?? TimeProvider.System;
+
+ /// <summary>ر3 يتّسق مع ق-8-2: سبب القرار لا يقل عن ١٠ أحرف (JustificationRules في سياق التقييم).</summary>
+    private const int MinDecisionReasonLength = 10;
 
     public async Task<TransactionStateDto?> GetStateAsync(
         Guid workOrderId,
@@ -80,6 +85,44 @@ public sealed class TransactionStateService(
 
         var updated = input with { EnfazHandedOver = true };
         return (ToDto(workOrderId, propertyId, updated, hasSurvey, property), null);
+    }
+
+    public async Task<string?> RecordPostEnfazDecisionAsync(
+        Guid workOrderId,
+        Guid propertyId,
+        PostEnfazDecisionRequest request,
+        string? actorId,
+        string? actorRole,
+        CancellationToken cancellationToken = default)
+    {
+        // ر3: المدير العام حصراً — القرار خارج صلاحية النظام آلياً (قناة إنفاذ الرسمية).
+        if (!string.Equals(actorRole, StaffRoleIds.GeneralManager, StringComparison.Ordinal))
+            return "تسجيل قرار ما بعد إنفاذ للمدير العام حصراً (ر3)";
+
+        var decision = request.Decision.Trim();
+        if (decision.Length == 0)
+            return "القرار مطلوب";
+        if (request.Reason.Trim().Length < MinDecisionReasonLength)
+            return $"سبب القرار أقصر من الحد الأدنى ({MinDecisionReasonLength} أحرف) — اكتب سبباً جوهرياً (ق-8)";
+
+        var facts = await LoadFactsAsync(workOrderId, propertyId, cancellationToken);
+        if (facts is null) return "المعاملة غير موجودة";
+        if (!facts.Value.Input.EnfazHandedOver)
+            return "المعاملة لم تُرفع على إنفاذ — الرجوع قبل الرفع يمر عبر ر1/ر2";
+
+        if (audit is null || auditLog is null)
+            return "خدمة التدقيق غير متاحة — تعذّر تسجيل القيد";
+
+        // قيد تدقيق فقط — لا يفتح النظام شيئاً؛ استرجاع فعلي يعامَل كمعاملة معادة (ر2).
+        await auditLog.AppendAsync(audit.Create(
+            actorId: string.IsNullOrWhiteSpace(actorId) ? "unknown" : actorId,
+            action: "case-study.post-enfaz-decision.recorded",
+            entityType: "WorkOrderProperty",
+            entityId: propertyId.ToString("D"),
+            before: null,
+            after: new { decision, reason = request.Reason.Trim(), workOrderId }),
+            cancellationToken);
+        return null;
     }
 
     private async Task<(TransactionStateRules.Input Input, bool HasSurvey, WorkOrderProperty Property)?>

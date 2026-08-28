@@ -311,6 +311,17 @@ export function PropertyDetailHero({
           </div>
 
           <div className="flex shrink-0 items-center gap-3 sm:gap-[18px]">
+            {/* ورشة الترقيم (بند البتّ 5): رقم المعاملة المرجعي يظهر لا يُخفى. */}
+            {property.referenceNumber?.trim() ? (
+              <div className="text-start">
+                <div className="mb-0.5 text-[11px] text-text-3">رقم المعاملة</div>
+                <div className="text-[15px] font-bold text-text-2">
+                  <bdi dir="ltr" className={ltrValueClass}>
+                    {property.referenceNumber.trim()}
+                  </bdi>
+                </div>
+              </div>
+            ) : null}
             {property.requestNumber.trim() ? (
               <div className="text-start">
                 <div className="mb-0.5 text-[11px] text-text-3">رقم الطلب</div>

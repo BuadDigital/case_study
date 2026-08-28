@@ -1,28 +1,21 @@
-const SEQ_STORAGE_PREFIX = "ejadah.valuation-report.daily-seq.";
+const SEQ_STORAGE_PREFIX = "ejadah.valuation-report.yearly-seq.";
 
-export function formatValuationReportYmd(issuedAt: Date): string {
-  const year = issuedAt.getFullYear();
-  const month = String(issuedAt.getMonth() + 1).padStart(2, "0");
-  const day = String(issuedAt.getDate()).padStart(2, "0");
-  return `${year}${month}${day}`;
-}
-
-/** Preliminary issued number: TQ + yyyyMMdd + 4-digit daily ordinal. */
+// ورشة الترقيم (بند البتّ 3): النمط الموحد TQ-{سنة}-{تسلسل ٥}. الأرقام المجمّدة
+// في لقطات ق-6 الصادرة قبل التفعيل لا تتغير — هذه الصيغة لما يُصدر بعده فقط.
+// يجب أن تبقى مطابقة لـ ValuationReportNumberRules في الخادم.
 export function formatValuationReportNumber(
   issuedAt: Date,
-  dailyOrdinal: number,
+  ordinal: number,
 ): string {
-  const ordinal = Number.isFinite(dailyOrdinal) && dailyOrdinal >= 1
-    ? Math.floor(dailyOrdinal)
-    : 1;
-  return `TQ${formatValuationReportYmd(issuedAt)}${String(ordinal).padStart(4, "0")}`;
+  const n = Number.isFinite(ordinal) && ordinal >= 1 ? Math.floor(ordinal) : 1;
+  return `TQ-${issuedAt.getFullYear()}-${String(n).padStart(5, "0")}`;
 }
 
 export function formatValuationReportIssueDateIso(issuedAt: Date = new Date()): string {
   return issuedAt.toISOString().slice(0, 10);
 }
 
-/** Number reserved at distribution: TQ + request date + digits from VR-####. */
+/** Number reserved at distribution: TQ + request year + digits from VR-####. */
 export function reservedValuationReportNumber(
   displayId: string,
   requestDate: string,
@@ -38,15 +31,15 @@ export function reservedValuationReportNumber(
   return formatValuationReportNumber(issuedAt, ordinal);
 }
 
-/** Allocates the next TQ number for the local calendar day (prototype sequence). */
+/** Allocates the next TQ number for the local calendar year (prototype sequence). */
 export function allocateValuationReportNumber(issuedAt: Date = new Date()): string {
-  const ymd = formatValuationReportYmd(issuedAt);
+  const year = String(issuedAt.getFullYear());
   let next = 1;
   try {
-    const raw = globalThis.localStorage?.getItem(SEQ_STORAGE_PREFIX + ymd);
+    const raw = globalThis.localStorage?.getItem(SEQ_STORAGE_PREFIX + year);
     const parsed = Number.parseInt(raw ?? "0", 10);
     if (Number.isFinite(parsed) && parsed >= 0) next = parsed + 1;
-    globalThis.localStorage?.setItem(SEQ_STORAGE_PREFIX + ymd, String(next));
+    globalThis.localStorage?.setItem(SEQ_STORAGE_PREFIX + year, String(next));
   } catch {
     next = 1;
   }

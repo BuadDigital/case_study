@@ -1,5 +1,6 @@
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
 using RealEstateEval.Application.Abstractions;
 using RealEstateEval.Infrastructure.Notifications;
 using RealEstateEval.Infrastructure.Services;
@@ -23,7 +24,8 @@ public static class FinancialDependencyInjection
     public static IServiceCollection AddFinancialInfrastructure(
         this IServiceCollection services,
         IConfiguration configuration,
-        string connectionString)
+        string connectionString,
+        IHostEnvironment environment)
     {
         services.AddFinancialPersistence(configuration, connectionString);
         // Case Study reads/writes go through /api/case-study-dispatch. Do not
@@ -35,11 +37,14 @@ public static class FinancialDependencyInjection
         services.AddRemoteIdentityDirectory(configuration);
         services.AddRemoteAttachmentLookup(configuration);
         services.AddHttpClient<IKeyEntitlementLookup, HttpKeyEntitlementLookup>();
-        services.AddScoped<INotificationService, NullNotificationService>();
-        services.AddScoped<NotificationRecipientResolver>();
-        services.AddScoped<INotificationRecipientResolver>(sp =>
-            sp.GetRequiredService<NotificationRecipientResolver>());
+ // E6: كانت إشعارات المضيف المالي NullNotificationService («بقايا حتى يوجد
+ // إيفاد») — صار له صندوق صادر حقيقي على نمط Operations/Failures، فتذكيرات
+ // مهلة التفاوض وإشعارات الأتعاب القائمة تصل فعلاً.
+        services.AddMessagingPersistence(configuration, connectionString);
+        services.AddNotificationInfrastructure(configuration, environment);
+        services.AddHttpClient<IOperationsTaskService, HttpOperationsTaskService>();
         services.AddInspectorFeeCollaborators();
+        services.AddHostedService<BillingNegotiationDeadlineHostedService>();
         services.AddScoped<ICourtVisitFeeChargeService, CourtVisitFeeChargeService>();
         services.AddScoped<IKeyReceiptFeeChargeService, KeyReceiptFeeChargeService>();
         services.AddScoped<IPoEnfazInvoiceLookup, PoEnfazInvoiceLookup>();

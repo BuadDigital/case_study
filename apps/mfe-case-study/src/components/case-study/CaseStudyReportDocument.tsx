@@ -17,6 +17,8 @@ type Props = {
   model: CaseStudyReportModel;
   id?: string;
   className?: string;
+  /** قرار 25 (الكيان 6): الرقم المرجعي CS-{سنة}-{تسلسل ٥} — يُخصَّص عند الطباعة. */
+  referenceNumber?: string | null;
 };
 
 const SECTIONS_WITH_ALERT: ReadonlySet<CaseStudyQuestionSection> = new Set([
@@ -266,7 +268,12 @@ function ApprovalBlock({ model }: { model: CaseStudyReportModel }) {
   );
 }
 
-export function CaseStudyReportDocument({ model, id, className }: Props) {
+export function CaseStudyReportDocument({
+  model,
+  id,
+  className,
+  referenceNumber,
+}: Props) {
   return (
     <div
       id={id}
@@ -281,6 +288,11 @@ export function CaseStudyReportDocument({ model, id, className }: Props) {
         <div className="csrd-title-block">
           <div className="csrd-title-main">{CASE_STUDY_REPORT_TITLE}</div>
           <div className="csrd-title-sub">{CASE_STUDY_REPORT_SUBTITLE}</div>
+          {referenceNumber ? (
+            <div className="csrd-title-sub" dir="ltr">
+              {referenceNumber}
+            </div>
+          ) : null}
         </div>
         <CommissionTable model={model} />
         {model.sections.map((section) => (

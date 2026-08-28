@@ -75,6 +75,35 @@ namespace RealEstateEval.Financial.Infrastructure.Data.Contexts.Financial.Migrat
                         });
                 });
 
+            modelBuilder.Entity("RealEstateEval.Domain.ReferenceSequence", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("LastValue")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("Prefix")
+                        .IsRequired()
+                        .HasMaxLength(8)
+                        .HasColumnType("character varying(8)");
+
+                    b.Property<DateTime>("UpdatedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("Year")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Prefix", "Year")
+                        .IsUnique()
+                        .HasDatabaseName("UX_financial_ReferenceSequences_Prefix_Year");
+
+                    b.ToTable("FinancialReferenceSequences", "financial");
+                });
+
             modelBuilder.Entity("RealEstateEval.Financial.Domain.CourtVisitFeeCharge", b =>
                 {
                     b.Property<Guid>("Id")
@@ -349,6 +378,13 @@ namespace RealEstateEval.Financial.Infrastructure.Data.Contexts.Financial.Migrat
                     b.Property<string>("DiscountReason")
                         .HasMaxLength(2000)
                         .HasColumnType("character varying(2000)");
+
+                    b.Property<DateTime?>("DisputeDeadlineUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("DisputeNotifiedStages")
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)");
 
                     b.Property<bool>("ExcludedFromBatch")
                         .HasColumnType("boolean");

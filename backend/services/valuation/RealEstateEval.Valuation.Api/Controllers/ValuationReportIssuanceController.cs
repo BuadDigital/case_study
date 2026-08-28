@@ -62,6 +62,27 @@ public class ValuationReportIssuanceController : ControllerBase
         return Ok(result);
     }
 
+    /// <summary>
+    /// تكميلية ق-9 (ر2): إعادة فتح دور التقييم بعد الإيداع — موافقة مشرف القسم شرط
+    /// الصلاحية؛ النسخة السارية تُعلَّم «ملغاة — حلّت محلها نسخة أحدث» وتبقى بالملف.
+    /// </summary>
+    [HttpPost("reopen")]
+    [Authorize(Policy = CapabilityPolicyNames.ManageValuationRequests)]
+    public async Task<ActionResult<ValuationReportIssuanceStateDto>> Reopen(
+        Guid valuationRequestId,
+        [FromBody] ReopenReportIssuanceRequest request,
+        CancellationToken ct)
+    {
+        var (result, errors) = await _issuance.ReopenAfterDepositAsync(
+            valuationRequestId,
+            request,
+            ActorClaims.Id(User),
+            ct);
+        if (errors is not null)
+            return this.FieldErrorsProblem(errors);
+        return Ok(result);
+    }
+
     [HttpGet("deposit-pdf")]
     [Authorize(Policy = CapabilityPolicyNames.ReadValuationQueue)]
     public async Task<IActionResult> DepositPdf(Guid valuationRequestId, CancellationToken ct)

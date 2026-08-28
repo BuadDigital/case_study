@@ -17,6 +17,10 @@ public static class CaseStudyModel
 {
     public static ModelBuilder ApplyCaseStudyModel(this ModelBuilder builder, bool ownsMigrations = true)
     {
+ // ورشة الترقيم: عدّادات TX/LT/CS السنوية محلية في مخطط case_study.
+        if (ownsMigrations)
+            builder.ApplyReferenceSequenceModel(DatabaseSchemas.CaseStudy);
+
         builder.Entity<WorkOrder>(e =>
         {
             MapTable(e, "WorkOrders", DatabaseSchemas.CaseStudy, ownsMigrations);
@@ -57,6 +61,8 @@ public static class CaseStudyModel
         builder.Entity<WorkOrderProperty>(e =>
         {
             MapTable(e, "WorkOrderProperties", DatabaseSchemas.CaseStudy, ownsMigrations);
+            e.Property(x => x.ReferenceNumber).HasMaxLength(32);
+            e.HasIndex(x => x.ReferenceNumber);
             e.Property(x => x.DeedNumber).HasMaxLength(128);
             e.Property(x => x.DeedKind)
                 .HasConversion<int>();
@@ -275,6 +281,20 @@ public static class CaseStudyModel
             e.Property(x => x.ScopeKey).HasMaxLength(128);
             e.Property(x => x.LettersJson).HasColumnType("jsonb");
             e.HasIndex(x => x.ScopeKey).IsUnique();
+        });
+
+        builder.Entity<NumberedDocument>(e =>
+        {
+            MapTable(e, "NumberedDocuments", DatabaseSchemas.CaseStudy, ownsMigrations);
+            e.HasKey(x => x.Id);
+            e.Property(x => x.Kind).HasMaxLength(32).IsRequired();
+            e.Property(x => x.ReferenceNumber).HasMaxLength(32).IsRequired();
+            e.Property(x => x.PoNumber).HasMaxLength(64);
+            e.Property(x => x.Title).HasMaxLength(512);
+            e.Property(x => x.CreatedByUserId).HasMaxLength(450);
+            e.HasIndex(x => x.ReferenceNumber).IsUnique();
+            e.HasIndex(x => new { x.Kind, x.PoNumber });
+            e.HasIndex(x => x.CreatedAtUtc);
         });
 
         builder.Entity<DocumentReferenceCounter>(e =>

@@ -190,6 +190,16 @@ public sealed partial class KeyEnvelopesService : IKeyEnvelopesService
             Texts.NullIfBlank(request.Notes),
             operationsTaskId);
 
+ // ورشة الترقيم (بندا البتّ 2 و5): الرقم المرجعي للظرف يُخصَّص عند التسجيل ويُعرض.
+        var (referenceNumber, referenceError) = await ReferenceSequenceAllocator.AllocateYearlyAsync(
+            _ops,
+            DatabaseSchemas.Operations,
+            ReferenceNumbering.KeyEnvelope,
+            now,
+            cancellationToken);
+        if (referenceError is not null) return (null, referenceError);
+        entity.ReferenceNumber = referenceNumber;
+
         foreach (var item in request.Assignments ?? [])
         {
             var deed = item.DeedNumber.Trim();

@@ -601,6 +601,14 @@ export {
 } from "./comparable-properties";
 
 export {
+  allocateNumberedDocument,
+  listNumberedDocuments,
+  type NumberedDocumentDto,
+  type NumberedDocumentKind,
+  type NumberedDocumentsApiConfig,
+} from "./numbered-documents";
+
+export {
   listPropertyComparableLinks,
   linkPropertyComparable,
   patchPropertyComparableLinkDescription,
@@ -622,6 +630,7 @@ export {
   getReportIssuanceState,
   issueDepositVersion,
   registerDepositCertificate,
+  reopenReportIssuance,
   getIssuancePdf,
   type ValuationReportIssuanceStateDto,
   saveValuationMarketApproach,

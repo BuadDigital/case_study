@@ -20,7 +20,8 @@ public sealed class ServiceModule : IRealEstateEvalServiceModule
     {
         builder.Services.AddHostSharedInfrastructure(builder.Configuration, builder.Environment);
         builder.Services.AddClaimsPermissionService();
-        builder.Services.AddFinancialInfrastructure(builder.Configuration, connectionString!);
+        builder.Services.AddFinancialInfrastructure(
+            builder.Configuration, connectionString!, builder.Environment);
         // A8: Financial boundary validators moved out of the globally scanned assembly.
         builder.Services.AddValidatorsFromAssemblyContaining<CreatePartyFeePricingTableRequestValidator>();
     }
@@ -29,7 +30,8 @@ public sealed class ServiceModule : IRealEstateEvalServiceModule
     {
         app.MapDatabaseReady(
             ServiceName,
-            typeof(FinancialDbContext));
+            typeof(FinancialDbContext),
+            typeof(MessagingDbContext));
         return Task.CompletedTask;
     }
 }

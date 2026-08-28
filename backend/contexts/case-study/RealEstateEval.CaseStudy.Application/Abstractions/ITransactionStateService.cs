@@ -16,4 +16,16 @@ public interface ITransactionStateService
         Guid propertyId,
         string? recordedByUserId,
         CancellationToken cancellationToken = default);
+
+ /// <summary>
+ /// تكميلية ق-9 (ر3): بعد رفع إنفاذ — قيد تدقيق بقرار المدير العام وسببه حصراً؛
+ /// لا يفتح شيئاً (استرجاع فعلي من إنفاذ يمر عبر ر2 في التقييم).
+ /// </summary>
+    Task<string?> RecordPostEnfazDecisionAsync(
+        Guid workOrderId,
+        Guid propertyId,
+        PostEnfazDecisionRequest request,
+        string? actorId,
+        string? actorRole,
+        CancellationToken cancellationToken = default);
 }

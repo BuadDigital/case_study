@@ -17,6 +17,7 @@ export function contractTypeToStaffType(
 export function userListItemToStaff(u: UserListItem): StaffUser {
   return {
     id: u.id,
+    referenceNumber: u.referenceNumber ?? null,
     name: u.displayName,
     role: u.jobTitle,
     email: u.email,

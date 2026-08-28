@@ -26,6 +26,8 @@ public sealed class CaseStudyDbContext(DbContextOptions<CaseStudyDbContext> opti
         Set<InternalDelegationLetterSet>();
     public DbSet<DocumentReferenceCounter> DocumentReferenceCounters =>
         Set<DocumentReferenceCounter>();
+    public DbSet<NumberedDocument> NumberedDocuments => Set<NumberedDocument>();
+    public DbSet<ReferenceSequence> ReferenceSequences => Set<ReferenceSequence>();
     public DbSet<PoIntakeDraft> PoIntakeDrafts => Set<PoIntakeDraft>();
     public DbSet<PropertyTimelineEntry> PropertyTimelineEntries => Set<PropertyTimelineEntry>();
     public DbSet<PropertyGroup> PropertyGroups => Set<PropertyGroup>();

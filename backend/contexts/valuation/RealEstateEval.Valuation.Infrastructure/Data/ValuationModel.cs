@@ -153,7 +153,13 @@ public static class ValuationModel
             e.Property(x => x.CertificateFileName).HasMaxLength(512);
             e.Property(x => x.CertificateContentType).HasMaxLength(128);
             e.Property(x => x.CertificateUploadedByUserId).HasMaxLength(128);
-            e.HasIndex(x => x.ValuationRequestId).IsUnique();
+            e.Property(x => x.SupersededByUserId).HasMaxLength(128);
+            e.Property(x => x.SupersededReason).HasMaxLength(1024);
+            // ر2: نسخة سارية واحدة لكل طلب — الملغاة «حلّت محلها نسخة أحدث» تبقى بالملف.
+            e.HasIndex(x => x.ValuationRequestId)
+                .IsUnique()
+                .HasFilter("\"SupersededAtUtc\" IS NULL");
+            e.HasIndex(x => new { x.ValuationRequestId, x.Version }).IsUnique();
             e.HasOne<ValuationRequest>()
                 .WithMany()
                 .HasForeignKey(x => x.ValuationRequestId)

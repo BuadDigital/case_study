@@ -69,6 +69,8 @@ export type KeyEnvelopeTimelineEntry = {
 export type KeyEnvelopeRow = {
   id: string;
   requestNumber: string;
+  /** ورشة الترقيم: الرقم المرجعي الداخلي KE-{سنة}-{تسلسل ٥}. */
+  referenceNumber?: string | null;
   court: string;
   circuit: string;
   keysCountLabeled: number;
@@ -190,7 +192,15 @@ export function scenarioColor(scenario: string): string {
 const NON_DIGIT_PATTERN = /\D/g;
 
 /** Display ref like HTML `keyRef` → ENV-2026-NNN */
-export function envelopeDisplayRef(id: string, createdAtUtc?: string): string {
+export function envelopeDisplayRef(
+  id: string,
+  createdAtUtc?: string,
+  referenceNumber?: string | null,
+): string {
+ // ورشة الترقيم: الرقم الحقيقي KE-{سنة}-{تسلسل ٥} من الخادم يتقدم؛ التوليفة
+ // القديمة من GUID تبقى احتياطاً للسجلات التي لم تُرقّم بعد.
+  const real = referenceNumber?.trim();
+  if (real) return real;
   const digits = id.replace(NON_DIGIT_PATTERN, "");
   const n = (digits.slice(-3) || "1").padStart(3, "0");
   const year = createdAtUtc

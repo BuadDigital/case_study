@@ -422,6 +422,8 @@ export type StaffUserDetail = {
 
 export type StaffUser = {
   id: string;
+  /** ورشة الترقيم: الرقم المرجعي الداخلي US-{سنة}-{تسلسل ٥}. */
+  referenceNumber?: string | null;
   name: string;
   role: string;
   email: string;

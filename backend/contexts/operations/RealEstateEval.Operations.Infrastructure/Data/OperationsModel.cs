@@ -16,6 +16,10 @@ public static class OperationsModel
 {
     public static ModelBuilder ApplyOperationsModel(this ModelBuilder builder, bool ownsMigrations = true)
     {
+ // ورشة الترقيم: عدّادات KE السنوية محلية في مخطط operations.
+        if (ownsMigrations)
+            builder.ApplyReferenceSequenceModel(DatabaseSchemas.Operations);
+
         builder.Entity<SurveyOffice>(e =>
         {
             MapTable(e, "SurveyOffices", DatabaseSchemas.Operations, ownsMigrations);
@@ -43,6 +47,8 @@ public static class OperationsModel
             MapTable(e, "KeyEnvelopes", DatabaseSchemas.Operations, ownsMigrations);
             e.UseOptimisticConcurrency();
             e.Property(x => x.RequestNumber).HasMaxLength(128);
+            e.Property(x => x.ReferenceNumber).HasMaxLength(32);
+            e.HasIndex(x => x.ReferenceNumber);
             e.Property(x => x.Court).HasMaxLength(256);
             e.Property(x => x.Circuit).HasMaxLength(150);
             e.Property(x => x.ContactPhones).HasMaxLength(1000);

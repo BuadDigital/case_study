@@ -24,6 +24,8 @@ public interface ICaseStudyRepository
     DbSet<FieldInspectionWorkspace> FieldInspectionWorkspaces { get; }
     DbSet<InternalDelegationLetterSet> InternalDelegationLetterSets { get; }
     DbSet<DocumentReferenceCounter> DocumentReferenceCounters { get; }
+    DbSet<NumberedDocument> NumberedDocuments { get; }
+    DbSet<ReferenceSequence> ReferenceSequences { get; }
     DbSet<PoIntakeDraft> PoIntakeDrafts { get; }
     DbSet<PropertyTimelineEntry> PropertyTimelineEntries { get; }
     DbSet<PropertyGroup> PropertyGroups { get; }

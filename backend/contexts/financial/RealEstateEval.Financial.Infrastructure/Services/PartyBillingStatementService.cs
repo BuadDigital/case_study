@@ -19,8 +19,6 @@ namespace RealEstateEval.Financial.Infrastructure.Services;
 public partial class PartyBillingStatementService : IPartyBillingStatementService
 {
     private const int MaxListRows = 500;
-    private const string RefDept = "FN";
-    private const string RefType = "CS";
 
  /// <summary>ledger-backed party fee kinds (workflow + inspector fee ledger).</summary>
     private static readonly HashSet<WorkflowTaskKind> StatementKinds =

@@ -238,6 +238,22 @@ public sealed class InspectorFeeTransitionApplier : IInspectorFeeTransitionAppli
         ledger.ReturnTo = nextReturnTo;
         ledger.UpdatedAtUtc = _time.UtcNow();
 
+ // E6 (بنود البتّ 9 و12): المهلة تُختم عند الدخول إلى «معترض» فقط، وتسقط مع
+ // سجل مراحلها عند أي خروج منه (بأي اتجاه) — سقوطها هو إلغاء التذكيرات المعلقة.
+        if (nextStatus == InspectorFeeBillingStatus.Disputed
+            && fromStatus != InspectorFeeBillingStatus.Disputed)
+        {
+            ledger.DisputeDeadlineUtc =
+                BillingNegotiationDeadlines.DeadlineFromUtc(_time.UtcNow());
+            ledger.DisputeNotifiedStages = null;
+        }
+        else if (nextStatus != InspectorFeeBillingStatus.Disputed
+            && ledger.DisputeDeadlineUtc is not null)
+        {
+            ledger.DisputeDeadlineUtc = null;
+            ledger.DisputeNotifiedStages = null;
+        }
+
         _financial.InspectorFeeTransitions.Add(new InspectorFeeTransition
         {
             Id = Guid.NewGuid(),

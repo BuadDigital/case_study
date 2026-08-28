@@ -86,6 +86,10 @@ namespace RealEstateEval.Operations.Infrastructure.Data.Contexts.Operations.Migr
                         .HasMaxLength(32)
                         .HasColumnType("character varying(32)");
 
+                    b.Property<string>("ReferenceNumber")
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)");
+
                     b.Property<string>("RequestNumber")
                         .IsRequired()
                         .HasMaxLength(128)
@@ -119,6 +123,8 @@ namespace RealEstateEval.Operations.Infrastructure.Data.Contexts.Operations.Migr
 
                     b.HasIndex("OperationsTaskId");
 
+                    b.HasIndex("ReferenceNumber");
+
                     b.HasIndex("RequestNumber");
 
                     b.HasIndex("RevenueEntitlementAtUtc");
@@ -126,6 +132,35 @@ namespace RealEstateEval.Operations.Infrastructure.Data.Contexts.Operations.Migr
                     b.HasIndex("Status");
 
                     b.ToTable("KeyEnvelopes", "operations");
+                });
+
+            modelBuilder.Entity("RealEstateEval.Domain.ReferenceSequence", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("LastValue")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("Prefix")
+                        .IsRequired()
+                        .HasMaxLength(8)
+                        .HasColumnType("character varying(8)");
+
+                    b.Property<DateTime>("UpdatedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("Year")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Prefix", "Year")
+                        .IsUnique()
+                        .HasDatabaseName("UX_operations_ReferenceSequences_Prefix_Year");
+
+                    b.ToTable("OperationsReferenceSequences", "operations");
                 });
 
             modelBuilder.Entity("RealEstateEval.Operations.Domain.KeyEnvelopeAssignment", b =>

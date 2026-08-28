@@ -66,6 +66,19 @@ public sealed class WorkOrderPropertyCommands : IWorkOrderPropertyCommands
         property.Id = null;
 
         var mapped = MapPropertyEnfath(property, entity.Id, forInsert: true);
+ // ورشة الترقيم (بندا البتّ 2 و5): الرقم المرجعي للمعاملة يُخصَّص عند الإضافة.
+        var (transactionReference, referenceError) =
+            await ReferenceSequenceAllocator.AllocateYearlyAsync(
+                _db.Database,
+                _db.ReferenceSequences,
+                _db.SaveChangesAsync,
+                DatabaseSchemas.CaseStudy,
+                ReferenceNumbering.Transaction,
+                _time.UtcNow(),
+                cancellationToken);
+        if (referenceError is not null)
+            return (null, new Dictionary<string, string> { ["_"] = referenceError });
+        mapped.ReferenceNumber = transactionReference;
         _db.WorkOrderProperties.Add(mapped);
         await _db.SaveChangesAsync(cancellationToken);
         return (WorkOrderMapper.ToPropertyDto(mapped), null);

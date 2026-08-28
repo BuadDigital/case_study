@@ -275,6 +275,8 @@ public sealed class CaseStudyValuationDispatchService : ICaseStudyValuationDispa
     {
         var digits = new string((displayId ?? "").Where(char.IsDigit).ToArray());
         var ordinal = int.TryParse(digits, out var n) && n > 0 ? n : 1;
-        return $"TQ{reservedDate:yyyyMMdd}{ordinal:D4}";
+ // ورشة الترقيم (بند البتّ 3): النمط الموحد TQ-{سنة}-{تسلسل ٥}.
+        return ReferenceNumbering.Format(
+            ReferenceNumbering.ValuationReport, reservedDate.Year, ordinal);
     }
 }

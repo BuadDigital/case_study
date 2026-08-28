@@ -65,6 +65,16 @@ public class ValuationRequest
     }
 
  /// <summary>
+ /// تكميلية ق-9 (ر2): إعادة فتح دور التقييم بعد الإيداع — عكس <see cref="SubmitReport"/>؛
+ /// الطلب يعود مفتوحاً فيحجز العقار من جديد حتى نسخة إيداع أحدث.
+ /// </summary>
+    public void ReopenReport(DateTime nowUtc)
+    {
+        Status = ValuationRequestStatus.Progress;
+        UpdatedAtUtc = nowUtc;
+    }
+
+ /// <summary>
  /// An impediment (تعذر) keeps the request open — the property stays held until the
  /// impediment is resolved and a report is submitted.
  /// </summary>

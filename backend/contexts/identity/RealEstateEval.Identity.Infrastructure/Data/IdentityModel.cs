@@ -18,6 +18,9 @@ public static class IdentityModel
 {
     public static ModelBuilder ApplyIdentityModel(this ModelBuilder builder)
     {
+ // ورشة الترقيم: عدّادات US السنوية محلية في مخطط identity.
+        builder.ApplyReferenceSequenceModel(DatabaseSchemas.Identity);
+
         builder.Entity<ApplicationUser>(e =>
         {
             e.ToTable("Users", DatabaseSchemas.Identity);
@@ -71,6 +74,7 @@ public static class IdentityModel
             e.Property(x => x.DistributionAssigneeId).HasMaxLength(128);
             e.Property(x => x.ReviewerCityCoverageJson).HasMaxLength(1024);
             e.Property(x => x.PermissionLevel).HasMaxLength(64);
+            e.Property(x => x.ReferenceNumber).HasMaxLength(32);
             e.HasIndex(x => x.RoleId);
             e.HasIndex(x => x.Status);
             e.HasIndex(x => x.NationalId)

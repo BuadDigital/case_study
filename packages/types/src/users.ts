@@ -10,6 +10,8 @@ type UserDetailField = {
 
 export type UserListItem = {
   id: string;
+  /** ورشة الترقيم: الرقم المرجعي الداخلي US-{سنة}-{تسلسل ٥}. */
+  referenceNumber?: string | null;
   displayName: string;
   jobTitle: string;
   email: string;

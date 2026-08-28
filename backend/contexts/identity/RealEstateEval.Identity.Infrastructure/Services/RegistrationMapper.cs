@@ -19,6 +19,7 @@ public static class RegistrationMapper
         new()
         {
             Id = user.Id,
+            ReferenceNumber = profile.ReferenceNumber,
             DisplayName = user.DisplayName,
             JobTitle = profile.JobTitle,
             Email = user.Email ?? string.Empty,

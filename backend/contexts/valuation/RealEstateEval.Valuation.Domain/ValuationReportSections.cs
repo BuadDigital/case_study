@@ -1,4 +1,5 @@
 using System.Linq;
+using RealEstateEval.Domain;
 
 namespace RealEstateEval.Valuation.Domain;
 
@@ -135,14 +136,17 @@ public static class ValuationReportSectionCatalog
         hasStructuresToValue ? "حتى 12 صورة (6 بالصفحة)" : "حتى 6 صور (أرض)";
 }
 
-/// <summary>Issued report number — preliminary format until numbering workshop locks prefixes.</summary>
+/// <summary>
+/// رقم تقرير التقييم — ورشة الترقيم (بند البتّ 3): النمط الموحد TQ-{سنة}-{تسلسل ٥}
+/// لما يُصدر بعد التفعيل؛ الأرقام المجمّدة في لقطات ق-6 لا تتغير أبداً.
+/// </summary>
 public static class ValuationReportNumberRules
 {
-    /// <summary>Format: TQ + yyyyMMdd + 4-digit daily ordinal (e.g. TQ202608190001).</summary>
-    public static string FormatIssued(DateOnly reportDate, int dailyOrdinal)
+    /// <summary>Format: TQ-{yyyy}-{#####} (e.g. TQ-2026-00012).</summary>
+    public static string FormatIssued(DateOnly reportDate, int ordinal)
     {
-        var n = dailyOrdinal < 1 ? 1 : dailyOrdinal;
-        return $"TQ{reportDate:yyyyMMdd}{n:D4}";
+        var n = ordinal < 1 ? 1 : ordinal;
+        return ReferenceNumbering.Format(ReferenceNumbering.ValuationReport, reportDate.Year, n);
     }
 
     /// <summary>

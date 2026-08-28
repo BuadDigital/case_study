@@ -1137,6 +1137,10 @@ export type ValuationReportIssuanceStateDto = {
   finalIssuedAtUtc?: string | null;
   hasDepositPdf: boolean;
   hasFinalPdf: boolean;
+  /** تكميلية ق-9 (ر2): رقم دور التقييم الساري — 1 قبل أي إعادة فتح. */
+  version: number;
+  /** عدد النسخ الملغاة «حلّت محلها نسخة أحدث» الباقية في ملف المعاملة. */
+  supersededCount: number;
 };
 
 export async function getReportIssuanceState(
@@ -1219,6 +1223,23 @@ export function registerDepositCertificate(
     config,
     `${base}/api/valuation-requests/${valuationRequestId}/report-issuance/certificate`,
     body,
+  );
+}
+
+/**
+ * تكميلية ق-9 (ر2): إعادة فتح دور التقييم بعد الإيداع — موافقة مشرف القسم شرط
+ * الصلاحية؛ النسخة السارية تُعلَّم «ملغاة — حلّت محلها نسخة أحدث» وتبقى بالملف.
+ */
+export function reopenReportIssuance(
+  config: ValuationSelectionsApiConfig,
+  valuationRequestId: string,
+  reason: string,
+): Promise<Result<ValuationReportIssuanceStateDto>> {
+  const base = config.baseUrl ?? getApiBase();
+  return postIssuance(
+    config,
+    `${base}/api/valuation-requests/${valuationRequestId}/report-issuance/reopen`,
+    { reason },
   );
 }
 

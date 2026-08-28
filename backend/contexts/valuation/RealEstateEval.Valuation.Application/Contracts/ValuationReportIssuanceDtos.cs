@@ -21,6 +21,22 @@ public class ValuationReportIssuanceStateDto
     public string? FinalIssuedAtUtc { get; init; }
     public bool HasDepositPdf { get; init; }
     public bool HasFinalPdf { get; init; }
+
+ /// <summary>تكميلية ق-9 (ر2): رقم دور التقييم الساري — 1 قبل أي إعادة فتح.</summary>
+    public int Version { get; init; } = 1;
+
+ /// <summary>عدد النسخ الملغاة «حلّت محلها نسخة أحدث» الباقية في ملف المعاملة.</summary>
+    public int SupersededCount { get; init; }
+}
+
+/// <summary>
+/// تكميلية ق-9 (ر2): إعادة فتح دور التقييم بعد الإيداع — بموافقة مشرف القسم؛
+/// السبب إلزامي بحد ق-8-2 (١٠ أحرف).
+/// </summary>
+public class ReopenReportIssuanceRequest
+{
+    [Required, MaxLength(1024)]
+    public string Reason { get; init; } = "";
 }
 
 /// <summary>

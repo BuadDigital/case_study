@@ -47,4 +47,28 @@ public class TransactionStateController : ControllerBase
             return this.FieldErrorsProblem(new Dictionary<string, string> { ["_"] = error });
         return Ok(result);
     }
+
+    /// <summary>
+    /// تكميلية ق-9 (ر3): بعد رفع إنفاذ — قيد تدقيق بقرار المدير العام وسببه فقط؛
+    /// لا يفتح شيئاً (الاسترجاع الفعلي يمر عبر إعادة فتح التقييم ر2).
+    /// </summary>
+    [HttpPost("post-enfaz-decision")]
+    [Authorize(Policy = CapabilityPolicyNames.ManageWorkOrders)]
+    public async Task<IActionResult> RecordPostEnfazDecision(
+        Guid workOrderId,
+        Guid propertyId,
+        [FromBody] PostEnfazDecisionRequest request,
+        CancellationToken ct)
+    {
+        var error = await _state.RecordPostEnfazDecisionAsync(
+            workOrderId,
+            propertyId,
+            request,
+            ActorClaims.Id(User),
+            ActorClaims.Role(User),
+            ct);
+        if (error is not null)
+            return this.FieldErrorsProblem(new Dictionary<string, string> { ["_"] = error });
+        return NoContent();
+    }
 }

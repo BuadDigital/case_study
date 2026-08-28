@@ -13,6 +13,8 @@ public class PropertyContactDto
 public class WorkOrderPropertyDto
 {
     public Guid? Id { get; set; }
+ /// <summary>ورشة الترقيم: الرقم المرجعي الداخلي للمعاملة TX-{سنة}-{تسلسل ٥} — يملكه الخادم، لا يُكتب من العميل.</summary>
+    public string? ReferenceNumber { get; set; }
     public string IdentifierType { get; set; } = "deed";
     public string DeedNumber { get; set; } = "";
     public string? RequestNumber { get; set; }

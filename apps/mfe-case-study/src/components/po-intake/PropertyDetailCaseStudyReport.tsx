@@ -3,6 +3,8 @@
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { usePrototype } from "@platform/app-shared/contexts/PrototypeContext";
+import { allocateNumberedDocument } from "@platform/api-client";
+import { apiConfig } from "@platform/app-shared/auth/api-config";
 import {
   Button,
   cn,
@@ -294,8 +296,35 @@ export function PropertyDetailCaseStudyReport({
     extra: false,
   });
   const [previewOpen, setPreviewOpen] = useState(false);
+ // قرار 25 (الكيان 6): رقم التقرير CS-{سنة}-{تسلسل ٥} يُخصَّص عند أول طباعة
+ // ويثبت للجلسة — لا رقم جديد لكل ضغطة.
+  const [reportReference, setReportReference] = useState<string | null>(null);
 
   const { data: tasks = [] } = useWorkflowTasksQuery();
+
+  const printReport = useCallback(async () => {
+    let reference = reportReference;
+    if (!reference) {
+      const config = apiConfig();
+      const propertyId = /^[0-9a-fA-F-]{36}$/.test(property.id)
+        ? property.id
+        : undefined;
+      if (config) {
+        const allocated = await allocateNumberedDocument(config, {
+          kind: "case-study-report",
+          poNumber: record.poNumber,
+          propertyId,
+          title: `تقرير دراسة الحالة — صك ${property.deedNumber}`.trim(),
+        });
+        if (allocated.ok) {
+          reference = allocated.data.referenceNumber;
+          setReportReference(reference);
+        }
+      }
+    }
+    // إطار واحد حتى يُرسم الرقم في الترويسة قبل حوار الطباعة.
+    requestAnimationFrame(() => window.print());
+  }, [reportReference, record.poNumber, property.id, property.deedNumber]);
 
   const refreshDraft = useCallback(async () => {
     if (!task) {
@@ -485,7 +514,7 @@ export function PropertyDetailCaseStudyReport({
                 <Button
                   size="sm"
                   variant="primary"
-                  onClick={() => window.print()}
+                  onClick={() => void printReport()}
                 >
                   طباعة / PDF
                 </Button>
@@ -499,6 +528,7 @@ export function PropertyDetailCaseStudyReport({
                 <CaseStudyReportDocument
                   model={reportModel}
                   id="cs-report-print-root"
+                  referenceNumber={reportReference}
                 />
               </div>
             </ModalBody>

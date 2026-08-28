@@ -936,12 +936,30 @@ namespace RealEstateEval.Valuation.Infrastructure.Data.Contexts.Valuation.Migrat
                     b.Property<byte[]>("FinalPdf")
                         .HasColumnType("bytea");
 
+                    b.Property<DateTime?>("SupersededAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("SupersededByUserId")
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)");
+
+                    b.Property<string>("SupersededReason")
+                        .HasMaxLength(1024)
+                        .HasColumnType("character varying(1024)");
+
                     b.Property<Guid>("ValuationRequestId")
                         .HasColumnType("uuid");
+
+                    b.Property<int>("Version")
+                        .HasColumnType("integer");
 
                     b.HasKey("Id");
 
                     b.HasIndex("ValuationRequestId")
+                        .IsUnique()
+                        .HasFilter("\"SupersededAtUtc\" IS NULL");
+
+                    b.HasIndex("ValuationRequestId", "Version")
                         .IsUnique();
 
                     b.ToTable("ValuationReportIssuances", "valuation");

@@ -51,6 +51,7 @@ public static class WorkOrderMapper
             SuggestedDeedKind = DeedKindLabels.ToApiValue(
                 DeedKindLabels.SuggestFromIdentifier(p.IdentifierType)),
             DeedNumber = p.DeedNumber,
+            ReferenceNumber = p.ReferenceNumber,
             RequestNumber = p.RequestNumber,
             HasRequestNumber = p.HasRequestNumber,
             AssignmentMandateNumber = p.AssignmentMandateNumber,

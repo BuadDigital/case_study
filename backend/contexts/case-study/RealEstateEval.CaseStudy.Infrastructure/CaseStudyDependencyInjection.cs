@@ -56,6 +56,7 @@ public static class CaseStudyDependencyInjection
     {
         services.AddScoped<IPoIntakeDraftRepository, PoIntakeDraftRepository>();
         services.AddScoped<IPoIntakeDraftService, PoIntakeDraftService>();
+        services.AddScoped<INumberedDocumentService, NumberedDocumentService>();
         services.AddScoped<ISuspendedTransactionsService, SuspendedTransactionsService>();
         return services;
     }

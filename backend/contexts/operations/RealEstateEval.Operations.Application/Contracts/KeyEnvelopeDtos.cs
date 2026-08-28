@@ -56,6 +56,8 @@ public class KeyEnvelopeDto
 {
     public Guid Id { get; init; }
     public string RequestNumber { get; init; } = "";
+ /// <summary>ورشة الترقيم: الرقم المرجعي الداخلي KE-{سنة}-{تسلسل ٥}.</summary>
+    public string? ReferenceNumber { get; init; }
     public string Court { get; init; } = "";
     public string Circuit { get; init; } = "";
     public int KeysCountLabeled { get; init; }

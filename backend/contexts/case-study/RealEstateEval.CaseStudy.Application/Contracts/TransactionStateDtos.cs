@@ -35,3 +35,18 @@ public class TransactionStateDto
  /// <summary>حزمة رفع إنفاذ (ق-9/ق-14).</summary>
     public IReadOnlyList<string> HandoverPackageAr { get; init; } = [];
 }
+
+/// <summary>
+/// تكميلية ق-9 (ر3): بعد رفع إنفاذ لا يفتح النظام شيئاً آلياً — المدير العام يسجّل
+/// قراره (قناة إنفاذ الرسمية) قيدَ تدقيق فقط؛ استرجاع فعلي من إنفاذ يمر عبر ر2.
+/// </summary>
+public class PostEnfazDecisionRequest
+{
+    [System.ComponentModel.DataAnnotations.Required]
+    [System.ComponentModel.DataAnnotations.MaxLength(256)]
+    public string Decision { get; init; } = "";
+
+    [System.ComponentModel.DataAnnotations.Required]
+    [System.ComponentModel.DataAnnotations.MaxLength(1024)]
+    public string Reason { get; init; } = "";
+}

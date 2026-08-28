@@ -105,6 +105,74 @@ public class ValuationReportIssuanceTests
         Assert.Contains("أصدر نسخة الإيداع أولاً", errors!["_"]);
     }
 
+    [Fact]
+    public async Task Reopen_supersedes_active_version_and_next_deposit_is_version_two()
+    {
+        await using var contexts = TestDatabases.Create("issuance-reopen");
+        var db = contexts.Valuation;
+        var id = NewRequest(db, "VR-903");
+        await db.SaveChangesAsync();
+
+        var service = new ValuationReportIssuanceService(
+            db, new StubGates(allows: true), new StubDocuments());
+
+        var (deposit, _) = await service.IssueDepositAsync(id, "user-1");
+        Assert.Equal(1, deposit!.Version);
+
+        // ٢-ب: سبب إعادة الفتح إلزامي بحد ق-8-2 — القصير مرفوض ولا شيء يتغير.
+        var (_, shortErrors) = await service.ReopenAfterDepositAsync(
+            id, new ReopenReportIssuanceRequest { Reason = "قصير" }, "supervisor-1");
+        Assert.Contains("الحد الأدنى", shortErrors!["reason"]);
+        Assert.True(await ValuationReportFreeze.IsFrozenAsync(db, id));
+
+        // ر2: النسخة السارية تُعلَّم ملغاة وتبقى بالملف، والدور يعود مسودة مفتوحة.
+        var (reopened, reopenErrors) = await service.ReopenAfterDepositAsync(
+            id,
+            new ReopenReportIssuanceRequest { Reason = "قيمة المقارنات تغيّرت بعد صفقة مسجلة أحدث" },
+            "supervisor-1");
+        Assert.Null(reopenErrors);
+        Assert.Equal(ReportIssuanceStages.Draft, reopened!.Stage);
+        Assert.Equal(1, reopened.SupersededCount);
+        Assert.False(await ValuationReportFreeze.IsFrozenAsync(db, id));
+
+        db.ChangeTracker.Clear();
+        var vr = db.ValuationRequests.Single(x => x.Id == id);
+        Assert.True(vr.IsOpen);
+
+        var superseded = db.ValuationReportIssuances.Single();
+        Assert.NotNull(superseded.SupersededAtUtc);
+        Assert.Equal("supervisor-1", superseded.SupersededByUserId);
+        Assert.Contains("صفقة مسجلة أحدث", superseded.SupersededReason);
+
+        // الدور الجديد يصدر نسخة إيداع N+1 — لا إعادة استخدام للرقم.
+        var (second, secondErrors) = await service.IssueDepositAsync(id, "user-1");
+        Assert.Null(secondErrors);
+        Assert.Equal(2, second!.Version);
+        Assert.Equal(1, second.SupersededCount);
+        Assert.True(await ValuationReportFreeze.IsFrozenAsync(db, id));
+
+        // الملغاة لا تُحذف — نسختان بالملف والسارية هي الأحدث.
+        db.ChangeTracker.Clear();
+        Assert.Equal(2, db.ValuationReportIssuances.Count());
+        Assert.Single(db.ValuationReportIssuances.Where(x => x.SupersededAtUtc == null));
+    }
+
+    [Fact]
+    public async Task Reopen_without_active_deposit_points_back_to_recall()
+    {
+        await using var contexts = TestDatabases.Create("issuance-reopen-none");
+        var db = contexts.Valuation;
+        var id = NewRequest(db, "VR-904");
+        await db.SaveChangesAsync();
+
+        var service = new ValuationReportIssuanceService(
+            db, new StubGates(allows: true), new StubDocuments());
+
+        var (_, errors) = await service.ReopenAfterDepositAsync(
+            id, new ReopenReportIssuanceRequest { Reason = "سبب جوهري بطول كافٍ" }, "supervisor-1");
+        Assert.Contains("ر1", errors!["_"]);
+    }
+
     private static Guid NewRequest(
         RealEstateEval.Valuation.Infrastructure.Data.Contexts.ValuationDbContext db,
         string displayId)

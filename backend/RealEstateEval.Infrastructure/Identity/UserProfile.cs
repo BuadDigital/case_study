@@ -27,6 +27,8 @@ public class UserProfile
     public string? ReviewerCityCoverageJson { get; set; }
     public string? PermissionLevel { get; set; }
     public UserStatus Status { get; set; } = UserStatus.Active;
+ /// <summary>ورشة الترقيم: الرقم المرجعي الداخلي US-{سنة}-{تسلسل ٥}.</summary>
+    public string? ReferenceNumber { get; set; }
  /// <summary>Last successful session issue.</summary>
     public DateTime? LastLoginAtUtc { get; set; }
     public DateTime CreatedAtUtc { get; set; }

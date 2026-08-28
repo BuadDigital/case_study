@@ -13,6 +13,8 @@ public class UserDetailFieldDto
 public class UserListItemDto
 {
     public required string Id { get; init; }
+ /// <summary>ورشة الترقيم: الرقم المرجعي الداخلي US-{سنة}-{تسلسل ٥}.</summary>
+    public string? ReferenceNumber { get; init; }
     public required string DisplayName { get; init; }
     public required string JobTitle { get; init; }
     public required string Email { get; init; }

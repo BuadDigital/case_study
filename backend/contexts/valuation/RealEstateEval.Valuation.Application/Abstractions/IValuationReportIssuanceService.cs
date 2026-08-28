@@ -24,6 +24,17 @@ public interface IValuationReportIssuanceService
             string? uploadedByUserId,
             CancellationToken cancellationToken = default);
 
+ /// <summary>
+ /// تكميلية ق-9 (ر2): إعادة فتح دور التقييم بعد الإيداع — النسخة السارية تُعلَّم
+ /// «ملغاة — حلّت محلها نسخة أحدث» (لا حذف صلب)، والطلب يعود مفتوحاً نحو نسخة إيداع N+1.
+ /// </summary>
+    Task<(ValuationReportIssuanceStateDto? Result, Dictionary<string, string>? Errors)>
+        ReopenAfterDepositAsync(
+            Guid valuationRequestId,
+            ReopenReportIssuanceRequest request,
+            string? requestedByUserId,
+            CancellationToken cancellationToken = default);
+
     Task<byte[]?> GetDepositPdfAsync(Guid valuationRequestId, CancellationToken cancellationToken = default);
 
     Task<byte[]?> GetFinalPdfAsync(Guid valuationRequestId, CancellationToken cancellationToken = default);

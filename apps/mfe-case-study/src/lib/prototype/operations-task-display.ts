@@ -1,4 +1,6 @@
 import type { OperationsTaskDto } from "@platform/api-client";
+import { allocateNumberedDocument } from "@platform/api-client";
+import { apiConfig } from "@platform/app-shared/auth/api-config";
 import { pad2 } from "@platform/app-shared/format/date";
 import type { InternalDelegationLetter } from "./internal-delegation-letters";
 import { printInternalDelegationLetter } from "./internal-delegation-letter-html";
@@ -320,13 +322,25 @@ export function taskStepperIndex(status: string): number | null {
 }
 
 /** طباعة خطاب التفويض من snapshot المهمة (court_visit). */
-export function printOperationsTaskDelegationLetter(
+export async function printOperationsTaskDelegationLetter(
   task: OperationsTaskDto,
   agent?: DelegationAgentInfo,
   options?: { city?: string },
-): void {
+): Promise<void> {
   if (task.type !== "court_visit" || task.letterRows.length === 0) return;
   const first = task.letterRows[0]!;
+ // ورشة الترقيم + قرار 25 (الكيان 5): الخطاب يأخذ رقمه LT-{سنة}-{تسلسل ٥}
+ // من السجل لحظة الطباعة؛ عند تعذّر التخصيص يُطبع بالمرجع القديم (خ.ت-…).
+  let letterReference = task.reference;
+  const config = apiConfig();
+  if (config) {
+    const allocated = await allocateNumberedDocument(config, {
+      kind: "letter",
+      poNumber: task.letterRows[0]?.po?.trim() || undefined,
+      title: `خطاب تفويض داخلي — زيارة محكمة ${first.court}`.trim(),
+    });
+    if (allocated.ok) letterReference = allocated.data.referenceNumber;
+  }
   const created = new Date(task.createdAt);
   const city =
     options?.city?.trim() ||
@@ -345,7 +359,7 @@ export function printOperationsTaskDelegationLetter(
       requestNo: row.request,
     })),
     poNumbers: [...new Set(task.letterRows.map((r) => r.po.trim()).filter(Boolean))],
-    reference: task.reference,
+    reference: letterReference,
     createdAt: task.createdAt,
     dateHijri: formatHijriAr(created),
     dateGreg: formatGregAr(created),

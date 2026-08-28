@@ -17,6 +17,10 @@ public static class FinancialModel
 {
     public static ModelBuilder ApplyFinancialModel(this ModelBuilder builder, bool ownsMigrations = true)
     {
+ // ورشة الترقيم: عدّادات DS السنوية محلية في مخطط financial.
+        if (ownsMigrations)
+            builder.ApplyReferenceSequenceModel(DatabaseSchemas.Financial);
+
         builder.Entity<PartyBillingStatement>(e =>
         {
             MapTable(e, "PartyBillingStatements", DatabaseSchemas.Financial, ownsMigrations);
@@ -245,6 +249,7 @@ public static class FinancialModel
             e.Property(x => x.SuspensionReason).HasMaxLength(2000);
             e.Property(x => x.ExclusionReason).HasMaxLength(2000);
             e.Property(x => x.ReturnTo).HasMaxLength(32);
+            e.Property(x => x.DisputeNotifiedStages).HasMaxLength(128);
             e.Property(x => x.DisbursementVoucher).HasMaxLength(128);
             e.Property(x => x.AgreedFeeSar).HasPrecision(12, 2);
             e.Property(x => x.SupervisorDiscountSar).HasPrecision(12, 2);

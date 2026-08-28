@@ -6,6 +6,8 @@ public class KeyEnvelope
     public Guid Id { get; set; }
  /// <summary>رقم الطلب من إنفاذ — مرجع الظرف.</summary>
     public string RequestNumber { get; set; } = "";
+ /// <summary>ورشة الترقيم: الرقم المرجعي الداخلي KE-{سنة}-{تسلسل ٥}.</summary>
+    public string? ReferenceNumber { get; set; }
     public string Court { get; set; } = "";
     public string Circuit { get; set; } = "";
  /// <summary>العدد المكتوب على الظرف.</summary>

@@ -1,27 +1,28 @@
 import { describe, expect, it } from "vitest";
 import { formatValuationReportNumber, reservedValuationReportNumber } from "../valuation-report-number";
 
+// ورشة الترقيم (بند البتّ 3): النمط الموحد TQ-{سنة}-{تسلسل ٥}.
 describe("formatValuationReportNumber", () => {
-  it("formats TQ + yyyyMMdd + 4-digit ordinal", () => {
+  it("formats TQ-{yyyy}-{#####}", () => {
     expect(formatValuationReportNumber(new Date(2026, 7, 19), 1)).toBe(
-      "TQ202608190001",
+      "TQ-2026-00001",
     );
     expect(formatValuationReportNumber(new Date(2026, 7, 19), 12)).toBe(
-      "TQ202608190012",
+      "TQ-2026-00012",
     );
   });
 
-  it("clamps invalid ordinals to 0001", () => {
+  it("clamps invalid ordinals to 00001", () => {
     expect(formatValuationReportNumber(new Date(2026, 0, 1), 0)).toBe(
-      "TQ202601010001",
+      "TQ-2026-00001",
     );
   });
 });
 
 describe("reservedValuationReportNumber", () => {
-  it("uses the request date and display-id digits", () => {
+  it("uses the request year and display-id digits", () => {
     expect(reservedValuationReportNumber("VR-12", "2026-08-19")).toBe(
-      "TQ202608190012",
+      "TQ-2026-00012",
     );
   });
 });

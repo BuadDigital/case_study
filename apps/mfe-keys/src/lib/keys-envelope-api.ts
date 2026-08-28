@@ -36,6 +36,7 @@ function mapEnvelope(dto: KeyEnvelopeDto): KeyEnvelopeRow {
   return {
     id: dto.id,
     requestNumber: dto.requestNumber,
+    referenceNumber: dto.referenceNumber ?? null,
     court: dto.court,
     circuit: dto.circuit,
     keysCountLabeled: dto.keysCountLabeled,

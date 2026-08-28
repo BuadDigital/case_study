@@ -1,5 +1,7 @@
 using RealEstateEval.Application.Contracts;
+using RealEstateEval.Domain;
 using RealEstateEval.Financial.Domain;
+using RealEstateEval.Infrastructure.Data;
 using RealEstateEval.Infrastructure.Notifications;
 
 namespace RealEstateEval.Financial.Infrastructure.Services;
@@ -10,9 +12,14 @@ public partial class PartyBillingStatementService
         DateTime nowUtc,
         CancellationToken cancellationToken)
     {
-        var dateKey = nowUtc.ToString("yyMMdd");
-        var (reference, error) = await _commands.AllocateDocumentReferenceAsync(
-            RefDept, RefType, dateKey, cancellationToken);
+ // ورشة الترقيم (بندا البتّ 1–2): مسير الصرف DS-{سنة}-{تسلسل ٥} بتخصيص محلي —
+ // المراجع الصادرة قبل التفعيل (FN-CS-…) تبقى كما هي ولا تُعاد صياغتها.
+        var (reference, error) = await ReferenceSequenceAllocator.AllocateYearlyAsync(
+            _db,
+            DatabaseSchemas.Financial,
+            ReferenceNumbering.DisbursementStatement,
+            nowUtc,
+            cancellationToken);
         if (error is not null)
             throw new InvalidOperationException(error);
         if (string.IsNullOrWhiteSpace(reference))

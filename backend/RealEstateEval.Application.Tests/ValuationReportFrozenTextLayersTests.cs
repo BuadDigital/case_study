@@ -31,23 +31,24 @@ public class ValuationReportFrozenTextLayersTests
     }
 
     [Fact]
-    public void Temporary_report_number_uses_tq_date_and_display_digits()
+ // ورشة الترقيم (بند البتّ 3): النمط الموحد TQ-{سنة}-{تسلسل ٥}.
+    public void Temporary_report_number_uses_tq_year_and_display_digits()
     {
         var n = ValuationReportNumberRules.FormatTemporary("V-12", new DateOnly(2026, 8, 19));
-        Assert.Equal("TQ202608190012", n);
+        Assert.Equal("TQ-2026-00012", n);
     }
 
     [Fact]
-    public void Reserved_report_number_uses_distribution_date_not_preview_day()
+    public void Reserved_report_number_uses_distribution_year_not_preview_day()
     {
         var n = ValuationReportNumberRules.FormatReserved("VR-12", new DateOnly(2026, 8, 1));
-        Assert.Equal("TQ202608010012", n);
+        Assert.Equal("TQ-2026-00012", n);
     }
 
     [Fact]
-    public void Issued_report_number_matches_preliminary_tq_format()
+    public void Issued_report_number_matches_workshop_tq_format()
     {
         var n = ValuationReportNumberRules.FormatIssued(new DateOnly(2026, 8, 19), 1);
-        Assert.Equal("TQ202608190001", n);
+        Assert.Equal("TQ-2026-00001", n);
     }
 }

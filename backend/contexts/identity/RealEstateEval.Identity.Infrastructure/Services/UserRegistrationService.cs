@@ -207,6 +207,20 @@ public partial class UserRegistrationService : IUserRegistrationService
         if (roleId == "engineering-office")
             profile.RegistrationSource = RegistrationSource.Proc;
 
+ // ورشة الترقيم (بندا البتّ 2 و5): الرقم المرجعي للمستخدم يُخصَّص عند التسجيل.
+        var (userReference, userReferenceError) =
+            await ReferenceSequenceAllocator.AllocateYearlyAsync(
+                _db,
+                DatabaseSchemas.Identity,
+                ReferenceNumbering.User,
+                _time.UtcNow(),
+                cancellationToken);
+        if (userReferenceError is not null)
+        {
+            return (null, new Dictionary<string, string> { ["_form"] = userReferenceError });
+        }
+        profile.ReferenceNumber = userReference;
+
         _db.UserProfiles.Add(profile);
         AddAudit(_audit.Create(
             actorId,

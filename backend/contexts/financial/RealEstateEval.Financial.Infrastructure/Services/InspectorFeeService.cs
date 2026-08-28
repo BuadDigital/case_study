@@ -307,7 +307,17 @@ public class InspectorFeeService : IInspectorFeeService
         }
 
         if (request.SupervisorDiscountSar.HasValue)
-            ledger.SupervisorDiscountSar = Math.Max(0m, request.SupervisorDiscountSar.Value);
+        {
+            var nextDiscount = Math.Max(0m, request.SupervisorDiscountSar.Value);
+ // E6 (بند البتّ 12): تغيّر الخصم أثناء الاعتراض يلغي مهلة التفاوض وتذكيراتها.
+            if (ledger.BillingStatus == InspectorFeeBillingStatus.Disputed
+                && ledger.SupervisorDiscountSar != nextDiscount)
+            {
+                ledger.DisputeDeadlineUtc = null;
+                ledger.DisputeNotifiedStages = null;
+            }
+            ledger.SupervisorDiscountSar = nextDiscount;
+        }
 
         if (request.DiscountReason is not null)
         {

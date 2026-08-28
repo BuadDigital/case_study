@@ -399,7 +399,7 @@ export function KeyEnvelopeDetailPage({
                       className="text-[19px] font-bold text-gold-d max-sm:text-[17px]"
                       dir="ltr"
                     >
-                      {envelopeDisplayRef(env.id, env.createdAtUtc)}
+                      {envelopeDisplayRef(env.id, env.createdAtUtc, env.referenceNumber)}
                     </span>
                     <span className="text-[13px] font-semibold text-text-3">
                       طلب {env.requestNumber}

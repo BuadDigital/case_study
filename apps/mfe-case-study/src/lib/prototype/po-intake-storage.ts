@@ -107,6 +107,7 @@ function normalizePoRecord(record: PoIntakeRecord): PoIntakeRecord {
 function dtoToProperty(dto: WorkOrderPropertyDto): PoPropertyIntake {
   return normalizeProperty({
     id: String(dto.id ?? ""),
+    referenceNumber: dto.referenceNumber ?? null,
     identifierType: parsePropertyIdentifierType(dto.identifierType),
     deedNumber: dto.deedNumber,
     requestNumber: dto.requestNumber ?? "",

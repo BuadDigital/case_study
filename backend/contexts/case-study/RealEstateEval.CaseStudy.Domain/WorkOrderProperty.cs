@@ -6,6 +6,8 @@ public class WorkOrderProperty
 {
     public Guid Id { get; set; }
     public Guid WorkOrderId { get; set; }
+ /// <summary>ورشة الترقيم: الرقم المرجعي الداخلي للمعاملة TX-{سنة}-{تسلسل ٥}.</summary>
+    public string? ReferenceNumber { get; set; }
     public PropertyIdentifierType IdentifierType { get; set; }
  /// <summary>Deed kind — traditional / registered title.</summary>
     public DeedKind DeedKind { get; set; } = DeedKind.Traditional;

@@ -4,6 +4,7 @@ using RealEstateEval.Application.Abstractions;
 using RealEstateEval.Application.Contracts;
 using RealEstateEval.Application.Rules;
 using RealEstateEval.Domain;
+using RealEstateEval.Infrastructure.Data;
 using RealEstateEval.Infrastructure.Data.Contexts;
 using RealEstateEval.Infrastructure.Notifications;
 using RealEstateEval.CaseStudy.Application.Abstractions;
@@ -166,7 +167,21 @@ public class WorkOrderService : IWorkOrderService
         foreach (var propDto in request.Properties)
         {
             propDto.Id = null;
-            workOrder.Properties.Add(_properties.MapPropertyEnfath(propDto, workOrder.Id, forInsert: true));
+            var mappedProperty = _properties.MapPropertyEnfath(propDto, workOrder.Id, forInsert: true);
+ // ورشة الترقيم (بندا البتّ 2 و5): الرقم المرجعي للمعاملة يُخصَّص عند الورود.
+            var (transactionReference, referenceError) =
+                await ReferenceSequenceAllocator.AllocateYearlyAsync(
+                    _db.Database,
+                    _db.ReferenceSequences,
+                    _db.SaveChangesAsync,
+                    DatabaseSchemas.CaseStudy,
+                    ReferenceNumbering.Transaction,
+                    _time.UtcNow(),
+                    cancellationToken);
+            if (referenceError is not null)
+                return (null, new Dictionary<string, string> { ["_"] = referenceError });
+            mappedProperty.ReferenceNumber = transactionReference;
+            workOrder.Properties.Add(mappedProperty);
         }
 
         _db.WorkOrders.Add(workOrder);

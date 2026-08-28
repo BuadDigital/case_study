@@ -382,7 +382,7 @@ export function KeysView() {
     const q = search.trim().toLowerCase();
     return envelopes.filter((e) => {
       const deeds = e.assignments.map((a) => a.deedNumber).join(" ");
-      const ref = envelopeDisplayRef(e.id, e.createdAtUtc).toLowerCase();
+      const ref = envelopeDisplayRef(e.id, e.createdAtUtc, e.referenceNumber).toLowerCase();
       const hay =
         `${ref} ${e.requestNumber} ${e.court} ${e.circuit} ${deeds}`.toLowerCase();
       const okQ = !q || hay.includes(q);
@@ -417,7 +417,7 @@ export function KeysView() {
         : [];
       return {
         id: env.id,
-        title: envelopeDisplayRef(env.id, env.createdAtUtc),
+        title: envelopeDisplayRef(env.id, env.createdAtUtc, env.referenceNumber),
         meta: [
           {
             text: env.court?.trim() || "بدون محكمة",
@@ -711,7 +711,7 @@ export function KeysView() {
                   >
                     <KeysTd>
                       <span className="text-[13.5px] font-bold text-gold-d">
-                        {envelopeDisplayRef(env.id, env.createdAtUtc)}
+                        {envelopeDisplayRef(env.id, env.createdAtUtc, env.referenceNumber)}
                       </span>
                     </KeysTd>
                     <KeysTd col>
@@ -806,6 +806,7 @@ export function KeysView() {
                   {envelopeDisplayRef(
                     pendingDelete.id,
                     pendingDelete.createdAtUtc,
+                    pendingDelete.referenceNumber,
                   )}
                 </span>
                 ؟

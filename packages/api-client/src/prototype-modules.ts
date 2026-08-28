@@ -295,6 +295,8 @@ export type KeyEnvelopeTimelineEntryDto = {
 export type KeyEnvelopeDto = {
   id: string;
   requestNumber: string;
+  /** ورشة الترقيم: الرقم المرجعي الداخلي KE-{سنة}-{تسلسل ٥}. */
+  referenceNumber?: string | null;
   court: string;
   circuit: string;
   keysCountLabeled: number;
