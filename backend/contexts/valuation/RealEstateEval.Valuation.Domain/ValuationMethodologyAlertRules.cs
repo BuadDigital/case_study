@@ -84,8 +84,6 @@ public static class ValuationMethodologyAlertSeverity
         : RequiresRationale(number) ? ValuationMethodologyAlertSeverityKinds.RequireRationale
         : ValuationMethodologyAlertSeverityKinds.RequireAck;
 
- /// <summary>Backward-compatible alias — hard blockers only.</summary>
-    public static bool IsHardByDefault(int number) => IsHard(number);
 }
 
 public sealed record ValuationMethodologyAlertCostLineInput(
@@ -348,9 +346,6 @@ public static class ValuationMethodologyAlertRules
 
     public static int TriggeredCount(IEnumerable<ValuationMethodologyAlertCheck> checks) =>
         checks.Count(c => c.Triggered);
-
-    public static bool HasHardBlockers(IEnumerable<ValuationMethodologyAlertCheck> checks) =>
-        checks.Any(c => c.Triggered && c.IsHard);
 
     public static bool HasBlockingAlerts(IEnumerable<ValuationMethodologyAlertCheck> checks) =>
         checks.Any(c => c.BlocksIssuance);

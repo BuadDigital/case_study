@@ -537,22 +537,3 @@ export async function deferPartyBillingLines(
     return { ok: false, kind: "network" };
   }
 }
-
-export function partyBillingStatementStatusTone(
-  status: PartyBillingStatementStatus | string,
-): "default" | "warning" | "success" | "info" | "danger" {
-  switch (status) {
-    case "draft":
-      return "default";
-    case "issued":
-      return "info";
-    case "invoice_received":
-      return "warning";
-    case "closed":
-      return "success";
-    case "cancelled":
-      return "danger";
-    default:
-      return "default";
-  }
-}

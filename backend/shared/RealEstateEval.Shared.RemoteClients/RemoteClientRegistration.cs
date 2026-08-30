@@ -153,11 +153,6 @@ public static class RemoteClientRegistration
         return services;
     }
 
-    public static IServiceCollection AddRemoteUserLabelLookup(
-        this IServiceCollection services,
-        IConfiguration configuration) =>
-        services.AddRemoteIdentityDirectory(configuration);
-
     private static IServiceCollection AddUpstreamHttp(
         this IServiceCollection services,
         IConfiguration configuration)

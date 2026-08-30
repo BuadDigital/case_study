@@ -94,8 +94,6 @@ public static class WorkflowTaskKindValues
     public static WorkflowTaskKind Parse(string? value) =>
         TryParse(value, out var kind) ? kind : WorkflowTaskKind.CaseStudyProperty;
 
-    public static bool IsParty(this WorkflowTaskKind kind) =>
-        kind != WorkflowTaskKind.CaseStudyProperty;
 }
 
 /// <summary>Wire/database strings for <see cref="WorkflowTaskPhase"/>.</summary>

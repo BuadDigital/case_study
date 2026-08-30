@@ -165,15 +165,6 @@ function hasStandaloneOrdinal(hay: string, n: number): boolean {
  * رتبة البحث: أصغر = أفضل.
  * 0 تطابق رقمي/ترتيبي تام، 1 بادئة رقمية، 2 تطابق نصي، null لا يظهر.
  */
-export function circuitSearchRank(
-  query: string,
-  item: CircuitSearchItem,
-): number | null {
-  const q = query.trim();
-  if (!q) return 0;
-  return rankWithNormalizedQuery(digitsOnly(q), stripArabicAl(q), item);
-}
-
 /** تطبيع الاستعلام مرة واحدة خارج الحلقة — كان يعاد (٥+ تمريرات regex) لكل عنصر. */
 function rankWithNormalizedQuery(
   qDigits: string,

@@ -1,4 +1,4 @@
-export { getApiBase, isPrivateLanHost } from "./api-base";
+export { getApiBase } from "./api-base";
 
 export {
   clearApiWriteInterceptor,
@@ -55,7 +55,6 @@ export {
   stopWorkOrder,
   updateWorkOrderHeader,
   updateWorkOrderProperty,
-  updateWorkOrderPropertyLocationMapUrl,
   workOrderExists,
   type ApiErr,
   type ApiOk,
@@ -261,7 +260,6 @@ export {
   rejectEvaluatorRecallApi,
   requestEvaluatorRecallApi,
   saveFailureTypesCatalog,
-  saveFieldDictionary,
   uploadAttachment,
   upsertPropertyCourtAccess,
   type CreateKeyEnvelopeHandoffRequest,
@@ -437,7 +435,6 @@ export {
   cancelPartyBillingStatement,
   closePartyBillingStatement,
   deferPartyBillingLines,
-  partyBillingStatementStatusTone,
   type PartyBillingStatementsApiConfig,
   type PartyBillingStatementStatus,
   type PartyBillingPayeeType,
@@ -493,14 +490,6 @@ export {
   type OrganizationValuationReportSettings,
   type SaveOrganizationSettingsRequest,
 } from "./organization-settings";
-
-export {
-  getAttachmentPrintDictionary,
-  saveAttachmentPrintDictionary,
-  type AttachmentPrintDictionaryApiConfig,
-  type AttachmentPrintDictionaryDto,
-  type AttachmentPrintTypeDto,
-} from "./attachment-print-dictionary";
 
 export {
   getValuationLists,
@@ -589,9 +578,7 @@ export {
   getOpenValuationRequestByProperty,
   ensureOpenValuationRequestByProperty,
   listValuationComparableSelections,
-  replaceValuationComparableSelections,
   setValuationComparableAdopted,
-  removeValuationComparableSelection,
   saveValuationComparableMarket,
   saveAdjustmentFactorRationale,
   type ValuationAdjustmentFactorRationaleDto,
@@ -611,7 +598,6 @@ export {
   getValuationIssuanceGates,
   getValuationReportDocument,
   getValuationReportPdf,
-  getValuationReportFieldPayload,
   type ValuationComparableAdjustmentLineDto,
   type ValuationComparableMarketDto,
   type ValuationComparableSelectionDto,
@@ -636,14 +622,11 @@ export {
   type ValuationRequestLiteDto,
   type SaveValuationRequestBody,
   type ValuationSelectionsApiConfig,
-  type ValuationReportFieldPayloadDto,
-  type ValuationReportFieldDto,
 } from "./valuation-comparable-selections";
 
 export {
   getInspectionLimits,
   saveInspectionLimits,
-  approveRemoteInspection,
   type InspectionLimitsDto,
   type InspectionScopeKey,
   type SaveInspectionLimitsRequest,

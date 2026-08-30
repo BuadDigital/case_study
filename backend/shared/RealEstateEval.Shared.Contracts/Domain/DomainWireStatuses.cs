@@ -24,13 +24,6 @@ public static class CaseStudyFormStatuses
         status is Submitted or Completed or Done;
 }
 
-/// <summary>Government-review payload visitStatus wire values.</summary>
-public static class GovernmentReviewVisitStatuses
-{
-    public const string Completed = "completed";
-    public const string Blocked = "blocked";
-}
-
 /// <summary>Wire values for <c>PropertyKeyRecord.WorkflowStatus</c> (Operations context).</summary>
 public static class PropertyKeyWorkflowStatuses
 {

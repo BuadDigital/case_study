@@ -150,18 +150,6 @@ public sealed class PushSubscriptionService : IPushSubscriptionService
         return new PushPreferenceDto(row.PushEnabled);
     }
 
- /// <summary>Prune soft-disabled subscriptions older than 30 days.</summary>
-    public static async Task PruneDisabledAsync(
-        MessagingDbContext db,
-        TimeProvider? time = null,
-        CancellationToken cancellationToken = default)
-    {
-        var cutoff = (time ?? TimeProvider.System).UtcNow().AddDays(-30);
-        await db.PushSubscriptions
-            .Where(x => x.DisabledAtUtc != null && x.DisabledAtUtc < cutoff)
-            .ExecuteDeleteAsync(cancellationToken);
-    }
-
     private static PushSubscriptionDto ToDto(PushSubscription row) =>
         new(
             row.Id,

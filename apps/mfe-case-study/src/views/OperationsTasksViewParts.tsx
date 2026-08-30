@@ -106,7 +106,7 @@ export const PRIORITY_OFFSET_MS: Record<string, number> = {
   low: 24 * 3_600_000,
 };
 
-export function fmtFileSize(bytes: number): string {
+function fmtFileSize(bytes: number): string {
   if (bytes < 1024) return `${bytes} B`;
   if (bytes < 1024 * 1024) return `${Math.round(bytes / 1024)} KB`;
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
@@ -120,12 +120,12 @@ export type DraftFile = {
   contentType?: string;
 };
 
-export function filesFromList(list: FileList | null): DraftFile[] {
+function filesFromList(list: FileList | null): DraftFile[] {
   if (!list) return [];
   return Array.from(list).map((f) => ({ name: f.name, size: fmtFileSize(f.size), file: f }));
 }
 
-export const OPS_COMMENT_ATTACHMENT_SCOPE = "operations-task-comment";
+const OPS_COMMENT_ATTACHMENT_SCOPE = "operations-task-comment";
 
 /** Uploads any draft files that still hold a raw File (not yet persisted) and
  * returns the plain attachment payload to send with the comment. */
@@ -193,7 +193,7 @@ export function BellIcon({ size = 16 }: { size?: number }) {
   );
 }
 
-export function FlagIcon({ size = 15 }: { size?: number }) {
+function FlagIcon({ size = 15 }: { size?: number }) {
   return (
     <svg
       width={size}
@@ -212,7 +212,7 @@ export function FlagIcon({ size = 15 }: { size?: number }) {
   );
 }
 
-export function PaperclipIcon() {
+function PaperclipIcon() {
   return (
     <svg
       width="15"
@@ -230,7 +230,7 @@ export function PaperclipIcon() {
   );
 }
 
-export function DraftFileChips({
+function DraftFileChips({
   files,
   onRemove,
 }: {
@@ -270,14 +270,14 @@ export type CourtVisitContactDraft = {
   note: string;
 };
 
-export const COURT_VISIT_KIND_OPTIONS: { id: Exclude<CourtVisitKind, "">; label: string }[] = [
+const COURT_VISIT_KIND_OPTIONS: { id: Exclude<CourtVisitKind, "">; label: string }[] = [
   { id: "received", label: "استُلم ظرف مفاتيح" },
   { id: "other_party", label: "الظرف عند طرف آخر (إفادة الدائرة)" },
   { id: "none", label: "لا توجد مفاتيح مسجلة لدى الدائرة" },
   { id: "other", label: "أخرى" },
 ];
 
-export function emptyCourtContact(): CourtVisitContactDraft {
+function emptyCourtContact(): CourtVisitContactDraft {
   return { scope: "property", name: "", role: "", phone: "", note: "" };
 }
 
@@ -916,7 +916,7 @@ export function assigneeRoleLabel(staffUsers: StaffUser[], assigneeId: string): 
   return u?.role?.trim() || "منفّذ";
 }
 
-export function statusPillStyle(status: string) {
+function statusPillStyle(status: string) {
   const color = OPERATIONS_TASK_STATUS_COLORS[status] ?? "#8a8d96";
   return { base: color, fg: color };
 }

@@ -66,6 +66,8 @@ public partial class PartyBillingStatementService : IPartyBillingStatementServic
     {
     }
 
+    // مسار DI في مضيف المالية: الـbackfill يمر عبر عميل HTTP لمهام العمليات (متاح منذ E6)
+    // — كان يُمرَّر null فلا يعمل التعويض قبل «الأسطر الجاهزة» إطلاقاً في الإنتاج.
     [ActivatorUtilitiesConstructor]
     public PartyBillingStatementService(
         FinancialDbContext db,
@@ -75,8 +77,9 @@ public partial class PartyBillingStatementService : IPartyBillingStatementServic
         INotificationService notifications,
         NotificationRecipientResolver recipients,
         ILogger<PartyBillingStatementService> logger,
-        TimeProvider? time = null)
-        : this(db, lookup, commands, attachments, notifications, recipients, opsTasks: null, visitFees: null, logger, time)
+        TimeProvider? time = null,
+        IOperationsTaskService? opsTasks = null)
+        : this(db, lookup, commands, attachments, notifications, recipients, opsTasks, visitFees: null, logger, time)
     {
     }
 

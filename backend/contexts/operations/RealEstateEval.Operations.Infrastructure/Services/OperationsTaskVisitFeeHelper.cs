@@ -184,9 +184,6 @@ public sealed class OperationsTaskVisitFeeHelper : ICourtVisitFeeBackfill
         return added;
     }
 
-    public Task SaveChargesAsync(CancellationToken cancellationToken = default) =>
-        Task.CompletedTask;
-
     private async Task<string> ResolveReviewerTypeAsync(
         string assigneeId,
         CancellationToken cancellationToken)

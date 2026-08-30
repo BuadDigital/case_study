@@ -36,16 +36,6 @@ public static class PoRoleMatrixRules
 
     public static bool CanDeleteProperty(string? prototypeRole) => CanDeletePo(prototypeRole);
 
-    public static bool CanRaisePropertyFailure(string? prototypeRole) =>
-        CanEditProperty(prototypeRole) || CanEditPoHeader(prototypeRole);
-
-    public static bool CanRedistributeParties(string? prototypeRole)
-    {
-        var role = Normalize(prototypeRole);
-        return IsSuperAdmin(role)
-            || role is "section-supervisor" or "general-manager";
-    }
-
  /// <summary>Specialist accept / reopen of party submissions.</summary>
     public static bool CanManagePartySubmissions(string? prototypeRole)
     {

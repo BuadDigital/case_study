@@ -33,15 +33,6 @@ public sealed class SelectableDistrictDto
     public string Status { get; set; } = LocationCatalogStatuses.Pending;
 }
 
-public sealed class LocationSearchRequest
-{
-    public Guid? RegionId { get; set; }
-    public Guid? CityId { get; set; }
-    public string? Query { get; set; }
- /// <summary>cities | districts</summary>
-    public string Scope { get; set; } = "cities";
-}
-
 public sealed class SuggestLocationRequest
 {
  /// <summary>city | district</summary>

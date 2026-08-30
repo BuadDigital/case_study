@@ -713,40 +713,6 @@ export async function updateWorkOrderProperty(
   }
 }
 
-/** Narrow patch for informal unlock — allowed for inspector without manage-work-orders. */
-export async function updateWorkOrderPropertyLocationMapUrl(
-  config: WorkOrdersApiConfig,
-  poNumber: string,
-  propertyId: string,
-  locationMapUrl: string,
-): Promise<ApiOk<WorkOrderPropertyDto> | ApiErr> {
-  const base = config.baseUrl ?? getApiBase();
-  try {
-    const res = await fetch(
-      `${base}/api/work-orders/${encodeURIComponent(poNumber.trim())}/properties/${propertyId}/location-map-url`,
-      {
-        method: "PUT",
-        headers: headers(config.token),
-        body: JSON.stringify({ locationMapUrl }),
-      },
-    );
-    if (res.status === 401) return { ok: false, kind: "auth" };
-    if (res.status === 403) return { ok: false, kind: "auth" };
-    if (res.status === 400) {
-      return {
-        ok: false,
-        kind: "validation",
-        errors: await parseFieldErrors(res),
-      };
-    }
-    if (res.status === 404) return { ok: false, kind: "not_found" };
-    if (!res.ok) return { ok: false, kind: "server" };
-    return { ok: true, data: (await res.json()) as WorkOrderPropertyDto };
-  } catch {
-    return { ok: false, kind: "network" };
-  }
-}
-
 export async function completePropertyBourseData(
   config: WorkOrdersApiConfig,
   poNumber: string,

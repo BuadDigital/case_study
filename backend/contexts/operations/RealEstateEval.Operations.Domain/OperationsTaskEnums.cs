@@ -89,9 +89,6 @@ public static class OperationsTaskScopeValues
     public const string Multi = "multi";
     public const string General = "general";
 
- /// <summary>Contact-level scope inside a court-visit result, distinct from the task scope.</summary>
-    public const string ContactPropertyScope = "property";
-
     public static string ToDbValue(this OperationsTaskScope scope) => scope switch
     {
         OperationsTaskScope.Transaction => Transaction,

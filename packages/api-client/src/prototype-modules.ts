@@ -71,25 +71,6 @@ export async function getFieldDictionary(
   }
 }
 
-export async function saveFieldDictionary(
-  config: PrototypeModulesApiConfig,
-  body: Pick<FieldDictionaryStateDto, "fields" | "tags">,
-): Promise<PrototypeModulesResult<FieldDictionaryStateDto>> {
-  const base = config.baseUrl ?? getApiBase();
-  try {
-    const res = await fetch(`${base}/api/field-dictionary`, {
-      method: "PUT",
-      headers: headers(config.token),
-      body: JSON.stringify(body),
-    });
-    if (res.status === 401) return { ok: false, kind: "auth" };
-    if (!res.ok) return { ok: false, kind: "server" };
-    return { ok: true, data: await parseJson<FieldDictionaryStateDto>(res) };
-  } catch {
-    return { ok: false, kind: "network" };
-  }
-}
-
 // --- Failure types catalog ---
 
 export type FailureTypeCategoryDto = {

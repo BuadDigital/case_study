@@ -24,7 +24,7 @@ import {
  * unavailable. We still persist outbox/drafts as **plaintext** JSON so field
  * devices can work over local network; data is still browser-scoped only.
  */
-export function usesPlainOfflineStorage(): boolean {
+function usesPlainOfflineStorage(): boolean {
   return !isWebCryptoAvailable();
 }
 
@@ -87,7 +87,7 @@ function channel(): BroadcastChannel | null {
   }
 }
 
-export function broadcastOffline(type: string, detail?: unknown): void {
+function broadcastOffline(type: string, detail?: unknown): void {
   const ch = channel();
   ch?.postMessage({ type, detail });
   ch?.close();
@@ -224,7 +224,7 @@ function decodePlainJson<T>(row: EncryptedRow): T {
   return JSON.parse(td.decode(new Uint8Array(row.ciphertext))) as T;
 }
 
-export async function ensureOfflineKey(userId: string): Promise<CryptoKey> {
+async function ensureOfflineKey(userId: string): Promise<CryptoKey> {
   if (!isWebCryptoAvailable()) {
     throw new Error(
       "Offline crypto key is unavailable on this origin (use localhost/HTTPS or plaintext storage).",
@@ -492,19 +492,6 @@ export async function getOfflineBlob(
   if (!row || row.userId !== userId) return null;
   const key = await resolveBlobKey(userId, [row]);
   return decodeBlobRow(row, key);
-}
-
-export async function listOfflineBlobs(
-  userId: string,
-): Promise<OfflineBlobRecord[]> {
-  const rows = await withDb((db) =>
-    db.getAllFromIndex("blobs", "by-user", userId),
-  );
-  const key = await resolveBlobKey(userId, rows);
-  const decoded = await Promise.all(
-    rows.map((row) => decodeBlobRow(row, key)),
-  );
-  return decoded.filter((blob): blob is OfflineBlobRecord => blob !== null);
 }
 
 /**

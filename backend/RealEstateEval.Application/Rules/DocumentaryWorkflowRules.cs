@@ -70,19 +70,6 @@ public static class DocumentaryWorkflowRules
         return null;
     }
 
- /// <summary>
- /// Field-inspection submit no longer requires a key in hand.
- /// Key envelopes / court access remain informational and for other workflows.
- /// Always returns null (kept for call-site compatibility until cleaned up).
- /// </summary>
-    public static string? InspectorSubmitKeyBlockReason(
-        bool bypass,
-        bool vacantLand,
-        bool keyAvailable)
-    {
-        _ = (bypass, vacantLand, keyAvailable);
-        return null;
-    }
 
     public static string? DeclarationPhoneBlockReason(
         bool bypass,

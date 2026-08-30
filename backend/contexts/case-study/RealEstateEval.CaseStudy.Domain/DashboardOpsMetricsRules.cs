@@ -41,15 +41,6 @@ public static class DashboardOpsMetricsRules
 
     public sealed record YearlyCounts(int Year, IReadOnlyList<int> Monthly);
 
-    public static IReadOnlyList<StageDwell> EmptyStages() =>
-    [
-        Stage(StageEnfath, "البيانات الأولية", EnfathSlaDays, 0, 0),
-        Stage(StageBourse, "البورصة", BourseSlaDays, 0, 0),
-        Stage(StageDistribution, "التوزيع", DistributionSlaDays, 0, 0),
-        Stage(StageCaseStudy, "دراسة الحالة", CaseStudySlaDays, 0, 0),
-        Stage(StageGovernmentReview, "المراجعة الحكومية", GovernmentReviewSlaDays, 0, 0),
-        Stage(StageAppraisal, "التقييم والرفع", AppraisalSlaDays, 0, 0),
-    ];
 
     public static IReadOnlyList<StageDwell> BuildStageDwell(
         IEnumerable<TaskSnap> tasks,

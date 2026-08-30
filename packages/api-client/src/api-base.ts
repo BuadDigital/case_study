@@ -1,5 +1,5 @@
 /** Private LAN host (Wi‑Fi demo) — not localhost and not a public DNS name. */
-export function isPrivateLanHost(hostname: string): boolean {
+function isPrivateLanHost(hostname: string): boolean {
   if (hostname === "localhost" || hostname === "127.0.0.1") return false;
   if (hostname.startsWith("192.168.")) return true;
   if (hostname.startsWith("10.")) return true;

@@ -106,13 +106,4 @@ public static class SupervisingDepartments
                && string.Equals(itemDepartment, normalizedActor, StringComparison.Ordinal);
     }
 
-    public static string DisplayLabel(string? department) =>
-        NormalizeProfileValue(department) switch
-        {
-            CaseStudy => "قسم دراسة الحالة",
-            Valuation => "قسم تقييم الأفراد",
-            Finance => "قسم المحاسبة",
-            External => "الجهات الخارجية",
-            _ => department?.Trim() ?? "",
-        };
 }

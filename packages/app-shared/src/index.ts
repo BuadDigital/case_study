@@ -32,7 +32,6 @@ export {
   useValidAuthSession,
 } from "./auth/use-auth-session";
 export { useOnlineStatus } from "./hooks/useOnlineStatus";
-export { getAppEnv } from "./env";
 export { isFeatureEnabled, type FeatureFlag } from "./feature-flags";
 export { LIVE_QUEUE_POLL_INTERVAL_MS } from "./query/live-query";
 export { NotificationProvider, useNotifications } from "./notifications/NotificationProvider";
@@ -69,7 +68,6 @@ export * from "./prototype/system-settings-nav";
 export * from "./prototype/financial-nav";
 export * from "./prototype/orphan-screens-nav";
 export * from "./prototype/property-fields-catalog";
-export * from "./prototype/field-dictionary";
 export * from "./prototype/prototype-modules-api-config";
 export * from "./prototype/task-attachments-api";
 export * from "./prototype/party-submission-changed-event";

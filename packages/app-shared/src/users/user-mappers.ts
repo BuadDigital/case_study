@@ -6,7 +6,7 @@ function reviewerCityCoverageFromUser(u: UserListItem): string[] {
   return Array.isArray(raw) ? raw.filter((city) => city.trim()) : [];
 }
 
-export function contractTypeToStaffType(
+function contractTypeToStaffType(
   t: UserListItem["contractType"],
 ): StaffUser["type"] {
   if (t === "Internal") return "internal";

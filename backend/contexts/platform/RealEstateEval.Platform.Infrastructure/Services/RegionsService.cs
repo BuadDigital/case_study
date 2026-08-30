@@ -233,11 +233,6 @@ public sealed class RegionsService : IRegionsService
             cancellationToken);
     }
 
-    public Task<IReadOnlyList<SelectableCityDto>> ListSelectableCitiesAsync(
-        Guid regionId,
-        CancellationToken cancellationToken = default)
-        => SearchCitiesAsync(regionId, query: null, cancellationToken);
-
     public async Task<IReadOnlyList<SelectableCityDto>> SearchCitiesAsync(
         Guid regionId,
         string? query,

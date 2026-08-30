@@ -108,7 +108,7 @@ export function CloseIcon() {
   );
 }
 
-export function LogoutIcon() {
+function LogoutIcon() {
   return (
     <svg
       viewBox="0 0 24 24"
@@ -131,7 +131,7 @@ export const mobileTopbarIconBtn =
 export const topbarActionIconBtn =
   "flex size-10 shrink-0 items-center justify-center rounded-lg border border-border/80 bg-surface text-text shadow-[0_1px_2px_rgba(15,52,96,0.06)] transition-colors hover:bg-surface-2 active:scale-[0.98]";
 
-export function navItemClasses({
+function navItemClasses({
   active = false,
   sub = false,
   locked = false,
@@ -160,7 +160,7 @@ export function navItemClasses({
   );
 }
 
-export function navBadgeClasses(rail = false) {
+function navBadgeClasses(rail = false) {
   return cn(
     "ms-auto inline-flex h-[18px] min-w-[18px] shrink-0 items-center justify-center rounded-full bg-danger px-[5px] text-[10px] font-semibold text-white",
     rail &&
@@ -168,18 +168,18 @@ export function navBadgeClasses(rail = false) {
   );
 }
 
-export function navLabelClasses(rail = false) {
+function navLabelClasses(rail = false) {
   return cn(rail && "lg:sr-only");
 }
 
-export function navChevronClasses(rail = false) {
+function navChevronClasses(rail = false) {
   return cn(rail && "lg:hidden");
 }
 
 export type NavRun = { label: string | null; items: (typeof NAV)[number][] };
 
 // Computed once at module load — NAV is a constant so this never changes.
-export const ALL_NAV_RUNS: NavRun[] = (() => {
+const ALL_NAV_RUNS: NavRun[] = (() => {
   const runs: NavRun[] = [];
   let lastGrp: string | null = null;
   let cur: NavRun | null = null;
@@ -215,7 +215,7 @@ export function navRunsForRole(rolePages: PageId[], role: RoleId): NavRun[] {
 }
 
 /** أطراف المعاملة — الاتعاب ثم التعذرات تحتها مباشرة. */
-export function sortPartyFeesBeforeFailures(
+function sortPartyFeesBeforeFailures(
   items: (typeof NAV)[number][],
 ): (typeof NAV)[number][] {
   const order: PageId[] = ["party-fees", "failures"];
@@ -282,7 +282,7 @@ function NavPending({ fallback = null }: { fallback?: React.ReactNode }) {
   );
 }
 
-export function ActiveTransactionNavRow({
+function ActiveTransactionNavRow({
   id,
   label,
   icon,
@@ -346,7 +346,7 @@ export function ActiveTransactionNavRow({
   );
 }
 
-export function NavDropdownChevron({ open, rail = false }: { open: boolean; rail?: boolean }) {
+function NavDropdownChevron({ open, rail = false }: { open: boolean; rail?: boolean }) {
   return (
     <span
       className={cn(
@@ -373,7 +373,7 @@ export function NavDropdownChevron({ open, rail = false }: { open: boolean; rail
   );
 }
 
-export function NavFlyoutPanel({
+function NavFlyoutPanel({
   label,
   children,
 }: {

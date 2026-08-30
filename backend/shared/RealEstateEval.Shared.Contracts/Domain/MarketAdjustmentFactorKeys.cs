@@ -49,10 +49,6 @@ public static class MarketAdjustmentFactorKeys
         Development,
     ];
 
-    /// <summary>كل عوامل الاختلاف المعروفة (افتراضي + كتالوج + مخصص عبر المفتاح).</summary>
-    public static readonly string[] StandardDifferenceFactors =
-        [.. DefaultDifferenceFactors, .. CatalogExtraDifferenceFactors];
-
     public static string DefaultLabelAr(string key) => key switch
     {
         Financing => "تسوية شروط التمويل",

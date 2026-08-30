@@ -54,7 +54,7 @@ export function OperationalPanel({
 }
 
 /** Scrollable page body with standard padding (replaces `.page-body`). */
-export function PageBody({
+function PageBody({
   className,
   ...props
 }: HTMLAttributes<HTMLDivElement>) {

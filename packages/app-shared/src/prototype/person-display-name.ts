@@ -4,7 +4,7 @@ const USER_ID_RE =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 /** True when a stored label is a platform user id (GUID), not a person name. */
-export function looksLikeUserId(value: string | null | undefined): boolean {
+function looksLikeUserId(value: string | null | undefined): boolean {
   const v = value?.trim() ?? "";
   return v.length > 0 && USER_ID_RE.test(v);
 }

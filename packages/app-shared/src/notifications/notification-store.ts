@@ -148,10 +148,6 @@ export function listNotifications(): AppNotification[] {
   return readAll();
 }
 
-export function unreadNotificationCount(): number {
-  return readAll().filter((n) => !n.read).length;
-}
-
 function dedupeIndex(
   items: AppNotification[],
   sourceEvent: string,

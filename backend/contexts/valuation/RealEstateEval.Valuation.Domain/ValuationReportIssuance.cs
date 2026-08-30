@@ -49,9 +49,6 @@ public class ValuationReportIssuance
  /// <summary>سبب إعادة الفتح — إلزامي بحد ق-8-2 (١٠ أحرف).</summary>
     public string? SupersededReason { get; set; }
 
- /// <summary>النسخة السارية = غير الملغاة.</summary>
-    public bool IsActive => SupersededAtUtc is null;
-
  /// <summary>
  /// ر2: إلغاء النسخة (لا حذف صلب) — النسخة المودعة لا تُعدَّل، وتُعلَّم
  /// «ملغاة — حلّت محلها نسخة أحدث» ويبقى ملفها في المعاملة.

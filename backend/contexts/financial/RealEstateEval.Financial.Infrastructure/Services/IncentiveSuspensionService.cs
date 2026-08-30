@@ -50,24 +50,6 @@ public sealed class IncentiveSuspensionService : IIncentiveSuspensionService
         return rows.Select(ToDto).ToList();
     }
 
-    public async Task<IncentiveSuspensionDto?> FindActiveAsync(
-        string assigneeId,
-        string transactionKey,
-        CancellationToken cancellationToken = default)
-    {
-        if (string.IsNullOrWhiteSpace(assigneeId) || string.IsNullOrWhiteSpace(transactionKey))
-            return null;
-
-        var row = await _db.IncentiveSuspensions.AsNoTracking()
-            .Where(x =>
-                x.AssigneeId == assigneeId.Trim()
-                && x.TransactionKey == transactionKey.Trim()
-                && x.LiftedAtUtc == null)
-            .OrderByDescending(x => x.CreatedAtUtc)
-            .FirstOrDefaultAsync(cancellationToken);
-        return row is null ? null : ToDto(row);
-    }
-
     public async Task<(IncentiveSuspensionDto? Row, string? Error)> CreateAsync(
         CreateIncentiveSuspensionRequest request,
         string actorUserId,

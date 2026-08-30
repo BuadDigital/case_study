@@ -13,7 +13,7 @@ export {
   loadGoogleMapsApi,
   parseCoord,
 } from "./lib/google-maps-loader";
-export { Skeleton, SkeletonTableRows, PanelSkeleton, InlineLoadingSkeleton, LoadingLabel } from "./components/Skeleton";
+export { Skeleton, SkeletonTableRows, PanelSkeleton, InlineLoadingSkeleton } from "./components/Skeleton";
 export { ToastProvider, useToast, useOptionalToast, type ToastTone } from "./components/Toast";
 export { progressMessageForActionLabel } from "./lib/action-progress-message";
 export { Input } from "./components/Input";

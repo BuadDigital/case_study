@@ -294,11 +294,6 @@ public static class MarketOpinionRules
         return Math.Round(landValRaw / power, MidpointRounding.AwayFromZero) * power;
     }
 
-    public static decimal ComputeRoundedOpinionValue(
-        decimal weightedPricePerSqm,
-        decimal subjectAreaSqm,
-        int decimals = MarketApproachRules.DefaultValueRoundDecimals) =>
-        RoundMarketValue(ComputeOpinionValue(weightedPricePerSqm, subjectAreaSqm), decimals);
 }
 
 public static class CostApproachRules

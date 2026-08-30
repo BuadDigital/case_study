@@ -96,23 +96,6 @@ public class SuspendedTransactionDto
     public string SuspendedBy { get; init; } = "";
 }
 
-public class DelegationLetterPropertyDto
-{
-    public required string PropertyId { get; init; }
-    public required string WorkOrder { get; init; }
-    public required string DeedNo { get; init; }
-    public required string Owner { get; init; }
-    public required string RequestNo { get; init; }
-}
-
-public class DelegationLetterAgentDto
-{
-    public string Name { get; init; } = "";
-    public string Nationality { get; init; } = "";
-    public string NationalId { get; init; } = "";
-    public string Mobile { get; init; } = "";
-}
-
 public class PoIntakeDraftDto
 {
     public int Step { get; init; }

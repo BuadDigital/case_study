@@ -534,48 +534,6 @@ export async function listValuationComparableSelections(
   }
 }
 
-export async function replaceValuationComparableSelections(
-  config: ValuationSelectionsApiConfig,
-  valuationRequestId: string,
-  items: ValuationComparableSelectionItemRequest[],
-  selectionContext: string = "market",
-): Promise<Result<ValuationComparableSelectionListDto>> {
-  const base = config.baseUrl ?? getApiBase();
-  try {
-    const res = await fetch(
-      `${base}/api/valuation-requests/${valuationRequestId}/comparable-selections`,
-      {
-        method: "PUT",
-        headers: headers(config.token),
-        body: JSON.stringify({ items, selectionContext }),
-      },
-    );
-    if (res.status === 401) return { ok: false, kind: "auth" };
-    if (res.status === 400) {
-      const payload = (await res.json().catch(() => null)) as {
-        errors?: Record<string, string>;
-        message?: string;
-      } | null;
-      return {
-        ok: false,
-        kind: "validation",
-        message:
-          payload?.errors
-            ? Object.values(payload.errors)[0]
-            : payload?.message ?? "بيانات غير صالحة",
-        errors: payload?.errors,
-      };
-    }
-    if (!res.ok) return { ok: false, kind: "server" };
-    return {
-      ok: true,
-      data: await parseJson<ValuationComparableSelectionListDto>(res),
-    };
-  } catch {
-    return { ok: false, kind: "network" };
-  }
-}
-
 export async function setValuationComparableAdopted(
   config: ValuationSelectionsApiConfig,
   valuationRequestId: string,
@@ -610,27 +568,6 @@ export async function setValuationComparableAdopted(
       ok: true,
       data: await parseJson<ValuationComparableSelectionDto>(res),
     };
-  } catch {
-    return { ok: false, kind: "network" };
-  }
-}
-
-export async function removeValuationComparableSelection(
-  config: ValuationSelectionsApiConfig,
-  valuationRequestId: string,
-  comparablePropertyId: string,
-  selectionContext: string = "market",
-): Promise<Result<null>> {
-  const base = config.baseUrl ?? getApiBase();
-  try {
-    const qs = new URLSearchParams({ selectionContext });
-    const res = await fetch(
-      `${base}/api/valuation-requests/${valuationRequestId}/comparable-selections/${comparablePropertyId}?${qs}`,
-      { method: "DELETE", headers: headers(config.token) },
-    );
-    if (res.status === 401) return { ok: false, kind: "auth" };
-    if (!res.ok) return { ok: false, kind: "server" };
-    return { ok: true, data: null };
   } catch {
     return { ok: false, kind: "network" };
   }
@@ -1259,53 +1196,6 @@ export async function getIssuancePdf(
     if (res.status === 404) return { ok: false, kind: "not_found" };
     if (!res.ok) return { ok: false, kind: "server" };
     return { ok: true, data: await res.blob() };
-  } catch {
-    return { ok: false, kind: "network" };
-  }
-}
-
-export type ValuationReportFieldDto = {
-  fieldKey: string;
-  labelAr: string;
-  valueType: string;
-  valueTypeLabelAr: string;
-  sourceKind: string;
-  value?: string | null;
-  filled: boolean;
-  note?: string | null;
-};
-
-export type ValuationReportFieldPayloadDto = {
-  valuationRequestId: string;
-  displayId: string;
-  propertyId: string;
-  hasStructuresToValue: boolean;
-  catalogCount: number;
-  resolvableCount: number;
-  filledCount: number;
-  deferredCount: number;
-  assetCount: number;
-  packageNoteAr: string;
-  fields: ValuationReportFieldDto[];
-  valuesByFieldKey: Record<string, string>;
-  /** Set when adopted comparables exceed the platform's 3 slots. */
-  truncationNoteAr?: string | null;
-};
-
-export async function getValuationReportFieldPayload(
-  config: ValuationSelectionsApiConfig,
-  valuationRequestId: string,
-): Promise<Result<ValuationReportFieldPayloadDto>> {
-  const base = config.baseUrl ?? getApiBase();
-  try {
-    const res = await fetch(
-      `${base}/api/valuation-requests/${valuationRequestId}/valuation-report-fields`,
-      { headers: headers(config.token) },
-    );
-    if (res.status === 401) return { ok: false, kind: "auth" };
-    if (res.status === 404) return { ok: false, kind: "not_found" };
-    if (!res.ok) return { ok: false, kind: "server" };
-    return { ok: true, data: await parseJson<ValuationReportFieldPayloadDto>(res) };
   } catch {
     return { ok: false, kind: "network" };
   }

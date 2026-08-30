@@ -246,9 +246,6 @@ public static class ReconciliationRules
         return [(ValuationApproachKinds.Market, 0m), (ValuationApproachKinds.Cost, 0m)];
     }
 
-    public static bool RequiresWeightRationale(decimal weightPct, bool included) =>
-        included && weightPct != 0m;
-
  /// <summary>n≥2 when two (or more) approaches are selected/enabled for reconciliation.</summary>
     public static bool MeetsMultiMethodGate(int enabledApproachCount) =>
         enabledApproachCount >= 2;
