@@ -58,8 +58,8 @@ const SEED_RECORD_BY_PREFIXED_ID = new Map<
 
 const PropertyMapCanvas = dynamic(
   () =>
-    import("../components/property-map/PropertyMapCanvas").then(
-      (m) => m.PropertyMapCanvas,
+    import("../components/property-map/PropertyMapCanvasGoogle").then(
+      (m) => m.PropertyMapCanvasGoogle,
     ),
   {
     ssr: false,
