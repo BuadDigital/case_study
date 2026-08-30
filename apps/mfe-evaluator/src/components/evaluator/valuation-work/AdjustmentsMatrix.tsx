@@ -1,7 +1,12 @@
 "use client";
 
 import { memo, useMemo, useState, type ReactNode } from "react";
-import { cn } from "@platform/ui-kit";
+import {
+  cn,
+  opsBtnPrimary,
+  opsLetterCard,
+  opsPanelCard,
+} from "@platform/ui-kit";
 import type {
   ValuationComparableAdjustmentLineDto,
   ValuationComparableSelectionDto,
@@ -61,8 +66,7 @@ const tdJustClass =
 const noteClass = "mt-[3px] text-[10px] font-normal text-text-3";
 const cellInputBaseClass =
   "w-24 rounded-[7px] border px-2 py-[7px] text-center text-[13px] font-bold";
-const panelCardClass =
-  "mb-6 overflow-hidden rounded-xl border border-border bg-surface shadow-card";
+const panelCardClass = cn(opsLetterCard, "mb-6");
 
 /* ─── Module-level cell components —
    Defining them inside the parent remounts them on every render
@@ -701,7 +705,7 @@ export const AdjustmentsMatrix = memo(function AdjustmentsMatrix({
 
   if (adopted.length === 0) {
     return (
-      <div className="mb-6 rounded-xl border border-border bg-surface px-[22px] py-[18px] text-[13px] text-text-3">
+      <div className={cn(opsPanelCard, "mb-6 px-[22px] py-[18px] text-[13px] text-text-3")}>
         اعتمد مقارناً واحداً على الأقل لفتح جدول التسويات.
       </div>
     );
@@ -800,7 +804,7 @@ export const AdjustmentsMatrix = memo(function AdjustmentsMatrix({
             type="button"
             disabled={saving || locked}
             onClick={() => void dispatch({ type: "reset-weights" })}
-            className="flex cursor-pointer items-center gap-[7px] rounded-[9px] border-none bg-ink px-4 py-2.5 text-[13px] font-bold text-white shadow-card disabled:cursor-not-allowed disabled:opacity-55"
+            className={cn(opsBtnPrimary, "shadow-card")}
           >
             إعادة ضبط الأوزان
           </button>

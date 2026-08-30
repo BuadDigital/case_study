@@ -8,7 +8,13 @@ import {
   SectionHeader,
   DetailBadge,
 } from "./PropertyDetailFields";
-import { Badge, InlineLoadingSkeleton, type BadgeTone } from "@platform/ui-kit";
+import {
+  Badge,
+  InlineLoadingSkeleton,
+  cn,
+  opsBtnGhost,
+  type BadgeTone,
+} from "@platform/ui-kit";
 import { PropertyKeyGateSources, PropertyKeysStatuses } from "@platform/api-client";
 import {
   formatPropertyDeedDisplay,
@@ -129,7 +135,7 @@ export function PropertyDetailPropertyKeys({
           ) : null}
           <Link
             href="/keys"
-            className="inline-flex min-h-9 items-center justify-center rounded-lg border border-border-md bg-surface px-[18px] py-2 text-[12.5px] font-bold text-text-2 no-underline max-lg:min-h-11 max-lg:w-full"
+            className={cn(opsBtnGhost, "min-h-9 rounded-lg py-2 text-[12.5px] font-bold no-underline max-lg:min-h-11 max-lg:w-full")}
           >
             إدارة المفاتيح
           </Link>
@@ -267,7 +273,7 @@ export function PropertyDetailPropertyKeys({
         {canCreateOps && courtVisits.length === 0 ? (
           <Link
             href={createCourtHref}
-            className="inline-flex min-h-9 items-center justify-center rounded-lg border border-border-md bg-surface px-[18px] py-2 text-[12.5px] font-bold text-text-2 no-underline max-lg:min-h-11"
+            className={cn(opsBtnGhost, "min-h-9 rounded-lg py-2 text-[12.5px] font-bold no-underline max-lg:min-h-11")}
           >
             إنشاء زيارة محكمة
           </Link>

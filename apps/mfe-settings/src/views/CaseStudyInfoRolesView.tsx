@@ -5,6 +5,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { prototypeKeys } from "@platform/app-shared/query/prototype-keys";
 import {
   cn,
+  EmptyState,
   InlineLoadingSkeleton,
   PageShell,
   Spinner,
@@ -32,7 +33,6 @@ import {
 import {
   opsBtnGhost,
   opsBtnPrimary,
-  opsEmptyHint,
   opsFldTextarea,
   opsFilters,
   opsIconBoxGold,
@@ -365,7 +365,7 @@ export function CaseStudyInfoRolesView() {
         </div>
         <div className="px-4 pb-2 sm:px-[18px]">
           {secQuestions.length === 0 ? (
-            <p className={opsEmptyHint}>لا أسئلة.</p>
+            <EmptyState line="لا أسئلة." />
           ) : (
             secQuestions.map((q) => {
               const globalNum = (QUESTION_INDEX_BY_KEY.get(q.key) ?? -1) + 1;

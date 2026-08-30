@@ -1,6 +1,13 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import {
+  StatusPill,
+  cn,
+  finStatusStyle,
+  opsPanelCard,
+  opsTfNote,
+} from "@platform/ui-kit";
 import { useQuery } from "@tanstack/react-query";
 import { fmtMax } from "@platform/app-shared/format/number";
 import { prototypeKeys } from "@platform/app-shared/query/prototype-keys";
@@ -17,11 +24,6 @@ import {
   type FinanceCostParty,
 } from "../lib/finance-cost-parties";
 import { COSTS_ACCOUNT_TABS, type CostsSection } from "../lib/finance-nav";
-import {
-  finNote,
-  finStatus,
-  finStatusTeal,
-} from "../lib/finance-tw";
 import { FinanceStagePills } from "./FinanceStagePills";
 import { FinancePartyBillingStatements } from "./FinancePartyBillingStatements";
 import { FinanceExcludedCosts } from "./FinanceExcludedCosts";
@@ -41,15 +43,16 @@ function AccountHeader({ party }: { party: FinanceCostParty }) {
   const paidScaled = applyCostTax(party.paidSar, party.payeeType);
 
   return (
-    <div className="mb-2.5 flex flex-wrap items-center gap-3.5 rounded-xl border border-border bg-surface px-3.5 py-2.5 shadow-card">
+    <div className={cn(opsPanelCard, "mb-2.5 flex flex-wrap items-center gap-3.5 px-3.5 py-2.5")}>
       <div className="flex min-w-0 flex-wrap items-center gap-2">
         <span className="text-[14.5px] font-extrabold text-heading">
           {party.name}
         </span>
-        <span className={finStatus}>{party.taskKindLabel}</span>
-        <span className={isVendor ? finStatus : finStatusTeal}>
-          {party.payeeTypeLabel}
-        </span>
+        <StatusPill label={party.taskKindLabel} style={finStatusStyle("default")} />
+        <StatusPill
+          label={party.payeeTypeLabel}
+          style={finStatusStyle(isVendor ? "default" : "individual")}
+        />
         <span className="text-[10px] text-text-3" dir="ltr">
           {party.assigneeId.slice(0, 12)}
         </span>
@@ -278,7 +281,7 @@ export function FinanceCostsView({
       accountSection === "paid" ? (
         <>
           {accountSection === "statements" || accountSection === "paid" ? (
-            <p className={finNote}>
+            <p className={cn(opsTfNote, "mb-3.5")}>
               {accountSection === "paid"
                 ? headerParty.payeeType === "individual"
                   ? "أوامر الصرف المدفوعة للأفراد — للمطابقة فقط: المعاملات وسند الصرف وإيصال التحويل."

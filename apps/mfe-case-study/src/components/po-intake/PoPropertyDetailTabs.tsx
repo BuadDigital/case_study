@@ -9,7 +9,15 @@ import { failuresForProperty } from "@failures/mfe/lib/failure-property-match";
 import { useFailuresQuery } from "@failures/mfe/query/failures-queries";
 import { failureStatusLabel } from "@failures/mfe/lib/failures-labels";
 import type { FailureRecord } from "@failures/mfe/lib/failures-types";
-import { Button, cn, InlineLoadingSkeleton, Tab, TabBar, TabPanel } from "@platform/ui-kit";
+import {
+  Button,
+  InlineLoadingSkeleton,
+  Tab,
+  TabBar,
+  TabPanel,
+  cn,
+  opsContentPanel,
+} from "@platform/ui-kit";
 import { usePrototype } from "@platform/app-shared/contexts/PrototypeContext";
 import { canViewPropertyTimelineRail } from "../../lib/prototype/po-roles";
 import { DetailBadge, EmptyState, FieldBox, FieldsGrid, InfoBox, ltrValueClass, SectionHeader } from "./PropertyDetailFields";
@@ -905,7 +913,7 @@ export function PoPropertyDetailTabs({
           showCaseStudySideRail && "lg:grid-cols-[minmax(0,1fr)_250px]",
         )}
       >
-        <div className="min-w-0 overflow-hidden rounded-[12px] border border-border bg-surface px-5 pb-5 shadow-[0_1px_2px_rgba(18,40,76,0.03),0_6px_16px_-18px_rgba(18,40,76,0.10)]">
+        <div className={opsContentPanel}>
           {/* Case Study.html `.tabs` inside card: margin 0 -20px, padding 0 14px, wrap, gap 2px */}
           <TabBar
             className="z-10 mx-[-20px] mb-0 flex flex-wrap gap-x-0.5 gap-y-0 overflow-visible whitespace-nowrap border-b border-border bg-transparent px-3.5 sm:px-3.5"

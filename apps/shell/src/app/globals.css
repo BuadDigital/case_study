@@ -1,7 +1,6 @@
 @import "tailwindcss";
 @import "@platform/ui-kit/tokens.css";
 @import "@platform/ui-kit/animations.css";
-@import "./animation.css";
 @source "../../../../apps/**/*.{ts,tsx}";
 @source "../../../../packages/**/*.{ts,tsx}";
 

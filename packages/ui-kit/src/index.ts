@@ -3,6 +3,60 @@ export {
   formControlClassName,
   formControlErrorClassName,
 } from "./lib/form-control-classes";
+export {
+  opsBtnGhost,
+  opsBtnPrimary,
+  opsBtnSm,
+  opsBtnSmPrimary,
+  opsTfActions,
+  opsTfActionsInline,
+  opsTfLbl,
+  opsTfNote,
+  opsPanelNote,
+  opsFormGrid,
+  opsFld,
+  opsFldFull,
+  opsFldControl,
+  opsFldTextarea,
+  opsSearchInput,
+  opsCheckInput,
+  opsFieldBox,
+  opsPanelCard,
+  opsSurfaceCard,
+  opsWorkspaceCard,
+  opsWorkCard,
+  opsDashCard,
+  opsPpHeadCard,
+  opsContentPanel,
+  opsFloatPanel,
+  opsInsetPanel,
+  opsSkeletonCard,
+  opsTapCard,
+  opsTapElevated,
+  opsMobileShadow,
+  opsMobileCard,
+  opsEmptyHint,
+  opsDropzone,
+  opsChip,
+  opsAccentBtn,
+  opsAccentBtnSm,
+  opsToolbar,
+  opsFilters,
+  opsListCount,
+  opsPpBadge,
+  opsCountBadge,
+  opsIconBoxGold,
+  opsLetterCard,
+  opsLetterHead,
+  opsLetterTitle,
+  opsLetterSub,
+  opsLetterMeta,
+  opsTfSeg,
+  opsTfSegActive,
+  opsTfSegRow,
+  opsModalClose,
+  opsModalFooter,
+} from "./lib/ops-chrome";
 export { Button } from "./components/Button";
 export { ErrorBoundary } from "./components/ErrorBoundary";
 export { Spinner } from "./components/Spinner";
@@ -33,13 +87,26 @@ export { Badge, type BadgeTone } from "./components/Badge";
 export { Note } from "./components/Note";
 export {
   Table,
+  TableFrame,
+  TableEmptyRow,
   THead,
   TBody,
   Tr,
   Th,
   Td,
+  TdLtr,
   ThAction,
   TdAction,
+  tableCx,
+  tableClassName,
+  tableFrameClassName,
+  tableWrapClassName,
+  thClassName,
+  tdClassName,
+  tdLtrValueClassName,
+  thActionClassName,
+  tdActionClassName,
+  trHoverClassName,
 } from "./components/Table";
 export { TabBar, Tab, TabPanel } from "./components/Tabs";
 export {
@@ -90,16 +157,34 @@ export {
   StatusBadge,
   StatusPill,
   queueLegacyStatusStyle,
+  statusPillStyleFromColor,
+  finStatusStyle,
+  FIN_STATUS_STYLES,
   type StatusPillStyle,
+  type FinStatusTone,
 } from "./badges";
+export {
+  LtrCode,
+  DeedLabel,
+  PoLabel,
+  EmptyIconSearch,
+  EmptyIconBuilding,
+} from "./components/LtrLabels";
 export {
   OperationalToolbarPrimaryButton,
   OperationalToolbarSearch,
   OperationalToolbarSelect,
 } from "./components/OperationalToolbar";
 export {
+  RowMoreMenu,
+  RowMoreMenuIcons,
+  type RowMoreMenuItem,
+} from "./components/RowMoreMenu";
+export { AppModal } from "./components/AppModal";
+export {
   KpiAlertIcon,
   KpiCheckIcon,
   KpiClipboardIcon,
   KpiClockIcon,
 } from "./icons/kpi-icons";
+export { ShowAllEye, useShowAllEyeBlink } from "./icons/show-all-eye";

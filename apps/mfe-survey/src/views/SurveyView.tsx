@@ -13,12 +13,15 @@ import {
   OperationalPanel,
   PageShell,
   SkeletonTableRows,
-  Table,
   TBody,
+  THead,
+  Table,
   Td,
   Th,
-  THead,
   Tr,
+  cn,
+  opsMobileCard,
+  opsSkeletonCard,
 } from "@platform/ui-kit";
 import {
   useSurveyOfficesQuery,
@@ -30,7 +33,7 @@ const mobileLoadingSkeleton = (
     {Array.from({ length: 4 }).map((_, i) => (
       <div
         key={i}
-        className="h-[88px] animate-pulse rounded-[14px] border border-border bg-surface-2"
+        className={cn(opsSkeletonCard, "h-[88px]")}
       />
     ))}
   </div>
@@ -128,7 +131,7 @@ export function SurveyView() {
 
       <OperationalPanel className="min-h-0 flex-1 max-lg:border-0 max-lg:bg-transparent max-lg:shadow-none max-lg:rounded-none">
         <div className="hidden lg:block">
-          <Table pending={!ready}>
+          <Table framed pending={!ready}>
             <THead>
               <Tr hoverable={false}>
                 <Th>اسم المكتب</Th>
@@ -188,7 +191,7 @@ export function SurveyView() {
               {offices.map((row) => (
                 <li
                   key={row.id}
-                  className="relative overflow-hidden rounded-[14px] border border-border border-s-[3px] border-s-ink bg-surface px-3.5 py-3.5 shadow-[0_2px_8px_rgba(15,52,96,0.06)]"
+                  className={cn(opsMobileCard, "relative overflow-hidden border-s-[3px] border-s-ink")}
                 >
                   <div className="text-[14px] font-bold text-heading">
                     {row.name}

@@ -3,7 +3,16 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
-import { InlineLoadingSkeleton, Spinner, cn, useToast } from "@platform/ui-kit";
+import {
+  InlineLoadingSkeleton,
+  Spinner,
+  cn,
+  opsBtnPrimary,
+  opsWorkspaceCard,
+  useToast,
+  opsFldControl,
+  opsTfLbl,
+} from "@platform/ui-kit";
 import type { PartyTaskPageDef } from "@platform/app-shared/prototype/party-task-pages";
 import type { WorkflowTask } from "@case-study/mfe/lib/prototype/tasks-storage";
 import { activeSurveyEntryPath } from "@case-study/mfe/lib/my-task-routes";
@@ -66,17 +75,13 @@ import {
 } from "../lib/engineering-survey-checklist-sync";
 import { isEngineeringSurveyTransactionActive } from "../lib/engineering-survey-transaction-active";
 import {
+  ENG_STATUS_COLORS,
   EngField,
   EngInfo,
   EngSection,
   EngStatusPill,
   EngTabBar,
   EngUploadBox,
-  ENG_STATUS_COLORS,
-  engCardClassName,
-  engInputClassName,
-  engLabelClassName,
-  engPrimaryBtnClassName,
 } from "./EngineeringSurveyHtmlPrimitives";
 import {
   WorkTab,
@@ -746,14 +751,14 @@ export function EngineeringSurveyWorkPanel({
       ) : null}
       <div className="mb-2.5 grid grid-cols-1 gap-2.5 sm:grid-cols-2">
         <div>
-          <label className={engLabelClassName} htmlFor="eng-lat">
+          <label className={opsTfLbl} htmlFor="eng-lat">
             خط العرض (Latitude) *
           </label>
           <input
             id="eng-lat"
             dir="ltr"
             className={cn(
-              engInputClassName,
+              opsFldControl,
               fieldErrors.latitude && engineeringInvalidControlClass,
             )}
             disabled={formDisabled}
@@ -767,14 +772,14 @@ export function EngineeringSurveyWorkPanel({
           ) : null}
         </div>
         <div>
-          <label className={engLabelClassName} htmlFor="eng-lng">
+          <label className={opsTfLbl} htmlFor="eng-lng">
             خط الطول (Longitude) *
           </label>
           <input
             id="eng-lng"
             dir="ltr"
             className={cn(
-              engInputClassName,
+              opsFldControl,
               fieldErrors.longitude && engineeringInvalidControlClass,
             )}
             disabled={formDisabled}
@@ -830,14 +835,14 @@ export function EngineeringSurveyWorkPanel({
       <EngSection>الحدود والأطوال (حسب الصك)</EngSection>
       <div className="mb-2.5 grid grid-cols-1 gap-2.5 sm:grid-cols-2">
         <div>
-          <label className={engLabelClassName} htmlFor="eng-on-site-area">
+          <label className={opsTfLbl} htmlFor="eng-on-site-area">
             المساحة الإجمالية
           </label>
           <input
             id="eng-on-site-area"
             inputMode="decimal"
             className={cn(
-              engInputClassName,
+              opsFldControl,
               fieldErrors.on_site_area && engineeringInvalidControlClass,
             )}
             disabled={formDisabled}
@@ -858,25 +863,25 @@ export function EngineeringSurveyWorkPanel({
           className="mb-2.5 grid grid-cols-1 gap-2.5 sm:grid-cols-2"
         >
           <div>
-            <label className={engLabelClassName} htmlFor={`eng-${boundKey}`}>
+            <label className={opsTfLbl} htmlFor={`eng-${boundKey}`}>
               {boundLabel}
             </label>
             <input
               id={`eng-${boundKey}`}
-              className={engInputClassName}
+              className={opsFldControl}
               disabled={formDisabled}
               value={localFields[boundKey]}
               onChange={(e) => patchLocalField(boundKey, e.target.value)}
             />
           </div>
           <div>
-            <label className={engLabelClassName} htmlFor={`eng-${lenKey}`}>
+            <label className={opsTfLbl} htmlFor={`eng-${lenKey}`}>
               {lenLabel}
             </label>
             <input
               id={`eng-${lenKey}`}
               inputMode="decimal"
-              className={engInputClassName}
+              className={opsFldControl}
               disabled={formDisabled}
               value={localFields[lenKey]}
               onChange={(e) => patchLocalField(lenKey, e.target.value)}
@@ -893,7 +898,7 @@ export function EngineeringSurveyWorkPanel({
           fieldErrors.deed_matches_nature && engineeringInvalidControlClass,
         )}
       >
-        <p className={cn(engLabelClassName, "mb-2")}>هل الصك مطابق للطبيعة؟</p>
+        <p className={cn(opsTfLbl, "mb-2")}>هل الصك مطابق للطبيعة؟</p>
         <div className="flex flex-wrap gap-2">
           {(
             [
@@ -998,7 +1003,7 @@ export function EngineeringSurveyWorkPanel({
           <div className="mb-2.5 grid grid-cols-1 gap-2.5 sm:grid-cols-2">
             <div>
               <label
-                className={engLabelClassName}
+                className={opsTfLbl}
                 htmlFor="eng-nature-on-site-area"
               >
                 المساحة الإجمالية
@@ -1007,7 +1012,7 @@ export function EngineeringSurveyWorkPanel({
                 id="eng-nature-on-site-area"
                 inputMode="decimal"
                 className={cn(
-                  engInputClassName,
+                  opsFldControl,
                   fieldErrors.nature_on_site_area &&
                     engineeringInvalidControlClass,
                 )}
@@ -1033,27 +1038,27 @@ export function EngineeringSurveyWorkPanel({
               >
                 <div>
                   <label
-                    className={engLabelClassName}
+                    className={opsTfLbl}
                     htmlFor={`eng-${boundKey}`}
                   >
                     {boundLabel}
                   </label>
                   <input
                     id={`eng-${boundKey}`}
-                    className={engInputClassName}
+                    className={opsFldControl}
                     disabled={formDisabled}
                     value={localFields[boundKey]}
                     onChange={(e) => patchLocalField(boundKey, e.target.value)}
                   />
                 </div>
                 <div>
-                  <label className={engLabelClassName} htmlFor={`eng-${lenKey}`}>
+                  <label className={opsTfLbl} htmlFor={`eng-${lenKey}`}>
                     {lenLabel}
                   </label>
                   <input
                     id={`eng-${lenKey}`}
                     inputMode="decimal"
-                    className={engInputClassName}
+                    className={opsFldControl}
                     disabled={formDisabled}
                     value={localFields[lenKey]}
                     onChange={(e) => patchLocalField(lenKey, e.target.value)}
@@ -1066,13 +1071,13 @@ export function EngineeringSurveyWorkPanel({
       ) : null}
 
       <div className="mb-1">
-        <label className={engLabelClassName} htmlFor="eng-survey-notes">
+        <label className={opsTfLbl} htmlFor="eng-survey-notes">
           ملاحظات الرفع المساحي
         </label>
         <textarea
           id="eng-survey-notes"
           rows={3}
-          className={cn(engInputClassName, "resize-y")}
+          className={cn(opsFldControl, "resize-y")}
           disabled={formDisabled}
           value={localFields.surveyNotes}
           onChange={(e) => patchLocalField("surveyNotes", e.target.value)}
@@ -1158,7 +1163,7 @@ export function EngineeringSurveyWorkPanel({
         <div className="mt-[18px] flex justify-start">
           <button
             type="button"
-            className={engPrimaryBtnClassName}
+            className={opsBtnPrimary}
             disabled={savingLocal}
             aria-busy={savingLocal || undefined}
             onClick={() => {
@@ -1189,7 +1194,7 @@ export function EngineeringSurveyWorkPanel({
   return (
     <>
       <div className="mx-auto w-full max-w-[1100px]">
-        <div className={engCardClassName}>
+        <div className={opsWorkspaceCard}>
           <EngTabBar
             active={workTab}
             onChange={onWorkTabChange}
@@ -1222,7 +1227,7 @@ export function EngineeringSurveyWorkPanel({
               {!locked ? (
                 <button
                   type="button"
-                  className={cn(engPrimaryBtnClassName, "!px-3.5 !py-1.5 !text-[11.5px]")}
+                  className={cn(opsBtnPrimary, "!px-3.5 !py-1.5 !text-[11.5px]")}
                   onClick={handleStartSurvey}
                 >
                   بدء الرفع المساحي
@@ -1297,7 +1302,7 @@ export function EngineeringSurveyWorkPanel({
                 <EngSection>ملاحظة على المعاملة</EngSection>
                 <textarea
                   id="eng-workspace-note"
-                  className={cn(engInputClassName, "min-h-[120px] resize-y")}
+                  className={cn(opsFldControl, "min-h-[120px] resize-y")}
                   rows={5}
                   disabled={!notesEditable}
                   value={noteDraft}
@@ -1309,7 +1314,7 @@ export function EngineeringSurveyWorkPanel({
                     <button
                       type="button"
                       className={cn(
-                        engPrimaryBtnClassName,
+                        opsBtnPrimary,
                         "!px-[18px] !py-[7px] !text-xs",
                       )}
                       onClick={saveNote}

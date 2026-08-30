@@ -7,8 +7,10 @@ import {
   Badge,
   SkeletonTableRows,
   Table,
+  TableFrame,
   TBody,
   Td,
+  TdLtr,
   Th,
   THead,
   Tr,
@@ -48,29 +50,29 @@ export function SupervisorEnfazTracking() {
 
   if (isPending) {
     return (
-      <div className="overflow-hidden rounded-xl border border-border bg-surface shadow-card">
+      <TableFrame>
         <Table pending>
           <TBody>
             <SkeletonTableRows rows={3} cols={5} />
           </TBody>
         </Table>
-      </div>
+      </TableFrame>
     );
   }
 
   if (data.length === 0) {
     return (
-      <div className="overflow-hidden rounded-xl border border-border bg-surface shadow-card">
+      <TableFrame>
         <div className="px-4 py-10 text-center text-[13px] text-text-3">
           لا بيانات متابعة حالياً.
         </div>
-      </div>
+      </TableFrame>
     );
   }
 
   return (
     <>
-      <div className="overflow-hidden rounded-xl border border-border bg-surface shadow-card">
+      <TableFrame>
         <Table>
           <THead>
             <Tr hoverable={false}>
@@ -88,7 +90,9 @@ export function SupervisorEnfazTracking() {
                 hoverable={false}
                 className={row.workStatus === "cancelled" ? "opacity-55" : ""}
               >
-                <Td className="font-medium text-primary-light">{row.poNumber}</Td>
+                <TdLtr valueClassName="font-medium text-primary-light">
+                  {row.poNumber}
+                </TdLtr>
                 <Td>{row.propertyLabel}</Td>
                 <Td>
                   <Badge
@@ -139,7 +143,7 @@ export function SupervisorEnfazTracking() {
             ))}
           </TBody>
         </Table>
-      </div>
+      </TableFrame>
       <p className="mt-3 text-xs text-text-3">
         متابعة فقط — التعبئة والتحصيل من سطح المالية. المتأخر = أكثر من ٣٠ يوماً
         من الإصدار بلا تحصيل كامل.

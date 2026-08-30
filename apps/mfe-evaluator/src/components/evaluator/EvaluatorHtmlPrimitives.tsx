@@ -1,35 +1,15 @@
 "use client";
 
 import type { ReactNode } from "react";
-import { Tab, TabBar, cn, StatusPill, type StatusPillStyle } from "@platform/ui-kit";
-
-/** Case Study.html `ENG_BOX` — soft surface field cell. */
-export const engBoxClassName =
-  "rounded-lg border border-border bg-surface-2 px-3 py-2.5";
-
-/** Case Study.html `INP_STYLE`. */
-export const valInputClassName =
-  "w-full rounded-[9px] border border-border-md bg-surface-2 px-3 py-2.5 font-[inherit] text-[13px] text-text outline-none";
-
-/** Case Study.html `.tf-lbl`. */
-export const valLabelClassName =
-  "mb-[7px] block text-[12px] font-semibold text-text-2";
-
-/** Case Study.html `.card` inside val window. */
-export const valCardClassName =
-  "rounded-xl border border-border bg-surface p-[18px_20px] shadow-card";
-
-/** Case Study.html `.pp-head`. */
-export const valPpHeadClassName =
-  "mb-3.5 rounded-[14px] border border-border bg-surface px-[22px] py-[18px] shadow-card";
-
-/** Case Study.html `.chip`. */
-export const valChipClassName =
-  "inline-flex items-center gap-1 rounded-md bg-gold-soft px-2.5 py-[3px] text-[12px] font-bold text-gold-d";
-
-/** Case Study.html `.primary` compact. */
-export const valPrimaryBtnClassName =
-  "inline-flex items-center gap-1.5 rounded-lg border-none bg-ink px-4 py-2.5 text-[13px] font-bold text-white shadow-[0_6px_16px_-8px_rgba(18,40,76,0.6)] transition-[transform,background] hover:bg-navy-3 hover:-translate-y-px";
+import {
+  StatusPill,
+  Tab,
+  TabBar,
+  cn,
+  opsFieldBox,
+  opsWorkCard,
+  statusPillStyleFromColor,
+} from "@platform/ui-kit";
 
 /** Field-inspection `InsCard` language — aligns evaluator input sections with the rest of the app. */
 export function ValCard({
@@ -42,7 +22,7 @@ export function ValCard({
   children: ReactNode;
 }) {
   return (
-    <section className="mb-3.5 rounded-[var(--radius-lg)] border border-border bg-surface px-[18px] py-4 shadow-card">
+    <section className={cn(opsWorkCard, "mb-3.5")}>
       <div className="mb-3 flex flex-wrap items-center gap-2">
         <span className="h-[15px] w-[3px] rounded-full bg-gold" aria-hidden />
         <h4 className="m-0 text-[13px] font-bold text-heading">{title}</h4>
@@ -96,12 +76,6 @@ export function ValFieldsGrid({
   );
 }
 
-/** Field-inspection `TABLE_TH`/`TABLE_TD` language — used inside ValCard tables. */
-export const valTableThClassName =
-  "border border-border bg-surface-2 px-2.5 py-[7px] text-[11px] font-bold text-text-2";
-export const valTableTdClassName =
-  "border border-border px-2.5 py-1.5 align-middle text-[12px]";
-
 export function EngSection({ children }: { children: ReactNode }) {
   return (
     <div className="mb-2.5 mt-[18px] border-b border-border pb-[7px] text-[13px] font-bold text-heading first:mt-0">
@@ -147,7 +121,7 @@ export function EngField({
   children?: ReactNode;
 }) {
   return (
-    <div className={engBoxClassName}>
+    <div className={opsFieldBox}>
       <div className="mb-[3px] text-[10.5px] text-text-3">{label}</div>
       <div
         className={cn(
@@ -169,8 +143,7 @@ export function ValStatusPill({
   /** CSS color matching HTML `pill(t,c)` — GOLD/NAVY/GREEN/AMBER/GRAY */
   color: string;
 }) {
-  const style: StatusPillStyle = { base: color, fg: color };
-  return <StatusPill label={label} style={style} />;
+  return <StatusPill label={label} style={statusPillStyleFromColor(color)} />;
 }
 
 export const VAL_STATUS_COLORS = {

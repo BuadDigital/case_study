@@ -7,16 +7,16 @@ import {
   Button,
   Input,
   SkeletonTableRows,
-  Table,
   TBody,
+  THead,
+  Table,
   Td,
   Th,
   ThAction,
-  THead,
   Tr,
   cn,
+  opsMobileCard,
   pageToolbarClassName,
-  queueTableWrapClassName,
   useToast,
 } from "@platform/ui-kit";
 import { prototypeKeys } from "@platform/app-shared/query/prototype-keys";
@@ -309,7 +309,7 @@ export function InspectorFeesBillingTable({
         />
       ) : null}
 
-      <div className={cn(queueTableWrapClassName, "hidden lg:block")}>
+      <div className="hidden lg:block">
         <Table className="min-w-[980px] w-full" pending={pending}>
           <THead>
             <Tr hoverable={false}>
@@ -609,7 +609,7 @@ export function InspectorFeesBillingTable({
             {rows.map((row) => (
               <li
                 key={`m-bill-${row.workflowTaskId}`}
-                className="rounded-[14px] border border-border border-s-[3px] border-s-ink bg-surface px-3.5 py-3.5 shadow-[0_2px_8px_rgba(15,52,96,0.06)]"
+                className={cn(opsMobileCard, "border-s-[3px] border-s-ink")}
               >
                 <div className="mb-2 flex items-start justify-between gap-2">
                   <div className="min-w-0">

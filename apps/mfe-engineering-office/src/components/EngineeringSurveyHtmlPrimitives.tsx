@@ -2,30 +2,13 @@
 
 import type { ReactNode } from "react";
 import { useRef, useState } from "react";
-import { StatusPill, type StatusPillStyle, cn } from "@platform/ui-kit";
-
-/** Case Study.html `ENG_BOX` */
-export const engBoxClassName =
-  "rounded-lg border border-border bg-surface-2 px-3 py-2.5";
-
-/** Case Study.html `INP_STYLE` */
-export const engInputClassName =
-  "w-full rounded-[9px] border border-border-md bg-surface-2 px-3 py-[9px] font-[inherit] text-[13px] text-text outline-none disabled:opacity-70";
-
-export const engLabelClassName =
-  "mb-[7px] block text-[12px] font-semibold text-text-2";
-
-export const engCardClassName =
-  "rounded-xl border border-border bg-surface p-[18px_20px] shadow-card";
-
-export const engPpHeadClassName =
-  "mb-3.5 rounded-[14px] border border-border bg-surface px-[22px] py-[18px] shadow-card";
-
-export const engChipClassName =
-  "inline-flex items-center gap-1 rounded-md bg-gold-soft px-2.5 py-[3px] text-[12px] font-bold text-gold-d";
-
-export const engPrimaryBtnClassName =
-  "inline-flex cursor-pointer items-center gap-1.5 rounded-lg border-none bg-ink px-4 py-2.5 text-[13px] font-bold text-white shadow-[0_6px_16px_-8px_rgba(18,40,76,0.6)] transition-[transform,background] hover:bg-navy-3 hover:-translate-y-px disabled:pointer-events-none disabled:opacity-55 disabled:hover:translate-y-0";
+import {
+  StatusPill,
+  cn,
+  opsBtnPrimary,
+  opsFieldBox,
+  statusPillStyleFromColor,
+} from "@platform/ui-kit";
 
 export function EngSection({ children }: { children: ReactNode }) {
   return (
@@ -72,7 +55,7 @@ export function EngField({
   children?: ReactNode;
 }) {
   return (
-    <div className={engBoxClassName}>
+    <div className={opsFieldBox}>
       <div className="mb-[3px] text-[10.5px] text-text-3">{label}</div>
       <div
         className={cn(
@@ -93,8 +76,7 @@ export function EngStatusPill({
   label: string;
   color: string;
 }) {
-  const style: StatusPillStyle = { base: color, fg: color };
-  return <StatusPill label={label} style={style} />;
+  return <StatusPill label={label} style={statusPillStyleFromColor(color)} />;
 }
 
 export const ENG_STATUS_COLORS = {
@@ -245,7 +227,7 @@ export function EngUploadBox({
           </div>
           <span
             className={cn(
-              engPrimaryBtnClassName,
+              opsBtnPrimary,
               "!pointer-events-none !px-4 !py-1.5 !text-[11.5px]",
             )}
           >

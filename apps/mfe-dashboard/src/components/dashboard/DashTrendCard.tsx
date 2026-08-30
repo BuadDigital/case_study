@@ -3,8 +3,9 @@
 import { useMemo, useState } from "react";
 import type { ReportingCompletionYearDto } from "@platform/api-client";
 import { TrendChart } from "../../lib/dash-svg";
-import { dashCard } from "../../lib/dashboard-tw";
-import { cn } from "@platform/ui-kit";
+
+import { cn, opsDashCard } from "@platform/ui-kit";
+
 
 type Mode = "month" | "quarter";
 
@@ -104,7 +105,7 @@ export function DashTrendCard({
   const empty = !pending && years.every((y) => padMonthly(y.monthly).every((n) => n === 0));
 
   return (
-    <div className={dashCard}>
+    <div className={opsDashCard}>
       <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
         <h3 className="m-0 text-[14px] font-bold text-heading">اتجاه الإنجاز</h3>
         <div className="flex flex-wrap items-center gap-1.5">

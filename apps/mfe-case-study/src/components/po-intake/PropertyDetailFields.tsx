@@ -1,7 +1,7 @@
 "use client";
 
 import type { ReactNode } from "react";
-import { Badge, cn, emptyStateClassName } from "@platform/ui-kit";
+import { Badge, cn, EmptyState as UiEmptyState } from "@platform/ui-kit";
 
 /** LTR-isolated value display for deeds, dates, phones, etc. */
 export const ltrValueClass = "inline [direction:ltr] [unicode-bidi:isolate]";
@@ -171,20 +171,18 @@ export function EmptyState({
   icon?: ReactNode;
 }) {
   return (
-    <div
-      className={cn(
-        "flex flex-col items-center justify-center gap-1 px-4 py-9 text-text-3",
-        emptyStateClassName,
-      )}
+    <UiEmptyState
+      panel
+      line={title}
+      hint={sub}
+      className="gap-1 py-9"
     >
       {icon ? (
         <span className="mb-1 text-4xl leading-none" aria-hidden>
           {icon}
         </span>
       ) : null}
-      <div className="text-[13.5px] font-bold text-text-2">{title}</div>
-      {sub ? <div className="text-xs leading-snug">{sub}</div> : null}
-    </div>
+    </UiEmptyState>
   );
 }
 

@@ -24,6 +24,7 @@ import {
   Table,
   TBody,
   Td,
+  TdLtr,
   Th,
   THead,
   Tr,
@@ -229,38 +230,39 @@ export function ProfileInspectorDuesPanel({ user }: { user: StaffUser }) {
   }
 
   return (
-    <div className="overflow-x-auto">
-      <Table className="min-w-[560px]">
-        <THead>
-          <Tr hoverable={false}>
-            <Th>المرجع</Th>
-            <Th>تاريخ الاستحقاق</Th>
-            <Th>المبلغ</Th>
-            <Th>الحالة</Th>
+    <Table framed className="min-w-[560px]">
+      <THead>
+        <Tr hoverable={false}>
+          <Th>المرجع</Th>
+          <Th>تاريخ الاستحقاق</Th>
+          <Th>المبلغ</Th>
+          <Th>الحالة</Th>
+        </Tr>
+      </THead>
+      <TBody>
+        {rows.map((row) => (
+          <Tr key={row.id}>
+            <Td>
+              <div className="flex flex-col gap-0.5">
+                <span
+                  dir="ltr"
+                  className="inline-block text-start font-bold text-gold-d tabular-nums [unicode-bidi:isolate]"
+                >
+                  {row.ref}
+                </span>
+                <span className="text-[11px] text-text-3">{row.detail}</span>
+              </div>
+            </Td>
+            <TdLtr bare>{dmy(row.atIso)}</TdLtr>
+            <TdLtr bare valueClassName="font-extrabold tabular-nums">
+              {money(row.amount)} ر.س
+            </TdLtr>
+            <Td>
+              <Badge tone={ST_TONE[row.st]}>{ST_LABEL[row.st]}</Badge>
+            </Td>
           </Tr>
-        </THead>
-        <TBody>
-          {rows.map((row) => (
-            <Tr key={row.id}>
-              <Td>
-                <div className="flex flex-col gap-0.5">
-                  <span className="font-bold text-gold-d" dir="ltr">
-                    {row.ref}
-                  </span>
-                  <span className="text-[11px] text-text-3">{row.detail}</span>
-                </div>
-              </Td>
-              <Td dir="ltr">{dmy(row.atIso)}</Td>
-              <Td dir="ltr" className="font-extrabold tabular-nums">
-                {money(row.amount)} ر.س
-              </Td>
-              <Td>
-                <Badge tone={ST_TONE[row.st]}>{ST_LABEL[row.st]}</Badge>
-              </Td>
-            </Tr>
-          ))}
-        </TBody>
-      </Table>
-    </div>
+        ))}
+      </TBody>
+    </Table>
   );
 }

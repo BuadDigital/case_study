@@ -2,7 +2,10 @@
 
 import type { ReactNode } from "react";
 import { useMemo } from "react";
-import { cn } from "@platform/ui-kit";
+import {
+  cn,
+  opsPanelCard,
+} from "@platform/ui-kit";
 import { PoNumber } from "../ui/PoNumber";
 import { DetailBadge, ltrValueClass } from "./PropertyDetailFields";
 import {
@@ -253,7 +256,7 @@ export function PropertyDetailHero({
 
   return (
     <>
-      <header className="mb-3.5 shrink-0 rounded-[12px] border border-border bg-surface px-3.5 pt-3.5 shadow-[0_1px_2px_rgba(18,40,76,0.03),0_6px_16px_-18px_rgba(18,40,76,0.10)] sm:px-5 sm:pt-4">
+      <header className={cn(opsPanelCard, "mb-3.5 shrink-0 px-3.5 pt-3.5 sm:px-5 sm:pt-4")}>
         <div className="flex flex-wrap items-start justify-between gap-3 sm:gap-4">
           <div className="min-w-0 flex-1">
             <div className="mb-[5px] flex flex-wrap items-center gap-1.5 text-[11px] text-text-3">

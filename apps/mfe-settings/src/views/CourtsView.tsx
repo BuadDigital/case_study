@@ -34,6 +34,7 @@ import {
   Select,
   Spinner,
   Table,
+  TableEmptyRow,
   TBody,
   Td,
   Th,
@@ -426,11 +427,7 @@ export function CourtsView() {
             </THead>
             <TBody>
               {courts.length === 0 ? (
-                <Tr hoverable={false}>
-                  <Td colSpan={5} className="py-10 text-center text-[12.5px] text-text-3">
-                    لا توجد محاكم بعد
-                  </Td>
-                </Tr>
+                <TableEmptyRow colSpan={5}>لا توجد محاكم بعد</TableEmptyRow>
               ) : (
                 courts.map((court) => (
                   <Tr key={court.id} hoverable={false}>
@@ -512,7 +509,7 @@ export function CourtsView() {
                   لا توجد دوائر لهذه المحكمة.
                 </p>
               ) : (
-                <Table className="tabular-nums">
+                <Table framed className="tabular-nums">
                   <THead>
                     <Tr hoverable={false}>
                       <Th>رقم الدائرة</Th>

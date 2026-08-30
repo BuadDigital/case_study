@@ -177,7 +177,7 @@ export function partyBillingWorkflowLabel(s: {
   return (s.statusLabel || "").trim() || s.status;
 }
 
-/** tone for finStatusFor */
+/** tone for finStatusStyle (ui-kit) */
 export function partyBillingWorkflowTone(s: {
   status: string;
   vendorInvoiceMatched?: boolean;

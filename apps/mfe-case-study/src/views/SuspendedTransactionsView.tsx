@@ -18,6 +18,7 @@ import {
   QueueTableHint,
   SkeletonTableRows,
   Table,
+  TableFrame,
   TBody,
   Td,
   TdAction,
@@ -27,7 +28,6 @@ import {
   Tr,
   cn,
   queueTableRowClassName,
-  queueTableWrapClassName,
 } from "@platform/ui-kit";
 import { getAuthSession } from "@platform/auth-client";
 import { useTickingMinute } from "@platform/app-shared/hooks/use-ticking-now";
@@ -366,7 +366,7 @@ export function SuspendedTransactionsView() {
                 </div>
               )}
               {isDesktopViewport === false ? null : (
-              <div className={cn(queueTableWrapClassName, "hidden lg:block")}>
+              <TableFrame className="hidden lg:block">
                 <Table pending={queuePending}>
                   <THead>
                     <Tr hoverable={false}>
@@ -436,12 +436,12 @@ export function SuspendedTransactionsView() {
                     )}
                   </TBody>
                 </Table>
-              </div>
+                <QueueTableHint>
+                  اضغط الصف لعرض تفاصيل العقار — ⋮ عقارات أمر العمل · تفاصيل
+                  العقار.
+                </QueueTableHint>
+              </TableFrame>
               )}
-              <QueueTableHint className="hidden lg:block">
-                اضغط الصف لعرض تفاصيل العقار — ⋮ عقارات أمر العمل · تفاصيل
-                العقار.
-              </QueueTableHint>
             </>
           )}
         </OperationalPanel>

@@ -33,6 +33,8 @@ import {
   PageShell,
   Select,
   Spinner,
+  cn,
+  opsDropzone,
   useToast,
 } from "@platform/ui-kit";
 import { organizationSettingsApiConfig } from "../lib/settings-api-config";
@@ -381,7 +383,7 @@ export function OrganizationDataView() {
           </CardHeader>
           <CardBody className="flex flex-wrap items-start gap-[18px]">
             <div
-              className="grid h-[130px] w-[210px] shrink-0 place-items-center overflow-hidden rounded-lg border border-dashed border-border-md bg-surface-2 p-2.5"
+              className={cn(opsDropzone, "h-[130px] w-[210px] shrink-0 overflow-hidden p-2.5")}
             >
               <img
                 src={stamp}

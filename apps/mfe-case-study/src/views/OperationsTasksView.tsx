@@ -23,8 +23,17 @@ import {
   PanelSkeleton,
   StatusPill,
   cn,
+  useShowAllEyeBlink,
   useToast,
   Spinner,
+  Table,
+  TableEmptyRow,
+  TableFrame,
+  TBody,
+  Th,
+  ThAction,
+  THead,
+  Tr,
 } from "@platform/ui-kit";
 import { usePrototype } from "@platform/app-shared/contexts/PrototypeContext";
 import type { StaffUser } from "@platform/app-shared/prototype/constants";
@@ -109,9 +118,7 @@ const CreateOperationsTaskModal = dynamic(
 const preloadCreateOperationsTaskModal = () =>
   void import("../components/CreateOperationsTaskModal");
 import {
-  TASKS_LIST_COLS,
   TASKS_LIST_FOOTER,
-  TasksEmptyRows,
   TasksKpiActiveIcon,
   TasksKpiCompletedIcon,
   TasksKpiCreatedIcon,
@@ -156,8 +163,6 @@ import {
   opsFileSize,
   opsBulkCount,
   opsListCount,
-  opsLetterRow,
-  opsEmptyHint,
   opsEventAv,
   opsFileChip,
   opsFileChipFx,
@@ -196,11 +201,7 @@ import {
   opsStepLblOn,
   opsStepLine,
   opsStepLineOn,
-  opsTdC,
-  opsTh,
-  opsThStart,
-  opsThead,
-  opsTkCheckInput,
+  opsCheckInput,
   opsToolbar,
   opsTfActions,
   opsTfChip,
@@ -298,6 +299,8 @@ export function OperationsTasksView() {
   const [statusFilter, setStatusFilter] = useState("");
   const [scopeFilter, setScopeFilter] = useState("");
   const [showAll, setShowAll] = useState(false);
+  const { blink: showAllEyeBlink, toggleOpen: toggleShowAll, triggerBlink } =
+    useShowAllEyeBlink();
   const [selectedId, setSelectedId] = useState<string | null>(deepLinkTaskId);
   const [detailId, setDetailId] = useState<string | null>(deepLinkTaskId);
   const [selectedIds, setSelectedIds] = useState<Record<string, boolean>>({});
@@ -357,8 +360,11 @@ export function OperationsTasksView() {
     if (!deepLinkTaskId) return;
     setSelectedId(deepLinkTaskId);
     setDetailId(deepLinkTaskId);
-    setShowAll(true);
-  }, [deepLinkTaskId]);
+    setShowAll((prev) => {
+      if (!prev) triggerBlink();
+      return true;
+    });
+  }, [deepLinkTaskId, triggerBlink]);
 
   useEffect(() => {
     if (!canCreate) return;
@@ -1141,7 +1147,7 @@ export function OperationsTasksView() {
         leading: active ? (
           <input
             type="checkbox"
-            className={opsTkCheckInput}
+            className={opsCheckInput}
             checked={Boolean(selectedIds[task.id])}
             onChange={(e) => {
               const on = e.target.checked;
@@ -1863,9 +1869,9 @@ export function OperationsTasksView() {
             <button
               type="button"
               className={showAll ? opsShowAllBtnOn : opsShowAllBtn}
-              onClick={() => setShowAll((v) => !v)}
+              onClick={() => setShowAll(toggleShowAll)}
             >
-              <TasksShowAllEye />
+              <TasksShowAllEye open={showAll} blink={showAllEyeBlink} />
               <span>{showAll ? "النشطة فقط" : "إظهار جميع المهام"}</span>
             </button>
             <span className={opsListCount} aria-live="polite">
@@ -1934,57 +1940,63 @@ export function OperationsTasksView() {
       <OperationalPanel className="min-h-0 flex-1 overflow-hidden !rounded-[12px] p-0 max-lg:border-0 max-lg:bg-transparent max-lg:!rounded-none max-lg:shadow-none">
         {/* Desktop table — after hydration mount only one tree (rendering). */}
         {isDesktopViewport === false ? null : (
-        <div className="hidden overflow-x-auto lg:block">
-          <div className="min-w-[900px]">
-            <div className={opsThead} style={{ gridTemplateColumns: TASKS_LIST_COLS }}>
-              <div className={cn(opsTh, opsTdC)}>
-                <input
-                  ref={selAllRef}
-                  type="checkbox"
-                  aria-label="تحديد الكل"
-                  className="size-[17px] accent-gold-d"
-                  checked={allVisibleActiveChecked}
-                  onChange={(e) => {
-                    const on = e.target.checked;
-                    const next = { ...selectedIds };
-                    for (const t of visibleTasks) {
-                      if (!isActiveOperationsTask(t)) continue;
-                      if (on) next[t.id] = true;
-                      else delete next[t.id];
-                    }
-                    setSelectedIds(next);
-                  }}
-                />
-              </div>
-              {/* Text headers: start-aligned with body cells (not center). */}
-              <div className={opsThStart}>المهمة</div>
-              <div className={opsThStart}>النطاق / الربط</div>
-              <div className={opsThStart}>المنفّذ</div>
-              <div className={opsThStart}>الاستحقاق</div>
-              <div className={cn(opsTh, opsTdC)}>الحالة</div>
-              <div className={cn(opsTh, opsTdC)}>إجراءات</div>
-            </div>
-
-            {visibleTasks.length === 0 ? (
-              <TasksEmptyRows />
-            ) : (
-              visibleTasks.map((task) => (
-                <OperationsTaskRow
-                  key={task.id}
-                  task={task}
-                  checked={Boolean(selectedIds[task.id])}
-                  canRemind={canRemind}
-                  staffUsers={staffUsers}
-                  onOpen={openTask}
-                  onOpenDetail={openTaskDetail}
-                  onToggleSelect={toggleTaskSelected}
-                  onRemind={remindTask}
-                  rowMenu={rowMenu}
-                />
-              ))
-            )}
-          </div>
-        </div>
+          <TableFrame className="hidden lg:block">
+            <Table wrapClassName="min-w-[900px]">
+              <THead>
+                <Tr hoverable={false}>
+                  <ThAction aria-label="تحديد الكل" className="w-10">
+                    <input
+                      ref={selAllRef}
+                      type="checkbox"
+                      aria-label="تحديد الكل"
+                      className="size-[17px] accent-gold-d"
+                      checked={allVisibleActiveChecked}
+                      onChange={(e) => {
+                        const on = e.target.checked;
+                        const next = { ...selectedIds };
+                        for (const t of visibleTasks) {
+                          if (!isActiveOperationsTask(t)) continue;
+                          if (on) next[t.id] = true;
+                          else delete next[t.id];
+                        }
+                        setSelectedIds(next);
+                      }}
+                    />
+                  </ThAction>
+                  <Th>المهمة</Th>
+                  <Th>النطاق / الربط</Th>
+                  <Th>المنفّذ</Th>
+                  <Th>الاستحقاق</Th>
+                  <Th className="text-center">الحالة</Th>
+                  <ThAction aria-label="إجراءات" />
+                </Tr>
+              </THead>
+              <TBody>
+                {visibleTasks.length === 0 ? (
+                  <TableEmptyRow colSpan={7}>
+                    {useIndependentQueue
+                      ? "لا توجد مهام مسندة إليك."
+                      : "لا توجد مهام مطابقة."}
+                  </TableEmptyRow>
+                ) : (
+                  visibleTasks.map((task) => (
+                    <OperationsTaskRow
+                      key={task.id}
+                      task={task}
+                      checked={Boolean(selectedIds[task.id])}
+                      canRemind={canRemind}
+                      staffUsers={staffUsers}
+                      onOpen={openTask}
+                      onOpenDetail={openTaskDetail}
+                      onToggleSelect={toggleTaskSelected}
+                      onRemind={remindTask}
+                      rowMenu={rowMenu}
+                    />
+                  ))
+                )}
+              </TBody>
+            </Table>
+          </TableFrame>
         )}
 
         {/* Mobile card list */}

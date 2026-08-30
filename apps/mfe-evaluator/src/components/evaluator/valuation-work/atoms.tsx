@@ -1,15 +1,11 @@
 "use client";
 
 import type { ReactNode } from "react";
-import { cn } from "@platform/ui-kit";
-
-/* ─── Tailwind class tokens (identity via @theme CSS vars) ─── */
-export const vwInputClassName =
-  "w-full rounded-[var(--radius)] border border-border-md bg-surface-2 px-3 py-2.5 text-[13px] font-semibold text-text outline-none";
-export const vwThClassName =
-  "whitespace-nowrap border-b-2 border-gold bg-surface-2 px-4 py-3.5 text-center text-[12px] font-bold text-heading";
-export const vwTdClassName =
-  "border-b border-border px-4 py-3 text-center text-[12.5px] text-text";
+import {
+  cn,
+  opsBtnPrimary,
+  opsLetterCard,
+} from "@platform/ui-kit";
 
 /* ─── shared UI atoms ─── */
 export function Card({
@@ -21,10 +17,7 @@ export function Card({
 }) {
   return (
     <div
-      className={cn(
-        "mb-5 overflow-hidden rounded-[var(--radius-lg)] border border-border bg-surface shadow-card",
-        className,
-      )}
+      className={cn(opsLetterCard, "mb-5", className)}
     >
       {children}
     </div>
@@ -97,53 +90,6 @@ export function LedgerRow({
   );
 }
 
-export function BankTh({
-  children,
-  start,
-  highlight,
-}: {
-  children: ReactNode;
-  start?: boolean;
-  highlight?: boolean;
-}) {
-  return (
-    <div
-      className={cn(
-        "flex min-w-0 items-center overflow-hidden text-ellipsis whitespace-nowrap px-4 py-3.5 text-[12px] font-bold text-heading",
-        start ? "justify-start text-start" : "justify-center text-center",
-        highlight && "bg-gold-soft",
-      )}
-    >
-      {children}
-    </div>
-  );
-}
-
-export function BankTd({
-  children,
-  start,
-  highlight,
-  className,
-}: {
-  children?: ReactNode;
-  start?: boolean;
-  highlight?: boolean;
-  className?: string;
-}) {
-  return (
-    <div
-      className={cn(
-        "flex min-w-0 items-center overflow-hidden px-4 py-3.5",
-        start ? "justify-start text-start" : "justify-center text-center",
-        highlight && "bg-gold-soft",
-        className,
-      )}
-    >
-      {children}
-    </div>
-  );
-}
-
 export function ToggleChip({
   active,
   onClick,
@@ -188,8 +134,9 @@ export function PrimaryBtn({
       disabled={disabled}
       onClick={onClick}
       className={cn(
-        "inline-flex items-center gap-[7px] rounded-[var(--radius)] border-none bg-ink px-4 py-2.5 text-[13px] font-bold text-white shadow-card transition-colors duration-150",
-        disabled ? "cursor-not-allowed opacity-55" : "cursor-pointer",
+        opsBtnPrimary,
+        "shadow-card",
+        disabled ? "cursor-not-allowed opacity-55" : null,
       )}
     >
       {children}

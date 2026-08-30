@@ -2,14 +2,16 @@
 
 import {
   Input,
-  Table,
   TBody,
+  THead,
+  Table,
   Td,
   Textarea,
   Th,
-  THead,
   Tr,
   cn,
+  opsFieldBox,
+  opsLetterCard,
   useToast,
 } from "@platform/ui-kit";
 import type { EvaluatorChecklistAnswers } from "../../lib/evaluator/evaluator-window-data";
@@ -17,7 +19,7 @@ import {
   EVALUATOR_CONDITIONAL_QUESTIONS,
   EVALUATOR_SIMPLE_QUESTIONS,
 } from "../../lib/evaluator/evaluator-window-data";
-import { engBoxClassName, EngSection } from "./EvaluatorHtmlPrimitives";
+import { EngSection } from "./EvaluatorHtmlPrimitives";
 
 type ChecklistKey = keyof EvaluatorChecklistAnswers;
 
@@ -99,7 +101,7 @@ export function EvaluatorChecklistTab({
         </p>
       ) : null}
 
-      <div className="overflow-hidden rounded-[var(--radius-lg)] border border-border bg-surface shadow-card">
+      <div className={opsLetterCard}>
         <Table wrapClassName="rounded-[var(--radius-lg)]">
           <THead>
             <Tr hoverable={false}>
@@ -117,7 +119,7 @@ export function EvaluatorChecklistTab({
                 q.id === "q_shared_deed" && checklist.q_shared_deed === true ? (
                   <div
                     className={cn(
-                      engBoxClassName,
+                      opsFieldBox,
                       "mt-3 space-y-3 border-[color-mix(in_srgb,var(--gold)_28%,transparent)] bg-[color-mix(in_srgb,var(--gold)_6%,transparent)]",
                     )}
                   >
@@ -197,7 +199,7 @@ export function EvaluatorChecklistTab({
                   checklist.q_lease_exists === true ? (
                   <div
                     className={cn(
-                      engBoxClassName,
+                      opsFieldBox,
                       "mt-3 flex flex-wrap items-center gap-3 border-[color-mix(in_srgb,var(--gold)_28%,transparent)] bg-[color-mix(in_srgb,var(--gold)_6%,transparent)]",
                     )}
                   >
@@ -221,7 +223,7 @@ export function EvaluatorChecklistTab({
                   checklist.q_technical_notes_exists === true ? (
                   <div
                     className={cn(
-                      engBoxClassName,
+                      opsFieldBox,
                       "mt-3 border-[color-mix(in_srgb,var(--gold)_28%,transparent)] bg-[color-mix(in_srgb,var(--gold)_6%,transparent)]",
                     )}
                   >
@@ -300,7 +302,7 @@ export function EvaluatorCopyField({
 }) {
   const { showToast } = useToast();
   return (
-    <div className={`${engBoxClassName} relative`}>
+    <div className={`${opsFieldBox} relative`}>
       <div className="mb-[3px] text-[10.5px] text-text-3">{label}</div>
       <div className="flex items-center justify-between gap-2">
         <div className="text-[12.5px] font-semibold text-text">

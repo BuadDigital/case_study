@@ -11,12 +11,15 @@ import {
   OperationalToolbarSearch,
   OperationalToolbarSelect,
   PageToolbar,
+  ShowAllEye,
   SkeletonTableRows,
   StatusPill,
   Table,
+  TableEmptyRow,
   TBody,
   Td,
   TdAction,
+  TdLtr,
   Th,
   ThAction,
   THead,
@@ -24,6 +27,7 @@ import {
   cn,
   queueTableRowActiveClassName,
   queueTableRowClassName,
+  useShowAllEyeBlink,
   type StatusPillStyle,
 } from "@platform/ui-kit";
 import { PoNumber } from "@case-study/mfe/components/ui/PoNumber";
@@ -213,6 +217,7 @@ export function QueueFiltersToolbar({
   onToggleGroupByPo: () => void;
   filteredCount: number;
 }) {
+  const { blink: showAllEyeBlink, triggerBlink } = useShowAllEyeBlink();
   const resultCountChip = (
     <span
       className="inline-flex shrink-0 items-center gap-1 rounded-[6px] bg-gold-soft px-2.5 py-[3px] text-[12px] font-bold text-gold-d max-lg:self-start lg:ms-auto"
@@ -277,7 +282,10 @@ export function QueueFiltersToolbar({
           {isPartyQueueToggleTable ? (
             <button
               type="button"
-              onClick={onToggleShowCompleted}
+              onClick={() => {
+                if (!showCompleted) triggerBlink();
+                onToggleShowCompleted();
+              }}
               className={cn(
                 "inline-flex items-center gap-1.5 rounded-lg border px-[13px] py-2 text-[12.5px] font-bold transition-colors max-lg:justify-center",
                 showCompleted
@@ -286,20 +294,7 @@ export function QueueFiltersToolbar({
               )}
               aria-pressed={showCompleted}
             >
-              <svg
-                width="15"
-                height="15"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="1.9"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                aria-hidden
-              >
-                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
-                <circle cx="12" cy="12" r="3" />
-              </svg>
+              <ShowAllEye open={showCompleted} blink={showAllEyeBlink} />
               <span>
                 {isPropertyAppraisalTable
                   ? showCompleted
@@ -493,14 +488,9 @@ export function AllTransactionsQueueTable({
         {ctx.showSkeleton ? (
           <SkeletonTableRows rows={6} cols={allTransactionsSkeletonCols} />
         ) : filteredMeta.length === 0 ? (
-          <Tr hoverable={false}>
-            <Td
-              colSpan={allTransactionsSkeletonCols}
-              className="!py-11 text-center text-[13.5px] text-text-3"
-            >
-              لا توجد معاملات مطابقة.
-            </Td>
-          </Tr>
+          <TableEmptyRow colSpan={allTransactionsSkeletonCols}>
+            لا توجد معاملات مطابقة.
+          </TableEmptyRow>
         ) : groupByPo ? (
           poGroups.map(({ po, rows }, groupIndex) => {
             const open = !collapsedPo[po];
@@ -913,12 +903,12 @@ const EngineeringSurveyRow = memo(function EngineeringSurveyRow({
           </span>
         )}
       </Td>
-      <Td className="whitespace-nowrap text-[12.5px] text-text-2">
-        {/* Keep YYYY/MM/DD order without flipping cell start edge in RTL */}
-        <span dir="ltr" className="inline-block tabular-nums">
-          {assignedLabel}
-        </span>
-      </Td>
+      <TdLtr
+        className="whitespace-nowrap text-[12.5px] text-text-2"
+        valueClassName="tabular-nums"
+      >
+        {assignedLabel}
+      </TdLtr>
       <Td>
         <div className="flex flex-col items-start gap-1">
           <StatusPill
@@ -989,21 +979,16 @@ export function EngineeringSurveyQueueTable({
           <Th>تاريخ الإسناد</Th>
           <Th>{statusColumnLabel ?? "الحالة"}</Th>
           <Th>المتبقي</Th>
-          <Th className="w-16 text-center">إجراءات</Th>
+          <ThAction aria-label="إجراءات" />
         </Tr>
       </THead>
       <TBody>
         {ctx.showSkeleton ? (
           <SkeletonTableRows rows={6} cols={7} />
         ) : filteredMeta.length === 0 ? (
-          <Tr hoverable={false}>
-            <Td
-              colSpan={7}
-              className="!py-11 text-center text-[13.5px] text-text-3"
-            >
-              لا توجد أوامر رفع مطابقة.
-            </Td>
-          </Tr>
+          <TableEmptyRow colSpan={7}>
+            لا توجد أوامر رفع مطابقة.
+          </TableEmptyRow>
         ) : (
           // Row is prebuilt in meta — no rebuild every render (js-combine-iterations).
           filteredMeta.map((meta) => (
@@ -1129,14 +1114,15 @@ const PropertyAppraisalRow = memo(function PropertyAppraisalRow({
       <Td className="text-center text-[13px] text-text-2">
         {cityDistrict || "—"}
       </Td>
-      <Td dir="ltr" className="text-center text-[12px] text-text-2">
+      <Td className="text-[12px] text-text-2">
         <PoNumber value={task.poNumber} link />
       </Td>
-      <Td className="whitespace-nowrap text-center text-[12.5px] text-text-2">
-        <span dir="ltr" className="inline-block tabular-nums">
-          {assignedLabel}
-        </span>
-      </Td>
+      <TdLtr
+        className="whitespace-nowrap text-center text-[12.5px] text-text-2"
+        valueClassName="tabular-nums"
+      >
+        {assignedLabel}
+      </TdLtr>
       <Td className="overflow-visible text-center">
         <HoverPortalCard
           align="start"
@@ -1238,25 +1224,20 @@ export function PropertyAppraisalQueueTable({
         <Tr hoverable={false}>
           <Th>{PROPERTY_IDENTIFIER_COLUMN_LABEL}</Th>
           <Th className="text-center">المدينة / الحي</Th>
-          <Th className="text-center">أمر العمل</Th>
+          <Th>أمر العمل</Th>
           <Th className="text-center">تاريخ الإسناد</Th>
           <Th className="text-center">الأطراف</Th>
           <Th className="text-center">{statusColumnLabel ?? "الحالة"}</Th>
-          <Th className="w-16 text-center">إجراءات</Th>
+          <ThAction aria-label="إجراءات" />
         </Tr>
       </THead>
       <TBody>
         {ctx.showSkeleton ? (
           <SkeletonTableRows rows={6} cols={7} />
         ) : filteredMeta.length === 0 ? (
-          <Tr hoverable={false}>
-            <Td
-              colSpan={7}
-              className="!py-11 text-center text-[13.5px] text-text-3"
-            >
-              لا توجد مهام تقييم مطابقة.
-            </Td>
-          </Tr>
+          <TableEmptyRow colSpan={7}>
+            لا توجد مهام تقييم مطابقة.
+          </TableEmptyRow>
         ) : (
           // Row is prebuilt in meta — no rebuild every render.
           filteredMeta.map((meta) => (

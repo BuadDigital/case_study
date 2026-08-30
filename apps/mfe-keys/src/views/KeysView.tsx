@@ -23,7 +23,22 @@ import {
   OperationalToolbarSearch,
   OperationalToolbarSelect,
   PageShell,
+  ShowAllEye,
+  SkeletonTableRows,
+  TBody,
+  THead,
+  Table,
+  TableFrame,
+  Td,
+  TdAction,
+  TdLtr,
+  Th,
+  ThAction,
+  Tr,
   cn,
+  opsBtnGhost,
+  opsChip,
+  useShowAllEyeBlink,
   useToast,
 } from "@platform/ui-kit";
 import {
@@ -31,18 +46,7 @@ import {
   type ActiveQueueMobileCardItem,
 } from "@case-study/mfe/components/queue/ActiveQueueMobileCards";
 import type { RowMoreMenuItem } from "@case-study/mfe/components/ui/RowMoreMenu";
-import {
-  KEYS_LIST_COLS,
-  KeysEmpty,
-  KeysGridHead,
-  KeysGridRow,
-  KeysStatusPill,
-  KeysTd,
-  KeysTh,
-  keysCardClassName,
-  keysChipClassName,
-  keysGhostBtnClassName,
-} from "../components/KeysHtmlPrimitives";
+import { KeysEmpty, KeysStatusPill } from "../components/KeysHtmlPrimitives";
 import { removeKeyEnvelope } from "../lib/keys-envelope-api";
 import {
   envelopeDisplayRef,
@@ -133,77 +137,6 @@ function ChevronIcon() {
   );
 }
 
-function EyeIcon({ open, blink }: { open: boolean; blink?: boolean }) {
-  return (
-    <span className="inline-grid size-[15px] shrink-0 [&>*]:[grid-area:1/1]">
-      <span
-        className={cn(
-          "inline-grid size-[15px] origin-center transition-transform duration-[320ms] ease-[cubic-bezier(0.34,1.2,0.64,1)] motion-reduce:transition-none [&>*]:[grid-area:1/1]",
-          open ? "scale-y-100" : "scale-y-[0.08]",
-          blink &&
-            "animate-[show-all-eye-blink_0.42s_ease] motion-reduce:animate-none",
-        )}
-      >
-        <svg
-          className="overflow-visible"
-          width="15"
-          height="15"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="1.8"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          aria-hidden
-        >
-          <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7Z" />
-        </svg>
-        <span
-          className={cn(
-            "inline-grid size-[15px] origin-center transition-[opacity,transform] duration-200 ease-out motion-reduce:transition-none",
-            open ? "scale-100 opacity-100" : "scale-[0.2] opacity-0",
-          )}
-        >
-          <svg
-            className="overflow-visible"
-            width="15"
-            height="15"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="1.8"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            aria-hidden
-          >
-            <circle cx="12" cy="12" r="3" />
-          </svg>
-        </span>
-      </span>
-      <svg
-        className="overflow-visible"
-        width="15"
-        height="15"
-        viewBox="0 0 24 24"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="1.8"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        aria-hidden
-      >
-        <path
-          className={cn(
-            "[stroke-dasharray:18] transition-[opacity,stroke-dashoffset] duration-[180ms] ease-out motion-reduce:transition-none",
-            open ? "opacity-0 [stroke-dashoffset:18]" : "opacity-100 [stroke-dashoffset:0]",
-          )}
-          d="M3 12h18"
-        />
-      </svg>
-    </span>
-  );
-}
-
 function KpiEnvIcon() {
   return (
     <svg
@@ -271,18 +204,6 @@ function MismatchIcon() {
   );
 }
 
-/** Skeleton rows while loading — static JSX independent of state. */
-const LIST_SKELETON = (
-  <div className="space-y-0">
-    {Array.from({ length: 6 }).map((_, i) => (
-      <div
-        key={i}
-        className="h-[58px] animate-pulse border-b border-border bg-surface-2/60"
-      />
-    ))}
-  </div>
-);
-
 function keysListHref(opts?: {
   tab?: "fees";
   envelope?: string;
@@ -328,7 +249,7 @@ export function KeysView() {
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
   const [showOut, setShowOut] = useState(false);
-  const [eyeBlink, setEyeBlink] = useState(false);
+  const { blink: eyeBlink, toggleOpen: toggleShowOut } = useShowAllEyeBlink();
   const [listTab, setListTab] = useState<ListTab>("envelopes");
   const [registerOpen, setRegisterOpen] = useState(false);
   const [detailId, setDetailId] = useState<string | null>(null);
@@ -628,7 +549,7 @@ export function KeysView() {
           <h2 className="m-0 text-[17px] font-extrabold text-heading">
             ظروف المفاتيح
           </h2>
-          <span className={keysChipClassName}>
+          <span className={opsChip}>
             {ready ? `${filtered.length} نتيجة` : "…"}
           </span>
         </div>
@@ -644,21 +565,12 @@ export function KeysView() {
           <button
             type="button"
             className={cn(
-              keysGhostBtnClassName,
+              opsBtnGhost,
               "show-all-btn-motion h-[38px] px-3.5 text-[12.5px] max-lg:flex-1",
             )}
-            onClick={() => {
-              setShowOut((v) => {
-                const next = !v;
-                if (next) {
-                  setEyeBlink(true);
-                  window.setTimeout(() => setEyeBlink(false), 420);
-                }
-                return next;
-              });
-            }}
+            onClick={() => setShowOut(toggleShowOut)}
           >
-            <EyeIcon open={showOut} blink={eyeBlink} />
+            <ShowAllEye open={showOut} blink={eyeBlink} />
             <span className="max-sm:hidden">
               {showOut
                 ? "إخفاء المسلَّمة (خارج العهدة)"
@@ -694,108 +606,122 @@ export function KeysView() {
         </div>
       </div>
 
-      {/* .card > .scroll > .grid — keyDrawList */}
-      <div
-        className={cn(
-          keysCardClassName,
-          "max-lg:border-0 max-lg:bg-transparent max-lg:shadow-none max-lg:rounded-none",
-        )}
-      >
-        <div className="overflow-x-auto rounded-xl">
-          <div className="hidden min-w-[960px] lg:block">
-            <KeysGridHead cols={KEYS_LIST_COLS}>
-              <KeysTh align="start">الرقم المرجعي</KeysTh>
-              <KeysTh align="start">المحكمة / الدائرة</KeysTh>
-              <KeysTh>عدد المفاتيح</KeysTh>
-              <KeysTh align="start">رقم الطلب</KeysTh>
-              <KeysTh>الصكوك</KeysTh>
-              <KeysTh align="start">سيناريو الاستلام</KeysTh>
-              <KeysTh align="start">العهدة</KeysTh>
-              <KeysTh>{null}</KeysTh>
-            </KeysGridHead>
-
+      {/* Desktop table — keyDrawList */}
+      <TableFrame className="hidden lg:block">
+        <Table className="min-w-[960px]" pending={!ready}>
+          <THead>
+            <Tr hoverable={false}>
+              <Th>الرقم المرجعي</Th>
+              <Th>المحكمة / الدائرة</Th>
+              <Th className="text-center">عدد المفاتيح</Th>
+              <Th>رقم الطلب</Th>
+              <Th className="text-center">الصكوك</Th>
+              <Th>سيناريو الاستلام</Th>
+              <Th>العهدة</Th>
+              <ThAction aria-hidden />
+            </Tr>
+          </THead>
+          <TBody>
             {!ready ? (
-              LIST_SKELETON
+              <SkeletonTableRows rows={6} cols={8} />
             ) : filtered.length === 0 ? (
-              <KeysEmpty
-                title="لا توجد ظروف مطابقة"
-                sub="جرّب تعديل البحث أو الفلاتر"
-              />
+              <Tr hoverable={false}>
+                <Td colSpan={8} className="!border-b-0 !p-0">
+                  <KeysEmpty
+                    title="لا توجد ظروف مطابقة"
+                    sub="جرّب تعديل البحث أو الفلاتر"
+                  />
+                </Td>
+              </Tr>
             ) : (
               filtered.map((env) => {
                 const out = isEnvelopeOutOfCustody(env.status);
                 return (
-                  <KeysGridRow
+                  <Tr
                     key={env.id}
-                    cols={KEYS_LIST_COLS}
-                    className="[content-visibility:auto] [contain-intrinsic-size:auto_120px]"
-                    muted={out}
+                    className={cn(
+                      "[content-visibility:auto] [contain-intrinsic-size:auto_120px]",
+                      out && "opacity-55 saturate-[0.6]",
+                    )}
+                    role="button"
+                    tabIndex={0}
                     onClick={() => openEnvelope(env.id)}
                     onContextMenu={(e) => {
                       if (!canRegisterEnvelope) return;
                       e.preventDefault();
                       setPendingDelete(env);
                     }}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" || e.key === " ") {
+                        e.preventDefault();
+                        openEnvelope(env.id);
+                      }
+                    }}
                   >
-                    <KeysTd>
-                      <span className="text-[13.5px] font-bold text-gold-d">
-                        {envelopeDisplayRef(env.id, env.createdAtUtc, env.referenceNumber)}
-                      </span>
-                    </KeysTd>
-                    <KeysTd col>
-                      <span className="text-[13px] font-semibold text-heading">
-                        {env.court || "—"}
-                      </span>
-                      <span className="text-[11px] text-text-3">
-                        {env.circuit || "—"}
-                      </span>
-                    </KeysTd>
-                    <KeysTd align="center">
+                    <TdLtr
+                      bare
+                      className="text-[13.5px] font-bold text-gold-d"
+                    >
+                      {envelopeDisplayRef(
+                        env.id,
+                        env.createdAtUtc,
+                        env.referenceNumber,
+                      )}
+                    </TdLtr>
+                    <Td>
+                      <div className="flex min-w-0 flex-col items-start gap-0.5">
+                        <span className="text-[13px] font-semibold text-heading">
+                          {env.court || "—"}
+                        </span>
+                        <span className="text-[11px] text-text-3">
+                          {env.circuit || "—"}
+                        </span>
+                      </div>
+                    </Td>
+                    <Td className="text-center">
                       <span className="inline-flex items-center text-[14px] font-extrabold tabular-nums text-heading">
                         {env.keysCountActual}
                         {env.countMismatch ? <MismatchIcon /> : null}
                       </span>
-                    </KeysTd>
-                    <KeysTd>
-                      <span className="font-semibold text-text-2">
-                        {env.requestNumber || "—"}
-                      </span>
-                    </KeysTd>
-                    <KeysTd align="center">
+                    </Td>
+                    <TdLtr bare className="font-semibold text-text-2">
+                      {env.requestNumber || "—"}
+                    </TdLtr>
+                    <Td className="text-center">
                       <span className="text-[13.5px] font-bold tabular-nums text-text-2">
                         {env.assignments.length}
                       </span>
-                    </KeysTd>
-                    <KeysTd>
+                    </Td>
+                    <Td>
                       <KeysStatusPill
                         label={scenarioLabel(env.receiveScenario)}
                         color={scenarioColor(env.receiveScenario)}
                       />
-                    </KeysTd>
-                    <KeysTd>
+                    </Td>
+                    <Td>
                       <KeysStatusPill
                         label={envelopeStatusLabel(env.status)}
                         color={envelopeStatusColor(env.status)}
                       />
-                    </KeysTd>
-                    <KeysTd align="center" className="text-text-3">
+                    </Td>
+                    <TdAction className="text-text-3">
                       <ChevronIcon />
-                    </KeysTd>
-                  </KeysGridRow>
+                    </TdAction>
+                  </Tr>
                 );
               })
             )}
-          </div>
+          </TBody>
+        </Table>
+      </TableFrame>
 
-          {/* Mobile cards — inspector wording */}
-          <div className="lg:hidden">
-            <ActiveQueueMobileCards
-              items={mobileCardItems}
-              pending={!ready}
-              emptyMessage="لا توجد ظروف مطابقة"
-            />
-          </div>
-        </div>
+      {/* Mobile cards — inspector wording */}
+      <div className="lg:hidden">
+        <ActiveQueueMobileCards
+          items={mobileCardItems}
+          pending={!ready}
+          emptyMessage="لا توجد ظروف مطابقة"
+        />
       </div>
 
       {canRegisterEnvelope && filtered.length > 0 ? (

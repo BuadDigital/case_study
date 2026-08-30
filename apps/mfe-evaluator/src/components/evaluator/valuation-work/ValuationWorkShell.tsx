@@ -34,7 +34,13 @@ import {
   type ValuationIssuanceGatesDto,
 } from "@platform/api-client";
 import { getAuthSession } from "@platform/auth-client";
-import { cn, InlineLoadingSkeleton, Spinner, useToast } from "@platform/ui-kit";
+import {
+  InlineLoadingSkeleton,
+  Spinner,
+  cn,
+  opsLetterCard,
+  useToast,
+} from "@platform/ui-kit";
 import type { PoPropertyIntake } from "@case-study/mfe/lib/prototype/po-intake-data";
 import type {
   EvaluatorReportChoices,
@@ -1746,7 +1752,7 @@ export function ValuationWorkShell({
           </div>
         </div>
       ) : (
-        <div className="overflow-hidden rounded-[var(--radius-lg)] border border-border bg-surface shadow-card">
+        <div className={opsLetterCard}>
           <header className="flex items-center justify-end gap-[18px] border-b border-border px-[22px] py-3.5">
             <div className="flex h-[38px] items-center gap-[7px] rounded-[var(--radius)] border border-border-md bg-surface-2 px-[13px] text-[13px] font-medium text-text-2">
               <span>تاريخ التقييم</span>
@@ -1810,7 +1816,7 @@ export function ValuationWorkShell({
             {[0, 1, 2].map((i) => (
               <div
                 key={i}
-                className="mb-5 overflow-hidden rounded-[var(--radius-lg)] border border-border bg-surface shadow-card"
+                className={cn(opsLetterCard, "mb-5")}
               >
                 <div className="p-[18px_22px]">
                   <div className="h-4 w-44 animate-pulse rounded-md bg-[var(--navy-soft)]" />

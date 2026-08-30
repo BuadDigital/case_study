@@ -4,9 +4,6 @@ import {
   type ComparablePropertyDto,
 } from "@platform/api-client";
 
-/** HTML `.grid` cols — finance-ui.css comparable bank table (+ distance km). */
-export const BANK_COLS =
-  "70px minmax(132px,1.1fr) minmax(100px,.9fr) minmax(122px,1fr) 112px minmax(96px,.85fr) minmax(108px,.95fr) 92px 88px 72px minmax(84px,.75fr) minmax(120px,1.1fr)";
 
 export const BANK_CANDIDATE_POOL = 40;
 export const BANK_DISPLAY_LIMIT = 6;

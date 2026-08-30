@@ -30,6 +30,7 @@ import {
   OPERATIONS_TASK_TYPE_LABELS,
 } from "../lib/prototype/operations-task-display";
 import { createOperationsTaskRecord } from "../lib/prototype/operations-tasks-storage";
+import { LetterTable } from "../views/OperationsTasksViewParts";
 import {
   opsBtnGhost,
   opsBtnPrimary,
@@ -42,9 +43,7 @@ import {
   opsLetterHead,
   opsLetterSub,
   opsLetterTitle,
-  opsLetterRow,
   opsFileSize,
-  opsThead,
   opsTfChip,
   opsTfChipActive,
   opsTfDeed,
@@ -56,15 +55,6 @@ import {
   opsTfSegActive,
   opsTfSegRow,
 } from "../lib/prototype/ops-tasks-tw";
-
-const LETTER_COLS =
-  "2.75rem minmax(5.75rem,0.9fr) minmax(9.5rem,1.35fr) minmax(7rem,1.05fr) minmax(5.5rem,0.85fr) minmax(11rem,1.55fr)";
-
-const letterTh =
-  "flex items-center justify-start px-3 py-3 text-start text-[11.5px] font-bold leading-snug text-heading";
-const letterTd =
-  "flex min-w-0 items-center justify-start overflow-hidden px-3 py-3 text-start text-[12.5px] leading-snug";
-const letterCellLtr = "inline-block max-w-full truncate tabular-nums tracking-tight";
 
 const TASK_TYPES = ["general", "court_visit"] as const;
 
@@ -870,79 +860,7 @@ function CreateOperationsTaskForm({
                   </span>
                 </div>
                 <div className="px-3.5 py-3">
-                  <div className="overflow-x-auto rounded-[12px] border border-border bg-surface">
-                    <div className="min-w-[760px]" dir="rtl">
-                      <div
-                        className={opsThead}
-                        style={{ gridTemplateColumns: LETTER_COLS }}
-                      >
-                        {[
-                          "م",
-                          "أمر العمل",
-                          "رقم الصك",
-                          "المالك",
-                          "رقم الطلب",
-                          "المحكمة / الدائرة",
-                        ].map((h, i) => (
-                          <div
-                            key={h}
-                            className={cn(
-                              letterTh,
-                              i === 0 && "justify-center text-center",
-                            )}
-                          >
-                            {h}
-                          </div>
-                        ))}
-                      </div>
-                      {letterPreview.map((row, i) => (
-                        <div
-                          key={`${row.po}-${row.deed}-${i}`}
-                          className={opsLetterRow}
-                          style={{ gridTemplateColumns: LETTER_COLS }}
-                        >
-                          <div
-                            className={cn(
-                              letterTd,
-                              "justify-center text-center text-text-2",
-                            )}
-                          >
-                            {i + 1}
-                          </div>
-                          <div className={cn(letterTd, "font-semibold text-text-2")}>
-                            <span dir="ltr" className={letterCellLtr}>
-                              {row.po}
-                            </span>
-                          </div>
-                          <div className={cn(letterTd, "font-bold text-gold-d")}>
-                            <span dir="ltr" className={letterCellLtr}>
-                              صك {row.deed}
-                            </span>
-                          </div>
-                          <div className={cn(letterTd, "font-medium text-heading")}>
-                            <span className="line-clamp-2 break-words">
-                              {row.owner}
-                            </span>
-                          </div>
-                          <div className={cn(letterTd, "font-semibold text-text-2")}>
-                            <span dir="ltr" className={letterCellLtr}>
-                              {row.request || "—"}
-                            </span>
-                          </div>
-                          <div className={letterTd}>
-                            <span className="line-clamp-2 break-words">
-                              <span className="font-semibold text-text">
-                                {row.court}
-                              </span>
-                              {row.circuit ? (
-                                <span className="text-text-3"> · {row.circuit}</span>
-                              ) : null}
-                            </span>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
+                  <LetterTable rows={letterPreview} />
                   <p className="mx-0.5 mt-2.5 text-[11.5px] text-text-3">
                     لقطة (snapshot) لبيانات الصكوك والمحاكم وقت إنشاء المهمة — تُثبَّت على
                     الخطاب ولا تتأثر بتعديلات لاحقة على أمر العمل.

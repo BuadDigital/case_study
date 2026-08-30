@@ -11,6 +11,7 @@ import {
 import {
   Badge,
   cn,
+  EmptyState,
   PageShell,
   Spinner,
   Table,
@@ -25,7 +26,6 @@ import { regionsApiConfig } from "../lib/settings-api-config";
 import {
   opsBtnSm,
   opsBtnSmPrimary,
-  opsEmptyHint,
   opsFldControl,
   opsIconBoxGold,
   opsLetterCard,
@@ -153,22 +153,21 @@ export function LocationsPendingView() {
           <span className={opsPpBadge}>{items.length}</span>
         </div>
 
-        <div className="overflow-x-auto">
-          {loadError ? (
-            <p className="m-0 px-4 py-4 text-[12.5px] text-[#d9694f] sm:px-[18px]">
-              {loadError}
-            </p>
-          ) : null}
-          {loading ? (
-            <div className="flex items-center justify-center gap-2 py-16 text-text-3">
-              <Spinner />
-              <span className="text-[13px]">جاري التحميل…</span>
-            </div>
-          ) : items.length === 0 && !loadError ? (
-            <p className={opsEmptyHint}>لا توجد مسميات بانتظار المراجعة.</p>
-          ) : !loading && !loadError ? (
-            <Table className="min-w-[720px] tabular-nums">
-              <THead>
+        {loadError ? (
+          <p className="m-0 px-4 py-4 text-[12.5px] text-[#d9694f] sm:px-[18px]">
+            {loadError}
+          </p>
+        ) : null}
+        {loading ? (
+          <div className="flex items-center justify-center gap-2 py-16 text-text-3">
+            <Spinner />
+            <span className="text-[13px]">جاري التحميل…</span>
+          </div>
+        ) : items.length === 0 && !loadError ? (
+          <EmptyState line="لا توجد مسميات بانتظار المراجعة." />
+        ) : !loading && !loadError ? (
+          <Table className="min-w-[720px] tabular-nums">
+            <THead>
                 <Tr hoverable={false}>
                   <Th>النوع</Th>
                   <Th>الاسم</Th>
@@ -236,8 +235,7 @@ export function LocationsPendingView() {
                 ))}
               </TBody>
             </Table>
-          ) : null}
-        </div>
+        ) : null}
       </section>
     </PageShell>
   );

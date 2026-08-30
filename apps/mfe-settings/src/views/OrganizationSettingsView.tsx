@@ -5,8 +5,11 @@ import dynamic from "next/dynamic";
 import { useRouter, useSearchParams } from "next/navigation";
 import { getOrganizationSettings, saveOrganizationSettings, testOrganizationCommunication, emptyValuationReportSettings, BRAND_IDENTITY_DEFAULTS, ORG_COMPANY_DEFAULTS, type OrganizationSettingsDto } from "@platform/api-client";
 import { Can, useCapability } from "@platform/app-shared/components/Can";
-import { cn, Note, PageShell, Spinner, useToast } from "@platform/ui-kit";
 import {
+  Note,
+  PageShell,
+  Spinner,
+  cn,
   opsBtnGhost,
   opsBtnPrimary,
   opsFld,
@@ -24,7 +27,8 @@ import {
   opsTfSeg,
   opsTfSegActive,
   opsTfSegRow,
-} from "@case-study/mfe/lib/prototype/ops-tasks-tw";
+  useToast,
+} from "@platform/ui-kit";
 import { organizationSettingsApiConfig } from "../lib/settings-api-config";
 
 const settingsViewFallback = () => (
@@ -611,7 +615,7 @@ export function OrganizationSettingsView() {
                 </div>
               </div>
 
-              <div className="mt-4 flex flex-wrap items-end gap-2.5 rounded-[10px] border border-dashed border-border-md bg-surface-2 px-3.5 py-3">
+              <div className={cn(opsTfNote, "mt-4 flex flex-wrap items-end gap-2.5")}>
                 <div className={cn(opsFld, "min-w-[12rem] flex-1")}>
                   <label htmlFor="org-test-destination" className={opsTfLbl}>
                     وجهة اختبار (جوال أو بريد)

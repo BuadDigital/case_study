@@ -1,6 +1,13 @@
 "use client";
 
-import { InlineLoadingSkeleton, Spinner, cn, useToast } from "@platform/ui-kit";
+import {
+  InlineLoadingSkeleton,
+  Spinner,
+  cn,
+  opsPpHeadCard,
+  opsWorkspaceCard,
+  useToast,
+} from "@platform/ui-kit";
 import {
   getOpenValuationRequestByProperty,
   getValuationIssuanceGates,
@@ -41,12 +48,7 @@ import {
   appraiserSurveyDone,
 } from "../../lib/evaluator/evaluator-readiness";
 import { computePropertyTotal } from "../../lib/evaluator/value-estimation";
-import {
-  EngInfo,
-  ValTabBar,
-  valCardClassName,
-  valPpHeadClassName,
-} from "./EvaluatorHtmlPrimitives";
+import { EngInfo, ValTabBar } from "./EvaluatorHtmlPrimitives";
 import {
   ValuationWorkShell,
   type ValuationWorkNavAvailability,
@@ -519,7 +521,7 @@ export function EvaluatorWindow({
   return (
     <div className="flex min-w-0 flex-col overflow-x-hidden">
       {embeddedInPropertyChrome ? null : (
-        <div className={valPpHeadClassName}>
+        <div className={opsPpHeadCard}>
           <h1 className="m-0 flex flex-wrap items-center gap-2.5 text-[18px] font-extrabold text-heading">
             <span>نافذة المقيم العقاري</span>
             <span className="text-[14px] font-bold text-gold-d" dir="ltr">
@@ -531,7 +533,7 @@ export function EvaluatorWindow({
 
       <div
         className={cn(
-          valCardClassName,
+          opsWorkspaceCard,
           "overflow-hidden pt-0",
           embeddedInPropertyChrome &&
             "overflow-x-hidden border-0 bg-transparent p-0 shadow-none",

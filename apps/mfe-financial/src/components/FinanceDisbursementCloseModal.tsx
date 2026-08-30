@@ -23,10 +23,14 @@ import {
   ModalOverlay,
   ModalTitle,
   cn,
+  opsBtnGhost,
+  opsBtnPrimary,
+  opsFldControl,
+  opsFldTextarea,
+  opsTfNote,
   useToast,
 } from "@platform/ui-kit";
 import { statementDisplayTotal } from "../lib/finance-cost-parties";
-import { finGhost, finNote, finPrimary } from "../lib/finance-tw";
 
 export function FinanceDisbursementCloseModal({
   statement,
@@ -184,7 +188,7 @@ function FinanceDisbursementCloseForm({
             </div>
           ) : null}
 
-          <p className={cn(finNote, "mb-4 text-center")}>
+          <p className={cn(opsTfNote, "mb-4 text-center")}>
             بعد إقرار المطابقة — أوامر الصرف تُقفل من البرنامج المحاسبي: سند +
             مرجع تحويل + إيصال.
           </p>
@@ -231,7 +235,7 @@ function FinanceDisbursementCloseForm({
                   setErr("");
                 }}
                 placeholder="من البرنامج المحاسبي"
-                className="w-full rounded-[9px] border border-[#ddd8cc] bg-surface-2 px-3 py-2.5 text-[13px] text-text outline-none placeholder:text-text-3 focus:border-gold focus:shadow-[0_0_0_3px_color-mix(in_srgb,var(--gold)_22%,transparent)] disabled:opacity-60"
+                className={cn(opsFldControl, "placeholder:text-text-3 disabled:opacity-60")}
               />
             </div>
             <div>
@@ -251,7 +255,7 @@ function FinanceDisbursementCloseForm({
                   setErr("");
                 }}
                 placeholder="رقم التحويل البنكي"
-                className="w-full rounded-[9px] border border-[#ddd8cc] bg-surface-2 px-3 py-2.5 text-[13px] text-text outline-none placeholder:text-text-3 focus:border-gold focus:shadow-[0_0_0_3px_color-mix(in_srgb,var(--gold)_22%,transparent)] disabled:opacity-60"
+                className={cn(opsFldControl, "placeholder:text-text-3 disabled:opacity-60")}
               />
             </div>
           </div>
@@ -300,7 +304,7 @@ function FinanceDisbursementCloseForm({
                 </span>
                 <button
                   type="button"
-                  className={cn(finGhost, "px-2 py-1 text-[11px]")}
+                  className={cn(opsBtnGhost, "px-2 py-1 text-[11px]")}
                   onClick={() => void viewReceipt()}
                 >
                   معاينة
@@ -329,7 +333,7 @@ function FinanceDisbursementCloseForm({
         <ModalFooter className="flex-wrap justify-end gap-2.5 border-t border-border bg-surface-2 px-[22px] py-3.5">
           <button
             type="button"
-            className={finGhost}
+            className={opsBtnGhost}
             disabled={busy || uploading}
             onClick={onClose}
           >
@@ -337,7 +341,7 @@ function FinanceDisbursementCloseForm({
           </button>
           <button
             type="button"
-            className={cn(finPrimary, (busy || uploading) && "opacity-75")}
+            className={cn(opsBtnPrimary, (busy || uploading) && "opacity-75")}
             disabled={busy || uploading}
             onClick={() => void handleClosePaid()}
           >

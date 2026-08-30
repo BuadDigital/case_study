@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef } from "react";
-import "./leaflet.css";
+import "leaflet/dist/leaflet.css";
 import type { LayerKey, MapCoords } from "../../lib/prototype/map-locations-logic";
 import { escapeHtml } from "@platform/app-shared/lib/html-escape";
 

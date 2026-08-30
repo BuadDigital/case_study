@@ -2,14 +2,15 @@
 
 import { useEffect, useRef, useState } from "react";
 import {
-  Table,
   TBody,
+  THead,
+  Table,
   Td,
   Textarea,
   Th,
-  THead,
   Tr,
   cn,
+  opsLetterCard,
 } from "@platform/ui-kit";
 import { ENGINEERING_SURVEY_CHECKLIST_ITEMS } from "../lib/engineering-survey-data";
 import type { EngineeringSurveyChecklistRow } from "../lib/engineering-survey-data";
@@ -122,7 +123,7 @@ export function EngineeringSurveyChecklist({
   rowsRef.current = rows;
 
   return (
-    <div className="overflow-hidden rounded-[var(--radius-lg)] border border-border bg-surface shadow-card">
+    <div className={opsLetterCard}>
       <Table wrapClassName="rounded-[var(--radius-lg)]">
         <THead>
           <Tr hoverable={false}>

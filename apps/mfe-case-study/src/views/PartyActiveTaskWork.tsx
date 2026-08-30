@@ -47,11 +47,12 @@ import type {
   PartyEngineeringSurveyWorkHostRef,
 } from "../lib/party-engineering-survey-extensions";
 import {
-  cn,
   InlineLoadingSkeleton,
   Note,
   PageShell,
   PanelSkeleton,
+  cn,
+  opsContentPanel,
   useToast,
 } from "@platform/ui-kit";
 import { PropertyDetailHero } from "../components/po-intake/PropertyDetailHero";
@@ -309,7 +310,7 @@ export function PartyActiveTaskWork({
               hideOpenCaseStudy
             />
             <div className="grid min-h-0 flex-1 grid-cols-1 items-start gap-3.5 lg:grid-cols-[minmax(0,1fr)_250px]">
-              <div className="min-w-0 overflow-hidden rounded-[12px] border border-border bg-surface px-5 pb-5 shadow-[0_1px_2px_rgba(18,40,76,0.03),0_6px_16px_-18px_rgba(18,40,76,0.10)]">
+              <div className={opsContentPanel}>
                 <PropertyDetailInspectionTab
                   property={surveyProperty}
                   inspectionTask={task}
@@ -403,7 +404,7 @@ export function PartyActiveTaskWork({
               hideOpenCaseStudy
             />
             <div className="grid min-h-0 flex-1 grid-cols-1 items-start gap-3.5 lg:grid-cols-[minmax(0,1fr)_250px]">
-              <div className="min-w-0 overflow-hidden rounded-[12px] border border-border bg-surface px-5 pb-5 shadow-[0_1px_2px_rgba(18,40,76,0.03),0_6px_16px_-18px_rgba(18,40,76,0.10)]">
+              <div className={opsContentPanel}>
                 {surveyWork}
               </div>
               <PropertyTransactionTimeline record={record} property={surveyProperty} />
@@ -554,7 +555,7 @@ export function PartyActiveTaskWork({
               propertyIndex={propertyIndex + 1}
               hideOpenCaseStudy
             />
-            <div className="min-w-0 overflow-hidden rounded-[12px] border border-border bg-surface px-5 pb-5 shadow-[0_1px_2px_rgba(18,40,76,0.03),0_6px_16px_-18px_rgba(18,40,76,0.10)]">
+            <div className={opsContentPanel}>
               {appraisalWork}
             </div>
           </PageShell>

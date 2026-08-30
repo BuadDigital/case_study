@@ -8,7 +8,21 @@ import {
   saveValuationApproachSettings,
   type ValuationApproachSettingsDto,
 } from "@platform/api-client";
-import { cn, Spinner, useToast } from "@platform/ui-kit";
+import {
+  Spinner,
+  TBody,
+  THead,
+  Table,
+  Td,
+  Th,
+  Tr,
+  cn,
+  opsBtnPrimary,
+  opsFldControl,
+  opsTfLbl,
+  useToast,
+} from "@platform/ui-kit";
+
 import { invalidControlClass } from "@platform/app-shared/form-ux";
 import { useWindowEvents } from "@platform/app-shared/hooks/useWindowEvents";
 import { usePoRecordQuery, useWorkflowTasksQuery } from "@case-study/mfe/query/case-study-queries";
@@ -41,15 +55,8 @@ import {
   buildValuationPrintAttachmentRows,
 } from "../../lib/evaluator/valuation-report-property-attachments";
 import { apiConfig } from "./valuation-work/lib/shell-utils";
-import {
-  ValCard,
-  ValFieldsGrid,
-  valInputClassName,
-  valLabelClassName,
-  valPrimaryBtnClassName,
-  valTableTdClassName,
-  valTableThClassName,
-} from "./EvaluatorHtmlPrimitives";
+import { ValCard, ValFieldsGrid } from "./EvaluatorHtmlPrimitives";
+
 import { useValuationListsQuery } from "@platform/app-shared/query/valuation-lists-query";
 
 function esgGroupsEqual(a: SpecialistEsgGroup, b: SpecialistEsgGroup): boolean {
@@ -78,19 +85,14 @@ function EsgReadonlyRow({
     : group.notes.trim() || "—";
 
   return (
-    <tr>
-      <td
-        className={cn(
-          valTableTdClassName,
-          "align-middle font-semibold text-text-2",
-        )}
-      >
+    <Tr hoverable={false}>
+      <Td className="align-middle font-semibold text-text-2">
         <div>{label}</div>
         <div className="mt-1 text-[10.5px] font-normal leading-relaxed text-text-3">
           عوامل للاعتبار: {factors.join(" · ")}
         </div>
-      </td>
-      <td className={cn(valTableTdClassName, "align-middle text-center")}>
+      </Td>
+      <Td className="align-middle text-center">
         <span
           className={cn(
             "inline-block rounded-md px-2 py-1 text-[11px] font-bold",
@@ -101,16 +103,11 @@ function EsgReadonlyRow({
         >
           {hasImpact ? "يوجد تأثير" : "لا يوجد"}
         </span>
-      </td>
-      <td
-        className={cn(
-          valTableTdClassName,
-          "align-middle text-[12.5px] leading-relaxed text-text",
-        )}
-      >
+      </Td>
+      <Td className="align-middle text-[12.5px] leading-relaxed text-text">
         {displayNotes}
-      </td>
-    </tr>
+      </Td>
+    </Tr>
   );
 }
 
@@ -449,13 +446,13 @@ export function EvaluatorFinalReviewTab({
         </p>
         <ValFieldsGrid min={160}>
           <div className="min-w-0">
-            <label className={valLabelClassName} htmlFor="final-inf-total">
+            <label className={opsTfLbl} htmlFor="final-inf-total">
               رأي القيمة (ر.س.)
             </label>
             <input
               id="final-inf-total"
               className={cn(
-                valInputClassName,
+                opsFldControl,
                 err("evaluator_price") && invalidControlClass,
               )}
               disabled={disabled}
@@ -473,13 +470,13 @@ export function EvaluatorFinalReviewTab({
           </div>
           {liquidation ? (
             <div className="min-w-0">
-              <label className={valLabelClassName} htmlFor="final-inf-discount">
+              <label className={opsTfLbl} htmlFor="final-inf-discount">
                 خصم التصفية ٪
               </label>
               <input
                 id="final-inf-discount"
                 className={cn(
-                  valInputClassName,
+                  opsFldControl,
                   err("forced_sale_discount") && invalidControlClass,
                 )}
                 disabled={disabled}
@@ -539,11 +536,11 @@ export function EvaluatorFinalReviewTab({
             value={freeAssumption}
             disabled={disabled || saving}
             onChange={(e) => setFreeAssumption(e.target.value)}
-            className={cn(valInputClassName, "flex-1 font-medium")}
+            className={cn(opsFldControl, "flex-1 font-medium")}
           />
           <button
             type="button"
-            className={cn(valPrimaryBtnClassName, "shrink-0 !px-3 !py-2 text-[12px]")}
+            className={cn(opsBtnPrimary, "shrink-0 !px-3 !py-2 text-[12px]")}
             disabled={disabled || saving || !freeAssumption.trim()}
             onClick={() => {
               const t = freeAssumption.trim();
@@ -565,7 +562,7 @@ export function EvaluatorFinalReviewTab({
         </div>
         <button
           type="button"
-          className={valPrimaryBtnClassName}
+          className={opsBtnPrimary}
           disabled={disabled || saving || !settings}
           onClick={() => void saveAssumptions()}
         >
@@ -578,43 +575,35 @@ export function EvaluatorFinalReviewTab({
         <p className={noteClassName}>
           يعبّئها الأخصائي من دراسة الحالة — تظهر هنا للعرض فقط.
         </p>
-        <div className="overflow-x-auto">
-          <table className="w-full min-w-[560px] border-collapse">
-            <thead>
-              <tr>
-                <th className={cn(valTableThClassName, "w-[28%] text-start")}>
-                  المجموعة
-                </th>
-                <th className={cn(valTableThClassName, "w-[14%] text-center")}>
-                  يوجد تأثير
-                </th>
-                <th className={cn(valTableThClassName, "text-start")}>
-                  وصف الأثر
-                </th>
-              </tr>
-            </thead>
-            <tbody>
-              <EsgReadonlyRow
-                label="التأثيرات البيئية"
-                factors={ESG_ENV_FACTORS}
-                group={specialistEsg.esgEnv}
-                noneNotes={ESG_NONE_NOTES.env}
-              />
-              <EsgReadonlyRow
-                label="التأثيرات الاجتماعية"
-                factors={ESG_SOC_FACTORS}
-                group={specialistEsg.esgSoc}
-                noneNotes={ESG_NONE_NOTES.soc}
-              />
-              <EsgReadonlyRow
-                label="تأثيرات الحوكمة"
-                factors={ESG_GOV_FACTORS}
-                group={specialistEsg.esgGov}
-                noneNotes={ESG_NONE_NOTES.gov}
-              />
-            </tbody>
-          </table>
-        </div>
+        <Table className="min-w-[560px]">
+          <THead>
+            <Tr hoverable={false}>
+              <Th className="w-[28%]">المجموعة</Th>
+              <Th className="w-[14%] text-center">يوجد تأثير</Th>
+              <Th>وصف الأثر</Th>
+            </Tr>
+          </THead>
+          <TBody>
+            <EsgReadonlyRow
+              label="التأثيرات البيئية"
+              factors={ESG_ENV_FACTORS}
+              group={specialistEsg.esgEnv}
+              noneNotes={ESG_NONE_NOTES.env}
+            />
+            <EsgReadonlyRow
+              label="التأثيرات الاجتماعية"
+              factors={ESG_SOC_FACTORS}
+              group={specialistEsg.esgSoc}
+              noneNotes={ESG_NONE_NOTES.soc}
+            />
+            <EsgReadonlyRow
+              label="تأثيرات الحوكمة"
+              factors={ESG_GOV_FACTORS}
+              group={specialistEsg.esgGov}
+              noneNotes={ESG_NONE_NOTES.gov}
+            />
+          </TBody>
+        </Table>
       </ValCard>
 
       <ValCard title="مرفقات التقرير">

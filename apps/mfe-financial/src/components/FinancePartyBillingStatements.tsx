@@ -18,7 +18,30 @@ import {
 } from "@platform/app-shared/prototype/party-billing-statements-api";
 import { resolvePartyName } from "@platform/app-shared/fees/party-fee-meta";
 import { useStaffUsersQuery } from "@settings/mfe/query/settings-queries";
-import { Input, cn, useToast } from "@platform/ui-kit";
+import {
+  EmptyState,
+  Input,
+  StatusPill,
+  TBody,
+  THead,
+  Table,
+  TableFrame,
+  Td,
+  TdLtr,
+  Th,
+  Tr,
+  cn,
+  finStatusStyle,
+  opsBtnGhost,
+  opsBtnPrimary,
+  opsCheckInput,
+  opsFld,
+  opsInsetPanel,
+  opsLetterCard,
+  opsPanelCard,
+  opsSearchInput,
+  useToast,
+} from "@platform/ui-kit";
 import type {
   PartyBillingReadyLineDto,
   PartyBillingStatementDto,
@@ -34,33 +57,12 @@ import {
   statementDisplayTotal,
 } from "../lib/finance-cost-parties";
 import {
-  finCard,
-  finCheck,
-  finEmpty,
-  finEmptyS,
-  finEmptyT,
-  finFld,
-  finGhost,
-  finGridDues,
-  finGridStmtLines,
-  finGridStmts,
   finGroupHead,
   finMuted,
-  finPrimary,
-  finRow,
   finRowActive,
-  finRowClickable,
-  finScroll,
-  finScrollY,
   finSearch,
   finSearchIcon,
-  finSearchInput,
   finSectionTitle,
-  finStatusFor,
-  finStatusTeal,
-  finTd,
-  finTh,
-  finThead,
   finWorkFlush,
   finWorkHead,
   finWorkTitle,
@@ -480,7 +482,7 @@ export function FinancePartyBillingStatements({
                 />
               </svg>
               <input
-                className={finSearchInput}
+                className={opsSearchInput}
                 placeholder="بحث: رقم الصك · المنطقة · رقم الطلب"
                 value={duesSearch}
                 onChange={(e) => setDuesSearch(e.target.value)}
@@ -490,7 +492,7 @@ export function FinancePartyBillingStatements({
             <button
               type="button"
               className={cn(
-                finGhost,
+                opsBtnGhost,
                 "h-auto px-3.5 py-2 text-xs",
                 filteredDues.length === 0 && "pointer-events-none opacity-50",
               )}
@@ -509,7 +511,7 @@ export function FinancePartyBillingStatements({
             <button
               type="button"
               className={cn(
-                finPrimary,
+                opsBtnPrimary,
                 "px-4 py-2 text-[12.5px]",
                 selected.size === 0 && "pointer-events-none opacity-50",
               )}
@@ -545,142 +547,147 @@ export function FinancePartyBillingStatements({
           </div>
 
           {readyQuery.isPending ? (
-            <div className={finCard}>
-              <div className={finEmpty}>
-                <div className={finEmptyT}>جاري التحميل…</div>
-              </div>
+            <div className={opsLetterCard}>
+              <EmptyState panel line="جاري التحميل…" />
             </div>
           ) : filteredDues.length === 0 ? (
-            <div className={finCard}>
-              <div className={finEmpty}>
-                <div className={finEmptyT}>
-                  {deferredDuesSearch.trim()
+            <div className={opsLetterCard}>
+              <EmptyState
+                panel
+                line={
+                  deferredDuesSearch.trim()
                     ? "لا بنود مطابقة للبحث"
-                    : "لا مستحقات قائمة — كل البنود مُدرجة في مستندات صرف"}
-                </div>
-                <div className={finEmptyS}>
-                  تظهر هنا بنود المعاينة والمراجعة والرفع المساحي بحالة جاهز أو
-                  مرحَّل.
-                </div>
-              </div>
+                    : "لا مستحقات قائمة — كل البنود مُدرجة في مستندات صرف"
+                }
+                hint="تظهر هنا بنود المعاينة والمراجعة والرفع المساحي بحالة جاهز أو مرحَّل."
+              />
             </div>
           ) : (
-            <div className={finCard}>
-              <div
-                className={cn(finScroll, "max-h-[calc(100vh-290px)] overflow-auto")}
-              >
-                <div className={cn(finThead, finGridDues, "sticky top-0 z-[3]")}>
-                  <div className={finTh} />
-                  <div className={finTh}>المعاملة</div>
-                  <div className={cn(finTh, "!justify-center")}>سعر الجدول</div>
-                  <div className={cn(finTh, "!justify-center")}>تعديل التسعير</div>
-                  <div className={cn(finTh, "!justify-center")}>الصافي</div>
-                </div>
-                {filteredDues.map((line) => {
-                  const on = selected.has(line.workflowTaskId);
-                  const age = daysSinceIsoCost(
-                    line.accruedAtUtc ?? line.updatedAtUtc,
-                  );
-                  const ded = line.supervisorDiscountSar || 0;
-                  const list = line.agreedFeeSar || line.netFeeSar;
-                  const selectable = line.netFeeSar > 0;
-                  const rowKey = `${line.workflowTaskId}:${line.propertyId ?? "po"}`;
-                  return (
-                    <div
-                      key={rowKey}
-                      role={selectable ? "button" : undefined}
-                      tabIndex={selectable ? 0 : undefined}
-                      className={cn(
-                        finRow,
-                        finGridDues,
-                        selectable && "cursor-pointer",
-                        !selectable && "opacity-70",
-                        on &&
-                          "bg-[color-mix(in_srgb,var(--ink)_5%,transparent)]",
-                      )}
-                      onClick={() => selectable && toggle(line.workflowTaskId)}
-                      onKeyDown={(e) => {
-                        if (!selectable) return;
-                        if (e.key === "Enter" || e.key === " ") {
-                          e.preventDefault();
-                          toggle(line.workflowTaskId);
-                        }
-                      }}
-                    >
-                      <div className={finTd}>
-                        {selectable ? (
-                          <input
-                            type="checkbox"
-                            className={finCheck}
-                            checked={on}
-                            onChange={() => toggle(line.workflowTaskId)}
-                            onClick={(e) => e.stopPropagation()}
-                            aria-label="تحديد البند"
-                          />
-                        ) : (
-                          <span
-                            className="inline-block h-[17px] w-[17px] rounded-[5px] border-2 border-dashed border-border-md"
-                            title="صافي صفر"
-                          />
+            <TableFrame>
+              <Table wrapClassName="max-h-[calc(100vh-290px)] overflow-auto">
+                <THead>
+                  <Tr hoverable={false}>
+                    <Th className="sticky top-0 z-[3] w-12 bg-surface-2" />
+                    <Th className="sticky top-0 z-[3] bg-surface-2">المعاملة</Th>
+                    <Th className="sticky top-0 z-[3] bg-surface-2 text-center">
+                      سعر الجدول
+                    </Th>
+                    <Th className="sticky top-0 z-[3] bg-surface-2 text-center">
+                      تعديل التسعير
+                    </Th>
+                    <Th className="sticky top-0 z-[3] bg-surface-2 text-center">
+                      الصافي
+                    </Th>
+                  </Tr>
+                </THead>
+                <TBody>
+                  {filteredDues.map((line) => {
+                    const on = selected.has(line.workflowTaskId);
+                    const age = daysSinceIsoCost(
+                      line.accruedAtUtc ?? line.updatedAtUtc,
+                    );
+                    const ded = line.supervisorDiscountSar || 0;
+                    const list = line.agreedFeeSar || line.netFeeSar;
+                    const selectable = line.netFeeSar > 0;
+                    const rowKey = `${line.workflowTaskId}:${line.propertyId ?? "po"}`;
+                    return (
+                      <Tr
+                        key={rowKey}
+                        hoverable={false}
+                        role={selectable ? "button" : undefined}
+                        tabIndex={selectable ? 0 : undefined}
+                        className={cn(
+                          selectable && "cursor-pointer",
+                          !selectable && "opacity-70",
+                          on &&
+                            "bg-[color-mix(in_srgb,var(--ink)_5%,transparent)]",
                         )}
-                      </div>
-                      <div className={finTd}>
-                        <div className="flex min-w-0 flex-col items-end gap-0.5 text-end">
-                          <span
-                            className="text-[12.5px] font-bold text-gold-d"
-                            dir="ltr"
-                          >
-                            {lineRefMain(line)}
-                          </span>
-                          <span className="text-[11px] text-text-3">
-                            {lineRefSub(line)}
-                            {selectable && age != null ? (
-                              <>
-                                {" · "}
-                                <span
-                                  className={
-                                    age > 30
-                                      ? "font-semibold text-[#a5432e]"
-                                      : "font-semibold text-text-3"
-                                  }
-                                >
-                                  منذ {age} يوماً
+                        onClick={() => selectable && toggle(line.workflowTaskId)}
+                        onKeyDown={(e) => {
+                          if (!selectable) return;
+                          if (e.key === "Enter" || e.key === " ") {
+                            e.preventDefault();
+                            toggle(line.workflowTaskId);
+                          }
+                        }}
+                      >
+                        <Td>
+                          {selectable ? (
+                            <input
+                              type="checkbox"
+                              className={opsCheckInput}
+                              checked={on}
+                              onChange={() => toggle(line.workflowTaskId)}
+                              onClick={(e) => e.stopPropagation()}
+                              aria-label="تحديد البند"
+                            />
+                          ) : (
+                            <span
+                              className="inline-block h-[17px] w-[17px] rounded-[5px] border-2 border-dashed border-border-md"
+                              title="صافي صفر"
+                            />
+                          )}
+                        </Td>
+                        <Td>
+                          <div className="flex min-w-0 flex-col items-end gap-0.5 text-end">
+                            <span
+                              className="text-[12.5px] font-bold text-gold-d"
+                              dir="ltr"
+                            >
+                              {lineRefMain(line)}
+                            </span>
+                            <span className="text-[11px] text-text-3">
+                              {lineRefSub(line)}
+                              {selectable && age != null ? (
+                                <>
+                                  {" · "}
+                                  <span
+                                    className={
+                                      age > 30
+                                        ? "font-semibold text-[#a5432e]"
+                                        : "font-semibold text-text-3"
+                                    }
+                                  >
+                                    منذ {age} يوماً
+                                  </span>
+                                </>
+                              ) : null}
+                              {!selectable ? (
+                                <span className="font-bold text-[#8a5e14]">
+                                  {" "}
+                                  · صافي صفر — يُقفل بتسوية
                                 </span>
-                              </>
-                            ) : null}
-                            {!selectable ? (
-                              <span className="font-bold text-[#8a5e14]">
-                                {" "}
-                                · صافي صفر — يُقفل بتسوية
-                              </span>
-                            ) : null}
-                          </span>
-                        </div>
-                      </div>
-                      <div className={cn(finTd, "!justify-center")}>
-                        <span className="text-[12.5px] text-text-2 tabular-nums">
+                              ) : null}
+                            </span>
+                          </div>
+                        </Td>
+                        <TdLtr
+                          className="text-center"
+                          valueClassName="text-[12.5px] text-text-2"
+                        >
                           {formatSar(list)}
-                        </span>
-                      </div>
-                      <div className={cn(finTd, "!justify-center")}>
-                        {ded > 0 ? (
-                          <span className="text-xs font-bold text-[#c0553d] tabular-nums">
-                            −{formatSar(ded)}
-                          </span>
-                        ) : (
-                          <span className="text-xs text-text-3">—</span>
-                        )}
-                      </div>
-                      <div className={cn(finTd, "!justify-center")}>
-                        <span className="text-[13px] font-bold text-heading tabular-nums">
+                        </TdLtr>
+                        <Td className="text-center">
+                          {ded > 0 ? (
+                            <span className="text-xs font-bold text-[#c0553d] tabular-nums">
+                              −{formatSar(ded)}
+                            </span>
+                          ) : (
+                            <span className="text-xs text-text-3">—</span>
+                          )}
+                        </Td>
+                        <TdLtr
+                          className="text-center"
+                          valueClassName="text-[13px] font-bold text-heading"
+                        >
                           {formatSar(line.netFeeSar)}
-                        </span>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
+                        </TdLtr>
+                      </Tr>
+                    );
+                  })}
+                </TBody>
+              </Table>
+            </TableFrame>
           )}
         </section>
       ) : null}
@@ -693,20 +700,19 @@ export function FinancePartyBillingStatements({
             </div>
           ) : null}
           {statementsQuery.isPending ? (
-            <div className={finCard}>
-              <div className={finEmpty}>
-                <div className={finEmptyT}>جاري التحميل…</div>
-              </div>
+            <div className={opsLetterCard}>
+              <EmptyState panel line="جاري التحميل…" />
             </div>
           ) : statements.length === 0 && !selectedStatement ? (
-            <div className={finCard}>
-              <div className={finEmpty}>
-                <div className={finEmptyT}>
-                  {mode === "paid"
+            <div className={opsLetterCard}>
+              <EmptyState
+                panel
+                line={
+                  mode === "paid"
                     ? "لا مستندات مدفوعة بعد."
-                    : "لا مسيرات أو أوامر صرف قيد الإجراء."}
-                </div>
-              </div>
+                    : "لا مسيرات أو أوامر صرف قيد الإجراء."
+                }
+              />
             </div>
           ) : selectedStatement && mode !== "all" ? (
             <div className={finWorkFlush}>
@@ -715,7 +721,7 @@ export function FinancePartyBillingStatements({
                   <div className="flex flex-wrap items-center gap-2.5">
                     <button
                       type="button"
-                      className={cn(finGhost, "h-auto px-2.5 py-1.5 text-[11.5px]")}
+                      className={cn(opsBtnGhost, "h-auto px-2.5 py-1.5 text-[11.5px]")}
                       onClick={() => {
                         setSelectedStatementId(null);
                         onFocusStatement?.(null);
@@ -736,71 +742,66 @@ export function FinancePartyBillingStatements({
                     </div>
                   </div>
                   <div className="flex flex-wrap items-center gap-2">
-                    <span
-                      className={
+                    <StatusPill
+                      label={selectedStatement.payeeTypeLabel}
+                      style={finStatusStyle(
                         selectedStatement.payeeType === "individual"
-                          ? finStatusTeal
-                          : finStatusFor("default")
-                      }
-                    >
-                      {selectedStatement.payeeTypeLabel}
-                    </span>
-                    <span
-                      className={finStatusFor(
+                          ? "individual"
+                          : "default",
+                      )}
+                    />
+                    <StatusPill
+                      label={partyBillingWorkflowLabel(selectedStatement)}
+                      style={finStatusStyle(
                         partyBillingWorkflowTone(selectedStatement),
                       )}
-                    >
-                      {partyBillingWorkflowLabel(selectedStatement)}
-                    </span>
+                    />
                   </div>
                 </div>
 
-                <div className={finCard}>
+                <div className={opsLetterCard}>
                   <div className="border-b border-border bg-surface-2 px-3.5 py-2.5 text-xs font-bold text-heading">
                     معاملات{" "}
                     {selectedStatement.payeeType === "individual"
                       ? "أمر الصرف"
                       : "مسير الصرف"}
                   </div>
-                  <div className={finScrollY}>
-                    <div>
-                      <div className={cn(finThead, finGridStmtLines)}>
-                        <div className={finTh}>المرجع</div>
-                        <div className={finTh}>البيان</div>
-                        <div className={cn(finTh, "!justify-center")}>المبلغ</div>
-                      </div>
-                      {selectedStatement.lines.map((line) => (
-                        <div
-                          key={line.id}
-                          className={cn(finRow, finGridStmtLines)}
-                        >
-                          <div className={finTd}>
-                            <span
-                              className="text-[12.5px] font-bold text-gold-d"
-                              dir="ltr"
-                            >
+                  <TableFrame className="rounded-[12px]">
+                    <Table wrapClassName="max-h-[220px] overflow-auto">
+                      <THead>
+                        <Tr hoverable={false}>
+                          <Th>المرجع</Th>
+                          <Th>البيان</Th>
+                          <Th className="text-center">المبلغ</Th>
+                        </Tr>
+                      </THead>
+                      <TBody>
+                        {selectedStatement.lines.map((line) => (
+                          <Tr key={line.id} hoverable={false}>
+                            <TdLtr valueClassName="text-[12.5px] font-bold text-gold-d">
                               {line.propertyLabel || line.poNumber || "—"}
-                            </span>
-                          </div>
-                          <div className={finTd}>
-                            <span className="text-[11.5px] text-text-2">
-                              {line.poNumber ? `أمر عمل ${line.poNumber}` : "—"}
-                            </span>
-                          </div>
-                          <div className={finTd}>
-                            <span className="text-[12.5px] font-bold text-heading">
+                            </TdLtr>
+                            <Td>
+                              <span className="text-[11.5px] text-text-2">
+                                {line.poNumber ? `أمر عمل ${line.poNumber}` : "—"}
+                              </span>
+                            </Td>
+                            <TdLtr
+                              className="text-center"
+                              valueClassName="text-[12.5px] font-bold text-heading"
+                            >
                               {formatSar(line.netFeeSar)}
-                            </span>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
+                            </TdLtr>
+                          </Tr>
+                        ))}
+                      </TBody>
+                    </Table>
+                  </TableFrame>
                 </div>
 
                 {selectedStatement.payeeType === "vendor" &&
                 selectedStatement.totalNetSar > 0 ? (
-                  <div className="overflow-hidden rounded-[12px] border border-border bg-surface">
+                  <div className={opsLetterCard}>
                     <div className="border-b border-border bg-surface-2 px-3.5 py-2 text-[11.5px] font-bold text-heading">
                       ملخص المبالغ
                     </div>
@@ -846,10 +847,10 @@ export function FinancePartyBillingStatements({
                 ) : null}
 
                 {selectedStatement.status === "draft" ? (
-                  <div className="rounded-[12px] border border-border bg-surface p-4">
+                  <div className={cn(opsPanelCard, "p-4")}>
                     <button
                       type="button"
-                      className={cn(finPrimary, "w-full justify-center py-3")}
+                      className={cn(opsBtnPrimary, "w-full justify-center py-3")}
                       disabled={busy}
                       onClick={() => void issueStatement(selectedStatement)}
                     >
@@ -864,7 +865,7 @@ export function FinancePartyBillingStatements({
                       </p>
                     ) : null}
                     <div className="mt-4 border-t border-dashed border-border-md pt-3">
-                      <div className={finFld}>
+                      <div className={opsFld}>
                         <label className="text-xs font-semibold text-text-2">
                           إلغاء المستند
                         </label>
@@ -877,7 +878,7 @@ export function FinancePartyBillingStatements({
                       <button
                         type="button"
                         className={cn(
-                          finGhost,
+                          opsBtnGhost,
                           "mt-2 w-full justify-center text-[#a5432e]",
                         )}
                         disabled={busy}
@@ -891,7 +892,7 @@ export function FinancePartyBillingStatements({
 
                 {selectedStatement.status === "issued" &&
                 selectedStatement.payeeType === "vendor" ? (
-                  <div className="rounded-[12px] border border-border bg-surface-2 px-4 py-3.5">
+                  <div className={cn(opsInsetPanel, "px-4 py-3.5")}>
                     <div className="flex gap-2.5">
                       <svg
                         width="16"
@@ -920,7 +921,7 @@ export function FinancePartyBillingStatements({
                 ) : null}
 
                 {selectedStatement.status === "invoice_received" ? (
-                  <div className="overflow-hidden rounded-[12px] border border-border bg-surface">
+                  <div className={opsLetterCard}>
                     <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border bg-surface-2 px-3.5 py-2.5">
                       <div className="min-w-0">
                         <div className="text-[12.5px] font-bold text-heading">
@@ -970,7 +971,7 @@ export function FinancePartyBillingStatements({
                       {selectedStatement.vendorInvoiceAttachmentId ? (
                         <button
                           type="button"
-                          className={cn(finGhost, "justify-center")}
+                          className={cn(opsBtnGhost, "justify-center")}
                           onClick={() =>
                             void viewReceipt(
                               selectedStatement.vendorInvoiceAttachmentId!,
@@ -987,7 +988,7 @@ export function FinancePartyBillingStatements({
                       {!selectedStatement.vendorInvoiceMatched ? (
                         <button
                           type="button"
-                          className={cn(finPrimary, "ms-auto")}
+                          className={cn(opsBtnPrimary, "ms-auto")}
                           disabled={busy}
                           onClick={() => void matchInvoice(selectedStatement)}
                         >
@@ -998,7 +999,7 @@ export function FinancePartyBillingStatements({
 
                     {!selectedStatement.vendorInvoiceMatched ? (
                       <div className="border-t border-dashed border-border-md bg-[#faf8f3] px-3.5 py-3">
-                        <div className={finFld}>
+                        <div className={opsFld}>
                           <label className="text-xs font-semibold text-text-2">
                             سبب الإعادة للمورّد
                           </label>
@@ -1011,7 +1012,7 @@ export function FinancePartyBillingStatements({
                         <button
                           type="button"
                           className={cn(
-                            finGhost,
+                            opsBtnGhost,
                             "mt-2 w-full justify-center border-[#c0553d] text-[#a5432e]",
                           )}
                           disabled={busy}
@@ -1036,7 +1037,7 @@ export function FinancePartyBillingStatements({
                 (selectedStatement.payeeType === "vendor" &&
                   selectedStatement.status === "invoice_received" &&
                   selectedStatement.vendorInvoiceMatched) ? (
-                  <div className="overflow-hidden rounded-[12px] border border-border bg-surface">
+                  <div className={opsLetterCard}>
                     <div className="border-b border-border bg-surface-2 px-3.5 py-2.5">
                       <div className="text-[12.5px] font-bold text-heading">
                         توثيق الصرف
@@ -1048,7 +1049,7 @@ export function FinancePartyBillingStatements({
 
                     <div className="flex flex-col gap-3.5 p-3.5">
                       <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-                        <div className={finFld}>
+                        <div className={opsFld}>
                           <label className="text-xs font-semibold text-text-2">
                             رقم سند الصرف{" "}
                             <span className="text-[#c0553d]">*</span>
@@ -1062,7 +1063,7 @@ export function FinancePartyBillingStatements({
                             dir="ltr"
                           />
                         </div>
-                        <div className={finFld}>
+                        <div className={opsFld}>
                           <label className="text-xs font-semibold text-text-2">
                             مرجع التحويل{" "}
                             <span className="text-[#c0553d]">*</span>
@@ -1076,7 +1077,7 @@ export function FinancePartyBillingStatements({
                             dir="ltr"
                           />
                         </div>
-                        <div className={finFld}>
+                        <div className={opsFld}>
                           <label className="text-xs font-semibold text-text-2">
                             تاريخ الصرف
                           </label>
@@ -1105,7 +1106,7 @@ export function FinancePartyBillingStatements({
                         }
                       />
 
-                      <div className={finFld}>
+                      <div className={opsFld}>
                         <label className="text-xs font-semibold text-text-2">
                           ملاحظة إيصال (اختياري)
                         </label>
@@ -1121,7 +1122,7 @@ export function FinancePartyBillingStatements({
                       <button
                         type="button"
                         className={cn(
-                          finPrimary,
+                          opsBtnPrimary,
                           "w-full justify-center py-2.5",
                         )}
                         disabled={busy || uploadingReceipt}
@@ -1134,7 +1135,7 @@ export function FinancePartyBillingStatements({
                     {selectedStatement.payeeType === "individual" ||
                     !selectedStatement.vendorInvoiceMatched ? (
                       <div className="border-t border-dashed border-border-md px-3.5 py-3">
-                        <div className={finFld}>
+                        <div className={opsFld}>
                           <Input
                             value={cancelReason}
                             onChange={(e) => setCancelReason(e.target.value)}
@@ -1144,7 +1145,7 @@ export function FinancePartyBillingStatements({
                         <button
                           type="button"
                           className={cn(
-                            finGhost,
+                            opsBtnGhost,
                             "mt-2 w-full justify-center text-[#a5432e]",
                           )}
                           disabled={busy}
@@ -1177,7 +1178,7 @@ export function FinancePartyBillingStatements({
                       <div className="mt-2">
                         <button
                           type="button"
-                          className={finGhost}
+                          className={opsBtnGhost}
                           onClick={() =>
                             void viewReceipt(
                               selectedStatement.transferReceiptAttachmentId!,
@@ -1210,24 +1211,18 @@ export function FinancePartyBillingStatements({
                   : undefined
               }
             >
-              <div className={finCard}>
-                <div className={finScroll}>
-                  <div>
-                    <div className={cn(finThead, finGridStmts)}>
-                      <div className={finTh}>المرجع</div>
-                      <div className={cn(finTh, "!justify-center")}>
-                        التاريخ
-                      </div>
-                      <div className={cn(finTh, "!justify-center")}>
-                        المعاملات
-                      </div>
-                      <div className={cn(finTh, "!justify-center")}>
-                        الإجمالي
-                      </div>
-                      <div className={cn(finTh, "!justify-center")}>
-                        الحالة
-                      </div>
-                    </div>
+              <TableFrame>
+                <Table>
+                  <THead>
+                    <Tr hoverable={false}>
+                      <Th>المرجع</Th>
+                      <Th className="text-center">التاريخ</Th>
+                      <Th className="text-center">المعاملات</Th>
+                      <Th className="text-center">الإجمالي</Th>
+                      <Th className="text-center">الحالة</Th>
+                    </Tr>
+                  </THead>
+                  <TBody>
                     {statements.map((s) => {
                       const active =
                         (focusStatementId ?? selectedStatementId) === s.id;
@@ -1236,12 +1231,10 @@ export function FinancePartyBillingStatements({
                         s.issuedAtUtc ??
                         s.createdAtUtc;
                       return (
-                        <div
+                        <Tr
                           key={s.id}
                           className={cn(
-                            finRow,
-                            finGridStmts,
-                            finRowClickable,
+                            "cursor-pointer",
                             active && finRowActive,
                           )}
                           role="button"
@@ -1254,55 +1247,49 @@ export function FinancePartyBillingStatements({
                             }
                           }}
                         >
-                          <div className={finTd}>
-                            <span
-                              className="text-[12.5px] font-bold text-gold-d"
-                              dir="ltr"
-                            >
-                              {s.referenceNumber}
-                            </span>
-                          </div>
-                          <div className={finTd}>
-                            <span className="text-[11.5px] text-text-2" dir="ltr">
-                              {dateIso
-                                ? new Date(dateIso).toLocaleDateString("en-GB")
-                                : "—"}
-                            </span>
-                          </div>
-                          <div className={finTd}>
+                          <TdLtr valueClassName="text-[12.5px] font-bold text-gold-d">
+                            {s.referenceNumber}
+                          </TdLtr>
+                          <TdLtr
+                            className="text-center"
+                            valueClassName="text-[11.5px] text-text-2"
+                          >
+                            {dateIso
+                              ? new Date(dateIso).toLocaleDateString("en-GB")
+                              : "—"}
+                          </TdLtr>
+                          <Td className="text-center">
                             <span className="text-xs text-text-2">
                               {s.lines.length} معاملة
                             </span>
-                          </div>
-                          <div className={finTd}>
-                            <span className="text-[12.5px] font-bold text-heading">
-                              {formatSar(statementDisplayTotal(s))}
-                            </span>
-                          </div>
-                          <div className={finTd}>
-                            <span
-                              className={finStatusFor(
-                                partyBillingWorkflowTone(s),
-                              )}
-                            >
-                              {partyBillingWorkflowLabel(s)}
-                            </span>
-                          </div>
-                        </div>
+                          </Td>
+                          <TdLtr
+                            className="text-center"
+                            valueClassName="text-[12.5px] font-bold text-heading"
+                          >
+                            {formatSar(statementDisplayTotal(s))}
+                          </TdLtr>
+                          <Td className="text-center">
+                            <StatusPill
+                              label={partyBillingWorkflowLabel(s)}
+                              style={finStatusStyle(partyBillingWorkflowTone(s))}
+                            />
+                          </Td>
+                        </Tr>
                       );
                     })}
-                  </div>
-                </div>
-              </div>
+                  </TBody>
+                </Table>
+              </TableFrame>
 
               {mode === "all" ? (
                 <div className={finWorkFlush}>
                   {!selectedStatement ? (
-                    <div className={cn(finEmpty, "py-7")}>
-                      <div className={finEmptyT}>
-                        اختر كشفاً لعرض التفاصيل والإجراءات.
-                      </div>
-                    </div>
+                    <EmptyState
+                      panel
+                      className="py-7"
+                      line="اختر كشفاً لعرض التفاصيل والإجراءات."
+                    />
                   ) : (
                     <div className="flex flex-col gap-3">
                       <div className={finWorkHead}>
@@ -1318,13 +1305,12 @@ export function FinancePartyBillingStatements({
                             — {formatSar(statementDisplayTotal(selectedStatement))}
                           </div>
                         </div>
-                        <span
-                          className={finStatusFor(
+                        <StatusPill
+                          label={partyBillingWorkflowLabel(selectedStatement)}
+                          style={finStatusStyle(
                             partyBillingWorkflowTone(selectedStatement),
                           )}
-                        >
-                          {partyBillingWorkflowLabel(selectedStatement)}
-                        </span>
+                        />
                       </div>
                       <p className={finMuted}>
                         افتح تبويب «مسيرات وأوامر صرف» داخل حساب المستحق للتفاصيل

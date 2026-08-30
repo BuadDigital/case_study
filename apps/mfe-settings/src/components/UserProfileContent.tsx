@@ -9,7 +9,19 @@ import {
 import type { StaffUser } from "@platform/app-shared/prototype/constants";
 import { supervisingDepartmentLabel } from "@platform/app-shared/users/admin-staff-roles";
 import { getAuthSession } from "@platform/auth-client";
-import { Badge, Spinner, Table, TBody, Td, Th, THead, Tr } from "@platform/ui-kit";
+import {
+  Badge,
+  Spinner,
+  TBody,
+  THead,
+  Table,
+  Td,
+  TdLtr,
+  Th,
+  Tr,
+  cn,
+  opsTfNote,
+} from "@platform/ui-kit";
 import { ProfileInspectorDuesPanel } from "./ProfileInspectorDuesPanel";
 
 const PartyOfficeBillingStatementsPanel = dynamic(
@@ -381,30 +393,28 @@ export function UserProfileContent({ user }: { user: StaffUser }) {
           ) : activityRows.length === 0 ? (
             <p className="text-[12px] text-text-3">لا توجد أعمال منجزة ظاهرة لهذا المستخدم.</p>
           ) : (
-            <div className="overflow-x-auto">
-              <Table className="min-w-[560px]">
-                <THead>
-                  <Tr hoverable={false}>
-                    <Th>أمر العمل</Th>
-                    <Th>تاريخ الإنجاز</Th>
-                    <Th>نوع المهمة</Th>
-                    <Th>الحالة</Th>
+            <Table framed className="min-w-[560px]">
+              <THead>
+                <Tr hoverable={false}>
+                  <Th>أمر العمل</Th>
+                  <Th>تاريخ الإنجاز</Th>
+                  <Th>نوع المهمة</Th>
+                  <Th>الحالة</Th>
+                </Tr>
+              </THead>
+              <TBody>
+                {activityRows.map((row) => (
+                  <Tr key={row.workflowTaskId}>
+                    <TdLtr bare>{row.poNumber || "—"}</TdLtr>
+                    <TdLtr bare>
+                      {formatAt(row.accruedAtUtc ?? row.workSubmittedAtUtc ?? row.updatedAtUtc)}
+                    </TdLtr>
+                    <Td>{row.taskKind || "—"}</Td>
+                    <Td>{row.workStatusLabel || row.billingStatusLabel}</Td>
                   </Tr>
-                </THead>
-                <TBody>
-                  {activityRows.map((row) => (
-                    <Tr key={row.workflowTaskId}>
-                      <Td dir="ltr">{row.poNumber || "—"}</Td>
-                      <Td dir="ltr">
-                        {formatAt(row.accruedAtUtc ?? row.workSubmittedAtUtc ?? row.updatedAtUtc)}
-                      </Td>
-                      <Td>{row.taskKind || "—"}</Td>
-                      <Td>{row.workStatusLabel || row.billingStatusLabel}</Td>
-                    </Tr>
-                  ))}
-                </TBody>
-              </Table>
-            </div>
+                ))}
+              </TBody>
+            </Table>
           )}
         </section>
         </Activity>
@@ -424,7 +434,7 @@ export function UserProfileContent({ user }: { user: StaffUser }) {
       {visitedTabsRef.current.has("inspector_dues") && showInspectorDues ? (
         <Activity mode={tabMode("inspector_dues")}>
         <section className="space-y-3">
-          <p className="m-0 rounded-[10px] border border-dashed border-border-md bg-surface-2 px-[15px] py-[11px] text-[12.5px] leading-[1.7] text-text-3">
+          <p className={cn(opsTfNote, "m-0")}>
             مستحقاتكم كفرد — جاهزة للصرف أو ضمن أمر صرف أو مدفوعة. لا فاتورة
             مورّد لمعاين الميدان.
           </p>
@@ -461,30 +471,28 @@ export function UserProfileContent({ user }: { user: StaffUser }) {
           ) : feeRows.length === 0 ? (
             <p className="text-[12px] text-text-3">لا توجد بنود مالية لهذا المستخدم.</p>
           ) : (
-            <div className="overflow-x-auto">
-              <Table className="min-w-[640px]">
-                <THead>
-                  <Tr hoverable={false}>
-                    <Th>أمر العمل</Th>
-                    <Th>الصافي</Th>
-                    <Th>المدفوع</Th>
-                    <Th>الحالة</Th>
-                    <Th>آخر تحديث</Th>
+            <Table framed className="min-w-[640px]">
+              <THead>
+                <Tr hoverable={false}>
+                  <Th>أمر العمل</Th>
+                  <Th>الصافي</Th>
+                  <Th>المدفوع</Th>
+                  <Th>الحالة</Th>
+                  <Th>آخر تحديث</Th>
+                </Tr>
+              </THead>
+              <TBody>
+                {feeRows.map((row) => (
+                  <Tr key={row.workflowTaskId}>
+                    <TdLtr bare>{row.poNumber || "—"}</TdLtr>
+                    <TdLtr bare>{row.netFeeSar.toLocaleString("ar-SA")}</TdLtr>
+                    <TdLtr bare>{row.paidAmountSar.toLocaleString("ar-SA")}</TdLtr>
+                    <Td>{row.billingStatusLabel}</Td>
+                    <TdLtr bare>{formatAt(row.updatedAtUtc)}</TdLtr>
                   </Tr>
-                </THead>
-                <TBody>
-                  {feeRows.map((row) => (
-                    <Tr key={row.workflowTaskId}>
-                      <Td dir="ltr">{row.poNumber || "—"}</Td>
-                      <Td dir="ltr">{row.netFeeSar.toLocaleString("ar-SA")}</Td>
-                      <Td dir="ltr">{row.paidAmountSar.toLocaleString("ar-SA")}</Td>
-                      <Td>{row.billingStatusLabel}</Td>
-                      <Td dir="ltr">{formatAt(row.updatedAtUtc)}</Td>
-                    </Tr>
-                  ))}
-                </TBody>
-              </Table>
-            </div>
+                ))}
+              </TBody>
+            </Table>
           )}
         </section>
         </Activity>

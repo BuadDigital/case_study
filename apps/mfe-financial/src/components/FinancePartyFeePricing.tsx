@@ -15,22 +15,6 @@ import {
   Note,
   Spinner,
   cn,
-  useToast,
-} from "@platform/ui-kit";
-import { useCapability } from "@platform/app-shared/components/Can";
-import type {
-  PartyFeePricingCategory,
-  PartyFeePricingDto,
-  PartyFeePricingTableSummaryDto,
-  PartyFeePricingTierDto,
-} from "@platform/api-client";
-import {
-  getEngineeringOffices,
-  getFieldInspectors,
-  getGovernmentAuditors,
-  type DistributionAssignee,
-} from "@case-study/mfe/lib/distribution-assignees";
-import {
   opsBtnGhost,
   opsBtnPrimary,
   opsFldControl,
@@ -46,7 +30,21 @@ import {
   opsTfSeg,
   opsTfSegActive,
   opsTfSegRow,
-} from "@case-study/mfe/lib/prototype/ops-tasks-tw";
+  useToast,
+} from "@platform/ui-kit";
+import { useCapability } from "@platform/app-shared/components/Can";
+import type {
+  PartyFeePricingCategory,
+  PartyFeePricingDto,
+  PartyFeePricingTableSummaryDto,
+  PartyFeePricingTierDto,
+} from "@platform/api-client";
+import {
+  getEngineeringOffices,
+  getFieldInspectors,
+  getGovernmentAuditors,
+  type DistributionAssignee,
+} from "@case-study/mfe/lib/distribution-assignees";
 import { useStaffUsersQuery } from "@settings/mfe/query/settings-queries";
 import {
   activatePartyFeePricingTable,
@@ -628,7 +626,7 @@ export function FinancePartyFeePricing() {
             </label>
             <select
               id="pricing-table-select"
-              className="min-h-11 w-full min-w-[210px] flex-1 rounded-[9px] border border-border-md bg-surface px-3 py-[9px] font-[inherit] text-[13px] font-medium text-text outline-none transition-[border-color,box-shadow] focus:border-gold focus:shadow-[0_0_0_3px_color-mix(in_srgb,var(--gold)_20%,transparent)] sm:w-auto"
+              className={cn(opsFldControl, "min-h-11 min-w-[210px] flex-1 bg-surface font-medium sm:w-auto")}
               value={selectValue}
               disabled={
                 loading || busy || tables.length === 0 || !draftMatchesCategory
@@ -1107,4 +1105,3 @@ export function FinancePartyFeePricing() {
     </div>
   );
 }
-

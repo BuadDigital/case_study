@@ -5,6 +5,9 @@ import { useTickingNow } from "@platform/app-shared/hooks/use-ticking-now";
 import {
   StatusPill,
   cn,
+  opsMobileShadow,
+  opsPanelCard,
+  opsSkeletonCard,
   queueLegacyStatusStyle,
   type StatusPillStyle,
 } from "@platform/ui-kit";
@@ -92,8 +95,9 @@ export type ActiveQueueMobileCardItem = {
 
 /** Shared visual tokens — brand ink / gold / red (reuse in Failures, Fees, Ops). */
 export const queueMobileCardShellClassName = cn(
-  "group relative flex w-full min-w-0 max-w-full min-h-[84px] cursor-pointer items-stretch gap-3 overflow-hidden rounded-[14px] border border-border bg-surface px-3.5 py-3.5",
-  "shadow-[0_2px_8px_rgba(15,52,96,0.06)]",
+  opsPanelCard,
+  "group relative flex w-full min-w-0 max-w-full min-h-[84px] cursor-pointer items-stretch gap-3 overflow-hidden px-3.5 py-3.5",
+  opsMobileShadow,
   "transition-[box-shadow,border-color,transform,background-color] duration-150",
   "active:scale-[0.992] active:bg-row-hover",
   "hover:border-[color-mix(in_srgb,var(--border)_50%,var(--gold-2))] hover:shadow-[0_8px_24px_rgba(15,52,96,0.1)]",
@@ -228,7 +232,7 @@ export function ActiveQueueMobileCards({
         {Array.from({ length: 4 }).map((_, i) => (
           <div
             key={i}
-            className="h-[96px] animate-pulse rounded-[14px] border border-border bg-surface-2"
+            className={cn(opsSkeletonCard, "h-[96px]")}
             style={{ animationDelay: `${i * 60}ms` }}
           />
         ))}
@@ -439,7 +443,7 @@ export function ActiveQueueMobileCards({
               </div>
             </div>
             {item.expanded && item.expandedPanel ? (
-              <div className="border border-t-0 border-border bg-surface px-3.5 pb-3.5 pt-2 shadow-[0_2px_8px_rgba(15,52,96,0.06)] rounded-b-[14px]">
+              <div className={cn("border border-t-0 border-border bg-surface px-3.5 pb-3.5 pt-2 rounded-b-[14px]", opsMobileShadow)}>
                 {item.expandedPanel}
               </div>
             ) : null}

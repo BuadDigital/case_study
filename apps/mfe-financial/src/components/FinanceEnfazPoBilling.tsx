@@ -13,8 +13,26 @@ import {
   openEnfazAttachment,
 } from "@platform/app-shared/prototype/enfaz-billing-api";
 import {
+  EmptyState,
   Input,
+  StatusPill,
+  TBody,
+  THead,
+  Table,
+  TableFrame,
+  Td,
+  TdLtr,
+  Th,
+  Tr,
   cn,
+  finStatusStyle,
+  opsBtnGhost,
+  opsBtnPrimary,
+  opsCheckInput,
+  opsInsetPanel,
+  opsLetterCard,
+  opsPanelCard,
+  opsTfNote,
   useToast,
 } from "@platform/ui-kit";
 import {
@@ -22,19 +40,9 @@ import {
   type PoEnfazRevenueLineDto,
 } from "@platform/api-client";
 import {
-  finCard,
-  finCheck,
-  finEmpty,
-  finEmptyS,
-  finEmptyT,
-  finGhost,
   finMuted,
-  finNote,
-  finNum,
   finPo,
-  finPrimary,
   finRowActive,
-  finStatusFor,
   finWorkTitle,
 } from "../lib/finance-tw";
 
@@ -285,25 +293,24 @@ export function FinanceEnfazPoBilling({
     const cancelled = line.workStatus === "cancelled";
     const d = draft[line.propertyId];
     return (
-      <tr
+      <Tr
         key={line.propertyId}
-        className={cn(
-          "border-b border-border last:border-b-0",
-          cancelled && "opacity-50",
-        )}
+        hoverable={false}
+        className={cn(cancelled && "opacity-50")}
       >
-        <td className="px-3 py-2.5 text-[13px] font-semibold text-heading">
+        <Td className="font-semibold text-heading">
           {line.propertyLabel}
           {line.hasKeyEntitlement ? (
             <span className="ms-1 text-[10px] text-text-3">· مفتاح</span>
           ) : null}
-        </td>
-        <td className="px-3 py-2.5 text-center">
-          <span className={finStatusFor(line.workStatus === "done" ? "success" : "warning")}>
-            {line.workStatusLabel}
-          </span>
-        </td>
-        <td className="px-3 py-2.5 text-center">
+        </Td>
+        <Td className="text-center">
+          <StatusPill
+            label={line.workStatusLabel}
+            style={finStatusStyle(line.workStatus === "done" ? "success" : "warning")}
+          />
+        </Td>
+        <Td className="text-center">
           {cancelled ? (
             <span className={finMuted}>—</span>
           ) : (
@@ -319,8 +326,8 @@ export function FinanceEnfazPoBilling({
               aria-label={`دخل دراسة المعاملة ${line.propertyLabel}`}
             />
           )}
-        </td>
-        <td className="px-3 py-2.5 text-center">
+        </Td>
+        <Td className="text-center">
           {cancelled ? (
             <span className={finMuted}>—</span>
           ) : (
@@ -336,8 +343,8 @@ export function FinanceEnfazPoBilling({
               aria-label={`دخل تكاليف الرفع ${line.propertyLabel}`}
             />
           )}
-        </td>
-        <td className="px-3 py-2.5 text-center">
+        </Td>
+        <Td className="text-center">
           {cancelled ? (
             <span className={finMuted}>—</span>
           ) : line.hasKeyEntitlement ? (
@@ -355,23 +362,20 @@ export function FinanceEnfazPoBilling({
           ) : (
             <span className={finMuted}>—</span>
           )}
-        </td>
-        <td className="px-3 py-2.5 text-center">
-          {cancelled ? (
-            <span className={finMuted}>—</span>
-          ) : (
-            <span className={finNum}>
-              {lineTotal(d).toLocaleString("en-US")} ر.س
-            </span>
-          )}
-        </td>
-        <td className="px-3 py-2.5 text-center">
+        </Td>
+        <TdLtr
+          className="text-center"
+          valueClassName="text-[14px] font-extrabold text-heading"
+        >
+          {cancelled ? "—" : `${lineTotal(d).toLocaleString("en-US")} ر.س`}
+        </TdLtr>
+        <Td className="text-center">
           {cancelled ? (
             <span className={finMuted}>—</span>
           ) : (
             <input
               type="checkbox"
-              className={finCheck}
+              className={opsCheckInput}
               checked={d?.inc ?? true}
               disabled={issued}
               onChange={(e) =>
@@ -380,20 +384,19 @@ export function FinanceEnfazPoBilling({
               aria-label={`تضمين ${line.propertyLabel}`}
             />
           )}
-        </td>
-      </tr>
+        </Td>
+      </Tr>
     );
   };
 
   if (!compact && readyPos.length === 0 && !initialPo) {
     return (
-      <div className={finCard}>
-        <div className={finEmpty}>
-          <div className={finEmptyT}>لا أوامر عمل جاهزة للفوترة.</div>
-          <div className={finEmptyS}>
-            يظهر أمر العمل هنا فقط بعد اكتمال كل معاملاته (مكتملة أو ملغاة).
-          </div>
-        </div>
+      <div className={opsLetterCard}>
+        <EmptyState
+          panel
+          line="لا أوامر عمل جاهزة للفوترة."
+          hint="يظهر أمر العمل هنا فقط بعد اكتمال كل معاملاته (مكتملة أو ملغاة)."
+        />
       </div>
     );
   }
@@ -401,13 +404,9 @@ export function FinanceEnfazPoBilling({
   const detailPanel = (
         <div className="min-w-0">
           {!selectedPo || isPending ? (
-            <div className={finEmpty}>
-              <div className={finEmptyT}>اختر أمر عمل من القائمة.</div>
-            </div>
+            <EmptyState panel line="اختر أمر عمل من القائمة." />
           ) : !billing ? (
-            <div className={finEmpty}>
-              <div className={finEmptyT}>تعذر تحميل بيانات الفوترة.</div>
-            </div>
+            <EmptyState panel line="تعذر تحميل بيانات الفوترة." />
           ) : (
             <div className="flex flex-col gap-3">
               <div className="flex flex-wrap items-center gap-2">
@@ -415,8 +414,9 @@ export function FinanceEnfazPoBilling({
                   {selectedPo}
                 </h3>
                 {billing.invoiceNumber ? (
-                  <span
-                    className={finStatusFor(
+                  <StatusPill
+                    label={`${invoiceStatusLabel(billing.invoiceStatus)}${billing.isOverdue ? " · متأخر" : ""} · ${billing.invoiceNumber}`}
+                    style={finStatusStyle(
                       billing.isOverdue
                         ? "danger"
                         : billing.invoiceStatus === "collected"
@@ -425,38 +425,32 @@ export function FinanceEnfazPoBilling({
                             ? "warning"
                             : "default",
                     )}
-                  >
-                    {invoiceStatusLabel(billing.invoiceStatus)}
-                    {billing.isOverdue ? " · متأخر" : ""} ·{" "}
-                    {billing.invoiceNumber}
-                  </span>
+                  />
                 ) : billing.poReadyForBilling ? (
-                  <span className={finStatusFor("default")}>جاهز للإصدار</span>
+                  <StatusPill label="جاهز للإصدار" style={finStatusStyle("default")} />
                 ) : (
-                  <span className={finStatusFor("warning")}>يحتاج حفظ</span>
+                  <StatusPill label="يحتاج حفظ" style={finStatusStyle("warning")} />
                 )}
               </div>
 
-              <div className={finCard}>
-                <div className="overflow-x-auto">
-                  <table className="w-full min-w-[640px] border-collapse text-[13px]">
-                    <thead>
-                      <tr className="border-b-2 border-gold bg-surface-2">
-                        <th className="px-3 py-3 text-start text-xs font-bold text-heading">المعاملة</th>
-                        <th className="px-3 py-3 text-center text-xs font-bold text-heading">الحالة</th>
-                        <th className="px-3 py-3 text-center text-xs font-bold text-heading">دخل الدراسة</th>
-                        <th className="px-3 py-3 text-center text-xs font-bold text-heading">دخل الرفع</th>
-                        <th className="px-3 py-3 text-center text-xs font-bold text-heading">مفاتيح</th>
-                        <th className="px-3 py-3 text-center text-xs font-bold text-heading">المجموع</th>
-                        <th className="px-3 py-3 text-center text-xs font-bold text-heading">مشمول</th>
-                      </tr>
-                    </thead>
-                    <tbody>{billing.lines.map(lineRow)}</tbody>
-                  </table>
-                </div>
-              </div>
+              <TableFrame>
+                <Table className="min-w-[640px]">
+                  <THead>
+                    <Tr hoverable={false}>
+                      <Th>المعاملة</Th>
+                      <Th className="text-center">الحالة</Th>
+                      <Th className="text-center">دخل الدراسة</Th>
+                      <Th className="text-center">دخل الرفع</Th>
+                      <Th className="text-center">مفاتيح</Th>
+                      <Th className="text-center">المجموع</Th>
+                      <Th className="text-center">مشمول</Th>
+                    </Tr>
+                  </THead>
+                  <TBody>{billing.lines.map(lineRow)}</TBody>
+                </Table>
+              </TableFrame>
 
-              <div className="rounded-xl border border-border bg-surface p-4 text-sm shadow-card">
+              <div className={cn(opsPanelCard, "p-4 text-sm")}>
                 <div className="mb-2 text-[11px] text-text-3">
                   {totals.billable} معاملة مشمولة في الفاتورة
                 </div>
@@ -521,7 +515,7 @@ export function FinanceEnfazPoBilling({
                         <button
                           key={id}
                           type="button"
-                          className={finGhost}
+                          className={opsBtnGhost}
                           onClick={() => {
                             void openEnfazAttachment(
                               id,
@@ -541,7 +535,7 @@ export function FinanceEnfazPoBilling({
                 ) : null}
               </div>
 
-              <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-border bg-surface-2 px-3.5 py-3">
+              <div className={cn(opsInsetPanel, "flex flex-wrap items-center justify-between gap-2 px-3.5 py-3")}>
                 <span className="text-xs text-text-2">
                   {fullyCollected
                     ? "الفاتورة محصّلة بالكامل."
@@ -556,7 +550,7 @@ export function FinanceEnfazPoBilling({
                     <>
                       <button
                         type="button"
-                        className={finGhost}
+                        className={opsBtnGhost}
                         disabled={busy}
                         onClick={() => void save()}
                       >
@@ -564,7 +558,7 @@ export function FinanceEnfazPoBilling({
                       </button>
                       <button
                         type="button"
-                        className={finPrimary}
+                        className={opsBtnPrimary}
                         disabled={
                           busy ||
                           !billing.poReadyForBilling ||
@@ -605,7 +599,7 @@ export function FinanceEnfazPoBilling({
                           })()}
                           <button
                             type="button"
-                            className={finPrimary}
+                            className={opsBtnPrimary}
                             disabled={busy}
                             onClick={() => void collect()}
                           >
@@ -615,7 +609,7 @@ export function FinanceEnfazPoBilling({
                       ) : null}
                       <button
                         type="button"
-                        className={finGhost}
+                        className={opsBtnGhost}
                         disabled={busy}
                         onClick={() => void downloadPdf()}
                       >
@@ -641,13 +635,13 @@ export function FinanceEnfazPoBilling({
     return (
       <div className="flex flex-col gap-3">
         {isError ? (
-          <p className={cn(finNote, "mb-0")}>
+          <p className={cn(opsTfNote, "mb-0")}>
             {error instanceof Error
               ? error.message
               : "تعذّر تحميل بيانات الفوترة — حاول مرة أخرى"}{" "}
             <button
               type="button"
-              className={cn(finGhost, "ms-2")}
+              className={cn(opsBtnGhost, "ms-2")}
               onClick={() => void refetch()}
             >
               إعادة المحاولة
@@ -661,19 +655,19 @@ export function FinanceEnfazPoBilling({
 
   return (
     <div className="flex flex-col gap-3">
-      <p className={cn(finNote, "mb-0")}>
+      <p className={cn(opsTfNote, "mb-0")}>
         المسار: اختر أمر عمل ← طابِق الأتعاب (تقييم + رفع + مفاتيح) ← احفظ ←
         سجّل الفاتورة ← سجّل التحويل.
       </p>
 
       {isError ? (
-        <p className={cn(finNote, "mb-0")}>
+        <p className={cn(opsTfNote, "mb-0")}>
           {error instanceof Error
             ? error.message
             : "تعذّر تحميل بيانات الفوترة — حاول مرة أخرى"}{" "}
           <button
             type="button"
-            className={cn(finGhost, "ms-2")}
+            className={cn(opsBtnGhost, "ms-2")}
             onClick={() => void refetch()}
           >
             إعادة المحاولة
@@ -682,12 +676,14 @@ export function FinanceEnfazPoBilling({
       ) : null}
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(220px,0.9fr)_1.6fr]">
-        <div className={finCard}>
+        <div className={opsLetterCard}>
           <div className="border-b border-border px-3 py-2.5 text-[12px] font-semibold text-heading">
             أوامر العمل الجاهزة
-            <span className={cn(finStatusFor("warning"), "ms-2")}>
-              {readySummaries.length}
-            </span>
+            <StatusPill
+              label={String(readySummaries.length)}
+              style={finStatusStyle("warning")}
+              className="ms-2"
+            />
           </div>
           {readySummaries.map((summary) => (
             <button

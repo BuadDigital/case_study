@@ -6,14 +6,15 @@ import {
   Badge,
   Button,
   SkeletonTableRows,
-  Table,
   TBody,
+  THead,
+  Table,
+  TableFrame,
   Td,
   Th,
-  THead,
   Tr,
   cn,
-  queueTableWrapClassName,
+  opsMobileCard,
   useToast,
 } from "@platform/ui-kit";
 import { prototypeKeys } from "@platform/app-shared/query/prototype-keys";
@@ -267,14 +268,10 @@ export function PartyFeeWorkflowTable({
     setReasonModal({ row, action });
 
   return (
-    <div
-      className={cn(
-        queueTableWrapClassName,
-        "rounded-[var(--radius-lg)] border border-border bg-surface",
-      )}
-    >
-      <div className="hidden lg:block">
-        <Table className="min-w-[920px] w-full" pending={pending}>
+    <>
+      <TableFrame>
+        <div className="hidden lg:block">
+          <Table className="min-w-[920px] w-full" pending={pending}>
           <THead>
             <Tr hoverable={false}>
               <Th>المعاملة</Th>
@@ -350,9 +347,9 @@ export function PartyFeeWorkflowTable({
             )}
           </TBody>
         </Table>
-      </div>
+        </div>
 
-      <div className="lg:hidden">
+        <div className="lg:hidden">
         {pending && rows.length === 0 ? (
           <div className="space-y-2.5 p-3">
             {Array.from({ length: 3 }).map((_, i) => (
@@ -373,7 +370,7 @@ export function PartyFeeWorkflowTable({
               return (
                 <li
                   key={`m-${row.workflowTaskId}`}
-                  className="rounded-[14px] border border-border border-s-[3px] border-s-gold bg-surface px-3.5 py-3.5 shadow-[0_2px_8px_rgba(15,52,96,0.06)]"
+                  className={cn(opsMobileCard, "border-s-[3px] border-s-gold")}
                 >
                   <div className="mb-2 flex items-start justify-between gap-2">
                     <div className="min-w-0">
@@ -426,7 +423,8 @@ export function PartyFeeWorkflowTable({
             })}
           </ul>
         )}
-      </div>
+        </div>
+      </TableFrame>
 
       <FeeActionReasonModal
         open={reasonModal !== null}
@@ -455,6 +453,6 @@ export function PartyFeeWorkflowTable({
           await act(reasonModal.row, reasonModal.action, { reason });
         }}
       />
-    </div>
+    </>
   );
 }

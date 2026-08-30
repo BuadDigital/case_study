@@ -9,7 +9,7 @@
  * Never share eng (vendor) actions or statements across variants.
  */
 
-import { useCallback, useDeferredValue, useMemo, useState } from "react";
+import { Fragment, useCallback, useDeferredValue, useMemo, useState } from "react";
 import Link from "next/link";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
@@ -17,6 +17,15 @@ import {
   KpiCell,
   QueueTableHint,
   StatusPill,
+  Table,
+  TableEmptyRow,
+  TableFrame,
+  TBody,
+  Td,
+  TdLtr,
+  Th,
+  THead,
+  Tr,
   cn,
   useToast,
 } from "@platform/ui-kit";
@@ -44,11 +53,9 @@ import { fmtMax } from "@platform/app-shared/format/number";
 import {
   opsFldControl,
   opsFilters,
-  opsLetterCard,
   opsListCount,
   opsToolbar,
 } from "../../lib/prototype/ops-tasks-tw";
-
 export type IndividualFeesVariant = "field-inspection" | "court-visit";
 
 type TabId = "action" | "tracking" | "ready" | "statements" | "visit-fees" | "key-fees";
@@ -66,16 +73,6 @@ type UiStatus =
   | "paid"
   | "suspended"
   | "other";
-
-const FEE_COLS =
-  "minmax(140px,1.2fr) minmax(110px,.75fr) minmax(100px,.75fr) minmax(140px,1.2fr) minmax(100px,.8fr) minmax(148px,1fr) minmax(148px,1.05fr)";
-
-const FEE_CELL =
-  "flex min-w-0 items-center overflow-hidden px-3.5 py-2 text-start";
-const FEE_HEAD = cn(
-  FEE_CELL,
-  "py-3.5 text-[12px] font-bold leading-snug text-heading",
-);
 
 function fmtSar(n: number): string {
   return `${fmtMax(n || 0, 3)} ر.س`;
@@ -776,36 +773,24 @@ export function PartyIndividualFeesHtmlScreen({
             </div>
           </div>
 
-          <div className={opsLetterCard}>
-            <div className="overflow-x-auto">
-              <div className="min-w-[920px]">
-                <div
-                  className="grid border-b-2 border-gold bg-surface-2"
-                  style={{ gridTemplateColumns: FEE_COLS }}
-                >
-                  {[
-                    "الصك",
-                    copy.dateCol,
-                    "سعر الجدول",
-                    "تعديل / مبرر",
-                    "الصافي",
-                    "الحالة",
-                    copy.actionCol,
-                  ].map((h) => (
-                    <div key={h} className={FEE_HEAD}>
-                      {h}
-                    </div>
-                  ))}
-                </div>
-
+          <TableFrame>
+            <Table className="min-w-[920px]">
+              <THead>
+                <Tr hoverable={false}>
+                  <Th>الصك</Th>
+                  <Th>{copy.dateCol}</Th>
+                  <Th>سعر الجدول</Th>
+                  <Th>تعديل / مبرر</Th>
+                  <Th>الصافي</Th>
+                  <Th>الحالة</Th>
+                  <Th>{copy.actionCol}</Th>
+                </Tr>
+              </THead>
+              <TBody>
                 {feesPending && filteredFees.length === 0 ? (
-                  <div className="px-4 py-10 text-center text-[13px] text-text-3">
-                    جاري التحميل…
-                  </div>
+                  <TableEmptyRow colSpan={7}>جاري التحميل…</TableEmptyRow>
                 ) : filteredFees.length === 0 ? (
-                  <div className="px-4 py-10 text-center text-[13px] text-text-3">
-                    لا توجد بنود مطابقة.
-                  </div>
+                  <TableEmptyRow colSpan={7}>لا توجد بنود مطابقة.</TableEmptyRow>
                 ) : (
                   filteredFees.map((row) => {
                     const st = individualFeeUiStatus(row);
@@ -814,19 +799,17 @@ export function PartyIndividualFeesHtmlScreen({
                     const ded = row.supervisorDiscountSar > 0;
                     const busy = busyId === row.workflowTaskId;
                     return (
-                      <div
+                      <Tr
                         key={
                           row.id ||
                           `${row.workflowTaskId}-${row.billingStatus}-${row.netFeeSar}`
                         }
-                        className="grid min-h-[38px] items-center border-b border-border transition-colors hover:bg-[var(--row-hover,#faf6ee)]"
-                        style={{ gridTemplateColumns: FEE_COLS }}
                       >
-                        <div className={FEE_CELL}>
+                        <Td>
                           <div className="flex min-w-0 flex-col gap-0.5">
                             <span
                               dir="ltr"
-                              className="text-start text-[13px] font-bold text-gold-d"
+                              className="inline-block text-start text-[13px] font-bold tabular-nums text-gold-d [unicode-bidi:isolate]"
                             >
                               {deed}
                             </span>
@@ -834,22 +817,18 @@ export function PartyIndividualFeesHtmlScreen({
                               {region}
                             </span>
                           </div>
-                        </div>
-                        <div className={cn(FEE_CELL, "text-[12px] text-text-2")}>
-                          <span dir="ltr" className="tabular-nums [unicode-bidi:isolate]">
-                            {formatYmd(
-                              row.workSubmittedAtUtc ??
-                                row.accruedAtUtc ??
-                                row.updatedAtUtc,
-                            )}
-                          </span>
-                        </div>
-                        <div className={cn(FEE_CELL, "text-[12.5px] text-text-2")}>
-                          <span dir="ltr" className="tabular-nums [unicode-bidi:isolate]">
-                            {fmtSar(row.agreedFeeSar)}
-                          </span>
-                        </div>
-                        <div className={FEE_CELL}>
+                        </Td>
+                        <TdLtr valueClassName="text-[12px] text-text-2">
+                          {formatYmd(
+                            row.workSubmittedAtUtc ??
+                              row.accruedAtUtc ??
+                              row.updatedAtUtc,
+                          )}
+                        </TdLtr>
+                        <TdLtr valueClassName="text-[12.5px] text-text-2">
+                          {fmtSar(row.agreedFeeSar)}
+                        </TdLtr>
+                        <Td>
                           {ded ? (
                             <span
                               className="inline-flex min-w-0 max-w-full items-center gap-1.5"
@@ -857,7 +836,7 @@ export function PartyIndividualFeesHtmlScreen({
                             >
                               <span
                                 dir="ltr"
-                                className="shrink-0 text-[12.5px] font-bold tabular-nums text-[#a5432e]"
+                                className="shrink-0 text-[12.5px] font-bold tabular-nums text-[#a5432e] [unicode-bidi:isolate]"
                               >
                                 − {fmtSar(row.supervisorDiscountSar)}
                               </span>
@@ -870,21 +849,14 @@ export function PartyIndividualFeesHtmlScreen({
                               بسعر الجدول
                             </span>
                           )}
-                        </div>
-                        <div
-                          className={cn(
-                            FEE_CELL,
-                            "text-[13px] font-bold text-heading",
-                          )}
-                        >
-                          <span dir="ltr" className="tabular-nums [unicode-bidi:isolate]">
-                            {fmtSar(row.netFeeSar)}
-                          </span>
-                        </div>
-                        <div className={FEE_CELL}>
+                        </Td>
+                        <TdLtr valueClassName="text-[13px] font-bold text-heading">
+                          {fmtSar(row.netFeeSar)}
+                        </TdLtr>
+                        <Td>
                           <StatusPill label={meta.label} style={meta.style} />
-                        </div>
-                        <div className={cn(FEE_CELL, "overflow-visible")}>
+                        </Td>
+                        <Td className="overflow-visible">
                           {st === "needs_submit" ? (
                             <button
                               type="button"
@@ -900,7 +872,8 @@ export function PartyIndividualFeesHtmlScreen({
                             <span className="text-[11px] text-text-3">
                               بانتظار الاعتماد
                             </span>
-                          ) : st === "returned_to_party" || st === "inquiry_to_party" ? (
+                          ) : st === "returned_to_party" ||
+                            st === "inquiry_to_party" ? (
                             <span className="text-[11px] text-text-3">
                               راجع الملاحظات وأعِد الرفع
                             </span>
@@ -919,26 +892,22 @@ export function PartyIndividualFeesHtmlScreen({
                           ) : (
                             <span className="text-[11px] text-text-3">—</span>
                           )}
-                        </div>
-                      </div>
+                        </Td>
+                      </Tr>
                     );
                   })
                 )}
-              </div>
-            </div>
+              </TBody>
+            </Table>
             <div className="border-t border-border px-4 py-[11px] text-[12px] text-text-3">
               {copy.roleLabel}: {copy.statementsFooter}
             </div>
-          </div>
+          </TableFrame>
         </>
       ) : null}
 
       {tab === "statements" ? (
         <>
-          <EngFeesSectionTitle
-            title={copy.statementsLabel}
-            sub="متابعة أوامر الصرف بعد اعتماد المشرف — بلا رفع فاتورة منكم."
-          />
           <div className={opsToolbar}>
             <div className={opsFilters}>
               <div className="relative flex items-center">
@@ -967,147 +936,119 @@ export function PartyIndividualFeesHtmlScreen({
             </div>
           </div>
 
-          <div className={opsLetterCard}>
-            <div className="overflow-x-auto">
-              <div className="min-w-[820px]">
-                <div
-                  className="grid border-b-2 border-gold bg-surface-2"
-                  style={{
-                    gridTemplateColumns:
-                      "minmax(150px,1.2fr) minmax(90px,.8fr) minmax(70px,.6fr) minmax(90px,.8fr) minmax(110px,1fr) minmax(170px,1.4fr)",
-                  }}
-                >
-                  {[
-                    "رقم الأمر",
-                    "تاريخ الإصدار",
-                    "المعاملات",
-                    "الإجمالي",
-                    "الحالة",
-                    "الصرف",
-                  ].map((h) => (
-                    <div
-                      key={h}
-                      className="flex items-center justify-center px-4 py-3.5 text-center text-[12px] font-bold text-heading"
-                    >
-                      {h}
-                    </div>
-                  ))}
-                </div>
-
+          <TableFrame>
+            <Table className="min-w-[820px]">
+              <THead>
+                <Tr hoverable={false}>
+                  <Th>رقم الأمر</Th>
+                  <Th>تاريخ الإصدار</Th>
+                  <Th>المعاملات</Th>
+                  <Th>الإجمالي</Th>
+                  <Th>الحالة</Th>
+                  <Th>الصرف</Th>
+                </Tr>
+              </THead>
+              <TBody>
                 {filteredFns.length === 0 ? (
-                  <div className="px-4 py-10 text-center text-[13px] text-text-3">
+                  <TableEmptyRow colSpan={6}>
                     لا توجد مستندات مطابقة.
-                  </div>
+                  </TableEmptyRow>
                 ) : (
                   filteredFns.map((s) => {
                     const open = openFn === s.referenceNumber;
                     const meta = statementMeta(s);
                     return (
-                      <div key={s.id}>
-                        <div
-                          role="button"
-                          tabIndex={0}
+                      <Fragment key={s.id}>
+                        <Tr
+                          hoverable={false}
+                          className={cn(
+                            "cursor-pointer [&:hover_td]:bg-row-hover",
+                            open && "[&_td]:bg-row-hover",
+                          )}
                           onClick={() =>
                             setOpenFn(open ? null : s.referenceNumber)
                           }
-                          onKeyDown={(e) => {
-                            if (e.key === "Enter" || e.key === " ") {
-                              e.preventDefault();
-                              setOpenFn(open ? null : s.referenceNumber);
-                            }
-                          }}
-                          className={cn(
-                            "grid min-h-11 cursor-pointer items-center border-b border-border transition-colors hover:bg-[var(--row-hover,#faf6ee)]",
-                            open && "bg-[var(--row-hover,#faf6ee)]",
-                          )}
-                          style={{
-                            gridTemplateColumns:
-                              "minmax(150px,1.2fr) minmax(90px,.8fr) minmax(70px,.6fr) minmax(90px,.8fr) minmax(110px,1fr) minmax(170px,1.4fr)",
-                          }}
                         >
-                          <div className="flex items-center px-4 py-3.5">
-                            <span
-                              dir="ltr"
-                              className="text-[12.5px] font-bold text-gold-d"
-                            >
-                              {s.referenceNumber}
-                            </span>
-                          </div>
-                          <div
-                            dir="ltr"
-                            className="flex items-center px-4 py-3.5 text-[12px] text-text-2"
-                          >
+                          <TdLtr valueClassName="font-bold text-gold-d text-[12.5px]">
+                            {s.referenceNumber}
+                          </TdLtr>
+                          <TdLtr valueClassName="text-[12px] text-text-2">
                             {formatYmd(s.issuedAtUtc ?? s.createdAtUtc)}
-                          </div>
-                          <div className="flex items-center px-4 py-3.5 text-[12.5px]">
+                          </TdLtr>
+                          <Td className="text-[12.5px]">
                             {s.lines.length} معاملات
-                          </div>
-                          <div className="flex items-center px-4 py-3.5 text-[13px] font-bold text-heading">
+                          </Td>
+                          <TdLtr valueClassName="text-[13px] font-bold text-heading">
                             {fmtSar(s.totalNetSar)}
-                          </div>
-                          <div className="flex items-center px-4 py-3.5">
+                          </TdLtr>
+                          <Td>
                             <StatusPill
                               label={meta.label}
                               style={meta.style}
                             />
-                          </div>
-                          <div className="flex items-center px-4 py-3.5 text-[11px] text-text-2">
+                          </Td>
+                          <Td className="text-[11px] text-text-2">
                             {s.status === "closed" && s.paidAtUtc
                               ? `صُرف ${formatYmd(s.paidAtUtc)}`
                               : "بانتظار الصرف"}
-                          </div>
-                        </div>
+                          </Td>
+                        </Tr>
                         {open ? (
-                          <div className="border-b border-border bg-surface-2 px-[18px] py-3">
-                            <div className="mb-2 text-[11.5px] font-bold text-text-2">
-                              بنود {s.referenceNumber}
-                            </div>
-                            <div className="grid gap-1.5">
-                              {s.lines.map((line) => (
-                                <div
-                                  key={line.id}
-                                  className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-border bg-surface px-3 py-1.5 text-[12px]"
-                                >
-                                  <span
-                                    dir="ltr"
-                                    className="font-bold text-gold-d"
+                          <Tr hoverable={false}>
+                            <Td
+                              colSpan={6}
+                              className="bg-surface-2 !py-3"
+                            >
+                              <div className="mb-2 text-[11.5px] font-bold text-text-2">
+                                بنود {s.referenceNumber}
+                              </div>
+                              <div className="grid gap-1.5">
+                                {s.lines.map((line) => (
+                                  <div
+                                    key={line.id}
+                                    className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-border bg-surface px-3 py-1.5 text-[12px]"
                                   >
-                                    {line.propertyLabel}
-                                  </span>
-                                  <span className="font-bold text-heading">
-                                    {fmtSar(line.netFeeSar)}
-                                  </span>
-                                </div>
-                              ))}
-                            </div>
-                            {s.transferReceiptAttachmentId ? (
-                              <button
-                                type="button"
-                                className="mt-2 cursor-pointer border-none bg-transparent p-0 text-[12px] text-primary underline"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  void openPartyBillingAttachment(
-                                    s.transferReceiptAttachmentId!,
-                                  ).then((r) => {
-                                    if (!r.ok) showToast(r.error, "error");
-                                  });
-                                }}
-                              >
-                                عرض إيصال التحويل
-                              </button>
-                            ) : null}
-                          </div>
+                                    <span
+                                      dir="ltr"
+                                      className="font-bold text-gold-d"
+                                    >
+                                      {line.propertyLabel}
+                                    </span>
+                                    <span className="font-bold text-heading">
+                                      {fmtSar(line.netFeeSar)}
+                                    </span>
+                                  </div>
+                                ))}
+                              </div>
+                              {s.transferReceiptAttachmentId ? (
+                                <button
+                                  type="button"
+                                  className="mt-2 cursor-pointer border-none bg-transparent p-0 text-[12px] text-primary underline"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    void openPartyBillingAttachment(
+                                      s.transferReceiptAttachmentId!,
+                                    ).then((r) => {
+                                      if (!r.ok) showToast(r.error, "error");
+                                    });
+                                  }}
+                                >
+                                  عرض إيصال التحويل
+                                </button>
+                              ) : null}
+                            </Td>
+                          </Tr>
                         ) : null}
-                      </div>
+                      </Fragment>
                     );
                   })
                 )}
-              </div>
-            </div>
+              </TBody>
+            </Table>
             <div className="border-t border-border px-4 py-[11px] text-[12px] text-text-3">
               {copy.statementsFooter}
             </div>
-          </div>
+          </TableFrame>
         </>
       ) : null}
 

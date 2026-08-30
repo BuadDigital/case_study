@@ -7,7 +7,8 @@ import {
   saveValuationApproachSettings,
   type ValuationApproachSettingsDto,
 } from "@platform/api-client";
-import { cn, useToast } from "@platform/ui-kit";
+import { cn, opsFldControl, useToast } from "@platform/ui-kit";
+
 import { valuationPurposeKeyForAssignment } from "@platform/app-shared/prototype/assignment-valuation-defaults";
 import {
   Card,
@@ -16,8 +17,8 @@ import {
   FieldLabel,
   PrimaryBtn,
   ToggleChip,
-  vwInputClassName,
 } from "./atoms";
+
 import { apiConfig } from "./lib/shell-utils";
 
 /**
@@ -398,7 +399,7 @@ export const ApproachSettingsSection = memo(function ApproachSettingsSection({
                       dir="ltr"
                       value={asRetroDate}
                       onChange={(e) => setAsRetroDate(e.target.value)}
-                      className={vwInputClassName}
+                      className={cn(opsFldControl, "font-semibold")}
                     />
                   </div>
                 ) : (
@@ -416,7 +417,7 @@ export const ApproachSettingsSection = memo(function ApproachSettingsSection({
                         dir="ltr"
                         value={asRetroDate}
                         onChange={(e) => setAsRetroDate(e.target.value)}
-                        className={vwInputClassName}
+                        className={cn(opsFldControl, "font-semibold")}
                       />
                     </div>
                     <div>
@@ -433,7 +434,7 @@ export const ApproachSettingsSection = memo(function ApproachSettingsSection({
                         value={asRetroDateEnd}
                         min={asRetroDate || undefined}
                         onChange={(e) => setAsRetroDateEnd(e.target.value)}
-                        className={vwInputClassName}
+                        className={cn(opsFldControl, "font-semibold")}
                       />
                     </div>
                   </div>
@@ -463,19 +464,24 @@ export const ApproachSettingsSection = memo(function ApproachSettingsSection({
               placeholder="الأخصائي، دوره، ونتيجته"
               value={asSpecialistDetails}
               onChange={(e) => setAsSpecialistDetails(e.target.value)}
-              className={cn(vwInputClassName, "mb-0 font-medium")}
+              className={cn(opsFldControl, "font-semibold mb-0 font-medium")}
             />
           ) : null}
 
-          <div className="mt-6">
-            <PrimaryBtn disabled={saving} onClick={() => void saveApproachSettings()}>
-              بدء التقييم
-            </PrimaryBtn>
-          </div>
           {!settingsSaved ? (
-            <p className="mt-3 rounded-[var(--radius)] bg-[var(--amber-light)] px-2.5 py-2 text-[11.5px] text-[var(--amber-text)]">
-              ابدأ التقييم أولاً لفتح شاشات العمل (السوق، التكلفة، الترجيح).
-            </p>
+            <>
+              <div className="mt-6">
+                <PrimaryBtn
+                  disabled={saving}
+                  onClick={() => void saveApproachSettings()}
+                >
+                  بدء التقييم
+                </PrimaryBtn>
+              </div>
+              <p className="mt-3 rounded-[var(--radius)] bg-[var(--amber-light)] px-2.5 py-2 text-[11.5px] text-[var(--amber-text)]">
+                ابدأ التقييم أولاً لفتح شاشات العمل (السوق، التكلفة، الترجيح).
+              </p>
+            </>
           ) : null}
         </CardPad>
       </Card>

@@ -18,7 +18,18 @@ import {
   type ValuationReconciliationMethodDto,
   type ValuationReportIssuanceStateDto,
 } from "@platform/api-client";
-import { cn, useToast } from "@platform/ui-kit";
+import {
+  TBody,
+  THead,
+  Table,
+  Td,
+  Th,
+  Tr,
+  cn,
+  opsFldControl,
+  useToast,
+} from "@platform/ui-kit";
+
 import {
   VALUE_BASIS_OPTIONS,
   basisOfValueKeyForAssignment,
@@ -32,10 +43,8 @@ import {
   GhostBtn,
   LedgerRow,
   PrimaryBtn,
-  vwInputClassName,
-  vwTdClassName,
-  vwThClassName,
 } from "./atoms";
+
 import { apiConfig, fmt, JUSTIFICATION_MIN_LENGTH } from "./lib/shell-utils";
 
 /**
@@ -521,23 +530,22 @@ export const FinalOpinionSection = memo(function FinalOpinionSection({
             </span>
           </div>
           <Card className="mb-6">
-            <div className="overflow-x-auto">
-              <table className="w-full min-w-[900px] border-collapse">
-                <thead>
-                  <tr>
-                    <th className={cn(vwThClassName, "text-start")}>الأسلوب</th>
-                    <th className={vwThClassName}>القيمة الناتجة</th>
-                    <th className={vwThClassName}>نسبة المشاركة (٪)</th>
-                    <th className={vwThClassName}>القيمة بعد المشاركة</th>
-                    <th className={cn(vwThClassName, "text-start")}>مبرر</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {reconMethods.map((m, idx) => {
-                    const incomplete = !methodComplete(m.approachKind);
-                    return (
-                    <tr key={m.approachKind}>
-                      <td className={cn(vwTdClassName, "text-start")}>
+            <Table className="min-w-[900px]">
+              <THead>
+                <Tr hoverable={false}>
+                  <Th>الأسلوب</Th>
+                  <Th className="text-center">القيمة الناتجة</Th>
+                  <Th className="text-center">نسبة المشاركة (٪)</Th>
+                  <Th className="text-center">القيمة بعد المشاركة</Th>
+                  <Th>مبرر</Th>
+                </Tr>
+              </THead>
+              <TBody>
+                {reconMethods.map((m, idx) => {
+                  const incomplete = !methodComplete(m.approachKind);
+                  return (
+                    <Tr key={m.approachKind} hoverable={false}>
+                      <Td>
                         <div className="font-bold text-heading">{m.labelAr}</div>
                         <div className="mt-0.5 text-[10.5px] text-text-3">
                           {m.approachKind === "cost"
@@ -546,8 +554,8 @@ export const FinalOpinionSection = memo(function FinalOpinionSection({
                               : "قيمة الأرض + تكلفة الإحلال − الإهلاك"
                             : "مؤشر قيمة من طريقة المقارنة"}
                         </div>
-                      </td>
-                      <td className={cn(vwTdClassName, "font-extrabold")}>
+                      </Td>
+                      <Td className="text-center font-extrabold">
                         {incomplete ? (
                           <span className="text-[12.5px] text-red-text">
                             غير مكتمل
@@ -555,8 +563,8 @@ export const FinalOpinionSection = memo(function FinalOpinionSection({
                         ) : (
                           <span dir="ltr">{fmt(m.approachValue)}</span>
                         )}
-                      </td>
-                      <td className={vwTdClassName}>
+                      </Td>
+                      <Td className="text-center">
                         <input
                           dir="ltr"
                           type="number"
@@ -581,8 +589,8 @@ export const FinalOpinionSection = memo(function FinalOpinionSection({
                               : "border-border-md bg-surface text-heading",
                           )}
                         />
-                      </td>
-                      <td className={cn(vwTdClassName, "font-extrabold")}>
+                      </Td>
+                      <Td className="text-center font-extrabold">
                         {incomplete ? (
                           <span className="text-text-3">—</span>
                         ) : (
@@ -590,8 +598,8 @@ export const FinalOpinionSection = memo(function FinalOpinionSection({
                             {fmt((m.approachValue * m.weightPct) / 100)}
                           </span>
                         )}
-                      </td>
-                      <td className={cn(vwTdClassName, "text-start")}>
+                      </Td>
+                      <Td>
                         <input
                           value={m.rationale ?? ""}
                           onChange={(e) => {
@@ -602,13 +610,12 @@ export const FinalOpinionSection = memo(function FinalOpinionSection({
                           placeholder="مبرر نسبة المشاركة…"
                           className="w-full rounded-[7px] border border-border px-2.5 py-2 text-xs"
                         />
-                      </td>
-                    </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
+                      </Td>
+                    </Tr>
+                  );
+                })}
+              </TBody>
+            </Table>
             <div className="flex justify-between border-t border-border bg-surface-2 px-4 py-3">
               <span
                 className={cn(
@@ -674,7 +681,7 @@ export const FinalOpinionSection = memo(function FinalOpinionSection({
                 <select
                   value={valuePremiseKey}
                   onChange={(e) => setValuePremiseKey(e.target.value)}
-                  className={cn(vwInputClassName, "cursor-pointer font-medium")}
+                  className={cn(opsFldControl, "font-semibold cursor-pointer font-medium")}
                 >
                   <option value="">— اختر —</option>
                   {(premiseOptions.length

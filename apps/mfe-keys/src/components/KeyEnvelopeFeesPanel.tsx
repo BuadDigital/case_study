@@ -1,21 +1,25 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { Spinner, cn, useToast } from "@platform/ui-kit";
 import {
-  KEYS_FEES_COLS,
-  KeysBackLink,
-  KeysEmpty,
-  KeysGridHead,
-  KeysGridRow,
-  KeysStatusPill,
-  KeysTd,
-  KeysTh,
-  keysCardClassName,
-  keysChipClassName,
-  keysDashCardClassName,
-  keysGhostBtnClassName,
-} from "./KeysHtmlPrimitives";
+  SkeletonTableRows,
+  Spinner,
+  TBody,
+  THead,
+  Table,
+  TableFrame,
+  Td,
+  TdLtr,
+  Th,
+  Tr,
+  cn,
+  opsBtnGhost,
+  opsChip,
+  opsDashCard,
+  opsTapCard,
+  useToast,
+} from "@platform/ui-kit";
+import { KeysBackLink, KeysEmpty, KeysStatusPill } from "./KeysHtmlPrimitives";
 import { markEnvelopeFeeCollected } from "../lib/keys-envelope-api";
 import type { KeyEnvelopeFeeReportRow } from "../lib/keys-envelope-types";
 import {
@@ -23,18 +27,7 @@ import {
   useKeyEnvelopeFeesQuery,
 } from "../query/keys-queries";
 
-/** Skeleton rows while loading — static JSX independent of state. */
-const FEES_TABLE_SKELETON = (
-  <div className="space-y-0">
-    {Array.from({ length: 4 }).map((_, i) => (
-      <div
-        key={i}
-        className="h-[54px] animate-pulse border-b border-border bg-surface-2/60"
-      />
-    ))}
-  </div>
-);
-
+/** Skeleton rows while loading — mobile cards only. */
 const FEES_CARDS_SKELETON = (
   <div className="space-y-2.5 p-3">
     {Array.from({ length: 4 }).map((_, i) => (
@@ -97,7 +90,7 @@ export function KeyEnvelopeFeesPanel({
 
       {/* renderKeyFees KPI dash-cards */}
       <div className="mb-5 grid grid-cols-1 gap-4 sm:grid-cols-3">
-        <div className={keysDashCardClassName}>
+        <div className={opsDashCard}>
           <div className="text-[30px] font-extrabold leading-none text-heading tabular-nums">
             {ready ? rows.length : "—"}
           </div>
@@ -105,7 +98,7 @@ export function KeyEnvelopeFeesPanel({
             أظرف مستحقة (سيناريو المحكمة)
           </div>
         </div>
-        <div className={keysDashCardClassName}>
+        <div className={opsDashCard}>
           <div className="text-[30px] font-extrabold leading-none text-[#8a5e14] tabular-nums">
             {ready ? unpricedCount : "—"}
           </div>
@@ -113,7 +106,7 @@ export function KeyEnvelopeFeesPanel({
             بانتظار فوترة إنفاذ (بلا مبلغ)
           </div>
         </div>
-        <div className={keysDashCardClassName}>
+        <div className={opsDashCard}>
           <div className="text-[30px] font-extrabold leading-none text-[#2f7a4d] tabular-nums">
             {ready ? totalOpen.toLocaleString("ar-SA") : "—"}{" "}
             <span className="text-[15px]">ر.س</span>
@@ -128,29 +121,34 @@ export function KeyEnvelopeFeesPanel({
         <h2 className="m-0 text-[17px] font-extrabold text-heading">
           تقرير أتعاب استلام المفاتيح
         </h2>
-        <span className={keysChipClassName}>
+        <span className={opsChip}>
           {ready ? `${rows.length} بند` : "…"}
         </span>
       </div>
 
-      <div className={keysCardClassName}>
-        <div className="overflow-x-auto rounded-xl">
-          <div className="hidden min-w-[720px] lg:block">
-            <KeysGridHead cols={KEYS_FEES_COLS}>
-              <KeysTh align="start">رقم الطلب</KeysTh>
-              <KeysTh align="start">المحكمة</KeysTh>
-              <KeysTh align="start">المبلغ</KeysTh>
-              <KeysTh align="start">الحالة</KeysTh>
-              <KeysTh>إجراء</KeysTh>
-            </KeysGridHead>
-
+      <TableFrame className="hidden lg:block">
+        <Table className="min-w-[720px]" pending={!ready}>
+          <THead>
+            <Tr hoverable={false}>
+              <Th>رقم الطلب</Th>
+              <Th>المحكمة</Th>
+              <Th>المبلغ</Th>
+              <Th>الحالة</Th>
+              <Th className="text-center">إجراء</Th>
+            </Tr>
+          </THead>
+          <TBody>
             {!ready ? (
-              FEES_TABLE_SKELETON
+              <SkeletonTableRows rows={4} cols={5} />
             ) : rows.length === 0 ? (
-              <KeysEmpty
-                title="لا توجد بنود أتعاب"
-                sub="تُولَّد الأتعاب تلقائياً لسيناريو استلام المحكمة فقط."
-              />
+              <Tr hoverable={false}>
+                <Td colSpan={5} className="!border-b-0 !p-0">
+                  <KeysEmpty
+                    title="لا توجد بنود أتعاب"
+                    sub="تُولَّد الأتعاب تلقائياً لسيناريو استلام المحكمة فقط."
+                  />
+                </Td>
+              </Tr>
             ) : (
               rows.map((row) => {
                 const collected =
@@ -158,23 +156,27 @@ export function KeyEnvelopeFeesPanel({
                 const c = collected ? "#2f7a4d" : "#d9a441";
                 const priced = !!row.feeAmountSar;
                 return (
-                  <KeysGridRow
+                  <Tr
                     key={row.envelopeId}
-                    cols={KEYS_FEES_COLS}
-                    minHeight={54}
+                    role="button"
+                    tabIndex={0}
                     onClick={() => onOpenEnvelope(row.envelopeId)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" || e.key === " ") {
+                        e.preventDefault();
+                        onOpenEnvelope(row.envelopeId);
+                      }
+                    }}
                   >
-                    <KeysTd>
-                      <span className="text-[13.5px] font-bold text-gold-d">
-                        {row.requestNumber || "—"}
-                      </span>
-                    </KeysTd>
-                    <KeysTd>
+                    <TdLtr bare className="text-[13.5px] font-bold text-gold-d">
+                      {row.requestNumber || "—"}
+                    </TdLtr>
+                    <Td>
                       <span className="text-[13px] text-text-2">
                         {row.court || "—"}
                       </span>
-                    </KeysTd>
-                    <KeysTd>
+                    </Td>
+                    <TdLtr bare>
                       {priced ? (
                         <span className="text-[14px] font-extrabold tabular-nums text-heading">
                           {row.feeAmountSar!.toLocaleString("ar-SA")} ر.س
@@ -184,8 +186,8 @@ export function KeyEnvelopeFeesPanel({
                           تُدخله المالية
                         </span>
                       )}
-                    </KeysTd>
-                    <KeysTd>
+                    </TdLtr>
+                    <Td>
                       <KeysStatusPill
                         label={
                           collected
@@ -196,8 +198,8 @@ export function KeyEnvelopeFeesPanel({
                         }
                         color={c}
                       />
-                    </KeysTd>
-                    <KeysTd align="center">
+                    </Td>
+                    <Td className="text-center">
                       {collected ? (
                         <span className="text-[11.5px] text-text-3">
                           أكّدته المالية
@@ -207,7 +209,7 @@ export function KeyEnvelopeFeesPanel({
                           type="button"
                           disabled={busyId !== null}
                           aria-busy={busyId === row.envelopeId || undefined}
-                          className={keysGhostBtnClassName}
+                          className={opsBtnGhost}
                           style={{
                             height: 30,
                             padding: "0 12px",
@@ -227,14 +229,16 @@ export function KeyEnvelopeFeesPanel({
                       ) : (
                         "—"
                       )}
-                    </KeysTd>
-                  </KeysGridRow>
+                    </Td>
+                  </Tr>
                 );
               })
             )}
-          </div>
+          </TBody>
+        </Table>
+      </TableFrame>
 
-          <div className="lg:hidden">
+      <div className="lg:hidden">
             {!ready ? (
               FEES_CARDS_SKELETON
             ) : rows.length === 0 ? (
@@ -254,7 +258,7 @@ export function KeyEnvelopeFeesPanel({
                       <div
                         role="button"
                         tabIndex={0}
-                        className="flex w-full cursor-pointer flex-col gap-2.5 rounded-[12px] border border-border bg-surface px-3.5 py-3 text-start shadow-card transition-colors active:bg-row-hover"
+                        className={cn(opsTapCard, "flex w-full flex-col gap-2.5 px-3.5 py-3")}
                         onClick={() => onOpenEnvelope(row.envelopeId)}
                         onKeyDown={(e) => {
                           if (e.key === "Enter" || e.key === " ") {
@@ -303,7 +307,7 @@ export function KeyEnvelopeFeesPanel({
                               disabled={busyId !== null}
                               aria-busy={busyId === row.envelopeId || undefined}
                               className={cn(
-                                keysGhostBtnClassName,
+                                opsBtnGhost,
                                 "inline-flex items-center gap-1.5",
                               )}
                               style={{ color: "#2f7a4d" }}
@@ -325,8 +329,6 @@ export function KeyEnvelopeFeesPanel({
                 })}
               </ul>
             )}
-          </div>
-        </div>
       </div>
 
       <p className="m-0 px-1 pt-3 text-[11.5px] text-text-3">

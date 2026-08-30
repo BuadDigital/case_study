@@ -4,8 +4,10 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import type { OperationsTaskDto } from "@platform/api-client";
 import { opsTaskScopeText, opsTaskTypeLabel, taskCountdown } from "../../lib/dashboard-metrics";
-import { dashCard, dashIco, dashLine } from "../../lib/dashboard-tw";
-import { cn } from "@platform/ui-kit";
+import { dashIco, dashLine } from "../../lib/dashboard-tw";
+
+import { cn, opsDashCard } from "@platform/ui-kit";
+
 import { TaskTypeIcon } from "./DashIcons";
 
 export function DashActionQueue({
@@ -21,7 +23,7 @@ export function DashActionQueue({
     .map(({ t }) => t);
 
   return (
-    <div className={dashCard}>
+    <div className={opsDashCard}>
       <div className="mb-3 flex items-center justify-between">
         <h3 className="m-0 text-[14px] font-bold text-heading">
           ما يتطلب إجراءك الآن

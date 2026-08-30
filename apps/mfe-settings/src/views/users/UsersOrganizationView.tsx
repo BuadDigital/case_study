@@ -39,8 +39,10 @@ import {
   Select,
   Spinner,
   Table,
+  TableEmptyRow,
   TBody,
   Td,
+  TdLtr,
   Textarea,
   Th,
   THead,
@@ -547,13 +549,11 @@ export function UsersOrganizationView() {
             </THead>
             <TBody>
               {filteredUsers.length === 0 ? (
-                <Tr hoverable={false}>
-                  <Td colSpan={6} className="py-10 text-center text-[12.5px] text-text-3">
-                    {users.length === 0
-                      ? "لا يوجد مستخدمون بعد"
-                      : "لا يوجد مستخدمون مطابقون للبحث"}
-                  </Td>
-                </Tr>
+                <TableEmptyRow colSpan={6}>
+                  {users.length === 0
+                    ? "لا يوجد مستخدمون بعد"
+                    : "لا يوجد مستخدمون مطابقون للبحث"}
+                </TableEmptyRow>
               ) : (
                 filteredUsers.map((user) => {
                   const busy =
@@ -590,9 +590,7 @@ export function UsersOrganizationView() {
                       </Td>
                       <Td>{user.role}</Td>
                       <Td>{deptLabel(user)}</Td>
-                      <Td>
-                        <bdi>{formatLastLogin(user.lastLoginAtUtc)}</bdi>
-                      </Td>
+                      <TdLtr bare>{formatLastLogin(user.lastLoginAtUtc)}</TdLtr>
                       <Td>
                         <Badge tone={statusTone(user.status)}>
                           {statusLabel(user.status)}

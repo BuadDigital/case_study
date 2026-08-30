@@ -33,6 +33,7 @@ import {
   Table,
   TBody,
   Td,
+  TdLtr,
   Th,
   THead,
   Tr,
@@ -560,7 +561,7 @@ export function ValuersRosterView() {
         ) : null}
       </div>
 
-      <Card className="overflow-x-auto">
+      <Card className="overflow-hidden">
         <Table className="min-w-[56rem] tabular-nums">
           <THead>
             <Tr hoverable={false}>
@@ -672,8 +673,8 @@ export function ValuersRosterView() {
                       catLabel(v.membershipCategory)
                     )}
                   </Td>
-                  <Td>
-                    {editing ? (
+                  {editing ? (
+                    <Td>
                       <Input
                         dir="ltr"
                         className="max-w-[8rem] !h-9 !py-0 !leading-9 text-[12.5px]"
@@ -683,12 +684,12 @@ export function ValuersRosterView() {
                           patch(v.id, { membershipNumber: e.target.value })
                         }
                       />
-                    ) : (
-                      <bdi>{v.membershipNumber || "—"}</bdi>
-                    )}
-                  </Td>
-                  <Td>
-                    {editing ? (
+                    </Td>
+                  ) : (
+                    <TdLtr bare>{v.membershipNumber || "—"}</TdLtr>
+                  )}
+                  {editing ? (
+                    <Td>
                       <Input
                         type="date"
                         dir="ltr"
@@ -703,10 +704,10 @@ export function ValuersRosterView() {
                           patch(v.id, { membershipExpiresAt: e.target.value })
                         }
                       />
-                    ) : (
-                      <bdi>{v.membershipExpiresAt || "—"}</bdi>
-                    )}
-                  </Td>
+                    </Td>
+                  ) : (
+                    <TdLtr bare>{v.membershipExpiresAt || "—"}</TdLtr>
+                  )}
                   <Td>
                     <div className="flex flex-col items-start gap-1.5">
                       {sigOk(v) ? (

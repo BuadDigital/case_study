@@ -1,7 +1,23 @@
 "use client";
 
 import { useMemo } from "react";
-import { EmptyState, OperationalPanel, QueueTableHint, SkeletonTableRows, StatusPill, Table, TBody, Td, Th, THead, Tr, cn, queueTableRowClassName } from "@platform/ui-kit";
+import {
+  EmptyState,
+  OperationalPanel,
+  QueueTableHint,
+  SkeletonTableRows,
+  StatusPill,
+  TBody,
+  THead,
+  Table,
+  Td,
+  Th,
+  Tr,
+  cn,
+  opsPanelCard,
+  opsWorkCard,
+  queueTableRowClassName,
+} from "@platform/ui-kit";
 import { useCourtVisitFeesQuery } from "../../query/operations-tasks-queries";
 
 export function CourtVisitFeesPanel({
@@ -21,13 +37,13 @@ export function CourtVisitFeesPanel({
   return (
     <div className="space-y-4">
       <div className="grid gap-3 sm:grid-cols-2 sm:gap-4">
-        <div className="rounded-xl border border-border bg-surface px-[18px] py-4 shadow-card">
+        <div className={opsWorkCard}>
           <div className="text-[30px] font-extrabold leading-none text-heading tabular-nums">
             {ready ? rows.length : "—"}
           </div>
           <div className="mt-1.5 text-[12.5px] text-text-2">بنود أتعاب الزيارة</div>
         </div>
-        <div className="rounded-xl border border-border bg-surface px-[18px] py-4 shadow-card">
+        <div className={opsWorkCard}>
           <div className="text-[30px] font-extrabold leading-none text-[#2f7a4d] tabular-nums">
             {ready ? total.toLocaleString("ar-SA") : "—"}{" "}
             <span className="text-[15px]">ر.س</span>
@@ -118,7 +134,7 @@ export function CourtVisitFeesPanel({
                 return (
                   <li
                     key={`m-${row.id}`}
-                    className="rounded-[12px] border border-border bg-surface px-3.5 py-3 shadow-card"
+                    className={cn(opsPanelCard, "px-3.5 py-3")}
                   >
                     <div className="mb-2 flex items-start justify-between gap-2">
                       <span className="text-[14px] font-bold text-primary">

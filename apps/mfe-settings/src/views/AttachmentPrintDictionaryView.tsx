@@ -380,8 +380,7 @@ export function ValuationListsView() {
                 </Button>
               </div>
               <Card>
-                <div className="overflow-x-auto">
-                  <Table>
+                <Table>
                     <THead>
                       <Tr>
                         {tableMeta.cols.map((col) => (
@@ -498,7 +497,6 @@ export function ValuationListsView() {
                       ))}
                     </TBody>
                   </Table>
-                </div>
               </Card>
               <p className="mx-0.5 mt-2.5 mb-0 text-[11.5px] text-text-3">{tableMeta.note}</p>
             </>
@@ -759,8 +757,7 @@ function ParticipantsPanel({
         </Button>
       </div>
       <Card>
-        <div className="overflow-x-auto">
-          <Table>
+        <Table>
             <THead>
               <Tr>
                 <Th>الاسم</Th>
@@ -838,7 +835,6 @@ function ParticipantsPanel({
               ))}
             </TBody>
           </Table>
-        </div>
       </Card>
       <p className="mt-2.5 text-[11.5px] text-text-3">
         لا حذف — التعطيل يحفظ ارتباط السجلات بسجل التدقيق. المقيم المعتمد نفسه يُدار من «بيانات المقيم المعتمد».

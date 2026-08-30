@@ -7,7 +7,18 @@ import {
   type ValuationCostApproachDto,
   type ValuationCostLineDto,
 } from "@platform/api-client";
-import { cn, useToast } from "@platform/ui-kit";
+import {
+  TBody,
+  THead,
+  Table,
+  Td,
+  Th,
+  Tr,
+  cn,
+  opsFldControl,
+  useToast,
+} from "@platform/ui-kit";
+
 import {
   Card,
   CardPad,
@@ -16,10 +27,8 @@ import {
   GhostBtn,
   PrimaryBtn,
   ToggleChip,
-  vwInputClassName,
-  vwTdClassName,
-  vwThClassName,
 } from "./atoms";
+
 import {
   COST_GROUP1_KEYS,
   COST_ITEM_OPTIONS,
@@ -547,7 +556,7 @@ export const CostApproachSection = memo(function CostApproachSection({
                   onChange={(e) =>
                     setUseRestrictionPct(e.target.value.replace(/[^\d.]/g, ""))
                   }
-                  className={cn(vwInputClassName, "text-center")}
+                  className={cn(opsFldControl, "font-semibold text-center")}
                 />
               </label>
               {isApartmentProperty ? (
@@ -561,7 +570,7 @@ export const CostApproachSection = memo(function CostApproachSection({
                     onChange={(e) =>
                       setApartmentLandShare(e.target.value.replace(/[^\d.]/g, ""))
                     }
-                    className={cn(vwInputClassName, "text-center")}
+                    className={cn(opsFldControl, "font-semibold text-center")}
                   />
                 </label>
               ) : null}
@@ -592,7 +601,7 @@ export const CostApproachSection = memo(function CostApproachSection({
               value={useRestrictionRationale}
               onChange={(e) => setUseRestrictionRationale(e.target.value)}
               className={cn(
-                vwInputClassName,
+                opsFldControl,
                 "mt-3 border-dashed bg-surface-2 font-medium text-text-2",
               )}
             />
@@ -616,30 +625,29 @@ export const CostApproachSection = memo(function CostApproachSection({
       </div>
 
       <Card className="mb-6">
-        <div className="overflow-x-auto">
-          <table className="w-full min-w-[900px] border-collapse">
-            <thead>
-              <tr>
-                <th className={cn(vwThClassName, "text-start")}>البند</th>
-                <th className={vwThClassName}>
-                  المساحة / العدد
-                  <div className="text-[10px] font-normal text-text-3">
-                    · نسبة البناء
-                  </div>
-                </th>
-                <th className={vwThClassName}>الوحدة</th>
-                <th className={vwThClassName}>سعر المتر / تكلفة الوحدة</th>
-                <th className={vwThClassName}>
-                  الإجمالي
-                  <div className="text-[10px] font-normal text-text-3">
-                    سعر المتر بعد غير المباشرة
-                  </div>
-                </th>
-                <th className={cn(vwThClassName, "text-start")}>مبرر التقدير</th>
-                <th className={vwThClassName} />
-              </tr>
-            </thead>
-            <tbody>
+        <Table className="min-w-[900px]">
+          <THead>
+            <Tr hoverable={false}>
+              <Th>البند</Th>
+              <Th className="text-center">
+                المساحة / العدد
+                <div className="text-[10px] font-normal text-text-3">
+                  · نسبة البناء
+                </div>
+              </Th>
+              <Th className="text-center">الوحدة</Th>
+              <Th className="text-center">سعر المتر / تكلفة الوحدة</Th>
+              <Th className="text-center">
+                الإجمالي
+                <div className="text-[10px] font-normal text-text-3">
+                  سعر المتر بعد غير المباشرة
+                </div>
+              </Th>
+              <Th>مبرر التقدير</Th>
+              <Th className="w-12" />
+            </Tr>
+          </THead>
+          <TBody>
               {(
                 [
                   ["area", "مسطحات المبنى والأدوار", areaSubtotal],
@@ -647,20 +655,20 @@ export const CostApproachSection = memo(function CostApproachSection({
                 ] as const
               ).map(([group, groupTitle, subtotal]) => (
                 <Fragment key={group}>
-                  <tr>
-                    <td
+                  <Tr hoverable={false}>
+                    <Td
                       colSpan={5}
-                      className="border-b border-border-md bg-gold-soft px-4 py-[9px] text-start text-[12.5px] font-extrabold text-heading"
+                      className="border-b border-border-md bg-gold-soft py-[9px] text-[12.5px] font-extrabold text-heading"
                     >
                       {groupTitle}
-                    </td>
-                    <td
+                    </Td>
+                    <Td
                       colSpan={2}
-                      className="border-b border-border-md bg-gold-soft px-4 py-[9px] text-end text-[13px] font-extrabold text-gold-d"
+                      className="border-b border-border-md bg-gold-soft py-[9px] text-end text-[13px] font-extrabold text-gold-d"
                     >
                       <span dir="ltr">{fmt(subtotal)}</span>
-                    </td>
-                  </tr>
+                    </Td>
+                  </Tr>
                   {costDraft.map((line, idx) => {
                     if (costGroupOf(line) !== group) return null;
                     const comp = computedLines[idx];
@@ -673,7 +681,8 @@ export const CostApproachSection = memo(function CostApproachSection({
                     };
                     return (
                       <Fragment key={line.id}>
-                      <tr
+                      <Tr
+                        hoverable={false}
                         onDragOver={(e) => {
                           if (dragCostId) e.preventDefault();
                         }}
@@ -686,7 +695,7 @@ export const CostApproachSection = memo(function CostApproachSection({
                           dragCostId === line.id ? "opacity-45" : undefined
                         }
                       >
-                        <td className={cn(vwTdClassName, "text-start")}>
+                        <Td>
                           <div className="flex items-start gap-1.5">
                             <span
                               draggable
@@ -725,7 +734,7 @@ export const CostApproachSection = memo(function CostApproachSection({
                               });
                             }}
                             className={cn(
-                              vwInputClassName,
+                              opsFldControl,
                               "px-2.5 py-2 text-[12.5px] font-bold",
                             )}
                           >
@@ -753,15 +762,15 @@ export const CostApproachSection = memo(function CostApproachSection({
                                 patchLine({ label: e.target.value })
                               }
                               className={cn(
-                                vwInputClassName,
+                                opsFldControl,
                                 "mt-1 px-[9px] py-1.5 text-xs font-medium",
                               )}
                             />
                           ) : null}
                             </div>
                           </div>
-                        </td>
-                        <td className={vwTdClassName}>
+                        </Td>
+                        <Td className="text-center">
                           {comp.isLump ? (
                             <span className="text-xs font-bold text-gold-d">
                               مبلغ مقطوع
@@ -846,8 +855,8 @@ export const CostApproachSection = memo(function CostApproachSection({
                               الكمية <span dir="ltr">{fmt(comp.qty, 1)}</span> م²
                             </div>
                           ) : null}
-                        </td>
-                        <td className={vwTdClassName}>
+                        </Td>
+                        <Td className="text-center">
                           <select
                             value={line.unit || "sqm"}
                             onChange={(e) =>
@@ -865,8 +874,8 @@ export const CostApproachSection = memo(function CostApproachSection({
                               </option>
                             ))}
                           </select>
-                        </td>
-                        <td className={vwTdClassName}>
+                        </Td>
+                        <Td className="text-center">
                           <input
                             dir="ltr"
                             value={
@@ -893,8 +902,8 @@ export const CostApproachSection = memo(function CostApproachSection({
                               موروثة من الدور الأول
                             </div>
                           ) : null}
-                        </td>
-                        <td className={cn(vwTdClassName, "font-extrabold text-heading")}>
+                        </Td>
+                        <Td className="text-center font-extrabold text-heading">
                           <span dir="ltr">{fmt(comp.rawTotal)}</span>
                           {comp.rawTotal > 0 && comp.qty > 0 ? (
                             <div className="mt-0.5 text-[10px] text-text-3">
@@ -908,8 +917,8 @@ export const CostApproachSection = memo(function CostApproachSection({
                               بعد غير المباشرة
                             </div>
                           ) : null}
-                        </td>
-                        <td className={cn(vwTdClassName, "text-start")}>
+                        </Td>
+                        <Td>
                           <input
                             value={line.rationale}
                             onChange={(e) =>
@@ -918,8 +927,8 @@ export const CostApproachSection = memo(function CostApproachSection({
                             placeholder="أساس التقدير…"
                             className="w-full rounded-[7px] border border-border px-2.5 py-2 text-xs"
                           />
-                        </td>
-                        <td className={vwTdClassName}>
+                        </Td>
+                        <Td className="text-center">
                           <button
                             type="button"
                             disabled={saving}
@@ -932,11 +941,11 @@ export const CostApproachSection = memo(function CostApproachSection({
                           >
                             ×
                           </button>
-                        </td>
-                      </tr>
+                        </Td>
+                      </Tr>
                       {/* Between-row insert bar (hover-insert) — custom line inherits the group */}
-                      <tr>
-                        <td colSpan={7} className="border-0 p-0">
+                      <Tr hoverable={false}>
+                        <Td colSpan={7} className="!border-b-0 p-0">
                           <div className="flex h-2.5 items-center justify-center">
                             <button
                               type="button"
@@ -948,13 +957,13 @@ export const CostApproachSection = memo(function CostApproachSection({
                               +
                             </button>
                           </div>
-                        </td>
-                      </tr>
+                        </Td>
+                      </Tr>
                       </Fragment>
                     );
                   })}
-                  <tr className="bg-surface-2">
-                    <td colSpan={7} className="px-4 py-2">
+                  <Tr hoverable={false} className="bg-surface-2">
+                    <Td colSpan={7} className="py-2">
                       <div className="flex items-center gap-2.5">
                         <select
                           value=""
@@ -994,13 +1003,12 @@ export const CostApproachSection = memo(function CostApproachSection({
                           تُفتح بقية الحقول بعد اختيار البند
                         </span>
                       </div>
-                    </td>
-                  </tr>
+                    </Td>
+                  </Tr>
                 </Fragment>
               ))}
-            </tbody>
-          </table>
-        </div>
+          </TBody>
+        </Table>
         <div className="flex justify-between border-t border-border bg-surface-2 px-4 py-3">
           <span className="text-xs text-text-2">مجموع البنود = التكلفة المباشرة</span>
           <span dir="ltr" className="text-base font-extrabold text-heading">
@@ -1076,7 +1084,7 @@ export const CostApproachSection = memo(function CostApproachSection({
                     dir="ltr"
                     value={financingRate}
                     onChange={(e) => setFinancingRate(e.target.value)}
-                    className={cn(vwInputClassName, "text-center")}
+                    className={cn(opsFldControl, "font-semibold text-center")}
                   />
                 </label>
                 <label className="flex flex-1 flex-col gap-1">
@@ -1085,7 +1093,7 @@ export const CostApproachSection = memo(function CostApproachSection({
                     dir="ltr"
                     value={financingMonths}
                     onChange={(e) => setFinancingMonths(e.target.value)}
-                    className={cn(vwInputClassName, "text-center")}
+                    className={cn(opsFldControl, "font-semibold text-center")}
                   />
                 </label>
               </div>

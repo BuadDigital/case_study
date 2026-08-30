@@ -1,6 +1,9 @@
 "use client";
 
-import { cn } from "@platform/ui-kit";
+import {
+  cn,
+  opsEmptyHint,
+} from "@platform/ui-kit";
 import type { PoPropertyIntake } from "@case-study/mfe/lib/prototype/po-intake-data";
 import {
   downloadPropertyDetailDocument,
@@ -130,7 +133,7 @@ function PropertyTransactionDocuments({
 
   if (docs.length === 0) {
     return (
-      <p className="rounded-lg border border-dashed border-border-md bg-surface px-3 py-4 text-center text-[12px] text-text-3">
+      <p className={opsEmptyHint}>
         لا توجد مستندات مرفوعة بعد لهذه المعاملة.
       </p>
     );
@@ -197,7 +200,7 @@ export function EvaluatorPropertyTab({
           inspectionTaskId={property.inspectionTaskId ?? null}
         />
       ) : (
-        <p className="rounded-lg border border-dashed border-border-md bg-surface px-3 py-4 text-center text-[12px] text-text-3">
+        <p className={opsEmptyHint}>
           تعذّر تحميل مستندات المعاملة — افتح تفاصيل العقار من قائمة أوامر العمل.
         </p>
       )}

@@ -10,6 +10,7 @@ import {
   OperationalToolbarSearch,
   OperationalToolbarSelect,
   cn,
+  opsFloatPanel,
   useToast,
 } from "@platform/ui-kit";
 import { useEscapeKey } from "@platform/app-shared/hooks/use-escape-key";
@@ -655,7 +656,7 @@ export function PropertyMapView() {
               {dateLabel ? <span>{dateLabel}</span> : null}
             </button>
             {dateOpen ? (
-              <div className="absolute end-0 top-[calc(100%+6px)] z-[1100] w-[250px] rounded-[12px] border border-border bg-surface p-2 shadow-[var(--shadow-lg)]">
+              <div className={cn(opsFloatPanel, "absolute end-0 top-[calc(100%+6px)] z-[1100] w-[250px] p-2")}>
                 {DATE_PRESETS.map((p) => (
                   <button
                     key={p.value}
@@ -888,7 +889,7 @@ export function PropertyMapView() {
         ) : null}
 
         {selection?.kind === "cluster" ? (
-          <div className="absolute end-3.5 top-3.5 z-[1100] max-h-[70%] w-[280px] overflow-y-auto rounded-[12px] border border-border bg-surface shadow-[var(--shadow-lg)]">
+          <div className={cn(opsFloatPanel, "absolute end-3.5 top-3.5 z-[1100] max-h-[70%] w-[280px] overflow-y-auto")}>
             <div className="flex items-center justify-between border-b border-border px-3 py-2">
               <div className="text-[12.5px] font-bold text-heading">
                 {selection.ids.length} مواقع في هذه النقطة
@@ -933,7 +934,7 @@ export function PropertyMapView() {
           </div>
         ) : null}
 
-        <div className="pointer-events-none absolute inset-x-3.5 bottom-3.5 z-[400] flex flex-wrap items-center gap-3.5 rounded-[10px] border border-border bg-white/95 px-3.5 py-2 text-[12px] text-text-2 shadow-[var(--shadow)]">
+        <div className="pointer-events-none absolute inset-x-3.5 bottom-3.5 z-[400] flex flex-wrap items-center gap-3.5 rounded-[10px] border border-border bg-white/95 px-3.5 py-2 text-[12px] text-text-2 shadow-card">
           <LegendDot color="#12284C" label="نشط" ring />
           <LegendDot color="#8a8d96" label="أرشيف" />
           <LegendDot color="#a4906f" label="مقارن" diamond />
@@ -978,7 +979,8 @@ function LayerSidePanel({
   return (
     <div
       className={cn(
-        "absolute start-16 top-2.5 z-[960] flex max-h-[380px] flex-col overflow-hidden rounded-[12px] border border-border bg-surface shadow-[var(--shadow-lg)]",
+        opsFloatPanel,
+        "absolute start-16 top-2.5 z-[960] flex max-h-[380px] flex-col",
         wide ? "w-[320px]" : "w-[250px]",
       )}
     >
@@ -1169,7 +1171,7 @@ function DetailCard({
   onAction?: () => void;
 }) {
   return (
-    <aside className="absolute bottom-3.5 end-3.5 top-3.5 z-[950] flex w-[330px] max-w-[calc(100%-1.75rem)] flex-col overflow-hidden rounded-[12px] border border-border bg-surface shadow-[var(--shadow-lg)]">
+    <aside className={cn(opsFloatPanel, "absolute bottom-3.5 end-3.5 top-3.5 z-[950] flex w-[330px] max-w-[calc(100%-1.75rem)] flex-col")}>
       <div className="border-b border-border bg-[#faf8f3] px-4 py-3.5">
         <div className="flex items-start justify-between gap-2">
           <span className="rounded-md bg-[#f1ece2] px-2 py-0.5 text-[11px] font-bold text-gold-d">

@@ -12,6 +12,7 @@ import {
 import { apiConfig } from "@platform/app-shared/auth/api-config";
 import {
   cn,
+  EmptyState,
   GoogleMapPin,
   googleMapsSearchUrl,
   InlineLoadingSkeleton,
@@ -24,7 +25,6 @@ import {
 import {
   opsBtnGhost,
   opsBtnPrimary,
-  opsEmptyHint,
   opsFld,
   opsFldControl,
   opsFldFull,
@@ -753,9 +753,9 @@ export function ComparablePropertiesView() {
         </div>
         <div className="px-4 pb-2 sm:px-[18px]">
           {rows.length === 0 ? (
-            <p className={opsEmptyHint}>
-              {loading ? "جاري التحميل…" : "لا مقارنات."}
-            </p>
+            <EmptyState
+              line={loading ? "جاري التحميل…" : "لا مقارنات."}
+            />
           ) : (
             <div className={cn(loading && "opacity-60")}>
               {rows.map((row) => (

@@ -1,5 +1,9 @@
 "use client";
 
+import {
+  opsEmptyHint,
+} from "@platform/ui-kit";
+
 import { useEffect, useState } from "react";
 import {
   isCommercialShopInspectionContext,
@@ -208,13 +212,13 @@ export function EvaluatorInspectionFactsSection({
         عليها تقرير التقييم — وليست استعراض تقرير التقييم.
       </EngInfo>
       {!inspectionTaskId ? (
-        <p className="rounded-lg border border-dashed border-border-md bg-surface px-3 py-4 text-center text-[12px] text-text-3">
+        <p className={opsEmptyHint}>
           لم تُنشأ مهمة معاينة عقار لهذه المعاملة بعد.
         </p>
       ) : loading ? (
         <p className="text-[12px] text-text-3">جاري تحميل بيانات معاينة العقار…</p>
       ) : !workspace || (features.length === 0 && extras.length === 0) ? (
-        <p className="rounded-lg border border-dashed border-border-md bg-surface px-3 py-4 text-center text-[12px] text-text-3">
+        <p className={opsEmptyHint}>
           لم يُدخل المعاين بيانات معاينة العقار بعد — ستظهر هنا فور إرسالها.
         </p>
       ) : (

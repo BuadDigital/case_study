@@ -2,7 +2,10 @@
 
 import Link from "next/link";
 import { useMemo } from "react";
-import { cn } from "@platform/ui-kit";
+import {
+  cn,
+  opsTapCard,
+} from "@platform/ui-kit";
 import { useOperationsTasksQuery } from "../../query/operations-tasks-queries";
 import {
   operationsTaskStatusLabel,
@@ -135,7 +138,7 @@ export function PropertyDetailMobileGlance({
         {primaryOps ? (
           <Link
             href={operationsTaskPath(primaryOps.id)}
-            className="flex min-h-11 items-center justify-between gap-2 rounded-[10px] border border-border bg-surface px-3 py-2.5 no-underline transition-colors active:bg-row-hover"
+            className={cn(opsTapCard, "flex min-h-11 items-center justify-between gap-2 rounded-[10px] px-3 py-2.5 no-underline shadow-none")}
           >
             <div className="min-w-0">
               <div className="text-[11px] font-medium text-text-3">
@@ -197,7 +200,8 @@ function GlanceChip({
       type="button"
       onClick={onClick}
       className={cn(
-        "flex min-h-[4.25rem] flex-col items-stretch justify-center rounded-[10px] border border-border bg-surface px-2.5 py-2 text-start font-[inherit] transition-colors active:bg-row-hover",
+        opsTapCard,
+        "flex min-h-[4.25rem] flex-col items-stretch justify-center rounded-[10px] px-2.5 py-2 font-[inherit] shadow-none",
         tone === "teal" && "border-success/35",
         tone === "amber" && "border-warning/40",
       )}

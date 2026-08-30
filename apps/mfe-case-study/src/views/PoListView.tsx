@@ -40,9 +40,11 @@ import {
   SkeletonTableRows,
   StatusPill,
   Table,
+  TableEmptyRow,
   TBody,
   Td,
   TdAction,
+  TdLtr,
   Th,
   ThAction,
   THead,
@@ -58,7 +60,6 @@ import {
   ActiveQueueMobileCards,
   type ActiveQueueMobileCardItem,
 } from "../components/queue/ActiveQueueMobileCards";
-import { ltrValueClass } from "../components/po-intake/PropertyDetailFields";
 import { usePrototype } from "@platform/app-shared/contexts/PrototypeContext";
 import {
   formatDateAr,
@@ -839,8 +840,7 @@ export function PoListView() {
         </PageToolbar>
 
         <OperationalPanel className="shrink-0 overflow-visible max-lg:border-0 max-lg:bg-transparent max-lg:shadow-none max-lg:rounded-none">
-          <div className="hidden lg:block">
-          <Table pending={!statsReady}>
+          <Table framed pending={!statsReady} wrapClassName="hidden lg:block">
                 <THead>
                   <Tr hoverable={false}>
                     <Th>
@@ -887,21 +887,16 @@ export function PoListView() {
                   {!statsReady ? (
                     <SkeletonTableRows rows={10} cols={11} />
                   ) : filtered.length === 0 ? (
-                    <Tr hoverable={false}>
-                      <Td
-                        colSpan={11}
-                        className="cursor-default py-10 text-center text-[13px] text-text-3"
-                      >
-                        <div className="flex flex-col items-center justify-center gap-2">
-                          <InboxIcon />
-                          <span>
-                            {list.length === 0
-                              ? "لا توجد أوامر عمل."
-                              : "لا توجد نتائج مطابقة"}
-                          </span>
-                        </div>
-                      </Td>
-                    </Tr>
+                    <TableEmptyRow colSpan={11}>
+                      <div className="flex flex-col items-center justify-center gap-2">
+                        <InboxIcon />
+                        <span>
+                          {list.length === 0
+                            ? "لا توجد أوامر عمل."
+                            : "لا توجد نتائج مطابقة"}
+                        </span>
+                      </div>
+                    </TableEmptyRow>
                   ) : (
                     pageRows.map((entry) => {
                       const p = entry.view === "po" ? entry.item.row : entry.item.row;
@@ -1006,29 +1001,17 @@ export function PoListView() {
                           <Td className="whitespace-nowrap">
                             <PoStatusPill status={p.status} />
                           </Td>
-                          <Td className="whitespace-nowrap text-[13px] text-text-2">
-                            {p.date ? (
-                              <bdi dir="ltr" className={ltrValueClass}>
-                                {formatDateAr(p.date)}
-                              </bdi>
-                            ) : (
-                              "—"
-                            )}
-                          </Td>
-                          <Td
+                          <TdLtr className="whitespace-nowrap text-[13px] text-text-2">
+                            {p.date ? formatDateAr(p.date) : "—"}
+                          </TdLtr>
+                          <TdLtr
                             className={cn(
                               "whitespace-nowrap text-[13px] font-semibold",
                               urgent ? "text-red" : "text-heading",
                             )}
                           >
-                            {p.dueDate ? (
-                              <bdi dir="ltr" className={ltrValueClass}>
-                                {formatDateAr(p.dueDate)}
-                              </bdi>
-                            ) : (
-                              "—"
-                            )}
-                          </Td>
+                            {p.dueDate ? formatDateAr(p.dueDate) : "—"}
+                          </TdLtr>
                           <Td className="whitespace-nowrap text-[13px] font-semibold text-heading">
                             {p.specialist && p.specialist !== "—" ? (
                               p.specialist
@@ -1065,7 +1048,6 @@ export function PoListView() {
                   )}
                 </TBody>
               </Table>
-          </div>
 
           <div className="px-0 pb-1 lg:hidden">
             <ActiveQueueMobileCards

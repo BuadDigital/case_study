@@ -9,20 +9,17 @@ import {
   markEnfazFinanceFlag,
   unmarkEnfazFinanceFlag,
 } from "@platform/app-shared/prototype/enfaz-billing-api";
-import { useToast } from "@platform/ui-kit";
 import {
-  finEmpty,
-  finEmptyS,
-  finEmptyT,
-  finFld,
-  finFldLbl,
-  finFormGrid,
-  finGhost,
-  finMuted,
-  finNote,
-  finPrimary,
-  finScrollY,
-} from "../lib/finance-tw";
+  cn,
+  EmptyState,
+  opsBtnGhost,
+  opsBtnPrimary,
+  opsFld,
+  opsFormGrid,
+  opsTfNote,
+  useToast,
+} from "@platform/ui-kit";
+import { finFldLbl, finMuted, finScrollY } from "../lib/finance-tw";
 
 export function FinanceEnfazFollowupsPanel({ poNumber }: { poNumber: string }) {
   const queryClient = useQueryClient();
@@ -109,7 +106,7 @@ export function FinanceEnfazFollowupsPanel({ poNumber }: { poNumber: string }) {
 
   return (
     <div className="mt-4 border-t border-border pt-4">
-      <p className={finNote}>
+      <p className={cn(opsTfNote, "mb-3.5")}>
         سجّل محاولات المطالبة (محفوظة على الخادم). يمكن أيضاً إيقاف أو استبعاد
         المعاملة يدوياً عندما يتعذّر مركز التصفية.
       </p>
@@ -117,7 +114,7 @@ export function FinanceEnfazFollowupsPanel({ poNumber }: { poNumber: string }) {
       <div className="mb-3 flex flex-wrap gap-2">
         <button
           type="button"
-          className={finGhost}
+          className={opsBtnGhost}
           disabled={busy}
           onClick={() => void setFlag("stopped")}
         >
@@ -125,7 +122,7 @@ export function FinanceEnfazFollowupsPanel({ poNumber }: { poNumber: string }) {
         </button>
         <button
           type="button"
-          className={finGhost}
+          className={opsBtnGhost}
           disabled={busy}
           onClick={() => void setFlag("difficult")}
         >
@@ -133,7 +130,7 @@ export function FinanceEnfazFollowupsPanel({ poNumber }: { poNumber: string }) {
         </button>
         <button
           type="button"
-          className={finGhost}
+          className={opsBtnGhost}
           disabled={busy}
           onClick={() => void setFlag("excluded")}
         >
@@ -141,7 +138,7 @@ export function FinanceEnfazFollowupsPanel({ poNumber }: { poNumber: string }) {
         </button>
         <button
           type="button"
-          className={finGhost}
+          className={opsBtnGhost}
           disabled={busy}
           onClick={() => void setFlag("clear")}
         >
@@ -149,8 +146,8 @@ export function FinanceEnfazFollowupsPanel({ poNumber }: { poNumber: string }) {
         </button>
       </div>
 
-      <div className={finFormGrid}>
-        <label className={finFld}>
+      <div className={opsFormGrid}>
+        <label className={opsFld}>
           <span className={finFldLbl}>التاريخ</span>
           <input
             type="date"
@@ -160,7 +157,7 @@ export function FinanceEnfazFollowupsPanel({ poNumber }: { poNumber: string }) {
             dir="ltr"
           />
         </label>
-        <label className={finFld}>
+        <label className={opsFld}>
           <span className={finFldLbl}>القناة</span>
           <select
             className="min-h-[38px] rounded-lg border border-border-md bg-surface px-3 font-[inherit] text-[13px] text-text outline-none focus:border-gold"
@@ -176,7 +173,7 @@ export function FinanceEnfazFollowupsPanel({ poNumber }: { poNumber: string }) {
         </label>
       </div>
 
-      <label className={`${finFld} mt-3`}>
+      <label className={`${opsFld} mt-3`}>
         <span className={finFldLbl}>ملاحظات المتابعة *</span>
         <textarea
           className="min-h-[72px] resize-y rounded-lg border border-border-md bg-surface px-3 py-2 font-[inherit] text-[13px] text-text outline-none focus:border-gold"
@@ -189,7 +186,7 @@ export function FinanceEnfazFollowupsPanel({ poNumber }: { poNumber: string }) {
       <div className="mt-3 flex justify-end">
         <button
           type="button"
-          className={finPrimary}
+          className={opsBtnPrimary}
           disabled={!notes.trim() || busy}
           onClick={() => void save()}
         >
@@ -198,16 +195,13 @@ export function FinanceEnfazFollowupsPanel({ poNumber }: { poNumber: string }) {
       </div>
 
       {followupsQuery.isPending ? (
-        <div className={finEmpty}>
-          <div className={finEmptyT}>جاري تحميل المتابعات…</div>
-        </div>
+        <EmptyState panel line="جاري تحميل المتابعات…" />
       ) : entries.length === 0 ? (
-        <div className={finEmpty}>
-          <div className={finEmptyT}>لا متابعات مسجّلة بعد.</div>
-          <div className={finEmptyS}>
-            تظهر هنا محاولات الاستدعاء بعد إضافتها.
-          </div>
-        </div>
+        <EmptyState
+          panel
+          line="لا متابعات مسجّلة بعد."
+          hint="تظهر هنا محاولات الاستدعاء بعد إضافتها."
+        />
       ) : (
         <div className={`${finScrollY} mt-3 max-h-[200px] border border-border`}>
           <ul className="m-0 list-none divide-y divide-border p-0">
@@ -220,7 +214,7 @@ export function FinanceEnfazFollowupsPanel({ poNumber }: { poNumber: string }) {
                   >
                     {(e.followedAtUtc || "").slice(0, 10) || "—"}
                   </span>
-                  <span className={finGhost}>{e.channelLabel || e.channel}</span>
+                  <span className={opsBtnGhost}>{e.channelLabel || e.channel}</span>
                 </div>
                 <p className={`${finMuted} mt-1 whitespace-pre-wrap`}>
                   {e.notes}

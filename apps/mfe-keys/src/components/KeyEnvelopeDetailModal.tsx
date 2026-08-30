@@ -13,9 +13,24 @@ import {
   ModalOverlay,
   ModalTitle,
   Select,
-  StatusPill,
   Spinner,
+  StatusPill,
+  TBody,
+  THead,
+  Table,
+  TableFrame,
+  Td,
+  TdLtr,
+  Th,
+  Tr,
   cn,
+  opsAccentBtnSm,
+  opsBtnGhost,
+  opsBtnPrimary,
+  opsPanelCard,
+  opsPanelNote,
+  opsPpHeadCard,
+  opsSurfaceCard,
   useToast,
 } from "@platform/ui-kit";
 import { useDistributionAssigneesQuery } from "@settings/mfe/query/settings-queries";
@@ -54,21 +69,10 @@ import {
 } from "../lib/keys-envelope-types";
 import { KeyEnvelopeAttachmentPreview } from "./KeyEnvelopeAttachmentPreview";
 import {
-  KEYS_ASSIGN_COLS,
   KeysBackLink,
-  KeysGridHead,
-  KeysGridRow,
   KeysPpCell,
   KeysStatusPill,
   KeysTabBar,
-  KeysTd,
-  KeysTh,
-  keysGhostBtnClassName,
-  keysPrimaryBtnClassName,
-  keysPanelNoteClassName,
-  keysPpHeadClassName,
-  keysRemindBtnClassName,
-  keysCardClassName,
 } from "./KeysHtmlPrimitives";
 
 /** HTML detail dates show as DD/MM/YYYY (screenshot + sample data). */
@@ -381,13 +385,13 @@ export function KeyEnvelopeDetailPage({
       <KeysBackLink onClick={onBack}>{backLabel}</KeysBackLink>
 
       {loading || !env ? (
-        <div className={cn(keysPpHeadClassName, "py-8 text-sm text-text-3")}>
+        <div className={cn(opsPpHeadCard, "py-8 text-sm text-text-3")}>
           جاري التحميل…
         </div>
       ) : (
         <>
           {/* pp-head — renderKeyDetail */}
-          <div className={cn(keysPpHeadClassName, "max-sm:px-4 max-sm:py-4")}>
+          <div className={cn(opsPpHeadCard, "max-sm:px-4 max-sm:py-4")}>
             <div className="flex flex-wrap items-start justify-between gap-[18px]">
               <div className="flex min-w-0 items-center gap-[15px]">
                 <span className="grid size-[50px] shrink-0 place-items-center rounded-[13px] bg-gold-soft text-gold-d max-sm:size-11">
@@ -420,7 +424,7 @@ export function KeyEnvelopeDetailPage({
                 <button
                   type="button"
                   className={cn(
-                    keysPrimaryBtnClassName,
+                    opsBtnPrimary,
                     "h-[38px] w-full justify-center px-[13px] sm:w-auto",
                   )}
                   onClick={() => setHandoffOpen(true)}
@@ -634,7 +638,7 @@ function AssignmentsPanel({
 }) {
   if (rows.length === 0) {
     return (
-      <div className={keysPanelNoteClassName}>
+      <div className={opsPanelNote}>
         لا توجد إسنادات صكوك لهذا الظرف بعد.
       </div>
     );
@@ -642,80 +646,78 @@ function AssignmentsPanel({
 
   return (
     <>
-      <div className={cn(keysCardClassName, "hidden overflow-x-auto lg:block")}>
-        <div className="min-w-[780px]">
-          <KeysGridHead cols={KEYS_ASSIGN_COLS}>
-            <KeysTh align="start">{PROPERTY_IDENTIFIER_COLUMN_LABEL}</KeysTh>
-            <KeysTh align="start">العقار</KeysTh>
-            <KeysTh align="start">أمر العمل</KeysTh>
-            <KeysTh align="start">حالة التجربة</KeysTh>
-            <KeysTh align="start">ملاحظة</KeysTh>
-            <KeysTh>تأكيد ميداني</KeysTh>
-          </KeysGridHead>
-          {rows.map((a) => {
-            const color = assignmentStatusColor(a.status);
-            return (
-              <KeysGridRow
-                key={a.id}
-                cols={KEYS_ASSIGN_COLS}
-                minHeight={52}
-              >
-                <KeysTd>
-                  <span className="text-[13.5px] font-bold text-gold-d">
+      <TableFrame className="hidden lg:block">
+        <Table className="min-w-[780px]">
+          <THead>
+            <Tr hoverable={false}>
+              <Th>{PROPERTY_IDENTIFIER_COLUMN_LABEL}</Th>
+              <Th>العقار</Th>
+              <Th>أمر العمل</Th>
+              <Th>حالة التجربة</Th>
+              <Th>ملاحظة</Th>
+              <Th className="text-center">تأكيد ميداني</Th>
+            </Tr>
+          </THead>
+          <TBody>
+            {rows.map((a) => {
+              const color = assignmentStatusColor(a.status);
+              return (
+                <Tr key={a.id} hoverable={false}>
+                  <TdLtr bare className="text-[13.5px] font-bold text-gold-d">
                     {a.deedNumber}
-                  </span>
-                </KeysTd>
-                <KeysTd>
-                  <span className="truncate text-[13px] text-text-2">
-                    {propertyLabel(env, a)}
-                  </span>
-                </KeysTd>
-                <KeysTd col>
-                  <span className="text-[12px] font-semibold text-text-2">
-                    {poForAssignment(env, a)}
-                  </span>
-                </KeysTd>
-                <KeysTd>
-                  <KeysStatusPill
-                    label={assignmentStatusLabel(a.status)}
-                    color={color}
-                  />
-                </KeysTd>
-                <KeysTd>
-                  <span className="truncate text-[13px] text-text-2">
-                    {a.notes || "—"}
-                  </span>
-                </KeysTd>
-                <KeysTd align="center">
-                  {a.status === "pending" && canEdit ? (
-                    <button
-                      type="button"
-                      disabled={busy}
-                      aria-busy={busy || undefined}
-                      className={cn(
-                        keysGhostBtnClassName,
-                        "inline-flex h-[30px] items-center gap-1.5 whitespace-nowrap px-3.5 text-[12px] text-gold-d",
-                      )}
-                      onClick={() => onMatch(a)}
-                    >
-                      {busy ? <Spinner /> : null}
-                      تسجيل نتيجة المطابقة…
-                    </button>
-                  ) : (
-                    <span className="text-[11.5px] text-text-3">
-                      {displayPersonName(a.confirmedByName) !== "—"
-                        ? `أكّده ${displayPersonName(a.confirmedByName)}`
-                        : a.status !== "pending"
-                          ? "مؤكّد"
-                          : "—"}
+                  </TdLtr>
+                  <Td>
+                    <span className="truncate text-[13px] text-text-2">
+                      {propertyLabel(env, a)}
                     </span>
-                  )}
-                </KeysTd>
-              </KeysGridRow>
-            );
-          })}
-        </div>
-      </div>
+                  </Td>
+                  <Td>
+                    <span className="text-[12px] font-semibold text-text-2">
+                      {poForAssignment(env, a)}
+                    </span>
+                  </Td>
+                  <Td>
+                    <KeysStatusPill
+                      label={assignmentStatusLabel(a.status)}
+                      color={color}
+                    />
+                  </Td>
+                  <Td>
+                    <span className="truncate text-[13px] text-text-2">
+                      {a.notes || "—"}
+                    </span>
+                  </Td>
+                  <Td className="text-center">
+                    {a.status === "pending" && canEdit ? (
+                      <button
+                        type="button"
+                        disabled={busy}
+                        aria-busy={busy || undefined}
+                        className={cn(
+                          opsBtnGhost,
+                          "inline-flex h-[30px] items-center gap-1.5 whitespace-nowrap px-3.5 text-[12px] text-gold-d",
+                        )}
+                        onClick={() => onMatch(a)}
+                      >
+                        {busy ? <Spinner /> : null}
+                        تسجيل نتيجة المطابقة…
+                      </button>
+                    ) : (
+                      <span className="text-[11.5px] text-text-3">
+                        {displayPersonName(a.confirmedByName) !== "—"
+                          ? `أكّده ${displayPersonName(a.confirmedByName)}`
+                          : a.status !== "pending"
+                            ? "مؤكّد"
+                            : "—"}
+                      </span>
+                    )}
+                  </Td>
+                </Tr>
+              );
+            })}
+          </TBody>
+        </Table>
+      </TableFrame>
 
       <ul className="m-0 flex list-none flex-col gap-2.5 p-0 lg:hidden">
         {rows.map((a) => {
@@ -723,7 +725,7 @@ function AssignmentsPanel({
           return (
             <li
               key={`m-${a.id}`}
-              className="rounded-xl border border-border bg-surface px-3.5 py-3 shadow-[var(--shadow)]"
+              className={cn(opsPanelCard, "px-3.5 py-3")}
             >
               <div className="flex items-start justify-between gap-2">
                 <span
@@ -856,7 +858,7 @@ function CustodyPanel({
       <div className="mb-3 text-[13px] font-extrabold text-heading">
         سلسلة العهدة (من استلم ومن سلّم)
       </div>
-      <div className={cn(keysCardClassName, "px-[22px] py-1.5")}>
+      <div className={cn(opsSurfaceCard, "px-[22px] py-1.5")}>
         {chain.map((item, i) => (
           <div
             key={item.key}
@@ -898,7 +900,7 @@ function CustodyPanel({
                     type="button"
                     disabled={busy}
                     aria-busy={busy || undefined}
-                    className={cn(keysRemindBtnClassName, "inline-flex items-center gap-1.5")}
+                    className={cn(opsAccentBtnSm, "inline-flex items-center gap-1.5")}
                     onClick={() => onConfirm(item.handoff!.id)}
                   >
                     {busy ? <Spinner /> : null}
@@ -954,7 +956,7 @@ function timelineEventColor(eventType: string): string {
 function TimelinePanel({ env }: { env: KeyEnvelopeRow }) {
   if (env.timeline.length === 0) {
     return (
-      <div className={keysPanelNoteClassName}>
+      <div className={opsPanelNote}>
         لا توجد حركات مسجّلة على هذا الظرف بعد.
       </div>
     );
@@ -965,7 +967,7 @@ function TimelinePanel({ env }: { env: KeyEnvelopeRow }) {
       <div className="mb-3 text-[13px] font-extrabold text-heading">
         سجل الحركات
       </div>
-      <div className="rounded-xl border border-border bg-surface px-[22px] py-1.5 shadow-[var(--shadow)]">
+      <div className={cn(opsPanelCard, "px-[22px] py-1.5")}>
         {env.timeline.map((item, i) => {
           const color = timelineEventColor(item.eventType);
           return (
@@ -1023,7 +1025,7 @@ function CourtAccessPanel({
 }) {
   if (env.linkedProperties.length === 0) {
     return (
-      <div className={keysPanelNoteClassName}>
+      <div className={opsPanelNote}>
         لا توجد عقارات مرتبطة بهذا الطلب.
       </div>
     );
@@ -1040,7 +1042,7 @@ function CourtAccessPanel({
         return (
           <div
             key={p.propertyId}
-            className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-border bg-surface px-4 py-3.5 shadow-[var(--shadow)]"
+            className={cn(opsPanelCard, "flex flex-wrap items-center justify-between gap-3 px-4 py-3.5")}
           >
             <div className="min-w-0 flex-1">
               <div className="flex flex-wrap items-center gap-2.5">

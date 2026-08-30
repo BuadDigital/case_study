@@ -13,14 +13,12 @@ import {
 } from "../lib/finance-nav";
 import { financeLeafForArea } from "@platform/app-shared/prototype/financial-nav";
 import { FinanceMyTasks } from "./FinanceMyTasks";
-import { finCard, finEmpty, finEmptyT } from "../lib/finance-tw";
+import { EmptyState, opsLetterCard } from "@platform/ui-kit";
 import { useFinanceTabCounts } from "../query/finance-tab-counts";
 
 const areaChunkFallback = () => (
-  <div className={finCard}>
-    <div className={finEmpty}>
-      <div className={finEmptyT}>جاري التحميل…</div>
-    </div>
+  <div className={opsLetterCard}>
+    <EmptyState panel line="جاري التحميل…" />
   </div>
 );
 

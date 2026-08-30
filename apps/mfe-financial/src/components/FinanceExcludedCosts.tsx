@@ -8,26 +8,23 @@ import { loadInspectorFeesSummary } from "@platform/app-shared/prototype/inspect
 import { loadPartyBillingStatements } from "@platform/app-shared/prototype/party-billing-statements-api";
 import { resolvePartyName } from "@platform/app-shared/fees/party-fee-meta";
 import { useStaffUsersQuery } from "@settings/mfe/query/settings-queries";
-import { cn } from "@platform/ui-kit";
 import {
-  finCard,
-  finEmpty,
-  finEmptyS,
-  finEmptyT,
-  finGridExcluded,
-  finGroupHead,
-  finGroupTitle,
-  finMuted,
-  finNote,
-  finNum,
-  finPo,
-  finRow,
-  finScroll,
-  finStatusFor,
-  finTd,
-  finTh,
-  finThead,
-} from "../lib/finance-tw";
+  EmptyState,
+  StatusPill,
+  TBody,
+  THead,
+  Table,
+  TableFrame,
+  Td,
+  TdLtr,
+  Th,
+  Tr,
+  cn,
+  finStatusStyle,
+  opsLetterCard,
+  opsTfNote,
+} from "@platform/ui-kit";
+import { finGroupHead, finGroupTitle, finMuted } from "../lib/finance-tw";
 
 /**
  * Excluded: written-off/excluded lines before entitlement + cancelled payrolls (log).
@@ -79,30 +76,27 @@ export function FinanceExcludedCosts({
 
   if (pending) {
     return (
-      <div className={finCard}>
-        <div className={finEmpty}>
-          <div className={finEmptyT}>جاري التحميل…</div>
-        </div>
+      <div className={opsLetterCard}>
+        <EmptyState panel line="جاري التحميل…" />
       </div>
     );
   }
 
   if (excludedLines.length === 0 && cancelledStatements.length === 0) {
     return (
-      <div className={finCard}>
-        <div className={finEmpty}>
-          <div className={finEmptyT}>لا مستبعدة حالياً.</div>
-          <div className={finEmptyS}>
-            تظهر هنا البنود المستبعدة قبل الاستحقاق والمسيرات الملغاة كسجل.
-          </div>
-        </div>
+      <div className={opsLetterCard}>
+        <EmptyState
+          panel
+          line="لا مستبعدة حالياً."
+          hint="تظهر هنا البنود المستبعدة قبل الاستحقاق والمسيرات الملغاة كسجل."
+        />
       </div>
     );
   }
 
   return (
     <div className="flex flex-col gap-4">
-      <p className={finNote}>
+      <p className={cn(opsTfNote, "mb-3.5")}>
         بنود خرجت من دورة الصرف ولن تُدفع — ملغاة أو مخسومة بالكامل، سُوّيت بين
         المشرف والمكتب الهندسي قبل الاستحقاق. لا تصل المالية إلا الأتعاب المتفق
         عليها، فهذا التبويب للمطابقة والسجل فقط.
@@ -118,38 +112,40 @@ export function FinanceExcludedCosts({
               </span>
             </h3>
           </div>
-          <div className={finCard}>
-            <div className={finScroll}>
-              <div>
-                <div className={cn(finThead, finGridExcluded)}>
-                  <div className={finTh}>المستحق</div>
-                  <div className={finTh}>المرجع</div>
-                  <div className={finTh}>أمر العمل</div>
-                  <div className={finTh}>الصافي</div>
-                  <div className={finTh}>السبب</div>
-                </div>
+          <TableFrame>
+            <Table>
+              <THead>
+                <Tr hoverable={false}>
+                  <Th>المستحق</Th>
+                  <Th>المرجع</Th>
+                  <Th>أمر العمل</Th>
+                  <Th className="text-center">الصافي</Th>
+                  <Th>السبب</Th>
+                </Tr>
+              </THead>
+              <TBody>
                 {excludedLines.map((row) => (
-                  <div
-                    key={row.workflowTaskId}
-                    className={cn(finRow, finGridExcluded)}
-                  >
-                    <div className={finTd}>
+                  <Tr key={row.workflowTaskId} hoverable={false}>
+                    <Td>
                       <span className="font-semibold text-heading">
                         {resolvePartyName(row.assigneeId, staffUsers)}
                       </span>
-                    </div>
-                    <div className={finTd}>
+                    </Td>
+                    <Td>
                       <span className={finMuted} title={row.propertyLabel}>
                         {row.propertyLabel || "—"}
                       </span>
-                    </div>
-                    <div className={finTd}>
-                      <span className={finPo}>{row.poNumber}</span>
-                    </div>
-                    <div className={finTd}>
-                      <span className={finNum}>{formatSar(row.netFeeSar)}</span>
-                    </div>
-                    <div className={finTd}>
+                    </Td>
+                    <TdLtr valueClassName="text-[13.5px] font-bold text-gold-d">
+                      {row.poNumber}
+                    </TdLtr>
+                    <TdLtr
+                      className="text-center"
+                      valueClassName="text-[14px] font-extrabold text-heading"
+                    >
+                      {formatSar(row.netFeeSar)}
+                    </TdLtr>
+                    <Td>
                       <span className={finMuted}>
                         {row.exclusionReason?.trim() ||
                           row.lastTransitionReason?.trim() ||
@@ -157,12 +153,12 @@ export function FinanceExcludedCosts({
                             ? "مستبعد من الصرف"
                             : "صافي صفر")}
                       </span>
-                    </div>
-                  </div>
+                    </Td>
+                  </Tr>
                 ))}
-              </div>
-            </div>
-          </div>
+              </TBody>
+            </Table>
+          </TableFrame>
         </section>
       ) : null}
 
@@ -176,54 +172,51 @@ export function FinanceExcludedCosts({
               </span>
             </h3>
           </div>
-          <div className={finCard}>
-            <div className={finScroll}>
-              <div>
-                <div
-                  className={cn(
-                    finThead,
-                    "min-w-full grid-cols-[minmax(110px,1fr)_minmax(120px,1.2fr)_100px_minmax(140px,1.3fr)]",
-                  )}
-                >
-                  <div className={finTh}>المرجع</div>
-                  <div className={finTh}>المستحق</div>
-                  <div className={finTh}>المبلغ</div>
-                  <div className={finTh}>سبب الإلغاء</div>
-                </div>
+          <TableFrame>
+            <Table>
+              <THead>
+                <Tr hoverable={false}>
+                  <Th>المرجع</Th>
+                  <Th>المستحق</Th>
+                  <Th className="text-center">المبلغ</Th>
+                  <Th>سبب الإلغاء</Th>
+                </Tr>
+              </THead>
+              <TBody>
                 {cancelledStatements.map((s) => (
-                  <div
-                    key={s.id}
-                    className={cn(
-                      finRow,
-                      "min-w-full grid-cols-[minmax(110px,1fr)_minmax(120px,1.2fr)_100px_minmax(140px,1.3fr)]",
-                    )}
-                  >
-                    <div className={finTd}>
-                      <span className={finPo}>{s.referenceNumber}</span>
-                      <span className={cn(finStatusFor("cancelled"), "ms-1.5")}>
-                        ملغى
+                  <Tr key={s.id} hoverable={false}>
+                    <Td>
+                      <span className="inline-flex flex-wrap items-center gap-1.5">
+                        <span
+                          dir="ltr"
+                          className="text-[13.5px] font-bold text-gold-d"
+                        >
+                          {s.referenceNumber}
+                        </span>
+                        <StatusPill label="ملغى" style={finStatusStyle("cancelled")} />
                       </span>
-                    </div>
-                    <div className={finTd}>
+                    </Td>
+                    <Td>
                       <span className="font-semibold text-heading">
                         {resolvePartyName(s.assigneeId, staffUsers)}
                       </span>
-                    </div>
-                    <div className={finTd}>
-                      <span className={finNum}>
-                        {formatSar(s.totalNetSar)}
-                      </span>
-                    </div>
-                    <div className={finTd}>
+                    </Td>
+                    <TdLtr
+                      className="text-center"
+                      valueClassName="text-[14px] font-extrabold text-heading"
+                    >
+                      {formatSar(s.totalNetSar)}
+                    </TdLtr>
+                    <Td>
                       <span className={finMuted}>
                         {(s.cancelReason ?? "").trim() || "—"}
                       </span>
-                    </div>
-                  </div>
+                    </Td>
+                  </Tr>
                 ))}
-              </div>
-            </div>
-          </div>
+              </TBody>
+            </Table>
+          </TableFrame>
         </section>
       ) : null}
     </div>

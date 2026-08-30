@@ -46,7 +46,13 @@ import {
   pickPrimaryPropertyDetailPhoto,
   type PropertyDetailDocumentEntry,
 } from "@case-study/mfe/lib/prototype/property-detail-documents";
-import { cn, Spinner } from "@platform/ui-kit";
+import {
+  Spinner,
+  cn,
+  opsChip,
+  opsFldControl,
+  opsTfLbl,
+} from "@platform/ui-kit";
 import type {
   EvaluatorReportChoices,
   EvaluatorSubmission,
@@ -63,13 +69,7 @@ import {
 import { formatValuationReportUsers } from "../../lib/evaluator/valuation-report-users";
 import { inspectionFactChips } from "./EvaluatorInspectionFactsSection";
 import { computePropertyTotal } from "../../lib/evaluator/value-estimation";
-import {
-  ValCard,
-  ValFieldsGrid,
-  valChipClassName,
-  valInputClassName,
-  valLabelClassName,
-} from "./EvaluatorHtmlPrimitives";
+import { ValCard, ValFieldsGrid } from "./EvaluatorHtmlPrimitives";
 import { apiConfig } from "@platform/app-shared/auth/api-config";
 
 const UNUSED = "__unused__";
@@ -466,7 +466,7 @@ export function EvaluatorValuationReportTab({
         {inspectionChips.length > 0 ? (
           <div className="mt-2 flex flex-wrap gap-1.5">
             {inspectionChips.map((chip) => (
-              <span key={chip} className={valChipClassName}>
+              <span key={chip} className={opsChip}>
                 {chip}
               </span>
             ))}
@@ -490,9 +490,9 @@ export function EvaluatorValuationReportTab({
             <p className={noteClassName}>يظهر فقط عند اختيار أسلوب الدخل.</p>
             <ValFieldsGrid min={160}>
               <div className="min-w-0">
-                <div className={valLabelClassName}>دخل سنوي (ر.س.)</div>
+                <div className={opsTfLbl}>دخل سنوي (ر.س.)</div>
                 <input
-                  className={valInputClassName}
+                  className={opsFldControl}
                   disabled={disabled}
                   dir="ltr"
                   value={choices.incomeAnnual}
@@ -500,9 +500,9 @@ export function EvaluatorValuationReportTab({
                 />
               </div>
               <div className="min-w-0">
-                <div className={valLabelClassName}>نسبة الشغور ٪</div>
+                <div className={opsTfLbl}>نسبة الشغور ٪</div>
                 <input
-                  className={valInputClassName}
+                  className={opsFldControl}
                   disabled={disabled}
                   dir="ltr"
                   value={choices.incomeVacancyPct}
@@ -510,9 +510,9 @@ export function EvaluatorValuationReportTab({
                 />
               </div>
               <div className="min-w-0">
-                <div className={valLabelClassName}>نسبة التشغيل ٪</div>
+                <div className={opsTfLbl}>نسبة التشغيل ٪</div>
                 <input
-                  className={valInputClassName}
+                  className={opsFldControl}
                   disabled={disabled}
                   dir="ltr"
                   value={choices.incomeOpexPct}
@@ -520,9 +520,9 @@ export function EvaluatorValuationReportTab({
                 />
               </div>
               <div className="min-w-0">
-                <div className={valLabelClassName}>معدل الرسملة ٪</div>
+                <div className={opsTfLbl}>معدل الرسملة ٪</div>
                 <input
-                  className={valInputClassName}
+                  className={opsFldControl}
                   disabled={disabled}
                   dir="ltr"
                   value={choices.incomeCapRatePct}

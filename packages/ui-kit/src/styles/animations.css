@@ -247,3 +247,22 @@
   62% { transform: scaleY(0.18); }
   100% { transform: scaleY(1); }
 }
+
+/* App-shell page motion (login, fee pricing) */
+@keyframes login-rise {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+}
+
+@keyframes pricing-panel-in {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}

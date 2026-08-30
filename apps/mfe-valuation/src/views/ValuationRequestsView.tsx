@@ -12,7 +12,6 @@ import {
   unwrapApiResult,
 } from "@platform/app-shared/prototype/work-orders-api-config";
 import {
-  StatusBadge,
   Button,
   KpiAlertIcon,
   KpiBand,
@@ -23,17 +22,22 @@ import {
   MobileKpiStatCards,
   Note,
   ReportPageBody,
+  SkeletonTableRows,
+  StatusBadge,
   SubpageHeader,
   SubpagePanel,
-  SkeletonTableRows,
-  Table,
   TBody,
-  Td,
-  Th,
   THead,
+  Table,
+  TableFrame,
+  Td,
+  TdLtr,
+  Th,
   Tr,
-  useToast,
   cn,
+  opsMobileCard,
+  opsSkeletonCard,
+  useToast,
 } from "@platform/ui-kit";
 import type { RoleId } from "@platform/types";
 import {
@@ -60,7 +64,7 @@ const mobileLoadingSkeleton = (
     {Array.from({ length: 4 }).map((_, i) => (
       <div
         key={i}
-        className="h-[100px] animate-pulse rounded-[14px] border border-border bg-surface-2"
+        className={cn(opsSkeletonCard, "h-[100px]")}
       />
     ))}
   </div>
@@ -297,7 +301,8 @@ export function ValuationRequestsView() {
 
         {/* After hydration mount only one tree (table or cards) — both used to build together. */}
         {isDesktopViewport === false ? null : (
-        <Table pending={!ready} wrapClassName="hidden lg:block">
+        <TableFrame className="hidden lg:block">
+        <Table pending={!ready}>
           <THead>
             <Tr hoverable={false}>
               <Th>رقم الطلب</Th>
@@ -350,7 +355,7 @@ export function ValuationRequestsView() {
                   <Td>
                     <StatusBadge status={v.status} />
                   </Td>
-                  <Td className="text-text-3">{v.date}</Td>
+                  <TdLtr className="text-text-3">{v.date}</TdLtr>
                   <Td>
                     <div className="flex flex-wrap gap-1">
                       {isApp && v.status === "progress" ? (
@@ -391,6 +396,7 @@ export function ValuationRequestsView() {
             )}
           </TBody>
         </Table>
+        </TableFrame>
         )}
 
         {isDesktopViewport === true ? null : (
@@ -414,7 +420,7 @@ export function ValuationRequestsView() {
                   <li
                     key={v.recordId}
                     className={cn(
-                      "overflow-hidden rounded-[14px] border border-border border-s-[3px] bg-surface px-3.5 py-3.5 shadow-[0_2px_8px_rgba(15,52,96,0.06)]",
+                      cn(opsMobileCard, "overflow-hidden border-s-[3px]"),
                       // Unbounded list — skip layout/paint for off-screen rows
                       // (rendering-content-visibility; no gates or measurements).
                       "[content-visibility:auto] [contain-intrinsic-size:auto_130px]",

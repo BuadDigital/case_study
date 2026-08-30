@@ -7,7 +7,12 @@ import {
   loadGoogleMapsApi,
   parseCoord,
 } from "../lib/google-maps-loader";
-import { Skeleton, Button } from "@platform/ui-kit";
+import {
+  Button,
+  Skeleton,
+  cn,
+  opsEmptyHint,
+} from "@platform/ui-kit";
 import { JEDDAH_DEFAULT_CENTER } from "../lib/jeddah-default-coords";
 
 const DEFAULT_CENTER = JEDDAH_DEFAULT_CENTER;
@@ -136,7 +141,7 @@ export function EngineeringSurveyMap({
         aria-hidden={mapError ? true : undefined}
       />
       {mapError ? (
-        <div className="rounded-DEFAULT border border-dashed border-border-md bg-surface-2 px-4 py-8 text-center text-xs text-text-3">
+        <div className={cn(opsEmptyHint, "rounded-DEFAULT border-dashed bg-surface-2 px-4 py-8 text-xs")}>
           <p className="m-0 mb-2.5">{mapError}</p>
           {googleMapsApiKey() ? (
             <Button

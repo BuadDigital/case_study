@@ -3,7 +3,7 @@
 /** Operations-tasks screen parts — module-level components/helpers, moved verbatim from the screen (SRP). */
 
 import { type RefObject } from "react";
-import { Input, Note, Select, StatusPill, Textarea, cn, Spinner } from "@platform/ui-kit";
+import { Input, Note, Select, StatusPill, Textarea, cn, Spinner, Table, TableFrame, TBody, Td, TdLtr, Th, THead, Tr, EmptyState, opsPanelCard } from "@platform/ui-kit";
 import { pad2 } from "@platform/app-shared/format/date";
 import { useTickingNow } from "@platform/app-shared/hooks/use-ticking-now";
 import type { StaffUser } from "@platform/app-shared/prototype/constants";
@@ -58,8 +58,6 @@ import {
   opsDueCd,
   opsDueCdOver,
   opsFileSize,
-  opsLetterRow,
-  opsEmptyHint,
   opsEventAv,
   opsFileChip,
   opsFileChipFx,
@@ -83,22 +81,12 @@ import {
   opsStepLblOn,
   opsStepLine,
   opsStepLineOn,
-  opsThead,
   opsTfChip,
   opsTfLbl,
   opsTfSeg,
   opsTfSegActive,
   opsTfSegRow,
 } from "../lib/prototype/ops-tasks-tw";
-
-export const LETTER_COLS =
-  "2.75rem minmax(5.75rem,0.9fr) minmax(9.5rem,1.35fr) minmax(7rem,1.05fr) minmax(5.5rem,0.85fr) minmax(11rem,1.55fr)";
-
-export const letterTh =
-  "flex items-center justify-start px-3 py-3 text-start text-[11.5px] font-bold leading-snug text-heading";
-export const letterTd =
-  "flex min-w-0 items-center justify-start overflow-hidden px-3 py-3 text-start text-[12.5px] leading-snug";
-export const letterCellLtr = "inline-block max-w-full truncate tabular-nums tracking-tight";
 
 export const PRIORITY_OFFSET_MS: Record<string, number> = {
   high: 4 * 3_600_000,
@@ -1109,9 +1097,7 @@ export function CommentThread({
       <div className={opsLetterBodyPad}>
         <div className={opsCmtThread}>
           {comments.length === 0 ? (
-            <div className={opsEmptyHint}>
-              لا توجد تحديثات بعد — أضف أول تحديث أو استفسار على المهمة.
-            </div>
+            <EmptyState line="لا توجد تحديثات بعد — أضف أول تحديث أو استفسار على المهمة." />
           ) : (
             comments.map((c, i) => {
               if (c.kind === "reminder" || c.kind === "update") {
@@ -1264,69 +1250,53 @@ export function LetterTable({ rows }: { rows: OperationsTask["letterRows"] }) {
   }
   return (
     <>
-      <div className="hidden overflow-x-auto rounded-[12px] border border-border bg-surface shadow-card lg:block">
-        <div className="min-w-[760px]" dir="rtl">
-          <div className={opsThead} style={{ gridTemplateColumns: LETTER_COLS }}>
-            {[
-              "م",
-              "أمر العمل",
-              PROPERTY_IDENTIFIER_COLUMN_LABEL,
-              "المالك",
-              "رقم الطلب",
-              "المحكمة / الدائرة",
-            ].map((h, i) => (
-              <div
-                key={h}
-                className={cn(letterTh, i === 0 && "justify-center text-center")}
-              >
-                {h}
-              </div>
-            ))}
-          </div>
-          {rows.map((row, i) => (
-            <div
-              key={`${row.po}-${row.deed}-${i}`}
-              className={opsLetterRow}
-              style={{ gridTemplateColumns: LETTER_COLS }}
-            >
-              <div className={cn(letterTd, "justify-center text-center text-text-2")}>
-                {i + 1}
-              </div>
-              <div className={cn(letterTd, "font-semibold text-text-2")}>
-                <span dir="ltr" className={letterCellLtr}>
-                  {row.po}
-                </span>
-              </div>
-              <div className={cn(letterTd, "font-bold text-gold-d")}>
-                <span dir="ltr" className={letterCellLtr}>
+      <TableFrame className="hidden lg:block">
+        <Table wrapClassName="min-w-[760px]">
+          <THead>
+            <Tr hoverable={false}>
+              <Th className="w-11 text-center">م</Th>
+              <Th>أمر العمل</Th>
+              <Th>{PROPERTY_IDENTIFIER_COLUMN_LABEL}</Th>
+              <Th>المالك</Th>
+              <Th>رقم الطلب</Th>
+              <Th>المحكمة / الدائرة</Th>
+            </Tr>
+          </THead>
+          <TBody>
+            {rows.map((row, i) => (
+              <Tr key={`${row.po}-${row.deed}-${i}`} hoverable={false}>
+                <Td className="text-center text-text-2">{i + 1}</Td>
+                <TdLtr className="font-semibold text-text-2">{row.po}</TdLtr>
+                <TdLtr
+                  className="font-bold text-gold-d"
+                  valueClassName="max-w-full truncate tracking-tight"
+                >
                   صك {row.deed}
-                </span>
-              </div>
-              <div className={cn(letterTd, "font-medium text-heading")}>
-                <span className="line-clamp-2 break-words">{row.owner}</span>
-              </div>
-              <div className={cn(letterTd, "font-semibold text-text-2")}>
-                <span dir="ltr" className={letterCellLtr}>
+                </TdLtr>
+                <Td className="font-medium text-heading">
+                  <span className="line-clamp-2 break-words">{row.owner}</span>
+                </Td>
+                <TdLtr className="font-semibold text-text-2">
                   {row.request || "—"}
-                </span>
-              </div>
-              <div className={letterTd}>
-                <span className="line-clamp-2 break-words">
-                  <span className="font-semibold text-text">{row.court}</span>
-                  {row.circuit ? (
-                    <span className="text-text-3"> · {row.circuit}</span>
-                  ) : null}
-                </span>
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
+                </TdLtr>
+                <Td>
+                  <span className="line-clamp-2 break-words">
+                    <span className="font-semibold text-text">{row.court}</span>
+                    {row.circuit ? (
+                      <span className="text-text-3"> · {row.circuit}</span>
+                    ) : null}
+                  </span>
+                </Td>
+              </Tr>
+            ))}
+          </TBody>
+        </Table>
+      </TableFrame>
       <ul className="m-0 flex list-none flex-col gap-2.5 p-0 lg:hidden">
         {rows.map((row, i) => (
           <li
             key={`${row.po}-${row.deed}-m-${i}`}
-            className="rounded-[12px] border border-border border-s-4 border-s-info bg-surface px-3.5 py-3 shadow-[0_1px_2px_rgba(18,40,76,0.04)]"
+            className={cn(opsPanelCard, "rounded-[12px] border-s-4 border-s-info px-3.5 py-3")}
           >
             <div className="mb-2 flex items-center justify-between gap-2">
               <span className="text-[11px] font-bold text-text-3">#{i + 1}</span>

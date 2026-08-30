@@ -3,14 +3,15 @@
 import { useCallback, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { usePrototype } from "@platform/app-shared/contexts/PrototypeContext";
-import { cn, InlineLoadingSkeleton, PageShell, Spinner, useToast } from "@platform/ui-kit";
-import { prototypeKeys } from "@platform/app-shared/query/prototype-keys";
-import { isSuperAdmin } from "@platform/app-shared/prototype/prototype-role-access";
-import type { RoleId } from "@platform/types";
 import {
+  cn,
+  EmptyState,
+  InlineLoadingSkeleton,
+  PageShell,
+  Spinner,
+  useToast,
   opsBtnGhost,
   opsBtnPrimary,
-  opsEmptyHint,
   opsFld,
   opsFldControl,
   opsFldFull,
@@ -24,7 +25,10 @@ import {
   opsTfActions,
   opsTfLbl,
   opsTfNote,
-} from "@case-study/mfe/lib/prototype/ops-tasks-tw";
+} from "@platform/ui-kit";
+import { prototypeKeys } from "@platform/app-shared/query/prototype-keys";
+import { isSuperAdmin } from "@platform/app-shared/prototype/prototype-role-access";
+import type { RoleId } from "@platform/types";
 import {
   addFailureProblemType,
   removeFailureProblemType,
@@ -266,7 +270,7 @@ export function FailureTypesView() {
               </div>
               <div className="px-4 pb-2 sm:px-[18px]">
                 {types.length === 0 ? (
-                  <p className={opsEmptyHint}>لا أنواع.</p>
+                  <EmptyState line="لا أنواع." />
                 ) : (
                   types.map((type) => (
                     <div

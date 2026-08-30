@@ -15,6 +15,7 @@ import { Can, useCapability } from "@platform/app-shared/components/Can";
 import {
   Badge,
   cn,
+  EmptyState,
   ModalBody,
   ModalCard,
   ModalClose,
@@ -27,6 +28,7 @@ import {
   Table,
   TBody,
   Td,
+  TdLtr,
   Th,
   THead,
   Tr,
@@ -38,7 +40,6 @@ import {
   opsBtnPrimary,
   opsBtnSm,
   opsBtnSmPrimary,
-  opsEmptyHint,
   opsFld,
   opsFldControl,
   opsFldFull,
@@ -246,22 +247,21 @@ export function ClientsView() {
           </div>
         </div>
 
-        <div className="overflow-x-auto">
-          {error ? (
-            <p className="m-0 px-4 py-4 text-[12.5px] text-[#d9694f] sm:px-[18px]">
-              {error}
-            </p>
-          ) : null}
-          {loading ? (
-            <div className="flex items-center justify-center gap-2 py-16 text-text-3">
-              <Spinner />
-              <span className="text-[13px]">جاري التحميل…</span>
-            </div>
-          ) : sorted.length === 0 && !error ? (
-            <p className={opsEmptyHint}>لا يوجد عملاء بعد.</p>
-          ) : !loading && !error ? (
-            <Table className="min-w-[720px] tabular-nums">
-              <THead>
+        {error ? (
+          <p className="m-0 px-4 py-4 text-[12.5px] text-[#d9694f] sm:px-[18px]">
+            {error}
+          </p>
+        ) : null}
+        {loading ? (
+          <div className="flex items-center justify-center gap-2 py-16 text-text-3">
+            <Spinner />
+            <span className="text-[13px]">جاري التحميل…</span>
+          </div>
+        ) : sorted.length === 0 && !error ? (
+          <EmptyState line="لا يوجد عملاء بعد." />
+        ) : !loading && !error ? (
+          <Table className="min-w-[720px] tabular-nums">
+            <THead>
                 <Tr hoverable={false}>
                   <Th>الاسم</Th>
                   <Th>الهوية / السجل</Th>
@@ -291,8 +291,8 @@ export function ClientsView() {
                         </div>
                       ) : null}
                     </Td>
-                    <Td dir="ltr">{row.identityNumber || "—"}</Td>
-                    <Td dir="ltr">{row.phone || "—"}</Td>
+                    <TdLtr bare>{row.identityNumber || "—"}</TdLtr>
+                    <TdLtr bare>{row.phone || "—"}</TdLtr>
                     <Td>
                       <Badge tone={row.isActive ? "success" : "default"}>
                         {row.isActive ? "نشط" : "معطّل"}
@@ -327,8 +327,7 @@ export function ClientsView() {
                 ))}
               </TBody>
             </Table>
-          ) : null}
-        </div>
+        ) : null}
       </section>
 
       {modal ? (

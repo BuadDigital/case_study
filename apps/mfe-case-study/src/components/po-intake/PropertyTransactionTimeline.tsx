@@ -4,7 +4,10 @@ import { useMemo, type ReactNode } from "react";
 import { useWindowEvents } from "@platform/app-shared/hooks/useWindowEvents";
 import { useQueryClient } from "@tanstack/react-query";
 import { prototypeKeys } from "@platform/app-shared/query/prototype-keys";
-import { cn } from "@platform/ui-kit";
+import {
+  cn,
+  opsPanelCard,
+} from "@platform/ui-kit";
 import { useStaffUsersQuery } from "@settings/mfe/query/settings-queries";
 import { PropertyTimelineTones } from "@platform/api-client";
 import {
@@ -81,7 +84,7 @@ function SideCard({
   children: ReactNode;
 }) {
   return (
-    <div className="rounded-[12px] border border-border bg-surface px-4 py-3.5 shadow-[0_1px_2px_rgba(18,40,76,0.03),0_6px_16px_-18px_rgba(18,40,76,0.10)]">
+    <div className={cn(opsPanelCard, "px-4 py-3.5")}>
       <div className="mb-3 flex items-center gap-1.5 text-[12.5px] font-bold text-heading">
         {icon}
         {title}

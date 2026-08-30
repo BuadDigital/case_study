@@ -5,10 +5,19 @@ import type {
   ComparablePropertyDto,
   ValuationComparableSelectionDto,
 } from "@platform/api-client";
-import { cn } from "@platform/ui-kit";
-import { BankTd, BankTh, Card } from "./atoms";
 import {
-  BANK_COLS,
+  cn,
+  Table,
+  TableEmptyRow,
+  TBody,
+  Td,
+  TdLtr,
+  Th,
+  THead,
+  Tr,
+} from "@platform/ui-kit";
+import { Card } from "./atoms";
+import {
   areaRatio,
   areaRatioValue,
   sourceCardLine,
@@ -113,71 +122,65 @@ export const ComparablesBankTable = memo(function ComparablesBankTable({
         )}
       </div>
       <Card className="mb-6">
-        <div className="overflow-x-auto rounded-xl">
-          <div className="min-w-[1180px]">
-            <div
-              className="grid border-b-2 border-gold bg-surface-2"
-              style={{ gridTemplateColumns: BANK_COLS }}
-            >
-              <BankTh start>اعتماد</BankTh>
-              <BankTh>الرقم المرجعي</BankTh>
-              <BankTh>نوع العقار</BankTh>
-              <BankTh>نوع المقارن</BankTh>
-              <BankTh>تاريخ المقارن</BankTh>
-              <BankTh highlight>سعر المتر</BankTh>
-              <BankTh>سعر العقار</BankTh>
-              <BankTh>المساحة (م²)</BankTh>
-              <BankTh>نسبة المساحة</BankTh>
-              <BankTh>المسافة</BankTh>
-              <BankTh>الحي</BankTh>
-              <BankTh>المصدر</BankTh>
-            </div>
+        <Table className="min-w-[1180px]" wrapClassName="rounded-xl">
+          <THead>
+            <Tr hoverable={false}>
+              <Th className="w-[70px] text-center">اعتماد</Th>
+              <Th className="min-w-[132px]">الرقم المرجعي</Th>
+              <Th className="min-w-[100px] text-center">نوع العقار</Th>
+              <Th className="min-w-[122px] text-center">نوع المقارن</Th>
+              <Th className="w-[112px] text-center">تاريخ المقارن</Th>
+              <Th className="min-w-[96px] bg-gold-soft text-center">
+                سعر المتر
+              </Th>
+              <Th className="min-w-[108px] text-center">سعر العقار</Th>
+              <Th className="w-[92px] text-center">المساحة (م²)</Th>
+              <Th className="w-[88px] text-center">نسبة المساحة</Th>
+              <Th className="w-[72px] text-center">المسافة</Th>
+              <Th className="min-w-[84px]">الحي</Th>
+              <Th className="min-w-[120px]">المصدر</Th>
+            </Tr>
+          </THead>
+          <TBody>
             {rows.map((row) => (
-              <div
+              <Tr
                 key={row.key}
-                className={cn(
-                  "grid min-h-[58px] items-center border-b border-border transition-colors duration-100 last:border-b-0 hover:bg-row-hover",
-                  row.adopted && "bg-gold-soft",
-                )}
-                style={{ gridTemplateColumns: BANK_COLS }}
+                hoverable={!row.adopted}
+                className={cn(row.adopted && "bg-gold-soft")}
               >
-                <BankTd start>
+                <Td className="text-center">
                   <input
                     type="checkbox"
                     checked={row.adopted}
                     onChange={(e) => onAdopt(row.comp.id, e.target.checked)}
                     className="size-[17px] cursor-pointer accent-[var(--ink)]"
                   />
-                </BankTd>
-                <BankTd>
-                  <span dir="ltr" className="text-[13.5px] font-bold text-gold-d">
-                    {row.comp.referenceCode}
-                  </span>
-                </BankTd>
-                <BankTd>
+                </Td>
+                <TdLtr
+                  valueClassName="text-[13.5px] font-bold text-gold-d"
+                >
+                  {row.comp.referenceCode}
+                </TdLtr>
+                <Td className="text-center">
                   <span className="text-[13px] text-text">
                     {row.comp.comparablePropertyType}
                   </span>
-                </BankTd>
-                <BankTd>
+                </Td>
+                <Td className="text-center">
                   <span className="inline-flex items-center rounded-md border border-border-md bg-surface-2 px-[11px] py-[3px] text-[12px] font-medium text-text-2">
                     {row.comp.transactionKindLabelAr}
                   </span>
-                </BankTd>
-                <BankTd>
-                  <span dir="ltr" className="text-[13px] text-text-2">
-                    {row.comp.transactionDate?.slice(0, 10) || "—"}
-                  </span>
-                </BankTd>
-                <BankTd highlight>
-                  <span
-                    dir="ltr"
-                    className="text-[14px] font-extrabold text-heading"
-                  >
-                    {fmt(row.item?.effectivePricePerSqm ?? row.comp.pricePerSqm)}
-                  </span>
-                </BankTd>
-                <BankTd>
+                </Td>
+                <TdLtr className="text-center" valueClassName="text-[13px] text-text-2">
+                  {row.comp.transactionDate?.slice(0, 10) || "—"}
+                </TdLtr>
+                <TdLtr
+                  className="bg-gold-soft text-center"
+                  valueClassName="text-[14px] font-extrabold text-heading"
+                >
+                  {fmt(row.item?.effectivePricePerSqm ?? row.comp.pricePerSqm)}
+                </TdLtr>
+                <Td className="text-center">
                   {row.item ? (
                     <input
                       dir="ltr"
@@ -207,16 +210,13 @@ export const ComparablesBankTable = memo(function ComparablesBankTable({
                       )}
                     />
                   ) : (
-                    <span
-                      dir="ltr"
-                      className="text-[14px] font-extrabold text-heading"
-                    >
+                    <span dir="ltr" className="text-[14px] font-extrabold text-heading">
                       {fmt(row.comp.price)}
                     </span>
                   )}
-                </BankTd>
-                <BankTd>
-                  {row.item ? (
+                </Td>
+                {row.item ? (
+                  <Td className="text-center">
                     <input
                       dir="ltr"
                       type="text"
@@ -244,67 +244,69 @@ export const ComparablesBankTable = memo(function ComparablesBankTable({
                           : "border-border bg-surface-2 text-text-2",
                       )}
                     />
-                  ) : (
-                    <span dir="ltr" className="text-[13.5px] font-bold text-text-2">
-                      {fmt(row.comp.areaSqm)}
-                    </span>
-                  )}
-                </BankTd>
-                <BankTd>
-                  {(() => {
-                    const effArea = row.item?.effectiveAreaSqm ?? row.comp.areaSqm;
-                    const ratio = areaRatioValue(subjectSqm, effArea);
-                    return (
-                      <span
-                        dir="ltr"
-                        className={cn(
-                          "text-[13.5px] font-bold",
-                          ratio != null && ratio >= 2
-                            ? "text-red-text"
-                            : "text-heading",
-                        )}
-                        title={
-                          ratio != null && ratio >= 2
-                            ? "نسبة ≥ ٢ — تُفعِّل طريقة المضاعف على الجدول كاملاً"
-                            : undefined
-                        }
-                      >
-                        {areaRatio(subjectSqm, effArea)}
-                      </span>
-                    );
-                  })()}
-                </BankTd>
-                <BankTd>
-                  {(() => {
-                    const km = distanceKm[row.comp.id];
-                    return (
-                      <span dir="ltr" className="text-[12.5px] text-text-2">
-                        {km != null && Number.isFinite(km)
-                          ? `${km.toFixed(km < 1 ? 2 : 1)} كم`
-                          : "—"}
-                      </span>
-                    );
-                  })()}
-                </BankTd>
-                <BankTd>
+                  </Td>
+                ) : (
+                  <TdLtr
+                    bare
+                    className="text-center text-[13.5px] font-bold text-text-2"
+                  >
+                    {fmt(row.comp.areaSqm)}
+                  </TdLtr>
+                )}
+                {(() => {
+                  const effArea = row.item?.effectiveAreaSqm ?? row.comp.areaSqm;
+                  const ratio = areaRatioValue(subjectSqm, effArea);
+                  return (
+                    <TdLtr
+                      bare
+                      className={cn(
+                        "text-center text-[13.5px] font-bold",
+                        ratio != null && ratio >= 2
+                          ? "text-red-text"
+                          : "text-heading",
+                      )}
+                      title={
+                        ratio != null && ratio >= 2
+                          ? "نسبة ≥ ٢ — تُفعِّل طريقة المضاعف على الجدول كاملاً"
+                          : undefined
+                      }
+                    >
+                      {areaRatio(subjectSqm, effArea)}
+                    </TdLtr>
+                  );
+                })()}
+                {(() => {
+                  const km = distanceKm[row.comp.id];
+                  return (
+                    <TdLtr
+                      bare
+                      className="text-center text-[12.5px] text-text-2"
+                    >
+                      {km != null && Number.isFinite(km)
+                        ? `${km.toFixed(km < 1 ? 2 : 1)} كم`
+                        : "—"}
+                    </TdLtr>
+                  );
+                })()}
+                <Td>
                   <span className="truncate text-[13px] text-text-2">
                     {row.comp.district}
                   </span>
-                </BankTd>
-                <BankTd>
+                </Td>
+                <Td>
                   <span className="truncate text-[11.5px] text-text-3">
                     {sourceCardLine(row.comp)}
                   </span>
-                </BankTd>
-              </div>
+                </Td>
+              </Tr>
             ))}
             {rows.length === 0 ? (
-              <div className="px-4 py-10 text-center text-[13px] text-text-3">
+              <TableEmptyRow colSpan={12}>
                 لا مرشحين — أضف إلى البنك من صفحة بنك المقارنات.
-              </div>
+              </TableEmptyRow>
             ) : null}
-          </div>
-        </div>
+          </TBody>
+        </Table>
       </Card>
     </>
   );

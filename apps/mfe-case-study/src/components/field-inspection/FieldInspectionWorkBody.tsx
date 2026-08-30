@@ -1,7 +1,21 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState, type ReactNode, type RefObject, Fragment } from "react";
-import { Button, FormRow, GoogleMapPin, InlineLoadingSkeleton, Input, Label, Note, Select, Textarea, cn, formControlClassName, useToast } from "@platform/ui-kit";
+import {
+  Button,
+  FormRow,
+  GoogleMapPin,
+  InlineLoadingSkeleton,
+  Input,
+  Label,
+  Note,
+  Select,
+  Textarea,
+  cn,
+  formControlClassName,
+  opsInsetPanel,
+  useToast,
+} from "@platform/ui-kit";
 import { AppModal } from "../ui/AppModal";
 import { ReturnedForCorrectionNote } from "../ui/ReturnedForCorrectionNote";
 import { RegField, RegTextarea} from "@platform/app-shared/registration/FormFields";
@@ -2001,7 +2015,7 @@ export function FieldInspectionWorkBody({
               return (
                 <div
                   key={obs.id}
-                  className="mb-2.5 flex gap-2.5 rounded-xl border border-border bg-surface-2 p-2.5"
+                  className={cn(opsInsetPanel, "mb-2.5 flex gap-2.5 p-2.5")}
                 >
                   <div className="grid size-14 shrink-0 place-items-center overflow-hidden rounded-[10px] border border-border bg-surface">
                     {obs.photo?.fileName ? (

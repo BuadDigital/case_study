@@ -9,7 +9,12 @@ import {
   InfoBox,
   SectionHeader,
 } from "./PropertyDetailFields";
-import { Badge, InlineLoadingSkeleton } from "@platform/ui-kit";
+import {
+  Badge,
+  InlineLoadingSkeleton,
+  cn,
+  opsBtnGhost,
+} from "@platform/ui-kit";
 import {
   formatDateAr,
   formatPropertyDeedDisplay,
@@ -73,7 +78,7 @@ export function PropertyDetailGovernmentReviewsTab({
           ) : null}
           <Link
             href={listHref}
-            className="inline-flex min-h-9 items-center justify-center rounded-lg border border-border-md bg-surface px-[18px] py-2 text-[12.5px] font-bold text-text-2 no-underline max-lg:min-h-11 max-lg:w-full"
+            className={cn(opsBtnGhost, "min-h-9 rounded-lg py-2 text-[12.5px] font-bold no-underline max-lg:min-h-11 max-lg:w-full")}
           >
             فتح المهام
           </Link>

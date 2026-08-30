@@ -17,13 +17,14 @@ import {
   SkeletonTableRows,
   StatusPill,
   Table,
+  TableFrame,
   TBody,
   Td,
+  TdLtr,
   Th,
   THead,
   Tr,
   cn,
-  queueTableWrapClassName,
   useToast,
   type StatusPillStyle,
 } from "@platform/ui-kit";
@@ -195,12 +196,7 @@ export function PartyOfficeBillingStatementsPanel({
         </div>
       </PageToolbar>
 
-      <div
-        className={cn(
-          queueTableWrapClassName,
-          "rounded-b-[var(--radius-lg)] border border-t-0 border-border bg-surface",
-        )}
-      >
+      <TableFrame>
         <Table className="w-full min-w-[820px]" pending={pending}>
           <THead>
             <Tr hoverable={false}>
@@ -268,15 +264,15 @@ export function PartyOfficeBillingStatementsPanel({
                           </span>
                         </span>
                       </Td>
-                      <Td dir="ltr" className="text-[12px] text-text-2">
+                      <TdLtr valueClassName="text-[12px] text-text-2">
                         {formatYmd(s.issuedAtUtc ?? s.createdAtUtc)}
-                      </Td>
+                      </TdLtr>
                       <Td className="text-[12.5px] text-text">
                         {s.lines.length} معاملات
                       </Td>
-                      <Td className="text-[13px] font-bold text-heading">
+                      <TdLtr valueClassName="text-[13px] font-bold text-heading">
                         {fmtSar(s.totalNetSar)}
-                      </Td>
+                      </TdLtr>
                       <Td>
                         <StatusPill label={meta.label} style={meta.style} />
                       </Td>
@@ -455,14 +451,13 @@ export function PartyOfficeBillingStatementsPanel({
             )}
           </TBody>
         </Table>
-      </div>
-
-      <div className="border border-t-0 border-border px-4 py-[11px] text-[12px] text-text-3">
-        دورة الكشف: مسودة ← صادر ← محال للمالية ← مصروف. الفاتورة تصدر من البرنامج
-        المحاسبي خارج النظام، ويُوثَّق الصرف هنا برقم الفاتورة وإيصال التحويل
-        والتاريخ. البنود المتحفَّظ عليها تُعالَج بالتنسيق مع المشرف قبل إحالتها
-        للمالية.
-      </div>
+        <div className="border-t border-border px-4 py-[11px] text-[12px] text-text-3">
+          دورة الكشف: مسودة ← صادر ← محال للمالية ← مصروف. الفاتورة تصدر من البرنامج
+          المحاسبي خارج النظام، ويُوثَّق الصرف هنا برقم الفاتورة وإيصال التحويل
+          والتاريخ. البنود المتحفَّظ عليها تُعالَج بالتنسيق مع المشرف قبل إحالتها
+          للمالية.
+        </div>
+      </TableFrame>
     </div>
   );
 }

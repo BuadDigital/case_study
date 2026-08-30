@@ -25,24 +25,30 @@ import type {
 import { useStaffUsersQuery } from "@settings/mfe/query/settings-queries";
 import type { StaffUser } from "@platform/app-shared/prototype/constants";
 import { getFieldInspectors } from "@case-study/mfe/lib/distribution-assignees";
-import { cn } from "@platform/ui-kit";
 import {
-  finCard,
-  finEmpty,
-  finEmptyT,
+  EmptyState,
+  StatusPill,
+  TBody,
+  THead,
+  Table,
+  TableEmptyRow,
+  TableFrame,
+  Td,
+  TdLtr,
+  Th,
+  Tr,
+  cn,
+  finStatusStyle,
+  opsLetterCard,
+  opsTfNote,
+  type StatusPillStyle,
+} from "@platform/ui-kit";
+import {
+  finCaret,
   finMuted,
-  finNote,
   finNum,
   finSel,
   finSelCtrl,
-  finCaret,
-  finStatus,
-  finStatusGold,
-  finStatusGreen,
-  finThead,
-  finTh,
-  finRow,
-  finTd,
 } from "../lib/finance-tw";
 
 type PortalLine = {
@@ -58,14 +64,11 @@ type PortalLine = {
 
 const EMPTY_STAFF_USERS: StaffUser[] = [];
 
-const COST_ST: Record<PortalLine["st"], { t: string; cls: string }> = {
-  due: { t: "مستحق", cls: finStatus },
-  instmt: { t: "في أمر صرف", cls: finStatusGold },
-  paid: { t: "مدفوع", cls: finStatusGreen },
+const COST_ST: Record<PortalLine["st"], { t: string; style: StatusPillStyle }> = {
+  due: { t: "مستحق", style: finStatusStyle("default") },
+  instmt: { t: "في أمر صرف", style: finStatusStyle("warning") },
+  paid: { t: "مدفوع", style: finStatusStyle("success") },
 };
-
-const cols =
-  "min-w-[720px] grid-cols-[minmax(180px,1.6fr)_minmax(120px,0.9fr)_minmax(110px,0.9fr)_minmax(130px,1fr)]";
 
 // Default toLocaleString = up to 3 decimals without forced zeros — keep the same display.
 function money(n: number) {
@@ -273,7 +276,7 @@ export function FinanceInspectorPortal({
 
   return (
     <div data-screen-label="بوابة المعاين">
-      <p className={cn(finNote, "leading-[1.8]")}>
+      <p className={cn(opsTfNote, "mb-3.5 leading-[1.8]")}>
         بوابة المعاين —{" "}
         <b className="font-bold text-[#102B4E]">لبيان أثر المالية فقط</b>.
         المعاين مستحق بصفة «فرد»: لا فاتورة ولا مسير مورّد، ويُصرف له بأمر صرف
@@ -305,7 +308,7 @@ export function FinanceInspectorPortal({
 
       <div
         className={cn(
-          finCard,
+          opsLetterCard,
           "mb-3.5 flex flex-wrap items-center gap-3 px-[18px] py-3.5",
         )}
       >
@@ -336,14 +339,14 @@ export function FinanceInspectorPortal({
       {pending ? (
         <div
           className={cn(
-            finCard,
+            opsLetterCard,
             "py-10 text-center text-[13px] text-text-3",
           )}
         >
           جاري تحميل المستحقات…
         </div>
       ) : !tracked ? (
-        <div className={cn(finCard, "px-6 py-[26px] text-center")}>
+        <div className={cn(opsLetterCard, "px-6 py-[26px] text-center")}>
           <div className="mb-1.5 text-[13.5px] font-bold text-[#102B4E]">
             لا مستحقات تُتابع على هذا النظام
           </div>
@@ -353,35 +356,22 @@ export function FinanceInspectorPortal({
           </p>
         </div>
       ) : (
-        <div className={finCard}>
-          <div className="overflow-x-auto">
-            <div className="w-max min-w-full">
-              <div className={cn(finThead, cols)}>
-                {(
-                  [
-                    ["المرجع", true],
-                    ["تاريخ الاستحقاق", false],
-                    ["المبلغ", false],
-                    ["الحالة", false],
-                  ] as const
-                ).map(([h, start]) => (
-                  <div
-                    key={h}
-                    className={cn(
-                      finTh,
-                      !start && "!justify-center !text-center",
-                    )}
-                  >
-                    {h}
-                  </div>
-                ))}
-              </div>
-
+        <TableFrame>
+          <Table>
+            <THead>
+              <Tr hoverable={false}>
+                <Th>المرجع</Th>
+                <Th className="text-center">تاريخ الاستحقاق</Th>
+                <Th className="text-center">المبلغ</Th>
+                <Th className="text-center">الحالة</Th>
+              </Tr>
+            </THead>
+            <TBody>
               {partyRows.map((l) => {
                 const st = COST_ST[l.st];
                 return (
-                  <div key={l.id} className={cn(finRow, cols)}>
-                    <div className={cn(finTd, "!justify-start !text-start")}>
+                  <Tr key={l.id} hoverable={false}>
+                    <Td>
                       <div className="flex flex-col items-start gap-0.5">
                         <span
                           dir="ltr"
@@ -393,35 +383,35 @@ export function FinanceInspectorPortal({
                           {l.refKind}
                         </span>
                       </div>
-                    </div>
-                    <div className={finTd}>
-                      <span className={cn(finMuted, "whitespace-nowrap")} dir="ltr">
-                        {dmy(l.atIso)}
-                      </span>
-                    </div>
-                    <div className={finTd}>
+                    </Td>
+                    <TdLtr
+                      className="text-center"
+                      valueClassName={cn(finMuted, "whitespace-nowrap")}
+                    >
+                      {dmy(l.atIso)}
+                    </TdLtr>
+                    <Td className="text-center">
                       <span className={finNum}>
                         {money(l.amount)}{" "}
                         <span className="text-[12px] font-semibold text-text-2">
                           ر.س
                         </span>
                       </span>
-                    </div>
-                    <div className={finTd}>
-                      <span className={st.cls}>{st.t}</span>
-                    </div>
-                  </div>
+                    </Td>
+                    <Td className="text-center">
+                      <StatusPill label={st.t} style={st.style} />
+                    </Td>
+                  </Tr>
                 );
               })}
-
               {empty ? (
-                <div className={finEmpty}>
-                  <div className={finEmptyT}>لا بنود مستحقة</div>
-                </div>
+                <TableEmptyRow colSpan={4}>
+                  <EmptyState line="لا بنود مستحقة" />
+                </TableEmptyRow>
               ) : null}
-            </div>
-          </div>
-        </div>
+            </TBody>
+          </Table>
+        </TableFrame>
       )}
     </div>
   );

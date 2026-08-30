@@ -800,7 +800,7 @@ export function FailuresView() {
       <OperationalPanel className="shrink-0 overflow-visible max-lg:border-0 max-lg:bg-transparent max-lg:shadow-none max-lg:rounded-none">
         {isDesktopViewport === false ? null : (
         <div className="hidden lg:block">
-          <Table pending={!isFetched}>
+          <Table framed pending={!isFetched}>
             <THead>
               <Tr hoverable={false}>
                 <Th className="text-start">{PROPERTY_IDENTIFIER_COLUMN_LABEL}</Th>

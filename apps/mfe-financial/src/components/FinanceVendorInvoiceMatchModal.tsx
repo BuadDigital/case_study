@@ -23,10 +23,14 @@ import {
   ModalOverlay,
   ModalTitle,
   cn,
+  opsBtnGhost,
+  opsBtnPrimary,
+  opsFldControl,
+  opsFldTextarea,
+  opsTfNote,
   useToast,
 } from "@platform/ui-kit";
 import { statementDisplayTotal } from "../lib/finance-cost-parties";
-import { finGhost, finNote, finPrimary } from "../lib/finance-tw";
 
 function formatInvoiceDate(raw: string | null | undefined): string {
   if (!raw?.trim()) return "—";
@@ -194,7 +198,7 @@ function FinanceVendorInvoiceMatchForm({
             </div>
           ) : null}
 
-          <p className={cn(finNote, "mb-4 text-center")}>
+          <p className={cn(opsTfNote, "mb-4 text-center")}>
             الفاتورة للقراءة فقط وقيمتها مقفلة على المسير. الإعادة للتصحيح
             تؤرشف الفاتورة ويظهر سببها للمكتب.
           </p>
@@ -272,7 +276,7 @@ function FinanceVendorInvoiceMatchForm({
                 setErr("");
               }}
               placeholder="خلل في المستند أو بياناته"
-              className="w-full resize-y rounded-[9px] border border-[#ddd8cc] bg-surface-2 px-3 py-2.5 text-[13px] leading-[1.55] text-text outline-none transition-[border-color,box-shadow] placeholder:text-text-3 focus:border-gold focus:shadow-[0_0_0_3px_color-mix(in_srgb,var(--gold)_22%,transparent)] disabled:opacity-60"
+              className={cn(opsFldTextarea, "leading-[1.55] placeholder:text-text-3 disabled:opacity-60")}
             />
           </div>
         </ModalBody>
@@ -280,7 +284,7 @@ function FinanceVendorInvoiceMatchForm({
         <ModalFooter className="flex-wrap justify-end gap-2.5 border-t border-border bg-surface-2 px-[22px] py-3.5">
           <button
             type="button"
-            className={finGhost}
+            className={opsBtnGhost}
             disabled={busy}
             onClick={onClose}
           >
@@ -289,7 +293,7 @@ function FinanceVendorInvoiceMatchForm({
           <button
             type="button"
             className={cn(
-              finGhost,
+              opsBtnGhost,
               "border-[#c0553d] text-[#a5432e] enabled:hover:border-[#a5432e] enabled:hover:bg-[color-mix(in_srgb,#c0553d_6%,transparent)] enabled:hover:text-[#a5432e]",
             )}
             disabled={busy}
@@ -299,7 +303,7 @@ function FinanceVendorInvoiceMatchForm({
           </button>
           <button
             type="button"
-            className={cn(finPrimary, busy && "opacity-75")}
+            className={cn(opsBtnPrimary, busy && "opacity-75")}
             disabled={busy}
             onClick={() => void handleMatch()}
           >

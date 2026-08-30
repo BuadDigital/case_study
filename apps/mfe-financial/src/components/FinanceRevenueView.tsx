@@ -12,56 +12,28 @@ import { fmt } from "@platform/app-shared/format/number";
 import { prototypeKeys } from "@platform/app-shared/query/prototype-keys";
 import { loadEnfazTracking } from "@platform/app-shared/prototype/enfaz-billing-api";
 import type { EnfazTrackingRowDto } from "@platform/api-client";
-import { cn } from "@platform/ui-kit";
+import {
+  EmptyState,
+  cn,
+  opsBtnGhost,
+  opsBtnPrimary,
+  opsFilters,
+  opsLetterCard,
+  opsSearchInput,
+} from "@platform/ui-kit";
 import { REVENUE_STAGES, type RevenueStage } from "../lib/finance-nav";
 import {
-  formatDateEn,
-  groupRowsByInvoice,
-  groupRowsByPo,
   revenueAmountsFromRow,
-  revenueInPeriod,
-  revenuePeriodDateIso,
-  revenueStageEmptyHint,
-  rowAgeDays,
-  stoppedReasonLabel,
   uniqueCities,
   bucketRevenueRows,
 } from "../lib/finance-revenue-stages";
 import {
-  finCard,
-  finCheck,
-  finEmpty,
-  finEmptyS,
-  finEmptyT,
-  finFilters,
-  finGhost,
-  finGridRevBilling,
-  finGridRevCollect,
-  finGridRevCollected,
-  finGridRevEligible,
-  finGridRevStopped,
-  finGridRevStudy,
-  finGroupRow,
-  finMuted,
-  finNum,
+  finCaret,
   finPo,
-  finPrimary,
-  finRow,
-  finScroll,
   finSearch,
   finSearchIcon,
-  finSearchInput,
   finSel,
   finSelCtrl,
-  finCaret,
-  finStatus,
-  finStatusGold,
-  finStatusGreen,
-  finStatusRed,
-  finTd,
-  finTh,
-  finThead,
-  finTotRow,
   finWork,
   finWorkHead,
   finWorkTitle,
@@ -73,7 +45,7 @@ import {
   EMPTY_TRACKING_ROWS,
   filterRows,
   SearchIcon,
-  EmptyState,
+  RevenueStageEmpty,
   StudyTable,
   EligibleTable,
   BillingAssistantTable,
@@ -213,11 +185,11 @@ export function FinanceRevenueView({
       />
 
       {/* HTML order: search (right · flex:1) → city → period */}
-      <div className={finFilters}>
+      <div className={cn("mb-3.5 w-full", opsFilters)}>
         <div className={finSearch}>
           <SearchIcon />
           <input
-            className={finSearchInput}
+            className={opsSearchInput}
             placeholder="بحث: رقم الطلب · رقم الصك · رقم الفاتورة"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
@@ -266,7 +238,7 @@ export function FinanceRevenueView({
           <button
             type="button"
             className={cn(
-              finGhost,
+              opsBtnGhost,
               "h-auto px-3.5 py-2 text-xs",
               stageRows.length === 0 && "pointer-events-none opacity-50",
             )}
@@ -279,7 +251,7 @@ export function FinanceRevenueView({
           <button
             type="button"
             className={cn(
-              finPrimary,
+              opsBtnPrimary,
               "px-4 py-2 text-[12.5px]",
               selectedRows.length === 0 && "pointer-events-none opacity-50",
             )}
@@ -316,7 +288,7 @@ export function FinanceRevenueView({
             </h3>
             <button
               type="button"
-              className={finGhost}
+              className={opsBtnGhost}
               onClick={() => {
                 onFocusPo(null, viewStage);
                 setFollowMode(false);
@@ -344,13 +316,11 @@ export function FinanceRevenueView({
       ) : null}
 
       {trackingQuery.isPending ? (
-        <div className={finCard}>
-          <div className={finEmpty}>
-            <div className={finEmptyT}>جاري التحميل…</div>
-          </div>
+        <div className={opsLetterCard}>
+          <EmptyState panel line="جاري التحميل…" />
         </div>
       ) : stageRows.length === 0 ? (
-        <EmptyState stage={viewStage} />
+        <RevenueStageEmpty stage={viewStage} />
       ) : viewStage === "under_study" ? (
         <StudyTable
           rows={stageRows}

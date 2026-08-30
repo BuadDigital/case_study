@@ -13,6 +13,13 @@ import {
   PageShell,
   PageShellHeader,
   Spinner,
+  Table,
+  TBody,
+  Td,
+  TdLtr,
+  Th,
+  THead,
+  Tr,
 } from "@platform/ui-kit";
 
 const KIND_LABELS: Record<string, string> = {
@@ -94,44 +101,44 @@ export function FieldSyncSupervisorView() {
             لا عناصر معلّقة — المزامنة الميدانية سليمة
           </div>
         ) : (
-          <div className="overflow-x-auto rounded-xl border border-border">
-            <table className="w-full min-w-[40rem] border-collapse text-sm">
-              <thead className="bg-surface-2 text-start text-xs text-text-2">
-                <tr>
-                  <th className="px-3 py-2 font-semibold">المستخدم</th>
-                  <th className="px-3 py-2 font-semibold">الدور</th>
-                  <th className="px-3 py-2 font-semibold">معلّق</th>
-                  <th className="px-3 py-2 font-semibold">العمر</th>
-                  <th className="px-3 py-2 font-semibold">الأنواع</th>
-                  <th className="px-3 py-2 font-semibold">آخر ظهور</th>
-                </tr>
-              </thead>
-              <tbody>
-                {rows.map((row) => (
-                  <tr key={row.id} className="border-t border-border">
-                    <td className="px-3 py-2 font-medium text-text-1">
-                      {row.displayName?.trim() || row.userId}
-                    </td>
-                    <td className="px-3 py-2 text-text-2">{row.roleId || "—"}</td>
-                    <td className="px-3 py-2 tabular-nums">{row.pendingCount}</td>
-                    <td className="px-3 py-2 text-amber-700">
-                      {row.ageHours != null ? `${row.ageHours} س` : "—"}
-                    </td>
-                    <td className="px-3 py-2 text-text-2">
-                      {row.kinds
-                        .map((k) => KIND_LABELS[k] ?? k)
-                        .join(" · ") || "—"}
-                    </td>
-                    <td className="px-3 py-2 text-text-3 [direction:ltr]">
-                      {row.lastSeenAtUtc
-                        ? new Date(row.lastSeenAtUtc).toLocaleString("ar-SA")
-                        : "—"}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+          <Table framed className="min-w-[40rem] text-sm">
+            <THead>
+              <Tr hoverable={false}>
+                <Th>المستخدم</Th>
+                <Th>الدور</Th>
+                <Th>معلّق</Th>
+                <Th>العمر</Th>
+                <Th>الأنواع</Th>
+                <Th>آخر ظهور</Th>
+              </Tr>
+            </THead>
+            <TBody>
+              {rows.map((row) => (
+                <Tr key={row.id} hoverable={false}>
+                  <Td className="font-medium text-text-1">
+                    {row.displayName?.trim() || row.userId}
+                  </Td>
+                  <Td className="text-text-2">{row.roleId || "—"}</Td>
+                  <TdLtr bare className="tabular-nums">
+                    {row.pendingCount}
+                  </TdLtr>
+                  <Td className="text-amber-700">
+                    {row.ageHours != null ? `${row.ageHours} س` : "—"}
+                  </Td>
+                  <Td className="text-text-2">
+                    {row.kinds
+                      .map((k) => KIND_LABELS[k] ?? k)
+                      .join(" · ") || "—"}
+                  </Td>
+                  <TdLtr bare className="text-text-3">
+                    {row.lastSeenAtUtc
+                      ? new Date(row.lastSeenAtUtc).toLocaleString("ar-SA")
+                      : "—"}
+                  </TdLtr>
+                </Tr>
+              ))}
+            </TBody>
+          </Table>
         )}
       </PageGutter>
     </PageShell>

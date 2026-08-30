@@ -27,6 +27,7 @@ import {
   PageShell,
   Spinner,
   cn,
+  opsDropzone,
   useToast,
 } from "@platform/ui-kit";
 import { organizationSettingsApiConfig } from "../lib/settings-api-config";
@@ -318,7 +319,7 @@ export function BrandIdentityView() {
   const cardFootCls =
     "mt-auto flex flex-wrap items-center justify-between gap-2.5 border-t border-border px-4 py-3 text-xs text-text-2";
   const previewBoxCls =
-    "grid h-[110px] w-[150px] shrink-0 place-items-center rounded-lg border border-dashed border-border-md bg-surface-2 p-2";
+    cn(opsDropzone, "h-[110px] w-[150px] shrink-0 p-2");
 
   return (
     <PageShell variant="canvas" className="gap-0 p-4 sm:p-6" dir="rtl">
@@ -342,7 +343,7 @@ export function BrandIdentityView() {
             <div className="mb-3 grid grid-cols-2 gap-2.5">
               <div>
                 <div
-                  className="grid h-[110px] place-items-center rounded-lg border border-dashed border-border-md bg-surface-2"
+                  className={cn(opsDropzone, "h-[110px]")}
                 >
                   <img src={logoColor} alt="الشعار الملون" style={{ height: 40 }} />
                 </div>

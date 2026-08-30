@@ -12,9 +12,11 @@ import {
   QueueTableHint,
   SkeletonTableRows,
   Table,
+  TableFrame,
   TBody,
   Td,
   TdAction,
+  TdLtr,
   Th,
   ThAction,
   THead,
@@ -22,7 +24,6 @@ import {
   cn,
   queueTableRowActiveClassName,
   queueTableRowClassName,
-  queueTableWrapClassName,
   useToast,
 } from "@platform/ui-kit";
 import { usePrototype } from "@platform/app-shared/contexts/PrototypeContext";
@@ -372,7 +373,7 @@ export function BourseInquiryView() {
                   emptyMessage="لا توجد صكوك بانتظار البورصة"
                 />
               </div>
-              <div className={cn(queueTableWrapClassName, "hidden lg:block")}>
+              <TableFrame className="hidden lg:block">
                 <Table pending={queuePending}>
                   <THead>
                     <Tr hoverable={false}>
@@ -447,11 +448,11 @@ export function BourseInquiryView() {
                               loading={isItemOpening(item)}
                             />
                           </Td>
-                          <Td className="text-text-2">
+                          <TdLtr className="text-text-2">
                             {item.deedDate?.trim()
                               ? formatDateAr(item.deedDate)
                               : "—"}
-                          </Td>
+                          </TdLtr>
                           <Td className="text-text-2">
                             <PoNumber
                               value={item.poNumber}
@@ -459,20 +460,18 @@ export function BourseInquiryView() {
                               className="!text-[12.5px] !font-semibold text-text-2"
                             />
                           </Td>
-                          <Td className="text-text-2">
-                            <span
-                              dir="ltr"
-                              className="inline-block text-[12.5px] font-semibold text-primary"
-                            >
-                              {item.requestNumber?.trim() || "—"}
-                            </span>
-                          </Td>
+                          <TdLtr
+                            className="text-text-2"
+                            valueClassName="text-[12.5px] font-semibold text-primary"
+                          >
+                            {item.requestNumber?.trim() || "—"}
+                          </TdLtr>
                           <Td className="text-text-2">
                             {item.ownerName || "—"}
                           </Td>
-                          <Td className="text-text-2">
+                          <TdLtr className="text-text-2">
                             {formatDateAr(item.dueDateAt)}
-                          </Td>
+                          </TdLtr>
                           <TdAction>
                             <RowMoreMenu items={moreItems} />
                           </TdAction>
@@ -482,10 +481,10 @@ export function BourseInquiryView() {
                     )}
                   </TBody>
                 </Table>
-              </div>
-              <QueueTableHint className="hidden border-t border-border bg-surface-2 lg:block">
-                اضغط الصف لفتح نموذج إكمال البورصة.
-              </QueueTableHint>
+                <QueueTableHint className="border-t border-border bg-surface-2">
+                  اضغط الصف لفتح نموذج إكمال البورصة.
+                </QueueTableHint>
+              </TableFrame>
             </>
           )}
         </OperationalPanel>

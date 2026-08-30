@@ -17,7 +17,17 @@ import {
   ModalOverlay,
   ModalTitle,
   StatusPill,
+  TBody,
+  THead,
+  Table,
+  TableEmptyRow,
+  TableFrame,
+  Td,
+  TdLtr,
+  Th,
+  Tr,
   cn,
+  opsInsetPanel,
   useToast,
 } from "@platform/ui-kit";
 import type { StatusPillStyle } from "@platform/ui-kit";
@@ -47,26 +57,11 @@ import { fmtMax } from "@platform/app-shared/format/number";
 import {
   opsFldControl,
   opsFilters,
-  opsLetterCard,
   opsListCount,
   opsToolbar,
 } from "../../lib/prototype/ops-tasks-tw";
 
 type TabId = "action" | "ready" | "statements";
-
-const FEE_COLS =
-  "minmax(140px,1.2fr) minmax(110px,.75fr) minmax(100px,.75fr) minmax(168px,1.4fr) minmax(100px,.8fr) minmax(148px,1fr) minmax(148px,1.05fr)";
-
-const FEE_CELL =
-  "flex min-w-0 items-center overflow-hidden px-3.5 py-2 text-start";
-const FEE_HEAD = cn(
-  FEE_CELL,
-  "py-3.5 text-[12px] font-bold leading-snug text-heading",
-);
-
-/** Issued billing statements — same header and row columns */
-const STATEMENT_COLS =
-  "minmax(150px,1.2fr) minmax(90px,.8fr) minmax(70px,.6fr) minmax(90px,.8fr) minmax(110px,1fr) minmax(170px,1.4fr)";
 
 function fmtSar(n: number): string {
   return `${fmtMax(n || 0, 3)} ر.س`;
@@ -542,36 +537,24 @@ export function EngFeesHtmlScreen({ assigneeId }: { assigneeId?: string }) {
             </div>
           </div>
 
-          <div className={opsLetterCard}>
-            <div className="overflow-x-auto">
-              <div className="min-w-[920px]">
-                <div
-                  className="grid border-b-2 border-gold bg-surface-2"
-                  style={{ gridTemplateColumns: FEE_COLS }}
-                >
-                  {[
-                    "الصك",
-                    "تاريخ القبول",
-                    "سعر الجدول",
-                    "تعديل التسعير ومبرره",
-                    "الصافي",
-                    "الحالة",
-                    "إجراء المكتب",
-                  ].map((h) => (
-                    <div key={h} className={FEE_HEAD}>
-                      {h}
-                    </div>
-                  ))}
-                </div>
-
+          <TableFrame>
+            <Table className="min-w-[920px]">
+              <THead>
+                <Tr hoverable={false}>
+                  <Th>الصك</Th>
+                  <Th>تاريخ القبول</Th>
+                  <Th>سعر الجدول</Th>
+                  <Th>تعديل التسعير ومبرره</Th>
+                  <Th>الصافي</Th>
+                  <Th>الحالة</Th>
+                  <Th>إجراء المكتب</Th>
+                </Tr>
+              </THead>
+              <TBody>
                 {feesPending && filteredFees.length === 0 ? (
-                  <div className="px-4 py-10 text-center text-[13px] text-text-3">
-                    جاري التحميل…
-                  </div>
+                  <TableEmptyRow colSpan={7}>جاري التحميل…</TableEmptyRow>
                 ) : filteredFees.length === 0 ? (
-                  <div className="px-4 py-10 text-center text-[13px] text-text-3">
-                    لا توجد بنود مطابقة.
-                  </div>
+                  <TableEmptyRow colSpan={7}>لا توجد بنود مطابقة.</TableEmptyRow>
                 ) : (
                   filteredFees.map((row) => {
                     const st = engFeeUiStatus(row);
@@ -581,16 +564,12 @@ export function EngFeesHtmlScreen({ assigneeId }: { assigneeId?: string }) {
                     const busy = busyId === row.workflowTaskId;
                     const objOpen = objectOpenId === row.workflowTaskId;
                     return (
-                      <div
-                        key={row.workflowTaskId}
-                        className="grid min-h-[38px] items-center border-b border-border transition-colors hover:bg-[var(--row-hover,#faf6ee)]"
-                        style={{ gridTemplateColumns: FEE_COLS }}
-                      >
-                        <div className={FEE_CELL}>
-                          <div className="flex flex-col gap-0.5">
+                      <Tr key={row.workflowTaskId}>
+                        <Td>
+                          <div className="flex min-w-0 flex-col gap-0.5">
                             <span
                               dir="ltr"
-                              className="text-start text-[13px] font-bold text-gold-d"
+                              className="inline-block text-start text-[13px] font-bold tabular-nums text-gold-d [unicode-bidi:isolate]"
                             >
                               {deed}
                             </span>
@@ -598,29 +577,27 @@ export function EngFeesHtmlScreen({ assigneeId }: { assigneeId?: string }) {
                               {region}
                             </span>
                           </div>
-                        </div>
-                        <div className={FEE_CELL}>
-                          <span
-                            dir="ltr"
-                            className="tabular-nums [unicode-bidi:isolate]"
-                          >
-                            {formatYmd(
-                              row.accruedAtUtc ??
-                                row.workSubmittedAtUtc ??
-                                row.updatedAtUtc,
-                            )}
-                          </span>
-                        </div>
-                        <div className={cn(FEE_CELL, "text-[12.5px] text-text-2")}>
+                        </Td>
+                        <TdLtr valueClassName="text-[12px] text-text-2">
+                          {formatYmd(
+                            row.accruedAtUtc ??
+                              row.workSubmittedAtUtc ??
+                              row.updatedAtUtc,
+                          )}
+                        </TdLtr>
+                        <TdLtr valueClassName="text-[12.5px] text-text-2">
                           {fmtSar(row.agreedFeeSar)}
-                        </div>
-                        <div className={FEE_CELL}>
+                        </TdLtr>
+                        <Td>
                           {ded ? (
                             <span
                               className="inline-flex min-w-0 items-center gap-1.5"
                               title={row.discountReason ?? undefined}
                             >
-                              <span className="shrink-0 text-[12.5px] font-bold text-[#a5432e]">
+                              <span
+                                dir="ltr"
+                                className="shrink-0 text-[12.5px] font-bold tabular-nums text-[#a5432e] [unicode-bidi:isolate]"
+                              >
                                 − {fmtSar(row.supervisorDiscountSar)}
                               </span>
                               <span className="truncate text-[10.5px] text-text-3">
@@ -632,19 +609,14 @@ export function EngFeesHtmlScreen({ assigneeId }: { assigneeId?: string }) {
                               بسعر الجدول
                             </span>
                           )}
-                        </div>
-                        <div
-                          className={cn(
-                            FEE_CELL,
-                            "text-[13px] font-bold text-heading",
-                          )}
-                        >
+                        </Td>
+                        <TdLtr valueClassName="text-[13px] font-bold text-heading">
                           {fmtSar(row.netFeeSar)}
-                        </div>
-                        <div className={FEE_CELL}>
+                        </TdLtr>
+                        <Td>
                           <StatusPill label={meta.label} style={meta.style} />
-                        </div>
-                        <div className={cn(FEE_CELL, "overflow-visible")}>
+                        </Td>
+                        <Td className="overflow-visible">
                           {st === "pending_office" ? (
                             <div className="flex w-full flex-col gap-1.5">
                               <div className="flex gap-1.5">
@@ -708,14 +680,14 @@ export function EngFeesHtmlScreen({ assigneeId }: { assigneeId?: string }) {
                                 : "لا إجراء مطلوب"}
                             </span>
                           )}
-                        </div>
-                      </div>
+                        </Td>
+                      </Tr>
                     );
                   })
                 )}
-              </div>
-            </div>
-          </div>
+              </TBody>
+            </Table>
+          </TableFrame>
         </>
       ) : (
         <>
@@ -755,45 +727,37 @@ export function EngFeesHtmlScreen({ assigneeId }: { assigneeId?: string }) {
             </span>
           </div>
 
-          <div className={opsLetterCard}>
-            <div className="overflow-x-auto">
-              <div className="min-w-[820px]">
-                <div
-                  className="grid border-b-2 border-gold bg-surface-2"
-                  style={{
-                    gridTemplateColumns: STATEMENT_COLS,
-                  }}
-                >
-                  {[
-                    "رقم الكشف",
-                    "تاريخ الإصدار",
-                    "المعاملات",
-                    "الإجمالي",
-                    "الحالة",
-                    "الصرف",
-                  ].map((h) => (
-                    <div
-                      key={h}
-                      className="flex min-w-0 items-center justify-start overflow-hidden px-4 py-3.5 text-start text-[12px] font-bold text-heading"
-                    >
-                      {h}
-                    </div>
-                  ))}
-                </div>
-
+          <TableFrame>
+            <Table className="min-w-[820px]">
+              <THead>
+                <Tr hoverable={false}>
+                  <Th>رقم الكشف</Th>
+                  <Th>تاريخ الإصدار</Th>
+                  <Th>المعاملات</Th>
+                  <Th>الإجمالي</Th>
+                  <Th>الحالة</Th>
+                  <Th>الصرف</Th>
+                </Tr>
+              </THead>
+              <TBody>
                 {filteredFns.length === 0 ? (
-                  <div className="px-4 py-10 text-center text-[13px] text-text-3">
+                  <TableEmptyRow colSpan={6}>
                     لا توجد كشوف مطابقة.
-                  </div>
+                  </TableEmptyRow>
                 ) : (
                   filteredFns.map((s) => {
                     const selected = openFn === s.referenceNumber;
                     const meta = statementMeta(s);
                     return (
-                      <div
+                      <Tr
                         key={s.id}
+                        hoverable={false}
                         role="button"
                         tabIndex={0}
+                        className={cn(
+                          "cursor-pointer [&:hover_td]:bg-row-hover",
+                          selected && "[&_td]:bg-row-hover",
+                        )}
                         onClick={() => setOpenFn(s.referenceNumber)}
                         onKeyDown={(e) => {
                           if (e.key === "Enter" || e.key === " ") {
@@ -801,57 +765,23 @@ export function EngFeesHtmlScreen({ assigneeId }: { assigneeId?: string }) {
                             setOpenFn(s.referenceNumber);
                           }
                         }}
-                        className={cn(
-                          "grid min-h-11 cursor-pointer items-center border-b border-border transition-colors",
-                          selected && "bg-[var(--row-hover,#faf6ee)]",
-                          "hover:bg-[var(--row-hover,#faf6ee)]",
-                        )}
-                        style={{
-                          gridTemplateColumns: STATEMENT_COLS,
-                        }}
                       >
-                        <div className="flex min-w-0 items-center justify-start overflow-hidden px-4 py-3.5">
-                          <span className="inline-flex min-w-0 items-center gap-1.5">
-                            <svg
-                              width="13"
-                              height="13"
-                              viewBox="0 0 24 24"
-                              fill="none"
-                              stroke="currentColor"
-                              strokeWidth="2"
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                              className="shrink-0 text-text-3"
-                              aria-hidden
-                            >
-                              <path d="M15 3h6v6M14 10l7-7M9 21H3v-6M10 14l-7 7" />
-                            </svg>
-                            <span
-                              dir="ltr"
-                              className="truncate text-start text-[12.5px] font-bold text-gold-d [unicode-bidi:isolate]"
-                            >
-                              {s.referenceNumber}
-                            </span>
-                          </span>
-                        </div>
-                        <div className="flex min-w-0 items-center justify-start overflow-hidden px-4 py-3.5 text-start text-[12px] text-text-2">
-                          <span
-                            dir="ltr"
-                            className="tabular-nums [unicode-bidi:isolate]"
-                          >
-                            {formatYmd(s.issuedAtUtc ?? s.createdAtUtc)}
-                          </span>
-                        </div>
-                        <div className="flex min-w-0 items-center justify-start overflow-hidden px-4 py-3.5 text-start text-[12.5px] text-text">
+                        <TdLtr valueClassName="font-bold text-gold-d text-[12.5px]">
+                          {s.referenceNumber}
+                        </TdLtr>
+                        <TdLtr valueClassName="text-[12px] text-text-2">
+                          {formatYmd(s.issuedAtUtc ?? s.createdAtUtc)}
+                        </TdLtr>
+                        <Td className="text-[12.5px]">
                           {s.lines.length} معاملات
-                        </div>
-                        <div className="flex min-w-0 items-center justify-start overflow-hidden px-4 py-3.5 text-start text-[13px] font-bold tabular-nums text-heading">
+                        </Td>
+                        <TdLtr valueClassName="text-[13px] font-bold text-heading">
                           {fmtSar(s.totalNetSar)}
-                        </div>
-                        <div className="flex min-w-0 items-center justify-start overflow-hidden px-4 py-3.5">
+                        </TdLtr>
+                        <Td>
                           <StatusPill label={meta.label} style={meta.style} />
-                        </div>
-                        <div className="flex min-w-0 items-center justify-start overflow-hidden px-4 py-3.5 text-start text-[11px] text-text-2">
+                        </Td>
+                        <Td className="text-[11px] text-text-2">
                           {s.status === "closed" && s.paidAtUtc ? (
                             <span className="inline-flex min-w-0 flex-col gap-px text-start">
                               <span>
@@ -879,20 +809,20 @@ export function EngFeesHtmlScreen({ assigneeId }: { assigneeId?: string }) {
                           ) : (
                             "بانتظار الصرف"
                           )}
-                        </div>
-                      </div>
+                        </Td>
+                      </Tr>
                     );
                   })
                 )}
-              </div>
-            </div>
+              </TBody>
+            </Table>
             <div className="border-t border-border px-4 py-[11px] text-[12px] text-text-3">
               دورة الكشف: مسودة ← صادر ← محال للمالية ← مصروف. الفاتورة تصدر من
               البرنامج المحاسبي خارج النظام، ويُوثَّق الصرف هنا برقم الفاتورة
               وإيصال التحويل والتاريخ. البنود المتحفَّظ عليها تُعالَج بالتنسيق مع
               المشرف قبل إحالتها للمالية. اضغط صفاً لفتح تفاصيل الكشف.
             </div>
-          </div>
+          </TableFrame>
 
           {openStatement ? (
             <ModalOverlay
@@ -961,7 +891,7 @@ export function EngFeesHtmlScreen({ assigneeId }: { assigneeId?: string }) {
                     {openStatement.lines.map((line) => (
                       <div
                         key={line.id}
-                        className="rounded-xl border border-border bg-surface-2 px-3.5 py-3"
+                        className={cn(opsInsetPanel, "px-3.5 py-3")}
                       >
                         <div className="mb-2.5 text-center">
                           <div

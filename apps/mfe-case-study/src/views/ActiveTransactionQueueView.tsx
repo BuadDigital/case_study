@@ -19,10 +19,10 @@ import {
   PageShellHeader,
   QueueTableHint,
   StatusPill,
+  TableFrame,
   cn,
   EmptyState,
   queueLegacyStatusStyle,
-  queueTableWrapClassName,
   useToast,
 } from "@platform/ui-kit";
 import { PoNumber } from "@case-study/mfe/components/ui/PoNumber";
@@ -1312,15 +1312,8 @@ export function ActiveTransactionQueueView({
                 </div>
               )}
               {isDesktopViewport === false ? null : (
-              <div
-                className={cn(
-                  queueTableWrapClassName,
-                  (isDistributionTable || isAllTransactionsTable) &&
-                    "overflow-x-auto",
-                  /* Never contribute 720px min-width to mobile layout. */
-                  "max-lg:hidden lg:block",
-                  "lg:rounded-b-[var(--radius-lg)]",
-                )}
+              <TableFrame
+                className="max-lg:hidden lg:block"
                 onMouseEnter={preloadRowWork}
                 onFocus={preloadRowWork}
               >
@@ -1375,24 +1368,23 @@ export function ActiveTransactionQueueView({
                     statusColumnLabel={config.statusColumnLabel}
                   />
                 )}
-              </div>
+                <QueueTableHint
+                  className={cn(
+                    (config.pageId === "all-transactions" ||
+                      config.pageId === "active-primary-data" ||
+                      isPartyQueueToggleTable) &&
+                      "border-t border-border bg-surface-2",
+                  )}
+                >
+                  {config.tableHint ??
+                    (config.disableRowOpen
+                      ? "افتح عبر رقم الصك أو أمر العمل أو قائمة ⋮."
+                      : useFullPage
+                        ? "اضغط الصف لفتح دراسة الحالة."
+                        : "اضغط الصف للفتح أو الإغلاق.")}
+                </QueueTableHint>
+              </TableFrame>
               )}
-              <QueueTableHint
-                className={cn(
-                  "hidden lg:block",
-                  (config.pageId === "all-transactions" ||
-                    config.pageId === "active-primary-data" ||
-                    isPartyQueueToggleTable) &&
-                    "border-t border-border bg-surface-2",
-                )}
-              >
-                {config.tableHint ??
-                  (config.disableRowOpen
-                    ? "افتح عبر رقم الصك أو أمر العمل أو قائمة ⋮."
-                    : useFullPage
-                      ? "اضغط الصف لفتح دراسة الحالة."
-                      : "اضغط الصف للفتح أو الإغلاق.")}
-              </QueueTableHint>
             </>
           )}
         </OperationalPanel>

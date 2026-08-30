@@ -1,7 +1,7 @@
 "use client";
 
 import { memo } from "react";
-import { cn } from "@platform/ui-kit";
+import { Tr, Td, TdAction } from "@platform/ui-kit";
 import type { StaffUser } from "@platform/app-shared/prototype/constants";
 import {
   isActiveOperationsTask,
@@ -15,16 +15,12 @@ import {
   operationsTaskTypeLabel,
 } from "../lib/prototype/operations-task-display";
 import { RowMoreMenu, type RowMoreMenuItem } from "../components/ui/RowMoreMenu";
-import { TASKS_LIST_COLS } from "../components/tasks/TasksHtmlPrimitives";
 import {
-  opsGridRow,
   opsRemindMini,
   opsRowMeta,
   opsRowTitle,
-  opsTd,
-  opsTdC,
   opsTkCheck,
-  opsTkCheckInput,
+  opsCheckInput,
   opsTypeIconSm,
 } from "../lib/prototype/ops-tasks-tw";
 import {
@@ -62,15 +58,10 @@ export const OperationsTaskRow = memo(function OperationsTaskRow({
 }: OperationsTaskRowProps) {
   const prColor = OPERATIONS_TASK_PRIORITY_COLORS[task.priority] ?? "#8a8d96";
   return (
-    <div
+    <Tr
       role="button"
       tabIndex={0}
-      className={cn(
-        opsGridRow,
-        // Off-screen rows are not laid out or painted (rendering-content-visibility).
-        "[content-visibility:auto] [contain-intrinsic-size:auto_52px]",
-      )}
-      style={{ gridTemplateColumns: TASKS_LIST_COLS }}
+      className="cursor-pointer [content-visibility:auto] [contain-intrinsic-size:auto_52px]"
       onClick={() => onOpen(task)}
       onKeyDown={(e) => {
         if (e.key === "Enter" || e.key === " ") {
@@ -79,22 +70,22 @@ export const OperationsTaskRow = memo(function OperationsTaskRow({
         }
       }}
     >
-      <div
-        className={cn(opsTd, opsTdC)}
+      <Td
+        className="w-10 text-center"
         onClick={(e) => e.stopPropagation()}
       >
         {isActiveOperationsTask(task) ? (
           <label className={opsTkCheck}>
             <input
               type="checkbox"
-              className={opsTkCheckInput}
+              className={opsCheckInput}
               checked={checked}
               onChange={(e) => onToggleSelect(task.id, e.target.checked)}
             />
           </label>
         ) : null}
-      </div>
-      <div className={opsTd}>
+      </Td>
+      <Td>
         <div className="flex min-w-0 items-center gap-[11px]">
           <span className={opsTypeIconSm}>
             <TypeIcon type={task.type} size={15} />
@@ -128,8 +119,8 @@ export const OperationsTaskRow = memo(function OperationsTaskRow({
             </span>
           </div>
         </div>
-      </div>
-      <div className={opsTd}>
+      </Td>
+      <Td>
         <div className="flex min-w-0 flex-col gap-0.5">
           <span className="text-[13px] font-semibold text-text">
             {operationsTaskScopeLabel(task.scope)}
@@ -138,8 +129,8 @@ export const OperationsTaskRow = memo(function OperationsTaskRow({
             {operationsTaskLinkLabel(task)}
           </span>
         </div>
-      </div>
-      <div className={opsTd}>
+      </Td>
+      <Td>
         <div className="flex min-w-0 flex-col gap-0.5">
           <span className="text-[13px] font-semibold text-heading">
             {task.assigneeName || task.assigneeId}
@@ -148,17 +139,14 @@ export const OperationsTaskRow = memo(function OperationsTaskRow({
             {assigneeRoleLabel(staffUsers, task.assigneeId)}
           </span>
         </div>
-      </div>
-      <div className={opsTd}>
+      </Td>
+      <Td>
         <DueCell task={task} />
-      </div>
-      <div className={cn(opsTd, opsTdC)}>
+      </Td>
+      <Td className="text-center">
         <TaskStatusPill status={task.status} />
-      </div>
-      <div
-        className={cn(opsTd, opsTdC)}
-        onClick={(e) => e.stopPropagation()}
-      >
+      </Td>
+      <TdAction onClick={(e) => e.stopPropagation()}>
         <div className="flex w-full items-center justify-center gap-0.5">
           {canRemind && isActiveOperationsTask(task) ? (
             <button
@@ -173,7 +161,7 @@ export const OperationsTaskRow = memo(function OperationsTaskRow({
           ) : null}
           <RowMoreMenu items={rowMenu(task)} />
         </div>
-      </div>
-    </div>
+      </TdAction>
+    </Tr>
   );
 });
