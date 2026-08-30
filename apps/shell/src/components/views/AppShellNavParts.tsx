@@ -2,7 +2,9 @@
 
 /** أجزاء صدفة التطبيق — أيقونات وصفوف وقوائم التنقل على مستوى الوحدة، نُقلت حرفياً من AppShell (SRP). */
 import Link from "next/link";
+import { useLinkStatus } from "next/link";
 import { useEffect, useRef, useState } from "react";
+import { Spinner } from "@platform/ui-kit";
 import { NavIcon } from "@/components/views/NavIcon";
 import { ThemeSwitch } from "@/components/views/ThemeSwitch";
 import type { PageId, RoleId } from "@platform/types";
@@ -261,8 +263,22 @@ export function NavRow({
     >
       <NavIcon d={item.icon} size={16} />
       <span className={navLabelClasses(rail)}>{item.label}</span>
-      {badge}
+      <NavPending fallback={badge} />
     </Link>
+  );
+}
+
+/**
+ * إشارة فورية عند النقر: التنقل كان صامتاً حتى تُركَّب الصفحة التالية، فيبدو
+ * أن الضغطة لم تُسجَّل. يحلّ محلّ الشارة أثناء الانتظار حتى لا يتمدّد الصف.
+ */
+function NavPending({ fallback = null }: { fallback?: React.ReactNode }) {
+  const { pending } = useLinkStatus();
+  if (!pending) return fallback;
+  return (
+    <span className="ms-auto inline-flex items-center" aria-label="جاري التحميل">
+      <Spinner />
+    </span>
   );
 }
 
@@ -325,30 +341,35 @@ export function ActiveTransactionNavRow({
       onFocus={() => onPrefetch(id)}
     >
       {inner}
+      <NavPending />
     </Link>
   );
 }
 
 export function NavDropdownChevron({ open, rail = false }: { open: boolean; rail?: boolean }) {
   return (
-    <svg
+    <span
       className={cn(
-        "ms-auto shrink-0 opacity-45 transition-transform duration-200 ease-in-out",
+        "ms-auto inline-flex shrink-0 opacity-45 transition-transform duration-200 ease-in-out",
         open && "-rotate-90 opacity-70",
         navChevronClasses(rail),
       )}
-      width="12"
-      height="12"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
       aria-hidden
     >
-      <polyline points="15 18 9 12 15 6" />
-    </svg>
+      <svg
+        className="size-[18px]"
+        width="12"
+        height="12"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      >
+        <polyline points="15 18 9 12 15 6" />
+      </svg>
+    </span>
   );
 }
 
@@ -372,6 +393,12 @@ export function NavFlyoutPanel({
     </div>
   );
 }
+
+// تحميل مسبق لحزمة مسار المالية عند التحويم/التركيز على ورقته (bundle-preload).
+const preloadFinanceAreaChunk = (area: FinanceNavArea) =>
+  void import("@financial/mfe/components/FinanceWorkspace").then((m) =>
+    m.FINANCE_AREA_CHUNK_PRELOAD[area]?.(),
+  );
 
 /**
  * Finance.html sidebar (حرفياً):
@@ -432,6 +459,8 @@ export function FinanceHtmlNav({
           })}
           title={rail ? leaf.label : undefined}
           prefetch
+          onMouseEnter={() => preloadFinanceAreaChunk(leaf.area)}
+          onFocus={() => preloadFinanceAreaChunk(leaf.area)}
         >
           <NavIcon d={leaf.icon} size={rail ? 16 : 14} />
           <span className={navLabelClasses(rail)}>{leaf.label}</span>
@@ -725,23 +754,26 @@ export function SystemSettingsNavDropdown({
               }
             >
               <span>{node.label}</span>
-              <svg
+              <span
                 className={cn(
-                  "opacity-60 transition-transform duration-150",
+                  "inline-flex opacity-60 transition-transform duration-150",
                   groupOpen ? "rotate-0" : "-rotate-90",
                 )}
-                width="11"
-                height="11"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
                 aria-hidden
               >
-                <polyline points="6 9 12 15 18 9" />
-              </svg>
+                <svg
+                  width="11"
+                  height="11"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <polyline points="6 9 12 15 18 9" />
+                </svg>
+              </span>
             </button>
             {groupOpen ? node.items.map(renderItem) : null}
           </div>
@@ -982,21 +1014,22 @@ export function ProfileMenu({
         aria-haspopup="menu"
         onClick={() => setOpen((v) => !v)}
       >
-        <svg
-          className={cn(
-            "size-3.5 transition-transform",
-            open && "rotate-180",
-          )}
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="2"
-          strokeLinecap="round"
-          strokeLinejoin="round"
+        <span
+          className={cn("inline-flex transition-transform", open && "rotate-180")}
           aria-hidden
         >
-          <polyline points="6 9 12 15 18 9" />
-        </svg>
+          <svg
+            className="size-3.5"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
+            <polyline points="6 9 12 15 18 9" />
+          </svg>
+        </span>
       </button>
         {open ? (
         <>

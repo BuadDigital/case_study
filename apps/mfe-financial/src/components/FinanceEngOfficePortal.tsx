@@ -5,10 +5,11 @@
  * Tailwind فقط (finance-tw) — بلا CSS/style objects.
  */
 
-import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { useMemo, useRef, useState, type ReactNode } from "react";
 import Link from "next/link";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { fmtMax } from "@platform/app-shared/format/number";
+import { useEscapeKey } from "@platform/app-shared/hooks/use-escape-key";
 import { prototypeKeys } from "@platform/app-shared/query/prototype-keys";
 import { resolvePartyName } from "@platform/app-shared/fees/party-fee-meta";
 import {
@@ -153,14 +154,7 @@ export function FinanceEngOfficePortal({
   const ready = !statementsQuery.isPending && !statementsQuery.isError;
   const portalEmpty = ready && portalRuns.length === 0;
 
-  useEffect(() => {
-    if (!modalRunId) return;
-    function onKey(e: KeyboardEvent) {
-      if (e.key === "Escape" && !busy) closeModal();
-    }
-    document.addEventListener("keydown", onKey);
-    return () => document.removeEventListener("keydown", onKey);
-  }, [modalRunId, busy]);
+  useEscapeKey(Boolean(modalRunId) && !busy, () => closeModal());
 
   function openUpload(run: PartyBillingStatementDto) {
     setModalRunId(run.id);

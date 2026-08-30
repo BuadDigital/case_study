@@ -1,4 +1,4 @@
-import { getApiBase } from "./index";
+import { getApiBase } from "./api-base";
 import { repositoryFetch as fetch } from "./write-repository";
 import type { ComparablePropertyDto } from "./comparable-properties";
 import { parseJson } from "./parse-json";

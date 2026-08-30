@@ -12,8 +12,8 @@ export async function pdfBlobToFirstPageDataUrl(
   if (typeof document === "undefined") return undefined;
 
   try {
-    const pdfjs = await loadPdfJs();
-    const data = new Uint8Array(await blob.arrayBuffer());
+    const [pdfjs, buffer] = await Promise.all([loadPdfJs(), blob.arrayBuffer()]);
+    const data = new Uint8Array(buffer);
     const pdf = await pdfjs.getDocument({ data }).promise;
     const page = await pdf.getPage(1);
     const viewport = page.getViewport({ scale });

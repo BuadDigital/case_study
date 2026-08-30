@@ -1,7 +1,7 @@
 /**
  * Field inspection workspaces API — denormalized reporting rows from PostgreSQL.
  */
-import { getApiBase } from "./index";
+import { getApiBase } from "./api-base";
 import type { ApiErr, ApiOk, WorkOrdersApiConfig } from "./work-orders";
 
 export type FieldInspectionWorkspacesApiConfig = WorkOrdersApiConfig;

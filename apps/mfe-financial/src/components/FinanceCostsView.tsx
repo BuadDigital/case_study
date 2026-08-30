@@ -147,9 +147,11 @@ export function FinanceCostsView({
 
   /** تبويب الحساب الفوري — لا يعتمد على تأخّر searchParams */
   const [viewSection, setViewSection] = useState(section);
-  useEffect(() => {
+  const [prevSection, setPrevSection] = useState(section);
+  if (section !== prevSection) {
+    setPrevSection(section);
     setViewSection(section);
-  }, [section]);
+  }
 
   const statementResolvedParty = useMemo(() => {
     if (!focusStatementId) return null;

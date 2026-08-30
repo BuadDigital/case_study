@@ -156,9 +156,23 @@ export function EvaluatorFinalReviewTab({
   const [specialistKeys, setSpecialistKeys] = useState<string[]>(() =>
     loadSpecialistPrintAttachmentKeys(property?.id ?? draft.propertyId),
   );
-  const [attachmentCatalog, setAttachmentCatalog] = useState<
+  // قوائم التقييم من الاستعلام المشترك — كان GET مكرراً مع قسم الرأي النهائي.
+  const { data: valuationLists } = useValuationListsQuery();
+  const attachmentCatalog = useMemo<
     { key: string; name: string; isRequired: boolean }[]
-  >([]);
+  >(
+    () =>
+      (valuationLists?.lists?.attachments ?? [])
+        .filter((r) => r.isEnabled)
+        .slice()
+        .sort((a, b) => a.sortOrder - b.sortOrder)
+        .map((r) => ({
+          key: r.key,
+          name: r.name,
+          isRequired: r.isRequired,
+        })),
+    [valuationLists],
+  );
   const [settings, setSettings] = useState<ValuationApproachSettingsDto | null>(
     null,
   );
@@ -243,22 +257,6 @@ export function EvaluatorFinalReviewTab({
       setSpecialistKeys(loadSpecialistPrintAttachmentKeys(propertyId)),
     ),
   });
-
-  // قوائم التقييم من الاستعلام المشترك — كان GET مكرراً مع قسم الرأي النهائي.
-  const { data: valuationLists } = useValuationListsQuery();
-  useEffect(() => {
-    if (!valuationLists) return;
-    const rows = (valuationLists.lists?.attachments ?? [])
-      .filter((r) => r.isEnabled)
-      .slice()
-      .sort((a, b) => a.sortOrder - b.sortOrder)
-      .map((r) => ({
-        key: r.key,
-        name: r.name,
-        isRequired: r.isRequired,
-      }));
-    setAttachmentCatalog(rows);
-  }, [valuationLists]);
 
   // صب ESG والمرفقات من الأخصائي → مسودة التقرير للطباعة.
   useEffect(() => {

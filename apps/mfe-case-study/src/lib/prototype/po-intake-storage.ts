@@ -14,6 +14,7 @@ import {
   deleteTasksForPo,
   deleteTasksForProperty,
   linkNewPropertyToTaskSlot,
+  loadWorkflowTasks,
   syncTaskSlotsForPo,
   type WorkflowTask,
 } from "./tasks-storage";
@@ -414,7 +415,7 @@ export async function savePoRecord(
   }
 
   const saved = dtoToRecord(result.data);
-  const slots = await syncTaskSlotsForPo(saved);
+  const slots = await syncTaskSlotsForPo(saved.poNumber);
   if (!slots.ok) {
     return { ok: false, error: slots.error };
   }
@@ -965,12 +966,15 @@ export async function completePropertyBourse(
   const config = workOrdersApiConfig();
   if (!config) return { ok: false, error: apiErrorMessage("auth") };
 
-  const result = await completePropertyBourseData(
-    config,
-    poNumber,
-    propertyId,
-    propertyToBourseRequest(property),
-  );
+  const [result, tasks] = await Promise.all([
+    completePropertyBourseData(
+      config,
+      poNumber,
+      propertyId,
+      propertyToBourseRequest(property),
+    ),
+    loadWorkflowTasks(),
+  ]);
   if (!result.ok) {
     return {
       ok: false,
@@ -985,6 +989,7 @@ export async function completePropertyBourse(
       poNumber,
       propertyId,
       saved,
+      tasks,
     );
     if (advanced && !advanced.ok) {
       return { ok: false, error: advanced.error };
@@ -1022,8 +1027,10 @@ export async function deletePoRecord(
       error: result.message ?? apiErrorMessage(result.kind),
     };
   }
-  await deleteTasksForPo(poNumber);
-  const failuresDeleted = await deleteFailuresForPo(poNumber);
+  const [, failuresDeleted] = await Promise.all([
+    deleteTasksForPo(poNumber),
+    deleteFailuresForPo(poNumber),
+  ]);
   if (!failuresDeleted) {
     return {
       ok: false,
@@ -1096,18 +1103,7 @@ export async function updatePoRecord(
   }
 
   const saved = dtoToRecord(result.data);
-  const full = await getPoRecord(record.poNumber);
-  const syncTarget = full
-    ? {
-        ...full,
-        expectedPropertyCount: saved.expectedPropertyCount,
-        assignmentType: saved.assignmentType,
-        promulgationDate: saved.promulgationDate,
-        assignmentSpecialist: saved.assignmentSpecialist,
-        assignmentSpecialistEmail: saved.assignmentSpecialistEmail,
-      }
-    : { ...record, ...saved, properties: record.properties };
-  const slots = await syncTaskSlotsForPo(syncTarget);
+  const slots = await syncTaskSlotsForPo(record.poNumber);
   if (!slots.ok) {
     return { ok: false, error: slots.error };
   }
@@ -1211,14 +1207,13 @@ export async function addPropertyToPo(
     }
   }
 
-  const record = await getPoRecord(poNumber);
   if (options?.assignToTaskId) {
     const advanced = await advanceTaskAfterEnfath(options.assignToTaskId, prop);
     if (!advanced.ok) {
       return { ok: false, error: advanced.error };
     }
-  } else if (record) {
-    const linked = await linkNewPropertyToTaskSlot(record, prop);
+  } else {
+    const linked = await linkNewPropertyToTaskSlot(poNumber, prop);
     if (linked && !linked.ok) {
       return { ok: false, error: linked.error };
     }

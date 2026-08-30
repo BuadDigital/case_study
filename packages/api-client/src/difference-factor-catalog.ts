@@ -1,4 +1,4 @@
-import { getApiBase } from "./index";
+import { getApiBase } from "./api-base";
 import { repositoryFetch as fetch } from "./write-repository";
 
 /** Decision 19.2 — admin-managed factor definition (تعريف + «ما لا يشمله»). */

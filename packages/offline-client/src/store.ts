@@ -386,12 +386,14 @@ export async function saveOfflineBlob(
   }
 
   const key = await ensureOfflineKey(blob.userId);
-  const enc = await encryptBytes(key, blob.bytes);
   const metaPayload = {
     ...blob,
     bytes: undefined as unknown as ArrayBuffer,
   };
-  const metaEnc = await encryptJson(key, metaPayload);
+  const [enc, metaEnc] = await Promise.all([
+    encryptBytes(key, blob.bytes),
+    encryptJson(key, metaPayload),
+  ]);
   await withDb((db) =>
     db.put("blobs", {
       id: blob.id,
@@ -516,25 +518,26 @@ export async function listOfflineBlobMeta(
     db.getAllFromIndex("blobs", "by-user", userId),
   );
   const key = await resolveBlobKey(userId, rows);
-  const out: Omit<OfflineBlobRecord, "bytes">[] = [];
-  for (const row of rows) {
-    try {
-      if (isPlainRow(row) || row.meta?.encoding === PLAIN_ENCODING) {
-        out.push(decodePlainJson<Omit<OfflineBlobRecord, "bytes">>(row));
-        continue;
-      }
-      if (!key) continue;
-      out.push(
-        await decryptJson<Omit<OfflineBlobRecord, "bytes">>(key, {
+  const decoded = await Promise.all(
+    rows.map(async (row) => {
+      try {
+        if (isPlainRow(row) || row.meta?.encoding === PLAIN_ENCODING) {
+          return decodePlainJson<Omit<OfflineBlobRecord, "bytes">>(row);
+        }
+        if (!key) return null;
+        return await decryptJson<Omit<OfflineBlobRecord, "bytes">>(key, {
           iv: row.iv,
           ciphertext: row.ciphertext,
-        }),
-      );
-    } catch {
-      /* tampered / wrong key — skip */
-    }
-  }
-  return out;
+        });
+      } catch {
+        /* tampered / wrong key — skip */
+        return null;
+      }
+    }),
+  );
+  return decoded.filter(
+    (meta): meta is Omit<OfflineBlobRecord, "bytes"> => meta !== null,
+  );
 }
 
 export async function markBlobUploaded(

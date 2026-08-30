@@ -133,27 +133,26 @@ export async function uploadDraftFiles(
   taskId: string,
   files: DraftFile[],
 ): Promise<{ name: string; size: string; attachmentId?: string | null; contentType?: string | null }[]> {
-  const results: { name: string; size: string; attachmentId?: string | null; contentType?: string | null }[] = [];
-  for (const f of files) {
-    if (f.attachmentId || !f.file) {
-      results.push({
+  return Promise.all(
+    files.map(async (f) => {
+      if (f.attachmentId || !f.file) {
+        return {
+          name: f.name,
+          size: f.size,
+          attachmentId: f.attachmentId ?? null,
+          contentType: f.contentType ?? null,
+        };
+      }
+      const scopeKey = `${taskId}:${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}`;
+      const uploaded = await uploadTaskScopedAttachment(OPS_COMMENT_ATTACHMENT_SCOPE, scopeKey, f.file);
+      return {
         name: f.name,
         size: f.size,
-        attachmentId: f.attachmentId ?? null,
-        contentType: f.contentType ?? null,
-      });
-      continue;
-    }
-    const scopeKey = `${taskId}:${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}`;
-    const uploaded = await uploadTaskScopedAttachment(OPS_COMMENT_ATTACHMENT_SCOPE, scopeKey, f.file);
-    results.push({
-      name: f.name,
-      size: f.size,
-      attachmentId: uploaded?.attachmentId ?? null,
-      contentType: uploaded?.mimeType ?? f.file.type ?? null,
-    });
-  }
-  return results;
+        attachmentId: uploaded?.attachmentId ?? null,
+        contentType: uploaded?.mimeType ?? f.file.type ?? null,
+      };
+    }),
+  );
 }
 
 export function TypeIcon({ type, size = 15 }: { type: string; size?: number }) {
@@ -1026,6 +1025,39 @@ export function TaskStepper({ status }: { status: string }) {
   );
 }
 
+const chatBubbleIcon = (
+  <svg
+    width="18"
+    height="18"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="1.7"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    aria-hidden
+  >
+    <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+  </svg>
+);
+
+const sendIcon = (
+  <svg
+    width="15"
+    height="15"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="1.9"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    aria-hidden
+  >
+    <path d="m22 2-7 20-4-9-9-4Z" />
+    <path d="M22 2 11 13" />
+  </svg>
+);
+
 export function CommentThread({
   task,
   staffUsers,
@@ -1048,27 +1080,23 @@ export function CommentThread({
   onSend: () => void;
 }) {
   const assigneeRole = assigneeRoleLabel(staffUsers, task.assigneeId);
+  const creatorName = displayPersonName(task.createdByName, {
+    userId: task.createdBy,
+    staffUsers,
+    fallback: "المنشئ",
+  });
+  const executorName = displayPersonName(task.assigneeName, {
+    userId: task.assigneeId,
+    staffUsers,
+    fallback: "المنفّذ",
+  });
   const comments = task.comments;
   const canSend = Boolean(commentText.trim() || draftFiles.length);
   return (
     <div className={cn(opsLetterCard, "mt-5")}>
       <div className={opsLetterHead}>
         <div className={opsHeadRow}>
-          <span className={opsIconBoxGold}>
-            <svg
-              width="18"
-              height="18"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="1.7"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              aria-hidden
-            >
-              <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
-            </svg>
-          </span>
+          <span className={opsIconBoxGold}>{chatBubbleIcon}</span>
           <div>
             <div className={opsLetterTitle}>التحديثات والاستفسارات</div>
             <div className={opsLetterSub}>
@@ -1102,17 +1130,7 @@ export function CommentThread({
                 );
               }
               const isC = c.who === "creator";
-              const name = isC
-                ? displayPersonName(task.createdByName, {
-                    userId: task.createdBy,
-                    staffUsers,
-                    fallback: "المنشئ",
-                  })
-                : displayPersonName(task.assigneeName, {
-                    userId: task.assigneeId,
-                    staffUsers,
-                    fallback: "المنفّذ",
-                  });
+              const name = isC ? creatorName : executorName;
               const role = isC ? "منشئ المهمة" : assigneeRole;
               const col = isC ? "var(--ink)" : "var(--gold-d)";
               return (
@@ -1225,24 +1243,7 @@ export function CommentThread({
                 aria-busy={busy || undefined}
                 onClick={onSend}
               >
-                {busy ? (
-                  <Spinner />
-                ) : (
-                <svg
-                  width="15"
-                  height="15"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="1.9"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  aria-hidden
-                >
-                  <path d="m22 2-7 20-4-9-9-4Z" />
-                  <path d="M22 2 11 13" />
-                </svg>
-                )}
+                {busy ? <Spinner /> : sendIcon}
                 <span>{busy ? "جاري الإرسال…" : "إرسال"}</span>
               </button>
             </div>

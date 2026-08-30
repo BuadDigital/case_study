@@ -3,6 +3,8 @@
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useAuth } from "@platform/app-shared/hooks/useAuth";
+import { useViewportDesktop } from "@platform/app-shared/hooks/use-viewport-desktop";
+import { useEscapeKey } from "@platform/app-shared/hooks/use-escape-key";
 import { useSyncedNotifications } from "@platform/app-shared/notifications/useSyncedNotifications";
 import { filterNotificationsForRole } from "@platform/app-shared/notifications/role-notification-policy";
 import { formatNotificationTime } from "@platform/app-shared/notifications/format-notification-time";
@@ -56,7 +58,10 @@ export function NotificationCenter() {
     [items],
   );
   const [open, setOpen] = useState(false);
+  const isDesktopViewport = useViewportDesktop();
   const panelRef = useRef<HTMLDivElement>(null);
+
+  useEscapeKey(open, () => setOpen(false));
 
   useEffect(() => {
     if (!open) return;
@@ -67,27 +72,18 @@ export function NotificationCenter() {
       }
     }
 
-    function onKeyDown(event: KeyboardEvent) {
-      if (event.key === "Escape") setOpen(false);
-    }
-
     document.addEventListener("mousedown", onPointerDown);
-    document.addEventListener("keydown", onKeyDown);
-    return () => {
-      document.removeEventListener("mousedown", onPointerDown);
-      document.removeEventListener("keydown", onKeyDown);
-    };
+    return () => document.removeEventListener("mousedown", onPointerDown);
   }, [open]);
 
   useEffect(() => {
     if (!open) return;
     const prev = document.body.style.overflow;
-    const mq = window.matchMedia("(max-width: 1023px)");
-    if (mq.matches) document.body.style.overflow = "hidden";
+    if (isDesktopViewport === false) document.body.style.overflow = "hidden";
     return () => {
       document.body.style.overflow = prev;
     };
-  }, [open]);
+  }, [open, isDesktopViewport]);
 
   if (!isFeatureEnabled("notificationCenter")) return null;
 

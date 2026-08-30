@@ -347,21 +347,25 @@ export function InspectorCard({
               <span className="mt-0.5 block text-[12px] text-text-3">{subtitle}</span>
             ) : null}
           </span>
-          <svg
-            width="20"
-            height="20"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
+          <span
             className={cn(
-              "shrink-0 text-text-3 transition-transform duration-200",
+              "inline-flex shrink-0 text-text-3 transition-transform duration-200",
               open && "rotate-180",
             )}
             aria-hidden
           >
-            <path d="m6 9 6 6 6-6" />
-          </svg>
+            <svg
+              width="20"
+              height="20"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              aria-hidden
+            >
+              <path d="m6 9 6 6 6-6" />
+            </svg>
+          </span>
         </button>
         <div
           className={cn(

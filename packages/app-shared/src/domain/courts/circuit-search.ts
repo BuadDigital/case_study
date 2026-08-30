@@ -113,15 +113,28 @@ function ordinalFormsFor(n: number): string[] {
   return (ORDINAL_FORMS[n] ?? []).map(normalizeOrdinalForm);
 }
 
+/** مفاتيح مشتقة من حقول ثابتة — تُحسب مرة لكل عنصر بدل كل ضغطة مفتاح. */
+const HAYSTACK_CACHE = new WeakMap<CircuitSearchItem, string>();
+const SORT_KEY_CACHE = new WeakMap<CircuitSearchItem, string>();
+
 function circuitHaystack(item: CircuitSearchItem): string {
+  const cached = HAYSTACK_CACHE.get(item);
+  if (cached !== undefined) return cached;
   const label = `${item.circuitName ?? ""} ${item.circuitNo}`.trim();
-  return stripArabicAl(label);
+  const hay = stripArabicAl(label);
+  HAYSTACK_CACHE.set(item, hay);
+  return hay;
 }
 
 function circuitSortKey(item: CircuitSearchItem): string {
+  const cached = SORT_KEY_CACHE.get(item);
+  if (cached !== undefined) return cached;
   const digits = digitsOnly(item.circuitNo);
-  if (digits) return digits.padStart(4, "0");
-  return stripArabicAl(item.circuitNo || item.circuitName || "");
+  const key = digits
+    ? digits.padStart(4, "0")
+    : stripArabicAl(item.circuitNo || item.circuitName || "");
+  SORT_KEY_CACHE.set(item, key);
+  return key;
 }
 
 export function circuitDisplayLabel(item: CircuitSearchItem): string {
@@ -167,13 +180,16 @@ function rankWithNormalizedQuery(
   qText: string,
   item: CircuitSearchItem,
 ): number | null {
-  const hay = circuitHaystack(item);
   const noDigits = digitsOnly(item.circuitNo);
 
   if (qDigits) {
     if (noDigits && noDigits === qDigits) return 0;
     const n = Number(qDigits);
-    if (Number.isFinite(n) && n > 0 && hasStandaloneOrdinal(hay, n)) {
+    if (
+      Number.isFinite(n) &&
+      n > 0 &&
+      hasStandaloneOrdinal(circuitHaystack(item), n)
+    ) {
       return 0;
     }
     if (noDigits && noDigits.startsWith(qDigits)) return 1;
@@ -181,6 +197,8 @@ function rankWithNormalizedQuery(
   }
 
   if (!qText) return null;
+
+  const hay = circuitHaystack(item);
 
   if (hay.includes(qText)) return 2;
 

@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { usePrototype } from "@platform/app-shared/contexts/PrototypeContext";
+import { useEscapeKey } from "@platform/app-shared/hooks/use-escape-key";
 import { allocateNumberedDocument } from "@platform/api-client";
 import { apiConfig } from "@platform/app-shared/auth/api-config";
 import {
@@ -65,21 +66,24 @@ const CheckMark = () => (
 );
 
 const ChevronIcon = ({ open }: { open: boolean }) => (
-  <svg
-    width="18"
-    height="18"
-    viewBox="0 0 24 24"
-    fill="none"
-    stroke="var(--text-3)"
-    strokeWidth="2"
+  <span
     className={cn(
-      "shrink-0 transition-transform duration-200",
+      "inline-flex shrink-0 transition-transform duration-200",
       open ? "rotate-0" : "-rotate-90",
     )}
     aria-hidden="true"
   >
-    <path d="m6 9 6 6 6-6" />
-  </svg>
+    <svg
+      width="18"
+      height="18"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="var(--text-3)"
+      strokeWidth="2"
+    >
+      <path d="m6 9 6 6 6-6" />
+    </svg>
+  </span>
 );
 
 const EyeIcon = () => (
@@ -348,14 +352,7 @@ export function PropertyDetailCaseStudyReport({
       window.removeEventListener(PARTY_CASE_STUDY_FORM_CHANGED_EVENT, bump);
   }, []);
 
-  useEffect(() => {
-    if (!previewOpen) return;
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") setPreviewOpen(false);
-    };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [previewOpen]);
+  useEscapeKey(previewOpen, () => setPreviewOpen(false));
 
   const reportModel = useMemo(() => {
     if (!task || !draft) return null;

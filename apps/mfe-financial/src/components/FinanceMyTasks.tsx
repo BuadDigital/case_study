@@ -35,6 +35,13 @@ const FinanceVendorInvoiceMatchModal = dynamic(
   { ssr: false },
 );
 
+// الحزمة تُجلب عند التحويم/التركيز على زر الفتح بدل انتظار النقر
+// (bundle-preload).
+const preloadDisbursementCloseModal = () =>
+  void import("./FinanceDisbursementCloseModal");
+const preloadVendorInvoiceMatchModal = () =>
+  void import("./FinanceVendorInvoiceMatchModal");
+
 const EMPTY_STATEMENTS: PartyBillingStatementDto[] = [];
 
 /** أيقونة KPI مربّعة — توكنات finance-tw */
@@ -121,6 +128,10 @@ function TaskRow({
 }) {
   const opensModal =
     task.kind === "cost_match_invoice" || task.kind === "cost_close_statement";
+  const preloadModal =
+    task.kind === "cost_match_invoice"
+      ? preloadVendorInvoiceMatchModal
+      : preloadDisbursementCloseModal;
 
   return (
     <div
@@ -175,6 +186,8 @@ function TaskRow({
             type="button"
             className="inline-flex cursor-pointer items-center gap-1 border-none bg-transparent p-0 text-[12px] font-bold text-[#3a3f4d] transition-colors hover:text-[#102B4E]"
             onClick={() => onOpen(task)}
+            onMouseEnter={preloadModal}
+            onFocus={preloadModal}
           >
             {task.openLabel}
             <span className="text-[14px] leading-none" aria-hidden>

@@ -1,6 +1,14 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  useCallback,
+  useDeferredValue,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  useTransition,
+} from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
   KpiBand,
@@ -70,11 +78,18 @@ import {
 } from "../lib/prototype/operations-task-failure-obstruction";
 import { GOVERNMENT_REVIEWER_FAILURE_RAISER } from "@failures/mfe/lib/failure-party-roles";
 import { useFailuresQuery } from "@failures/mfe/query/failures-queries";
-import { FailureRaiseModal } from "../components/failures/FailureRaiseModal";
+const FailureRaiseModal = dynamic(
+  () =>
+    import("../components/failures/FailureRaiseModal").then(
+      (m) => m.FailureRaiseModal,
+    ),
+  { ssr: false },
+);
 import { agentInfoFromStaff } from "../lib/prototype/internal-delegation-letters";
 import { partyAccountForRole, partyAccountForViewer } from "../lib/prototype/distribution-parties";
 import { AppModal } from "../components/ui/AppModal";
-import { RowMoreMenu, RowMoreMenuIcons, type RowMoreMenuItem } from "../components/ui/RowMoreMenu";
+import { RowMoreMenuIcons, type RowMoreMenuItem } from "../components/ui/RowMoreMenu";
+import { OperationsTaskRow } from "./OperationsTaskRow";
 import {
   ActiveQueueMobileCards,
   type ActiveQueueMobileCardItem,
@@ -105,7 +120,13 @@ import {
   TasksShowAllEye,
   tasksDescClassName,
 } from "../components/tasks/TasksHtmlPrimitives";
-import { ReassignOperationsTaskModal } from "../components/tasks/ReassignOperationsTaskModal";
+const ReassignOperationsTaskModal = dynamic(
+  () =>
+    import("../components/tasks/ReassignOperationsTaskModal").then(
+      (m) => m.ReassignOperationsTaskModal,
+    ),
+  { ssr: false },
+);
 import {
   opsAttachBtn,
   opsBulk,
@@ -136,15 +157,11 @@ import {
   opsBulkCount,
   opsListCount,
   opsLetterRow,
-  opsTypeIconSm,
-  opsRowTitle,
-  opsRowMeta,
   opsEmptyHint,
   opsEventAv,
   opsFileChip,
   opsFileChipFx,
   opsFilters,
-  opsGridRow,
   opsHeadRow,
   opsIconBoxGold,
   opsLetterBodyPad,
@@ -166,7 +183,6 @@ import {
   opsReceiptConfirmWrap,
   opsRemindBtn,
   opsRemindCard,
-  opsRemindMini,
   opsShowAllBtn,
   opsShowAllBtnOn,
   opsStep,
@@ -180,12 +196,10 @@ import {
   opsStepLblOn,
   opsStepLine,
   opsStepLineOn,
-  opsTd,
   opsTdC,
   opsTh,
   opsThStart,
   opsThead,
-  opsTkCheck,
   opsTkCheckInput,
   opsToolbar,
   opsTfActions,
@@ -212,12 +226,16 @@ import {
   assigneesForType,
   assigneeRoleLabel,
   TaskStatusPill,
-  DueCell,
   TaskStepper,
   TickingRemindCountdown,
   CommentThread,
   LetterTable,
 } from "./OperationsTasksViewParts";
+
+// ترتيب النطاقات ثابت — دالة وحدة واحدة بدل إغلاق يُخصَّص لكل مقارنة
+// (js-cache-function-results).
+const taskStatusRank = (status: string) =>
+  status === "paused" ? 1 : isTerminalOperationsTaskStatus(status) ? 2 : 0;
 
 export function OperationsTasksView() {
   const router = useRouter();
@@ -274,6 +292,9 @@ export function OperationsTasksView() {
   const failureResumeBusyRef = useRef(false);
 
   const [search, setSearch] = useState("");
+  // الكتابة في البحث تبقى فورية بينما ترشيح القائمة يتأخر إطاراً
+  // (rerender-use-deferred-value) — ترشيح محلي بحت بلا شبكة.
+  const deferredSearch = useDeferredValue(search);
   const [statusFilter, setStatusFilter] = useState("");
   const [scopeFilter, setScopeFilter] = useState("");
   const [showAll, setShowAll] = useState(false);
@@ -285,6 +306,8 @@ export function OperationsTasksView() {
     null,
   );
   const [busy, setBusy] = useState(false);
+  const [bulkReminding, startBulkRemind] = useTransition();
+  const [reassigning, startReassign] = useTransition();
   const [error, setError] = useState<string | null>(null);
   const [commentText, setCommentText] = useState("");
   const [commentFiles, setCommentFiles] = useState<DraftFile[]>([]);
@@ -383,25 +406,31 @@ export function OperationsTasksView() {
   }, [queueTasks]);
 
   const visibleTasks = useMemo(() => {
-    const q = search.trim();
+    const q = deferredSearch.trim();
     const list = queueTasks.filter((t) => {
+      // المقارنات الرخيصة أولاً — سلسلة البحث تُبنى فقط لما بقي وعند وجود نص.
+      if (statusFilter && t.status !== statusFilter) return false;
+      if (scopeFilter && t.scope !== scopeFilter) return false;
+      if (!showAll && !statusFilter && !isActiveOperationsTask(t)) return false;
+      if (!q) return true;
       const hay = `${t.title} ${t.assigneeName} ${t.displayId} ${t.poNumber ?? ""} ${t.deeds.join(" ")}`;
-      const okQ = !q || hay.includes(q);
-      const okS = !statusFilter || t.status === statusFilter;
-      const okC = !scopeFilter || t.scope === scopeFilter;
-      const okShow = showAll || Boolean(statusFilter) || isActiveOperationsTask(t);
-      return okQ && okS && okC && okShow;
+      return hay.includes(q);
     });
-    return [...list].sort((a, b) => {
-      const rank = (s: string) =>
-        s === "paused" ? 1 : isTerminalOperationsTaskStatus(s) ? 2 : 0;
-      const ra = rank(a.status);
-      const rb = rank(b.status);
-      if (ra !== rb) return ra - rb;
-      // newest first within the same status band
-      return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
-    });
-  }, [queueTasks, search, statusFilter, scopeFilter, showAll]);
+    // زخرفة مرة واحدة لكل مهمة — بدلاً من تحليل التاريخ في كل مقارنة.
+    return list
+      .map((task) => ({
+        task,
+        rank: taskStatusRank(task.status),
+        createdAtMs: new Date(task.createdAt).getTime(),
+      }))
+      .sort((a, b) =>
+        a.rank !== b.rank
+          ? a.rank - b.rank
+          : // newest first within the same status band
+            b.createdAtMs - a.createdAtMs,
+      )
+      .map((d) => d.task);
+  }, [queueTasks, deferredSearch, statusFilter, scopeFilter, showAll]);
 
   // When staff resolves a blocking failure, reopen paused-for-failure tasks as
   // «منشأة» so the assignee confirms receipt again (fresh start, not mid-work).
@@ -418,9 +447,9 @@ export function OperationsTasksView() {
     failureResumeBusyRef.current = true;
     void (async () => {
       try {
-        for (const task of toReopen) {
-          await patchOperationsTaskRecord(task.id, { status: "created" });
-        }
+        await Promise.allSettled(
+          toReopen.map((task) => patchOperationsTaskRecord(task.id, { status: "created" })),
+        );
         await refetch();
       } finally {
         failureResumeBusyRef.current = false;
@@ -525,6 +554,25 @@ export function OperationsTasksView() {
     setPauseReason("");
     setPauseError(null);
     setPauseOpen(true);
+  }, []);
+
+  // معالجات الصف ثابتة المرجع — تحديث حالة المودالات لا يكسر memo الصفوف.
+  const openTask = useCallback((task: OperationsTask) => {
+    setSelectedId(task.id);
+    setDetailId(task.id);
+  }, []);
+
+  const openTaskDetail = useCallback((task: OperationsTask) => {
+    setDetailId(task.id);
+  }, []);
+
+  const toggleTaskSelected = useCallback((taskId: string, on: boolean) => {
+    setSelectedIds((prev) => {
+      const next = { ...prev };
+      if (on) next[taskId] = true;
+      else delete next[taskId];
+      return next;
+    });
   }, []);
 
   const applyPrioDueFromOffset = useCallback(() => {
@@ -803,22 +851,26 @@ export function OperationsTasksView() {
     [showToast, refetch],
   );
 
-  const bulkRemind = useCallback(async () => {
-    const ids = Object.entries(selectedIds)
-      .filter(([, on]) => on)
-      .map(([id]) => id);
-    let n = 0;
-    setBusy(true);
-    for (const id of ids) {
-      const task = tasks.find((t) => t.id === id);
-      if (!task || !isActiveOperationsTask(task)) continue;
-      const res = await remindOperationsTaskRecord(id);
-      if (res.ok) n += 1;
-    }
-    setBusy(false);
-    setSelectedIds({});
-    showToast(n ? `تم تذكير ${n} مهمة` : "لا مهام قابلة للتذكير", "info");
-    await refetch();
+  // زر التذكير الجماعي هو المستهلك الوحيد للعلَم هنا — انتقال مخصص بدل مشاركة
+  // busy مع بقية المعالجات (rendering-usetransition-loading).
+  const bulkRemind = useCallback(() => {
+    startBulkRemind(async () => {
+      const ids = Object.entries(selectedIds)
+        .filter(([, on]) => on)
+        .map(([id]) => id);
+      const settled = await Promise.allSettled(
+        ids
+          .filter((id) => {
+            const task = tasks.find((t) => t.id === id);
+            return !!task && isActiveOperationsTask(task);
+          })
+          .map((id) => remindOperationsTaskRecord(id)),
+      );
+      const n = settled.filter((r) => r.status === "fulfilled" && r.value.ok).length;
+      setSelectedIds({});
+      showToast(n ? `تم تذكير ${n} مهمة` : "لا مهام قابلة للتذكير", "info");
+      await refetch();
+    });
   }, [selectedIds, tasks, showToast, refetch]);
 
   const openReassign = useCallback((task: OperationsTask) => {
@@ -839,7 +891,7 @@ export function OperationsTasksView() {
     setReassignOpen(true);
   }, []);
 
-  const submitReassign = useCallback(async () => {
+  const submitReassign = useCallback(() => {
     const taskId = selectedId ?? detailId;
     if (!taskId) return;
     if (!reassignAssigneeId.trim()) {
@@ -857,23 +909,24 @@ export function OperationsTasksView() {
     const [y, mo, da] = reassignDueDate.split("-").map(Number);
     const [hh, mm] = (reassignDueTime || "12:00").split(":").map(Number);
     const due = new Date(y, (mo ?? 1) - 1, da ?? 1, hh ?? 12, mm ?? 0, 0, 0);
-    setBusy(true);
     setReassignError(null);
-    const res = await reassignOperationsTaskRecord(taskId, {
-      assigneeId: reassignAssigneeId.trim(),
-      assigneeName: reassignAssigneeName.trim() || undefined,
-      dueAtUtc: due.toISOString(),
-      reason: reassignReason.trim(),
+    // مودال إعادة التوجيه هو الواجهة الظاهرة أثناء الإرسال — انتقال مخصص.
+    startReassign(async () => {
+      const res = await reassignOperationsTaskRecord(taskId, {
+        assigneeId: reassignAssigneeId.trim(),
+        assigneeName: reassignAssigneeName.trim() || undefined,
+        dueAtUtc: due.toISOString(),
+        reason: reassignReason.trim(),
+      });
+      if (!res.ok) {
+        setReassignError(res.error);
+        return;
+      }
+      setReassignOpen(false);
+      setReassignReason("");
+      showToast("تم إعادة التوجيه والإسناد", "success");
+      await refetch();
     });
-    setBusy(false);
-    if (!res.ok) {
-      setReassignError(res.error);
-      return;
-    }
-    setReassignOpen(false);
-    setReassignReason("");
-    showToast("تم إعادة التوجيه والإسناد", "success");
-    await refetch();
   }, [
     selectedId,
     detailId,
@@ -1656,29 +1709,31 @@ export function OperationsTasksView() {
           />
         </AppModal>
 
-        <ReassignOperationsTaskModal
-          open={reassignOpen}
-          currentAssigneeName={detail.assigneeName}
-          currentAssigneeRole={
-            reassignAssignees.find((a) => a.id === detail.assigneeId)?.subtitle
-          }
-          assignees={reassignAssignees}
-          assigneeId={reassignAssigneeId}
-          dueDate={reassignDueDate}
-          dueTime={reassignDueTime}
-          reason={reassignReason}
-          error={reassignError}
-          busy={busy}
-          onAssigneeChange={(id, name) => {
-            setReassignAssigneeId(id);
-            setReassignAssigneeName(name);
-          }}
-          onDueDateChange={setReassignDueDate}
-          onDueTimeChange={setReassignDueTime}
-          onReasonChange={setReassignReason}
-          onClose={() => setReassignOpen(false)}
-          onSubmit={() => void submitReassign()}
-        />
+        {reassignOpen ? (
+          <ReassignOperationsTaskModal
+            open={reassignOpen}
+            currentAssigneeName={detail.assigneeName}
+            currentAssigneeRole={
+              reassignAssignees.find((a) => a.id === detail.assigneeId)?.subtitle
+            }
+            assignees={reassignAssignees}
+            assigneeId={reassignAssigneeId}
+            dueDate={reassignDueDate}
+            dueTime={reassignDueTime}
+            reason={reassignReason}
+            error={reassignError}
+            busy={busy || reassigning}
+            onAssigneeChange={(id, name) => {
+              setReassignAssigneeId(id);
+              setReassignAssigneeName(name);
+            }}
+            onDueDateChange={setReassignDueDate}
+            onDueTimeChange={setReassignDueTime}
+            onReasonChange={setReassignReason}
+            onClose={() => setReassignOpen(false)}
+            onSubmit={submitReassign}
+          />
+        ) : null}
       </PageShell>
     );
   }
@@ -1842,12 +1897,16 @@ export function OperationsTasksView() {
           <button
             type="button"
             className={cn(opsRemindBtn, "ms-auto")}
-            disabled={busy}
-            aria-busy={busy || undefined}
-            onClick={() => void bulkRemind()}
+            disabled={busy || bulkReminding}
+            aria-busy={busy || bulkReminding || undefined}
+            onClick={bulkRemind}
           >
-            {busy ? <Spinner /> : <BellIcon size={15} />}
-            <span>{busy ? "جاري التذكير…" : "تذكير المحدد دفعة واحدة"}</span>
+            {busy || bulkReminding ? <Spinner /> : <BellIcon size={15} />}
+            <span>
+              {busy || bulkReminding
+                ? "جاري التذكير…"
+                : "تذكير المحدد دفعة واحدة"}
+            </span>
           </button>
           <button
             type="button"
@@ -1909,133 +1968,20 @@ export function OperationsTasksView() {
             {visibleTasks.length === 0 ? (
               <TasksEmptyRows />
             ) : (
-              visibleTasks.map((task) => {
-                const prColor =
-                  OPERATIONS_TASK_PRIORITY_COLORS[task.priority] ?? "#8a8d96";
-                return (
-                  <div
-                    key={task.id}
-                    role="button"
-                    tabIndex={0}
-                    className={opsGridRow}
-                    style={{ gridTemplateColumns: TASKS_LIST_COLS }}
-                    onClick={() => {
-                      setSelectedId(task.id);
-                      setDetailId(task.id);
-                    }}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter" || e.key === " ") {
-                        e.preventDefault();
-                        setDetailId(task.id);
-                      }
-                    }}
-                  >
-                    <div
-                      className={cn(opsTd, opsTdC)}
-                      onClick={(e) => e.stopPropagation()}
-                    >
-                      {isActiveOperationsTask(task) ? (
-                        <label className={opsTkCheck}>
-                          <input
-                            type="checkbox"
-                            className={opsTkCheckInput}
-                            checked={Boolean(selectedIds[task.id])}
-                            onChange={(e) => {
-                              const on = e.target.checked;
-                              setSelectedIds((prev) => {
-                                const next = { ...prev };
-                                if (on) next[task.id] = true;
-                                else delete next[task.id];
-                                return next;
-                              });
-                            }}
-                          />
-                        </label>
-                      ) : null}
-                    </div>
-                    <div className={opsTd}>
-                      <div className="flex min-w-0 items-center gap-[11px]">
-                        <span className={opsTypeIconSm}>
-                          <TypeIcon type={task.type} size={15} />
-                        </span>
-                        <div className="flex min-w-0 flex-col gap-0.5">
-                          <span className={opsRowTitle}>{task.title}</span>
-                          <span className={opsRowMeta}>
-                            <span dir="ltr">{task.displayId}</span>
-                            <span>·</span>
-                            <span>{operationsTaskTypeLabel(task.type)}</span>
-                            <span>·</span>
-                            <span
-                              style={{
-                                display: "inline-flex",
-                                alignItems: "center",
-                                gap: 4,
-                                color: prColor,
-                                fontWeight: 700,
-                              }}
-                            >
-                              <span
-                                style={{
-                                  width: 6,
-                                  height: 6,
-                                  borderRadius: "50%",
-                                  background: prColor,
-                                }}
-                              />
-                              {operationsTaskPriorityLabel(task.priority)}
-                            </span>
-                          </span>
-                        </div>
-                      </div>
-                    </div>
-                    <div className={opsTd}>
-                      <div className="flex min-w-0 flex-col gap-0.5">
-                        <span className="text-[13px] font-semibold text-text">
-                          {operationsTaskScopeLabel(task.scope)}
-                        </span>
-                        <span dir="ltr" className="text-[11.5px] text-text-3">
-                          {operationsTaskLinkLabel(task)}
-                        </span>
-                      </div>
-                    </div>
-                    <div className={opsTd}>
-                      <div className="flex min-w-0 flex-col gap-0.5">
-                        <span className="text-[13px] font-semibold text-heading">
-                          {task.assigneeName || task.assigneeId}
-                        </span>
-                        <span className="text-[11.5px] text-text-3">
-                          {assigneeRoleLabel(staffUsers, task.assigneeId)}
-                        </span>
-                      </div>
-                    </div>
-                    <div className={opsTd}>
-                      <DueCell task={task} />
-                    </div>
-                    <div className={cn(opsTd, opsTdC)}>
-                      <TaskStatusPill status={task.status} />
-                    </div>
-                    <div
-                      className={cn(opsTd, opsTdC)}
-                      onClick={(e) => e.stopPropagation()}
-                    >
-                      <div className="flex w-full items-center justify-center gap-0.5">
-                        {canRemind && isActiveOperationsTask(task) ? (
-                          <button
-                            type="button"
-                            className={opsRemindMini}
-                            title="تذكير المنفّذ"
-                            aria-label="تذكير"
-                            onClick={() => void remindTask(task)}
-                          >
-                            <BellIcon size={16} />
-                          </button>
-                        ) : null}
-                        <RowMoreMenu items={rowMenu(task)} />
-                      </div>
-                    </div>
-                  </div>
-                );
-              })
+              visibleTasks.map((task) => (
+                <OperationsTaskRow
+                  key={task.id}
+                  task={task}
+                  checked={Boolean(selectedIds[task.id])}
+                  canRemind={canRemind}
+                  staffUsers={staffUsers}
+                  onOpen={openTask}
+                  onOpenDetail={openTaskDetail}
+                  onToggleSelect={toggleTaskSelected}
+                  onRemind={remindTask}
+                  rowMenu={rowMenu}
+                />
+              ))
             )}
           </div>
         </div>
@@ -2176,32 +2122,34 @@ export function OperationsTasksView() {
         ) : null}
       </AppModal>
 
-      <ReassignOperationsTaskModal
-        open={reassignOpen}
-        currentAssigneeName={reassignTask?.assigneeName ?? ""}
-        currentAssigneeRole={
-          reassignTask
-            ? reassignAssignees.find((a) => a.id === reassignTask.assigneeId)
-                ?.subtitle
-            : undefined
-        }
-        assignees={reassignAssignees}
-        assigneeId={reassignAssigneeId}
-        dueDate={reassignDueDate}
-        dueTime={reassignDueTime}
-        reason={reassignReason}
-        error={reassignError}
-        busy={busy}
-        onAssigneeChange={(id, name) => {
-          setReassignAssigneeId(id);
-          setReassignAssigneeName(name);
-        }}
-        onDueDateChange={setReassignDueDate}
-        onDueTimeChange={setReassignDueTime}
-        onReasonChange={setReassignReason}
-        onClose={() => setReassignOpen(false)}
-        onSubmit={() => void submitReassign()}
-      />
+      {reassignOpen ? (
+        <ReassignOperationsTaskModal
+          open={reassignOpen}
+          currentAssigneeName={reassignTask?.assigneeName ?? ""}
+          currentAssigneeRole={
+            reassignTask
+              ? reassignAssignees.find((a) => a.id === reassignTask.assigneeId)
+                  ?.subtitle
+              : undefined
+          }
+          assignees={reassignAssignees}
+          assigneeId={reassignAssigneeId}
+          dueDate={reassignDueDate}
+          dueTime={reassignDueTime}
+          reason={reassignReason}
+          error={reassignError}
+          busy={busy || reassigning}
+          onAssigneeChange={(id, name) => {
+            setReassignAssigneeId(id);
+            setReassignAssigneeName(name);
+          }}
+          onDueDateChange={setReassignDueDate}
+          onDueTimeChange={setReassignDueTime}
+          onReasonChange={setReassignReason}
+          onClose={() => setReassignOpen(false)}
+          onSubmit={submitReassign}
+        />
+      ) : null}
     </PageShell>
   );
 }

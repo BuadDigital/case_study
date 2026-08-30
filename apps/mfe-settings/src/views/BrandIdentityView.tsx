@@ -44,6 +44,15 @@ function mm(n: number | null | undefined, fallback: number): number {
   return Number.isFinite(v) && v >= 0 ? v : fallback;
 }
 
+const LH_GUIDES = {
+  letterheadHeadMm: { cssVar: "--lh-head", span: 297 },
+  letterheadFootTopMm: { cssVar: "--lh-foot", span: 297 },
+  letterheadPadMm: { cssVar: "--lh-pad", span: 210 },
+  letterheadPadStartMm: { cssVar: "--lh-pad-start", span: 210 },
+} as const;
+
+type LhGuideKey = keyof typeof LH_GUIDES;
+
 
 
 export function BrandIdentityView() {
@@ -63,6 +72,8 @@ export function BrandIdentityView() {
     confirm: string;
     onConfirm: () => void;
   } | null>(null);
+  const lhZoomRef = useRef<HTMLDivElement>(null);
+  const lhPaperRef = useRef<HTMLDivElement>(null);
   const dirtyRef = useRef({ logo: false, stamp: false, sig: false, lh: false });
   const [dirty, setDirty] = useState({ logo: false, stamp: false, sig: false, lh: false });
 
@@ -226,14 +237,25 @@ export function BrandIdentityView() {
     mark("lh", { ...brand, [field]: Number(value) || 0 });
   }
 
+  function paintLhGuide(key: LhGuideKey, n: number) {
+    const root = lhZoomRef.current;
+    if (!root) return;
+    const { cssVar, span } = LH_GUIDES[key];
+    root.style.setProperty(cssVar, `${(n / span) * 100}%`);
+    const field = root.querySelector<HTMLInputElement>(`[data-lh-input="${key}"]`);
+    if (field) field.value = String(n);
+  }
+
   function startDrag(
     ev: React.MouseEvent<HTMLDivElement>,
-    key: "letterheadHeadMm" | "letterheadFootTopMm" | "letterheadPadMm" | "letterheadPadStartMm",
+    key: LhGuideKey,
     axis: "y" | "x" | "xs",
   ) {
     ev.preventDefault();
     const box = ev.currentTarget.parentElement?.getBoundingClientRect();
     if (!box) return;
+    let dragged = 0;
+    let moved = false;
     const move = (e: MouseEvent) => {
       const raw =
         axis === "y"
@@ -242,13 +264,16 @@ export function BrandIdentityView() {
             ? ((box.right - e.clientX) / box.width) * 210
             : ((e.clientX - box.left) / box.width) * 210;
       const max = axis === "y" ? 297 : 210;
-      const n = Math.min(max, Math.max(0, Math.round(raw)));
-      setBrand((b) => ({ ...b, [key]: n }));
-      setDirty((d) => ({ ...d, lh: true }));
+      dragged = Math.min(max, Math.max(0, Math.round(raw)));
+      moved = true;
+      paintLhGuide(key, dragged);
     };
     const up = () => {
       window.removeEventListener("mousemove", move);
       window.removeEventListener("mouseup", up);
+      if (!moved) return;
+      setBrand((b) => ({ ...b, [key]: dragged }));
+      setDirty((d) => ({ ...d, lh: true }));
     };
     window.addEventListener("mousemove", move);
     window.addEventListener("mouseup", up);
@@ -260,13 +285,19 @@ export function BrandIdentityView() {
     const sy = ev.clientY;
     const ox = lhX;
     const oy = lhY;
+    let nx = ox;
+    let ny = oy;
     const move = (e: MouseEvent) => {
-      setLhX(ox + (e.clientX - sx));
-      setLhY(oy + (e.clientY - sy));
+      nx = ox + (e.clientX - sx);
+      ny = oy + (e.clientY - sy);
+      const paper = lhPaperRef.current;
+      if (paper) paper.style.transform = `translate(${nx}px, ${ny}px)`;
     };
     const up = () => {
       window.removeEventListener("mousemove", move);
       window.removeEventListener("mouseup", up);
+      setLhX(nx);
+      setLhY(ny);
     };
     window.addEventListener("mousemove", move);
     window.addEventListener("mouseup", up);
@@ -764,9 +795,21 @@ export function BrandIdentityView() {
           className="fixed inset-0 z-[1400] grid place-items-center p-6"
           style={{ background: "rgba(16,43,78,.45)" }}
         >
-          <div className="flex max-h-[92vh] items-start gap-4 rounded-xl bg-surface p-4">
+          <div
+            ref={lhZoomRef}
+            className="flex max-h-[92vh] items-start gap-4 rounded-xl bg-surface p-4"
+            style={
+              {
+                "--lh-head": `${(head / 297) * 100}%`,
+                "--lh-foot": `${(footTop / 297) * 100}%`,
+                "--lh-pad": `${(pad / 210) * 100}%`,
+                "--lh-pad-start": `${(padStart / 210) * 100}%`,
+              } as React.CSSProperties
+            }
+          >
             <div className="relative h-[70vh] w-[540px] overflow-hidden border border-border-md bg-surface-2">
               <div
+                ref={lhPaperRef}
                 className="absolute bg-white shadow-[0_6px_24px_rgba(16,43,78,.18)]"
                 style={{
                   top: 0,
@@ -791,21 +834,21 @@ export function BrandIdentityView() {
                 <div
                   className="pointer-events-none absolute inset-x-0 top-0 border-b-2 border-gold"
                   style={{
-                    height: `${(head / 297) * 100}%`,
+                    height: "var(--lh-head)",
                     background: "color-mix(in srgb, var(--gold) 14%, transparent)",
                   }}
                 />
                 <div
                   className="pointer-events-none absolute inset-x-0 bottom-0 border-t-2 border-gold"
                   style={{
-                    top: `${(footTop / 297) * 100}%`,
+                    top: "var(--lh-foot)",
                     background: "color-mix(in srgb, var(--gold) 14%, transparent)",
                   }}
                 />
                 <div
                   className="absolute inset-x-0 h-2.5 cursor-ns-resize"
                   style={{
-                    top: `calc(${(head / 297) * 100}% - 5px)`,
+                    top: "calc(var(--lh-head) - 5px)",
                     background:
                       "repeating-linear-gradient(90deg, var(--gold) 0 4px, transparent 4px 8px) center/100% 2px no-repeat",
                   }}
@@ -814,7 +857,7 @@ export function BrandIdentityView() {
                 <div
                   className="absolute inset-x-0 h-2.5 cursor-ns-resize"
                   style={{
-                    top: `calc(${(footTop / 297) * 100}% - 5px)`,
+                    top: "calc(var(--lh-foot) - 5px)",
                     background:
                       "repeating-linear-gradient(90deg, var(--gold) 0 4px, transparent 4px 8px) center/100% 2px no-repeat",
                   }}
@@ -824,7 +867,7 @@ export function BrandIdentityView() {
                   className="absolute inset-y-0 cursor-ew-resize border-s-2 border-dotted border-gold"
                   style={{
                     insetInlineEnd: 0,
-                    width: `${(pad / 210) * 100}%`,
+                    width: "var(--lh-pad)",
                     background: "color-mix(in srgb, var(--gold) 14%, transparent)",
                   }}
                   onMouseDown={(e) => startDrag(e, "letterheadPadMm", "x")}
@@ -833,7 +876,7 @@ export function BrandIdentityView() {
                   className="absolute inset-y-0 cursor-ew-resize border-e-2 border-dotted border-gold"
                   style={{
                     insetInlineStart: 0,
-                    width: `${(padStart / 210) * 100}%`,
+                    width: "var(--lh-pad-start)",
                     background: "color-mix(in srgb, var(--gold) 14%, transparent)",
                   }}
                   onMouseDown={(e) => startDrag(e, "letterheadPadStartMm", "xs")}
@@ -848,6 +891,7 @@ export function BrandIdentityView() {
                   className={fieldCls}
                   type="number"
                   dir="ltr"
+                  data-lh-input="letterheadHeadMm"
                   value={String(head)}
                   onChange={(e) => patchLh("letterheadHeadMm", e.target.value)}
                 />
@@ -858,6 +902,7 @@ export function BrandIdentityView() {
                   className={fieldCls}
                   type="number"
                   dir="ltr"
+                  data-lh-input="letterheadFootTopMm"
                   value={String(footTop)}
                   onChange={(e) => patchLh("letterheadFootTopMm", e.target.value)}
                 />
@@ -868,6 +913,7 @@ export function BrandIdentityView() {
                   className={fieldCls}
                   type="number"
                   dir="ltr"
+                  data-lh-input="letterheadPadMm"
                   value={String(pad)}
                   onChange={(e) => patchLh("letterheadPadMm", e.target.value)}
                 />
@@ -878,6 +924,7 @@ export function BrandIdentityView() {
                   className={fieldCls}
                   type="number"
                   dir="ltr"
+                  data-lh-input="letterheadPadStartMm"
                   value={String(padStart)}
                   onChange={(e) => patchLh("letterheadPadStartMm", e.target.value)}
                 />

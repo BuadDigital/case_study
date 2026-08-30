@@ -11,6 +11,7 @@ import {
 import { ApiAuthError } from "@platform/api-client";
 import { isFeatureEnabled } from "@platform/app-shared/feature-flags";
 import { useAuth } from "@platform/app-shared/hooks/useAuth";
+import { useDocumentVisible } from "@platform/app-shared/hooks/use-document-visible";
 import { prototypeKeys } from "@platform/app-shared/query/prototype-keys";
 import {
   filterNotificationsForRole,
@@ -53,6 +54,11 @@ export function ServerNotificationBridge() {
   const initialLoadRef = useRef(true);
   const localSyncSourceEventsRef = useRef<Map<string, number>>(new Map());
   const refreshDebounceRef = useRef<number | undefined>(undefined);
+  const visible = useDocumentVisible();
+  const visibleRef = useRef(visible);
+  visibleRef.current = visible;
+  const wasVisibleRef = useRef(visible);
+  const pullOnVisibleRef = useRef<() => void>(() => {});
 
   // Any server-pushed notification means something changed on the backend.
   // Invalidate only live queues / sidebar feeds — NOT prototypeKeys.all
@@ -231,18 +237,12 @@ export function ServerNotificationBridge() {
     // (backend comment: "clients retain polling fallback").
     const POLL_FALLBACK_MS = 12_000;
     const pollTimer = window.setInterval(() => {
-      if (document.visibilityState === "visible") {
+      if (visibleRef.current) {
         void pull(true);
       }
     }, POLL_FALLBACK_MS);
 
-    const onVisible = () => {
-      if (document.visibilityState === "visible") {
-        void pull(true);
-      }
-    };
-
-    document.addEventListener("visibilitychange", onVisible);
+    pullOnVisibleRef.current = () => void pull(true);
 
     const streamAbort = new AbortController();
     let retryTimer: number | undefined;
@@ -285,7 +285,7 @@ export function ServerNotificationBridge() {
         refreshDebounceRef.current = undefined;
       }
       streamAbort.abort();
-      document.removeEventListener("visibilitychange", onVisible);
+      pullOnVisibleRef.current = () => {};
     };
   }, [
     authReady,
@@ -297,6 +297,14 @@ export function ServerNotificationBridge() {
     shouldSuppressEchoToast,
     markSeenIfNew,
   ]);
+
+  // مخفي ← ظاهر فقط: السحب عند التركيب يتم بـ pull(false) داخل التأثير أعلاه،
+  // فقراءة الحالة اللحظية هنا كانت ستُطلق سحباً إضافياً مع تنبيهاته.
+  useEffect(() => {
+    const wasVisible = wasVisibleRef.current;
+    wasVisibleRef.current = visible;
+    if (visible && !wasVisible) pullOnVisibleRef.current();
+  }, [visible]);
 
   useEffect(() => {
     if (!token) return;

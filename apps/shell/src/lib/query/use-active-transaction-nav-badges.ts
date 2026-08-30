@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo } from "react";
+import { useCallback, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { prototypeKeys } from "@platform/app-shared/query/prototype-keys";
 import { getAuthSession } from "@platform/auth-client";
@@ -21,7 +21,6 @@ import { seesAllCaseStudyWorkflowTasks } from "@case-study/mfe/lib/prototype/vie
 import {
   tasksForPartyAssignee,
   tasksForRole,
-  type WorkflowTask,
 } from "@case-study/mfe/lib/prototype/tasks-storage";
 import type { PoIntakeRecord } from "@case-study/mfe/lib/prototype/po-intake-data";
 import {
@@ -35,6 +34,8 @@ import { useStaffUsersQuery } from "@settings/mfe/query/settings-queries";
 import { loadInspectorFeesSummary } from "@platform/app-shared/prototype/inspector-fees-api";
 
 const EMPTY_FAILURES: FailureRecord[] = [];
+
+type InspectorFeesSummary = Awaited<ReturnType<typeof loadInspectorFeesSummary>>;
 
 function poRecordsMap(records: PoIntakeRecord[] | undefined) {
   const map = new Map<string, PoIntakeRecord>();
@@ -62,7 +63,33 @@ export function useActiveTransactionNavBadges(): ActiveTransactionNavIndicators 
     [staffResult?.users],
   );
 
-  const { data: feeSummary } = useQuery({
+  const selectFeeCount = useCallback(
+    (summary: InspectorFeesSummary) => {
+      const feeRows = summary.rows ?? [];
+      if (feeRows.length === 0) return 0;
+      const isPartyFeesRole =
+        role === "field-inspector" ||
+        role === "engineering-office" ||
+        role === "government-reviewer";
+      const isSupervisor = hasCapability("manage-operations") && !isPartyFeesRole;
+      return isSupervisor
+        ? feeRows.filter(
+            (r) =>
+              r.billingStatus === "sup-review" ||
+              (r.billingStatus === "returned" && r.returnTo === "supervisor"),
+          ).length
+        : feeRows.filter(
+            (r) =>
+              r.canSubmitToSupervisor ||
+              ((r.billingStatus === "returned" ||
+                r.billingStatus === "inquiry") &&
+                r.returnTo === "office"),
+          ).length;
+    },
+    [role, hasCapability],
+  );
+
+  const { data: feeCount } = useQuery({
     queryKey: [...prototypeKeys.all, "inspector-fees", "nav-badges", role],
     queryFn: () =>
       loadInspectorFeesSummary({
@@ -72,9 +99,10 @@ export function useActiveTransactionNavBadges(): ActiveTransactionNavIndicators 
         submittedOnly: false,
       }),
     staleTime: 30_000,
+    select: selectFeeCount,
   });
 
-  const indicators = useMemo(() => {
+  const badgeSignature = useMemo(() => {
     const poByNumber = poRecordsMap(poRecords);
     const mine = seesAllCaseStudyWorkflowTasks(role)
       ? (tasks ?? [])
@@ -107,56 +135,27 @@ export function useActiveTransactionNavBadges(): ActiveTransactionNavIndicators 
       (t) => t.status === "open" || t.status === "blocked",
     );
 
-    const badges: Partial<Record<PageId, number>> = {};
-
-    const setPage = (
-      pageId: PageId,
-      openTasks: WorkflowTask[],
-      count?: number,
-    ) => {
-      const n = count ?? openTasks.length;
-      if (n > 0) badges[pageId] = n;
+    const parts: string[] = [];
+    const setPage = (pageId: PageId, count: number) => {
+      if (count > 0) parts.push(`${pageId}:${count}`);
     };
 
-    setPage("active-primary-data", primaryOpen);
-    if (bourseOpen.length > 0) badges["bourse-inquiry"] = bourseOpen.length;
-
-    setPage("active-distribution", distributionOpen);
-    setPage("active-case-study", caseStudyOpen);
+    setPage("active-primary-data", primaryOpen.length);
+    setPage("bourse-inquiry", bourseOpen.length);
+    setPage("active-distribution", distributionOpen.length);
+    setPage("active-case-study", caseStudyOpen.length);
 
     for (const def of Object.values(PARTY_TASK_PAGES)) {
       if (def.roleId !== role) continue;
-      const listed = listedTasksForPage(def.pageId, partyMine, poByNumber);
-      if (listed.length > 0) badges[def.pageId] = listed.length;
+      setPage(
+        def.pageId,
+        listedTasksForPage(def.pageId, partyMine, poByNumber).length,
+      );
     }
 
-    const feeRows = feeSummary?.rows ?? [];
-    if (feeRows.length > 0) {
-      const isPartyFeesRole =
-        role === "field-inspector" ||
-        role === "engineering-office" ||
-        role === "government-reviewer";
-      const isSupervisor =
-        hasCapability("manage-operations") && !isPartyFeesRole;
-      const feeHits = isSupervisor
-        ? feeRows.filter(
-            (r) =>
-              r.billingStatus === "sup-review" ||
-              (r.billingStatus === "returned" && r.returnTo === "supervisor"),
-          )
-        : feeRows.filter(
-            (r) =>
-              r.canSubmitToSupervisor ||
-              ((r.billingStatus === "returned" ||
-                r.billingStatus === "inquiry") &&
-                r.returnTo === "office"),
-          );
-      if (feeHits.length > 0) {
-        badges["party-fees"] = feeHits.length;
-      }
-    }
+    setPage("party-fees", feeCount ?? 0);
 
-    return { badges };
+    return parts.join("|");
   }, [
     role,
     resolvedViewerEmail,
@@ -166,9 +165,18 @@ export function useActiveTransactionNavBadges(): ActiveTransactionNavIndicators 
     pendingBourse,
     failures,
     staffUsers,
-    feeSummary?.rows,
-    hasCapability,
+    feeCount,
   ]);
 
-  return indicators;
+  const badges = useMemo(() => {
+    const result: Partial<Record<PageId, number>> = {};
+    if (!badgeSignature) return result;
+    for (const part of badgeSignature.split("|")) {
+      const sep = part.indexOf(":");
+      result[part.slice(0, sep) as PageId] = Number(part.slice(sep + 1));
+    }
+    return result;
+  }, [badgeSignature]);
+
+  return useMemo(() => ({ badges }), [badges]);
 }

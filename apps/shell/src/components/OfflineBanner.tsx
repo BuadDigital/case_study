@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { Note } from "@platform/ui-kit";
 import { useOnlineStatus } from "@platform/app-shared/hooks/useOnlineStatus";
 import { isFeatureEnabled } from "@platform/app-shared/feature-flags";
-import { isOfflineCapableRole } from "@platform/app-shared";
+import { isOfflineCapableRole } from "@platform/app-shared/offline/offline-write";
 import { useAuth } from "@platform/app-shared/hooks/useAuth";
 import { OFFLINE_PENDING_EVENT } from "@platform/offline-client";
 

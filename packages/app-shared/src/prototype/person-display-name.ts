@@ -9,6 +9,17 @@ export function looksLikeUserId(value: string | null | undefined): boolean {
   return v.length > 0 && USER_ID_RE.test(v);
 }
 
+const staffIndexCache = new WeakMap<StaffUser[], Map<string, StaffUser>>();
+
+function staffById(staff: StaffUser[]): Map<string, StaffUser> {
+  let index = staffIndexCache.get(staff);
+  if (!index) {
+    index = new Map(staff.map((u) => [u.id, u]));
+    staffIndexCache.set(staff, index);
+  }
+  return index;
+}
+
 /**
  * Never show raw user GUIDs in the UI. Prefer a real name; otherwise empty/`fallback`.
  * Optional `staffUsers` resolves ids via `StaffUser.id`.
@@ -27,10 +38,11 @@ export function displayPersonName(
 
   const staff = options?.staffUsers;
   if (staff?.length) {
+    const byId = staffById(staff);
     for (const key of [options?.userId, raw]) {
       const id = key?.trim() ?? "";
       if (!id) continue;
-      const hit = staff.find((u) => u.id === id);
+      const hit = byId.get(id);
       const name = hit?.name?.trim();
       if (name) return name;
     }

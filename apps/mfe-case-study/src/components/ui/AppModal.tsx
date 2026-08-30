@@ -45,6 +45,8 @@ export function AppModal({
 }) {
   const titleId = useId();
   const panelRef = useRef<HTMLDivElement>(null);
+  const onCloseRef = useRef(onClose);
+  onCloseRef.current = onClose;
   const maxPx = maxWidthPx ?? (wide ? 720 : 420);
   const opsHtml = look === "ops-html";
 
@@ -63,11 +65,11 @@ export function AppModal({
   useEffect(() => {
     if (!open) return;
     function onKey(e: KeyboardEvent) {
-      if (e.key === "Escape") onClose();
+      if (e.key === "Escape") onCloseRef.current();
     }
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [open, onClose]);
+  }, [open]);
 
   useEffect(() => {
     if (!open) return;

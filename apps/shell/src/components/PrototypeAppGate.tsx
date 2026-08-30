@@ -8,7 +8,7 @@ import {
   subscribeAuthExpired,
   type AuthSession,
 } from "@platform/auth-client";
-import { ensureFreshAuthSession } from "@platform/app-shared";
+import { ensureFreshAuthSession } from "@platform/app-shared/auth/ensure-fresh-session";
 import { PanelSkeleton } from "@platform/ui-kit";
 
 /**

@@ -1,6 +1,15 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  Activity,
+  Suspense,
+  lazy,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import {
   getApiBase,
   ensureOpenValuationRequestByProperty,
@@ -25,7 +34,7 @@ import {
   type ValuationIssuanceGatesDto,
 } from "@platform/api-client";
 import { getAuthSession } from "@platform/auth-client";
-import { cn, Spinner, useToast } from "@platform/ui-kit";
+import { cn, InlineLoadingSkeleton, Spinner, useToast } from "@platform/ui-kit";
 import { amountWordsOrZero } from "../../../lib/evaluator/value-estimation";
 import type { PoPropertyIntake } from "@case-study/mfe/lib/prototype/po-intake-data";
 import type {
@@ -33,8 +42,6 @@ import type {
   EvaluatorSubmission,
 } from "../../../lib/evaluator/evaluator-window-data";
 import { createEvaluatorDraft } from "../../../lib/evaluator/evaluator-window-data";
-import { EvaluatorFinalReviewTab } from "../EvaluatorFinalReviewTab";
-import { AdjustmentsMatrix } from "./AdjustmentsMatrix";
 
 import {
   Card,
@@ -44,8 +51,6 @@ import {
 } from "./atoms";
 import { ApproachSettingsSection } from "./ApproachSettingsSection";
 import { ComparablesBankTable } from "./ComparablesBankTable";
-import { CostApproachSection, CostBasisUnitCard } from "./CostApproachSection";
-import { FinalOpinionSection } from "./FinalOpinionSection";
 import {
   BANK_DISPLAY_LIMIT,
   fetchBankCandidates,
@@ -68,6 +73,30 @@ import {
   type MatrixDispatch,
 } from "./lib/matrix-actions";
 import { apiConfig, fmt, JUSTIFICATION_MIN_LENGTH } from "./lib/shell-utils";
+
+const EvaluatorFinalReviewTab = lazy(() =>
+  import("../EvaluatorFinalReviewTab").then((m) => ({
+    default: m.EvaluatorFinalReviewTab,
+  })),
+);
+const AdjustmentsMatrix = lazy(() =>
+  import("./AdjustmentsMatrix").then((m) => ({ default: m.AdjustmentsMatrix })),
+);
+const CostApproachSection = lazy(() =>
+  import("./CostApproachSection").then((m) => ({
+    default: m.CostApproachSection,
+  })),
+);
+const CostBasisUnitCard = lazy(() =>
+  import("./CostApproachSection").then((m) => ({
+    default: m.CostBasisUnitCard,
+  })),
+);
+const FinalOpinionSection = lazy(() =>
+  import("./FinalOpinionSection").then((m) => ({
+    default: m.FinalOpinionSection,
+  })),
+);
 
 const LAND_WITHIN_COST = "land_within_cost";
 const MARKET_CONTEXT = "market";
@@ -460,12 +489,6 @@ export function ValuationWorkShell({
     },
     [showToast],
   );
-  /** قسما التكلفة والرأي النهائي لا يُركَّبان إلا بعد أول زيارة — ثم يبقيان مخفيين حفاظاً على المسودات. */
-  const costScreenVisitedRef = useRef(false);
-  if (screen === "cost") costScreenVisitedRef.current = true;
-  const finalScreenVisitedRef = useRef(false);
-  if (screen === "final") finalScreenVisitedRef.current = true;
-
   // Initial + property identity — avoid re-running when parent passes a new callback each render.
   useEffect(() => {
     valuationRequestIdRef.current = null;
@@ -679,20 +702,20 @@ export function ValuationWorkShell({
       { id: "review", label: "المراجعة النهائية", show: true },
     ];
 
-  useEffect(() => {
-    const visible = navItems.filter((n) => n.show).map((n) => n.id);
-    if (!visible.includes(screen)) {
-      setScreen(visible[0] ?? "basic");
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- re-gate when toggles flip
-  }, [
-    approachSettings?.marketApproachEnabled,
-    approachSettings?.costApproachEnabled,
-    approachSettings?.costApproachAllowed,
-  ]);
+  /** الشاشة الفعلية تُشتق أثناء الرسم — إخفاء أسلوب من الإعدادات ينقل الاختيار فوراً بلا تمريرة زائدة. */
+  const visibleScreenIds = navItems.filter((n) => n.show).map((n) => n.id);
+  const effectiveScreen: ScreenId = visibleScreenIds.includes(screen)
+    ? screen
+    : visibleScreenIds[0] ?? "basic";
+
+  /** الشاشة لا تُركَّب إلا بعد أول زيارة — ثم تبقى مركّبة مخفية فلا تضيع مسوداتها. */
+  const visitedScreensRef = useRef<Set<ScreenId>>(new Set());
+  visitedScreensRef.current.add(effectiveScreen);
+  const screenMode = (id: ScreenId) =>
+    !loading && effectiveScreen === id ? "visible" : "hidden";
 
   const pageMeta = useMemo(() => {
-    switch (screen) {
+    switch (effectiveScreen) {
       case "basic":
         return {
           crumbMid: "إعداد التقييم",
@@ -776,7 +799,15 @@ export function ValuationWorkShell({
           barSubValue: settingsSaved ? "إعدادات محفوظة" : "يلزم حفظ الإعدادات",
         };
     }
-  }, [screen, displayId, settingsSaved, selection, cost, recon, subjectArea]);
+  }, [
+    effectiveScreen,
+    displayId,
+    settingsSaved,
+    selection,
+    cost,
+    recon,
+    subjectArea,
+  ]);
 
   async function adopt(
     compId: string,
@@ -1489,22 +1520,24 @@ export function ValuationWorkShell({
         />
 
         {selection ? (
-          <AdjustmentsMatrix
-            selection={selection}
-            adopted={adoptedMarket}
-            locked={adjustmentsLocked}
-            saving={saving}
-            subjectArea={subjectArea}
-            idealArea={subjectArea}
-            city={property?.city}
-            district={property?.district ?? districtHint}
-            valuationDate={officialValuationDate ?? undefined}
-            factorDefinitions={factorDefinitions}
-            catalogFactors={catalogFactorOptions}
-            subjectSpecs={subjectSpecs}
-            canEditSubjectSpec
-            dispatch={dispatchMarketMatrix}
-          />
+          <Suspense fallback={<InlineLoadingSkeleton />}>
+            <AdjustmentsMatrix
+              selection={selection}
+              adopted={adoptedMarket}
+              locked={adjustmentsLocked}
+              saving={saving}
+              subjectArea={subjectArea}
+              idealArea={subjectArea}
+              city={property?.city}
+              district={property?.district ?? districtHint}
+              valuationDate={officialValuationDate ?? undefined}
+              factorDefinitions={factorDefinitions}
+              catalogFactors={catalogFactorOptions}
+              subjectSpecs={subjectSpecs}
+              canEditSubjectSpec
+              dispatch={dispatchMarketMatrix}
+            />
+          </Suspense>
         ) : null}
 
         <Card>
@@ -1637,15 +1670,17 @@ export function ValuationWorkShell({
           </div>
         </div>
 
-        <CostBasisUnitCard
-          key={`${approachSettings?.costBasisKey ?? "replacement"}:${approachSettings?.costMeasurementUnitKey ?? "comparison_unit"}`}
-          savedBasisKey={approachSettings?.costBasisKey || "replacement"}
-          savedUnitKey={
-            approachSettings?.costMeasurementUnitKey || "comparison_unit"
-          }
-          saving={saving}
-          onSave={onSaveCostBasisUnit}
-        />
+        <Suspense fallback={<InlineLoadingSkeleton />}>
+          <CostBasisUnitCard
+            key={`${approachSettings?.costBasisKey ?? "replacement"}:${approachSettings?.costMeasurementUnitKey ?? "comparison_unit"}`}
+            savedBasisKey={approachSettings?.costBasisKey || "replacement"}
+            savedUnitKey={
+              approachSettings?.costMeasurementUnitKey || "comparison_unit"
+            }
+            saving={saving}
+            onSave={onSaveCostBasisUnit}
+          />
+        </Suspense>
 
         {!buildingOnly ? (
         <>
@@ -1673,20 +1708,22 @@ export function ValuationWorkShell({
         />
 
         {landSelection ? (
-          <AdjustmentsMatrix
-            selection={landSelection}
-            adopted={adoptedLand}
-            locked={adjustmentsLocked}
-            saving={saving}
-            subjectArea={String(cost?.landAreaSqm || subjectArea)}
-            idealArea={String(cost?.landAreaSqm || subjectArea)}
-            city={property?.city}
-            district={property?.district ?? districtHint}
-            valuationDate={officialValuationDate ?? undefined}
-            factorDefinitions={factorDefinitions}
-            catalogFactors={catalogFactorOptions}
-            dispatch={dispatchLandMatrix}
-          />
+          <Suspense fallback={<InlineLoadingSkeleton />}>
+            <AdjustmentsMatrix
+              selection={landSelection}
+              adopted={adoptedLand}
+              locked={adjustmentsLocked}
+              saving={saving}
+              subjectArea={String(cost?.landAreaSqm || subjectArea)}
+              idealArea={String(cost?.landAreaSqm || subjectArea)}
+              city={property?.city}
+              district={property?.district ?? districtHint}
+              valuationDate={officialValuationDate ?? undefined}
+              factorDefinitions={factorDefinitions}
+              catalogFactors={catalogFactorOptions}
+              dispatch={dispatchLandMatrix}
+            />
+          </Suspense>
         ) : null}
 
         </>
@@ -1712,17 +1749,19 @@ export function ValuationWorkShell({
       });
     return (
       <>
-        <EvaluatorFinalReviewTab
-          draft={reviewDraft}
-          disabled={disabled}
-          property={intakeProperty}
-          assignmentType={assignmentType}
-          valuationRequestId={valuationRequestId}
-          approachSettings={approachSettings}
-          fieldErrors={fieldErrors}
-          onDraftPatch={onDraftPatch}
-          onReportChoicesPatch={onReportChoicesPatch}
-        />
+        <Suspense fallback={<InlineLoadingSkeleton />}>
+          <EvaluatorFinalReviewTab
+            draft={reviewDraft}
+            disabled={disabled}
+            property={intakeProperty}
+            assignmentType={assignmentType}
+            valuationRequestId={valuationRequestId}
+            approachSettings={approachSettings}
+            fieldErrors={fieldErrors}
+            onDraftPatch={onDraftPatch}
+            onReportChoicesPatch={onReportChoicesPatch}
+          />
+        </Suspense>
         {showSubmit ? (
           <div className="mt-5">
             <PrimaryBtn
@@ -1762,7 +1801,7 @@ export function ValuationWorkShell({
         {navItems
           .filter((n) => n.show)
           .map((n) => {
-            const active = screen === n.id;
+            const active = effectiveScreen === n.id;
             return (
               <button
                 key={n.id}
@@ -1826,43 +1865,50 @@ export function ValuationWorkShell({
             ))}
           </div>
         ) : null}
-        <div hidden={loading || screen !== "basic"}>
-          <ApproachSettingsSection
-            valuationRequestId={valuationRequestId}
-            assignmentType={assignmentType}
-            settings={approachSettings}
-            hydrateKey={settingsHydrateKey}
-            saving={saving}
-            onSavingChange={setSaving}
-            onSettingsSaved={onSettingsSaved}
-          />
-        </div>
-        {!loading && screen === "market" ? renderMarket() : null}
-        {!loading && screen === "cost" ? renderCost() : null}
-        {/* قسم التكلفة يبقى مركّباً (مخفياً) بعد أول زيارة — مسودات الجدول لا تضيع عند التنقل بين الشاشات. */}
-        <div hidden={loading || screen !== "cost"}>
-          {costScreenVisitedRef.current && settingsSaved && costEnabled ? (
-            <CostApproachSection
+        {visitedScreensRef.current.has("basic") ? (
+          <Activity mode={screenMode("basic")}>
+            <ApproachSettingsSection
               valuationRequestId={valuationRequestId}
-              poNumber={poNumber}
-              propertyId={propertyId}
-              cost={cost}
-              hydrateKey={costHydrateKey}
-              buildingOnly={
-                (approachSettings?.costScopeKey ?? "land_and_building") ===
-                "building_only"
-              }
-              isApartmentProperty={(approachSettings?.propertyType ?? "").includes(
-                "شقة",
-              )}
-              costBasisKey={approachSettings?.costBasisKey || "replacement"}
+              assignmentType={assignmentType}
+              settings={approachSettings}
+              hydrateKey={settingsHydrateKey}
               saving={saving}
               onSavingChange={setSaving}
-              onCostSaved={onCostSaved}
+              onSettingsSaved={onSettingsSaved}
             />
-          ) : null}
-        </div>
-        {!loading && screen === "final" && !settingsSaved ? (
+          </Activity>
+        ) : null}
+        {visitedScreensRef.current.has("market") ? (
+          <Activity mode={screenMode("market")}>{renderMarket()}</Activity>
+        ) : null}
+        {visitedScreensRef.current.has("cost") ? (
+          <Activity mode={screenMode("cost")}>
+            {renderCost()}
+            {settingsSaved && costEnabled ? (
+              <Suspense fallback={<InlineLoadingSkeleton />}>
+                <CostApproachSection
+                  valuationRequestId={valuationRequestId}
+                  poNumber={poNumber}
+                  propertyId={propertyId}
+                  cost={cost}
+                  hydrateKey={costHydrateKey}
+                  buildingOnly={
+                    (approachSettings?.costScopeKey ?? "land_and_building") ===
+                    "building_only"
+                  }
+                  isApartmentProperty={(approachSettings?.propertyType ?? "").includes(
+                    "شقة",
+                  )}
+                  costBasisKey={approachSettings?.costBasisKey || "replacement"}
+                  saving={saving}
+                  onSavingChange={setSaving}
+                  onCostSaved={onCostSaved}
+                />
+              </Suspense>
+            ) : null}
+          </Activity>
+        ) : null}
+        {!loading && effectiveScreen === "final" && !settingsSaved ? (
           <Card>
             <CardPad>
               <p className="text-[13px] text-text-2">
@@ -1871,32 +1917,38 @@ export function ValuationWorkShell({
             </CardPad>
           </Card>
         ) : null}
-        <div hidden={loading || screen !== "final"}>
-          {finalScreenVisitedRef.current && settingsSaved ? (
-            <FinalOpinionSection
-              valuationRequestId={valuationRequestId}
-              recon={recon}
-              gates={gates}
-              cost={cost}
-              hydrateKey={reconHydrateKey}
-              buildingOnly={
-                (approachSettings?.costScopeKey ?? "land_and_building") ===
-                "building_only"
-              }
-              hasAdoptedMarket={adoptedMarket.length > 0}
-              assignmentType={assignmentType}
-              officialValuationDate={officialValuationDate}
-              saving={saving}
-              onSavingChange={setSaving}
-              onReconSaved={onReconSaved}
-            />
-          ) : null}
-        </div>
-        {!loading && screen === "review" ? renderReview() : null}
+        {visitedScreensRef.current.has("final") ? (
+          <Activity mode={screenMode("final")}>
+            {settingsSaved ? (
+              <Suspense fallback={<InlineLoadingSkeleton />}>
+                <FinalOpinionSection
+                  valuationRequestId={valuationRequestId}
+                  recon={recon}
+                  gates={gates}
+                  cost={cost}
+                  hydrateKey={reconHydrateKey}
+                  buildingOnly={
+                    (approachSettings?.costScopeKey ?? "land_and_building") ===
+                    "building_only"
+                  }
+                  hasAdoptedMarket={adoptedMarket.length > 0}
+                  assignmentType={assignmentType}
+                  officialValuationDate={officialValuationDate}
+                  saving={saving}
+                  onSavingChange={setSaving}
+                  onReconSaved={onReconSaved}
+                />
+              </Suspense>
+            ) : null}
+          </Activity>
+        ) : null}
+        {visitedScreensRef.current.has("review") ? (
+          <Activity mode={screenMode("review")}>{renderReview()}</Activity>
+        ) : null}
       </div>
 
       {/* شريحة القيم الملخّصة — لا تظهر أثناء التحميل ولا على شاشة الإعدادات (لا قيم بعد). */}
-      {loading || screen === "basic" ? null : (
+      {loading || effectiveScreen === "basic" ? null : (
       <div className="sticky bottom-4 z-40 mb-2 ms-4 inline-flex max-w-[calc(100%-32px)] items-center gap-3.5 rounded-[var(--radius-lg)] border border-border-md border-s-[3px] border-s-gold bg-surface px-4 py-2.5 shadow-lg">
         <div>
           <div className="text-[10.5px] font-semibold text-text-3">

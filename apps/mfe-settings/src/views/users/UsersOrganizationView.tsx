@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, type ReactNode } from "react";
+import { useDeferredValue, useMemo, useState, type ReactNode } from "react";
 import dynamic from "next/dynamic";
 import { useQueryClient } from "@tanstack/react-query";
 import type { RoleId } from "@platform/types";
@@ -278,8 +278,11 @@ export function UsersOrganizationView() {
   } | null>(null);
   const [issuingTicketFor, setIssuingTicketFor] = useState<string | null>(null);
 
+  // الإدخال فوري والترشيح مؤجل إطاراً — ترشيح محلي بحت (rerender-use-deferred-value).
+  const deferredSearch = useDeferredValue(search);
+
   const filteredUsers = useMemo(() => {
-    const q = search.trim();
+    const q = deferredSearch.trim();
     return users.filter((user) => {
       if (statusFilter === "on" && user.status !== "Active") return false;
       if (
@@ -292,7 +295,7 @@ export function UsersOrganizationView() {
       if (!q) return true;
       return user.name.includes(q);
     });
-  }, [users, search, statusFilter]);
+  }, [users, deferredSearch, statusFilter]);
 
   function updateField<K extends keyof FormState>(key: K, value: FormState[K]) {
     setForm((prev) => ({ ...prev, [key]: value }));

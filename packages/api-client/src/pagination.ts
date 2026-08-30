@@ -1,5 +1,5 @@
 import type { ApiErr, ApiOk, WorkOrdersApiConfig } from "./work-orders";
-import { getApiBase } from "./index";
+import { getApiBase } from "./api-base";
 
 const DEFAULT_LIST_PAGE_SIZE = 500;
 

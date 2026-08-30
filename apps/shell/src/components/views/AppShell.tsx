@@ -8,7 +8,6 @@ import {
   prefetchPoRecord,
   prefetchPrototypePage,
   usePoRecordQuery,
-  useWorkflowTasksQuery,
 } from "@/lib/query/prototype-queries";
 import type { PageId } from "@platform/types";
 import { PAGE_BREADCRUMB, PAGE_TITLES, ROLES } from "@platform/app-shared/prototype/constants";
@@ -23,8 +22,11 @@ import {
 import { orphanScreensNavForRole } from "@platform/app-shared/prototype/orphan-screens-nav";
 import { isPartyTaskPage } from "@platform/app-shared/prototype/party-task-pages";
 import { decodeTaskParam, isPartyTaskWorkPath } from "@case-study/mfe/lib/my-task-routes";
-import { findPropertyForTask } from "@case-study/mfe/lib/prototype/my-task-row";
 import { formatPropertyDeedDisplay } from "@case-study/mfe/lib/prototype/po-intake-data";
+import {
+  loadWorkflowTasksForQuery,
+  type WorkflowTask,
+} from "@case-study/mfe/lib/prototype/tasks-storage";
 import { AppBreadcrumb } from "@/components/views/AppBreadcrumb";
 import { NotificationCenter } from "@/components/NotificationCenter";
 import { OfflineSyncCoordinator } from "@/components/OfflineSyncCoordinator";
@@ -70,6 +72,7 @@ import {
   OrphanScreensNavDropdown,
   ProfileMenu,
 } from "./AppShellNavParts";
+import { PAGE_CHUNK_PRELOAD } from "./PrototypePageView";
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
@@ -83,8 +86,6 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   // Read sessionStorage once per render cycle, not multiple times.
   const sessionUser = useMemo(() => getAuthSession()?.user, []);
 
-  const navPages = useMemo(() => rolePages, [rolePages]);
-
   const settingsNavTree = useMemo(
     () => settingsNavTreeForRole(rolePages, role),
     [rolePages, role],
@@ -97,7 +98,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   );
   const showOrphanScreensGroup = orphanScreenItems.length > 0;
 
-  const navRuns = useMemo(() => navRunsForRole(navPages, role), [navPages, role]);
+  const navRuns = useMemo(() => navRunsForRole(rolePages, role), [rolePages, role]);
 
   const activeTransactionItems = useMemo(
     () => activeTransactionNavForRole(rolePages, role),
@@ -127,7 +128,10 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   }, [activeTxInsertAnchor, insertActiveTxAtNavStart, navRuns]);
 
   const prefetchPage = useMemo(
-    () => (page: PageId) => prefetchPrototypePage(queryClient, page),
+    () => (page: PageId) => {
+      void PAGE_CHUNK_PRELOAD[page]?.();
+      prefetchPrototypePage(queryClient, page);
+    },
     [queryClient],
   );
 
@@ -155,10 +159,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     threshold: ptrThreshold,
   } = usePullToRefresh(contentRef, silentRefresh, !contentScrollLocked);
 
-  const currentPage = useMemo(
-    () => ((pathParts[0] ?? "dashboard") as PageId),
-    [pathParts],
-  );
+  const currentPage = (pathParts[0] ?? "dashboard") as PageId;
 
   const activeTxNav = useActiveTransactionNavBadges();
   const activeTxBadges = activeTxNav.badges;
@@ -213,19 +214,33 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const propertyAppraisalTaskId = onPropertyAppraisalWorkspace ? (pathParts[1] ?? null) : null;
   const fieldInspectionTaskId = onFieldInspectionWorkspace ? (pathParts[1] ?? null) : null;
 
-  const { data: workflowTasks } = useWorkflowTasksQuery();
+  const selectWorkspaceTasks = useCallback(
+    (tasks: WorkflowTask[]) => {
+      const pick = (param: string | null) => {
+        if (!param) return null;
+        const id = decodeTaskParam(param);
+        const task = tasks.find((t) => t.id === id);
+        if (!task) return null;
+        return { poNumber: task.poNumber, propertyId: task.propertyId };
+      };
+      return {
+        caseStudy: pick(caseStudyTaskId),
+        appraisal: pick(propertyAppraisalTaskId),
+      };
+    },
+    [caseStudyTaskId, propertyAppraisalTaskId],
+  );
 
-  const caseStudyTask = useMemo(() => {
-    if (!caseStudyTaskId) return null;
-    const id = decodeTaskParam(caseStudyTaskId);
-    return workflowTasks?.find((t) => t.id === id) ?? null;
-  }, [caseStudyTaskId, workflowTasks]);
+  const { data: workspaceTasks } = useQuery({
+    queryKey: prototypeKeys.workflowTasks(),
+    queryFn: loadWorkflowTasksForQuery,
+    staleTime: 60_000,
+    gcTime: 10 * 60_000,
+    select: selectWorkspaceTasks,
+  });
 
-  const appraisalWorkspaceTask = useMemo(() => {
-    if (!propertyAppraisalTaskId) return null;
-    const id = decodeTaskParam(propertyAppraisalTaskId);
-    return workflowTasks?.find((t) => t.id === id) ?? null;
-  }, [propertyAppraisalTaskId, workflowTasks]);
+  const caseStudyTask = workspaceTasks?.caseStudy ?? null;
+  const appraisalWorkspaceTask = workspaceTasks?.appraisal ?? null;
 
   const propertyWorkspaceTask = onCaseStudyWorkspace
     ? caseStudyTask
@@ -251,8 +266,11 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   }, [queryClient, appraisalWorkspaceTask?.poNumber]);
 
   const propertyWorkspaceDeedLabel = useMemo(() => {
-    if (!propertyWorkspaceTask || !propertyWorkspacePo) return "";
-    const prop = findPropertyForTask(propertyWorkspacePo, propertyWorkspaceTask);
+    if (!propertyWorkspaceTask?.propertyId || !propertyWorkspacePo) return "";
+    const prop =
+      propertyWorkspacePo.properties.find(
+        (p) => p.id === propertyWorkspaceTask.propertyId,
+      ) ?? null;
     if (!prop) return "";
     const formatted = formatPropertyDeedDisplay(prop);
     if (formatted && formatted !== "—") return formatted;

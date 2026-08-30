@@ -1,4 +1,4 @@
-import { getApiBase } from "./index";
+import { getApiBase } from "./api-base";
 import type { PrototypeModulesApiConfig, PrototypeModulesResult } from "./prototype-modules";
 
 export type ReportingTeamMemberDto = {

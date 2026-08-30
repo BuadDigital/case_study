@@ -1,4 +1,4 @@
-import { getApiBase } from "./index";
+import { getApiBase } from "./api-base";
 import { ApiAuthError } from "./permissions";
 
 export type AuditLogApiConfig = {

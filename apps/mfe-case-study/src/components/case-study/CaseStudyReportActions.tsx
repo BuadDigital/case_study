@@ -1,7 +1,8 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useState } from "react";
 import { Button, ModalBody, ModalHeader, ModalOverlay, ModalTitle, useToast } from "@platform/ui-kit";
+import { useEscapeKey } from "@platform/app-shared/hooks/use-escape-key";
 import { CaseStudyReportDocument } from "./CaseStudyReportDocument";
 import { buildCaseStudyReportPrintHtml } from "../../lib/prototype/case-study-report-html";
 import { openHtmlDocumentInNewTab } from "../../lib/open-html-document";
@@ -15,14 +16,7 @@ export function CaseStudyReportActions({ model }: Props) {
   const [previewOpen, setPreviewOpen] = useState(false);
   const { showToast } = useToast();
 
-  useEffect(() => {
-    if (!previewOpen) return;
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") setPreviewOpen(false);
-    };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [previewOpen]);
+  useEscapeKey(previewOpen, () => setPreviewOpen(false));
 
   const printFromPreview = useCallback(() => {
     window.print();

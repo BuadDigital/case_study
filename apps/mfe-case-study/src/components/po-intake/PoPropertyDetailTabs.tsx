@@ -1,32 +1,23 @@
 "use client";
 
+import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
 import { useSearchParams } from "next/navigation";
 import { findSurveyChildForParent } from "@engineering-office/mfe/lib/engineering-survey-task";
-import { useMemo, useState, useEffect } from "react";
+import { Activity, useMemo, useRef, useState, useEffect } from "react";
 import { failuresForProperty } from "@failures/mfe/lib/failure-property-match";
 import { useFailuresQuery } from "@failures/mfe/query/failures-queries";
 import { failureStatusLabel } from "@failures/mfe/lib/failures-labels";
 import type { FailureRecord } from "@failures/mfe/lib/failures-types";
-import { Button, cn, Tab, TabBar, TabPanel } from "@platform/ui-kit";
+import { Button, cn, InlineLoadingSkeleton, Tab, TabBar, TabPanel } from "@platform/ui-kit";
 import { usePrototype } from "@platform/app-shared/contexts/PrototypeContext";
 import { canViewPropertyTimelineRail } from "../../lib/prototype/po-roles";
 import { DetailBadge, EmptyState, FieldBox, FieldsGrid, InfoBox, ltrValueClass, SectionHeader } from "./PropertyDetailFields";
-import { PropertyDetailAppraisalTab } from "./PropertyDetailAppraisalTab";
-import { PropertyDetailPhotosTab } from "./PropertyDetailPhotosTab";
-import { PropertyDetailLinkedTab } from "./PropertyDetailLinkedTab";
-import { PropertyDetailCaseStudyReport } from "./PropertyDetailCaseStudyReport";
-import { PropertyDetailGovernmentReviewsTab } from "./PropertyDetailGovernmentReviewsTab";
-import { PropertyDetailPropertyKeys } from "./PropertyDetailPropertyKeys";
-import { PropertyDetailEnfathUpload } from "./PropertyDetailEnfathUpload";
-import { PropertyDetailFinanceTab } from "./PropertyDetailFinanceTab";
 import { PropertyDetailSurveyNotesTab, buildPartyRemarksSections } from "./PropertyDetailSurveyNotesTab";
 import { PropertyTransactionTimeline } from "./PropertyTransactionTimeline";
 import { TransactionStateStrip } from "./TransactionStateStrip";
 import { PropertyDetailMobileGlance } from "./PropertyDetailMobileGlance";
 import { PropertyDetailMediaGlance } from "./PropertyDetailMediaGlance";
-import { PropertyDetailInspectionTab } from "./PropertyDetailInspectionTab";
-import { PropertyDetailPartyPackageReview } from "./PropertyDetailPartyPackageReview";
 import { boundariesAvailabilityLabel, boundariesMarkedUnavailable, formatDateAr, formatPropertyDeedDisplay,
   hasBourseDetailFields, 
   ownershipStatusLabel, 
@@ -40,7 +31,6 @@ import { boundariesAvailabilityLabel, boundariesMarkedUnavailable, formatDateAr,
 import { useStaffUsersQuery } from "@settings/mfe/query/settings-queries";
 import { resolveAssigneeDisplayName } from "@platform/app-shared/fees/party-fee-meta";
 import { isValidContactEntry } from "../../lib/domain/po-intake/property-validation";
-import { PartyRoleDetailPanel } from "./PartyRoleDetailPanel";
 import { buildPropertyDetailPartyCards, type PropertyDetailPartyCard } from "../../lib/prototype/property-detail-parties";
 import { poPropertyFailurePath } from "../../lib/po-routes";
 import { buildPropertyDetailTimeline, formatTimelineDate } from "../../lib/prototype/property-detail-timeline";
@@ -57,6 +47,88 @@ import { usePropertyOperationsTasks } from "../../query/use-property-operations-
 import { keysStatusLabelAr, usePropertyKeyGateQuery } from "../../query/use-property-key-gate-query";
 import { loadSeenPropertyTabFingerprints, markPropertyTabSeen, propertyTabHasNewDot, type SeenPropertyTabMap} from "../../lib/prototype/property-detail-local-ui";
 import { buildPropertyDetailTabActivity } from "../../lib/prototype/property-detail-tab-activity";
+
+const tabChunkFallback = () => (
+  <InlineLoadingSkeleton className="my-2" />
+);
+
+const PropertyDetailAppraisalTab = dynamic(
+  () =>
+    import("./PropertyDetailAppraisalTab").then(
+      (m) => m.PropertyDetailAppraisalTab,
+    ),
+  { loading: tabChunkFallback },
+);
+const PropertyDetailPhotosTab = dynamic(
+  () =>
+    import("./PropertyDetailPhotosTab").then(
+      (m) => m.PropertyDetailPhotosTab,
+    ),
+  { loading: tabChunkFallback },
+);
+const PropertyDetailLinkedTab = dynamic(
+  () =>
+    import("./PropertyDetailLinkedTab").then(
+      (m) => m.PropertyDetailLinkedTab,
+    ),
+  { loading: tabChunkFallback },
+);
+const PropertyDetailCaseStudyReport = dynamic(
+  () =>
+    import("./PropertyDetailCaseStudyReport").then(
+      (m) => m.PropertyDetailCaseStudyReport,
+    ),
+  { loading: tabChunkFallback },
+);
+const PropertyDetailGovernmentReviewsTab = dynamic(
+  () =>
+    import("./PropertyDetailGovernmentReviewsTab").then(
+      (m) => m.PropertyDetailGovernmentReviewsTab,
+    ),
+  { loading: tabChunkFallback },
+);
+const PropertyDetailPropertyKeys = dynamic(
+  () =>
+    import("./PropertyDetailPropertyKeys").then(
+      (m) => m.PropertyDetailPropertyKeys,
+    ),
+  { loading: tabChunkFallback },
+);
+const PropertyDetailEnfathUpload = dynamic(
+  () =>
+    import("./PropertyDetailEnfathUpload").then(
+      (m) => m.PropertyDetailEnfathUpload,
+    ),
+  { loading: tabChunkFallback },
+);
+const PropertyDetailFinanceTab = dynamic(
+  () =>
+    import("./PropertyDetailFinanceTab").then(
+      (m) => m.PropertyDetailFinanceTab,
+    ),
+  { loading: tabChunkFallback },
+);
+const PropertyDetailInspectionTab = dynamic(
+  () =>
+    import("./PropertyDetailInspectionTab").then(
+      (m) => m.PropertyDetailInspectionTab,
+    ),
+  { loading: tabChunkFallback },
+);
+const PropertyDetailPartyPackageReview = dynamic(
+  () =>
+    import("./PropertyDetailPartyPackageReview").then(
+      (m) => m.PropertyDetailPartyPackageReview,
+    ),
+  { loading: tabChunkFallback },
+);
+const PartyRoleDetailPanel = dynamic(
+  () =>
+    import("./PartyRoleDetailPanel").then(
+      (m) => m.PartyRoleDetailPanel,
+    ),
+  { loading: tabChunkFallback },
+);
 
 const TABS = [
   { id: "basic", label: "البيانات الأساسية" },
@@ -562,12 +634,16 @@ export function PoPropertyDetailTabs({
     setInspectEdit(nextInspect === "edit");
   }, [searchParams, workspaceForced, inspectorWorkspace?.forceEdit, role]);
 
-  useEffect(() => {
-    if (workspaceForced) return;
-    if (!visibleTabs.some((t) => t.id === tab)) {
-      setTab(visibleTabs[0]?.id ?? "basic");
-    }
-  }, [visibleTabs, tab, workspaceForced]);
+  /** التبويبة الفعلية تُشتق أثناء الرسم — تغيّر الدور ينقل الاختيار فوراً بلا تمريرة زائدة. */
+  const effectiveTab: TabId =
+    workspaceForced || visibleTabs.some((t) => t.id === tab)
+      ? tab
+      : visibleTabs[0]?.id ?? "basic";
+
+  /** التبويبة لا تُركَّب إلا بعد أول زيارة — ثم تبقى مركّبة مخفية فلا تضيع حالتها. */
+  const visitedTabsRef = useRef<Set<TabId>>(new Set());
+  visitedTabsRef.current.add(effectiveTab);
+  const tabMode = (id: TabId) => (effectiveTab === id ? "visible" : "hidden");
 
   useEffect(() => {
     setSeenTabs(loadSeenPropertyTabFingerprints(property.id));
@@ -795,14 +871,14 @@ export function PoPropertyDetailTabs({
   );
 
   useEffect(() => {
-    const fingerprint = tabActivity[tab] ?? null;
+    const fingerprint = tabActivity[effectiveTab] ?? null;
     if (!fingerprint) return;
-    markPropertyTabSeen(property.id, tab, fingerprint);
+    markPropertyTabSeen(property.id, effectiveTab, fingerprint);
     setSeenTabs((prev) => {
-      if (prev[tab] === fingerprint) return prev;
-      return { ...prev, [tab]: fingerprint };
+      if (prev[effectiveTab] === fingerprint) return prev;
+      return { ...prev, [effectiveTab]: fingerprint };
     });
-  }, [property.id, tab, tabActivity]);
+  }, [property.id, effectiveTab, tabActivity]);
 
   return (
     <div className="flex min-h-0 min-w-0 flex-1 flex-col">
@@ -839,7 +915,7 @@ export function PoPropertyDetailTabs({
             aria-label="أقسام تفاصيل العقار"
           >
             {visibleTabs.map((t) => {
-              const active = tab === t.id;
+              const active = effectiveTab === t.id;
               const hasNew = propertyTabHasNewDot(
                 t.id,
                 tabActivity[t.id],
@@ -879,31 +955,38 @@ export function PoPropertyDetailTabs({
           <TabPanel
             className={cn(
               "min-h-0 overflow-visible bg-transparent px-0 py-5 sm:px-0",
-              tab === "appraisal" && "pt-0",
+              effectiveTab === "appraisal" && "pt-0",
             )}
           >
-          {tab === "basic" ? (
-            <BasicTab
-              record={record}
-              property={property}
-              primaryPhoto={primaryPhoto}
-            />
+          {visitedTabsRef.current.has("basic") ? (
+            <Activity mode={tabMode("basic")}>
+              <BasicTab
+                record={record}
+                property={property}
+                primaryPhoto={primaryPhoto}
+              />
+            </Activity>
           ) : null}
 
-          {tab === "documents" ? (
-            <DocumentsTab sections={propertyDocumentSections} />
+          {visitedTabsRef.current.has("documents") ? (
+            <Activity mode={tabMode("documents")}>
+              <DocumentsTab sections={propertyDocumentSections} />
+            </Activity>
           ) : null}
 
-          {tab === "linked" ? (
-            <PropertyDetailLinkedTab
-              record={record}
-              property={property}
-              caseStudyTask={task ?? null}
-            />
+          {visitedTabsRef.current.has("linked") ? (
+            <Activity mode={tabMode("linked")}>
+              <PropertyDetailLinkedTab
+                record={record}
+                property={property}
+                caseStudyTask={task ?? null}
+              />
+            </Activity>
           ) : null}
 
-          {tab === "failures" ? (
-            propertyFailures.length > 0 ? (
+          {visitedTabsRef.current.has("failures") ? (
+            <Activity mode={tabMode("failures")}>
+            {propertyFailures.length > 0 ? (
               <>
                 <SectionHeader>التعذرات المسجلة</SectionHeader>
                 {propertyFailures.map((failure: FailureRecord) => (
@@ -984,11 +1067,13 @@ export function PoPropertyDetailTabs({
                   </Button>
                 </p>
               </>
-            )
+            )}
+            </Activity>
           ) : null}
 
-          {tab === "survey" ? (
-            surveyCard ? (
+          {visitedTabsRef.current.has("survey") ? (
+            <Activity mode={tabMode("survey")}>
+            {surveyCard ? (
               <>
                 <PropertyDetailPartyPackageReview
                   taskId={surveyTask?.id}
@@ -1024,10 +1109,12 @@ export function PoPropertyDetailTabs({
                 title="لم يُعيَّن طرف لهذا الدور"
                 sub="سيظهر هنا الطرف وبيانات عمله بعد التعيين."
               />
-            )
+            )}
+            </Activity>
           ) : null}
 
-          {tab === "inspection" ? (
+          {visitedTabsRef.current.has("inspection") ? (
+            <Activity mode={tabMode("inspection")}>
             <PropertyDetailInspectionTab
               property={property}
               inspectionTask={inspectionTask}
@@ -1047,24 +1134,30 @@ export function PoPropertyDetailTabs({
                 inspectorWorkspace?.onSubmitted?.();
               }}
             />
+            </Activity>
           ) : null}
 
-          {tab === "government" ? (
-            <PropertyDetailGovernmentReviewsTab
-              poNumber={poNumber}
-              property={property}
-            />
+          {visitedTabsRef.current.has("government") ? (
+            <Activity mode={tabMode("government")}>
+              <PropertyDetailGovernmentReviewsTab
+                poNumber={poNumber}
+                property={property}
+              />
+            </Activity>
           ) : null}
 
-          {tab === "report" ? (
-            <PropertyDetailCaseStudyReport
-              record={record}
-              property={property}
-              task={task ?? null}
-            />
+          {visitedTabsRef.current.has("report") ? (
+            <Activity mode={tabMode("report")}>
+              <PropertyDetailCaseStudyReport
+                record={record}
+                property={property}
+                task={task ?? null}
+              />
+            </Activity>
           ) : null}
 
-          {tab === "appraisal" ? (
+          {visitedTabsRef.current.has("appraisal") ? (
+            <Activity mode={tabMode("appraisal")}>
             <PropertyDetailAppraisalTab
               appraisalTaskId={appraisalTask?.id}
               appraisalCard={appraisalCard}
@@ -1077,14 +1170,18 @@ export function PoPropertyDetailTabs({
                 void partySubmissionsQuery.refetch();
               }}
             />
+            </Activity>
           ) : null}
 
-          {tab === "photos" ? (
-            <PropertyDetailPhotosTab photos={propertyPhotos} />
+          {visitedTabsRef.current.has("photos") ? (
+            <Activity mode={tabMode("photos")}>
+              <PropertyDetailPhotosTab photos={propertyPhotos} />
+            </Activity>
           ) : null}
 
-          {tab === "log" ? (
-            logEvents.length === 0 ? (
+          {visitedTabsRef.current.has("log") ? (
+            <Activity mode={tabMode("log")}>
+            {logEvents.length === 0 ? (
               <EmptyState title="لا يوجد سجل إجراءات" />
             ) : (
               <>
@@ -1117,17 +1214,21 @@ export function PoPropertyDetailTabs({
                   ))}
                 </div>
               </>
-            )
+            )}
+            </Activity>
           ) : null}
 
-          {tab === "keys" ? (
-            <PropertyDetailPropertyKeys
-              poNumber={poNumber}
-              property={property}
-            />
+          {visitedTabsRef.current.has("keys") ? (
+            <Activity mode={tabMode("keys")}>
+              <PropertyDetailPropertyKeys
+                poNumber={poNumber}
+                property={property}
+              />
+            </Activity>
           ) : null}
 
-          {tab === "enfath-upload" ? (
+          {visitedTabsRef.current.has("enfath-upload") ? (
+            <Activity mode={tabMode("enfath-upload")}>
             <PropertyDetailEnfathUpload
               record={record}
               property={property}
@@ -1139,24 +1240,29 @@ export function PoPropertyDetailTabs({
                 partySubmissionsQuery.isFetching
               }
             />
+            </Activity>
           ) : null}
 
-          {tab === "finance" ? (
-            <PropertyDetailFinanceTab
-              poNumber={poNumber}
-              property={property}
-              tasks={tasks}
-            />
+          {visitedTabsRef.current.has("finance") ? (
+            <Activity mode={tabMode("finance")}>
+              <PropertyDetailFinanceTab
+                poNumber={poNumber}
+                property={property}
+                tasks={tasks}
+              />
+            </Activity>
           ) : null}
 
-          {tab === "survey-notes" ? (
-            <PropertyDetailSurveyNotesTab
-              sections={partyRemarksSections}
-              loading={
-                partySubmissionsQuery.isLoading ||
-                partySubmissionsQuery.isFetching
-              }
-            />
+          {visitedTabsRef.current.has("survey-notes") ? (
+            <Activity mode={tabMode("survey-notes")}>
+              <PropertyDetailSurveyNotesTab
+                sections={partyRemarksSections}
+                loading={
+                  partySubmissionsQuery.isLoading ||
+                  partySubmissionsQuery.isFetching
+                }
+              />
+            </Activity>
           ) : null}
           </TabPanel>
         </div>

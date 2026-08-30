@@ -633,27 +633,28 @@ export async function clonePropertyDocumentsFromPrior(
     docCache.delete(targetCacheKey);
     notifyCacheListeners();
 
-    const names: string[] = [];
-    for (const meta of listed.data) {
-      const blobResult = await downloadAttachmentBlob(config!, meta.id);
-      if (!blobResult.ok) continue;
-      const contentBase64 = await blobToBase64(blobResult.data);
-      const upload = await uploadAttachment(config!, {
-        scope: API_SCOPE[kind],
-        scopeKey: scopeKey(toPo, toId),
-        fileName: meta.fileName,
-        contentType: meta.contentType || "application/octet-stream",
-        contentBase64,
-      });
-      if (!upload.ok) continue;
-      names.push(upload.data.fileName || meta.fileName);
-      upsertCachedDoc(targetCacheKey, {
-        fileName: upload.data.fileName || meta.fileName,
-        mimeType: upload.data.contentType || meta.contentType,
-        attachmentId: upload.data.id,
-      });
-    }
-    return names;
+    const names = await Promise.all(
+      listed.data.map(async (meta) => {
+        const blobResult = await downloadAttachmentBlob(config!, meta.id);
+        if (!blobResult.ok) return null;
+        const contentBase64 = await blobToBase64(blobResult.data);
+        const upload = await uploadAttachment(config!, {
+          scope: API_SCOPE[kind],
+          scopeKey: scopeKey(toPo, toId),
+          fileName: meta.fileName,
+          contentType: meta.contentType || "application/octet-stream",
+          contentBase64,
+        });
+        if (!upload.ok) return null;
+        upsertCachedDoc(targetCacheKey, {
+          fileName: upload.data.fileName || meta.fileName,
+          mimeType: upload.data.contentType || meta.contentType,
+          attachmentId: upload.data.id,
+        });
+        return upload.data.fileName || meta.fileName;
+      }),
+    );
+    return names.filter((name): name is string => name !== null);
   }
 
   const [decree, delegation, other, registry, deedOwnership, bourseDeed, boundaries] =

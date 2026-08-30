@@ -153,9 +153,37 @@ export function RegisterKeyEnvelopeModal({
   /** Link envelope to the court_visit operations task (from ?task=). */
   operationsTaskId?: string;
 }) {
+  if (!open) return null;
+  return (
+    <RegisterKeyEnvelopeForm
+      key={initialRequestNumber}
+      busy={busy}
+      onClose={onClose}
+      onRegistered={onRegistered}
+      initialRequestNumber={initialRequestNumber}
+      operationsTaskId={operationsTaskId}
+    />
+  );
+}
+
+function RegisterKeyEnvelopeForm({
+  busy,
+  onClose,
+  onRegistered,
+  initialRequestNumber,
+  operationsTaskId,
+}: {
+  busy: boolean;
+  onClose: () => void;
+  onRegistered: (envelopeId: string) => void;
+  initialRequestNumber: string;
+  operationsTaskId?: string;
+}) {
   const { showToast } = useToast();
   const [source, setSource] = useState<SourceKind>("court");
-  const [requestNumber, setRequestNumber] = useState("");
+  const [requestNumber, setRequestNumber] = useState(() =>
+    initialRequestNumber.trim(),
+  );
   const [court, setCourt] = useState("");
   const [circuit, setCircuit] = useState("");
   const [keysCountLabeled, setKeysCountLabeled] = useState("1");
@@ -184,30 +212,6 @@ export function RegisterKeyEnvelopeModal({
   const blurTimer = useRef<number | null>(null);
 
   useEffect(() => {
-    if (!open) return;
-    setSource("court");
-    setRequestNumber(initialRequestNumber.trim());
-    setCourt("");
-    setCircuit("");
-    setKeysCountLabeled("1");
-    setKeysCountActual("1");
-    setNotes("");
-    setPartyName("");
-    setPartyOrg("");
-    setPartyRole("");
-    setPartyPhone("");
-    setMissingPhones("");
-    setPhoto(null);
-    setReceipt(null);
-    setThirdPartyLetter(null);
-    setLinked([]);
-    setListOpen(false);
-    setDragOver(false);
-    setFormError("");
-  }, [open, initialRequestNumber]);
-
-  useEffect(() => {
-    if (!open) return;
     let cancelled = false;
     void (async () => {
       try {
@@ -247,10 +251,9 @@ export function RegisterKeyEnvelopeModal({
     return () => {
       cancelled = true;
     };
-  }, [open]);
+  }, []);
 
   useEffect(() => {
-    if (!open) return;
     const trimmed = requestNumber.trim();
     if (trimmed.length < 2) {
       setLinked([]);
@@ -277,7 +280,7 @@ export function RegisterKeyEnvelopeModal({
       cancelled = true;
       window.clearTimeout(timer);
     };
-  }, [open, requestNumber]);
+  }, [requestNumber]);
 
   const filteredSuggestions = useMemo(() => {
     const q = requestNumber.trim();
@@ -286,8 +289,6 @@ export function RegisterKeyEnvelopeModal({
       : suggestions.filter((s) => s.requestNumber.includes(q));
     return list.slice(0, 12);
   }, [suggestions, requestNumber]);
-
-  if (!open) return null;
 
   const labeled = Number.parseInt(keysCountLabeled, 10);
   const actual = Number.parseInt(keysCountActual, 10);

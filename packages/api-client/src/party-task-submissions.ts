@@ -3,7 +3,7 @@
  * GET/PUT /api/party-task-submissions/{taskId}; POST .../submit completes the workflow child task; POST .../reopen (engineering, appraisal, field-inspection).
  */
 import { parseFieldErrorsFromResponse } from "./field-errors";
-import { getApiBase } from "./index";
+import { getApiBase } from "./api-base";
 import { repositoryFetch as fetch } from "./write-repository";
 import type { ApiErr, ApiOk, WorkOrdersApiConfig } from "./work-orders";
 

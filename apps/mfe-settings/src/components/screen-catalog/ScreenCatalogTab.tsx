@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { Badge, Input, PageShellHeader, cn, pageGutterClassName } from "@platform/ui-kit";
 import {
   SCREEN_CATALOG_KIND_LABELS,
@@ -86,20 +86,15 @@ export function ScreenCatalogTab() {
     });
   }, [screens, filters, query]);
 
-  const selectedScreen = useMemo(
-    () => screens.find((screen) => screen.id === selectedId) ?? null,
-    [screens, selectedId],
-  );
+  const effectiveSelectedId =
+    selectedId && visibleScreens.some((screen) => screen.id === selectedId)
+      ? selectedId
+      : visibleScreens[0]?.id ?? null;
 
-  useEffect(() => {
-    if (!selectedId && visibleScreens[0]) setSelectedId(visibleScreens[0].id);
-    if (
-      selectedId &&
-      !visibleScreens.some((screen) => screen.id === selectedId)
-    ) {
-      setSelectedId(visibleScreens[0]?.id ?? null);
-    }
-  }, [selectedId, visibleScreens]);
+  const selectedScreen = useMemo(
+    () => screens.find((screen) => screen.id === effectiveSelectedId) ?? null,
+    [screens, effectiveSelectedId],
+  );
 
   function toggleFilter(facet: FacetKey, value: string): void {
     setFilters((current) => {
@@ -231,7 +226,7 @@ export function ScreenCatalogTab() {
                 <ScreenListRow
                   key={screen.id}
                   screen={screen}
-                  selected={selectedId === screen.id}
+                  selected={effectiveSelectedId === screen.id}
                   onSelect={() => setSelectedId(screen.id)}
                 />
               ))

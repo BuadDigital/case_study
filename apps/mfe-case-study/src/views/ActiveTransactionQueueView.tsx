@@ -11,6 +11,7 @@ import {
   useTransition,
 } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import dynamic from "next/dynamic";
 import {
   Button,
   Note,
@@ -33,7 +34,13 @@ import { useTickingMinute } from "@platform/app-shared/hooks/use-ticking-now";
 import { useViewportDesktop } from "@platform/app-shared/hooks/use-viewport-desktop";
 import type { RowMoreMenuItem } from "@case-study/mfe/components/ui/RowMoreMenu";
 import { buildActiveQueueRowMoreItems } from "../lib/prototype/active-queue-row-menu";
-import { CopyFromPriorTransactionModal } from "../components/po-intake/CopyFromPriorTransactionModal";
+const CopyFromPriorTransactionModal = dynamic(
+  () =>
+    import("../components/po-intake/CopyFromPriorTransactionModal").then(
+      (m) => m.CopyFromPriorTransactionModal,
+    ),
+  { ssr: false },
+);
 import { buildCopyPriorTargetOptions } from "../lib/prototype/po-intake-storage";
 import {
   computePartyCaseStudyProgress,
@@ -223,6 +230,20 @@ type PanelRenderProps = {
 };
 
 const DEFAULT_INFO_ROLES = emptyCaseStudyInfoRolesConfig();
+/* مراجع ثابتة لقيم التحميل — `[]` جديد في كل تصيير يبطل كل الـuseMemo
+   والصفوف المذكّرة أسفلها (rerender-memo-with-default-value). */
+const EMPTY_PO_RECORDS: PoIntakeRecord[] = [];
+const EMPTY_TASKS: WorkflowTask[] = [];
+const EMPTY_STAFF_USERS: NonNullable<
+  ReturnType<typeof useStaffUsersQuery>["data"]
+>["users"] = [];
+const EMPTY_INSPECTION_WORKSPACES: NonNullable<
+  ReturnType<typeof useFieldInspectionWorkspacesQuery>["data"]
+> = [];
+// تحميل مسبق عند التحويم/التركيز على صفوف الطابور — الصف يفتح خطوة إنفاذ
+// في شاشة العمل، وحزمتها كانت تُجلب بعد النقر فقط (bundle-preload).
+const preloadPoPropertyEnfathForm = () =>
+  void import("@case-study/mfe/components/po-intake/PoPropertyEnfathForm");
 
 export function ActiveTransactionQueueView({
   config,
@@ -244,12 +265,11 @@ export function ActiveTransactionQueueView({
   const { data: staffResult } = useStaffUsersQuery();
   const { data: infoRolesData } = useCaseStudyInfoRolesQuery();
   const infoRolesMatrix = infoRolesData?.matrix ?? DEFAULT_INFO_ROLES.matrix;
-  const staffUsers = staffResult?.users ?? [];
+  const staffUsers = staffResult?.users ?? EMPTY_STAFF_USERS;
   const needsInspectionWorkspaces = Boolean(config.getTaskStatusBadge);
   const needsPartySubmissions = Boolean(config.getTaskStatusBadge);
-  const { data: inspectionWorkspaces = [] } = useFieldInspectionWorkspacesQuery(
-    needsInspectionWorkspaces,
-  );
+  const { data: inspectionWorkspaces = EMPTY_INSPECTION_WORKSPACES } =
+    useFieldInspectionWorkspacesQuery(needsInspectionWorkspaces);
   const inspectionWorkspaceByTaskId = useMemo(() => {
     const map = new Map(
       inspectionWorkspaces.map((row) => [row.workflowTaskId, row]),
@@ -264,7 +284,7 @@ export function ActiveTransactionQueueView({
     error: tasksQueryError,
   } = useWorkflowTasksQuery({ live: true });
   const {
-    data: poRecords = [],
+    data: poRecords = EMPTY_PO_RECORDS,
     isFetched: poRecordsFetched,
     isError: poRecordsError,
     error: poRecordsQueryError,
@@ -729,6 +749,12 @@ export function ActiveTransactionQueueView({
   const isPartyQueueToggleTable =
     isEngineeringSurveyTable || isPropertyAppraisalTable;
   const showPartyColumns = config.tableLayout === "case-study";
+  // صفوف هذين الفرعين تفتح شاشة عمل المعاملة التي تبدأ بنموذج إنفاذ.
+  const preloadRowWork =
+    isAllTransactionsTable ||
+    (!isDistributionTable && !isPartyQueueToggleTable)
+      ? preloadPoPropertyEnfathForm
+      : undefined;
 
   const allTransactionsRowMeta = useMemo(() => {
     if (!isAllTransactionsTable) return [];
@@ -807,13 +833,20 @@ export function ActiveTransactionQueueView({
         APPRAISAL_STATUS_FILTERS.find((o) => o.label === statusFilter)?.value ??
         "";
       return primaryRowMeta.filter((meta) => {
-        const cityDistrict = [meta.row.city, meta.row.district]
-          .filter((v) => v && v !== "—")
-          .join(" — ");
-        const hay = `${meta.row.deedLabel} ${cityDistrict} ${meta.row.propertySlot}`;
-        if (q && !hay.includes(q)) return false;
+        // بلا بحث لا يُبنى نص المطابقة أصلاً — كان يُخصَّص مصفوفة ونصاً لكل صف
+        // ثم يُهمل (js-early-exit).
+        if (q) {
+          const cityDistrict = [meta.row.city, meta.row.district]
+            .filter((v) => v && v !== "—")
+            .join(" — ");
+          const hay = `${meta.row.deedLabel} ${cityDistrict} ${meta.row.propertySlot}`;
+          if (!hay.includes(q)) return false;
+        }
         if (statusValue) {
-          const group = appraiserQueueStatusGroup(meta.task, tasks ?? []);
+          const group = appraiserQueueStatusGroup(
+            meta.task,
+            tasks ?? EMPTY_TASKS,
+          );
           if (group !== statusValue) return false;
         }
         return true;
@@ -999,15 +1032,28 @@ export function ActiveTransactionQueueView({
     markTaskRowSeen(selectedTask);
   }, [selectedTask, markTaskRowSeen]);
 
-  const rowCtx: QueueRowContext = {
-    queuePending,
-    showSkeleton: queuePending && listed.length === 0,
-    selectedId,
-    isTaskOpening,
-    handleRowClick,
-    resolveRowAttention,
-    resolveRowMoreItems,
-  };
+  /* كائن حرفي جديد في كل تصيير كان يبطل تذكير الصفوف رغم ثبات دواله —
+     الشاشة تُعاد بضغطة بحث ونبضة دقيقة وكل bump (rerender-memo). */
+  const rowCtx: QueueRowContext = useMemo(
+    () => ({
+      queuePending,
+      showSkeleton: queuePending && listed.length === 0,
+      selectedId,
+      isTaskOpening,
+      handleRowClick,
+      resolveRowAttention,
+      resolveRowMoreItems,
+    }),
+    [
+      queuePending,
+      listed.length,
+      selectedId,
+      isTaskOpening,
+      handleRowClick,
+      resolveRowAttention,
+      resolveRowMoreItems,
+    ],
+  );
 
   const queueToolbar = queueReady ? (
     <QueueFiltersToolbar
@@ -1247,7 +1293,11 @@ export function ActiveTransactionQueueView({
                   />
                 </div>
               ) : (
-                <div className="pb-3 lg:hidden max-lg:px-0">
+                <div
+                  className="pb-3 lg:hidden max-lg:px-0"
+                  onMouseEnter={preloadRowWork}
+                  onFocus={preloadRowWork}
+                >
                   <ActiveQueueMobileCards
                     items={mobileQueueCardItems}
                     pending={queuePending}
@@ -1271,6 +1321,8 @@ export function ActiveTransactionQueueView({
                   "max-lg:hidden lg:block",
                   "lg:rounded-b-[var(--radius-lg)]",
                 )}
+                onMouseEnter={preloadRowWork}
+                onFocus={preloadRowWork}
               >
                 {isAllTransactionsTable ? (
                   <AllTransactionsQueueTable
@@ -1293,7 +1345,7 @@ export function ActiveTransactionQueueView({
                     disableRowOpen={Boolean(config.disableRowOpen)}
                     filteredListed={filteredListed}
                     poByNumber={poByNumber}
-                    tasks={tasks ?? []}
+                    tasks={tasks ?? EMPTY_TASKS}
                     partyProgressByTask={partyProgressByTask}
                     staffUsers={staffUsers}
                     onRowClick={handleDistributionRowClick}
@@ -1310,7 +1362,7 @@ export function ActiveTransactionQueueView({
                   <PropertyAppraisalQueueTable
                     ctx={rowCtx}
                     filteredMeta={filteredPrimaryMeta}
-                    tasks={tasks ?? []}
+                    tasks={tasks ?? EMPTY_TASKS}
                     openPropertyDetail={openPropertyDetailFromQueue}
                     statusColumnLabel={config.statusColumnLabel}
                   />

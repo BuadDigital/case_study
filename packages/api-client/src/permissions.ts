@@ -1,4 +1,4 @@
-import { getApiBase } from "./index";
+import { getApiBase } from "./api-base";
 
 export class ApiAuthError extends Error {
   constructor() {

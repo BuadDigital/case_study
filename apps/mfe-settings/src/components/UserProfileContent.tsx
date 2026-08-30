@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { Activity, useEffect, useMemo, useRef, useState } from "react";
 import dynamic from "next/dynamic";
 import {
   listInspectorFees,
@@ -163,14 +163,16 @@ export function UserProfileContent({ user }: { user: StaffUser }) {
     return items;
   }, [showEngStatements, showInspectorDues, showFinancial]);
 
-  useEffect(() => {
-    if (tab === "eng_statements" && !showEngStatements) setTab("basic");
-    if (tab === "inspector_dues" && !showInspectorDues) setTab("basic");
-    if (tab === "financial" && !showFinancial) setTab("basic");
-  }, [tab, showEngStatements, showInspectorDues, showFinancial]);
+  const effectiveTab = tabs.some((item) => item.id === tab) ? tab : "basic";
+
+  /** لوحة لا تُركَّب إلا بعد أول زيارة — ثم تبقى مركّبة مخفية فلا تضيع حالتها. */
+  const visitedTabsRef = useRef<Set<ProfileTab>>(new Set());
+  visitedTabsRef.current.add(effectiveTab);
+  const tabMode = (id: ProfileTab) =>
+    effectiveTab === id ? "visible" : "hidden";
 
   useEffect(() => {
-    if (tab !== "activity" && tab !== "financial") return;
+    if (effectiveTab !== "activity" && effectiveTab !== "financial") return;
     const token = getAuthSession()?.token;
     if (!token) return;
     let cancelled = false;
@@ -202,7 +204,7 @@ export function UserProfileContent({ user }: { user: StaffUser }) {
     return () => {
       cancelled = true;
     };
-  }, [tab, user.distributionAssigneeId, user.id]);
+  }, [effectiveTab, user.distributionAssigneeId, user.id]);
 
   const activityRows = useMemo(() => completedRows(feeRows), [feeRows]);
 
@@ -262,7 +264,7 @@ export function UserProfileContent({ user }: { user: StaffUser }) {
             type="button"
             onClick={() => setTab(item.id)}
             className={`rounded-md px-3 py-1.5 text-[12px] font-semibold transition-colors ${
-              tab === item.id
+              effectiveTab === item.id
                 ? "bg-ink text-white"
                 : "bg-surface-2 text-text-2 hover:border-border-md hover:text-heading"
             }`}
@@ -272,8 +274,8 @@ export function UserProfileContent({ user }: { user: StaffUser }) {
         ))}
       </div>
 
-      {tab === "basic" ? (
-        <>
+      {visitedTabsRef.current.has("basic") ? (
+        <Activity mode={tabMode("basic")}>
           <section>
             <h3 className="m-0 mb-3 text-[13px] font-bold text-heading">
               البيانات الأساسية
@@ -346,10 +348,11 @@ export function UserProfileContent({ user }: { user: StaffUser }) {
               </div>
             </section>
           ))}
-        </>
+        </Activity>
       ) : null}
 
-      {tab === "login" ? (
+      {visitedTabsRef.current.has("login") ? (
+        <Activity mode={tabMode("login")}>
         <section className="grid gap-3 sm:grid-cols-2">
           <ProfileField label="الحالة" value={statusLabel(user.status)} />
           <ProfileField
@@ -363,9 +366,11 @@ export function UserProfileContent({ user }: { user: StaffUser }) {
             dir="ltr"
           />
         </section>
+        </Activity>
       ) : null}
 
-      {tab === "activity" ? (
+      {visitedTabsRef.current.has("activity") ? (
+        <Activity mode={tabMode("activity")}>
         <section>
           {feesLoading ? (
             <div className="flex justify-center py-10">
@@ -402,18 +407,22 @@ export function UserProfileContent({ user }: { user: StaffUser }) {
             </div>
           )}
         </section>
+        </Activity>
       ) : null}
 
-      {tab === "eng_statements" && showEngStatements ? (
+      {visitedTabsRef.current.has("eng_statements") && showEngStatements ? (
+        <Activity mode={tabMode("eng_statements")}>
         <section className="space-y-3">
           <PartyOfficeBillingStatementsPanel
             assigneeId={user.distributionAssigneeId || undefined}
             issuedOrLaterOnly
           />
         </section>
+        </Activity>
       ) : null}
 
-      {tab === "inspector_dues" && showInspectorDues ? (
+      {visitedTabsRef.current.has("inspector_dues") && showInspectorDues ? (
+        <Activity mode={tabMode("inspector_dues")}>
         <section className="space-y-3">
           <p className="m-0 rounded-[10px] border border-dashed border-border-md bg-surface-2 px-[15px] py-[11px] text-[12.5px] leading-[1.7] text-text-3">
             مستحقاتكم كفرد — جاهزة للصرف أو ضمن أمر صرف أو مدفوعة. لا فاتورة
@@ -421,9 +430,11 @@ export function UserProfileContent({ user }: { user: StaffUser }) {
           </p>
           <ProfileInspectorDuesPanel user={user} />
         </section>
+        </Activity>
       ) : null}
 
-      {tab === "financial" && showFinancial ? (
+      {visitedTabsRef.current.has("financial") && showFinancial ? (
+        <Activity mode={tabMode("financial")}>
         <section className="space-y-4">
           <div className="grid gap-3 sm:grid-cols-4">
             <ProfileField
@@ -476,6 +487,7 @@ export function UserProfileContent({ user }: { user: StaffUser }) {
             </div>
           )}
         </section>
+        </Activity>
       ) : null}
     </div>
   );

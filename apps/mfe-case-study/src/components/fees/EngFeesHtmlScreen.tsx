@@ -5,7 +5,7 @@
  * Layout: KPI → tabs → (secT + toolbar + card) | statements.
  */
 
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useDeferredValue, useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   KpiBand,
@@ -43,6 +43,7 @@ import { engFeeUiStatus } from "./EngOfficeFeesBillingTable";
 import { EngFeesHtmlTabs, EngFeesSectionTitle } from "./EngFeesHtmlTabs";
 import { VendorInvoicePdfField } from "./VendorInvoicePdfField";
 import { ymd as formatYmd } from "@platform/app-shared/format/date";
+import { fmtMax } from "@platform/app-shared/format/number";
 
 type TabId = "action" | "ready" | "statements";
 
@@ -61,7 +62,7 @@ const STATEMENT_COLS =
   "minmax(150px,1.2fr) minmax(90px,.8fr) minmax(70px,.6fr) minmax(90px,.8fr) minmax(110px,1fr) minmax(170px,1.4fr)";
 
 function fmtSar(n: number): string {
-  return `${Number(n || 0).toLocaleString("en-US")} ر.س`;
+  return `${fmtMax(n || 0, 3)} ر.س`;
 }
 
 
@@ -199,6 +200,7 @@ export function EngFeesHtmlScreen({ assigneeId }: { assigneeId?: string }) {
   const { showToast } = useToast();
   const [tab, setTab] = useState<TabId>("action");
   const [search, setSearch] = useState("");
+  const deferredSearch = useDeferredValue(search);
   const [stFilter, setStFilter] = useState("");
   const [fnSearch, setFnSearch] = useState("");
   const [openFn, setOpenFn] = useState<string | null>(null);
@@ -267,7 +269,7 @@ export function EngFeesHtmlScreen({ assigneeId }: { assigneeId?: string }) {
   }).length;
 
   const filteredFees = useMemo(() => {
-    const q = search.trim().toLowerCase();
+    const q = deferredSearch.trim().toLowerCase();
     return rows.filter((row) => {
       const st = engFeeUiStatus(row);
       const inTab =
@@ -280,7 +282,7 @@ export function EngFeesHtmlScreen({ assigneeId }: { assigneeId?: string }) {
       const { deed, region } = deedParts(row);
       return `${deed} ${region} ${row.poNumber}`.toLowerCase().includes(q);
     });
-  }, [rows, tab, search, stFilter]);
+  }, [rows, tab, deferredSearch, stFilter]);
 
   const filteredFns = useMemo(() => {
     const q = fnSearch.trim().toLowerCase();

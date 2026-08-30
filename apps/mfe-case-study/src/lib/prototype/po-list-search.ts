@@ -47,10 +47,12 @@ export function buildPoListDisplay(
 
   const mode = classifyPoListSearch(q);
   if (mode === "deed") {
+    const qNorm = normalizeDeedQuery(q);
+    const qDigits = digitsOnly(q);
     const poById = new Map(rows.map((row) => [row.id, row]));
     const hits: Extract<PoListDisplayItem, { view: "property" }>[] = [];
     for (const deed of deedIndex) {
-      if (!deedMatchesQuery(deed, q)) continue;
+      if (!deedMatchesQuery(deed, qNorm, qDigits)) continue;
       const po = poById.get(deed.poNumber);
       if (!po) continue;
       hits.push({
@@ -155,9 +157,12 @@ export function buildPoDeedIndex(
     .filter((entry): entry is PoDeedIndexEntry => entry !== null);
 }
 
-function deedMatchesQuery(entry: PoDeedIndexEntry, query: string): boolean {
-  const qNorm = normalizeDeedQuery(query);
-  const qDigits = digitsOnly(query);
+/** الاستعلام مطبَّع مسبقاً من المستدعي — كان يُعاد تطبيعه لكل صك في الفهرس. */
+function deedMatchesQuery(
+  entry: PoDeedIndexEntry,
+  qNorm: string,
+  qDigits: string,
+): boolean {
   if (!qNorm && !qDigits) return false;
 
   if (entry.deedNorm.includes(qNorm) || qNorm.includes(entry.deedNorm)) {
@@ -186,17 +191,18 @@ function deedMatchesQuery(entry: PoDeedIndexEntry, query: string): boolean {
 function bestDeedMatch(
   poNumber: string,
   deedIndex: PoDeedIndexEntry[],
-  query: string,
+  qNorm: string,
+  qDigits: string,
 ): PoDeedIndexEntry | null {
   const matches = deedIndex.filter(
-    (entry) => entry.poNumber === poNumber && deedMatchesQuery(entry, query),
+    (entry) =>
+      entry.poNumber === poNumber && deedMatchesQuery(entry, qNorm, qDigits),
   );
   if (matches.length === 0) return null;
 
-  const qDigits = digitsOnly(query);
   return (
     matches.find((m) => m.deedDigits === qDigits) ??
-    matches.find((m) => m.deedNorm === normalizeDeedQuery(query)) ??
+    matches.find((m) => m.deedNorm === qNorm) ??
     matches[0]
   );
 }
@@ -211,17 +217,19 @@ export function filterPoListRows(
 
   const mode = classifyPoListSearch(q);
   const qLower = q.toLowerCase();
+  const qNorm = normalizeDeedQuery(q);
+  const qDigits = digitsOnly(q);
 
   if (mode === "deed") {
     const poNumbers = new Set(
       deedIndex
-        .filter((entry) => deedMatchesQuery(entry, q))
+        .filter((entry) => deedMatchesQuery(entry, qNorm, qDigits))
         .map((entry) => entry.poNumber),
     );
     return rows
       .filter((row) => poNumbers.has(row.id))
       .map((row) => {
-        const hit = bestDeedMatch(row.id, deedIndex, q);
+        const hit = bestDeedMatch(row.id, deedIndex, qNorm, qDigits);
         return {
           row,
           deeds: deedsForPo(row.id, deedIndex),
@@ -237,46 +245,55 @@ export function filterPoListRows(
       });
   }
 
-  return rows
-    .filter((row) => {
-      if (mode === "po") {
-        return row.id.toLowerCase().includes(qLower);
-      }
+  // مسح الصكوك (الأغلى) يأتي أخيراً ويُحسب مرة واحدة لكل صف — كان يُنفَّذ
+  // في الفلترة ثم يُعاد في بناء النتيجة حتى مع تطابق رقم أمر العمل.
+  const out: PoListFilteredRow[] = [];
+  for (const row of rows) {
+    const poHit = row.id.toLowerCase().includes(qLower);
+    if (mode === "po") {
+      if (!poHit) continue;
+      out.push({
+        row,
+        deeds: deedsForPo(row.id, deedIndex),
+        match: { mode: "po" as const },
+      });
+      continue;
+    }
 
-      const poHit = row.id.toLowerCase().includes(qLower);
-      const typeHit = row.type.toLowerCase().includes(qLower);
-      const specialistHit = row.specialist.toLowerCase().includes(qLower);
-      const deedHit = bestDeedMatch(row.id, deedIndex, q) !== null;
-      return poHit || typeHit || specialistHit || deedHit;
-    })
-    .map((row) => {
-      const deeds = deedsForPo(row.id, deedIndex);
-      if (row.id.toLowerCase().includes(qLower)) {
-        return { row, deeds, match: { mode: "po" as const } };
-      }
+    if (poHit) {
+      out.push({
+        row,
+        deeds: deedsForPo(row.id, deedIndex),
+        match: { mode: "po" as const },
+      });
+      continue;
+    }
 
-      const deedHit = bestDeedMatch(row.id, deedIndex, q);
-      if (deedHit) {
-        return {
-          row,
-          deeds,
-          match: {
-            mode: "deed" as const,
-            deedNumber: deedHit.deedNumber,
-            propertyId: deedHit.propertyId,
-            propertyArea: deedHit.area,
-          },
-        };
-      }
+    const deedHit = bestDeedMatch(row.id, deedIndex, qNorm, qDigits);
+    if (deedHit) {
+      out.push({
+        row,
+        deeds: deedsForPo(row.id, deedIndex),
+        match: {
+          mode: "deed" as const,
+          deedNumber: deedHit.deedNumber,
+          propertyId: deedHit.propertyId,
+          propertyArea: deedHit.area,
+        },
+      });
+      continue;
+    }
 
-      if (row.type.toLowerCase().includes(qLower)) {
-        return { row, deeds, match: { mode: "text" as const } };
-      }
-
-      if (row.specialist.toLowerCase().includes(qLower)) {
-        return { row, deeds, match: { mode: "text" as const } };
-      }
-
-      return { row, deeds, match: null };
-    });
+    if (
+      row.type.toLowerCase().includes(qLower) ||
+      row.specialist.toLowerCase().includes(qLower)
+    ) {
+      out.push({
+        row,
+        deeds: deedsForPo(row.id, deedIndex),
+        match: { mode: "text" as const },
+      });
+    }
+  }
+  return out;
 }

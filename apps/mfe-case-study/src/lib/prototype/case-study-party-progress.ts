@@ -148,21 +148,30 @@ export async function loadPartyCaseStudyAnswersByParty(
     >
   > = {};
 
-  const parentDraft = await loadCaseStudyFormDraft(parentTask.id);
+  const children = childTasksForCaseStudyParent(parentTask.id, tasks).map(
+    (child) => ({ child, partyId: partyIdForChildTask(child) }),
+  );
+  const [parentDraft, ...childDrafts] = await Promise.all([
+    loadCaseStudyFormDraft(parentTask.id),
+    ...children.map(({ child, partyId }) =>
+      partyId && partyId !== "specA"
+        ? loadPartyCaseStudyFormDraft(child.id)
+        : null,
+    ),
+  ]);
   byParty.specA = parentDraft?.answers ?? {};
 
-  for (const child of childTasksForCaseStudyParent(parentTask.id, tasks)) {
-    const partyId = partyIdForChildTask(child);
-    if (!partyId || partyId === "specA") continue;
+  children.forEach(({ partyId }, index) => {
+    if (!partyId || partyId === "specA") return;
 
-    const draft = await loadPartyCaseStudyFormDraft(child.id);
-    if (!draft) continue;
+    const draft = childDrafts[index];
+    if (!draft) return;
 
     byParty[partyId] = {
       ...(byParty[partyId] ?? {}),
       ...draft.answers,
     };
-  }
+  });
 
   return byParty;
 }

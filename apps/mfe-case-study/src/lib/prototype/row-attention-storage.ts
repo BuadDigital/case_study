@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import type { WorkflowTask } from "./tasks-storage";
 
 const SEEN_KEY = "row-attention-seen";
@@ -38,13 +38,51 @@ function pruneSeenMap(map: RowAttentionSeenMap): RowAttentionSeenMap {
   return Object.fromEntries(entries.slice(entries.length - MAX_SEEN_ENTRIES));
 }
 
-function saveSeenMap(map: RowAttentionSeenMap): void {
-  if (typeof window === "undefined") return;
+function writeSeenMap(map: RowAttentionSeenMap): void {
   try {
     window.localStorage.setItem(SEEN_KEY, JSON.stringify(pruneSeenMap(map)));
   } catch {
     // storage full/unavailable — dot just re-lights next render, non-fatal.
   }
+}
+
+// الفرز + التسلسل + الكتابة تؤجَّل إلى وقت الخمول: النقر على الصف يبدأ انتقال
+// مسار في نفس اللحظة (js-request-idle-callback).
+let pendingSeenMap: RowAttentionSeenMap | null = null;
+let cancelPendingFlush: (() => void) | null = null;
+let flushBound = false;
+
+function flushSeenMap(): void {
+  cancelPendingFlush?.();
+  cancelPendingFlush = null;
+  const map = pendingSeenMap;
+  if (!map) return;
+  pendingSeenMap = null;
+  writeSeenMap(map);
+}
+
+function bindFlushOnHide(): void {
+  if (flushBound) return;
+  flushBound = true;
+  window.addEventListener("pagehide", flushSeenMap);
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState === "hidden") flushSeenMap();
+  });
+}
+
+function saveSeenMap(map: RowAttentionSeenMap): void {
+  if (typeof window === "undefined") return;
+  bindFlushOnHide();
+  // الكتابات المتتابعة تُدمج — الخريطة لقطة كاملة فالأحدث تكفي.
+  pendingSeenMap = map;
+  if (cancelPendingFlush) return;
+  if (typeof requestIdleCallback !== "undefined") {
+    const id = requestIdleCallback(flushSeenMap, { timeout: 2_000 });
+    cancelPendingFlush = () => cancelIdleCallback(id);
+    return;
+  }
+  const id = setTimeout(flushSeenMap, 250);
+  cancelPendingFlush = () => clearTimeout(id);
 }
 
 /**
@@ -72,14 +110,15 @@ export function rowHasAttentionDot(
 /** Per-tab seen-state for queue rows, backed by localStorage. */
 export function useRowAttentionSeenMap() {
   const [seen, setSeen] = useState<RowAttentionSeenMap>(() => loadSeenMap());
+  const seenRef = useRef(seen);
+  seenRef.current = seen;
 
   const markSeen = useCallback((taskId: string, fingerprint: string) => {
-    setSeen((prev) => {
-      if (prev[taskId] === fingerprint) return prev;
-      const next = { ...prev, [taskId]: fingerprint };
-      saveSeenMap(next);
-      return next;
-    });
+    if (seenRef.current[taskId] === fingerprint) return;
+    const next = { ...seenRef.current, [taskId]: fingerprint };
+    seenRef.current = next;
+    setSeen(next);
+    saveSeenMap(next);
   }, []);
 
   return [seen, markSeen] as const;

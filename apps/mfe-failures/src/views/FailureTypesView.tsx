@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { usePrototype } from "@platform/app-shared/contexts/PrototypeContext";
 import { cn, InlineLoadingSkeleton, PageShell, Spinner, useToast } from "@platform/ui-kit";
@@ -75,17 +75,14 @@ export function FailureTypesView() {
     });
   }, [queryClient]);
 
-  useEffect(() => {
-    if (!catalog?.categories.length) return;
-    if (!categoryId) setCategoryId(catalog.categories[0].id);
-  }, [catalog, categoryId]);
+  const effectiveCategoryId = categoryId || catalog?.categories[0]?.id || "";
 
   async function handleAdd() {
-    if (!canEdit || !categoryId || !label.trim() || busy) return;
+    if (!canEdit || !effectiveCategoryId || !label.trim() || busy) return;
     setBusy(true);
     try {
       await addFailureProblemType({
-        categoryId,
+        categoryId: effectiveCategoryId,
         label,
         description,
       });
@@ -187,7 +184,7 @@ export function FailureTypesView() {
                 <select
                   id="failure_type_category"
                   className={opsFldControl}
-                  value={categoryId}
+                  value={effectiveCategoryId}
                   onChange={(e) => setCategoryId(e.target.value)}
                 >
                   {sortedCategories.map((c) => (
@@ -224,7 +221,7 @@ export function FailureTypesView() {
               <button
                 type="button"
                 className={opsBtnPrimary}
-                disabled={busy || !categoryId || !label.trim()}
+                disabled={busy || !effectiveCategoryId || !label.trim()}
                 aria-busy={busy || undefined}
                 onClick={() => void handleAdd()}
               >

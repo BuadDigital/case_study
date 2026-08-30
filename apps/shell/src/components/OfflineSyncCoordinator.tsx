@@ -1,13 +1,14 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   evaluateOfflineLease,
   isOfflineCapableRole,
   syncOfflineQueue,
-} from "@platform/app-shared";
+} from "@platform/app-shared/offline/offline-write";
 import { useAuth } from "@platform/app-shared/hooks/useAuth";
 import { useOnlineStatus } from "@platform/app-shared/hooks/useOnlineStatus";
+import { useDocumentVisible } from "@platform/app-shared/hooks/use-document-visible";
 import {
   OFFLINE_PENDING_EVENT,
   OFFLINE_SYNC_EVENT,
@@ -381,7 +382,11 @@ async function runSync(userId: string): Promise<void> {
 export function OfflineSyncCoordinator() {
   const { role, user, isAuthenticated, displayName } = useAuth();
   const online = useOnlineStatus();
+  const visible = useDocumentVisible();
   const capable = isOfflineCapableRole(role);
+  const wasVisibleRef = useRef(visible);
+  const heartbeatMetaRef = useRef({ displayName, role, user });
+  heartbeatMetaRef.current = { displayName, role, user };
   const [syncState, setSyncState] = useState<OfflineSyncState>("synced");
   const [pending, setPending] = useState(0);
   const [pendingItems, setPendingItems] = useState<OfflineOutboxItem[]>([]);
@@ -461,15 +466,20 @@ export function OfflineSyncCoordinator() {
     if (!userId) return;
     void runSync(userId);
     const timer = window.setInterval(() => void runSync(userId), 30_000);
-    const onVisible = () => {
-      if (document.visibilityState === "visible") void runSync(userId);
-    };
-    document.addEventListener("visibilitychange", onVisible);
-    return () => {
-      window.clearInterval(timer);
-      document.removeEventListener("visibilitychange", onVisible);
-    };
+    return () => window.clearInterval(timer);
   }, [capable, isAuthenticated, online, user?.id]);
+
+  // مخفي ← ظاهر فقط: التأثير أعلاه يزامن أصلاً عند التركيب/عودة الاتصال، فقراءة
+  // الحالة اللحظية هنا كانت ستضاعف المزامنة.
+  useEffect(() => {
+    const wasVisible = wasVisibleRef.current;
+    wasVisibleRef.current = visible;
+    if (!visible || wasVisible) return;
+    if (!capable || !isAuthenticated || !online) return;
+    const userId = user?.id;
+    if (!userId) return;
+    void runSync(userId);
+  }, [visible, capable, isAuthenticated, online, user?.id]);
 
   useEffect(() => {
     if (!capable || !isAuthenticated || !user?.id) return;
@@ -484,14 +494,18 @@ export function OfflineSyncCoordinator() {
     };
   }, [capable, isAuthenticated, user?.id]);
 
+  // نبضة كل دقيقة تقرأ الطابور بنفسها؛ إدراج pending/الاسم/الدور في الاعتماديات
+  // كان يهدم المؤقت ويطلق POST إضافياً مع كل تغيّر في الطابور (advanced-use-latest).
   useEffect(() => {
-    if (!capable || !isAuthenticated || !online || !user?.id) return;
+    const userId = user?.id;
+    if (!capable || !isAuthenticated || !online || !userId) return;
     const report = () => {
-      void listOutboxItems(user.id)
+      void listOutboxItems(userId)
         .then((items) => {
+          const meta = heartbeatMetaRef.current;
           void reportFieldSyncHeartbeat(items, {
-            displayName: displayName ?? user.displayName,
-            roleId: role,
+            displayName: meta.displayName ?? meta.user?.displayName,
+            roleId: meta.role,
           });
         })
         .catch(() => {
@@ -501,16 +515,7 @@ export function OfflineSyncCoordinator() {
     report();
     const timer = window.setInterval(report, 60_000);
     return () => window.clearInterval(timer);
-  }, [
-    capable,
-    displayName,
-    isAuthenticated,
-    online,
-    pending,
-    role,
-    user?.displayName,
-    user?.id,
-  ]);
+  }, [capable, isAuthenticated, online, user?.id]);
 
   useEffect(() => {
     if (!capable) return;

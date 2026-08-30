@@ -65,14 +65,6 @@ export function PrototypeProvider({ children }: { children: React.ReactNode }) {
   }
 
   useEffect(() => {
-    if (!hasSession) {
-      setRuntimeCapabilities([]);
-      return;
-    }
-    if (permissions) setRuntimeCapabilities(permissions.capabilities);
-  }, [hasSession, permissions]);
-
-  useEffect(() => {
     if (!hasSession) return;
     void import("../organization/organization-settings-cache").then((m) =>
       m.ensureOrganizationSettingsLoaded(),

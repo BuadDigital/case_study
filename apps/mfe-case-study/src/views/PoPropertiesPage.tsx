@@ -2,6 +2,7 @@
 
 import { useCallback, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
+import dynamic from "next/dynamic";
 import { useQueryClient } from "@tanstack/react-query";
 import {
   Button,
@@ -14,7 +15,13 @@ import { RowMoreMenu } from "@case-study/mfe/components/ui/RowMoreMenu";
 import type { RowMoreMenuItem } from "@case-study/mfe/components/ui/RowMoreMenu";
 import { PoNumber } from "@case-study/mfe/components/ui/PoNumber";
 import { ltrValueClass } from "../components/po-intake/PropertyDetailFields";
-import { CopyFromPriorTransactionModal } from "../components/po-intake/CopyFromPriorTransactionModal";
+const CopyFromPriorTransactionModal = dynamic(
+  () =>
+    import("../components/po-intake/CopyFromPriorTransactionModal").then(
+      (m) => m.CopyFromPriorTransactionModal,
+    ),
+  { ssr: false },
+);
 import {
   PpBadge,
   PpCard,
@@ -417,7 +424,7 @@ export function PoPropertiesPage({
 
       {visibleProperties.length > 0 ? <PpFooterHint /> : null}
 
-      {showEdit ? (
+      {showEdit && copyModalOpen ? (
         <CopyFromPriorTransactionModal
           open={copyModalOpen}
           poNumber={poNumber}

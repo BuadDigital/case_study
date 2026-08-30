@@ -192,6 +192,36 @@ function rowStatus(v: OrganizationValuerRosterEntry, today: string): {
   return { label: "فعّال", tone: "success", blockReason: null };
 }
 
+/** كل حقول الصف — كلها قيم مفردة، فلا حاجة لتسلسل السجل كاملاً عند كل ضغطة. */
+const ROSTER_COMPARED_FIELDS = [
+  "id",
+  "nameAr",
+  "licenseNumber",
+  "membershipNumber",
+  "membershipCategory",
+  "licenseExpiresAt",
+  "licenseIssuedAt",
+  "membershipExpiresAt",
+  "role",
+  "isActive",
+  "signatureUrl",
+] as const satisfies readonly (keyof OrganizationValuerRosterEntry)[];
+
+function rostersEqual(
+  a: OrganizationValuerRosterEntry[],
+  b: OrganizationValuerRosterEntry[],
+): boolean {
+  if (a.length !== b.length) return false;
+  for (let i = 0; i < a.length; i += 1) {
+    const left = a[i]!;
+    const right = b[i]!;
+    for (const field of ROSTER_COMPARED_FIELDS) {
+      if (left[field] !== right[field]) return false;
+    }
+  }
+  return true;
+}
+
 function certBlockMessage(rows: OrganizationValuerRosterEntry[], today: string): string {
   const c = rows.find((v) => v.role === "certified");
   if (!c) return "لم يُحدَّد مقيّم معتمد — يُمنع إصدار أي تقرير.";
@@ -231,9 +261,7 @@ export function ValuersRosterView() {
     const base = nextBaseline ?? baseline;
     setRows(next);
     if (nextBaseline) setBaseline(nextBaseline);
-    setDirty(
-      JSON.stringify(next) !== JSON.stringify(base),
-    );
+    setDirty(!rostersEqual(next, base));
   };
 
   const reload = useCallback(async () => {

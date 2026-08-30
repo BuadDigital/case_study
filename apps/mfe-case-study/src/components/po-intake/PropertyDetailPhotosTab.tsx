@@ -13,6 +13,13 @@ import { openPropertyPhotosPdfPrint } from "../../lib/prototype/property-photos-
  * Case Study.html photo groups — sections always listed; empty groups hide tiles
  * (no decorative placeholders).
  */
+const MAIN_PHOTO_RE = /رئيس|main|primary/i;
+const EXTERIOR_PHOTO_RE = /خارج|واجهة|front|exterior|sides?/i;
+const INTERIOR_PHOTO_RE = /داخل|interior|inside|floor|أرض/i;
+const METER_PHOTO_RE = /كهرب|elec|عداد/i;
+const WELL_PHOTO_RE = /بئر|آبار|well/i;
+const ANNEX_PHOTO_RE = /مشتمل|ملحق|annex|مرافق/i;
+
 const HTML_PHOTO_GROUPS: {
   title: string;
   source: string;
@@ -21,32 +28,32 @@ const HTML_PHOTO_GROUPS: {
   {
     title: "صورة العقار الرئيسية",
     source: "المعاين",
-    match: (p) => /رئيس|main|primary/i.test(`${p.name} ${p.fileName}`),
+    match: (p) => MAIN_PHOTO_RE.test(`${p.name} ${p.fileName}`),
   },
   {
     title: "صور العقار الخارجية",
     source: "المعاين",
-    match: (p) => /خارج|واجهة|front|exterior|sides?/i.test(`${p.name} ${p.fileName}`),
+    match: (p) => EXTERIOR_PHOTO_RE.test(`${p.name} ${p.fileName}`),
   },
   {
     title: "صور العقار من الداخل",
     source: "المعاين",
-    match: (p) => /داخل|interior|inside|floor|أرض/i.test(`${p.name} ${p.fileName}`),
+    match: (p) => INTERIOR_PHOTO_RE.test(`${p.name} ${p.fileName}`),
   },
   {
     title: "صور عدادات الكهرباء",
     source: "المعاين",
-    match: (p) => /كهرب|elec|عداد/i.test(`${p.name} ${p.fileName}`),
+    match: (p) => METER_PHOTO_RE.test(`${p.name} ${p.fileName}`),
   },
   {
     title: "صور الآبار",
     source: "المكتب الهندسي",
-    match: (p) => /بئر|آبار|well/i.test(`${p.name} ${p.fileName}`),
+    match: (p) => WELL_PHOTO_RE.test(`${p.name} ${p.fileName}`),
   },
   {
     title: "صور المشتملات",
     source: "المعاين",
-    match: (p) => /مشتمل|ملحق|annex|مرافق/i.test(`${p.name} ${p.fileName}`),
+    match: (p) => ANNEX_PHOTO_RE.test(`${p.name} ${p.fileName}`),
   },
 ];
 

@@ -29,6 +29,7 @@ export type PushNotificationInput = Omit<
 
 const LEGACY_STORAGE_KEY = "ree-notifications";
 const STORAGE_PREFIX = "ree-notifications:";
+const STORAGE_VERSION = 1;
 const MAX_ITEMS = 50;
 const DEDUPE_WINDOW_MS = 30_000;
 let activeUserId: string | null = null;
@@ -62,22 +63,59 @@ export function setNotificationStorageUser(userId: string | null | undefined): v
   window.dispatchEvent(new Event(NOTIFICATIONS_CHANGED_EVENT));
 }
 
+function isAppNotification(value: unknown): value is AppNotification {
+  return (
+    typeof value === "object" &&
+    value !== null &&
+    typeof (value as { id?: unknown }).id === "string"
+  );
+}
+
+function sanitizeItems(value: unknown): AppNotification[] {
+  if (!Array.isArray(value)) return [];
+  return value.filter(isAppNotification);
+}
+
+function persist(items: AppNotification[], key = notificationStorageKey()) {
+  localStorage.setItem(
+    key,
+    JSON.stringify({ v: STORAGE_VERSION, items: items.slice(0, MAX_ITEMS) }),
+  );
+}
+
 function readAll(): AppNotification[] {
   if (typeof window === "undefined") return [];
-  const raw = localStorage.getItem(notificationStorageKey());
+  const key = notificationStorageKey();
+  const raw = localStorage.getItem(key);
   if (!raw) return [];
+
+  let parsed: unknown;
   try {
-    return JSON.parse(raw) as AppNotification[];
+    parsed = JSON.parse(raw);
   } catch {
     return [];
   }
+
+  if (Array.isArray(parsed)) {
+    const migrated = sanitizeItems(parsed);
+    persist(migrated, key);
+    return migrated;
+  }
+
+  if (
+    typeof parsed === "object" &&
+    parsed !== null &&
+    (parsed as { v?: unknown }).v === STORAGE_VERSION
+  ) {
+    return sanitizeItems((parsed as { items?: unknown }).items);
+  }
+
+  localStorage.removeItem(key);
+  return [];
 }
 
 function writeAll(items: AppNotification[], pushed?: AppNotification) {
-  localStorage.setItem(
-    notificationStorageKey(),
-    JSON.stringify(items.slice(0, MAX_ITEMS)),
-  );
+  persist(items);
   window.dispatchEvent(new Event(NOTIFICATIONS_CHANGED_EVENT));
   if (pushed) {
     window.dispatchEvent(
@@ -88,10 +126,7 @@ function writeAll(items: AppNotification[], pushed?: AppNotification) {
 
 /** Replaces inbox from server without firing push toasts. */
 export function replaceNotificationsFromServer(items: AppNotification[]): void {
-  localStorage.setItem(
-    notificationStorageKey(),
-    JSON.stringify(items.slice(0, MAX_ITEMS)),
-  );
+  persist(items);
   window.dispatchEvent(new Event(NOTIFICATIONS_CHANGED_EVENT));
 }
 
@@ -102,15 +137,9 @@ export function upsertNotificationFromServer(item: AppNotification): void {
   if (index >= 0) {
     const next = [...items];
     next[index] = item;
-    localStorage.setItem(
-      notificationStorageKey(),
-      JSON.stringify(next.slice(0, MAX_ITEMS)),
-    );
+    persist(next);
   } else {
-    localStorage.setItem(
-      notificationStorageKey(),
-      JSON.stringify([item, ...items].slice(0, MAX_ITEMS)),
-    );
+    persist([item, ...items]);
   }
   window.dispatchEvent(new Event(NOTIFICATIONS_CHANGED_EVENT));
 }

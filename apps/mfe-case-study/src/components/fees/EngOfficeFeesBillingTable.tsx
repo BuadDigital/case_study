@@ -27,6 +27,7 @@ import {
 } from "@platform/api-client";
 import { runInspectorFeeTransition } from "@platform/app-shared/prototype/inspector-fees-api";
 import { FeeActionReasonModal } from "@platform/app-shared/fees/FeeActionReasonModal";
+import { fmtMax } from "@platform/app-shared/format/number";
 import { PROPERTY_IDENTIFIER_COLUMN_LABEL } from "../../lib/prototype/po-intake-data";
 
 /** Case Study.html `FEE_ST` mapping for engineering office billing. */
@@ -40,7 +41,7 @@ type EngFeeUiStatus =
   | "other";
 
 function fmtSar(n: number): string {
-  return `${Number(n || 0).toLocaleString("en-US")} ر.س`;
+  return `${fmtMax(n || 0, 3)} ر.س`;
 }
 
 function formatAcceptDate(row: InspectorFeeRowDto): string {

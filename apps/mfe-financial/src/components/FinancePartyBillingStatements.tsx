@@ -23,7 +23,7 @@ import type {
   PartyBillingReadyLineDto,
   PartyBillingStatementDto,
 } from "@platform/api-client";
-import { pushNotification } from "@platform/app-shared";
+import { pushNotification } from "@platform/app-shared/notifications/notification-store";
 import {
   applyCostTax,
   daysSinceIsoCost,

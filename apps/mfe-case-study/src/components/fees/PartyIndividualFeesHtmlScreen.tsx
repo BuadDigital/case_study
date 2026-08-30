@@ -9,7 +9,7 @@
  * Never share eng (vendor) actions or statements across variants.
  */
 
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useDeferredValue, useMemo, useState } from "react";
 import Link from "next/link";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
@@ -40,6 +40,7 @@ import { useCourtVisitFeesQuery } from "../../query/operations-tasks-queries";
 import { EngFeesHtmlTabs, EngFeesSectionTitle } from "./EngFeesHtmlTabs";
 import { CourtVisitFeesPanel } from "./CourtVisitFeesPanel";
 import { ymd as formatYmd } from "@platform/app-shared/format/date";
+import { fmtMax } from "@platform/app-shared/format/number";
 
 export type IndividualFeesVariant = "field-inspection" | "court-visit";
 
@@ -70,7 +71,7 @@ const FEE_HEAD = cn(
 );
 
 function fmtSar(n: number): string {
-  return `${Number(n || 0).toLocaleString("en-US")} ر.س`;
+  return `${fmtMax(n || 0, 3)} ر.س`;
 }
 
 
@@ -366,6 +367,7 @@ export function PartyIndividualFeesHtmlScreen({
     isCourtVisit ? "visit-fees" : "action",
   );
   const [search, setSearch] = useState("");
+  const deferredSearch = useDeferredValue(search);
   const [stFilter, setStFilter] = useState("");
   const [fnSearch, setFnSearch] = useState("");
   const [openFn, setOpenFn] = useState<string | null>(null);
@@ -516,7 +518,7 @@ export function PartyIndividualFeesHtmlScreen({
           : [];
 
   const filteredFees = useMemo(() => {
-    const q = search.trim().toLowerCase();
+    const q = deferredSearch.trim().toLowerCase();
     return feeBucketRows.filter((row) => {
       const st = individualFeeUiStatus(row);
       if (stFilter && st !== stFilter) return false;
@@ -524,7 +526,7 @@ export function PartyIndividualFeesHtmlScreen({
       const { deed, region } = deedParts(row);
       return `${deed} ${region} ${row.poNumber}`.toLowerCase().includes(q);
     });
-  }, [feeBucketRows, search, stFilter]);
+  }, [feeBucketRows, deferredSearch, stFilter]);
 
   const filteredFns = useMemo(() => {
     const q = fnSearch.trim().toLowerCase();

@@ -56,16 +56,38 @@ export function failureTargetsForOperationsTask(
 
   const byPropertyId = new Map<string, OperationsTaskFailureTarget>();
 
+  // فهرسة أوامر العمل ومفاتيح الصكوك مرة واحدة بدل مسح خطي لكل زوج.
+  const recordByPo = new Map<string, PoIntakeRecord>();
+  for (const record of poRecords) {
+    const key = norm(record.poNumber);
+    if (!recordByPo.has(key)) recordByPo.set(key, record);
+  }
+
+  const deedKeysByRecord = new Map<
+    PoIntakeRecord,
+    { property: PoIntakeRecord["properties"][number]; keys: Set<string> }[]
+  >();
+  const activePropertiesOf = (record: PoIntakeRecord) => {
+    let entries = deedKeysByRecord.get(record);
+    if (!entries) {
+      entries = record.properties
+        .filter((p) => !p.isRemoved)
+        .map((property) => ({
+          property,
+          keys: new Set(deedKeysForProperty(property)),
+        }));
+      deedKeysByRecord.set(record, entries);
+    }
+    return entries;
+  };
+
   for (const { poNumber, deed } of pairs.values()) {
-    const record = poRecords.find(
-      (r) => norm(r.poNumber) === poNumber,
-    );
+    const record = recordByPo.get(poNumber);
     if (!record) continue;
 
-    const property = record.properties.find((p) => {
-      if (p.isRemoved) return false;
-      return deedKeysForProperty(p).includes(deed);
-    });
+    const property = activePropertiesOf(record).find((e) =>
+      e.keys.has(deed),
+    )?.property;
     if (!property) continue;
 
     if (byPropertyId.has(property.id)) continue;

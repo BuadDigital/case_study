@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import dynamic from "next/dynamic";
 import { usePrototype } from "@platform/app-shared/contexts/PrototypeContext";
 import { isPartyWorkflowRole } from "@platform/app-shared/prototype/party-task-pages";
 import { PanelSkeleton, useToast } from "@platform/ui-kit";
@@ -30,7 +31,13 @@ import {
   allTransactionsPhaseLabel,
   buildAllTransactionsRowMoreItems,
 } from "../lib/prototype/all-transactions-queue";
-import { ReopenCompletedTransactionModal } from "../components/transactions/ReopenCompletedTransactionModal";
+const ReopenCompletedTransactionModal = dynamic(
+  () =>
+    import("../components/transactions/ReopenCompletedTransactionModal").then(
+      (m) => m.ReopenCompletedTransactionModal,
+    ),
+  { ssr: false },
+);
 
 const PARTY_QUEUE_REFRESH_EVENTS = [
   FIELD_INSPECTION_SUBMISSION_CHANGED_EVENT,
@@ -153,24 +160,26 @@ export function AllAssignedTransactionsView() {
               )
         }
       />
-      <ReopenCompletedTransactionModal
-        open={reopenTask !== null}
-        task={reopenTask}
-        deedLabel={reopenDeedLabel}
-        onClose={() => {
-          setReopenTask(null);
-          setReopenDeedLabel("");
-        }}
-        onConfirm={async (reason) => {
-          if (!reopenTask) return;
-          const result = await reopenCompletedTransaction(reopenTask.id, reason);
-          if (!result.ok) {
-            showToast(result.error, "error");
-            return;
-          }
-          showToast("تمت إعادة فتح المعاملة", "success");
-        }}
-      />
+      {reopenTask !== null ? (
+        <ReopenCompletedTransactionModal
+          open={reopenTask !== null}
+          task={reopenTask}
+          deedLabel={reopenDeedLabel}
+          onClose={() => {
+            setReopenTask(null);
+            setReopenDeedLabel("");
+          }}
+          onConfirm={async (reason) => {
+            if (!reopenTask) return;
+            const result = await reopenCompletedTransaction(reopenTask.id, reason);
+            if (!result.ok) {
+              showToast(result.error, "error");
+              return;
+            }
+            showToast("تمت إعادة فتح المعاملة", "success");
+          }}
+        />
+      ) : null}
     </>
   );
 }

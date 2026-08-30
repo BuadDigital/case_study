@@ -414,13 +414,12 @@ export function CaseStudyForm({
     setLoadError(null);
     (async () => {
       try {
-      const parentDraft = await loadCaseStudyFormDraftOrThrow(referenceTaskId);
-      const partyStored = isParty
-        ? await loadPartyCaseStudyFormDraftOrThrow(storageTaskId)
-        : null;
-      const stored = isParty
-        ? partyStored
-        : await loadCaseStudyFormDraftOrThrow(storageTaskId);
+      const [parentDraft, stored] = await Promise.all([
+        loadCaseStudyFormDraftOrThrow(referenceTaskId),
+        isParty
+          ? loadPartyCaseStudyFormDraftOrThrow(storageTaskId)
+          : loadCaseStudyFormDraftOrThrow(storageTaskId),
+      ]);
       const base =
         stored ?? emptyCaseStudyFormDraft(storageTaskId, seed);
       const mergedAnswers = isParty

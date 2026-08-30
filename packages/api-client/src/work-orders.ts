@@ -1,5 +1,5 @@
 import { parseFieldErrorsFromResponse } from "./field-errors";
-import { getApiBase } from "./index";
+import { getApiBase } from "./api-base";
 import { repositoryFetch as fetch } from "./write-repository";
 import { fetchAllListPages } from "./pagination";
 

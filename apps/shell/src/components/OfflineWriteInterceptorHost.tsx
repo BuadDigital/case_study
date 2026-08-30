@@ -2,7 +2,7 @@
 
 import { useEffect } from "react";
 import { installOfflineWriteInterceptor } from "@platform/app-shared/offline/install-offline-write-interceptor";
-import { isOfflineCapableRole } from "@platform/app-shared";
+import { isOfflineCapableRole } from "@platform/app-shared/offline/offline-write";
 import { useAuth } from "@platform/app-shared/hooks/useAuth";
 
 /**

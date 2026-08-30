@@ -24,6 +24,7 @@ import {
   INFAZ_UPLOAD_UNRESOLVED_POINTS,
 } from "./infath-upload-types";
 import { INFATH_FIELD_LABELS as L } from "./infath-field-labels";
+import { fmt } from "@platform/app-shared/format/number";
 import { PropertyKeysStatuses } from "@platform/api-client";
 
 /** Court visit + key envelope inputs for إنفاذ (from المهام / keys gate). */
@@ -150,7 +151,7 @@ function surveyOrPropertyField(
 }
 
 function formatMoney(n: number): string {
-  return new Intl.NumberFormat("en-US", { maximumFractionDigits: 0 }).format(n);
+  return fmt(n, 0);
 }
 
 function findDoc(

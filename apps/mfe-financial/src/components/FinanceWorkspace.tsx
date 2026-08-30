@@ -8,6 +8,7 @@ import {
   parseFinanceArea,
   parseRevenueStage,
   type CostsSection,
+  type FinanceArea,
   type RevenueStage,
 } from "../lib/finance-nav";
 import { financeLeafForArea } from "@platform/app-shared/prototype/financial-nav";
@@ -41,6 +42,15 @@ const FinanceInspectorPortal = dynamic(
     import("./FinanceInspectorPortal").then((m) => m.FinanceInspectorPortal),
   { ssr: false, loading: areaChunkFallback },
 );
+// تحميل مسبق لحزمة المسار عند التحويم/التركيز على تبويبه (bundle-preload).
+export const FINANCE_AREA_CHUNK_PRELOAD: Partial<
+  Record<FinanceArea, () => Promise<unknown>>
+> = {
+  revenue: () => import("./FinanceRevenueView"),
+  costs: () => import("./FinanceCostsView"),
+  eng_portal: () => import("./FinanceEngOfficePortal"),
+  inspector_portal: () => import("./FinanceInspectorPortal"),
+};
 
 export function FinanceWorkspace() {
   const router = useRouter();

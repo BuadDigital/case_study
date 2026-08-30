@@ -194,10 +194,52 @@ const VIEWS: Partial<Record<PageId, ComponentType>> = {
   survey: SurveyView,
 };
 
+// تحميل مسبق لحزمة الصفحة عند التحويم/التركيز على رابط التنقل — نفس مواصفات
+// الاستيراد في dynamic أعلاه فيُجلب نفس الـ chunk (bundle-preload).
+export const PAGE_CHUNK_PRELOAD: Partial<
+  Record<PageId, () => Promise<unknown>>
+> = {
+  dashboard: () => import("@dashboard/mfe"),
+  "active-primary-data": () => import("@case-study/mfe"),
+  "all-transactions": () => import("@case-study/mfe"),
+  "property-map": () => import("@case-study/mfe"),
+  favorites: () => import("@case-study/mfe"),
+  "bourse-inquiry": () => import("@case-study/mfe"),
+  "active-distribution": () => import("@case-study/mfe"),
+  "active-case-study": () => import("@case-study/mfe"),
+  "system-upload": () => import("@case-study/mfe"),
+  keys: () => import("@keys/mfe"),
+  "field-sync-board": () => import("@case-study/mfe"),
+  failures: () => import("@failures/mfe"),
+  "suspended-transactions": () => import("@case-study/mfe"),
+  "valuation-requests": () => import("@valuation/mfe"),
+  "comparable-properties": () => import("@valuation/mfe"),
+  "operations-tasks": () => import("@case-study/mfe"),
+  "system-fields-catalog": () => import("@settings/mfe"),
+  "system-screen-catalog": () => import("@settings/mfe"),
+  financial: () => import("@financial/mfe"),
+  users: () => import("@settings/mfe"),
+  profile: () => import("@settings/mfe"),
+  courts: () => import("@settings/mfe"),
+  "location-pending": () => import("@settings/mfe"),
+  "organization-settings": () => import("@settings/mfe"),
+  clients: () => import("@settings/mfe"),
+  "attachment-print-dictionary": () => import("@settings/mfe"),
+  "difference-factor-catalog": () => import("@settings/mfe"),
+  "failure-types": () => import("@failures/mfe"),
+  "case-study-info-roles": () => import("@settings/mfe"),
+  "party-fees": () => import("@case-study/mfe"),
+  "audit-log": () => import("@/components/views/AuditLogView"),
+  "fee-pricing": () => import("@/components/views/FeePricingView"),
+  survey: () => import("@survey/mfe"),
+};
+
 for (const pageId of PARTY_TASK_PAGE_IDS) {
   VIEWS[pageId] = function PartyTaskPage() {
     return <PartyActiveTaskViewHost pageId={pageId} />;
   };
+  PAGE_CHUNK_PRELOAD[pageId] = () =>
+    import("@/components/party-tasks/PartyActiveTaskViewHost");
 }
 
 export function PrototypePageView({ page }: { page: PageId }) {

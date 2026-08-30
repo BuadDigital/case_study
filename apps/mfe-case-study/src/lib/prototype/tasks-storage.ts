@@ -404,29 +404,29 @@ export type AdvanceTaskResult =
   | { ok: false; error: string };
 
 export async function syncTaskSlotsForPo(
-  record: PoIntakeRecord,
+  poNumber: string,
 ): Promise<SyncTaskSlotsResult> {
   const sync = await syncTasksFromPoRecords();
   if (!sync.ok) return { ok: false, error: sync.error };
   const list = await loadWorkflowTasks();
   return {
     ok: true,
-    tasks: poCaseTasks(list, record.poNumber.trim()),
+    tasks: poCaseTasks(list, poNumber.trim()),
   };
 }
 
 /** Link a property registered in البيانات الأولية to the next empty workflow slot. */
 export async function linkNewPropertyToTaskSlot(
-  record: PoIntakeRecord,
+  poNumber: string,
   property: PoPropertyIntake,
 ): Promise<AdvanceTaskResult | null> {
   if (!property.id) return null;
-  const slots = await syncTaskSlotsForPo(record);
+  const slots = await syncTaskSlotsForPo(poNumber);
   if (!slots.ok) return { ok: false, error: slots.error };
   // slots.tasks هي نفس نتيجة poCaseTasks من قائمة محمّلة للتو —
   // إعادة loadWorkflowTasks كانت GET ثانياً مطابقاً.
   const tasks = slots.tasks;
-  const existing = caseStudyTaskForProperty(record.poNumber, property.id, tasks);
+  const existing = caseStudyTaskForProperty(poNumber, property.id, tasks);
   if (existing) return { ok: true, task: existing };
   const slot = tasks
     .filter((t) => !t.propertyId)
@@ -756,14 +756,17 @@ export async function suspendWorkflowTasksForProperty(
   const config = workOrdersApiConfig();
   if (!config) return false;
   const note = reason.trim() || "معاملة معلقة";
-  let allOk = true;
-  for (const task of related) {
-    const result = await patchWorkflowTask(config, task.id, {
-      status: "blocked",
-      obstructionReason: note,
-    });
-    if (!result.ok) allOk = false;
-  }
+  const results = await Promise.allSettled(
+    related.map((task) =>
+      patchWorkflowTask(config, task.id, {
+        status: "blocked",
+        obstructionReason: note,
+      }),
+    ),
+  );
+  const allOk = results.every(
+    (r) => r.status === "fulfilled" && r.value.ok,
+  );
   if (related.length > 0) notifyTasksChanged();
   return allOk;
 }

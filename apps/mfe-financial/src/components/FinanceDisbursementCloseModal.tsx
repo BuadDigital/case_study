@@ -5,9 +5,10 @@
  * سند صرف + مرجع تحويل + إيصال على نفس الصفحة.
  */
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import type { PartyBillingStatementDto } from "@platform/api-client";
 import { fmtMax } from "@platform/app-shared/format/number";
+import { useEscapeKey } from "@platform/app-shared/hooks/use-escape-key";
 import {
   openPartyBillingAttachment,
   runClosePartyBillingStatement,
@@ -38,6 +39,26 @@ export function FinanceDisbursementCloseModal({
   onClose: () => void;
   onDone: () => void | Promise<void>;
 }) {
+  if (!open || !statement) return null;
+  return (
+    <FinanceDisbursementCloseForm
+      key={statement.id}
+      statement={statement}
+      onClose={onClose}
+      onDone={onDone}
+    />
+  );
+}
+
+function FinanceDisbursementCloseForm({
+  statement,
+  onClose,
+  onDone,
+}: {
+  statement: PartyBillingStatementDto;
+  onClose: () => void;
+  onDone: () => void | Promise<void>;
+}) {
   const { showToast } = useToast();
   const [voucher, setVoucher] = useState("");
   const [transferRef, setTransferRef] = useState("");
@@ -49,34 +70,12 @@ export function FinanceDisbursementCloseModal({
   const [busy, setBusy] = useState(false);
   const [uploading, setUploading] = useState(false);
 
-  useEffect(() => {
-    if (!open) return;
-    setVoucher("");
-    setTransferRef("");
-    setPaidAt("");
-    setReceiptRef("");
-    setReceiptId(null);
-    setReceiptName("");
-    setErr("");
-    setBusy(false);
-    setUploading(false);
-  }, [open, statement?.id]);
-
-  useEffect(() => {
-    if (!open) return;
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape" && !busy && !uploading) onClose();
-    };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [open, busy, uploading, onClose]);
-
-  if (!open || !statement) return null;
+  useEscapeKey(!busy && !uploading, onClose);
 
   const total = statementDisplayTotal(statement);
 
   async function handleReceiptFile(file: File | undefined) {
-    if (!statement || !file) return;
+    if (!file) return;
     setUploading(true);
     setErr("");
     try {
@@ -94,7 +93,6 @@ export function FinanceDisbursementCloseModal({
   }
 
   async function handleClosePaid() {
-    if (!statement) return;
     const v = voucher.trim();
     const t = transferRef.trim();
     if (!v) {

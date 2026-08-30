@@ -1,7 +1,7 @@
 /**
  * Party billing statements (مسير / أمر صرف) — vendor invoice match + individual pay.
  */
-import { getApiBase } from "./index";
+import { getApiBase } from "./api-base";
 import { repositoryFetch as fetch } from "./write-repository";
 import type { ApiErr, ApiOk, WorkOrdersApiConfig } from "./work-orders";
 

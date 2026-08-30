@@ -1,4 +1,4 @@
-import { getApiBase } from "./index";
+import { getApiBase } from "./api-base";
 import { repositoryFetch as fetch } from "./write-repository";
 import { parseFieldErrorsFromResponse } from "./field-errors";
 import { parseJson } from "./parse-json";

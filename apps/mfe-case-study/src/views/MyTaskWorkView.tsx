@@ -107,6 +107,15 @@ const FailureRaiseModal = dynamic(
     ),
   { ssr: false },
 );
+// تحميل مسبق عند التحويم/التركيز — يختفي زمن جلب الحزمة (bundle-preload).
+const preloadDistributionPartiesForm = () =>
+  void import(
+    "@case-study/mfe/components/distribution/DistributionPartiesForm"
+  );
+const preloadPoPropertyBourseForm = () =>
+  void import("@case-study/mfe/components/po-intake/PoPropertyBourseForm");
+const preloadFailureRaiseModal = () =>
+  void import("@case-study/mfe/components/failures/FailureRaiseModal");
 
 export function CaseStudyTaskWork({
   task,
@@ -782,6 +791,8 @@ export function CaseStudyTaskWork({
               variant="dangerOutline"
               size="sm"
               onClick={() => setFailureModalOpen(true)}
+              onMouseEnter={preloadFailureRaiseModal}
+              onFocus={preloadFailureRaiseModal}
             >
               تسجيل تعذر
             </Button>
@@ -802,20 +813,26 @@ export function CaseStudyTaskWork({
             layout === "panel" ? undefined : "البيانات الواردة من منصة إنفاذ"
           }
         >
-          <PoPropertyEnfathForm
-            property={property}
-            assignmentType={assignmentType}
-            fieldErrors={fieldErrors}
-            onPatch={patchProperty}
-            onReplaceProperty={replaceProperty}
-            poNumber={task.poNumber}
-            excludePoNumber={task.poNumber}
-            fieldsMode={
-              bourseInquiryFastPath ? "bourse-inquiry-primary" : "all"
-            }
-            showStageNote={layout !== "panel"}
-            hideBoursePathStatus={bourseInquiryPanelOnly}
-          />
+          {/* العمل في خطوة إنفاذ = الخطوة التالية بورصة — تحميل مسبق (bundle-preload). */}
+          <div
+            onMouseEnter={preloadPoPropertyBourseForm}
+            onFocus={preloadPoPropertyBourseForm}
+          >
+            <PoPropertyEnfathForm
+              property={property}
+              assignmentType={assignmentType}
+              fieldErrors={fieldErrors}
+              onPatch={patchProperty}
+              onReplaceProperty={replaceProperty}
+              poNumber={task.poNumber}
+              excludePoNumber={task.poNumber}
+              fieldsMode={
+                bourseInquiryFastPath ? "bourse-inquiry-primary" : "all"
+              }
+              showStageNote={layout !== "panel"}
+              hideBoursePathStatus={bourseInquiryPanelOnly}
+            />
+          </div>
         </RegistrationFormCard>
       ) : null}
 
@@ -843,18 +860,24 @@ export function CaseStudyTaskWork({
           {bourseInquiryFastPath ? (
             <hr className="my-4 border-0 border-t border-border" aria-hidden />
           ) : null}
-          <PoPropertyBourseForm
-            property={property}
-            fieldErrors={fieldErrors}
-            onPatch={patchProperty}
-            poNumber={task.poNumber}
-            showDeedVitalityFlow
-            deedVitality={deedVitality}
-            onDeedVitalityChange={setDeedVitality}
-            obstructionReason={obstructionReason}
-            onObstructionReasonChange={onObstructionReasonChange}
-            obstructionReasonError={obstructionReasonError}
-          />
+          {/* العمل في خطوة البورصة = الخطوة التالية التوزيع — تحميل مسبق (bundle-preload). */}
+          <div
+            onMouseEnter={preloadDistributionPartiesForm}
+            onFocus={preloadDistributionPartiesForm}
+          >
+            <PoPropertyBourseForm
+              property={property}
+              fieldErrors={fieldErrors}
+              onPatch={patchProperty}
+              poNumber={task.poNumber}
+              showDeedVitalityFlow
+              deedVitality={deedVitality}
+              onDeedVitalityChange={setDeedVitality}
+              obstructionReason={obstructionReason}
+              onObstructionReasonChange={onObstructionReasonChange}
+              obstructionReasonError={obstructionReasonError}
+            />
+          </div>
         </RegistrationFormCard>
       ) : null}
 
@@ -876,7 +899,7 @@ export function CaseStudyTaskWork({
         </RegistrationFormCard>
       ) : null}
 
-      {task.propertyId ? (
+      {task.propertyId && failureModalOpen ? (
         <FailureRaiseModal
           open={failureModalOpen}
           onClose={() => setFailureModalOpen(false)}

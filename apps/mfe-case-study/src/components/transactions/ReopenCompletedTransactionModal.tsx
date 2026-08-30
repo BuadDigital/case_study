@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { Note, Spinner, cn } from "@platform/ui-kit";
 import { AppModal } from "../ui/AppModal";
 import {
@@ -63,18 +63,31 @@ export function ReopenCompletedTransactionModal({
   onClose: () => void;
   onConfirm: (reason: string) => void | Promise<void>;
 }) {
+  if (!open || !task) return null;
+  return (
+    <ReopenCompletedTransactionForm
+      task={task}
+      deedLabel={deedLabel}
+      onClose={onClose}
+      onConfirm={onConfirm}
+    />
+  );
+}
+
+function ReopenCompletedTransactionForm({
+  task,
+  deedLabel,
+  onClose,
+  onConfirm,
+}: {
+  task: WorkflowTask;
+  deedLabel?: string;
+  onClose: () => void;
+  onConfirm: (reason: string) => void | Promise<void>;
+}) {
   const [reason, setReason] = useState("");
   const [error, setError] = useState(false);
   const [busy, setBusy] = useState(false);
-
-  useEffect(() => {
-    if (!open) return;
-    setReason("");
-    setError(false);
-    setBusy(false);
-  }, [open]);
-
-  if (!open || !task) return null;
 
   const deed = (deedLabel ?? "").trim();
   const subtitleNode = (
@@ -111,7 +124,7 @@ export function ReopenCompletedTransactionModal({
 
   return (
     <AppModal
-      open={open}
+      open
       title="فتح المعاملة"
       subtitle={subtitleNode}
       headerIcon={

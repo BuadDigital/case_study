@@ -7,7 +7,7 @@ import {
 } from "@platform/api-client";
 import { getAuthSession } from "@platform/auth-client";
 import dynamic from "next/dynamic";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Activity, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { WorkflowTask } from "@case-study/mfe/lib/prototype/tasks-storage";
 import { inspectionGateForAppraisal } from "../../lib/evaluator/evaluator-inspection-gate";
 import { createEvaluatorDraft } from "../../lib/evaluator/evaluator-window-data";
@@ -66,6 +66,10 @@ const EvaluatorValuationReportOutputTab = dynamic(
   },
 );
 
+// تحميل مسبق لحزمة تبويبة التقرير عند التحويم على شريط التبويبات (bundle-preload).
+const preloadValuationReportOutputTab = () =>
+  void import("./EvaluatorValuationReportOutputTab");
+
 export function EvaluatorWindow({
   task,
   tasks,
@@ -104,6 +108,9 @@ export function EvaluatorWindow({
     useState<EvaluatorValidationErrors>(EMPTY_FIELD_ERRORS);
   const [submitting, setSubmitting] = useState(false);
   const [activeTab, setActiveTab] = useState<EvaluatorWindowTab>(initialTab);
+  /** تبويبة لا تُركَّب إلا بعد أول زيارة — ثم تبقى مركّبة مخفية فلا تضيع حالتها. */
+  const visitedTabsRef = useRef<Set<EvaluatorWindowTab>>(new Set());
+  visitedTabsRef.current.add(activeTab);
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   /** يزداد مع كل تعديل محلي — استجابة حفظ أقدم لا تكتب فوق حروف كُتبت أثناء رحلتها. */
   const editVersionRef = useRef(0);
@@ -447,11 +454,16 @@ export function EvaluatorWindow({
             "overflow-x-hidden border-0 bg-transparent p-0 shadow-none",
         )}
       >
-        <ValTabBar
-          tabs={VAL_TABS}
-          active={activeTab}
-          onChange={onTabChange}
-        />
+        <div
+          onMouseEnter={preloadValuationReportOutputTab}
+          onFocus={preloadValuationReportOutputTab}
+        >
+          <ValTabBar
+            tabs={VAL_TABS}
+            active={activeTab}
+            onChange={onTabChange}
+          />
+        </div>
 
         <div className="pt-5">
         {needsSurvey && !surveyed && !locked && gate.ready ? (
@@ -479,7 +491,8 @@ export function EvaluatorWindow({
               : undefined,
           )}
         >
-          {activeTab === "report" ? (
+          {visitedTabsRef.current.has("report") ? (
+            <Activity mode={activeTab === "report" ? "visible" : "hidden"}>
             <EvaluatorValuationReportTab
               draft={draft}
               disabled={formDisabled}
@@ -495,9 +508,11 @@ export function EvaluatorWindow({
               submitting={submitting}
               showSubmit={!formDisabled}
             />
+            </Activity>
           ) : null}
 
-          {activeTab === "output" ? (
+          {visitedTabsRef.current.has("output") ? (
+            <Activity mode={activeTab === "output" ? "visible" : "hidden"}>
             <EvaluatorValuationReportOutputTab
               draft={draft}
               property={summary.property}
@@ -505,6 +520,7 @@ export function EvaluatorWindow({
               surveyTaskId={summary.surveyTaskId}
               assignedAppraiserName={task.assigneeName}
             />
+            </Activity>
           ) : null}
         </div>
         </div>

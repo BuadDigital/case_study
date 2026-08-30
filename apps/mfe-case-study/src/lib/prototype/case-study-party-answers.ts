@@ -76,11 +76,19 @@ export async function collectPartyAnswersByQuestion(
   const byKey: Record<string, PartyQuestionContribution[]> = {};
   const children = childTasksForCaseStudyParent(parentTaskId, tasks);
 
-  for (const child of children) {
+  const drafts = await Promise.all(
+    children.map((child) =>
+      KIND_PARTY_LABEL[child.kind]
+        ? loadPartyCaseStudyFormDraft(child.id)
+        : null,
+    ),
+  );
+
+  for (const [index, child] of children.entries()) {
     const meta = KIND_PARTY_LABEL[child.kind];
     if (!meta) continue;
 
-    const draft = await loadPartyCaseStudyFormDraft(child.id);
+    const draft = drafts[index];
     if (!draft) continue;
 
     const partyFromRole = child.assigneeRole

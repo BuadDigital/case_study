@@ -87,10 +87,6 @@ export const FinalOpinionSection = memo(function FinalOpinionSection({
     [assignmentType],
   );
   const [valuePremiseKey, setValuePremiseKey] = useState("");
-  const [basisOptions, setBasisOptions] = useState(VALUE_BASIS_OPTIONS);
-  const [premiseOptions, setPremiseOptions] = useState<
-    { value: string; label: string }[]
-  >([]);
   const [liquidationDiscountPct, setLiquidationDiscountPct] = useState("0");
   const [liquidationDiscountRationale, setLiquidationDiscountRationale] =
     useState("");
@@ -212,12 +208,16 @@ export const FinalOpinionSection = memo(function FinalOpinionSection({
 
   // قوائم التقييم من الاستعلام المشترك — كان GET مكرراً مع تبويب المراجعة النهائية.
   const { data: valuationLists } = useValuationListsQuery();
-  useEffect(() => {
-    if (!valuationLists) return;
-    const bases = activeValuationListOptions(valuationLists.lists, "valueBases");
-    const premises = activeValuationListOptions(valuationLists.lists, "premises");
-    if (bases.length) setBasisOptions(bases);
-    if (premises.length) setPremiseOptions(premises);
+  const basisOptions = useMemo(() => {
+    const bases = valuationLists
+      ? activeValuationListOptions(valuationLists.lists, "valueBases")
+      : [];
+    return bases.length ? bases : VALUE_BASIS_OPTIONS;
+  }, [valuationLists]);
+  const premiseOptions = useMemo<{ value: string; label: string }[]>(() => {
+    return valuationLists
+      ? activeValuationListOptions(valuationLists.lists, "premises")
+      : [];
   }, [valuationLists]);
 
   // أساس القيمة دائماً من أمر العمل (PO) — لا نفرض تصفية عند غياب النوع.

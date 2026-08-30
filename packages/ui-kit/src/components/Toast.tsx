@@ -94,20 +94,21 @@ function ToastIcon({ tone }: { tone: ToastTone }) {
   }
   if (tone === "progress") {
     return (
-      <svg
-        width="17"
-        height="17"
-        viewBox="0 0 24 24"
-        fill="none"
-        stroke="var(--gold-2)"
-        strokeWidth="2.2"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        aria-hidden
-        className="shrink-0 animate-spin"
-      >
-        <path d="M12 3a9 9 0 1 0 9 9" />
-      </svg>
+      <span className="inline-flex shrink-0 animate-spin" aria-hidden>
+        <svg
+          width="17"
+          height="17"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="var(--gold-2)"
+          strokeWidth="2.2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          aria-hidden
+        >
+          <path d="M12 3a9 9 0 1 0 9 9" />
+        </svg>
+      </span>
     );
   }
   if (tone === "info") {

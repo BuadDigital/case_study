@@ -319,8 +319,12 @@ export async function prefetchPartySubmissionsForTasks(
     // Batch, then clear only once every batch is in — a partial pass would
     // evict live submissions for the ids the server never looked at.
     const returned = new Set<string>();
-    for (const batch of chunkTaskIds(ids, PARTY_SUBMISSION_LIST_CHUNK)) {
-      const result = await listPartyTaskSubmissions(config, batch);
+    const results = await Promise.all(
+      chunkTaskIds(ids, PARTY_SUBMISSION_LIST_CHUNK).map((batch) =>
+        listPartyTaskSubmissions(config, batch),
+      ),
+    );
+    for (const result of results) {
       if (!result.ok) {
         throw new Error(
           resolveApiError(result.kind, result.errors, "تعذّر تحميل مسودات المهام"),

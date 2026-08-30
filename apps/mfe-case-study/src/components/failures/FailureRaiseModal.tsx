@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { AppModal } from "@case-study/mfe/components/ui/AppModal";
 import { prototypeKeys } from "@platform/app-shared/query/prototype-keys";
@@ -29,19 +29,44 @@ export function FailureRaiseModal({
   raisedByRole: string;
   onSubmitted?: () => void;
 }) {
+  if (!open) return null;
+  return (
+    <FailureRaiseForm
+      key={propertyId}
+      onClose={onClose}
+      poNumber={poNumber}
+      propertyId={propertyId}
+      deedNumber={deedNumber}
+      specialist={specialist}
+      raisedByRole={raisedByRole}
+      onSubmitted={onSubmitted}
+    />
+  );
+}
+
+function FailureRaiseForm({
+  onClose,
+  poNumber,
+  propertyId,
+  deedNumber,
+  specialist,
+  raisedByRole,
+  onSubmitted,
+}: {
+  onClose: () => void;
+  poNumber: string;
+  propertyId: string;
+  deedNumber: string;
+  specialist: string;
+  raisedByRole: string;
+  onSubmitted?: () => void;
+}) {
   const queryClient = useQueryClient();
   const { showToast } = useToast();
   const { data: catalog } = useFailureTypesQuery();
   const [problemTypeId, setProblemTypeId] = useState("");
   const [saving, setSaving] = useState(false);
   const [invalid, setInvalid] = useState(false);
-
-  useEffect(() => {
-    if (!open) return;
-    setProblemTypeId("");
-    setSaving(false);
-    setInvalid(false);
-  }, [open, propertyId]);
 
   function requestClose() {
     if (saving) return;
@@ -96,7 +121,7 @@ export function FailureRaiseModal({
 
   return (
     <AppModal
-      open={open}
+      open
       title={title}
       wide
       onClose={requestClose}
@@ -127,7 +152,7 @@ export function FailureRaiseModal({
           if (invalid) setInvalid(false);
         }}
         invalid={invalid}
-        autoFocus={open}
+        autoFocus
       />
     </AppModal>
   );

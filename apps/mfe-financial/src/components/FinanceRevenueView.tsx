@@ -107,10 +107,11 @@ export function FinanceRevenueView({
    * وإلا يظهر عدّاد تبويب ومحتوى مرحلة أخرى.
    */
   const [viewStage, setViewStage] = useState(stage);
-
-  useEffect(() => {
+  const [prevStage, setPrevStage] = useState(stage);
+  if (stage !== prevStage) {
+    setPrevStage(stage);
     setViewStage(stage);
-  }, [stage]);
+  }
 
   const trackingQuery = useQuery({
     queryKey: [...prototypeKeys.all, "enfaz-billing", "tracking", "revenue"],

@@ -312,6 +312,8 @@ export function buildCaseStudyReportPrintHtml(
 <head>
 <meta charset="utf-8" />
 <title>${esc(CASE_STUDY_REPORT_TITLE)} — ${esc(model.deedNumber)}</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;600;700&display=swap" rel="stylesheet" />
 <style>${caseStudyReportPrintCss()}</style>
 </head>

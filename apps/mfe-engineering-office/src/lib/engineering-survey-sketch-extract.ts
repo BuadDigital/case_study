@@ -643,6 +643,48 @@ const DIR_SELF_RE = Object.fromEntries(
 ) as Record<DirKey, RegExp>;
 /** نسخة g المشتركة — matchAll ينسخ التعبير داخلياً فالمشاركة آمنة. */
 const DESC_TOKEN_GI_RE = new RegExp(DESC_TOKEN, "gi");
+// نسخ بلا علم g لاستخدام String.match — بلا حالة داخلية فالمشاركة آمنة.
+const DIR_DESC_LEN_I_RE = Object.fromEntries(
+  DIR_ORDER.map((dir) => [
+    dir,
+    new RegExp(
+      `${DIR_TOKEN_BY_DIR[dir]}\\s*(?:الحد)?\\s*[:：\\-–—|•·]*\\s*(${DESC_TOKEN})\\s*[:：\\-–—|/]*\\s*${EDGE_LEN_TOKEN}`,
+      "i",
+    ),
+  ]),
+) as Record<DirKey, RegExp>;
+const DIR_DESC_I_RE = Object.fromEntries(
+  DIR_ORDER.map((dir) => [
+    dir,
+    new RegExp(
+      `${DIR_TOKEN_BY_DIR[dir]}\\s*(?:الحد)?\\s*[:：\\-–—|•·]*\\s*(${DESC_TOKEN})`,
+      "i",
+    ),
+  ]),
+) as Record<DirKey, RegExp>;
+const DIR_LINE_DESC_LEN_RE = Object.fromEntries(
+  DIR_ORDER.map((dir) => [
+    dir,
+    new RegExp(
+      `${DIR_TOKEN_BY_DIR[dir]}\\s*(?:الحد)?\\s*[:：\\-–—|]*\\s*(${DESC_TOKEN})\\s*${EDGE_LEN_TOKEN}\\s*$`,
+      "i",
+    ),
+  ]),
+) as Record<DirKey, RegExp>;
+const DIR_LINE_PROSE_LEN_RE = Object.fromEntries(
+  DIR_ORDER.map((dir) => [
+    dir,
+    new RegExp(
+      `${DIR_TOKEN_BY_DIR[dir]}[\\s:：\\-–—|]+(.+?)\\s*طول(?:\\s*الحد)?\\s*${EDGE_LEN_TOKEN}\\s*(?:م|متر)?\\s*$`,
+      "i",
+    ),
+  ]),
+) as Record<DirKey, RegExp>;
+/** «طول …» صريح — لا يعتمد على الاتجاه. */
+const EXPLICIT_LENGTH_RE = new RegExp(
+  `طول(?:\\s*الحد)?\\s*[:：]?\\s*${EDGE_LEN_TOKEN}\\s*(?:م|متر)?`,
+  "i",
+);
 
 /**
  * Croquis table column header "الطول/م" (and OCR variants).
@@ -1100,12 +1142,7 @@ export function fillMissingLengthsFromTableContext(
     // Explicit "طول …" only inside a high-quality direction window (has وصف)
     if (!found && windowText && DESC_TOKEN_RE.test(windowText)) {
       const nWin = normalizeSketchText(windowText);
-      const m = nWin.match(
-        new RegExp(
-          `طول(?:\\s*الحد)?\\s*[:：]?\\s*${EDGE_LEN_TOKEN}\\s*(?:م|متر)?`,
-          "i",
-        ),
-      );
+      const m = nWin.match(EXPLICIT_LENGTH_RE);
       if (m?.[1]) {
         const len = cleanLength(m[1].replace(",", "."));
         if (isPlausibleEdgeLength(len)) found = len;
@@ -1132,15 +1169,9 @@ function parseStrictDirectionalRows(sectionText: string): SketchBoundaryBlock {
     const win = sliceTextForDirection(sectionText, dir);
     if (!win) continue;
     const flat = normalizeSketchText(win).replace(/\n+/g, " ");
-    const dirTok = DIR_TOKEN_BY_DIR[dir];
 
     // dir + وصف + طول only (no dir+length+desc — that picks drawing edge first)
-    let m = flat.match(
-      new RegExp(
-        `${dirTok}\\s*(?:الحد)?\\s*[:：\\-–—|•·]*\\s*(${DESC_TOKEN})\\s*[:：\\-–—|/]*\\s*${EDGE_LEN_TOKEN}`,
-        "i",
-      ),
-    );
+    let m = flat.match(DIR_DESC_LEN_I_RE[dir]);
     if (m) {
       if (!block[dir].description) {
         block[dir].description = formatDescription(m[1] ?? "");
@@ -1153,12 +1184,7 @@ function parseStrictDirectionalRows(sectionText: string): SketchBoundaryBlock {
       continue;
     }
 
-    m = flat.match(
-      new RegExp(
-        `${dirTok}\\s*(?:الحد)?\\s*[:：\\-–—|•·]*\\s*(${DESC_TOKEN})`,
-        "i",
-      ),
-    );
+    m = flat.match(DIR_DESC_I_RE[dir]);
     if (m && !block[dir].description) {
       block[dir].description = formatDescription(m[1] ?? "");
     }
@@ -1168,12 +1194,7 @@ function parseStrictDirectionalRows(sectionText: string): SketchBoundaryBlock {
       block[dir].description ||
       DESC_TOKEN_RE.test(flat)
     ) {
-      m = flat.match(
-        new RegExp(
-          `طول(?:\\s*الحد)?\\s*[:：]?\\s*${EDGE_LEN_TOKEN}\\s*(?:م|متر)?`,
-          "i",
-        ),
-      );
+      m = flat.match(EXPLICIT_LENGTH_RE);
       if (m?.[1] && !block[dir].lengthM) {
         const len = cleanLength(m[1].replace(",", "."));
         if (isPlausibleEdgeLength(len)) block[dir].lengthM = len;
@@ -1371,14 +1392,8 @@ export function parseBoundaryBlock(sectionText: string): SketchBoundaryBlock {
     if (block[dir].description && block[dir].lengthM) continue;
 
     const nLine = normalizeSketchText(line);
-    const dirTok = DIR_TOKEN_BY_DIR[dir];
 
-    let m = nLine.match(
-      new RegExp(
-        `${dirTok}\\s*(?:الحد)?\\s*[:：\\-–—|]*\\s*(${DESC_TOKEN})\\s*${EDGE_LEN_TOKEN}\\s*$`,
-        "i",
-      ),
-    );
+    let m = nLine.match(DIR_LINE_DESC_LEN_RE[dir]);
     if (m) {
       if (!block[dir].description) {
         block[dir].description = formatDescription(m[1] ?? "");
@@ -1391,12 +1406,7 @@ export function parseBoundaryBlock(sectionText: string): SketchBoundaryBlock {
       continue;
     }
 
-    m = nLine.match(
-      new RegExp(
-        `${dirTok}[\\s:：\\-–—|]+(.+?)\\s*طول(?:\\s*الحد)?\\s*${EDGE_LEN_TOKEN}\\s*(?:م|متر)?\\s*$`,
-        "i",
-      ),
-    );
+    m = nLine.match(DIR_LINE_PROSE_LEN_RE[dir]);
     if (m) {
       const desc = formatDescription(m[1] ?? "");
       const len = cleanLength((m[2] ?? "").replace(",", "."));
@@ -2104,26 +2114,31 @@ export async function extractSurveySketchFromPdf(
   }
 
   try {
-    const pdfjs = await loadPdfJs();
-    const data = new Uint8Array(await file.arrayBuffer());
+    const [pdfjs, buffer] = await Promise.all([loadPdfJs(), file.arrayBuffer()]);
+    const data = new Uint8Array(buffer);
     const pdf = await pdfjs.getDocument({ data }).promise;
     const pageCount = Math.min(pdf.numPages, 4);
     const allPos: SketchPdfTextItem[] = [];
     const textParts: string[] = [];
 
-    for (let i = 1; i <= pageCount; i++) {
-      const page = await pdf.getPage(i);
-      const content = await page.getTextContent();
-      const rawItems = content.items as Array<{
-        str?: string;
-        transform?: number[];
-        width?: number;
-      }>;
-      const pageItems = itemsFromPdfContent(rawItems);
+    const pages = await Promise.all(
+      Array.from({ length: pageCount }, async (_, index) => {
+        const page = await pdf.getPage(index + 1);
+        const content = await page.getTextContent();
+        const rawItems = content.items as Array<{
+          str?: string;
+          transform?: number[];
+          width?: number;
+        }>;
+        const pageItems = itemsFromPdfContent(rawItems);
+        const pageText = textFromPdfItems(pageItems);
+        page.cleanup();
+        return { pageItems, pageText };
+      }),
+    );
+    for (const { pageItems, pageText } of pages) {
       allPos.push(...pageItems);
-      const pageText = textFromPdfItems(pageItems);
       if (pageText.trim()) textParts.push(pageText);
-      page.cleanup();
     }
     await pdf.cleanup();
 

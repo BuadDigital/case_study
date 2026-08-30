@@ -587,7 +587,7 @@ export function computePageSituationValues(
       input.tasks,
       "engineering-survey",
     ).filter((t) => !isTaskOnSuspendedProperty(t));
-    const open = openWorkflowTasks(allSurvey);
+    const open = new Set(openWorkflowTasks(allSurvey));
     let waiting = 0;
     let inProgress = 0;
     let submitted = 0;
@@ -598,7 +598,7 @@ export function computePageSituationValues(
         submitted += 1;
         continue;
       }
-      if (!open.includes(task)) continue;
+      if (!open.has(task)) continue;
       if (bucket === "waiting") waiting += 1;
       else if (bucket === "returned") returned += 1;
       else inProgress += 1;

@@ -12,6 +12,7 @@ import {
   cn,
   useToast,
 } from "@platform/ui-kit";
+import { useEscapeKey } from "@platform/app-shared/hooks/use-escape-key";
 import { usePoRecordsQuery } from "../query/case-study-queries";
 import { poPropertyPath } from "../lib/po-routes";
 import { findPropertyPathByDeed } from "../lib/prototype/map-open-property";
@@ -408,16 +409,11 @@ export function PropertyMapView() {
     sendCommand({ type: "fit" });
   }, [markers]);
 
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key !== "Escape") return;
-      setSelection(null);
-      setDateOpen(false);
-      setLayerPanel(null);
-    };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, []);
+  useEscapeKey(true, () => {
+    setSelection(null);
+    setDateOpen(false);
+    setLayerPanel(null);
+  });
 
   function toggleLayer(key: LayerKey) {
     setLayers((prev) => ({ ...prev, [key]: !prev[key] }));

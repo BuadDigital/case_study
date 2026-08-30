@@ -5,9 +5,10 @@
  * Stays on مهامي; match + return-for-correction only.
  */
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import type { PartyBillingStatementDto } from "@platform/api-client";
 import { fmtMax } from "@platform/app-shared/format/number";
+import { useEscapeKey } from "@platform/app-shared/hooks/use-escape-key";
 import {
   openPartyBillingAttachment,
   runMatchVendorInvoice,
@@ -57,34 +58,40 @@ export function FinanceVendorInvoiceMatchModal({
   /** After successful match — e.g. leave مهامي to التكاليف */
   onMatched?: (statement: PartyBillingStatementDto) => void;
 }) {
+  if (!open || !statement) return null;
+  return (
+    <FinanceVendorInvoiceMatchForm
+      key={statement.id}
+      statement={statement}
+      onClose={onClose}
+      onDone={onDone}
+      onMatched={onMatched}
+    />
+  );
+}
+
+function FinanceVendorInvoiceMatchForm({
+  statement,
+  onClose,
+  onDone,
+  onMatched,
+}: {
+  statement: PartyBillingStatementDto;
+  onClose: () => void;
+  onDone: () => void | Promise<void>;
+  onMatched?: (statement: PartyBillingStatementDto) => void;
+}) {
   const { showToast } = useToast();
   const [reason, setReason] = useState("");
   const [err, setErr] = useState("");
   const [busy, setBusy] = useState(false);
 
-  useEffect(() => {
-    if (!open) return;
-    setReason("");
-    setErr("");
-    setBusy(false);
-  }, [open, statement?.id]);
-
-  useEffect(() => {
-    if (!open) return;
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape" && !busy) onClose();
-    };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [open, busy, onClose]);
-
-  if (!open || !statement) return null;
+  useEscapeKey(!busy, onClose);
 
   const lockedTotal = statementDisplayTotal(statement);
   const hasAttachment = Boolean(statement.vendorInvoiceAttachmentId?.trim());
 
   async function handleMatch() {
-    if (!statement) return;
     setBusy(true);
     setErr("");
     try {
@@ -108,7 +115,6 @@ export function FinanceVendorInvoiceMatchModal({
   }
 
   async function handleReturn() {
-    if (!statement) return;
     const trimmed = reason.trim();
     if (trimmed.length < 3) {
       setErr("سبب الإعادة للتصحيح إلزامي");
@@ -134,7 +140,7 @@ export function FinanceVendorInvoiceMatchModal({
   }
 
   async function openAttachment() {
-    if (!statement?.vendorInvoiceAttachmentId) return;
+    if (!statement.vendorInvoiceAttachmentId) return;
     const r = await openPartyBillingAttachment(
       statement.vendorInvoiceAttachmentId,
     );

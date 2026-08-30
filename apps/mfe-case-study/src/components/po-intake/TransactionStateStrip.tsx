@@ -1,7 +1,7 @@
 "use client";
 
 import { apiConfig } from "@platform/app-shared/auth/api-config";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useState, useTransition } from "react";
 import { Button, cn, useToast } from "@platform/ui-kit";
 import { getAuthSession } from "@platform/auth-client";
 import {
@@ -24,7 +24,7 @@ export function TransactionStateStrip({
 }) {
   const { showToast } = useToast();
   const [state, setState] = useState<TransactionStateDto | null>(null);
-  const [busy, setBusy] = useState(false);
+  const [isPending, startTransition] = useTransition();
 
   const load = useCallback(async () => {
     const config = apiConfig();
@@ -55,22 +55,22 @@ export function TransactionStateStrip({
             : "bg-surface-2 text-text-3",
     );
 
-  const handover = async () => {
+  const handover = () => {
     const config = apiConfig();
     if (!config) return;
-    setBusy(true);
-    const res = await recordEnfazHandover(
-      config,
-      workOrderId,
-      propertyId,
-    );
-    setBusy(false);
-    if (!res.ok) {
-      showToast(res.message ?? "تعذّر رفع المعاملة على إنفاذ", "error");
-      return;
-    }
-    setState(res.data);
-    showToast("رُفعت المعاملة على إنفاذ — التسليم الشامل (ق-9)", "success");
+    startTransition(async () => {
+      const res = await recordEnfazHandover(
+        config,
+        workOrderId,
+        propertyId,
+      );
+      if (!res.ok) {
+        showToast(res.message ?? "تعذّر رفع المعاملة على إنفاذ", "error");
+        return;
+      }
+      setState(res.data);
+      showToast("رُفعت المعاملة على إنفاذ — التسليم الشامل (ق-9)", "success");
+    });
   };
 
   return (
@@ -83,7 +83,7 @@ export function TransactionStateStrip({
           </span>
         </div>
         {state.allowsEnfazHandover ? (
-          <Button size="sm" disabled={busy} onClick={() => void handover()}>
+          <Button size="sm" disabled={isPending} onClick={() => handover()}>
             رفع المعاملة على إنفاذ (التسليم الشامل)
           </Button>
         ) : state.enfazHandoverAtUtc ? (

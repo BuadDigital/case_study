@@ -207,6 +207,16 @@ type Props = {
   onCreated: (taskId: string) => void;
 };
 
+function prefillType(prefill: CreateOperationsTaskPrefill | null | undefined): string {
+  const raw = prefill?.type?.trim() || "general";
+  return (TASK_TYPES as readonly string[]).includes(raw) ? raw : "general";
+}
+
+function defaultDueFields(): { date: string; time: string } {
+  const due = new Date(Date.now() + PRIORITY_OFFSET_MS.medium);
+  return { date: toLocalDateValue(due), time: toLocalTimeValue(due) };
+}
+
 export function CreateOperationsTaskModal({
   open,
   poRecords,
@@ -217,19 +227,57 @@ export function CreateOperationsTaskModal({
   onClose,
   onCreated,
 }: Props) {
-  const [type, setType] = useState("general");
-  const [scope, setScope] = useState("work_order");
-  const [title, setTitle] = useState(DEFAULT_TITLES.general);
+  if (!open) return null;
+  const prefillKey = JSON.stringify([
+    prefill?.type,
+    prefill?.scope,
+    prefill?.poNumber,
+    prefill?.deed,
+    prefill?.title,
+  ]);
+  return (
+    <CreateOperationsTaskForm
+      key={prefillKey}
+      poRecords={poRecords}
+      staffUsers={staffUsers}
+      staffLoadError={staffLoadError}
+      prefill={prefill}
+      staffLoading={staffLoading}
+      onClose={onClose}
+      onCreated={onCreated}
+    />
+  );
+}
+
+function CreateOperationsTaskForm({
+  poRecords,
+  staffUsers,
+  staffLoadError,
+  prefill,
+  staffLoading,
+  onClose,
+  onCreated,
+}: Omit<Props, "open">) {
+  const [due] = useState(defaultDueFields);
+  const [type, setType] = useState(() => prefillType(prefill));
+  const [scope, setScope] = useState(() => prefill?.scope?.trim() || "work_order");
+  const [title, setTitle] = useState(
+    () =>
+      prefill?.title?.trim() || DEFAULT_TITLES[prefillType(prefill)] || "مهمة",
+  );
   const [description, setDescription] = useState("");
   const [priority, setPriority] = useState("medium");
-  const [poNumber, setPoNumber] = useState("");
-  const [deed, setDeed] = useState("");
-  const [selectedDeeds, setSelectedDeeds] = useState<string[]>([]);
+  const [poNumber, setPoNumber] = useState(() => prefill?.poNumber?.trim() || "");
+  const [deed, setDeed] = useState(() => prefill?.deed?.trim() || "");
+  const [selectedDeeds, setSelectedDeeds] = useState<string[]>(() => {
+    const d = prefill?.deed?.trim();
+    return d ? [d] : [];
+  });
   const [assigneeId, setAssigneeId] = useState("");
   const [assigneeName, setAssigneeName] = useState("");
   const [visitFeeAmountSar, setVisitFeeAmountSar] = useState("");
-  const [dueDate, setDueDate] = useState("");
-  const [dueTime, setDueTime] = useState("12:00");
+  const [dueDate, setDueDate] = useState(due.date);
+  const [dueTime, setDueTime] = useState(due.time);
   const [dueChip, setDueChip] = useState<"today" | "tomorrow" | "after" | null>(
     null,
   );
@@ -287,31 +335,6 @@ export function CreateOperationsTaskModal({
     if (!selectedPo) return [];
     return buildLetterRowsForPo(selectedPo);
   }, [type, scope, selectedPo, selectedDeeds, poOptions, poNumber, deed]);
-
-  useEffect(() => {
-    if (!open) return;
-    const rawType = prefill?.type?.trim() || "general";
-    const nextType = (TASK_TYPES as readonly string[]).includes(rawType)
-      ? rawType
-      : "general";
-    const nextScope = prefill?.scope?.trim() || "work_order";
-    const nextPo = prefill?.poNumber?.trim() || "";
-    const nextDeed = prefill?.deed?.trim() || "";
-    setType(nextType);
-    setScope(nextScope);
-    setTitle(prefill?.title?.trim() || DEFAULT_TITLES[nextType] || "مهمة");
-    setDescription("");
-    setPriority("medium");
-    const due = new Date(Date.now() + PRIORITY_OFFSET_MS.medium);
-    setDueDate(toLocalDateValue(due));
-    setDueTime(toLocalTimeValue(due));
-    setDueChip(null);
-    setPoNumber(nextPo);
-    setDeed(nextDeed);
-    setSelectedDeeds(nextDeed ? [nextDeed] : []);
-    setError(null);
-    setBusy(false);
-  }, [open, prefill]);
 
   const applyPriorityDue = (prio: string) => {
     setPriority(prio);
@@ -505,7 +528,7 @@ export function CreateOperationsTaskModal({
 
   return (
     <AppModal
-      open={open}
+      open
       title="مهمة جديدة"
       subtitle="واجهة موحّدة للإنشاء والإسناد — «زيارة محكمة» يفعّل خطاب التفويض"
       onClose={onClose}

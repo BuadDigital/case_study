@@ -50,6 +50,8 @@ type RowDraft = {
   exclusionReason: string;
 };
 
+const AR_NUM = new Intl.NumberFormat("ar-SA");
+
 const fieldSm =
   "h-8 w-[4.75rem] px-2 py-1 text-end text-xs tabular-nums";
 const fieldMd = "h-8 min-w-[7.5rem] max-w-[11rem] px-2 py-1 text-xs";
@@ -89,7 +91,7 @@ function Sar({
   return (
     <span className={cn("tabular-nums whitespace-nowrap", className)}>
       {prefix}
-      {value.toLocaleString("ar-SA")}{" "}
+      {AR_NUM.format(value)}{" "}
       <span className="text-[10px] font-normal text-text-3">ر.س</span>
     </span>
   );
@@ -126,10 +128,10 @@ function SupervisorToolbar({
     <div className={cn(pageToolbarClassName, "mb-0 rounded-t-[var(--radius-lg)]")}>
       <div className="min-w-0 flex-1">
         <p className="text-sm font-semibold text-text">
-          {total.toLocaleString("ar-SA")} عقار
+          {AR_NUM.format(total)} عقار
         </p>
         <p className="text-[11px] text-text-3">
-          {eligibleCount.toLocaleString("ar-SA")} قابلة للمراجعة
+          {AR_NUM.format(eligibleCount)} قابلة للمراجعة
         </p>
       </div>
       <div className="flex flex-wrap items-center gap-2">
@@ -138,7 +140,7 @@ function SupervisorToolbar({
         </Button>
         {selectedCount > 0 ? (
           <Button type="button" size="sm" variant="ghost" onClick={onClear}>
-            إلغاء ({selectedCount.toLocaleString("ar-SA")})
+            إلغاء ({AR_NUM.format(selectedCount)})
           </Button>
         ) : null}
         <Button
@@ -276,11 +278,13 @@ export function InspectorFeesBillingTable({
     if (ids.length === 0) return;
     setBusyId("batch");
     try {
-      for (const id of ids) {
-        const row = rows.find((r) => r.workflowTaskId === id);
-        if (!row) continue;
-        await saveRow(row);
-      }
+      await Promise.all(
+        ids.map(async (id) => {
+          const row = rows.find((r) => r.workflowTaskId === id);
+          if (!row) return;
+          await saveRow(row);
+        }),
+      );
       setSelected(new Set());
     } finally {
       setBusyId(null);
@@ -623,7 +627,7 @@ export function InspectorFeesBillingTable({
                     <Sar value={row.netFeeSar} />
                     {row.supervisorDiscountSar > 0 ? (
                       <div className="mt-0.5 text-[10px] text-danger-text">
-                        حسم {row.supervisorDiscountSar.toLocaleString("ar-SA")}
+                        حسم {AR_NUM.format(row.supervisorDiscountSar)}
                       </div>
                     ) : null}
                   </div>

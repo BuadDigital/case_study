@@ -37,10 +37,12 @@ type ReasonAction =
   | "office-dispute"
   | "suspend";
 
+const AR_NUM = new Intl.NumberFormat("ar-SA");
+
 function Sar({ value }: { value: number }) {
   return (
     <span className="tabular-nums whitespace-nowrap font-medium">
-      {value.toLocaleString("ar-SA")}{" "}
+      {AR_NUM.format(value)}{" "}
       <span className="text-[10px] font-normal text-text-3">ر.س</span>
     </span>
   );
@@ -300,7 +302,7 @@ export function PartyFeeWorkflowTable({
                         <Sar value={row.netFeeSar} />
                         {row.supervisorDiscountSar > 0 ? (
                           <span className="text-[10px] text-text-3">
-                            حسم {row.supervisorDiscountSar.toLocaleString("ar-SA")}
+                            حسم {AR_NUM.format(row.supervisorDiscountSar)}
                             {row.discountReason
                               ? ` — ${row.discountReason}`
                               : ""}
@@ -386,7 +388,7 @@ export function PartyFeeWorkflowTable({
                       <Sar value={row.netFeeSar} />
                       {row.supervisorDiscountSar > 0 ? (
                         <div className="mt-0.5 text-[10px] text-text-3">
-                          حسم {row.supervisorDiscountSar.toLocaleString("ar-SA")}
+                          حسم {AR_NUM.format(row.supervisorDiscountSar)}
                         </div>
                       ) : null}
                     </div>

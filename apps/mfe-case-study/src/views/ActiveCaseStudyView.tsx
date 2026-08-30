@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import dynamic from "next/dynamic";
 import { filterTasksForCaseStudy } from "@platform/app-shared/prototype/active-transactions";
 import { PanelSkeleton, useToast } from "@platform/ui-kit";
 import {
@@ -9,7 +10,13 @@ import {
   type ActiveTransactionQueueConfig,
 } from "./ActiveTransactionQueueView";
 import { buildCaseStudyQueueRowMoreItems } from "../lib/prototype/active-queue-row-menu";
-import { RedistributePartiesModal } from "../components/distribution/RedistributePartiesModal";
+const RedistributePartiesModal = dynamic(
+  () =>
+    import("../components/distribution/RedistributePartiesModal").then(
+      (m) => m.RedistributePartiesModal,
+    ),
+  { ssr: false },
+);
 import {
   redistributeTaskParties,
   type WorkflowTask,
@@ -68,24 +75,26 @@ export function ActiveCaseStudyView() {
   return (
     <>
       <ActiveTransactionQueueView config={config} />
-      <RedistributePartiesModal
-        open={redistributeTask !== null}
-        task={redistributeTask}
-        onClose={() => setRedistributeTask(null)}
-        onConfirm={async (distribution, reason) => {
-          if (!redistributeTask) return;
-          const result = await redistributeTaskParties(
-            redistributeTask.id,
-            distribution,
-            reason,
-          );
-          if (!result.ok) {
-            showToast(result.error, "error");
-            return;
-          }
-          showToast("تم تحديث إسناد الأطراف", "success");
-        }}
-      />
+      {redistributeTask !== null ? (
+        <RedistributePartiesModal
+          open={redistributeTask !== null}
+          task={redistributeTask}
+          onClose={() => setRedistributeTask(null)}
+          onConfirm={async (distribution, reason) => {
+            if (!redistributeTask) return;
+            const result = await redistributeTaskParties(
+              redistributeTask.id,
+              distribution,
+              reason,
+            );
+            if (!result.ok) {
+              showToast(result.error, "error");
+              return;
+            }
+            showToast("تم تحديث إسناد الأطراف", "success");
+          }}
+        />
+      ) : null}
     </>
   );
 }
