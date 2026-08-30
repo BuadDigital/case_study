@@ -1,7 +1,7 @@
 /**
- * محمّل pdfjs-dist الوحيد — كان مكرراً بمُهيّئي worker مختلفين في
- * mfe-case-study وmfe-engineering-office فتنشطر الحزمة غير الرخيصة (~350KB)
- * إلى نسختين لا تتشاركان التخزين المؤقت.
+ * Sole pdfjs-dist loader — previously duplicated with different worker setup in
+ * mfe-case-study and mfe-engineering-office, splitting the costly package (~350KB)
+ * into two copies that did not share cache.
  */
 
 let workerReady = false;

@@ -1,8 +1,8 @@
 import type { ValuationComparableSelectionDto } from "@platform/api-client";
 
 /**
- * أمر جدول التسويات — واجهة واحدة بدل ١٥ مقبض رد نداء (Command/ISP):
- * الجدول يرسل الأمر، والصدفة تنفّذه في سياقها (سوق / أرض ضمن التكلفة).
+ * Adjustments-matrix command — one interface instead of 15 callbacks (Command/ISP):
+ * the table dispatches; the shell executes in its context (market / land-within-cost).
  */
 export type MatrixAction =
   | {
@@ -44,10 +44,10 @@ export type MatrixAction =
     }
   | { type: "save-subject-spec"; factorKey: string; text: string };
 
-/** ينفّذ الأمر ويعيد نجاحه — الأوامر التي لا تُنتظر نتيجتها تعيد true. */
+/** Runs the command and returns success — fire-and-forget commands return true. */
 export type MatrixDispatch = (action: MatrixAction) => Promise<boolean>;
 
-/** عمليات الصدفة التي يوصّلها المنفّذ — التواقيع كما هي معرّفة هناك. */
+/** Shell operations the executor wires through — signatures match those defined there. */
 export type MatrixOps<TContext> = {
   saveMatrixCell(
     item: ValuationComparableSelectionDto,
@@ -105,8 +105,8 @@ export type MatrixOps<TContext> = {
 };
 
 /**
- * منفّذ الأوامر — استراتيجية السياق تُمرَّر مرة واحدة فيتوحّد زوجا المقابض
- * (سوق/أرض) في مرسل واحد لكل سياق.
+ * Command executor — context strategy is passed once so the market/land handler pairs
+ * collapse into one dispatcher per context.
  */
 export async function runMatrixAction<TContext>(
   ops: MatrixOps<TContext>,

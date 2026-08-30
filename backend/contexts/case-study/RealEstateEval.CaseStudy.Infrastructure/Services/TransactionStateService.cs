@@ -10,9 +10,9 @@ using RealEstateEval.Infrastructure.Data.Contexts;
 namespace RealEstateEval.CaseStudy.Infrastructure.Services;
 
 /// <summary>
-/// ق-9: يجمع وقائع المعاملة (مهمة دراسة الحالة الأم وأطرافها + إقفال تقرير التقييم ق-6
-/// + رفع إنفاذ) ويشتق الحالة عبر <see cref="TransactionStateRules"/> — الشاشة تعرض من
-/// ينتظر من.
+/// Q-9: Collects transaction facts (parent case study task and its parties + closing Valuation Report Q-6
+/// + Raise Enfaz) and derive the state via <see cref="TransactionStateRules"/> — the screen displays from
+/// Waiting for who?
 /// </summary>
 public sealed class TransactionStateService(
     ICaseStudyRepository db,
@@ -25,7 +25,7 @@ public sealed class TransactionStateService(
 {
     private readonly TimeProvider _time = time ?? TimeProvider.System;
 
- /// <summary>ر3 يتّسق مع ق-8-2: سبب القرار لا يقل عن ١٠ أحرف (JustificationRules في سياق التقييم).</summary>
+ /// <summary>R3 is consistent with Q-8-2: Reason for Decision is at least 10 characters (JustificationRules in evaluation context).</summary>
     private const int MinDecisionReasonLength = 10;
 
     public async Task<TransactionStateDto?> GetStateAsync(
@@ -61,7 +61,7 @@ public sealed class TransactionStateService(
         property.EnfazHandoverByUserId = recordedByUserId;
         await db.SaveChangesAsync(cancellationToken);
 
-        // قيد زمني في ملف العقار — التسليم الشامل حدث ختامي.
+        // Time entry in the property file — Complete Delivery Closing event.
         try
         {
             var poNumber = await db.WorkOrders.AsNoTracking()
@@ -80,7 +80,7 @@ public sealed class TransactionStateService(
         }
         catch
         {
-            // الرفع نفسه نجح — تعذّر القيد الزمني لا يفشل العملية.
+            // The upload itself succeeded — failing the time constraint does not fail the operation.
         }
 
         var updated = input with { EnfazHandedOver = true };
@@ -95,7 +95,7 @@ public sealed class TransactionStateService(
         string? actorRole,
         CancellationToken cancellationToken = default)
     {
-        // ر3: المدير العام حصراً — القرار خارج صلاحية النظام آلياً (قناة إنفاذ الرسمية).
+        // R3: General Manager exclusively - Decision is automatically out of system jurisdiction (Enfaz official channel).
         if (!string.Equals(actorRole, StaffRoleIds.GeneralManager, StringComparison.Ordinal))
             return "تسجيل قرار ما بعد إنفاذ للمدير العام حصراً (ر3)";
 
@@ -113,7 +113,7 @@ public sealed class TransactionStateService(
         if (audit is null || auditLog is null)
             return "خدمة التدقيق غير متاحة — تعذّر تسجيل القيد";
 
-        // قيد تدقيق فقط — لا يفتح النظام شيئاً؛ استرجاع فعلي يعامَل كمعاملة معادة (ر2).
+        // Audit Entry only — the system does not open anything; An actual retrieval is treated as a replay transaction (R2).
         await auditLog.AppendAsync(audit.Create(
             actorId: string.IsNullOrWhiteSpace(actorId) ? "unknown" : actorId,
             action: "case-study.post-enfaz-decision.recorded",
@@ -158,7 +158,7 @@ public sealed class TransactionStateService(
             t.Kind == WorkflowTaskKind.EngineeringSurvey
             && t.Status != WorkflowTaskStatus.Cancelled);
 
-        // ق-6: إقفال تقرير التقييم = المقيم أكمل ولا طلب تقييم مفتوحاً على العقار.
+        // Q-6: Valuation Report closure = the appraiser completed and no Valuation Request remains open for the property.
         var appraiser = FactsFor(WorkflowTaskKind.PropertyAppraisal);
         var openValuation = appraiser.Completed
             ? await valuationRequests.GetOpenByPropertyAsync(

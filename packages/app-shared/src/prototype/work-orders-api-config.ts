@@ -10,7 +10,7 @@ export function notifyWorkOrdersChanged(): void {
 }
 
 export function workOrdersApiConfig(): WorkOrdersApiConfig | null {
-  // نفس بناء apiConfig الموحّد — نُبقي الاسم والنوع للسطح القائم.
+  // Same unified apiConfig build — keep the name/type for the existing surface.
   return apiConfig();
 }
 

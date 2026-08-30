@@ -66,7 +66,7 @@ public sealed class WorkOrderPropertyCommands : IWorkOrderPropertyCommands
         property.Id = null;
 
         var mapped = MapPropertyEnfath(property, entity.Id, forInsert: true);
- // ورشة الترقيم (بندا البتّ 2 و5): الرقم المرجعي للمعاملة يُخصَّص عند الإضافة.
+ // Numbering workshop (decision items 2 and 5): transaction reference number assigned on add.
         var (transactionReference, referenceError) =
             await ReferenceSequenceAllocator.AllocateYearlyAsync(
                 _db.Database,
@@ -220,6 +220,54 @@ public sealed class WorkOrderPropertyCommands : IWorkOrderPropertyCommands
             existing,
             previousLocationMapUrl,
             cancellationToken);
+        return (WorkOrderMapper.ToPropertyDto(existing), null);
+    }
+
+    public async Task<(WorkOrderPropertyDto? Result, Dictionary<string, string>? Errors)> UpdateSpecialistReportExtrasAsync(
+        string poNumber,
+        Guid propertyId,
+        string? specialistReportExtrasJson,
+        CancellationToken cancellationToken)
+    {
+        var entity = await _loader.LoadAsync(poNumber, cancellationToken);
+        if (entity is null) return (null, new Dictionary<string, string> { ["_"] = "أمر العمل غير موجود" });
+
+        var existing = entity.Properties.FirstOrDefault(p => p.Id == propertyId);
+        if (existing is null) return (null, new Dictionary<string, string> { ["_"] = "العقار غير موجود" });
+        if (existing.IsRemoved)
+            return (null, new Dictionary<string, string> { ["_"] = "لا يمكن تعديل عقار محذوف" });
+
+        var trimmed = specialistReportExtrasJson?.Trim();
+        if (string.IsNullOrEmpty(trimmed) || trimmed == "null")
+        {
+            existing.SpecialistReportExtrasJson = null;
+        }
+        else
+        {
+            try
+            {
+                using var _ = System.Text.Json.JsonDocument.Parse(trimmed);
+            }
+            catch (System.Text.Json.JsonException)
+            {
+                return (null, new Dictionary<string, string>
+                {
+                    ["specialistReportExtrasJson"] = "صيغة JSON غير صالحة",
+                });
+            }
+
+            if (trimmed.Length > 64_000)
+            {
+                return (null, new Dictionary<string, string>
+                {
+                    ["specialistReportExtrasJson"] = "حجم البيانات أكبر من المسموح",
+                });
+            }
+
+            existing.SpecialistReportExtrasJson = trimmed;
+        }
+
+        await _db.SaveChangesAsync(cancellationToken);
         return (WorkOrderMapper.ToPropertyDto(existing), null);
     }
 
@@ -482,6 +530,13 @@ public sealed class WorkOrderPropertyCommands : IWorkOrderPropertyCommands
         entity.PartitionMinutesDate = IWorkOrderLoader.NormalizeOptionalText(dto.PartitionMinutesDate);
         entity.FinishingType = NormalizeFinishingType(dto.FinishingType);
         entity.FinishingStructure = NormalizeFinishingStructure(dto.FinishingStructure);
+        if (dto.SpecialistReportExtrasJson is not null)
+        {
+            var extras = dto.SpecialistReportExtrasJson.Trim();
+            entity.SpecialistReportExtrasJson = string.IsNullOrEmpty(extras) || extras == "null"
+                ? null
+                : extras;
+        }
     }
 
     private void DetachTrackedContacts(WorkOrderProperty entity)

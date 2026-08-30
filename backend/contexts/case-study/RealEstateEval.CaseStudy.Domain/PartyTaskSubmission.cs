@@ -16,7 +16,7 @@ public class PartyTaskSubmission
     public string? ReturnNote { get; set; }
     public DateTime? SubmittedAtUtc { get; set; }
  /// <summary>
- /// Set when a specialist accepts party outputs (survey fee accrual; inspection → إنفاذ package gate).
+ /// Set when a specialist accepts party outputs (survey fee accrual; inspection → Enfaz package gate).
  /// </summary>
     public DateTime? AcceptedAtUtc { get; set; }
     public string? SubmittedByUserId { get; set; }
@@ -28,7 +28,7 @@ public class PartyTaskSubmission
     public DateTime CreatedAtUtc { get; set; }
     public DateTime UpdatedAtUtc { get; set; }
 
-    /* ─── B2: دورة الحياة داخل الجذر — مسودة ⇄ معادة → مُرسلة → (مقبولة) → معادة ─── */
+    /* ─── B2: Life cycle inside the root — draft ⇄ returned → sent → (accepted) → returned ─── */
 
     public static PartyTaskSubmission CreateDraft(
         Guid workflowTaskId,
@@ -48,8 +48,8 @@ public class PartyTaskSubmission
         };
 
  /// <summary>
- /// حفظ مسودة: «مُرسلة» عبر مسار المسودة مرفوضة (نقطة الإرسال وحدها ترسل)،
- /// و«المعادة» تبقى معادة حتى تُرسل من جديد.
+ /// Save draft: “Sent” via draft path rejected (only sending point sends),
+ /// The “returned” remains returned until it is sent again.
  /// </summary>
     public string? SaveDraft(
         string payloadJson,
@@ -71,7 +71,7 @@ public class PartyTaskSubmission
         return null;
     }
 
- /// <summary>الإرسال — من مسودة/معادة فقط؛ المُرسلة سلفاً لا تتغيّر (تكرار حميد).</summary>
+ /// <summary>Submit — from draft/redos only; What was previously sent does not change (good repetition).</summary>
     public bool Submit(DateTime nowUtc, string? userId, string? displayName, string fallbackName)
     {
         if (Status is PartyTaskSubmissionStatus.Submitted)
@@ -92,8 +92,8 @@ public class PartyTaskSubmission
     }
 
  /// <summary>
- /// الإعادة للتصحيح — من «مُرسلة» فقط؛ تُبطل القبول حتى يعتمد الأخصائي المخرجات
- /// المصحّحة من جديد.
+ /// Repost for correction — from “sent” only; Acceptance is invalidated until the specialist approves the deliverables
+ /// Corrected again.
  /// </summary>
     public string? ReturnForCorrection(
         string? returnNote,
@@ -116,7 +116,7 @@ public class PartyTaskSubmission
         return null;
     }
 
- /// <summary>قبول المخرجات — من «مُرسلة» فقط؛ القبول المكرر لا يغيّر الختم الأول.</summary>
+ /// <summary>Accept output — from “Sent” only; Repeated acceptance does not change the first seal.</summary>
     public string? Accept(DateTime nowUtc, string actorUserId, string? displayName)
     {
         if (Status != PartyTaskSubmissionStatus.Submitted)

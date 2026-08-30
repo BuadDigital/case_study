@@ -2,7 +2,7 @@
 
 **نظام إجادة الداخلي** is an internal platform for property case study, valuation workflows, and operations. The interface is Arabic (RTL).
 
-Current stack: Next.js 16, React 19, TypeScript 5, ASP.NET Core 10, PostgreSQL, Docker Compose. The architecture targets microfrontends and domain microservices behind an API gateway. The product is in an active delivery phase: screens exist, domain APIs continue to expand, and some areas still use mock or local data.
+Current stack: Next.js 16, React 19, TypeScript 5, ASP.NET Core 10, PostgreSQL, Docker Compose. The architecture targets microfrontends and domain microservices behind an API gateway. Core case-study and valuation flows are API-backed; specialist valuation extras sync to `SpecialistReportExtrasJson` (IndexedDB offline cache).
 
 ---
 
@@ -587,13 +587,15 @@ Recommended order while product rules are still under discussion:
 ```text
 Phase 0 (complete)  Monorepo, screens, mock data, Docker infrastructure
        ↓
-Phase 1 (next)      Agree domain rules; seed @ejadah.dev users; sign-in sets role
+Phase 1 (complete)  Logical MFEs (case-study, evaluator, …), shell composition,
+                    JWT + permissions API, work-order / workflow APIs live
        ↓
-Phase 2             One live API (for example GET /properties); keep mocks elsewhere
+Phase 2 (in progress) Finish remaining local→API domain persistence;
+                      harden authorization on every endpoint
        ↓
-Phase 3             Split mfe-valuation or case-study (one boundary first)
+Phase 3             Extract remaining backend domain services (valuation ops already started)
        ↓
-Phase 4             RabbitMQ and Redis when two or more backend services exist
+Phase 4             RabbitMQ and Redis wired in application code
        ↓
 Phase 5             OpenTelemetry, Prometheus, and Kibana in application code
        ↓
@@ -603,13 +605,11 @@ Phase 6             Module Federation and separate deployments per microfrontend
 | Goal | Owner | Action |
 |------|-------|--------|
 | Interface parity | Frontend | Match `requirements/*.html`; track gaps in issues |
-| Roles and permissions | Product and backend | Finalize the role matrix; add JWT claims; remove the demonstration switcher |
-| Case study rules | Product | Sign off `case_study_form 2.html` fields before API design |
-| Registration | Product | Decide whether `ejada-registration_1.html` is in scope for the first release |
+| Roles and permissions | Product and backend | Finalize the role matrix; JWT claims on all domain routes |
+| Case study rules | Product | Keep field contracts aligned with live APIs |
 | Microservices | Architecture | Follow [the architecture document](docs/ARCHITECTURE_MICROFRONTENDS_AND_MICROSERVICES.md), phases A–E |
-| Observability | Operations | Wire OpenTelemetry after a second service is running |
-
-Do not split microfrontends (F2 and later) until at least one domain API replaces mocks.
+| Observability | Operations | Confirm OTLP → Jaeger/Prometheus in each environment |
+| MFE boundaries | Frontend | Keep case-study ↔ evaluator via shell bridges only (no package cycles) |
 
 ---
 
@@ -617,30 +617,37 @@ Do not split microfrontends (F2 and later) until at least one domain API replace
 
 ### Complete
 
-- Principal user interface screens with mock data where APIs are not yet available
-- Monorepo F0 (`apps/shell` and `packages/*`)
-- Gateway, Identity and Case Study services, PostgreSQL, and the Docker platform stack
-- Add-user flow
+- Principal user interface screens (Arabic RTL) across shell + logical MFEs
+- Monorepo F0–F4 style: `apps/shell` composes `@case-study/mfe`, `@evaluator/mfe`, and other domain packages
+- Gateway, Identity, Case Study, and Valuation services; PostgreSQL; Docker platform stack
+- JWT sign-in, permissions-driven navigation, staff add-user + activation flow
+- Work-order / PO intake, workflow tasks, and party submissions on live APIs (not mock-only)
+- Evaluator valuation-report pipeline with unit coverage; case-study ↔ evaluator **runtime bridge** (no circular package dependency)
+- Specialist valuation extras persisted on `WorkOrderProperty.SpecialistReportExtrasJson` (IndexedDB as offline cache)
+- Audit append bound to JWT actor + upstream-only dispatch routes (`X-REE-Upstream`)
+- Numbered-document allocate/list gated by `ManageWorkOrders`
+- Rate limiting + CORS helpers; RabbitMQ outbox/consumers; Redis caching; OpenTelemetry OTLP export (infra already in Compose)
+- Release scripts: MFE typecheck, unit tests, Playwright smoke/journeys
 
 ### In progress or planned
 
 **Frontend**
 
-- [ ] F1–F5 microfrontends (valuation, case study, operations, Module Federation)
-- [ ] Sign-in per `@ejadah.dev` role; JWT and permissions API on all microfrontends
-- [ ] Production security hardening (secrets, HTTPS only, audit log, rate limits)
-- [ ] Wire the users API; purchase-order and property detail; case study form
-- [ ] Registration flow if in scope
-- [ ] Replace remaining `MOCK_*` data with APIs
+- [ ] Module Federation (F5) and independent MFE deploys
+- [ ] Continue relocating `lib/prototype/*` into `lib/domain` / `lib/storage`
+- [ ] Move remaining evaluator→case-study type/runtime/UI imports onto shared packages / bridges
+- [ ] HttpOnly/BFF session (replace localStorage JWT) if required by security review
+- [ ] Registration flow if in scope for first production release
 
 **Backend**
 
-- [ ] Extract Valuation, Operations, and Financial services (gateway, Identity, and Case Study exist)
-- [ ] RabbitMQ events, Redis cache, OpenTelemetry to Jaeger, `/metrics` to Prometheus
-- [ ] Fluent Bit / Serilog to Elasticsearch to Kibana
+- [ ] Finish extracting Operations and Financial services behind the gateway (dispatch already internal-header gated)
+- [ ] Promote specialist extras fields to first-class columns when product freezes the schema
+- [ ] Fluent Bit / Serilog → Elasticsearch → Kibana (JSON console logging today)
 
-**Platform**
+**Platform / ops**
 
+- [ ] Production cutover: fill `infra/production.env.example`, TLS, GH secrets (see `docs/DEPLOYMENT_HETZNER.md`)
 - [ ] Cassandra only if a high-volume audit requirement appears
 
 ---

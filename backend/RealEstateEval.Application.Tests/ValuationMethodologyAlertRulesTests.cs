@@ -33,7 +33,7 @@ public class ValuationMethodologyAlertRulesTests
             EmptyInput() with { AdoptedComparableCount = 3 });
         Assert.False(three.Single(c => c.Number == 19).Triggered);
 
-        // صفر مقارنات شأن الحاجب m15 لا m19.
+        // Zero comparables belongs to hard gate m15, not m19.
         var zero = ValuationMethodologyAlertRules.Evaluate(
             EmptyInput() with { AdoptedComparableCount = 0 });
         Assert.False(zero.Single(c => c.Number == 19).Triggered);

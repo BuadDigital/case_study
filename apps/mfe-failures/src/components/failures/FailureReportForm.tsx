@@ -5,7 +5,7 @@ import { FailureRaisePanel } from "./FailureRaisePanel";
 
 /**
  * Full-page failure raise — same chrome as engineering-office
- * مساحة عمل التعذرات (pp-head + card + FailureRaisePanel).
+ * Failures workspace (pp-head + card + FailureRaisePanel).
  */
 export function FailureReportForm({
   poNumber,

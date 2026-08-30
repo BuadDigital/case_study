@@ -185,7 +185,7 @@ public class FlatIncentivePricingTests
         await using var store = new TestInspectorFeeServiceFactory.Store("flat-wrong-assign");
         await SeedFlatAssignmentAsync(store, amount: 350m, hasCompensation: true);
 
- // Accidental cooperator-table assignment (the production symptom for عبدالله).
+ // Accidental cooperator-table assignment (the production symptom for Abdullah).
         var partyRatesId = Guid.NewGuid();
         store.Fin.PartyFeePricingTables.Add(new PartyFeePricingTable
         {

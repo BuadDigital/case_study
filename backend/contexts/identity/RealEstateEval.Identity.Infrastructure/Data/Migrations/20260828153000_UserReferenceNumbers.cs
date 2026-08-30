@@ -13,8 +13,8 @@ namespace RealEstateEval.Identity.Infrastructure.Data.Contexts.Identity.Migratio
  /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
- // ورشة الترقيم: عدّادات US السنوية + عمود الرقم المرجعي، مع backfill
- // بالترتيب الزمني (سنة الرياض = UTC+3) وتزريع العدّاد من أعلى ما خُصِّص.
+ // Numbering shop: US annual counters + reference number column, with backfill
+ // In chronological order (Riyadh year = UTC+3) and planting the counter from the highest allotted.
             migrationBuilder.Sql(
                 """
                 CREATE TABLE IF NOT EXISTS identity."IdentityReferenceSequences" (

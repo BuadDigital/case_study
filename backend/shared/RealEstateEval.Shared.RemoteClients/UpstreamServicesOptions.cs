@@ -236,8 +236,11 @@ internal static class UpstreamJson
     private static void ForwardAuthorization(IHttpContextAccessor httpContext, HttpRequestMessage request)
     {
         var authorization = httpContext.HttpContext?.Request.Headers.Authorization.ToString();
+        if (string.IsNullOrWhiteSpace(authorization))
+            authorization = UpstreamServiceBearer.Ambient?.GetAuthorizationHeader();
         if (!string.IsNullOrWhiteSpace(authorization))
             request.Headers.TryAddWithoutValidation("Authorization", authorization);
+        request.Headers.TryAddWithoutValidation("X-REE-Upstream", "1");
     }
 
     private static async Task<string?> TryReadErrorAsync(HttpResponseMessage response, CancellationToken cancellationToken)

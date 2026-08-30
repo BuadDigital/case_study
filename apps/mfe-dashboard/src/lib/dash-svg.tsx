@@ -2,7 +2,7 @@
 
 import { useEffect, useId, useRef } from "react";
 
-// animejs تُحمَّل عند الطلب داخل التأثيرات حتى لا تدخل في حزمة البداية.
+// animejs is loaded on demand inside effects so it stays out of the initial bundle.
 type DashAnimation = { pause: () => void };
 
 function prefersReducedMotion(): boolean {

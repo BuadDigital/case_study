@@ -143,7 +143,7 @@ public static class ValuationModel
             e.HasIndex(x => x.SelectionId);
         });
 
-        // ق-6: الإصدار ثنائي المرحلة — لقطة التقرير المجمّدة + النسختان (الإيداع/النهائية).
+        // Q-6: two-phase issuance — frozen report snapshot + both copies (deposit/final).
         builder.Entity<ValuationReportIssuance>(e =>
         {
             e.ToTable("ValuationReportIssuances", DatabaseSchemas.Valuation);
@@ -155,7 +155,7 @@ public static class ValuationModel
             e.Property(x => x.CertificateUploadedByUserId).HasMaxLength(128);
             e.Property(x => x.SupersededByUserId).HasMaxLength(128);
             e.Property(x => x.SupersededReason).HasMaxLength(1024);
-            // ر2: نسخة سارية واحدة لكل طلب — الملغاة «حلّت محلها نسخة أحدث» تبقى بالملف.
+            // R2: one current copy per request — superseded ("replaced by a newer copy") stays on file.
             e.HasIndex(x => x.ValuationRequestId)
                 .IsUnique()
                 .HasFilter("\"SupersededAtUtc\" IS NULL");
@@ -166,7 +166,7 @@ public static class ValuationModel
                 .OnDelete(DeleteBehavior.Cascade);
         });
 
-        // ق-8-1: مبرر واحد على مستوى العامل يغطي كل المقارنات؛ سطر التسوية يحمل التخصيص فقط.
+        // Q-8-1: one factor-level rationale covers all comparables; adjustment row holds the override only.
         builder.Entity<ValuationAdjustmentFactorRationale>(e =>
         {
             e.ToTable("ValuationAdjustmentFactorRationales", DatabaseSchemas.Valuation);

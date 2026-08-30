@@ -29,7 +29,7 @@ import { FinanceCostPartiesList } from "./FinanceCostPartiesList";
 
 const EMPTY_STAFF_USERS: StaffUser[] = [];
 
-// لاحقة ر.س دون أصفار كسور إلزامية — نبقيها محلياً حفاظاً على العرض نفسه.
+// SAR suffix without forced fractional zeros — keep local to preserve the same display.
 function fmtSar(n: number) {
   return `${fmtMax(n)} ر.س`;
 }
@@ -117,7 +117,7 @@ export function FinanceCostsView({
     id: string | null,
     preferredSection?: "dues" | "statements" | CostsSection,
   ) => void;
-  /** يثبت party في الرابط عند فتح statement بدون party أو بقيمة خاطئة */
+  /** Pins party in the URL when opening statement without party or with a wrong value */
   onEnsureParty?: (partyId: string) => void;
   excludedCount?: number;
 }) {
@@ -145,7 +145,7 @@ export function FinanceCostsView({
     [readyQuery.data, statementsQuery.data, staffUsers],
   );
 
-  /** تبويب الحساب الفوري — لا يعتمد على تأخّر searchParams */
+  /** Immediate account tab — does not wait on delayed searchParams */
   const [viewSection, setViewSection] = useState(section);
   const [prevSection, setPrevSection] = useState(section);
   if (section !== prevSection) {
@@ -161,14 +161,14 @@ export function FinanceCostsView({
     return s?.assigneeId?.trim() || null;
   }, [focusStatementId, statementsQuery.data]);
 
-  /** ثبّت party في URL عند فتح statement بدون party أو بقيمة غير متطابقة */
+  /** Pin party in the URL when opening statement without party or a mismatched value */
   useEffect(() => {
     if (!statementResolvedParty || !onEnsureParty) return;
     if ((focusPartyIdProp ?? "").trim() === statementResolvedParty) return;
     onEnsureParty(statementResolvedParty);
   }, [statementResolvedParty, focusPartyIdProp, onEnsureParty]);
 
-  /** deep-link: افتح مسيرات عند وجود statement */
+  /** deep-link: open payrolls when statement is present */
   useEffect(() => {
     if (!focusStatementId) return;
     if (viewSection === "statements" || viewSection === "paid") return;
@@ -189,7 +189,7 @@ export function FinanceCostsView({
     ? (parties.find((p) => p.assigneeId === focusPartyId) ?? null)
     : null;
 
-  /** وجود party = شاشة حساب */
+  /** Presence of party = account screen */
   const inPartyAccount = Boolean(focusPartyId);
   const accountSection: CostsSection = wantsAccountTab
     ? viewSection

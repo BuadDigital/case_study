@@ -11,6 +11,7 @@ import { OfflineBanner } from "@/components/OfflineBanner";
 import { PushPermissionPrompt } from "@/components/PushPermissionPrompt";
 import { FieldOfflinePrefetch } from "@/components/FieldOfflinePrefetch";
 import { OfflineWriteInterceptorHost } from "@/components/OfflineWriteInterceptorHost";
+import { PlatformRuntimeBootstrap } from "@/components/PlatformRuntimeBootstrap";
 import { PageAccessGate } from "@/components/PageAccessGate";
 import { AppShell } from "@/components/views/AppShell";
 import { PrototypeProvider } from "@platform/app-shared/contexts/PrototypeContext";
@@ -29,6 +30,7 @@ export default function AppSectionLayout({
         <Suspense fallback={<PanelSkeleton className="min-h-svh" />}>
           <PrototypeAppGate>
             <PrototypeProvider>
+              <PlatformRuntimeBootstrap />
               <AuthSessionWatcher />
               <DomainEventBridge />
               <EngineeringOfficeNotificationCleanup />

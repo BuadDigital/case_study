@@ -1,5 +1,5 @@
 import type { RowMoreMenuItem } from "@case-study/mfe/components/ui/RowMoreMenu";
-import type { WorkflowTask } from "@case-study/mfe/lib/prototype/tasks-storage";
+import type { WorkflowTask } from "@platform/app-shared/workflow/task-types";
 import {
   getPartyTaskRecall,
   requestPartyTaskRecall,

@@ -99,7 +99,7 @@ public class ValuationRequestsController : ControllerBase
         var (result, error) = await _service.SubmitReportAsync(id, ct);
         if (error is null)
         {
- // the completed valuation feeds the shared bank («تقييم سابق»).
+ // the completed valuation feeds the shared bank ("prior valuation").
  // Best-effort: harvest failure must never fail the submit itself.
             try
             {

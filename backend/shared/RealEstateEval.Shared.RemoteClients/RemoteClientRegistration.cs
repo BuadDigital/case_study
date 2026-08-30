@@ -1,5 +1,7 @@
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
+using Microsoft.Extensions.Hosting;
 using RealEstateEval.Application.Abstractions;
 using RealEstateEval.Infrastructure.Services;
 using RealEstateEval.Attachments.Application.Abstractions;
@@ -160,6 +162,9 @@ public static class RemoteClientRegistration
         services.AddHttpContextAccessor();
         services.AddOptions<UpstreamServicesOptions>()
             .Bind(configuration.GetSection(UpstreamServicesOptions.SectionName));
+        services.TryAddSingleton<UpstreamServiceBearer>();
+        services.TryAddEnumerable(
+            ServiceDescriptor.Singleton<IHostedService, UpstreamServiceBearerWarmupHostedService>());
         return services;
     }
 }

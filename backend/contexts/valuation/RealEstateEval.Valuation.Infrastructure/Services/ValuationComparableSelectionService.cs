@@ -45,8 +45,8 @@ public sealed class ValuationComparableSelectionService(
         var context = ComparableSelectionContexts.Normalize(selectionContext);
         if (context == ComparableSelectionContexts.Market)
         {
-            // مقارنات روابط العقار وبذرة النموذج التفاعلي تتعايشان في البنك —
-            // البذرة لا تُحذف عند الاستيراد (بيانات النموذج هي مرجع العرض التجريبي).
+            // Property-link comparables and interactive-model seed coexist in the bank —
+            // the seed is not deleted on import (model data is the demo-display reference).
             await ImportPropertyLinkedComparablesAsync(request, cancellationToken);
             await ComparableBankSeed.EnsureForValuationRequestAsync(
                 db, valuationRequestId, cancellationToken);
@@ -77,8 +77,8 @@ public sealed class ValuationComparableSelectionService(
     }
 
  /// <summary>
- /// ق-8-1: حفظ مبرر عامل التسوية الواحد (يغطي كل المقارنات) — فارغ يمسح المبرر،
- /// وغير الفارغ يخضع للحد الأدنى (ق-8-2).
+ /// Q-8-1: save the single adjustment-factor rationale (covers all comparables) — empty clears it,
+ /// and non-empty is subject to the minimum length (Q-8-2).
  /// </summary>
     public async Task<(ValuationAdjustmentFactorRationaleDto? Result, Dictionary<string, string>? Errors)>
         SaveFactorRationaleAsync(
@@ -93,7 +93,7 @@ public sealed class ValuationComparableSelectionService(
             return (null, new Dictionary<string, string> { ["_"] = "طلب التقييم غير موجود" });
         if (vr.Status == ValuationRequestStatus.Done)
             return (null, new Dictionary<string, string> { ["_"] = "طلب التقييم مكتمل — لا يمكن تعديل المبررات" });
-        // ق-6: بعد صدور نسخة الإيداع يتجمّد التقرير كاملاً — الرمز والشهادة فقط خارج التجميد.
+        // Q-6: after deposit copy, the full report is frozen — only code and certificate are outside the freeze.
         if (await ValuationReportFreeze.IsFrozenAsync(db, vr.Id, cancellationToken))
             return (null, new Dictionary<string, string> { ["_"] = ValuationReportFreeze.FrozenMessageAr });
 
@@ -183,7 +183,7 @@ public sealed class ValuationComparableSelectionService(
 
         if (vr.Status == ValuationRequestStatus.Done)
             return (null, new Dictionary<string, string> { ["_"] = "طلب التقييم مكتمل — لا يمكن تعديل المقارنات" });
-        // ق-6: بعد صدور نسخة الإيداع يتجمّد التقرير كاملاً — الرمز والشهادة فقط خارج التجميد.
+        // Q-6: after deposit copy, the full report is frozen — only code and certificate are outside the freeze.
         if (await ValuationReportFreeze.IsFrozenAsync(db, vr.Id, cancellationToken))
             return (null, new Dictionary<string, string> { ["_"] = ValuationReportFreeze.FrozenMessageAr });
 
@@ -271,7 +271,7 @@ public sealed class ValuationComparableSelectionService(
         if (vr is null) return (null, "طلب التقييم غير موجود");
         if (vr.Status == ValuationRequestStatus.Done)
             return (null, "طلب التقييم مكتمل — لا يمكن تعديل المقارنات");
-        // ق-6: بعد صدور نسخة الإيداع يتجمّد التقرير كاملاً — الرمز والشهادة فقط خارج التجميد.
+        // Q-6: after deposit copy, the full report is frozen — only code and certificate are outside the freeze.
         if (await ValuationReportFreeze.IsFrozenAsync(db, vr.Id, cancellationToken))
             return (null, ValuationReportFreeze.FrozenMessageAr);
 
@@ -348,7 +348,7 @@ public sealed class ValuationComparableSelectionService(
         if (vr is null) return (false, "طلب التقييم غير موجود");
         if (vr.Status == ValuationRequestStatus.Done)
             return (false, "طلب التقييم مكتمل — لا يمكن تعديل المقارنات");
-        // ق-6: بعد صدور نسخة الإيداع يتجمّد التقرير كاملاً — الرمز والشهادة فقط خارج التجميد.
+        // Q-6: after deposit copy, the full report is frozen — only code and certificate are outside the freeze.
         if (await ValuationReportFreeze.IsFrozenAsync(db, vr.Id, cancellationToken))
             return (false, ValuationReportFreeze.FrozenMessageAr);
 
@@ -379,7 +379,7 @@ public sealed class ValuationComparableSelectionService(
             return (null, new Dictionary<string, string> { ["_"] = "طلب التقييم غير موجود" });
         if (vr.Status == ValuationRequestStatus.Done)
             return (null, new Dictionary<string, string> { ["_"] = "طلب التقييم مكتمل — لا يمكن تعديل التسويات" });
-        // ق-6: بعد صدور نسخة الإيداع يتجمّد التقرير كاملاً — الرمز والشهادة فقط خارج التجميد.
+        // Q-6: after deposit copy, the full report is frozen — only code and certificate are outside the freeze.
         if (await ValuationReportFreeze.IsFrozenAsync(db, vr.Id, cancellationToken))
             return (null, new Dictionary<string, string> { ["_"] = ValuationReportFreeze.FrozenMessageAr });
 
@@ -391,7 +391,7 @@ public sealed class ValuationComparableSelectionService(
         if (row is null)
             return (null, new Dictionary<string, string> { ["_"] = "الاختيار غير موجود" });
 
- // صلاحية تحرير التسويات (ب-2 §13): absent row = unlocked, matching the defaults.
+ // Adjustments edit unlock (B-2 §13): absent row = unlocked, matching the defaults.
         var approachSettings = await db.ValuationApproachSettings.AsNoTracking()
             .FirstOrDefaultAsync(x => x.ValuationRequestId == valuationRequestId, cancellationToken);
         if (approachSettings is { AdjustmentsEditUnlocked: false })
@@ -402,8 +402,8 @@ public sealed class ValuationComparableSelectionService(
             });
         }
 
-        // مواصفة النموذج التفاعلي: «المنع يقع عند الاعتماد فقط — الإدخال الجزئي محفوظ كمسوّدة».
-        // المبررات تُطالب بها بوابات الإصدار والتنبيهات المنهجية، لا الحفظ.
+        // Interactive model spec: "blocking happens at adoption only — partial input is kept as draft".
+        // Rationales are enforced by issuance gates and methodology alerts, not by save.
         var lines = request.AdjustmentLines ?? [];
         var errors = new Dictionary<string, string>();
         for (var i = 0; i < lines.Count; i++)
@@ -419,7 +419,7 @@ public sealed class ValuationComparableSelectionService(
             if (line.Percent is < -100m or > 100m)
                 errors[$"adjustmentLines[{i}].percent"] = "النسبة يجب أن تكون بين -100 و 100";
 
-            // ق-8-2: التخصيص الفارغ يرث مبرر العامل، لكن الصوري (أقصر من الحد) مرفوض.
+            // Q-8-2: empty override inherits the factor rationale, but a token (shorter than min) is rejected.
             if (JustificationRules.IsTooShort(line.Rationale))
                 errors[$"adjustmentLines[{i}].rationale"] =
                     JustificationRules.TooShortMessageAr("مبرر التسوية للمقارن");
@@ -464,8 +464,8 @@ public sealed class ValuationComparableSelectionService(
                     : Guid.NewGuid(),
                 SelectionId = row.Id,
                 FactorKey = key,
-                // العوامل المعرَّفة تحمل تسميتها القياسية دائماً — تسمية العميل تُقبل
-                // للعامل المخصص فقط (تحصين ضد تسميات مشوّهة الترميز).
+                // Defined factors always keep their standard labels — a custom label is accepted
+                // for custom factors only (guard against mangled encoding labels).
                 LabelAr = key != MarketAdjustmentFactorKeys.Custom
                           && MarketAdjustmentFactorKeys.IsKnown(key)
                     ? MarketAdjustmentFactorKeys.DefaultLabelAr(key)
@@ -541,7 +541,7 @@ public sealed class ValuationComparableSelectionService(
             return (null, new Dictionary<string, string> { ["_"] = "طلب التقييم غير موجود" });
         if (vr.Status == ValuationRequestStatus.Done)
             return (null, new Dictionary<string, string> { ["_"] = "طلب التقييم مكتمل" });
-        // ق-6: بعد صدور نسخة الإيداع يتجمّد التقرير كاملاً — الرمز والشهادة فقط خارج التجميد.
+        // Q-6: after deposit copy, the full report is frozen — only code and certificate are outside the freeze.
         if (await ValuationReportFreeze.IsFrozenAsync(db, vr.Id, cancellationToken))
             return (null, new Dictionary<string, string> { ["_"] = ValuationReportFreeze.FrozenMessageAr });
 

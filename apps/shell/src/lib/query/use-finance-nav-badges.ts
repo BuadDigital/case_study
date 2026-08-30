@@ -14,8 +14,8 @@ import { buildFinanceMyTasks } from "@financial/mfe/lib/finance-my-tasks";
 import { bucketRevenueRows } from "@financial/mfe/lib/finance-revenue-stages";
 
 /**
- * عدّادات السايدبار (قابل للإجراء فقط) — مهامي · الإيرادات · التكاليف.
- * مهامي = طول قائمة مهامي الفعلية (buildFinanceMyTasks) وليس مجموع تقريبي.
+ * Sidebar badges (actionable only) — My Tasks · Revenue · Costs.
+ * My Tasks = length of the real My Tasks list (buildFinanceMyTasks), not an approximate sum.
  */
 export function useFinanceNavBadges(): Partial<Record<FinanceNavArea, number>> {
   const { hasCapability } = usePrototype();
@@ -66,7 +66,7 @@ export function useFinanceNavBadges(): Partial<Record<FinanceNavArea, number>> {
       buckets.awaiting_collection.length +
       buckets.stopped.length;
 
-    // تكاليف: مستحقات + مسيرات/أوامر تحتاج عمل (مسودة، صادر، فاتورة واردة)
+    // Costs: dues + payrolls/orders needing work (draft, issued, inbound invoice)
     const openStmts = statements.filter(
       (s) =>
         s.status === "draft" ||

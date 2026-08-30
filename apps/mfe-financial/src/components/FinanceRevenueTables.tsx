@@ -1,6 +1,6 @@
 "use client";
 
-/** جداول شاشة الإيرادات بمراحلها — مكوّنات على مستوى الوحدة، نُقلت حرفياً من الشاشة (SRP). */
+/** Revenue screen tables by stage — module-level components, moved literally from the screen (SRP). */
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
@@ -68,7 +68,7 @@ import { FinanceEnfazFollowupsPanel } from "./FinanceEnfazFollowupsPanel";
 
 export const EMPTY_TRACKING_ROWS: EnfazTrackingRowDto[] = [];
 
-// الصحيح بلا كسور والكسري بكسرين — يختلف عن fmtSar المشتركة التي تثبّت الكسور دائماً.
+// Whole amounts without decimals; fractional with two — differs from shared fmtSar which always fixes decimals.
 export function fmtSar(n: number) {
   return `${fmt(n, n % 1 === 0 ? 0 : 2)} ر.س`;
 }
@@ -135,7 +135,7 @@ export function Chevron({ open }: { open: boolean }) {
   );
 }
 
-/** أيقونات بنود الأتعاب (مفاتيح + رفع مساحي) بجانب المبلغ */
+/** Fee-line icons (keys + survey) beside the amount */
 export function FeeFlags({ row }: { row: EnfazTrackingRowDto }) {
   const amt = revenueAmountsFromRow(row);
   const hasKey = amt.key > 0;
@@ -245,7 +245,7 @@ export function StudyTable({
   onToggleGroup,
 }: {
   rows: EnfazTrackingRowDto[];
-  /** كل صفوف التتبّع — لحساب «X من Y» داخل أمر العمل */
+  /** All tracking rows — for «X of Y» inside a work order */
   allRows: EnfazTrackingRowDto[];
   collapsed: Record<string, boolean>;
   onToggleGroup: (po: string) => void;
@@ -936,7 +936,7 @@ export function StoppedTable({
 }: {
   rows: EnfazTrackingRowDto[];
   onRecall?: (po: string) => void;
-  /** stopped = إجراء استدعاء · excluded = عرض فقط */
+  /** stopped = recall action · excluded = display only */
   mode?: "stopped" | "excluded";
 }) {
   const cols = finGridRevStopped;

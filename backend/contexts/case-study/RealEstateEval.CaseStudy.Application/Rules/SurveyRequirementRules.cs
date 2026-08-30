@@ -4,7 +4,7 @@ using RealEstateEval.CaseStudy.Domain;
 namespace RealEstateEval.CaseStudy.Application.Rules;
 
 /// <summary>
-/// When an engineering survey (رفع مساحي) is required for a property.
+/// When an engineering survey (cadastral survey) is required for a property.
 /// </summary>
 public static class SurveyRequirementRules
 {
@@ -16,7 +16,7 @@ public static class SurveyRequirementRules
             UnitInsideBuildingClassification,
             StringComparison.Ordinal);
 
-    /// <summary>سجل عيني — identifier, registration number, or registered-title deed kind.</summary>
+    /// <summary>Registered title — identifier, registration number, or registered-title deed kind.</summary>
     public static bool HasRegisteredTitle(WorkOrderProperty prop) =>
         prop.IdentifierType == PropertyIdentifierType.RealEstateRegistration
         || !string.IsNullOrWhiteSpace(prop.RealEstateRegNumber)

@@ -54,7 +54,7 @@ public class ReportingController : ControllerBase
 
         var valuationRows = BuildRecentValuationRequests(allTasks);
 
-        // كان "property-inspection" حرفياً لا يطابق أي قيمة wire — مهام المعاينة كانت تغيب عن التقرير.
+        // "property-inspection" literally did not match any wire value — Inspector tasks were missing from the report.
         var openPartyTasks = allTasks
             .Where(t => !WorkflowTaskStatusValues.IsTerminalValue(t.Status))
             .Where(t =>
@@ -216,7 +216,7 @@ public class ReportingController : ControllerBase
     }
 
  /// <summary>
- /// Drop placeholder assignee rows where the name is just the role title (e.g. «معاين ميداني»)
+ /// Drop placeholder assignee rows where the name is just the role title (e.g. “Field Inspector”)
  /// or the legacy default demo persona superseded by named staff in HR seed.
  /// </summary>
     private static bool IsTeamLoadPlaceholderRow(string name, string roleLabel)

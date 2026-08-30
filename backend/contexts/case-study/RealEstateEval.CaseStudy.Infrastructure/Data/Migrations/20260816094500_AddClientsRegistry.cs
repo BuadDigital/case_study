@@ -6,7 +6,7 @@ using RealEstateEval.Infrastructure.Data.Contexts;
 
 namespace RealEstateEval.CaseStudy.Infrastructure.Data.Contexts.CaseStudy.Migrations;
 
-/// <summary>سجل العملاء + ربط أمر العمل بالعميل ومستخدمي التقرير.</summary>
+/// <summary>Clients registry + link work order to client and report users.</summary>
 [DbContext(typeof(CaseStudyDbContext))]
 [Migration("20260816094500_AddClientsRegistry")]
 public partial class AddClientsRegistry : Migration

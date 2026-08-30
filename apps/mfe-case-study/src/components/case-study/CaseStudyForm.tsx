@@ -349,7 +349,7 @@ export function CaseStudyForm({
     );
   }, [isParty, partyAnswersByKey]);
 
-  // أطراف النموذج لا تتابع تغيّرات بقية الأطراف — المستمعون للأخصائي فقط.
+  // Form parties do not subscribe to other parties' changes — listeners are specialist-only.
   const refreshPartyRevision = () => setPartyRevision((n) => n + 1);
   useWindowEvents(
     isParty

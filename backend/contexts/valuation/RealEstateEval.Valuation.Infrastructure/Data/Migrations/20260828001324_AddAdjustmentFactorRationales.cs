@@ -43,8 +43,8 @@ namespace RealEstateEval.Valuation.Infrastructure.Data.Contexts.Valuation.Migrat
                 columns: new[] { "ValuationRequestId", "SelectionContext", "FactorKey" },
                 unique: true);
 
-            // ق-8-1 (رفع البيانات): المبرر المكرر حرفياً على كل مقارنات العامل يُرفع إلى
-            // مستوى العامل وتُفرَّغ أسطره — فتبقى أسطر التسوية «تخصيصاً» فقط.
+            // Q-8-1 (data lift): a rationale duplicated literally on every comparable of a factor is lifted to
+            // factor level and its rows are cleared — adjustment rows remain "override only".
             migrationBuilder.Sql("""
                 INSERT INTO valuation."ValuationAdjustmentFactorRationales"
                     ("Id", "ValuationRequestId", "SelectionContext", "FactorKey", "RationaleAr", "UpdatedAtUtc", "UpdatedByUserId")
@@ -74,7 +74,7 @@ namespace RealEstateEval.Valuation.Infrastructure.Data.Contexts.Valuation.Migrat
         /// <inheritdoc />
         protected override void Down(MigrationBuilder migrationBuilder)
         {
-            // عكس الرفع: مبرر العامل يعود إلى الأسطر الفارغة قبل إسقاط الجدول.
+            // Reverse lift: factor rationale is copied back onto empty rows before dropping the table.
             migrationBuilder.Sql("""
                 UPDATE valuation."ValuationComparableAdjustmentLines" l
                 SET "Rationale" = fr."RationaleAr"

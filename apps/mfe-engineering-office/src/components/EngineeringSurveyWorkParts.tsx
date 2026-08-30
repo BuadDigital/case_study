@@ -1,6 +1,6 @@
 "use client";
 
-/** أجزاء لوحة عمل الرفع المساحي — أنواع ومساعدات على مستوى الوحدة، نُقلت حرفياً (SRP). */
+/** Survey work-panel parts — module-level types and helpers, moved literally (SRP). */
 
 import dynamic from "next/dynamic";
 import { InlineLoadingSkeleton } from "@platform/ui-kit";

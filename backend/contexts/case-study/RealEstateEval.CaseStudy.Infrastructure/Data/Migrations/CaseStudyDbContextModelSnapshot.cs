@@ -465,35 +465,6 @@ namespace RealEstateEval.CaseStudy.Infrastructure.Data.Contexts.CaseStudy.Migrat
                     b.ToTable("NumberedDocuments", "case_study");
                 });
 
-            modelBuilder.Entity("RealEstateEval.Domain.ReferenceSequence", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid");
-
-                    b.Property<int>("LastValue")
-                        .HasColumnType("integer");
-
-                    b.Property<string>("Prefix")
-                        .IsRequired()
-                        .HasMaxLength(8)
-                        .HasColumnType("character varying(8)");
-
-                    b.Property<DateTime>("UpdatedAtUtc")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<int>("Year")
-                        .HasColumnType("integer");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("Prefix", "Year")
-                        .IsUnique()
-                        .HasDatabaseName("UX_case_study_ReferenceSequences_Prefix_Year");
-
-                    b.ToTable("CaseStudyReferenceSequences", "case_study");
-                });
-
             modelBuilder.Entity("RealEstateEval.CaseStudy.Domain.PartyTaskSubmission", b =>
                 {
                     b.Property<Guid>("Id")
@@ -1051,16 +1022,16 @@ namespace RealEstateEval.CaseStudy.Infrastructure.Data.Contexts.CaseStudy.Migrat
                         .HasMaxLength(32)
                         .HasColumnType("character varying(32)");
 
+                    b.Property<string>("ReferenceNumber")
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)");
+
                     b.Property<string>("Region")
                         .HasMaxLength(100)
                         .HasColumnType("character varying(100)");
 
                     b.Property<Guid?>("RegionId")
                         .HasColumnType("uuid");
-
-                    b.Property<string>("ReferenceNumber")
-                        .HasMaxLength(32)
-                        .HasColumnType("character varying(32)");
 
                     b.Property<DateTime?>("RemoteInspectionApprovedAtUtc")
                         .HasColumnType("timestamp with time zone");
@@ -1107,6 +1078,9 @@ namespace RealEstateEval.CaseStudy.Infrastructure.Data.Contexts.CaseStudy.Migrat
                     b.Property<string>("SouthFacadeFinishing")
                         .HasMaxLength(128)
                         .HasColumnType("character varying(128)");
+
+                    b.Property<string>("SpecialistReportExtrasJson")
+                        .HasColumnType("jsonb");
 
                     b.Property<string>("UninspectedUnitsJson")
                         .HasColumnType("text");
@@ -1251,6 +1225,35 @@ namespace RealEstateEval.CaseStudy.Infrastructure.Data.Contexts.CaseStudy.Migrat
                     b.HasIndex("PoNumber", "PropertyOrdinal");
 
                     b.ToTable("WorkflowTasks", "case_study");
+                });
+
+            modelBuilder.Entity("RealEstateEval.Domain.ReferenceSequence", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("LastValue")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("Prefix")
+                        .IsRequired()
+                        .HasMaxLength(8)
+                        .HasColumnType("character varying(8)");
+
+                    b.Property<DateTime>("UpdatedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("Year")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Prefix", "Year")
+                        .IsUnique()
+                        .HasDatabaseName("UX_case_study_ReferenceSequences_Prefix_Year");
+
+                    b.ToTable("CaseStudyReferenceSequences", "case_study");
                 });
 
             modelBuilder.Entity("RealEstateEval.CaseStudy.Domain.BuildingInventoryLine", b =>

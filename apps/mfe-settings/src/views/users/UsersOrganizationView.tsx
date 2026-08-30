@@ -73,8 +73,8 @@ const UserProfileModal = dynamic(
   { ssr: false },
 );
 
-// تحميل مسبق عند التحويم/التركيز — بدونها ينتظر المستخدم جلب الحزمة بعد النقر
-// مباشرة (bundle-preload). أزرار الصفوف تُحوَّم قبل النقر عادةً.
+// Prefetch on hover/focus — without it the user waits for the bundle after click
+// (bundle-preload). Row buttons are usually hovered before click.
 const preloadEditStaffUserModal = () =>
   void import("../../components/EditStaffUserModal");
 const preloadUserProfileModal = () =>
@@ -278,7 +278,7 @@ export function UsersOrganizationView() {
   } | null>(null);
   const [issuingTicketFor, setIssuingTicketFor] = useState<string | null>(null);
 
-  // الإدخال فوري والترشيح مؤجل إطاراً — ترشيح محلي بحت (rerender-use-deferred-value).
+  // Input stays immediate; filtering is deferred one frame — pure local filter (rerender-use-deferred-value).
   const deferredSearch = useDeferredValue(search);
 
   const filteredUsers = useMemo(() => {
@@ -360,7 +360,7 @@ export function UsersOrganizationView() {
         userName: result.result.userName,
       });
       setAdding(true);
-      // الإبطال يعيد جلب الاستعلام النشط بنفسه — refetch إضافي كان GET ثانياً مطابقاً.
+      // Invalidation already refetches the active query — an extra refetch was a duplicate GET.
       await queryClient.invalidateQueries({ queryKey: prototypeKeys.staffUsers() });
       showToast("تم إنشاء المستخدم بنجاح.", "success");
     } finally {
@@ -405,7 +405,7 @@ export function UsersOrganizationView() {
         );
         return;
       }
-      // الإبطال يعيد جلب الاستعلام النشط بنفسه — refetch إضافي كان GET ثانياً مطابقاً.
+      // Invalidation already refetches the active query — an extra refetch was a duplicate GET.
       await queryClient.invalidateQueries({ queryKey: prototypeKeys.staffUsers() });
       showToast("تم تعطيل المستخدم.", "success");
     } finally {
@@ -432,7 +432,7 @@ export function UsersOrganizationView() {
       }
 
       setEditingUser(null);
-      // الإبطال يعيد جلب الاستعلام النشط بنفسه — refetch إضافي كان GET ثانياً مطابقاً.
+      // Invalidation already refetches the active query — an extra refetch was a duplicate GET.
       await queryClient.invalidateQueries({ queryKey: prototypeKeys.staffUsers() });
       showToast("تم حفظ التعديلات.", "success");
       return null;
@@ -458,7 +458,7 @@ export function UsersOrganizationView() {
         );
         return;
       }
-      // الإبطال يعيد جلب الاستعلام النشط بنفسه — refetch إضافي كان GET ثانياً مطابقاً.
+      // Invalidation already refetches the active query — an extra refetch was a duplicate GET.
       await queryClient.invalidateQueries({ queryKey: prototypeKeys.staffUsers() });
       showToast("تم تفعيل المستخدم.", "success");
     } finally {
@@ -479,7 +479,7 @@ export function UsersOrganizationView() {
         );
         return;
       }
-      // الإبطال يعيد جلب الاستعلام النشط بنفسه — refetch إضافي كان GET ثانياً مطابقاً.
+      // Invalidation already refetches the active query — an extra refetch was a duplicate GET.
       await queryClient.invalidateQueries({ queryKey: prototypeKeys.staffUsers() });
       showToast("تم فك قفل الحساب.", "success");
     } finally {
@@ -578,7 +578,7 @@ export function UsersOrganizationView() {
                         >
                           {user.name}
                         </button>
-                        {/* ورشة الترقيم (بند البتّ 5): الرقم المرجعي يظهر لا يُخفى. */}
+                        {/* Numbering workshop (bit item 5): reference number is shown, not hidden. */}
                         {user.referenceNumber ? (
                           <span
                             className="block text-[10px] text-text-3"

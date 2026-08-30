@@ -1,6 +1,6 @@
 "use client";
 
-import { Input, Label } from "@platform/ui-kit";
+import { GoogleMapPin, Input, Label } from "@platform/ui-kit";
 import {
   COMPARABLE_SOURCE_OPTIONS,
   computedPricePerSqm,
@@ -24,6 +24,13 @@ export function ComparablePropertyEntryFields({
     key: K,
     value: ComparableEntryDraft[K],
   ) => onChange({ ...draft, [key]: value });
+
+  const latNum = Number.parseFloat(draft.latitude);
+  const lngNum = Number.parseFloat(draft.longitude);
+  const mapPin =
+    Number.isFinite(latNum) && Number.isFinite(lngNum)
+      ? { lat: latNum, lng: lngNum }
+      : null;
 
   return (
     <div className="grid gap-2 sm:grid-cols-2">
@@ -181,27 +188,59 @@ export function ComparablePropertyEntryFields({
         />
       </div>
       {showCoordinates !== false ? (
-        <div className="grid grid-cols-2 gap-2 sm:col-span-2">
-          <div>
-            <Label className="text-[10.5px] text-text-2">خط العرض</Label>
-            <Input
-              dir="ltr"
-              value={draft.latitude}
+        <div className="sm:col-span-2">
+          <Label className="text-[10.5px] text-text-2">موقع العقار على الخريطة</Label>
+          <div className="relative mt-1 h-[220px] overflow-hidden rounded-md border border-border-md sm:h-[260px]">
+            <GoogleMapPin
+              lat={mapPin?.lat}
+              lng={mapPin?.lng}
+              title="خريطة موقع المقارن"
+              interactive={!disabled}
               disabled={disabled}
-              onChange={(e) => patch("latitude", e.target.value)}
-              className="text-xs"
+              mapTypeControl
+              resolvePlace={!disabled}
+              pinLabel={
+                [
+                  draft.comparablePropertyType || null,
+                  draft.district || null,
+                  draft.price ? `${draft.price} ر.س` : null,
+                ]
+                  .filter(Boolean)
+                  .join(" · ") || "موقع المقارن"
+              }
+              onCoordsChange={
+                disabled
+                  ? undefined
+                  : (lat, lng) =>
+                      onChange({
+                        ...draft,
+                        latitude: lat.toFixed(6),
+                        longitude: lng.toFixed(6),
+                      })
+              }
+              onLocationDetail={
+                disabled
+                  ? undefined
+                  : (detail) =>
+                      onChange({
+                        ...draft,
+                        latitude: detail.lat.toFixed(6),
+                        longitude: detail.lng.toFixed(6),
+                        city: detail.city?.trim() || draft.city,
+                        district: detail.district?.trim() || draft.district,
+                      })
+              }
             />
           </div>
-          <div>
-            <Label className="text-[10.5px] text-text-2">خط الطول</Label>
-            <Input
-              dir="ltr"
-              value={draft.longitude}
-              disabled={disabled}
-              onChange={(e) => patch("longitude", e.target.value)}
-              className="text-xs"
-            />
-          </div>
+          <p className="mb-0 mt-1 text-center text-[11px] text-text-3">
+            {disabled
+              ? mapPin
+                ? `${mapPin.lat.toFixed(6)}، ${mapPin.lng.toFixed(6)}`
+                : "لا موقع محدد"
+              : mapPin
+                ? `اضغط أو اسحب الدبوس — ${mapPin.lat.toFixed(6)}، ${mapPin.lng.toFixed(6)}`
+                : "اضغط على الخريطة لتحديد الموقع (يُعبَّأ الحي والمدينة تلقائياً عند الإمكان)"}
+          </p>
         </div>
       ) : null}
       {showDescription !== false ? (

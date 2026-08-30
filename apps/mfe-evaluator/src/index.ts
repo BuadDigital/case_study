@@ -1,6 +1,7 @@
-/** @evaluator/mfe — مقيم عقاري (property appraisal upload, advisory, recall). */
+/** @evaluator/mfe — real-estate appraiser (property appraisal upload, advisory, recall). */
 
 export { partyAppraisalExtensions } from "./extensions/party-appraisal-extensions";
+export { ensureEvaluatorRuntimeBridgeRegistered } from "./extensions/register-evaluator-runtime-bridge";
 
 export { EvaluatorWindow } from "./components/evaluator/EvaluatorWindow";
 export { EvaluatorValuationReportTab } from "./components/evaluator/EvaluatorValuationReportTab";

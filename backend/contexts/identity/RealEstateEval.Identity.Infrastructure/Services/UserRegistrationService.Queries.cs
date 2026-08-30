@@ -179,7 +179,7 @@ public partial class UserRegistrationService
             };
         }
 
-        // GroupBy بدل ToDictionary: تكرار الدور التنظيمي (مثل CDO مرتين) يجب ألا يُسقط النظرة العامة.
+        // GroupBy instead of ToDictionary: duplicate org role (e.g. CDO twice) must not drop the overview.
         var byRole = rows
             .Select(p => (Profile: p, Person: ToPerson(p)))
             .Where(x => x.Person is not null)

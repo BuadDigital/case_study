@@ -36,7 +36,7 @@ export const COST_UNIT_OPTIONS = [
   { key: "lump", label: "مقطوع" },
 ];
 
-/** مجموعة ١ — مسطحات المبنى والأدوار (تقبل نسبة البناء وتدخل في مسطحات البناء). */
+/** Group 1 — building floor areas (accepts built-up ratio; included in building areas). */
 export const COST_GROUP1_KEYS = new Set([
   "basement",
   "ground_floor",
@@ -49,7 +49,7 @@ export const COST_GROUP1_KEYS = new Set([
 ]);
 
 export function costGroupOf(line: ValuationCostLineDto): "area" | "extra" {
-  // بند مخصص يرث مجموعته من structureKind (floor = مسطحات) — كما في النموذج التفاعلي.
+  // Custom line inherits its group from structureKind (floor = areas) — as in the interactive form.
   if (line.itemKey === "custom") {
     return line.structureKind === "floor" ? "area" : "extra";
   }
@@ -57,13 +57,13 @@ export function costGroupOf(line: ValuationCostLineDto): "area" | "extra" {
 }
 
 /**
- * حساب البند محلياً بقواعد النموذج التفاعلي: الأدوار المتكررة تُشتق من مسطح الدور
- * الأول × العدد وترث سعر متره عند تركه فارغاً؛ نسبة البناء تُطبَّق على بنود م².
+ * Local line math per interactive-form rules: repeated floors derive from first-floor area
+ * × count and inherit its unit rate when left empty; built-up ratio applies to m² lines.
  */
 export function costLineComputed(
   line: ValuationCostLineDto,
   all: ValuationCostLineDto[],
-  // null = «معروف أنه غائب» — يوفّر find لكل بند حين يمرره المستدعي (js-perf).
+  // null = “known absent” — skips find-per-line when the caller passes it (js-perf).
   firstFloorHint?: ValuationCostLineDto | null,
 ) {
   const firstFloor =

@@ -52,7 +52,7 @@ public static class WorkflowTaskKindValues
     public const string FieldInspection = "field-inspection";
     public const string PropertyAppraisal = "property-appraisal";
     public const string EngineeringSurvey = "engineering-survey";
- /// <summary>Ops court-visit fee charges (أتعاب الزيارة) — party-billing ready/statement kind.</summary>
+ /// <summary>Ops court-visit fee charges (visit fees) — party-billing ready/statement kind.</summary>
     public const string CourtVisit = "court-visit";
 
  /// <summary>Party kinds that may still be spawned as children of a case-study parent.</summary>

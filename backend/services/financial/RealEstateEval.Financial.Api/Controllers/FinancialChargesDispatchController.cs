@@ -10,6 +10,7 @@ namespace RealEstateEval.Financial.Api.Controllers;
 [ApiController]
 [Route("api/financial-dispatch")]
 [Authorize]
+[RequireUpstreamDispatch]
 public sealed class FinancialChargesDispatchController(
     ICourtVisitFeeChargeService courtVisitFees,
     IKeyReceiptFeeChargeService keyReceiptFees,

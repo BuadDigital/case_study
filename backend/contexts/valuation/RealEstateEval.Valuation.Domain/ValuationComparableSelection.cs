@@ -9,7 +9,7 @@ public class ValuationComparableSelection
     public Guid Id { get; set; }
     public Guid ValuationRequestId { get; set; }
     public Guid ComparablePropertyId { get; set; }
-    /// <summary>market | land_within_cost — جدولان مستقلان بلا استيراد.</summary>
+    /// <summary>market | land_within_cost — two independent tables with no import between them.</summary>
     public string SelectionContext { get; set; } = ComparableSelectionContexts.Market;
     public int SortOrder { get; set; }
  /// <summary>Adopted into the comps table.</summary>
@@ -25,16 +25,16 @@ public class ValuationComparableSelection
  /// <summary>mandatory rationale for a manual weight override.</summary>
     public string? WeightOverrideRationale { get; set; }
 
- /// <summary>measurement method for the area adjustment (المضاعف / الأمثال).</summary>
+ /// <summary>measurement method for the area adjustment (multiplier / multiples).</summary>
     public string AreaAdjustmentMethod { get; set; } = AreaAdjustmentMethods.Multiplier;
 
  /// <summary>
- /// مواصفة النموذج التفاعلي (compEdit): تجاوز يدوي لسعر العقار الإجمالي لهذا التقييم فقط —
- /// لا يمس بيانات المقارن في البنك المشترك. Null = قيمة البنك.
+ /// Interactive model spec (compEdit): manual override of total property price for this valuation only —
+ /// does not touch comparable data in the shared bank. Null = bank value.
  /// </summary>
     public decimal? PriceOverrideSar { get; set; }
 
- /// <summary>تجاوز يدوي لمساحة المقارن (م²) لهذا التقييم فقط. Null = قيمة البنك.</summary>
+ /// <summary>Manual override of comparable area (m²) for this valuation only. Null = bank value.</summary>
     public decimal? AreaOverrideSqm { get; set; }
 
     public ValuationRequest? ValuationRequest { get; set; }
@@ -42,10 +42,10 @@ public class ValuationComparableSelection
     public ICollection<ValuationComparableAdjustmentLine> AdjustmentLines { get; set; } = [];
 }
 
-/// <summary>Selection / adoption helpers — منطق-التسويات: يلزم مقارن معتمد واحد على الأقل.</summary>
+/// <summary>Selection / adoption helpers — adjustments logic: at least one adopted comparable is required.</summary>
 public static class ValuationComparableSelectionRules
 {
-    /// <summary>منطق-التسويات §٤: خطأ عند صفر معتمد — يلزم واحد على الأقل.</summary>
+    /// <summary>Adjustments logic §4: error when zero adopted — at least one is required.</summary>
     public const int MinimumAdoptedForMarketApproach = 1;
 
     public static bool MeetsMinimumAdopted(IEnumerable<ValuationComparableSelection> rows) =>

@@ -91,11 +91,11 @@ export function FinanceRevenueView({
   stage: RevenueStage;
   onStageChange: (stage: RevenueStage) => void;
   focusPo: string | null;
-  /** forStage = مرحلة العرض الحالية حتى لا يُكتب stage قديم في الرابط */
+  /** forStage = current display stage so an old stage is not written into the URL */
   onFocusPo: (po: string | null, forStage?: RevenueStage) => void;
 }) {
   const [search, setSearch] = useState("");
-  /** قيمة مؤجَّلة للفلترة — إدخال البحث يبقى فورياً دون حجب الكتابة */
+  /** Deferred value for filtering — search input stays immediate without blocking typing */
   const deferredSearch = useDeferredValue(search);
   const [period, setPeriod] = useState<"all" | "30" | "90">("all");
   const [city, setCity] = useState("all");
@@ -103,8 +103,8 @@ export function FinanceRevenueView({
   const [selected, setSelected] = useState<Record<string, boolean>>({});
   const [followMode, setFollowMode] = useState(false);
   /**
-   * مرحلة العرض الفورية — لا تعتمد على تأخّر searchParams بعد النقر،
-   * وإلا يظهر عدّاد تبويب ومحتوى مرحلة أخرى.
+   * Immediate display stage — do not wait on delayed searchParams after click,
+   * or the tab badge and content from another stage would show.
    */
   const [viewStage, setViewStage] = useState(stage);
   const [prevStage, setPrevStage] = useState(stage);
@@ -123,7 +123,7 @@ export function FinanceRevenueView({
   const cities = useMemo(() => uniqueCities(allRows), [allRows]);
   const buckets = useMemo(() => bucketRevenueRows(allRows), [allRows]);
 
-  /** صفوف كل مرحلة بعد نفس فلاتر البحث/المدينة/الفترة — العدّادات = ما يُعرض */
+  /** Rows per stage after the same search/city/period filters — badges = what is shown */
   const filteredBuckets = useMemo(() => {
     const next = {} as Record<RevenueStage, EnfazTrackingRowDto[]>;
     for (const s of REVENUE_STAGES) {
@@ -145,7 +145,7 @@ export function FinanceRevenueView({
     [filteredBuckets, viewStage],
   );
 
-  /** إعادة تعيين التحديد عند تغيير المرحلة */
+  /** Reset selection when the stage changes */
   useEffect(() => {
     setSelected({});
     setFollowMode(false);
@@ -193,13 +193,13 @@ export function FinanceRevenueView({
 
   const onInvoiceSelected = () => {
     if (selectedRows.length === 0) return;
-    // أول أمر عمل ضمن المحدد — التجميع للعرض فقط
+    // First work order within selection — grouping is display-only
     openPo(selectedRows[0]!.poNumber);
   };
 
   const changeStage = (id: RevenueStage) => {
     setViewStage(id);
-    // setStage يصفّر po ويحدّث الرابط
+    // setStage clears po and updates the URL
     onStageChange(id);
   };
 
@@ -212,7 +212,7 @@ export function FinanceRevenueView({
         counts={counts}
       />
 
-      {/* ترتيب HTML: بحث (يمين · flex:1) → مدينة → فترة */}
+      {/* HTML order: search (right · flex:1) → city → period */}
       <div className={finFilters}>
         <div className={finSearch}>
           <SearchIcon />

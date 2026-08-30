@@ -89,7 +89,7 @@ export function resolveSlaTimerRatio(
   return Math.min(1, left / total);
 }
 
-/** أيام + ساعات:دقائق:ثوانٍ — للعرض في الجدول */
+/** Days + hours:minutes:seconds — for table display */
 export function formatRemainingDuration(
   dueIso: string,
   now: Date = new Date(),
@@ -107,7 +107,7 @@ export function formatRemainingDuration(
   };
 }
 
-/** نص مؤقت البطاقة — تستدعيه ورقة الساعة داخل البطاقة كل ثانية (timerTick). */
+/** Card timer text — called by the clock sheet inside the card every second (timerTick). */
 export function remainingTimerTick(
   dueIso: string,
 ): (nowMs: number) => { label: string; overdue: boolean } | null {
@@ -120,7 +120,7 @@ export function remainingTimerTick(
   };
 }
 
-/** Unregistered / bourse-inquiry slot — e.g. «قيد الدراسة 1». */
+/** Unregistered / bourse-inquiry slot — e.g. «Under study 1». */
 export function formatPropertySlotOnPo(
   task: WorkflowTask,
   _record?: PoIntakeRecord,
@@ -129,7 +129,7 @@ export function formatPropertySlotOnPo(
   return `${BOURSE_INQUIRY_IDENTIFIER_STATUS} ${ordinal}`;
 }
 
-/** Deed/reg when registered; otherwise «قيد الدراسة N» (not N/total). */
+/** Deed/reg when registered; otherwise «Under study N» (not N/total). */
 export function formatPrimaryDataPropertyLabel(
   task: WorkflowTask,
   property: PoPropertyIntake | null,
@@ -351,7 +351,7 @@ export function compareQueueTasksNewestFirst(
 
 /**
  * Most recently updated task first (confirmation of distribution, reassignment…).
- * Use for دراسة حالة العقارات so newly distributed cases float to the top.
+ * Use for property case-study so newly distributed cases float to the top.
  */
 export function compareQueueTasksByUpdatedNewestFirst(
   a: WorkflowTask,

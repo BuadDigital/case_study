@@ -239,8 +239,8 @@ export function PropertyDetailLinkedTab({
     };
   }, [deedNumber, poNumber, caseStudyTask, property.id, record.properties]);
 
-  // القرار 20 — العقار المجمع: الروابط المؤكَّدة بشرياً تُعرض هنا أيضاً، لا في
-  // شاشة البورصة وحدها. تُجلب مستقلةً حتى لا يُسقط تعذّرها بقية الارتباطات.
+  // Decision 20 — grouped property: human-confirmed links show here too, not only on
+  // the bourse screen. Fetched independently so a failure there does not drop the other links.
   useEffect(() => {
     let cancelled = false;
     const config = workOrdersApiConfig();

@@ -15,7 +15,7 @@ namespace RealEstateEval.Application.Tests;
 
 /// <summary>
 /// Auto reminders repeat on the work-hours cadence, but the activity feed must not fill up with
-/// duplicate "تذكير بمهمة" rows: while the previous reminder notification is still unread, a
+/// duplicate "task reminder" rows: while the previous reminder notification is still unread, a
 /// re-emit refreshes it in place (stable SourceEvent + the unread source-event index probe in
 /// NotificationService). A fresh row may only appear after the user read the previous one.
 /// </summary>

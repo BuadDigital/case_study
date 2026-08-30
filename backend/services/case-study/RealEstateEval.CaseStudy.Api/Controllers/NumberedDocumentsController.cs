@@ -1,18 +1,19 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using RealEstateEval.Shared.Web;
+using RealEstateEval.Shared.Web.Authorization;
 using RealEstateEval.CaseStudy.Application.Abstractions;
 using RealEstateEval.CaseStudy.Application.Contracts;
 
 namespace RealEstateEval.CaseStudy.Api.Controllers;
 
 /// <summary>
-/// سجل المستندات المرقّمة (قرار 25 + ورشة الترقيم): تخصيص أرقام الخطابات (LT)
-/// وتقارير دراسة الحالة (CS) لحظة الطباعة، وقراءة السجل.
+/// Numbered Document Register (Decision 25 + Numbering Workshop): Assignment of Letter Numbers (LT)
+/// Case Study (CS) reports are instant printing and reading history.
 /// </summary>
 [ApiController]
 [Route("api/numbered-documents")]
-[Authorize]
+[Authorize(Policy = CapabilityPolicyNames.ManageWorkOrders)]
 public class NumberedDocumentsController : ControllerBase
 {
     private readonly INumberedDocumentService _documents;

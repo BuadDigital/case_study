@@ -13,7 +13,7 @@ namespace RealEstateEval.Financial.Infrastructure.Data.Contexts.Financial.Migrat
  /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
- // E6: مهلة التفاوض تُختم عند دخول «معترض» + سجل مراحل الإشعار المرسلة.
+ // E6: negotiation deadline stamped on entering "disputed" + log of sent notification stages.
             migrationBuilder.Sql(
                 """
                 ALTER TABLE case_study."InspectorFeeLedgers"

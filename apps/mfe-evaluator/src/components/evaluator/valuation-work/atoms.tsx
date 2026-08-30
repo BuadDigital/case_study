@@ -49,7 +49,7 @@ export function FieldLabel({ children }: { children: ReactNode }) {
   );
 }
 
-/** صف دفتر القيمة (invoiceRows) — تسمية وملاحظة يميناً وقيمة يساراً. */
+/** Value-ledger row (invoiceRows) — label/note on the right, value on the left. */
 export function LedgerRow({
   label,
   note,

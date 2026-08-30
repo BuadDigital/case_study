@@ -31,8 +31,8 @@ function SpecialistAttachmentsEditor({
   const [selectedKeys, setSelectedKeys] = useState(() =>
     loadSpecialistPrintAttachmentKeys(propertyId),
   );
-  // قوائم التقييم عبر الاستعلام المشترك بدل جلب مباشر في useEffect —
-  // نفس الكاش الذي تستخدمه شاشة المراجعة النهائية (client-swr-dedup).
+  // Valuation lists via the shared query instead of a direct fetch in useEffect —
+  // same cache used by the final-review screen (client-swr-dedup).
   const { data: valuationLists } = useValuationListsQuery();
 
   useEffect(() => {
@@ -151,7 +151,7 @@ function SpecialistAttachmentsEditor({
   );
 }
 
-/** Specialist fills finishing + search scope + ESG + print attachments on تقييم العقار. */
+/** Specialist fills finishing + search scope + ESG + print attachments on property valuation. */
 export function SpecialistValuationReportInputs({
   propertyId,
   documents,
@@ -159,7 +159,7 @@ export function SpecialistValuationReportInputs({
   propertyId: string;
   documents: PropertyDetailDocumentEntry[];
 }) {
-  // يعبّئها الأخصائي هنا (دراسة الحالة → تقييم العقار)، وتظهر للمقيّم للعرض فقط.
+  // Filled here by the specialist (case study → property valuation); shown read-only to the appraiser.
   return (
     <div className="mb-4">
       <div className="mb-3 flex items-center gap-2.5">

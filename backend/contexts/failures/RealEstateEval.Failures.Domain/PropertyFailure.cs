@@ -1,7 +1,7 @@
 namespace RealEstateEval.Failures.Domain;
 
 /// <summary>
-/// Property failure (تعذر). Status transitions are owned here; side effects (timeline,
+/// Property failure (obstruction). Status transitions are owned here; side effects (timeline,
 /// task obstruction, deed status) stay in the application service.
 /// </summary>
 public class PropertyFailure

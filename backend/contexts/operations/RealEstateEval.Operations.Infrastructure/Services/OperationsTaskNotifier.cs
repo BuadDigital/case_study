@@ -264,7 +264,7 @@ public sealed class OperationsTaskNotifier
  // same each time, so the SourceEvent must stay stable (no timestamp): while the previous
  // reminder is still unread, NotificationService refreshes it in place
  // (IX_UserNotifications_UserId_SourceEvent_Unread) instead of piling up duplicate
- // "تذكير بمهمة" rows in the activity feed. A new row only appears after the user read
+ // "Task Reminder" rows in the activity feed. A new row only appears after the user reads
  // the previous one.
         var body = $"تذكير بالمهمة {entity.DisplayId}: {entity.Title}.";
         var href = OperationsTaskHref(entity.Id);
@@ -288,7 +288,7 @@ public sealed class OperationsTaskNotifier
                 cancellationToken);
         }
 
- // Auto reminders escalate to creator until close (دورة اسناد المهام ).
+ // Auto reminders escalate to creator until close (assignment cycle).
         if (!auto) return;
 
         var creatorId = entity.CreatedBy.Trim();
@@ -449,7 +449,7 @@ public sealed class OperationsTaskNotifier
 
     private IReadOnlyList<string>? _stakeholderRoleUserIds;
 
- /// <summary>نداء واحد لكل دور في نطاق الطلب — سويعة التذكير كانت تكرره لكل مهمة.</summary>
+ /// <summary>One call for each role in the scope of the order — a reminder was repeated for each task.</summary>
     private async Task<IReadOnlyList<string>> ResolveStakeholderRoleUserIdsAsync(
         CancellationToken cancellationToken)
     {

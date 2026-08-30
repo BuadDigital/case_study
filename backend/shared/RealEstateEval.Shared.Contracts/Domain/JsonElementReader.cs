@@ -4,8 +4,8 @@ using System.Text.Json;
 namespace RealEstateEval.Domain;
 
 /// <summary>
-/// قراءات آمنة من JsonElement لحمولات الإرسالات — كانت منسوخة في أربعة مدقّقات
-/// عبر مشروعي Application ودراسة الحالة.
+/// JsonElement secure reads of submission payloads — replicated in four validators
+/// Through the Application and Case Study projects.
 /// </summary>
 public static class JsonElementReader
 {

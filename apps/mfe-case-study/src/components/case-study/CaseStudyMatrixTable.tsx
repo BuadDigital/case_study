@@ -223,7 +223,7 @@ export function CaseStudyMatrixTable({
     );
   }
 
-  /* Fixed columns so header (نعم/لا) lines up with body cells */
+  /* Fixed columns so header (yes/no) lines up with body cells */
   const ynColClass = "w-[72px] text-center";
   const headClass =
     "border-b-2 border-gold bg-surface-2 px-3 py-2.5 text-[12px] font-bold text-heading";

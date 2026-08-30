@@ -1,6 +1,6 @@
 "use client";
 
-/** أجزاء جسم عمل المعاينة الميدانية — مكوّنات على مستوى الوحدة، نُقلت حرفياً (SRP). */
+/** Field-inspection work body parts — module-level components, moved verbatim (SRP). */
 
 import { useCallback, useEffect, useRef, useState, type ReactNode, type RefObject, Fragment } from "react";
 import { Button, FormRow, GoogleMapPin, InlineLoadingSkeleton, Input, Label, Note, Select, Textarea, cn, formControlClassName, useToast } from "@platform/ui-kit";

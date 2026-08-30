@@ -5,9 +5,9 @@ export type PropertyFieldCatalogEntry = {
 
 export type PropertyFieldCatalogGroup = {
   id: string;
-  /** الدور صاحب المصدر */
+  /** Source-owning role */
   sourceRole: string;
-  /** الشاشة أو النموذج */
+  /** Screen or form */
   screen: string;
   fields: PropertyFieldCatalogEntry[];
 };
@@ -71,7 +71,7 @@ const propertyDetailFields: PropertyFieldCatalogEntry[] = [
   { key: "reportStatus", label: "حالة التقرير" },
 ];
 
-/** حقول عرض فقط — تبويب البيانات الأساسية (تفاصيل العقار). */
+/** Display-only fields — basic-data tab (property detail). */
 const propertyDetailBasicDisplayFields: PropertyFieldCatalogEntry[] = [
   { key: "ownershipStatus", label: "حالة الملك" },
   { key: "coordinatesDisplay", label: "الإحداثيات" },
@@ -85,7 +85,7 @@ const propertyDetailBasicDisplayFields: PropertyFieldCatalogEntry[] = [
   { key: "bourseLastUpdateDisplay", label: "تاريخ آخر تحديث (البورصة)" },
 ];
 
-/** شريط ملخص العقار (رأس الصفحة). */
+/** Property summary strip (page header). */
 const propertyDetailHeroFields: PropertyFieldCatalogEntry[] = [
   { key: "propertyIndex", label: "ترتيب العقار في أمر العمل" },
   { key: "assignmentType", label: "نوع الإسناد" },
@@ -162,7 +162,7 @@ const inspectorInfathFields: PropertyFieldCatalogEntry[] = [
   { key: "siteLocation", label: "موقع الأصل" },
 ];
 
-/** مفاتيح نموذج المعاينة (طبقة التخزين — تُربط بحقول إنفاذ أعلاه). */
+/** Inspection-form keys (storage layer — mapped to Enfath fields above). */
 const inspectorFormKeyFields: PropertyFieldCatalogEntry[] = [
   { key: "streetWidthM", label: "عرض الشارع (م) — مفتاح النموذج" },
   { key: "builtAreaSqm", label: "مساحة البناء (م²) — مفتاح النموذج" },
@@ -393,7 +393,7 @@ const systemAutoFields: PropertyFieldCatalogEntry[] = [
   { key: "deedPhoto", label: "صك ملكية الأصل (PDF)" },
 ];
 
-/** القسم ٨ — بيانات العاملين على التقرير (شاشة المقيّم). */
+/** Section 8 — report worker data (appraiser screen). */
 const infathWorkerLicenseFields: PropertyFieldCatalogEntry[] = [
   { key: "workerRole", label: "دور العامل على التقرير" },
   { key: "workerName", label: "اسم العامل على التقرير" },
@@ -549,7 +549,7 @@ const backendApiFields: PropertyFieldCatalogEntry[] = [
   { key: "PropertyContact.Phone", label: "ضابط الاتصال — الجوال (API)" },
 ];
 
-/** جميع مجموعات حقول العقار مرتبة حسب الدور والشاشة. */
+/** All property field groups ordered by role and screen. */
 export const PROPERTY_FIELDS_CATALOG: PropertyFieldCatalogGroup[] = [
   {
     id: "po-intake",
@@ -796,7 +796,7 @@ export type FieldDictionaryStage = {
   groupIds: readonly string[];
 };
 
-/** أقسام قاموس الحقول المركزي — عرض حسب المرحلة / الطرف. */
+/** Central field-dictionary stages — display by phase / party. */
 export const FIELD_DICTIONARY_STAGES: readonly FieldDictionaryStage[] = [
   {
     id: "primary",

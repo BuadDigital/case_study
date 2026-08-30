@@ -1,7 +1,7 @@
 /**
- * نموذج تعبئة تقرير التقييم — الجانب الصرف (بيانات فقط، لا DOM):
- * يبني ValuationReportLiveFill من الحقائق ويُبقي التطبيق على القالب
- * في valuation-report-live-fill.ts (فصل المسؤوليتين).
+ * Valuation report fill model — pure data side (no DOM):
+ * builds ValuationReportLiveFill from facts and keeps template application
+ * in valuation-report-live-fill.ts (separation of concerns).
  */
 import {
   VALUE_BASIS_OPTIONS,
@@ -14,7 +14,10 @@ import {
   valuePremiseKeyForAssignment,
 } from "@platform/app-shared/prototype/assignment-valuation-defaults";
 import type { PoIntakeRecord, PoPropertyIntake } from "@case-study/mfe/lib/prototype/po-intake-data";
-import { subClientIdFromReportUsers } from "@case-study/mfe/lib/prototype/po-intake-data";
+import {
+  approximatePropertyGeo,
+  subClientIdFromReportUsers,
+} from "@case-study/mfe/lib/prototype/po-intake-data";
 import {
   clientNameFromRecord,
   formatValuationReportUsers,
@@ -68,8 +71,11 @@ import {
   pairsFromOrgLines,
 } from "./valuation-report-print-attachments";
 import {
-  buildComparablesMapSvgDataUrl,
   collectComparablesMapPins,
+  formatSubjectCoordsLabel,
+  resolveComparablesMapImage,
+  resolveSubjectMapCoords,
+  type ComparablesMapPin,
 } from "./valuation-report-comparables-map";
 import type {
   EvaluatorReportChoices,
@@ -178,7 +184,7 @@ export function dash(value: string | null | undefined): string {
   return t || "—";
 }
 
-/** توحيد عناوين القالب للمطابقة — يسقط محارف الاتجاه ويطوي الفراغات. */
+/** Normalize template headings for matching — strip bidi marks and collapse whitespace. */
 export function normLabel(value: string): string {
   return value
     .replace(/[\u200e\u200f\u202a-\u202e\u2066-\u2069]/g, "")
@@ -196,6 +202,25 @@ function joinCoords(inspector?: InspectorWorkspaceDraft | null): string {
   const lng = (inspector?.mapLongitude ?? "").trim();
   if (!lat && !lng) return "";
   return [lat, lng].filter(Boolean).join(" ، ");
+}
+
+function subjectCoordsForReport(
+  inspector: InspectorWorkspaceDraft | null | undefined,
+  property: PoPropertyIntake | null | undefined,
+): { lat: number; lng: number } | null {
+  const approx = property
+    ? approximatePropertyGeo({
+        city: property.city,
+        deedNumber: property.deedNumber,
+      })
+    : null;
+  return resolveSubjectMapCoords({
+    subjectLat: inspector?.mapLatitude,
+    subjectLng: inspector?.mapLongitude,
+    city: property?.city,
+    fallbackLat: approx?.lat ?? null,
+    fallbackLng: approx?.lng ?? null,
+  });
 }
 
 function methodsUsed(choices: EvaluatorReportChoices): string {
@@ -248,7 +273,7 @@ export type ValuationReportLiveFill = {
   buildDescRows: Array<{ key: string; values: string[] }>;
   serviceRows: Array<{ key: string; values: string[] }>;
   comparableRows: Array<{ key: string; values: string[] }>;
-  /** Appendix (أ) — land_within_cost comps only. */
+  /** Appendix (A) — land_within_cost comps only. */
   landComparableRows: Array<{ key: string; values: string[] }>;
   landAppendixNote: string;
   adjustmentRows: Array<{ key: string; values: string[] }>;
@@ -265,7 +290,7 @@ export type ValuationReportLiveFill = {
   isLand: boolean;
   propertyDescription: string;
   reportWorkers: EvaluatorReportWorker[];
-  /** §26 — المقيم المسند من توزيع المعاملات (العمود الرابع). */
+  /** §26 — assigned appraiser from work-order dispatch (fourth column). */
   assignedAppraiserName: string;
   /** §34 — up to 12 field photos (data URLs). */
   photoSlots: ValuationReportSlotAttachment[];
@@ -273,8 +298,10 @@ export type ValuationReportLiveFill = {
   surveySlot: ValuationReportSlotAttachment | null;
   /** §36 — deed document. */
   deedSlot: ValuationReportSlotAttachment | null;
-  /** §18 — uploaded site map or generated SVG from coords. */
+  /** §18 — uploaded site map or generated map from coords. */
   comparableMapSlot: ValuationReportSlotAttachment | null;
+  /** §18 — pins for interactive Google Map in screen preview. */
+  comparablesMapPins: ComparablesMapPin[];
   /** §28 — optional notes under research scope bullets. */
   searchScopeNotes: string;
   /** §28 — empty keeps template bullets; org `researchScopeText` replaces. */
@@ -303,11 +330,11 @@ export type ValuationReportLiveFill = {
   termsBullets: string[];
   /** §32 — org restrictions; empty keeps template list (with date scrub). */
   restrictionsBullets: string[];
-  /** تاريخ التقرير بصيغة yyyy/mm/dd — يستبدل تواريخ العيّنة المجمّدة في §31/§32. */
+  /** Report date as yyyy/mm/dd — replaces frozen sample dates in §31/§32. */
   reportDateSlash: string;
-  /** §33 — «المدينة - الحي» بدل «جدة - الصوارى» المثبتة. */
+  /** §33 — "city - district" instead of the hardcoded "Jeddah - Al Sawari". */
   locationLabel: string;
-  /** §33 — الخريطة المقربة: SVG مولّد عند توفر خريطة مرفوعة للأقمار. */
+  /** §33 — close-up map: generated SVG when an uploaded satellite map is available. */
   closeupMapSlot: ValuationReportSlotAttachment | null;
 };
 
@@ -339,7 +366,7 @@ export function buildValuationReportLiveFill(input: {
   reportType?: string | null;
   currency?: string | null;
   effectiveValuationDate?: string | null;
-  /** المقيم المسند من توزيع المعاملات — عمود المشاركين الرابع. */
+  /** Assigned appraiser from work-order dispatch — fourth participants column. */
   assignedAppraiserName?: string | null;
   survey?: ValuationReportSurveyBounds | null;
   photoSlots?: ValuationReportSlotAttachment[] | null;
@@ -368,7 +395,7 @@ export function buildValuationReportLiveFill(input: {
   independenceText?: string | null;
   termsText?: string | null;
   restrictionsText?: string | null;
-  /** تاريخ سريان معايير IVS — يعوّض {{ivsDate}} في نص المعايير. */
+  /** IVS standards effective date — fills {{ivsDate}} in the standards text. */
   ivsEffectiveDate?: string | null;
 }): ValuationReportLiveFill {
   const { draft, record, property, inspector } = input;
@@ -420,6 +447,10 @@ export function buildValuationReportLiveFill(input: {
   ]
     .filter(Boolean)
     .join(" · ");
+  const subjectCoords = subjectCoordsForReport(inspector, property);
+  const coordsLabel = subjectCoords
+    ? formatSubjectCoordsLabel(subjectCoords.lat, subjectCoords.lng)
+    : joinCoords(inspector);
 
   const cells: Record<string, string> = {
     "اسم العميل": dash(client),
@@ -472,7 +503,7 @@ export function buildValuationReportLiveFill(input: {
     "استخدام العقار": dash(
       property?.classification || inspector?.featureValues?.propertyUsage,
     ),
-    "إحداثيات الموقع": dash(joinCoords(inspector)),
+    "إحداثيات الموقع": dash(coordsLabel),
     "رقم الصك": dash(property?.deedNumber),
     "تاريخ الصك": dash(property?.deedDate),
     "رقم رخصة البناء وتاريخها": dash(license),
@@ -740,7 +771,7 @@ export function buildValuationReportLiveFill(input: {
     cells[`المقارن (${n})`] = dash(c.comparablePropertyType);
   });
 
-  // هوية المقيم المعتمد تُكتب دائماً — «—» عند الفراغ حتى لا تُطبع بيانات عيّنة القالب.
+  // Always write the approving appraiser identity — "—" when empty so sample template data is not printed.
   cells["اسم المقيم المعتمد"] = dash(input.certifiedName ?? "");
   cells["رقم ترخيص مزاولة المهنة"] = dash(input.certifiedLicense ?? "");
   const membershipNo = (
@@ -826,37 +857,46 @@ export function buildValuationReportLiveFill(input: {
   const adj = buildAdjustmentSheetRows(comps, input.market);
   const indirect = buildIndirectCostSheetRows(input.cost);
 
+  const approx = property
+    ? approximatePropertyGeo({
+        city: property.city,
+        deedNumber: property.deedNumber,
+      })
+    : null;
   const mapPins = collectComparablesMapPins({
-    subjectLat: inspector?.mapLatitude,
-    subjectLng: inspector?.mapLongitude,
+    subjectLat: subjectCoords?.lat ?? inspector?.mapLatitude,
+    subjectLng: subjectCoords?.lng ?? inspector?.mapLongitude,
+    city: property?.city,
+    fallbackLat: approx?.lat ?? null,
+    fallbackLng: approx?.lng ?? null,
     comps: comps.map((item, i) => ({
       latitude: item.comparable.latitude,
       longitude: item.comparable.longitude,
       label: String(i + 1),
     })),
   });
-  const generatedMapUrl = buildComparablesMapSvgDataUrl(mapPins);
+  const generatedMap = resolveComparablesMapImage(mapPins);
   const comparableMapSlot: ValuationReportSlotAttachment | null =
     input.siteMapSlot ??
-    (generatedMapUrl
+    (generatedMap
       ? {
           attachmentId: "generated-comps-map",
-          url: generatedMapUrl,
-          contentType: "image/svg+xml",
-          fileName: "comparables-map.svg",
+          url: generatedMap.url,
+          contentType: generatedMap.contentType,
+          fileName: generatedMap.fileName,
           labelAr: "خريطة مواقع المقارنات",
           isImage: true,
         }
       : null);
 
-  // §33 — عندما تشغل الخريطة المرفوعة فتحة الأقمار، يذهب SVG المولّد للفتحة المقربة.
+  // §33 — when the uploaded map occupies the satellite slot, the generator goes to the close-up slot.
   const closeupMapSlot: ValuationReportSlotAttachment | null =
-    input.siteMapSlot && generatedMapUrl
+    input.siteMapSlot && generatedMap
       ? {
           attachmentId: "generated-closeup-map",
-          url: generatedMapUrl,
-          contentType: "image/svg+xml",
-          fileName: "closeup-map.svg",
+          url: generatedMap.url,
+          contentType: generatedMap.contentType,
+          fileName: generatedMap.fileName.replace("comparables", "closeup"),
           labelAr: "صورة مقربة للموقع",
           isImage: true,
         }
@@ -1059,6 +1099,7 @@ export function buildValuationReportLiveFill(input: {
     surveySlot: input.surveySlot ?? null,
     deedSlot: input.deedSlot ?? null,
     comparableMapSlot,
+    comparablesMapPins: mapPins,
     searchScopeNotes: (draft.searchScopeNotes ?? "").trim(),
     researchScopeBullets: linesFromOrgText(input.researchScopeText),
     specialAssumptionBullets: resolveSpecialAssumptionBullets({

@@ -62,7 +62,7 @@ export type CaseStudyReportModel = {
   requestDate: string;
   requestDateIso: string;
   deedNumber: string;
-  /** أخصائي الإسناد من إنفاذ (مثلاً سعد محارب) — للعرض في الترويسة فقط. */
+  /** Assignment specialist from Infath (e.g. Saad Muharib) — header display only. */
   assignmentSpecialist: string;
   propertyLocation: string;
   propertyType: string;

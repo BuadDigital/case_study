@@ -11,8 +11,8 @@ import { filterEngineeringSurveyListedTasks } from "@engineering-office/mfe/lib/
 import {
   appraiserQueueStatusGroup,
   filterAppraiserListedTasks,
-} from "@evaluator/mfe/lib/evaluator/evaluator-queue";
-import { loadEvaluatorSubmission } from "@evaluator/mfe/lib/evaluator/evaluator-submission-storage";
+  loadEvaluatorSubmission,
+} from "../evaluator-bridge";
 import {
   isDateOnlyTodayInRiyadh,
   isInstantTodayInRiyadh,
@@ -203,7 +203,7 @@ export const PAGE_SITUATION_CARDS: Partial<Record<PageId, PageSituationCardDef[]
         href: "/party-fees",
       },
     ],
-    /** Supervisor / ops «فوترة الأتعاب» KPI band. */
+    /** Supervisor / ops «fee invoicing» KPI band. */
     "party-fees": [
       {
         key: "total",
@@ -429,9 +429,9 @@ export function computeFeesPageSituation(
 }
 
 /**
- * Case Study.html `renderEngFees` KPI sums (SAR) for المكتب الهندسي.
+ * Case Study.html `renderEngFees` KPI sums (SAR) for the engineering office.
  * Matches FEE_ST buckets: pending_office → pending; ready|carried → ready;
- * listed (in-statement) is outstanding but not “جاهزة للفوترة”.
+ * listed (in-statement) is outstanding but not “ready to invoice”.
  * Paid matches HTML `ENG_FNS` with `paidAt` when `closedStatementsPaidSar` is provided.
  */
 export function computeEngineeringFeesSituation(
@@ -668,7 +668,10 @@ function computeAppraisalSituation(
   let reopened = 0;
 
   for (const task of appraisalTasks) {
-    const sub = loadEvaluatorSubmission(task.id);
+    const sub = loadEvaluatorSubmission(task.id) as
+      | { status?: string }
+      | null
+      | undefined;
     const st = sub?.status ?? "draft";
     if (st === "submitted" || task.status === "completed") {
       submitted += 1;

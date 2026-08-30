@@ -1,7 +1,7 @@
 import { getApiBase } from "./api-base";
 import { repositoryFetch as fetch } from "./write-repository";
 
-/** Decision 19.2 — admin-managed factor definition (تعريف + «ما لا يشمله»). */
+/** Decision 19.2 — admin-managed factor definition (definition + what it excludes). */
 export type DifferenceFactorDefinitionDto = {
   key: string;
   labelAr: string;

@@ -2,16 +2,16 @@ import type { PageId, RoleId } from "@platform/types";
 
 export type ScreenCatalogKind = "page" | "sub-route" | "task-work" | "auth";
 
-/** حالة الشاشة بلغة مفهومة لغير المبرمجين */
+/** Screen status in plain language for non-developers */
 export type ScreenCatalogStatus = "جاهزة" | "قيد التطوير";
 
 export type SystemScreenEntry = {
   id: string;
-  /** الاسم الظاهر في الدليل */
+  /** Display name in the catalog */
   name: string;
-  /** الرابط التقني (للمطورين) */
+  /** Technical path (for developers) */
   path: string;
-  /** أين يجدها المستخدم في النظام — بلغة يومية */
+  /** Where the user finds it in the product — everyday wording */
   whereToFind?: string;
   group: string;
   kind: ScreenCatalogKind;
@@ -37,7 +37,7 @@ export const SCREEN_CATALOG_STATUS_LABELS: Record<
   "قيد التطوير": "قيد التطوير",
 };
 
-/** يحوّل المسار التقني إلى وصف مقروء */
+/** Turns a technical path into a readable description */
 export function humanizeScreenPath(path: string): string {
   return path
     .replace(/\{poNumber\}/g, "رقم أمر العمل")

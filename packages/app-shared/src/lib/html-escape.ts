@@ -1,4 +1,4 @@
-/** تهريب HTML موحّد على مستوى النظام — كان منسوخاً في أربعة ملفات على الأقل. */
+/** System-wide HTML escape — previously copied in at least four files. */
 export function escapeHtml(text: string): string {
   return text
     .replace(/&/g, "&amp;")
@@ -7,5 +7,5 @@ export function escapeHtml(text: string): string {
     .replace(/"/g, "&quot;");
 }
 
-/** اسم بديل شائع في بنّائي تقرير التقييم. */
+/** Common alias used in valuation-report builders. */
 export const escHtml = escapeHtml;

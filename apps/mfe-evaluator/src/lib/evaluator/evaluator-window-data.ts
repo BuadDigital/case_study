@@ -43,19 +43,19 @@ export const EVALUATOR_WORKER_ROLES: readonly EvaluatorReportWorkerRole[] = [
   "معتمد",
 ];
 
-/** الأسلوب المستخدم — قائمة مغلقة وفق infath_case_study_fields.md §١ */
+/** Valuation approach used — closed list per infath_case_study_fields.md §1. */
 export const EVALUATOR_VALUATION_METHODS = [
   "طريقة البيوع المقارنة",
   "طريقة التكلفة (طريقة المقاول)",
   "رسملة الدخل",
 ] as const;
 
-/** أساس القيمة — نفس قائمة IVS الثمانية في تبويب التقييم. */
+/** Basis of value — same eight IVS options as on the valuation tab. */
 export const EVALUATOR_VALUE_BASIS_OPTIONS = VALUE_BASIS_OPTIONS.map(
   (option) => option.label,
 );
 
-/** حجم الطلب على العقار — infath_case_study_fields.md §٣.٢ */
+/** Property demand level — infath_case_study_fields.md §3.2. */
 export const EVALUATOR_DEMAND_LEVEL_OPTIONS = [
   "مرتفع",
   "متوسط",
@@ -82,7 +82,7 @@ export type EvaluatorEsgGroup = {
   notes: string;
 };
 
-/** اختيارات المقيم في تبويب تقييم العقار — من قوائم التقييم وتقرير التقييم المهني. */
+/** Appraiser choices on the property valuation tab — from valuation lists and the professional report. */
 export type EvaluatorReportChoices = {
   purposeKey: string;
   valueBasisKey: string;
@@ -117,7 +117,7 @@ export function seedReportChoicesFromAssignment(
   existing?: EvaluatorReportChoices | null,
 ): EvaluatorReportChoices {
   const base = existing ?? emptyReportChoices();
-  // بدون نوع إسناد معروف لا نفرض «تصفية» — ذلك كان يظهر خصم التصفية ثم يختفي.
+  // Without a known assignment type, do not force "liquidation" — that briefly showed then hid the discount.
   if (!(assignmentType ?? "").trim()) return base;
   const purposeKey = valuationPurposeKeyForAssignment(
     assignmentType,
@@ -215,14 +215,14 @@ export type EvaluatorSubmission = {
   propertyId: string;
   poNumber: string;
   status: EvaluatorSubmissionStatus;
-  /** رقم التقرير — يُحجز عند توزيع المعاملة على المقيم (TQ…). */
+  /** Report number — reserved when the work order is assigned to the appraiser (TQ…). */
   reportNo: string;
   evaluatorPrice: string;
   evaluatorNotes: string;
   checklist: EvaluatorChecklistAnswers;
   /** Snapshot file name of the generated valuation report (not an upload). */
   reportFileName: string | null;
-  /** حقول الرفع لإنفاذ — المقيّم */
+  /** Enfaz upload fields — appraiser. */
   appraisalDate: string;
   valuationMethod: string;
   valueBasis: string;
@@ -234,21 +234,21 @@ export type EvaluatorSubmission = {
   planImageFileName: string | null;
   appraiserAddress: string;
   appraiserPhone: string;
-  /** تاريخ إصدار التقرير — يُثبَّت عند اعتماد التقييم. */
+  /** Report issue date — fixed when the valuation is approved. */
   reportIssueDate: string;
-  /** رمز إيداع التقرير في قيمة — اختياري، لا يمنع الاعتماد. */
+  /** Qeema deposit code for the report — optional; does not block approval. */
   depositCode: string;
-  /** شهادة الرفع على قيمة — مرفق اختياري يُطبع مع التقرير. */
+  /** Qeema upload certificate — optional attachment printed with the report. */
   depositCertificateFileName: string | null;
-  /** إقرار الاستقلالية وعدم تضارب المصالح */
+  /** Independence / no-conflict-of-interest declaration. */
   independenceDeclared: boolean;
-  /** بيانات العاملين على التقرير (معد / مراجع / معتمد) */
+  /** Report staff details (preparer / reviewer / approver). */
   reportWorkers: EvaluatorReportWorker[];
-  /** تأكيد مراجعة بيانات الأصل المعروضة من مصادرها (معاين / مكتب هندسي / أخصائي / مراجع) */
+  /** Confirm reviewed asset data from sources (inspector / engineering office / specialist / reviewer). */
   assetDataConfirmed: boolean;
-  /** ملاحظات التباين عند عدم تأكيد بيانات الأصل كما هي */
+  /** Variance notes when asset data is not confirmed as-is. */
   assetDataVarianceNotes: string;
-  /** اختيارات تقرير التقييم المهني في المعاملة */
+  /** Professional valuation-report choices on the work order. */
   reportChoices: EvaluatorReportChoices;
   submittedAtUtc: string | null;
   updatedAtUtc: string;

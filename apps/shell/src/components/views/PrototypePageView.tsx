@@ -194,8 +194,8 @@ const VIEWS: Partial<Record<PageId, ComponentType>> = {
   survey: SurveyView,
 };
 
-// تحميل مسبق لحزمة الصفحة عند التحويم/التركيز على رابط التنقل — نفس مواصفات
-// الاستيراد في dynamic أعلاه فيُجلب نفس الـ chunk (bundle-preload).
+// Preload the page chunk on nav-link hover/focus — same import specs as
+// the dynamic() above so the same chunk is fetched (bundle-preload).
 export const PAGE_CHUNK_PRELOAD: Partial<
   Record<PageId, () => Promise<unknown>>
 > = {

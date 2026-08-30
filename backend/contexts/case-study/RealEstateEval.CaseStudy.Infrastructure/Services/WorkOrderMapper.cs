@@ -117,6 +117,7 @@ public static class WorkOrderMapper
             PartitionMinutesDate = p.PartitionMinutesDate,
             FinishingType = p.FinishingType,
             FinishingStructure = p.FinishingStructure,
+            SpecialistReportExtrasJson = p.SpecialistReportExtrasJson,
             IsRemoved = p.IsRemoved,
             RemovalReason = p.RemovalReason,
             RemovedAtUtc = p.RemovedAtUtc?.ToString("o"),

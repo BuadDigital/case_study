@@ -40,7 +40,7 @@ export function PoWorkOrderPartyFields({
 }) {
   const showSubClient = showsSubClientField(assignmentType, clientId);
 
-  // هوية مصفوفة الخيارات كانت تتجدد مع كل رسم وتمسح memo الحقل (rerender-memo).
+  // Options-array identity was rebuilt every render and wiped the field memo (rerender-memo).
   const subClientOptions = useMemo(
     () =>
       INFATH_SUB_CLIENT_IDS.map((id) => ({

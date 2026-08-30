@@ -228,9 +228,9 @@ public sealed class CaseStudyFailureCommands : ICaseStudyFailureCommands
                 t.Status != WorkflowTaskStatus.Completed)
             .ToListAsync(cancellationToken);
 
- /* كانت حلقة PatchAsync: SELECT + SaveChanges لكل مهمة. الحجب لا يبلغ أياً من
-    الآثار الجانبية للـPatch (رسوم الإكمال تتطلب Completed، وإشعار الأخصائي يتطلب
-    Open) — فالتطبيق المباشر بحفظة واحدة مكافئ حرفياً. */
+        /* PatchAsync used to SELECT + SaveChanges per task. Blocking does not trigger Patch
+           side effects (completion fees need Completed; specialist notify needs Open) —
+           applying the shell patch and saving once is literally equivalent. */
         var nowUtc = _time.UtcNow();
         foreach (var task in tasks)
         {

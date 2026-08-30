@@ -3,7 +3,7 @@ import {
   poPropertiesPath,
   poPropertyPath,
 } from "@case-study/mfe/lib/po-routes";
-import type { WorkflowTask } from "@case-study/mfe/lib/prototype/tasks-storage";
+import type { WorkflowTask } from "@platform/app-shared/workflow/task-types";
 
 export function buildAppraiserQueueRowMoreItems(options: {
   task: WorkflowTask;

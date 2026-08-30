@@ -104,11 +104,11 @@ public class CreateMonthPartyBillingStatementsResponseDto
 
 public class ClosePartyBillingStatementRequest
 {
- /// <summary>سند صرف — required and unique.</summary>
+ /// <summary>Disbursement Voucher — required and unique.</summary>
     public required string DisbursementVoucher { get; init; }
- /// <summary>مرجع التحويل — required.</summary>
+ /// <summary>Conversion reference — required.</summary>
     public required string TransferReference { get; init; }
- /// <summary>إيصال التحويل — attachment id required.</summary>
+ /// <summary>Transfer receipt — attachment id required.</summary>
     public required string TransferReceiptAttachmentId { get; init; }
  /// <summary>Optional free-text receipt note.</summary>
     public string? TransferReceiptRef { get; init; }

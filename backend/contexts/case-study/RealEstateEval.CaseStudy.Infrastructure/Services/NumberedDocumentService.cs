@@ -11,8 +11,8 @@ using RealEstateEval.CaseStudy.Domain;
 namespace RealEstateEval.CaseStudy.Infrastructure.Services;
 
 /// <summary>
-/// قرار 25 + ورشة الترقيم: الخطاب/تقرير دراسة الحالة يأخذ رقمه المرجعي لحظة
-/// الطباعة ويُقيَّد في السجل — القيد لا يُعدَّل ولا يُحذف (سجل مرجعي).
+/// Decision 25 + numbering workshop: letter/case-study report takes its reference number at
+/// print time and is logged — the entry is immutable (reference ledger).
 /// </summary>
 public sealed class NumberedDocumentService : INumberedDocumentService
 {

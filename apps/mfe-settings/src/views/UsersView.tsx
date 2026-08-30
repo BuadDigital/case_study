@@ -2,7 +2,7 @@
 
 import { UsersOrganizationView } from "./users/UsersOrganizationView";
 
-/** صفحة المستخدمين — إنشاء وإدارة الحسابات التشغيلية (CDO). */
+/** Users page — create and manage operational accounts (CDO). */
 export function UsersView() {
   return <UsersOrganizationView />;
 }

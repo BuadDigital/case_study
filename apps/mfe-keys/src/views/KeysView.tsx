@@ -92,8 +92,8 @@ const RegisterKeyEnvelopeModal = dynamic(
   { ssr: false },
 );
 
-// كانت تركب دائماً فتُجلب الحزمة عند فتح الشاشة رغم التقسيم — تركب الآن عند
-// الفتح فقط، مع تحميل مسبق عند التحويم على الزر (bundle-preload).
+// Used to always mount so the chunk loaded on screen open despite splitting — now mounts on
+// open only, with prefetch on button hover (bundle-preload).
 const preloadRegisterKeyEnvelopeModal = () =>
   void import("../components/RegisterKeyEnvelopeModal");
 
@@ -271,7 +271,7 @@ function MismatchIcon() {
   );
 }
 
-/** صفوف هيكلية أثناء التحميل — JSX ثابت لا يعتمد على الحالة. */
+/** Skeleton rows while loading — static JSX independent of state. */
 const LIST_SKELETON = (
   <div className="space-y-0">
     {Array.from({ length: 6 }).map((_, i) => (
@@ -787,7 +787,7 @@ export function KeysView() {
             )}
           </div>
 
-          {/* Mobile cards — لغة المعاين */}
+          {/* Mobile cards — inspector wording */}
           <div className="lg:hidden">
             <ActiveQueueMobileCards
               items={mobileCardItems}

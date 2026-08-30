@@ -38,7 +38,7 @@ describe("valuation report v3 header meta and page numbers", () => {
     expect(html).not.toContain("047789");
     expect(html).not.toContain("2026/06/03");
     expect(html).toContain("رقم التقرير: —");
-    // الترقيم من عدد الصفحات الفعلي لا من أرقام القالب المثبتة.
+    // Numbering from the actual page count, not hardcoded template numbers.
     expect(html).toContain("صفحة 1 من 2");
     expect(html).toContain("صفحة 2 من 2");
     expect(html).not.toContain("من 20");

@@ -43,43 +43,27 @@ import {
   getValuators,
 } from "./distribution-parties";
 
-/** @deprecated Tasks persist in PostgreSQL — kept for storage-event compatibility. */
-export const TASKS_STORAGE_KEY = "evalWorkflowTasks";
-export const TASKS_CHANGED_EVENT = "eval-workflow-tasks-changed";
-
-/** Phases of the case-study property task (specialist workflow). */
-export type CaseStudyTaskPhase =
-  | "enfath"
-  | "bourse"
-  | "distribution"
-  | "case-study"
-  | "done"
-  | "obstruction";
-
-export type WorkflowTaskKind =
-  | "case-study-property"
-  | "field-inspection"
-  | "government-review"
-  | "engineering-survey"
-  | "property-appraisal";
-
-export type WorkflowTaskStatus = "open" | "completed" | "blocked" | "cancelled";
-
-/** Party selection on توزيع المعاملات — checkbox gates each dropdown group.
- *  `governmentAuditor*` are wire-compat fields only; always forced off. */
-export type TaskDistributionDraft = {
-  /** @deprecated Not used in distribution UI — government work comes from operations tasks. */
-  governmentAuditor: boolean;
-  /** @deprecated Not used in distribution UI. */
-  governmentAuditorId: string;
-  valuationDepartment: boolean;
-  inspectorId: string;
-  valuatorId: string;
-  engineeringOffice: boolean;
-  engineeringOfficeId: string;
-  caseSpecialist: boolean;
-  caseSpecialistId: string;
-};
+export type {
+  AssignmentType as WorkflowAssignmentType,
+  CaseStudyTaskPhase,
+  TaskDistributionDraft,
+  WorkflowTask,
+  WorkflowTaskKind,
+  WorkflowTaskStatus,
+} from "@platform/app-shared/workflow/task-types";
+export {
+  TASKS_CHANGED_EVENT,
+  TASKS_STORAGE_KEY,
+  notifyTasksChanged,
+} from "@platform/app-shared/workflow/task-types";
+import type {
+  CaseStudyTaskPhase,
+  TaskDistributionDraft,
+  WorkflowTask,
+  WorkflowTaskKind,
+  WorkflowTaskStatus,
+} from "@platform/app-shared/workflow/task-types";
+import { notifyTasksChanged } from "@platform/app-shared/workflow/task-types";
 
 type LegacyDistribution = {
   fieldInspector?: boolean;
@@ -118,7 +102,7 @@ export function migrateDistribution(
     const legacy = raw as LegacyDistribution;
     migrated = {
       ...base,
-      // المراجع الحكومي لا يُرحَّل من التوزيع القديم — يُنشأ من مهام العمليات.
+      // Government reviewer is not migrated from the old distribution — created from operations tasks.
       governmentAuditor: false,
       governmentAuditorId: "",
       valuationDepartment: legacy.fieldInspector ?? false,
@@ -140,47 +124,12 @@ export function migrateDistribution(
     };
   }
 
-  // المراجع الحكومي لم يعد جزءاً من توزيع المعاملات.
+  // Government reviewer is no longer part of transaction distribution.
   return {
     ...migrated,
     governmentAuditor: false,
     governmentAuditorId: "",
   };
-}
-
-export type WorkflowTask = {
-  id: string;
-  kind: WorkflowTaskKind;
-  poNumber: string;
-  /** Set after phase 1 (Enfath) saves the property. */
-  propertyId?: string;
-  /** Slot index 1..expectedPropertyCount on the PO. */
-  propertyOrdinal: number;
-  title: string;
-  phase: CaseStudyTaskPhase;
-  assigneeRole: RoleId;
-  assigneeName: string;
-  /** Distribution dropdown id (e.g. fi-ahmed) — filters queue per prototype user. */
-  assigneeId?: string;
-  parentTaskId?: string;
-  status: WorkflowTaskStatus;
-  distribution?: TaskDistributionDraft;
-  obstructionReason?: string;
-  obstructionPriorPhase?: CaseStudyTaskPhase;
-  assignmentType?: PoIntakeRecord["assignmentType"];
-  createdAt: string;
-  updatedAt: string;
-  /** Server flag on engineering-survey / property-appraisal: sibling field-inspection completed. */
-  fieldInspectionCompleted?: boolean;
-  /** Server flag on property-appraisal: sibling inspection package specialist-accepted. */
-  fieldInspectionAccepted?: boolean;
-  /** Completed sibling field-inspection task id (server). */
-  fieldInspectionTaskId?: string;
-};
-
-export function notifyTasksChanged(): void {
-  if (typeof window === "undefined") return;
-  window.dispatchEvent(new CustomEvent(TASKS_CHANGED_EVENT));
 }
 
 function dtoToTask(dto: WorkflowTaskDto): WorkflowTask {
@@ -415,7 +364,7 @@ export async function syncTaskSlotsForPo(
   };
 }
 
-/** Link a property registered in البيانات الأولية to the next empty workflow slot. */
+/** Link a property registered in primary data to the next empty workflow slot. */
 export async function linkNewPropertyToTaskSlot(
   poNumber: string,
   property: PoPropertyIntake,
@@ -423,8 +372,8 @@ export async function linkNewPropertyToTaskSlot(
   if (!property.id) return null;
   const slots = await syncTaskSlotsForPo(poNumber);
   if (!slots.ok) return { ok: false, error: slots.error };
-  // slots.tasks هي نفس نتيجة poCaseTasks من قائمة محمّلة للتو —
-  // إعادة loadWorkflowTasks كانت GET ثانياً مطابقاً.
+  // slots.tasks is the same poCaseTasks result from a list just loaded —
+  // calling loadWorkflowTasks again was a duplicate identical GET.
   const tasks = slots.tasks;
   const existing = caseStudyTaskForProperty(poNumber, property.id, tasks);
   if (existing) return { ok: true, task: existing };
@@ -459,7 +408,7 @@ export async function deleteTasksForPo(poNumber: string): Promise<void> {
   notifyTasksChanged();
 }
 
-/** حذف خانة/معاملة دراسة حالة (العقار يُعلَّم محذوفاً مع السبب إن وُجد). */
+/** Delete a case-study slot/transaction (property is marked deleted with reason when provided). */
 export async function deletePrimaryDataTransaction(
   taskId: string,
   reason: string,
@@ -546,7 +495,7 @@ export type RevertTaskPhaseResult =
   | { ok: true; task: WorkflowTask }
   | { ok: false; error: string };
 
-/** إرجاع مهمة دراسة حالة لمرحلة سابقة (بورصة أو بيانات أولية). */
+/** Return a case-study task to a previous stage (bourse or primary data). */
 export async function revertTaskToPhase(
   taskId: string,
   targetPhase: "enfath" | "bourse",
@@ -572,7 +521,7 @@ export type ReopenCompletedTaskResult =
   | { ok: true; task: WorkflowTask }
   | { ok: false; error: string };
 
-/** إعادة فتح معاملة مكتملة — صلاحية مشرف القسم فأعلى، بسبب إلزامي. */
+/** Reopen a completed transaction — section-supervisor+ permission; reason required. */
 export async function reopenCompletedTransaction(
   taskId: string,
   reason: string,
@@ -598,7 +547,7 @@ export async function reopenCompletedTransaction(
   return { ok: true, task: dtoToTask(result.data) };
 }
 
-/** After استعلام البورصة — move linked case-study task to توزيع المعاملات. */
+/** After bourse inquiry — move linked case-study task to transaction distribution. */
 export async function advanceTaskAfterBourseForProperty(
   poNumber: string,
   propertyId: string,
@@ -698,8 +647,8 @@ export type RedistributePartiesResult =
   | { ok: false; error: string };
 
 /**
- * تعديل إسناد الأطراف على معاملة دراسة حالة قائمة (بعد تأكيد التوزيع) —
- * يحدّث المكلّف على المهام الفرعية القائمة فقط دون إعادة فتح التوزيع.
+ * Edit party assignment on an existing case-study transaction (after distribution confirmed) —
+ * updates assignees on existing sub-tasks only without reopening distribution.
  */
 export async function redistributeTaskParties(
   taskId: string,
@@ -837,7 +786,7 @@ export function tasksForRole(
     .sort(compareWorkflowTasks);
 }
 
-/** Party queues — match role and selected person from توزيع المعاملات. */
+/** Party queues — match role and selected person from transaction distribution. */
 function partyAssigneeIdFromDistribution(
   kind: WorkflowTaskKind,
   distribution: TaskDistributionDraft,

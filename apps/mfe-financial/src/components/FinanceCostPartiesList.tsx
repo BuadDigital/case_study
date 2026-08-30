@@ -38,7 +38,7 @@ import {
 
 const EMPTY_STAFF_USERS: StaffUser[] = [];
 
-// لاحقة ر.س دون أصفار كسور إلزامية — نبقيها محلياً حفاظاً على العرض نفسه.
+// SAR suffix without forced fractional zeros — keep local to preserve the same display.
 function fmtSar(n: number) {
   return `${fmtMax(n)} ر.س`;
 }
@@ -79,14 +79,14 @@ function PayeeChip({ party }: { party: FinanceCostParty }) {
 export function FinanceCostPartiesList({
   onSelectParty,
 }: {
-  /** preferredSection: dues إن وُجدت بنود جاهزة، وإلا statements إن وُجدت مسيرات مفتوحة */
+  /** preferredSection: dues if ready lines exist, else statements if open payrolls exist */
   onSelectParty: (
     assigneeId: string,
     preferredSection?: "dues" | "statements",
   ) => void;
 }) {
   const [q, setQ] = useState("");
-  /** قيمة مؤجَّلة للفلترة — إدخال البحث يبقى فورياً دون حجب الكتابة */
+  /** Deferred value for filtering — search input stays immediate without blocking typing */
   const deferredQ = useDeferredValue(q);
   const { data: staffResult } = useStaffUsersQuery();
   const staffUsers = staffResult?.users ?? EMPTY_STAFF_USERS;

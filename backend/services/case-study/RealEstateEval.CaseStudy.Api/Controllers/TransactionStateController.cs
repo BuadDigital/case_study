@@ -8,8 +8,8 @@ using RealEstateEval.Shared.Web.Authorization;
 namespace RealEstateEval.CaseStudy.Api.Controllers;
 
 /// <summary>
-/// ق-9: حالة المعاملة المشتقة من حالات الأطراف (شبكة توزيع واعتماديات — المعاين عقدة
-/// المفتاح) + الختام الثاني: رفع المعاملة على إنفاذ.
+/// Q-9: transaction state derived from party states (distribution network and dependencies — the Inspector is the key
+/// key) + second conclusion: Upload the Transaction on Enfaz.
 /// </summary>
 [ApiController]
 [Route("api/work-orders/{workOrderId:guid}/properties/{propertyId:guid}/transaction-state")]
@@ -49,8 +49,8 @@ public class TransactionStateController : ControllerBase
     }
 
     /// <summary>
-    /// تكميلية ق-9 (ر3): بعد رفع إنفاذ — قيد تدقيق بقرار المدير العام وسببه فقط؛
-    /// لا يفتح شيئاً (الاسترجاع الفعلي يمر عبر إعادة فتح التقييم ر2).
+    /// Supplemental Q-9 (R3): After uploading Enfaz — Audit Entry with Decision General Manager and its reason only;
+    /// It does not open anything (the actual recovery is through reopening the R2 rating).
     /// </summary>
     [HttpPost("post-enfaz-decision")]
     [Authorize(Policy = CapabilityPolicyNames.ManageWorkOrders)]

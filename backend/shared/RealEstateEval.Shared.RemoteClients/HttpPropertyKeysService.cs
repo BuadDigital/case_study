@@ -31,7 +31,7 @@ public sealed class HttpPropertyKeysService(
         return list;
     }
 
-    // الإسقاط شأن خدمة العمليات وحدها (حلقة الصيانة هناك) — لا مسار بعيد له.
+    // Expiry is owned by operations alone (maintenance loop there) — no remote path for it.
     public Task SyncProjectionAsync(CancellationToken cancellationToken = default) =>
         Task.CompletedTask;
 

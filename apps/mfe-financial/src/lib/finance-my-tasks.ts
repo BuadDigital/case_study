@@ -25,29 +25,29 @@ export type FinanceMyTaskKind =
 
 export type FinanceMyTaskDomain = "revenue" | "costs";
 
-/** صف مهامي — مطابق لأعمدة تصميم الحزمة + بطاقات KPI */
+/** My-tasks row — matches package design columns + KPI cards */
 export type FinanceMyTask = {
   id: string;
   kind: FinanceMyTaskKind;
   domain: FinanceMyTaskDomain;
-  /** عنوان الإجراء المطلوب */
+  /** Required action title */
   title: string;
-  /** المرجع (PO / فاتورة / رقم مسير) */
+  /** Reference (PO / invoice / payroll number) */
   reference: string;
-  /** الجهة / المعاملة — سطر فرعي تحت المرجع أو عمود منفصل */
+  /** Party / transaction — subtitle under reference or separate column */
   subject: string;
   amountSar: number;
-  /** ما يلزم لإتمامه */
+  /** What is needed to complete */
   requirement: string;
-  /** ينتقل إلى */
+  /** Navigates to */
   movesTo: string;
   ageDays: number | null;
-  /** سطر ثانٍ تحت العمر (مثال: فاتورة 2026-01-15) */
+  /** Second line under age (e.g. invoice 2026-01-15) */
   ageNote: string | null;
   href: string;
-  /** فتح الإجراء / فتح الحساب */
+  /** Open action / open account */
   openLabel: string;
-  /** ربط بمسير/أمر صرف عند فتح منبثق من مهامي */
+  /** Link to payroll/disbursement when opening modal from My Tasks */
   statementId?: string | null;
 };
 
@@ -58,7 +58,7 @@ function daysSince(iso: string | null | undefined): number | null {
   return Math.max(0, Math.floor((Date.now() - t) / 86_400_000));
 }
 
-/** منسّق مشترك — إنشاء Intl.DateTimeFormat لكل صف مكلف */
+/** Shared formatter — avoid new Intl.DateTimeFormat per row */
 const DATE_EN = new Intl.DateTimeFormat("en-GB");
 
 function formatDateNote(iso: string | null | undefined): string | null {
@@ -269,7 +269,7 @@ function buildCostMyTasks(input: {
         statementId: s.id,
       });
     } else if (s.status === "invoice_received") {
-      // بعد إقرار المطابقة: يخرج من مهامي — توثيق الصرف من التكاليف فقط.
+      // After match approval: leaves My Tasks — disbursement docs from Costs only.
       if (s.vendorInvoiceMatched) {
         continue;
       }
@@ -290,7 +290,7 @@ function buildCostMyTasks(input: {
         statementId: s.id,
       });
     } else if (s.status === "issued" && s.payeeType === "individual") {
-      // فرد: لا فاتورة — أمر صرف مباشر (مرجع منطق 4.2)
+      // Individual: no invoice — direct disbursement order (logic ref 4.2)
       tasks.push({
         id: `cost-close-${s.id}`,
         kind: "cost_close_statement",
@@ -308,7 +308,7 @@ function buildCostMyTasks(input: {
         statementId: s.id,
       });
     }
- // issued + vendor: بانتظار المكتب — ليس إجراء مالية (بوابة المكتب / مرجع )
+ // issued + vendor: awaiting eng. office — not a finance action (office portal / ref)
   }
 
   return tasks;
@@ -337,7 +337,7 @@ export function buildFinanceMyTasks(input: {
   });
 }
 
-/** بطاقات KPI لمهامي — مطابقة اللقطة */
+/** My Tasks KPI cards — matches snapshot */
 export function buildFinanceMyTasksKpis(tasks: FinanceMyTask[]) {
   let matchCount = 0;
   let collectCount = 0;

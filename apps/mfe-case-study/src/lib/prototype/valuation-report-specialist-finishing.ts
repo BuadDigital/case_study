@@ -1,5 +1,10 @@
 /** Building finishing level filled by the case specialist — mirrored to the appraiser draft for print. */
 
+import {
+  loadSpecialistReportExtrasBag,
+  patchSpecialistReportExtras,
+} from "@platform/app-shared/storage/specialist-report-extras-sync";
+
 export type SpecialistFinishingLevel =
   | ""
   | "luxury"
@@ -7,14 +12,8 @@ export type SpecialistFinishingLevel =
   | "ordinary"
   | "none";
 
-const STORAGE_PREFIX = "ejadah.valuation-specialist-finishing.v1:";
-
 export const VALUATION_SPECIALIST_FINISHING_CHANGED_EVENT =
   "ejadah-valuation-specialist-finishing-changed";
-
-function storageKey(propertyId: string): string {
-  return `${STORAGE_PREFIX}${propertyId.trim()}`;
-}
 
 export function normalizeSpecialistFinishingLevel(
   raw: string | null | undefined,
@@ -36,13 +35,9 @@ export function loadSpecialistFinishingLevel(
 ): SpecialistFinishingLevel {
   const id = (propertyId ?? "").trim();
   if (!id || typeof window === "undefined") return "";
-  try {
-    return normalizeSpecialistFinishingLevel(
-      window.localStorage.getItem(storageKey(id)),
-    );
-  } catch {
-    return "";
-  }
+  return normalizeSpecialistFinishingLevel(
+    loadSpecialistReportExtrasBag(id).finishing,
+  );
 }
 
 export function saveSpecialistFinishingLevel(
@@ -52,8 +47,7 @@ export function saveSpecialistFinishingLevel(
   const id = propertyId.trim();
   if (!id || typeof window === "undefined") return;
   const next = normalizeSpecialistFinishingLevel(level);
-  if (next) window.localStorage.setItem(storageKey(id), next);
-  else window.localStorage.removeItem(storageKey(id));
+  patchSpecialistReportExtras(id, { finishing: next || undefined });
   window.dispatchEvent(
     new CustomEvent(VALUATION_SPECIALIST_FINISHING_CHANGED_EVENT, {
       detail: { propertyId: id },

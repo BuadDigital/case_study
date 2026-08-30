@@ -31,7 +31,7 @@ public class ValuationReportFrozenTextLayersTests
     }
 
     [Fact]
- // ورشة الترقيم (بند البتّ 3): النمط الموحد TQ-{سنة}-{تسلسل ٥}.
+ // Numbering workshop (bit item 3): unified pattern TQ-{year}-{5-digit seq}.
     public void Temporary_report_number_uses_tq_year_and_display_digits()
     {
         var n = ValuationReportNumberRules.FormatTemporary("V-12", new DateOnly(2026, 8, 19));

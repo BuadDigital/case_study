@@ -63,7 +63,7 @@ public interface IOperationsTaskService
         string? actorName,
         CancellationToken cancellationToken = default);
 
- /// <summary>أتعاب الزيارة generated from completed court_visit ops tasks.</summary>
+ /// <summary>Visit fees generated from completed court_visit ops tasks.</summary>
     Task<IReadOnlyList<CourtVisitFeeReportRowDto>> ListCourtVisitFeesAsync(
         string? creditAssigneeId = null,
         CancellationToken cancellationToken = default);

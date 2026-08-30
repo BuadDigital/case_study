@@ -82,7 +82,7 @@ export function buildPoListDisplay(
   }));
 }
 
-/** Normalize deed tokens for fuzzy compare (006, صك 006, leading zeros). */
+/** Normalize deed tokens for fuzzy compare (006, Deed 006, leading zeros). */
 export function normalizeDeedQuery(value: string): string {
   return toLatinDigits(value)
     .trim()
@@ -157,7 +157,7 @@ export function buildPoDeedIndex(
     .filter((entry): entry is PoDeedIndexEntry => entry !== null);
 }
 
-/** الاستعلام مطبَّع مسبقاً من المستدعي — كان يُعاد تطبيعه لكل صك في الفهرس. */
+/** Query is already normalized by the caller — used to re-normalize per deed in the index. */
 function deedMatchesQuery(
   entry: PoDeedIndexEntry,
   qNorm: string,
@@ -245,8 +245,8 @@ export function filterPoListRows(
       });
   }
 
-  // مسح الصكوك (الأغلى) يأتي أخيراً ويُحسب مرة واحدة لكل صف — كان يُنفَّذ
-  // في الفلترة ثم يُعاد في بناء النتيجة حتى مع تطابق رقم أمر العمل.
+  // Deed scan (most expensive) comes last and is computed once per row — used to run
+  // during filtering then again when building the result even on work-order number match.
   const out: PoListFilteredRow[] = [];
   for (const row of rows) {
     const poHit = row.id.toLowerCase().includes(qLower);

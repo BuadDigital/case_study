@@ -2,9 +2,9 @@ import { activeFailureForProperty } from "./failure-property-match";
 import type { FailureRecord } from "./failures-types";
 
 let listCache: FailureRecord[] = [];
-// فهرس كسول برقم أمر العمل — getCachedPropertyFailure تُستدعى لكل عقار في تحميل
-// القوائم، ومسح الكاش كاملاً كان O(عدد العقارات × عدد التعذرات) (js-index-maps).
-// يتصفّر مع كل كتابة ويُبنى عند أول قراءة بعدها.
+// Lazy index by work-order number — getCachedPropertyFailure is called per property when loading
+// lists, and a full cache scan was O(properties × failures) (js-index-maps).
+// Cleared on every write and rebuilt on the next read.
 let byPoIndex: Map<string, FailureRecord[]> | null = null;
 
 function indexByPo(): Map<string, FailureRecord[]> {

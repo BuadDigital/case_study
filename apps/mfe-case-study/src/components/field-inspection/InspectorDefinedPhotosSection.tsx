@@ -498,7 +498,7 @@ export function InspectorDefinedPhotosSection({
 
         <div
           className={cn(
-            /* mt-5 + mt-4 معاً كما في السابق — cn لا يدمج فئات Tailwind. */
+            /* Keep mt-5 + mt-4 together as before — cn does not merge Tailwind spacing classes. */
             "mb-2.5 mt-5 flex flex-wrap items-center justify-between gap-2",
             "mt-4",
             layout === "desktop" && "hidden",
@@ -807,7 +807,7 @@ function MobilePhotoTile({
 }
 
 /**
- * Desktop c9 tile: clear upload CTA; «غير متوفر» secondary.
+ * Desktop c9 tile: clear upload CTA; "not available" secondary.
  */
 function DesktopHtmlPhotoTile({
   label,

@@ -504,84 +504,6 @@ export function PropertyDetailEnfathUpload({
     [record, property, parties, documentSections, opsContext],
   );
 
-  const inspectionFeed = parties?.inspection;
-  const surveyFeed = parties?.survey;
-  const appraisalFeed = parties?.appraisal;
-
-  const packageStatusLine = useMemo(() => {
-    const lines: { kind: "await" | "ok"; text: string }[] = [];
-    if (inspectionFeed?.hasData) {
-      if (inspectionFeed.acceptedAtUtc?.trim()) {
-        lines.push({
-          kind: "ok",
-          text: "بيانات المعاينة معتمدة — تُعرض ضمن حقول المُعاين.",
-        });
-      } else if (inspectionFeed.statusLabel?.includes("بانتظار")) {
-        lines.push({
-          kind: "await",
-          text: "بيانات المعاينة بانتظار اعتماد الأخصائي — حقول المُعاين فارغة حتى الاعتماد.",
-        });
-      }
-    }
-    if (surveyFeed?.hasData) {
-      if (surveyFeed.acceptedAtUtc?.trim()) {
-        lines.push({
-          kind: "ok",
-          text: "بيانات الرفع المساحي معتمدة — تُعرض ضمن الحزمة.",
-        });
-      } else if (
-        surveyFeed.statusLabel?.includes("بانتظار") ||
-        surveyFeed.statusLabel?.includes("مُرسَل")
-      ) {
-        lines.push({
-          kind: "await",
-          text: "بيانات الرفع المساحي بانتظار قبول الأخصائي — حقول المكتب فارغة حتى القبول.",
-        });
-      }
-    }
-    if (appraisalFeed?.hasData) {
-      const appraisalSubmitted =
-        Boolean(appraisalFeed.submittedAtUtc?.trim()) ||
-        appraisalFeed.packageStatus === "submitted" ||
-        appraisalFeed.packageStatus === "completed" ||
-        appraisalFeed.packageStatus === "reopened";
-      if (appraisalSubmitted) {
-        lines.push({
-          kind: "ok",
-          text: "تقرير التقييم مُرسل — يظهر في حزمة إنفاذ (استلام الأخصائي ليس بوابة للقيمة).",
-        });
-      } else {
-        lines.push({
-          kind: "await",
-          text: "تقرير التقييم لم يُرسل بعد — حقول المقيم فارغة في إنفاذ حتى الإرسال.",
-        });
-      }
-    }
-    if (opsContext.courtVisitResultKind || opsContext.courtVisitCompletedAt) {
-      lines.push({
-        kind: "ok",
-        text: "زيارة المحكمة من المهام — تُستخدم لتاريخ/نتيجة الزيارة عند توفرها.",
-      });
-    } else {
-      lines.push({
-        kind: "await",
-        text: "لا توجد زيارة محكمة منجزة في المهام — حقول الزيارة الحكومية فارغة.",
-      });
-    }
-    if (opsContext.keysStatus === "received" || opsContext.keyAvailable) {
-      lines.push({
-        kind: "ok",
-        text: "حالة المفاتيح من بوابة الظرف / المهام.",
-      });
-    } else if (!opsContext.keysStatus && !opsContext.envelopeId) {
-      lines.push({
-        kind: "await",
-        text: "لا بيانات مفاتيح من المهام / الظرف بعد.",
-      });
-    }
-    return lines;
-  }, [inspectionFeed, surveyFeed, appraisalFeed, opsContext]);
-
   const [collapsedSections, setCollapsedSections] = useState<Set<string>>(
     () => new Set(),
   );
@@ -710,19 +632,6 @@ export function PropertyDetailEnfathUpload({
 
   return (
     <div className="flex flex-col gap-4">
-      {packageStatusLine.map((line) => (
-        <div
-          key={line.text}
-          className={
-            line.kind === "await"
-              ? "rounded-lg border border-[color-mix(in_srgb,var(--warning)_40%,var(--border))] bg-[var(--warning-bg)] px-3.5 py-2.5 text-xs leading-relaxed text-[var(--amber-text)]"
-              : "rounded-lg border border-[color-mix(in_srgb,var(--success)_35%,var(--border))] bg-[var(--success-bg)] px-3.5 py-2.5 text-xs leading-relaxed text-[var(--success)]"
-          }
-        >
-          {line.text}
-        </div>
-      ))}
-
       <section className="rounded-[var(--radius-DEFAULT)] border border-border bg-surface-2 p-3.5">
         <p className="m-0 mb-2 text-[13px] font-bold text-text">
           إيداع التقرير في الهيئة

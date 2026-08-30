@@ -47,7 +47,7 @@ public sealed class ValuationReconciliationService(
             assignmentType);
     }
 
- /// <summary>ق-2: الأسلوب غير المفعَّل لا يظهر صفاً ولا يدخل في الوزن.</summary>
+ /// <summary>Q-2: a disabled approach neither shows a row nor enters the weight.</summary>
     private async Task<IReadOnlyList<string>> GetEnabledKindsAsync(
         ValuationRequest vr,
         CancellationToken cancellationToken)
@@ -98,11 +98,11 @@ public sealed class ValuationReconciliationService(
             return (null, new Dictionary<string, string> { ["_"] = "طلب التقييم غير موجود" });
         if (vr.Status == ValuationRequestStatus.Done)
             return (null, new Dictionary<string, string> { ["_"] = "طلب التقييم مكتمل" });
-        // ق-6: بعد صدور نسخة الإيداع يتجمّد التقرير كاملاً — الرمز والشهادة فقط خارج التجميد.
+        // Q-6: after deposit copy, the full report is frozen — only code and certificate are outside the freeze.
         if (await ValuationReportFreeze.IsFrozenAsync(db, vr.Id, cancellationToken))
             return (null, new Dictionary<string, string> { ["_"] = ValuationReportFreeze.FrozenMessageAr });
 
- // بوابة جودة قبل الحساب لا عند الإصدار فقط: traditional deeds must clear
+ // Quality gate before calculation, not only at issuance: traditional deeds must clear
  // the deed↔nature match before the final opinion is computed (registered title skips).
         if (Guid.TryParse(vr.PropertyId?.Trim(), out var propertyGuid))
         {
@@ -123,8 +123,8 @@ public sealed class ValuationReconciliationService(
             }
         }
 
-        // «المنع يقع عند الاعتماد فقط — الإدخال الجزئي محفوظ كمسوّدة»:
-        // المبررات ومجموع الأوزان تفرضها بوابات الإصدار والتنبيهات، لا الحفظ.
+        // "Blocking happens at adoption only — partial input is kept as draft":
+        // Rationales and weight totals are enforced by issuance gates and alerts, not by save.
         var methods = request.Methods ?? [];
         var errors = new Dictionary<string, string>();
 
@@ -148,8 +148,8 @@ public sealed class ValuationReconciliationService(
         else if (premiseKey is not null && !ValuePremiseKeys.IsCompatible(basisKey, premiseKey))
             errors["valuePremiseKey"] = "فرضية القيمة غير متوافقة مع أساس القيمة المختار";
 
-        // مواصفة النموذج التفاعلي: الخصم يتبع أساس «قيمة التصفية» مباشرة؛
-        // الفرضية غير المدخلة تُملأ آلياً بـ«البيع القسري».
+        // Interactive model spec: discount follows the "liquidation value" basis directly;
+        // an unset premise is auto-filled with "forced sale".
         if (string.Equals(basisKey, BasisOfValueKeys.Liquidation, StringComparison.Ordinal)
             && premiseKey is null)
         {
@@ -271,7 +271,7 @@ public sealed class ValuationReconciliationService(
 
         await db.SaveChangesAsync(cancellationToken);
 
- // س2 : every alert pass — rationale or acknowledgement —
+ // S2 : every alert pass — rationale or acknowledgement —
  // leaves an audit trail. Logged best-effort after the main save.
         if (!string.Equals(previousOverridesJson, entity.MethodologyAlertOverridesJson, StringComparison.Ordinal))
         {
@@ -295,7 +295,7 @@ public sealed class ValuationReconciliationService(
         IReadOnlyList<string> enabledKinds,
         AssignmentType assignmentType)
     {
- // ق-2: a disabled approach neither shows a row nor skews the suggestion split.
+ // Q-2: a disabled approach neither shows a row nor skews the suggestion split.
         var marketEnabled = enabledKinds.Contains(
             ValuationApproachKinds.Market, StringComparer.OrdinalIgnoreCase);
         var costEnabled = enabledKinds.Contains(
@@ -354,7 +354,7 @@ public sealed class ValuationReconciliationService(
         if (string.Equals(basis, BasisOfValueKeys.Liquidation, StringComparison.OrdinalIgnoreCase)
             && string.IsNullOrWhiteSpace(premise))
         {
-            // خصم البيع القسري (مواصفة النموذج التفاعلي) — الفرضية الافتراضية للتصفية.
+            // Forced-sale discount (interactive model spec) — default premise for liquidation.
             premise = ValuePremiseKeys.Forced;
         }
         var discountPct = entity?.LiquidationDiscountPct ?? 0m;

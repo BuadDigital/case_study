@@ -1,7 +1,7 @@
 namespace RealEstateEval.Platform.Infrastructure.Data;
 
 /// <summary>
-/// Default report attachment types — صك، رفع مساحي، كروكي تنظيمي، رخصة المباني (ف).
+/// Default report attachment types — deed, cadastral survey, regulatory sketch, building permit (villa).
 /// </summary>
 internal static class AttachmentPrintDictionarySeed
 {

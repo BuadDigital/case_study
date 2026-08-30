@@ -11,10 +11,10 @@ import type {
 } from "./PropertyMapCanvas";
 
 /**
- * بديل Google لقماش الخريطة (كان Leaflet). العقد نفسه: نفس الـ props ونفس
- * أنواع العلامات، فالتبديل سطرٌ واحد في PropertyMapView. الدبابيس تُرسم أيقونات
- * SVG بدل HTML لأن العلامات الكلاسيكية لا تقبل عنصراً — ما يسقط نبض الهالة
- * وسقوط الدبوس فقط، وتبقى كل دلالات اللون والشكل والشارة.
+ * Google replacement for the map canvas (was Leaflet). Same contract: same props and same
+ * marker types, so switching is one line in PropertyMapView. Pins are drawn as SVG icons
+ * instead of HTML because classic markers do not accept an element — only the halo pulse
+ * and pin drop remain, keeping all color/shape/badge semantics.
  */
 
 export const SAUDI_CENTER: [number, number] = [24.2, 45.0];
@@ -26,14 +26,14 @@ const CLUSTER_COLORS: Record<LayerKey, { bg: string; ring: string; fg: string }>
   comparables: { bg: "#a4906f", ring: "rgba(164,144,111,.35)", fg: "#fff" },
 };
 
-/** أنماط Google المقابلة لأزرار الخلفية الثلاثة القائمة. */
+/** Google map styles matching the three existing basemap buttons. */
 const MAP_TYPE: Record<MapBasemap, string> = {
   carto: "roadmap",
   osm: "roadmap",
   satellite: "hybrid",
 };
 
-/** «فاتح» يبقى مميّزاً عن «شوارع» بتخفيت العناصر الثانوية. */
+/** «Light» stays distinct from «Streets» by dimming secondary elements. */
 const LIGHT_STYLE: google.maps.MapTypeStyle[] = [
   { featureType: "poi", stylers: [{ visibility: "off" }] },
   { featureType: "transit", stylers: [{ visibility: "off" }] },
@@ -45,14 +45,14 @@ function svgUrl(svg: string): string {
   return `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(svg)}`;
 }
 
-/** بطاقة العدّ أعلى الدبوس — كانت شارة HTML. */
+/** Count card above the pin — was an HTML badge. */
 function badgeSvg(count: number, x: number): string {
   const text = count.toLocaleString("en-US");
   const w = Math.max(13, 7 + text.length * 5);
   return `<g><rect x="${x - w}" y="0" width="${w}" height="13" rx="6.5" fill="#a4906f" stroke="#fff" stroke-width="1.5"/><text x="${x - w / 2}" y="9.5" text-anchor="middle" font-family="Tajawal,sans-serif" font-size="9" font-weight="700" fill="#fff">${text}</text></g>`;
 }
 
-/** أيقونة الدبوس بنفس دلالات نسخة Leaflet (طبقة/محدَّد/متعذّر/مؤرشف/معتمد). */
+/** Pin icon with the same Leaflet semantics (layer/selected/failed/archived/approved). */
 function pinIcon(
   g: typeof google,
   m: PropertyMapMarker,
@@ -61,7 +61,7 @@ function pinIcon(
   const archived = !!m.archived || m.layer === "archive";
   const base = archived ? 14 : m.layer === "comparables" ? 11 : 18;
   const size = selected ? base + 8 : base;
-  const pad = 8; // متسع للحلقة والشارة
+  const pad = 8; // Room for the ring and badge
   const box = size + pad * 2;
   const c = box / 2;
   const r = size / 2;
@@ -98,7 +98,7 @@ function pinIcon(
   };
 }
 
-/** فقاعات العناقيد بنفس ألوان وأحجام نسخة Leaflet. */
+/** Cluster bubbles with the same colors and sizes as the Leaflet version. */
 function clusterRenderer(g: typeof google, kind: LayerKey): Renderer {
   const colors = CLUSTER_COLORS[kind];
   return {
@@ -281,7 +281,7 @@ export function PropertyMapCanvasGoogle({
       gRef.current = null;
       readyRef.current = false;
     };
-    // القماش يُركَّب مرة واحدة؛ الخلفية والأوامر تُعالَج في تأثيرات مستقلة.
+    // Canvas mounts once; basemap and commands are handled in independent effects.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 

@@ -594,8 +594,8 @@ public sealed class ControllerBodyPostgresTests : IAsyncLifetime
     }
 
  /// <summary>
- /// F6 — ق-8/ق-6: مبرر العامل (حد أدنى ١٠ أحرف + الحفظ والقراءة) والإصدار ثنائي المرحلة
- /// (حالة المسودة، رفض الإيداع قبل الحواجب، 404 للنسخ غير المولّدة) على Postgres حقيقي.
+ /// F6 — Q-8/Q-6: factor rationale (minimum 10 characters + persistence and retrieval) and two-stage issuance
+ /// (Draft status, Upload rejected before block, 404 for ungenerated versions) on real Postgres.
  /// </summary>
     [DockerFact]
     public async Task Valuation_factor_rationale_and_report_issuance_execute()
@@ -619,7 +619,7 @@ public sealed class ControllerBodyPostgresTests : IAsyncLifetime
         using var created = JsonDocument.Parse(await create.Content.ReadAsStringAsync());
         var valuationRequestId = created.RootElement.GetProperty("id").GetGuid();
 
-        // ق-8-2: المبرر الصوري مرفوض.
+        // Q-8-2: placeholder rationale is rejected.
         using var shortRationale = AuthorizedPut(
             $"/api/valuation-requests/{valuationRequestId:D}/adjustment-factor-rationale",
             new { selectionContext = "market", factorKey = "financing", rationaleAr = "قصير" });
@@ -627,7 +627,7 @@ public sealed class ControllerBodyPostgresTests : IAsyncLifetime
         Assert.Equal(HttpStatusCode.BadRequest, tooShort.StatusCode);
         Assert.Equal("application/problem+json", tooShort.Content.Headers.ContentType?.MediaType);
 
-        // ق-8-1: مبرر واحد للعامل — يُحفظ ويظهر في حمولة المقارنات.
+        // Q-8-1: one rationale per factor — persisted and returned in the comparables payload.
         using var saveRationale = AuthorizedPut(
             $"/api/valuation-requests/{valuationRequestId:D}/adjustment-factor-rationale",
             new
@@ -638,13 +638,13 @@ public sealed class ControllerBodyPostgresTests : IAsyncLifetime
             });
         var saved = await client.SendAsync(saveRationale);
         Assert.Equal(HttpStatusCode.OK, saved.StatusCode);
-        // (قراءة قائمة المقارنات تتطلب منصة upstream حيّة لإعدادات المنشأة — خارج نطاق
-        // عزل الحاوية؛ الإثبات هنا عبر جسم الحفظ الراجع من Postgres.)
+        // (Read comparison list Requires live upstream platform for facility setups — out of scope
+        // Container insulation; The proof here is via the Postgres save body.)
         var savedBody = await saved.Content.ReadAsStringAsync();
         Assert.Contains("شروط التمويل مماثلة لكل المقارنات", savedBody);
         Assert.Contains("financing", savedBody);
 
-        // ق-6: مسودة — الحواجب غير مكتملة فلا إيداع، ولا نسخ مولّدة بعد.
+        // Q-6: Draft — Incomplete, no uploads, no copies generated yet.
         using var stateRequest = AuthorizedGet(
             $"/api/valuation-requests/{valuationRequestId:D}/report-issuance");
         var state = await client.SendAsync(stateRequest);
@@ -667,8 +667,8 @@ public sealed class ControllerBodyPostgresTests : IAsyncLifetime
     }
 
  /// <summary>
- /// F6 — ق-9: شبكة حالة المعاملة ورفع إنفاذ — 404 للمجهول، ورفض الرفع قبل الجاهزية
- /// برسالة مشكلة، على Postgres حقيقي.
+ /// F6 — Q-9: Network transaction status and upload Enfaz — 404 for unknown, reject upload before ready
+ /// With a problem message, on real Postgres.
  /// </summary>
     [DockerFact]
     public async Task Case_study_transaction_state_and_handover_guards_execute()

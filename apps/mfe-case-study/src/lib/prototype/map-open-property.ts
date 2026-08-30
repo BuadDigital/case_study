@@ -1,7 +1,7 @@
 import type { PoIntakeRecord } from "./po-intake-data";
 import { poPropertyPath } from "../po-routes";
 
-/** بحث مؤقت بالصك حتى تُربط نقاط الخريطة مباشرة بـ poNumber/propertyId. */
+/** Temporary deed lookup until map points link directly by poNumber/propertyId. */
 export function findPropertyPathByDeed(
   records: PoIntakeRecord[] | undefined,
   deedNo: string,

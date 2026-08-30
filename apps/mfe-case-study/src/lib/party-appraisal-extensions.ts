@@ -25,7 +25,7 @@ export type PartyAppraisalPropertySummary = {
   appraisalTaskId?: string | null;
 };
 
-/** حقن من shell — قائمة المقيم ونموذج رفع التقييم يعتمدان على وحدة المُقيّم. */
+/** Injected from shell — appraiser menu and valuation upload form depend on the evaluator module. */
 export type PartyAppraisalExtensions = {
   patchQueueConfig: (
     base: ActiveTransactionQueueConfig,
@@ -38,7 +38,7 @@ export type PartyAppraisalExtensions = {
     propertySummary?: PartyAppraisalPropertySummary;
     deedLabel?: string;
     onBack?: () => void;
-    /** Same property chrome as دارس الحالة (hero + timeline). */
+    /** Same property chrome as the case-study specialist (hero; without the timeline column). */
     embeddedInPropertyChrome?: boolean;
   }) => ReactNode;
   isEvaluatorLocked: (taskId: string, saving: boolean) => boolean;

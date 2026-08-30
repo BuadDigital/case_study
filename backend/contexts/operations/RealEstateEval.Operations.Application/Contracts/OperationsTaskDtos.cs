@@ -97,7 +97,7 @@ public class OperationsTaskDto
     public string? OriginalAssigneeName { get; set; }
     public string? CreditAssigneeId { get; set; }
     public string? CreditAssigneeName { get; set; }
- /// <summary>ISO when assignee confirmed receipt; null = بانتظار المنفّذ.</summary>
+ /// <summary>ISO when assignee confirmed receipt; null = awaiting port.</summary>
     public string? ReceiptConfirmedAt { get; set; }
  /// <summary>Required reason when status is cancelled.</summary>
     public string? CancelReason { get; set; }
@@ -110,7 +110,7 @@ public class OperationsTaskDto
     public decimal? VisitFeeAmountSar { get; set; }
 }
 
-/// <summary>أتعاب الزيارة report row (ops court_visit complete).</summary>
+/// <summary>Visiting fees report row (ops court_visit complete).</summary>
 // CourtVisitFeeReportRowDto stays in the global Application Contracts: the shared
 // ICourtVisitFeeChargeService abstraction returns it and financial serves it.
 

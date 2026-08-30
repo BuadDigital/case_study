@@ -1,7 +1,7 @@
 /**
  * Extract boundary **lengths only** from a survey sketch PDF (local, no external OCR).
- * Does **not** auto-fill وصف الحد — that stays manual.
- * Never fills: المساحة الإجمالية.
+ * Does **not** auto-fill boundary description — that stays manual.
+ * Never fills: total area.
  */
 
 import { loadPdfJs } from "@platform/app-shared/media/load-pdfjs";
@@ -31,7 +31,7 @@ export type SurveySketchExtractResult = {
   usedSpatialLengths?: boolean;
 };
 
-/** Form patch — أطوال الحدود only (never وصف الحد / never total area). */
+/** Form patch — boundary lengths only (never boundary description / never total area). */
 export type SurveySketchApplyPatch = {
   deedMatchesNature?: "yes" | "no" | null;
   northBoundary?: string;
@@ -90,7 +90,7 @@ function emptyBlock(): SketchBoundaryBlock {
   };
 }
 
-/** Drop المساحة only — keep وصف الحد + أطوال from croquis PDF. */
+/** Drop total area only — keep boundary description + lengths from croquis PDF. */
 function stripTotalArea(block: SketchBoundaryBlock): SketchBoundaryBlock {
   return {
     areaSqm: "",
@@ -153,9 +153,9 @@ function formatDescription(raw: string): string {
     .replace(/ممر\s*مشاء/gi, "ممر مشاة")
     .replace(/ممر\s*مشاه/gi, "ممر مشاة")
     .replace(/\bسرق\b/gi, "شرق")
-    // OCR: "رقم 94 س" / "رقم.دس" style fragments after "قطعة"
+    // OCR: "plot no. 94 S" / dashed plot-id fragments after the plot token
     .replace(/رقم\s*[.\-–ـ]?\s*(\d{1,6})\s*[.\-–ـ]?\s*س/gi, "رقم $1-س");
-  // قطعة رقم 94-س / 94 ـس / ٩٤-س
+  // Plot no. 94-S / 94-S / Eastern-Arabic digits 94-S
   const plot = s.match(
     /قطعه?\s*رقم\s*(\d{1,6})(?:\s*[\\-–ـ.]+\s*([ا-يA-Za-zسص]{1,3}))?/i,
   );
@@ -170,7 +170,7 @@ function formatDescription(raw: string): string {
     /ممر\s*(?:مشاه?ة?|مشاء)?\s*عرض\s*([\d.]+)\s*م?/i,
   );
   if (pathWalk) return `ممر مشاة عرض ${pathWalk[1]} م`;
-  // شارع عرض 20 / شارع بعرض 20 / شارع محدث بعرض 6 / شارع ثابت… بعرض 20
+  // Street width 20 / street of width 20 / updated street width 6 / fixed street… width 20
   const street =
     s.match(/شارع\s*(?:محدث\s*)?عرض\s*([\d.]+)\s*م?/i) ||
     s.match(/شارع\s*(?:محدث\s*)?بعرض\s*([\d.]+)\s*م?/i) ||
@@ -179,7 +179,7 @@ function formatDescription(raw: string): string {
     ) ||
     s.match(/(?:شارع|شاع|زع|شايع)\s*(?:محدث\s*)?(?:بعرض|عرض)\s*([\d.]+)\s*م?/i);
   if (street) return `شارع عرض ${street[1]} م`;
-  // ملك فلان (حدود الجيران)
+  // Owned by so-and-so (neighbor boundaries)
   const owner = s.match(
     /ملك\s+[^\d\n]{2,40?}(?=\s*(?:ملك|قطعة|شارع|ممر|جار|$))/i,
   );
@@ -189,19 +189,19 @@ function formatDescription(raw: string): string {
   if (/^ملك\s+/i.test(s) && s.length >= 6 && s.length <= 80) {
     return s.slice(0, 80);
   }
-  // الجزء المفرز…
+  // Segregated portion…
   if (/الجزء\s*المفرز/i.test(s)) {
     const m = s.match(/الجزء\s*المفرز[^\n|,/]{0,55}/i);
     return cleanDescription(m?.[0] ?? "الجزء المفرز").slice(0, 80);
   }
-  // مسيل / السبل
+  // Watercourse / pathways (sabal)
   if (/مسيل/i.test(s)) {
     return "مسيل السيل";
   }
   if (/السبل|سبل\s*السالك/i.test(s)) {
     return "السبل السالك";
   }
-  // سكة نافذة / سكة … — keep readable short form
+  // Through alley / alley … — keep readable short form
   if (/سك[ةه]\s*نافذ/i.test(s)) {
     return "سكة نافذة";
   }
@@ -275,7 +275,7 @@ function repairOcrArabicSoup(text: string): string {
 }
 
 /**
- * Harvest شمال/جنوب/شرق/غرب + وصف الحد from OCR text (noisy Arabic).
+ * Harvest north/south/east/west + boundary description from OCR text (noisy Arabic).
  * Only returns plot/street shapes via formatDescription.
  */
 export function mineBoundaryDescriptionsFromOcr(
@@ -300,7 +300,7 @@ export function mineBoundaryDescriptionsFromOcr(
   for (const dir of DIR_ORDER) {
     if (isPlausibleBoundaryDescription(block[dir].description)) continue;
 
-    // Direct row: جهة + وصف anywhere in OCR soup (strongest)
+    // Direct row: direction + description anywhere in OCR soup (strongest)
     const direct = [...flat.matchAll(DIR_DIRECT_ROW_RE[dir])];
     if (direct.length > 0) {
       const last = direct[direct.length - 1]!;
@@ -343,7 +343,7 @@ export function mineBoundaryDescriptionsFromOcr(
   }
 
   // Table-shaped dump: four description tokens later in page (N→S→E→W)
-  // Prefer ordered rows over noisy direction-window hits ("مما يلي الشرق" is not a table side).
+  // Prefer ordered rows over noisy direction-window hits ("eastward of" is not a table side).
   {
     const ordered = collectOrderedBoundaryDescriptions(flat);
     if (ordered.length >= 3) {
@@ -404,7 +404,7 @@ function collectOrderedBoundaryDescriptions(flat: string): string[] {
   let cursor = 0;
   for (const h of hits) {
     if (h.i < cursor) continue; // overlap with accepted span
-    // "ملك …" glued after a plot id is owner noise, not its own side
+    // "owned by …" glued after a plot id is owner noise, not its own side
     if (
       /^ملك\s/i.test(h.t) &&
       ordered.length > 0 &&
@@ -512,7 +512,7 @@ function detectDir(line: string): DirKey | null {
 }
 
 /**
- * Split raw croquis text into deed / nature slices (headers like بموجب الصك).
+ * Split raw croquis text into deed / nature slices (headers like "per deed").
  */
 export function splitDeedNatureSections(rawText: string): {
   deedText: string;
@@ -588,7 +588,7 @@ function descriptionCount(b: SketchBoundaryBlock): number {
   return DIR_ORDER.filter((d) => Boolean(b[d].description)).length;
 }
 
-/** Plot/street/path anchors — optional plot suffix must start with dash (ـس) so next row is not eaten. */
+/** Plot/street/path anchors — optional plot suffix must start with dash (-S) so next row is not eaten. */
 const DESC_TOKEN =
   "(?:قطعه?\\s*(?:رقم|دقم|رقه)\\s*[\\d٠-٩]{1,6}(?![\\d٠-٩])(?:\\s*[\\-–ـ.]+\\s*[ا-يA-Za-zسص]{1,3})?|شارع\\s+(?:[^\\n\\d]{1,40}?)?(?:محدث\\s*)?(?:بعرض|عرض)\\s*[\\d.٠-٩]+\\s*م?|(?:شاع|زع|شايع)\\s*(?:بعرض|عرض)\\s*[\\d.٠-٩]+\\s*م?|ممر\\s*(?:مشاه?ة?|مشاء)?\\s*عرض\\s*[\\d.٠-٩]+\\s*م?|ملك\\s+[^\\d\\n]{2,40}|سك[ةه]\\s*نافذ[ةه]?|مواقف\\s*سيارات|ارض\\s*فضا[ءد](?:\\s+[^\\d|,/]{1,30})?|الجزء\\s*المفرز(?:\\s+[^\\d|,/]{1,30})?|مسيل\\s*السيل|السبل\\s*السالك|جار)";
 /** Hoisted non-global matcher — DESC_TOKEN is compiled once, not per call. */
@@ -599,8 +599,8 @@ const DESC_TOKEN_RE = new RegExp(DESC_TOKEN, "i");
 const EDGE_LEN_TOKEN =
   "([\\d٠-٩]+[.,][\\d٠-٩]{1,3}|[\\d٠-٩]{2,3}(?![\\d٠-٩.,]))";
 
-// أنماط الاتجاهات ثابتة المكونات — كانت تُبنى داخل الحلقات مع كل استدعاء
-// (js-hoist-regexp). matchAll ينسخ التعبير داخلياً فمشاركة علم g هنا آمنة.
+// Direction regexes are module-level constants — were rebuilt inside loops on every call
+// (js-hoist-regexp). matchAll copies the regex internally, so sharing the g flag here is safe.
 const DIR_DESC_LEN_RE = Object.fromEntries(
   DIR_ORDER.map((dir) => [
     dir,
@@ -637,13 +637,13 @@ const DIR_DIRECT_ROW_RE = Object.fromEntries(
     ),
   ]),
 ) as Record<DirKey, RegExp>;
-/** يُستخدم مع exec ذي الحالة — صفِّر lastIndex قبل كل استخدام. */
+/** Used with stateful exec — reset lastIndex before each use. */
 const DIR_SELF_RE = Object.fromEntries(
   DIR_ORDER.map((dir) => [dir, new RegExp(DIR_TOKEN_BY_DIR[dir], "gi")]),
 ) as Record<DirKey, RegExp>;
-/** نسخة g المشتركة — matchAll ينسخ التعبير داخلياً فالمشاركة آمنة. */
+/** Shared g-flagged copy — matchAll clones internally so sharing is safe. */
 const DESC_TOKEN_GI_RE = new RegExp(DESC_TOKEN, "gi");
-// نسخ بلا علم g لاستخدام String.match — بلا حالة داخلية فالمشاركة آمنة.
+// Non-g copies for String.match — no internal state, so sharing is safe.
 const DIR_DESC_LEN_I_RE = Object.fromEntries(
   DIR_ORDER.map((dir) => [
     dir,
@@ -680,21 +680,21 @@ const DIR_LINE_PROSE_LEN_RE = Object.fromEntries(
     ),
   ]),
 ) as Record<DirKey, RegExp>;
-/** «طول …» صريح — لا يعتمد على الاتجاه. */
+/** Explicit «length …» — does not depend on direction. */
 const EXPLICIT_LENGTH_RE = new RegExp(
   `طول(?:\\s*الحد)?\\s*[:：]?\\s*${EDGE_LEN_TOKEN}\\s*(?:م|متر)?`,
   "i",
 );
 
 /**
- * Croquis table column header "الطول/م" (and OCR variants).
+ * Croquis table column header "length/m" (and OCR variants).
  * Presence anchors the real boundary table — not drawing edge labels.
  */
 export const LENGTH_COLUMN_HEADER_RE =
   /(?:ال)?طول\s*[\/|\\.\-–—]?\s*م(?:تر)?|(?:ال)?طول\s*بالمتر|الطول\s*\/\s*م/i;
 
 /**
- * Body of the table that sits under (or on the same line as) header الطول/م.
+ * Body of the table that sits under (or on the same line as) header length/m.
  * Everything before this header is treated as croquis noise (edge labels).
  */
 export function extractBodiesAfterLengthColumnHeader(
@@ -732,7 +732,7 @@ export function extractBodiesAfterLengthColumnHeader(
 }
 
 /**
- * Parse boundary rows strictly from text under column header الطول/م.
+ * Parse boundary rows strictly from text under column header length/m.
  * This is the preferred source for edge lengths.
  */
 export function parseFromLengthColumnTable(
@@ -749,7 +749,7 @@ export function parseFromLengthColumnTable(
     const flat = normalizeSketchText(body).replace(/\n+/g, " ");
 
     for (const dir of DIR_ORDER) {
-      // Full row under الطول/م column family: جهة + وصف + طول
+      // Full row under length/m column family: direction + description + length
       const matches = [...flat.matchAll(DIR_DESC_LEN_RE[dir])];
       if (matches.length > 0) {
         const last = matches[matches.length - 1]!;
@@ -769,7 +769,7 @@ export function parseFromLengthColumnTable(
       }
     }
 
-    // Bind lengths after orصاف from body only (never pre-header drawing)
+    // Bind lengths after descriptions from body only (never pre-header drawing)
     for (const dir of DIR_ORDER) {
       if (!block[dir].description) continue;
       if (block[dir].lengthM) continue;
@@ -793,7 +793,7 @@ export function parseFromLengthColumnTable(
         .map((x) => cleanLength((x[1] ?? "").replace(",", ".")))
         .filter((len) => isPlausibleEdgeLength(len) && Number(len) < 200);
 
-      // Only zip when we are clearly inside الطول/م body (few decimals ≈ 4 edges)
+      // Only zip when we are clearly inside length/m body (few decimals ≈ 4 edges)
       if (uniqueDescs.length >= 4 && lens.length >= 4 && lens.length <= 8) {
         for (let i = 0; i < 4; i++) {
           const dir = DIR_ORDER[i]!;
@@ -805,7 +805,7 @@ export function parseFromLengthColumnTable(
           if (adj) {
             block[dir].lengthM = adj;
           } else if (!block[dir].lengthM) {
-            // Zip only the *trailing* 4 decimals (column الطول/م), not leading noise
+            // Zip only the *trailing* 4 decimals (length/m column), not leading noise
             const tail = lens.slice(-4);
             block[dir].lengthM = tail[i]!;
           }
@@ -843,7 +843,7 @@ function isPlausibleEdgeLength(len: string, exclude?: string): boolean {
 /**
  * Text belonging to one direction — pick the best window among ALL
  * occurrences of the direction token (tables often appear AFTER drawing
- * labels; first "شمال" on page is frequently next to edge length 24.95).
+ * labels; first "north" on page is frequently next to edge length 24.95).
  */
 export function sliceTextForDirection(
   sourceText: string,
@@ -883,7 +883,7 @@ export function sliceTextForDirection(
     const tokenLen = tokM?.[0].length ?? 0;
     const win = windowAfter(start, tokenLen);
     let score = 0;
-    // Table row: وصف (قطعة/شارع) is a strong signal
+    // Table row: description (plot/street) is a strong signal
     if (DESC_TOKEN_RE.test(win)) score += 5;
     // Decimal immediately after description
     if (
@@ -892,7 +892,7 @@ export function sliceTextForDirection(
     ) {
       score += 8;
     }
-    // Explicit "طول" before a decimal
+    // Explicit "length" before a decimal
     if (/طول(?:\s*الحد)?\s*[:：]?\s*[\d]+[.,]\d{1,3}/i.test(win)) score += 3;
     // Lone decimals without table words — likely drawing edge (penalize only-decimal windows)
     if (score === 0 && /[\d]+[.,]\d{1,3}/.test(win)) score -= 2;
@@ -916,7 +916,7 @@ export function sliceTextForDirection(
  * Requires a decimal so 225 is never taken as the edge length.
  *
  * Uses the LAST plausible pairing when the same plot appears twice
- * (طبيعة + صك) or OCR duplicates a row.
+ * (nature + deed) or OCR duplicates a row.
  */
 function lengthAfterDescriptionInText(
   sourceText: string,
@@ -999,7 +999,7 @@ function lengthAfterDescriptionInText(
 
 /**
  * When OCR splits table into desc lines + length column, zip four edge
- * decimals (under الطول/م when possible) onto N→S→E→W.
+ * decimals (under length/m when possible) onto N→S→E→W.
  */
 export function zipLengthColumnDecimals(
   block: SketchBoundaryBlock,
@@ -1064,7 +1064,7 @@ export function zipLengthColumnDecimals(
 }
 
 /**
- * Collect every table-like row "جهة + وصف + طول عشري" in the text.
+ * Collect every table-like row "direction + description + decimal length" in the text.
  * Prefers later matches per direction (table body over drawing labels).
  */
 export function extractDirectionalTableRows(
@@ -1076,7 +1076,7 @@ export function extractDirectionalTableRows(
 
   // Build alternation of dirs that still captures which dir matched
   for (const dir of DIR_ORDER) {
-    // A) dir + وصف + طول  (authoritative)
+    // A) dir + description + length  (authoritative)
     const reA = DIR_DESC_LEN_RE[dir];
     const matchesA = [...flat.matchAll(reA)];
     if (matchesA.length > 0) {
@@ -1088,7 +1088,7 @@ export function extractDirectionalTableRows(
       continue;
     }
 
-    // B) dir + وصف only — length filled later via adjacency
+    // B) dir + description only — length filled later via adjacency
     const reDesc = DIR_DESC_RE[dir];
     const matchesD = [...flat.matchAll(reDesc)];
     if (matchesD.length > 0) {
@@ -1097,7 +1097,7 @@ export function extractDirectionalTableRows(
     }
   }
 
-  // Rows without leading dir: "قطعة رقم 225 24.25" — bind by description
+  // Rows without leading dir: "plot no. 225 24.25" — bind by description
   // only when a side already has that description without length
   for (const dir of DIR_ORDER) {
     if (!block[dir].description || block[dir].lengthM) continue;
@@ -1110,7 +1110,7 @@ export function extractDirectionalTableRows(
 
 /**
  * After descriptions exist, bind edge length from the same table row only.
- * Never uses "first decimal after شمال on the page" (that is drawing labels).
+ * Never uses "first decimal after north on the page" (that is drawing labels).
  *
  * `overwrite=true` replaces only when a stronger match is *found* —
  * never blanks an existing length (that emptied the form after a weak re-bind).
@@ -1139,7 +1139,7 @@ export function fillMissingLengthsFromTableContext(
       lengthAfterDescriptionInText(windowText, desc) ||
       lengthAfterDescriptionInText(sourceText, desc);
 
-    // Explicit "طول …" only inside a high-quality direction window (has وصف)
+    // Explicit "length …" only inside a high-quality direction window (has description)
     if (!found && windowText && DESC_TOKEN_RE.test(windowText)) {
       const nWin = normalizeSketchText(windowText);
       const m = nWin.match(EXPLICIT_LENGTH_RE);
@@ -1157,10 +1157,10 @@ export function fillMissingLengthsFromTableContext(
 
 /**
  * Strict croquis rows via global last-match + best direction windows.
- * Never takes "شمال + أول رقم على الرسم" (e.g. 24.95 west edge → north).
+ * Never takes "north + first number on the drawing" (e.g. 24.95 west edge → north).
  */
 function parseStrictDirectionalRows(sectionText: string): SketchBoundaryBlock {
-  // Global table rows first (dir+وصف+طول) — most reliable for croquis tables
+  // Global table rows first (dir+description+length) — most reliable for croquis tables
   let block = extractDirectionalTableRows(sectionText);
 
   // Fill gaps from best windows only (never pattern: dir + lone decimal first)
@@ -1170,7 +1170,7 @@ function parseStrictDirectionalRows(sectionText: string): SketchBoundaryBlock {
     if (!win) continue;
     const flat = normalizeSketchText(win).replace(/\n+/g, " ");
 
-    // dir + وصف + طول only (no dir+length+desc — that picks drawing edge first)
+    // dir + description + length only (no dir+length+desc — that picks drawing edge first)
     let m = flat.match(DIR_DESC_LEN_I_RE[dir]);
     if (m) {
       if (!block[dir].description) {
@@ -1189,7 +1189,7 @@ function parseStrictDirectionalRows(sectionText: string): SketchBoundaryBlock {
       block[dir].description = formatDescription(m[1] ?? "");
     }
 
-    // dir + … طول N.NN only when window already has table وصف
+    // dir + … length N.NN only when window already has table description
     if (
       block[dir].description ||
       DESC_TOKEN_RE.test(flat)
@@ -1207,12 +1207,12 @@ function parseStrictDirectionalRows(sectionText: string): SketchBoundaryBlock {
 
 /**
  * OCR sometimes dumps columns separately:
- *   شمال جنوب شرق غرب
- *   قطعة رقم 225 …  قطعة رقم 226
+ *   north south east west
+ *   plot no. 225 …  plot no. 226
  *   24.25 24.50 25.00 24.95
  *
- * ONLY bind length when it sits next to a وصف. Never zip page-order
- * decimals (drawing labels come first: 24.95 → wrongly assigned to شمال).
+ * ONLY bind length when it sits next to a description. Never zip page-order
+ * decimals (drawing labels come first: 24.95 → wrongly assigned to north).
  */
 function parseColumnarTableBody(sectionText: string): SketchBoundaryBlock | null {
   const n = normalizeSketchText(sectionText);
@@ -1317,11 +1317,11 @@ function mergeBlocksPreferStrict(
 }
 
 /**
- * Parse croquis table body: جهة + وصف (قطعة رقم / شارع…) + طول.
- * Preferred source: rows under column header «الطول/م».
+ * Parse croquis table body: direction + description (plot no. / street…) + length.
+ * Preferred source: rows under column header «length/m».
  */
 export function parseBoundaryBlock(sectionText: string): SketchBoundaryBlock {
-  // 1) Explicit «الطول/م» column body — ignore drawing numbers before the header
+  // 1) Explicit «length/m» column body — ignore drawing numbers before the header
   const fromLengthCol = parseFromLengthColumnTable(sectionText);
   let block = fromLengthCol ?? emptyBlock();
 
@@ -1380,7 +1380,7 @@ export function parseBoundaryBlock(sectionText: string): SketchBoundaryBlock {
     }
   }
 
-  // Line-based prose: "الحد الشمالي: … طول 25.00 م"
+  // Line-based prose: "northern boundary: … length 25.00 m"
   const lines = sectionText
     .split(/\n+/)
     .map((l) => l.trim())
@@ -1421,7 +1421,7 @@ export function parseBoundaryBlock(sectionText: string): SketchBoundaryBlock {
 }
 
 /**
- * Prefer tables titled بموجب الصك / بموجب الطبيعة (user croquis layout).
+ * Prefer tables titled per deed / per nature (user croquis layout).
  */
 export function parseSurveySketchText(
   rawText: string,
@@ -1450,7 +1450,7 @@ export function parseSurveySketchText(
     if (!isBlockEmpty(whole)) deed = whole;
   }
 
-  // Nature-only document (no صك header): seed deed from nature sides.
+  // Nature-only document (no deed header): seed deed from nature sides.
   if (isBlockEmpty(deed) && nature && !isBlockEmpty(nature) && !hasDeedHeader) {
     deed = {
       areaSqm: nature.areaSqm,
@@ -1461,7 +1461,7 @@ export function parseSurveySketchText(
     };
   }
 
-  // Section-scoped length re-bind — prefer «الطول/م» body first, then full section for gaps.
+  // Section-scoped length re-bind — prefer «length/m» body first, then full section for gaps.
   const deedBodies = extractBodiesAfterLengthColumnHeader(deedText || text);
   if (deedBodies.length > 0) {
     deed = fillMissingLengthsFromTableContext(
@@ -1507,7 +1507,7 @@ function finalizeExtractResult(
   text: string,
   usedSpatialLengths: boolean,
 ): SurveySketchExtractResult {
-  // Keep وصف + أطوال; never expose total area.
+  // Keep description + lengths; never expose total area.
   const deedOut = stripTotalArea(deed);
   const natureNums = nature ? stripTotalArea(nature) : null;
 
@@ -1552,7 +1552,7 @@ function finalizeExtractResult(
 }
 
 /**
- * Build a patch: **أطوال فقط** from croquis PDF (no وصف الحد, no total area).
+ * Build a patch: **lengths only** from croquis PDF (no boundary description, no total area).
  */
 export function sketchExtractToEmptyFieldsPatch(
   result: SurveySketchExtractResult,
@@ -1602,7 +1602,7 @@ export function sketchExtractToEmptyFieldsPatch(
     appliedCount += 1;
   };
 
-  // Lengths only — never auto-fill وصف الحد
+  // Lengths only — never auto-fill boundary description
   set(
     "northBoundaryLengthM",
     take(current.northBoundaryLengthM, d.north.lengthM),
@@ -1886,8 +1886,8 @@ function pickFourClusters(clusters: SideCluster[]): SideCluster[] | null {
 /**
  * Pair 4 edge labels into opposite sides by matching text-run orientation
  * (parallel sides share the same glyph angle). Then map:
- *  - N/S pair: higher page-Y → شمال, lower → جنوب
- *  - E/W pair: higher page-X → شرق, lower → غرب
+ *  - N/S pair: higher page-Y → north, lower → south
+ *  - E/W pair: higher page-X → east, lower → west
  *
  * Which pair is N/S vs E/W: the pair with larger average PDF transform `a`
  * (N/S edge labels on typical croquis PDF exports). Fallback pure Y/X.
@@ -1991,7 +1991,7 @@ export function parseLengthsFromPositions(items: SketchPdfTextItem[]): {
 } | null {
   const labels = collectPositionedLengthLabels(items);
   if (labels.length < 4) return null;
-  // Position-based clustering: edge pairs (صك + طبيعة) sit near each other.
+  // Position-based clustering: edge pairs (deed + nature) sit near each other.
   // Retry a looser radius when labels are slightly farther apart.
   let clusters = clusterLengthLabels(labels, 42);
   if (clusters.length < 4) {
@@ -2095,7 +2095,7 @@ function stripAllDescriptions(block: SketchBoundaryBlock): SketchBoundaryBlock {
 /**
  * Extract for engineering-office survey upload.
  * **Lengths only** (N/S/E/W meters from PDF text / spatial edge numbers).
- * وصف الحد is never auto-filled. المساحة never auto-filled.
+ * Boundary description is never auto-filled. Area never auto-filled.
  * Local only — no third-party OCR / no description reading.
  */
 export async function extractSurveySketchFromPdf(

@@ -8,7 +8,6 @@
     "./*": "./src/*"
   },
   "dependencies": {
-    "@case-study/mfe": "*",
     "@failures/mfe": "*",
     "@platform/api-client": "*",
     "@platform/auth-client": "*",

@@ -23,7 +23,7 @@ import {
   useKeyEnvelopeFeesQuery,
 } from "../query/keys-queries";
 
-/** صفوف هيكلية أثناء التحميل — JSX ثابت لا يعتمد على الحالة. */
+/** Skeleton rows while loading — static JSX independent of state. */
 const FEES_TABLE_SKELETON = (
   <div className="space-y-0">
     {Array.from({ length: 4 }).map((_, i) => (

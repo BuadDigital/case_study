@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * Re-seed demo HR user ahmed (معاين ميداني — أحمد سعيد).
+ * Re-seed demo HR user ahmed (field inspector — Ahmed Saeed).
  * Usage: node backend/scripts/reseed-ahmed.mjs
  */
 import { spawnSync } from "node:child_process";

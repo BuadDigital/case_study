@@ -84,7 +84,7 @@ export function FinancePartyBillingStatements({
   onCreatedStatement,
 }: {
   mode?: PartyBillingMode;
-  /** حصر المستحقات/المسيرات بمستحق واحد (حساب المستحق). */
+  /** Scope dues/payrolls to one payee (payee account). */
   assigneeId?: string | null;
   focusStatementId?: string | null;
   onFocusStatement?: (id: string | null, partyId?: string | null) => void;
@@ -101,7 +101,7 @@ export function FinancePartyBillingStatements({
     focusStatementId,
   );
   const [duesSearch, setDuesSearch] = useState("");
-  /** قيمة مؤجَّلة للفلترة — إدخال البحث يبقى فورياً دون حجب الكتابة */
+  /** Deferred value for filtering — search input stays immediate without blocking typing */
   const deferredDuesSearch = useDeferredValue(duesSearch);
   const [disbursementVoucher, setDisbursementVoucher] = useState("");
   const [transferReference, setTransferReference] = useState("");
@@ -177,7 +177,7 @@ export function FinancePartyBillingStatements({
     });
   }, [readyLines, deferredDuesSearch]);
 
-  /** البنود القابلة للتحديد (صافي > صفر) — تُحسب مرة بدل تكرار filter */
+  /** Selectable lines (net > 0) — computed once instead of repeating filter */
   const payableDues = useMemo(
     () => filteredDues.filter((l) => l.netFeeSar > 0),
     [filteredDues],

@@ -23,7 +23,7 @@ public static class PropertyBoundaryTypes
         _ => value?.Trim() ?? "",
     };
 
- /// <summary>Computed street count for adjustments — اعتراض فقط when derived.</summary>
+ /// <summary>Computed street count for adjustments — objection-only when derived.</summary>
     public static int CountStreets(params string?[] types) =>
         types.Count(t => string.Equals(t?.Trim(), Street, StringComparison.OrdinalIgnoreCase));
 }
@@ -52,7 +52,7 @@ public static class PropertyFinishingTypes
     };
 }
 
-/// <summary>Structural system type — not condition (خرساني / معدني / …).</summary>
+/// <summary>Structural system type — not condition (concrete / steel / …).</summary>
 public static class PropertyFinishingStructures
 {
     public const string Concrete = "concrete";

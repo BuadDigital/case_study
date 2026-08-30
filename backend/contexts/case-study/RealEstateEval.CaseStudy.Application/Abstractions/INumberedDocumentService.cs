@@ -3,8 +3,8 @@ using RealEstateEval.CaseStudy.Application.Contracts;
 namespace RealEstateEval.CaseStudy.Application.Abstractions;
 
 /// <summary>
-/// سجل المستندات المرقّمة (قرار 25 + ورشة الترقيم): تخصيص أرقام الخطابات (LT)
-/// وتقارير دراسة الحالة (CS) وقيدها في السجل لحظة الطباعة/الإصدار.
+/// Numbered-document ledger (decision 25 + numbering workshop): assign letter numbers (LT)
+/// and case-study report numbers (CS) and log them at print/issue time.
 /// </summary>
 public interface INumberedDocumentService
 {

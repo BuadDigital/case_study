@@ -7,7 +7,7 @@ export type StatusPillStyle = {
   live?: boolean;
 };
 
-/** Status chip with dot — matches docs/new look `.status` (أوامر العمل). */
+/** Status chip with dot — matches docs/new look `.status` (work orders). */
 export function StatusPill({
   label,
   style,
@@ -41,8 +41,8 @@ export function StatusPill({
   );
 }
 
-// نتائج ثابتة على مستوى الوحدة — تُستدعى لكل صف/بطاقة، وكائن جديد في كل استدعاء
-// كان يمنع ثبات هوية style على StatusPill (js-cache-function-results).
+// Module-level cached results — called per row/card; a new object each call
+// used to break style identity stability on StatusPill (js-cache-function-results).
 const LEGACY_DONE_STYLE: StatusPillStyle = Object.freeze({ base: "#3f8f5f", fg: "#2f7a4d" });
 const LEGACY_FAIL_STYLE: StatusPillStyle = Object.freeze({ base: "var(--red)", fg: "var(--red-text)" });
 const LEGACY_PROG_STYLE: StatusPillStyle = Object.freeze({ base: "var(--gold)", fg: "var(--gold-d)" });

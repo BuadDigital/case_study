@@ -16,7 +16,7 @@ public static class OperationsModel
 {
     public static ModelBuilder ApplyOperationsModel(this ModelBuilder builder, bool ownsMigrations = true)
     {
- // ورشة الترقيم: عدّادات KE السنوية محلية في مخطط operations.
+ // Numbering workshop: annual KE counters local to the operations schema.
         if (ownsMigrations)
             builder.ApplyReferenceSequenceModel(DatabaseSchemas.Operations);
 

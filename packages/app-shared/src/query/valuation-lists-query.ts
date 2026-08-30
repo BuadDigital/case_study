@@ -8,8 +8,8 @@ import {
 import { apiConfig } from "../auth/api-config";
 
 /**
- * قوائم التقييم عبر react-query — كانت تُجلب مرتين على شاشة المراجعة النهائية
- * (تبويب المراجعة + قسم الرأي النهائي) بلا أي تخزين مؤقت (client-swr-dedup).
+ * Valuation lists via react-query — previously fetched twice on the final-review
+ * screen (review tab + final-opinion section) with no cache (client-swr-dedup).
  */
 export function useValuationListsQuery() {
   return useQuery({

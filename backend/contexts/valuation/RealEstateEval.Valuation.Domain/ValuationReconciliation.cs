@@ -119,7 +119,7 @@ public class ValuationReconciliation
 {
     public Guid Id { get; set; }
     public Guid ValuationRequestId { get; set; }
- /// <summary>مبرر استخدام طرق التقييم — required when saving.</summary>
+ /// <summary>Rationale for valuation methods used — required when saving.</summary>
     public string MethodsRationale { get; set; } = "";
  /// <summary>Rounding applied once on the final opinion (no earlier rounding).</summary>
     public int FinalRoundDecimals { get; set; }
@@ -158,8 +158,8 @@ public static class ReconciliationRules
     public const decimal WeightSumTolerance = 0.05m;
 
  /// <summary>
- /// Unrounded contribution — مواصفة النموذج التفاعلي: القيمة كما هي بلا تصفير للسالب؛
- /// المؤشر غير المكتمل/السالب يحجبه الاعتماد لا الجمع.
+ /// Unrounded contribution — interactive model spec: value as-is without zeroing negatives;
+ /// an incomplete/negative indicator is blocked at adoption, not by the sum.
  /// </summary>
     public static decimal Contribution(decimal approachValue, decimal weightPct) =>
         approachValue * (weightPct / 100m);
@@ -175,8 +175,8 @@ public static class ReconciliationRules
     }
 
  /// <summary>
- /// Round once on the final opinion — مواصفة النموذج التفاعلي:
- /// finalVal = round(القيمة / 10^ن) × 10^ن (ن=0 أقرب ريال؛ ن=4 أقرب ١٠٬٠٠٠).
+ /// Round once on the final opinion — interactive model spec:
+ /// finalVal = round(value / 10^n) × 10^n (n=0 nearest riyal; n=4 nearest 10,000).
  /// </summary>
     public static decimal RoundFinal(decimal weightedValue, int decimals)
     {
@@ -189,8 +189,8 @@ public static class ReconciliationRules
     }
 
  /// <summary>
- /// مواصفة النموذج التفاعلي: خصم البيع القسري لا يُفعَّل إلا مع «قيمة التصفية» —
- /// اختيار الأساس وحده يكفي (الفرضية بيانات وصفية لا شرط تطبيق).
+ /// Interactive model spec: forced-sale discount applies only with "liquidation value" —
+ /// choosing the basis alone is enough (premise is descriptive data, not an apply condition).
  /// </summary>
     public static bool ShouldApplyLiquidationDiscount(
         string? basisOfValueKey,
@@ -230,8 +230,8 @@ public static class ReconciliationRules
     }
 
  /// <summary>
- /// مواصفة النموذج التفاعلي: الافتراضي أسلوب السوق ١٠٠٪ والتكلفة ٠٪ (apW = {market:100, cost:0})؛
- /// وعند غياب مؤشر السوق يذهب الوزن كاملاً للتكلفة.
+ /// Interactive model spec: default market 100% and cost 0% (apW = {market:100, cost:0});
+ /// when the market indicator is absent, the full weight goes to cost.
  /// </summary>
     public static IReadOnlyList<(string kind, decimal weightPct)> SuggestWeights(
         decimal marketValue,

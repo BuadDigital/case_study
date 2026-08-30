@@ -73,9 +73,9 @@ export function FinanceEnfazPoBilling({
   initialPo = null,
   compact = false,
 }: {
-  /** يفتح أمر عمل محدد (من مهامي / قائمة الإيرادات). */
+  /** Opens a specific work order (from My Tasks / revenue list). */
   initialPo?: string | null;
-  /** يخفي قائمة أوامر العمل الجانبية عند العمل من مرحلة. */
+  /** Hides the side work-order list when working from a stage. */
   compact?: boolean;
 } = {}) {
   const queryClient = useQueryClient();
@@ -143,7 +143,7 @@ export function FinanceEnfazPoBilling({
       taxable += (Number(d.caseStudyFee) || 0) + (Number(d.surveyFee) || 0);
       key += Number(d.keyFee) || 0;
     }
-    // ضريبة 15٪ على (تقييم+رفع) فقط — أتعاب المفاتيح شاملة الضريبة
+    // 15% VAT on (valuation+survey) only — keys fees are VAT-inclusive
     const vat = Math.round(taxable * 0.15 * 100) / 100;
     return {
       taxable,
@@ -151,7 +151,7 @@ export function FinanceEnfazPoBilling({
       vat,
       total: taxable + vat + key,
       billable,
-      /** توافق العرض القديم: مجموع قبل الضريبة الخاضع */
+      /** Legacy UI compat: taxable subtotal before VAT */
       sub: taxable,
     };
   }, [billing, draft]);
@@ -199,7 +199,7 @@ export function FinanceEnfazPoBilling({
         return;
       }
       showToast("تم إصدار الفاتورة", "success");
-      // التنزيل لا يعتمد على الإبطال — بالتوازي كي لا يتأخر الـPDF (async-parallel).
+      // Download does not depend on invalidation — parallel so the PDF is not delayed (async-parallel).
       const [, downloaded] = await Promise.all([
         queryClient.invalidateQueries({
           queryKey: [...prototypeKeys.all, "enfaz-billing"],

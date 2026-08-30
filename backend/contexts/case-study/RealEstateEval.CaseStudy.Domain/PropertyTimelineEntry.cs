@@ -2,7 +2,7 @@ using RealEstateEval.Domain;
 
 namespace RealEstateEval.CaseStudy.Domain;
 
-/// <summary>Immutable audit row for property detail timeline / سجل الإجراءات.</summary>
+/// <summary>Immutable audit row for property detail timeline / action log.</summary>
 public class PropertyTimelineEntry
 {
     public Guid Id { get; set; }

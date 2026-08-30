@@ -13,7 +13,7 @@ namespace RealEstateEval.Financial.Infrastructure.Data.Contexts.Financial.Migrat
  /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
- // ورشة الترقيم: عدّادات DS السنوية — صف لكل (بادئة × سنة).
+ // Numbering workshop: annual DS counters — one row per (prefix × year).
             migrationBuilder.Sql(
                 """
                 CREATE TABLE IF NOT EXISTS financial."FinancialReferenceSequences" (

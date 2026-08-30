@@ -29,7 +29,7 @@ public class InspectorFeeLedger
     public Guid? PropertyId { get; set; }
     public int PropertyOrdinal { get; set; } = 1;
     public string? AssigneeId { get; set; }
- /// <summary>متعاون فرد | متعاون شركة | موظف (أو متعاون قديم)</summary>
+ /// <summary>Individual cooperator | company cooperator | employee (or legacy cooperator)</summary>
     public string InspectorType { get; set; } = "موظف";
  /// <summary>The transaction department whose supervisor owns discount and dispute decisions.</summary>
     public string SupervisingDepartment { get; set; } = SupervisingDepartments.CaseStudy;

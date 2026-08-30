@@ -15,6 +15,7 @@ namespace RealEstateEval.Failures.Api.Controllers;
 [ApiController]
 [Route("api/failure-dispatch")]
 [Authorize]
+[RequireUpstreamDispatch]
 public sealed class FailureDispatchController(
     IFailureService failures,
     IFailureLookup lookup) : ControllerBase

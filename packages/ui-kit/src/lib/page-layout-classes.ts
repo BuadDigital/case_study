@@ -33,7 +33,7 @@ export const statCardFlushClassName =
 export const queueTableRowClassName =
   "cursor-pointer transition-[background-color,box-shadow,transform,opacity] duration-150 ease-out hover:bg-[color-mix(in_srgb,var(--info-bg)_40%,var(--surface))] active:scale-[0.997]";
 
-/* شريط ذهبي على حافة البداية (يمين في RTL) — يوضح أي صف مفتوح في اللوحة. */
+/* Gold bar on the start edge (right in RTL) — marks which row is open in the panel. */
 export const queueTableRowActiveClassName =
   "bg-[color-mix(in_srgb,var(--warning-bg)_45%,var(--surface))] shadow-[inset_-3px_0_0_0_var(--gold-d)]";
 

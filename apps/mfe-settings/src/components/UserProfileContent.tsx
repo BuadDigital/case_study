@@ -60,7 +60,7 @@ const ENG_OFFICE_DETAIL_RE = /engineering-office/i;
 const FIELD_INSPECTOR_DETAIL_RE = /field-inspector/i;
 const LTR_FIELD_LABEL_RE = /إيميل|بريد|جوال|هوية|عضوية|مستخدم|معرّف/i;
 
-/** حساب مكتب هندسي — تظهر له تبويبة مسيرات الصرف */
+/** Engineering-office account — shows disbursement-payrolls tab */
 function isEngineeringOfficeProfile(user: StaffUser): boolean {
   if ((user.roleId ?? "").trim() === "engineering-office") return true;
   if ((user.distributionAssigneeId ?? "").trim().toLowerCase().startsWith("eo-"))
@@ -72,7 +72,7 @@ function isEngineeringOfficeProfile(user: StaffUser): boolean {
   );
 }
 
-/** حساب معاين ميداني — تظهر له تبويبة المستحقات */
+/** Field-inspector account — shows dues tab */
 function isFieldInspectorProfile(user: StaffUser): boolean {
   if ((user.roleId ?? "").trim() === "field-inspector") return true;
   const assignee = (user.distributionAssigneeId ?? "").trim().toLowerCase();
@@ -152,7 +152,7 @@ export function UserProfileContent({ user }: { user: StaffUser }) {
       { id: "login", label: "بيانات الدخول" },
       { id: "activity", label: "سجل الأعمال" },
     ];
-    // بجانب سجل الأعمال — مسيرات المكتب / مستحقات المعاين
+    // Beside work log — office payrolls / inspector dues
     if (showEngStatements) {
       items.push({ id: "eng_statements", label: "مسيرات الصرف" });
     }
@@ -165,7 +165,7 @@ export function UserProfileContent({ user }: { user: StaffUser }) {
 
   const effectiveTab = tabs.some((item) => item.id === tab) ? tab : "basic";
 
-  /** لوحة لا تُركَّب إلا بعد أول زيارة — ثم تبقى مركّبة مخفية فلا تضيع حالتها. */
+  /** Panel mounts only after first visit — then stays mounted hidden so state is kept. */
   const visitedTabsRef = useRef<Set<ProfileTab>>(new Set());
   visitedTabsRef.current.add(effectiveTab);
   const tabMode = (id: ProfileTab) =>

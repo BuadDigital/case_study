@@ -16,7 +16,7 @@ export function formatDateAr(iso: string): string {
   return `${pad2(parsed.getDate())}/${pad2(parsed.getMonth() + 1)}/${parsed.getFullYear()}`;
 }
 
-/** DD/MM/YYYY من طابع زمني كامل (توقيت المتصفح) — "—" عند الغياب أو تعذّر التحليل. */
+/** DD/MM/YYYY from a full timestamp (browser timezone) — "—" when absent or unparseable. */
 export function dmy(iso: string | null | undefined): string {
   if (!iso?.trim()) return "—";
   const d = new Date(iso);
@@ -24,13 +24,13 @@ export function dmy(iso: string | null | undefined): string {
   return `${pad2(d.getDate())}/${pad2(d.getMonth() + 1)}/${d.getFullYear()}`;
 }
 
-/** تاريخ اليوم بالتقويم المحلي YYYY-MM-DD — نسخ toISOString كانت تنحرف يوماً بين منتصف الليل و03:00. */
+/** Today's local-calendar date YYYY-MM-DD — toISOString copies used to shift a day between midnight and 03:00. */
 export function todayIso(): string {
   const d = new Date();
   return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
 }
 
-/** YYYY/MM/DD من طابع زمني (توقيت المتصفح) — "—" عند الغياب أو تعذّر التحليل. */
+/** YYYY/MM/DD from a timestamp (browser timezone) — "—" when absent or unparseable. */
 export function ymd(raw: string | null | undefined): string {
   if (!raw?.trim()) return "—";
   const d = new Date(raw);

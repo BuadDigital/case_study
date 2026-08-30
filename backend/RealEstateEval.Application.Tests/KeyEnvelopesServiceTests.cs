@@ -124,7 +124,7 @@ public class KeyEnvelopesServiceTests
             "مراجع");
         Assert.Null(error);
         Assert.NotNull(ok);
- // Only the court scenario earns receipt revenue from إنفاذ.
+ // Only the court scenario earns receipt revenue from Enfaz.
         Assert.Null(ok!.RevenueEntitlementAtUtc);
         Assert.Equal(0, ok.KeysCountActual);
     }
@@ -433,7 +433,7 @@ public class KeyEnvelopesServiceTests
             "معاين");
 
         var keys = TestBoundedContexts.CreatePropertyKeys(bundle);
-        // الإسقاط صار على حلقة الصيانة لا على القراءة — يُستدعى صراحةً هنا.
+        // Projection has become on the maintenance loop, not on reading - explicitly called for here.
         await keys.SyncProjectionAsync();
         var rows = await keys.ListAsync(null);
         var row = Assert.Single(
@@ -444,7 +444,7 @@ public class KeyEnvelopesServiceTests
     }
 
  /// <summary>
- /// Registering the envelope is what earns the receipt revenue from إنفاذ, and that is all it does.
+ /// Registering the envelope is what earns the receipt revenue from Enfaz, and that is all it does.
  /// It used to stamp an amount off the government-review table — a figure the pricing screen owned
  /// but nobody had agreed to bill — and it must not be confused with the visit fee either.
  /// </summary>

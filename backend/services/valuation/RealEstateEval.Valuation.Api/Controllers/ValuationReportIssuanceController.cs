@@ -8,7 +8,7 @@ using RealEstateEval.Valuation.Application.Contracts;
 namespace RealEstateEval.Valuation.Api.Controllers;
 
 /// <summary>
-/// ق-6: الإصدار ثنائي المرحلة + شهادة الإيداع — نسخة الإيداع المجمّدة ثم النسخة النهائية.
+/// Q-6: two-phase issuance + deposit certificate — frozen deposit copy then final copy.
 /// </summary>
 [ApiController]
 [Route("api/valuation-requests/{valuationRequestId:guid}/report-issuance")]
@@ -63,8 +63,8 @@ public class ValuationReportIssuanceController : ControllerBase
     }
 
     /// <summary>
-    /// تكميلية ق-9 (ر2): إعادة فتح دور التقييم بعد الإيداع — موافقة مشرف القسم شرط
-    /// الصلاحية؛ النسخة السارية تُعلَّم «ملغاة — حلّت محلها نسخة أحدث» وتبقى بالملف.
+    /// Q-9 supplement (R2): reopen valuation cycle after deposit — section-supervisor approval is the
+    /// permission gate; current copy is marked "superseded — replaced by a newer copy" and stays on file.
     /// </summary>
     [HttpPost("reopen")]
     [Authorize(Policy = CapabilityPolicyNames.ManageValuationRequests)]

@@ -128,7 +128,7 @@ export function FailuresView() {
     return map;
   }, [poRecords]);
   const [search, setSearch] = useState("");
-  // بعد الترطيب تركب شجرة واحدة فقط (جدول أو بطاقات) — كانتا تُبنيان معاً.
+  // After hydration mount only one tree (table or cards) — both used to build together.
   const isDesktopViewport = useViewportDesktop();
   const [expandedId, setExpandedId] = useState<string | null>(highlightId);
   const [supervisorNote, setSupervisorNote] = useState<Record<string, string>>(
@@ -138,7 +138,7 @@ export function FailuresView() {
     {},
   );
   const [resolveOpen, setResolveOpen] = useState<Record<string, boolean>>({});
-  /** `failureId:action` — يظهر Spinner على الزر أثناء الشبكة. */
+  /** `failureId:action` — shows Spinner on the button during the network call. */
   const [busyKey, setBusyKey] = useState<string | null>(null);
 
   useEffect(() => {
@@ -166,8 +166,8 @@ export function FailuresView() {
   }, [queryClient, refetch]);
 
   const stats = useMemo(() => {
-    // مسار واحد يحسب العدّادات الأربعة — كان countOpenFailures مساراً ثانياً
-    // كاملاً على نفس المصفوفة (js-combine-iterations).
+    // One pass computes all four badges — countOpenFailures was a second full pass
+    // over the same array (js-combine-iterations).
     let open = 0;
     let review = 0;
     let closed = 0;
@@ -204,7 +204,7 @@ export function FailuresView() {
       });
   }, [visibleItems]);
 
-  // الإدخال فوري والترشيح مؤجل إطاراً — ترشيح محلي بحت (rerender-use-deferred-value).
+  // Input stays immediate; filtering is deferred one frame — pure local filter (rerender-use-deferred-value).
   const deferredSearch = useDeferredValue(search);
 
   const filteredItems = useMemo(() => {

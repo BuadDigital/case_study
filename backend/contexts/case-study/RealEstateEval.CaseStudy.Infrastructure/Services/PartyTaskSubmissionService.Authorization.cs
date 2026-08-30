@@ -79,7 +79,7 @@ public partial class PartyTaskSubmissionService
             })
             .ToListAsync(cancellationToken);
 
-        // فحص الشقيق دفعةً — كان AnyAsync لكل مهمة غير مخوّلة في نفس الطلب.
+        // Batch sibling check — was AnyAsync per unauthorized task in the same request.
         var actorIds = new HashSet<string>(StringComparer.Ordinal);
         if (!string.IsNullOrWhiteSpace(actor.UserId))
             actorIds.Add(actor.UserId.Trim());

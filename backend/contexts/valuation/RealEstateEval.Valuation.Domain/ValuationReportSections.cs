@@ -137,8 +137,8 @@ public static class ValuationReportSectionCatalog
 }
 
 /// <summary>
-/// رقم تقرير التقييم — ورشة الترقيم (بند البتّ 3): النمط الموحد TQ-{سنة}-{تسلسل ٥}
-/// لما يُصدر بعد التفعيل؛ الأرقام المجمّدة في لقطات ق-6 لا تتغير أبداً.
+/// Valuation report number — numbering workshop (bit item 3): unified pattern TQ-{year}-{5-digit seq}
+/// for numbers issued after activation; numbers frozen in Q-6 snapshots never change.
 /// </summary>
 public static class ValuationReportNumberRules
 {
@@ -167,7 +167,7 @@ public static class ValuationReportNumberRules
         FormatTemporary(displayId, reservedDate);
 }
 
-/// <summary>report validity: 90 days from the report date. ضابط تنبيهي لا حاجب.</summary>
+/// <summary>report validity: 90 days from the report date. Advisory control, not a hard gate.</summary>
 public static class ValuationReportValidityRules
 {
     public const int ValidityDays = 90;
@@ -187,7 +187,7 @@ public static class ValuationReportDisplayRules
     public static string FormatGregorianDate(DateOnly date) =>
         $"{date.Year:D4}/{date.Month:D2}/{date.Day:D2}";
 
- /// <summary>Hijri display — Um Al-Qura calendar (the Kingdom's official one), «هـ» suffix.</summary>
+ /// <summary>Hijri display — Um Al-Qura calendar (the Kingdom's official one), "AH" suffix.</summary>
     public static string FormatHijriDate(DateOnly date)
     {
         var hijri = new System.Globalization.UmAlQuraCalendar();
@@ -208,6 +208,6 @@ public static class ValuationReportDisplayRules
     public static string FormatMoney(decimal amount) =>
         amount.ToString("#,##0.00", System.Globalization.CultureInfo.InvariantCulture);
 
- /// <summary>«المقيم» without tashkeel in body copy.</summary>
+ /// <summary>Plain Arabic valuer word (al-muqayyim) without tashkeel in body copy.</summary>
     public const string ValuerWordPlain = "المقيم";
 }

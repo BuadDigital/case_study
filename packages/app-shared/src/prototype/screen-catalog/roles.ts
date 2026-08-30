@@ -1,7 +1,7 @@
 import type { RoleId } from "@platform/types";
 import { ROLES } from "../constants";
 
-/** كل أدوار النظام — بما فيها الإدارية. */
+/** All system roles — including administrative ones. */
 export function screenCatalogRoleIds(): RoleId[] {
   return Object.keys(ROLES) as RoleId[];
 }

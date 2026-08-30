@@ -7,12 +7,18 @@ export { Button } from "./components/Button";
 export { ErrorBoundary } from "./components/ErrorBoundary";
 export { Spinner } from "./components/Spinner";
 export { GoogleMapPin } from "./components/GoogleMapPin";
+export type {
+  GoogleMapContextPin,
+  GoogleMapLocationDetail,
+} from "./components/GoogleMapPin";
 export {
   googleMapsApiKey,
   googleMapsSearchUrl,
   loadGoogleMapsApi,
   parseCoord,
+  reverseGeocodeLocation,
 } from "./lib/google-maps-loader";
+export type { ReverseGeocodeDetail } from "./lib/google-maps-loader";
 export { Skeleton, SkeletonTableRows, PanelSkeleton, InlineLoadingSkeleton } from "./components/Skeleton";
 export { ToastProvider, useToast, useOptionalToast, type ToastTone } from "./components/Toast";
 export { progressMessageForActionLabel } from "./lib/action-progress-message";

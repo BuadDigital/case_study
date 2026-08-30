@@ -19,7 +19,6 @@ import {
   settingsNavTreeForRole,
   organizationSettingsLeafTitle,
 } from "@platform/app-shared/prototype/system-settings-nav";
-import { orphanScreensNavForRole } from "@platform/app-shared/prototype/orphan-screens-nav";
 import { isPartyTaskPage } from "@platform/app-shared/prototype/party-task-pages";
 import { decodeTaskParam, isPartyTaskWorkPath } from "@case-study/mfe/lib/my-task-routes";
 import { formatPropertyDeedDisplay } from "@case-study/mfe/lib/prototype/po-intake-data";
@@ -69,7 +68,6 @@ import {
   FinanceHtmlNav,
   ActiveTransactionsNavDropdown,
   SystemSettingsNavDropdown,
-  OrphanScreensNavDropdown,
   ProfileMenu,
 } from "./AppShellNavParts";
 import { PAGE_CHUNK_PRELOAD } from "./PrototypePageView";
@@ -91,12 +89,6 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     [rolePages, role],
   );
   const showGeneralGroup = settingsNavTree.some((node) => node.type !== "divider");
-
-  const orphanScreenItems = useMemo(
-    () => orphanScreensNavForRole(rolePages),
-    [rolePages],
-  );
-  const showOrphanScreensGroup = orphanScreenItems.length > 0;
 
   const navRuns = useMemo(() => navRunsForRole(rolePages, role), [rolePages, role]);
 
@@ -440,7 +432,6 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   let activeTransactionsInserted =
     insertActiveTxAtNavStart && showActiveTransactionsGroup;
   let generalNavInserted = false;
-  let orphanScreensInserted = false;
   let financialNavInserted = false;
 
   const onActiveSurveyPropertyDetail = onActiveSurveyEntry;
@@ -620,7 +611,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                       rail={desktopRail}
                     />,
                   );
-                  // المالية وبوابات الأطراف — مباشرة تحت «المعاملات المعلقة»
+                  // Finance and party portals — directly under "Suspended transactions".
                   if (
                     item.id === "suspended-transactions" &&
                     showFinancialGroup &&
@@ -672,18 +663,6 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                         rail={desktopRail}
                       />,
                     );
-                    if (showOrphanScreensGroup) {
-                      orphanScreensInserted = true;
-                      nodes.push(
-                        <OrphanScreensNavDropdown
-                          key="orphan-screens-dropdown"
-                          items={orphanScreenItems}
-                          currentPage={currentPage}
-                          onPrefetch={prefetchPage}
-                          rail={desktopRail}
-                        />,
-                      );
-                    }
                   }
                   const shouldInsertActiveTx =
                     !activeTransactionsInserted &&
@@ -764,15 +743,6 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               />
             </>
           ) : null}
-          {!orphanScreensInserted && showOrphanScreensGroup ? (
-            <OrphanScreensNavDropdown
-              key="orphan-screens-dropdown-fallback"
-              items={orphanScreenItems}
-              currentPage={currentPage}
-              onPrefetch={prefetchPage}
-              rail={desktopRail}
-            />
-          ) : null}
           </nav>
         </div>
       </div>
@@ -795,7 +765,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             </span>
           </div>
         ) : null}
-        {/* مساحة عمل المعاينة: الشريط (بمسار التنقل) يبقى على الشاشات الكبيرة؛ يُخفى على الجوال حيث بطاقة المهمة هي الرأس. */}
+        {/* Inspection work area: topbar (with breadcrumb) stays on large screens; hidden on mobile where the task card is the header. */}
         <div
           id="topbar"
           className={cn(

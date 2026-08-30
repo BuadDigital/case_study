@@ -9,11 +9,11 @@ public class ValuationComparableAdjustmentLineDto
     public required string LabelAr { get; init; }
     public decimal Percent { get; init; }
     public string Rationale { get; init; } = "";
- /// <summary>وصف المقارن لهذا العامل (compSpec) — «وصف المقارن…».</summary>
+ /// <summary>Comparable description for this factor (compSpec) — "comparable description…".</summary>
     public string? DescriptionAr { get; init; }
     public bool IsIncluded { get; init; } = true;
     public int SortOrder { get; init; }
- /// <summary>true عندما تكون القيمة المعروضة افتراضياً مقترحاً (لم يدخلها المقيّم) — تُعرض بأسلوب «مقترح».</summary>
+ /// <summary>True when the displayed value is a suggested default (valuer has not entered one) — shown as "suggested".</summary>
     public bool IsSuggestedValue { get; init; }
 }
 
@@ -26,11 +26,11 @@ public class ValuationComparableMarketDto
     public decimal SumDifferencePct { get; init; }
  /// <summary>Algebraic sum of all included %.</summary>
     public decimal SumIncludedPct { get; init; }
- /// <summary>|factorsSum| &gt; ٣٥٪ — التبرير إلزامي (مواصفة النموذج التفاعلي).</summary>
+ /// <summary>|factorsSum| &gt; 35% — rationale required (interactive model spec).</summary>
     public bool ExceedsLargeAdjustmentThreshold { get; init; }
- /// <summary>Deal age in months — يُعرض للاستدلال فقط («عمر الصفقة ن شهراً»)؛ التسوية يدوية.</summary>
+ /// <summary>Deal age in months — display-only hint ("deal age N months"); adjustment is manual.</summary>
     public int DealAgeMonths { get; init; }
- /// <summary>افتراضي تسوية نوع المقارن (KIND_DEFAULT): منفذة ٠ · عرض −٥ · حد −٨ · سوم +٦.</summary>
+ /// <summary>Default comparable-kind adjustment (KIND_DEFAULT): closed 0 · listing −5 · ceiling −8 · som +6.</summary>
     public decimal SuggestedTransactionTypePct { get; init; }
  /// <summary>Unit rate after sequential multiply only.</summary>
     public decimal PricePerSqmAfterSequential { get; init; }
@@ -44,9 +44,9 @@ public class ValuationComparableMarketDto
     public decimal? WeightPct { get; init; }
  /// <summary>required when WeightIsManual.</summary>
     public string? WeightOverrideRationale { get; init; }
- /// <summary>المضاعف / الأمثال — محسوب آلياً على مستوى الجدول.</summary>
+ /// <summary>Multiplier / multiples — computed automatically at table level.</summary>
     public string AreaAdjustmentMethod { get; init; } = "multiplier";
- /// <summary>تسوية المساحة المحسوبة (أمثال/مضاعف) — تُطبَّق آلياً على سطر المساحة.</summary>
+ /// <summary>Computed area adjustment (multiples/multiplier) — applied automatically to the area row.</summary>
     public decimal SuggestedAreaAdjustmentPct { get; init; }
 }
 
@@ -62,10 +62,10 @@ public class ValuationComparableSelectionDto
     public ComparablePropertyDto Comparable { get; init; } = null!;
     public ValuationComparableMarketDto? Market { get; init; }
 
- /// <summary>compEdit: تجاوزات هذا التقييم لسعر/مساحة المقارن — لا تمس البنك المشترك.</summary>
+ /// <summary>compEdit: this valuation's price/area overrides for the comparable — does not touch the shared bank.</summary>
     public decimal? PriceOverrideSar { get; init; }
     public decimal? AreaOverrideSqm { get; init; }
- /// <summary>القيم الفعلية بعد التجاوزات: السعر الإجمالي، المساحة، سعر المتر = الإجمالي ÷ المساحة.</summary>
+ /// <summary>Effective values after overrides: total price, area, unit price = total ÷ area.</summary>
     public decimal EffectivePriceSar { get; init; }
     public decimal EffectiveAreaSqm { get; init; }
     public decimal EffectivePricePerSqm { get; init; }
@@ -89,26 +89,26 @@ public class ValuationComparableSelectionListDto
  /// <summary>price_per_sqm | whole_property.</summary>
     public string AdjustmentBasis { get; init; } = "price_per_sqm";
     public string AdjustmentBasisLabelAr { get; init; } = "";
- /// <summary>Per-m²: weighted × area. Whole-property: weighted value directly — قبل تقريب قاعدة التسويات.</summary>
+ /// <summary>Per-m²: weighted × area. Whole-property: weighted value directly — before adjustments-basis rounding.</summary>
     public decimal MarketOpinionValueRaw { get; init; }
- /// <summary>منطق-التسويات: قيمة السوق بعد التقريب لأقرب ١٠^ن.</summary>
+ /// <summary>Adjustments logic: market value after rounding to nearest 10^n.</summary>
     public decimal MarketOpinionValue { get; init; }
-    /// <summary>Frozen area adjustment factor ٪ for this valuation.</summary>
+    /// <summary>Frozen area adjustment factor % for this valuation.</summary>
     public decimal AreaFactorPct { get; init; } = 5m;
-    /// <summary>Frozen annual market rate ٪ for mkt suggestion.</summary>
+    /// <summary>Frozen annual market rate % for mkt suggestion.</summary>
     public decimal AnnualMarketRatePct { get; init; } = 4m;
-    /// <summary>Frozen أسّ تقريب قيمة السوق (١٠^ن).</summary>
+    /// <summary>Frozen market-value rounding exponent (10^n).</summary>
     public int ValueRoundDecimals { get; init; } = 4;
     public string? AnalysisNotes { get; init; }
- /// <summary>أوصاف العقار محل التقييم لكل عامل (subjSpec) — factorKey → نص.</summary>
+ /// <summary>Subject-property descriptions per factor (subjSpec) — factorKey → text.</summary>
     public IReadOnlyDictionary<string, string> SubjectSpecs { get; init; } =
         new Dictionary<string, string>();
- /// <summary>ق-8-1: مبررات على مستوى العامل — factorKey → المبرر؛ سطر المقارن يحمل التخصيص فقط.</summary>
+ /// <summary>Q-8-1: factor-level rationales — factorKey → rationale; comparable row holds override only.</summary>
     public IReadOnlyList<ValuationAdjustmentFactorRationaleDto> FactorRationales { get; init; } = [];
     public IReadOnlyList<ValuationComparableSelectionDto> Items { get; init; } = [];
 }
 
-/// <summary>ق-8-1: مبرر عامل التسوية (يغطي كل المقارنات ما دام المنطق واحداً).</summary>
+/// <summary>Q-8-1: adjustment-factor rationale (covers all comparables while the logic is the same).</summary>
 public class ValuationAdjustmentFactorRationaleDto
 {
     public required string SelectionContext { get; init; }
@@ -124,7 +124,7 @@ public class SaveAdjustmentFactorRationaleRequest
     [Required, MaxLength(32)]
     public string FactorKey { get; init; } = "";
 
- /// <summary>فارغ = مسح مبرر العامل؛ غير الفارغ يخضع للحد الأدنى (ق-8-2).</summary>
+ /// <summary>Empty = clear factor rationale; non-empty is subject to the minimum length (Q-8-2).</summary>
     [MaxLength(2000)]
     public string? RationaleAr { get; init; }
 }
@@ -148,7 +148,7 @@ public class SaveValuationMarketApproachRequest
     [MaxLength(4000)]
     public string? AnalysisNotes { get; init; }
 
- /// <summary>subjSpec: أوصاف العقار محل التقييم لكل عامل اختلاف — null يبقي المخزّن.</summary>
+ /// <summary>subjSpec: subject descriptions per difference factor — null keeps stored values.</summary>
     public IReadOnlyDictionary<string, string>? SubjectSpecs { get; init; }
 }
 
@@ -166,19 +166,19 @@ public class ValuationCostLineDto
  /// <summary>unit: sqm | lm | count | lump.</summary>
     public string Unit { get; init; } = "sqm";
     public string UnitLabelAr { get; init; } = "";
- /// <summary>نسبة البناء (%), optional.</summary>
+ /// <summary>Build ratio (%), optional.</summary>
     public decimal? BuildRatioPct { get; init; }
  /// <summary>repeated-floors count (quantity derives from first floor × count).</summary>
     public int? RepeatedFloorCount { get; init; }
     public decimal UnitCostSar { get; init; }
- /// <summary>تكلفة الوحدة الفعلية — ترث سعر متر «الدور الأول» عندما تُترك تكلفة المتكررة فارغة/صفراً.</summary>
+ /// <summary>Effective unit cost — inherits "first floor" m² rate when repeating-floor cost is empty/zero.</summary>
     public decimal EffectiveUnitCostSar { get; init; }
- /// <summary>true عندما ورثت تكلفة الوحدة من «الدور الأول» («موروثة من الدور الأول»).</summary>
+ /// <summary>True when unit cost was inherited from "first floor" ("inherited from first floor").</summary>
     public bool UnitCostInherited { get; init; }
- /// <summary>الكمية الفعلية بعد نسبة البناء (م² في مجموعة المسطحات) — «المسطح N م²».</summary>
+ /// <summary>Effective quantity after build ratio (m² in floor-areas group) — "floor area N m²".</summary>
     public decimal EffectiveQuantity { get; init; }
     public decimal LineTotal { get; init; }
- /// <summary>سعر المتر بعد غير المباشرة — total × (1 + indirect%) ÷ الكمية.</summary>
+ /// <summary>Unit rate after indirects — total × (1 + indirect%) ÷ quantity.</summary>
     public decimal NetUnitRateWithIndirect { get; init; }
     public string Rationale { get; init; } = "";
     public bool IsIncluded { get; init; } = true;
@@ -241,13 +241,13 @@ public class ValuationCostApproachDto
  /// <summary> — computed.</summary>
     public decimal BuildingsValueAfterDepreciation { get; init; }
 
- /// <summary>مؤشر أسلوب التكلفة وفق النطاق: أرض ومبنى = الأرض + المباني بعد الإهلاك؛ مبنى فقط = المباني بعد الإهلاك.</summary>
+ /// <summary>Cost-approach indicator by scope: land+building = land + depreciated buildings; building-only = depreciated buildings.</summary>
     public decimal CostOpinionWithLand { get; init; }
  /// <summary> — buildings after indirect + depreciation, without land.</summary>
     public decimal CostOpinionBuildingsOnly { get; init; }
- /// <summary>نطاق التقييم بالتكلفة من إعدادات شاشة 1: land_and_building | building_only.</summary>
+ /// <summary>Cost valuation scope from screen-1 settings: land_and_building | building_only.</summary>
     public string CostScopeKey { get; init; } = "land_and_building";
- /// <summary>Σ الكمية الفعلية لبنود م² في مجموعة المسطحات — «المسطحات».</summary>
+ /// <summary>Σ effective quantity of m² lines in the floor-areas group — "floor areas".</summary>
     public decimal BuildingAreaSqm { get; init; }
     public string? AnalysisNotes { get; init; }
     public IReadOnlyList<ValuationCostLineDto> Lines { get; init; } = [];
@@ -428,7 +428,7 @@ public class SaveValuationReconciliationRequest
     [Required, MaxLength(4000)]
     public string MethodsRationale { get; init; } = "";
 
- /// <summary>0–6; تقريب لأقرب ١٠^ن — applied once on final opinion.</summary>
+ /// <summary>0–6; round to nearest 10^n — applied once on final opinion.</summary>
     public int FinalRoundDecimals { get; init; }
 
     [MaxLength(32)]
@@ -479,7 +479,7 @@ public class SaveValuationComparableAdjustmentLineRequest
     [MaxLength(2000)]
     public string? Rationale { get; init; }
 
- /// <summary>compSpec: وصف المقارن لهذا العامل («وصف المقارن…»).</summary>
+ /// <summary>compSpec: comparable description for this factor ("comparable description…").</summary>
     [MaxLength(500)]
     public string? DescriptionAr { get; init; }
 
@@ -488,52 +488,52 @@ public class SaveValuationComparableAdjustmentLineRequest
     public int SortOrder { get; init; }
 }
 
-/// <summary>شاشة 1 — إعدادات التقييم الحاكمة (ب-2): الأساليب المطبَّقة + أساس/وحدة التكلفة + صلاحية التسويات.</summary>
+/// <summary>Screen 1 — governing valuation settings (B-2): applied approaches + cost basis/unit + adjustments unlock.</summary>
 public class ValuationApproachSettingsDto
 {
     public Guid ValuationRequestId { get; init; }
     public string PropertyId { get; init; } = "";
     public string PropertyType { get; init; } = "";
- /// <summary>نوع العقار «أرض» (بأي تصنيف).</summary>
+ /// <summary>Property type is "land" (any classification).</summary>
     public bool IsLandPropertyType { get; init; }
- /// <summary>سؤال الحصر: هل توجد مبانٍ/إنشاءات يجب تقييمها؟</summary>
+ /// <summary>Scoping question: are there buildings/structures that must be valued?</summary>
     public bool HasStructuresToValue { get; init; }
- /// <summary>ق-3 المعدَّل: أرض بلا إنشاءات وحدها تعطّل أسلوب التكلفة.</summary>
+ /// <summary>Q-3 (amended): bare land with no structures alone disables the cost approach.</summary>
     public bool CostApproachAllowed { get; init; } = true;
     public bool MarketApproachEnabled { get; init; } = true;
     public bool CostApproachEnabled { get; init; } = true;
- /// <summary>مؤجَّل — يُعرض «قيد الإنشاء» ولا يقبل التفعيل.</summary>
+ /// <summary>Deferred — shown as "under construction" and cannot be enabled.</summary>
     public bool IncomeApproachEnabled { get; init; }
     public string CostBasisKey { get; init; } = "replacement";
     public string CostBasisLabelAr { get; init; } = "";
- /// <summary>نطاق التقييم بالتكلفة: land_and_building (افتراضي) | building_only.</summary>
+ /// <summary>Cost valuation scope: land_and_building (default) | building_only.</summary>
     public string CostScopeKey { get; init; } = "land_and_building";
     public string CostScopeLabelAr { get; init; } = "";
     public string CostMeasurementUnitKey { get; init; } = "comparison_unit";
     public string CostMeasurementUnitLabelAr { get; init; } = "";
     public bool AdjustmentsEditUnlocked { get; init; } = true;
 
- /// <summary>الغرض من التقييم (§4ج-5) — إعدادات تقرير التقييم.</summary>
+ /// <summary>Valuation purpose (§4j-5) — valuation report settings.</summary>
     public string ValuationPurposeKey { get; init; } = "";
     public string ValuationPurposeLabelAr { get; init; } = "";
     public string? ValuationPurposeNote { get; init; }
 
- /// <summary>بند الأخصائي الخارجي (IVS 101) — ليس أخصائي الإسناد ولا أخصائي دراسة الحالة.</summary>
+ /// <summary>External specialist clause (IVS 101) — not the assignment specialist nor the case-study specialist.</summary>
     public bool ExternalSpecialistUsed { get; init; }
     public string? ExternalSpecialistDetails { get; init; }
 
- /// <summary>تاريخ التقييم: issue (آلي — إصدار القيمة) | retrospective (يدوي بمبرر).</summary>
+ /// <summary>Valuation date: issue (automatic — value issuance) | retrospective (manual with rationale).</summary>
     public string ValuationDateMode { get; init; } = "issue";
     public string ValuationDateModeLabelAr { get; init; } = "";
- /// <summary>yyyy-MM-dd عند الأثر الرجعي (أو بداية الفترة).</summary>
+ /// <summary>yyyy-MM-dd for retrospective (or period start).</summary>
     public string? RetrospectiveDate { get; init; }
-    /// <summary>yyyy-MM-dd — نهاية الفترة إن وُجدت؛ فارغ = تاريخ محدد.</summary>
+    /// <summary>yyyy-MM-dd — period end if any; empty = single date.</summary>
     public string? RetrospectiveDateEnd { get; init; }
     public string? RetrospectiveRationale { get; init; }
 
- /// <summary>البنود المنتقاة/المضافة (نصوص مجمّدة مع التقييم).</summary>
+ /// <summary>Selected/added items (texts frozen with the valuation).</summary>
     public IReadOnlyList<string> SelectedAssumptions { get; init; } = [];
- /// <summary>مكتبة الانتقاء من إعدادات تبويب تقرير التقييم — للعرض في الواجهة.</summary>
+ /// <summary>Selection library from valuation-report tab settings — for UI display.</summary>
     public IReadOnlyList<string> AssumptionLibrary { get; init; } = [];
 
  /// <summary>False until a row is saved — the values above are then property-type defaults.</summary>
@@ -549,7 +549,7 @@ public class SaveValuationApproachSettingsRequest
     [MaxLength(32)]
     public string? CostBasisKey { get; init; }
 
- /// <summary>land_and_building (افتراضي) | building_only.</summary>
+ /// <summary>land_and_building (default) | building_only.</summary>
     [MaxLength(32)]
     public string? CostScopeKey { get; init; }
 
@@ -558,35 +558,35 @@ public class SaveValuationApproachSettingsRequest
 
     public bool AdjustmentsEditUnlocked { get; init; } = true;
 
- /// <summary>الغرض من التقييم — إلزامي (§4ج-5).</summary>
+ /// <summary>Valuation purpose — required (§4j-5).</summary>
     [MaxLength(32)]
     public string? ValuationPurposeKey { get; init; }
 
     [MaxLength(2000)]
     public string? ValuationPurposeNote { get; init; }
 
- /// <summary>بند الأخصائي الخارجي — «نعم» تستلزم التوضيح.</summary>
+ /// <summary>External specialist clause — "yes" requires details.</summary>
     public bool ExternalSpecialistUsed { get; init; }
 
     [MaxLength(2000)]
     public string? ExternalSpecialistDetails { get; init; }
 
- /// <summary>issue (افتراضي) | retrospective.</summary>
+ /// <summary>issue (default) | retrospective.</summary>
     [MaxLength(16)]
     public string? ValuationDateMode { get; init; }
 
- /// <summary>yyyy-MM-dd — إلزامي عند retrospective (أو بداية الفترة).</summary>
+ /// <summary>yyyy-MM-dd — required for retrospective (or period start).</summary>
     [MaxLength(16)]
     public string? RetrospectiveDate { get; init; }
 
- /// <summary>yyyy-MM-dd — نهاية الفترة؛ فارغ = تاريخ محدد.</summary>
+ /// <summary>yyyy-MM-dd — period end; empty = single date.</summary>
     [MaxLength(16)]
     public string? RetrospectiveDateEnd { get; init; }
 
     [MaxLength(2000)]
     public string? RetrospectiveRationale { get; init; }
 
- /// <summary>البنود المنتقاة من المكتبة + إضافات حرة (نصوص).</summary>
+ /// <summary>Items selected from the library + free-text additions.</summary>
     public IReadOnlyList<string>? SelectedAssumptions { get; init; }
 }
 
@@ -594,10 +594,10 @@ public class SaveValuationComparableMarketRequest
 {
     public IReadOnlyList<SaveValuationComparableAdjustmentLineRequest> AdjustmentLines { get; init; } = [];
 
- /// <summary>compEdit: تجاوز سعر العقار الإجمالي لهذا التقييم — null يمسح التجاوز.</summary>
+ /// <summary>compEdit: override total property price for this valuation — null clears the override.</summary>
     public decimal? PriceOverrideSar { get; init; }
 
- /// <summary>compEdit: تجاوز مساحة المقارن (م²) — null يمسح التجاوز.</summary>
+ /// <summary>compEdit: override comparable area (m²) — null clears the override.</summary>
     public decimal? AreaOverrideSqm { get; init; }
 
  /// <summary>When set with WeightIsManual, overrides suggestion.</summary>

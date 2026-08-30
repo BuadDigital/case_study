@@ -16,7 +16,7 @@ export function roleCanSetLocationMapUrl(role: RoleId): boolean {
   );
 }
 
-/** عشوائي = غياب رقم المخطط ورقم القطعة معاً. */
+/** Random = both plan number and plot number are missing. */
 export function isInformalSettlement(
   planNumber: string | null | undefined,
   plotNumber: string | null | undefined,

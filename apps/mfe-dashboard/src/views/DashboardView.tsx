@@ -33,7 +33,7 @@ const EMPTY_COMPLETION_TREND: ReportingCompletionYearDto[] = [];
 const EMPTY_STAGE_DWELL: ReportingStageDwellDto[] = [];
 
 /**
- * لوحة التحكم — مطابق لـ Case Study.html `renderDashboard()`.
+ * Dashboard — matches Case Study.html `renderDashboard()`.
  */
 export function DashboardView() {
   const { data: poRows, isPending: poPending } = usePoListRowsQuery();

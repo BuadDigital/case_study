@@ -9,6 +9,7 @@ namespace RealEstateEval.Financial.Api.Controllers;
 [ApiController]
 [Route("api/financial-dispatch/enfaz-billing")]
 [Authorize]
+[RequireUpstreamDispatch]
 public sealed class PoEnfazDispatchController(IPoEnfazBillingService billing) : ControllerBase
 {
     [HttpGet("ready-pos-summary")]

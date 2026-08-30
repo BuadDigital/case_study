@@ -33,8 +33,8 @@ public sealed class CaseStudyLookup(ICaseStudyRepository caseStudy) : ICaseStudy
             .ToDictionaryAsync(task => task.Id, task => task.Kind, cancellationToken);
     }
 
- // سقف دفاعي أعلى بكثير من أي حجم واقعي — يحمي المسار العابر للخدمات من نمو
- // غير محدود دون المساس بتقارير اليوم (الأحدث أولاً).
+ // Defensive ceiling far above any realistic size — protects the cross-service path from unbounded
+ // growth without affecting today's reports (newest first).
     private const int MaxWorkOrderSummaries = 10_000;
 
     public async Task<IReadOnlyList<CaseStudyWorkOrderSummaryDto>> ListWorkOrderSummariesAsync(

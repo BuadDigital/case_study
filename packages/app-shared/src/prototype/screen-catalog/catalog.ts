@@ -10,7 +10,6 @@ import { SETTINGS_GROUP, SETTINGS_NAV } from "../settings-nav";
 import { SYSTEM_FIELDS_CATALOG_NAV_ITEM } from "../system-fields-catalog-nav";
 import { SYSTEM_SCREEN_CATALOG_NAV_ITEM } from "../system-screen-catalog-nav";
 import { SYSTEM_FIELDS_GROUP, SYSTEM_FIELDS_NAV } from "../system-fields-nav";
-import { ORPHAN_SCREENS_GROUP, ORPHAN_SCREENS_NAV } from "../orphan-screens-nav";
 import { screenCatalogPageName } from "./display-names";
 import { rolesWithPageAccess } from "./roles";
 import type { ScreenCatalogStatus, SystemScreenEntry } from "./types";
@@ -183,15 +182,6 @@ function buildMainPages(): SystemScreenEntry[] {
     }),
   );
 
-  ORPHAN_SCREENS_NAV.forEach((item) => {
-    add(
-      pageEntry(item, ORPHAN_SCREENS_GROUP, {
-        whereToFind: `القائمة الجانبية ← ${ORPHAN_SCREENS_GROUP} ← ${item.label}`,
-        notes: "شاشة يتيمة قديمة خارج سير العمل الحالي — ظاهرة للمسؤول فقط.",
-      }),
-    );
-  });
-
   return [...byPageId.values()];
 }
 
@@ -270,16 +260,6 @@ function buildTaskWorkRoutes(): SystemScreenEntry[] {
       pageId: "active-inspection",
       notes:
         "المسار الرسمي للمعاين — قائمة المهام تحت المعاملات النشطة + مساحة عمل الجوال/سطح المكتب.",
-    }),
-    taskWorkEntry({
-      id: "property-inspection-work",
-      name: "إنجاز معاينة العقار (يتيم)",
-      path: "/property-inspection/{taskId}",
-      whereToFind:
-        "الشاشات (Draft) ← معاينة العقار (يتيم) ← اختيار مهمة — أو تفاصيل العقار ← تبويب معاينة العقار",
-      pageId: "property-inspection",
-      notes:
-        "مسار عمل قديم للقائمة الكاملة — الإدخال الأساسي داخل تفاصيل العقار أو عبر active-inspection.",
     }),
     taskWorkEntry({
       id: "property-appraisal-work",

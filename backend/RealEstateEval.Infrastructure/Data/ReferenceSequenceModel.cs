@@ -4,13 +4,13 @@ using RealEstateEval.Domain;
 namespace RealEstateEval.Infrastructure.Data;
 
 /// <summary>
-/// تعيين جدول عدّادات الأرقام المرجعية (ورشة الترقيم) — كل سياق مالك يعيّنه في
-/// مخططه هو، فتسلسلات بواديه محلية بلا نداء عابر للخدمات. اسم الجدول مميز لكل
-/// سياق لأن حارس العمارة يفهرس الجداول بأسمائها عبر السياقات كلها.
+/// Assignment of reference number counter table (numbering shop) — each owner context assigns it to
+/// His plan is, the valley sequences are local without a passing call for services. The table name is unique for each
+/// Context because architecture guard indexes tables by name across all contexts.
 /// </summary>
 public static class ReferenceSequenceModel
 {
- /// <summary>اسم جدول العدّادات في مخطط السياق المالك.</summary>
+ /// <summary>The name of the counter table in the owner context diagram.</summary>
     public static string TableNameFor(string schema) => schema switch
     {
         DatabaseSchemas.CaseStudy => "CaseStudyReferenceSequences",

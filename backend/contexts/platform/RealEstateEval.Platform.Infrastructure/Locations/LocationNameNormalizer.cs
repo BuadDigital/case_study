@@ -4,7 +4,7 @@ using System.Text.RegularExpressions;
 
 namespace RealEstateEval.Platform.Infrastructure.Locations;
 
-/// <summary>تطبيع أسماء المواقع للبحث — مطابق لمواصفة المناطق/المدن v2.</summary>
+/// <summary>Normalized site names for search—conforming to Regions/Cities v2 specification.</summary>
 public static partial class LocationNameNormalizer
 {
     private static readonly Regex Diacritics = DiacriticsRegex();
@@ -39,7 +39,7 @@ public static partial class LocationNameNormalizer
         return s;
     }
 
- /// <summary>مسافة تحرير بسيطة للمقترحات المتشابهة.</summary>
+ /// <summary>Simple editing space for similar suggestions.</summary>
     public static int EditDistance(string a, string b)
     {
         a ??= "";

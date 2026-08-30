@@ -4,7 +4,7 @@ using RealEstateEval.Valuation.Domain;
 
 namespace RealEstateEval.Application.Tests;
 
-/// <summary>B2: دورة حياة الأطراف والوسوم والإصدار داخل الجذور لا الخدمات.</summary>
+/// <summary>B2: The life cycle of limbs, tags, and versioning within the roots, not services.</summary>
 public class PartyTaskSubmissionAggregateTests
 {
     private static readonly DateTime Now = new(2026, 8, 28, 10, 0, 0, DateTimeKind.Utc);
@@ -42,7 +42,7 @@ public class PartyTaskSubmissionAggregateTests
         Assert.Equal("المعاين", entity.SubmittedByName);
         Assert.Equal(Now, entity.SubmittedAtUtc);
 
-        // الإرسال المكرر لا يغيّر شيئاً.
+        // Duplicate sending doesn't change anything.
         Assert.False(entity.Submit(Now.AddHours(1), "u2", "آخر", "بديل"));
         Assert.Equal("u1", entity.SubmittedByUserId);
     }
@@ -83,24 +83,24 @@ public class PartyTaskSubmissionAggregateTests
     {
         var comp = new ComparableProperty { Id = Guid.NewGuid() };
 
-        // وسم بلا مبرر — مرفوض.
+        // Unwarranted tagging - rejected.
         var missing = comp.ApplyQualityTags(
             ComparableReliabilityTags.Anomalous, false, "", "u1", Now);
         Assert.Equal("tagRationale", missing!.Value.Field);
 
-        // مبرر صوري — مرفوض (ق-8-2).
+        // Placeholder rationale — rejected (Q-8-2).
         var sham = comp.ApplyQualityTags(
             ComparableReliabilityTags.Anomalous, false, ".", "u1", Now);
         Assert.Equal("tagRationale", sham!.Value.Field);
         Assert.Contains("الحد الأدنى", sham.Value.MessageAr);
 
-        // وسم سليم — مؤرَّخ باسم واضعه.
+        // Intact tag — dated with the name of its author.
         Assert.Null(comp.ApplyQualityTags(
             ComparableReliabilityTags.Anomalous, false, "سعر شاذ عن سائد الحي", "u1", Now));
         Assert.True(comp.IsExcludedFromSuggestions);
         Assert.Equal("u1", comp.TaggedByUserId);
 
-        // إزالة كل الوسوم تمسح الأثر.
+        // Removing all tags erases the trace.
         Assert.Null(comp.ApplyQualityTags(
             ComparableReliabilityTags.Normal, false, null, "u1", Now));
         Assert.False(comp.IsExcludedFromSuggestions);

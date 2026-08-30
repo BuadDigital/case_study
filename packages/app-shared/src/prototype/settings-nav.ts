@@ -8,7 +8,7 @@ export type SettingsNavItem = {
   placeholder?: boolean;
 };
 
-/** صفحات إعدادات تبقى في الكتالوج والصلاحيات — الشجرة في system-settings-nav.ts */
+/** Settings pages kept in catalog and permissions — tree lives in system-settings-nav.ts */
 export const SETTINGS_NAV: SettingsNavItem[] = [
   {
     id: "users",

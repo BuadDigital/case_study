@@ -9,11 +9,11 @@ public class PoEnfazRevenueLine
     public Guid Id { get; set; }
     public string PoNumber { get; set; } = "";
     public Guid PropertyId { get; set; }
- /// <summary>دخل على إجمالي دراسة المعاملة.</summary>
+ /// <summary>Income on the total study of the transaction.</summary>
     public decimal CaseStudyFeeSar { get; set; }
- /// <summary>دخل لتكاليف الرفع.</summary>
+ /// <summary>Income for upload costs.</summary>
     public decimal SurveyFeeSar { get; set; }
- /// <summary>أتعاب استلام مفاتيح — تدخلها المالية يدوياً عند وجود استحقاق ظرف.</summary>
+ /// <summary>Key receipt fee — entered manually by Finance when an envelope accrual exists.</summary>
     public decimal KeyFeeSar { get; set; }
  /// <summary>Optional link to a key envelope entitlement row on this property/PO.</summary>
     public Guid? KeyEntitlementEnvelopeId { get; set; }

@@ -53,7 +53,7 @@ public class ValuationReportPrintedAttachmentDto
     public string FileName { get; init; } = "";
     public int ReportSectionNumber { get; init; }
     public bool IsImage { get; init; }
- /// <summary>Inspector capture date (11س — photos auto-dated), YYYY/MM/DD.</summary>
+ /// <summary>Inspector capture date (11s — photos auto-dated), YYYY/MM/DD.</summary>
     public string? CapturedAtDisplay { get; init; }
 }
 
@@ -80,7 +80,7 @@ public class ValuationReportDocumentDto
     public string? MethodsRationale { get; init; }
     public bool AllowsIssuance { get; init; }
     public string TextLayerNoteAr { get; init; } = "النصوص المعيارية/القانونية تُجمَّد برقم نسخة عند الإصدار — القالب البصري النهائي يعتمد report-template-approved.html عند توفره.";
- /// <summary>قرار 23: رقم حزمة النصوص — نسخة واحدة للحزمة كلها، تُجمَّد لحظة الإصدار.</summary>
+ /// <summary>Decision 23: text-package number — one version for the whole package, frozen at issuance.</summary>
     public int TextPackageVersion { get; init; } = 1;
  /// <summary>Public URL of the approved letterhead HTML (shell static asset).</summary>
     public string ApprovedTemplateUrl { get; init; } = "/ejadah/report-template-approved.html";

@@ -50,7 +50,7 @@ export function failureActorLabel(raw: string | null | undefined): string {
   return value;
 }
 
-/** HTML Case Study list vocabulary for إدارة التعذرات. */
+/** HTML Case Study list vocabulary for Failures management. */
 export function failureListStatusLabel(
   status: FailureStatus,
   severity?: FailureRecord["severity"],
@@ -85,7 +85,7 @@ export function failureSeverityLabel(
   return "تعذر داخلي";
 }
 
-/** HTML list: مؤكد / احتمال */
+/** HTML list: confirmed / possible */
 export function failureListSeverityLabel(
   severity: FailureRecord["severity"],
 ): string {

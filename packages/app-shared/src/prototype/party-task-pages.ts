@@ -1,5 +1,8 @@
 import type { PageId, RoleId } from "@platform/types";
-import type { WorkflowTask, WorkflowTaskKind } from "@case-study/mfe/lib/prototype/tasks-storage";
+import type {
+  WorkflowTask,
+  WorkflowTaskKind,
+} from "../workflow/task-types";
 
 export type PartyTaskPageDef = {
   pageId: PageId;
@@ -22,7 +25,7 @@ export type PartyTaskPageDef = {
 };
 
 const PARTY_TASK_PAGES_MAP = {
-  /** Official queue under المعاملات النشطة (field-inspector). */
+  /** Official queue under Active Transactions (field-inspector). */
   "active-inspection": {
     pageId: "active-inspection",
     kind: "field-inspection",
@@ -44,7 +47,7 @@ const PARTY_TASK_PAGES_MAP = {
     icon: "M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0zM2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z",
     useFieldForm: true,
   },
-  /** Legacy orphan list under الشاشات (Draft) — CDO only. */
+  /** Legacy list route — removed from sidebar; prefer active-inspection. */
   "property-inspection": {
     pageId: "property-inspection",
     kind: "field-inspection",
@@ -128,7 +131,7 @@ export function filterTasksForPartyKind(
   return tasks.filter((t) => t.kind === kind);
 }
 
-/** Distributed party workflow roles (معاين، مكتب هندسي، مقيم، مراجع). */
+/** Distributed party workflow roles (inspector, engineering office, appraiser, reviewer). */
 export const PARTY_WORKFLOW_ROLE_IDS: RoleId[] = [
   "field-inspector",
   "engineering-office",
@@ -147,8 +150,8 @@ export function partyTaskPageDefForKind(
 }
 
 /**
- * Sidebar — المعاملات النشطة for distributed party roles.
- * Legacy property-inspection list stays under الشاشات اليتيمة (CDO only).
+ * Sidebar — Active Transactions for distributed party roles.
+ * Legacy property-inspection list stays under Orphan Screens (CDO only).
  */
 export const PARTY_ACTIVE_TRANSACTIONS_NAV = PARTY_TASK_PAGE_IDS.filter(
   (pageId) => pageId !== "property-inspection",

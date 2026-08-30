@@ -3,7 +3,7 @@ using static RealEstateEval.CaseStudy.Domain.TransactionStateRules;
 
 namespace RealEstateEval.Application.Tests;
 
-/// <summary>ق-9: آلة حالات المعاملة — شبكة توزيع واعتماديات، المعاين عقدة المفتاح.</summary>
+/// <summary>Q-9: Transaction State Machine — Distribution and Dependencies Network, Inspector Key Node.</summary>
 public class TransactionStateRulesTests
 {
     private static Input BaseInput(
@@ -57,7 +57,7 @@ public class TransactionStateRulesTests
         Assert.Equal(Statuses.InProgress, inspector.Status);
         Assert.Empty(inspector.WaitingOn);
 
-        // المكتب الهندسي والمقيم ينتظران المعاين.
+        // Engineering Office and Appraiser are waiting for Inspector.
         foreach (var key in new[] { Parties.EngineeringOffice, Parties.Appraiser })
         {
             var party = result.Parties.Single(p => p.Key == key);
@@ -65,7 +65,7 @@ public class TransactionStateRulesTests
             Assert.Equal([Parties.Inspector], party.WaitingOn);
         }
 
-        // أخصائي دراسة الحالة ينتظر الجميع.
+        // Case Study Specialist is waiting for everyone.
         var specialist = result.Parties.Single(p => p.Key == Parties.CaseSpecialist);
         Assert.Equal(Statuses.WaitingOnParty, specialist.Status);
         Assert.Equal(
@@ -86,7 +86,7 @@ public class TransactionStateRulesTests
             result.Parties.Single(p => p.Key == Parties.EngineeringOffice).Status);
         Assert.Equal(Statuses.InProgress,
             result.Parties.Single(p => p.Key == Parties.Appraiser).Status);
-        // الأخصائي ما يزال ينتظر المقيم والمكتب.
+        // The specialist is still waiting for Appraiser and the office.
         Assert.Equal(
             [Parties.Appraiser, Parties.EngineeringOffice],
             result.Parties.Single(p => p.Key == Parties.CaseSpecialist).WaitingOn);
@@ -115,7 +115,7 @@ public class TransactionStateRulesTests
             office: new PartyFacts(true, true),
             specialist: new PartyFacts(true, true));
 
-        // بلا شهادة إيداع: الختام معلق ولا يجوز الرفع.
+        // Without a Deposit Certificate: the closing is pending and may not be lifted.
         var beforeDeposit = Evaluate(allDone);
         Assert.Equal(Statuses.InProgress,
             beforeDeposit.Stages.First(s => s.Key == Stages.DepositCertificate).Status);
@@ -123,7 +123,7 @@ public class TransactionStateRulesTests
             beforeDeposit.Stages.First(s => s.Key == Stages.EnfazHandover).Status);
         Assert.False(AllowsEnfazHandover(allDone));
 
-        // شهادة الإيداع صادرة: الرفع جاهز.
+        // Deposit Certificate issued: Upload ready.
         var withDeposit = allDone with { ValuationReportClosed = true };
         var readyState = Evaluate(withDeposit);
         Assert.Equal(Statuses.Completed,
@@ -132,7 +132,7 @@ public class TransactionStateRulesTests
             readyState.Stages.First(s => s.Key == Stages.EnfazHandover).Status);
         Assert.True(AllowsEnfazHandover(withDeposit));
 
-        // بعد الرفع: المعاملة مكتملة.
+        // After uploading: The transaction is complete.
         var handedOver = withDeposit with { EnfazHandedOver = true };
         var final = Evaluate(handedOver);
         Assert.Equal(Statuses.Completed, final.OverallStatus);
@@ -145,7 +145,7 @@ public class TransactionStateRulesTests
     [Fact]
     public void Deposit_certificate_alone_does_not_allow_handover_before_parties_finish()
     {
-        // شهادة الإيداع صدرت لكن الأخصائي لم يكمل — الرفع الشامل ممنوع.
+        // Deposit Certificate issued but the specialist did not complete — mass uploading prohibited.
         var input = BaseInput(
             inspector: new PartyFacts(true, true),
             appraiser: new PartyFacts(true, true),

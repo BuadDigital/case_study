@@ -6,7 +6,7 @@ using RealEstateEval.Infrastructure.Data.Contexts;
 
 namespace RealEstateEval.Valuation.Infrastructure.Data.Contexts.Valuation.Migrations;
 
-/// <summary>أثر رجعي: تاريخ محدد أو فترة بين تاريخين (RetrospectiveDateEnd).</summary>
+/// <summary>Retrospective: single date or period between two dates (RetrospectiveDateEnd).</summary>
 [DbContext(typeof(ValuationDbContext))]
 [Migration("20260827150000_AddRetrospectiveDateEnd")]
 public partial class AddRetrospectiveDateEnd : Migration

@@ -11,7 +11,7 @@ import {
   replaceNotificationsFromServer,
 } from "@platform/app-shared/notifications/notification-store";
 
-/** يزيل إشعارات غير الرفع المساحي من صندوق مكتب الهندسي. */
+/** Removes non-survey notifications from the engineering-office inbox. */
 export function EngineeringOfficeNotificationCleanup() {
   const { role } = useAuth();
 

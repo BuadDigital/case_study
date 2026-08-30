@@ -15,9 +15,9 @@ using RealEstateEval.Operations.Application.Contracts;
 namespace RealEstateEval.Financial.Infrastructure.Services;
 
 /// <summary>
-/// E6 — تذكيرات وتصعيد مهلة التفاوض على التسعيرة المعترَض عليها (بنود البتّ 9–14).
-/// المسح يقرأ القيم الحية فقط: سقوط المهلة عند الخروج من «معترض» أو تغيّر الخصم
-/// هو ما يلغي التذكيرات المعلقة — لا حالة خارج الدفتر.
+/// E6 — Reminders and escalation of negotiation timeout on contested Pricing Quote (bit lines 9–14).
+/// The scan only reads live values: the time limit expires when an “objector” exits or the opponent changes
+/// It eliminates pending reminders — no off-the-book status.
 /// </summary>
 public sealed class BillingNegotiationDeadlineHostedService : BackgroundService
 {
@@ -126,7 +126,7 @@ public sealed class BillingNegotiationDeadlineHostedService : BackgroundService
                     officeUsersByAssignee,
                     cancellationToken);
 
- // قيد التدقيق بصياغة بند البتّ 14.
+ // The wording of Decision Clause 14 is under scrutiny.
                 financial.AuditLogs.Add(audit.Create(
                     "system:billing-negotiation",
                     AuditAction,
@@ -169,7 +169,7 @@ public sealed class BillingNegotiationDeadlineHostedService : BackgroundService
             ledger.Id, stage, deadlineUtc);
         var isEscalation = stage == BillingNegotiationDeadlines.StageEscalation;
 
- // بند 11: التذكيران للمكتب المعني + مشرف القسم؛ التصعيد للمدير المالي والمشرف نسخة.
+ // Clause 11: The two reminders to the relevant office + the department supervisor; Escalation to CFO and supervisor copy.
         var recipients = new List<string>();
         if (isEscalation)
         {
@@ -217,9 +217,9 @@ public sealed class BillingNegotiationDeadlineHostedService : BackgroundService
                 cancellationToken);
         }
 
- // بند 13: مهمة عمليات آلية عند الانقضاء — لا انتقال حالة آلي. تُسند لمكتب
- // النزاع (مفردات مُسنَدي مهام العمليات هي أطراف التنفيذ — المشرف يصله التصعيد
- // إشعاراً ويحسم من شاشة الأتعاب).
+ // Clause 13: Automated operations task upon expiration — No automatic state transition. Assigned to a desk
+ // Conflict (Operations Task Forces Vocabulary) is the implementation party - the supervisor reaches the escalation
+ // notice and it will be deducted from the fees screen).
         if (isEscalation
             && opsTasks is not null
             && !string.IsNullOrWhiteSpace(ledger.AssigneeId)
@@ -228,8 +228,8 @@ public sealed class BillingNegotiationDeadlineHostedService : BackgroundService
             await opsTasks.CreateAsync(
                 new CreateOperationsTaskRequest
                 {
- // حرفيات نوع/نطاق المهمة (OperationsTask{Type,Scope}Values) — لا مرجع مشروع
- // إلى Operations.Domain من هنا (حدود A8).
+ // Task type/scope literals (OperationsTask{Type,Scope}Values) — no project reference
+ // To Operations.Domain from here (boundary A8).
                     Type = "general",
                     Title = "حسم خلاف تسعيرة منقضي المهلة",
                     Description =

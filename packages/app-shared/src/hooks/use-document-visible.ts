@@ -2,9 +2,9 @@
 
 import { useSyncExternalStore } from "react";
 
-// اشتراك واحد على مستوى الوحدة: كانت جسور الجلسة والإشعارات والمزامنة — وكلها
-// مركّبة على كل صفحة مصادَقة — تضيف مستمع visibilitychange مستقلاً لكل منها
-// (client-event-listeners). المستمع يُفصل تلقائياً مع آخر مشترك.
+// One module-level subscription: session, notifications, and sync bridges — all
+// mounted on every authenticated page — each used to add its own visibilitychange
+// listener (client-event-listeners). The listener unbinds automatically with the last subscriber.
 const listeners = new Set<() => void>();
 let attached = false;
 
@@ -36,8 +36,8 @@ function getServerSnapshot(): boolean {
 }
 
 /**
- * true حين تكون التبويبة ظاهرة. للعمل المرتبط بالانتقال (مخفي ← ظاهر) استخدم
- * القيمة داخل تأثير مفتاحه هذه القيمة مع ref للقيمة السابقة، لا كقراءة لحظية.
+ * true when the tab is visible. For transition work (hidden → visible), use this
+ * value inside an effect keyed on it with a ref of the previous value — not as a one-shot read.
  */
 export function useDocumentVisible(): boolean {
   return useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);

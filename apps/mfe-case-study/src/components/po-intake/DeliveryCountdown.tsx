@@ -7,7 +7,7 @@ import {
   isDeliveryCountdownUrgent,
 } from "../../lib/prototype/delivery-countdown";
 
-/** Live SLA countdown — matches countdown-المتبقي-للتسليم.md */
+/** Live SLA countdown — matches countdown-remaining-for-delivery.md */
 export function DeliveryCountdown({
   dueIso,
   className,
@@ -18,7 +18,7 @@ export function DeliveryCountdown({
   /** PO finished → show em dash */
   terminal?: boolean;
 }) {
-  // الساعة المشتركة — كانت كل خلية عدّ تنازلي تدير interval خاصاً بها.
+  // Shared clock — previously each countdown cell ran its own interval.
   const nowMs = useTickingNow();
 
   if (terminal) {

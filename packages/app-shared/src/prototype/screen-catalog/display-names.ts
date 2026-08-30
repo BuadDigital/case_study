@@ -1,7 +1,7 @@
 import type { PageId } from "@platform/types";
 import { PAGE_TITLES } from "../constants";
 
-/** أسماء أوضح في الدليل — قد تختلف عن تسمية القائمة الجانبية */
+/** Clearer catalog names — may differ from the sidebar label */
 export const SCREEN_CATALOG_PAGE_NAMES: Partial<Record<PageId, string>> = {
   dashboard: "لوحة التحكم",
   po: "قائمة أوامر العمل",

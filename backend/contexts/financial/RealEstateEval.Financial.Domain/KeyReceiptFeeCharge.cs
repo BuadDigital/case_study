@@ -1,6 +1,6 @@
 namespace RealEstateEval.Financial.Domain;
 
-/// <summary>بند تحصيل أتعاب استلام مفاتيح من إنفاذ — مرتبط بظرف واحد.</summary>
+/// <summary>Key-receipt fee charge line from Enfaz — tied to one envelope.</summary>
 public class KeyReceiptFeeCharge
 {
     public Guid Id { get; set; }

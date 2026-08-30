@@ -17,7 +17,7 @@ public static class CaseStudyModel
 {
     public static ModelBuilder ApplyCaseStudyModel(this ModelBuilder builder, bool ownsMigrations = true)
     {
- // ورشة الترقيم: عدّادات TX/LT/CS السنوية محلية في مخطط case_study.
+ // Numbering workshop: annual TX/LT/CS counters local to the case_study schema.
         if (ownsMigrations)
             builder.ApplyReferenceSequenceModel(DatabaseSchemas.CaseStudy);
 
@@ -69,7 +69,7 @@ public static class CaseStudyModel
             e.Property(x => x.HasStructuresToValue).HasMaxLength(8);
             e.Property(x => x.InspectionScopeKey).HasMaxLength(16);
             e.Property(x => x.InspectionRestrictionReason).HasMaxLength(2000);
-            // ق-9: رفع إنفاذ الشامل.
+            // Q-9: comprehensive Enfaz upload.
             e.Property(x => x.EnfazHandoverByUserId).HasMaxLength(128);
             e.Property(x => x.RemoteInspectionApprovedBy).HasMaxLength(128);
             e.Property(x => x.RequestNumber).HasMaxLength(64);
@@ -111,6 +111,7 @@ public static class CaseStudyModel
             e.Property(x => x.PartitionMinutesDate).HasMaxLength(32);
             e.Property(x => x.FinishingType).HasMaxLength(32);
             e.Property(x => x.FinishingStructure).HasMaxLength(32);
+            e.Property(x => x.SpecialistReportExtrasJson).HasColumnType("jsonb");
             e.Property(x => x.RemovalReason).HasMaxLength(500);
             e.Property(x => x.City).HasMaxLength(128);
             e.Property(x => x.Region).HasMaxLength(100);

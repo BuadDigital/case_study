@@ -44,7 +44,7 @@ export function resolveQueueTaskStatusFilterLabel(
 
 export type PrimaryQueueRowMeta = {
   task: WorkflowTask;
-  /** السجل والعقار والصف المبني — تُحمل هنا فلا يعيد أي مستهلك بناءها لكل صف. */
+  /** Record, property, and prebuilt row — loaded here so no consumer rebuilds them per row. */
   record: PoIntakeRecord | undefined;
   property: PoPropertyIntake | null;
   row: PrimaryDataTableRow;
@@ -80,7 +80,7 @@ export function buildPrimaryQueueRowMeta(
   });
 }
 
-/** يعيد الـmeta نفسها — المستهلكون (الجداول/البطاقات) يقرأون الصف المبني بدل إعادة بنائه. */
+/** Returns the same meta — consumers (tables/cards) read the prebuilt row instead of rebuilding it. */
 export function filterPrimaryQueueRowMeta(
   rows: PrimaryQueueRowMeta[],
   filters: {

@@ -35,7 +35,7 @@ import {
   caseStudyAnswerDisplayLabel,
   isEvaluatorChecklistQuestionAssignedToAppraiser,
   type EvaluatorChecklistBooleanKey,
-} from "@evaluator/mfe/lib/evaluator/evaluator-checklist-case-study-sync";
+} from "../evaluator-bridge";
 import type { CaseStudyInfoRolesMatrix } from "@settings/mfe/lib/prototype/case-study-info-roles-storage";
 import type {
   EngineeringSurveyChecklistAnswer,
@@ -406,7 +406,7 @@ export function buildFromEngineeringSurvey(
   }
 
   const remarks: PropertyDetailPartySubmission["remarks"] = [];
-  // تبويب «ملاحظة» في مساحة المكتب
+  // «Note» tab in the office workspace
   if (submission.transactionNote?.trim()) {
     remarks.push({
       label: "ملاحظة على المعاملة",
@@ -682,11 +682,11 @@ export function buildFromEvaluator(
   }
 
   const remarks: PropertyDetailPartySubmission["remarks"] = [];
-  // «ملاحظات على العقار (اختياري)» في نافذة التقييم
+  // «Property notes (optional)» in the valuation window
   if (notes) {
     remarks.push({ label: "ملاحظات على العقار", value: notes });
   }
-  // «ملاحظات التباين (إن وُجدت)»
+  // «Variance notes (if any)»
   if (submission.assetDataVarianceNotes?.trim()) {
     remarks.push({
       label: "ملاحظات التباين",

@@ -14,7 +14,7 @@ public static class InspectorFeeBillingStatus
     public const string AtFinance = "at-finance";
  /// <summary>Ready for billing but deferred by accountant to a later cycle.</summary>
     public const string Deferred = "deferred";
- /// <summary>Included in an engineering-office billing statement (مدرج).</summary>
+ /// <summary>Included in an engineering-office billing statement (listed).</summary>
     public const string InStatement = "in-statement";
     public const string DisbReq = "disb-req";
     public const string Disbursed = "disbursed";

@@ -35,8 +35,8 @@ export function RemainingTimeCell({ state }: { state: RemainingTimeState }) {
 }
 
 /**
- * عدّاد يتحدث كل ثانية داخل الخلية نفسها — الاشتراك بالساعة هنا وليس في الشاشة،
- * فلا يعاد بناء كل الصفوف مع كل ثانية (rerender-defer-reads).
+ * Countdown that ticks every second inside the cell itself — clock subscription lives here, not on the screen,
+ * so every row is not rebuilt each second (rerender-defer-reads).
  */
 export function TickingRemainingTimeCell({ dueIso }: { dueIso: string }) {
   const nowMs = useTickingNow();

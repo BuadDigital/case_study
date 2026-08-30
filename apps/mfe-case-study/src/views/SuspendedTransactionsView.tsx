@@ -118,11 +118,11 @@ export function SuspendedTransactionsView() {
   const { data: tasks = [] } = useWorkflowTasksQuery();
   const { data: staffResult } = useStaffUsersQuery();
   const staffUsers = staffResult?.users ?? [];
-  // دقّة الدقيقة تكفي للمؤشرات والفرز — العدّاد الثانوي يعيش في خلية المؤقت
-  // نفسها، فلا يعاد بناء الصفوف كل ثانية (rerender-defer-reads).
+  // Minute precision is enough for indicators and sort — the per-second timer lives in the timer cell
+  // itself, so rows are not rebuilt every second (rerender-defer-reads).
   const nowMinuteMs = useTickingMinute();
   const now = useMemo(() => new Date(nowMinuteMs), [nowMinuteMs]);
-  // بعد الترطيب تركب شجرة واحدة فقط (بطاقات أو جدول) — كانتا تُبنيان معاً.
+  // After hydration mount only one tree (cards or table) — both used to be built together.
   const isDesktopViewport = useViewportDesktop();
   const [isOpening, startOpen] = useTransition();
   const [openingId, setOpeningId] = useState<string | null>(null);

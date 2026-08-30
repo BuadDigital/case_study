@@ -8,18 +8,24 @@ import {
 import { getAuthSession } from "@platform/auth-client";
 import dynamic from "next/dynamic";
 import { Activity, useCallback, useEffect, useMemo, useRef, useState } from "react";
-import type { WorkflowTask } from "@case-study/mfe/lib/prototype/tasks-storage";
+import type { WorkflowTask } from "@platform/app-shared/workflow/task-types";
 import { inspectionGateForAppraisal } from "../../lib/evaluator/evaluator-inspection-gate";
-import { createEvaluatorDraft } from "../../lib/evaluator/evaluator-window-data";
-import { hydrateEvaluatorSubmission, 
-  isEvaluatorFormLocked, 
+import { createEvaluatorDraft, emptyReportChoices } from "../../lib/evaluator/evaluator-window-data";
+import type { EvaluatorSubmission } from "../../lib/evaluator/evaluator-window-data";
+import {
+  hydrateEvaluatorSubmission,
+  isEvaluatorFormLocked,
   updateEvaluatorDraft,
   type EvaluatorPlanImageMetadata,
   type EvaluatorReportMetadata,
 } from "../../lib/evaluator/evaluator-submission-storage";
-import type { EvaluatorSubmission } from "../../lib/evaluator/evaluator-window-data";
 import { scheduleScrollToFormField } from "@platform/app-shared/form-ux";
-import { firstEvaluatorError, firstEvaluatorErrorTarget, validateEvaluatorSubmission, type EvaluatorValidationErrors } from "../../lib/evaluator/evaluator-validation";
+import {
+  firstEvaluatorError,
+  firstEvaluatorErrorTarget,
+  validateEvaluatorSubmission,
+  type EvaluatorValidationErrors,
+} from "../../lib/evaluator/evaluator-validation";
 import { finalizeAppraiserSubmission } from "../../lib/evaluator/finalize-appraiser-submission";
 import type { EvaluatorWindowHostRefObject } from "../../lib/evaluator/evaluator-window-host";
 import type {
@@ -27,29 +33,50 @@ import type {
   EvaluatorReportChoices,
   EvaluatorReportWorker,
 } from "../../lib/evaluator/evaluator-window-data";
-import {
-  type EvaluatorPropertySummary,
-} from "./EvaluatorPropertyTab";
+import { type EvaluatorPropertySummary } from "./EvaluatorPropertyTab";
 import { EvaluatorValuationReportTab } from "./EvaluatorValuationReportTab";
-import { appraiserInspectionDone,
+import {
+  appraiserInspectionDone,
   appraiserNeedsSurvey,
   appraiserSurveyDone,
 } from "../../lib/evaluator/evaluator-readiness";
 import { computePropertyTotal } from "../../lib/evaluator/value-estimation";
-import { EngInfo,
+import {
+  EngInfo,
   ValTabBar,
   valCardClassName,
   valPpHeadClassName,
 } from "./EvaluatorHtmlPrimitives";
+import {
+  ValuationWorkShell,
+  type ValuationWorkNavAvailability,
+  type ValuationWorkScreenId,
+} from "./EvaluatorComparableSelectionPanel";
 
-export type EvaluatorWindowTab = "report" | "output";
+export type EvaluatorWindowTab = ValuationWorkScreenId | "output";
 
 const EMPTY_FIELD_ERRORS: EvaluatorValidationErrors = {};
 
-const VAL_TABS: { id: EvaluatorWindowTab; label: string }[] = [
-  { id: "report", label: "تقييم العقار" },
+const WORK_SCREENS: ValuationWorkScreenId[] = [
+  "basic",
+  "market",
+  "cost",
+  "final",
+  "review",
+];
+
+const VAL_TAB_DEFS: { id: EvaluatorWindowTab; label: string }[] = [
+  { id: "basic", label: "البيانات الأساسية" },
+  { id: "market", label: "طريقة المقارنة" },
+  { id: "cost", label: "طريقة المقاول" },
+  { id: "final", label: "رأي القيمة النهائي" },
+  { id: "review", label: "المراجعة النهائية" },
   { id: "output", label: "تقرير التقييم" },
 ];
+
+function isWorkScreen(id: EvaluatorWindowTab): id is ValuationWorkScreenId {
+  return id !== "output";
+}
 
 const EvaluatorValuationReportOutputTab = dynamic(
   () =>
@@ -66,7 +93,6 @@ const EvaluatorValuationReportOutputTab = dynamic(
   },
 );
 
-// تحميل مسبق لحزمة تبويبة التقرير عند التحويم على شريط التبويبات (bundle-preload).
 const preloadValuationReportOutputTab = () =>
   void import("./EvaluatorValuationReportOutputTab");
 
@@ -75,7 +101,7 @@ export function EvaluatorWindow({
   tasks,
   hostRef,
   propertySummary,
-  initialTab = "report",
+  initialTab = "basic",
   deedLabel,
   embeddedInPropertyChrome = false,
 }: {
@@ -108,15 +134,36 @@ export function EvaluatorWindow({
     useState<EvaluatorValidationErrors>(EMPTY_FIELD_ERRORS);
   const [submitting, setSubmitting] = useState(false);
   const [activeTab, setActiveTab] = useState<EvaluatorWindowTab>(initialTab);
-  /** تبويبة لا تُركَّب إلا بعد أول زيارة — ثم تبقى مركّبة مخفية فلا تضيع حالتها. */
+  const [navAvail, setNavAvail] = useState<ValuationWorkNavAvailability>({
+    market: false,
+    cost: false,
+  });
   const visitedTabsRef = useRef<Set<EvaluatorWindowTab>>(new Set());
   visitedTabsRef.current.add(activeTab);
+  const lastWorkScreenRef = useRef<ValuationWorkScreenId>(
+    isWorkScreen(initialTab) ? initialTab : "basic",
+  );
+  if (isWorkScreen(activeTab)) lastWorkScreenRef.current = activeTab;
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  /** يزداد مع كل تعديل محلي — استجابة حفظ أقدم لا تكتب فوق حروف كُتبت أثناء رحلتها. */
   const editVersionRef = useRef(0);
 
   const locked = isEvaluatorFormLocked(draft.status);
   const formDisabled = locked || !gate.ready;
+
+  const visibleTabs = useMemo(
+    () =>
+      VAL_TAB_DEFS.filter((t) => {
+        if (t.id === "market") return navAvail.market;
+        if (t.id === "cost") return navAvail.cost;
+        return true;
+      }),
+    [navAvail.cost, navAvail.market],
+  );
+
+  useEffect(() => {
+    if (visibleTabs.some((t) => t.id === activeTab)) return;
+    setActiveTab(visibleTabs[0]?.id ?? "basic");
+  }, [activeTab, visibleTabs]);
 
   const persistDraft = useCallback(
     (
@@ -150,14 +197,15 @@ export function EvaluatorWindow({
       const versionAtSave = editVersionRef.current;
       void updateEvaluatorDraft(task.id, patch, reportMetadata, planImageMetadata)
         .then((updated) => {
-          // تعديل أحدث وقع أثناء رحلة الحفظ؟ تجاهل الاستجابة — حفظ تالٍ مجدول أصلاً.
           if (updated && editVersionRef.current === versionAtSave) {
             setDraft(updated);
           }
         })
         .catch((err: unknown) => {
           showToast(
-            err instanceof Error ? err.message : "تعذّر حفظ مسودة التقييم — حاول مرة أخرى",
+            err instanceof Error
+              ? err.message
+              : "تعذّر حفظ مسودة التقييم — حاول مرة أخرى",
             "error",
           );
         });
@@ -252,13 +300,11 @@ export function EvaluatorWindow({
         firstEvaluatorError(errors) ?? "تحقق من الحقول المطلوبة";
       setFormError(message);
       showToast(message, "error");
-      setActiveTab("report");
+      setActiveTab("review");
       scheduleScrollToFormField(firstEvaluatorErrorTarget(errors), 120);
       return false;
     }
 
-    // مواصفة النموذج التفاعلي: «المنع يقع عند الاعتماد فقط» — الاعتماد يحترم بوابات
-    // الإصدار والتنبيهات المنهجية فعلياً، لا عرضاً فقط.
     const session = getAuthSession();
     if (session?.token && task.propertyId) {
       try {
@@ -278,12 +324,12 @@ export function EvaluatorWindow({
             const message = `الاعتماد ممنوع — ${reason}`;
             setFormError(message);
             showToast(message, "error");
-            setActiveTab("report");
+            setActiveTab("review");
             return false;
           }
         }
       } catch {
-        // تعذّر فحص البوابات (شبكة) — الخادم سيرفض الإصدار غير المستوفي لاحقاً.
+        // Gate check failed (network) — the server will still reject an incomplete issue later.
       }
     }
 
@@ -344,6 +390,7 @@ export function EvaluatorWindow({
     locked,
     gate,
     task.id,
+    task.propertyId,
     draft.evaluatorPrice,
     draft.landValue,
     draft.buildingValue,
@@ -357,6 +404,7 @@ export function EvaluatorWindow({
     draft.demandLevel,
     draft.depositCode,
     draft.depositCertificateFileName,
+    draft.reportChoices,
     hostRef,
     showToast,
   ]);
@@ -378,6 +426,14 @@ export function EvaluatorWindow({
     setActiveTab(id as EvaluatorWindowTab);
   }, []);
 
+  const onDraftPatch = useCallback(
+    (values: Parameters<typeof persistDraft>[0]) => {
+      setDraft((prev) => ({ ...prev, ...values }));
+      scheduleAutosave(values);
+    },
+    [scheduleAutosave],
+  );
+
   const onReportChoicesChange = useCallback(
     (
       reportChoices: EvaluatorReportChoices,
@@ -396,13 +452,32 @@ export function EvaluatorWindow({
     [scheduleAutosave],
   );
 
-  const onDraftPatch = useCallback(
-    (values: Parameters<typeof persistDraft>[0]) => {
-      setDraft((prev) => ({ ...prev, ...values }));
-      scheduleAutosave(values);
+  const syncFinalOpinion = useCallback(
+    (value: number) => {
+      if (!Number.isFinite(value) || value <= 0) return;
+      onDraftPatch({ evaluatorPrice: String(Math.round(value)) });
     },
-    [scheduleAutosave],
+    [onDraftPatch],
   );
+
+  const onReportChoicesPatch = useCallback(
+    (patch: Partial<EvaluatorReportChoices>) => {
+      const current = draft.reportChoices ?? emptyReportChoices();
+      onReportChoicesChange({ ...current, ...patch });
+    },
+    [draft.reportChoices, onReportChoicesChange],
+  );
+
+  const onNavAvailabilityChange = useCallback(
+    (nav: ValuationWorkNavAvailability) => {
+      setNavAvail(nav);
+    },
+    [],
+  );
+
+  const onWorkScreenChange = useCallback((screen: ValuationWorkScreenId) => {
+    setActiveTab(screen);
+  }, []);
 
   if (draftLoading) {
     return (
@@ -433,6 +508,14 @@ export function EvaluatorWindow({
     appraisalTaskId: propertySummary?.appraisalTaskId ?? task.id,
   };
 
+  const property = summary.property;
+  const workVisited = WORK_SCREENS.some((id) =>
+    visitedTabsRef.current.has(id),
+  );
+  const workScreen = isWorkScreen(activeTab)
+    ? activeTab
+    : lastWorkScreenRef.current;
+
   return (
     <div className="flex min-w-0 flex-col overflow-x-hidden">
       {embeddedInPropertyChrome ? null : (
@@ -459,70 +542,101 @@ export function EvaluatorWindow({
           onFocus={preloadValuationReportOutputTab}
         >
           <ValTabBar
-            tabs={VAL_TABS}
+            tabs={visibleTabs}
             active={activeTab}
             onChange={onTabChange}
           />
         </div>
 
         <div className="pt-5">
-        {needsSurvey && !surveyed && !locked && gate.ready ? (
-          <EngInfo variant="amber">
-            ℹ يمكنك التقييم الآن (بيانات معاينة العقار معتمدة) — الرفع المساحي وصف
-            إضافي: قد يلزم تعديل التقييم بعد صدوره.
-          </EngInfo>
-        ) : null}
-
-        {locked ? (
-          <EngInfo variant="amber">
-            تم الإرسال لأخصائي دراسة الحالة — لا يمكن التعديل إلا بإعادة فتح من
-            الأخصائي.
-          </EngInfo>
-        ) : null}
-
-        {formError ? <EngInfo variant="red"><strong>!</strong> {formError}</EngInfo> : null}
-
-        <div
-          className={cn(
-            formDisabled &&
-              activeTab !== "report" &&
-              activeTab !== "output"
-              ? "opacity-75"
-              : undefined,
-          )}
-        >
-          {visitedTabsRef.current.has("report") ? (
-            <Activity mode={activeTab === "report" ? "visible" : "hidden"}>
-            <EvaluatorValuationReportTab
-              draft={draft}
-              disabled={formDisabled}
-              property={summary.property}
-              inspectionTaskId={summary.inspectionTaskId}
-              surveyTaskId={summary.surveyTaskId}
-              appraisalTaskId={task.id}
-              assignmentType={task.assignmentType}
-              fieldErrors={fieldErrors}
-              onChange={onReportChoicesChange}
-              onDraftPatch={onDraftPatch}
-              onSubmit={() => void submit()}
-              submitting={submitting}
-              showSubmit={!formDisabled}
-            />
-            </Activity>
+          {needsSurvey && !surveyed && !locked && gate.ready ? (
+            <EngInfo variant="amber">
+              ℹ يمكنك التقييم الآن (بيانات معاينة العقار معتمدة) — الرفع المساحي
+              وصف إضافي: قد يلزم تعديل التقييم بعد صدوره.
+            </EngInfo>
           ) : null}
 
-          {visitedTabsRef.current.has("output") ? (
-            <Activity mode={activeTab === "output" ? "visible" : "hidden"}>
-            <EvaluatorValuationReportOutputTab
-              draft={draft}
-              property={summary.property}
-              inspectionTaskId={summary.inspectionTaskId}
-              surveyTaskId={summary.surveyTaskId}
-              assignedAppraiserName={task.assigneeName}
-            />
-            </Activity>
+          {locked ? (
+            <EngInfo variant="amber">
+              تم الإرسال لأخصائي دراسة الحالة — لا يمكن التعديل إلا بإعادة فتح من
+              الأخصائي.
+            </EngInfo>
           ) : null}
-        </div>
+
+          {formError ? (
+            <EngInfo variant="red">
+              <strong>!</strong> {formError}
+            </EngInfo>
+          ) : null}
+
+          <div className={cn(formDisabled ? "opacity-75" : undefined)}>
+            {workVisited || isWorkScreen(activeTab) ? (
+              <Activity
+                mode={activeTab !== "output" ? "visible" : "hidden"}
+              >
+                <div className="mb-5">
+                  <EvaluatorValuationReportTab
+                    draft={draft}
+                    disabled={formDisabled}
+                    property={summary.property}
+                    inspectionTaskId={summary.inspectionTaskId}
+                    surveyTaskId={summary.surveyTaskId}
+                    appraisalTaskId={task.id}
+                    assignmentType={task.assignmentType}
+                    fieldErrors={fieldErrors}
+                    onChange={onReportChoicesChange}
+                    onDraftPatch={onDraftPatch}
+                  />
+                </div>
+                {property?.id ? (
+                  <ValuationWorkShell
+                    propertyId={property.id}
+                    poNumber={draft.poNumber}
+                    assignmentType={task.assignmentType ?? undefined}
+                    districtHint={property.district}
+                    property={{
+                      area: property.area,
+                      district: property.district,
+                      city: property.city,
+                      deedNumber: property.deedNumber,
+                      propertyType: property.propertyType,
+                      classification: property.classification,
+                    }}
+                    intakeProperty={property}
+                    onFinalOpinionChange={syncFinalOpinion}
+                    draft={draft}
+                    disabled={formDisabled}
+                    fieldErrors={fieldErrors}
+                    onDraftPatch={onDraftPatch}
+                    onReportChoicesPatch={onReportChoicesPatch}
+                    onSubmit={() => void submit()}
+                    submitting={submitting}
+                    showSubmit={!formDisabled}
+                    screen={workScreen}
+                    onScreenChange={onWorkScreenChange}
+                    embeddedInTopTabs
+                    onNavAvailabilityChange={onNavAvailabilityChange}
+                  />
+                ) : (
+                  <p className="text-[13px] text-text-3">
+                    لا يتوفر عقار مرتبط لهذه المهمة.
+                  </p>
+                )}
+              </Activity>
+            ) : null}
+
+            {visitedTabsRef.current.has("output") ? (
+              <Activity mode={activeTab === "output" ? "visible" : "hidden"}>
+                <EvaluatorValuationReportOutputTab
+                  draft={draft}
+                  property={summary.property}
+                  inspectionTaskId={summary.inspectionTaskId}
+                  surveyTaskId={summary.surveyTaskId}
+                  assignedAppraiserName={task.assigneeName}
+                />
+              </Activity>
+            ) : null}
+          </div>
         </div>
       </div>
     </div>

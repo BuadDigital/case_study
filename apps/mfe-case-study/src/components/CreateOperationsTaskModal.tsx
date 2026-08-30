@@ -68,7 +68,7 @@ const letterCellLtr = "inline-block max-w-full truncate tabular-nums tracking-ti
 
 const TASK_TYPES = ["general", "court_visit"] as const;
 
-/** نطاق الربط موحّد لزيارة محكمة والمهمة العامة (يشمل عامة). */
+/** Unified link scope for court visit and general task (includes general). */
 const LINK_SCOPES = ["work_order", "transaction", "multi", "general"] as const;
 
 const PRIORITY_OFFSET_MS: Record<string, number> = {

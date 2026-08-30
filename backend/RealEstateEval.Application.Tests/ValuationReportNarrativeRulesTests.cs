@@ -31,7 +31,7 @@ public class ValuationReportNarrativeRulesTests
         Assert.Contains("قيمة التصفية", text);
         Assert.Contains("تصفية منظمة", text);
         Assert.Contains("ESG", text);
- // بند الأخصائي: الافتراضي نفي قياسي.
+ // Specialist clause: default is the standard denial.
         Assert.Contains("لم يستعن المقيّم بأي أخصائي خارجي", text);
     }
 

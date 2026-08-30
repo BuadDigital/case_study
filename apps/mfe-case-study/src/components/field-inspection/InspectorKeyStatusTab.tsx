@@ -23,7 +23,7 @@ import type { WorkflowTask } from "../../lib/prototype/tasks-storage";
 export type InspectorKeyAvailability = {
   keyHandedToInspector: string;
   keysStatus: string;
-  /** جاهز لإتمام المعاينة من ناحية المفتاح */
+  /** Ready to complete inspection from a key-status perspective */
   keyAvailable: boolean;
   source?: string;
   envelopeId?: string | null;
@@ -47,7 +47,7 @@ function mapGate(gate: PropertyKeyGateDto): InspectorKeyAvailability {
   };
 }
 
-/** حالة المفتاح من ظرف المفاتيح فقط */
+/** Key status derived from the key envelope only */
 export function useInspectorKeyAvailability(
   task: WorkflowTask,
 ): InspectorKeyAvailability {

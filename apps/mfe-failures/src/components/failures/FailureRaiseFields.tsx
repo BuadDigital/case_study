@@ -15,7 +15,7 @@ const labelClassName =
   "mb-[7px] block text-[12px] font-semibold text-text-2";
 
 /**
- * Catalog dropdown — نوع التعذر from `/failure-types`, filtered by role.
+ * Catalog dropdown — failure type from `/failure-types`, filtered by role.
  */
 export function FailureRaiseFields({
   problemTypeId,

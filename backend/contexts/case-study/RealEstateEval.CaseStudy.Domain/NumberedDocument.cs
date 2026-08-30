@@ -1,9 +1,9 @@
 namespace RealEstateEval.CaseStudy.Domain;
 
 /// <summary>
-/// سجل المستندات المرقّمة (قرار 25 + ورشة الترقيم): الكيانان 5–6 — الخطابات
-/// (LT) وتقارير دراسة الحالة (CS). الصف يُنشأ لحظة تخصيص الرقم عند الطباعة/
-/// الإصدار ولا يُعدَّل بعدها — سجل مرجعي لا مخزن مستندات.
+/// Register of numbered documents (Decision 25 + numbering workshop): Entities 5–6 — Letters
+/// (LT) and case study reports (CS). The row is created the moment the number is assigned when printing/
+/// Versioned and not modified afterward — a reference record, not a document store.
 /// </summary>
 public class NumberedDocument
 {
@@ -13,7 +13,7 @@ public class NumberedDocument
     public string ReferenceNumber { get; set; } = "";
     public string PoNumber { get; set; } = "";
     public Guid? PropertyId { get; set; }
- /// <summary>عنوان وصفي — مثل «خطاب تفويض داخلي — زيارة محكمة».</summary>
+ /// <summary>A descriptive title — such as “Internal Authorization Letter — Court Visit.”</summary>
     public string Title { get; set; } = "";
     public string CreatedByUserId { get; set; } = "";
     public DateTime CreatedAtUtc { get; set; }

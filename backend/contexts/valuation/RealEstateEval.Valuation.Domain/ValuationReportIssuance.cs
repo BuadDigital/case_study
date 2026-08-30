@@ -1,57 +1,57 @@
 namespace RealEstateEval.Valuation.Domain;
 
 /// <summary>
-/// ق-6: الإصدار ثنائي المرحلة + شهادة الإيداع (بصيغة سليمان):
-/// 1) عند اكتمال الحواجب يُجمَّد التقرير كاملاً وتُولَّد «نسخة الإيداع» (PDF وخانة رمز
-///    الإيداع فارغة) — تُرفَع يدوياً في قيمة (قرار 17).
-/// 2) منصة قيمة تصدر «شهادة الإيداع» وبها رمزها الخاص.
-/// 3) الموظف يرفع الشهادة ويُدخل رمزها في الحقل القائم (report.deposit_code).
-/// 4) «النسخة النهائية»: نفس التقرير المجمّد حرفياً + صفحة شهادة الإيداع صفحةً مرفقة
-///    + الرمز في ميتا الصفحات. الرمز والشهادة وحدهما خارج نطاق التجميد.
-/// النسختان تُحفظان في ملف المعاملة: المودعة (مطابق ما في المنصة) والنهائية (المتداولة).
+/// Q-6: two-phase issuance + deposit certificate (Sulaiman wording):
+/// 1) When gates pass, the full report is frozen and a "deposit copy" is generated (PDF with deposit-code
+///    field empty) — uploaded manually to Qiama (decision 17).
+/// 2) Qiama platform issues a "deposit certificate" with its own code.
+/// 3) Staff uploads the certificate and enters its code in the existing field (report.deposit_code).
+/// 4) "Final copy": the frozen report literally + the deposit-certificate page as an attachment
+///    + the code in page metadata. Only the code and certificate are outside the freeze scope.
+/// Both copies are kept on the transaction file: deposited (matches the platform) and final (circulated).
 /// </summary>
 public class ValuationReportIssuance
 {
     public Guid Id { get; set; }
     public Guid ValuationRequestId { get; set; }
 
- /// <summary>لحظة التجميد وإصدار نسخة الإيداع.</summary>
+ /// <summary>Freeze moment and deposit-copy issuance.</summary>
     public DateTime DepositIssuedAtUtc { get; set; }
     public string? DepositIssuedByUserId { get; set; }
 
- /// <summary>اللقطة المجمّدة لكامل التقرير (ValuationReportDocumentDto) — مصدر النسختين.</summary>
+ /// <summary>Frozen snapshot of the full report (ValuationReportDocumentDto) — source for both copies.</summary>
     public string DocumentJson { get; set; } = "";
 
- /// <summary>نسخة الإيداع — خانة رمز الإيداع فارغة.</summary>
+ /// <summary>Deposit copy — deposit-code field empty.</summary>
     public byte[] DepositPdf { get; set; } = [];
 
- /// <summary>رمز شهادة الإيداع من منصة قيمة — خارج نطاق التجميد.</summary>
+ /// <summary>Deposit-certificate code from Qiama — outside freeze scope.</summary>
     public string? DepositCode { get; set; }
     public string? CertificateFileName { get; set; }
     public string? CertificateContentType { get; set; }
- /// <summary>شهادة الإيداع — تُحفظ مستنداً في ملف المعاملة وتدخل النسخة النهائية صفحةً.</summary>
+ /// <summary>Deposit certificate — stored on the transaction file and appended as a page in the final copy.</summary>
     public byte[]? CertificateContent { get; set; }
     public DateTime? CertificateUploadedAtUtc { get; set; }
     public string? CertificateUploadedByUserId { get; set; }
 
- /// <summary>النسخة النهائية المتداولة — التقرير المجمّد + صفحة الشهادة + الرمز.</summary>
+ /// <summary>Circulated final copy — frozen report + certificate page + code.</summary>
     public DateTime? FinalIssuedAtUtc { get; set; }
     public byte[]? FinalPdf { get; set; }
 
- /* ─── تكميلية ق-9 (ر2): نسخ الإيداع N+1 — الساري هو غير المُلغى، والملغى يبقى بالملف ─── */
+ /* ─── Q-9 supplement (R2): deposit copies N+1 — current = non-superseded; superseded stays on file ─── */
 
- /// <summary>رقم دور التقييم — يبدأ من 1 ويرتفع مع كل إعادة فتح (ر2).</summary>
+ /// <summary>Valuation cycle number — starts at 1 and increments on each reopen (R2).</summary>
     public int Version { get; set; } = 1;
 
- /// <summary>لحظة الإلغاء «حلّت محلها نسخة أحدث» — null تعني النسخة السارية.</summary>
+ /// <summary>Supersession moment ("replaced by a newer copy") — null means the current copy.</summary>
     public DateTime? SupersededAtUtc { get; set; }
     public string? SupersededByUserId { get; set; }
- /// <summary>سبب إعادة الفتح — إلزامي بحد ق-8-2 (١٠ أحرف).</summary>
+ /// <summary>Reopen reason — required with Q-8-2 minimum (10 characters).</summary>
     public string? SupersededReason { get; set; }
 
  /// <summary>
- /// ر2: إلغاء النسخة (لا حذف صلب) — النسخة المودعة لا تُعدَّل، وتُعلَّم
- /// «ملغاة — حلّت محلها نسخة أحدث» ويبقى ملفها في المعاملة.
+ /// R2: supersede the copy (no hard delete) — the deposited copy is not edited; it is marked
+ /// "superseded — replaced by a newer copy" and its file stays on the transaction.
  /// </summary>
     public string? Supersede(string? byUserId, string reason, DateTime nowUtc)
     {
@@ -66,9 +66,9 @@ public class ValuationReportIssuance
         return null;
     }
 
-    /* ─── B2: انتقالات ق-6 داخل الجذر — الخدمة تجهّز اللقطة والمولّدات وتُنسّق فقط ─── */
+    /* ─── B2: Q-6 transitions on the aggregate — service prepares snapshot/generators and coordinates only ─── */
 
- /// <summary>ق-6-1: التجميد وإصدار نسخة الإيداع — نسخة سارية واحدة لكل طلب (ر2: الدور N+1).</summary>
+ /// <summary>Q-6-1: freeze and issue deposit copy — one current copy per request (R2: cycle N+1).</summary>
     public static ValuationReportIssuance IssueDeposit(
         Guid valuationRequestId,
         string documentJson,
@@ -87,8 +87,8 @@ public class ValuationReportIssuance
         };
 
  /// <summary>
- /// ق-6-3: تسجيل الشهادة والرمز — خارج نطاق التجميد؛ إعادة التسجيل تصحيحاً مسموحة.
- /// يعيد رسالة رفض عند رمز فارغ.
+ /// Q-6-3: register certificate and code — outside freeze scope; corrective re-registration allowed.
+ /// Returns a rejection message when the code is empty.
  /// </summary>
     public string? RegisterCertificate(
         string depositCode,
@@ -112,7 +112,7 @@ public class ValuationReportIssuance
         return null;
     }
 
- /// <summary>ق-6-4: النسخة النهائية لا تصدر قبل تسجيل الرمز.</summary>
+ /// <summary>Q-6-4: final copy is not issued before the code is registered.</summary>
     public string? IssueFinal(byte[] finalPdf, DateTime nowUtc)
     {
         if (string.IsNullOrWhiteSpace(DepositCode))
@@ -124,15 +124,15 @@ public class ValuationReportIssuance
     }
 }
 
-/// <summary>مراحل ق-6 كما تُعرض للواجهة.</summary>
+/// <summary>Q-6 phases as shown to the UI.</summary>
 public static class ReportIssuanceStages
 {
- /// <summary>لم تصدر نسخة الإيداع بعد — التحرير مفتوح والحواجب تتحكم.</summary>
+ /// <summary>Deposit copy not yet issued — editing is open; gates control issuance.</summary>
     public const string Draft = "draft";
 
- /// <summary>صدرت نسخة الإيداع — التقرير مجمّد بانتظار الشهادة والرمز.</summary>
+ /// <summary>Deposit copy issued — report frozen pending certificate and code.</summary>
     public const string DepositIssued = "deposit_issued";
 
- /// <summary>سُجِّلت الشهادة والرمز وصدرت النسخة النهائية.</summary>
+ /// <summary>Certificate and code registered; final copy issued.</summary>
     public const string FinalIssued = "final_issued";
 }

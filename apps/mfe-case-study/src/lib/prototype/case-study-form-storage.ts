@@ -10,7 +10,7 @@ import {
 import { apiErrorMessage, resolveApiError, requireWorkOrdersApiConfig, workOrdersApiConfig } from "../work-orders-api-config";
 import { notifyWorkOrdersChanged } from "@platform/app-shared/prototype/work-orders-api-config";
 import { notifyTasksChanged } from "./tasks-storage";
-import { syncEvaluatorChecklistFromPartyCaseStudy } from "@evaluator/mfe/lib/evaluator/evaluator-submission-storage";
+import { syncEvaluatorChecklistFromPartyCaseStudy } from "../evaluator-bridge";
 
 export type SaveCaseStudyFormDraftResult =
   | { ok: true; draft: CaseStudyFormDraft }

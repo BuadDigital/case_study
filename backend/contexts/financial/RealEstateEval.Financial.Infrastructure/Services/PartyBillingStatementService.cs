@@ -66,8 +66,8 @@ public partial class PartyBillingStatementService : IPartyBillingStatementServic
     {
     }
 
-    // مسار DI في مضيف المالية: الـbackfill يمر عبر عميل HTTP لمهام العمليات (متاح منذ E6)
-    // — كان يُمرَّر null فلا يعمل التعويض قبل «الأسطر الجاهزة» إطلاقاً في الإنتاج.
+    // DI path in Finance host: backfill passes through HTTP client for operations tasks (available since E6)
+    // — Null was passed, so compensation before “ready lines” does not work at all in production.
     [ActivatorUtilitiesConstructor]
     public PartyBillingStatementService(
         FinancialDbContext db,
@@ -589,7 +589,7 @@ public partial class PartyBillingStatementService : IPartyBillingStatementServic
             if (statement.Status != PartyBillingStatementStatus.Issued
                 && statement.Status != PartyBillingStatementStatus.Draft)
                 return (null, "لا يُصرف للفرد إلا من أمر صرف صادر أو مُعد.");
- // Individual: promote draft to issued implicitly so path is أمر صرف صادر → مدفوع
+ // Individual: promote draft to issued implicitly so path is Payment Order issued → paid
             if (statement.Status == PartyBillingStatementStatus.Draft)
             {
                 statement.Status = PartyBillingStatementStatus.Issued;
@@ -794,7 +794,7 @@ public partial class PartyBillingStatementService : IPartyBillingStatementServic
         var created = new List<PartyBillingStatementDto>();
         var linesIncluded = 0;
 
- // استعلام واحد للمسيرات المفتوحة هذا الشهر بدل AnyAsync لكل مورّد.
+ // One query for open pipelines this month instead of AnyAsync per vendor.
         var vendorIds = vendorReady.Select(g => g.Key).ToList();
         var openThisMonth = (await _db.PartyBillingStatements.AsNoTracking()
                 .Where(s =>

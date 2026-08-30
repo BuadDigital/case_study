@@ -55,6 +55,7 @@ export {
   stopWorkOrder,
   updateWorkOrderHeader,
   updateWorkOrderProperty,
+  updateSpecialistReportExtras,
   workOrderExists,
   type ApiErr,
   type ApiOk,

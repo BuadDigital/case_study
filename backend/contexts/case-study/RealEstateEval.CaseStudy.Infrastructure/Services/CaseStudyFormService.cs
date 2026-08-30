@@ -93,7 +93,7 @@ public class CaseStudyFormService : ICaseStudyFormService
         CaseStudyFormActor? actor = null,
         CancellationToken cancellationToken = default)
     {
- // gate integrity — unknown outcomes rejected; فروق/تعذر need written notes.
+ // gate integrity — unknown outcomes rejected; discrepancy/failure need written notes.
         var matchOutcome = (form.DeedNatureMatchOutcome ?? "").Trim().ToLowerInvariant();
         if (!DeedNatureMatchOutcomes.IsKnown(matchOutcome))
         {

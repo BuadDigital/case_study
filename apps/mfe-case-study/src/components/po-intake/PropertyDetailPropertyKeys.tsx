@@ -41,7 +41,7 @@ function keysBadgeTone(status: string): BadgeTone {
 }
 
 /**
- * مفاتيح العقار — listens to key-envelope gate + court_visit ops (linked envelope).
+ * Property keys — listens to key-envelope gate + court_visit ops (linked envelope).
  */
 export function PropertyDetailPropertyKeys({
   poNumber,

@@ -8,7 +8,7 @@ export type SystemFieldsNavItem = {
   placeholder?: boolean;
 };
 
-/** دراسة الحالة — داخل شجرة الإعدادات v2 */
+/** Case study — inside the settings tree v2 */
 export const SYSTEM_FIELDS_NAV: SystemFieldsNavItem[] = [
   {
     id: "case-study-info-roles",

@@ -116,7 +116,7 @@ import {
 import { useQueryClient } from "@tanstack/react-query";
 import {
   appraiserQueueStatusGroup,
-} from "@evaluator/mfe/lib/evaluator/evaluator-queue";
+} from "../lib/evaluator-bridge";
 import { ActiveTransactionPageLayout } from "../components/active-transactions/ActiveTransactionPageLayout";
 import { prototypeKeys } from "@platform/app-shared/query/prototype-keys";
 import {
@@ -159,7 +159,7 @@ export type ActiveTransactionQueueConfig = {
   tableLayout?: ActiveTransactionQueueTableLayout;
   /** Hint under the queue table; defaults to distribution wording. */
   tableHint?: string;
-  /** Filter by prototype assignee id from توزيع المعاملات. */
+  /** Filter by prototype assignee id from transaction distribution. */
   partyAssignee?: boolean;
   /** Page id for queue context (e.g. party pages). */
   pageId?: PageId;
@@ -169,7 +169,7 @@ export type ActiveTransactionQueueConfig = {
   getTaskPath: (taskId: string) => string;
   /** Navigate to a dedicated page instead of opening the side panel. */
   fullPageTaskPath?: (taskId: string) => string;
-  /** Per-task full-page navigation (e.g. جميع المعاملات for mixed party queues). */
+  /** Per-task full-page navigation (e.g. all-transactions for mixed party queues). */
   resolveFullPageTaskPath?: (task: WorkflowTask) => string | undefined;
   filterListed: (
     mine: WorkflowTask[],
@@ -180,11 +180,11 @@ export type ActiveTransactionQueueConfig = {
   buildRowMoreItems?: (ctx: ActiveQueueRowMoreContext) => RowMoreMenuItem[];
   /** When true, table/card row click does nothing; deed, PO, and ⋮ stay clickable. */
   disableRowOpen?: boolean;
-  /** Enable «إرجاع لمرحلة سابقة» in the default ⋮ menu. */
+  /** Enable «return to previous stage» in the default ⋮ menu. */
   allowPhaseRevert?: boolean;
-  /** Enable «نسخ من معاملة سابقة» in the default ⋮ menu (target = this row). */
+  /** Enable «copy from previous transaction» in the default ⋮ menu (target = this row). */
   allowCopyFromPrior?: boolean;
-  /** Enable «حذف المعاملة» in the default ⋮ menu. */
+  /** Enable «delete transaction» in the default ⋮ menu. */
   allowDeleteTransaction?: boolean;
   /** When false, row click does not open the work panel. */
   canOpenTask?: (task: WorkflowTask) => boolean;
@@ -199,7 +199,7 @@ export type ActiveTransactionQueueConfig = {
   renderQueueHeader?: (listed: WorkflowTask[]) => ReactNode;
   /** Default: most recently updated / distributed task first. */
   queueSort?: "oldest-first" | "newest-first" | "distributed-newest-first";
-  /** When true, list open, blocked, and completed tasks (e.g. جميع المعاملات). */
+  /** When true, list open, blocked, and completed tasks (e.g. all-transactions). */
   includeAllStatuses?: boolean;
 };
 
@@ -230,8 +230,8 @@ type PanelRenderProps = {
 };
 
 const DEFAULT_INFO_ROLES = emptyCaseStudyInfoRolesConfig();
-/* مراجع ثابتة لقيم التحميل — `[]` جديد في كل تصيير يبطل كل الـuseMemo
-   والصفوف المذكّرة أسفلها (rerender-memo-with-default-value). */
+/* Stable empty refs for loading — a fresh `[]` each render invalidates every useMemo
+   and memoized rows below (rerender-memo-with-default-value). */
 const EMPTY_PO_RECORDS: PoIntakeRecord[] = [];
 const EMPTY_TASKS: WorkflowTask[] = [];
 const EMPTY_STAFF_USERS: NonNullable<
@@ -240,8 +240,8 @@ const EMPTY_STAFF_USERS: NonNullable<
 const EMPTY_INSPECTION_WORKSPACES: NonNullable<
   ReturnType<typeof useFieldInspectionWorkspacesQuery>["data"]
 > = [];
-// تحميل مسبق عند التحويم/التركيز على صفوف الطابور — الصف يفتح خطوة إنفاذ
-// في شاشة العمل، وحزمتها كانت تُجلب بعد النقر فقط (bundle-preload).
+// Prefetch on hover/focus of queue rows — the row opens an Infath step
+// in the work screen, and its chunk was only fetched after click (bundle-preload).
 const preloadPoPropertyEnfathForm = () =>
   void import("@case-study/mfe/components/po-intake/PoPropertyEnfathForm");
 
@@ -297,12 +297,12 @@ export function ActiveTransactionQueueView({
     "تعذّر تحميل قائمة المعاملات";
   const queueReady = tasksFetched && poRecordsFetched && !queueLoadError;
   const queuePending = !tasksFetched || !poRecordsFetched;
-  // دقّة الدقيقة تكفي لبناء الصفوف والفلاتر — العدّاد الثانوي يعيش في خلايا
-  // المؤقت نفسها، فلا يعاد بناء كل الصفوف كل ثانية (rerender-defer-reads).
+  // Minute precision is enough to build rows and filters — the per-second timer lives in
+  // the timer cells themselves, so every row is not rebuilt each second (rerender-defer-reads).
   const nowMinuteMs = useTickingMinute();
   const now = useMemo(() => new Date(nowMinuteMs), [nowMinuteMs]);
-  // بعد الترطيب تركب شجرة واحدة فقط (بطاقات أو جدول) — display:none كان يخفي
-  // الرسم بينما الصفوف تُبنى مرتين في كل تصيير.
+  // After hydration mount only one tree (cards or table) — display:none hid
+  // paint while rows were still built twice every render.
   const isDesktopViewport = useViewportDesktop();
   const [panelOpen, setPanelOpen] = useState(() => Boolean(selectedId));
   const [search, setSearch] = useState("");
@@ -355,8 +355,8 @@ export function ActiveTransactionQueueView({
   ]);
 
   const syncQueue = useCallback(async () => {
-    // مفاتيح مستقلة بالتوازي؛ إبطال workflowTasks يعيد الجلب بنفسه —
-    // refetchTasks الإضافي كان GET ثانياً مطابقاً (async-parallel).
+    // Independent keys in parallel; invalidating workflowTasks refetches on its own —
+    // the extra refetchTasks was a duplicate identical GET (async-parallel).
     const invalidations = [
       queryClient.invalidateQueries({ queryKey: prototypeKeys.poRecords() }),
       queryClient.invalidateQueries({ queryKey: prototypeKeys.workflowTasks() }),
@@ -729,7 +729,7 @@ export function ActiveTransactionQueueView({
         );
       }
       const dueIso = poByNumber.get(task.poNumber.trim())?.dueDateAt ?? "";
-      // العدّاد الثانوي يتحدث داخل الخلية — الصف نفسه يُبنى بدقّة الدقيقة فقط.
+      // Per-second timer updates inside the cell — the row itself rebuilds at minute precision only.
       if (dueIso) return <TickingRemainingTimeCell dueIso={dueIso} />;
       return <RemainingTimeCell state={remainingTime} />;
     },
@@ -749,7 +749,7 @@ export function ActiveTransactionQueueView({
   const isPartyQueueToggleTable =
     isEngineeringSurveyTable || isPropertyAppraisalTable;
   const showPartyColumns = config.tableLayout === "case-study";
-  // صفوف هذين الفرعين تفتح شاشة عمل المعاملة التي تبدأ بنموذج إنفاذ.
+  // Rows in these two branches open the transaction work screen that starts with the Infath form.
   const preloadRowWork =
     isAllTransactionsTable ||
     (!isDistributionTable && !isPartyQueueToggleTable)
@@ -778,8 +778,8 @@ export function ActiveTransactionQueueView({
     return buildDistributionQueueRowMeta(listed, poByNumber);
   }, [isDistributionTable, listed, poByNumber]);
 
-  /* أعمدة المدينة/الحي تُخفى عندما لا تحمل أي بيانات في هذه المرحلة — «—» في كل صف ضجيج.
-     مسار واحد على الصفوف يجمع خيارات النوع والحالة وفحص الموقع معاً (js-combine-iterations). */
+  /* Hide city/district columns when none carry data at this stage — «—» in every row is noise.
+     One pass over rows gathers type/status options and location checks together (js-combine-iterations). */
   const { primaryHasLocation, assignmentTypes, statusOptions } = useMemo(() => {
     let hasLocation = false;
     const types: string[] = [];
@@ -819,12 +819,12 @@ export function ActiveTransactionQueueView({
     primaryRowMeta,
   ]);
 
-  // الكتابة في البحث تبقى فورية بينما ترشيح القوائم غير المحدودة يتأخر إطاراً
-  // (rerender-use-deferred-value) — لا شبكة هنا، ترشيح محلي بحت.
+  // Typing in search stays immediate while filtering unbounded lists is deferred one frame
+  // (rerender-use-deferred-value) — no network here, local filtering only.
   const deferredSearch = useDeferredValue(search);
 
-  // meta الصفوف المرشّحة — الجداول والبطاقات تقرأ الصف المبني منها بدل إعادة
-  // بناء buildPrimaryDataTableRow ٣-٤ مرات لكل مهمة في كل تصيير (js-combine-iterations).
+  // meta for filtered rows — tables and cards read the prebuilt row instead of calling
+  // buildPrimaryDataTableRow 3–4 times per task every render (js-combine-iterations).
   const filteredPrimaryMeta = useMemo(() => {
     if (isAllTransactionsTable || isDistributionTable) return [];
     if (isPropertyAppraisalTable) {
@@ -833,8 +833,8 @@ export function ActiveTransactionQueueView({
         APPRAISAL_STATUS_FILTERS.find((o) => o.label === statusFilter)?.value ??
         "";
       return primaryRowMeta.filter((meta) => {
-        // بلا بحث لا يُبنى نص المطابقة أصلاً — كان يُخصَّص مصفوفة ونصاً لكل صف
-        // ثم يُهمل (js-early-exit).
+        // With no search, skip building the match text entirely — used to allocate an array and string
+        // per row then discard them (js-early-exit).
         if (q) {
           const cityDistrict = [meta.row.city, meta.row.district]
             .filter((v) => v && v !== "—")
@@ -1032,8 +1032,8 @@ export function ActiveTransactionQueueView({
     markTaskRowSeen(selectedTask);
   }, [selectedTask, markTaskRowSeen]);
 
-  /* كائن حرفي جديد في كل تصيير كان يبطل تذكير الصفوف رغم ثبات دواله —
-     الشاشة تُعاد بضغطة بحث ونبضة دقيقة وكل bump (rerender-memo). */
+  /* A fresh literal object each render broke row memoization despite stable handlers —
+     the screen re-renders on search keystrokes, minute ticks, and every bump (rerender-memo). */
   const rowCtx: QueueRowContext = useMemo(
     () => ({
       queuePending,
@@ -1109,7 +1109,7 @@ export function ActiveTransactionQueueView({
   );
 
   const mobileQueueCardItems = useMemo((): ActiveQueueMobileCardItem[] => {
-    // شجرة الجوال لا تركب على الديسكتوب — لا داعي لبناء عناصرها.
+    // Mobile tree does not mount on desktop — no need to build its elements.
     if (isDesktopViewport === true) return [];
     if (isPropertyInspectionQueue) return [];
 

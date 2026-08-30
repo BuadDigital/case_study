@@ -6,7 +6,7 @@ import { PropertyListRowStatuses } from "@platform/api-client";
 
 /**
  * Case Study.html `renderProperties` primitives
- * (`_تصميم واجهة احترافية - تفاصيل العقار2/Case Study.html`).
+ * (`_professional-ui-design - property-details2/Case Study.html`).
  */
 
 /** HTML `PPCOLS` */

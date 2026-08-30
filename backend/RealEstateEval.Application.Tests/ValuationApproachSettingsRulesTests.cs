@@ -23,7 +23,7 @@ public class ValuationApproachSettingsRulesTests
     [Fact]
     public void Cost_approach_allowed_for_land_with_structures_only()
     {
- // ق-3 المعدَّل (مواصفة v2 §3): أرض مسوّرة = إنشاءات ⟵ التكلفة تفتح لبنودها.
+ // Q-3 amended (v2 spec §3): fenced land = structures ⟵ cost opens for those lines.
         Assert.False(ValuationApproachSettingsRules.CanEnableCostApproach("أرض", false));
         Assert.True(ValuationApproachSettingsRules.CanEnableCostApproach("أرض", true));
         Assert.True(ValuationApproachSettingsRules.CanEnableCostApproach("فيلا", false));
@@ -42,7 +42,7 @@ public class ValuationApproachSettingsRulesTests
     [Fact]
     public void Purpose_is_mandatory_and_other_needs_a_note()
     {
- // §4ج-5: الغرض يختاره المقيّم — لا يُشتق من نوع الإسناد.
+ // §4j-5: purpose is chosen by the valuer — not derived from assignment type.
         var missing = ValuationApproachSettingsRules.Validate(
             true, true, false, null, null, "فيلا");
         Assert.Contains("valuationPurposeKey", missing.Keys);
@@ -66,7 +66,7 @@ public class ValuationApproachSettingsRulesTests
     [Fact]
     public void Retrospective_valuation_date_needs_date()
     {
- // قرار عمر 2026-08-17: نوعان — إصدار القيمة (آلي) أو أثر رجعي يدوي.
+ // Omar decision 2026-08-17: two kinds — value issuance (automatic) or manual retrospective.
         var missing = ValuationApproachSettingsRules.Validate(
             true, true, false, null, null, "فيلا",
             valuationPurposeKey: ValuationPurposeKeys.JudicialExecution,
@@ -97,7 +97,7 @@ public class ValuationApproachSettingsRulesTests
             retrospectiveDateEnd: new DateOnly(2026, 6, 10));
         Assert.Empty(okRange);
 
- // وضع «إصدار القيمة» لا يطلب شيئاً.
+ // "Value issuance" mode requires nothing.
         var issue = ValuationApproachSettingsRules.Validate(
             true, true, false, null, null, "فيلا",
             valuationPurposeKey: ValuationPurposeKeys.JudicialExecution);
@@ -118,7 +118,7 @@ public class ValuationApproachSettingsRulesTests
     [Fact]
     public void External_specialist_yes_requires_details()
     {
- // بند الأخصائي الخارجي (IVS 101) — لا أخصائي الإسناد ولا أخصائي دراسة الحالة.
+ // External specialist clause (IVS 101) — not the assignment specialist nor the case-study specialist.
         var noDetails = ValuationApproachSettingsRules.Validate(
             true, true, false, null, null, "فيلا",
             valuationPurposeKey: ValuationPurposeKeys.Financing,

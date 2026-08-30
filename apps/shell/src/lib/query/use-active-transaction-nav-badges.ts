@@ -48,7 +48,7 @@ type ActiveTransactionNavIndicators = {
   badges: Partial<Record<PageId, number>>;
 };
 
-/** Red sidebar counts for المعاملات النشطة. */
+/** Red sidebar counts for active transactions. */
 export function useActiveTransactionNavBadges(): ActiveTransactionNavIndicators {
   const { role, viewerEmail, distributionAssigneeId, hasCapability } =
     usePrototype();

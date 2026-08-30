@@ -56,9 +56,9 @@ try {
   step("basic screen renders", true);
   await shot("01-basic");
 
-  await page.getByRole("button", { name: "حفظ إعدادات التقييم" }).first().click();
+  await page.getByRole("button", { name: "بدء التقييم" }).first().click();
   const savedToast = await page
-    .getByText("تم حفظ إعدادات التقييم")
+    .getByText("تم بدء التقييم")
     .first()
     .waitFor({ timeout: 20000 })
     .then(() => true)
@@ -193,8 +193,8 @@ try {
     step("no literal null/undefined in preview", !/\bnull\b|\bundefined\b/.test(bodyText));
     await shot("06-output");
     // tab bounce: within staleTime the cached bundle must not refire the fetch storm
-    const reportTabLoc = page.getByRole("tab").filter({ hasText: "تقييم العقار" }).first();
-    const reportTabBtn = (await reportTabLoc.isVisible().catch(() => false)) ? reportTabLoc : page.getByText("تقييم العقار", { exact: true }).first();
+    const reportTabLoc = page.getByRole("tab").filter({ hasText: "البيانات الأساسية" }).first();
+    const reportTabBtn = (await reportTabLoc.isVisible().catch(() => false)) ? reportTabLoc : page.getByText("البيانات الأساسية", { exact: true }).first();
     await reportTabBtn.click();
     await page.waitForTimeout(2500);
     apiRequests.length = 0;

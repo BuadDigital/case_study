@@ -1,5 +1,5 @@
 /**
- * Party billing statements (مسير / أمر صرف) — vendor invoice match + individual pay.
+ * Party billing statements (payroll sheet / payment order) — vendor invoice match + individual pay.
  */
 import { getApiBase } from "./api-base";
 import { repositoryFetch as fetch } from "./write-repository";

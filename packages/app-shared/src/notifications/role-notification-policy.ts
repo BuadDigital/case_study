@@ -26,7 +26,7 @@ function isEngineeringSurveyLifecycleEvent(
   );
 }
 
-/** مكتب الهندسي — يسمح فقط بإشعارات الرفع المساحي وإسناد المهام الخاصة به. */
+/** Engineering office — only survey and its own task-assignment notifications. */
 function isAllowedEngineeringOfficeNotification(
   sourceEvent: string | undefined,
 ): boolean {

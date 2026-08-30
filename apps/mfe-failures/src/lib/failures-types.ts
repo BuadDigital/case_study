@@ -6,7 +6,7 @@ export type FailureStatus =
   | "resolved"
   | "suspended";
 
-/** احتمال تعذر — warning only; تعذر داخلي — stops work on the property. */
+/** Possible failure — warning only; internal failure — stops work on the property. */
 export type FailureSeverity = "suspected" | "internal";
 
 export type FailureRecord = {
@@ -69,7 +69,7 @@ export function isBlockingFailureStatus(status: FailureStatus): boolean {
   );
 }
 
-/** Closed failures — show as «تعذرات سابقة», not as active blockers. */
+/** Closed failures — show as «prior failures», not as active blockers. */
 export function isHistoricalFailureStatus(status: FailureStatus): boolean {
   return status === "resolved" || status === "suspended";
 }

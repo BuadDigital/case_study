@@ -8,8 +8,8 @@ using RealEstateEval.Infrastructure.Data.Contexts;
 namespace RealEstateEval.Valuation.Infrastructure.Data.Contexts.Valuation.Migrations;
 
 /// <summary>
-/// تكميلية ق-9 (ر2): نسخ الإيداع N+1 — النسخة الملغاة «حلّت محلها نسخة أحدث» تبقى بالملف؛
-/// السريان محكوم بفهرس فريد جزئي (SupersededAtUtc IS NULL).
+/// Q-9 supplement (R2): deposit copies N+1 — superseded ("replaced by a newer copy") stays on file;
+/// currency is governed by a partial unique index (SupersededAtUtc IS NULL).
 /// </summary>
 [DbContext(typeof(ValuationDbContext))]
 [Migration("20260828160000_ReportIssuanceVersioning")]

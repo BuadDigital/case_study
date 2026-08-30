@@ -10,7 +10,7 @@ public class PropertyOwnershipRulesTests
     [Fact]
     public void Mortgage_restriction_wins_over_shares()
     {
- // order: قيد رهن ⟵ مرهون before حصص ⟵ مشاع.
+ // order: mortgage lien ⟵ mortgaged before shares ⟵ common ownership.
         var owners = new[] { new DeedOwner("أ", 50m), new DeedOwner("ب", 50m) };
         Assert.Equal(OwnershipTypes.Mortgaged, OwnershipTypeRules.Suggest(owners, "mortgaged,other"));
     }
@@ -87,7 +87,7 @@ public class WorkOrderReportUsersTests
     [Fact]
     public void Usage_restriction_sentence_three_cases()
     {
- // لا مستخدمين / واحد / متعدد.
+ // no users / single / multiple.
         var none = ValuationReportNarrativeRules.UsageRestrictionSentence("إنفاذ", []);
         Assert.Contains("وحده", none);
         Assert.Contains("إنفاذ", none);

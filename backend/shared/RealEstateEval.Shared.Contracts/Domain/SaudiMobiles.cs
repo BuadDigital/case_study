@@ -1,11 +1,11 @@
 namespace RealEstateEval.Domain;
 
 /// <summary>
-/// تطبيع الجوال السعودي — عقد واحد للتسجيل والدخول (ق٣: الجوال معرّف دخول
-/// فريد إلزامي). كان التسجيل يقبل أي رقم دولي بينما الدخول سعودي فقط،
-/// فيُخزَّن رقم لا يمكن الدخول به أبداً.
-/// يقبل +9665… / 009665… / 05… / 5XXXXXXXX ويعيد +9665XXXXXXXX،
-/// وnull لكل ما سواه.
+/// Saudi Mobile Normalization — One Contract Registration and Login (Q-3: Mobile Login ID
+/// Unique is mandatory). Registration accepted any international number, while entry was Saudi only.
+/// A number is stored that can never be accessed.
+/// It accepts +9665… / 009665… / 05… / 5XXXXXXXX and returns +9665XXXXXXXX,
+/// And null for everything else.
 /// </summary>
 public static class SaudiMobiles
 {

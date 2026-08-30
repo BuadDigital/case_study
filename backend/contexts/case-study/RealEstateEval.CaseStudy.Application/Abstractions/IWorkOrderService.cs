@@ -59,6 +59,11 @@ public interface IWorkOrderService
         Guid propertyId,
         string? locationMapUrl,
         CancellationToken cancellationToken);
+    Task<(WorkOrderPropertyDto? Result, Dictionary<string, string>? Errors)> UpdateSpecialistReportExtrasAsync(
+        string poNumber,
+        Guid propertyId,
+        string? specialistReportExtrasJson,
+        CancellationToken cancellationToken);
     Task<(WorkOrderPropertyDto? Result, Dictionary<string, string>? Errors)> CompleteBourseDataAsync(
         string poNumber,
         Guid propertyId,

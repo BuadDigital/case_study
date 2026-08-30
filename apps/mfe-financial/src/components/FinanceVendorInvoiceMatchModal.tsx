@@ -1,8 +1,8 @@
 "use client";
 
 /**
- * HTML-aligned modal: مطابقة فاتورة المورّد (مهامي → فتح الإجراء).
- * Stays on مهامي; match + return-for-correction only.
+ * HTML-aligned modal: vendor invoice match (My Tasks → open action).
+ * Stays on My Tasks; match + return-for-correction only.
  */
 
 import { useState } from "react";
@@ -55,7 +55,7 @@ export function FinanceVendorInvoiceMatchModal({
   open: boolean;
   onClose: () => void;
   onDone: () => void | Promise<void>;
-  /** After successful match — e.g. leave مهامي to التكاليف */
+  /** After successful match — e.g. leave My Tasks for Costs */
   onMatched?: (statement: PartyBillingStatementDto) => void;
 }) {
   if (!open || !statement) return null;
@@ -106,7 +106,7 @@ function FinanceVendorInvoiceMatchForm({
         "success",
       );
       onClose();
-      // بعد المطابقة: الخروج من مهامي إلى التكاليف (المستند يخرج من قائمة مهامي).
+      // After match: leave My Tasks for Costs (document leaves the My Tasks list).
       onMatched?.(result.statement);
       void onDone();
     } finally {

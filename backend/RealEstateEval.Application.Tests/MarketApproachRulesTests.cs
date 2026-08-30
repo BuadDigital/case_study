@@ -17,7 +17,7 @@ public class MarketApproachRulesTests
     public void Sum_and_thresholds_match_prototype_spec()
     {
         Assert.Equal(40m, MarketApproachRules.SumIncludedPercents([10m, 30m]));
-        // مواصفة النموذج التفاعلي: عتبة واحدة ±٣٥٪ — التبرير إلزامي.
+        // Interactive model specification: 1 threshold ±35% — justification is mandatory.
         Assert.True(MarketApproachRules.ExceedsLargeAdjustmentThreshold(36m));
         Assert.True(MarketApproachRules.ExceedsLargeAdjustmentThreshold(-36m));
         Assert.False(MarketApproachRules.ExceedsLargeAdjustmentThreshold(35m));
@@ -26,7 +26,7 @@ public class MarketApproachRulesTests
     [Fact]
     public void DealAgeMonths_uses_days_over_30_44()
     {
-        // 91 يوم ≈ 2.99 شهر → 3
+        // 91 days ≈ 2.99 months → 3
         Assert.Equal(
             3,
             MarketApproachRules.DealAgeMonths(new DateOnly(2026, 1, 1), new DateOnly(2026, 4, 2)));
@@ -45,7 +45,7 @@ public class MarketApproachRulesTests
     [Fact]
     public void SuggestTransactionTypePct_matches_prototype_kind_defaults()
     {
-        // KIND_DEFAULT: منفذة ٠ · عرض −٥ · حد −٨ · سوم +٦.
+        // KIND_DEFAULT: executed 0 · offer −5 · limit −8 · bid +6.
         Assert.Equal(0m, MarketApproachRules.SuggestTransactionTypePct("executed", null));
         Assert.Equal(-5m, MarketApproachRules.SuggestTransactionTypePct("offer", null));
         Assert.Equal(-8m, MarketApproachRules.SuggestTransactionTypePct("offer", "asking"));
@@ -55,7 +55,7 @@ public class MarketApproachRulesTests
     [Fact]
     public void EffectiveSequentialPercent_market_manual_kind_suggested()
     {
-        // ظروف السوق يدوية — لا اقتراح يحل محل الصفر.
+        // Market conditions are manual — no suggestion replaces zero.
         Assert.Equal(
             0m,
             MarketApproachRules.EffectiveSequentialPercent(
@@ -64,12 +64,12 @@ public class MarketApproachRulesTests
             3m,
             MarketApproachRules.EffectiveSequentialPercent(
                 MarketAdjustmentFactorKeys.Market, 3m, "ارتفاع السوق", true, 2.5m, -5m));
-        // نوع المقارن غير المدخل يأخذ الافتراضي المقترح.
+        // The non-input comparator type takes the suggested default.
         Assert.Equal(
             -5m,
             MarketApproachRules.EffectiveSequentialPercent(
                 MarketAdjustmentFactorKeys.TransactionType, 0m, "", true, 2.5m, -5m));
-        // كتابة المبرر وحدها لا تلغي الافتراضي المقترح — النسبة المدخلة هي المُلغي الوحيد.
+        // Writing the justification alone does not eliminate the proposed default — the input percentage is the only nullifier.
         Assert.Equal(
             -5m,
             MarketApproachRules.EffectiveSequentialPercent(
@@ -100,7 +100,7 @@ public class MarketApproachRulesTests
     [Fact]
     public void SuggestWeights_quantized_to_five_percent_units()
     {
-        // مواصفة النموذج التفاعلي: ٢٠ وحدة × ٥٪ بالباقي الأكبر.
+        // Interactive model specification: 20 units x 5% of the largest remainder.
         var weights = MarketApproachRules.SuggestWeights([0m, 0.5m, 12m]);
         Assert.Equal(100m, weights.Sum());
         Assert.All(weights, w => Assert.Equal(0m, w % 5m));
@@ -109,7 +109,7 @@ public class MarketApproachRulesTests
     [Fact]
     public void SuggestWeights_uses_epsilon_half()
     {
-        // score0 = 1/(0.5+0)=2; score1 = 1/(0.5+0.5)=1 → 65 أو 70 مقابل 35 أو 30 (وحدات ٥٪)
+        // score0 = 1/(0.5+0)=2; score1 = 1/(0.5+0.5)=1 → 65 or 70 versus 35 or 30 (5% units)
         var weights = MarketApproachRules.SuggestWeights([0m, 0.5m]);
         Assert.True(weights[0] > weights[1]);
         Assert.Equal(100m, weights.Sum());
@@ -185,7 +185,7 @@ public class MarketApproachRulesTests
     [Fact]
     public void Area_adjustment_sign_smaller_comparable_negative()
     {
-        // نسبة ٢ → مضاعف واحد × ٥٪؛ المقارن الأصغر سالب والأكبر موجب
+        // Ratio 2 → 1 multiple x 5%; The smaller comparison is negative and the larger is positive
         Assert.Equal(-5m, AreaAdjustmentRules.SuggestPct("multiplier", 400m, 200m));
         Assert.Equal(5m, AreaAdjustmentRules.SuggestPct("multiplier", 400m, 800m));
         Assert.Equal(0m, AreaAdjustmentRules.SuggestPct("multiplier", 400m, 400m));
@@ -194,13 +194,13 @@ public class MarketApproachRulesTests
     [Fact]
     public void Area_multiplier_matches_methodology_table()
     {
-        // مواصفة: نسبة ٤ → log₂=٢ → ١٠٪؛ المقارن الأصغر سالب
+        // Specification: Ratio 4 → log₂=2 → 10%; The smaller comparative is negative
         Assert.Equal(-10m, AreaAdjustmentRules.SuggestPct("multiplier", 900m, 200m));
-        // نسبة ≈١٫٩٩٤ → round(log₂)≈١ → ٥٪
+        // Ratio ≈1.994 → round(log₂)≈1 → 5%
         Assert.Equal(
             -5m,
             AreaAdjustmentRules.SuggestPct("multiplier", 900m, 900m / 1.994m));
-        // نسبة ≈١٫٢٥٦ → round(log₂)≈٠ → ٠٪
+        // Ratio ≈1.256 → round(log₂)≈0 → 0%
         Assert.Equal(
             0m,
             AreaAdjustmentRules.SuggestPct("multiplier", 900m, 900m / 1.256m));
@@ -209,14 +209,14 @@ public class MarketApproachRulesTests
     [Fact]
     public void Area_amthal_uses_ratio_minus_one()
     {
-        // r = 1.5 → (1.5−1)×٥ = ٢٫٥٪؛ المقارن أكبر → موجب
+        // r = 1.5 → (1.5−1)×5 = 2.5%; The comparative is greater → positive
         Assert.Equal(2.5m, AreaAdjustmentRules.SuggestPct("amthal", 600m, 900m));
     }
 
     [Fact]
     public void Area_choose_method_table_wide()
     {
-        // مقارن بنسبة ٤٫٥ يفرض المضاعف على الجميع
+        // Comparable at 4.5 imposes a multiplier on everyone
         Assert.Equal(
             AreaAdjustmentMethods.Multiplier,
             AreaAdjustmentRules.ChooseMethod(900m, [800m, 600m, 1050m, 200m]));

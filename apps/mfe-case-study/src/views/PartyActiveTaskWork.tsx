@@ -33,10 +33,8 @@ import {
 import { usePoRecordQuery, useWorkflowTasksQuery } from "../query/case-study-queries";
 import {
   findSiblingInspectionTask,
-} from "@evaluator/mfe/lib/evaluator/evaluator-inspection-gate";
-import {
   findSiblingSurveyTask,
-} from "@evaluator/mfe/lib/evaluator/evaluator-readiness";
+} from "../lib/evaluator-bridge";
 import type {
   PartyActiveTaskWorkHostRefObject,
 } from "../lib/party-active-task-work-host";
@@ -166,10 +164,10 @@ export function PartyActiveTaskWork({
       hostRef.current.onClose();
       return;
     }
-    // Party queues under المعاملات النشطة:
-    // active-inspection → معاينة العقار
-    // property-appraisal → تقييم العقار
-    // active-survey → الرفع المساحي
+    // Party queues under active transactions:
+    // active-inspection → property inspection
+    // property-appraisal → property valuation
+    // active-survey → engineering survey
     router.push(partyTaskPath(def.pageId));
   }, [def.pageId, hostRef, router]);
 
@@ -179,7 +177,7 @@ export function PartyActiveTaskWork({
 
   /**
    * After successful party submit → queue for that role
-   * (معاينة العقار / تقييم العقار / الرفع المساحي).
+   * (property inspection / property valuation / engineering survey).
    */
   const completePartyTaskSubmit = useCallback(
     (
@@ -556,11 +554,8 @@ export function PartyActiveTaskWork({
               propertyIndex={propertyIndex + 1}
               hideOpenCaseStudy
             />
-            <div className="grid min-h-0 flex-1 grid-cols-1 items-start gap-3.5 lg:grid-cols-[minmax(0,1fr)_250px]">
-              <div className="min-w-0 overflow-hidden rounded-[12px] border border-border bg-surface px-5 pb-5 shadow-[0_1px_2px_rgba(18,40,76,0.03),0_6px_16px_-18px_rgba(18,40,76,0.10)]">
-                {appraisalWork}
-              </div>
-              <PropertyTransactionTimeline record={record} property={property} />
+            <div className="min-w-0 overflow-hidden rounded-[12px] border border-border bg-surface px-5 pb-5 shadow-[0_1px_2px_rgba(18,40,76,0.03),0_6px_16px_-18px_rgba(18,40,76,0.10)]">
+              {appraisalWork}
             </div>
           </PageShell>
         </div>

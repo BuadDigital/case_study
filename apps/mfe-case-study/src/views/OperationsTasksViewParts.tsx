@@ -1,6 +1,6 @@
 "use client";
 
-/** أجزاء شاشة مهام العمليات — مكوّنات ومساعدات على مستوى الوحدة، نُقلت حرفياً من الشاشة (SRP). */
+/** Operations-tasks screen parts — module-level components/helpers, moved verbatim from the screen (SRP). */
 
 import { type RefObject } from "react";
 import { Input, Note, Select, StatusPill, Textarea, cn, Spinner } from "@platform/ui-kit";
@@ -930,7 +930,7 @@ export function TaskStatusPill({ status }: { status: string }) {
   );
 }
 
-// العدّاد يشترك بالساعة بنفسه — الشاشة تُبنى بدقّة الدقيقة فقط (rerender-defer-reads).
+// Timer subscribes to the clock itself — the screen rebuilds at minute precision only (rerender-defer-reads).
 export function DueCell({ task }: { task: OperationsTask }) {
   const now = useTickingNow();
   const cd = taskCountdown(task.dueAt, task.status, now);
@@ -967,7 +967,7 @@ export function DueCell({ task }: { task: OperationsTask }) {
   );
 }
 
-/** عدّاد «التذكير القادم خلال …» — ورقة تشترك بالساعة بدل تحديث لوحة التفاصيل كاملة كل ثانية. */
+/** «Next reminder in …» countdown — sheet subscribes to the clock instead of refreshing the whole detail panel every second. */
 export function TickingRemindCountdown({ task }: { task: OperationsTask }) {
   const now = useTickingNow();
   return <>{remindCountdownLabelForTask(task, now)}</>;

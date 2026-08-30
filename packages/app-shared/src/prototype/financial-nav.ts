@@ -1,16 +1,16 @@
 import type { PageId } from "@platform/types";
 
-/** مجموعة السايدبار — مطابق لـ Finance.html */
+/** Sidebar group — matches Finance.html */
 export const FINANCIAL_GROUP = "المالية";
 
-/** زر التوسيع في HTML بعد مجموعة المالية */
+/** Expand toggle label in HTML after the finance group */
 export const FINANCIAL_TOGGLE_LABEL = "المالية والفوترة";
 
 export const FINANCIAL_GROUP_ICON =
   "M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6";
 
 /**
- * Finance.html: `<div class="nav-group">بوابات الأطراف — لتجربة الأثر</div>`
+ * Finance.html party-portals nav-group — for impact demo (label in PARTY_PORTALS_GROUP).
  */
 export const PARTY_PORTALS_GROUP = "بوابات الأطراف — لتجربة الأثر";
 
@@ -53,10 +53,10 @@ export const FINANCIAL_NAV_LEAVES: FinanceNavLeaf[] = [
   },
 ];
 
-/** بوابات الأطراف أُزيلت من السايدبار — محتوى داخل بروفايل المكتب/المعاين */
+/** Party portals removed from the sidebar — content lives in office/inspector profile */
 export const PARTY_PORTAL_NAV_LEAVES: FinanceNavLeaf[] = [];
 
-/** ورقة legacy — مسار URL `/financial?area=eng_portal` إن لزم */
+/** Legacy leaf — URL `/financial?area=eng_portal` if needed */
 export const ENG_OFFICE_PORTAL_LEAF: FinanceNavLeaf = {
   area: "eng_portal",
   label: "المكتب الهندسي",
@@ -65,7 +65,7 @@ export const ENG_OFFICE_PORTAL_LEAF: FinanceNavLeaf = {
   crumb: "مسيرات الصرف",
 };
 
-/** ورقة legacy — مسار URL `/financial?area=inspector_portal` إن لزم */
+/** Legacy leaf — URL `/financial?area=inspector_portal` if needed */
 export const INSPECTOR_PORTAL_LEAF: FinanceNavLeaf = {
   area: "inspector_portal",
   label: "المعاين",
@@ -92,7 +92,7 @@ export function isPartyPortalArea(area: FinanceNavArea): boolean {
   return area === "eng_portal" || area === "inspector_portal";
 }
 
-/** مسار URL legacy لمسار eng_portal */
+/** Legacy URL path for eng_portal */
 export function isEngOfficePortalArea(area: FinanceNavArea): boolean {
   return area === "eng_portal";
 }
@@ -126,7 +126,7 @@ export function showFinancialNavGroup(rolePages: PageId[]): boolean {
   return rolePages.includes("financial");
 }
 
-/** أُلغيت مجموعة بوابات الأطراف من السايدبار */
+/** Party portals group removed from the sidebar */
 export function showPartyPortalsNavGroup(_rolePages: PageId[]): boolean {
   return false;
 }

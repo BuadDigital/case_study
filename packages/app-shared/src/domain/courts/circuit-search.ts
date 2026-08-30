@@ -1,4 +1,4 @@
-/** بحث وترتيب دوائر المحكمة — مواصفة circuit_select_field_spec. */
+/** Court circuit search and sort — circuit_select_field_spec. */
 
 export type CircuitSearchItem = {
   id: string;
@@ -19,7 +19,7 @@ export function normalizeArabicSearchText(value: string): string {
   return s;
 }
 
-/** تجاهل «ال» التعريف في بداية كل كلمة. */
+/** Strip leading Arabic definite article (al-) from each word. */
 export function stripArabicAl(value: string): string {
   return normalizeArabicSearchText(value)
     .split(" ")
@@ -32,7 +32,7 @@ function digitsOnly(value: string): string {
   return toLatinDigits(value).replace(/\D/g, "");
 }
 
-/** صيغ ترتيبية شائعة للدوائر (١–٤٠). */
+/** Common ordinal forms for circuits (1–40). */
 const ORDINAL_FORMS: Record<number, string[]> = {
   1: ["الاولى", "الاول", "اولى", "اول", "واحده", "واحد"],
   2: ["الثانيه", "الثاني", "ثانيه", "ثاني"],
@@ -113,7 +113,7 @@ function ordinalFormsFor(n: number): string[] {
   return (ORDINAL_FORMS[n] ?? []).map(normalizeOrdinalForm);
 }
 
-/** مفاتيح مشتقة من حقول ثابتة — تُحسب مرة لكل عنصر بدل كل ضغطة مفتاح. */
+/** Keys derived from stable fields — computed once per item instead of on every keystroke. */
 const HAYSTACK_CACHE = new WeakMap<CircuitSearchItem, string>();
 const SORT_KEY_CACHE = new WeakMap<CircuitSearchItem, string>();
 
@@ -162,10 +162,10 @@ function hasStandaloneOrdinal(hay: string, n: number): boolean {
 }
 
 /**
- * رتبة البحث: أصغر = أفضل.
- * 0 تطابق رقمي/ترتيبي تام، 1 بادئة رقمية، 2 تطابق نصي، null لا يظهر.
+ * Search rank: lower = better.
+ * 0 exact numeric/ordinal, 1 numeric prefix, 2 text match, null = hidden.
  */
-/** تطبيع الاستعلام مرة واحدة خارج الحلقة — كان يعاد (٥+ تمريرات regex) لكل عنصر. */
+/** Normalize the query once outside the loop — previously re-ran (5+ regex passes) per item. */
 function rankWithNormalizedQuery(
   qDigits: string,
   qText: string,
@@ -204,14 +204,14 @@ function rankWithNormalizedQuery(
   return null;
 }
 
-/** فلترة وترتيب الدوائر حسب الاستعلام. بدون q: ترتيب تصاعدي حسب الرقم. */
+/** Filter and sort circuits by query. Without q: ascending by number. */
 export function filterAndRankCircuits<T extends CircuitSearchItem>(
   circuits: readonly T[],
   query: string,
 ): T[] {
   const q = query.trim();
   if (!q) {
-    // decorate-sort-undecorate — كان المقارن يعيد اشتقاق المفتاح (regex) لطرفي كل مقارنة.
+    // decorate-sort-undecorate — comparator previously re-derived the key (regex) for both sides of every comparison.
     return circuits
       .map((item) => ({ item, key: circuitSortKey(item) }))
       .sort((a, b) => a.key.localeCompare(b.key, "en", { numeric: true }))

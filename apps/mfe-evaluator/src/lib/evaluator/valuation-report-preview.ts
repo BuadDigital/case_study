@@ -10,7 +10,7 @@ export async function openValuationReportPreview(
     await openApprovedValuationReportPreview(doc, extras);
   } catch (err) {
     const message = err instanceof Error ? err.message : "تعذّر فتح القالب المعتمد";
-    // «noopener» ضمن الخصائص يجعل window.open يعيد null — نفتح بمقبض ثم نقطع opener.
+    // "noopener" in features makes window.open return null — open with a handle then clear opener.
     const w = window.open("", "_blank", "width=900,height=1000");
     if (!w) throw err;
     w.opener = null;

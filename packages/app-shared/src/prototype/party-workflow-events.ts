@@ -1,4 +1,4 @@
-/** Fired only after an explicit user submit action (e.g. حفظ وإرسال الرفع). */
+/** Fired only after an explicit user submit action (e.g. save and send survey). */
 export const ENGINEERING_SURVEY_SUBMITTED_EVENT = "engineering-survey-submitted";
 
 /** Specialist returned survey outputs for correction. */

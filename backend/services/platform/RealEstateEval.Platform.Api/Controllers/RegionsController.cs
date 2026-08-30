@@ -22,7 +22,7 @@ public class RegionsController : ControllerBase
         CancellationToken cancellationToken)
         => Ok(await _regions.ListSelectableRegionsAsync(cancellationToken));
 
- /// <summary>كل المدن النشطة — لاختيار المدينة أولاً ثم تعبئة المنطقة.</summary>
+ /// <summary>All active cities — pick city first, then fill region.</summary>
     [HttpGet("cities/selectable")]
     public async Task<ActionResult<IReadOnlyList<SelectableCityDto>>> AllSelectableCities(
         CancellationToken cancellationToken)

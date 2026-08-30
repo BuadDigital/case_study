@@ -1,4 +1,4 @@
-/** تفقيط مبالغ الريال السعودي لعرض «كتابة» بجانب الحقول الرقمية. */
+/** Spell out SAR amounts for the "in words" display beside numeric fields. */
 
 const ONES = [
   "",
@@ -116,7 +116,7 @@ function parseAmountNumber(raw: string): number | null {
   return n;
 }
 
-/** يعرض المبلغ كتابةً بالريال (والهللة إن وُجدت كسور). */
+/** Renders the amount in words in riyals (and halalas when fractional). */
 export function amountToArabicWords(raw: string | number): string {
   const n = typeof raw === "number" ? raw : parseAmountNumber(raw);
   if (n == null) return "—";

@@ -26,14 +26,14 @@ function loadSeenMap(): RowAttentionSeenMap {
   }
 }
 
-/** سقف الإدخالات — كانت الخريطة تنمو بلا حد مع كل مهمة فُتحت يوماً (client-localstorage-schema). */
+/** Entry cap — the map used to grow without bound for every task ever opened (client-localstorage-schema). */
 const MAX_SEEN_ENTRIES = 600;
 
 function pruneSeenMap(map: RowAttentionSeenMap): RowAttentionSeenMap {
   const entries = Object.entries(map);
   if (entries.length <= MAX_SEEN_ENTRIES) return map;
-  // ترتيب تقريبي بالبصمة (تحمل طابعاً زمنياً في وسطها) — الطرد الخاطئ
-  // لا يكلف إلا إعادة إضاءة نقطة تنبيه، والمهم هو السقف نفسه.
+  // Approximate ordering by fingerprint (embeds a timestamp in the middle) — a wrong eviction
+  // only costs re-lighting an attention dot; the important part is the cap itself.
   entries.sort((a, b) => a[1].localeCompare(b[1]));
   return Object.fromEntries(entries.slice(entries.length - MAX_SEEN_ENTRIES));
 }
@@ -46,8 +46,8 @@ function writeSeenMap(map: RowAttentionSeenMap): void {
   }
 }
 
-// الفرز + التسلسل + الكتابة تؤجَّل إلى وقت الخمول: النقر على الصف يبدأ انتقال
-// مسار في نفس اللحظة (js-request-idle-callback).
+// Sort + serialize + write are deferred to idle time: clicking the row starts a navigation
+// path in the same moment (js-request-idle-callback).
 let pendingSeenMap: RowAttentionSeenMap | null = null;
 let cancelPendingFlush: (() => void) | null = null;
 let flushBound = false;
@@ -73,7 +73,7 @@ function bindFlushOnHide(): void {
 function saveSeenMap(map: RowAttentionSeenMap): void {
   if (typeof window === "undefined") return;
   bindFlushOnHide();
-  // الكتابات المتتابعة تُدمج — الخريطة لقطة كاملة فالأحدث تكفي.
+  // Consecutive writes are coalesced — the map is a full snapshot so the latest is enough.
   pendingSeenMap = map;
   if (cancelPendingFlush) return;
   if (typeof requestIdleCallback !== "undefined") {

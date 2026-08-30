@@ -21,10 +21,10 @@ import {
 import { apiConfig } from "./lib/shell-utils";
 
 /**
- * شاشة البيانات الأساسية — تملك مسودات إعدادات التقييم (الأساليب، النطاق، الأساس،
- * تاريخ التقييم، الأخصائي الخارجي) محلياً: الكتابة هنا لا تعيد رسم صدفة التقييم.
- * تترطب من دفعة الخادم عبر hydrateKey — يزداد مع كل تحميل كامل وكل حفظ إعدادات
- * (حتى لا تكتب مسودة قديمة فوق ما حُفظ من شاشة التكلفة).
+ * Basics screen — owns valuation settings drafts (approaches, scope, basis,
+ * valuation date, external specialist) locally: writes here do not re-render the valuation shell.
+ * Rehydrates from the server payload via hydrateKey — bumps on full load and every settings save
+ * (so an old draft cannot overwrite what was saved from the cost screen).
  */
 export const ApproachSettingsSection = memo(function ApproachSettingsSection({
   valuationRequestId,
@@ -47,7 +47,7 @@ export const ApproachSettingsSection = memo(function ApproachSettingsSection({
   const [asMarketEnabled, setAsMarketEnabled] = useState(true);
   const [asCostEnabled, setAsCostEnabled] = useState(true);
   const [asCostBasis, setAsCostBasis] = useState("replacement");
-  /** نطاق التقييم بالتكلفة: land_and_building | building_only (مواصفة النموذج التفاعلي). */
+  /** Cost valuation scope: land_and_building | building_only (interactive form spec). */
   const [asCostScope, setAsCostScope] = useState("land_and_building");
   const [asCostUnit, setAsCostUnit] = useState("comparison_unit");
   const [asPurpose, setAsPurpose] = useState(() =>
@@ -90,7 +90,7 @@ export const ApproachSettingsSection = memo(function ApproachSettingsSection({
         !settings.externalSpecialistUsed ||
         !isNoExternalSpecialistAssumption(clause),
     );
-    // عند غياب اختيار محفوظ: كل بنود الافتراضات الخاصة مختارة افتراضياً.
+    // When no saved selection exists: all special-assumption items are selected by default.
     const useAllByDefault = loadedAssumptions.length === 0;
     setAsAssumptions(
       useAllByDefault
@@ -138,7 +138,7 @@ export const ApproachSettingsSection = memo(function ApproachSettingsSection({
         selectedAssumptions = [...selectedAssumptions, clause];
       }
     }
-    // عند غياب اختيار محفوظ بعد الجلب: كل البنود الظاهرة افتراضياً.
+    // When no saved selection remains after load: all visible items by default.
     if (selectedAssumptions.length === 0 && library.length > 0) {
       selectedAssumptions = library.filter(
         (clause) =>
@@ -169,10 +169,10 @@ export const ApproachSettingsSection = memo(function ApproachSettingsSection({
     });
     onSavingChange(false);
     if (!res.ok) {
-      showToast(res.message ?? "تعذّر حفظ إعدادات التقييم", "error");
+      showToast(res.message ?? "تعذّر بدء التقييم", "error");
       return;
     }
-    showToast("تم حفظ إعدادات التقييم", "success");
+    showToast("تم بدء التقييم", "success");
     onSettingsSaved(res.data);
   }
 
@@ -318,80 +318,132 @@ export const ApproachSettingsSection = memo(function ApproachSettingsSection({
             </div>
           ) : null}
 
-          <div className="mb-3.5">
-            <FieldLabel>تاريخ التقييم — نوعان</FieldLabel>
-            <div className="mt-2 flex flex-wrap gap-4">
-              <label className="flex items-center gap-1.5 text-[12.5px]">
-                <input
-                  type="radio"
-                  checked={asDateMode !== "retrospective"}
-                  onChange={() => setAsDateMode("issue")}
-                />
-                تاريخ إصدار القيمة
-              </label>
-              <label className="flex items-center gap-1.5 text-[12.5px]">
-                <input
-                  type="radio"
-                  checked={asDateMode === "retrospective"}
-                  onChange={() => setAsDateMode("retrospective")}
-                />
-                أثر رجعي
-              </label>
-            </div>
-            {asDateMode === "retrospective" ? (
-              <div className="mt-2.5 flex flex-col gap-2.5">
-                <div className="flex flex-wrap gap-4">
-                  <label className="flex items-center gap-1.5 text-[12.5px]">
-                    <input
-                      type="radio"
-                      checked={asRetroKind === "single"}
-                      onChange={() => {
-                        setAsRetroKind("single");
-                        setAsRetroDateEnd("");
-                      }}
-                    />
-                    تاريخ محدد
-                  </label>
-                  <label className="flex items-center gap-1.5 text-[12.5px]">
-                    <input
-                      type="radio"
-                      checked={asRetroKind === "range"}
-                      onChange={() => setAsRetroKind("range")}
-                    />
-                    فترة بين تاريخين
-                  </label>
+          <div className="mb-4 border-t border-border pt-4">
+            <FieldLabel>تاريخ التقييم</FieldLabel>
+            <div className="my-2 mb-1.5 grid grid-cols-2 gap-2.5 max-sm:grid-cols-1">
+              <button
+                type="button"
+                disabled={saving}
+                onClick={() => setAsDateMode("issue")}
+                className={cn(
+                  "rounded-[var(--radius)] border px-3.5 py-3 text-start transition-[background,border-color] duration-150",
+                  asDateMode !== "retrospective"
+                    ? "border-gold bg-gold-soft"
+                    : "border-border-md bg-surface",
+                  saving ? "cursor-not-allowed opacity-55" : "cursor-pointer",
+                )}
+              >
+                <div className="text-[12.5px] font-bold text-heading">
+                  تاريخ إصدار القيمة
                 </div>
+                <div className="mt-1 text-[10.5px] leading-relaxed text-text-3">
+                  القيمة كما في تاريخ إصدار التقرير
+                </div>
+              </button>
+              <button
+                type="button"
+                disabled={saving}
+                onClick={() => setAsDateMode("retrospective")}
+                className={cn(
+                  "rounded-[var(--radius)] border px-3.5 py-3 text-start transition-[background,border-color] duration-150",
+                  asDateMode === "retrospective"
+                    ? "border-gold bg-gold-soft"
+                    : "border-border-md bg-surface",
+                  saving ? "cursor-not-allowed opacity-55" : "cursor-pointer",
+                )}
+              >
+                <div className="text-[12.5px] font-bold text-heading">
+                  أثر رجعي
+                </div>
+                <div className="mt-1 text-[10.5px] leading-relaxed text-text-3">
+                  قيمة في تاريخ أو فترة سابقة
+                </div>
+              </button>
+            </div>
+
+            {asDateMode === "retrospective" ? (
+              <div className="mt-3 rounded-[var(--radius)] border border-border bg-surface-2 px-3.5 py-3.5">
+                <FieldLabel>صيغة الأثر الرجعي</FieldLabel>
+                <div className="my-2 mb-1.5 flex flex-wrap gap-2">
+                  <ToggleChip
+                    active={asRetroKind === "single"}
+                    disabled={saving}
+                    onClick={() => {
+                      setAsRetroKind("single");
+                      setAsRetroDateEnd("");
+                    }}
+                  >
+                    تاريخ محدد
+                  </ToggleChip>
+                  <ToggleChip
+                    active={asRetroKind === "range"}
+                    disabled={saving}
+                    onClick={() => setAsRetroKind("range")}
+                  >
+                    فترة بين تاريخين
+                  </ToggleChip>
+                </div>
+
                 {asRetroKind === "single" ? (
-                  <input
-                    type="date"
-                    dir="ltr"
-                    value={asRetroDate}
-                    onChange={(e) => setAsRetroDate(e.target.value)}
-                    className={cn(vwInputClassName, "max-w-[11rem]")}
-                  />
-                ) : (
-                  <div className="grid grid-cols-[11rem_11rem] gap-2.5 max-sm:grid-cols-1">
+                  <div className="mt-2.5 max-w-[14rem]">
+                    <label
+                      htmlFor="as-retro-date"
+                      className="mb-1.5 block text-[11px] font-semibold text-text-2"
+                    >
+                      تاريخ الأثر الرجعي
+                    </label>
                     <input
+                      id="as-retro-date"
                       type="date"
                       dir="ltr"
-                      aria-label="من تاريخ"
                       value={asRetroDate}
                       onChange={(e) => setAsRetroDate(e.target.value)}
                       className={vwInputClassName}
                     />
-                    <input
-                      type="date"
-                      dir="ltr"
-                      aria-label="إلى تاريخ"
-                      value={asRetroDateEnd}
-                      min={asRetroDate || undefined}
-                      onChange={(e) => setAsRetroDateEnd(e.target.value)}
-                      className={vwInputClassName}
-                    />
+                  </div>
+                ) : (
+                  <div className="mt-2.5 grid grid-cols-2 gap-2.5 max-sm:grid-cols-1">
+                    <div>
+                      <label
+                        htmlFor="as-retro-date-from"
+                        className="mb-1.5 block text-[11px] font-semibold text-text-2"
+                      >
+                        من تاريخ
+                      </label>
+                      <input
+                        id="as-retro-date-from"
+                        type="date"
+                        dir="ltr"
+                        value={asRetroDate}
+                        onChange={(e) => setAsRetroDate(e.target.value)}
+                        className={vwInputClassName}
+                      />
+                    </div>
+                    <div>
+                      <label
+                        htmlFor="as-retro-date-to"
+                        className="mb-1.5 block text-[11px] font-semibold text-text-2"
+                      >
+                        إلى تاريخ
+                      </label>
+                      <input
+                        id="as-retro-date-to"
+                        type="date"
+                        dir="ltr"
+                        value={asRetroDateEnd}
+                        min={asRetroDate || undefined}
+                        onChange={(e) => setAsRetroDateEnd(e.target.value)}
+                        className={vwInputClassName}
+                      />
+                    </div>
                   </div>
                 )}
               </div>
-            ) : null}
+            ) : (
+              <p className="mb-0 mt-2 text-[10.5px] text-text-3">
+                لا يلزم إدخال تاريخ إضافي — يُعتمد تاريخ إصدار القيمة.
+              </p>
+            )}
           </div>
 
           <label className="mb-2 flex items-center gap-2 text-[12.5px]">
@@ -404,23 +456,25 @@ export const ApproachSettingsSection = memo(function ApproachSettingsSection({
                 setAsSpecialistUsed(used);
               }}
             />
-            استُعين بأخصائي خارجي (IVS 101)
+            استُعين بأخصائي خارجي
           </label>
           {asSpecialistUsed ? (
             <input
               placeholder="الأخصائي، دوره، ونتيجته"
               value={asSpecialistDetails}
               onChange={(e) => setAsSpecialistDetails(e.target.value)}
-              className={cn(vwInputClassName, "mb-3.5 font-medium")}
+              className={cn(vwInputClassName, "mb-0 font-medium")}
             />
           ) : null}
 
-          <PrimaryBtn disabled={saving} onClick={() => void saveApproachSettings()}>
-            حفظ إعدادات التقييم
-          </PrimaryBtn>
+          <div className="mt-6">
+            <PrimaryBtn disabled={saving} onClick={() => void saveApproachSettings()}>
+              بدء التقييم
+            </PrimaryBtn>
+          </div>
           {!settingsSaved ? (
             <p className="mt-3 rounded-[var(--radius)] bg-[var(--amber-light)] px-2.5 py-2 text-[11.5px] text-[var(--amber-text)]">
-              احفظ إعدادات التقييم أولاً لفتح شاشات العمل (السوق، التكلفة، الترجيح).
+              ابدأ التقييم أولاً لفتح شاشات العمل (السوق، التكلفة، الترجيح).
             </p>
           ) : null}
         </CardPad>

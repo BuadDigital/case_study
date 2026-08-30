@@ -45,7 +45,7 @@ public class ConfirmPropertyGroupLinkRequest
 
 public class UnlinkPropertyGroupRequest
 {
- /// <summary>قابل للفك بمبرر — required.</summary>
+ /// <summary>Unlockable with justification — required.</summary>
     [Required, MaxLength(2000)]
     public string Reason { get; init; } = "";
 }

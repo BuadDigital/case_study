@@ -1,10 +1,10 @@
-// toLocaleString ينشئ Intl.NumberFormat في كل نداء — الشاشات تنادي fmt لعشرات
-// الخلايا مع كل رسم، فنبقي منسّقاً واحداً لكل عدد كسور.
+// toLocaleString creates Intl.NumberFormat on every call — screens call fmt for
+// dozens of cells each render, so we keep one formatter per fraction-digit count.
 const NUM_FORMATS = new Map<number, Intl.NumberFormat>();
 
 export function fmt(n: number | null | undefined, digits = 0): string {
   if (n == null || !Number.isFinite(n)) return "—";
-  // أرقام لاتينية موحّدة مع بقية النظام (بطاقة العقار، جدول التسويات، التقارير).
+  // Latin digits aligned with the rest of the system (property card, adjustments table, reports).
   let formatter = NUM_FORMATS.get(digits);
   if (!formatter) {
     formatter = new Intl.NumberFormat("en-US", {
@@ -16,11 +16,11 @@ export function fmt(n: number | null | undefined, digits = 0): string {
   return formatter.format(n);
 }
 
-// شاشات المالية تعرض المبالغ بحد أقصى للكسور دون أصفار إلزامية
-// (1,234.5 وليس 1,234.50) — منسّق منفصل يحافظ على العرض نفسه.
+// Finance screens show amounts with a max fraction digits and no forced trailing zeros
+// (1,234.5 not 1,234.50) — a separate formatter keeps that display.
 const MAX_ONLY_FORMATS = new Map<number, Intl.NumberFormat>();
 
-/** يكافئ toLocaleString("en-US", { maximumFractionDigits: digits }) مع "—" للفارغ. */
+/** Equivalent to toLocaleString("en-US", { maximumFractionDigits: digits }) with "—" for empty. */
 export function fmtMax(n: number | null | undefined, digits = 2): string {
   if (n == null || !Number.isFinite(n)) return "—";
   let formatter = MAX_ONLY_FORMATS.get(digits);
@@ -31,7 +31,7 @@ export function fmtMax(n: number | null | undefined, digits = 2): string {
   return formatter.format(n);
 }
 
-/** مبلغ بالريال — fmt مع لاحقة "ر.س"، و"—" دون لاحقة عند الغياب. */
+/** SAR amount — fmt with SAR suffix; "—" with no suffix when absent. */
 export function fmtSar(n: number | null | undefined, digits = 2): string {
   if (n == null || !Number.isFinite(n)) return "—";
   return `${fmt(n, digits)} ر.س`;

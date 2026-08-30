@@ -13,12 +13,12 @@ public sealed class OrganizationSettingsDto
     public DateTime UpdatedAtUtc { get; init; }
 }
 
-/// <summary>تبويب تقرير التقييم — الطبقة ب (القرار 25): ثوابت ونصوص تُعبَّأ مرة وتُستهلك في كل تقرير.</summary>
+/// <summary>Valuation Report Tab — Layer B (Decision 25): Constants and text that is populated once and consumed in each report.</summary>
 public sealed class OrganizationValuationReportSettingsDto
 {
  /// <summary>
- /// قرار 23: رقم حزمة النصوص المعيارية/القانونية — نسخة واحدة للحزمة كلها؛ أي تعديل
- /// في الكتلة المُدارة يصدر حزمة جديدة. محسوب من سجل النسخ لا مخزّن في الإعدادات.
+ /// Decision 23: Standard/legal text package number — one copy for the entire package; Any modification
+ /// to the managed block issues a new package. Computed from version history, not stored in settings.
  /// </summary>
     public int TextPackageVersion { get; set; } = 1;
 
@@ -36,7 +36,7 @@ public sealed class OrganizationValuationReportSettingsDto
     public string FinishingLuxury { get; init; } = "";
     public string FinishingMedium { get; init; } = "";
     public string FinishingOrdinary { get; init; } = "";
- /// <summary>بنود الافتراضات الخاصة الجاهزة — يديرها الأدمن وينتقي منها المقيّم.</summary>
+ /// <summary>Special Assumptions prepackaged items — Managed by admin and selected by Appraiser.</summary>
     public List<string> SpecialAssumptionLibrary { get; init; } = [];
 }
 
@@ -46,13 +46,13 @@ public sealed class OrganizationCompanySettingsDto
     public string? TaxNumber { get; init; }
     public string? Address { get; init; }
     public string? CommercialRegistration { get; init; }
-    /// <summary>رقم ترخيص المزاولة للمنشأة (الهيئة).</summary>
+    /// <summary>The facility’s practice license number (the Authority).</summary>
     public string? PracticeLicenseNumber { get; init; }
-    /// <summary>ISO date — إصدار ترخيص مزاولة المنشأة.</summary>
+    /// <summary>ISO date — Issuance of the establishment’s license to operate.</summary>
     public string? PracticeLicenseIssuedAt { get; init; }
-    /// <summary>ISO date — انتهاء ترخيص مزاولة المنشأة.</summary>
+    /// <summary>ISO date — expiration of the establishment’s license to practice.</summary>
     public string? PracticeLicenseExpiresAt { get; init; }
-    /// <summary>مرجع المقيّم المعتمد من سجل المقيّمين (certified أو معرّف الصف).</summary>
+    /// <summary>Certified Appraiser reference from the Appraiser registry (certified or row ID).</summary>
     public string? CertifiedValuerId { get; init; }
     public string? Email { get; init; }
     public string? Phone { get; init; }
@@ -64,17 +64,17 @@ public sealed class OrganizationEvaluatorSettingsDto
     public string? Name { get; init; }
     public string? LicenseNumber { get; init; }
     public string? MembershipNumber { get; init; }
- /// <summary>fellow | associate | affiliate | student — فئة العضوية.</summary>
+ /// <summary>fellow | associate | affiliate| student — Membership class.</summary>
     public string? MembershipCategory { get; init; }
  /// <summary>ISO date (yyyy-MM-dd) — license practice expiry (dual gate).</summary>
     public string? LicenseExpiresAt { get; init; }
  /// <summary>ISO date (yyyy-MM-dd) — membership expiry / effective end.</summary>
     public string? MembershipExpiresAt { get; init; }
- /// <summary>تاريخ إصدار الترخيص (هجري) كما في هوية المقيم — عرض/تقرير.</summary>
+ /// <summary>License issuance date (Hijri) as in ID Appraiser — View/Report.</summary>
     public string? LicenseIssuedAt { get; init; }
- /// <summary>تاريخ انتهاء الترخيص (هجري) للعرض في الهوية — بوابة الإصدار تبقى على LicenseExpiresAt.</summary>
+ /// <summary>The license expiry date (Hijri) to display in the ID — Issuance portal remains on LicenseExpiresAt.</summary>
     public string? LicenseExpiresHijri { get; init; }
- /// <summary>صفته — مثل «الرئيس التنفيذي».</summary>
+ /// <summary>Adjective — such as “CEO.”</summary>
     public string? Title { get; init; }
 }
 
@@ -84,18 +84,18 @@ public sealed class OrganizationValuerRosterEntryDto
     public string NameAr { get; init; } = "";
     public string? LicenseNumber { get; init; }
     public string? MembershipNumber { get; init; }
- /// <summary>fellow | associate | affiliate | student — فئة العضوية.</summary>
+ /// <summary>fellow | associate | affiliate| student — Membership class.</summary>
     public string? MembershipCategory { get; init; }
  /// <summary>ISO date (yyyy-MM-dd) — license practice expiry.</summary>
     public string? LicenseExpiresAt { get; init; }
- /// <summary>تاريخ إصدار الترخيص.</summary>
+ /// <summary>License issuance date.</summary>
     public string? LicenseIssuedAt { get; init; }
  /// <summary>ISO date (yyyy-MM-dd) — membership expiry / effective end.</summary>
     public string? MembershipExpiresAt { get; init; }
- /// <summary>certified | valuer | assistant | reviewer — الدور في النظام.</summary>
+ /// <summary>certified | appraiser | assistant | reviewer — role in the system.</summary>
     public string Role { get; init; } = "assistant";
     public bool IsActive { get; init; } = true;
- /// <summary>توقيع المقيّم للتقارير الجديدة.</summary>
+ /// <summary>Signature Appraiser for new reports.</summary>
     public string? SignatureUrl { get; init; }
 }
 
@@ -110,17 +110,17 @@ public sealed class OrganizationBrandingSettingsDto
 
     public string? LogoColorUrl { get; init; }
     public string? LogoWhiteUrl { get; init; }
-    /// <summary>عرض الختم على A4 (سم) — المصدر: الإعدادات v2 هوية بصرية.</summary>
+    /// <summary>Stamp width on A4 (cm) — Source: Settings v2 Visual Identity.</summary>
     public decimal? StampWidthCm { get; init; }
     public decimal? StampHeightCm { get; init; }
-    /// <summary>عرض التوقيع على A4 (سم) — قسم الاعتماد والمشاركين.</summary>
+    /// <summary>Signature width on A4 (cm) — Approval and Participants section.</summary>
     public decimal? SignatureWidthCm { get; init; }
     public decimal? SignatureHeightCm { get; init; }
     public decimal? LetterheadHeadMm { get; init; }
     public decimal? LetterheadFootTopMm { get; init; }
-    /// <summary>الهامش الأيسر (mm).</summary>
+    /// <summary>Left margin (mm).</summary>
     public decimal? LetterheadPadMm { get; init; }
-    /// <summary>الهامش الأيمن (mm) — شريحة الجانب في الطباعة.</summary>
+    /// <summary>Right Margin (mm) — The side slice in typography.</summary>
     public decimal? LetterheadPadStartMm { get; init; }
     public decimal? LetterheadStripMm { get; init; }
     public string? LogoVersion { get; init; }
@@ -157,22 +157,22 @@ public sealed class OrganizationSlaSettingsDto
     public int PrivateSectorBusinessDays { get; init; } = 10;
 }
 
-/// <summary>Valuation-engine settings — «حد أقصى قابل للضبط».</summary>
+/// <summary>Valuation-engine settings — “adjustable maximum”.</summary>
 public sealed class OrganizationValuationSettingsDto
 {
  /// <summary>Max comparables that can be adopted per valuation (1–20).</summary>
     public int MaxAdoptedComparables { get; init; } = 3;
 
- /// <summary>ق-4: عتبة الفارق الزمني بالأشهر لتنبيه m20 (بيانات إدارية، 1–60).</summary>
+ /// <summary>Q-4: Time lag threshold in months for m20 alert (administrative data, 1–60).</summary>
     public int ComparableTimeGapMonths { get; init; } = 6;
 
- /// <summary>معامل تسوية المساحة ٪ لكل مثل/مضاعف (منطق-التسويات، افتراضي ٥).</summary>
+ /// <summary>Area normalization factor % per instance/multiplier (logic-normalizations, default 5).</summary>
     public decimal AreaFactorPct { get; init; } = 5m;
 
- /// <summary>معدل تغير السوق السنوي ٪ لاقتراح تسوية ظروف السوق (افتراضي ٤).</summary>
+ /// <summary>Annual market change rate % to suggest flattening market conditions (default 4).</summary>
     public decimal AnnualMarketRatePct { get; init; } = 4m;
 
- /// <summary>أسّ تقريب قيمة أسلوب السوق (١٠^ن). افتراضي ٤ → أقرب ١٠٬٠٠٠ ريال.</summary>
+ /// <summary>Market approach value approximation exponent (10^n). Default 4 → nearest 10,000 riyals.</summary>
     public int MarketValueRoundDecimals { get; init; } = 4;
 }
 

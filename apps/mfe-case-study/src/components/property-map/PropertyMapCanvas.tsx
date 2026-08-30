@@ -134,7 +134,7 @@ function clusterIconHtml(kind: LayerKey, count: number): string {
   return `<div style="width:${size}px;height:${size}px;${shape};background:${colors.bg};box-shadow:0 0 0 5px ${colors.ring},0 2px 10px rgba(18,40,76,.4);display:grid;place-items:center"><span style="${inner}color:${colors.fg};font:700 ${count < 100 ? 12 : 11}px Tajawal,sans-serif">${count.toLocaleString("en-US")}</span></div>`;
 }
 
-// تهريب HTML من المصدر الموحّد في app-shared.
+// HTML escape via the shared helper in app-shared.
 
 function leafletNs(mod: typeof import("leaflet")): LeafletNS {
   const withDefault = mod as typeof import("leaflet") & {

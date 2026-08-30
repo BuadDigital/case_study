@@ -1,6 +1,6 @@
 "use client";
 
-/** أجزاء صدفة التطبيق — أيقونات وصفوف وقوائم التنقل على مستوى الوحدة، نُقلت حرفياً من AppShell (SRP). */
+/** App shell pieces — module-level nav icons, rows, and menus, extracted literally from AppShell (SRP). */
 import Link from "next/link";
 import { useLinkStatus } from "next/link";
 import { useEffect, useRef, useState } from "react";
@@ -23,12 +23,6 @@ import {
   type SettingsNavTreeNode,
   type SystemSettingsNavItem,
 } from "@platform/app-shared/prototype/system-settings-nav";
-import {
-  ORPHAN_SCREENS_GROUP,
-  ORPHAN_SCREENS_GROUP_ICON,
-  isInOrphanScreensSection,
-  type OrphanScreenNavItem,
-} from "@platform/app-shared/prototype/orphan-screens-nav";
 import {
   FINANCIAL_GROUP,
   FINANCIAL_GROUP_ICON,
@@ -214,7 +208,7 @@ export function navRunsForRole(rolePages: PageId[], role: RoleId): NavRun[] {
     .filter((run) => run.items.length > 0);
 }
 
-/** أطراف المعاملة — الاتعاب ثم التعذرات تحتها مباشرة. */
+/** Transaction parties — fees first, then failures immediately below. */
 function sortPartyFeesBeforeFailures(
   items: (typeof NAV)[number][],
 ): (typeof NAV)[number][] {
@@ -269,8 +263,8 @@ export function NavRow({
 }
 
 /**
- * إشارة فورية عند النقر: التنقل كان صامتاً حتى تُركَّب الصفحة التالية، فيبدو
- * أن الضغطة لم تُسجَّل. يحلّ محلّ الشارة أثناء الانتظار حتى لا يتمدّد الصف.
+ * Instant click feedback: navigation used to stay silent until the next page
+ * mounted, so the tap looked ignored. Replaces the badge while pending so the row does not grow.
  */
 function NavPending({ fallback = null }: { fallback?: React.ReactNode }) {
   const { pending } = useLinkStatus();
@@ -394,18 +388,18 @@ function NavFlyoutPanel({
   );
 }
 
-// تحميل مسبق لحزمة مسار المالية عند التحويم/التركيز على ورقته (bundle-preload).
+// Preload the finance-area chunk on hover/focus of its leaf (bundle-preload).
 const preloadFinanceAreaChunk = (area: FinanceNavArea) =>
   void import("@financial/mfe/components/FinanceWorkspace").then((m) =>
     m.FINANCE_AREA_CHUNK_PRELOAD[area]?.(),
   );
 
 /**
- * Finance.html sidebar (حرفياً):
- *   nav-group: المالية
- *   fin-subnav leaves (مهامي · الإيرادات · التكاليف)
- *     — في التطبيق: تحت «المالية والفوترة» لأن navActive/الـ crumbs تشير لها
- *   nav-group: بوابات الأطراف — لتجربة الأثر
+ * Finance.html sidebar (literally):
+ *   nav-group: Finance
+ *   fin-subnav leaves (My tasks · Revenue · Costs)
+ *     — in-app: under "Finance & billing" because navActive/crumbs point there
+ *   nav-group: Party portals — for impact demo
  *   nav-item: eng · inspector
  */
 export function FinanceHtmlNav({
@@ -421,7 +415,7 @@ export function FinanceHtmlNav({
 }) {
   const inSection = isInFinancialSection(currentPage);
   const onCore = inSection && isFinanceCoreArea(activeArea);
-  /** افتح الشجرة عند العمل في مهامي/إيراد/تكاليف */
+  /** Expand the tree when working in My tasks / Revenue / Costs. */
   const [open, setOpen] = useState(onCore);
   const rootRef = useRef<HTMLDivElement>(null);
 
@@ -473,7 +467,7 @@ export function FinanceHtmlNav({
 
   return (
     <div className="my-0.5" ref={rootRef}>
-      {/* .nav-group: المالية */}
+      {/* .nav-group: Finance */}
       <div
         className={cn(
           "px-3 pb-1.5 pt-2 text-[11px] font-bold tracking-[0.04em] text-[#6f7b90]",
@@ -489,7 +483,7 @@ export function FinanceHtmlNav({
         />
       ) : null}
 
-      {/* .nav-item toggle: المالية والفوترة */}
+      {/* .nav-item toggle: Finance & billing */}
       <button
         type="button"
         className={navItemClasses({
@@ -822,100 +816,6 @@ export function SystemSettingsNavDropdown({
           </div>
           <NavFlyoutPanel label={SYSTEM_SETTINGS_GROUP}>
             {renderBody()}
-          </NavFlyoutPanel>
-        </>
-      ) : null}
-    </div>
-  );
-}
-
-export function OrphanScreensNavDropdown({
-  items,
-  currentPage,
-  onPrefetch,
-  rail = false,
-}: {
-  items: OrphanScreenNavItem[];
-  currentPage: PageId;
-  onPrefetch: (page: PageId) => void;
-  rail?: boolean;
-}) {
-  const inSection = isInOrphanScreensSection(currentPage);
-  const [open, setOpen] = useState(inSection);
-  const rootRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- auto-expand when route is under orphan screens.
-    if (inSection && !rail) setOpen(true);
-  }, [inSection, rail]);
-
-  useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- avoid leftover open flyouts when entering icon-rail.
-    if (rail) setOpen(false);
-  }, [rail]);
-
-  useEffect(() => {
-    if (!open || !rail) return;
-    function onPointerDown(event: MouseEvent) {
-      if (!rootRef.current?.contains(event.target as Node)) setOpen(false);
-    }
-    document.addEventListener("mousedown", onPointerDown);
-    return () => document.removeEventListener("mousedown", onPointerDown);
-  }, [open, rail]);
-
-  const renderRows = () =>
-    items.map((item) => (
-      <ActiveTransactionNavRow
-        key={item.id}
-        id={item.id}
-        label={item.label}
-        icon={item.icon}
-        available={item.available}
-        active={currentPage === item.id}
-        onPrefetch={onPrefetch}
-      />
-    ));
-
-  return (
-    <div className="relative my-0.5" ref={rootRef}>
-      <button
-        type="button"
-        className={navItemClasses({
-          active: inSection,
-          toggle: true,
-          rail,
-        })}
-        title={rail ? ORPHAN_SCREENS_GROUP : undefined}
-        aria-expanded={open}
-        aria-controls="nav-orphan-screens"
-        onClick={() => setOpen((v) => !v)}
-      >
-        <NavIcon d={ORPHAN_SCREENS_GROUP_ICON} size={16} />
-        <span className={navLabelClasses(rail)}>{ORPHAN_SCREENS_GROUP}</span>
-        <NavDropdownChevron open={open} rail={rail} />
-      </button>
-      {open && !rail ? (
-        <div
-          id="nav-orphan-screens"
-          className="ms-3 flex flex-col border-s border-white/[0.06] py-0.5 pb-1"
-          role="group"
-          aria-label={ORPHAN_SCREENS_GROUP}
-        >
-          {renderRows()}
-        </div>
-      ) : null}
-      {open && rail ? (
-        <>
-          <div
-            id="nav-orphan-screens"
-            className="ms-3 flex flex-col border-s border-white/[0.06] py-0.5 pb-1 lg:hidden"
-            role="group"
-            aria-label={ORPHAN_SCREENS_GROUP}
-          >
-            {renderRows()}
-          </div>
-          <NavFlyoutPanel label={ORPHAN_SCREENS_GROUP}>
-            {renderRows()}
           </NavFlyoutPanel>
         </>
       ) : null}

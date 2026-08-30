@@ -40,13 +40,13 @@ export function PropertyDetailMediaGlance({
   latitude?: string | null;
   longitude?: string | null;
   showCoordinates?: boolean;
-  /** أساس القيمة المستخدم — يُعرض تحت وصف العقار (من أمر العمل). */
+  /** Value basis in use — shown under the property description (from the work order). */
   valueBasisLabel?: string | null;
-  /** فرضية القيمة — تحت أساس القيمة. */
+  /** Value premise — under value basis. */
   valuePremiseLabel?: string | null;
-  /** الغرض من التقييم — تحت أساس القيمة. */
+  /** Purpose of valuation — under value basis. */
   valuationPurposeLabel?: string | null;
-  /** مستخدمو التقرير — تحت أساس القيمة. */
+  /** Report users — under value basis. */
   reportUsersLabel?: string | null;
 }) {
   const hasPhoto = Boolean(primaryPhoto?.dataUrl);

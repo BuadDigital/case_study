@@ -168,7 +168,7 @@ public class WorkOrderService : IWorkOrderService
         {
             propDto.Id = null;
             var mappedProperty = _properties.MapPropertyEnfath(propDto, workOrder.Id, forInsert: true);
- // ورشة الترقيم (بندا البتّ 2 و5): الرقم المرجعي للمعاملة يُخصَّص عند الورود.
+ // Numbering workshop (decision items 2 and 5): transaction reference number assigned on intake.
             var (transactionReference, referenceError) =
                 await ReferenceSequenceAllocator.AllocateYearlyAsync(
                     _db.Database,
@@ -373,6 +373,17 @@ public class WorkOrderService : IWorkOrderService
         string? locationMapUrl,
         CancellationToken cancellationToken) =>
         _properties.UpdateLocationMapUrlAsync(poNumber, propertyId, locationMapUrl, cancellationToken);
+
+    public Task<(WorkOrderPropertyDto? Result, Dictionary<string, string>? Errors)> UpdateSpecialistReportExtrasAsync(
+        string poNumber,
+        Guid propertyId,
+        string? specialistReportExtrasJson,
+        CancellationToken cancellationToken) =>
+        _properties.UpdateSpecialistReportExtrasAsync(
+            poNumber,
+            propertyId,
+            specialistReportExtrasJson,
+            cancellationToken);
 
     public Task<(WorkOrderPropertyDto? Result, Dictionary<string, string>? Errors)> CompleteBourseDataAsync(
         string poNumber,

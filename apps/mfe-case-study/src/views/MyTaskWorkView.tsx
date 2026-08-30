@@ -107,7 +107,7 @@ const FailureRaiseModal = dynamic(
     ),
   { ssr: false },
 );
-// تحميل مسبق عند التحويم/التركيز — يختفي زمن جلب الحزمة (bundle-preload).
+// Prefetch on hover/focus — hides chunk fetch latency (bundle-preload).
 const preloadDistributionPartiesForm = () =>
   void import(
     "@case-study/mfe/components/distribution/DistributionPartiesForm"
@@ -128,7 +128,7 @@ export function CaseStudyTaskWork({
   onRefresh: () => void;
   layout?: "page" | "panel";
   onClose?: () => void;
-  /** After successful إنفاذ save (panel flow): advance or route by identifier type. */
+  /** After successful Infath save (panel flow): advance or route by identifier type. */
   onEnfathSaved?: (
     taskId: string,
     meta: { identifierType: PropertyIdentifierType },
@@ -557,7 +557,7 @@ export function CaseStudyTaskWork({
 
   const bourseInquiryFastPath =
     effectivePhase === "enfath" && isBourseInquiryIdentifier(property.identifierType);
-  /** Primary-data panel: استعلام بورصة fields live on «استعلام بورصة» tab only. */
+  /** Primary-data panel: bourse-inquiry fields live on the «Bourse inquiry» tab only. */
   const bourseInquiryPanelOnly =
     layout === "panel" && bourseInquiryFastPath;
   const showEnfathStep =
@@ -813,7 +813,7 @@ export function CaseStudyTaskWork({
             layout === "panel" ? undefined : "البيانات الواردة من منصة إنفاذ"
           }
         >
-          {/* العمل في خطوة إنفاذ = الخطوة التالية بورصة — تحميل مسبق (bundle-preload). */}
+          {/* Working the Infath step = next step is bourse — prefetch (bundle-preload). */}
           <div
             onMouseEnter={preloadPoPropertyBourseForm}
             onFocus={preloadPoPropertyBourseForm}
@@ -860,7 +860,7 @@ export function CaseStudyTaskWork({
           {bourseInquiryFastPath ? (
             <hr className="my-4 border-0 border-t border-border" aria-hidden />
           ) : null}
-          {/* العمل في خطوة البورصة = الخطوة التالية التوزيع — تحميل مسبق (bundle-preload). */}
+          {/* Working the bourse step = next step is distribution — prefetch (bundle-preload). */}
           <div
             onMouseEnter={preloadDistributionPartiesForm}
             onFocus={preloadDistributionPartiesForm}

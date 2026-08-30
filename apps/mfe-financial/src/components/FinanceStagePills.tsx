@@ -8,7 +8,7 @@ import {
 } from "../lib/finance-tw";
 
 /**
- * أزرار مراحل المالية — padding 8×15 · 12.5px · badge 18 — مطابق HTML data-rvtab.
+ * Finance stage buttons — padding 8×15 · 12.5px · badge 18 — matches HTML data-rvtab.
  */
 export function FinanceStagePills<T extends string>({
   items,

@@ -7,8 +7,8 @@ using RealEstateEval.Infrastructure.Data.Contexts;
 namespace RealEstateEval.Valuation.Infrastructure.Data.Contexts.Valuation.Migrations;
 
 /// <summary>
-/// مواصفة النموذج التفاعلي: تجاوزات سعر/مساحة المقارن لكل تقييم (compEdit)،
-/// وصف المقارن لكل عامل تسوية (compSpec)، وأوصاف العقار محل التقييم (subjSpec).
+/// Interactive model spec: per-valuation comparable price/area overrides (compEdit),
+/// comparable description per adjustment factor (compSpec), and subject descriptions (subjSpec).
 /// </summary>
 [DbContext(typeof(ValuationDbContext))]
 [Migration("20260826170000_AddPrototypeMarketOverrides")]

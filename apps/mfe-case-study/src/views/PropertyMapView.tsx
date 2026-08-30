@@ -17,9 +17,11 @@ import { usePoRecordsQuery } from "../query/case-study-queries";
 import { poPropertyPath } from "../lib/po-routes";
 import { findPropertyPathByDeed } from "../lib/prototype/map-open-property";
 import {
+  mapComparableDtosToMapRecords,
+  mapPoRecordsToMapProperties,
+} from "../lib/prototype/map-live-records";
+import {
   POINT_FAMILIES,
-  SEED_COMPARABLES,
-  SEED_PROPERTIES,
   WORKFLOW_STATUS,
   comparableCard,
   computeStats,
@@ -45,16 +47,9 @@ import type {
   MapViewCommand,
   PropertyMapMarker,
 } from "../components/property-map/PropertyMapCanvas";
-
-
-// فهرس على مستوى الوحدة للبذور المعروضة في نافذة العنقود (js-index-maps).
-const SEED_RECORD_BY_PREFIXED_ID = new Map<
-  string,
-  (typeof SEED_COMPARABLES)[number] | (typeof SEED_PROPERTIES)[number]
->([
-  ...SEED_COMPARABLES.map((r) => [`c:${r.id}`, r] as const),
-  ...SEED_PROPERTIES.map((r) => [`p:${r.id}`, r] as const),
-]);
+import { listComparableProperties } from "@platform/api-client";
+import { prototypeModulesApiConfig } from "@platform/app-shared/prototype/prototype-modules-api-config";
+import { useQuery } from "@tanstack/react-query";
 
 const PropertyMapCanvas = dynamic(
   () =>
@@ -72,10 +67,10 @@ const PropertyMapCanvas = dynamic(
 );
 
 /**
- * خريطة العقارات — المتبقي لاحقاً (ربط بيانات حية، لا تجميل):
- * - صورة العقار في البطاقة + تكبير (lightbox) من مرفق المعاملة.
- * - مصدر النقاط الحي بدل SEED_* عند ربط أوامر العمل وبنك المقارنات.
- * - فتح سجل المقارن على بطاقة محددة لا قائمة البنك.
+ * Property map — remaining later (no polish):
+ * - Property photo in the card + zoom (lightbox) from the transaction attachment.
+ * - Precise field coordinates instead of approximate when available from the inspector.
+ * - Open a specific comparable card, not the bank list.
  */
 
 const DATE_PRESETS: { value: DatePreset; label: string }[] = [
@@ -190,6 +185,21 @@ export function PropertyMapView() {
   const router = useRouter();
   const { showToast } = useToast();
   const { data: poRecords } = usePoRecordsQuery();
+  const liveProperties = useMemo(
+    () => mapPoRecordsToMapProperties(poRecords),
+    [poRecords],
+  );
+  const { data: liveComparables = [] } = useQuery({
+    queryKey: ["property-map", "comparables"],
+    queryFn: async () => {
+      const config = prototypeModulesApiConfig();
+      if (!config) return [] as MapComparableRecord[];
+      const res = await listComparableProperties(config, { take: 200 });
+      if (!res.ok) return [] as MapComparableRecord[];
+      return mapComparableDtosToMapRecords(res.data);
+    },
+    staleTime: 60_000,
+  });
   const [layers, setLayers] = useState<Record<LayerKey, boolean>>({
     active: true,
     archive: false,
@@ -254,14 +264,12 @@ export function PropertyMapView() {
   ]);
 
   const filteredProperties = useMemo(
-    // لاحقاً: استبدل SEED_PROPERTIES بأوامر العمل الحية (إحداثيات العقار + حالة الإغلاق).
-    () => filterProperties(SEED_PROPERTIES, criteria),
-    [criteria],
+    () => filterProperties(liveProperties, criteria),
+    [criteria, liveProperties],
   );
   const filteredComparables = useMemo(
-    // لاحقاً: استبدل SEED_COMPARABLES ببنك المقارنات الحي.
-    () => filterComparables(SEED_COMPARABLES, criteria),
-    [criteria],
+    () => filterComparables(liveComparables, criteria),
+    [criteria, liveComparables],
   );
 
   const partitioned = useMemo(
@@ -379,18 +387,28 @@ export function PropertyMapView() {
     return list;
   }, [grouped, shownComparables]);
 
-  const cities = distinctValues([...SEED_PROPERTIES, ...SEED_COMPARABLES], "city");
+  const cities = distinctValues(
+    [...liveProperties, ...liveComparables],
+    "city",
+  );
   const yearOpts = useMemo(() => {
     const years = new Set<number>();
-    for (const r of SEED_PROPERTIES) {
+    for (const r of liveProperties) {
       const d = r.valuationDate || r.openedDate;
       if (d) years.add(new Date(d).getFullYear());
     }
-    for (const c of SEED_COMPARABLES) {
+    for (const c of liveComparables) {
       if (c.operationDate) years.add(new Date(c.operationDate).getFullYear());
     }
     return [...years].sort((a, b) => b - a);
-  }, []);
+  }, [liveProperties, liveComparables]);
+
+  const recordByPrefixedId = useMemo(() => {
+    const map = new Map<string, MapPropertyRecord | MapComparableRecord>();
+    for (const r of liveProperties) map.set(`p:${r.id}`, r);
+    for (const c of liveComparables) map.set(`c:${c.id}`, c);
+    return map;
+  }, [liveProperties, liveComparables]);
 
   const selectedId =
     selection?.kind === "property"
@@ -426,7 +444,7 @@ export function PropertyMapView() {
 
   function handleSelect(id: string) {
     if (id.startsWith("p:")) {
-      const rec = SEED_PROPERTIES.find((r) => r.id === id.slice(2));
+      const rec = liveProperties.find((r) => r.id === id.slice(2));
       if (rec) {
         setSelection({ kind: "property", record: rec });
         flyTo(rec.coords);
@@ -434,7 +452,7 @@ export function PropertyMapView() {
       return;
     }
     if (id.startsWith("c:")) {
-      const rec = SEED_COMPARABLES.find((r) => r.id === id.slice(2));
+      const rec = liveComparables.find((r) => r.id === id.slice(2));
       if (rec) {
         setSelection({ kind: "comparable", record: rec });
         flyTo(rec.coords);
@@ -454,7 +472,7 @@ export function PropertyMapView() {
     }
   }
 
-  /** لاحقاً: بعد ربط المصدر الحي تكون poNumber/propertyId على السجل نفسه فلا نحتاج البحث بالصك. */
+  /** Later: after wiring the live source, poNumber/propertyId live on the record so deed search is unnecessary. */
   function openProperty(record: MapPropertyRecord) {
     if (record.poNumber && record.propertyId) {
       router.push(poPropertyPath(record.poNumber, record.propertyId));
@@ -465,10 +483,10 @@ export function PropertyMapView() {
       router.push(live);
       return;
     }
-    showToast("هذه نقطة معاينة — افتح المعاملة من أوامر العمل بعد ربط المصدر الحي.", "info");
+    showToast("لا توجد معاملة مرتبطة بهذه النقطة بعد.", "info");
   }
 
-  /** لاحقاً: افتح بطاقة المقارن المحددة بدل قائمة بنك المقارنات. */
+  /** Later: open the specific comparable card instead of the comparables bank list. */
   function openComparable(record: MapComparableRecord) {
     router.push("/comparable-properties");
     showToast(`يُفتح سجل المقارن ${record.refNo}`, "info");
@@ -514,7 +532,7 @@ export function PropertyMapView() {
 
   const nearby =
     selection?.kind === "property" && selection.record.coords
-      ? nearbyOf(selection.record.coords, SEED_COMPARABLES, 2, null).slice(0, 5)
+      ? nearbyOf(selection.record.coords, liveComparables, 2, null).slice(0, 5)
       : [];
 
   const pickerNodes =
@@ -881,7 +899,7 @@ export function PropertyMapView() {
             </div>
             <ul className="p-1.5">
               {selection.ids.map((id) => {
-                const rec = SEED_RECORD_BY_PREFIXED_ID.get(id);
+                const rec = recordByPrefixedId.get(id);
                 if (!rec) return null;
                 const isComp = "comparableType" in rec;
                 return (
@@ -1168,7 +1186,7 @@ function DetailCard({
         </div>
         <div className="mt-2 flex items-center gap-3">
           {isProperty ? (
-            /* لاحقاً: اعرض صورة المعاملة (photoUrl / أول مرفق) مع تكبير lightbox؛ إن لم توجد صورة أظهر هذا المكان وأبلغ «لا توجد صورة مرفقة». */
+            /* Later: show the transaction photo (photoUrl / first attachment) with lightbox zoom; if no photo, keep this slot and report «no attached photo». */
             <div className="grid size-[84px] shrink-0 place-items-center overflow-hidden rounded-full border-2 border-white bg-[#f1ece2] text-[#c2b49a] shadow-[0_4px_12px_-6px_rgba(18,40,76,.45)]">
               <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" aria-hidden>
                 <path d="M3 8a2 2 0 0 1 2-2h2l1.5-2h7L17 6h2a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />

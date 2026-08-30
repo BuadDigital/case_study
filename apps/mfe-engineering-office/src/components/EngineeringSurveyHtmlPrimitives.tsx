@@ -107,7 +107,7 @@ export const ENG_STATUS_COLORS = {
   pending: "#d9a441",
 } as const;
 
-/** Matches the دراسة الحالة / المقيم tab bar — active tab fills a navy «ink» box. */
+/** Matches the Case Study / appraiser tab bar — active tab fills a navy «ink» box. */
 export function EngTabBar({
   tabs,
   active,

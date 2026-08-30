@@ -11,7 +11,7 @@ function dash(v: string | null | undefined): string {
   return v == null || v.trim() === "" ? "-" : v;
 }
 
-/** قاعدة n (11ك): weighting table only with two or more included methods. */
+/** Rule n (11k): weighting table only with two or more included methods. */
 function isMultiMethod(doc: ValuationReportDocumentDto): boolean {
   return doc.sections.find((s) => s.number === 15)?.fields?.["multiMethod"] === "yes";
 }
@@ -50,7 +50,7 @@ function renderPrintedAttachments(
 
   const renderOne = (a: (typeof items)[number]): string => {
     const url = resolveAttachmentUrl(a.contentUrl);
-    // 11س — photos print with their auto-capture date.
+    // 11s — photos print with their auto-capture date.
     const dated = a.capturedAtDisplay
       ? `${a.labelAr || "صورة"} — ${a.capturedAtDisplay}`
       : a.labelAr || a.fileName || "مرفق";
@@ -62,7 +62,7 @@ function renderPrintedAttachments(
     return `<p class="attach-link"><a href="${esc(url)}" target="_blank" rel="noopener noreferrer">${caption}</a> — <span class="attach-fn">${name}</span></p>`;
   };
 
-  // 11س — ست صور في الصفحة: chunked grids with print page breaks between them.
+  // 11s — six photos per page: chunked grids with print page breaks between them.
   if (perPage && perPage > 0) {
     const chunks: string[] = [];
     for (let i = 0; i < items.length; i += perPage) {
@@ -113,7 +113,7 @@ function buildSectionBody(sec: number, doc: ValuationReportDocumentDto): string 
         ["نوع الملكية", field(doc, 6, "ownershipType")],
         ["المدينة / الحي", `${field(doc, 6, "city")} / ${field(doc, 6, "district")}`],
         ["هل توجد مبانٍ/إنشاءات؟", field(doc, 6, "hasStructures") === "yes" ? "نعم" : "لا"],
-        // Building-only rows (decision 6 / 8ب) — deleted for land, no dash.
+        // Building-only rows (decision 6 / 8b) — deleted for land, no dash.
         ...(doc.hasStructuresToValue
           ? ([
               ["حالة العقار", field(doc, 6, "propertyCondition")],
@@ -233,7 +233,7 @@ function buildSectionBody(sec: number, doc: ValuationReportDocumentDto): string 
     case 15:
       return kvTable([["مبرر استخدام طرق التقييم", doc.methodsRationale?.trim() || "-"]]);
     case 16: {
-      // قاعدة n (11ك/11ل): with one method there is no weighting table at all —
+      // Rule n (11k/11l): with one method there is no weighting table at all —
       // its value flows straight to the final opinion and section 15 carries the
       // rationale. With n≥2 the table prints and the rationale is its LAST row.
       const methodRows =
@@ -331,8 +331,8 @@ function buildSectionBody(sec: number, doc: ValuationReportDocumentDto): string 
 }
 
 /**
- * الكليشة أصل نظام تُستبدل من الإعدادات دون أثر على الكود :
- * ثلاث شرائح من هوامش الهوية البصرية (افتراضي HTML: ترويسة 41مم، تذييل من 270مم، يمين 13مم).
+ * Letterhead is a system asset replaced from settings without code changes:
+ * three visual-identity margin slices (HTML defaults: header 41mm, footer from 270mm, right 13mm).
  * Null keeps the template's baked letterhead untouched.
  */
 function applyLetterheadSlices(
@@ -502,7 +502,7 @@ export function mergeApprovedValuationTemplate(
   });
 
   const included = new Set(doc.sections.filter((s) => s.included).map((s) => s.number));
-  // قاعدة n (11ل): with weighting, the rationale becomes the weighting table's
+  // Rule n (11l): with weighting, the rationale becomes the weighting table's
   // last row (section 16) — the standalone section 15 table drops out.
   if (isMultiMethod(doc)) included.delete(15);
 
@@ -526,9 +526,9 @@ export function mergeApprovedValuationTemplate(
   applyLetterheadSlices(dom, doc.letterheadImageUrl, doc);
   applyStampSize(dom, doc.stampWidthCm, doc.stampHeightCm);
 
- // محرك الصف التلقائي : لا توزيع يدويًا —
-  // القسم وحدة لا تنشطر بين صفحتين، وما لا يتسع ينزل لبداية الصفحة التالية،
-  // وحذف الشرطيات يسحب ما بعدها، وصفحات المرفقات حاويات صفحة كاملة.
+ // Automatic page-flow engine: no manual pagination —
+  // a section stays on one page; overflow starts on the next page;
+  // removing conditionals pulls following content up; attachment pages are full-page containers.
   reflowSheets(dom);
 
   const printBtn = dom.createElement("p");
@@ -564,8 +564,8 @@ export async function openApprovedValuationReportPreview(
   templateUrl = doc.approvedTemplateUrl || "/ejadah/report-template-approved.html",
 ): Promise<void> {
   const merged = await buildApprovedValuationReportHtml(doc, extras, templateUrl);
-  // «noopener» ضمن الخصائص يجعل window.open يعيد null بحكم المواصفة — نحتاج المقبض
-  // للكتابة، ونقطع صلة opener يدوياً بعده.
+  // "noopener" in features makes window.open return null per spec — we need the handle
+  // to write, then clear opener manually afterward.
   const w = window.open("", "_blank", "width=980,height=1100");
   if (!w) throw new Error("المتصفح منع فتح نافذة استعراض تقرير التقييم");
   w.opener = null;

@@ -26,7 +26,7 @@ public static class MarketAdjustmentFactorKeys
     public static readonly string[] StandardSequential =
         [Financing, Market, TransactionType];
 
-    /// <summary>مواصفة النموذج التفاعلي: المساحة الآلية + أربعة عوامل اختلاف افتراضية (الموقع، الجذب، الوصول، عدد الشوارع).</summary>
+    /// <summary>Interactive model specification: automated space + four virtual differentiators (location, attraction, access, number of streets).</summary>
     public static readonly string[] DefaultDifferenceFactors =
     [
         Area,
@@ -36,7 +36,7 @@ public static class MarketAdjustmentFactorKeys
         StreetCount,
     ];
 
-    /// <summary>كتالوج إضافي — يُضاف من الواجهة عند الحاجة (يشمل المساحة المثالية وأطوال الشوارع).</summary>
+    /// <summary>Additional catalog — added from the interface when needed (includes ideal area and street lengths).</summary>
     public static readonly string[] CatalogExtraDifferenceFactors =
     [
         IdealArea,

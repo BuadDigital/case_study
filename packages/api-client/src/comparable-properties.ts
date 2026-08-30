@@ -15,7 +15,7 @@ export type ComparablePropertyDto = {
   id: string;
   referenceCode: string;
   comparablePropertyType: string;
-  /** استخدام المقارن — قائمة مغلقة (ق-3/5). */
+  /** Comparable use — closed list (Q-3/5). */
   usage: string;
   transactionKind: string;
   transactionKindLabelAr: string;
@@ -23,7 +23,7 @@ export type ComparablePropertyDto = {
   priceDescriptionLabelAr: string;
   source: string;
   listingNumber?: string | null;
-  /** ق-3/3: مرجع صفقة البورصة للمنفّذ. */
+  /** Q-3/3: bourse deal reference for executed comps. */
   transactionReference?: string | null;
   advertiserPhone?: string | null;
   listingImageFileName?: string | null;
@@ -46,23 +46,23 @@ export type ComparablePropertyDto = {
   sourceWorkOrderNumber?: string | null;
   sourcePropertyId?: string | null;
   isActive: boolean;
-  /** ق-3: وسوم الجودة البشرية — normal | anomalous | unreliable. */
+  /** Q-3: human quality tags — normal | anomalous | unreliable. */
   reliabilityTag: string;
   reliabilityTagLabelAr: string;
   isDuplicateTagged: boolean;
   tagRationale?: string | null;
   taggedByUserId?: string | null;
   taggedAtUtc?: string | null;
-  /** موسوم فيُستبعد من الاقتراحات ويُميَّز بصرياً. */
+  /** Tagged so it is excluded from suggestions and highlighted visually. */
   isExcludedFromSuggestions: boolean;
-  /** اشتباه تكرار آلي (سجل آخر بنفس الموقع) — اقتراح فقط. */
+  /** Suspected automatic duplicate (another record at same location) — suggestion only. */
   duplicateSuspect: boolean;
   createdAtUtc: string;
   updatedAtUtc: string;
   sourceCard: ComparableSourceCardDto;
 };
 
-/** ق-3: وضع/تحديث وسوم الجودة بمبرر — السجل يبقى. */
+/** Q-3: set/update quality tags with reason — record remains. */
 export type SaveComparableQualityTagsRequest = {
   reliabilityTag: string;
   isDuplicateTagged: boolean;
@@ -71,13 +71,13 @@ export type SaveComparableQualityTagsRequest = {
 
 export type UpsertComparablePropertyRequest = {
   comparablePropertyType: string;
-  /** استخدام المقارن — قائمة مغلقة (ق-3/5). */
+  /** Comparable use — closed list (Q-3/5). */
   usage?: string | null;
   transactionKind: string;
   priceDescription?: string | null;
   source: string;
   listingNumber?: string | null;
-  /** ق-3/3: مرجع الصفقة — للمنفّذ. */
+  /** Q-3/3: deal reference — for executed comps. */
   transactionReference?: string | null;
   advertiserPhone?: string | null;
   listingImageFileName?: string | null;
@@ -109,7 +109,7 @@ export type ComparablePropertyListQuery = {
   toDate?: string;
   includeInactive?: boolean;
   take?: number;
-  /** مواصفة-طريقة-المقارنة: أولوية ميداني لهذا العقار. */
+  /** Comparison-method spec: field priority for this property. */
   forPropertyId?: string;
 };
 
@@ -308,7 +308,7 @@ export async function updateComparableProperty(
   }
 }
 
-/** ق-3: وسوم الجودة البشرية — يضعها ذو صفة بمبرر، والسجل يبقى موسوماً. */
+/** Q-3: human quality tags — set by an authorized user with reason; record stays tagged. */
 export async function setComparableQualityTags(
   config: ComparablePropertiesApiConfig,
   id: string,

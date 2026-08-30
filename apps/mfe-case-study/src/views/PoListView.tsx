@@ -168,7 +168,7 @@ function HoverPortalCard({
     placeCard();
     raf = requestAnimationFrame(placeCard);
     window.addEventListener("resize", placeCard);
-    // passive: المستمع لا يمنع التمرير — يسمح للمتصفح بعدم انتظاره (client-passive-event-listeners).
+    // passive: listener does not block scroll — lets the browser skip waiting on it (client-passive-event-listeners).
     window.addEventListener("scroll", placeCard, { capture: true, passive: true });
     return () => {
       cancelAnimationFrame(raf);
@@ -287,7 +287,7 @@ function isDueWithin48(iso: string): boolean {
   return due >= now && due <= now + 2 * 24 * 60 * 60 * 1000;
 }
 
-/** خلفية شريط التقدم — أخضر عند ≥60٪، ذهبي عند وجود تقدم، شفاف عند الصفر. */
+/** Progress-bar fill — green at ≥60%, gold when any progress, transparent at zero. */
 function progFill(pct: number): string {
   if (pct >= 60) return "linear-gradient(90deg, var(--ink), var(--navy-3))";
   if (pct > 0) return "linear-gradient(90deg, var(--gold-d), var(--gold))";
@@ -426,7 +426,7 @@ export function PoListView() {
     }
     return counts;
   }, [deedIndex]);
-  // الإدخال فوري والترشيح مؤجل إطاراً — ترشيح محلي بحت (rerender-use-deferred-value).
+  // Input is immediate; filtering is deferred one frame — local only (rerender-use-deferred-value).
   const deferredSearch = useDeferredValue(search);
   const searchMode = useMemo(() => classifyPoListSearch(search), [search]);
   const deferredSearchMode = useMemo(
@@ -438,7 +438,7 @@ export function PoListView() {
 
   const kpi = useMemo(() => {
     if (!statsReady) return undefined;
-    // مسار واحد على القائمة يحسب العدّادات الأربعة (js-combine-iterations).
+    // One pass over the list computes the four counters (js-combine-iterations).
     let active = 0;
     let overdue = 0;
     let dueSoon = 0;
@@ -470,7 +470,7 @@ export function PoListView() {
       return matchStatus && matchType;
     });
 
-    // فهرس ترتيب واحد بدل findIndex داخل المقارن — كان O(n²·log n) (js-index-maps).
+    // One order index instead of findIndex inside the comparator — was O(n²·log n) (js-index-maps).
     const orderById = new Map(list.map((r, i) => [r.id, i]));
     result = [...result].sort((a, b) => {
       const rowA = a.view === "po" ? a.item.row : a.item.row;

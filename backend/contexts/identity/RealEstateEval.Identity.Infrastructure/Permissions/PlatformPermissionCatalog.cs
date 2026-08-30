@@ -62,7 +62,7 @@ public static class PlatformPermissionCatalog
             "party-fees",
             "fee-pricing",
         ],
- // مطابقة المشرف (صفحات + أتعاب + تسعيرة) — بلا financial / manage-financial
+ // Supervisor matching (pages + fees + Pricing) — none financial / manage-financial
         ["case-specialist"] =
         [
             "po", "property-map", "favorites", "active-primary-data", "bourse-inquiry", "active-distribution",
@@ -112,7 +112,7 @@ public static class PlatformPermissionCatalog
             "manage-failures", "manage-work-orders", "submit-party-work",
             "manage-attachments", "manage-operations", "courts.manage",
         ],
- // مطابقة قدرات المشرف بدون manage-financial
+ // Match admin capabilities without manage-financial
         ["case-specialist"] =
         [
             "manage-failures", "manage-work-orders", "submit-party-work",

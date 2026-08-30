@@ -5,7 +5,7 @@ import type { RoleId } from "@platform/types";
 import type { PoIntakeRecord } from "./po-intake-data";
 import type { WorkflowTask } from "./tasks-storage";
 
-/** POs where أخصائي الإسناد matches the signed-in user (case-study property tasks only). */
+/** POs where the assignment specialist matches the signed-in user (case-study property tasks only). */
 export function filterTasksAssignedToSpecialist(
   tasks: WorkflowTask[],
   poByNumber: Map<string, PoIntakeRecord>,

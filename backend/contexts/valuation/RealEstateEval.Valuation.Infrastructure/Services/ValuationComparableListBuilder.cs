@@ -14,14 +14,14 @@ using RealEstateEval.Valuation.Infrastructure.Data;
 namespace RealEstateEval.Valuation.Infrastructure.Services;
 
 /// <summary>
-/// دوال نقية لبناء قوائم المقارنات وتسويات السوق — منقولة من خدمة اختيار المقارنات.
+/// Pure helpers for building comparable lists and market adjustments — moved from selection service.
 /// </summary>
 internal static class ValuationComparableListBuilder
 {
     /// <summary>
-    /// يضمن عوامل الاختلاف الافتراضية فقط (المساحة + الأربعة القياسية) — عوامل الكتالوج
-    /// تُضاف من الواجهة عند الحاجة. الإضافة عبر DbSet صراحةً: الإضافة عبر مجموعة التنقّل
-    /// بمعرّفات مولّدة مسبقاً يعتبرها EF تعديلاً لصفوف غير موجودة (UPDATE يصيب صفر صفوف → 409).
+    /// Ensures default difference factors only (area + the four standard ones) — catalog factors
+    /// are added from the UI when needed. Add via DbSet explicitly: adding via the navigation
+    /// with pre-generated ids is treated by EF as updating missing rows (UPDATE hits 0 rows → 409).
     /// </summary>
     public static void EnsureDifferenceFactorLines(
         ValuationDbContext db,
@@ -75,7 +75,7 @@ internal static class ValuationComparableListBuilder
                 .Where(r => comps.ContainsKey(r.ComparablePropertyId))
                 .Select(r => EffectiveCompValues(r, comps[r.ComparablePropertyId]).Area));
 
-        // أوزان المقارنات من مجموع عوامل الاختلاف فقط (areaAdj + Σ) — لا التسويات التسلسلية.
+        // Comparable weights from difference-factor sum only (areaAdj + Σ) — not sequential adjustments.
         var factorsSums = adoptedRows
             .Select(r =>
             {
@@ -96,8 +96,8 @@ internal static class ValuationComparableListBuilder
                 return areaAdj + otherDiff;
             })
             .ToList();
-        // مواصفة النموذج التفاعلي: الاقتراح الآلي كما هو (وحدات ٥٪)؛ التجاوز اليدوي يحل محل
-        // صف واحد فقط، واختلال المجموع عن ١٠٠٪ يظهر تنبيهاً يعالجه المقيّم بنفسه.
+        // Interactive model spec: automatic suggestion as-is (5% units); manual override replaces
+        // one row only; sum ≠ 100% shows an alert the valuer resolves themselves.
         var suggested = MarketApproachRules.SuggestWeights(factorsSums);
         var basis = MarketAdjustmentBasisKeys.Normalize(header?.AdjustmentBasis);
 
@@ -155,8 +155,8 @@ internal static class ValuationComparableListBuilder
         var area = header?.SubjectAreaSqm;
         var roundDecimals = header?.ValueRoundDecimals
             ?? MarketApproachRules.DefaultValueRoundDecimals;
- // : whole-property basis yields the opinion directly — «دون ضرب في المساحة».
-        // منطق-التكلفة §٣: مخرج الأسلوب خام بلا تقريب — التقريب مرة واحدة بعد التوفيق.
+ // : whole-property basis yields the opinion directly — "without multiplying by area".
+        // Cost logic §3: approach output is raw without rounding — round once after reconciliation.
         var opinionRaw = basis == MarketAdjustmentBasisKeys.WholeProperty
             ? weighted
             : area is > 0m
@@ -197,7 +197,7 @@ internal static class ValuationComparableListBuilder
         };
     }
 
- /// <summary>compEdit: القيم الفعلية للمقارن بعد تجاوزات هذا التقييم — سعر المتر = الإجمالي ÷ المساحة.</summary>
+ /// <summary>compEdit: effective comparable values after this valuation's overrides — unit price = total ÷ area.</summary>
     public static (decimal Total, decimal Area, decimal Unit) EffectiveCompValues(
         ValuationComparableSelection row,
         ComparableProperty comp)
@@ -275,7 +275,7 @@ internal static class ValuationComparableListBuilder
                 l.FactorKey == MarketAdjustmentFactorKeys.Area ? areaAdj : l.Percent)
             .ToList();
 
- // : the chain runs on the whole deal price or the unit rate per the basis (بعد تجاوزات compEdit).
+ // : the chain runs on the whole deal price or the unit rate per the basis (after compEdit overrides).
         var baseAmount = adjustmentBasis == MarketAdjustmentBasisKeys.WholeProperty
             ? eff.Total
             : eff.Unit;
@@ -306,7 +306,7 @@ internal static class ValuationComparableListBuilder
                                 suggestedMarket,
                                 suggestedKind)
                             : l.Percent;
-                    // «مقترح حتى يُتجاوز»: نوع المقارن بلا نسبة مدخلة يعرض الافتراضي بأسلوب مقترح.
+                    // "Suggested until overridden": comparable kind without an entered % shows the default as suggested.
                     var isSuggested =
                         l.FactorKey == MarketAdjustmentFactorKeys.TransactionType
                         && l.Percent == 0m;

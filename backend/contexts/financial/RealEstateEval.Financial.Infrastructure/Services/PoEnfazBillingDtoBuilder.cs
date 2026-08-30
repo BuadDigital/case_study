@@ -20,12 +20,12 @@ internal static class PoEnfazBillingDtoBuilder
         var billable = lines
             .Where(l => l.WorkStatus == InspectorFeeWorkStatuses.Done && l.IncludedInBilling)
             .ToList();
- // ضريبة 15٪ على (تقييم + رفع) فقط — أتعاب المفاتيح شاملة الضريبة
+ // 15% VAT on (valuation + survey) only — key-receipt fees are tax-inclusive
         var taxable = billable.Sum(l => l.CaseStudyFeeSar + l.SurveyFeeSar);
         var keyFees = billable.Sum(l => l.KeyFeeSar);
         var vat = Math.Round(taxable * VatRate, 2, MidpointRounding.AwayFromZero);
         var total = taxable + vat + keyFees;
- // SubtotalSar = الأتعاب الخاضعة للضريبة (تقييم+رفع) — للتوافق مع واجهة الملخص
+ // SubtotalSar = taxable fees (valuation + survey) — kept for summary UI compatibility
         var subtotal = taxable;
         var collected = invoice?.CollectedAmountSar ?? 0m;
         var status = invoice?.Status;

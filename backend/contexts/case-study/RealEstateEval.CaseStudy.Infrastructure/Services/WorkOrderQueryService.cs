@@ -236,7 +236,7 @@ public sealed class WorkOrderQueryService : IWorkOrderQuery
     {
  // Only properties whose case-study task is currently in the bourse phase.
  // After revert to enfath, BourseDataCompleted stays false — without the phase
- // check the row would incorrectly remain on استعلام البورصة.
+ // check the row would incorrectly remain on bourse inquiry.
         var list = await _db.WorkOrderProperties
             .AsNoTracking()
             .Include(p => p.WorkOrder)

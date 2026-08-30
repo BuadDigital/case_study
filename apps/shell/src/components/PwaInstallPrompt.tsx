@@ -53,7 +53,7 @@ export function PwaInstallPrompt() {
   );
   const [visible, setVisible] = useState(false);
   const [iosTip, setIosTip] = useState(false);
-  /** Stop re-showing when Chrome re-fires beforeinstallprompt after "لاحقاً". */
+  /** Stop re-showing when Chrome re-fires beforeinstallprompt after "Later". */
   const dismissedRef = useRef(false);
 
   useEffect(() => {

@@ -2,8 +2,8 @@ import { getApiBase } from "./api-base";
 import { repositoryFetch as fetch } from "./write-repository";
 import { parseJson } from "./parse-json";
 
-// سجل المستندات المرقّمة (قرار 25 + ورشة الترقيم): الخطابات LT وتقارير
-// دراسة الحالة CS — التخصيص لحظة الطباعة والقيد في السجل.
+// Numbered documents register (Decision 25 + numbering workshop): LT letters and
+// CS case-study reports — allocate at print time and record in the register.
 export type NumberedDocumentKind = "letter" | "case-study-report";
 
 export type NumberedDocumentDto = {

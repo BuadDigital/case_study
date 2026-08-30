@@ -56,7 +56,7 @@ public static class DeedNumberRules
         if (n.Length > 0)
         {
             set.Add(n);
- // Probe Eastern Arabic-Indic forms so DB rows with ٠-٩ still match.
+ // Probe Eastern Arabic-Indic forms so DB rows with Eastern digits still match.
             set.Add(ToArabicIndic(n, eastern: false));
             set.Add(ToArabicIndic(n, eastern: true));
         }

@@ -78,7 +78,7 @@ export function AuthSessionWatcher() {
     };
   }, [router, role]);
 
-  // مخفي ← ظاهر فقط: القراءة اللحظية للحالة كانت ستفحص الجلسة عند التركيب أيضاً.
+  // Hidden → visible only: reading visibility state would also check the session on mount.
   useEffect(() => {
     const wasVisible = wasVisibleRef.current;
     wasVisibleRef.current = visible;

@@ -1,7 +1,7 @@
 namespace RealEstateEval.Operations.Domain;
 
 /// <summary>
-/// Operational task (طبقة المهام) — distinct from workflow party tasks. The status machine is
+/// Operational task — distinct from workflow party tasks. The machine status is
 /// owned here: created → in progress → completed, with pause and cancel as supervisor exits and
 /// nothing leaving a terminal status.
 /// </summary>
@@ -61,7 +61,7 @@ public class OperationsTask
  /// <summary>Who receives execution credit at close (defaults to original / current assignee).</summary>
     public string? CreditAssigneeId { get; private set; }
     public string? CreditAssigneeName { get; private set; }
- /// <summary>UTC when the assignee confirmed receipt («تأكيد الاستلام»).</summary>
+ /// <summary>UTC when the assignee confirmed receipt (“Confirm receipt”).</summary>
     public DateTime? ReceiptConfirmedAtUtc { get; private set; }
  /// <summary>Required when status becomes cancelled.</summary>
     public string? CancelReason { get; private set; }
@@ -118,7 +118,7 @@ public class OperationsTask
 
  /// <summary>
  /// The legal status edges. Manual resume is always <see cref="OperationsTaskStatus.InProgress"/>.
- /// After a property-failure (تعذر) lift, tasks may reopen as <see cref="OperationsTaskStatus.Created"/>
+ /// After a property-failure lift, tasks may reopen as <see cref="OperationsTaskStatus.Created"/>
  /// so the assignee re-confirms receipt from the start.
  /// </summary>
     public static bool IsLegalTransition(OperationsTaskStatus from, OperationsTaskStatus to) =>

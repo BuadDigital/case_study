@@ -7,7 +7,7 @@ using RealEstateEval.Infrastructure.Data.Contexts;
 namespace RealEstateEval.Valuation.Infrastructure.Data.Contexts.Valuation.Migrations;
 
 /// <summary>
-/// نطاق التقييم بالتكلفة (مواصفة النموذج التفاعلي): أرض ومبنى (الافتراضي) أو مبنى فقط.
+/// Cost valuation scope (interactive model spec): land and building (default) or building only.
 /// </summary>
 [DbContext(typeof(ValuationDbContext))]
 [Migration("20260826160000_AddCostScopeToApproachSettings")]

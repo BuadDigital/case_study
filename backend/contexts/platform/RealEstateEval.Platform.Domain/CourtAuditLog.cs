@@ -1,10 +1,10 @@
 namespace RealEstateEval.Platform.Domain;
 
-/// <summary>سجل تدقيق لعمليات إدارة المحاكم والدوائر.</summary>
+/// <summary>Audit Log for court and circuit management operations.</summary>
 public class CourtAuditLog
 {
     public Guid Id { get; set; }
- /// <summary>مثل COURT_CREATED / CIRCUIT_ACTIVATED.</summary>
+ /// <summary>Such as COURT_CREATED / CIRCUIT_ACTIVATED.</summary>
     public string Action { get; set; } = "";
  /// <summary>court | circuit</summary>
     public string EntityType { get; set; } = "";

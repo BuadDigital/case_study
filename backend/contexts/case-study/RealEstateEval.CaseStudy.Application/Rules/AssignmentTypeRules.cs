@@ -3,12 +3,12 @@ namespace RealEstateEval.CaseStudy.Application.Rules;
 using RealEstateEval.Domain;
 
 /// <summary>
-/// قواعد أنواع الإسناد حسب مواصفة v2 (وسوم مركّبة على قيمة AssignmentType الحالية):
-/// تنفيذ = تنفيذ/تنفيذ، تركات = تنفيذ/تركات، قطاع خاص = خاص/خاص.
+/// AssignmentType rules according to the v2 specification (tags based on the current AssignmentType value):
+/// Implementation = execution/execution, estates = execution/inheritance, private sector = private/private.
 /// </summary>
 public static class AssignmentTypeRules
 {
- /// <summary>مسار المحكمة: رقم الطلب + محكمة/دائرة + قرار إسناد + زيارات/مفاتيح.</summary>
+ /// <summary>Court path: order number + court/circuit + Assignment Decision + visits/keys.</summary>
     public static bool IsCourtPath(AssignmentType type) =>
         type == AssignmentType.Execution;
 
@@ -21,7 +21,7 @@ public static class AssignmentTypeRules
     public static bool RequiresCourtAndCircuit(AssignmentType type) =>
         IsCourtPath(type);
 
- /// <summary>ضابط الاتصال إجباري في التنفيذ والتركات، اختياري في الخاص.</summary>
+ /// <summary>The liaison officer is mandatory in execution and estates, optional in private.</summary>
     public static bool RequiresContacts(AssignmentType type) =>
         type != AssignmentType.PrivateSector;
 
@@ -39,6 +39,6 @@ public static class AssignmentTypeRules
             ? Math.Max(1, privateSectorBusinessDays)
             : Math.Max(1, defaultBusinessDays);
 
-    // PrimaryLabel/SecondaryLabel/CompositeTag حُذفت: صفر مستدعين، وكانت تستخدم
-    // «خاص» بينما التسمية القانونية «قطاع خاص» في AssignmentTypeLabels.
+    // PrimaryLabel/SecondaryLabel/CompositeTag deleted: zero callers, was using
+    // “Private” while the legal designation is “Private Sector” in AssignmentTypeLabels.
 }

@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { createRoot, type Root } from "react-dom/client";
 import { useQuery } from "@tanstack/react-query";
 import { Button, Spinner } from "@platform/ui-kit";
 import { ensureOrganizationSettingsLoaded } from "@platform/app-shared/organization/organization-settings-cache";
@@ -44,6 +45,8 @@ import {
   loadValuationReportPrintAttachments,
   type ValuationReportSlotAttachment,
 } from "../../lib/evaluator/valuation-report-print-attachments";
+import type { ComparablesMapPin } from "../../lib/evaluator/valuation-report-comparables-map";
+import { ComparablesGoogleMap } from "./ComparablesGoogleMap";
 
 type ValuationApiConfig = { token: string; baseUrl: string };
 
@@ -86,7 +89,7 @@ async function loadValuationApproaches(
   };
 }
 
-// مراجع ثابتة — [] جديدة كل تصيير كانت ستهزّ اعتماديات buildReportMeta.
+// Stable refs — a fresh [] each render would invalidate buildReportMeta deps.
 const EMPTY_OUTPUT_CLIENTS: ClientDto[] = [];
 const EMPTY_INVENTORY_LINES: BuildingInventoryLineDto[] = [];
 const EMPTY_PHOTO_SLOTS: ValuationReportSlotAttachment[] = [];
@@ -141,8 +144,8 @@ function effectiveValuationDate(input: {
   return (input.inspector?.inspectionDate ?? "").trim();
 }
 
-/** حِزمة بيانات تبويب مخرجات التقرير — استعلام واحد قابل للتخزين المؤقت:
- * التنقل بين التبويبات خلال staleTime لا يعيد إطلاق ٧+ نداءات. */
+/** Valuation report output-tab data bundle — one cacheable query:
+ * switching tabs within staleTime does not re-fire 7+ requests. */
 async function loadReportOutputBundle(input: {
   property: PoPropertyIntake | null | undefined;
   poNumber: string;
@@ -184,7 +187,7 @@ async function loadReportOutputBundle(input: {
   const surveyP = input.surveyTaskId
     ? getPartyTaskSubmission(config, input.surveyTaskId)
     : Promise.resolve(null);
-  // صور المعاينة مرتبطة بمعرّف المهمة — تُجمع من مسودة المعاين وتُمرَّر للمحمّل.
+  // Inspection photos are tied to the task id — collected from the inspector draft and passed to the loader.
   const attachmentsP = inspectorP.then((ws) =>
     propertyId
       ? loadValuationReportPrintAttachments(config, propertyId, true, {
@@ -232,7 +235,7 @@ export function EvaluatorValuationReportOutputTab({
   property?: PoPropertyIntake | null;
   inspectionTaskId?: string | null;
   surveyTaskId?: string | null;
-  /** من توزيع المعاملات — يُطبع عموداً رابعاً في المشاركين. */
+  /** From work-order dispatch — printed as a fourth participants column. */
   assignedAppraiserName?: string | null;
 }) {
   const [screenHtml, setScreenHtml] = useState<string | null>(null);
@@ -264,8 +267,8 @@ export function EvaluatorValuationReportOutputTab({
   });
   const outputBundle = outputQuery.data;
 
-  // اشتقاق مباشر من الحزمة — كانت ١٢ مراية state يكتبها مؤثر واحد، وكائن
-  // listLabels الجديد كل مرة كان يهزّ buildReportMeta فيولّد التقرير مرتين
+  // Derive directly from the bundle — previously 12 state mirrors from one effect, and a new
+  // listLabels object each time invalidated buildReportMeta and built the report twice
   // (rerender-derived-state-no-effect).
   const inspector = outputBundle?.inspector ?? null;
   const inventoryLines = outputBundle?.inventoryLines ?? EMPTY_INVENTORY_LINES;
@@ -321,7 +324,7 @@ export function EvaluatorValuationReportOutputTab({
       : attach.photos;
   }, [outputBundle, property?.classification, property?.propertyType]);
 
-  /** جسم طلب التقرير المشترك بين معاينة الشاشة ونسخة الطباعة — كان منسوخاً بالكامل (~70 سطراً). */
+  /** Shared report request body for on-screen preview and print — was fully duplicated (~70 lines). */
   const buildReportMeta = useCallback(
     (loaded: Awaited<ReturnType<typeof ensureOrganizationSettingsLoaded>>) => {
       const ev = loaded?.evaluator ?? {};
@@ -329,7 +332,7 @@ export function EvaluatorValuationReportOutputTab({
       return {
         reportNo: draft.reportNo,
         reportDate: draft.appraisalDate || draft.reportIssueDate,
-        // رمز الإيداع: المسودة أولاً ثم ما حفظته شاشة إيداع نفاذ لهذا العقار.
+        // Deposit code: draft first, then what the Enfaz deposit screen saved for this property.
         depositCode:
           draft.depositCode || loadInfathDeposit(property?.id ?? "").depositCode,
         live: buildValuationReportLiveFill({
@@ -347,7 +350,7 @@ export function EvaluatorValuationReportOutputTab({
           basisLabel: listLabels.basis,
           premiseLabel: listLabels.premise,
           basisDefinition: listLabels.basisDefinition,
-          // بلا احتياطي عيّنة — إعدادات المنشأة أو «—» في التقرير.
+          // No sample fallback — org settings or "—" in the report.
           certifiedName: ev.name,
           certifiedLicense: ev.licenseNumber,
           certifiedMembershipNumber: ev.membershipNumber,
@@ -420,8 +423,8 @@ export function EvaluatorValuationReportOutputTab({
 
   useEffect(() => {
     if (draft.poNumber && poQuery.isPending) return;
-    // لا توليد للتقرير قبل وصول حزمة المخرجات — كان يُبنى مرة بحقول فارغة
-    // ثم يُعاد بناؤه كاملاً عند وصول البيانات (async-cheap-condition-before-await).
+    // Do not build the report before the output bundle arrives — previously built empty
+    // then fully rebuilt when data arrived (async-cheap-condition-before-await).
     if (!outputQuery.isSuccess) return;
     let cancelled = false;
     setError(null);
@@ -485,6 +488,71 @@ export function EvaluatorValuationReportOutputTab({
       setPrinting(false);
     }
   }, [buildReportMeta, org]);
+
+  useEffect(() => {
+    if (!screenHtml) return;
+    const reportRoot = document.querySelector(".rpt-ref");
+    if (!reportRoot) return;
+
+    const hostNodes = [
+      ...reportRoot.querySelectorAll<HTMLElement>("[data-ejada-gmap]"),
+    ];
+    const roots: Root[] = [];
+
+    for (const host of hostNodes) {
+      const mount =
+        host.querySelector<HTMLElement>(".ejada-gmap-mount") ?? host;
+      let pins: ComparablesMapPin[] = [];
+      try {
+        pins = JSON.parse(
+          host.getAttribute("data-pins") || "[]",
+        ) as ComparablesMapPin[];
+      } catch {
+        pins = [];
+      }
+      if (!pins.length) continue;
+
+      const lat = Number(host.getAttribute("data-lat"));
+      const lng = Number(host.getAttribute("data-lng"));
+      const zoomAttr = host.getAttribute("data-zoom");
+      const zoom =
+        zoomAttr != null && zoomAttr !== "" ? Number(zoomAttr) : undefined;
+      const mapTypeAttr = host.getAttribute("data-map-type");
+      const mapTypeId =
+        mapTypeAttr === "satellite" ||
+        mapTypeAttr === "roadmap" ||
+        mapTypeAttr === "terrain" ||
+        mapTypeAttr === "hybrid"
+          ? mapTypeAttr
+          : "hybrid";
+
+      const root = createRoot(mount);
+      root.render(
+        <ComparablesGoogleMap
+          pins={pins}
+          zoom={Number.isFinite(zoom) ? zoom : undefined}
+          mapTypeId={mapTypeId}
+          centerLat={Number.isFinite(lat) ? lat : undefined}
+          centerLng={Number.isFinite(lng) ? lng : undefined}
+        />,
+      );
+      roots.push(root);
+    }
+    return () => {
+      // Defer: unmounting createRoot during an in-flight React render races
+      // with dangerouslySetInnerHTML replacing the host nodes.
+      const pending = roots.splice(0, roots.length);
+      queueMicrotask(() => {
+        for (const root of pending) {
+          try {
+            root.unmount();
+          } catch {
+            /* host already detached */
+          }
+        }
+      });
+    };
+  }, [screenHtml]);
 
   if (error && !screenHtml) {
     return <p className="m-0 text-[13px] text-[#b42318]">{error}</p>;

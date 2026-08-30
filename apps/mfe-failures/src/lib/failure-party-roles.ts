@@ -1,7 +1,7 @@
 import type { PartyTaskPageDef } from "@platform/app-shared/prototype/party-task-pages";
 import type { WorkflowTaskKind } from "@case-study/mfe/lib/prototype/tasks-storage";
 
-/** أسماء الأطراف كما في وثيقة التعذرات. */
+/** Party names as in the failures document. */
 export const FAILURE_RAISER_LABEL_BY_KIND: Partial<
   Record<WorkflowTaskKind, string>
 > = {

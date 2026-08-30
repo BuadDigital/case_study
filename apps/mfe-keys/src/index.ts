@@ -1,4 +1,4 @@
-/** @keys/mfe — إدارة المفاتيح */
+/** @keys/mfe — keys management */
 
 export { KeysView } from "./views/KeysView";
 

@@ -1,29 +1,22 @@
-const STORAGE_PREFIX = "infath-deposit:";
+import {
+  loadSpecialistReportExtrasBag,
+  patchSpecialistReportExtras,
+} from "@platform/app-shared/storage/specialist-report-extras-sync";
 
 export type InfathDepositDraft = {
   depositCode: string;
   depositCertificateName: string;
 };
 
-function storageKey(propertyId: string): string {
-  return `${STORAGE_PREFIX}${propertyId}`;
-}
-
 export function loadInfathDeposit(propertyId: string): InfathDepositDraft {
   if (typeof window === "undefined" || !propertyId.trim()) {
     return { depositCode: "", depositCertificateName: "" };
   }
-  try {
-    const raw = window.localStorage.getItem(storageKey(propertyId));
-    if (!raw) return { depositCode: "", depositCertificateName: "" };
-    const parsed = JSON.parse(raw) as Partial<InfathDepositDraft>;
-    return {
-      depositCode: String(parsed.depositCode ?? "").trim(),
-      depositCertificateName: String(parsed.depositCertificateName ?? "").trim(),
-    };
-  } catch {
-    return { depositCode: "", depositCertificateName: "" };
-  }
+  const parsed = loadSpecialistReportExtrasBag(propertyId).infathDeposit ?? {};
+  return {
+    depositCode: String(parsed.depositCode ?? "").trim(),
+    depositCertificateName: String(parsed.depositCertificateName ?? "").trim(),
+  };
 }
 
 export function saveInfathDeposit(
@@ -31,11 +24,10 @@ export function saveInfathDeposit(
   draft: InfathDepositDraft,
 ): void {
   if (typeof window === "undefined" || !propertyId.trim()) return;
-  window.localStorage.setItem(
-    storageKey(propertyId),
-    JSON.stringify({
+  patchSpecialistReportExtras(propertyId, {
+    infathDeposit: {
       depositCode: draft.depositCode.trim(),
       depositCertificateName: draft.depositCertificateName.trim(),
-    }),
-  );
+    },
+  });
 }

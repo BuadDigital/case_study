@@ -18,7 +18,7 @@ public static class IdentityModel
 {
     public static ModelBuilder ApplyIdentityModel(this ModelBuilder builder)
     {
- // ورشة الترقيم: عدّادات US السنوية محلية في مخطط identity.
+ // Numbering workshop: annual US counters local to the identity schema.
         builder.ApplyReferenceSequenceModel(DatabaseSchemas.Identity);
 
         builder.Entity<ApplicationUser>(e =>

@@ -3,7 +3,7 @@ import { getApiBase } from "./api-base";
 import { repositoryFetch as fetch } from "./write-repository";
 import type { ApiErr, ApiOk, WorkOrdersApiConfig } from "./work-orders";
 
-/** نطاق المعاينة (القرار 24): كاملة · خارجية فقط · مكتبية عن بُعد. */
+/** Inspection scope (Decision 24): full · external only · desktop remote. */
 export type InspectionScopeKey = "full" | "external" | "desktop";
 
 export type UninspectedUnitEntryDto = {
@@ -11,18 +11,18 @@ export type UninspectedUnitEntryDto = {
   reason: string;
 };
 
-/** حدود المعاينة (القرار 24 + ق-7) — مدخلات منظّمة يعبّئها المعاين. */
+/** Inspection limits (Decision 24 + Q-7) — structured inputs filled by the inspector. */
 export type InspectionLimitsDto = {
   propertyId: string;
-  /** full | external | desktop | "" (لم يُلتقط بعد). */
+  /** full | external | desktop | "" (not captured yet). */
   inspectionScopeKey: InspectionScopeKey | "" | string;
   inspectionScopeLabelAr: string;
   inspectionRestrictionReason?: string | null;
   uninspectedUnits: UninspectedUnitEntryDto[];
   totalUninspectedUnits: number;
-  /** نص التحفّظ المركّب آلياً — يدخل الافتراضات الخاصة. */
+  /** Auto-composed caveat text — feeds special assumptions. */
   reservationTextAr: string;
-  /** ق-7 — اعتماد المقيّم المعتمد لنطاق «مكتبية عن بُعد». */
+  /** Q-7 — certified valuer approval for desktop-remote scope. */
   remoteInspectionApprovedBy?: string | null;
   remoteInspectionApprovedAtUtc?: string | null;
   remoteInspectionApproved: boolean;

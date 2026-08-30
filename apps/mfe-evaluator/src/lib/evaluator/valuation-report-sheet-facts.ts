@@ -63,7 +63,7 @@ export function yesNoFromFlag(value: string | null | undefined): string {
   return "";
 }
 
-/** Report sheet §11 uses يوجد / لا يوجد, not نعم / لا. */
+/** Report sheet §11 uses "exists" / "does not exist", not yes / no. */
 export function existsFromYesNo(value: string | null | undefined): string {
   const t = (value ?? "").trim();
   if (t === "نعم" || t === "يوجد") return "يوجد";
@@ -474,7 +474,7 @@ export function buildIndirectCostSheetRows(
   return { rows, totalLabel };
 }
 
-/** مواصفة النموذج التفاعلي: حتى ٥ مقارنات معتمدة تُطبع كاملة في التقرير. */
+/** Interactive form spec: up to 5 approved comparables print in full in the report. */
 export const MAX_REPORT_COMPARABLES = 5;
 
 export function adoptedComparables(
@@ -486,7 +486,7 @@ export function adoptedComparables(
     .slice(0, MAX_REPORT_COMPARABLES);
 }
 
-/** القيم الفعلية للمقارن بعد تجاوزات compEdit (سعر/مساحة هذا التقييم). */
+/** Effective comparable values after compEdit overrides (price/area for this valuation). */
 export function effectiveComparableValues(item: ValuationComparableSelectionDto) {
   return {
     price: item.effectivePriceSar ?? item.comparable.price,
@@ -550,7 +550,7 @@ function includedPct(
   return line ? formatSheetPct(line.percent) : "";
 }
 
-/** عمود لكل مقارن معتمد (حتى ٥) — وثلاثة أعمدة شرطات عند غياب المقارنات (هيكل القالب). */
+/** One column per approved comparable (up to 5) — three dash columns when none (template structure). */
 function compCols(
   comps: ValuationComparableSelectionDto[],
   pick: (item: ValuationComparableSelectionDto) => string,

@@ -140,7 +140,7 @@ function CompletionRing({
 
 /**
  * Case Study.html completion ring stages:
- * ST = البيانات الأساسية, مستندات, معاينة, مساحي, مراجعات, مفاتيح, تقييم, دراسة, إنفاذ
+ * ST = primary data, documents, inspection, survey, reviews, keys, valuation, case study, Infath
  * weight: 1 done · 0.5 in progress · 0 not started
  */
 
@@ -166,15 +166,15 @@ function estimateCaseStudyCompletion(args: {
   };
 
   const stages: number[] = [
-    1, // البيانات الأساسية — دائماً مكتمل في العرض
-    args.property.deedNumber.trim() ? 1 : 0.5, // مستندات العقار
-    stage(args.hasInspection, args.inspectionDone), // معاينة العقار
-    stage(args.hasSurvey, args.surveyDone), // التقرير المساحي
-    stage(args.hasGov, args.govDone, false), // المراجعات: 1 أو 0 مثل HTML
-    args.hasKeysHint ? 1 : 0, // مفاتيح العقار
-    stage(args.hasAppraisal, args.appraisalDone, false), // تقييم العقار
-    stage(args.hasCaseStudyTask, args.caseStudyDone), // دراسة العقار
-    args.enfathDone ? 1 : 0, // الرفع على إنفاذ
+    1, // Primary data — always complete in the display
+    args.property.deedNumber.trim() ? 1 : 0.5, // Property documents
+    stage(args.hasInspection, args.inspectionDone), // Property inspection
+    stage(args.hasSurvey, args.surveyDone), // Survey report
+    stage(args.hasGov, args.govDone, false), // Reviews: 1 or 0 like HTML
+    args.hasKeysHint ? 1 : 0, // Property keys
+    stage(args.hasAppraisal, args.appraisalDone, false), // Property valuation
+    stage(args.hasCaseStudyTask, args.caseStudyDone), // Property case study
+    args.enfathDone ? 1 : 0, // Upload to Infath
   ];
   const total = stages.length;
   const sum = stages.reduce((a, b) => a + b, 0);
@@ -311,7 +311,7 @@ export function PropertyDetailHero({
           </div>
 
           <div className="flex shrink-0 items-center gap-3 sm:gap-[18px]">
-            {/* ورشة الترقيم (بند البتّ 5): رقم المعاملة المرجعي يظهر لا يُخفى. */}
+            {/* Numbering workshop (decision item 5): the reference transaction number is shown, not hidden. */}
             {property.referenceNumber?.trim() ? (
               <div className="text-start">
                 <div className="mb-0.5 text-[11px] text-text-3">رقم المعاملة</div>
@@ -347,7 +347,7 @@ export function PropertyDetailHero({
         </div>
 
         {(() => {
-          /* الخلايا الفارغة تُخفى — «—» لكل حقل ناقص ضجيج بصري بلا معلومة. */
+          /* Empty cells are hidden — «—» for every missing field is visual noise without information. */
           const stripCells: { label: string; node: ReactNode }[] = [];
           if (property.ownerName.trim())
             stripCells.push({

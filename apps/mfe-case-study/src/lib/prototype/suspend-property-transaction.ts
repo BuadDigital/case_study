@@ -13,7 +13,7 @@ export type SuspendPropertyResult =
 /**
  * Suspends the failure, then blocks related workflow tasks.
  * Failure suspend must succeed before any task is patched — a failed
- * failure-API call must not leave work blocked under a still-open تعذر.
+ * failure-API call must not leave work blocked under a still-open failure.
  */
 export async function suspendPropertyTransaction(input: {
   failure: FailureRecord;

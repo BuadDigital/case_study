@@ -11,7 +11,7 @@ import { loadFailuresQuery } from "@failures/mfe/lib/failures-repository";
 const STALE_MS = 60_000;
 const GC_MS = 10 * 60_000;
 
-/** Live red badge count for إدارة التعذرات in the sidebar. */
+/** Live red badge count for Failures management in the sidebar. */
 export function useFailuresNavBadge(): number {
   const { role, rolePages } = usePrototype();
   const scoped = rolePages.includes("failures");

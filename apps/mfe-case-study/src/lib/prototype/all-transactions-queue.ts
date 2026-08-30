@@ -39,11 +39,11 @@ export function allTransactionsPhaseStyle(task: WorkflowTask): StatusPillStyle {
   if (label === "البيانات الأولية") {
     return { base: "#8a8d96", fg: "#696c75" };
   }
-  // دراسة الحالة / التوزيع / المراجعة الحكومية / party stages
+  // Case study / distribution / government review / party stages
   return { base: "var(--gold)", fg: "var(--gold-d)" };
 }
 
-/** Deed cell: `صك {n}` as in Case Study.html. */
+/** Deed cell: `Deed {n}` as in Case Study.html. */
 export function formatAllTransactionsDeedCell(deedOrSlot: string): string {
   const v = deedOrSlot.trim();
   if (!v || v === "—") return "—";
@@ -53,8 +53,8 @@ export function formatAllTransactionsDeedCell(deedOrSlot: string): string {
 
 /**
  * Deed cell for all-transactions table.
- * Phase stays in the «المرحلة» column — do not append it next to the deed
- * (e.g. avoid `صك قيد الدراسة 1 (البيانات الأولية)`).
+ * Phase stays in the «Stage» column — do not append it next to the deed
+ * (e.g. avoid `Deed Under study 1 (primary data)`).
  */
 export function formatAllTransactionsDeedWithPhase(
   deedOrSlot: string,
@@ -284,7 +284,7 @@ export function buildAllTransactionsRowMoreItems(options: {
   openTask: () => void;
   router: { push: (href: string) => void };
   viewerRole?: RoleId;
-  /** Opens the «إعادة فتح المعاملة» modal for this row (completed tasks only). */
+  /** Opens the «Reopen transaction» modal for this row (completed tasks only). */
   onReopenCompleted?: () => void;
 }): RowMoreMenuItem[] {
   const po = options.task.poNumber.trim();

@@ -1,4 +1,4 @@
-// مكوّن خادم — كانت الصفحة "use client" فقط لفك params (server-side).
+// Server component — the page was "use client" only to unwrap params (server-side).
 import { decodeTaskParam } from "@case-study/mfe/lib/my-task-routes";
 import { EngineeringSurveyWorkPageClient } from "../../../../components/party-tasks/EngineeringSurveyWorkPageClient";
 

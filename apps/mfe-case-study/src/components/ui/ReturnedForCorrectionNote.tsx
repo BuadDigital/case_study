@@ -3,8 +3,8 @@
 import { cn } from "@platform/ui-kit";
 
 /**
- * بلاغ «معادة للتصحيح» الموحّد — عنوان بارز وسبب الإعادة في سطر مستقل،
- * بشريط بداية ذهبي وأيقونة الإعادة نفسها المستخدمة في بطاقات الوضع.
+ * Shared «returned for correction» notice — prominent title and return reason on their own line,
+ * with a gold start rail and the same return icon used on status cards.
  */
 export function ReturnedForCorrectionNote({
   note,

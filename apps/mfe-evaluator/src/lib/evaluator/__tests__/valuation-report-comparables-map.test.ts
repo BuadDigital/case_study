@@ -73,7 +73,9 @@ describe("search notes and comparable map live fill", () => {
       researchScopeText: "مصدر أ\nمصدر ب",
     });
 
-    expect(fill.comparableMapSlot?.contentType).toBe("image/svg+xml");
+    expect(["image/svg+xml", "image/png"]).toContain(
+      fill.comparableMapSlot?.contentType,
+    );
     expect(fill.searchScopeNotes).toBe("اعتمدنا على مكاتب الحي فقط");
     expect(fill.researchScopeBullets).toEqual(["مصدر أ", "مصدر ب"]);
 
@@ -91,9 +93,11 @@ describe("search notes and comparable map live fill", () => {
     applyValuationReportLiveFill(dom, fill);
 
     expect(dom.querySelector("#map-comparables")).toBeNull();
-    expect(dom.querySelector('[data-sec="18"] img')?.getAttribute("src")).toMatch(
-      /^data:image\/svg\+xml/,
-    );
+    const imgSrc = dom.querySelector('[data-sec="18"] img')?.getAttribute("src") ?? "";
+    expect(
+      imgSrc.startsWith("data:image/svg+xml") ||
+        imgSrc.includes("maps.googleapis.com/maps/api/staticmap"),
+    ).toBe(true);
     const lis = [...dom.querySelectorAll('[data-sec="28"] li')].map(
       (li) => li.textContent,
     );

@@ -17,7 +17,7 @@ public static class FinancialModel
 {
     public static ModelBuilder ApplyFinancialModel(this ModelBuilder builder, bool ownsMigrations = true)
     {
- // ورشة الترقيم: عدّادات DS السنوية محلية في مخطط financial.
+ // Numbering workshop: annual DS counters local to the financial schema.
         if (ownsMigrations)
             builder.ApplyReferenceSequenceModel(DatabaseSchemas.Financial);
 

@@ -294,8 +294,8 @@ export function ProfessionalValuationReportView() {
       ) : null}
       {error ? <Note tone="warn">{error}</Note> : null}
 
-      {/* قرار 23: نسخة واحدة لحزمة النصوص كلها — أي تعديل ولو في فقرة يصدر حزمة جديدة؛
-          قيد العمل يتبنى الأحدث، والمُصدَر مجمّد على نصوصه لحظة الإصدار. */}
+      {/* Decision 23: one version for the whole text pack — any edit, even one paragraph, issues a new pack;
+          in-progress adopts the latest; issued is frozen to texts at issue time. */}
       <Note tone="info" className="mb-3 max-w-[560px]">
         حزمة النصوص المعيارية/القانونية — <strong>نسخة {org?.valuationReport.textPackageVersion ?? 1}</strong>
         {" · "}أي تعديل في النصوص يصدر حزمة جديدة كاملة، والتقارير المُصدَرة تبقى مجمّدة على

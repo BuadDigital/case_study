@@ -5,7 +5,7 @@ import { RegistrationFormCard } from "@platform/app-shared/registration/Registra
 import { Button, cn, InlineLoadingSkeleton } from "@platform/ui-kit";
 import { emptyCaseStudyInfoRolesConfig } from "@settings/mfe/lib/prototype/case-study-info-roles-storage";
 import { useCaseStudyInfoRolesQuery } from "@settings/mfe/query/settings-queries";
-import type { WorkflowTask } from "@case-study/mfe/lib/prototype/tasks-storage";
+import type { WorkflowTask } from "@platform/app-shared/workflow/task-types";
 import {
   loadPartyCaseStudyFormDraft,
   PARTY_CASE_STUDY_FORM_CHANGED_EVENT,

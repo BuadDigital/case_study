@@ -157,7 +157,7 @@ public static class PropertyListRowBuilder
             .ToList();
         if (active.Count == 0) return PropertyListRowStatuses.Fail;
 
- // «مكتمل» فقط عند رفع نموذج الدراسة للنظام (اكتمال مهمة دراسة الحالة).
+ // "Completed" only when the case-study form is submitted to the system (case-study task done).
         var parent = active.FirstOrDefault(t => t.Kind == WorkflowTaskKind.CaseStudyProperty);
         if (parent is not null &&
             (parent.Status == WorkflowTaskStatus.Completed || parent.Phase == WorkflowTaskPhase.Done))
@@ -209,7 +209,7 @@ public static class PropertyListRowBuilder
 
  /// <summary>
  /// Survey waived when classification does not require it, the property has
- /// a registered title (سجل عيني), or the same deed already exists on a
+ /// a registered title (in-kind registry), or the same deed already exists on a
  /// different work order (true prior registration).
  /// </summary>
     private static bool PriorSurveyWaived(

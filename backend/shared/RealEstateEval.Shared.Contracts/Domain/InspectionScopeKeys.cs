@@ -1,6 +1,6 @@
 ﻿namespace RealEstateEval.Domain;
 
-/// <summary>نطاق المعاينة (القرار 24) — تُستكمل حقوله مع ميزة حدود المعاينة.</summary>
+/// <summary>Inspection scope (decision 24) — fields completed with the inspection-limits feature.</summary>
 public static class InspectionScopeKeys
 {
     public const string Full = "full";

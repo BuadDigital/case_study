@@ -1,8 +1,8 @@
 namespace RealEstateEval.CaseStudy.Infrastructure.Services;
 
 /// <summary>
-/// قراءة طوابع ISO المخزنة نصياً — كانت منسوخة في خدمتي الجدول الزمني والمعاملات المعلقة.
-/// القيم غير الموسومة UTC تُعاد بنوع Unspecified عمداً (سلوك تاريخي تعتمده الواجهات).
+/// Parses ISO timestamps stored as text — previously duplicated in timeline and pending-transaction services.
+/// Untagged values are returned as Unspecified on purpose (historical behavior the UI relies on).
 /// </summary>
 internal static class IsoTimestamps
 {

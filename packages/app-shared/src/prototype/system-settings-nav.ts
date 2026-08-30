@@ -35,7 +35,7 @@ function leaf(
 
 const ORG_HREF = (tab: string) => `/organization-settings?tab=${tab}`;
 
-/** عنوان الشريط العلوي حسب تبويب `/organization-settings?tab=` */
+/** Top-bar title based on `/organization-settings?tab=`. */
 export function organizationSettingsLeafTitle(tab: string | null | undefined): string {
   if (tab === "evaluator") return "المقيّمون";
   if (tab === "branding") return "الهوية البصرية";
@@ -60,7 +60,7 @@ const LISTS_ICON =
 const BRAND_ICON =
   "M4 16l4.6-4.6a2 2 0 0 1 2.8 0L16 16m-2-2 1.6-1.6a2 2 0 0 1 2.8 0L20 14M14 8h.01M6 20h12a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2z";
 
-/** شجرة الإعدادات v2 — المصدر: docs/_إعدادات النظام/الإعدادات v2.dc.html `TREE` */
+/** Settings tree v2 — sourced from the system-settings v2.dc.html TREE. */
 export const SYSTEM_SETTINGS_TREE: SettingsNavTreeNode[] = [
   {
     type: "group",
@@ -102,6 +102,12 @@ export const SYSTEM_SETTINGS_TREE: SettingsNavTreeNode[] = [
     id: "val",
     label: "التقييم العقاري",
     items: [
+      leaf(
+        "comparables-bank",
+        "comparable-properties",
+        "بنك المقارنات",
+        "M3 3h7v7H3zM14 3h7v7h-7zM14 14h7v7h-7zM3 14h7v7H3z",
+      ),
       leaf(
         "pro-report",
         "organization-settings",

@@ -70,7 +70,7 @@ public class ComparablePropertiesController : ControllerBase
         return Ok(result);
     }
 
- /// <summary>ق-3 — وسوم الجودة البشرية (موثوقية/مكرر) بمبرر؛ السجل يبقى موسوماً لا يُحذف.</summary>
+ /// <summary>Q-3 — human quality tags (reliability/duplicate) with rationale; record stays tagged, not deleted.</summary>
     [HttpPut("{id:guid}/quality-tags")]
     [Authorize(Policy = CapabilityPolicyNames.WriteComparableBank)]
     public async Task<ActionResult<ComparablePropertyDto>> SetQualityTags(

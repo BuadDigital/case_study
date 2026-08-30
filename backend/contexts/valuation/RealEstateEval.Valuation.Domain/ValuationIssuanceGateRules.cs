@@ -141,7 +141,7 @@ public static class ValuationIssuanceGateRules
     /// <summary>
     /// Approach-aware comps gate: market → market comps; cost → land_within_cost comps.
     /// Skipped (pass) when the approach is off.
-    /// منطق-التسويات: واحد على الأقل.
+    /// Adjustments logic: at least one.
     /// </summary>
     public static ValuationIssuanceGateCheck MinAdoptedComparablesForApproach(
         string codeSuffix,

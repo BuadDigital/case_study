@@ -6,7 +6,7 @@ import type {
 } from "@platform/api-client";
 import { apiConfig } from "@platform/app-shared/auth/api-config";
 
-// أسماء لكل مجال بالنوع المطابق — البناء نفسه من المصدر الموحّد.
+// Names per domain with matching type — same construction from the unified source.
 export function courtsApiConfig(): CourtsApiConfig | null {
   return apiConfig();
 }
@@ -23,6 +23,6 @@ export function organizationSettingsApiConfig(): OrganizationSettingsApiConfig |
   return apiConfig();
 }
 
-// كانت نسخة متشعبة تُسقط فرعي forbidden/conflict فتبتلع 403/409 —
-// الرسائل من المصدر الموحّد في app-shared.
+// A forked copy dropped forbidden/conflict branches and swallowed 403/409 —
+// messages come from the unified source in app-shared.
 export { apiErrorMessage } from "@platform/app-shared/prototype/work-orders-api-config";

@@ -51,7 +51,7 @@ function pushEvent(
   list.push(event);
 }
 
-/** Collapse multiple «تسجيل تعذر» rows into one titled «تسجيل تعذر (N×)». */
+/** Collapse multiple "failure registration" rows into one titled "failure registration (N×)". */
 export function collapseFailureRegistrationEvents(
   events: PropertyTimelineEvent[],
 ): PropertyTimelineEvent[] {

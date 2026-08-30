@@ -12,8 +12,8 @@ using RealEstateEval.CaseStudy.Domain;
 namespace RealEstateEval.CaseStudy.Infrastructure.Services;
 
 /// <summary>
-/// حدود المعاينة (القرار 24 + ق-7): يعبّئها المعاين، وتغذي تنبيهي m18/m21
-/// ونص التحفّظ المركّب ضمن الافتراضات الخاصة.
+/// Inspection Limitations (Decision 24 + Q-7): Packaged by Inspector, feeding m18/m21 alarms
+/// The compound reservation text is within Special Assumptions.
 /// </summary>
 public sealed class InspectionLimitsService : IInspectionLimitsService
 {
@@ -69,7 +69,7 @@ public sealed class InspectionLimitsService : IInspectionLimitsService
 
         var scope = request.InspectionScopeKey.Trim().ToLowerInvariant();
 
- // تغيير النطاق يُسقط اعتماد ق-7 السابق — الاعتماد مربوط بنطاق بعينه.
+ // Changing the domain drops the previous Q-7 certification — the certification is tied to a specific domain.
         if (!string.Equals(prop.InspectionScopeKey, scope, StringComparison.Ordinal))
         {
             prop.RemoteInspectionApprovedBy = null;
@@ -110,7 +110,7 @@ public sealed class InspectionLimitsService : IInspectionLimitsService
         prop.RemoteInspectionApprovedAtUtc = _time.UtcNow();
         await db.SaveChangesAsync(cancellationToken);
 
- // ق-7: اعتماد مسجَّل في التدقيق.
+ // Q-7: Credit recorded in audit.
         await _auditLog.AppendAsync(audit.Create(
             actorId: prop.RemoteInspectionApprovedBy!,
             action: "inspection.remote-scope.approved",

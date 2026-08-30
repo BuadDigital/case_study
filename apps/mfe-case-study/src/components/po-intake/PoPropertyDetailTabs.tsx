@@ -15,7 +15,6 @@ import { canViewPropertyTimelineRail } from "../../lib/prototype/po-roles";
 import { DetailBadge, EmptyState, FieldBox, FieldsGrid, InfoBox, ltrValueClass, SectionHeader } from "./PropertyDetailFields";
 import { PropertyDetailSurveyNotesTab, buildPartyRemarksSections } from "./PropertyDetailSurveyNotesTab";
 import { PropertyTransactionTimeline } from "./PropertyTransactionTimeline";
-import { TransactionStateStrip } from "./TransactionStateStrip";
 import { PropertyDetailMobileGlance } from "./PropertyDetailMobileGlance";
 import { PropertyDetailMediaGlance } from "./PropertyDetailMediaGlance";
 import { boundariesAvailabilityLabel, boundariesMarkedUnavailable, formatDateAr, formatPropertyDeedDisplay,
@@ -150,7 +149,7 @@ const TABS = [
 
 type TabId = (typeof TABS)[number]["id"];
 
-/** مراجعي حكومي: only the tabs they need for court-visit / keys work. */
+/** Government reviewer: only the tabs they need for court-visit / keys work. */
 const GOVERNMENT_REVIEWER_TAB_IDS: readonly TabId[] = [
   "basic",
   "government",
@@ -174,7 +173,7 @@ const REAL_ESTATE_APPRAISER_TAB_IDS: readonly TabId[] = [
   "survey-notes",
 ];
 
-/** مكتب هندسي: survey package + dues/notes. */
+/** Engineering office: survey package + dues/notes. */
 const ENGINEERING_OFFICE_TAB_IDS: readonly TabId[] = [
   "basic",
   "survey",
@@ -183,7 +182,7 @@ const ENGINEERING_OFFICE_TAB_IDS: readonly TabId[] = [
   "survey-notes",
 ];
 
-/** معاين ميداني: inspection media + dues/notes. */
+/** Field inspector: inspection media + dues/notes. */
 const FIELD_INSPECTOR_TAB_IDS: readonly TabId[] = [
   "basic",
   "documents",
@@ -634,13 +633,13 @@ export function PoPropertyDetailTabs({
     setInspectEdit(nextInspect === "edit");
   }, [searchParams, workspaceForced, inspectorWorkspace?.forceEdit, role]);
 
-  /** التبويبة الفعلية تُشتق أثناء الرسم — تغيّر الدور ينقل الاختيار فوراً بلا تمريرة زائدة. */
+  /** Active tab is derived during render — a role change moves the selection immediately without an extra pass. */
   const effectiveTab: TabId =
     workspaceForced || visibleTabs.some((t) => t.id === tab)
       ? tab
       : visibleTabs[0]?.id ?? "basic";
 
-  /** التبويبة لا تُركَّب إلا بعد أول زيارة — ثم تبقى مركّبة مخفية فلا تضيع حالتها. */
+  /** Tab mounts only after first visit — then stays mounted but hidden so its state is kept. */
   const visitedTabsRef = useRef<Set<TabId>>(new Set());
   visitedTabsRef.current.add(effectiveTab);
   const tabMode = (id: TabId) => (effectiveTab === id ? "visible" : "hidden");
@@ -882,8 +881,6 @@ export function PoPropertyDetailTabs({
 
   return (
     <div className="flex min-h-0 min-w-0 flex-1 flex-col">
-      {/* ق-9: شريط حالة المعاملة — الحالة مشتقة من حالات الأطراف، ويظهر من ينتظر من. */}
-      <TransactionStateStrip workOrderId={record.id} propertyId={property.id} />
       <PropertyDetailMobileGlance
         poNumber={poNumber}
         property={property}

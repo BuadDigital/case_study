@@ -1,4 +1,4 @@
-/** جدة — البلد (موقع على اليابسة، للنموذج والعرض التجريبي). */
+/** Jeddah — Al-Balad (on-land location for the form and demo display). */
 export const JEDDAH_DEFAULT_LAT = "21.481000";
 export const JEDDAH_DEFAULT_LNG = "39.186500";
 
@@ -7,7 +7,7 @@ export const JEDDAH_DEFAULT_CENTER = {
   lng: Number(JEDDAH_DEFAULT_LNG),
 };
 
-/** إحداثيات المثال القديمة كانت في البحر الأحمر — نُحدّثها تلقائياً. */
+/** Old sample coordinates were in the Red Sea — update them automatically. */
 const LEGACY_SEA_COORDS = new Set([
   "21.5433,39.1728",
   "21.543300,39.172800",

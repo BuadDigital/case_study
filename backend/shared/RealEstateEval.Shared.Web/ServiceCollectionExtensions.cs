@@ -70,7 +70,7 @@ public static class AuthorizationExtensions
                     PlatformCapabilities.ManageValuationRequests,
                     PlatformCapabilities.SubmitValuationReport)));
 
- // 11هـ2 feed — الميداني يلتقط العروض والصفقات أثناء المعاينة, so the
+ // 11H-2 feed — field inspector captures listings and deals during inspection, so the
  // party-work capability also writes to the shared bank.
             options.AddPolicy(
                 CapabilityPolicyNames.WriteComparableBank,

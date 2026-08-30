@@ -88,7 +88,7 @@ public class RedistributePartiesRequest
     public TaskDistributionDraftDto Distribution { get; set; } = new();
  /// <summary>Optional display names keyed by child kind (government-review, field-inspection, …).</summary>
     public Dictionary<string, string>? AssigneeNames { get; set; }
- /// <summary>سبب إعادة إسناد الأطراف — إلزامي، يُسجَّل في سجل الأحداث.</summary>
+ /// <summary>Reason for reassignment of parties — Mandatory, recorded in Event Log.</summary>
     [MaxLength(500)]
     public string? Reason { get; set; }
 }
@@ -114,14 +114,14 @@ public class RevertWorkflowTaskPhaseRequest
 
 public class DeleteCaseStudySlotRequest
 {
- /// <summary>سبب الحذف — إلزامي ويُحفظ مع العقار إن وُجد.</summary>
+ /// <summary>Reason for deletion — Mandatory and kept with the property if any.</summary>
     [MaxLength(500)]
     public string Reason { get; set; } = "";
 }
 
 public class ReopenCompletedWorkflowTaskRequest
 {
- /// <summary>سبب إعادة الفتح — إلزامي، يُسجَّل في سجل الأحداث.</summary>
+ /// <summary>Reason for reopening — Mandatory, recorded in Event Log.</summary>
     [MaxLength(500)]
     public string Reason { get; set; } = "";
 }

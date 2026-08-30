@@ -208,7 +208,7 @@ export function RowMoreMenu({
     enterRaf = requestAnimationFrame(() => setEntered(true));
 
     window.addEventListener("resize", placeMenu);
-    // passive: المستمع لا يمنع التمرير — يسمح للمتصفح بعدم انتظاره (client-passive-event-listeners).
+    // passive: listener does not block scroll — lets the browser skip waiting (client-passive-event-listeners).
     window.addEventListener("scroll", placeMenu, { capture: true, passive: true });
     return () => {
       cancelAnimationFrame(raf);

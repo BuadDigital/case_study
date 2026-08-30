@@ -1,2 +1,2 @@
-/** إعداد نداءات الـAPI — المصدر الموحّد في app-shared (كان منسوخاً في أربعة ملفات). */
+/** API call config — canonical source in app-shared (was duplicated across four files). */
 export { apiConfig } from "@platform/app-shared/auth/api-config";

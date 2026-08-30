@@ -18,7 +18,7 @@ type DomainNotificationRule = {
 export const DOMAIN_NOTIFICATION_RULES: DomainNotificationRule[] = [
   // FAILURES_CHANGED_EVENT is intentionally omitted: it only fires in the
   // same browser that mutated failures, and raise/resolve UIs already show a
-  // specific success toast. The generic "تحديث في التعذرات" toast was a
+  // specific success toast. The generic "update in failures" toast was a
   // duplicate (same pattern as ENGINEERING_SURVEY_SUBMITTED). Queries still
   // listen for the event directly for invalidate/refresh.
   {
@@ -46,7 +46,7 @@ export const DOMAIN_NOTIFICATION_RULES: DomainNotificationRule[] = [
   },
   // ENGINEERING_SURVEY_SUBMITTED_EVENT is intentionally omitted: it only fires
   // in the submitter's browser, and PartyActiveTaskWork already shows the
-  // single success toast ("اكتمل الرفع المساحي لهذا العقار."). Domain toasts
+  // single success toast ("survey completed for this property."). Domain toasts
   // here duplicated that message (option A only). Returned/accepted stay —
   // those are still useful inbox signals for the engineering office.
   {

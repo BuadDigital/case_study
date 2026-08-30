@@ -1,5 +1,5 @@
 import { todayIso } from "@platform/app-shared/format/date";
-/** Question banks for نموذج دراسة الحالة — labels من قاموس الحقول (API) مع افتراضيات محلية. */
+/** Question banks for the case-study form — labels from the field dictionary (API) with local defaults. */
 
 import {
   getCachedOrganizationBranding,
@@ -35,7 +35,7 @@ export function caseStudyProviderName(): string {
 export const CASE_STUDY_REPORT_TITLE = "نموذج دراسة الحالة";
 export const CASE_STUDY_REPORT_SUBTITLE = "منصة إدارة التقييم العقاري";
 const DEFAULT_APPROVER_NAME = "عماد رشيد الرشيد";
-/** معتمد التقرير = المقيّم المعتمد من إعدادات المنشأة (قرار 25) — ليس أخصائي الإسناد من أمر العمل. */
+/** Report approver = certified valuer from org settings (Decision 25) — not the assignment specialist from the work order. */
 export function caseStudyApproverName(): string {
   const name = getCachedOrganizationSettings()?.evaluator.name?.trim();
   return name || DEFAULT_APPROVER_NAME;
@@ -47,7 +47,7 @@ export function caseStudyStampImage(): string {
   return getCachedOrganizationBranding()?.stampUrl || DEFAULT_STAMP;
 }
 
-/** نص ثابت أسفل جداول الصك والرفع المساحي — مطابق للنموذج الورقي. */
+/** Fixed text under deed and survey tables — matches the paper form. */
 export const CASE_STUDY_SECTION_REMARKS_HINT =
   "في حال وجود اختلاف في البيانات أعلاه يتم التوضيح في الملاحظات ادناه";
 

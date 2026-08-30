@@ -128,15 +128,15 @@ public class PoEnfazRevenueLineDto
     public string PropertyLabel { get; set; } = "";
     public string WorkStatus { get; set; } = "";
     public string WorkStatusLabel { get; set; } = "";
- /// <summary>دخل دراسة المعاملة.</summary>
+ /// <summary>He entered the transaction study.</summary>
     public decimal CaseStudyFeeSar { get; set; }
- /// <summary>دخل تكاليف الرفع.</summary>
+ /// <summary>Survey submission cost revenue.</summary>
     public decimal SurveyFeeSar { get; set; }
- /// <summary>أتعاب مفاتيح (يدوي عند وجود استحقاق).</summary>
+ /// <summary>Key fees (manual when due).</summary>
     public decimal KeyFeeSar { get; set; }
     public string? KeyEntitlementEnvelopeId { get; set; }
     public bool HasKeyEntitlement { get; set; }
- /// <summary>مراجع مرفقات ظرف المفتاح (صورة/إيصال) — عرض فقط.</summary>
+ /// <summary>Key Envelope Attachment References (Photo/Receipt) — View only.</summary>
     public IReadOnlyList<string> KeyAttachmentIds { get; set; } = [];
  /// <summary>Computed total (CaseStudy + Survey + Key).</summary>
     public decimal EnfazFeeSar { get; set; }
@@ -157,7 +157,7 @@ public class PoEnfazBillingDto
     public decimal CollectedAmountSar { get; set; }
     public DateTime? CollectedAtUtc { get; set; }
     public bool IsOverdue { get; set; }
- /// <summary>مرفقات مرتبطة بالفاتورة / ظروف المفاتيح — عرض فقط.</summary>
+ /// <summary>Invoice related attachments/key conditions — view only.</summary>
     public IReadOnlyList<string> AttachmentIds { get; set; } = [];
 }
 
@@ -166,20 +166,20 @@ public class EnfazTrackingRowDto
     public string PoNumber { get; set; } = "";
     public string PropertyId { get; set; } = "";
     public string PropertyLabel { get; set; } = "";
- /// <summary>رقم الصك من عقار أمر العمل.</summary>
+ /// <summary>Drug number Deed is from Work Order.</summary>
     public string DeedNumber { get; set; } = "";
- /// <summary>المدينة — للفلترة والعرض في قائمة الإيرادات.</summary>
+ /// <summary>City — To filter and display in the revenue list.</summary>
     public string City { get; set; } = "";
- /// <summary>مساحة الأرض من البيانات الأولية (نص كما أُدخل).</summary>
+ /// <summary>Land area from raw data (text as entered).</summary>
     public string LandArea { get; set; } = "";
- /// <summary>تاريخ اكتمال العمل (آخر مهمة مكتملة أو بورصة).</summary>
+ /// <summary>Date the work was completed (last completed task or exchange).</summary>
     public DateTime? CompletedAtUtc { get; set; }
     public string WorkStatus { get; set; } = "";
     public string WorkStatusLabel { get; set; } = "";
     public bool EnfazFilled { get; set; }
     public decimal CaseStudyFeeSar { get; set; }
     public decimal SurveyFeeSar { get; set; }
- /// <summary>أتعاب استلام المفاتيح (شاملة الضريبة).</summary>
+ /// <summary>Key collection fees (including tax).</summary>
     public decimal KeyFeeSar { get; set; }
     public decimal EnfazFeeSar { get; set; }
     public string? InvoiceNumber { get; set; }
@@ -187,7 +187,7 @@ public class EnfazTrackingRowDto
     public decimal CollectedAmountSar { get; set; }
     public DateTime? InvoiceIssuedAtUtc { get; set; }
     public bool IsOverdue { get; set; }
- /// <summary>stopped | excluded | difficult — علامة مالية يدوية.</summary>
+ /// <summary>stopped | | difficult — manual financial sign.</summary>
     public string? FinanceFlag { get; set; }
     public string? FinanceFlagNote { get; set; }
     public int FollowupCount { get; set; }
@@ -255,7 +255,7 @@ public class PropertyEnfazRevenueDto
     public bool HasEnfazRevenue { get; set; }
 }
 
-/// <summary>Open Enfaz receivables aging (تقادم الذمم).</summary>
+/// <summary>Open Enfaz receivables aging.</summary>
 public class EnfazAgingReportDto
 {
     public DateTime AsOfUtc { get; set; }

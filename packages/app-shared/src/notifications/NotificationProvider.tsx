@@ -66,7 +66,7 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
   const value = useMemo<NotificationContextValue>(
     () => ({
       items,
-      // من الذاكرة مباشرة — كانت تعيد قراءة/تحليل المخزن كاملاً مع كل تغيّر (js-cache-storage).
+      // Read from memory — previously re-read/parsed the whole store on every change (js-cache-storage).
       unreadCount: items.filter((n) => !n.read).length,
       push: pushNotification,
       markRead: markNotificationRead,

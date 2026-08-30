@@ -1,8 +1,8 @@
 namespace RealEstateEval.Failures.Domain;
 
 /// <summary>
-/// شدة التعثر — كانت نصوصاً حرة تتصادم مع ثوابت الحالة
-/// («internal» حالة وشدة معاً). المصدر الوحيد للقيم المخزنة.
+/// Failure severity — previously free-text that collided with status constants
+/// ("internal" was both a status and a severity). Single source of truth for stored values.
 /// </summary>
 public static class PropertyFailureSeverity
 {

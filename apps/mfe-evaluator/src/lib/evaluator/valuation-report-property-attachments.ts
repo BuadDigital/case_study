@@ -1,4 +1,4 @@
-/** Map مستندات العقار ↔ مفاتيح مرفقات التقرير (قوائم التقييم). */
+/** Map property documents ↔ report attachment keys (valuation lists). */
 
 import type { PropertyDetailDocumentEntry } from "@case-study/mfe/lib/prototype/property-detail-documents";
 import {

@@ -24,8 +24,8 @@ export type ComparablesBankRow = {
 };
 
 /**
- * بنك المقارنات — يملك حقل البحث ومسودات compEdit محلياً حتى لا تعيد الكتابة
- * رسم صدفة التقييم كاملة، والبحث يجلب مرشحي البنك فقط (لا إعادة تحميل شاملة).
+ * Comparables bank — owns search and compEdit drafts locally so typing does not
+ * re-render the whole valuation shell; search fetches bank candidates only (no full reload).
  */
 export const ComparablesBankTable = memo(function ComparablesBankTable({
   rows,
@@ -43,9 +43,9 @@ export const ComparablesBankTable = memo(function ComparablesBankTable({
   maxAdopted: number;
   distanceKm: Record<string, number>;
   onAdopt: (comparableId: string, adopted: boolean) => void;
-  /** سياق السوق فقط — غيابه يعرض شارة «أراضٍ فضاء» بدل حقل البحث. */
+  /** Market context only — when absent, show a vacant-land badge instead of the search field. */
   onSearch?: (q: string) => void;
-  /** يعيد true عند نجاح الحفظ — عندها تُمسح مسودة الخلية. */
+  /** Returns true on successful save — the cell draft is cleared then. */
   onSaveOverride: (
     item: ValuationComparableSelectionDto,
     field: "price" | "area",
@@ -53,7 +53,7 @@ export const ComparablesBankTable = memo(function ComparablesBankTable({
   ) => Promise<boolean>;
 }) {
   const [q, setQ] = useState("");
-  /** compEdit: مسودات تعديل سعر/مساحة المقارن — محلية للجدول. */
+  /** compEdit: price/area edit drafts for the comparable — local to the table. */
   const [editDraft, setEditDraft] = useState<Record<string, string>>({});
   const onSearchRef = useRef(onSearch);
   onSearchRef.current = onSearch;
@@ -76,7 +76,7 @@ export const ComparablesBankTable = memo(function ComparablesBankTable({
   ) => {
     void onSaveOverride(item, field, raw).then((ok) => {
       if (!ok) return;
-      // المسودة أدّت غرضها — القيمة الفعلية من الخادم تعرض بعد التحديث الصامت.
+      // Draft served its purpose — effective server value shows after silent reload.
       setEditDraft((prev) => {
         const next = { ...prev };
         delete next[`${item.id}:${field}`];
@@ -96,7 +96,7 @@ export const ComparablesBankTable = memo(function ComparablesBankTable({
             {adoptedCount} من {maxAdopted} معتمدة
           </span>
           <span className="hidden text-[11.5px] text-text-3 md:inline">
-            ضمن ٥ كم من الموقع — يُرتَّب حسب أقرب مساحة لعقار التقييم، ثم المسافة
+            ضمن ٥ كم إن وُجد — وإلا من البنك مرتّبًا حسب أقرب مساحة، ثم المسافة
           </span>
         </div>
         {onSearch ? (

@@ -1,7 +1,7 @@
 namespace RealEstateEval.Domain;
 
 /// <summary>
-/// تطبيع النصوص الاختيارية — كانت الدالة منسوخة بثمانية أسماء عبر خمسة سياقات
+/// Optional text normalization — The function was replicated with eight names across five contexts
 /// (NullIfBlank / NullIfEmpty / NormalizeOptionalText / Normalize / Clean).
 /// </summary>
 public static class Texts
@@ -9,11 +9,11 @@ public static class Texts
     public static string? NullIfBlank(string? value) =>
         string.IsNullOrWhiteSpace(value) ? null : value.Trim();
 
- /// <summary>الأرقام فقط — لتطبيع أرقام الجوال والمعرفات قبل المقارنة.</summary>
+ /// <summary>Numbers only — to normalize mobile numbers and IDs before comparing.</summary>
     public static string DigitsOnly(string value) =>
         new(value.Where(char.IsDigit).ToArray());
 
- /// <summary>تحقق البريد الموحّد — كان MailAddress في سياقٍ وregex في آخر بقبولين مختلفين.</summary>
+ /// <summary>Unified mail check — MailAddress in one context and regex in another had two different acceptances.</summary>
     public static bool IsValidEmail(string email) =>
         System.Text.RegularExpressions.Regex.IsMatch(
             email,

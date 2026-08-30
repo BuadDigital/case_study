@@ -21,7 +21,7 @@ public sealed class SelectableCityDto
     public bool IsCapital { get; set; }
     public bool IsGovernorate { get; set; }
     public string Status { get; set; } = LocationCatalogStatuses.Approved;
- /// <summary>اسم المنطقة — مفيد عند اختيار المدينة أولاً.</summary>
+ /// <summary>Region name — useful when city is chosen first.</summary>
     public string RegionNameAr { get; set; } = "";
 }
 

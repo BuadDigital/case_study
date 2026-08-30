@@ -34,8 +34,8 @@ export async function reconcilePushSubscription(): Promise<void> {
   if (Notification.permission !== "granted") return;
   const config = authConfig();
   if (!config) return;
-  // قراءة الاشتراك المحلي أرخص من نداء الشبكة وتُخرج مبكراً في الغالب —
-  // النداءان مستقلان فيجريان بالتوازي (async-cheap-condition-before-await).
+  // Reading the local subscription is cheaper than a network call and usually exits early —
+  // the two calls are independent so they run in parallel (async-cheap-condition-before-await).
   const [existing, pushConfig] = await Promise.all([
     getExistingSubscription(),
     getPushConfig(config).catch(() => null),

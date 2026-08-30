@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * مستحقات المعاين داخل البروفايل — ready-lines + statements (فرد).
+ * Inspector dues inside profile — ready-lines + statements (individual).
  */
 
 import { useMemo } from "react";
@@ -40,7 +40,7 @@ type DueLine = {
   st: DueSt;
 };
 
-// toLocaleString الافتراضي = حتى 3 كسور دون أصفار إلزامية — نحافظ على العرض نفسه.
+// Default toLocaleString = up to 3 decimals without forced zeros — keep the same display.
 function money(n: number) {
   return fmtMax(Number(n || 0), 3);
 }

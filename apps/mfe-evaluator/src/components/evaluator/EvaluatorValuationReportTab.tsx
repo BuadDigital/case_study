@@ -61,9 +61,6 @@ import {
   valuePremiseLabelArForAssignment,
 } from "@platform/app-shared/prototype/assignment-valuation-defaults";
 import { formatValuationReportUsers } from "../../lib/evaluator/valuation-report-users";
-// استيراد ساكن — اللوحة هي محتوى التبويب الافتراضي نفسه، وكان dynamic يضيف
-// جولة جلب متسلسلة بعد الترطيب قبل أن يُرسم المحتوى الرئيس (bundle-dynamic-imports).
-import { EvaluatorComparableSelectionPanel } from "./EvaluatorComparableSelectionPanel";
 import { inspectionFactChips } from "./EvaluatorInspectionFactsSection";
 import { computePropertyTotal } from "../../lib/evaluator/value-estimation";
 import {
@@ -77,7 +74,7 @@ import { apiConfig } from "@platform/app-shared/auth/api-config";
 
 const UNUSED = "__unused__";
 
-// مرجع ثابت — [] جديدة كل تصيير تكسر اعتماديات الـmemo أدناه.
+// Stable ref — a fresh [] each render breaks the memo deps below.
 const EMPTY_CLIENTS: ClientDto[] = [];
 
 function enabledList(
@@ -110,7 +107,7 @@ function esgGroupsEqual(a: SpecialistEsgGroup, b: SpecialistEsgGroup): boolean {
   );
 }
 
-/** حِزمة بيانات تبويب تقييم العقار — استعلام واحد قابل للتخزين المؤقت. */
+/** Property valuation tab data bundle — one cacheable query. */
 async function loadReportTabBundle(inspectionTaskId: string | null) {
   const config = apiConfig();
   if (!config) {
@@ -215,7 +212,7 @@ export function EvaluatorValuationReportTab({
     );
     setSpecialistFinishing(loadSpecialistFinishingLevel(specialistPropertyId));
   }, [specialistPropertyId]);
-  // تجدد مدخلات الأخصائي المتزامنة عبر أحداث window — عقار آخر لا يعنينا.
+  // Refresh synced specialist inputs via window events — ignore other properties.
   const ifThisProperty = (refresh: () => void) => (ev: Event) => {
     const detail = (ev as CustomEvent<{ propertyId?: string }>).detail;
     if (detail?.propertyId && detail.propertyId !== specialistPropertyId) return;
@@ -246,8 +243,8 @@ export function EvaluatorValuationReportTab({
   });
   const tabBundle = tabQuery.data;
 
-  // اشتقاق مباشر من الاستعلام — كانت سبع مرايا state تكتبها مؤثر واحد
-  // فتضيف commit إضافياً مع كل وصول بيانات (rerender-derived-state-no-effect).
+  // Derive directly from the query — previously seven state mirrors from one effect
+  // adding an extra commit on every data arrival (rerender-derived-state-no-effect).
   const bundleAuthError = Boolean(tabBundle?.authError);
   const loading = tabQuery.isPending;
   const error = bundleAuthError
@@ -265,7 +262,7 @@ export function EvaluatorValuationReportTab({
     () => ({ ...REPORT_DEFAULTS, ...(org?.valuationReport ?? {}) }),
     [org],
   );
-  // هويات مستقرة — كانت تُعاد كمصفوفات جديدة كل رسم فتعيد تشغيل مؤثر البذر أدناه.
+  // Stable identities — were new arrays every render and re-ran the seed effect below.
   const bases = useMemo(() => enabledList(lists?.lists, "valueBases"), [lists]);
   const purposes = useMemo(() => enabledList(lists?.lists, "purposes"), [lists]);
   const premises = useMemo(() => enabledList(lists?.lists, "premises"), [lists]);
@@ -323,7 +320,7 @@ export function EvaluatorValuationReportTab({
   const patchRef = useRef(patch);
   patchRef.current = patch;
 
-  // صب من الأخصائي → مسودة التقرير (للطباعة) — ESG والمرفقات ونطاق البحث والتشطيب.
+  // Pour specialist → report draft (for print) — ESG, attachments, search scope, finishes.
   useEffect(() => {
     if (disabled || loading) return;
     const current = choicesRef.current;
@@ -381,14 +378,6 @@ export function EvaluatorValuationReportTab({
     [draft.buildingValue, draft.landValue, onDraftPatch],
   );
 
-  const syncFinalOpinion = useCallback(
-    (value: number) => {
-      if (!onDraftPatch || !Number.isFinite(value) || value <= 0) return;
-      onDraftPatch({ evaluatorPrice: String(Math.round(value)) });
-    },
-    [onDraftPatch],
-  );
-
   useEffect(() => {
     const type = (assignmentType ?? record?.assignmentType ?? "").trim();
     if (!type) return;
@@ -433,7 +422,7 @@ export function EvaluatorValuationReportTab({
     if (!choices.costMethodKey && costDefault) {
       next.costMethodKey = costDefault;
     }
-    // patchRef بدل patch — هوية patch تتجدد مع كل تعديل خيارات وكانت تعيد تشغيل المؤثر.
+    // patchRef instead of patch — patch identity changed on every options edit and re-ran the effect.
     if (Object.keys(next).length) patchRef.current(next);
   }, [
     choices.costMethodKey,
@@ -454,7 +443,6 @@ export function EvaluatorValuationReportTab({
   const noteClassName = "mb-2 text-[11px] leading-relaxed text-text-3";
   const inspectionChips = inspectionFactChips(inspector);
   const incomeOn = approachUsed(choices.incomeMethodKey);
-  const showWorkPanel = Boolean(property?.id);
 
   return (
     <div dir="rtl">
@@ -485,38 +473,6 @@ export function EvaluatorValuationReportTab({
           </div>
         ) : null}
       </div>
-
-      {showWorkPanel && property?.id ? (
-        <div className="mb-6">
-          <EvaluatorComparableSelectionPanel
-            propertyId={property.id}
-            poNumber={draft.poNumber}
-            assignmentType={assignmentType ?? undefined}
-            districtHint={property.district}
-            property={{
-              area: property.area,
-              district: property.district,
-              city: property.city,
-              deedNumber: property.deedNumber,
-              propertyType: property.propertyType,
-              classification: property.classification,
-            }}
-            intakeProperty={property}
-            onFinalOpinionChange={syncFinalOpinion}
-            draft={draft}
-            disabled={disabled}
-            fieldErrors={fieldErrors}
-            onDraftPatch={onDraftPatch}
-            onReportChoicesPatch={(patch) => {
-              const current = draft.reportChoices ?? emptyReportChoices();
-              onChange?.({ ...current, ...patch });
-            }}
-            onSubmit={onSubmit}
-            submitting={submitting}
-            showSubmit={showSubmit}
-          />
-        </div>
-      ) : null}
 
       {incomeOn ? (
         <>

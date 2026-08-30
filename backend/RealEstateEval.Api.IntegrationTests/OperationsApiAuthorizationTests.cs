@@ -105,7 +105,7 @@ public class OperationsApiAuthorizationTests : IClassFixture<OperationsApiFactor
 
  /// <summary>
  /// Confirming key-receipt collection is a finance act. It used to sit behind
- /// <c>submit-party-work</c>, which finance staff do not hold, so the button labelled "المالية"
+ /// <c>submit-party-work</c>, which finance staff do not hold, so the button labelled "Finance"
  /// could only be pressed by the parties it was meant to keep out.
  /// </summary>
     [Theory]

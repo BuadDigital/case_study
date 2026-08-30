@@ -9,7 +9,7 @@ import {
   SEQUENTIAL_SET,
 } from "./factor-registry";
 
-// مشتقات من سجل العوامل — عامل جديد يُضاف هناك مرة واحدة فيصل هنا تلقائياً.
+// Derived from the factor registry — add a factor there once and it flows here automatically.
 export const SEQUENTIAL_KEYS = SEQUENTIAL_SET;
 export const AUTO_AREA_KEYS = new Set([AUTO_AREA_KEY]);
 export const DEFAULT_DIFFERENCE_KEYS = new Set(
@@ -27,8 +27,8 @@ export const STANDARD_FACTORS: { factorKey: string; labelAr: string }[] =
 export function buildFactorRows(
   adopted: ValuationComparableSelectionDto[],
 ): { factorKey: string; labelAr: string }[] {
-  // الصفوف من البيانات الفعلية — بند تسلسلي محذوف (تمويل/نوع) يبقى محذوفاً
-  // حتى تستعيده شريحة «↺ استعادة»، ولا يُعاد فرضه هنا.
+  // Rows come from live data — a deleted sequential item (financing/type) stays deleted
+  // until the restore chip brings it back; do not re-impose it here.
   const map = new Map<string, string>();
   const first = adopted[0]?.market?.adjustmentLines;
   if (first?.length) {
@@ -92,15 +92,15 @@ export function ensureLinesForSave(
         ? (item.market?.suggestedAreaAdjustmentPct ?? percent)
         : percent;
     target.isIncluded = true;
-    // الإدخال الصريح يلغي حالة «مقترح» لهذا البند.
+    // An explicit entry clears the “suggested” state for this item.
     target.isSuggestedValue = false;
   }
   return Array.from(byKey.values()).map((l, i) => ({ ...l, sortOrder: i }));
 }
 
 /**
- * تجهيز سطر تسوية للحفظ: المساحة تُثبَّت على المقترح الآلي، والقيم «المقترحة»
- * (نوع المقارن غير المُدخل) تُعاد صفراً حتى لا يتحول المقترح إلى إدخال يدوي دائم.
+ * Prepare an adjustment line for save: area is pinned to the auto suggestion; “suggested”
+ * values (unentered comparable type) are zeroed so a suggestion does not become a permanent manual entry.
  */
 export function lineForSave(
   item: ValuationComparableSelectionDto,
@@ -124,7 +124,7 @@ export function lineForSave(
   };
 }
 
-/** جسم حفظ التسويات مع الحفاظ على الوزن وتجاوزات compEdit الحالية. */
+/** Adjustments save body while preserving weight and current compEdit overrides. */
 export function marketSaveBody(
   item: ValuationComparableSelectionDto,
   lines: ReturnType<typeof lineForSave>[],

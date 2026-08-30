@@ -32,7 +32,7 @@ function listItemToPoRow(item: WorkOrderListItemDto): PoRow {
     dueDate: item.dueDateAt,
     specialist: specialist || "—",
     project,
-    /** يُستبدل في الواجهة بمسندي مهام أمر العمل عند توفرهم */
+    /** Replaced in the UI with work-order task assignees when available. */
     team: specialist ? [specialist] : [],
     createdAtUtc: item.createdAtUtc,
   };

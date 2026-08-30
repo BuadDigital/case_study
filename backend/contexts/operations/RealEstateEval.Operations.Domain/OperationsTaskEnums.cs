@@ -1,7 +1,7 @@
 namespace RealEstateEval.Operations.Domain;
 
 /// <summary>
-/// Operations task kind (طبقة المهام). Persisted as the wire string — see
+/// Operations task kind. Persisted as the wire string — see
 /// <see cref="OperationsTaskTypeValues"/>.
 /// </summary>
 public enum OperationsTaskType
@@ -38,7 +38,7 @@ public enum OperationsTaskPriority
     Low = 2,
 }
 
-/// <summary>Court-visit close outcome (موقف المفاتيح لدى المحكمة).</summary>
+/// <summary>Court-visit close outcome.</summary>
 public enum CourtVisitOutcomeKind
 {
     Received = 0,

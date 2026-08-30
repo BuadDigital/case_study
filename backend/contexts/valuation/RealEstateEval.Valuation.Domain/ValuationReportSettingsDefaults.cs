@@ -1,7 +1,7 @@
 namespace RealEstateEval.Valuation.Domain;
 
 /// <summary>
-/// Default copy for organization settings tab «تقرير التقييم» (decision 25 layer B).
+/// Default copy for organization settings tab "Valuation report" (decision 25 layer B).
 /// Seeded from the official v3 template; admin may edit; issued reports freeze a snapshot.
 /// </summary>
 public static class ValuationReportSettingsDefaults

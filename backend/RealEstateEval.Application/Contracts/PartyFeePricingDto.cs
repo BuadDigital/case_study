@@ -18,7 +18,7 @@ public sealed class PartyFeePricingTierDto
     public Guid? Id { get; set; }
     public int SortOrder { get; set; }
 
- /// <summary>Inclusive max م². Null = open-ended (must be last tier).</summary>
+ /// <summary>Inclusive max m². Null = open-ended (must be last tier).</summary>
     public decimal? MaxAreaM2 { get; set; }
 
     public decimal FeeSar { get; set; }

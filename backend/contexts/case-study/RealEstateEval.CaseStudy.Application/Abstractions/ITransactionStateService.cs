@@ -2,7 +2,7 @@ using RealEstateEval.CaseStudy.Application.Contracts;
 
 namespace RealEstateEval.CaseStudy.Application.Abstractions;
 
-/// <summary>ق-9: آلة حالات المعاملة — الاشتقاق من حالات الأطراف + رفع إنفاذ الشامل.</summary>
+/// <summary>Q-9: transaction state machine — derived from party states + complete Enfaz upload.</summary>
 public interface ITransactionStateService
 {
     Task<TransactionStateDto?> GetStateAsync(
@@ -10,7 +10,7 @@ public interface ITransactionStateService
         Guid propertyId,
         CancellationToken cancellationToken = default);
 
- /// <summary>الختام الثاني: تسليم شامل بعد شهادة الإيداع واكتمال الأطراف.</summary>
+ /// <summary>Second conclusion: complete delivery after Deposit Certificate and completion of the parties.</summary>
     Task<(TransactionStateDto? Result, string? Error)> RecordEnfazHandoverAsync(
         Guid workOrderId,
         Guid propertyId,
@@ -18,8 +18,8 @@ public interface ITransactionStateService
         CancellationToken cancellationToken = default);
 
  /// <summary>
- /// تكميلية ق-9 (ر3): بعد رفع إنفاذ — قيد تدقيق بقرار المدير العام وسببه حصراً؛
- /// لا يفتح شيئاً (استرجاع فعلي من إنفاذ يمر عبر ر2 في التقييم).
+ /// Supplemental Q-9 (R3): After uploading Enfaz — Audit Entry with Decision General Manager and his reason exclusively;
+ /// It does not open anything (actual retrieval from Enfaz passes R2 in evaluation).
  /// </summary>
     Task<string?> RecordPostEnfazDecisionAsync(
         Guid workOrderId,

@@ -7,15 +7,15 @@ using RealEstateEval.Valuation.Domain;
 namespace RealEstateEval.Valuation.Infrastructure.Data;
 
 /// <summary>
-/// Demo bank + market adjustments from docs/_تقييم بطريقة المبيعات المشابهة
-/// (التقييم بطريقة المبيعات المشابهة - نسخة مستقلة.html).
+/// Demo bank + market adjustments from docs/_similar-sales-valuation
+/// (similar-sales valuation — standalone.html).
 /// Idempotent by <see cref="ComparableProperty.ReferenceCode"/>.
 /// </summary>
 public static class ComparableBankSeed
 {
     public static readonly Guid[] SeedIds =
     [
-        // c1..c7 — أراضٍ (بنك النموذج التفاعلي)
+        // c1..c7 — land parcels (interactive-model bank)
         Guid.Parse("c0a10001-0000-4000-8000-000000000001"),
         Guid.Parse("c0a10001-0000-4000-8000-000000000002"),
         Guid.Parse("c0a10001-0000-4000-8000-000000000003"),
@@ -23,12 +23,12 @@ public static class ComparableBankSeed
         Guid.Parse("c0a10001-0000-4000-8000-000000000005"),
         Guid.Parse("c0a10001-0000-4000-8000-000000000006"),
         Guid.Parse("c0a10001-0000-4000-8000-000000000007"),
-        // b1..b4 — فلل
+        // b1..b4 — villas
         Guid.Parse("c0a10001-0000-4000-8000-000000000008"),
         Guid.Parse("c0a10001-0000-4000-8000-000000000009"),
         Guid.Parse("c0a10001-0000-4000-8000-00000000000a"),
         Guid.Parse("c0a10001-0000-4000-8000-00000000000b"),
-        // a1..a3 — شقق
+        // a1..a3 — apartments
         Guid.Parse("c0a10001-0000-4000-8000-00000000000c"),
         Guid.Parse("c0a10001-0000-4000-8000-00000000000d"),
         Guid.Parse("c0a10001-0000-4000-8000-00000000000e"),
@@ -47,14 +47,14 @@ public static class ComparableBankSeed
         string Intake,
         string PropType,
         bool AdoptDefault,
-        // compSpec — أوصاف المقارن لكل عامل اختلاف (من بنك النموذج التفاعلي).
+        // compSpec — comparable descriptions per difference factor (from interactive-model bank).
         string SpecIdeal,
         string SpecAttraction,
         string SpecAccess,
         string SpecStreetsCount,
         string SpecStreetsLength);
 
-    // البيانات نفسها من docs/_تقييم بطريقة المبيعات المشابهة (v2 dc.html — BANK + BUILT).
+    // Same data from docs/_similar-sales-valuation (v2 dc.html — BANK + BUILT).
     private static readonly BankRow[] Rows =
     [
         new(SeedIds[0], "TRX-24-0912", ComparableTransactionKinds.Executed, "", "2025-11-14",
@@ -85,7 +85,7 @@ public static class ComparableBankSeed
             2050, 200, "العارض", ComparableSources.PriorValuation, ComparableIntakeChannels.Office,
             "أرض سكنية", false,
             "٢٠٠ م²", "٢كم من مركز تجاري", "أطراف الحي", "شارع واحد", "١٢م"),
-        // BUILT — فلل
+        // BUILT — villas
         new(SeedIds[7], "TRX-25-0451", ComparableTransactionKinds.Executed, "", "2026-02-11",
             4150, 520, "النرجس", ComparableSources.Field, ComparableIntakeChannels.Field,
             "فيلا سكنية", false,
@@ -102,7 +102,7 @@ public static class ComparableBankSeed
             3720, 700, "العارض", ComparableSources.PriorValuation, ComparableIntakeChannels.Office,
             "فيلا سكنية", false,
             "٧٠٠ م² بناء", "٢كم من مركز تجاري", "أطراف الحي", "شارع واحد", "١٥م"),
-        // شقق
+        // apartments
         new(SeedIds[11], "TRX-25-0771", ComparableTransactionKinds.Executed, "", "2026-01-09",
             5100, 175, "النرجس", ComparableSources.Field, ComparableIntakeChannels.Field,
             "شقة سكنية", false,
@@ -161,8 +161,8 @@ public static class ComparableBankSeed
             var total = r.PricePerSqm * r.Area;
             if (existing.TryGetValue(r.Ref, out var row))
             {
-                // اكتب فقط عند الاختلاف — إعادة كتابة الصفوف مع كل نداء قائمة تُحدث
-                // عاصفة تعارضات تفاؤلية (409) مع أي اعتماد/حفظ متزامن.
+                // Write only when different — rewriting rows on every list call causes
+                // a storm of optimistic-concurrency conflicts (409) with any concurrent adopt/save.
                 var date = DateOnly.Parse(r.Date);
                 var changed =
                     row.ComparablePropertyType != r.PropType
@@ -284,7 +284,7 @@ public static class ComparableBankSeed
             .ToDictionaryAsync(c => c.ReferenceCode, cancellationToken);
         if (compsByRef.Count == 0) return;
 
-        // مواصفة §٢: ربط المقارنات الميدانية بهذا العقار لأولوية العرض.
+        // Spec §2: link field comparables to this property for display priority.
         if (Guid.TryParse(exists.PropertyId, out var subjectPropertyId)
             && subjectPropertyId != Guid.Empty)
         {
@@ -296,7 +296,7 @@ public static class ComparableBankSeed
                 var tracked = await db.ComparableProperties
                     .FirstOrDefaultAsync(c => c.Id == comp.Id, cancellationToken);
                 if (tracked is null) continue;
-                // اكتب فقط عند الاختلاف — تفادياً لتعارضات xmin مع الطلبات المتزامنة.
+                // Write only when different — avoid xmin conflicts with concurrent requests.
                 if (tracked.SourcePropertyId != subjectPropertyId)
                     tracked.SourcePropertyId = subjectPropertyId;
                 tracked.SourceWorkOrderNumber ??= "SEED-FIELD";
@@ -349,8 +349,8 @@ public static class ComparableBankSeed
             .Select(s => (int?)s.SortOrder)
             .MaxAsync(cancellationToken) ?? -1;
 
-        // الحد الأقصى ٥ معتمدة (مواصفة النموذج): عند وجود اعتمادات سابقة (مقارنات مستوردة
-        // من روابط العقار) تُرفق بذور النموذج غير معتمدة حتى لا يتجاوز الجدول السقف.
+        // Max 5 adopted (model spec): when prior adoptions exist (comparables imported
+        // from property links) model seeds are attached as non-adopted so the table does not exceed the cap.
         var adoptedAlready = await db.ValuationComparableSelections
             .AsNoTracking()
             .CountAsync(
@@ -389,8 +389,8 @@ public static class ComparableBankSeed
     }
 
     /// <summary>
-    /// compSpec من النموذج التفاعلي: أوصاف المقارن لكل عامل اختلاف — النِّسَب تبدأ صفراً
-    /// (الافتراضات المقترحة لنوع المقارن يحسبها المحرك، لا البذرة).
+    /// compSpec from interactive model: comparable descriptions per difference factor — percentages start at zero
+    /// (suggested comparable-kind defaults are computed by the engine, not the seed).
     /// </summary>
     private static void ApplySeedSpecs(
         List<ValuationComparableAdjustmentLine> lines,

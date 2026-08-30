@@ -13,7 +13,7 @@ export type OrganizationCompanySettings = {
   address?: string | null;
   commercialRegistration?: string | null;
   practiceLicenseNumber?: string | null;
-  /** ISO date — إصدار ترخيص مزاولة المنشأة. */
+  /** ISO date — firm practice-license issue date. */
   practiceLicenseIssuedAt?: string | null;
   practiceLicenseExpiresAt?: string | null;
   certifiedValuerId?: string | null;
@@ -22,7 +22,7 @@ export type OrganizationCompanySettings = {
   website?: string | null;
 };
 
-/** بيانات المنشأة — المصدر: الإعدادات v2.dc.html `o`. */
+/** Organization data — source: settings v2.dc.html `o`. */
 export const ORG_COMPANY_DEFAULTS: OrganizationCompanySettings = {
   name: "شركة إجادة المهنية للتقييم العقاري",
   commercialRegistration: "1010456789",
@@ -44,11 +44,11 @@ export type OrganizationEvaluatorSettings = {
   membershipCategory?: string | null;
   licenseExpiresAt?: string | null;
   membershipExpiresAt?: string | null;
-  /** تاريخ إصدار الترخيص (هجري). */
+  /** License issue date (Hijri). */
   licenseIssuedAt?: string | null;
-  /** تاريخ انتهاء الترخيص (هجري) للعرض. */
+  /** License expiry date (Hijri) for display. */
   licenseExpiresHijri?: string | null;
-  /** صفته. */
+  /** His/her title/capacity. */
   title?: string | null;
 };
 
@@ -59,14 +59,14 @@ export const VALUER_MEMBERSHIP_CATEGORIES = [
   { value: "student", label: "طالب" },
 ] as const;
 
-/** فئة العضوية في سجل المقيّمين — المصدر: الإعدادات v2.dc.html `isValuers`. */
+/** Membership category in valuers register — source: settings v2.dc.html `isValuers`. */
 export const VALUER_ROSTER_MEMBERSHIP_OPTIONS = [
   { value: "fellow", label: "عضو أساسي زميل" },
   { value: "associate", label: "عضو أساسي منتسب" },
   { value: "affiliate", label: "عضو منتسب" },
 ] as const;
 
-/** الدور في النظام — صلاحية المنشأة، لا صفة الهيئة. */
+/** System role — firm permission, not Taqeem membership grade. */
 export const VALUER_SYS_ROLES = [
   { value: "certified", label: "مقيم معتمد" },
   { value: "valuer", label: "مقيم عقاري" },
@@ -74,7 +74,7 @@ export const VALUER_SYS_ROLES = [
   { value: "assistant", label: "مساعد مقيم" },
 ] as const;
 
-/** بيانات المقيم المعتمد — المصدر: الإعدادات v2.dc.html `cv`. */
+/** Certified valuer data — source: settings v2.dc.html `cv`. */
 export const CERTIFIED_VALUER_HTML_DEFAULTS: OrganizationEvaluatorSettings = {
   name: "عماد رشيد صالح الرشيد",
   licenseNumber: "1302",
@@ -101,11 +101,11 @@ export type OrganizationValuerRosterEntry = {
   /** certified | valuer | assistant | reviewer */
   role: string;
   isActive: boolean;
-  /** توقيع المقيّم — يُطبع في التقارير الجديدة. */
+  /** Valuer signature — printed on new reports. */
   signatureUrl?: string | null;
 };
 
-/** سجل المقيّمين — المصدر: الإعدادات v2.dc.html `valuers`. */
+/** Valuers register — source: settings v2.dc.html `valuers`. */
 export const VALUER_ROSTER_HTML_DEFAULTS: OrganizationValuerRosterEntry[] = [
   {
     id: "v1",
@@ -198,7 +198,7 @@ export type OrganizationBrandingSettings = {
   letterheadUpdatedAt?: string | null;
 };
 
-/** الهوية البصرية — المصدر: الإعدادات v2.dc.html (isBrand) وأصول assets. */
+/** Brand identity — source: settings v2.dc.html (isBrand) and assets. */
 export const BRAND_IDENTITY_DEFAULTS: OrganizationBrandingSettings = {
   stampUrl: "/case-study/ejadah-stamp.svg",
   signatureUrl: "/case-study/ejadah-signature.png",
@@ -245,22 +245,22 @@ export type OrganizationSlaSettings = {
   privateSectorBusinessDays: number;
 };
 
-/** «حد أقصى قابل للضبط» — P2-5 approved 2026-08-16. */
+/** Configurable upper limit — P2-5 approved 2026-08-16. */
 export type OrganizationValuationSettings = {
   maxAdoptedComparables: number;
-  /** ق-4: عتبة الفارق الزمني بالأشهر لتنبيه تسوية الزمن (m20). */
+  /** Q-4: time-gap threshold in months for time-adjustment alert (m20). */
   comparableTimeGapMonths: number;
-  /** معامل تسوية المساحة ٪ (منطق-التسويات). */
+  /** Area adjustment factor % (adjustments logic). */
   areaFactorPct: number;
-  /** معدل تغير السوق السنوي ٪ لاقتراح ظروف السوق. */
+  /** Annual market-change rate % for market-conditions suggestion. */
   annualMarketRatePct: number;
-  /** أسّ تقريب قيمة السوق (١٠^ن) — منطق-التسويات. */
+  /** Market-value rounding exponent (10^n) — adjustments logic. */
   marketValueRoundDecimals: number;
 };
 
-/** تبويب «تقرير التقييم» (القرار 25 طبقة ب) — ثوابت ونصوص تُعبَّأ مرة. */
+/** Valuation report tab (Decision 25 layer B) — constants and texts filled once. */
 export type OrganizationValuationReportSettings = {
-  /** قرار 23: رقم حزمة النصوص المعيارية — نسخة واحدة للحزمة كلها؛ أي تعديل يصدر حزمة جديدة. */
+  /** Decision 23: standard-text bundle number — one version for the whole bundle; any edit issues a new bundle. */
   textPackageVersion?: number;
   reportType: string;
   currency: string;
@@ -299,7 +299,7 @@ export function emptyValuationReportSettings(): OrganizationValuationReportSetti
   };
 }
 
-/** تقرير التقييم المهني — المصدر: الإعدادات v2.dc.html `isProReport` / `rpt`. */
+/** Professional valuation report — source: settings v2.dc.html `isProReport` / `rpt`. */
 export const VALUATION_REPORT_HTML_DEFAULTS: OrganizationValuationReportSettings = {
   reportType: "تقرير مفصل",
   currency: "الريال السعودي (ر.س.)",
@@ -487,7 +487,7 @@ function normalizeValuationReport( raw: Record<string, unknown> ): OrganizationV
     ? libraryRaw.filter((item): item is string => typeof item === "string")
     : [];
   return {
-    // قرار 23: رقم حزمة النصوص المعيارية — نسخة واحدة للحزمة كلها.
+    // Decision 23: standard-text bundle number — one version for the whole bundle.
     textPackageVersion: typeof versionRaw === 'number' ? versionRaw : 1,
     reportType: pickStr(raw, "reportType", "ReportType"),
     currency: pickStr(raw, "currency", "Currency"),

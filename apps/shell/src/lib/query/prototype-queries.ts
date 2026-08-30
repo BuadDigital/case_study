@@ -227,7 +227,7 @@ export function usePrototypeDataSync(): void {
         queryKey: prototypeKeys.workflowTasks(),
       });
       // Phase revert distribution → bourse (and similar) updates ListPendingBourse;
-      // badges / استعلام بورصة read this key, not workflowTasks alone.
+      // badges / bourse query read this key, not workflowTasks alone.
       void queryClient.invalidateQueries({
         queryKey: prototypeKeys.pendingBourseItems(),
       });

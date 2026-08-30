@@ -5,7 +5,7 @@
 export const INSPECTION_TABLE_TYPE = {
   /** Deed / primary identifier cell */
   deed: "text-[12.5px] !font-bold",
-  /** أمر العمل — inspection uses muted PO, not gold-primary hero */
+  /** Work order — inspection uses muted PO, not gold-primary hero */
   po: "!text-[12.5px] !font-semibold text-text-2",
   /** Body cells (city, district, type…) */
   body: "text-text-2",

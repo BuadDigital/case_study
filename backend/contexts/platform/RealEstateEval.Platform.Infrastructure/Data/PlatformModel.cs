@@ -175,7 +175,7 @@ public static class PlatformModel
             e.Property(x => x.NotesJson).HasColumnType("jsonb");
         });
 
-        // قرار 23: سجل نسخ حزمة النصوص المعيارية — صفوف غير قابلة للتعديل، نسخة واحدة للحزمة.
+        // Decision 23: standard-text package version history — immutable rows, one version per package.
         builder.Entity<ValuationReportTextPackage>(e =>
         {
             if (ownsMigrations)

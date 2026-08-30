@@ -4,9 +4,9 @@ import type { ReactNode } from "react";
 import { cn } from "@platform/ui-kit";
 
 /**
- * HTML primitives for المهام — Case Study.html `renderTasks` / `renderTaskDetail` /
+ * HTML primitives for tasks — Case Study.html `renderTasks` / `renderTaskDetail` /
  * `renderTaskNew` / `openCloseModal` / `openPauseModal` / `openPriorityModal` /
- * `openReassignModal` (primary: `_تصميم واجهة احترافية - المهام`).
+ * `openReassignModal` (primary: professional tasks UI design).
  *
  * Layout tokens live in `ops-tasks-tw.ts`; this module holds shared chrome helpers.
  */
@@ -39,7 +39,7 @@ export function TasksShowAllEye() {
   );
 }
 
-/** KPI icon from `renderTasks` — منشأة (sun rays). */
+/** KPI icon from `renderTasks` — created (sun rays). */
 export function TasksKpiCreatedIcon() {
   return (
     <svg
@@ -58,7 +58,7 @@ export function TasksKpiCreatedIcon() {
   );
 }
 
-/** KPI icon from `renderTasks` — قيد التنفيذ. */
+/** KPI icon from `renderTasks` — in progress. */
 export function TasksKpiInProgressIcon() {
   return (
     <svg
@@ -78,7 +78,7 @@ export function TasksKpiInProgressIcon() {
   );
 }
 
-/** KPI icon from `renderTasks` — مكتملة. */
+/** KPI icon from `renderTasks` — completed. */
 export function TasksKpiCompletedIcon() {
   return (
     <svg
@@ -98,7 +98,7 @@ export function TasksKpiCompletedIcon() {
   );
 }
 
-/** KPI icon from `renderTasks` — مهام نشطة (clipboard check). */
+/** KPI icon from `renderTasks` — active tasks (clipboard check). */
 export function TasksKpiActiveIcon() {
   return (
     <svg

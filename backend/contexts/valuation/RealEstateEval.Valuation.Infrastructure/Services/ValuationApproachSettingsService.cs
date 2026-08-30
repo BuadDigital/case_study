@@ -12,7 +12,7 @@ using RealEstateEval.Valuation.Domain;
 namespace RealEstateEval.Valuation.Infrastructure.Services;
 
 /// <summary>
-/// شاشة 1 الحاكمة: الأساليب المطبَّقة (ق-2/ق-3 المعدَّل) + أساس ووحدة التكلفة + صلاحية التسويات.
+/// Governing screen 1: applied approaches (Q-2/Q-3 amended) + cost basis/unit + adjustments unlock.
 /// Absent row = property-type defaults, so older valuations keep behaving as before.
 /// </summary>
 public sealed class ValuationApproachSettingsService(
@@ -45,7 +45,7 @@ public sealed class ValuationApproachSettingsService(
             await AssumptionLibraryAsync(cancellationToken));
     }
 
- /// <summary>مكتبة الافتراضات — تُدار في إعدادات تبويب تقرير التقييم (القرار 25 طبقة ب).</summary>
+ /// <summary>Assumptions library — managed in valuation-report tab settings (decision 25 layer B).</summary>
     private async Task<HashSet<string>> AllowedPurposeKeysAsync(CancellationToken cancellationToken)
     {
         var allowed = new HashSet<string>(ValuationPurposeKeys.All, StringComparer.OrdinalIgnoreCase);
@@ -84,7 +84,7 @@ public sealed class ValuationApproachSettingsService(
             return (null, new Dictionary<string, string> { ["_"] = "طلب التقييم غير موجود" });
         if (vr.Status == ValuationRequestStatus.Done)
             return (null, new Dictionary<string, string> { ["_"] = "طلب التقييم مكتمل" });
-        // ق-6: بعد صدور نسخة الإيداع يتجمّد التقرير كاملاً — الرمز والشهادة فقط خارج التجميد.
+        // Q-6: after deposit copy, the full report is frozen — only code and certificate are outside the freeze.
         if (await ValuationReportFreeze.IsFrozenAsync(db, vr.Id, cancellationToken))
             return (null, new Dictionary<string, string> { ["_"] = ValuationReportFreeze.FrozenMessageAr });
 
@@ -164,7 +164,7 @@ public sealed class ValuationApproachSettingsService(
         return (ToDto(vr, row, hasStructures, assignmentType, await AssumptionLibraryAsync(cancellationToken)), null);
     }
 
- /// <summary>سؤال الحصر «هل توجد مبانٍ/إنشاءات يجب تقييمها؟» + نوع الإسناد من عقار أمر العمل.</summary>
+ /// <summary>Scoping question "are there buildings/structures to value?" + assignment type from the work-order property.</summary>
     private async Task<(bool HasStructures, AssignmentType AssignmentType)> PropertyContextAsync(
         ValuationRequest vr,
         CancellationToken cancellationToken)

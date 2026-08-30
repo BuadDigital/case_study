@@ -1,9 +1,9 @@
 namespace RealEstateEval.Application.Abstractions;
 
-/// <summary>مرافق فوق قراءات دراسة الحالة — كانت منسوخة في خدمتَي أتعاب المعاين بالمالية.</summary>
+/// <summary>Helpers over case-study reads — previously duplicated in both finance inspector-fee services.</summary>
 public static class CaseStudyLookupExtensions
 {
- /// <summary>معرّفات العقارات المكتملة دراسةً من بين المعرّفات المطلوبة فقط.</summary>
+ /// <summary>Property IDs with completed case study among the requested IDs only.</summary>
     public static async Task<HashSet<Guid>> GetCompletedCaseStudyPropertyIdsAsync(
         this ICaseStudyLookup lookup,
         IEnumerable<Guid?> propertyIds,

@@ -286,7 +286,7 @@ public class WorkflowTask
         Touch(nowUtc);
     }
 
- /// <summary>Blocks the task on an obstruction (تعذر), remembering the phase to come back to.</summary>
+ /// <summary>Blocks the task on an obstruction (failure), remembering the phase to come back to.</summary>
     public void Block(string reason, DateTime nowUtc)
     {
         if (IsTerminal)

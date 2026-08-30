@@ -10,7 +10,7 @@ import type { PartyEngineeringSurveyExtensions } from "../lib/party-engineering-
 import type { PartyTaskPageDef } from "@platform/app-shared/prototype/party-task-pages";
 import type { WorkflowTask } from "../lib/prototype/tasks-storage";
 
-/** غلاف رفيع عند حدود القائمة — أسماء *Action لتتوافق مع Next.js. */
+/** Thin wrapper at the list boundary — *Action names to satisfy Next.js conventions. */
 export function PartyActiveTaskWorkPanel({
   def,
   task,

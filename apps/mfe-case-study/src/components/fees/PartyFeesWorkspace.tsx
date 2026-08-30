@@ -24,6 +24,7 @@ import {
 } from "./SupervisorEngSurveyFeeAcceptPanel";
 import { sortInspectorFeeRowsNewestFirst } from "@platform/app-shared/fees/party-fee-meta";
 import { useWorkflowTasksQuery } from "../../query/case-study-queries";
+import { opsLetterCard } from "../../lib/prototype/ops-tasks-tw";
 
 type PartyFeesTab =
   | "action"
@@ -149,9 +150,9 @@ export function PartyFeesWorkspace({
         : "financial";
 
     return (
-      <div className="px-[30px] pb-11 pt-2">
+      <div className="flex flex-col gap-3.5">
         <EngFeesHtmlTabs
-          className="!mb-4 !mt-0"
+          className="!mb-0"
           active={supTab}
           onChange={(id) => setTab(id as PartyFeesTab)}
           tabs={[
@@ -173,80 +174,105 @@ export function PartyFeesWorkspace({
         />
 
         {supTab === "financial" ? (
-          <div className="flex flex-col gap-9">
-            <section className="min-w-0">
-              <EngFeesSectionTitle
-                title="قبول مخرجات الرفع المساحي"
-                sub="استحقاق أتعاب المكتب يبدأ بعد قبول المخرجات المرسلة (سعر جدول التسعير)."
-              />
-              <SupervisorEngSurveyFeeAcceptPanel />
+          <div className="flex flex-col gap-3.5">
+            <section className={opsLetterCard}>
+              <div className="px-4 pb-4 pt-1 sm:px-[18px]">
+                <EngFeesSectionTitle
+                  className="mb-3 mt-3"
+                  title="قبول مخرجات الرفع المساحي"
+                  sub="استحقاق أتعاب المكتب يبدأ بعد قبول المخرجات المرسلة (سعر جدول التسعير)."
+                />
+                <SupervisorEngSurveyFeeAcceptPanel />
+              </div>
             </section>
 
             {supReviewRows.length > 0 ? (
-              <section className="min-w-0">
-                <EngFeesSectionTitle
-                  title="الواردة للاعتماد"
-                  sub="معاينة / مراجعة حكومية / أطراف — بانتظار اعتماد المشرف قبل المالية."
-                />
-                <PartyFeeWorkflowTable
-                  rows={supReviewRows}
-                  role="supervisor"
-                />
+              <section className={opsLetterCard}>
+                <div className="px-4 pb-4 pt-1 sm:px-[18px]">
+                  <EngFeesSectionTitle
+                    className="mb-3 mt-3"
+                    title="الواردة للاعتماد"
+                    sub="معاينة / مراجعة حكومية / أطراف — بانتظار اعتماد المشرف قبل المالية."
+                    count={supReviewRows.length}
+                  />
+                  <PartyFeeWorkflowTable
+                    rows={supReviewRows}
+                    role="supervisor"
+                  />
+                </div>
               </section>
             ) : (
-              <section className="min-w-0">
-                <EngFeesSectionTitle
-                  title="الواردة للاعتماد"
-                  sub="معاينة / مراجعة حكومية / أطراف — بانتظار اعتماد المشرف قبل المالية."
-                />
-                <QueueTableHint className="mt-1">
-                  لا بنود واردة للاعتماد حالياً.
-                </QueueTableHint>
+              <section className={opsLetterCard}>
+                <div className="px-4 pb-4 pt-1 sm:px-[18px]">
+                  <EngFeesSectionTitle
+                    className="mb-3 mt-3"
+                    title="الواردة للاعتماد"
+                    sub="معاينة / مراجعة حكومية / أطراف — بانتظار اعتماد المشرف قبل المالية."
+                  />
+                  <QueueTableHint className="mt-1">
+                    لا بنود واردة للاعتماد حالياً.
+                  </QueueTableHint>
+                </div>
               </section>
             )}
 
             {disputedRows.length > 0 ? (
-              <section className="min-w-0">
-                <EngFeesSectionTitle
-                  title="خلاف تسعير (مكتب هندسي)"
-                  sub="تحفّظات المكتب قيد المعالجة."
-                />
-                <PartyFeeWorkflowTable rows={disputedRows} role="supervisor" />
+              <section className={opsLetterCard}>
+                <div className="px-4 pb-4 pt-1 sm:px-[18px]">
+                  <EngFeesSectionTitle
+                    className="mb-3 mt-3"
+                    title="خلاف تسعير (مكتب هندسي)"
+                    sub="تحفّظات المكتب قيد المعالجة."
+                    count={disputedRows.length}
+                  />
+                  <PartyFeeWorkflowTable rows={disputedRows} role="supervisor" />
+                </div>
               </section>
             ) : null}
 
             {suspendedRows.length > 0 ? (
-              <section className="min-w-0">
-                <EngFeesSectionTitle
-                  title="الموقوفة"
-                  sub="بنود معلّقة بقرار المشرف."
-                />
-                <PartyFeeWorkflowTable
-                  rows={suspendedRows}
-                  role="supervisor"
-                />
+              <section className={opsLetterCard}>
+                <div className="px-4 pb-4 pt-1 sm:px-[18px]">
+                  <EngFeesSectionTitle
+                    className="mb-3 mt-3"
+                    title="الموقوفة"
+                    sub="بنود معلّقة بقرار المشرف."
+                    count={suspendedRows.length}
+                  />
+                  <PartyFeeWorkflowTable
+                    rows={suspendedRows}
+                    role="supervisor"
+                  />
+                </div>
               </section>
             ) : null}
 
             {returnedToSup.length > 0 ? (
-              <section className="min-w-0">
-                <EngFeesSectionTitle
-                  title="المُعاد من المالية"
-                  sub="بنود أعادتها المالية للمعالجة."
-                />
-                <PartyFeeWorkflowTable
-                  rows={returnedToSup}
-                  role="supervisor"
-                />
+              <section className={opsLetterCard}>
+                <div className="px-4 pb-4 pt-1 sm:px-[18px]">
+                  <EngFeesSectionTitle
+                    className="mb-3 mt-3"
+                    title="المُعاد من المالية"
+                    sub="بنود أعادتها المالية للمعالجة."
+                    count={returnedToSup.length}
+                  />
+                  <PartyFeeWorkflowTable
+                    rows={returnedToSup}
+                    role="supervisor"
+                  />
+                </div>
               </section>
             ) : null}
 
-            <section className="min-w-0">
-              <EngFeesSectionTitle
-                title="متابعة فوترة إنفاذ"
-                sub="حالة أوامر العمل لدى إنفاذ."
-              />
-              <SupervisorEnfazTracking />
+            <section className={opsLetterCard}>
+              <div className="px-4 pb-4 pt-1 sm:px-[18px]">
+                <EngFeesSectionTitle
+                  className="mb-3 mt-3"
+                  title="متابعة فوترة إنفاذ"
+                  sub="حالة أوامر العمل لدى إنفاذ."
+                />
+                <SupervisorEnfazTracking />
+              </div>
             </section>
           </div>
         ) : null}

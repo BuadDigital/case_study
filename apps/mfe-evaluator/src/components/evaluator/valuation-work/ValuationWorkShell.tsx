@@ -35,7 +35,6 @@ import {
 } from "@platform/api-client";
 import { getAuthSession } from "@platform/auth-client";
 import { cn, InlineLoadingSkeleton, Spinner, useToast } from "@platform/ui-kit";
-import { amountWordsOrZero } from "../../../lib/evaluator/value-estimation";
 import type { PoPropertyIntake } from "@case-study/mfe/lib/prototype/po-intake-data";
 import type {
   EvaluatorReportChoices,
@@ -100,10 +99,20 @@ const FinalOpinionSection = lazy(() =>
 
 const LAND_WITHIN_COST = "land_within_cost";
 const MARKET_CONTEXT = "market";
-/** مواصفة النموذج التفاعلي: «N من ٥ معتمدة». */
+/** Interactive-form spec: “N of 5 adopted”. */
 const MAX_ADOPTED_COMPARABLES = 5;
 
-type ScreenId = "basic" | "market" | "cost" | "final" | "review";
+export type ValuationWorkScreenId =
+  | "basic"
+  | "market"
+  | "cost"
+  | "final"
+  | "review";
+
+export type ValuationWorkNavAvailability = {
+  market: boolean;
+  cost: boolean;
+};
 
 export type ValuationWorkPropertyHint = {
   area?: string;
@@ -134,10 +143,17 @@ export type ValuationWorkShellProps = {
   onSubmit?: () => void;
   submitting?: boolean;
   showSubmit?: boolean;
+  /** Controlled screen when embedded in EvaluatorWindow top tabs. */
+  screen?: ValuationWorkScreenId;
+  onScreenChange?: (screen: ValuationWorkScreenId) => void;
+  /** Hide inner header/nav — top ValTabBar owns navigation. */
+  embeddedInTopTabs?: boolean;
+  /** Notify parent which approach tabs should appear (Rule Q-2). */
+  onNavAvailabilityChange?: (nav: ValuationWorkNavAvailability) => void;
 };
 
 /**
- * Appraiser valuation work shell — matches docs/_تقييم بطريقة المبيعات المشابهة design.
+ * Appraiser valuation work shell — matches the sales-comparison valuation design docs.
  * Horizontal screen nav (MFE already has app sidebar).
  */
 export function ValuationWorkShell({
@@ -156,16 +172,32 @@ export function ValuationWorkShell({
   onSubmit,
   submitting = false,
   showSubmit = false,
+  screen: screenProp,
+  onScreenChange,
+  embeddedInTopTabs = false,
+  onNavAvailabilityChange,
 }: ValuationWorkShellProps) {
   const { showToast } = useToast();
   const onFinalOpinionChangeRef = useRef(onFinalOpinionChange);
   onFinalOpinionChangeRef.current = onFinalOpinionChange;
-  const [screen, setScreen] = useState<ScreenId>("basic");
+  const onNavAvailabilityChangeRef = useRef(onNavAvailabilityChange);
+  onNavAvailabilityChangeRef.current = onNavAvailabilityChange;
+  const [internalScreen, setInternalScreen] =
+    useState<ValuationWorkScreenId>("basic");
+  const screenControlled = screenProp != null;
+  const screen = screenControlled ? screenProp : internalScreen;
+  const setScreen = useCallback(
+    (id: ValuationWorkScreenId) => {
+      if (!screenControlled) setInternalScreen(id);
+      onScreenChange?.(id);
+    },
+    [onScreenChange, screenControlled],
+  );
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [valuationRequestId, setValuationRequestId] = useState<string | null>(null);
-  // مرجع متزامن لمعرّف الطلب حتى لا يعيد reload نداء ensure-open في كل تحديث صامت.
+  // Sync request-id ref so reload skips ensure-open on every silent refresh.
   const valuationRequestIdRef = useRef<string | null>(null);
   const [displayId, setDisplayId] = useState<string | null>(null);
   const [selection, setSelection] =
@@ -188,17 +220,17 @@ export function ValuationWorkShell({
     useState<ValuationApproachSettingsDto | null>(null);
 
   const [cost, setCost] = useState<ValuationCostApproachDto | null>(null);
-  /** ترطيب مسودات التكلفة يتم داخل CostApproachSection — المفتاح يزداد مع كل تحميل كامل فقط. */
+  /** Cost drafts hydrate inside CostApproachSection — key bumps on full load only. */
   const [costHydrateKey, setCostHydrateKey] = useState(0);
-  /** ترطيب مسودات التوفيق يتم داخل FinalOpinionSection — نفس آلية المفتاح. */
+  /** Reconciliation drafts hydrate inside FinalOpinionSection — same key mechanism. */
   const [reconHydrateKey, setReconHydrateKey] = useState(0);
-  /** ترطيب مسودات الإعدادات داخل ApproachSettingsSection — يزداد مع كل تحميل كامل وكل حفظ إعدادات. */
+  /** Settings drafts hydrate inside ApproachSettingsSection — bumps on full load and settings save. */
   const [settingsHydrateKey, setSettingsHydrateKey] = useState(0);
 
   const [recon, setRecon] = useState<ValuationReconciliationDto | null>(null);
   const [gates, setGates] = useState<ValuationIssuanceGatesDto | null>(null);
 
-  // تاريخ التقييم الرسمي من الإعدادات المحفوظة — لا من مسودات لم تُحفظ بعد.
+  // Official valuation date from saved settings — not from unsaved drafts.
   const officialValuationDate = useMemo(() => {
     if (approachSettings?.valuationDateMode !== "retrospective") return null;
     const start = approachSettings.retrospectiveDate?.trim();
@@ -232,8 +264,8 @@ export function ValuationWorkShell({
 
   const subjectAreaSyncedRef = useRef<string | null>(null);
 
-  /** مساحة المعاملة من العقار أولى من مساحة أسلوب السوق القديمة على الخادم —
-      مزامنة واحدة لكل (طلب، مساحة) كي لا تتكرر مع كل تحميل. */
+  /** Subject transaction area from the property wins over stale market-approach area on the server —
+      sync once per (request, area) so it does not repeat on every load. */
   async function syncSubjectAreaFromTransaction(
     config: NonNullable<ReturnType<typeof apiConfig>>,
     requestId: string,
@@ -276,14 +308,14 @@ export function ValuationWorkShell({
     }
 
     if (!opts?.silent) setLoading(true);
-    // التحديث الصامت يجدّد بيانات الخادم فقط ولا يلمس مسودات المستخدم —
-    // إعادة كتابة الحقول أثناء الكتابة كانت مصدر «التقطيع» وفقدان النص.
+    // Silent reload refreshes server data only and leaves user drafts alone —
+    // Rewriting fields while typing caused stuttering and lost text.
     const hydrateEdits = !opts?.silent;
-    // نطاق «derived»: بعد حفظ لا يغيّر الإعدادات ولا مرشحي البنك — لا إعادة جلب لهما.
+    // “derived” scope: after a save that does not change settings or bank candidates — skip refetching them.
     const derivedOnly = opts?.scope === "derived";
     setError(null);
 
-    // الطلب المفتوح معروف بعد أول تحميل — لا داعي لجولة ensure-open في كل تحديث.
+    // Open request is known after the first load — skip ensure-open on every refresh.
     let requestId = valuationRequestIdRef.current;
     if (!requestId) {
       const open = await ensureOpenValuationRequestByProperty(config, {
@@ -301,7 +333,7 @@ export function ValuationWorkShell({
         setLandSelection(null);
         setCost(null);
         setRecon(null);
-        // قسما التكلفة والرأي النهائي يعيدان بذر مسوداتهما عبر مفتاحي الترطيب.
+        // Cost and final-opinion sections reseed their drafts via their hydrate keys.
         setCostHydrateKey((k) => k + 1);
         setReconHydrateKey((k) => k + 1);
         setGates(null);
@@ -317,11 +349,11 @@ export function ValuationWorkShell({
       setDisplayId(open.data.displayId);
     }
 
-    // كل استجابة تُطبَّق فور وصولها — علامة الاعتماد لا تنتظر أبطأ نداء (بوابات الإصدار).
+    // Apply each response as it arrives — adoption flag does not wait on the slowest call (issuance gates).
     const selP = listValuationComparableSelections(config, requestId, MARKET_CONTEXT);
     const landP = listValuationComparableSelections(config, requestId, LAND_WITHIN_COST);
-    // بنك العرض: مرشحون ضمن ٥ كم، ثم ترتيب حسب أقرب مساحة لعقار التقييم — ٦ للعرض.
-    // البحث النصي صار نداءً مستقلاً داخل جدول البنك (searchBank) — لا يمر من هنا.
+    // Display bank: within 5 km (no district filter), then bank sorted by closest area — 6 for display.
+    // Text search is a separate call inside the bank table (searchBank) — not routed here.
     const bankP = derivedOnly
       ? null
       : fetchBankCandidates(config, {
@@ -357,7 +389,7 @@ export function ValuationWorkShell({
     if (settingsRes) {
       if (settingsRes.ok) {
         setApproachSettings(settingsRes.data);
-        // ترطيب مسودات الإعدادات داخل ApproachSettingsSection — مفتاح جديد مع كل تحميل كامل.
+        // Hydrate settings drafts inside ApproachSettingsSection — new key on every full load.
         if (hydrateEdits) setSettingsHydrateKey((k) => k + 1);
       } else {
         setApproachSettings(null);
@@ -380,7 +412,7 @@ export function ValuationWorkShell({
       );
       setAdjustmentBasis(selRes.data.adjustmentBasis || "price_per_sqm");
       setAnalysisNotes(selRes.data.analysisNotes ?? "");
-      // مسودات الجداول محلية داخل مكوّناتها — لا شيء يُمسح هنا.
+      // Table drafts live inside their components — nothing to clear here.
       await syncSubjectAreaFromTransaction(
         config,
         requestId,
@@ -391,7 +423,7 @@ export function ValuationWorkShell({
 
     if (costRes.ok) {
       setCost(costRes.data);
-      // ترطيب مسودات التكلفة داخل CostApproachSection — مفتاح جديد مع كل تحميل كامل.
+      // Hydrate cost drafts inside CostApproachSection — new key on every full load.
       if (hydrateEdits) setCostHydrateKey((k) => k + 1);
     } else {
       setCost(null);
@@ -400,7 +432,7 @@ export function ValuationWorkShell({
 
     if (reconRes.ok) {
       setRecon(reconRes.data);
-      // ترطيب مسودات التوفيق داخل FinalOpinionSection — مفتاح جديد مع كل تحميل كامل.
+      // Hydrate reconciliation drafts inside FinalOpinionSection — new key on every full load.
       if (hydrateEdits) setReconHydrateKey((k) => k + 1);
       if (
         typeof reconRes.data.finalOpinionValue === "number" &&
@@ -427,12 +459,12 @@ export function ValuationWorkShell({
   const reloadRef = useRef(reload);
   reloadRef.current = reload;
 
-  /** بعد حفظ التكلفة: حدّث الدفعة وجدّد صامتاً — بلا وميض هيكل تحميل. */
+  /** After cost save: update the batch and silent-reload — no loading-skeleton flash. */
   const onCostSaved = useCallback((dto: ValuationCostApproachDto) => {
     setCost(dto);
     void reloadRef.current({ silent: true, scope: "derived" });
   }, []);
-  /** بعد حفظ التوفيق: حدّث الدفعة وبلّغ رأي القيمة وجدّد صامتاً. */
+  /** After reconciliation save: update the batch, notify value opinion, and silent-reload. */
   const onReconSaved = useCallback((dto: ValuationReconciliationDto) => {
     setRecon(dto);
     if (
@@ -445,13 +477,13 @@ export function ValuationWorkShell({
   }, []);
   const approachSettingsRef = useRef(approachSettings);
   approachSettingsRef.current = approachSettings;
-  /** بعد حفظ الإعدادات: حدّث الدفعة وأعد بذر مسودات الإعدادات وجدّد المشتقات صامتاً. */
+  /** After settings save: update the batch, reseed settings drafts, and silent-reload derived data. */
   const onSettingsSaved = useCallback((dto: ValuationApproachSettingsDto) => {
     setApproachSettings(dto);
     setSettingsHydrateKey((k) => k + 1);
     void reloadRef.current({ silent: true, scope: "derived" });
   }, []);
-  /** حفظ أساس/وحدة التكلفة من شاشة التكلفة — فوق آخر إعدادات محفوظة. */
+  /** Save cost basis/unit from the cost screen — layered on the last saved settings. */
   const onSaveCostBasisUnit = useCallback(
     async (basisKey: string, unitKey: string) => {
       const config = apiConfig();
@@ -479,7 +511,7 @@ export function ValuationWorkShell({
       });
       setSaving(false);
       if (!res.ok) {
-        showToast(res.message ?? "تعذّر حفظ إعدادات التقييم", "error");
+        showToast(res.message ?? "تعذّر بدء التقييم", "error");
         return;
       }
       showToast("تم حفظ أساس ووحدة التكلفة", "success");
@@ -513,7 +545,7 @@ export function ValuationWorkShell({
     () => buildFactorRows(adoptedMarket),
     [adoptedMarket],
   );
-  /** جدول أرض التكلفة (land_within_cost) — بياناته وتسوياته مستقلة عن أسلوب السوق. */
+  /** Cost-approach land table (land_within_cost) — data and adjustments independent of market approach. */
   const adoptedLand = useMemo(
     () => landSelection?.items.filter((i) => i.isAdopted) ?? [],
     [landSelection],
@@ -527,7 +559,7 @@ export function ValuationWorkShell({
     [selection],
   );
 
-  /** السياق الذي ينتمي إليه اختيار المقارن — لاختيار قائمة العوامل الصحيحة. */
+  /** Context that owns the comparable selection — picks the correct factor list. */
   function contextOfItem(item: ValuationComparableSelectionDto): string {
     return adoptedLand.some((i) => i.id === item.id)
       ? LAND_WITHIN_COST
@@ -541,8 +573,8 @@ export function ValuationWorkShell({
   }
 
   /**
-   * مواصفة النموذج التفاعلي (buildNarrative): نص تحليل التسويات يتولّد آلياً من مبررات
-   * البنود («لم يتم تبريره» عند الفراغ) ما دام المقيّم لم يحرره يدوياً.
+   * Interactive-form spec (buildNarrative): adjustments analysis text is generated from factor
+   * justifications (“not justified” when empty) until the appraiser edits it manually.
    */
   const autoNarrative = useMemo(() => {
     if (!adoptedMarket.length) {
@@ -633,8 +665,8 @@ export function ValuationWorkShell({
 
   const subjectAreaNum = Number(subjectArea.replace(",", ".")) || null;
 
-  /* ─── مقابض مستقرة لبنك المقارنات — حتى يعمل memo على الجدول رغم إعادة رسم الصدفة.
-     الدوال المعلنة أدناه ترفع (hoisting) فتصلح مراجعها هنا. ─── */
+  /* ─── Stable handlers for the comparables bank — so table memo holds across shell re-renders.
+     Function declarations below are hoisted, so references here are valid. ─── */
   const adoptRef = useRef(adopt);
   adoptRef.current = adopt;
   const saveBankOverrideRef = useRef(saveBankOverride);
@@ -655,7 +687,7 @@ export function ValuationWorkShell({
     ) => saveBankOverrideRef.current(item, field, raw),
     [],
   );
-  /** بحث البنك — يجلب مرشحي البنك فقط بدل إعادة تحميل الشاشة كاملة (٧ نداءات). */
+  /** Bank search — fetches bank candidates only instead of a full screen reload (7 calls). */
   const onSearchBank = useCallback(
     (search: string) => {
       void (async () => {
@@ -682,132 +714,53 @@ export function ValuationWorkShell({
     ],
   );
 
-  const navItems: { id: ScreenId; label: string; badge?: number; show: boolean }[] =
-    [
-      { id: "basic", label: "البيانات الأساسية", show: true },
-      {
-        id: "market",
-        label: "طريقة المقارنة",
-        badge: selection?.adoptedCount,
-        show: approachSettings?.marketApproachEnabled ?? true,
-      },
-      {
-        id: "cost",
-        label: "طريقة المقاول",
-        show:
-          (approachSettings?.costApproachEnabled ?? true) &&
-          (approachSettings?.costApproachAllowed ?? true),
-      },
-      { id: "final", label: "رأي القيمة النهائي", show: true },
-      { id: "review", label: "المراجعة النهائية", show: true },
-    ];
+  useEffect(() => {
+    onNavAvailabilityChangeRef.current?.({
+      market: marketEnabled,
+      cost: costEnabled,
+    });
+  }, [marketEnabled, costEnabled]);
 
-  /** الشاشة الفعلية تُشتق أثناء الرسم — إخفاء أسلوب من الإعدادات ينقل الاختيار فوراً بلا تمريرة زائدة. */
+  const navItems: {
+    id: ValuationWorkScreenId;
+    label: string;
+    badge?: number;
+    show: boolean;
+  }[] = [
+    { id: "basic", label: "البيانات الأساسية", show: true },
+    {
+      id: "market",
+      label: "طريقة المقارنة",
+      badge: selection?.adoptedCount,
+      show: marketEnabled,
+    },
+    {
+      id: "cost",
+      label: "طريقة المقاول",
+      show: costEnabled,
+    },
+    { id: "final", label: "رأي القيمة النهائي", show: true },
+    { id: "review", label: "المراجعة النهائية", show: true },
+  ];
+
+  /** Active screen is derived during render — hiding an approach in settings moves selection immediately. */
   const visibleScreenIds = navItems.filter((n) => n.show).map((n) => n.id);
-  const effectiveScreen: ScreenId = visibleScreenIds.includes(screen)
+  const effectiveScreen: ValuationWorkScreenId = visibleScreenIds.includes(
+    screen,
+  )
     ? screen
-    : visibleScreenIds[0] ?? "basic";
+    : (visibleScreenIds[0] ?? "basic");
 
-  /** الشاشة لا تُركَّب إلا بعد أول زيارة — ثم تبقى مركّبة مخفية فلا تضيع مسوداتها. */
-  const visitedScreensRef = useRef<Set<ScreenId>>(new Set());
+  /** Screen mounts only after first visit — then stays mounted (hidden) so drafts are not lost. */
+  const visitedScreensRef = useRef<Set<ValuationWorkScreenId>>(new Set());
   visitedScreensRef.current.add(effectiveScreen);
-  const screenMode = (id: ScreenId) =>
+  const screenMode = (id: ValuationWorkScreenId) =>
     !loading && effectiveScreen === id ? "visible" : "hidden";
 
-  const pageMeta = useMemo(() => {
-    switch (effectiveScreen) {
-      case "basic":
-        return {
-          crumbMid: "إعداد التقييم",
-          crumbLast: "البيانات الأساسية",
-          title: "البيانات الأساسية",
-          barMainLabel: "طلب التقييم",
-          barMainValue: displayId ?? "—",
-          barSubLabel: "الحالة",
-          barSubValue: settingsSaved ? "إعدادات محفوظة" : "يلزم حفظ الإعدادات",
-        };
-      case "market": {
-        const fromUi = Number(String(subjectArea ?? "").replace(",", "."));
-        const area =
-          (Number.isFinite(fromUi) && fromUi > 0 ? fromUi : null) ??
-          (selection?.subjectAreaSqm != null && selection.subjectAreaSqm > 0
-            ? selection.subjectAreaSqm
-            : null) ??
-          0;
-        const opinion = selection?.marketOpinionValue ?? 0;
-        const isUnitBasis =
-          (selection?.adjustmentBasis || "price_per_sqm") !== "whole_property";
-        const perSqm =
-          isUnitBasis
-            ? selection?.weightedPricePerSqm
-            : area > 0 && opinion > 0
-              ? opinion / area
-              : null;
-        return {
-          crumbMid: "أسلوب السوق",
-          crumbLast: "طريقة المقارنة",
-          title: "التقييم بطريقة المقارنة",
-          barMainLabel: "القيمة النهائية للعقار",
-          barMainValue: `${fmt(selection?.marketOpinionValue)} ر.س`,
-          barSubLabel: "قيمة المتر المربع",
-          barSubValue:
-            perSqm != null ? `${fmt(perSqm)} ر.س/م²` : "—",
-        };
-      }
-      case "cost":
-        return {
-          crumbMid: "أسلوب التكلفة",
-          crumbLast: "طريقة المقاول",
-          title: "التقييم بطريقة المقاول",
-          barMainLabel: "مؤشر أسلوب التكلفة",
-          barMainValue: cost?.landEstimateComplete
-            ? `${fmt(cost.costOpinionWithLand)} ر.س`
-            : "غير مكتمل",
-          barSubLabel: "أرض + إحلال − إهلاك",
-          barSubValue: cost
-            ? `${fmt(cost.landValueFromMarket)} + ${fmt(cost.totalCostWithIndirect)} − ${fmt(cost.depreciationValue)}`
-            : "—",
-        };
-      case "final":
-        return {
-          crumbMid: "التوفيق",
-          crumbLast: "رأي القيمة النهائي",
-          title: "رأي القيمة النهائي",
-          barMainLabel: "الرأي النهائي",
-          barMainValue: `${fmt(recon?.finalOpinionValue)} ر.س`,
-          barSubLabel: "بعد التقريب",
-          barSubValue: amountWordsOrZero(recon?.finalOpinionValue ?? 0),
-        };
-      case "review":
-        return {
-          crumbMid: "التوفيق",
-          crumbLast: "المراجعة النهائية",
-          title: "المراجعة النهائية",
-          barMainLabel: "الرأي النهائي",
-          barMainValue: `${fmt(recon?.finalOpinionValue)} ر.س`,
-          barSubLabel: "قبل الاعتماد",
-          barSubValue: "رأي القيمة · الافتراضات · ESG",
-        };
-      default:
-        return {
-          crumbMid: "إعداد التقييم",
-          crumbLast: "البيانات الأساسية",
-          title: "البيانات الأساسية",
-          barMainLabel: "طلب التقييم",
-          barMainValue: displayId ?? "—",
-          barSubLabel: "الحالة",
-          barSubValue: settingsSaved ? "إعدادات محفوظة" : "يلزم حفظ الإعدادات",
-        };
-    }
-  }, [
-    effectiveScreen,
-    displayId,
-    settingsSaved,
-    selection,
-    cost,
-    recon,
-    subjectArea,
-  ]);
+  useEffect(() => {
+    if (!screenControlled) return;
+    if (screen !== effectiveScreen) onScreenChange?.(effectiveScreen);
+  }, [effectiveScreen, onScreenChange, screen, screenControlled]);
 
   async function adopt(
     compId: string,
@@ -816,7 +769,7 @@ export function ValuationWorkShell({
   ) {
     const config = apiConfig();
     if (!config || !valuationRequestId) return;
-    // مواصفة النموذج التفاعلي: الحد الأقصى ٥ مقارنات معتمدة لكل جدول.
+    // Interactive-form spec: max 5 adopted comparables per table.
     if (isAdopted) {
       const adoptedNow =
         context === MARKET_CONTEXT
@@ -827,7 +780,7 @@ export function ValuationWorkShell({
         return;
       }
     }
-    // انقلاب تفاؤلي فوري للعلامة — الخادم يصادق في الخلفية والتحديث الصامت يوفّق.
+    // Optimistic flag flip — server confirms in the background; silent reload reconciles.
     const setter = context === MARKET_CONTEXT ? setSelection : setLandSelection;
     setter((prev) => {
       if (!prev) return prev;
@@ -850,10 +803,10 @@ export function ValuationWorkShell({
     );
     if (!res.ok) {
       showToast(res.message ?? "تعذّر تحديث الاعتماد", "error");
-      await reload({ silent: true, scope: "derived" }); // تراجع للحالة الحقيقية
+      await reload({ silent: true, scope: "derived" }); // roll back to true server state
       return;
     }
-    await reload({ silent: true, scope: "derived" }); // توفيق الأوزان والاقتراحات
+    await reload({ silent: true, scope: "derived" }); // reconcile weights and suggestions
   }
 
   async function saveSubjectArea() {
@@ -905,8 +858,8 @@ export function ValuationWorkShell({
     return true;
   }
 
-  /** compEdit: حفظ تجاوز سعر/مساحة المقارن لهذا التقييم فقط — لا يمس البنك المشترك.
-   * يعيد true عند النجاح — جدول البنك يمسح مسودته المحلية عندها. */
+  /** compEdit: save price/area override for this valuation only — does not touch the shared bank.
+   * Returns true on success — the bank table clears its local draft then. */
   async function saveBankOverride(
     item: ValuationComparableSelectionDto,
     field: "price" | "area",
@@ -940,7 +893,7 @@ export function ValuationWorkShell({
     return true;
   }
 
-  /** compSpec: وصف المقارن لعامل اختلاف محدد — خلية لكل مقارن. */
+  /** compSpec: comparable description for a given difference factor — one cell per comparable. */
   async function saveCellDescription(
     item: ValuationComparableSelectionDto,
     factorKey: string,
@@ -968,7 +921,7 @@ export function ValuationWorkShell({
     await reload({ silent: true, scope: "derived" });
   }
 
-  /** subjSpec: وصف العقار محل التقييم لعامل اختلاف — عمود «العقار محل التقييم». */
+  /** subjSpec: subject-property description for a difference factor — subject column. */
   async function saveSubjectSpec(factorKey: string, text: string) {
     const config = apiConfig();
     if (!config || !valuationRequestId) return;
@@ -991,7 +944,7 @@ export function ValuationWorkShell({
     setSelection(res.data);
   }
 
-  /** حذف تسوية تسلسلية (تمويل/نوع) من الجدول — قابلة للاستعادة عبر شريحة «↺ استعادة». */
+  /** Remove a sequential adjustment (financing/type) from the table — restorable via the restore chip. */
   async function removeSequentialFactor(
     factorKey: string,
     context: string = MARKET_CONTEXT,
@@ -1023,7 +976,7 @@ export function ValuationWorkShell({
     await reload({ silent: true, scope: "derived" });
   }
 
-  /** استعادة تسوية تسلسلية محذوفة بقيمها الافتراضية. */
+  /** Restore a deleted sequential adjustment to its default values. */
   async function restoreSequentialFactor(
     factorKey: string,
     context: string = MARKET_CONTEXT,
@@ -1170,7 +1123,7 @@ export function ValuationWorkShell({
     const config = apiConfig();
     if (!config || !valuationRequestId || adjustmentsLocked) return;
     const text = rawText.trim();
-    // مبرر الوزن يُخزَّن على حقل الوزن لا كسطر تسوية.
+    // Weight justification is stored on the weight field, not as an adjustment line.
     if (factorKey === "weight") {
       setSaving(true);
       const results = await Promise.all(
@@ -1198,8 +1151,8 @@ export function ValuationWorkShell({
       await reload({ silent: true, scope: "derived" });
       return;
     }
-    // ق-8-1: مبرر واحد على مستوى العامل — طلب واحد بدل التوزيع على كل المقارنات؛
-    // مبررات الأسطر تبقى «تخصيصاً لمقارن بعينه» تُحرَّر من خلية المقارن.
+    // Rule Q-8-1: one factor-level justification — single request instead of per-comparable fan-out;
+    // Line justifications stay as per-comparable overrides edited from the comparable cell.
     if (text.length > 0 && text.length < JUSTIFICATION_MIN_LENGTH) {
       showToast(
         `المبرر أقصر من الحد الأدنى (${JUSTIFICATION_MIN_LENGTH} أحرف) — اكتب مبرراً جوهرياً (ق-8)`,
@@ -1220,7 +1173,7 @@ export function ValuationWorkShell({
     await reload({ silent: true, scope: "derived" });
   }
 
-  /** ق-8-1: تخصيص مبرر لمقارن بعينه — يكتب سطر التسوية لذلك المقارن فقط. */
+  /** Rule Q-8-1: per-comparable justification override — writes that comparable’s adjustment line only. */
   async function saveLineRationaleOverride(
     selectionId: string,
     factorKey: string,
@@ -1249,7 +1202,7 @@ export function ValuationWorkShell({
       factorRowsFor(context),
     ).map((l, i) => ({
       ...lineForSave(item, l, i),
-      // كتابة التخصيص وحدها لا تحوّل «المقترح» إلى إدخال يدوي بنسبة مخزّنة.
+      // Writing an override alone does not turn a “suggested” value into a stored manual percentage.
       percent:
         l.factorKey === factorKey && rawLine?.isSuggestedValue
           ? 0
@@ -1282,7 +1235,7 @@ export function ValuationWorkShell({
       items[0]?.market?.adjustmentLines?.find((l) => l.factorKey === factorKey)
         ?.isIncluded !== false;
     const nextIncluded = !currentlyOn;
-    // انقلاب تفاؤلي فوري لعلامة ✓ — الحفظ يجري بالتوازي والتحديث الصامت يوفّق.
+    // Optimistic ✓ flag flip — save runs in parallel; silent reload reconciles.
     const setter = context === LAND_WITHIN_COST ? setLandSelection : setSelection;
     setter((prev) =>
       prev
@@ -1450,9 +1403,9 @@ export function ValuationWorkShell({
     await reload({ silent: true, scope: "derived" });
   }
 
-  /* ─── مرسل أوامر جدول التسويات — مرجع مستقر واحد لكل سياق بدل ٢١ مقبضاً،
-     فيصمد memo الجدول رغم إعادة رسم الصدفة (Command/Strategy).
-     الدوال المعلنة أعلاه دوال مرفوعة (hoisted) فمراجعها هنا صحيحة. ─── */
+  /* ─── Adjustments-matrix command dispatcher — one stable ref per context instead of 21 handlers,
+     so table memo survives shell re-renders (Command/Strategy).
+     Function declarations above are hoisted, so references here are valid. ─── */
   const matrixOps = {
     saveMatrixCell,
     saveWeight,
@@ -1488,7 +1441,7 @@ export function ValuationWorkShell({
         <Card>
           <CardPad>
             <p className="text-[13px] text-text-2">
-              احفظ إعدادات التقييم من شاشة البيانات الأساسية أولاً.
+              ابدأ التقييم من شاشة البيانات الأساسية أولاً.
             </p>
           </CardPad>
         </Card>
@@ -1599,7 +1552,7 @@ export function ValuationWorkShell({
           <CardPad>
             <p className="text-[13px] text-text-2">
               {!settingsSaved
-                ? "احفظ إعدادات التقييم أولاً."
+                ? "ابدأ التقييم أولاً."
                 : "أسلوب التكلفة غير مفعّل أو غير منطبق."}
             </p>
           </CardPad>
@@ -1762,8 +1715,8 @@ export function ValuationWorkShell({
             onReportChoicesPatch={onReportChoicesPatch}
           />
         </Suspense>
-        {showSubmit ? (
-          <div className="mt-5">
+        <div className="mt-5 flex flex-wrap items-center justify-end gap-3">
+          {showSubmit ? (
             <PrimaryBtn
               disabled={disabled || submitting}
               onClick={() => onSubmit?.()}
@@ -1775,72 +1728,84 @@ export function ValuationWorkShell({
                   : "اعتماد التقييم وإرسال للأخصائي"}
               </span>
             </PrimaryBtn>
-          </div>
-        ) : null}
+          ) : null}
+        </div>
       </>
     );
   }
 
   return (
     <div dir="rtl" className="relative min-h-[480px]">
-      {/* رأس مساحة العمل وأشرطة الشاشات — بطاقة واحدة عائمة بلغة بطاقات النظام. */}
-      <div className="overflow-hidden rounded-[var(--radius-lg)] border border-border bg-surface shadow-card">
-      <header className="flex items-center justify-between gap-[18px] border-b border-border px-[22px] py-3.5">
-        <h1 className="m-0 text-[17px] font-extrabold tracking-[-0.01em] text-heading">
-          {pageMeta.title}
-        </h1>
-        <div className="flex h-[38px] items-center gap-[7px] rounded-[var(--radius)] border border-border-md bg-surface-2 px-[13px] text-[13px] font-medium text-text-2">
-          <span>تاريخ التقييم</span>
-          <b dir="ltr" className="text-heading">
-            {valDate}
-          </b>
+      {embeddedInTopTabs ? (
+        <div className="mb-3.5 flex flex-wrap items-center justify-end gap-3">
+          <div className="flex h-[38px] items-center gap-[7px] rounded-[var(--radius)] border border-border-md bg-surface-2 px-[13px] text-[13px] font-medium text-text-2">
+            <span>تاريخ التقييم</span>
+            <b dir="ltr" className="text-heading">
+              {valDate}
+            </b>
+          </div>
         </div>
-      </header>
+      ) : (
+        <div className="overflow-hidden rounded-[var(--radius-lg)] border border-border bg-surface shadow-card">
+          <header className="flex items-center justify-end gap-[18px] border-b border-border px-[22px] py-3.5">
+            <div className="flex h-[38px] items-center gap-[7px] rounded-[var(--radius)] border border-border-md bg-surface-2 px-[13px] text-[13px] font-medium text-text-2">
+              <span>تاريخ التقييم</span>
+              <b dir="ltr" className="text-heading">
+                {valDate}
+              </b>
+            </div>
+          </header>
 
-      <nav className="flex flex-wrap gap-1.5 px-[22px] py-3">
-        {navItems
-          .filter((n) => n.show)
-          .map((n) => {
-            const active = effectiveScreen === n.id;
-            return (
-              <button
-                key={n.id}
-                type="button"
-                onClick={() => setScreen(n.id)}
-                className={cn(
-                  "inline-flex cursor-pointer items-center gap-2 rounded-full border px-3.5 py-2 text-[12.5px] font-bold",
-                  active
-                    ? "border-ink bg-ink text-white"
-                    : "border-border-md bg-surface text-text",
-                )}
-              >
-                {n.label}
-                {n.badge != null ? (
-                  <span
+          <nav className="flex flex-wrap gap-1.5 px-[22px] py-3">
+            {navItems
+              .filter((n) => n.show)
+              .map((n) => {
+                const active = effectiveScreen === n.id;
+                return (
+                  <button
+                    key={n.id}
+                    type="button"
+                    onClick={() => setScreen(n.id)}
                     className={cn(
-                      "grid h-[17px] min-w-[17px] place-items-center rounded-full px-[5px] text-[9.5px] font-bold",
+                      "inline-flex cursor-pointer items-center gap-2 rounded-full border px-3.5 py-2 text-[12.5px] font-bold",
                       active
-                        ? "bg-[rgba(200,181,145,.35)] text-white"
-                        : "bg-gold-soft text-gold-d",
+                        ? "border-ink bg-ink text-white"
+                        : "border-border-md bg-surface text-text",
                     )}
                   >
-                    {n.badge}
-                  </span>
-                ) : null}
-              </button>
-            );
-          })}
-      </nav>
-      </div>
+                    {n.label}
+                    {n.badge != null ? (
+                      <span
+                        className={cn(
+                          "grid h-[17px] min-w-[17px] place-items-center rounded-full px-[5px] text-[9.5px] font-bold",
+                          active
+                            ? "bg-[rgba(200,181,145,.35)] text-white"
+                            : "bg-gold-soft text-gold-d",
+                        )}
+                      >
+                        {n.badge}
+                      </span>
+                    ) : null}
+                  </button>
+                );
+              })}
+          </nav>
+        </div>
+      )}
 
-      <div className="relative py-[18px] pb-2">
+      <div
+        className={cn(
+          "relative pb-2",
+          embeddedInTopTabs ? "pt-0" : "py-[18px]",
+        )}
+      >
         {error ? (
           <p className="mb-3 text-[12.5px] text-red-text">
             {error}
           </p>
         ) : null}
         {loading ? (
-          // هيكل انتظار بحجم الشاشة الفعلية — لا تظهر أزرار أو شرائح قبل البيانات ولا يقفز التخطيط.
+          // Placeholder skeleton sized like the real screen — no buttons/chips before data; no layout jump.
           <div aria-busy="true" aria-label="جاري تحميل مساحة عمل التقييم">
             {[0, 1, 2].map((i) => (
               <div
@@ -1912,7 +1877,7 @@ export function ValuationWorkShell({
           <Card>
             <CardPad>
               <p className="text-[13px] text-text-2">
-                احفظ إعدادات التقييم أولاً لفتح رأي القيمة النهائي.
+                ابدأ التقييم أولاً لفتح رأي القيمة النهائي.
               </p>
             </CardPad>
           </Card>
@@ -1946,35 +1911,6 @@ export function ValuationWorkShell({
           <Activity mode={screenMode("review")}>{renderReview()}</Activity>
         ) : null}
       </div>
-
-      {/* شريحة القيم الملخّصة — لا تظهر أثناء التحميل ولا على شاشة الإعدادات (لا قيم بعد). */}
-      {loading || effectiveScreen === "basic" ? null : (
-      <div className="sticky bottom-4 z-40 mb-2 ms-4 inline-flex max-w-[calc(100%-32px)] items-center gap-3.5 rounded-[var(--radius-lg)] border border-border-md border-s-[3px] border-s-gold bg-surface px-4 py-2.5 shadow-lg">
-        <div>
-          <div className="text-[10.5px] font-semibold text-text-3">
-            {pageMeta.barMainLabel}
-          </div>
-          <div
-            dir="ltr"
-            className="text-start text-[19px] font-extrabold leading-tight text-heading"
-          >
-            {pageMeta.barMainValue}
-          </div>
-        </div>
-        <div className="h-[30px] w-px bg-border" />
-        <div>
-          <div className="text-[10.5px] font-semibold text-text-3">
-            {pageMeta.barSubLabel}
-          </div>
-          <div
-            dir="ltr"
-            className="text-start text-sm font-bold leading-tight text-gold-d"
-          >
-            {pageMeta.barSubValue}
-          </div>
-        </div>
-      </div>
-      )}
     </div>
   );
 }

@@ -48,7 +48,7 @@ function WarnTriangleIcon() {
   );
 }
 
-/** إعادة فتح معاملة مكتملة — مطابقة Case Study.html `openReopenModal`. */
+/** Reopen a completed transaction — matches Case Study.html `openReopenModal`. */
 export function ReopenCompletedTransactionModal({
   open,
   task,
@@ -58,7 +58,7 @@ export function ReopenCompletedTransactionModal({
 }: {
   open: boolean;
   task: WorkflowTask | null;
-  /** رقم الصك المعروض في وصف المودال (من صف جميع المعاملات). */
+  /** Deed number shown in the modal description (from the all-transactions row). */
   deedLabel?: string;
   onClose: () => void;
   onConfirm: (reason: string) => void | Promise<void>;

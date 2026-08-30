@@ -27,7 +27,7 @@ function IconClose() {
 
 /**
  * Case Study.html `renderInspectMobile`:
- * ink header + scroll progress + accordion body + sticky «حفظ وإرسال المعاينة».
+ * ink header + scroll progress + accordion body + sticky "save and submit inspection".
  * No key/fees tab strip — failure opens as a secondary panel only.
  */
 export function FieldInspectionMobileShell({

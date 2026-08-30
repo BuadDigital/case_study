@@ -29,7 +29,7 @@ function isHeic(file: File): boolean {
 /** EXIF must be read from the original bytes before any transform. */
 export async function extractEvidenceExif(file: File): Promise<EvidencePhotoExif> {
   try {
-    // exifr ثقيلة ولا تلزم إلا لحظة الرفع — تحميل كسول كنمط heic2any أدناه.
+    // exifr is heavy and only needed at upload — lazy-load like heic2any below.
     const exifr = (await import("exifr")).default;
     const tags = await exifr.parse(file, {
       gps: true,

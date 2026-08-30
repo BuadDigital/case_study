@@ -56,7 +56,7 @@ export function failureTargetsForOperationsTask(
 
   const byPropertyId = new Map<string, OperationsTaskFailureTarget>();
 
-  // فهرسة أوامر العمل ومفاتيح الصكوك مرة واحدة بدل مسح خطي لكل زوج.
+  // Index work orders and deed keys once instead of a linear scan per pair.
   const recordByPo = new Map<string, PoIntakeRecord>();
   for (const record of poRecords) {
     const key = norm(record.poNumber);

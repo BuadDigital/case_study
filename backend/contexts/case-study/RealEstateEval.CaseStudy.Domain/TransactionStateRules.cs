@@ -1,17 +1,17 @@
 namespace RealEstateEval.CaseStudy.Domain;
 
 /// <summary>
-/// ق-9 (بصياغة سليمان النصية): آلة حالات المعاملة ودراسة الحالة — شبكة توزيع
-/// واعتماديات لا سلسلة خطية.
-/// المراحل التأسيسية تسلسلية: ورود أمر العمل من إنفاذ ← البيانات الأولية (الصكوك)
-/// ← الاستعلام من البورصة العقارية ← التوزيع على الأطراف.
-/// مرحلة العمل متوازية باعتماديات — المعاين عقدة المفتاح: المكتب الهندسي ينتظر تأكيد
-/// المعاين (ومنه الموقع) ثم يرفع مساحياً · المقيم ينتظر معلومات المعاين وصوره ثم يسعّر
-/// · أخصائي دراسة الحالة ينتظر الجميع ثم يكمل.
-/// الختام خطوتان مختلفتا الطبيعة: شهادة الإيداع في قيمة (مهنية — تقرير التقييم وحده،
-/// ق-6) ثم رفع المعاملة على إنفاذ (تسليم شامل).
-/// حالة المعاملة مشتقة من حالات الأطراف، والشاشة تعرض من ينتظر من.
-/// (حالات الرجوع/إعادة الفتح ونطاق التجميد الحقلي: للورشة التكميلية — الهيكل هنا حاكم.)
+/// Q-9 (Suleiman's wording): transaction / case-study state machine — a distribution-and-dependency
+/// network, not a linear chain.
+/// Foundational stages are sequential: work-order intake from Enfaz ← initial data (deeds)
+/// ← real-estate bourse inquiry ← distribution to parties.
+/// The work phase runs in parallel with dependencies — the inspector is the key node: the engineering
+/// office waits for inspector confirmation (and the site) then submits the survey · the valuer waits
+/// for inspector info and photos then prices · the case-study specialist waits for everyone then finishes.
+/// Closing has two different steps: Qeema deposit certificate (professional — valuation report alone,
+/// Q-6) then uploading the transaction to Enfaz (full handover).
+/// Overall status is derived from party statuses; the UI shows who is waiting on whom.
+/// (Recall/reopen cases and field-freeze scope: supplementary workshop — this structure governs.)
 /// </summary>
 public static class TransactionStateRules
 {
@@ -54,7 +54,7 @@ public static class TransactionStateRules
         };
     }
 
- /// <summary>لم يبدأ / قيد العمل / معلق بانتظار طرف / مكتمل — نص القرار حرفياً.</summary>
+ /// <summary>Not started / in progress / waiting on a party / completed — labels match the decision text.</summary>
     public static class Statuses
     {
         public const string NotStarted = "not_started";
@@ -75,14 +75,14 @@ public static class TransactionStateRules
     public sealed record PartyFacts(bool Assigned, bool Completed);
 
     public sealed record Input(
- /// <summary>WorkflowTaskPhaseValues wire string لمهمة دراسة الحالة الأم.</summary>
+ /// <summary>WorkflowTaskPhaseValues wire string for the parent case study task.</summary>
         string ParentPhase,
         PartyFacts Inspector,
         PartyFacts Appraiser,
- /// <summary>null = المعاملة لا تتطلب رفعاً مساحياً.</summary>
+ /// <summary>null = The transaction does not require survey submission.</summary>
         PartyFacts? EngineeringOffice,
         PartyFacts CaseSpecialist,
- /// <summary>ق-6: صدرت النسخة النهائية بشهادة الإيداع (طلب التقييم أُقفل).</summary>
+ /// <summary>Q-6: final version issued with deposit certificate (valuation request closed).</summary>
         bool ValuationReportClosed,
         bool EnfazHandedOver);
 
@@ -90,7 +90,7 @@ public static class TransactionStateRules
         string Key,
         string LabelAr,
         string Status,
- /// <summary>مفاتيح الأطراف التي ينتظرها هذا الطرف الآن — «من ينتظر من».</summary>
+ /// <summary>Party keys this party is waiting on now — “who waits on whom”.</summary>
         IReadOnlyList<string> WaitingOn);
 
     public sealed record StageState(string Key, string LabelAr, string Status);
@@ -98,24 +98,24 @@ public static class TransactionStateRules
     public sealed record Result(
         IReadOnlyList<StageState> Stages,
         IReadOnlyList<PartyState> Parties,
- /// <summary>حالة المعاملة المشتقة من حالات الأطراف.</summary>
+ /// <summary>The transaction status is derived from the statuses of the parties.</summary>
         string OverallStatus,
- /// <summary>ملخص «من ينتظر من» للشريط.</summary>
+ /// <summary>“Who is waiting for whom” summary for the status strip.</summary>
         string WaitingSummaryAr);
 
     public static Result Evaluate(Input input)
     {
         var phaseRank = PhaseRank(input.ParentPhase);
-        var distributionDone = phaseRank >= 3; // بعد مرحلة التوزيع
+        var distributionDone = phaseRank >= 3; // After the distribution phase.
 
         var parties = new List<PartyState>();
 
-        // المعاين — عقدة المفتاح: لا ينتظر أحداً.
+        // Inspector — key node: waits on no one.
         var inspector = PartyStateFor(
             Parties.Inspector, input.Inspector, distributionDone, waitingOn: []);
         parties.Add(inspector);
 
-        // المكتب الهندسي ينتظر تأكيد المعاين ثم يرفع مساحياً.
+        // Engineering office waits for inspector confirmation, then submits the survey.
         if (input.EngineeringOffice is not null)
         {
             parties.Add(PartyStateFor(
@@ -125,14 +125,14 @@ public static class TransactionStateRules
                 waitingOn: input.Inspector.Completed ? [] : [Parties.Inspector]));
         }
 
-        // المقيم ينتظر معلومات المعاين وصوره ثم يسعّر.
+        // Valuer waits for inspector info and photos, then prices.
         parties.Add(PartyStateFor(
             Parties.Appraiser,
             input.Appraiser,
             distributionDone,
             waitingOn: input.Inspector.Completed ? [] : [Parties.Inspector]));
 
-        // أخصائي دراسة الحالة ينتظر الجميع.
+        // Case-study specialist waits for everyone.
         var specialistWaits = new List<string>();
         if (!input.Inspector.Completed) specialistWaits.Add(Parties.Inspector);
         if (!input.Appraiser.Completed) specialistWaits.Add(Parties.Appraiser);
@@ -146,7 +146,7 @@ public static class TransactionStateRules
 
         var partiesDone = parties.All(p => p.Status == Statuses.Completed);
 
-        // الختام — خطوتان مختلفتا الطبيعة (ق-6 ثم التسليم الشامل).
+        // Closing — two different steps (Q-6, then full handover).
         var depositDone = input.ValuationReportClosed;
         var handoverReady = depositDone && partiesDone;
         var handoverDone = input.EnfazHandedOver;
@@ -187,14 +187,14 @@ public static class TransactionStateRules
         return new Result(stages, parties, overall, WaitingSummary(parties, handoverDone));
     }
 
- /// <summary>رفع إنفاذ الشامل لا يقع قبل شهادة الإيداع واكتمال كل الأطراف.</summary>
+ /// <summary>Full Enfaz handover is not allowed before the deposit certificate and all parties complete.</summary>
     public static bool AllowsEnfazHandover(Input input) =>
         !input.EnfazHandedOver
         && input.ValuationReportClosed
         && Evaluate(input).Stages
             .First(s => s.Key == Stages.PartyWork).Status == Statuses.Completed;
 
- /// <summary>حزمة رفع إنفاذ (ق-9/ق-14): ما يجب أن يضمّه التسليم الشامل.</summary>
+ /// <summary>Enfaz upload package (Q-9/Q-14): required contents of the complete delivery.</summary>
     public static IReadOnlyList<string> HandoverPackageAr(bool hasSurvey) =>
         hasSurvey
             ?
@@ -224,7 +224,7 @@ public static class TransactionStateRules
                 : waitingOn.Count > 0
                     ? Statuses.WaitingOnParty
                     : Statuses.InProgress;
-        // المكتمل لا «ينتظر» أحداً وإن تأخر غيره.
+        // Completed parties do not “wait” on anyone, even if others are late.
         return new PartyState(
             key,
             Parties.LabelAr(key),
@@ -239,14 +239,14 @@ public static class TransactionStateRules
                 ? Statuses.InProgress
                 : Statuses.NotStarted;
 
- /// <summary>ترتيب المراحل التأسيسية من WorkflowTaskPhase: إنفاذ=0 · بورصة=1 · توزيع=2 · ما بعده=3.</summary>
+ /// <summary>WorkflowTaskPhase order: Enfaz=0 · exchange=1 · distribution=2 · onwards=3.</summary>
     private static int PhaseRank(string parentPhase) =>
         parentPhase.Trim().ToLowerInvariant() switch
         {
             "enfath" => 0,
             "bourse" => 1,
             "distribution" => 2,
-            _ => 3, // case_study / obstruction / done — التوزيع وقع
+            _ => 3, // case_study / obstruction / done — distribution has occurred.
         };
 
     private static string WaitingSummary(IReadOnlyList<PartyState> parties, bool handoverDone)

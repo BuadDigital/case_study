@@ -1,21 +1,21 @@
 import type { PropertyDetailPartySubmission } from "./property-detail-party-submission-types";
 import type { PropertyDetailPartySubmissionsMap } from "./property-detail-party-submissions";
 
-/** Failure-like shape used for the property-detail «تعذرات» tab. */
+/** Failure-like shape used for the property-detail «Failures» tab. */
 export type PropertyDetailFailureSignal = {
   id: string;
   status: string;
   updatedAt?: string;
 };
 
-/** Fee-ledger row signal for the «المالية» tab. */
+/** Fee-ledger row signal for the «Finance» tab. */
 export type PropertyDetailFeeSignal = {
   workflowTaskId: string;
   billingStatus: string;
   updatedAtUtc?: string | null;
 };
 
-/** Timeline row signal for the «السجل» tab. */
+/** Timeline row signal for the «History» tab. */
 export type PropertyDetailLogSignal = {
   id: string;
   at: string;

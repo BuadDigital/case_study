@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * Faithful port of Case Study.html `renderEngFees()` for المكتب الهندسي.
+ * Faithful port of Case Study.html `renderEngFees()` for the engineering office.
  * Layout: KPI → tabs → (secT + toolbar + card) | statements.
  */
 
@@ -44,6 +44,13 @@ import { EngFeesHtmlTabs, EngFeesSectionTitle } from "./EngFeesHtmlTabs";
 import { VendorInvoicePdfField } from "./VendorInvoicePdfField";
 import { ymd as formatYmd } from "@platform/app-shared/format/date";
 import { fmtMax } from "@platform/app-shared/format/number";
+import {
+  opsFldControl,
+  opsFilters,
+  opsLetterCard,
+  opsListCount,
+  opsToolbar,
+} from "../../lib/prototype/ops-tasks-tw";
 
 type TabId = "action" | "ready" | "statements";
 
@@ -57,7 +64,7 @@ const FEE_HEAD = cn(
   "py-3.5 text-[12px] font-bold leading-snug text-heading",
 );
 
-/** كشوف الفوترة الصادرة — نفس أعمدة الرأس والصف */
+/** Issued billing statements — same header and row columns */
 const STATEMENT_COLS =
   "minmax(150px,1.2fr) minmax(90px,.8fr) minmax(70px,.6fr) minmax(90px,.8fr) minmax(110px,1fr) minmax(170px,1.4fr)";
 
@@ -297,7 +304,7 @@ export function EngFeesHtmlScreen({ assigneeId }: { assigneeId?: string }) {
   }, [statements, fnSearch]);
 
   const invalidate = useCallback(async () => {
-    // مفتاحان مستقلان — بالتوازي (async-parallel).
+    // Two independent keys — in parallel (async-parallel).
     await Promise.all([
       queryClient.invalidateQueries({
         queryKey: [...prototypeKeys.all, "inspector-fees"],
@@ -396,9 +403,9 @@ export function EngFeesHtmlScreen({ assigneeId }: { assigneeId?: string }) {
   };
 
   return (
-    <div className="px-[30px] pb-11 pt-[26px]">
+    <div className="flex flex-col gap-3.5">
       {/* Case Study.html `.kpi` */}
-      <KpiBand className="mb-6">
+      <KpiBand className="mb-1">
         <KpiCell
           first
           icon={<CurrencyIcon />}
@@ -449,7 +456,7 @@ export function EngFeesHtmlScreen({ assigneeId }: { assigneeId?: string }) {
       </KpiBand>
 
       <EngFeesHtmlTabs
-        className="!mb-4 !mt-0"
+        className="!mb-0"
         active={tab}
         onChange={onTabChange}
         tabs={[
@@ -483,8 +490,8 @@ export function EngFeesHtmlScreen({ assigneeId }: { assigneeId?: string }) {
           )}
 
           {/* `.toolbar` > `.filters` — separate from card */}
-          <div className="mb-3.5 flex flex-wrap items-center justify-between gap-4">
-            <div className="flex min-w-0 flex-1 flex-wrap items-center gap-2.5">
+          <div className={opsToolbar}>
+            <div className={opsFilters}>
               <div className="relative flex items-center">
                 <svg
                   width="15"
@@ -507,7 +514,7 @@ export function EngFeesHtmlScreen({ assigneeId }: { assigneeId?: string }) {
                   onChange={(e) => setSearch(e.target.value)}
                   placeholder="رقم الصك أو المدينة أو الحي…"
                   aria-label="بحث الأتعاب"
-                  className="w-[248px] max-w-full rounded-lg border border-border-md bg-surface py-2 pe-3.5 ps-[38px] text-[13px] text-text outline-none transition-[border-color,box-shadow] focus:border-gold focus:shadow-[0_0_0_3px_color-mix(in_srgb,var(--gold)_22%,transparent)]"
+                  className={cn(opsFldControl, "w-[248px] max-w-full ps-[38px]")}
                 />
               </div>
               <div className="relative flex items-center">
@@ -515,7 +522,7 @@ export function EngFeesHtmlScreen({ assigneeId }: { assigneeId?: string }) {
                   value={stFilter}
                   onChange={(e) => setStFilter(e.target.value)}
                   aria-label="تصفية الحالة"
-                  className="cursor-pointer appearance-none rounded-lg border border-border-md bg-surface py-2 pe-[34px] ps-3.5 text-[13px] text-text outline-none"
+                  className={cn(opsFldControl, "cursor-pointer")}
                 >
                   <option value="">جميع الحالات</option>
                   {tab === "action" ? (
@@ -531,13 +538,11 @@ export function EngFeesHtmlScreen({ assigneeId }: { assigneeId?: string }) {
                   )}
                 </select>
               </div>
-              <span className="ms-auto rounded-full bg-gold-soft px-3 py-[5px] text-[12px] font-bold text-gold-d">
-                {filteredFees.length} بند
-              </span>
+              <span className={opsListCount}>{filteredFees.length} بند</span>
             </div>
           </div>
 
-          <div className="overflow-hidden rounded-xl border border-border bg-surface shadow-card">
+          <div className={opsLetterCard}>
             <div className="overflow-x-auto">
               <div className="min-w-[920px]">
                 <div
@@ -750,7 +755,7 @@ export function EngFeesHtmlScreen({ assigneeId }: { assigneeId?: string }) {
             </span>
           </div>
 
-          <div className="overflow-hidden rounded-xl border border-border bg-surface shadow-card">
+          <div className={opsLetterCard}>
             <div className="overflow-x-auto">
               <div className="min-w-[820px]">
                 <div

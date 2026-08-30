@@ -1,6 +1,6 @@
 import { jeddahDefaultCoords } from "./jeddah-default-coords";
 
-/** نموذج التحقق الميداني — 13 بنداً (من engineering_office_screen.html). */
+/** Field verification checklist — 13 items (from engineering_office_screen.html). */
 export const ENGINEERING_SURVEY_CHECKLIST_ITEMS = [
   "هل الصك مطابق للرفع المساحي (الأطوال والمساحة)",
   "هل تم الوقوف على الموقع من قِبل طالب التنفيذ وتوقيع إقرار صحة الاستدلال على الموقع",
@@ -44,12 +44,12 @@ export type EngineeringSurveySubmission = {
   checklist: EngineeringSurveyChecklistRow[];
   returnNote?: string;
   /**
-   * هل الصك مطابق للطبيعة؟
-   * نعم → تُعتمد حدود وأطوال حسب الصك فقط
-   * لا → تُفتح حقول إضافية «حسب الطبيعة»
+   * Does the deed match nature?
+   * Yes → use deed boundaries and lengths only
+   * No → open extra «per nature» fields
    */
   deedMatchesNature: "yes" | "no" | null;
-  /** الحدود والأطوال حسب الصك (دائماً) */
+  /** Boundaries and lengths per deed (always) */
   onSiteAreaSqm: string;
   northBoundary: string;
   northBoundaryLengthM: string;
@@ -59,7 +59,7 @@ export type EngineeringSurveySubmission = {
   eastBoundaryLengthM: string;
   westBoundary: string;
   westBoundaryLengthM: string;
-  /** الحدود والأطوال حسب الطبيعة (عند deedMatchesNature = no) */
+  /** Boundaries and lengths per nature (when deedMatchesNature = no) */
   natureOnSiteAreaSqm: string;
   natureNorthBoundary: string;
   natureNorthBoundaryLengthM: string;
@@ -69,9 +69,9 @@ export type EngineeringSurveySubmission = {
   natureEastBoundaryLengthM: string;
   natureWestBoundary: string;
   natureWestBoundaryLengthM: string;
-  /** ملاحظات الرفع المساحي داخل تبويب الرفع (HTML `d.notes`). */
+  /** Survey notes inside the survey tab (HTML `d.notes`). */
   surveyNotes: string;
-  /** ملاحظة على المعاملة في تبويب الملاحظة (HTML `d.note`). */
+  /** Transaction note in the note tab (HTML `d.note`). */
   transactionNote: string;
   updatedAtUtc: string;
   submittedAtUtc?: string;
@@ -130,7 +130,7 @@ export function normalizeEngineeringSurveyChecklist(
     }
   }
 
-  // ١٣ صفاً تُنشأ في مسار الاحتياط فقط — كانت تُخصَّص ثم تُهمل في المسار الشائع.
+  // 13 rows created only on the fallback path — were allocated then discarded on the common path.
   return emptyChecklistRows();
 }
 

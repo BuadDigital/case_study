@@ -703,7 +703,7 @@ export async function submitInspectorWorkspace(
   | { ok: true; draft: InspectorWorkspaceDraft }
   | { ok: false; message: string; errors?: Record<string, string> }
 > {
-  // فحص الجلسة الرخيص قبل جلبٍ شبكي كان يضيع بلا جلسة (async-cheap-condition-before-await).
+  // Cheap session check before a network fetch that would be wasted without a session (async-cheap-condition-before-await).
   const config = workOrdersApiConfig();
   if (!config) {
     return { ok: false, message: "يجب تسجيل الدخول أولاً" };
@@ -782,7 +782,7 @@ export async function reopenInspectorWorkspace(
   return { ok: true, data: next };
 }
 
-/** Specialist acceptance — stamps AcceptedAtUtc so data may feed إنفاذ. */
+/** Specialist acceptance — stamps AcceptedAtUtc so data may feed Infath. */
 export async function acceptInspectorWorkspace(
   taskId: string,
 ): Promise<PartyWorkMutationResult<InspectorWorkspaceDraft>> {

@@ -14,7 +14,7 @@ using RealEstateEval.Attachments.Domain;
 namespace RealEstateEval.Valuation.Infrastructure.Services;
 
 /// <summary>
-/// بناء حقول أقسام تقرير التقييم ونص المعاينة — دوال نقية منقولة من خدمة المستند.
+/// Build valuation-report section fields and inspection narrative — pure helpers moved from the document service.
 /// </summary>
 internal static class ValuationReportFieldBuilder
 {
@@ -145,7 +145,7 @@ internal static class ValuationReportFieldBuilder
                           + (string.IsNullOrWhiteSpace(approachSettings.ValuationPurposeNote)
                               ? ""
                               : $" — {approachSettings.ValuationPurposeNote}");
- // تاريخ التقييم بنوعيه: إصدار القيمة (آلي = تاريخ التقرير) أو أثر رجعي يدوي.
+ // Valuation date kinds: value issuance (automatic = report date) or manual retrospective.
                 d["valuationDateMode"] = ValuationDateModes.LabelAr(
                     approachSettings?.ValuationDateMode);
                 d["valuationDate"] = FormatRetrospectiveDateDisplay(approachSettings);
@@ -167,7 +167,7 @@ internal static class ValuationReportFieldBuilder
                     ? null
                     : DeedKindLabels.LabelAr(prop.DeedKind);
                 d["ownerName"] = prop?.OwnerName;
- // نوع الملكية field in section 6 — editable-derived.
+ // Ownership-type field in section 6 — editable-derived.
                 d["ownershipType"] = prop is null
                     ? null
                     : OwnershipTypes.LabelAr(OwnershipTypeRules.Effective(
@@ -176,10 +176,10 @@ internal static class ValuationReportFieldBuilder
                         OwnershipTypeRules.ParseOwners(prop.DeedOwnersJson),
                         prop.RestrictionType));
                 d["hasStructures"] = hasStructures ? "yes" : "no";
- // حالة العقار prints for buildings only, deleted for land;
- // source is the field inspector (بند «حالة البناء»).
+ // Property condition prints for buildings only, deleted for land;
+ // source is the field inspector ("building condition" item).
                 d["propertyCondition"] = hasStructures ? inspector.BuildState : null;
- // المنقولات وصف حر من الميداني؛ الغياب يُدوَّن نفيًا.
+ // Chattels are free text from the field inspector; absence is recorded as a denial.
                 d["movables"] = inspector.Movables switch
                 {
                     "نعم" => string.IsNullOrWhiteSpace(inspector.MovablesDescription)
@@ -390,7 +390,7 @@ internal static class ValuationReportFieldBuilder
             case ValuationReportSectionKeys.AreaUtilities:
                 d["mode"] = hasStructures ? "full_services" : "area_utilities";
  // Buildings print the inspector's actual services; land keeps the
- // 4-field area-utilities framing (11ب) — «لا تُخترع بيانات» when empty.
+ // 4-field area-utilities framing (11b) — "do not invent data" when empty.
                 d["services"] = inspector.Services.Count > 0
                     ? string.Join(" · ", inspector.Services)
                     : null;

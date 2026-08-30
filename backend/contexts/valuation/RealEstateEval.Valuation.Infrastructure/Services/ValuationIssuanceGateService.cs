@@ -44,7 +44,7 @@ public sealed class ValuationIssuanceGateService(
         string matchOutcome = DeedNatureMatchOutcomes.Unset;
         var hasStructures = false;
         var propertyType = "";
- // حدود المعاينة (القرار 24 + ق-7) — تغذي m18/m21.
+ // Inspection boundaries (decision 24 + Q-7) — feed m18/m21.
         string? inspectionScopeKey = null;
         var uninspectedUnitCount = 0;
         string? inspectionRestrictionReason = null;
@@ -90,14 +90,14 @@ public sealed class ValuationIssuanceGateService(
         var costUsed = (cost?.CostOpinionWithLand ?? 0m) > 0m
             || (cost?.Lines.Count ?? 0) > 0;
 
- // ق-2/ق-3 المعدَّل: cost alerts are irrelevant when the approach is off
+ // Q-2/Q-3 amended: cost alerts are irrelevant when the approach is off
  // (bare land defaults it off; land with structures keeps it available).
         var approachSettings = await valuation.ValuationApproachSettings.AsNoTracking()
             .FirstOrDefaultAsync(x => x.ValuationRequestId == valuationRequestId, cancellationToken);
         var marketApproachEnabled = approachSettings?.MarketApproachEnabled ?? true;
         var costApproachEnabled = approachSettings?.CostApproachEnabled
             ?? ValuationApproachSettingsRules.CanEnableCostApproach(vr.PropertyType, hasStructures);
-        // نطاق «مبنى فقط»: قسم الأرض مخفي — بواباته لا تنطبق.
+        // "Building only" scope: land section hidden — its gates do not apply.
         var costLandRelevant = costApproachEnabled
             && !CostScopeKeys.IsBuildingOnly(approachSettings?.CostScopeKey);
 
@@ -157,8 +157,8 @@ public sealed class ValuationIssuanceGateService(
                 o.Acknowledged))
             .ToList();
 
- // القرار 24: سبب التقييد المنظّم هو شرح المقيّم لقيود المعاينة —
- // يفي بمبرر m18 دون إعادة كتابته في بوابات الإصدار (المصدر الواحد).
+ // Decision 24: the structured restriction reason is the valuer's explanation of inspection limits —
+ // it satisfies the m18 rationale without rewriting it in issuance gates (single source).
         if (!string.IsNullOrWhiteSpace(inspectionRestrictionReason)
             && resolutions.All(r => !string.Equals(
                 r.Code,

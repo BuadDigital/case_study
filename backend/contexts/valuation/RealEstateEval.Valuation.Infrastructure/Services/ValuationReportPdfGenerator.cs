@@ -12,7 +12,7 @@ public static class ValuationReportPdfGenerator
     private static bool _licenseConfigured;
 
     /// <summary>
-    /// ق-6-4: بيانات شهادة الإيداع للنسخة النهائية — الصفحة المرفقة + الرمز في ميتا الصفحات.
+    /// Q-6-4: deposit-certificate data for the final copy — attached page + code in page metadata.
     /// </summary>
     public sealed record IssuanceCertificateStamp(
         string DepositCode,
@@ -72,7 +72,7 @@ public static class ValuationReportPdfGenerator
 
                 page.Content().PaddingTop(16).Column(col =>
                 {
-                    // قرار 23: سطر واحد يوسم الحزمة كلها — «النصوص المعيارية — الحزمة نسخة N».
+                    // Decision 23: one line labels the whole package — "standard texts — package version N".
                     col.Item().PaddingBottom(6)
                         .Text($"النصوص المعيارية/القانونية — الحزمة نسخة {doc.TextPackageVersion}")
                         .FontSize(8).FontColor(Colors.Grey.Darken1);
@@ -159,14 +159,14 @@ public static class ValuationReportPdfGenerator
                     text.CurrentPageNumber();
                     text.Span(" من ");
                     text.TotalPages();
-                    // ق-6-4: الرمز يتعبأ في ميتا الصفحات — النسخة النهائية فقط.
+                    // Q-6-4: code is filled into page metadata — final copy only.
                     if (certificate is not null)
                         text.Span($" · رمز الإيداع: {certificate.DepositCode}");
                 });
             });
 
-            // ق-6-4: صفحة شهادة الإيداع تدخل التقرير صفحةً مرفقة (قرار سليمان النصي) —
-            // الشهادة والرمز وحدهما خارج نطاق التجميد.
+            // Q-6-4: deposit-certificate page enters the report as an attached page (Sulaiman wording) —
+            // certificate and code alone are outside freeze scope.
             if (certificate is not null)
             {
                 container.Page(page =>

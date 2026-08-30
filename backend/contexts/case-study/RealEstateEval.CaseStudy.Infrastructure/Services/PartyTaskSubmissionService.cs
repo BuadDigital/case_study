@@ -124,7 +124,7 @@ public partial class PartyTaskSubmissionService : IPartyTaskSubmissionService
             .Where(s => ids.Contains(s.WorkflowTaskId))
             .ToListAsync(cancellationToken);
 
- // أعلام معاينة الأشقاء دفعةً — كانت حتى استعلامين لكل إرسال (١٠٠٠ نداء لقائمة ٥٠٠).
+ // Batch sibling preview flags — up to 2 queries per submission (1000 calls to list of 500).
         var flagsByTask = await LoadSiblingInspectionFlagsAsync(entities, cancellationToken);
         var result = new List<PartyTaskSubmissionDto>(entities.Count);
         foreach (var entity in entities)
@@ -136,7 +136,7 @@ public partial class PartyTaskSubmissionService : IPartyTaskSubmissionService
         return result;
     }
 
- /// <summary>نفس دلالة ToDtoAsync للأعلام — من قواميس محمّلة سلفاً.</summary>
+ /// <summary>Same meaning as ToDtoAsync for flags — from pre-loaded dictionaries.</summary>
     private static void ApplyInspectionFlags(
         PartyTaskSubmissionDto dto,
         PartyTaskSubmission entity,
@@ -275,7 +275,7 @@ public partial class PartyTaskSubmissionService : IPartyTaskSubmissionService
             ? entity.PayloadJson
             : request.Payload.GetRawText();
 
-        // B2: قواعد الانتقال داخل الجذر — الخدمة تُنسّق فقط.
+        // B2: Intra-root transition rules — service coordinates only.
         var draftError = entity.SaveDraft(
             payloadJson,
             PartyTaskSubmissionPayloadRules.ExtractStatus(payloadJson) ?? entity.Status,
@@ -415,7 +415,7 @@ public partial class PartyTaskSubmissionService : IPartyTaskSubmissionService
             return (null, new Dictionary<string, string> { ["_"] = "لا يوجد إرسال مُكتمل لإعادته" });
 
         var now = _time.UtcNow();
-        // B2: الإعادة تُبطل القبول داخل الجذر — الخدمة تُنسّق الحزمة والمهمة فقط.
+        // B2: Redo invalidates acceptance within the root — the service only coordinates the package and task.
         var returnError = entity.ReturnForCorrection(
             returnNote, now, actor?.UserId, actor?.DisplayName);
         if (returnError is not null)
@@ -541,7 +541,7 @@ public partial class PartyTaskSubmissionService : IPartyTaskSubmissionService
         }
         else if (!alreadyAccepted)
         {
- // Field inspection: إنفاذ package gate. Appraisal stamp is receive/acknowledge only.
+ // Field inspection: Enfaz package gate. Appraisal stamp is receive/acknowledge only.
             _ = entity.Accept(_time.UtcNow(), actorUserId, actor.DisplayName);
             await _db.SaveChangesAsync(cancellationToken);
         }
@@ -607,7 +607,7 @@ public partial class PartyTaskSubmissionService : IPartyTaskSubmissionService
         return (await ToDtoAsync(entity, cancellationToken), null);
     }
 
-    // B2: ختم القبول انتقل إلى الجذر — PartyTaskSubmission.Accept.
+    // B2: Acceptance stamp Go to root — PartyTaskSubmission.Accept.
 
     private async Task<Dictionary<string, string>> ValidateForSubmitAsync(
         PartyTaskSubmission entity,

@@ -160,9 +160,9 @@ async function toSlot(
 }
 
 /**
- * صور المعاينة الميدانية مرتبطة بمعرّف المهمة لا العقار — نداء for-property
- * (بادئة معرّف العقار) لا يراها. مسودة المعاين تحمل معرّفات المرفقات نفسها،
- * فنجمعها منها مباشرة لتدخل فتحات §34.
+ * Field inspection photos are tied to the task id, not the property — for-property
+ * (property-id prefix) does not see them. The inspector draft holds the same attachment ids,
+ * so collect them from there to fill §34 slots.
  */
 export function collectInspectorPhotoAttachmentIds(
   inspector: InspectorWorkspaceDraft | null | undefined,
@@ -177,7 +177,7 @@ export function collectInspectorPhotoAttachmentIds(
     out.push(t);
   };
 
-  // صور المزايا الموثّقة أولاً (واجهة، حالة البناء…) — الأكثر تمثيلاً للعقار.
+  // Documented feature photos first (facade, building condition…) — most representative of the property.
   const features = inspector.featurePhotoAttachments ?? {};
   const featureOrder = [
     "facade",
@@ -213,7 +213,7 @@ export async function loadValuationReportPrintAttachments(
   propertyId: string,
   hasStructures: boolean,
   extras?: {
-    /** معرّفات صور المعاينة من مسودة المعاين — تكمل ميزانية فتحات §34. */
+    /** Inspection photo ids from the inspector draft — complete the §34 slot budget. */
     inspectorPhotoIds?: string[];
   },
 ): Promise<{
@@ -239,7 +239,7 @@ export async function loadValuationReportPrintAttachments(
     hasStructures,
   );
 
-  // أكمل ميزانية الصور من صور المعاينة المرتبطة بالمهمة (غير المرئية لـfor-property).
+  // Finish the photo budget from task-linked inspection photos (invisible to for-property).
   const budget = photoBudget(hasStructures);
   const havePhoto = new Set(photos.map((row) => row.id));
   const inspectorIds = (extras?.inspectorPhotoIds ?? []).filter(

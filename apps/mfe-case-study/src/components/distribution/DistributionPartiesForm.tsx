@@ -123,7 +123,7 @@ export function DistributionPartiesForm({
     () => getEngineeringOffices(staffUsers),
     [staffUsers],
   );
-  /** أخصائي عادي فقط — المشرف غير مدرج في قائمة التوزيع */
+  /** Regular specialist only — supervisor is excluded from the distribution list */
   const caseSpecialists = useMemo(
     () => getCaseSpecialists(staffUsers),
     [staffUsers],

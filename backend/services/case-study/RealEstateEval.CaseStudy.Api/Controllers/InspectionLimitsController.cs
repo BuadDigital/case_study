@@ -9,7 +9,7 @@ using RealEstateEval.CaseStudy.Application.Abstractions;
 
 namespace RealEstateEval.CaseStudy.Api.Controllers;
 
-/// <summary>حدود المعاينة (القرار 24 + ق-7) — يعبّئها المعاين، ويعتمد المكتبيةَ المقيّمُ المعتمد.</summary>
+/// <summary>Inspection Limitations (Decision 24 + Q-7) — Packaged by Inspector, supported by Appraiser desktop.</summary>
 [ApiController]
 [Route("api/work-orders/{poNumber}/properties/{propertyId:guid}/inspection-limits")]
 [Authorize]
@@ -43,7 +43,7 @@ public class InspectionLimitsController : ControllerBase
         return Ok(result);
     }
 
- /// <summary>ق-7 — «من يمنح لمن» تفصيلاً معلّق؛ حالياً صلاحية إصدار التقرير.</summary>
+ /// <summary>Q-7 — “Who gives to whom” pending detail; Currently the report has no validity.</summary>
     [HttpPost("approve-remote")]
     [Authorize(Policy = CapabilityPolicyNames.SubmitValuationReport)]
     public async Task<ActionResult<InspectionLimitsDto>> ApproveRemote(

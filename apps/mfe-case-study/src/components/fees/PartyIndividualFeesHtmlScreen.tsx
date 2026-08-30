@@ -3,9 +3,9 @@
 /**
  * Party fees shell (same module shape as EngFeesHtmlScreen: KPI → tabs → table | docs)
  * with a per-role slot. Each party only sees its lane:
- *   - field-inspection  → معاين: submit-to-supervisor, individual voucher, no invoice
- *   - court-visit → مراجع: أتعاب الزيارة (CourtVisitFeeCharges) + أوامر الصرف + مفاتيح
- *     (لا مسار ledger/رفع مشرف — المنتج ألغى government-review workflow)
+ *   - field-inspection  → inspector: submit-to-supervisor, individual voucher, no invoice
+ *   - court-visit → reviewer: visit fees (CourtVisitFeeCharges) + payment orders + keys
+ *     (no ledger/supervisor-submit path — product dropped government-review workflow)
  * Never share eng (vendor) actions or statements across variants.
  */
 
@@ -41,6 +41,13 @@ import { EngFeesHtmlTabs, EngFeesSectionTitle } from "./EngFeesHtmlTabs";
 import { CourtVisitFeesPanel } from "./CourtVisitFeesPanel";
 import { ymd as formatYmd } from "@platform/app-shared/format/date";
 import { fmtMax } from "@platform/app-shared/format/number";
+import {
+  opsFldControl,
+  opsFilters,
+  opsLetterCard,
+  opsListCount,
+  opsToolbar,
+} from "../../lib/prototype/ops-tasks-tw";
 
 export type IndividualFeesVariant = "field-inspection" | "court-visit";
 
@@ -373,7 +380,7 @@ export function PartyIndividualFeesHtmlScreen({
   const [openFn, setOpenFn] = useState<string | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
 
-  // المعاين: مسار ledger. المراجع: CourtVisitFeeCharges فقط (لا taskKind court-visit على الـ ledger).
+  // Inspector: ledger path. Reviewer: CourtVisitFeeCharges only (no court-visit taskKind on the ledger).
   const { data: summary, isPending: feesPending } = useInspectorFeesQuery(
     {
       assigneeId,
@@ -541,7 +548,7 @@ export function PartyIndividualFeesHtmlScreen({
   }, [statements, fnSearch]);
 
   const invalidate = useCallback(async () => {
-    // مفتاحان مستقلان — بالتوازي (async-parallel).
+    // Two independent keys — in parallel (async-parallel).
     await Promise.all([
       queryClient.invalidateQueries({
         queryKey: [...prototypeKeys.all, "inspector-fees"],
@@ -631,8 +638,8 @@ export function PartyIndividualFeesHtmlScreen({
       ];
 
   return (
-    <div className="px-[30px] pb-11 pt-[26px]">
-      <KpiBand className="mb-6">
+    <div className="flex flex-col gap-3.5">
+      <KpiBand className="mb-1">
         <KpiCell
           first
           icon={<CurrencyIcon />}
@@ -683,7 +690,7 @@ export function PartyIndividualFeesHtmlScreen({
       </KpiBand>
 
       <EngFeesHtmlTabs
-        className="!mb-4 !mt-0"
+        className="!mb-0"
         active={tab}
         onChange={onTabChange}
         tabs={tabs}
@@ -709,8 +716,8 @@ export function PartyIndividualFeesHtmlScreen({
             }
           />
 
-          <div className="mb-3.5 flex flex-wrap items-center justify-between gap-4">
-            <div className="flex min-w-0 flex-1 flex-wrap items-center gap-2.5">
+          <div className={opsToolbar}>
+            <div className={opsFilters}>
               <div className="relative flex items-center">
                 <svg
                   width="15"
@@ -733,7 +740,7 @@ export function PartyIndividualFeesHtmlScreen({
                   onChange={(e) => setSearch(e.target.value)}
                   placeholder="رقم الصك أو المدينة أو الحي…"
                   aria-label="بحث الأتعاب"
-                  className="w-[248px] max-w-full rounded-lg border border-border-md bg-surface py-2 pe-3.5 ps-[38px] text-[13px] text-text outline-none transition-[border-color,box-shadow] focus:border-gold focus:shadow-[0_0_0_3px_color-mix(in_srgb,var(--gold)_22%,transparent)]"
+                  className={cn(opsFldControl, "w-[248px] max-w-full ps-[38px]")}
                 />
               </div>
               <div className="relative flex items-center">
@@ -741,7 +748,7 @@ export function PartyIndividualFeesHtmlScreen({
                   value={stFilter}
                   onChange={(e) => setStFilter(e.target.value)}
                   aria-label="تصفية الحالة"
-                  className="cursor-pointer appearance-none rounded-lg border border-border-md bg-surface py-2 pe-[34px] ps-3.5 text-[13px] text-text outline-none"
+                  className={cn(opsFldControl, "cursor-pointer")}
                 >
                   <option value="">جميع الحالات</option>
                   {tab === "action" ? (
@@ -765,13 +772,11 @@ export function PartyIndividualFeesHtmlScreen({
                   ) : null}
                 </select>
               </div>
-              <span className="ms-auto rounded-full bg-gold-soft px-3 py-[5px] text-[12px] font-bold text-gold-d">
-                {filteredFees.length} بند
-              </span>
+              <span className={opsListCount}>{filteredFees.length} بند</span>
             </div>
           </div>
 
-          <div className="overflow-hidden rounded-xl border border-border bg-surface shadow-card">
+          <div className={opsLetterCard}>
             <div className="overflow-x-auto">
               <div className="min-w-[920px]">
                 <div
@@ -934,35 +939,35 @@ export function PartyIndividualFeesHtmlScreen({
             title={copy.statementsLabel}
             sub="متابعة أوامر الصرف بعد اعتماد المشرف — بلا رفع فاتورة منكم."
           />
-          <div className="mb-3.5 flex flex-wrap items-center gap-2.5">
-            <div className="relative flex items-center">
-              <svg
-                width="15"
-                height="15"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="1.8"
-                className="pointer-events-none absolute start-3 text-text-3"
-                aria-hidden
-              >
-                <circle cx="11" cy="11" r="8" />
-                <path d="m21 21-4.3-4.3" />
-              </svg>
-              <input
-                type="search"
-                value={fnSearch}
-                onChange={(e) => setFnSearch(e.target.value)}
-                placeholder="رقم أمر الصرف…"
-                className="w-[248px] max-w-full rounded-lg border border-border-md bg-surface py-2 pe-3.5 ps-[38px] text-[13px] outline-none focus:border-gold"
-              />
+          <div className={opsToolbar}>
+            <div className={opsFilters}>
+              <div className="relative flex items-center">
+                <svg
+                  width="15"
+                  height="15"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="1.8"
+                  className="pointer-events-none absolute start-3 text-text-3"
+                  aria-hidden
+                >
+                  <circle cx="11" cy="11" r="8" />
+                  <path d="m21 21-4.3-4.3" />
+                </svg>
+                <input
+                  type="search"
+                  value={fnSearch}
+                  onChange={(e) => setFnSearch(e.target.value)}
+                  placeholder="رقم أمر الصرف…"
+                  className={cn(opsFldControl, "w-[248px] max-w-full ps-[38px]")}
+                />
+              </div>
+              <span className={opsListCount}>{filteredFns.length} مستند</span>
             </div>
-            <span className="ms-auto rounded-full bg-gold-soft px-3 py-[5px] text-[12px] font-bold text-gold-d">
-              {filteredFns.length} مستند
-            </span>
           </div>
 
-          <div className="overflow-hidden rounded-xl border border-border bg-surface shadow-card">
+          <div className={opsLetterCard}>
             <div className="overflow-x-auto">
               <div className="min-w-[820px]">
                 <div

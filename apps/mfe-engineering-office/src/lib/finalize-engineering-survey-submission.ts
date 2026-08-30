@@ -22,7 +22,7 @@ function isPartyFormAlreadyClosedError(error: string | undefined): boolean {
   );
 }
 
-/** يرسل الرفع المساحي + إجابات نموذج الدراسة لأخصائي دراسة الحالة. */
+/** Sends the survey + case-study form answers to the case-study specialist. */
 export async function finalizeEngineeringSurveySubmission(
   surveyTaskId: string,
 ): Promise<FinalizeEngineeringSurveyResult | null> {
@@ -32,7 +32,7 @@ export async function finalizeEngineeringSurveySubmission(
   let warning: string | undefined;
   const partyDraft = await loadPartyCaseStudyFormDraft(surveyTaskId);
   // Already locked on a previous attempt — leave alone; success UI is the
-  // single host toast ("اكتمل الرفع المساحي…"), not this side-effect.
+  // single host toast ("survey completed…"), not this side-effect.
   if (partyDraft && partyDraft.status !== "submitted") {
     const saved = await savePartyCaseStudyFormDraft({
       ...partyDraft,

@@ -66,7 +66,7 @@ export function childTasksForCaseStudyParent(
   );
 }
 
-/** إجابات الأطراف المسندة — للعرض في نموذج الأخصائي */
+/** Answers from assigned parties — for display in the specialist form */
 export async function collectPartyAnswersByQuestion(
   parentTaskId: string,
   matrix: CaseStudyInfoRolesMatrix,

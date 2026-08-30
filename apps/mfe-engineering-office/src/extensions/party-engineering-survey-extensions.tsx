@@ -17,7 +17,7 @@ import {
 } from "../lib/engineering-survey-submission-storage";
 import type { EngineeringSurveyWindowHostRefObject } from "../lib/engineering-survey-window-host";
 
-/** Footer from Case Study.html `renderEngOrders` — اشتراطات البدء بالرفع. */
+/** Footer from Case Study.html `renderEngOrders` — prerequisites to start the survey. */
 const ENG_SURVEY_TABLE_HINT =
   "اشتراطات البدء بالرفع: رقم ضابط اتصال إلزامي · الأرض المنظمة تُرفع مباشرة · الأرض الشعبية تتطلب تحديد موقع العقار (وإلا يُشعَر الأخصائي وتوقف مؤقتاً) · المباني تتطلب إخطار المعاين أو إتمام المعاينة.";
 

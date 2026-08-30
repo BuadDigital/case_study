@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useState, type ReactNode } from "react";
 import {
   formatPoDisplay,
   hasBourseDetailFields,
@@ -14,14 +14,23 @@ import {
   removePropertyFromPo,
   updatePropertyInPo,
 } from "../../lib/prototype/po-intake-storage";
-import { RegistrationFormCard } from "@platform/app-shared/registration/RegistrationFormCard";
 import {
   hasFieldErrors,
   mergeFieldErrors,
   type FieldErrors,
 } from "@platform/app-shared/registration/registration-utils";
-import { Button, InlineLoadingSkeleton, Note, useToast } from "@platform/ui-kit";
-import { PoEditShell } from "./PoEditShell";
+import { REG_BACK } from "@platform/app-shared/registration/registration-labels";
+import {
+  Button,
+  Card,
+  CardBody,
+  CardHeader,
+  InlineLoadingSkeleton,
+  Note,
+  PageShell,
+  PageShellHeader,
+  useToast,
+} from "@platform/ui-kit";
 import { PoPropertyBourseForm } from "./PoPropertyBourseForm";
 import { PoPropertyEnfathForm } from "./PoPropertyEnfathForm";
 import {
@@ -36,6 +45,38 @@ import { contactsForApi } from "../../lib/domain/po-intake/property-validation";
 import { scheduleScrollToFirstPoPropertyError } from "../../lib/domain/po-intake/po-field-error-targets";
 import { usePrototype } from "@platform/app-shared/contexts/PrototypeContext";
 import { canDeleteProperty } from "../../lib/prototype/po-roles";
+
+function EditChrome({
+  title,
+  meta,
+  onBack,
+  actions,
+  children,
+}: {
+  title: string;
+  meta?: string;
+  onBack: () => void;
+  actions?: ReactNode;
+  children: ReactNode;
+}) {
+  return (
+    <PageShell variant="canvas" className="gap-0 p-4 sm:p-6" dir="rtl">
+      <PageShellHeader
+        title={title}
+        meta={meta}
+        actions={
+          <div className="flex flex-wrap items-center gap-2">
+            {actions}
+            <Button type="button" size="sm" onClick={onBack}>
+              {REG_BACK}
+            </Button>
+          </div>
+        }
+      />
+      <div className="mt-4 flex flex-col gap-4">{children}</div>
+    </PageShell>
+  );
+}
 
 export function PoPropertyEdit({
   poNumber,
@@ -103,37 +144,25 @@ export function PoPropertyEdit({
 
   if (loading) {
     return (
-      <PoEditShell
-        title="تعديل العقار"
-        onBack={onBackAction}
-        onSave={onBackAction}
-        saveLabel="رجوع"
-      >
+      <EditChrome title="تعديل العقار" onBack={onBackAction}>
         <InlineLoadingSkeleton />
-      </PoEditShell>
+      </EditChrome>
     );
   }
 
   if (!initialRecord || !property) {
     return (
-      <PoEditShell
-        title="تعديل العقار"
-        onBack={onBackAction}
-        onSave={onBackAction}
-        saveLabel="رجوع"
-      >
+      <EditChrome title="تعديل العقار" onBack={onBackAction}>
         <Note tone="warn">لم يُعثر على العقار.</Note>
-      </PoEditShell>
+      </EditChrome>
     );
   }
 
   if (property.isRemoved) {
     return (
-      <PoEditShell
+      <EditChrome
         title={`عقار محذوف — ${property.deedNumber || poNumber}`}
         onBack={onBackAction}
-        onSave={onBackAction}
-        saveLabel="رجوع"
       >
         <Note tone="warn" role="alert">
           هذا العقار محذوف
@@ -142,7 +171,7 @@ export function PoPropertyEdit({
             : ""}
           . لا يمكن تعديله.
         </Note>
-      </PoEditShell>
+      </EditChrome>
     );
   }
 
@@ -233,61 +262,83 @@ export function PoPropertyEdit({
   }
 
   return (
-    <PoEditShell
+    <EditChrome
       title={`تعديل عقار — ${property.deedNumber || poNumber}`}
-      subtitle={`أخصائي دراسة الحالة · ${formatPoDisplay(poNumber)}`}
-      saving={saving}
-      saveShowActionToast={false}
+      meta={`أخصائي دراسة الحالة · ${formatPoDisplay(poNumber)}`}
       onBack={onBackAction}
-      onSave={() => void handleSave()}
-      footerExtra={
-        showDeleteProperty ? (
+      actions={
+        <>
+          {showDeleteProperty ? (
+            <Button
+              type="button"
+              size="sm"
+              variant="danger"
+              className="border-red/30 bg-transparent hover:bg-danger-bg/60"
+              loading={saving}
+              disabled={saving}
+              onClick={() => void handleDelete()}
+            >
+              حذف العقار
+            </Button>
+          ) : null}
           <Button
             type="button"
+            variant="primary"
             size="sm"
-            variant="danger"
-            className="border-red/30 bg-transparent hover:bg-danger-bg/60"
             loading={saving}
             disabled={saving}
-            onClick={() => void handleDelete()}
+            showActionToast={false}
+            onClick={() => void handleSave()}
           >
-            حذف العقار
+            حفظ التعديلات
           </Button>
-        ) : null
+        </>
       }
     >
       {formError ? <Note tone="warn">{formError}</Note> : null}
 
-      <RegistrationFormCard title="بيانات إنفاذ (الصك)">
-        <PoPropertyEnfathForm
-          property={property}
-          assignmentType={initialRecord.assignmentType}
-          fieldErrors={fieldErrors}
-          onPatch={patchProperty}
-          onReplaceProperty={replaceProperty}
-          poNumber={poNumber}
-          excludePoNumber={poNumber}
-        />
-      </RegistrationFormCard>
+      <Card>
+        <CardHeader>
+          <h2 className="m-0 text-sm font-bold">بيانات إنفاذ (الصك)</h2>
+        </CardHeader>
+        <CardBody>
+          <PoPropertyEnfathForm
+            property={property}
+            assignmentType={initialRecord.assignmentType}
+            fieldErrors={fieldErrors}
+            onPatch={patchProperty}
+            onReplaceProperty={replaceProperty}
+            poNumber={poNumber}
+            excludePoNumber={poNumber}
+          />
+        </CardBody>
+      </Card>
 
-      <RegistrationFormCard
-        title="بيانات الموقع والمساحة"
-        subtitle="المدينة والحي والمساحة والتصنيف والحدود — قابلة للتعديل هنا مباشرة"
-      >
-        <PoPropertyBourseForm
-          property={property}
-          fieldErrors={fieldErrors}
-          onPatch={patchProperty}
-          poNumber={poNumber}
-          showIntroNote={false}
-        />
-        {!property.bourseDataCompleted && !hasBourseDetailFields(property) ? (
-          <Note tone="info" className="mt-3">
-            بيانات البورصة الرسمية لم تُكتمل بعد — يمكنك تعبئة المساحة والموقع
-            يدوياً هنا، أو إكمالها لاحقاً من «استعلام البورصة».
-          </Note>
-        ) : null}
-      </RegistrationFormCard>
-    </PoEditShell>
+      <Card>
+        <CardHeader>
+          <div className="min-w-0">
+            <h2 className="m-0 text-sm font-bold">بيانات الموقع والمساحة</h2>
+            <p className="m-0 mt-0.5 text-xs text-text-3">
+              المدينة والحي والمساحة والتصنيف والحدود — قابلة للتعديل هنا مباشرة
+            </p>
+          </div>
+        </CardHeader>
+        <CardBody>
+          <PoPropertyBourseForm
+            property={property}
+            fieldErrors={fieldErrors}
+            onPatch={patchProperty}
+            poNumber={poNumber}
+            showIntroNote={false}
+          />
+          {!property.bourseDataCompleted && !hasBourseDetailFields(property) ? (
+            <Note tone="info" className="mt-3">
+              بيانات البورصة الرسمية لم تُكتمل بعد — يمكنك تعبئة المساحة والموقع
+              يدوياً هنا، أو إكمالها لاحقاً من «استعلام البورصة».
+            </Note>
+          ) : null}
+        </CardBody>
+      </Card>
+    </EditChrome>
   );
 }

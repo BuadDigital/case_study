@@ -38,6 +38,7 @@ import {
   updateWorkOrderProperty,
   workOrderExists,
 } from "@platform/api-client";
+import { hydrateSpecialistReportExtrasFromApi } from "@platform/app-shared/storage/specialist-report-extras-sync";
 import { normalizeDeedNumber } from "./deed-number";
 import { prototypeModulesApiConfig } from "@platform/app-shared/prototype/prototype-modules-api-config";
 import {
@@ -105,8 +106,11 @@ function normalizePoRecord(record: PoIntakeRecord): PoIntakeRecord {
   };
 }
 
-function dtoToProperty(dto: WorkOrderPropertyDto): PoPropertyIntake {
-  return normalizeProperty({
+function dtoToProperty(
+  dto: WorkOrderPropertyDto,
+  poNumber?: string,
+): PoPropertyIntake {
+  const property = normalizeProperty({
     id: String(dto.id ?? ""),
     referenceNumber: dto.referenceNumber ?? null,
     identifierType: parsePropertyIdentifierType(dto.identifierType),
@@ -185,6 +189,14 @@ function dtoToProperty(dto: WorkOrderPropertyDto): PoPropertyIntake {
       phone: c.phone ?? "",
     })),
   });
+  if (property.id && poNumber) {
+    hydrateSpecialistReportExtrasFromApi(
+      property.id,
+      poNumber,
+      dto.specialistReportExtrasJson,
+    );
+  }
+  return property;
 }
 
 function dtoToRecord(dto: WorkOrderDto): PoIntakeRecord {
@@ -205,7 +217,7 @@ function dtoToRecord(dto: WorkOrderDto): PoIntakeRecord {
     clientNameAr: dto.clientNameAr ?? undefined,
     dueDateAt: dto.dueDateAt,
     createdAtUtc: dto.createdAtUtc,
-    properties: dto.properties.map(dtoToProperty),
+    properties: dto.properties.map((p) => dtoToProperty(p, dto.poNumber)),
   });
 }
 
@@ -983,7 +995,7 @@ export async function completePropertyBourse(
     };
   }
 
-  const saved = dtoToProperty(result.data);
+  const saved = dtoToProperty(result.data, poNumber);
   if (saved.boundariesAvailability !== "no") {
     const advanced = await advanceTaskAfterBourseForProperty(
       poNumber,
@@ -1160,7 +1172,7 @@ export async function addPropertyToPo(
     };
   }
 
-  let prop = dtoToProperty(result.data);
+  let prop = dtoToProperty(result.data, poNumber);
 
   // Re-clone prior PDFs under the real server property id when auto-fill ran first.
   if (provisionalId && provisionalId !== prop.id) {
@@ -1285,7 +1297,7 @@ export async function updatePropertyInPo(
   }
 
   notifyWorkOrdersChanged();
-  return { ok: true, data: dtoToProperty(result.data) };
+  return { ok: true, data: dtoToProperty(result.data, poNumber) };
 }
 
 export type PoIntakeDraftPayload = {

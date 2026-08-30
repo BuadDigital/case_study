@@ -8,7 +8,7 @@ namespace RealEstateEval.CaseStudy.Domain;
 public class InternalDelegationLetterSet
 {
     public Guid Id { get; set; }
- /// <summary>مفتاح النطاق — عادةً assigneeId للمراجع الحكومي.</summary>
+ /// <summary>Scope key — usually assigneeId for the government reviewer.</summary>
     public string ScopeKey { get; set; } = "";
     public string LettersJson { get; set; } = "[]";
     public DateTime UpdatedAtUtc { get; set; }

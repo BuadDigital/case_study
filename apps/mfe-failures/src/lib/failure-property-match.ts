@@ -12,8 +12,8 @@ export type FailurePropertyRef = {
   deedNumber?: string;
 };
 
-// مطابقة بلا تخصيص كائنات — تُستدعى لكل (عقار × تعذر) في تحميل قوائم العقارات،
-// وكانت Set + مصفوفتان لكل مقارنة (js-perf).
+// Match without allocating objects — called for every (property × failure) when loading property lists,
+// and used to allocate Set + two arrays per comparison (js-perf).
 export function failureMatchesProperty(
   failure: FailureRecord,
   ref: FailurePropertyRef,
@@ -46,7 +46,7 @@ export function failuresForProperty(
   return matched;
 }
 
-/** أحدث تعذر مطابق يحقق الشرط — مسار واحد بلا filter/sort (js-min-max-loop). */
+/** Latest matching failure that meets the predicate — one pass, no filter/sort (js-min-max-loop). */
 function newestMatchingFailure(
   failures: FailureRecord[],
   ref: FailurePropertyRef,

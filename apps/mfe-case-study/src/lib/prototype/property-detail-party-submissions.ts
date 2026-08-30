@@ -1,5 +1,4 @@
-import { mergeEvaluatorChecklistFromCaseStudy } from "@evaluator/mfe/lib/evaluator/evaluator-checklist-case-study-sync";
-import type { EvaluatorChecklistAnswers } from "@evaluator/mfe/lib/evaluator/evaluator-window-data";
+import { mergeEvaluatorChecklistFromCaseStudy } from "../evaluator-bridge";
 import { loadCaseStudyInfoRolesConfig } from "@settings/mfe/lib/prototype/case-study-info-roles-storage";
 import {
   loadCaseStudyFormDraft,
@@ -19,12 +18,12 @@ import {
   childForRole,
   emptySubmission,
 } from "./property-detail-party-submission-builders";
-import type { EvaluatorChecklist } from "./property-detail-party-submission-types";
 export type {
   PartyAnswerRow,
   PropertyDetailPartySubmission,
 } from "./property-detail-party-submission-types";
 import type {
+  EvaluatorChecklist,
   PropertyDetailPartySubmission,
 } from "./property-detail-party-submission-types";
 import type { WorkflowTask } from "./tasks-storage";
@@ -84,7 +83,7 @@ export async function loadPropertyDetailPartySubmission(input: {
   }
 
   if (roleKey === "appraisal") {
-    // الثلاثة مستقلة — بالتوازي بدل ثلاث رحلات متسلسلة (async-parallel).
+    // The three are independent — parallelize instead of three sequential round-trips (async-parallel).
     const [submission, partyDraft, infoRoles] = await Promise.all([
       loadEvaluatorSubmissionSnapshot(child.id),
       loadPartyCaseStudyFormDraft(child.id),
@@ -95,7 +94,7 @@ export async function loadPropertyDetailPartySubmission(input: {
     }
     if (partyDraft?.savedAtUtc) {
       submission.checklist = mergeEvaluatorChecklistFromCaseStudy(
-        submission.checklist as EvaluatorChecklistAnswers,
+        submission.checklist,
         partyDraft.answers,
         {
           deedRemarks: partyDraft.deedRemarks,

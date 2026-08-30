@@ -125,7 +125,7 @@ public class InspectorFeeService : IInspectorFeeService
             ordinal++;
             var areaM2 = await _resolver.ResolvePropertyAreaM2Async(
                 task, cancellationToken, deed.PropertyId);
- // Offices enter المساحة الإجمالية on the survey form; PO Area is often still blank.
+ // Offices enter total area on the survey form; PO Area is often still empty.
  // Prefer that submitted area for tier pricing, and backfill the property row when empty.
             if (areaM2 is not > 0m)
             {
@@ -309,7 +309,7 @@ public class InspectorFeeService : IInspectorFeeService
         if (request.SupervisorDiscountSar.HasValue)
         {
             var nextDiscount = Math.Max(0m, request.SupervisorDiscountSar.Value);
- // E6 (بند البتّ 12): تغيّر الخصم أثناء الاعتراض يلغي مهلة التفاوض وتذكيراتها.
+ // E6 (Decision Clause 12): The opponent's change during the objection cancels the negotiation deadline and its reminders.
             if (ledger.BillingStatus == InspectorFeeBillingStatus.Disputed
                 && ledger.SupervisorDiscountSar != nextDiscount)
             {
@@ -709,7 +709,7 @@ public class InspectorFeeService : IInspectorFeeService
     }
 
  /// <summary>
- /// Reads المساحة الإجمالية from the engineering-survey submission payload.
+ /// Reads total area from the engineering-survey submission payload.
  /// </summary>
     private static decimal? TryParseSurveyOnSiteAreaM2(string payloadJson)
     {

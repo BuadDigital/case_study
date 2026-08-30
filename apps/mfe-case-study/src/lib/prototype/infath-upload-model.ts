@@ -27,7 +27,7 @@ import { INFATH_FIELD_LABELS as L } from "./infath-field-labels";
 import { fmt } from "@platform/app-shared/format/number";
 import { PropertyKeysStatuses } from "@platform/api-client";
 
-/** Court visit + key envelope inputs for إنفاذ (from المهام / keys gate). */
+/** Court visit + key envelope inputs for Infath (from tasks / keys gate). */
 export type InfathOpsContext = {
   courtVisitCompletedAt?: string | null;
   courtVisitResultKind?: string | null;
@@ -35,9 +35,9 @@ export type InfathOpsContext = {
   keysStatus?: string | null;
   keyAvailable?: boolean;
   envelopeId?: string | null;
-  /** رمز إيداع التقرير في الهيئة — يدخله الأخصائي في سلة إنفاذ. */
+  /** Authority deposit code for the report — entered by the specialist in the Infath basket. */
   depositCode?: string | null;
-  /** اسم مرفق شهادة الإيداع. */
+  /** Deposit-certificate attachment name. */
   depositCertificateName?: string | null;
 };
 
@@ -55,7 +55,7 @@ function partyRemark(
   return party?.remarks.find((r) => r.label === label)?.value?.trim() ?? "";
 }
 
-/** Inspection/survey feed إنفاذ only after specialist accept.
+/** Inspection/survey feed Infath only after specialist accept.
  *  Appraisal feeds after the valuer submits the report — specialist receive
  *  stamp is not a value/Infath gate. */
 export function partyPackageFeedsInfath(
@@ -276,7 +276,7 @@ export function buildInfathUploadModel(input: {
 }): InfathUploadModel {
   const { record, property, parties, documentSections } = input;
   const ops = input.opsContext ?? null;
-  // Gate party packages into إنفاذ only after specialist acceptance.
+  // Gate party packages into Infath only after specialist acceptance.
   const inspection = partyPackageFeedsInfath(parties?.inspection ?? null);
   const survey = partyPackageFeedsInfath(parties?.survey ?? null);
   const appraisal = partyPackageFeedsInfath(parties?.appraisal ?? null);

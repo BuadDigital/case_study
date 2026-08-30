@@ -21,7 +21,7 @@ const finStagePillBase =
 
 export const finStagePill = `${finStagePillBase} border-[#ddd8cc] bg-surface text-text-2 hover:border-gold hover:text-heading`;
 
-/** ink B4E — بدون ظل (مطابق HTML) */
+/** ink B4E — no shadow (matches HTML) */
 export const finStagePillOn = `${finStagePillBase} border-[#102B4E] bg-[#102B4E] text-white`;
 
 export const finStageCount =
@@ -32,8 +32,8 @@ export const finStageCountOn =
 
 /* —— toolbar / filters —— */
 /**
- * فلاتر الإيرادات HTML:
- * بحث (flex:1 min 240) · مدينة · فترة — gap 10px
+ * Revenue filters (HTML):
+ * Search (flex:1 min 240) · City · Period — gap 10px
  */
 export const finFilters = "mb-3.5 flex w-full flex-wrap items-center gap-2.5";
 
@@ -46,7 +46,7 @@ export const finSelCtrl =
 export const finCaret =
   "pointer-events-none absolute end-[11px] text-[10px] leading-none text-text-3";
 
-/** بحث الإيرادات: flex:1; min-width:240 — أولاً في الصف (يمين RTL) */
+/** Revenue search: flex:1; min-width:240 — first in row (RTL right) */
 export const finSearch =
   "relative flex min-w-[240px] flex-1 items-center";
 
@@ -94,27 +94,27 @@ export const finRowClickable = "cursor-pointer";
 export const finTd =
   "flex min-w-0 items-center justify-center overflow-hidden px-4 py-3.5 text-center text-[13px] text-text first:justify-start first:text-start";
 
-/** إيرادات — تحت الدراسة (تجميع بأمر العمل · صك/مدينة/اكتمال/أتعاب) */
+/** Revenue — under study (group by work order · deed/city/completion/fees) */
 export const finGridRevStudy =
   "min-w-[780px] grid-cols-[minmax(150px,1.35fr)_minmax(90px,0.7fr)_minmax(120px,0.9fr)_minmax(160px,1.1fr)]";
 
-/** إيرادات — مؤهلة للفوترة */
+/** Revenue — eligible for billing */
 export const finGridRevEligible =
   "min-w-[820px] grid-cols-[minmax(105px,0.9fr)_minmax(142px,1fr)_minmax(70px,0.55fr)_minmax(104px,0.82fr)_minmax(146px,0.9fr)_minmax(238px,1.3fr)]";
 
-/** إيرادات — مساعد الفوترة (مع checkbox) */
+/** Revenue — billing assistant (with checkbox) */
 export const finGridRevBilling =
   "min-w-[1080px] grid-cols-[50px_minmax(142px,1.1fr)_minmax(132px,0.8fr)_minmax(132px,0.8fr)_minmax(110px,0.85fr)_minmax(100px,0.85fr)_minmax(90px,0.75fr)_minmax(112px,0.95fr)_minmax(162px,0.95fr)]";
 
-/** إيرادات — بانتظار التحصيل (ضمن مجموعة فاتورة) */
+/** Revenue — awaiting collection (within invoice group) */
 export const finGridRevCollect =
   "min-w-[720px] grid-cols-[minmax(130px,1.2fr)_minmax(105px,0.9fr)_minmax(112px,0.95fr)_minmax(96px,0.8fr)_minmax(132px,1fr)]";
 
-/** إيرادات — محصّلة */
+/** Revenue — collected */
 export const finGridRevCollected =
   "min-w-[960px] grid-cols-[minmax(100px,0.85fr)_minmax(134px,1fr)_minmax(70px,0.55fr)_minmax(104px,0.82fr)_minmax(112px,0.9fr)_minmax(120px,0.95fr)_minmax(105px,0.85fr)_minmax(92px,0.7fr)]";
 
-/** إيرادات — متوقفة / مستبعدة */
+/** Revenue — stopped / excluded */
 export const finGridRevStopped =
   "min-w-[820px] grid-cols-[minmax(105px,0.9fr)_minmax(125px,1fr)_minmax(72px,0.58fr)_minmax(105px,0.82fr)_minmax(210px,1.5fr)_minmax(150px,1fr)]";
 

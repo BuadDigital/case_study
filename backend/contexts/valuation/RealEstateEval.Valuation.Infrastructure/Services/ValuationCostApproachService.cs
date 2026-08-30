@@ -50,11 +50,11 @@ public sealed class ValuationCostApproachService(
             return (null, new Dictionary<string, string> { ["_"] = "طلب التقييم غير موجود" });
         if (vr.Status == ValuationRequestStatus.Done)
             return (null, new Dictionary<string, string> { ["_"] = "طلب التقييم مكتمل" });
-        // ق-6: بعد صدور نسخة الإيداع يتجمّد التقرير كاملاً — الرمز والشهادة فقط خارج التجميد.
+        // Q-6: after deposit copy, the full report is frozen — only code and certificate are outside the freeze.
         if (await ValuationReportFreeze.IsFrozenAsync(db, vr.Id, cancellationToken))
             return (null, new Dictionary<string, string> { ["_"] = ValuationReportFreeze.FrozenMessageAr });
 
- // ق-2/ق-3 المعدَّل: cost tab is closed when the approach is off (bare land defaults it off;
+ // Q-2/Q-3 amended: cost tab is closed when the approach is off (bare land defaults it off;
  // land WITH structures opens it for the structure lines only — spec v2 §3).
         var approachSettings = await db.ValuationApproachSettings.AsNoTracking()
             .FirstOrDefaultAsync(x => x.ValuationRequestId == valuationRequestId, cancellationToken);
@@ -102,7 +102,7 @@ public sealed class ValuationCostApproachService(
                 errors[$"lines[{i}].repeatedFloorCount"] = "عدد الأدوار المتكررة يجب أن يكون ≥ 0";
         }
 
-        // «المنع يقع عند الاعتماد فقط»: المبررات تُطالب بها التنبيهات المنهجية (m6/m10/m12) لا الحفظ.
+        // "Blocking happens at adoption only": rationales are demanded by methodology alerts (m6/m10/m12), not by save.
         if (request.UseRestrictionDiscountPct is < 0m or > 100m)
             errors["useRestrictionDiscountPct"] = "خصم تقييد الاستخدام يجب أن يكون بين 0 و 100";
         if (request.ApartmentLandShareSqm is < 0m)
@@ -155,7 +155,7 @@ public sealed class ValuationCostApproachService(
 
         if (request.RefreshLandFromLandComps)
         {
-            // أرض التكلفة من جدول land_within_cost فقط — لا استيراد من أسلوب السوق.
+            // Cost land comes from the land_within_cost table only — no import from the market approach.
             var landComps = await selections.ListAsync(
                 valuationRequestId,
                 ComparableSelectionContexts.LandWithinCost,
@@ -314,7 +314,7 @@ public sealed class ValuationCostApproachService(
     {
         var orderedLines = (entity?.Lines ?? []).OrderBy(l => l.SortOrder).ToList();
 
-        // مواصفة النموذج التفاعلي: بند المتكررة يرث سعر متر «الدور الأول» عند تركه فارغاً.
+        // Interactive model spec: repeating-floor line inherits "first floor" m² rate when left empty.
         var firstFloorUnitCost = orderedLines
             .Where(l => CostLineItemKeys.Normalize(l.ItemKey) == CostLineItemKeys.FirstFloor)
             .Select(l => l.UnitCostSar)
@@ -391,8 +391,8 @@ public sealed class ValuationCostApproachService(
             })
             .ToList();
 
-        // مسطحات البناء: Σ الكمية الفعلية لبنود م² في مجموعة المسطحات
-        // (بما فيها البنود المخصصة المدرجة في المجموعة عبر structureKind = floor).
+        // Building floor areas: Σ effective quantity of m² lines in the floor-areas group
+        // (including custom lines placed in the group via structureKind = floor).
         var buildingArea = computed
             .Where(c => c.Line.IsIncluded
                 && CostLineUnits.Normalize(c.Line.Unit) == CostLineUnits.Sqm

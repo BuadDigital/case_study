@@ -1,5 +1,5 @@
-// مكوّن خادم — كانت الصفحة "use client" فقط لفك params (server-side)؛
-// فك المعرّف يجري على الخادم ولا يُسلسل وعد params للعميل.
+// Server component — the page was "use client" only to unwrap params (server-side);
+// id unwrap runs on the server and does not serialize the params promise to the client.
 import { PartyActiveTaskWorkPage } from "@case-study/mfe/views/PartyActiveTaskWorkPage";
 import { decodeTaskParam } from "@case-study/mfe/lib/my-task-routes";
 

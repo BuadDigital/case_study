@@ -7,23 +7,12 @@ export type OrphanScreenNavItem = {
   available: boolean;
 };
 
-/** شاشات قديمة غير مربوطة بسير العمل الحالي — للمسؤول فقط */
-export const ORPHAN_SCREENS_NAV: OrphanScreenNavItem[] = [
-  {
-    id: "survey",
-    label: "مكاتب الرفع الهندسي",
-    icon: "M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0zM12 10a2 2 0 1 0 0-4 2 2 0 0 0 0 4z",
-    available: true,
-  },
-  {
-    id: "property-inspection",
-    label: "معاينة العقار (يتيم)",
-    icon: "M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8zM12 12a3 3 0 1 0 0-6 3 3 0 0 0 0 6z",
-    available: true,
-  },
-];
+/**
+ * Legacy draft sidebar group — emptied (removed from nav).
+ * Page ids `survey` / `property-inspection` may still exist as routes for deep links.
+ */
+export const ORPHAN_SCREENS_NAV: OrphanScreenNavItem[] = [];
 
-/** Matches Case Study.html sidebar draft group label. */
 export const ORPHAN_SCREENS_GROUP = "الشاشات (Draft)";
 
 export const ORPHAN_SCREENS_GROUP_ICON =
@@ -34,20 +23,15 @@ export const ORPHAN_SCREENS_PAGE_IDS: PageId[] = ORPHAN_SCREENS_NAV.map(
 );
 
 export function orphanScreensNavForRole(
-  rolePages: PageId[],
+  _rolePages: PageId[],
 ): OrphanScreenNavItem[] {
-  return ORPHAN_SCREENS_NAV.filter((item) => rolePages.includes(item.id)).map(
-    (item) => ({
-      ...item,
-      available: true,
-    }),
-  );
+  return [];
 }
 
-export function isInOrphanScreensSection(page: PageId): boolean {
-  return ORPHAN_SCREENS_PAGE_IDS.includes(page);
+export function isInOrphanScreensSection(_page: PageId): boolean {
+  return false;
 }
 
-export function showOrphanScreensGroup(rolePages: PageId[]): boolean {
-  return orphanScreensNavForRole(rolePages).length > 0;
+export function showOrphanScreensGroup(_rolePages: PageId[]): boolean {
+  return false;
 }

@@ -10,9 +10,9 @@ namespace RealEstateEval.Valuation.Infrastructure.Services;
 
 /// <summary>
 /// Harvests a completed valuation's subject into the shared bank as source
-/// «تقييم سابق» — the source card then shows «من معاملات سابقة».
+/// "Prior valuation" — the source card then shows "from prior transactions".
 /// Skips quietly when mandatory bank data (final value, area, coordinates) is absent:
-/// «لا تُخترع بيانات».
+/// "Do not invent data".
 /// </summary>
 public sealed class PriorValuationBankFeeder(
     ValuationDbContext valuation,

@@ -1,5 +1,10 @@
 /** ESG inputs filled by the case specialist — mirrored read-only to the appraiser. */
 
+import {
+  loadSpecialistReportExtrasBag,
+  patchSpecialistReportExtras,
+} from "@platform/app-shared/storage/specialist-report-extras-sync";
+
 export type SpecialistEsgGroup = {
   none: boolean;
   selected: string[];
@@ -36,8 +41,6 @@ export const ESG_NONE_NOTES = {
   gov: "لا يوجد تأثير لعوامل الحوكمة على القيمة التقديرية للعقار.",
 } as const;
 
-const STORAGE_PREFIX = "ejadah.valuation-specialist-esg.v1:";
-
 export const VALUATION_SPECIALIST_ESG_CHANGED_EVENT =
   "ejadah-valuation-specialist-esg-changed";
 
@@ -51,10 +54,6 @@ export function emptySpecialistEsgInputs(): SpecialistEsgInputs {
     esgSoc: emptySpecialistEsgGroup(ESG_NONE_NOTES.soc),
     esgGov: emptySpecialistEsgGroup(ESG_NONE_NOTES.gov),
   };
-}
-
-function specialistEsgStorageKey(propertyId: string): string {
-  return `${STORAGE_PREFIX}${propertyId.trim()}`;
 }
 
 function normalizeGroup(
@@ -81,26 +80,23 @@ function normalizeGroup(
   };
 }
 
+function normalizeInputs(raw: unknown): SpecialistEsgInputs {
+  const fallback = emptySpecialistEsgInputs();
+  if (!raw || typeof raw !== "object") return fallback;
+  const row = raw as Partial<SpecialistEsgInputs>;
+  return {
+    esgEnv: normalizeGroup(row.esgEnv, ESG_NONE_NOTES.env),
+    esgSoc: normalizeGroup(row.esgSoc, ESG_NONE_NOTES.soc),
+    esgGov: normalizeGroup(row.esgGov, ESG_NONE_NOTES.gov),
+  };
+}
+
 export function loadSpecialistEsgInputs(
   propertyId: string | null | undefined,
 ): SpecialistEsgInputs {
   const id = (propertyId ?? "").trim();
-  const fallback = emptySpecialistEsgInputs();
-  if (!id || typeof window === "undefined") return fallback;
-  try {
-    const raw = window.localStorage.getItem(specialistEsgStorageKey(id));
-    if (!raw) return fallback;
-    const parsed = JSON.parse(raw) as unknown;
-    if (!parsed || typeof parsed !== "object") return fallback;
-    const row = parsed as Partial<SpecialistEsgInputs>;
-    return {
-      esgEnv: normalizeGroup(row.esgEnv, ESG_NONE_NOTES.env),
-      esgSoc: normalizeGroup(row.esgSoc, ESG_NONE_NOTES.soc),
-      esgGov: normalizeGroup(row.esgGov, ESG_NONE_NOTES.gov),
-    };
-  } catch {
-    return fallback;
-  }
+  if (!id || typeof window === "undefined") return emptySpecialistEsgInputs();
+  return normalizeInputs(loadSpecialistReportExtrasBag(id).esg);
 }
 
 export function saveSpecialistEsgInputs(
@@ -109,7 +105,7 @@ export function saveSpecialistEsgInputs(
 ): void {
   const id = propertyId.trim();
   if (!id || typeof window === "undefined") return;
-  window.localStorage.setItem(specialistEsgStorageKey(id), JSON.stringify(inputs));
+  patchSpecialistReportExtras(id, { esg: inputs });
   window.dispatchEvent(
     new CustomEvent(VALUATION_SPECIALIST_ESG_CHANGED_EVENT, {
       detail: { propertyId: id },

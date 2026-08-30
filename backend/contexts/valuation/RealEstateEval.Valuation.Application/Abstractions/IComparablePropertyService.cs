@@ -30,7 +30,7 @@ public interface IComparablePropertyService
         ComparableProximityQuery query,
         CancellationToken cancellationToken = default);
 
- /// <summary>ق-3: وضع/تحديث وسوم الجودة البشرية (موثوقية/مكرر) بمبرر — السجل يبقى.</summary>
+ /// <summary>Q-3: set/update human quality tags (reliability/duplicate) with rationale — record remains.</summary>
     Task<(ComparablePropertyDto? Result, Dictionary<string, string>? Errors)> SetQualityTagsAsync(
         Guid id,
         SaveComparableQualityTagsRequest request,

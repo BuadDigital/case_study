@@ -7,12 +7,12 @@ using RealEstateEval.CaseStudy.Domain;
 namespace RealEstateEval.Application.Tests;
 
 /// <summary>
-/// E6 — مهلة التفاوض على التسعيرة (بنود البتّ 9–14): عشرة أيام عمل بتوقيت الرياض
-/// من دخول «معترض»، تذكيران لا يتكرران، والمهلة تسقط عند أي خروج من الاعتراض.
+/// E6 — Negotiation lead time for Pricing Quote (bit clauses 9–14): ten business days Riyadh time
+/// From the entry of an “objector”, there are two reminders that will not be repeated, and the time limit falls upon any exit from the objection.
 /// </summary>
 public class BillingNegotiationDeadlineTests
 {
- // 2024-01-07 يوم أحد (2024-01-01 اثنين) — مرساة ثابتة لحساب أيام العمل.
+ // 2024-01-07 Sunday (2024-01-01 Monday) — Fixed anchor for calculating working days.
     private static readonly DateTime SundayEntryUtc =
         new(2024, 1, 7, 5, 0, 0, DateTimeKind.Utc);
 
@@ -21,7 +21,7 @@ public class BillingNegotiationDeadlineTests
     {
         var deadline = BillingNegotiationDeadlines.DeadlineFromUtc(SundayEntryUtc);
 
- // أحد 7 → عشرة أيام عمل (الجمعة/السبت لا تُحسب) = الأحد 21 يناير، 17:00 الرياض.
+ // Sun 7 → Ten working days (Fri/Sat not included) = Sunday 21 January, 17:00 Riyadh.
         Assert.Equal(new DateTime(2024, 1, 21, 14, 0, 0, DateTimeKind.Utc), deadline);
         Assert.Equal(DayOfWeek.Sunday, deadline.AddHours(3).DayOfWeek);
     }
@@ -31,7 +31,7 @@ public class BillingNegotiationDeadlineTests
     {
         var deadline = BillingNegotiationDeadlines.DeadlineFromUtc(SundayEntryUtc);
 
- // يومان عمل قبل الأحد 21 = الأربعاء 17 (الخميس ثم الأربعاء)، 09:00 الرياض.
+ // Two business days before Sunday 21 = Wednesday 17 (Thursday then Wednesday), 09:00 Riyadh.
         Assert.Equal(
             new DateTime(2024, 1, 17, 6, 0, 0, DateTimeKind.Utc),
             BillingNegotiationDeadlines.ReminderTwoDaysUtc(deadline));
@@ -45,22 +45,22 @@ public class BillingNegotiationDeadlineTests
     {
         var deadline = BillingNegotiationDeadlines.DeadlineFromUtc(SundayEntryUtc);
 
- // قبل موعد التذكير الأول: لا شيء مستحق.
+ // Before the first reminder: Nothing is due.
         Assert.Empty(BillingNegotiationDeadlines.DueStages(
             deadline, deadline.AddDays(-5), notifiedStagesCsv: null));
 
- // بعد التذكير الأول وقبل الثاني.
+ // After the first reminder and before the second.
         var afterFirst = BillingNegotiationDeadlines.ReminderTwoDaysUtc(deadline).AddMinutes(5);
         Assert.Equal(
             [BillingNegotiationDeadlines.StageReminderTwoDays],
             BillingNegotiationDeadlines.DueStages(deadline, afterFirst, null));
 
- // المرحلة المرسلة لا تعود.
+ // The sent stage does not return.
         var sent = BillingNegotiationDeadlines.AppendNotifiedStage(
             null, BillingNegotiationDeadlines.StageReminderTwoDays);
         Assert.Empty(BillingNegotiationDeadlines.DueStages(deadline, afterFirst, sent));
 
- // بعد الانقضاء: التصعيد وحده (التذكيرات لا تُرسل متأخرة).
+ // After expiration: Escalation alone (reminders are not sent late).
         Assert.Equal(
             [BillingNegotiationDeadlines.StageEscalation],
             BillingNegotiationDeadlines.DueStages(
@@ -93,11 +93,11 @@ public class BillingNegotiationDeadlineTests
 
         Assert.Null(disputeError);
         Assert.NotNull(disputed);
- // الكتابة جرت عبر سياق الخدمة — نظّف متتبع سياق الاختبار كي لا تعود نسخة البذر.
+ // The write occurred via the service context — clean up the test context trace so that the seed copy does not return.
         db.Financial.ChangeTracker.Clear();
         var ledger = db.Financial.InspectorFeeLedgers.Single(x => x.WorkflowTaskId == taskId);
         Assert.NotNull(ledger.DisputeDeadlineUtc);
- // المهلة تنقضي 17:00 بتوقيت الرياض في يوم عمل.
+ // The deadline expires at 17:00 Riyadh time on a business day.
         var deadlineRiyadh = ledger.DisputeDeadlineUtc!.Value.AddHours(3);
         Assert.Equal(17, deadlineRiyadh.Hour);
         Assert.NotEqual(DayOfWeek.Friday, deadlineRiyadh.DayOfWeek);
@@ -119,7 +119,7 @@ public class BillingNegotiationDeadlineTests
         Assert.Null(resolveError);
         db.Financial.ChangeTracker.Clear();
         var resolved = db.Financial.InspectorFeeLedgers.Single(x => x.WorkflowTaskId == taskId);
- // بند 12: الخروج من الاعتراض يسقط المهلة وسجل مراحلها.
+ // Clause 12: Exiting the objection waives the time limit and the record of its stages.
         Assert.Null(resolved.DisputeDeadlineUtc);
         Assert.Null(resolved.DisputeNotifiedStages);
     }

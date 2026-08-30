@@ -7,6 +7,7 @@ import {
   applyValuationReportLiveFill,
   type ValuationReportLiveFill,
 } from "./valuation-report-live-fill";
+import { buildGoogleMapsHtmlBootstrap } from "./valuation-report-comparables-map";
 
 const V3_TEMPLATE_URL = "/ejadah/valuation-report-v3.html";
 
@@ -50,14 +51,14 @@ function applyMeta(dom: Document, meta: ValuationReportV3Meta) {
   const reportNo = (meta.reportNo ?? "").trim();
   const date = slashDate(meta.reportDate) || "—";
   const deposit = (meta.depositCode ?? "").trim() || "";
-  // تُكتب الترويسة دائماً — «—» عند الفراغ حتى لا تتسرب أرقام العيّنة من القالب.
+  // Always write the header — "—" when empty so sample template numbers do not leak.
   const html = `رقم التقرير: ${escHtml(reportNo || "—")}<br>التاريخ: ${escHtml(date)}<br>رمز إيداع التقرير: ${escHtml(deposit)}`;
   dom.querySelectorAll(".pg-meta").forEach((el) => {
     el.innerHTML = html;
   });
 }
 
-/** ترقيم الصفحات من الواقع — القالب يثبّت «صفحة N من 20» يدوياً. */
+/** Page numbers from the live document — the template hardcodes "Page N of 20". */
 function renumberPages(dom: Document) {
   const pages = [...dom.querySelectorAll("section.page.pg")];
   const total = pages.length;
@@ -162,7 +163,7 @@ function fillCellImage(
   img.style.display = "block";
   img.style.marginInline = "auto";
   if (heightCm && heightCm > 0) {
-    // الارتفاع مضبوط — العرض يتبع نسبة أبعاد الصورة الأصلية.
+    // Height is fixed — width follows the original image aspect ratio.
     img.style.height = `${heightCm}cm`;
     img.style.width = "auto";
     if (widthCm && widthCm > 0) {
@@ -226,7 +227,7 @@ function applySignatures(
     return resolveSignatureUrl(hit?.signatureUrl, origin) || null;
   };
 
-  /** المشاركون: التوقيع من نفس صف السجل بالفهرس (لا إعادة مطابقة غامضة). */
+  /** Participants: signature from the same record row by index (no fuzzy rematch). */
   const rosterParticipants = roster.filter((v) => v.role !== "certified");
 
   const paint = (
@@ -251,7 +252,7 @@ function applySignatures(
     if (!nameRow || !sigRow) continue;
     const names = valueCellsAfterLabel(nameRow, "الاسم");
     const sigCells = valueCellsAfterLabel(sigRow, "التوقيع");
-    // جدول الاعتماد: عمود اسم واحد — اتركه لكتلة الاعتماد أدناه إن وُجدت صفته/الختم.
+    // Approval table: one name column — leave it for the approval block below if title/stamp exist.
     const isApprovalLayout = names.length <= 1 && Boolean(
       [...table.querySelectorAll("td.k")].some(
         (td) => normName(td.textContent ?? "") === "ختم المنشأة",
@@ -448,7 +449,7 @@ function applyBrandIdentity(
     }
   });
 
-  /* هوامش الهوية البصرية: أعلى / أسفل / يمين (padStart) / يسار (pad). */
+  /* Visual-identity margins: top / bottom / right (padStart) / left (pad). */
   return (
     `.page.pg{position:relative;background:#fff!important;` +
     `padding:${head}mm ${padStart}mm ${footH}mm ${padEnd}mm!important;` +
@@ -602,10 +603,18 @@ export function prepareValuationReportV3Html(
 ): string {
   const { dom, authored } = parseTemplate(raw);
   applyMeta(dom, meta);
+  const mapsApiKey =
+    typeof process !== "undefined"
+      ? process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY?.trim() || ""
+      : "";
+  // Screen: React hydrates hosts. Print/HTML tab: same hosts + inline Maps bootstrap.
+  const interactiveMaps =
+    mode === "screen" || (mode === "print" && Boolean(mapsApiKey));
   if (meta.live) {
     applyValuationReportLiveFill(dom, meta.live, {
       valuers: meta.valuers,
       valuationBranch: meta.live.cells["فرع التقييم"] || undefined,
+      interactiveComparablesMap: interactiveMaps,
     });
   }
   renumberPages(dom);
@@ -635,6 +644,10 @@ export function prepareValuationReportV3Html(
     .map((p) => p.outerHTML)
     .join("\n");
   const base = origin ? `<base href="${escHtml(`${origin.replace(/\/$/, "")}/`)}"/>` : "";
+  const mapsBootstrap =
+    mapsApiKey && interactiveMaps
+      ? buildGoogleMapsHtmlBootstrap(mapsApiKey)
+      : "";
 
   // No fonts.googleapis.com — LAN/HTTP print tabs often hang Chrome's
   // "Loading preview…" waiting on blocked or slow webfonts.
@@ -642,11 +655,11 @@ export function prepareValuationReportV3Html(
 ${base}
 <title>تقرير التقييم</title>
 <style>${printCss}\n${brandCss}\n${PRINT_CHROME}</style></head>
-<body class="val-rpt-v3">${pages}</body></html>`;
+<body class="val-rpt-v3">${pages}${mapsBootstrap}</body></html>`;
 }
 
-// النموذج (~20 صفحة) ثابت خلال الجلسة — جلبه مرة واحدة يوفر جولة شبكة مع كل
-// إعادة بناء للمعاينة؛ فشل الجلب لا يعلق الذاكرة والمحاولة التالية تعيد الجلب.
+// The template (~20 pages) is stable for the session — fetch once to avoid a network round-trip on every
+// preview rebuild; a failed fetch does not stick in memory and the next attempt refetches.
 let templateTextPromise: Promise<string> | null = null;
 function fetchTemplateText(): Promise<string> {
   if (!templateTextPromise) {

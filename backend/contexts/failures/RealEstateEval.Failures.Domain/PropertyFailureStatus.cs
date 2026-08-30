@@ -17,7 +17,7 @@ public static class PropertyFailureStatus
     public static bool IsActive(string status) =>
         status is not (Resolved or Suspended);
 
- /// <summary>التسمية العربية للحالة — كانت منسوخة في سياقي التعثرات ودراسة الحالة.</summary>
+ /// <summary>Arabic label for the status — previously duplicated in failures and case-study contexts.</summary>
     public static string LabelAr(string status) => status switch
     {
         Internal => "داخلي",

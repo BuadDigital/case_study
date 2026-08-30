@@ -166,7 +166,7 @@ export function AppModal({
     </div>
   );
 
-  /* ops-html (إنشاء مهمة): HTML-matching overlay — blur + top-aligned appear */
+  /* ops-html (create task): HTML-matching overlay — blur + top-aligned appear */
   if (opsHtml) {
     return (
       <>

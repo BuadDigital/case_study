@@ -9,7 +9,7 @@ export type PartyEngineeringSurveyWorkHostRef = {
   onSavingChange?: (saving: boolean) => void;
 };
 
-/** حقن من shell — قائمة المكتب الهندسي ونموذج الرفع المساحي. */
+/** Injected from shell — engineering-office queue and survey upload form. */
 export type PartyEngineeringSurveyExtensions = {
   patchQueueConfig: (
     base: ActiveTransactionQueueConfig,

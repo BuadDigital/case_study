@@ -41,8 +41,8 @@ function serializeRows(rows: OwnerRow[]): string {
 }
 
 /**
- * الملاك وحصصهم + نوع الملكية (مشتق قابل للتحرير).
- * Derivation: رهن ⟵ مرهون · حصص ⟵ مشاع · مالك واحد بلا قيود ⟵ مطلقة · استثمار يدويًا.
+ * Owners and their shares + ownership type (derived, editable).
+ * Derivation: mortgage ← mortgaged · shares ← undivided · single owner no restrictions ← absolute · investment manually.
  */
 export function PoPropertyOwnersSection({
   property,

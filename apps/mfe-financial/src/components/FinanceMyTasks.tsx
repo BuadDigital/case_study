@@ -35,7 +35,7 @@ const FinanceVendorInvoiceMatchModal = dynamic(
   { ssr: false },
 );
 
-// الحزمة تُجلب عند التحويم/التركيز على زر الفتح بدل انتظار النقر
+// Bundle is fetched on hover/focus of the open button instead of waiting for click
 // (bundle-preload).
 const preloadDisbursementCloseModal = () =>
   void import("./FinanceDisbursementCloseModal");
@@ -44,7 +44,7 @@ const preloadVendorInvoiceMatchModal = () =>
 
 const EMPTY_STATEMENTS: PartyBillingStatementDto[] = [];
 
-/** أيقونة KPI مربّعة — توكنات finance-tw */
+/** Square KPI icon — finance-tw tokens */
 function KpiIco({
   children,
   gold,
@@ -297,7 +297,7 @@ export function FinanceMyTasks() {
       s.assigneeId?.trim() ||
       statements.find((x) => x.id === s.id)?.assigneeId?.trim() ||
       null;
-    // Full navigation — soft router.push كان يبقي الشاشة على مهامي أحياناً.
+    // Full navigation — soft router.push sometimes left the screen on My Tasks.
     window.location.assign(
       buildFinanceHref({
         area: "costs",
@@ -472,8 +472,8 @@ export function FinanceMyTasks() {
         </div>
       )}
 
-      {/* تركيب مشروط — الركوب الدائم كان يجلب حزمتي النافذتين عند فتح الشاشة
-          رغم التقسيم (bundle-conditional). */}
+      {/* Conditional mount — always mounting fetched both modal chunks on screen open
+          despite code-splitting (bundle-conditional). */}
       {matchStatementId ? (
         <FinanceVendorInvoiceMatchModal
           open={Boolean(matchStatementId)}

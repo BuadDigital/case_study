@@ -72,7 +72,7 @@ function executionPartyAssignees(staffUsers: StaffUser[]): DistributionAssignee[
 }
 
 /**
- * Who may appear in «مُسندة إلى» for an operations task type.
+ * Who may appear in "assigned to" for an operations task type.
  * - court_visit → government reviewers only (visit fee path)
  * - general → field inspector, appraiser, engineering office, government reviewer
  */

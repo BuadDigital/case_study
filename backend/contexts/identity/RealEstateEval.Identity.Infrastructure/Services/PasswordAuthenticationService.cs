@@ -50,7 +50,7 @@ public sealed class PasswordAuthenticationService(
         return await sessions.IssueForUserIdAsync(user.Id, cancellationToken);
     }
 
- /// <summary>العقد الموحّد مع التسجيل — SaudiMobiles.Normalize (ق٣).</summary>
+ /// <summary>Shared contract with registration — SaudiMobiles.Normalize (Q3).</summary>
     private static string? NormalizeLoginMobile(string raw) =>
         SaudiMobiles.Normalize(raw);
 }

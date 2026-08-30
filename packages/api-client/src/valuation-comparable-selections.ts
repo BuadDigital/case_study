@@ -9,11 +9,11 @@ export type ValuationComparableAdjustmentLineDto = {
   labelAr: string;
   percent: number;
   rationale: string;
-  /** compSpec: وصف المقارن لهذا العامل («وصف المقارن…»). */
+  /** compSpec: comparable description for this factor. */
   descriptionAr?: string | null;
   isIncluded: boolean;
   sortOrder: number;
-  /** true = القيمة المعروضة افتراضي مقترح لم يدخله المقيّم — تُعرض بأسلوب «مقترح». */
+  /** true = displayed value is a suggested default the valuer has not entered — shown as suggested. */
   isSuggestedValue?: boolean;
 };
 
@@ -22,11 +22,11 @@ export type ValuationComparableMarketDto = {
   sumSequentialPct: number;
   sumDifferencePct: number;
   sumIncludedPct: number;
-  /** |factorsSum| > 35% — التبرير إلزامي (مواصفة النموذج التفاعلي). */
+  /** |factorsSum| > 35% — justification required (interactive form spec). */
   exceedsLargeAdjustmentThreshold: boolean;
-  /** عمر الصفقة بالأشهر — يُعرض للاستدلال؛ تسوية ظروف السوق يدوية. */
+  /** Deal age in months — shown for inference; market-conditions adjustment is manual. */
   dealAgeMonths: number;
-  /** افتراضي تسوية نوع المقارن: منفذة ٠ · عرض −٥ · حد −٨ · سوم +٦. */
+  /** Default comparable-type adjustment: executed 0 · listing −5 · bid −8 · asking +6. */
   suggestedTransactionTypePct?: number;
   pricePerSqmAfterSequential: number;
   pricePerSqmAfterDifference: number;
@@ -38,7 +38,7 @@ export type ValuationComparableMarketDto = {
   weightOverrideRationale?: string | null;
  /** multiplier | amthal — table-wide auto choice. */
   areaAdjustmentMethod: string;
- /** Auto area adjustment % (amthal/مضاعف). */
+ /** Auto area adjustment % (amthal / multiplier). */
   suggestedAreaAdjustmentPct: number;
 };
 
@@ -52,10 +52,10 @@ export type ValuationComparableSelectionDto = {
   selectedAtUtc: string;
   comparable: ComparablePropertyDto;
   market?: ValuationComparableMarketDto | null;
-  /** compEdit: تجاوزات هذا التقييم لسعر/مساحة المقارن — لا تمس البنك المشترك. */
+  /** compEdit: this valuation's price/area overrides for the comparable — does not touch the shared bank. */
   priceOverrideSar?: number | null;
   areaOverrideSqm?: number | null;
-  /** القيم الفعلية بعد التجاوزات. */
+  /** Effective values after overrides. */
   effectivePriceSar?: number;
   effectiveAreaSqm?: number;
   effectivePricePerSqm?: number;
@@ -74,25 +74,25 @@ export type ValuationComparableSelectionListDto = {
  /** price_per_sqm | whole_property. */
   adjustmentBasis: string;
   adjustmentBasisLabelAr: string;
-  /** Per-m²: weighted × area. Whole-property: weighted — قبل التقريب. */
+  /** Per-m²: weighted × area. Whole-property: weighted — before rounding. */
   marketOpinionValueRaw?: number;
-  /** منطق-التسويات: بعد التقريب لأقرب ١٠^ن. */
+  /** Adjustments logic: after rounding to nearest 10^n. */
   marketOpinionValue: number;
-  /** Frozen area factor ٪ for this valuation. */
+  /** Frozen area factor % for this valuation. */
   areaFactorPct?: number;
-  /** Frozen annual market rate ٪ for mkt suggestion. */
+  /** Frozen annual market rate % for mkt suggestion. */
   annualMarketRatePct?: number;
-  /** Frozen أسّ تقريب قيمة السوق (١٠^ن). */
+  /** Frozen market-value rounding exponent (10^n). */
   valueRoundDecimals?: number;
   analysisNotes?: string | null;
-  /** subjSpec: أوصاف العقار محل التقييم لكل عامل اختلاف. */
+  /** subjSpec: subject-property descriptions per difference factor. */
   subjectSpecs?: Record<string, string>;
-  /** ق-8-1: مبررات على مستوى العامل — سطر المقارن يحمل التخصيص فقط. */
+  /** Q-8-1: factor-level justifications — comparable row holds allocation only. */
   factorRationales?: ValuationAdjustmentFactorRationaleDto[];
   items: ValuationComparableSelectionDto[];
 };
 
-/** ق-8-1: مبرر عامل التسوية الواحد (يغطي كل المقارنات). */
+/** Q-8-1: single adjustment-factor justification (covers all comparables). */
 export type ValuationAdjustmentFactorRationaleDto = {
   selectionContext: string;
   factorKey: string;
@@ -107,7 +107,7 @@ export type SaveValuationMarketApproachRequest = {
   annualMarketRatePct?: number | null;
   valueRoundDecimals?: number | null;
   analysisNotes?: string | null;
-  /** subjSpec — null يبقي المخزّن. */
+  /** subjSpec — null keeps the stored value. */
   subjectSpecs?: Record<string, string> | null;
 };
 
@@ -128,14 +128,14 @@ export type ValuationCostLineDto = {
  /** quantity derives from first floor × count. */
   repeatedFloorCount?: number | null;
   unitCostSar: number;
-  /** تكلفة الوحدة الفعلية — ترث سعر متر «الدور الأول» عند تركها فارغة لبند المتكررة. */
+  /** Effective unit cost — inherits first-floor SAR/m² when left empty on a repeating floor line. */
   effectiveUnitCostSar?: number;
-  /** true = «موروثة من الدور الأول». */
+  /** true = inherited from the first floor. */
   unitCostInherited?: boolean;
-  /** الكمية الفعلية بعد نسبة البناء — «المسطح N م²». */
+  /** Effective quantity after build ratio — floor area N m². */
   effectiveQuantity?: number;
   lineTotal: number;
-  /** سعر المتر بعد غير المباشرة. */
+  /** Price per m² after indirect costs. */
   netUnitRateWithIndirect?: number;
   rationale: string;
   isIncluded: boolean;
@@ -179,12 +179,12 @@ export type ValuationCostApproachDto = {
   totalObsolescencePct: number;
   depreciationValue: number;
   buildingsValueAfterDepreciation: number;
-  /** مؤشر الأسلوب وفق النطاق: أرض ومبنى = أرض + مبانٍ؛ مبنى فقط = المباني بعد الإهلاك. */
+  /** Method index by scope: land_and_building = land + buildings; building_only = buildings after depreciation. */
   costOpinionWithLand: number;
   costOpinionBuildingsOnly: number;
   /** land_and_building | building_only. */
   costScopeKey?: string;
-  /** Σ الكمية الفعلية لبنود م² في مجموعة المسطحات. */
+  /** Σ effective quantity of m² lines in the floor-area group. */
   buildingAreaSqm?: number;
   analysisNotes?: string | null;
   lines: ValuationCostLineDto[];
@@ -325,7 +325,7 @@ export type SaveValuationComparableAdjustmentLineRequest = {
   labelAr?: string | null;
   percent: number;
   rationale?: string | null;
-  /** compSpec: وصف المقارن لهذا العامل. */
+  /** compSpec: comparable description for this factor. */
   descriptionAr?: string | null;
   isIncluded?: boolean;
   sortOrder?: number;
@@ -333,9 +333,9 @@ export type SaveValuationComparableAdjustmentLineRequest = {
 
 export type SaveValuationComparableMarketRequest = {
   adjustmentLines: SaveValuationComparableAdjustmentLineRequest[];
-  /** compEdit: تجاوز سعر العقار الإجمالي — null يمسح التجاوز. */
+  /** compEdit: override total property price — null clears the override. */
   priceOverrideSar?: number | null;
-  /** compEdit: تجاوز مساحة المقارن (م²) — null يمسح التجاوز. */
+  /** compEdit: override comparable area (m²) — null clears the override. */
   areaOverrideSqm?: number | null;
   weightPct?: number | null;
   weightIsManual?: boolean;
@@ -345,48 +345,48 @@ export type SaveValuationComparableMarketRequest = {
   areaAdjustmentMethod?: string | null;
 };
 
-/** شاشة 1 — الأساليب المطبَّقة (ق-2/ق-3) + أساس/وحدة التكلفة + صلاحية التسويات. */
+/** Screen 1 — applied approaches (Q-2/Q-3) + cost basis/unit + adjustments eligibility. */
 export type ValuationApproachSettingsDto = {
   valuationRequestId: string;
   propertyId: string;
   propertyType: string;
-  /** نوع العقار «أرض» (بأي تصنيف). */
+  /** Property type is land (any classification). */
   isLandPropertyType: boolean;
-  /** سؤال الحصر: هل توجد مبانٍ/إنشاءات يجب تقييمها؟ */
+  /** Scope question: are there buildings/improvements to value? */
   hasStructuresToValue: boolean;
-  /** ق-3 المعدَّل: أرض بلا إنشاءات وحدها تعطّل أسلوب التكلفة. */
+  /** Q-3 (revised): land with no improvements alone disables the cost approach. */
   costApproachAllowed: boolean;
   marketApproachEnabled: boolean;
   costApproachEnabled: boolean;
-  /** مؤجَّل — يُعرض «قيد الإنشاء» ولا يقبل التفعيل. */
+  /** Deferred — shown as under construction and cannot be enabled. */
   incomeApproachEnabled: boolean;
   /** replacement | reproduction. */
   costBasisKey: string;
   costBasisLabelAr: string;
-  /** نطاق التقييم بالتكلفة: land_and_building (افتراضي) | building_only. */
+  /** Cost-approach scope: land_and_building (default) | building_only. */
   costScopeKey?: string;
   costScopeLabelAr?: string;
   /** comparison_unit | quantity_survey | lump_sum | per_item. */
   costMeasurementUnitKey: string;
   costMeasurementUnitLabelAr: string;
   adjustmentsEditUnlocked: boolean;
-  /** الغرض من التقييم — auction_liquidation | sale | judicial_execution | sale_purchase | financing | financial_reporting | litigation | other. */
+  /** Valuation purpose — auction_liquidation | sale | judicial_execution | sale_purchase | financing | financial_reporting | litigation | other. */
   valuationPurposeKey: string;
   valuationPurposeLabelAr: string;
   valuationPurposeNote?: string | null;
-  /** بند الأخصائي الخارجي (IVS 101) — ليس أخصائي الإسناد ولا أخصائي دراسة الحالة. */
+  /** External specialist item (IVS 101) — not the assignment specialist or case-study specialist. */
   externalSpecialistUsed: boolean;
   externalSpecialistDetails?: string | null;
-  /** تاريخ التقييم: issue (إصدار القيمة — آلي) | retrospective (أثر رجعي يدوي). */
+  /** Valuation date: issue (value issuance — automatic) | retrospective (manual backdate). */
   valuationDateMode: string;
   valuationDateModeLabelAr: string;
   retrospectiveDate?: string | null;
-  /** yyyy-MM-dd — نهاية الفترة؛ فارغ = تاريخ محدد. */
+  /** yyyy-MM-dd — period end; empty = single date. */
   retrospectiveDateEnd?: string | null;
   retrospectiveRationale?: string | null;
-  /** بنود الافتراضات المنتقاة/المضافة (نصوص مجمّدة). */
+  /** Selected/added assumption items (frozen text). */
   selectedAssumptions: string[];
-  /** مكتبة الانتقاء من إعدادات تبويب تقرير التقييم. */
+  /** Selection library from valuation-report settings tab. */
   assumptionLibrary: string[];
   /** false = property-type defaults (no row saved yet). */
   isSaved: boolean;
@@ -397,20 +397,20 @@ export type SaveValuationApproachSettingsRequest = {
   costApproachEnabled: boolean;
   incomeApproachEnabled?: boolean;
   costBasisKey?: string | null;
-  /** land_and_building (افتراضي) | building_only. */
+  /** land_and_building (default) | building_only. */
   costScopeKey?: string | null;
   costMeasurementUnitKey?: string | null;
   adjustmentsEditUnlocked?: boolean;
-  /** إلزامي (§4ج-5). */
+  /** Required (§4j-5). */
   valuationPurposeKey?: string | null;
   valuationPurposeNote?: string | null;
   externalSpecialistUsed?: boolean;
   externalSpecialistDetails?: string | null;
-  /** issue (افتراضي) | retrospective. */
+  /** issue (default) | retrospective. */
   valuationDateMode?: string | null;
-  /** yyyy-MM-dd — إلزامي عند retrospective (أو بداية الفترة). */
+  /** yyyy-MM-dd — required for retrospective (or period start). */
   retrospectiveDate?: string | null;
-  /** yyyy-MM-dd — نهاية الفترة؛ فارغ = تاريخ محدد. */
+  /** yyyy-MM-dd — period end; empty = single date. */
   retrospectiveDateEnd?: string | null;
   retrospectiveRationale?: string | null;
   selectedAssumptions?: string[] | null;
@@ -615,7 +615,7 @@ export async function saveValuationComparableMarket(
   }
 }
 
-/** ق-8-1: حفظ/مسح مبرر عامل التسوية الواحد — فارغ يمسح؛ الحد الأدنى ١٠ أحرف (ق-8-2). */
+/** Q-8-1: save/clear single adjustment-factor justification — empty clears; min 10 chars (Q-8-2). */
 export async function saveAdjustmentFactorRationale(
   config: ValuationSelectionsApiConfig,
   valuationRequestId: string,
@@ -966,7 +966,7 @@ export type ValuationReportPrintedAttachmentDto = {
   fileName: string;
   reportSectionNumber: number;
   isImage: boolean;
-  /** 11س — capture date, YYYY/MM/DD. */
+  /** Field 11s — capture date, YYYY/MM/DD. */
   capturedAtDisplay?: string | null;
 };
 
@@ -1059,7 +1059,7 @@ export async function getValuationReportPdf(
   }
 }
 
-/* ─── ق-6: الإصدار ثنائي المرحلة + شهادة الإيداع ─── */
+/* ─── Q-6: two-phase issuance + deposit certificate ─── */
 
 export type ValuationReportIssuanceStateDto = {
   valuationRequestId: string;
@@ -1074,9 +1074,9 @@ export type ValuationReportIssuanceStateDto = {
   finalIssuedAtUtc?: string | null;
   hasDepositPdf: boolean;
   hasFinalPdf: boolean;
-  /** تكميلية ق-9 (ر2): رقم دور التقييم الساري — 1 قبل أي إعادة فتح. */
+  /** Q-9 supplement (r2): active valuation round number — 1 before any reopen. */
   version: number;
-  /** عدد النسخ الملغاة «حلّت محلها نسخة أحدث» الباقية في ملف المعاملة. */
+  /** Count of superseded cancelled copies still kept on the transaction file. */
   supersededCount: number;
 };
 
@@ -1132,7 +1132,7 @@ async function postIssuance(
   }
 }
 
-/** ق-6-1: عند اكتمال الحواجب — تجميد كامل + توليد نسخة الإيداع (خانة الرمز فارغة). */
+/** Q-6-1: when gates complete — full freeze + generate deposit copy (code field empty). */
 export function issueDepositVersion(
   config: ValuationSelectionsApiConfig,
   valuationRequestId: string,
@@ -1144,7 +1144,7 @@ export function issueDepositVersion(
   );
 }
 
-/** ق-6-3/4: تسجيل الشهادة والرمز — يولّد النسخة النهائية بصفحة الشهادة والرمز في الميتا. */
+/** Q-6-3/4: record certificate and code — generates final copy with certificate/code page in meta. */
 export function registerDepositCertificate(
   config: ValuationSelectionsApiConfig,
   valuationRequestId: string,
@@ -1164,8 +1164,8 @@ export function registerDepositCertificate(
 }
 
 /**
- * تكميلية ق-9 (ر2): إعادة فتح دور التقييم بعد الإيداع — موافقة مشرف القسم شرط
- * الصلاحية؛ النسخة السارية تُعلَّم «ملغاة — حلّت محلها نسخة أحدث» وتبقى بالملف.
+ * Q-9 supplement (r2): reopen valuation round after deposit — department supervisor
+ * approval required; the active copy is marked superseded and remains on file.
  */
 export function reopenReportIssuance(
   config: ValuationSelectionsApiConfig,
@@ -1180,7 +1180,7 @@ export function reopenReportIssuance(
   );
 }
 
-/** تنزيل نسخة الإيداع أو النسخة النهائية PDF. */
+/** Download deposit copy or final PDF. */
 export async function getIssuancePdf(
   config: ValuationSelectionsApiConfig,
   valuationRequestId: string,

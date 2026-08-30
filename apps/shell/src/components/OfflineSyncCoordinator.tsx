@@ -469,8 +469,8 @@ export function OfflineSyncCoordinator() {
     return () => window.clearInterval(timer);
   }, [capable, isAuthenticated, online, user?.id]);
 
-  // مخفي ← ظاهر فقط: التأثير أعلاه يزامن أصلاً عند التركيب/عودة الاتصال، فقراءة
-  // الحالة اللحظية هنا كانت ستضاعف المزامنة.
+  // Hidden → visible only: the effect above already syncs on mount/reconnect, so reading
+  // visibility state here would double the sync.
   useEffect(() => {
     const wasVisible = wasVisibleRef.current;
     wasVisibleRef.current = visible;
@@ -494,8 +494,8 @@ export function OfflineSyncCoordinator() {
     };
   }, [capable, isAuthenticated, user?.id]);
 
-  // نبضة كل دقيقة تقرأ الطابور بنفسها؛ إدراج pending/الاسم/الدور في الاعتماديات
-  // كان يهدم المؤقت ويطلق POST إضافياً مع كل تغيّر في الطابور (advanced-use-latest).
+  // Minute pulse reads the queue itself; putting pending/name/role in deps
+  // tore down the timer and fired an extra POST on every queue change (advanced-use-latest).
   useEffect(() => {
     const userId = user?.id;
     if (!capable || !isAuthenticated || !online || !userId) return;

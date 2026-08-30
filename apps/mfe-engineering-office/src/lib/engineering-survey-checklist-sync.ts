@@ -5,11 +5,11 @@ import type {
   EngineeringSurveyChecklistRow,
 } from "./engineering-survey-data";
 
-/** Overlapping questions: checklist (above) ↔ الرفع المساحي والطبيعة (below). */
+/** Overlapping questions: checklist (above) ↔ survey and nature (below). */
 type ChecklistCaseStudyLink = {
   checklistIndex: number;
   caseStudyKey: string;
-  /** checklist «نعم» → case study column A */
+  /** checklist «yes» → case study column A */
   yesMapsToA: boolean;
 };
 

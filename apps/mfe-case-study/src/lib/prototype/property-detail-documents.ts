@@ -4,8 +4,10 @@ import {
   downloadEngineeringSurveyDocument,
   type EngineeringSurveyDocumentEntry,
 } from "@engineering-office/mfe/lib/engineering-survey-attachments";
-import { getCachedEvaluatorDepositCertificate } from "@evaluator/mfe/lib/evaluator/evaluator-deposit-attachments";
-import { getCachedEvaluatorReport } from "@evaluator/mfe/lib/evaluator/evaluator-report-attachments";
+import {
+  getCachedEvaluatorDepositCertificate,
+  getCachedEvaluatorReport,
+} from "../evaluator-bridge";
 import {
   getCachedPropertyDocMatching,
   isImageMime,
@@ -404,7 +406,7 @@ export type PropertyDetailDocumentSection = {
   documents: PropertyDetailDocumentEntry[];
 };
 
-/** Display order for مستندات العقار — one section per upload source. */
+/** Display order for property documents — one section per upload source. */
 export const PROPERTY_DETAIL_DOCUMENT_SECTIONS: {
   id: string;
   title: string;

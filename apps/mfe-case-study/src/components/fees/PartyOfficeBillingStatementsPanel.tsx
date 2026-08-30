@@ -72,7 +72,7 @@ function statementStatusMeta(s: PartyBillingStatementDto): {
 }
 
 /**
- * Case Study.html `renderEngFees` statements tab — expandable كشف rows,
+ * Case Study.html `renderEngFees` statements tab — expandable statement rows,
  * search toolbar, cycle footer. Office read-only.
  */
 export function PartyOfficeBillingStatementsPanel({

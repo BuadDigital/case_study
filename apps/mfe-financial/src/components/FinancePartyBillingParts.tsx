@@ -1,6 +1,6 @@
 "use client";
 
-/** أجزاء كشوفات فوترة الأطراف — مساعدات على مستوى الوحدة، نُقلت حرفياً (SRP). */
+/** Party billing statement parts — module-level helpers, moved literally (SRP). */
 
 import { useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -72,7 +72,7 @@ import { FinanceReceiptUploadField } from "./FinanceReceiptUploadField";
 export const EMPTY_READY_LINES: PartyBillingReadyLineDto[] = [];
 export const EMPTY_STATEMENTS: PartyBillingStatementDto[] = [];
 
-// لاحقة ر.س دون أصفار كسور إلزامية — نبقيها محلياً حفاظاً على العرض نفسه.
+// SAR suffix without forced fractional zeros — keep local to preserve the same display.
 export function formatSar(n: number) {
   return `${fmtMax(n)} ر.س`;
 }
@@ -87,7 +87,7 @@ export function formatInvoiceDate(raw: string | null | undefined): string {
   return `${y}-${m}-${day}`;
 }
 
-/** خلية بيانات: تسمية فوق وقيمة تحت — لا تتمدّد بعرض الشاشة */
+/** Data cell: label above, value below — does not stretch to screen width */
 export function MetaCell({
   label,
   value,

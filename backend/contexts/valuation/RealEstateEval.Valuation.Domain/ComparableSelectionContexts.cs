@@ -1,8 +1,8 @@
 namespace RealEstateEval.Valuation.Domain;
 
 /// <summary>
-/// سياق جدول المقارنات — valuation-approaches-logic §5 و §7.
-/// جدولان مستقلان: أسلوب السوق vs تقدير الأرض فضاءً داخل التكلفة. لا استيراد بينهما.
+/// Comparable-table context — valuation-approaches-logic §5 and §7.
+/// Two independent tables: market approach vs vacant-land estimate within cost. No import between them.
 /// </summary>
 public static class ComparableSelectionContexts
 {

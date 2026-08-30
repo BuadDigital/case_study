@@ -2,12 +2,12 @@
 
 import type { PartyAppraisalExtensions } from "@case-study/mfe/lib/party-appraisal-extensions";
 import type { PoIntakeRecord } from "@case-study/mfe/lib/prototype/po-intake-data";
-import type { WorkflowTask } from "@case-study/mfe/lib/prototype/tasks-storage";
+import type { WorkflowTask } from "@platform/app-shared/workflow/task-types";
 import { propertyAppraisalWorkspacePath } from "@case-study/mfe/lib/my-task-routes";
 import dynamic from "next/dynamic";
 
-// نافذة عمل المقيّم (~٥٫٨ ألف سطر عبر صدفة التقييم) تركب فقط حين يفتح المقيّم
-// مهمته — تحميلها الساكن كان يضعها في حزمة صفحات مهام كل الأطراف (bundle-dynamic-imports).
+// Appraiser work window (~5.8k lines via ValuationWorkShell) mounts only when the appraiser opens
+// their task — static import put it in every party's task-page bundle (bundle-dynamic-imports).
 const AppraiserUploadTab = dynamic(
   () =>
     import("../components/evaluator/AppraiserUploadTab").then(

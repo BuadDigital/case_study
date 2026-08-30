@@ -3,9 +3,9 @@
 import { useEffect, useRef } from "react";
 
 /**
- * مستمع Escape واحد يُركَّب فقط عند تبدّل `enabled` — كان كل حوار/لوحة يعيد
- * تركيب المستمع مع كل تغيّر في المُعالج (client-event-listeners). المُعالج
- * يُقرأ من ref فلا حاجة لتثبيته عند المستدعي.
+ * Single Escape listener mounted only when `enabled` toggles — every dialog/panel
+ * used to remount the listener on every handler change (client-event-listeners).
+ * The handler is read from a ref so callers need not stabilize it.
  */
 export function useEscapeKey(enabled: boolean, onEscape: () => void): void {
   const onEscapeRef = useRef(onEscape);

@@ -30,7 +30,7 @@ public static class DocumentaryWorkflowRules
             || prototypeRole.Equals("field-inspector", StringComparison.OrdinalIgnoreCase);
     }
 
- /// <summary>عشوائي = غياب رقم المخطط ورقم القطعة معاً (AND).</summary>
+ /// <summary>Informal = missing both plan number and plot number (AND).</summary>
     public static bool IsInformalSettlement(string? planNumber, string? plotNumber) =>
         string.IsNullOrWhiteSpace(planNumber) && string.IsNullOrWhiteSpace(plotNumber);
 

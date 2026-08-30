@@ -27,11 +27,11 @@ export type ActiveQueueRowMoreOptions = {
   showToast?: (message: string, tone?: "success" | "error" | "info") => void;
   /** Show phase-revert actions for distribution / bourse queues. */
   allowPhaseRevert?: boolean;
-  /** When true, hide «إرجاع لاستعلام البورصة» (e.g. real_estate_reg). */
+  /** When true, hide «Return to bourse inquiry» (e.g. real_estate_reg). */
   skipsBourse?: boolean;
-  /** Open «نسخ من معاملة سابقة» with this row as the fixed target. */
+  /** Open «Copy from previous transaction» with this row as the fixed target. */
   onCopyFromPrior?: () => void;
-  /** Show «حذف المعاملة» when the queue enables it (still gated by role). */
+  /** Show «Delete transaction» when the queue enables it (still gated by role). */
   allowDeleteTransaction?: boolean;
   /** Viewer role — delete is supervisor / admin only. */
   viewerRole?: RoleId;
@@ -213,13 +213,13 @@ export function buildBourseQueueRowMoreItems(
   });
 }
 
-/** دراسة حالة العقارات — ⋮ menu */
+/** Property case-study — ⋮ menu */
 export function buildCaseStudyQueueRowMoreItems(options: {
   task: WorkflowTask;
   propertyId?: string;
   router: { push: (href: string) => void };
   viewerRole?: RoleId;
-  /** Opens the «تعديل إسناد الأطراف» modal for this row (case-study phase only). */
+  /** Opens the «Edit party assignment» modal for this row (case-study phase only). */
   onRedistributeParties?: () => void;
 }): RowMoreMenuItem[] {
   const po = options.task.poNumber.trim();

@@ -51,7 +51,7 @@ describe("valuation-report-print-attachments", () => {
       },
       freePhotos: [
         { id: 3, category: null, approved: true, fileName: "free.png", mimeType: "image/png", attachmentId: "free-1" },
-        // مكرر — يجب ألا يتكرر في الناتج
+        // Duplicate — must not appear twice in the output
         { id: 4, category: null, approved: true, fileName: "f.jpg", mimeType: "image/jpeg", attachmentId: "f-facade" },
       ],
       observations: [
@@ -59,7 +59,7 @@ describe("valuation-report-print-attachments", () => {
       ],
     } as never);
 
-    // الواجهة أولاً (ترتيب المزايا)، ثم بقية المزايا، ثم الفتحات المعتمدة، ثم الحرة، ثم الملاحظات.
+    // Facade first (feature order), then other features, then approved slots, then free, then notes.
     expect(ids).toEqual(["f-facade", "f-kitchen", "slot-elec", "free-1", "obs-1"]);
     expect(ids).not.toContain("slot-rejected");
     expect(ids).not.toContain("slot-none");
@@ -153,7 +153,13 @@ describe("valuation report live fill attachments and glossary", () => {
     applyValuationReportLiveFill(dom, fill);
 
     expect(dom.querySelector("#photo-1")).toBeNull();
-    expect(dom.querySelector('img[alt="صور العقار — 2026/06/02"]')).toBeTruthy();
+    const photoFig = dom.querySelector("figure.attach-fig");
+    const photoImg = dom.querySelector('img[alt="صور العقار — 2026/06/02"]');
+    expect(photoImg).toBeTruthy();
+    // Caption must sit outside the image height box (not clipped under the next grid row).
+    expect(photoFig?.getAttribute("style") ?? "").not.toMatch(/height\s*:\s*100px/i);
+    expect(photoImg?.getAttribute("style") ?? "").toMatch(/height\s*:\s*100px/i);
+    expect(photoFig?.querySelector("figcaption")?.textContent).toContain("صور العقار");
     expect(dom.querySelector("#photo-2")?.textContent).toBe("—");
     expect(dom.querySelector("iframe.attach-pdf")).toBeNull();
     expect(dom.querySelector(".attach-pdf-note")?.textContent).toContain(

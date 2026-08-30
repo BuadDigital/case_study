@@ -509,7 +509,7 @@ export function KeyEnvelopeDetailPage({
             ) : null}
           </div>
 
-          {/* HTML renderKeyDetail tabs: إسناد + عهدة; timeline/court kept for live APIs */}
+          {/* HTML renderKeyDetail tabs: assignment + custody; timeline/court kept for live APIs */}
           <KeysTabBar
             tabs={[
               {
@@ -1029,7 +1029,7 @@ function CourtAccessPanel({
     );
   }
 
-  // فهرس واحد بدل مسح خطي لكل عقار مرتبط (js-index-maps).
+  // One index instead of a linear scan per linked property (js-index-maps).
   const accessByPropertyId = new Map(rows.map((r) => [r.propertyId, r]));
   return (
     <div className="space-y-2.5">
@@ -1308,7 +1308,7 @@ const HANDOFF_NOTES_BY_KIND: Record<string, string> = {
     "المحكمة جهة معرَّفة — لا يلزم إثبات استلام؛ الإرجاع يُنهي دورة الظرف.",
 };
 
-/** استلام الظرف — تأكيد المناولة المعلّقة لتعود العهدة إلى المراجع (الحالة ليست «لدى المراجع»). */
+/** Receive envelope — confirm pending handoff so custody returns to the clerk (status is not «with clerk»). */
 function ReceiveEnvelopeModal({
   env,
   busy,
@@ -1421,7 +1421,7 @@ function ReceiveEnvelopeModal({
   );
 }
 
-/** تسليم الظرف — مناولة داخلية/خارجية أو إرجاع للمحكمة (العهدة لدى المراجع). */
+/** Deliver envelope — internal/external handoff or return to court (custody with clerk). */
 function DeliverEnvelopeModal({
   env,
   inspectors,

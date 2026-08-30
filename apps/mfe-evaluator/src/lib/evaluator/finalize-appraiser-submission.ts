@@ -24,7 +24,7 @@ export type FinalizeAppraiserResult =
   | { ok: true; submission: EvaluatorSubmission }
   | { ok: false; message: string };
 
-/** يرسل تقييم المقيم + إجابات الاستدلال لأخصائي دراسة الحالة. */
+/** Submits the appraiser valuation + inference answers to the case-study specialist. */
 export async function finalizeAppraiserSubmission(
   appraisalTaskId: string,
 ): Promise<FinalizeAppraiserResult> {
@@ -40,8 +40,8 @@ export async function finalizeAppraiserSubmission(
     const issuedAt = new Date();
     let reportNo = current.reportNo.trim();
     if (current.status === "reopened" || !reportNo) {
-      // رقم التقرير من تسلسل الخادم (معرّف طلب التقييم VR-####) —
-      // عدّاد المتصفح المحلي احتياطي أخير عند انقطاع الخدمة فقط.
+      // Report number from server sequence (valuation request id VR-####) —
+      // local browser counter is a last-resort fallback when the service is down.
       try {
         const open = await ensureOpenValuationRequest({
           propertyId: current.propertyId,

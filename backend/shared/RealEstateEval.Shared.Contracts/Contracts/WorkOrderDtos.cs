@@ -13,7 +13,7 @@ public class PropertyContactDto
 public class WorkOrderPropertyDto
 {
     public Guid? Id { get; set; }
- /// <summary>ورشة الترقيم: الرقم المرجعي الداخلي للمعاملة TX-{سنة}-{تسلسل ٥} — يملكه الخادم، لا يُكتب من العميل.</summary>
+ /// <summary>Numbering Shop: Internal transaction reference number TX-{year}-{sequence 5} — owned by the server, not written by the client.</summary>
     public string? ReferenceNumber { get; set; }
     public string IdentifierType { get; set; } = "deed";
     public string DeedNumber { get; set; } = "";
@@ -30,12 +30,12 @@ public class WorkOrderPropertyDto
     public string? DeedKindLabelAr { get; set; }
  /// <summary>Suggestion from the identifier type (real-estate registration → registered title).</summary>
     public string? SuggestedDeedKind { get; set; }
- /// <summary>الملاك وحصصهم — deed transcription.</summary>
+ /// <summary>Owners and Their Shares — deed transcription.</summary>
     public List<DeedOwnerDto> Owners { get; set; } = [];
- /// <summary>Effective نوع الملكية (manual override or derived).</summary>
+ /// <summary>Effective Ownership Type (manual override or derived).</summary>
     public string? OwnershipType { get; set; }
     public string? OwnershipTypeLabelAr { get; set; }
- /// <summary>Derived suggestion (رهن→مرهون · حصص→مشاع · else مطلقة).</summary>
+ /// <summary>Derived suggestion (mortgage → mortgaged · shares → shared · else absolute).</summary>
     public string? SuggestedOwnershipType { get; set; }
     public bool OwnershipTypeIsManual { get; set; }
     public string? RestrictionsPresent { get; set; }
@@ -88,6 +88,8 @@ public class WorkOrderPropertyDto
     public string? PartitionMinutesDate { get; set; }
     public string? FinishingType { get; set; }
     public string? FinishingStructure { get; set; }
+    /// <summary>JSON specialist valuation extras (ESG, search scope, print keys, Infath deposit).</summary>
+    public string? SpecialistReportExtrasJson { get; set; }
     public bool IsRemoved { get; set; }
     public string? RemovalReason { get; set; }
     public string? RemovedAtUtc { get; set; }
@@ -194,9 +196,9 @@ public class UpdatePropertyBourseRequest
     public string? Area { get; set; }
     public string? DeedStatus { get; set; }
     public string? BourseDeedImageFileName { get; set; }
- /// <summary>الملاك وحصصهم — replaces the whole list when provided.</summary>
+ /// <summary>Owners and Their Shares — replaces the whole list when provided.</summary>
     public List<DeedOwnerDto>? Owners { get; set; }
- /// <summary>Manual نوع الملكية override; requires OwnershipTypeIsManual.</summary>
+ /// <summary>Manual Ownership Type override; requires OwnershipTypeIsManual.</summary>
     public string? OwnershipType { get; set; }
     public bool OwnershipTypeIsManual { get; set; }
     public string? RestrictionsPresent { get; set; }
@@ -339,6 +341,12 @@ public class UpdateLocationMapUrlRequest
     public string? LocationMapUrl { get; set; }
 }
 
+public class UpdateSpecialistReportExtrasRequest
+{
+    /// <summary>JSON object string, or null/empty to clear.</summary>
+    public string? SpecialistReportExtrasJson { get; set; }
+}
+
 public class DeleteWorkOrderPropertyRequest
 {
     [MaxLength(500)]
@@ -363,7 +371,7 @@ public class PendingBoursePropertyDto
 
 // Courts-catalog DTOs moved to RealEstateEval.Platform.Application (A8).
 
-/// <summary>One deed owner (الملاك وحصصهم) — share optional for single-owner deeds.</summary>
+/// <summary>One deed owner (Owners and Their Shares) — share optional for single-owner deeds.</summary>
 public class DeedOwnerDto
 {
     public string Name { get; set; } = "";

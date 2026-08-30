@@ -1,4 +1,4 @@
-/** @failures/mfe — إدارة التعذرات (failure queue + property failure reports). */
+/** @failures/mfe — failures management (failure queue + property failure reports). */
 
 export { FailuresView } from "./views/FailuresView";
 export { FailureTypesView } from "./views/FailureTypesView";

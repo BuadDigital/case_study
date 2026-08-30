@@ -97,7 +97,7 @@ import {
 import dynamic from "next/dynamic";
 import type { CreateOperationsTaskPrefill } from "../components/CreateOperationsTaskModal";
 
-// المودال ٩٣٤ سطراً ويُعرض عند الطلب فقط — لا يركب في حزمة الشاشة (bundle-dynamic-imports).
+// Modal is ~934 lines and only shown on demand — do not mount it in the screen chunk (bundle-dynamic-imports).
 const CreateOperationsTaskModal = dynamic(
   () =>
     import("../components/CreateOperationsTaskModal").then(
@@ -105,7 +105,7 @@ const CreateOperationsTaskModal = dynamic(
     ),
   { ssr: false },
 );
-// تحميل مسبق عند التحويم على زر الإنشاء — يختفي زمن جلب الحزمة (bundle-preload).
+// Prefetch on hover of the create button — hides chunk fetch latency (bundle-preload).
 const preloadCreateOperationsTaskModal = () =>
   void import("../components/CreateOperationsTaskModal");
 import {
@@ -232,7 +232,7 @@ import {
   LetterTable,
 } from "./OperationsTasksViewParts";
 
-// ترتيب النطاقات ثابت — دالة وحدة واحدة بدل إغلاق يُخصَّص لكل مقارنة
+// Scope order is fixed — one module-level function instead of a closure allocated per comparison
 // (js-cache-function-results).
 const taskStatusRank = (status: string) =>
   status === "paused" ? 1 : isTerminalOperationsTaskStatus(status) ? 2 : 0;
@@ -292,8 +292,8 @@ export function OperationsTasksView() {
   const failureResumeBusyRef = useRef(false);
 
   const [search, setSearch] = useState("");
-  // الكتابة في البحث تبقى فورية بينما ترشيح القائمة يتأخر إطاراً
-  // (rerender-use-deferred-value) — ترشيح محلي بحت بلا شبكة.
+  // Typing in search stays immediate while list filtering is deferred one frame
+  // (rerender-use-deferred-value) — local filtering only, no network.
   const deferredSearch = useDeferredValue(search);
   const [statusFilter, setStatusFilter] = useState("");
   const [scopeFilter, setScopeFilter] = useState("");
@@ -344,10 +344,10 @@ export function OperationsTasksView() {
   const [reassignError, setReassignError] = useState<string | null>(null);
   const [govFailureTarget, setGovFailureTarget] =
     useState<OperationsTaskFailureTarget | null>(null);
-  // دقّة الدقيقة تكفي لمنطق الشاشة — العدّادات الثانوية (DueCell وبطاقات الجوال)
-  // تشترك بالساعة بنفسها، فلا يعاد بناء كل الصفوف كل ثانية (rerender-defer-reads).
+  // Minute precision is enough for screen logic — per-second timers (DueCell and mobile cards)
+  // subscribe to the clock themselves, so every row is not rebuilt each second (rerender-defer-reads).
   const now = useTickingMinute();
-  // بعد الترطيب تركب شجرة واحدة فقط (جدول أو بطاقات) — كانتا تُبنيان معاً.
+  // After hydration mount only one tree (table or cards) — both used to be built together.
   const isDesktopViewport = useViewportDesktop();
   const commentFileInputRef = useRef<HTMLInputElement>(null);
   const closeFileInputRef = useRef<HTMLInputElement>(null);
@@ -408,7 +408,7 @@ export function OperationsTasksView() {
   const visibleTasks = useMemo(() => {
     const q = deferredSearch.trim();
     const list = queueTasks.filter((t) => {
-      // المقارنات الرخيصة أولاً — سلسلة البحث تُبنى فقط لما بقي وعند وجود نص.
+      // Cheap comparisons first — build the search string only for survivors and when text exists.
       if (statusFilter && t.status !== statusFilter) return false;
       if (scopeFilter && t.scope !== scopeFilter) return false;
       if (!showAll && !statusFilter && !isActiveOperationsTask(t)) return false;
@@ -416,7 +416,7 @@ export function OperationsTasksView() {
       const hay = `${t.title} ${t.assigneeName} ${t.displayId} ${t.poNumber ?? ""} ${t.deeds.join(" ")}`;
       return hay.includes(q);
     });
-    // زخرفة مرة واحدة لكل مهمة — بدلاً من تحليل التاريخ في كل مقارنة.
+    // Decorate once per task — instead of parsing the date on every comparison.
     return list
       .map((task) => ({
         task,
@@ -433,7 +433,7 @@ export function OperationsTasksView() {
   }, [queueTasks, deferredSearch, statusFilter, scopeFilter, showAll]);
 
   // When staff resolves a blocking failure, reopen paused-for-failure tasks as
-  // «منشأة» so the assignee confirms receipt again (fresh start, not mid-work).
+  // «Created» so the assignee confirms receipt again (fresh start, not mid-work).
   useEffect(() => {
     if (failureResumeBusyRef.current) return;
     const toReopen = tasks.filter(
@@ -556,7 +556,7 @@ export function OperationsTasksView() {
     setPauseOpen(true);
   }, []);
 
-  // معالجات الصف ثابتة المرجع — تحديث حالة المودالات لا يكسر memo الصفوف.
+  // Row handlers stay referentially stable — modal state updates do not break row memo.
   const openTask = useCallback((task: OperationsTask) => {
     setSelectedId(task.id);
     setDetailId(task.id);
@@ -851,8 +851,8 @@ export function OperationsTasksView() {
     [showToast, refetch],
   );
 
-  // زر التذكير الجماعي هو المستهلك الوحيد للعلَم هنا — انتقال مخصص بدل مشاركة
-  // busy مع بقية المعالجات (rendering-usetransition-loading).
+  // Bulk-remind is the only consumer of this flag here — dedicated transition instead of sharing
+  // busy with the other handlers (rendering-usetransition-loading).
   const bulkRemind = useCallback(() => {
     startBulkRemind(async () => {
       const ids = Object.entries(selectedIds)
@@ -910,7 +910,7 @@ export function OperationsTasksView() {
     const [hh, mm] = (reassignDueTime || "12:00").split(":").map(Number);
     const due = new Date(y, (mo ?? 1) - 1, da ?? 1, hh ?? 12, mm ?? 0, 0, 0);
     setReassignError(null);
-    // مودال إعادة التوجيه هو الواجهة الظاهرة أثناء الإرسال — انتقال مخصص.
+    // Reassign modal is the visible UI while sending — dedicated transition.
     startReassign(async () => {
       const res = await reassignOperationsTaskRecord(taskId, {
         assigneeId: reassignAssigneeId.trim(),
@@ -1775,7 +1775,7 @@ export function OperationsTasksView() {
         />
       </KpiBand>
 
-      {/* Mobile: معاينة العقار-style 2×2 stat cards */}
+      {/* Mobile: property-inspection-style 2×2 stat cards */}
       <MobileKpiStatCards
         className="mb-0"
         items={[
@@ -1932,7 +1932,7 @@ export function OperationsTasksView() {
       {error ? <Note tone="danger">{error}</Note> : null}
 
       <OperationalPanel className="min-h-0 flex-1 overflow-hidden !rounded-[12px] p-0 max-lg:border-0 max-lg:bg-transparent max-lg:!rounded-none max-lg:shadow-none">
-        {/* Desktop table — بعد الترطيب تركب شجرة واحدة فقط (rendering). */}
+        {/* Desktop table — after hydration mount only one tree (rendering). */}
         {isDesktopViewport === false ? null : (
         <div className="hidden overflow-x-auto lg:block">
           <div className="min-w-[900px]">
@@ -2003,7 +2003,7 @@ export function OperationsTasksView() {
         <TasksSectionNote>{TASKS_LIST_FOOTER}</TasksSectionNote>
       </OperationalPanel>
 
-      {/* تركيب مشروط — الركوب الدائم كان يجلب الحزمة عند فتح الشاشة رغم التقسيم. */}
+      {/* Conditional mount — always-on mounting still fetched the chunk when opening the screen despite splitting. */}
       {createOpen ? (
         <CreateOperationsTaskModal
           open={createOpen}

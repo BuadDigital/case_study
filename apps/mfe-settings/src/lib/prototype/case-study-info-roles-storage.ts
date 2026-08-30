@@ -155,7 +155,7 @@ export async function saveCaseStudyInfoRolesConfig(
   return saved;
 }
 
-/** يمكن للطرف الإجابة إذا له دور غير «لا دور». */
+/** Party may answer if its role is not «no role». */
 export function canPartyAnswerQuestion(
   matrix: CaseStudyInfoRolesMatrix,
   questionKey: string,
@@ -165,7 +165,7 @@ export function canPartyAnswerQuestion(
   return role === "primary" || role === "secondary" || role === "verify";
 }
 
-/** يُعرض السؤال للطرف فقط إذا لم يكن دوره «لا دور» (أو غير مُعرَّف). */
+/** Show the question to the party only if its role is not «no role» (or undefined). */
 export function isPartyQuestionVisible(
   matrix: CaseStudyInfoRolesMatrix,
   questionKey: string,
@@ -174,7 +174,7 @@ export function isPartyQuestionVisible(
   return canPartyAnswerQuestion(matrix, questionKey, partyId);
 }
 
-/** هل السؤال مسند لأي طرف (للمراجعة من الأخصائي). */
+/** Whether the question is assigned to any party (for specialist review). */
 export function isAnyPartyAssignedToQuestion(
   matrix: CaseStudyInfoRolesMatrix,
   questionKey: string,
@@ -184,7 +184,7 @@ export function isAnyPartyAssignedToQuestion(
   );
 }
 
-/** الأخصائي يراجع أي سؤال مسند لطرف واحد على الأقل — حتى «مكونات العقار» للمعاين فقط. */
+/** Specialist reviews any question assigned to at least one party — even «property components» for inspector only. */
 export function isCaseStudyQuestionVisibleToSpecialist(
   matrix: CaseStudyInfoRolesMatrix,
   questionKey: string,
@@ -192,7 +192,7 @@ export function isCaseStudyQuestionVisibleToSpecialist(
   return isAnyPartyAssignedToQuestion(matrix, questionKey);
 }
 
-/** الأخصائي يعتمد الإجابة الرسمية لأي سؤال يظهر في مراجعته. */
+/** Specialist confirms the official answer for any question in their review. */
 export function canSpecialistApproveQuestion(
   matrix: CaseStudyInfoRolesMatrix,
   questionKey: string,

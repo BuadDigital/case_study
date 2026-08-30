@@ -41,7 +41,7 @@ function badgeToneFromClass(
 
 /**
  * Ring fill = completion only.
- * «قيد التنفيذ» is status, not 50% work done — empty ring until مكتمل.
+ * "In progress" is status, not 50% work done — empty ring until completed.
  */
 function partyRingProgress(badgeClass: string): number {
   if (badgeClass.includes("teal")) return 1;

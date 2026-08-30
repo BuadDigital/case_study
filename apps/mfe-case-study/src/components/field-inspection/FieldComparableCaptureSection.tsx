@@ -81,7 +81,7 @@ function cellValue(
 /**
  * Optional field capture during inspection. Rows enter the company bank
  * and are linked to this property when a property id is provided.
- * Columns follow Settings → قوائم التقييم → العقارات المقارنة.
+ * Columns follow Settings → valuation lists → comparable properties.
  */
 export function FieldComparableCaptureSection({
   latitude,

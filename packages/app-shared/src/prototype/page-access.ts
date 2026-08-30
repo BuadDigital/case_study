@@ -23,8 +23,8 @@ export function defaultLandingPage(rolePages: readonly PageId[]): PageId {
   if (rolePages.includes("dashboard")) return "dashboard";
 
   // Independent operations-task hubs:
-  // - مدير الإدارة (valuation-requests + case-study suite)
-  // - أطراف التنفيذ (معاين / مكتب / مقيم / مراجع حكومي / …) — ops without case-study manager pages
+  // - Management director (valuation-requests + case-study suite)
+  // - Execution parties (inspector / office / appraiser / government reviewer / …) — ops without case-study manager pages
   if (rolePages.includes("operations-tasks")) {
     const isGeneralManagerHub =
       rolePages.includes("valuation-requests") &&
@@ -112,7 +112,7 @@ export function isPoPropertyEditPath(pathname: string): boolean {
   "active-inspection",
   "property-appraisal",
   "active-survey",
-  /** المعاين يعمل من تفاصيل العقار أو طابور المعاينة الرسمية. */
+  /** Field inspector works from property detail or the official inspection queue. */
   "all-transactions",
   "property-map",
   "favorites",

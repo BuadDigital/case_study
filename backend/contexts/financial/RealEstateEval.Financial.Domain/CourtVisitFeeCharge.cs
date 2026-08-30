@@ -1,7 +1,7 @@
 namespace RealEstateEval.Financial.Domain;
 
 /// <summary>
-/// أتعاب الزيارة — earned when an operations <c>court_visit</c> task is completed.
+/// Court-visit fees — earned when an operations <c>court_visit</c> task is completed.
 /// Separate from <see cref="KeyReceiptFeeCharge"/> (envelope photo / key receipt).
 /// </summary>
 public class CourtVisitFeeCharge

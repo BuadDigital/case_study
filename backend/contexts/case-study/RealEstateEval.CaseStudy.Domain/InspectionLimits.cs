@@ -3,14 +3,14 @@ using RealEstateEval.Domain;
 
 namespace RealEstateEval.CaseStudy.Domain;
 
-/// <summary>وحدات لم تُعايَن — عدّاد + سبب كل حالة (القرار 24).</summary>
+/// <summary>Unseen units — counter + reason for each condition (Decision 24).</summary>
 public sealed record UninspectedUnitEntry(int Count, string Reason);
 
 /// <summary>
-/// حدود المعاينة = القيود على المعاينة (القرار 24 + ق-7): مدخلات منظّمة لا نص حر —
-/// نطاق المعاينة + وحدات لم تُعايَن + سبب التقييد، والنظام يركّب نص التحفّظ
-/// ويضعه ضمن الافتراضات الخاصة. المكتبية عن بُعد حاجب حتى اعتماد المقيّم المعتمد.
-/// Stored on <see cref="WorkOrderProperty"/> (نمط سؤال الإنشاءات).
+/// Inspection Limitations = Limitations of Inspector (Decision 24 + Q-7): structured input no free text —
+/// Inspection Scope + unseen units + reason for the restriction, and the system installs the reservation text
+/// And puts it under Special Assumptions. Remote Desktop Blocker even Appraiser certified.
+/// Stored on <see cref="WorkOrderProperty"/> (construction question style).
 /// </summary>
 public static class InspectionLimitsRules
 {
@@ -29,7 +29,7 @@ public static class InspectionLimitsRules
         else if (!InspectionScopeKeys.IsKnown(scope))
             errors["inspectionScopeKey"] = "نطاق المعاينة غير معروف";
 
- // سبب التقييد إلزامي عند نطاق ≠ كاملة أو وجود وحدات غير معاينة (requiredWhen).
+ // Restriction reason is mandatory when range ≠ complete or there are unsampled units (requiredWhen).
         var limited = InspectionScopeKeys.IsKnown(scope)
             && !string.Equals(scope, InspectionScopeKeys.Full, StringComparison.Ordinal);
         if ((limited || uninspectedUnits.Count > 0)
@@ -55,8 +55,8 @@ public static class InspectionLimitsRules
         units.Sum(u => Math.Max(0, u.Count));
 
  /// <summary>
- /// المخرج المركّب (القرار 24): نص تحفّظ يوضع ضمن الافتراضات الخاصة —
- /// ديناميكي كمخرج، منظّم كمدخل. فارغ عند معاينة كاملة بلا وحدات مستثناة.
+ /// Composite output (Decision 24): Reservation text placed under Special Assumptions —
+ /// Dynamic as output, structured as input. Blank on complete inspection with no units excluded.
  /// </summary>
     public static string ComposeReservationTextAr(
         string? scopeKey,

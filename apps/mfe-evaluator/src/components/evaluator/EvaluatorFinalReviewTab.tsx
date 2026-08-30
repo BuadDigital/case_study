@@ -132,11 +132,11 @@ export function EvaluatorFinalReviewTab({
   disabled?: boolean;
   property?: PoPropertyIntake | null;
   assignmentType?: string | null;
-  /** من صدفة التقييم إن وُجد — يوفّر نداء ensure-open ثانياً لنفس العقار. */
+  /** From ValuationWorkShell when present — avoids a second ensure-open for the same property. */
   valuationRequestId?: string | null;
   /**
-   * إعدادات التقييم من الصدفة إن وُجدت (null = فشل تحميل الصدفة) — تُغني عن
-   * جلب التبويب المكرر لنفس الإعدادات؛ undefined = وضع مستقل يجلب بنفسه.
+   * Valuation settings from the shell when present (null = shell load failed) — skips
+   * a duplicate tab fetch for the same settings; undefined = standalone mode fetches itself.
    */
   approachSettings?: ValuationApproachSettingsDto | null;
   onDraftPatch?: (patch: {
@@ -156,7 +156,7 @@ export function EvaluatorFinalReviewTab({
   const [specialistKeys, setSpecialistKeys] = useState<string[]>(() =>
     loadSpecialistPrintAttachmentKeys(property?.id ?? draft.propertyId),
   );
-  // قوائم التقييم من الاستعلام المشترك — كان GET مكرراً مع قسم الرأي النهائي.
+  // Valuation lists from the shared query — previously a duplicate GET with final-opinion.
   const { data: valuationLists } = useValuationListsQuery();
   const attachmentCatalog = useMemo<
     { key: string; name: string; isRequired: boolean }[]
@@ -196,9 +196,9 @@ export function EvaluatorFinalReviewTab({
 
   const propertyId = property?.id ?? draft.propertyId;
 
-  // مصادر مرفقات التقرير تحتاج معرّفات مهام الرفع/المعاينة — بدونها لا تُجلب المستندات.
+  // Report attachment sources need upload/inspection task ids — without them docs are not fetched.
   const { data: workflowTasks } = useWorkflowTasksQuery();
-  // مسار واحد على قائمة المهام بدل find مرتين في كل تصيير (js-combine-iterations).
+  // Single pass over tasks instead of two finds per render (js-combine-iterations).
   const { surveyTaskId, inspectionTaskId } = useMemo(() => {
     let surveyId: string | null = null;
     let inspectionId: string | null = null;
@@ -233,7 +233,7 @@ export function EvaluatorFinalReviewTab({
       }),
     [attachmentCatalog, propertyDocuments, propertyId, specialistKeys],
   );
-  // ترشيح واحد بدل filter مرتين في نفس التصيير + Set بدل includes (js-combine-iterations).
+  // Single filter pass per render + Set instead of includes (js-combine-iterations).
   const selectedPrintRows = useMemo(() => {
     const keys = new Set(specialistKeys);
     return printRows.filter((row) => keys.has(row.key));
@@ -243,7 +243,7 @@ export function EvaluatorFinalReviewTab({
     setSpecialistEsg(loadSpecialistEsgInputs(propertyId));
     setSpecialistKeys(loadSpecialistPrintAttachmentKeys(propertyId));
   }, [propertyId]);
-  // تجدد مدخلات الأخصائي المتزامنة عبر أحداث window — عقار آخر لا يعنينا.
+  // Refresh synced specialist inputs via window events — ignore other properties.
   const ifThisProperty = (refresh: () => void) => (ev: Event) => {
     const detail = (ev as CustomEvent<{ propertyId?: string }>).detail;
     if (detail?.propertyId && detail.propertyId !== propertyId) return;
@@ -258,7 +258,7 @@ export function EvaluatorFinalReviewTab({
     ),
   });
 
-  // صب ESG والمرفقات من الأخصائي → مسودة التقرير للطباعة.
+  // Pour specialist ESG and attachments into the report draft for print.
   useEffect(() => {
     if (disabled || loading) return;
     const current = draft.reportChoices ?? emptyReportChoices();
@@ -285,7 +285,7 @@ export function EvaluatorFinalReviewTab({
     specialistKeys,
   ]);
 
-  /** بذر قائمة الافتراضات من الإعدادات — مشترك بين الوضع المستقل ووضع الصدفة. */
+  /** Seed assumptions list from settings — shared by standalone and shell modes. */
   const seedAssumptions = useCallback((s: ValuationApproachSettingsDto) => {
     const library = s.assumptionLibrary ?? [];
     const loaded = s.selectedAssumptions ?? [];
@@ -303,8 +303,8 @@ export function EvaluatorFinalReviewTab({
     );
   }, []);
 
-  // وضع الصدفة: الإعدادات من الأب — لا جلب مكرر؛ البذر مرة لكل طلب فلا
-  // تُداس تعديلات المستخدم حين تعيد الصدفة تحميل إعداداتها.
+  // Shell mode: settings come from parent — no duplicate fetch; seed once per request so
+  // user edits are not overwritten when the shell reloads settings.
   const seededForRequestRef = useRef<string | null>(null);
   useEffect(() => {
     if (approachSettingsFromShell === undefined) return;
@@ -328,7 +328,7 @@ export function EvaluatorFinalReviewTab({
   ]);
 
   const loadAssumptions = useCallback(async () => {
-    // وضع الصدفة — المؤثر أعلاه هو المصدر، لا جلب هنا.
+    // Shell mode — the effect above is the source; no fetch here.
     if (approachSettingsFromShell !== undefined) return;
     const config = apiConfig();
     if (!config || !propertyId.trim()) {
@@ -338,7 +338,7 @@ export function EvaluatorFinalReviewTab({
     }
     setLoading(true);
     setError(null);
-    // الصدفة تملك المعرّف سلفاً — ensure-open كتابة create-if-missing لا تُكرَّر عبثاً.
+    // Shell already has the id — skip redundant ensure-open / create-if-missing writes.
     let requestId = knownValuationRequestId ?? null;
     if (!requestId) {
       const open = await ensureOpenValuationRequestByProperty(config, {

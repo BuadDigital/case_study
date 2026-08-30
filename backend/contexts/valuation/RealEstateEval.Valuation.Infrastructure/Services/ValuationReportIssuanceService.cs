@@ -13,9 +13,9 @@ using Microsoft.Extensions.Logging;
 namespace RealEstateEval.Valuation.Infrastructure.Services;
 
 /// <summary>
-/// ق-6: الإصدار ثنائي المرحلة + شهادة الإيداع. اللقطة المجمّدة (DocumentJson) مصدر
-/// النسختين: نسخة الإيداع تُولَّد عند التجميد وخانة الرمز فارغة؛ النسخة النهائية نفس
-/// اللقطة حرفياً + الرمز في الحقل والميتا + صفحة الشهادة المرفقة.
+/// Q-6: two-phase issuance + deposit certificate. The frozen snapshot (DocumentJson) is the source
+/// for both copies: deposit copy is generated at freeze with empty code field; final copy is the same
+/// snapshot literally + code in the field and metadata + attached certificate page.
 /// </summary>
 public sealed class ValuationReportIssuanceService(
     ValuationDbContext db,
@@ -39,7 +39,7 @@ public sealed class ValuationReportIssuanceService(
             .FirstOrDefaultAsync(x => x.Id == valuationRequestId, cancellationToken);
         if (vr is null) return null;
 
-        // ر2: النسخة السارية وحدها تحكم المرحلة — الملغاة تبقى بالملف وتظهر عدّاً فقط.
+        // R2: only the current copy drives the phase — superseded copies stay on file and count only.
         var row = await db.ValuationReportIssuances.AsNoTracking()
             .FirstOrDefaultAsync(
                 x => x.ValuationRequestId == valuationRequestId && x.SupersededAtUtc == null,
@@ -52,8 +52,8 @@ public sealed class ValuationReportIssuanceService(
         if (row is not null)
             return ToState(row, allowsDepositIssue: false, blockingReasons: [], supersededCount);
 
-        // عرض الحالة يتدهور بأمان عند تعذّر تقييم الحواجب (خدمة upstream غير متاحة) —
-        // الإصدار الفعلي يبقى مشروطاً بتقييم ناجح في IssueDepositAsync.
+        // Status display degrades safely when gate evaluation fails (upstream unavailable) —
+        // actual issuance still requires a successful evaluation in IssueDepositAsync.
         ValuationIssuanceGatesDto? gateState = null;
         try
         {
@@ -61,7 +61,7 @@ public sealed class ValuationReportIssuanceService(
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
-            // التدهور الآمن مقصود — لكن العطل يجب أن يظهر في السجلات.
+            // Safe degradation is intentional — but the failure must appear in logs.
             logger?.LogWarning(ex, "تعذّر تقييم بوابات إصدار تقرير التقييم للطلب {ValuationRequestId}", valuationRequestId);
         }
 
@@ -88,7 +88,7 @@ public sealed class ValuationReportIssuanceService(
         if (vr is null)
             return (null, new Dictionary<string, string> { ["_"] = "طلب التقييم غير موجود" });
 
-        // ر2: النسخة السارية وحدها تمنع الإصدار — بعد إعادة الفتح يصدر الدور N+1.
+        // R2: only the current copy blocks issuance — after reopen, cycle N+1 is issued.
         var hasActive = await db.ValuationReportIssuances.AsNoTracking()
             .AnyAsync(
                 x => x.ValuationRequestId == valuationRequestId && x.SupersededAtUtc == null,
@@ -96,8 +96,8 @@ public sealed class ValuationReportIssuanceService(
         if (hasActive)
             return (null, new Dictionary<string, string> { ["_"] = "نسخة الإيداع صادرة سلفاً — التقرير مجمّد (ق-6)" });
 
-        // ق-6-1: لا إصدار إلا باكتمال الحواجب — تعذّر التقييم نفسه يمنع الإصدار برسالة
-        // واضحة بدل انهيار الطلب.
+        // Q-6-1: no issuance until gates pass — evaluation failure itself blocks with a clear
+        // message instead of crashing the request.
         ValuationIssuanceGatesDto? gateState;
         try
         {
@@ -123,13 +123,13 @@ public sealed class ValuationReportIssuanceService(
         if (document is null)
             return (null, new Dictionary<string, string> { ["_"] = "تعذّر بناء لقطة التقرير" });
 
-        // ر2: رقم الدور = أعلى دور سابق + 1 (الملغاة تُحتسب — لا إعادة استخدام لرقم).
+        // R2: cycle number = max prior cycle + 1 (superseded count — numbers are not reused).
         var priorVersion = await db.ValuationReportIssuances.AsNoTracking()
             .Where(x => x.ValuationRequestId == valuationRequestId)
             .Select(x => (int?)x.Version)
             .MaxAsync(cancellationToken) ?? 0;
 
-        // B2: انتقال التجميد داخل الجذر — الخدمة تجهّز اللقطة والمولّد فقط.
+        // B2: freeze transition on the aggregate — service prepares snapshot and generator only.
         var row = ValuationReportIssuance.IssueDeposit(
             valuationRequestId,
             JsonSerializer.Serialize(document, SnapshotJson),
@@ -140,7 +140,7 @@ public sealed class ValuationReportIssuanceService(
         db.ValuationReportIssuances.Add(row);
         await db.SaveChangesAsync(cancellationToken);
 
-        // كل الأدوار السابقة ملغاة بالضرورة (وإلا لَمنعت الإصدار أعلاه).
+        // All prior cycles are necessarily superseded (else issuance would have been blocked above).
         return (ToState(row, allowsDepositIssue: false, blockingReasons: [], supersededCount: priorVersion), null);
     }
 
@@ -174,8 +174,8 @@ public sealed class ValuationReportIssuanceService(
             }
         }
 
-        // B2: انتقالات الشهادة/الرمز داخل الجذر — إعادة التسجيل تصحيحاً مسموحة
-        // وتعيد توليد النسخة النهائية من اللقطة المجمّدة نفسها.
+        // B2: certificate/code transitions on the aggregate — corrective re-registration is allowed
+        // and regenerates the final copy from the same frozen snapshot.
         var certError = row.RegisterCertificate(
             request.DepositCode,
             request.CertificateFileName,
@@ -204,7 +204,7 @@ public sealed class ValuationReportIssuanceService(
         if (finalError is not null)
             return (null, new Dictionary<string, string> { ["_"] = finalError });
 
-        // اكتمال الخطوة المهنية لتقرير التقييم (ق-9 يفصلها عن رفع إنفاذ الشامل).
+        // Completes the professional valuation-report step (Q-9 separates it from Infath bulk upload).
         var vr = await db.ValuationRequests
             .FirstOrDefaultAsync(x => x.Id == valuationRequestId, cancellationToken);
         vr?.SubmitReport(_time.UtcNow());
@@ -242,17 +242,17 @@ public sealed class ValuationReportIssuanceService(
             });
         }
 
-        // ر2: النسخة المودعة لا تُعدَّل — تُعلَّم ملغاة وتبقى بالملف، والدور الجديد ينتهي
-        // بنسخة إيداع N+1 وإيداع جديد في قيمة.
+        // R2: deposited copy is not edited — marked superseded and kept on file; the new cycle ends
+        // with deposit copy N+1 and a new Qiama deposit.
         var error = row.Supersede(requestedByUserId, request.Reason, _time.UtcNow());
         if (error is not null)
             return (null, new Dictionary<string, string> { ["reason"] = error });
 
-        // عكس اكتمال الخطوة المهنية — الطلب يعود مفتوحاً ويحجز العقار حتى الدور الجديد.
+        // Reverses professional-step completion — request reopens and holds the property until the new cycle.
         vr.ReopenReport(_time.UtcNow());
         await db.SaveChangesAsync(cancellationToken);
 
-        // ٢-ب: كل رجوع يترك قيد تدقيق بالمُجري والسبب — best-effort بعد الحفظ الرئيس.
+        // 2-B: every reopen leaves an audit entry with actor and reason — best-effort after the main save.
         if (audit is not null && auditLog is not null)
         {
             await auditLog.AppendAsync(audit.Create(
@@ -287,8 +287,8 @@ public sealed class ValuationReportIssuanceService(
         ?.FinalPdf;
 
  /// <summary>
- /// ق-6-4: الرمز يتعبأ في حقله القائم داخل اللقطة (report.deposit_code) دون مساس بغيره —
- /// التعديل عبر JsonNode حفاظاً على «نفس التقرير المجمّد حرفياً».
+ /// Q-6-4: the code is filled into its existing field in the snapshot (report.deposit_code) without touching others —
+ /// edit via JsonNode to preserve "the same frozen report literally".
  /// </summary>
     private static JsonNode WithDepositCode(string documentJson, string depositCode)
     {
@@ -333,14 +333,14 @@ public sealed class ValuationReportIssuanceService(
         };
 }
 
-/// <summary>ق-6: حارس التجميد — بعد صدور نسخة الإيداع لا يُحرَّر شيء سوى الرمز والشهادة.</summary>
+/// <summary>Q-6: freeze guard — after deposit copy, nothing is editable except code and certificate.</summary>
 public static class ValuationReportFreeze
 {
     public const string FrozenMessageAr =
         "التقرير مجمّد — صدرت نسخة الإيداع (ق-6)؛ الرمز والشهادة وحدهما قابلان للتسجيل";
 
-    // ر2: التجميد يتبع النسخة السارية وحدها — إعادة الفتح (إلغاء النسخة) تفكّ طبقة
-    // ق-6 فقط؛ تجميد مخرجات الأطراف المعتمدة طبقة أدنى لا تمسّها (٢-ج).
+    // R2: freeze follows the current copy only — reopen (superseding) lifts the
+    // Q-6 layer only; freeze of adopted party outputs is a lower layer untouched (2-C).
     public static Task<bool> IsFrozenAsync(
         ValuationDbContext db,
         Guid valuationRequestId,

@@ -16,7 +16,7 @@ public class ValuationComparableAdjustmentLine
     public string LabelAr { get; set; } = "";
     public decimal Percent { get; set; }
     public string Rationale { get; set; } = "";
- /// <summary>وصف المقارن لهذا العامل (compSpec في النموذج التفاعلي) — نص وصفي لكل خلية.</summary>
+ /// <summary>Comparable description for this factor (compSpec in interactive model) — descriptive text per cell.</summary>
     public string? DescriptionAr { get; set; }
  /// <summary>Calc include switch — excluding keeps the row for audit.</summary>
     public bool IsIncluded { get; set; } = true;
@@ -27,15 +27,15 @@ public class ValuationComparableAdjustmentLine
 
 public static class MarketApproachRules
 {
-    /// <summary>مواصفة النموذج التفاعلي: تجاوز ±٣٥٪ لمجموع التسويات — التبرير إلزامي مع مراجعة صلاحية المقارن.</summary>
+    /// <summary>Interactive model spec: ±35% adjustments-sum breach — rationale required with comparable-validity review.</summary>
     public const decimal LargeAdjustmentThresholdPct = 35m;
-    /// <summary>منطق-التسويات: score = 1 / (|factorsSum| + 0.5).</summary>
+    /// <summary>Adjustments logic: score = 1 / (|factorsSum| + 0.5).</summary>
     public const decimal WeightEpsilon = 0.5m;
-    /// <summary>معدل تغير السوق السنوي الافتراضي (٪) لاقتراح تسوية ظروف السوق.</summary>
+    /// <summary>Default annual market-change rate (%) for suggesting the market-conditions adjustment.</summary>
     public const decimal DefaultAnnualMarketRatePct = 4m;
-    /// <summary>منطق-التسويات: تقريب قيمة السوق لأقرب ١٠^ن (افتراضي ن=٤ → ١٠٬٠٠٠).</summary>
+    /// <summary>Adjustments logic: round market value to nearest 10^n (default n=4 → 10,000).</summary>
     public const int DefaultValueRoundDecimals = 4;
-    /// <summary>متوسط أيام الشهر في منطق-التسويات لحساب عمر الصفقة.</summary>
+    /// <summary>Average days per month in adjustments logic for deal-age calculation.</summary>
     public const decimal DaysPerMonth = 30.44m;
 
  /// <summary>Sequential (multiplicative) application of included percents on a unit rate.</summary>
@@ -77,15 +77,15 @@ public static class MarketApproachRules
 
     public static int DealAgeMonths(DateOnly transactionDate, DateOnly valuationDate)
     {
-        // منطق-التسويات: months = (اليوم − date) / 30.44
+        // Adjustments logic: months = (today − date) / 30.44
         var days = valuationDate.DayNumber - transactionDate.DayNumber;
         if (days <= 0) return 0;
         return (int)Math.Round(days / (double)DaysPerMonth, MidpointRounding.AwayFromZero);
     }
 
     /// <summary>
-    /// منطق-التسويات: mktSug = round(mktRate × months / 12, 2).
-    /// أي قيمة يكتبها المقيّم تلغي المقترح عند الحفظ.
+    /// Adjustments logic: mktSug = round(mktRate × months / 12, 2).
+    /// Any value the valuer enters cancels the suggestion on save.
     /// </summary>
     public static decimal SuggestMarketConditionsPct(
         int dealAgeMonths,
@@ -99,8 +99,8 @@ public static class MarketApproachRules
     }
 
     /// <summary>
-    /// مواصفة النموذج التفاعلي (KIND_DEFAULT): صفقة منفذة ٠ · عرض قائم −٥ · حد −٨ · سوم +٦.
-    /// القيمة مقترحة — أي إدخال يدوي من المقيّم يلغيها.
+    /// Interactive model spec (KIND_DEFAULT): closed deal 0 · active listing −5 · ceiling −8 · som +6.
+    /// Value is suggested — any manual entry by the valuer cancels it.
     /// </summary>
     public static decimal SuggestTransactionTypePct(
         string? transactionKind,
@@ -119,8 +119,8 @@ public static class MarketApproachRules
     }
 
     /// <summary>
-    /// Effective sequential %: تسوية ظروف السوق يدوية بالكامل (النموذج يعرض عمر الصفقة للاستدلال فقط)؛
-    /// تسوية نوع المقارن غير المدخلة تأخذ الافتراضي المقترح (KIND_DEFAULT) بأسلوب «مقترح حتى يُتجاوز».
+    /// Effective sequential %: market-conditions adjustment is fully manual (model shows deal age as a hint only);
+    /// unset comparable-kind adjustment takes the suggested default (KIND_DEFAULT) as "suggested until overridden".
     /// </summary>
     public static decimal EffectiveSequentialPercent(
         string factorKey,
@@ -131,7 +131,7 @@ public static class MarketApproachRules
         decimal suggestedKindPct)
     {
         if (!isIncluded) return 0m;
-        // «مقترح حتى يُتجاوز» بالنسبة المدخلة فقط — كتابة المبرر وحدها لا تلغي الافتراضي.
+        // "Suggested until overridden" applies to the entered % only — writing a rationale alone does not cancel the default.
         var hasManual = storedPercent != 0m;
         if (hasManual) return storedPercent;
         if (factorKey == MarketAdjustmentFactorKeys.TransactionType) return suggestedKindPct;
@@ -141,7 +141,7 @@ public static class MarketApproachRules
     }
 
  /// <summary>
- /// ق-8-1: مبرر السطر «تخصيص لمقارن بعينه» — إن كان فارغاً يرث مبرر العامل.
+ /// Q-8-1: row rationale is a "per-comparable override" — empty inherits the factor rationale.
  /// </summary>
     public static string EffectiveRationale(string? lineOverride, string? factorRationale)
     {
@@ -150,8 +150,8 @@ public static class MarketApproachRules
     }
 
  /// <summary>
- /// مواصفة النموذج التفاعلي: score = 1 / (|fSum| + 0.5) ثم توزيع ٢٠ وحدة × ٥٪
- /// بطريقة الباقي الأكبر — فالمجموع ١٠٠٪ بالبناء والأوزان مضاعفات ٥٪.
+ /// Interactive model spec: score = 1 / (|fSum| + 0.5) then distribute 20 units × 5%
+ /// by largest remainder — sum is 100% by construction and weights are multiples of 5%.
  /// Input must be difference-factor sums (areaAdj + Σ factors), not sequential.
  /// </summary>
     public static IReadOnlyList<decimal> SuggestWeights(IReadOnlyList<decimal> factorsSums)
@@ -159,7 +159,7 @@ public static class MarketApproachRules
         if (factorsSums.Count == 0) return [];
         if (factorsSums.Count == 1) return [100m];
 
-        const int units = 20; // 20 × 5٪ = 100٪
+        const int units = 20; // 20 × 5% = 100%
         var raw = factorsSums
             .Select(s => 1m / (WeightEpsilon + Math.Abs(s)))
             .ToList();
@@ -243,7 +243,7 @@ public static class MarketApproachRules
     }
 }
 
-/// <summary>طريقة قياس تسوية المساحة.</summary>
+/// <summary>Area-adjustment measurement method.</summary>
 public static class AreaAdjustmentMethods
 {
     public const string Multiplier = "multiplier";
@@ -260,19 +260,19 @@ public static class AreaAdjustmentMethods
 }
 
 /// <summary>
-/// تسوية المساحة — منطق-التسويات / مواصفة-طريقة-المقارنة.
-/// الطريقة موحّدة على كل مقارنات الجدول (أي نسبة ≥ ٢ ⟵ المضاعف للجميع).
-/// الإشارة: المقارن الأصغر سالب والأكبر موجب. لا تشمل شكل القطعة.
+/// Area adjustment — adjustments logic / comparison-method spec.
+/// Method is unified across all table comparables (any ratio ≥ 2 ⟵ multiplier for all).
+/// Sign: smaller comparable negative, larger positive. Does not cover plot shape.
 /// </summary>
 public static class AreaAdjustmentRules
 {
-    /// <summary>معامل المساحة الافتراضي ٥٪ لكل مثل أو مضاعف.</summary>
+    /// <summary>Default area factor 5% per multiple or multiplier step.</summary>
     public const decimal DefaultAreaFactorPct = 5m;
-    /// <summary>عتبة التحويل من الأمثال إلى المضاعف على مستوى الجدول.</summary>
+    /// <summary>Threshold to switch from multiples to multiplier at table level.</summary>
     public const decimal MultiplierRatioThreshold = 2m;
 
     /// <summary>
-    /// اختيار الطريقة مرة واحدة للجدول: إذا بلغت أي نسبة ٢ فأكثر → المضاعف، وإلا الأمثال.
+    /// Choose the method once per table: if any ratio reaches 2+ → multiplier, else multiples.
     /// </summary>
     public static string ChooseMethod(
         decimal subjectAreaSqm,
@@ -312,12 +312,12 @@ public static class AreaAdjustmentRules
         decimal magnitude;
         if (AreaAdjustmentMethods.Normalize(method) == AreaAdjustmentMethods.Amthal)
         {
-            // الأمثال: (الكبيرة − الصغيرة) ÷ الصغيرة × المعامل = (r − 1) × areaFactor
+            // Multiples: (larger − smaller) ÷ smaller × factor = (r − 1) × areaFactor
             magnitude = (ratio - 1m) * areaFactorPct;
         }
         else
         {
-            // المضاعف: round(log₂ r) × المعامل
+            // Multiplier: round(log₂ r) × factor
             var log2 = (decimal)(Math.Log((double)ratio) / Math.Log(2d));
             magnitude = Math.Round(log2, MidpointRounding.AwayFromZero) * areaFactorPct;
         }

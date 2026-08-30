@@ -9,7 +9,7 @@ using RealEstateEval.Valuation.Application.Abstractions;
 
 namespace RealEstateEval.Valuation.Api.Controllers;
 
-/// <summary>شاشة 1 — الأساليب المطبَّقة (ق-2/ق-3) + أساس ووحدة التكلفة + صلاحية التسويات.</summary>
+/// <summary>Screen 1 — applied approaches (Q-2/Q-3) + cost basis/unit + adjustments unlock.</summary>
 [ApiController]
 [Route("api/valuation-requests/{valuationRequestId:guid}/approach-settings")]
 [Authorize]

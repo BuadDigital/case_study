@@ -1,9 +1,9 @@
 namespace RealEstateEval.Domain;
 
 /// <summary>
-/// عدّاد الأرقام المرجعية السنوية (ورشة الترقيم — بند البتّ 1): صف لكل
-/// (بادئة × سنة) في مخطط السياق المالك، والتخصيص بحفظ upsert ذري.
-/// كيان مشترك يُعيَّن في أكثر من سياق — على نمط <see cref="AuditLog"/>.
+/// Annual reference number counter (numbering shop — bit line 1): row for each
+/// (prefix x year) in the owner context map, and the assignment is saved by atomic upsert.
+/// A shared entity that is set in more than one context — <see cref="AuditLog"/> style.
 /// </summary>
 public class ReferenceSequence
 {

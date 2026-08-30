@@ -54,8 +54,8 @@ import {
 } from "../lib/engineering-survey-validation";
 import { finalizeEngineeringSurveySubmission } from "../lib/finalize-engineering-survey-submission";
 import type { EngineeringSurveyWindowHostRefObject } from "../lib/engineering-survey-window-host";
-// محلل الكروكي (~٢٣٠٠ سطر + محمّل pdfjs) يُجلب عند رفع PDF فقط — الاستيراد
-// الساكن كان يضعه في حزمة المسار الأولى لصفحتي الرفع المساحي (bundle-conditional).
+// Croquis parser (~2300 lines + pdfjs loader) fetched only on PDF upload — static import
+// put it in the initial route chunk for both survey pages (bundle-conditional).
 import type { SurveySketchExtractResult } from "../lib/engineering-survey-sketch-extract";
 const loadSketchExtract = () => import("../lib/engineering-survey-sketch-extract");
 import { EngineeringSurveyChecklist } from "./EngineeringSurveyChecklist";
@@ -158,7 +158,7 @@ export function EngineeringSurveyWorkPanel({
     null,
   );
   const [sketchExtracting, setSketchExtracting] = useState(false);
-  /** Last croquis length parse — seed nature lengths when مطابقة = لا */
+  /** Last croquis length parse — seed nature lengths when match = no */
   const [lastSketchExtract, setLastSketchExtract] =
     useState<SurveySketchExtractResult | null>(null);
   const persistTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -614,7 +614,7 @@ export function EngineeringSurveyWorkPanel({
         try {
           const { extractSurveySketchFromPdf, sketchExtractToEmptyFieldsPatch } =
             await loadSketchExtract();
-          // Croquis PDF only — no property/بورصة mix-in
+          // Croquis PDF only — no property/bourse mix-in
           const extracted = await extractSurveySketchFromPdf(file);
           setLastSketchExtract(extracted);
           const currentFields = localFields ?? localFieldsFromDraft(draft);
@@ -932,7 +932,7 @@ export function EngineeringSurveyWorkPanel({
                       return rest;
                     });
 
-                    // عند «لا»: عبّئ أوصاف/أطوال الطبيعة من الكروكي (بدون مساحة)
+                    // When «no»: fill nature descriptions/lengths from croquis (no area)
                     if (next === "no" && localFields) {
                       void loadSketchExtract().then(
                         ({

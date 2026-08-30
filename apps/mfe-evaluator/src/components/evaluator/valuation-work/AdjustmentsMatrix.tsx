@@ -30,7 +30,7 @@ function pctClass(n: number): string {
   return "text-text-2";
 }
 
-/** compEdit: القيم الفعلية للمقارن بعد تجاوزات هذا التقييم. */
+/** compEdit: effective comparable values after this valuation’s overrides. */
 function effPrice(item: ValuationComparableSelectionDto): number {
   return item.effectivePriceSar ?? item.comparable.price;
 }
@@ -41,7 +41,7 @@ function effArea(item: ValuationComparableSelectionDto): number {
   return item.effectiveAreaSqm ?? item.comparable.areaSqm;
 }
 
-/* ─── أصناف ثابتة على مستوى الوحدة — رموز النظام (هوية إجادة والوضع الداكن) عبر Tailwind ─── */
+/* ─── Module-level static classes — design-system tokens (brand + dark mode) via Tailwind ─── */
 const thBandClass =
   "border-b-2 border-b-gold bg-surface-2 px-4 py-[13px] text-start text-[12px] font-bold text-heading";
 const thCompBaseClass =
@@ -64,9 +64,9 @@ const cellInputBaseClass =
 const panelCardClass =
   "mb-6 overflow-hidden rounded-xl border border-border bg-surface shadow-card";
 
-/* ─── مكوّنات خلايا على مستوى الوحدة —
-   تعريفها داخل المكوّن الأب يجعل React يعيد تركيبها بالكامل مع كل رسم
-   (فقدان تركيز الحقول وبطء ملموس) — rerender-no-inline-components. ─── */
+/* ─── Module-level cell components —
+   Defining them inside the parent remounts them on every render
+   (lost input focus + noticeable lag) — rerender-no-inline-components. ─── */
 
 function LabelCell({
   label,
@@ -100,10 +100,10 @@ function LabelCell({
   included?: boolean;
   onToggle?: () => void;
   offNote?: string;
-  /** حاضرة فقط في صف المساحة — «نسبة التسوية لكل مثل أو مضاعف». */
+  /** Present only on the area row — “adjustment % per multiple / ratio”. */
   areaFactor?: number;
   onAreaFactorChange?: (value: string) => void;
-  /** حذف بخطوتين: × → «حذف؟ ✓ ×». */
+  /** Two-step delete: × → “Delete? ✓ ×”. */
   deleteKey?: string;
   confirmDelete?: string | null;
   onConfirmDelete?: (key: string | null) => void;
@@ -239,8 +239,8 @@ function SubjCell({ value, note }: { value: string; note?: string }) {
   );
 }
 
-/** ق-8-1: مبرر على مستوى العامل + لوحة «تخصيص لمقارن بعينه» عند الاختلاف.
-    المسودة داخل الخلية — الكتابة كانت تعيد تصيير الجدول كله لكل حرف (rerender-defer-reads). */
+/** Rule Q-8-1: factor-level justification + “per-comparable override” panel when they differ.
+    Draft lives in the cell — parent ownership re-rendered the whole table per keystroke (rerender-defer-reads). */
 function JustCell({
   factorKey,
   value,
@@ -252,7 +252,7 @@ function JustCell({
   factorKey?: string;
   value?: string;
   locked?: boolean;
-  /** عند blur بقيمة متغيرة فقط؛ إرجاع false يُبقي المسودة (فشل الحفظ). */
+  /** On blur only when the value changed; returning false keeps the draft (save failed). */
   onCommit?: (factorKey: string, text: string) => Promise<boolean> | void;
   overrides?: { id: string; label: string; value: string }[];
   onSaveOverride?: (selectionId: string, factorKey: string, text: string) => void;
@@ -265,7 +265,7 @@ function JustCell({
   }
   const committed = value ?? "";
   const text = draft ?? committed;
-  // ق-8-2: المبرر الصوري (أقصر من الحد) لا يُحفظ.
+  // Rule Q-8-2: token/short justification (below min length) is not saved.
   const tooShort =
     text.trim().length > 0 && text.trim().length < JUSTIFICATION_MIN_LENGTH;
   const overrideCount = (overrides ?? []).filter(
@@ -398,11 +398,11 @@ function CompInput({
   auto?: boolean;
   note?: string;
   extra?: ReactNode;
-  /** عند blur بقيمة متغيرة فقط؛ إرجاع false يُبقي المسودة (فشل الحفظ). */
+  /** On blur only when the value changed; returning false keeps the draft (save failed). */
   onCommit?: (key: string, raw: string) => Promise<boolean> | void;
 }) {
-  // المسودة داخل الخلية — كانت في الأب فيعاد تصيير ~١٢٠ مكوناً لكل حرف
-  // (rerender-defer-reads)؛ الحفظ عند blur لما تغيّر فقط كما كان.
+  // Draft lives in the cell — was in the parent and re-rendered ~120 components per keystroke
+  // (rerender-defer-reads); commit on blur only when changed, as before.
   const [draft, setDraft] = useState<string | null>(null);
   return (
     <td className={tdCellClass}>
@@ -436,7 +436,7 @@ function CompInput({
   );
 }
 
-/** حقل نصي بمسودة محلية — يلتزم عند blur لما تغيّر فقط (وصف المقارن/العقار). */
+/** Text field with a local draft — commits on blur only when changed (comp/subject description). */
 function InlineDraftInput({
   value,
   disabled,
@@ -469,7 +469,7 @@ function InlineDraftInput({
   );
 }
 
-/** خلية الوزن النسبي بمسودتها المحلية — نفس عقد الالتزام عند blur. */
+/** Relative-weight cell with its local draft — same blur-commit contract. */
 function WeightCell({
   value,
   manual,
@@ -573,13 +573,13 @@ export type AdjustmentsMatrixProps = {
   valuationDate?: string;
   factorDefinitions: Record<string, string>;
   catalogFactors?: { factorKey: string; labelAr: string }[];
-  /** subjSpec: وصف العقار محل التقييم لكل عامل اختلاف. */
+  /** subjSpec: subject-property description per difference factor. */
   subjectSpecs?: Record<string, string>;
-  /** سياق السوق يحرّر وصف العقار؛ سياق الأرض ضمن التكلفة لا. */
+  /** Market context can edit subject description; land-within-cost context cannot. */
   canEditSubjectSpec?: boolean;
   /**
-   * الأمر الواحد بدل ١٥ مقبضاً — يعيد نجاح التنفيذ حيث تُمسح المسودة عنده.
-   * مرجع مستقر واحد فيصمد memo الجدول أمام إعادة رسم الصدفة.
+   * Single command instead of 15 callbacks — returns execution success where the draft is cleared.
+   * One stable ref so table memo survives shell re-renders.
    */
   dispatch: MatrixDispatch;
 };
@@ -600,11 +600,11 @@ export const AdjustmentsMatrix = memo(function AdjustmentsMatrix({
   canEditSubjectSpec,
   dispatch,
 }: AdjustmentsMatrixProps) {
-  /** حذف بخطوتين — «حذف؟ ✓ ×» (خانة تأكيد واحدة في كل لحظة كما في النموذج). */
+  /** Two-step delete — “Delete? ✓ ×” (one confirm slot at a time, as in the form). */
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
-  /* المسودات داخل خلاياها (CompInput/JustCell/WeightCell/InlineDraftInput) —
-     كانت خمس خرائط هنا فيعاد تصيير الجدول كله (~١٢٠ مكوناً) مع كل حرف
-     (rerender-defer-reads)؛ الحفظ عند blur لما تغيّر فقط، ولا حفظ لحقل لم يُلمس. */
+  /* Drafts live in their cells (CompInput/JustCell/WeightCell/InlineDraftInput) —
+     five maps here used to re-render the whole table (~120 components) per keystroke
+     (rerender-defer-reads); commit on blur only when changed; untouched fields are not saved. */
   const saveRationale = (factorKey: string, text: string) =>
     dispatch({ type: "save-rationale", factorKey, text });
   const saveLineRationale = (
@@ -614,10 +614,10 @@ export const AdjustmentsMatrix = memo(function AdjustmentsMatrix({
   ) => void dispatch({ type: "save-line-rationale", selectionId, factorKey, text });
   const basis = selection.adjustmentBasis || "price_per_sqm";
   const isUnit = basis !== "whole_property";
-  /** عند أساس قيمة العقار: weightedPricePerSqm يحمل الإجمالي — المتر = الإجمالي ÷ المساحة. */
+  /** When basis is property value: weightedPricePerSqm holds the total — per-sqm = total ÷ area. */
   const pricePerSqmDisplay = (() => {
     if (isUnit) return selection.weightedPricePerSqm;
-    // مساحة المعاملة (من الـ UI) أولى من قيمة الخادم القديمة إن اختلفت.
+    // Transaction area (from the UI) wins over a stale server value when they differ.
     const fromUi = Number(String(subjectArea ?? "").replace(",", "."));
     const area =
       (Number.isFinite(fromUi) && fromUi > 0 ? fromUi : null) ??
@@ -639,7 +639,7 @@ export const AdjustmentsMatrix = memo(function AdjustmentsMatrix({
       : "طريقة الأمثال — آلية";
   const areaFactor = selection.areaFactorPct ?? 5;
 
-  // js-index-maps: فهرس سطر لكل (مقارن، عامل) بدل find() في كل خلية مع كل رسم.
+  // js-index-maps: line index per (comparable, factor) instead of find() in every cell each render.
   const linesByItem = useMemo(() => {
     const map = new Map<string, Map<string, ValuationComparableAdjustmentLineDto>>();
     for (const item of adopted) {
@@ -661,7 +661,7 @@ export const AdjustmentsMatrix = memo(function AdjustmentsMatrix({
     return 0;
   };
 
-  // كاش أسطر التخصيص لكل عامل — يتصفّر مع تغيّر المعتمدين/الأسطر.
+  // Cache of per-factor override lines — cleared when adopted set / lines change.
   const overridesCacheRef = useMemo(
     () => new Map<string, { id: string; label: string; value: string }[]>(),
     [adopted, linesByItem],
@@ -680,7 +680,7 @@ export const AdjustmentsMatrix = memo(function AdjustmentsMatrix({
     return keys;
   }, [adopted]);
 
-  // الصفوف التسلسلية من السجل — بند محذوف يختفي وتظهر شريحة استعادته.
+  // Sequential rows from the registry — a deleted item hides and shows its restore chip.
   const sequentialKeys = SEQUENTIAL_KEYS.filter(
     (k) =>
       factorDescriptor(k)?.alwaysPresent || factorKeysFromData.includes(k),
@@ -707,7 +707,7 @@ export const AdjustmentsMatrix = memo(function AdjustmentsMatrix({
     );
   }
 
-  // ق-8-1: مبرر العامل من جدوله المستقل؛ مبرر السطر القديم يظهر كتوافق خلفي فقط.
+  // Rule Q-8-1: factor justification from its own table; legacy line justification is back-compat only.
   const factorRationaleByKey = new Map(
     (selection.factorRationales ?? []).map((r) => [r.factorKey, r.rationaleAr]),
   );
@@ -716,8 +716,8 @@ export const AdjustmentsMatrix = memo(function AdjustmentsMatrix({
     lineOf(adopted[0]!, factorKey)?.rationale ??
     "";
 
-  /** ق-8-1: أسطر التخصيص لكل مقارن — تُعرض تحت مبرر العامل عند الطلب.
-      كاش لكل عامل — كانت مصفوفة كائنات جديدة لكل JustCell مع كل تصيير (js-cache-function-results). */
+  /** Rule Q-8-1: per-comparable override lines — shown under the factor justification on demand.
+      Cached per factor — used to allocate a new object array for every JustCell each render (js-cache-function-results). */
   const overridesFor = (factorKey: string) => {
     let cached = overridesCacheRef.get(factorKey);
     if (!cached) {
@@ -740,7 +740,7 @@ export const AdjustmentsMatrix = memo(function AdjustmentsMatrix({
   );
   const weightsOk = Math.round(weightsSum) === 100;
 
-  // لوحة التنبيهات — مواصفة النموذج التفاعلي (alerts).
+  // Alerts panel — interactive-form spec (alerts).
   const alerts: { kind: "error" | "ok"; title: string; body: string }[] = [];
   if (!weightsOk) {
     alerts.push({
@@ -843,7 +843,7 @@ export const AdjustmentsMatrix = memo(function AdjustmentsMatrix({
               </tr>
             </thead>
             <tbody>
-              {/* أساس: قيمة العقار */}
+              {/* Basis: property value */}
               <tr className={isUnit ? "bg-surface-2" : "bg-surface"}>
                 <LabelCell
                   label="قيمة العقار المقارن"
@@ -868,7 +868,7 @@ export const AdjustmentsMatrix = memo(function AdjustmentsMatrix({
                 <JustCell />
               </tr>
 
-              {/* أساس: سعر المتر */}
+              {/* Basis: price per sqm */}
               <tr className={isUnit ? "bg-surface" : "bg-surface-2"}>
                 <LabelCell
                   label="سعر متر المقارن"
@@ -893,7 +893,7 @@ export const AdjustmentsMatrix = memo(function AdjustmentsMatrix({
                 <JustCell />
               </tr>
 
-              {/* تسلسلية */}
+              {/* Sequential */}
               {sequentialKeys.map((factorKey) => {
                 const desc = factorDescriptor(factorKey);
                 const meta = factorMeta(
@@ -954,7 +954,7 @@ export const AdjustmentsMatrix = memo(function AdjustmentsMatrix({
                       }
                     />
                     {adopted.map((item) => {
-                      // «مقترح» من الخادم — المسودة المهيّأة ليست إدخالاً يدوياً.
+                      // “Suggested” from the server — the primed draft is not a manual entry.
                       const line = lineOf(item, factorKey);
                       const suggested =
                         desc?.compNote === "kind-suggested" &&
@@ -1004,7 +1004,7 @@ export const AdjustmentsMatrix = memo(function AdjustmentsMatrix({
                 );
               })}
 
-              {/* بعد التسلسل */}
+              {/* After sequential */}
               <tr className="bg-surface-2">
                 <LabelCell
                   label="السعر بعد التسويات التسلسلية"
@@ -1022,7 +1022,7 @@ export const AdjustmentsMatrix = memo(function AdjustmentsMatrix({
                 <JustCell />
               </tr>
 
-              {/* المساحة */}
+              {/* Area */}
               <tr>
                 <LabelCell
                   label={factorMeta(AUTO_AREA_KEY).label}
@@ -1059,7 +1059,7 @@ export const AdjustmentsMatrix = memo(function AdjustmentsMatrix({
                 />
               </tr>
 
-              {/* عوامل الاختلاف */}
+              {/* Difference factors */}
               {differenceKeys.map((factorKey) => {
                 const desc = factorDescriptor(factorKey);
                 const meta = factorMeta(
@@ -1201,7 +1201,7 @@ export const AdjustmentsMatrix = memo(function AdjustmentsMatrix({
                 />
               ) : null}
 
-              {/* مجموع */}
+              {/* Sum */}
               <tr className="bg-surface-2">
                 <LabelCell
                   label="مجموع نسب التسويات"
@@ -1225,7 +1225,7 @@ export const AdjustmentsMatrix = memo(function AdjustmentsMatrix({
                 <JustCell />
               </tr>
 
-              {/* بعد عوامل الاختلاف */}
+              {/* After difference factors */}
               <tr>
                 <LabelCell
                   label="القيمة بعد ضبط عوامل الاختلاف"
@@ -1243,7 +1243,7 @@ export const AdjustmentsMatrix = memo(function AdjustmentsMatrix({
                 <JustCell />
               </tr>
 
-              {/* الوزن */}
+              {/* Weight */}
               <tr>
                 <LabelCell
                   label="الوزن النسبي"
@@ -1275,7 +1275,7 @@ export const AdjustmentsMatrix = memo(function AdjustmentsMatrix({
                           type: "save-weight",
                           item,
                           rawPct: raw,
-                          // آخر مبرر ملتزم — مسودة الخلية تلتزم بنفسها عند blur.
+                          // Last committed justification — the cell draft commits itself on blur.
                           weightRationale: justValue("weight"),
                         })
                       }
@@ -1290,7 +1290,7 @@ export const AdjustmentsMatrix = memo(function AdjustmentsMatrix({
                 />
               </tr>
 
-              {/* بعد الوزن */}
+              {/* After weight */}
               <tr className="bg-surface-2">
                 <LabelCell
                   label="القيمة بعد الوزن النسبي"
@@ -1309,7 +1309,7 @@ export const AdjustmentsMatrix = memo(function AdjustmentsMatrix({
         </div>
       </div>
 
-      {/* مخرجات تحت الجدول */}
+      {/* Outputs below the table */}
       <div className={cn(panelCardClass, "flex items-stretch")}>
         <div className="flex-1 border-e border-border px-[22px] py-[18px]">
           <div className="mb-[9px] text-[12px] font-medium text-text-2">
@@ -1365,7 +1365,7 @@ export const AdjustmentsMatrix = memo(function AdjustmentsMatrix({
         </div>
       </div>
 
-      {/* لوحة التنبيهات — مواصفة النموذج التفاعلي */}
+      {/* Alerts panel — interactive-form spec */}
       <div className={panelCardClass}>
         <div className="border-b border-border px-[22px] py-3 text-[13.5px] font-extrabold text-heading">
           تنبيهات جدول التسويات
@@ -1397,32 +1397,6 @@ export const AdjustmentsMatrix = memo(function AdjustmentsMatrix({
         ))}
       </div>
 
-      {/* شريط عائم مطابق للتصميم */}
-      <div className="fixed bottom-[22px] left-[41px] z-40 flex items-center gap-3.5 rounded-[var(--radius-lg)] border-y border-e border-s-[3px] border-y-border-md border-e-border-md border-s-gold bg-surface px-4 py-2.5 shadow-lg">
-        <div>
-          <div className="text-[10.5px] font-semibold text-text-3">
-            القيمة النهائية للعقار
-          </div>
-          <div
-            dir="ltr"
-            className="text-start text-[19px] font-extrabold leading-[1.25] text-heading"
-          >
-            {fmt(selection.marketOpinionValue)}
-          </div>
-        </div>
-        <div className="h-[30px] w-px bg-border" />
-        <div>
-          <div className="text-[10.5px] font-semibold text-text-3">
-            قيمة المتر المربع
-          </div>
-          <div
-            dir="ltr"
-            className="text-start text-[14px] font-bold leading-[1.25] text-gold-d"
-          >
-            {pricePerSqmDisplay != null ? fmt(pricePerSqmDisplay) : "—"}
-          </div>
-        </div>
-      </div>
     </>
   );
 });

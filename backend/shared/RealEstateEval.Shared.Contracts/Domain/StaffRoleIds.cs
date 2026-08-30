@@ -1,11 +1,11 @@
 namespace RealEstateEval.Domain;
 
 /// <summary>
-/// معرّفات الأدوار المعتمدة (ق٢: أسماء الكود هي القانونية — لا إعادة تسمية).
-/// كانت الحرفيات متناثرة ومجموعة «المشرف فما فوق» منسوخة في ملفين.
-/// ملاحظة: هذه معرّفات الأدوار — لا تُخلط بأبجدية أطراف مصفوفة المعلومات
-/// (specA/insp/gov/val/eng/sup) ولا ببادئات معرّفات التوزيع (fi-/eo-/cs-…)،
-/// فهي مفردات لمجالات مختلفة عمداً.
+/// Supported role IDs (Q-2: code names are legal — no renaming).
+/// The letters were scattered and the “Supervisor and above” group was copied into two files.
+/// Note: These are role identifiers — not to be confused with the information matrix pin alphabet
+/// (specA/insp/gov/val/eng/sup) nor with distribution identifier prefixes (fi-/eo-/cs-…),
+/// It is a vocabulary of deliberately different fields.
 /// </summary>
 public static class StaffRoleIds
 {
@@ -19,7 +19,7 @@ public static class StaffRoleIds
     public const string FinancialOfficer = "financial-officer";
     public const string EngineeringOffice = "engineering-office";
 
- /// <summary>مشرف القسم فما فوق — كانت منسوخة في أوامر التوزيع ودورة الحياة.</summary>
+ /// <summary>Department Supervisor and above — were copied into the deployment and lifecycle orders.</summary>
     public static readonly IReadOnlyList<string> SectionSupervisorOrAbove =
     [
         SectionSupervisor,

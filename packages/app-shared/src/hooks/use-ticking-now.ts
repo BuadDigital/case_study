@@ -2,9 +2,9 @@
 
 import { useSyncExternalStore } from "react";
 
-// ساعة مشتركة بثانية واحدة: كانت كل شاشة قائمة تحمل useState(new Date()) +
-// setInterval يعيد بناء كل الصفوف كل ثانية (rerender-defer-reads). هنا يشترك
-// خلايا المؤقت فقط، ويتوقف المؤقت تلقائياً مع آخر مشترك.
+// Shared one-second clock: every list screen used to hold useState(new Date()) +
+// setInterval rebuilding all rows every second (rerender-defer-reads). Here only
+// timer cells subscribe, and the interval stops automatically with the last subscriber.
 let nowMs = Date.now();
 const listeners = new Set<() => void>();
 let timer: ReturnType<typeof setInterval> | null = null;

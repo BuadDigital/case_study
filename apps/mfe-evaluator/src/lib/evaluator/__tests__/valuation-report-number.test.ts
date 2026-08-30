@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { formatValuationReportNumber, reservedValuationReportNumber } from "../valuation-report-number";
 
-// ورشة الترقيم (بند البتّ 3): النمط الموحد TQ-{سنة}-{تسلسل ٥}.
+// Numbering workshop (decision item 3): unified pattern TQ-{year}-{5-digit sequence}.
 describe("formatValuationReportNumber", () => {
   it("formats TQ-{yyyy}-{#####}", () => {
     expect(formatValuationReportNumber(new Date(2026, 7, 19), 1)).toBe(

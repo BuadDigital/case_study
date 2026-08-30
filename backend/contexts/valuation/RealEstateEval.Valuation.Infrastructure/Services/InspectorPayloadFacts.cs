@@ -2,7 +2,7 @@ namespace RealEstateEval.Valuation.Infrastructure.Services;
 
 /// <summary>
 /// Facts extracted from the field inspector's submission payload (single source,
-/// ). Loose JSON parse — absent keys stay null («لا تُخترع بيانات»).
+/// ). Loose JSON parse — absent keys stay null ("do not invent data").
 /// </summary>
 public sealed class InspectorPayloadFacts
 {

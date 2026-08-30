@@ -300,8 +300,8 @@ export function PropertyDetailCaseStudyReport({
     extra: false,
   });
   const [previewOpen, setPreviewOpen] = useState(false);
- // قرار 25 (الكيان 6): رقم التقرير CS-{سنة}-{تسلسل ٥} يُخصَّص عند أول طباعة
- // ويثبت للجلسة — لا رقم جديد لكل ضغطة.
+ // Decision 25 (entity 6): report number CS-{year}-{5-digit seq} is allocated on first print
+ // and fixed for the session — no new number on every click.
   const [reportReference, setReportReference] = useState<string | null>(null);
 
   const { data: tasks = [] } = useWorkflowTasksQuery();
@@ -326,7 +326,7 @@ export function PropertyDetailCaseStudyReport({
         }
       }
     }
-    // إطار واحد حتى يُرسم الرقم في الترويسة قبل حوار الطباعة.
+    // One frame so the number paints in the header before the print dialog.
     requestAnimationFrame(() => window.print());
   }, [reportReference, record.poNumber, property.id, property.deedNumber]);
 

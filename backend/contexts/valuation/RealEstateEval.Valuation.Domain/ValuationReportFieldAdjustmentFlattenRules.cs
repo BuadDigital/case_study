@@ -54,7 +54,7 @@ public static class ValuationReportFieldAdjustmentFlattenRules
         }
 
  // sequential rows. Ejada has no standalone time factor — folds the time gap
- // into تسوية ظروف السوق, so the market % goes only to the market row and the
+ // into market-conditions adjustment, so the market % goes only to the market row and the
  // template's time row stays empty (writing it twice would double-apply on upload).
         Put($"adj.{CodeForFinancing(col)}", PercentForFactor(lines, MarketAdjustmentFactorKeys.Financing));
         Put($"adj.{CodeForMarket(col)}", PercentForFactor(lines, MarketAdjustmentFactorKeys.Market));

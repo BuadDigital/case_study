@@ -1,8 +1,8 @@
 "use client";
 
 /**
- * HTML-aligned modal: توثيق الصرف (مهامي → فتح الإجراء).
- * سند صرف + مرجع تحويل + إيصال على نفس الصفحة.
+ * HTML-aligned modal: disbursement documentation (My Tasks → open action).
+ * Disbursement voucher + transfer ref + receipt on the same page.
  */
 
 import { useState } from "react";

@@ -190,7 +190,7 @@ function formatSituationValue(
   return value;
 }
 
-/** Mobile HTML-style stat card — `docs/المعاين/inspector_screen 1.html` `.stat-card`. */
+/** Mobile HTML-style stat card — `docs/inspector/inspector_screen 1.html` `.stat-card`. */
 function MobileSituationStatCard({
   card,
   value,
@@ -277,7 +277,7 @@ export function ActiveTransactionsSituationBar({
 
   const { cards, values } = situation;
 
-  /* صفر متأخرات خبر جيد لا إنذار — حيّد اللون الأحمر عندما تكون القيمة صفراً. */
+  /* Zero overdue is good news, not an alert — neutralize red when the value is zero. */
   const effectiveCards = cards.map((card) =>
     card.tone === "red" && (values[card.key] ?? 0) === 0
       ? { ...card, tone: "blue" as SituationTone }

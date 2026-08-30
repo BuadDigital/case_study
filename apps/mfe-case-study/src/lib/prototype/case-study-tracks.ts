@@ -174,7 +174,7 @@ const CASE_STUDY_PARTY_DEFS = [
 ] as const;
 
 /**
- * Party columns for دراسة حالة العقارات queue table.
+ * Party columns for the property case-study queue table.
  *
  * Progress priority:
  * 1. Task completed → 100% (workflow truth beats form-fill ratio)

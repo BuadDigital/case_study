@@ -1,10 +1,10 @@
 import type { PageId, RoleId } from "@platform/types";
 import { CASE_STUDY_READY_NAV } from "@platform/types";
-import type { WorkflowTask } from "@case-study/mfe/lib/prototype/tasks-storage";
+import type { WorkflowTask } from "../workflow/task-types";
 import { PARTY_ACTIVE_TRANSACTIONS_NAV } from "./party-task-pages";
 import { isInOrphanScreensSection } from "./orphan-screens-nav";
 
-/** عناصر الشريط الجانبي — المعاملات النشطة */
+/** Sidebar items under Active Transactions. */
 export type ActiveTransactionNavItem = {
   id: PageId;
   label: string;
@@ -14,7 +14,7 @@ export type ActiveTransactionNavItem = {
   placeholder?: boolean;
 };
 
-/** دراسة الحالة — المعاملات النشطة (ready routes owned by @case-study/mfe) */
+/** Case study — Active Transactions (ready routes owned by @case-study/mfe). */
 export const CASE_STUDY_ACTIVE_TRANSACTIONS_NAV: ActiveTransactionNavItem[] = [
   ...CASE_STUDY_READY_NAV.map((item) => ({
     id: item.id,
@@ -60,7 +60,7 @@ export function filterTasksForSystemUpload(
   return tasks.filter((t) => taskMatchesSystemUpload(t));
 }
 
-/** فوترة الأتعاب — تحت المعاملات النشطة لكل أدوار الأطراف والمشرف. */
+/** Party fee billing — under Active Transactions for party roles and supervisor. */
 export const ENGINEERING_FEES_ACTIVE_NAV_ITEM: ActiveTransactionNavItem = {
   id: "party-fees",
   label: "فوترة الأتعاب",
@@ -68,7 +68,7 @@ export const ENGINEERING_FEES_ACTIVE_NAV_ITEM: ActiveTransactionNavItem = {
   available: true,
 };
 
-/** أدوار تظهر فيها فوترة الأتعاب تحت المعاملات النشطة وليس تحت إعدادات النظام. */
+/** Roles that show party fees under Active Transactions, not System Settings. */
 export function isPartyFeesUnderActiveTransactions(role?: RoleId): boolean {
   return (
     role === "engineering-office" ||
@@ -115,7 +115,7 @@ export function isInActiveTransactionsSection(
   onTaskWork: boolean,
   role?: RoleId,
 ): boolean {
-  // Orphan legacy lists keep task work routes under الشاشات اليتيمة.
+  // Legacy list routes (removed from sidebar) stay out of active-tx chrome.
   if (isInOrphanScreensSection(page)) return false;
   if (page === "party-fees") {
     return isPartyFeesUnderActiveTransactions(role);

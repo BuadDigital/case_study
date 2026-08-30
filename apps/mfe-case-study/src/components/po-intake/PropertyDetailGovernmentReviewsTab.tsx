@@ -29,7 +29,7 @@ import { usePrototype } from "@platform/app-shared/contexts/PrototypeContext";
 import { canManageOperationsTasks } from "../../lib/prototype/operations-task-roles";
 
 /**
- * المراجعات الحكومية — projection of court_visit ops tasks for this deed.
+ * Government reviews — projection of court_visit ops tasks for this deed.
  */
 export function PropertyDetailGovernmentReviewsTab({
   poNumber,

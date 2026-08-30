@@ -2,8 +2,40 @@
 
 import type { ReactNode } from "react";
 import { cn } from "@platform/ui-kit";
+import {
+  opsIconBoxGold,
+  opsLetterCard,
+  opsLetterHead,
+  opsLetterSub,
+  opsLetterTitle,
+  opsPpBadge,
+  opsTfSeg,
+  opsTfSegActive,
+  opsTfSegRow,
+} from "../../lib/prototype/ops-tasks-tw";
 
-/** Case Study.html `renderEngFees` / `renderEngSurvey` gold underline tabs. */
+const FOLDER_ICON =
+  "M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z";
+
+function OpsIcon({ path, size = 18 }: { path: string; size?: number }) {
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.8"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden
+    >
+      <path d={path} />
+    </svg>
+  );
+}
+
+/** Segment tabs — same control language as FailureTypes / CaseStudyInfoRoles. */
 export function EngFeesHtmlTabs({
   tabs,
   active,
@@ -14,7 +46,7 @@ export function EngFeesHtmlTabs({
     id: string;
     label: string;
     count?: number;
-    /** When active and count > 0, count uses dispute red (تتطلب إجراءكم). */
+    /** When active and count > 0, count uses dispute red ("action required"). */
     countWarnWhenActive?: boolean;
   }[];
   active: string;
@@ -23,10 +55,7 @@ export function EngFeesHtmlTabs({
 }) {
   return (
     <div
-      className={cn(
-        "mb-4 mt-5 flex gap-0 overflow-x-auto border-b border-border [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden",
-        className,
-      )}
+      className={cn(opsTfSegRow, "mb-3.5 flex-wrap gap-0", className)}
       role="tablist"
     >
       {tabs.map((tab) => {
@@ -41,19 +70,14 @@ export function EngFeesHtmlTabs({
             role="tab"
             aria-selected={on}
             onClick={() => onChange(tab.id)}
-            className={cn(
-              "-mb-px shrink-0 border-b-2 bg-transparent px-4 py-2.5 font-[inherit] text-[13px] transition-colors",
-              on
-                ? "border-gold-d font-bold text-heading"
-                : "border-transparent font-medium text-text-2 hover:text-text",
-            )}
+            className={on ? opsTfSegActive : opsTfSeg}
           >
             {tab.label}
             {typeof count === "number" ? (
               <span
                 className={cn(
-                  "ms-1 text-[10.5px]",
-                  warn ? "text-[#a5432e]" : "text-text-3",
+                  "ms-1.5 text-[11px] tabular-nums",
+                  warn ? "text-[#ffc9bc]" : on ? "text-white/80" : "text-text-3",
                 )}
               >
                 ({count})
@@ -66,20 +90,81 @@ export function EngFeesHtmlTabs({
   );
 }
 
-/** Case Study.html `secT(t, sub)`. */
+/** Section chrome matching FailureTypes letter heads. */
 export function EngFeesSectionTitle({
   title,
   sub,
+  count,
   className,
 }: {
   title: string;
   sub: ReactNode;
+  count?: number;
   className?: string;
 }) {
   return (
-    <div className={cn("mb-3.5", className)}>
-      <div className="text-[14px] font-bold text-heading">{title}</div>
-      <div className="mt-1 text-[11.5px] leading-snug text-text-3">{sub}</div>
+    <div
+      className={cn(
+        "mb-3.5 flex flex-wrap items-center justify-between gap-3",
+        className,
+      )}
+    >
+      <div className="flex min-w-0 items-center gap-[11px]">
+        <span className={opsIconBoxGold}>
+          <OpsIcon path={FOLDER_ICON} />
+        </span>
+        <div className="min-w-0">
+          <div className={opsLetterTitle}>{title}</div>
+          <div className={opsLetterSub}>{sub}</div>
+        </div>
+      </div>
+      {typeof count === "number" ? (
+        <span className={opsPpBadge}>{count}</span>
+      ) : null}
     </div>
+  );
+}
+
+/** Letter card shell for fee tables / panels. */
+export function EngFeesLetterCard({
+  title,
+  sub,
+  count,
+  children,
+  className,
+  toolbar,
+}: {
+  title?: string;
+  sub?: ReactNode;
+  count?: number;
+  children: ReactNode;
+  className?: string;
+  toolbar?: ReactNode;
+}) {
+  return (
+    <section className={cn(opsLetterCard, className)}>
+      {title ? (
+        <div className={opsLetterHead}>
+          <div className="flex min-w-0 items-center gap-[11px]">
+            <span className={opsIconBoxGold}>
+              <OpsIcon path={FOLDER_ICON} />
+            </span>
+            <div className="min-w-0">
+              <div className={opsLetterTitle}>{title}</div>
+              {sub ? <div className={opsLetterSub}>{sub}</div> : null}
+            </div>
+          </div>
+          {typeof count === "number" ? (
+            <span className={opsPpBadge}>{count}</span>
+          ) : null}
+        </div>
+      ) : null}
+      {toolbar ? (
+        <div className="border-b border-border px-4 py-3 sm:px-[18px]">
+          {toolbar}
+        </div>
+      ) : null}
+      <div className={title || toolbar ? undefined : "contents"}>{children}</div>
+    </section>
   );
 }

@@ -45,7 +45,7 @@ const sectionClassName =
   "mb-2.5 mt-0 border-b border-border pb-[7px] text-[13px] font-bold text-heading";
 
 /**
- * System-wide failure raise surface — نوع التعذر from catalog + سجل.
+ * System-wide failure raise surface — failure type from catalog + log.
  */
 export function FailureRaisePanel({
   poNumber,
@@ -66,9 +66,9 @@ export function FailureRaisePanel({
   raisedByRole: string;
   onSubmitted?: () => void;
   autoOpenRaise?: boolean;
-  /** Pre-select a catalog type (e.g. مفتاح العقار لا يفتح). */
+  /** Pre-select a catalog type (e.g. property key does not open). */
   initialProblemTypeId?: string;
-  /** Hide the raise form (view / locked) but keep السجل. */
+  /** Hide the raise form (view / locked) but keep the log. */
   raiseDisabled?: boolean;
   raiseDisabledReason?: string;
 }) {

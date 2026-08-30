@@ -19,7 +19,7 @@ public class PartyFeePricingServiceTests
     private const decimal GovernmentRate = 350m;
     private const decimal OrganizationRate = 500m;
 
- // ── التصنيف ─────────────────────────────────────────────────────────────────────────
+ // ── Classification ──────────────────────────────────── ─────────────────────────────────────
 
  /// <summary>
  /// An unknown category used to be coerced to engineering-survey, so a typo in the filter returned
@@ -48,7 +48,7 @@ public class PartyFeePricingServiceTests
             }));
     }
 
- // ── النسخ ───────────────────────────────────────────────────────────────────────────
+ // ── Copy ───────────────────────────────────── ──────────────────────────────────────
 
  /// <summary>
  /// An explicit copy that cannot be honoured must fail. It used to fall through to whichever table
@@ -135,7 +135,7 @@ public class PartyFeePricingServiceTests
         Assert.False(copy.IsActive);
     }
 
- // ── منع الاحتياط ────────────────────────────────────────────────────────────────────
+ // ── Prevent precaution ────────────────────────────────── ──────────────────────────────────
 
  /// <summary>
  /// Every category is given a placeholder table so the pricing screen has something to edit. It
@@ -300,7 +300,7 @@ public class PartyFeePricingServiceTests
                 areaM2: 401m)).FeeSar);
     }
 
- // ── اختيار الجدول والإسناد ──────────────────────────────────────────────────────────
+ // ── Table selection and reference ───────────────────────────── ─────────────────────────────
 
     [Fact]
     public async Task An_assigned_party_is_priced_by_their_own_table_not_the_default()
@@ -536,7 +536,7 @@ public class PartyFeePricingServiceTests
         Assert.NotNull(await service.GetByIdAsync(sourceId));
     }
 
- // ── الافتراضي وحذف الجداول ──────────────────────────────────────────────────────────
+ // ── Default and delete tables ───────────────────────────── ─────────────────────────────
 
     [Fact]
     public async Task Activating_a_table_demotes_the_previous_default_of_its_category_only()
@@ -605,7 +605,7 @@ public class PartyFeePricingServiceTests
         Assert.False(await service.DeleteAsync(Guid.NewGuid()));
     }
 
- // ── مساعدات ─────────────────────────────────────────────────────────────────────────
+ // ── Aid ──────────────────────────────────── ─────────────────────────────────────
 
     private static async Task<PartyFeePricingDto> SetGovernmentRateAsync(
         PartyFeePricingService service,

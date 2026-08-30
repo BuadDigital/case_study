@@ -1,6 +1,6 @@
 import type { NavItem, PageId } from "@platform/types";
 
-/** دليل الشاشات */
+/** Screen catalog */
 export const SYSTEM_SCREEN_CATALOG_NAV_ITEM: NavItem = {
   id: "system-screen-catalog",
   label: "دليل الشاشات",

@@ -238,8 +238,8 @@ public sealed class InspectorFeeTransitionApplier : IInspectorFeeTransitionAppli
         ledger.ReturnTo = nextReturnTo;
         ledger.UpdatedAtUtc = _time.UtcNow();
 
- // E6 (بنود البتّ 9 و12): المهلة تُختم عند الدخول إلى «معترض» فقط، وتسقط مع
- // سجل مراحلها عند أي خروج منه (بأي اتجاه) — سقوطها هو إلغاء التذكيرات المعلقة.
+ // E6 (decision items 9 and 12): deadline is stamped only on entering "disputed", and cleared with
+ // its stage log on any exit (either direction) — clearing cancels pending reminders.
         if (nextStatus == InspectorFeeBillingStatus.Disputed
             && fromStatus != InspectorFeeBillingStatus.Disputed)
         {

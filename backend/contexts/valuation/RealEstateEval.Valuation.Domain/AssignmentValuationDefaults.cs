@@ -3,8 +3,8 @@ using RealEstateEval.Domain;
 namespace RealEstateEval.Valuation.Domain;
 
 /// <summary>
-/// الغرض من التقييم وأساس القيمة وفرضية القيمة تُشتق من التصنيف الأساسي لأمر العمل
-/// (خاص → بيع / قيمة سوقية / استخدام حالي، وإلا → مزاد تصفية / قيمة تصفية / تصفية منظمة).
+/// Valuation purpose, value basis, and value premise are derived from the work-order primary classification
+/// (private → sale / market value / current use; otherwise → liquidation auction / liquidation value / orderly liquidation).
 /// </summary>
 public static class AssignmentValuationDefaults
 {

@@ -1,6 +1,6 @@
 import type { NavItem, PageId } from "@platform/types";
 
-/** قاموس الحقول المركزي */
+/** Central field dictionary */
 export const SYSTEM_FIELDS_CATALOG_NAV_ITEM: NavItem = {
   id: "system-fields-catalog",
   label: "قاموس الحقول المركزي",

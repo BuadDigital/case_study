@@ -5,8 +5,10 @@ import {
   ENGINEERING_SURVEY_SUBMISSION_CHANGED_EVENT,
 } from "@engineering-office/mfe/lib/engineering-survey-submission-storage";
 import { prefetchEngineeringSurveyDocuments } from "@engineering-office/mfe/lib/engineering-survey-attachments";
-import { fetchEvaluatorSubmission } from "@evaluator/mfe/lib/evaluator/evaluator-submission-storage";
-import { prefetchEvaluatorReport } from "@evaluator/mfe/lib/evaluator/evaluator-report-attachments";
+import {
+  fetchEvaluatorSubmission,
+  prefetchEvaluatorReport,
+} from "../lib/evaluator-bridge";
 import { useEffect, useRef, useState } from "react";
 import { EVALUATOR_SUBMISSION_CHANGED_EVENT } from "../lib/case-study-evaluator-events";
 import {
@@ -57,8 +59,8 @@ export function usePropertyDetailDocuments(input: {
     () => (enabled ? collect() : []),
   );
 
-  // أحدث دالة تجميع عبر مرجع حي — يسمح باعتماد المفاتيح الأولية في التبعيات
-  // بدل هوية كائن العقار التي كانت تعيد إطلاق الجلب الكامل مع كل رسم.
+  // Latest assemble fn via a live ref — lets deps use primary keys
+  // instead of property-object identity that re-triggered a full fetch every paint.
   const collectRef = useRef(collect);
   collectRef.current = collect;
 
@@ -117,7 +119,7 @@ export function usePropertyDetailDocuments(input: {
     };
   }, [
     enabled,
-    // مفتاح العقار لا هويته — كائن غير مُثبَّت من المستدعي كان يعيد كل الجلب مع كل رسم.
+    // Property key, not identity — an unstabilized caller object re-ran every fetch every paint.
     // eslint-disable-next-line react-hooks/exhaustive-deps
     property.id,
     showDecree,

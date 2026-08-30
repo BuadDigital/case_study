@@ -16,7 +16,7 @@ import { RowAttentionDot } from "../ui/RowAttentionDot";
 
 export type ActiveQueueMobileCardTone = "new" | "pending" | "returned" | "done";
 
-/** ورقة المؤقت: تشترك بالساعة بنفسها فلا يتجاوز التحديث الثانوي حدود الخلية. */
+/** Timer sheet: subscribes to the clock itself so per-second updates stay inside the cell. */
 function TickingCardTimerText({
   tick,
   fallbackLabel,
@@ -62,8 +62,8 @@ export type ActiveQueueMobileCardItem = {
   /** Remaining fraction 0–1 for the SLA bar (HTML timer-bar). */
   timerRatio?: number;
   /**
-   * حين تُمرَّر، نص المؤقت يتحدث كل ثانية داخل الخلية فقط (rerender-defer-reads)
-   * بدل إعادة بناء كل البطاقات — timerLabel يبقى القيمة الأولية/الاحتياطية.
+   * When passed, timer text updates every second inside the cell only (rerender-defer-reads)
+   * instead of rebuilding every card — timerLabel stays the initial/fallback value.
    */
   timerTick?: (nowMs: number) => { label: string; overdue: boolean } | null;
   tone?: ActiveQueueMobileCardTone;
@@ -210,7 +210,7 @@ export function QueueMobileCardChevron({ expanded }: { expanded?: boolean }) {
 }
 
 /**
- * Shared mobile card list — elegant language from docs/المعاين/inspector_screen 1.html
+ * Shared mobile card list — elegant language from docs/inspector/inspector_screen 1.html
  * (accent rail, soft wash, meta icons, SLA timer bar). Brand ink/gold/red.
  */
 export function ActiveQueueMobileCards({
@@ -267,9 +267,9 @@ export function ActiveQueueMobileCards({
             id={item.anchorId}
             className={cn(
               "ui-animate-fade-in w-full min-w-0 max-w-full",
-              // القوائم غير محدودة الطول — تخطي تخطيط/رسم البطاقات خارج الشاشة
-              // (rendering-content-visibility). يُستثنى ما له anchorId لأن
-              // scrollIntoView السلس يحتاج مواضع دقيقة (تمييز التعذرات).
+              // Unbounded lists — skip layout/paint for off-screen cards
+              // (rendering-content-visibility). Skip cards with anchorId because
+              // smooth scrollIntoView needs accurate positions (failure highlighting).
               !item.anchorId &&
                 "[content-visibility:auto] [contain-intrinsic-size:auto_112px]",
               Boolean(item.expandedPanel) && "overflow-hidden rounded-[14px]",

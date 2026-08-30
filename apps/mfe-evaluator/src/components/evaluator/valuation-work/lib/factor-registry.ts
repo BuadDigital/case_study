@@ -1,25 +1,25 @@
 /**
- * سجل عوامل التسوية — الوصف الكامل لكل عامل في مدخل بيانات واحد،
- * فإضافة عامل جديد = صف هنا لا فروعاً شرطية في جدول التسويات.
+ * Adjustment-factor registry — full description of each factor in one data entry,
+ * so adding a factor = a row here, not conditionals in the adjustments matrix.
  */
 
-/** كيف تُملأ خانة «العقار محل التقييم» في صف العامل. */
+/** How the subject-property cell is filled on the factor row. */
 export type FactorSubjectCell = "valuation-date" | "ideal-area" | "location";
 
-/** أي ملاحظة تظهر تحت خلية المقارن في صف العامل. */
+/** Which note appears under the comparable cell on the factor row. */
 export type FactorCompNote = "deal-age" | "kind-suggested";
 
 export type FactorDescriptor = {
   label: string;
   hint: string;
   tip: string;
-  /** تسلسلية (ضربية بالترتيب) أم من عوامل الاختلاف. */
+  /** Sequential (multiplicative in order) vs difference-factor. */
   sequential?: boolean;
-  /** حاضر دوماً ولو غاب من بيانات الأسطر (ظروف السوق مرساة الجدول). */
+  /** Always present even if missing from line data (market conditions anchor the table). */
   alwaysPresent?: boolean;
-  /** التسلسلية القابلة للحذف — ظروف السوق لا تُحذف. */
+  /** Deletable sequential factors — market conditions are not deleted. */
   deletable?: boolean;
-  /** خلية وصف/عمود عقار قابلة للتحرير (الموقع يُقرأ من المدينة/الحي). */
+  /** Editable description / subject column cell (location is read from city/district). */
   specCell?: boolean;
   subjectCell?: FactorSubjectCell;
   compNote?: FactorCompNote;
@@ -102,7 +102,7 @@ export function factorDescriptor(factorKey: string): FactorDescriptor | undefine
   return FACTOR_REGISTRY[factorKey];
 }
 
-/** العنوان/التلميح — تسمية الكتالوج (من الخادم) أولى إن وُجدت. */
+/** Title/hint — catalog label (from server) wins when present. */
 export function factorMeta(factorKey: string, labelAr?: string) {
   const d = FACTOR_REGISTRY[factorKey];
   return {
@@ -112,7 +112,7 @@ export function factorMeta(factorKey: string, labelAr?: string) {
   };
 }
 
-/** عامل جديد من الكتالوج بلا مدخل هنا = عامل اختلاف قياسي بخلية وصف. */
+/** Catalog factor with no entry here = standard difference factor with a description cell. */
 export function factorHasSpecCell(factorKey: string): boolean {
   return FACTOR_REGISTRY[factorKey]?.specCell !== false;
 }

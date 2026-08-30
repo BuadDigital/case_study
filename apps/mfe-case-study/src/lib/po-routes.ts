@@ -1,4 +1,4 @@
-/** Routes under أوامر العمل — PO number is URL-encoded in paths. */
+/** Routes under work orders — PO number is URL-encoded in paths. */
 
 /** ASCII segment — Next.js on Windows does not reliably serve Arabic path folders. */
 export const PO_PROPERTY_SEGMENT = "property";
@@ -30,7 +30,7 @@ export function poPropertyDetailPath(
   return `${base}?tab=${encodeURIComponent(t)}`;
 }
 
-/** تفاصيل العقار → تبويب المعاينة بوضع إدخال (Case Study.html سطح المكتب). */
+/** Property detail → inspection tab in entry mode (Case Study.html desktop). */
 export function poPropertyInspectionInputPath(
   poNumber: string,
   propertyId: string,

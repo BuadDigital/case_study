@@ -121,8 +121,8 @@ export function BourseInquiryView() {
   );
 
   const refresh = useCallback(async () => {
-    // إبطال pendingBourseItems يعيد جلب الاستعلام النشط بنفسه —
-    // refetch الإضافي كان GET ثانياً مطابقاً.
+    // Invalidating pendingBourseItems refetches the active inquiry on its own —
+    // the extra refetch was a duplicate identical GET.
     await Promise.all([
       queryClient.invalidateQueries({
         queryKey: prototypeKeys.pendingBourseItems(),
@@ -235,7 +235,7 @@ export function BourseInquiryView() {
             specialist: ROLES[role]?.name ?? "أخصائي دراسة الحالة",
           });
           closeForm();
-          // refresh() يبطل workflowTasks بنفسه — بقي إبطال التعثرات بالتوازي معه.
+          // refresh() invalidates workflowTasks on its own — keep invalidating failures in parallel with it.
           await Promise.all([
             queryClient.invalidateQueries({
               queryKey: prototypeKeys.failures(),

@@ -1,4 +1,4 @@
-/** مساعدات واجهة إعدادات المنشأة — كانت منسوخة في ثلاث شاشات (الهوية/البيانات/السجل). */
+/** Org-settings UI helpers — were duplicated across three screens (identity/data/log). */
 
 export function pickImage(
   onPicked: (dataUrl: string, name: string, kb: number) => void,

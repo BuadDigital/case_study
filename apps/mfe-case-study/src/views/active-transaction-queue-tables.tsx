@@ -1,9 +1,9 @@
 "use client";
 
 /**
- * جداول طابور المعاملات النشطة بفروعها الخمسة + شريط الفلاتر — فُصلت عن
- * ActiveTransactionQueueView بعقود صريحة (SRP/ISP): كل جدول يستلم سياق الصف
- * المشترك QueueRowContext وخصائصه النوعية فقط، والشاشة تحتفظ بالحالة.
+ * Active-transaction queue tables for the five branches + filter strip — split from
+ * ActiveTransactionQueueView with explicit contracts (SRP/ISP): each table receives the shared
+ * QueueRowContext and only its own props; the screen owns state.
  */
 
 import { Fragment, memo, type ReactNode } from "react";
@@ -53,18 +53,18 @@ import {
   appraiserNeedsSurvey,
   appraiserQueueStatusBadge,
   appraiserSurveyDone,
-} from "@evaluator/mfe/lib/evaluator/evaluator-queue";
+} from "../lib/evaluator-bridge";
 import type { CaseStudyInfoPartyId } from "@settings/mfe/lib/prototype/case-study-info-roles-data";
 
 const ROW = queueTableRowClassName;
 const ROW_ACTIVE = queueTableRowActiveClassName;
 const allTransactionsSkeletonCols = 7;
 const primarySkeletonCols = 7;
-/** مرجع ثابت لغياب تقدّم الأطراف — `{}` جديد يقتل تذكير الصف. */
+/** Stable empty ref when party progress is absent — a fresh `{}` kills row memoization. */
 const EMPTY_PARTY_PROGRESS: Partial<Record<CaseStudyInfoPartyId, number>> = {};
 
-/* أيقونتان ثابتتان في بطاقة الأطراف — كانتا تُبنيان لكل طرف في كل صف وكل
-   تصيير رغم أنهما بلا مدخلات (rendering-hoist-jsx). */
+/* Two static icons in the parties card — were rebuilt per party per row per
+   render despite taking no inputs (rendering-hoist-jsx). */
 const PARTY_DEP_DONE_ICON = (
   <svg
     width="14"
@@ -96,10 +96,10 @@ const PARTY_DEP_PENDING_ICON = (
   </svg>
 );
 
-/** سياق الصف المشترك بين كل فروع الجدول — يُبنى مرة واحدة في الشاشة. */
+/** Shared row context across every table branch — built once in the screen. */
 export type QueueRowContext = {
   queuePending: boolean;
-  /** التحميل الأول بلا مهام بعد — صفوف skeleton. */
+  /** First load with no tasks yet — skeleton rows. */
   showSkeleton: boolean;
   selectedId: string | null;
   isTaskOpening: (taskId: string) => boolean;
@@ -137,11 +137,11 @@ export function engSurveyStatusPillStyle(className: string): StatusPillStyle {
   if (className.includes("navy")) {
     return { base: "#102B4E", fg: "#102B4E" };
   }
-  // جديد — GRAY in prototype (not blue)
+  // New — GRAY in prototype (not blue)
   return { base: "#6b7c8f", fg: "#4a5568" };
 }
 
-/** Case Study.html remaining column: يومان / N أيام / متأخر. */
+/** Case Study.html remaining column: two days / N days / overdue. */
 export function formatEngSurveyRemaining(state: RemainingTimeState): {
   text: string;
   overdue: boolean;
@@ -155,7 +155,7 @@ export function formatEngSurveyRemaining(state: RemainingTimeState): {
   return { text: `${days} أيام`, overdue: false };
 }
 
-/** تاريخ الإسناد YYYY/MM/DD — كان مكرراً حرفياً في فرعي الرفع والتقييم. */
+/** Assignment date YYYY/MM/DD — was duplicated verbatim in survey and appraisal branches. */
 function assignedDateLabel(
   task: WorkflowTask,
   record: PoIntakeRecord | undefined,
@@ -170,7 +170,7 @@ function assignedDateLabel(
   return `${y}/${m}/${day}`;
 }
 
-/* ─── شريط الفلاتر ─── */
+/* ─── Filter strip ─── */
 
 export function QueueFiltersToolbar({
   queueReady,
@@ -342,8 +342,8 @@ export function QueueFiltersToolbar({
               className="relative inline-grid size-[15px] shrink-0 place-items-center"
               aria-hidden
             >
-              {/* الحركة على غلاف الأيقونة — الـsvg نفسه ثابت فلا يعاد رسم
-                  مساراته مع كل إطار انتقال (rendering-animate-svg-wrapper). */}
+              {/* Animate the icon wrapper — keep the svg itself static so its paths
+                  are not redrawn every transition frame (rendering-animate-svg-wrapper). */}
               <span
                 className={cn(
                   "col-start-1 row-start-1 grid size-[15px] place-items-center transition-[opacity,transform] duration-[220ms] ease-out motion-reduce:transition-none",
@@ -402,10 +402,10 @@ export function QueueFiltersToolbar({
   );
 }
 
-/* ─── جميع المعاملات ─── */
+/* ─── All transactions ─── */
 
-/* الصفوف مذكّرة: ctx يُبنى بـuseMemo في الشاشة وmeta يأتي من مصفوفة مذكّرة،
-   فلا يعاد تصيير الصف مع كل ضغطة بحث أو نبضة دقيقة (rerender-memo). */
+/* Rows are memoized: ctx is useMemo'd in the screen and meta comes from a memoized array,
+   so the row does not re-render on every search keystroke or minute tick (rerender-memo). */
 const AllTransactionsRow = memo(function AllTransactionsRow({
   ctx,
   meta,
@@ -594,7 +594,7 @@ export function AllTransactionsQueueTable({
   );
 }
 
-/* ─── التوزيع / دراسة الحالة ─── */
+/* ─── Distribution / case study ─── */
 
 const DistributionQueueRow = memo(function DistributionQueueRow({
   ctx,
@@ -802,7 +802,7 @@ export function DistributionQueueTable({
   );
 }
 
-/* ─── الرفع المساحي ─── */
+/* ─── Engineering survey ─── */
 
 const EngineeringSurveyRow = memo(function EngineeringSurveyRow({
   ctx,
@@ -1005,7 +1005,7 @@ export function EngineeringSurveyQueueTable({
             </Td>
           </Tr>
         ) : (
-          // الصف مبني مسبقاً في الـmeta — لا إعادة بناء لكل تصيير (js-combine-iterations).
+          // Row is prebuilt in meta — no rebuild every render (js-combine-iterations).
           filteredMeta.map((meta) => (
             <EngineeringSurveyRow
               key={meta.task.id}
@@ -1020,7 +1020,7 @@ export function EngineeringSurveyQueueTable({
   );
 }
 
-/* ─── التقييم العقاري ─── */
+/* ─── Property appraisal ─── */
 
 const PropertyAppraisalRow = memo(function PropertyAppraisalRow({
   ctx,
@@ -1043,7 +1043,10 @@ const PropertyAppraisalRow = memo(function PropertyAppraisalRow({
     .filter((v) => v && v !== "—")
     .join(" — ");
   const assignedLabel = assignedDateLabel(task, record);
-  const badge = appraiserQueueStatusBadge(task, tasks);
+  const badge = appraiserQueueStatusBadge(task, tasks) ?? {
+    label: "—",
+    className: "b-new",
+  };
   const inspected = appraiserInspectionDone(task, tasks);
   const needsSurvey = appraiserNeedsSurvey(task, tasks);
   const surveyed = appraiserSurveyDone(task, tasks);
@@ -1255,7 +1258,7 @@ export function PropertyAppraisalQueueTable({
             </Td>
           </Tr>
         ) : (
-          // الصف مبني مسبقاً في الـmeta — لا إعادة بناء لكل تصيير.
+          // Row is prebuilt in meta — no rebuild every render.
           filteredMeta.map((meta) => (
             <PropertyAppraisalRow
               key={meta.task.id}
@@ -1271,7 +1274,7 @@ export function PropertyAppraisalQueueTable({
   );
 }
 
-/* ─── البيانات الأساسية (الافتراضي) ─── */
+/* ─── Primary data (default) ─── */
 
 const PrimaryQueueRow = memo(function PrimaryQueueRow({
   ctx,
@@ -1377,7 +1380,7 @@ export function PrimaryQueueTable({
             }
           />
         ) : (
-          // الصف مبني مسبقاً في الـmeta — لا إعادة بناء لكل تصيير.
+          // Row is prebuilt in meta — no rebuild every render.
           filteredMeta.map((meta) => (
             <PrimaryQueueRow
               key={meta.task.id}

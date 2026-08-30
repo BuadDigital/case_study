@@ -1,4 +1,4 @@
-/** Seed catalog from docs/_تعذرات_وثيقة_مراجعة.html — six categories, eleven problem types. */
+/** Seed catalog from docs/_failures_review_doc.html — six categories, eleven problem types. */
 
 export type FailureTypeCategory = {
   id: string;

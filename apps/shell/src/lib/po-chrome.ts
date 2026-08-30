@@ -40,7 +40,7 @@ function buildPoPropertyDetailSegments(
   ];
 }
 
-/** Workspace chrome (معاينة / دراسة / مساحي) — trail ends with deed when known. */
+/** Workspace chrome (inspection / study / survey) — trail ends with deed when known. */
 export function buildPoPropertyWorkspaceSegments(
   poNumber: string,
   deedLabel?: string,

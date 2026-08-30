@@ -1,4 +1,4 @@
-import type { WorkflowTask } from "@case-study/mfe/lib/prototype/tasks-storage";
+import type { WorkflowTask } from "@platform/app-shared/workflow/task-types";
 import { findSiblingInspectionTask } from "./evaluator-inspection-gate";
 import { loadEvaluatorSubmission } from "./evaluator-submission-storage";
 import { getPartyTaskRecall } from "@platform/app-shared/prototype/party-task-recall-storage";
@@ -78,7 +78,7 @@ export function appraiserReadiness(
 }
 
 /**
- * Case Study.html queue status pill for تقييم العقار.
+ * Case Study.html queue status pill for property valuation.
  * className maps to StatusPill colors (same vocabulary as eng survey).
  */
 export function appraiserQueueStatusBadge(

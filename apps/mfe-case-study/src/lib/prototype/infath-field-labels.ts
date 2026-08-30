@@ -1,4 +1,4 @@
-/** تسميات حقول الرفع لإنفاذ — موحّدة بين شاشات الأدوار وتبويب الرفع. */
+/** Infath upload field labels — shared across role screens and the upload tab. */
 export const INFATH_FIELD_LABELS = {
   inspectionDate: "تاريخ المعاينة",
   appraisalDate: "تاريخ التقييم",

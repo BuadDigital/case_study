@@ -20,8 +20,8 @@ function daysWord(days: number): string {
 }
 
 /**
- * Live delivery countdown label per countdown-المتبقي-للتسليم.md
- * Example: `الإثنين · 4 أيام 23:57:04`
+ * Live delivery countdown label per countdown-remaining-to-delivery.md
+ * Example: `Monday · 4 days 23:57:04`
  */
 export function formatLiveDeliveryCountdown(
   dueIso: string,

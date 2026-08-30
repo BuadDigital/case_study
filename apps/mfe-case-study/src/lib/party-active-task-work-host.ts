@@ -1,6 +1,6 @@
 import type { RefObject } from "react";
 
-/** جسر بين قائمة المهام وشاشة العمل — يُمرَّر كـ ref لتجنب props دوال في حدود Next.js. */
+/** Bridge between the task list and work screen — passed as a ref to avoid function props across Next.js boundaries. */
 export type PartyActiveTaskWorkHostRef = {
   onRefresh?: () => void;
   onClose?: () => void;

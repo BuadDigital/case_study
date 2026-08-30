@@ -98,7 +98,7 @@ function FailureRaiseForm({
       });
       // poRecords / workflow for shells that filter by active failure — not
       // the whole prototype tree (avoids mass sidebar/finance refetch).
-      // مفاتيح مستقلة — تُبطل بالتوازي لا تسلسلاً (async-parallel).
+      // Independent query keys — invalidate in parallel, not sequentially (async-parallel).
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: prototypeKeys.failures() }),
         queryClient.invalidateQueries({ queryKey: prototypeKeys.operationsTasks() }),

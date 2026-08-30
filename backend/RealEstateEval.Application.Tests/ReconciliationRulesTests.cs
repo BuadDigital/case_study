@@ -8,7 +8,7 @@ public class ReconciliationRulesTests
     [Fact]
     public void Discount_applies_for_liquidation_basis_alone()
     {
-        // مواصفة النموذج التفاعلي: خصم البيع القسري يتبع أساس «قيمة التصفية» مباشرة.
+        // Interactive Model Specification: The forced sale discount follows the “liquidation value” basis directly.
         Assert.True(ReconciliationRules.ShouldApplyLiquidationDiscount(
             BasisOfValueKeys.Liquidation,
             ValuePremiseKeys.Orderly,
@@ -44,7 +44,7 @@ public class ReconciliationRulesTests
     [Fact]
     public void RoundFinal_rounds_to_nearest_power_of_ten()
     {
-        // مواصفة النموذج التفاعلي: ن=4 → أقرب ١٠٬٠٠٠؛ ن=0 → أقرب ريال.
+        // Interactive model specification: n=4 → nearest 10,000; n=0 → nearest sr.
         Assert.Equal(2_220_000m, ReconciliationRules.RoundFinal(2_217_020m, 4));
         Assert.Equal(2_217_020m, ReconciliationRules.RoundFinal(2_217_020.4m, 0));
         Assert.Equal(2_217_000m, ReconciliationRules.RoundFinal(2_217_020m, 3));
@@ -53,7 +53,7 @@ public class ReconciliationRulesTests
     [Fact]
     public void SuggestWeights_defaults_market_first()
     {
-        // apW الافتراضي: السوق ١٠٠٪ والتكلفة ٠٪.
+        // Default apW: ALSOQ-100% and cost 0%.
         var both = ReconciliationRules.SuggestWeights(1_000_000m, 900_000m);
         Assert.Equal(100m, both.First(x => x.kind == ValuationApproachKinds.Market).weightPct);
         Assert.Equal(0m, both.First(x => x.kind == ValuationApproachKinds.Cost).weightPct);

@@ -17,7 +17,7 @@ type Props = {
   model: CaseStudyReportModel;
   id?: string;
   className?: string;
-  /** قرار 25 (الكيان 6): الرقم المرجعي CS-{سنة}-{تسلسل ٥} — يُخصَّص عند الطباعة. */
+  /** Decision 25 (entity 6): reference number CS-{year}-{5-digit sequence} — assigned at print time. */
   referenceNumber?: string | null;
 };
 

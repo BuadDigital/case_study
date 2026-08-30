@@ -91,8 +91,8 @@ public sealed class ComparablePropertyService(
             .Take(fetchTake)
             .ToListAsync(cancellationToken);
 
-        // مواصفة-طريقة-المقارنة §٢ أولوية العرض:
-        // ١) ميداني لهذا العقار ٢) بقية المخزّن
+        // Comparison-method spec §2 display priority:
+        // 1) field for this property 2) rest of the bank
         if (forPropertyId is Guid subjectId)
         {
             rows = rows
@@ -111,7 +111,7 @@ public sealed class ComparablePropertyService(
                 .ToList();
         }
 
- // ق-3/2: النظام يقترح الاشتباه (سجلان بنفس الموقع) ولا يحجب ولا يدمج آلياً.
+ // Q-3/2: system suggests suspicion (two records at same location) and neither blocks nor merges automatically.
         var suspectCoords = await DuplicateSuspectCoordsAsync(cancellationToken);
 
         var today = DateOnly.FromDateTime(_time.UtcNow());
@@ -121,7 +121,7 @@ public sealed class ComparablePropertyService(
             .ToList();
     }
 
- /// <summary>Coordinate pairs shared by more than one active record — «الموقع هو المميِّز».</summary>
+ /// <summary>Coordinate pairs shared by more than one active record — "location is the discriminator".</summary>
     private async Task<HashSet<(decimal, decimal)>> DuplicateSuspectCoordsAsync(
         CancellationToken cancellationToken)
     {
@@ -213,7 +213,7 @@ public sealed class ComparablePropertyService(
         if (entity is null)
             return (null, new Dictionary<string, string> { ["_"] = "المقارن غير موجود" });
 
-        // B2/ق-3: قواعد الوسوم داخل الجذر — الخدمة تُنسّق فقط.
+        // B2/Q-3: tagging rules on the aggregate — service coordinates only.
         var tagError = entity.ApplyQualityTags(
             request.ReliabilityTag,
             request.IsDuplicateTagged,
@@ -262,7 +262,7 @@ public sealed class ComparablePropertyService(
         }
 
         var exclude = ParseExcludeIds(query.ExcludeIds);
- // ق-3: الموسوم شاذاً/غير موثوق/مكرراً يُستبعد من الاقتراحات (يبقى ظاهراً في البنك مميزاً).
+ // Q-3: anomalous/unreliable/duplicate tagged items are excluded from suggestions (remain visible in the bank, marked).
         var q = db.ComparableProperties.AsNoTracking()
             .Where(x => x.IsActive
                 && !x.IsDuplicateTagged
@@ -370,7 +370,7 @@ public sealed class ComparablePropertyService(
         entity.PriceDescription = priceDesc;
         entity.Source = request.Source.Trim().ToLowerInvariant();
         entity.ListingNumber = Normalize(request.ListingNumber);
- // ق-3/3: مرجع الصفقة للمنفّذ — نظير رقم الإعلان للعروض.
+ // Q-3/3: deal reference for closed deals — counterpart to listing number for offers.
         entity.TransactionReference = kind == ComparableTransactionKinds.Executed
             ? Normalize(request.TransactionReference)
             : null;

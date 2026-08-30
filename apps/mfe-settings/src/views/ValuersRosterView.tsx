@@ -192,7 +192,7 @@ function rowStatus(v: OrganizationValuerRosterEntry, today: string): {
   return { label: "فعّال", tone: "success", blockReason: null };
 }
 
-/** كل حقول الصف — كلها قيم مفردة، فلا حاجة لتسلسل السجل كاملاً عند كل ضغطة. */
+/** All row fields are scalar values — no need to serialize the whole record on every keystroke. */
 const ROSTER_COMPARED_FIELDS = [
   "id",
   "nameAr",
@@ -733,7 +733,7 @@ export function ValuersRosterView() {
                                 body: `توقيع «${v.nameAr}» يُطبع في التقارير الجديدة، والرفع يُقيَّد في سجل التدقيق. الملف: ${name} (${kb}KB).`,
                                 confirm: "متابعة الرفع",
                                 onConfirm: () => {
-                                  // أحدث صفوف — تجنّب سباق الرفع الذي يفقد تواقيع الآخرين.
+                                  // Latest rows — avoid an upload race that drops other signatures.
                                   const nextRows = rowsRef.current.map((r) =>
                                     r.id === valuerId
                                       ? { ...r, signatureUrl: url }

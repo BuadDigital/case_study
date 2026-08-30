@@ -21,7 +21,7 @@ export function isCaseStudySpecialist(role: RoleId): boolean {
   return role === "case-specialist";
 }
 
-/** عرض تفاصيل عبر زر العين — ليس لأخصائي دراسة الحالة (يفتح من الصف أو التعديل). */
+/** View details via the eye button — not for the case-study specialist (opens from the row or edit). */
 export function canViewPoEye(role: RoleId): boolean {
   return isSuperAdmin(role) || !isCaseStudySpecialist(role);
 }
@@ -38,22 +38,22 @@ export function canDeleteProperty(role: RoleId): boolean {
   return isSuperAdmin(role) || role === "section-supervisor";
 }
 
-/** حذف معاملة من طوابير البيانات الأولية / البورصة / التوزيع — مشرف أو مسؤول فقط. */
+/** Delete a transaction from primary-data / bourse / distribution queues — supervisor or admin only. */
 export function canDeleteTransaction(role: RoleId): boolean {
   return canDeleteProperty(role);
 }
 
-/** المشرف والأخصائي يمكنهم رفع تعذر من شاشة العقار. */
+/** Supervisor and specialist may raise a failure from the property screen. */
 export function canRaisePropertyFailure(role: RoleId): boolean {
   return canEditProperty(role) || canEditPoHeader(role);
 }
 
-/** الجدول الزمني وحالة الأطراف في تفاصيل العقار — أخصائي دراسة الحالة ومشرف القسم ومسؤول النظام. */
+/** Timeline and party status on property detail — case-study specialist, section supervisor, and system admin (not the appraiser). */
 export function canViewPropertyTimelineRail(role: RoleId): boolean {
   return canRaisePropertyFailure(role);
 }
 
-/** إعادة إسناد أطراف دراسة الحالة — صلاحية مشرف القسم فأعلى. */
+/** Reassign case-study parties — section-supervisor+ permission. */
 export function canRedistributeParties(role: RoleId): boolean {
   return (
     isSuperAdmin(role) ||

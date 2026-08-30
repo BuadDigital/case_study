@@ -88,7 +88,7 @@ export async function prefetchInspectorPhoto(
   }
 }
 
-/** Hydrate preview cache for property-detail «صور العقار» after loading the workspace. */
+/** Hydrate preview cache for property-detail «Property photos» after loading the workspace. */
 export async function prefetchInspectorWorkspacePhotos(
   draft: InspectorWorkspaceDraft,
 ): Promise<void> {
@@ -148,8 +148,8 @@ export async function prefetchInspectorWorkspacePhotos(
     jobs.push(() => prefetchInspectorPhoto(taskId, `observation:${obs.id}`, photo));
   }
 
-  // سقف تزامن — معاينة بخمسين صورة كانت تطلق كل التنزيلات دفعة واحدة
-  // فتشبع اتصالات المتصفح وتزاحم الطلبات الحرجة (js-request-idle-callback/scout F12).
+  // Concurrency cap — a fifty-photo preview used to fire every download at once
+  // saturating browser connections and crowding critical requests (js-request-idle-callback/scout F12).
   const CONCURRENCY = 5;
   let cursor = 0;
   await Promise.all(

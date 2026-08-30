@@ -28,7 +28,7 @@ export type DeedOwnerDto = {
 
 export type WorkOrderPropertyDto = {
   id?: string;
-  /** ورشة الترقيم: الرقم المرجعي الداخلي للمعاملة TX-{سنة}-{تسلسل ٥} — يملكه الخادم. */
+  /** Numbering workshop: internal transaction ref TX-{year}-{5-digit seq} — owned by the server. */
   referenceNumber?: string | null;
   identifierType: string;
   deedNumber: string;
@@ -44,7 +44,7 @@ export type WorkOrderPropertyDto = {
   deedKind?: string;
   deedKindLabelAr?: string;
   suggestedDeedKind?: string;
- /** الملاك وحصصهم. */
+ /** Owners and their shares. */
   owners?: DeedOwnerDto[];
   ownershipType?: string;
   ownershipTypeLabelAr?: string;
@@ -100,6 +100,8 @@ export type WorkOrderPropertyDto = {
   partitionMinutesDate?: string;
   finishingType?: string;
   finishingStructure?: string;
+  /** JSON specialist valuation extras (ESG, search scope, print keys, Infath deposit). */
+  specialistReportExtrasJson?: string | null;
   isRemoved?: boolean;
   removalReason?: string;
   removedAtUtc?: string;
@@ -713,6 +715,39 @@ export async function updateWorkOrderProperty(
   }
 }
 
+export async function updateSpecialistReportExtras(
+  config: WorkOrdersApiConfig,
+  poNumber: string,
+  propertyId: string,
+  body: { specialistReportExtrasJson?: string | null },
+): Promise<ApiOk<WorkOrderPropertyDto> | ApiErr> {
+  const base = config.baseUrl ?? getApiBase();
+  try {
+    const res = await fetch(
+      `${base}/api/work-orders/${encodeURIComponent(poNumber.trim())}/properties/${propertyId}/specialist-report-extras`,
+      {
+        method: "PUT",
+        headers: headers(config.token),
+        body: JSON.stringify(body),
+      },
+    );
+    if (res.status === 401) return { ok: false, kind: "auth" };
+    if (res.status === 403) return { ok: false, kind: "forbidden" };
+    if (res.status === 400) {
+      return {
+        ok: false,
+        kind: "validation",
+        errors: await parseFieldErrors(res),
+      };
+    }
+    if (res.status === 404) return { ok: false, kind: "not_found" };
+    if (!res.ok) return { ok: false, kind: "server" };
+    return { ok: true, data: (await res.json()) as WorkOrderPropertyDto };
+  } catch {
+    return { ok: false, kind: "network" };
+  }
+}
+
 export async function completePropertyBourseData(
   config: WorkOrdersApiConfig,
   poNumber: string,
@@ -775,7 +810,7 @@ export async function deleteWorkOrderProperty(
   }
 }
 
-/* ─── ق-9: حالة المعاملة المشتقة + رفع إنفاذ الشامل ─── */
+/* ─── Q-9: derived transaction status + full Enfaz upload ─── */
 
 export type TransactionStageStateDto = {
   key: string;
@@ -806,7 +841,7 @@ export type TransactionStateDto = {
   handoverPackageAr: string[];
 };
 
-/** ق-9: شبكة حالة المعاملة — الشاشة تعرض من ينتظر من. */
+/** Q-9: transaction status grid — UI shows who waits on whom. */
 export async function getTransactionState(
   config: WorkOrdersApiConfig,
   workOrderId: string,
@@ -830,7 +865,7 @@ export async function getTransactionState(
   }
 }
 
-/** ق-9 (الختام الثاني): رفع المعاملة على إنفاذ — بعد شهادة الإيداع واكتمال الأطراف. */
+/** Q-9 (second closing): upload transaction to Enfaz — after deposit certificate and parties complete. */
 export async function recordEnfazHandover(
   config: WorkOrdersApiConfig,
   workOrderId: string,

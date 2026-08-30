@@ -28,16 +28,16 @@ type Props = {
   disabled?: boolean;
   placeholder?: string;
   hint?: string;
-  /** فلترة/ترتيب مخصّص؛ الافتراضي includes على العنوان. */
+  /** Custom filter/sort; default is includes on the title. */
   filterOptions?: (
     options: readonly RegSearchSelectOption[],
     query: string,
   ) => RegSearchSelectOption[];
-  /** بحث من الخادم — يُستدعى عند تغيّر نص البحث (بدون فلترة محلية إن وُجد). */
+  /** Server search — called when the query changes (skips local filter when present). */
   onQueryChange?: (query: string) => void;
-  /** تعطيل الفلترة المحلية (للنتائج القادمة من API). */
+  /** Disable local filtering (for API-sourced results). */
   serverFiltered?: boolean;
-  /** خيار إضافة اسم جديد عند عدم وجود نتائج مطابقة. */
+  /** Option to add a new name when no matching results. */
   createLabel?: (query: string) => string;
   onCreate?: (query: string) => void;
   loading?: boolean;

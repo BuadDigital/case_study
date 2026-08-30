@@ -1,4 +1,4 @@
-/** الغرض من التقييم وأساس القيمة — نفس مفاتيح الـ backend (ValuationPurposeKeys / BasisOfValueKeys). */
+/** Valuation purpose and basis of value — same backend keys (ValuationPurposeKeys / BasisOfValueKeys). */
 
 import { NABR_SEED_CLIENT_ID } from "@platform/api-client";
 
@@ -46,8 +46,8 @@ export function isNabrClientId(id: string | null | undefined): boolean {
 }
 
 /**
- * خاص: بيع / قيمة سوقية (بما فيها إنفاذ + نبر).
- * تنفيذ / تركات: مزاد تصفية / قيمة تصفية.
+ * Private: sale / market value (including Enfath + Nabr).
+ * Execution / estates: liquidation auction / liquidation value.
  */
 export function usesNabrSaleMarketDefaults(
   assignmentType: string | null | undefined,

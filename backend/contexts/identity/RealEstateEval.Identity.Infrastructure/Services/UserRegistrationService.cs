@@ -99,7 +99,7 @@ public partial class UserRegistrationService : IUserRegistrationService
         var jobTitle = PrototypeRoleResolver.JobTitleForRoleId(roleId)!;
         var defaults = StaffRoleDefaults.For(roleId);
         var normalizedEmail = request.Email.Trim().ToLowerInvariant();
-        // التحقق أعلاه ضمن ValidateCreateStaffRequest يضمن جوالاً سعودياً صالحاً.
+        // The above verification within ValidateCreateStaffRequest ensures a valid Saudi mobile.
         var normalizedMobile = StaffUserRules.NormalizeMobile(request.Mobile)!;
         var displayName = request.DisplayName.Trim();
         var nationalId = request.NationalId.Trim();
@@ -207,7 +207,7 @@ public partial class UserRegistrationService : IUserRegistrationService
         if (roleId == "engineering-office")
             profile.RegistrationSource = RegistrationSource.Proc;
 
- // ورشة الترقيم (بندا البتّ 2 و5): الرقم المرجعي للمستخدم يُخصَّص عند التسجيل.
+ // Numbering session (bit lines 2 and 5): The user reference number is assigned upon registration.
         var (userReference, userReferenceError) =
             await ReferenceSequenceAllocator.AllocateYearlyAsync(
                 _db,
@@ -282,7 +282,7 @@ public partial class UserRegistrationService : IUserRegistrationService
         var mobile = request.Mobile is null
             ? user.PhoneNumber
             : StaffUserRules.NormalizeMobile(request.Mobile);
-        // ق٣: جوال مُدخل بصيغة غير سعودية يُرفض — لا يُخزَّن رقم لا يمكن الدخول به.
+        // Q-3: A mobile phone entered in a format other than Saudi Arabia is rejected - a number that cannot be entered is not stored.
         if (request.Mobile is not null && mobile is null)
             return (null, StaffUserRules.FormError(
                 "صيغة رقم الجوال السعودي غير صحيحة (05XXXXXXXX).", "mobile"));

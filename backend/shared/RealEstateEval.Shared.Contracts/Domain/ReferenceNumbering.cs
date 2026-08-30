@@ -1,13 +1,13 @@
 namespace RealEstateEval.Domain;
 
 /// <summary>
-/// ورشة الترقيم (قرار 22 + بنود البتّ 1–5): النمط الموحد {بادئة}-{سنة}-{تسلسل ٥}
-/// بتسلسل سنوي وأرقام لاتينية. هذه الدالة هي «الـseam» الوحيد للصيغة — أي تعديل
-/// لاحق من الورشة يغيّر هنا فقط. الأرقام الصادرة قبل التفعيل لا تتغير أبداً.
+/// Numbering Workshop (Decision 22 + bit lines 1–5): Uniform pattern {prefix}-{year}-{sequence 5}
+/// In annual sequence and Latin numbers. This function is the only “seam” of the formula — any modification
+/// Later in the workshop only changes here. Numbers issued before activation never change.
 /// </summary>
 public static class ReferenceNumbering
 {
- // بوادئ الكيانات الثمانية (بند البتّ 2) + المرجع الخارجي لتقرير التقييم (بند 3).
+ // Eight entity prefixes (bit clause 2) + external reference to Valuation Report (bit clause 3).
     public const string Property = "PR";
     public const string Transaction = "TX";
     public const string User = "US";
@@ -20,7 +20,7 @@ public static class ReferenceNumbering
 
     public const int MaxYearlySequence = 99_999;
 
- /// <summary>السنة الميلادية بتوقيت الرياض — حدود السنة تتبع تقويم العمل المحلي.</summary>
+ /// <summary>Gregorian year, Riyadh time — year boundaries follow the local business calendar.</summary>
     public static int RiyadhYear(DateTime utcNow) => utcNow.AddHours(3).Year;
 
     public static string Format(string prefix, int year, int sequence) =>

@@ -6,7 +6,7 @@ import {
   type CaseStudyQuestionSection,
 } from "@case-study/mfe/lib/prototype/case-study-form-data";
 
-/** طرف في مصفوفة علاقة المستخدم بالمعلومة */
+/** Party in the user–information relationship matrix */
 export type CaseStudyInfoPartyId =
   | "specA"
   | "insp"

@@ -8,7 +8,7 @@ import type {
   TextareaHTMLAttributes,
 } from "react";
 
-/** تسمية عائمة على حد الحقل — مطابق لشكل حقول إنفاذ. */
+/** Floating label on the field edge — matches Enfaz field styling. */
 function InfathFloatLabel({
   htmlFor,
   required,

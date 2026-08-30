@@ -1,8 +1,10 @@
-const SEQ_STORAGE_PREFIX = "ejadah.valuation-report.yearly-seq.";
+// Numbering workshop (decision item 3): unified pattern TQ-{year}-{5-digit sequence}. Frozen numbers
+// in Q-6 snapshots issued before rollout do not change — this format is for issues after only.
+// Must stay aligned with ValuationReportNumberRules on the server.
 
-// ورشة الترقيم (بند البتّ 3): النمط الموحد TQ-{سنة}-{تسلسل ٥}. الأرقام المجمّدة
-// في لقطات ق-6 الصادرة قبل التفعيل لا تتغير — هذه الصيغة لما يُصدر بعده فقط.
-// يجب أن تبقى مطابقة لـ ValuationReportNumberRules في الخادم.
+/** In-process fallback only — never persist yearly sequences in localStorage. */
+const sessionYearlySeq = new Map<string, number>();
+
 export function formatValuationReportNumber(
   issuedAt: Date,
   ordinal: number,
@@ -31,17 +33,13 @@ export function reservedValuationReportNumber(
   return formatValuationReportNumber(issuedAt, ordinal);
 }
 
-/** Allocates the next TQ number for the local calendar year (prototype sequence). */
+/**
+ * Last-resort session ordinal when the valuation API is unreachable.
+ * Prefer `reservedValuationReportNumber` / server-reserved VR ids in production paths.
+ */
 export function allocateValuationReportNumber(issuedAt: Date = new Date()): string {
   const year = String(issuedAt.getFullYear());
-  let next = 1;
-  try {
-    const raw = globalThis.localStorage?.getItem(SEQ_STORAGE_PREFIX + year);
-    const parsed = Number.parseInt(raw ?? "0", 10);
-    if (Number.isFinite(parsed) && parsed >= 0) next = parsed + 1;
-    globalThis.localStorage?.setItem(SEQ_STORAGE_PREFIX + year, String(next));
-  } catch {
-    next = 1;
-  }
+  const next = (sessionYearlySeq.get(year) ?? 0) + 1;
+  sessionYearlySeq.set(year, next);
   return formatValuationReportNumber(issuedAt, next);
 }

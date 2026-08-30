@@ -109,9 +109,9 @@ export function patchInspectorFeatureValues(
 }
 
 /**
- * Feature fields with photo-proof column (desktop table «صورة» / mobile capture).
+ * Feature fields with photo-proof column (desktop table «photo» / mobile capture).
  *
- * - Yes/no rows (`photoOnYes` + options include «نعم»): proof only when value is «نعم»
+ * - Yes/no rows (`photoOnYes` + options include «yes»): proof only when value is «yes»
  *   — matches Case Study.html `PHOTO_ON_YES`.
  * - Closed-list rows with `photoOnYes`: proof whenever a value is chosen
  *   — matches desktop HTML table column for origin / facade / usage / build state.
@@ -253,7 +253,7 @@ const LAND_HIDDEN_FEATURE_KEY_SET = new Set<string>(
 
 const SHOP_SUBJECT_RE = /محل\s*تجار|\bshop\b/i;
 
-/** Vacant land: PO type/classification, inspector origin, or أرض فضاء checkbox. */
+/** Vacant land: PO type/classification, inspector origin, or vacant-land checkbox. */
 export function isLandInspectionContext(input: {
   classification?: string | null;
   propertyType?: string | null;
@@ -319,7 +319,7 @@ const SHOP_HIDDEN_COMPONENT_KEY_SET = new Set<string>(
   SHOP_HIDDEN_INSPECTOR_COMPONENT_KEYS,
 );
 
-/** Commercial shop: PO type/classification or الأصل محل التقييم. Land wins. */
+/** Commercial shop: PO type/classification or subject-asset shop. Land wins. */
 export function isCommercialShopInspectionContext(input: {
   classification?: string | null;
   propertyType?: string | null;
@@ -486,15 +486,15 @@ export type InspectorWorkspaceDraft = {
   buildingsTotal: string;
   propertyAgeYears: string;
   buildLicenseNumber: string;
-  /** تاريخ رخصة البناء — نص حر (هـ أو م). */
+  /** Building-permit date — free text (Hijri or Gregorian). */
   buildLicenseDate: string;
-  /** checklist — هل الموقع أرض فضاء */
+  /** checklist — is the site vacant land */
   vacantLand: boolean;
-  /** مستمد من تسليم المراجع — يُحدَّث عند الإرسال */
+  /** Derived from reviewer delivery — updated on submit */
   keyAvailable: boolean;
-  /** توقيع إقرار العميل */
+  /** Client acknowledgment signature */
   clientDeclarationSigned: boolean;
-  /** جُمِع جوال طرف قبل الإقرار — لا يُعاد قفله بعد الحذف */
+  /** Client mobile collected before acknowledgment — do not re-lock after delete */
   declarationPhoneSatisfied: boolean;
   hasAnnex: "" | "نعم" | "لا";
   jacuzziCount: string;
@@ -519,7 +519,7 @@ export type InspectorWorkspaceDraft = {
   districtProsCons: string;
   assetNotes: string;
   /**
-   * Photo slots for services/amenities: keys `service:كهرباء`, `amenity:مساجد`.
+   * Photo slots for services/amenities: keys `service:electricity`, `amenity:mosques`.
    * Slot appears only when the chip is selected.
    */
   definedPhotos: Record<string, InspectorDefinedPhotoSlot>;
@@ -529,7 +529,7 @@ export type InspectorWorkspaceDraft = {
   status: InspectorWorkspaceStatus;
   returnNote?: string;
   submittedAtUtc: string | null;
-  /** Specialist acceptance stamp — gates package into إنفاذ. */
+  /** Specialist acceptance stamp — gates package into Infath. */
   acceptedAtUtc?: string | null;
   acceptedByName?: string | null;
   updatedAtUtc: string;

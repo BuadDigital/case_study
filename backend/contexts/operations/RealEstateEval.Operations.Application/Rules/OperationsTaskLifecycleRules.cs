@@ -85,14 +85,14 @@ public static class OperationsTaskLifecycleRules
             return "هذا الإجراء للمنشئ أو المشرف فقط";
 
  // Managers pause anytime; the assignee may pause only when reporting an
- // active property failure (تعذر) so the task leaves their active queue.
+ // active property failed so the task leaves their active queue.
         if (next == OperationsTaskStatus.Paused && !isManager)
         {
             if (!isAssignee || !IsFailureObstructionPauseReason(pauseReason))
                 return "هذا الإجراء للمنشئ أو المشرف فقط";
         }
 
- // Reopen as «منشأة» after a failure is cleared — managers anytime;
+ // Reopen as “Facility” after a failure is cleared — managers anytime;
  // the assignee only when the pause was a failure obstruction.
         if (next == OperationsTaskStatus.Created)
         {
@@ -109,7 +109,7 @@ public static class OperationsTaskLifecycleRules
     }
 
  /// <summary>
- /// Pause reasons used when a linked property has an open failure (تعذر) —
+ /// Pause reasons used when a linked property has an open failure —
  /// must stay in sync with the front-end <c>OPS_TASK_FAILURE_PAUSE_REASON</c>.
  /// </summary>
     public static bool IsFailureObstructionPauseReason(string? pauseReason)

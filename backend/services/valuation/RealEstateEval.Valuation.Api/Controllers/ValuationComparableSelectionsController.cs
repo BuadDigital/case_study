@@ -70,7 +70,7 @@ public class ValuationComparableSelectionsController : ControllerBase
         return Ok(result);
     }
 
-    /// <summary>ق-8-1: مبرر واحد على مستوى العامل يغطي كل المقارنات — حفظ/مسح.</summary>
+    /// <summary>Q-8-1: one factor-level rationale covers all comparables — save/clear.</summary>
     [HttpPut("~/api/valuation-requests/{valuationRequestId:guid}/adjustment-factor-rationale")]
     [Authorize(Policy = CapabilityPolicyNames.SubmitValuationReport)]
     public async Task<ActionResult<ValuationAdjustmentFactorRationaleDto>> SaveFactorRationale(

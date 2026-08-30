@@ -37,8 +37,8 @@ function notifyChanged(): void {
   dispatchPartySubmissionChanged(ENGINEERING_SURVEY_SUBMISSION_CHANGED_EVENT);
 }
 
-// الـDTO في الكاش مستقر المرجع حتى إعادة الجلب — التحويل (٤٠ حقلاً + ١٣ صف
-// فحص) كان يعاد لكل مهمة في الترشيح ولكل صف مرسوم (js-cache-function-results).
+// Cached DTO keeps a stable reference until refetch — mapping (40 fields + 13 checklist
+// rows) used to rerun per task in filtering and per painted row (js-cache-function-results).
 const submissionByDto = new WeakMap<
   NonNullable<ReturnType<typeof getCachedPartySubmission>>,
   EngineeringSurveySubmission

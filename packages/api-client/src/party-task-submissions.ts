@@ -204,7 +204,7 @@ export async function reopenPartyTaskSubmission(
   }
 }
 
-/** Specialist accepts party outputs (survey fee accrual; inspection → إنفاذ package). */
+/** Specialist accepts party outputs (survey fee accrual; inspection → Enfaz package). */
 export async function acceptPartyTaskSubmission(
   config: WorkOrdersApiConfig,
   taskId: string,

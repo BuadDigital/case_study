@@ -5,8 +5,8 @@ import {
 } from "@case-study/mfe/lib/prototype/po-intake-data";
 import type { ClientDto } from "@platform/api-client";
 
-/* تنسيق مستخدمي تقرير التقييم — وحدة خفيفة مستقلة عن valuation-report-live-fill
- * حتى لا يسحب تبويب التقرير (الفوري) بنّاء التقرير كاملاً (~2.4 ألف سطر) لأجل دالة واحدة. */
+/* Valuation report user formatting — lightweight module independent of valuation-report-live-fill
+ * so the (eager) report tab does not pull the full report builder (~2.4k lines) for one helper. */
 
 export function reportUserNamesFromRecord(
   record: Pick<PoIntakeRecord, "clientNameAr" | "reportUserClientIds" | "clientId"> | null | undefined,

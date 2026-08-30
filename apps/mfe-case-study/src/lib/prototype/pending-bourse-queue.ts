@@ -6,7 +6,7 @@ type BourseFailureRef = {
   status: string;
 };
 
-/** صك بانتظار إكمال البورصة — يستثني التعذر النشط (نفس منطق قائمة استعلام بورصة). */
+/** Deed awaiting bourse completion — excludes active failure (same logic as the bourse-inquiry list). */
 export function isPendingBourseActionable(
   item: Pick<PendingBoursePropertyDto, "poNumber" | "propertyId">,
   failures: readonly BourseFailureRef[],
@@ -30,7 +30,7 @@ type BourseSortFields = Pick<
   | "deedNumber"
 >;
 
-/** Newest first — same idea as البيانات الأولية (latest PO creation first). */
+/** Newest first — same idea as primary data (latest PO creation first). */
 export function comparePendingBourseNewestFirst(
   a: BourseSortFields,
   b: BourseSortFields,

@@ -6,7 +6,7 @@ using RealEstateEval.Valuation.Infrastructure.Services;
 
 namespace RealEstateEval.Application.Tests;
 
-/// <summary>ق-8: هندسة المبررات — مبرر على مستوى العامل + حد أدنى للطول.</summary>
+/// <summary>Q-8: Justification Engineering — Agent-level justification + minimum length.</summary>
 public class AdjustmentFactorRationaleTests
 {
     [Fact]
@@ -74,7 +74,7 @@ public class AdjustmentFactorRationaleTests
         var service = new ValuationComparableSelectionService(
             db, new StubOrganizationSettings());
 
-        // قصير جداً — مرفوض (ق-8-2).
+        // Too short — rejected (Q-8-2).
         var (_, shortErrors) = await service.SaveFactorRationaleAsync(
             id,
             new SaveAdjustmentFactorRationaleRequest
@@ -87,7 +87,7 @@ public class AdjustmentFactorRationaleTests
         Assert.NotNull(shortErrors);
         Assert.Contains("rationaleAr", shortErrors!.Keys);
 
-        // حفظ سليم ثم تحديث.
+        // Save properly and then update.
         var (saved, saveErrors) = await service.SaveFactorRationaleAsync(
             id,
             new SaveAdjustmentFactorRationaleRequest
@@ -113,7 +113,7 @@ public class AdjustmentFactorRationaleTests
         Assert.Equal("مبرر محدّث بعد مراجعة الصفقات", updated!.RationaleAr);
         Assert.Single(db.ValuationAdjustmentFactorRationales);
 
-        // الفارغ يمسح.
+        // Empty erase.
         var (cleared, clearErrors) = await service.SaveFactorRationaleAsync(
             id,
             new SaveAdjustmentFactorRationaleRequest

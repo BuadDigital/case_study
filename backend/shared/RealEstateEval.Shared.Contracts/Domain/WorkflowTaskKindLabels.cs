@@ -1,13 +1,13 @@
 namespace RealEstateEval.Domain;
 
 /// <summary>
-/// الأسطح العربية لتسميات <see cref="WorkflowTaskKind"/> — كانت أربع خرائط متناثرة
-/// في سياقي دراسة الحالة والمالية. السطوح مقصودة الاختلاف (عنوان تعيين ≠ تصنيف مالي)،
-/// لكن إضافة نوع مهمة جديد صارت تحريراً في ملف واحد.
+/// Arabic surfaces for <see cref="WorkflowTaskKind"/> labels — four maps were scattered around
+/// In both case study and financial contexts. Surfaces are intended to be different (designation title ≠ financial classification),
+/// But adding a new task type becomes an edit in one file.
 /// </summary>
 public static class WorkflowTaskKindLabels
 {
- /// <summary>عنوان حدث «تعيين الطرف» في الجدول الزمني للمعاملة.</summary>
+ /// <summary>Title of the Party Assigned event in the transaction timeline.</summary>
     public static string AssignedTitleAr(WorkflowTaskKind kind) => kind switch
     {
         WorkflowTaskKind.FieldInspection => "تعيين المعاين الميداني",
@@ -18,7 +18,7 @@ public static class WorkflowTaskKindLabels
         _ => "تعيين طرف",
     };
 
- /// <summary>عنوان حدث «إتمام عمل الطرف» — مفاتيح wire كما تُخزَّن في الإرسالات.</summary>
+ /// <summary>“Party Work Complete” event title — wire keys as stored in submissions.</summary>
     public static string SubmittedTitleAr(string kind) => kind switch
     {
         WorkflowTaskKindValues.FieldInspection => "إتمام المعاينة الميدانية",
@@ -29,7 +29,7 @@ public static class WorkflowTaskKindLabels
         _ => "إتمام عمل الطرف",
     };
 
- /// <summary>اسم المهمة في إشعارات التوزيع.</summary>
+ /// <summary>Task name in distribution notifications.</summary>
     public static string NotificationLabelAr(WorkflowTaskKind kind) => kind switch
     {
         WorkflowTaskKind.FieldInspection => "معاينة العقار",
@@ -38,7 +38,7 @@ public static class WorkflowTaskKindLabels
         _ => "مهمة جديدة",
     };
 
- /// <summary>تصنيف مختصر في التقارير المالية.</summary>
+ /// <summary>Brief classification in financial reports.</summary>
     public static string CategoryLabelAr(WorkflowTaskKind? kind) => kind switch
     {
         WorkflowTaskKind.FieldInspection => "معاينة",

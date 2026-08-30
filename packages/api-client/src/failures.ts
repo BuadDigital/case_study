@@ -1,5 +1,5 @@
 /**
- * Failures API — property failures (تعذرات) persisted in PostgreSQL.
+ * Failures API — property failures (obstructions) persisted in PostgreSQL.
  */
 import { parseFieldErrorsFromResponse } from "./field-errors";
 import { getApiBase } from "./api-base";

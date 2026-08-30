@@ -4,8 +4,8 @@ import { Spinner } from "./Spinner";
 import { Tr, Td } from "./Table";
 
 /**
- * نص انتظار ظاهر. الهياكل الرمادية وحدها صامتة بصرياً — كان `aria-label`
- * يخدم القارئ الآلي فقط بينما يرى المستخدم وميضاً بلا تفسير.
+ * Visible waiting text. Grey skeletons alone are visually silent — `aria-label`
+ * only helped screen readers while users saw an unexplained shimmer.
  */
 function LoadingLabel({ className }: { className?: string }) {
   return (

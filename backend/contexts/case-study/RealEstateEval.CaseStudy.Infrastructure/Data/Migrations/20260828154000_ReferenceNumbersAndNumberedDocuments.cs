@@ -13,8 +13,8 @@ namespace RealEstateEval.CaseStudy.Infrastructure.Data.Contexts.CaseStudy.Migrat
  /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
- // ورشة الترقيم + قرار 25: عدّادات TX/LT/CS السنوية، سجل المستندات المرقّمة،
- // ورقم المعاملة على WorkOrderProperties مع backfill بترتيب ورود أوامر العمل.
+ // Numbering workshop + decision 25: annual TX/LT/CS counters, numbered-document ledger,
+ // and transaction number on WorkOrderProperties with backfill by work-order arrival order.
             migrationBuilder.Sql(
                 """
                 CREATE TABLE IF NOT EXISTS case_study."CaseStudyReferenceSequences" (

@@ -57,8 +57,8 @@ export function taskMatchesBourseInquiry(
   if (task.kind !== "case-study-property") return false;
   const property = findPropertyForTask(record, task);
   if (property?.isRemoved) return false;
-  // Revert to enfath must leave استعلام البورصة — do not keep enfath rows here
-  // even for identifierType = bourse_inquiry (those are edited from البيانات الأولية).
+  // Revert to enfath must leave bourse inquiry — do not keep enfath rows here
+  // even for identifierType = bourse_inquiry (those are edited from primary data).
   return task.phase === "bourse";
 }
 

@@ -1,4 +1,4 @@
-import type { WorkflowTask } from "@case-study/mfe/lib/prototype/tasks-storage";
+import type { WorkflowTask } from "@platform/app-shared/workflow/task-types";
 
 export type InspectionGateState =
   | { ready: true }

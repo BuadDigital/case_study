@@ -8,7 +8,7 @@ type MyTasksChrome = {
 };
 
 type MyTasksChromeOptions = {
-  /** Appended after breadcrumb on `/case-study/[taskId]` (e.g. رقم الصك). */
+  /** Appended after breadcrumb on `/case-study/[taskId]` (e.g. deed number). */
   deedLabel?: string;
   /** Operations task title for `/operations-tasks?task=` (HTML `t.title`). */
   opsTaskTitle?: string;
@@ -16,7 +16,7 @@ type MyTasksChromeOptions = {
 
 /**
  * Workspace / task-detail topbar chrome — current leaf label only
- * (no لوحة التحكم / section parents).
+ * (no dashboard / section parents).
  */
 export function resolveMyTasksChrome(
   pathname: string,

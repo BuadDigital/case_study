@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type { WorkflowTask } from "@case-study/mfe/lib/prototype/tasks-storage";
+import type { WorkflowTask } from "@platform/app-shared/workflow/task-types";
 import { inspectionGateForAppraisal } from "../evaluator-inspection-gate";
 import {
   appraiserInspectionAccepted,

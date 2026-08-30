@@ -18,7 +18,7 @@ function isAcceptedFile(file: File): boolean {
   );
 }
 
-/** رفع إيصال التحويل — بديل لـ «Choose File» الأصلي */
+/** Upload transfer receipt — replacement for the original «Choose File» */
 export function FinanceReceiptUploadField({
   label = "إيصال التحويل",
   required,

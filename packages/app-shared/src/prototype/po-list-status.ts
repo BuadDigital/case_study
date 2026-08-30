@@ -54,7 +54,7 @@ export function isPoListStatusTerminal(status: PoListStatus): boolean {
   );
 }
 
-/** شريط التقدم: نسبة العقارات التي اكتملت دراستها (رفع النموذج للنظام). */
+/** Progress bar: share of properties whose case study is done (form uploaded to system). */
 export function poProgressPct(
   _registered: number | undefined,
   studied: number | undefined,

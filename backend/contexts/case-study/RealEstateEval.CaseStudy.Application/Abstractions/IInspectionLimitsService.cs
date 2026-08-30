@@ -16,7 +16,7 @@ public interface IInspectionLimitsService
         SaveInspectionLimitsRequest request,
         CancellationToken cancellationToken = default);
 
- /// <summary>ق-7 — اعتماد المقيّم المعتمد لنطاق «مكتبية عن بُعد» (مسجَّل بالتدقيق).</summary>
+ /// <summary>Q-7 — accredited appraiser approval for "desktop remote" scope (audit-logged).</summary>
     Task<(InspectionLimitsDto? Result, string? Error)> ApproveRemoteAsync(
         string poNumber,
         Guid propertyId,

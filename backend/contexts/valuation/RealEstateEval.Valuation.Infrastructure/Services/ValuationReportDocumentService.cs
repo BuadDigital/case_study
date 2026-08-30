@@ -202,7 +202,7 @@ public sealed class ValuationReportDocumentService(
             hasStructures,
             cancellationToken);
 
- // «لا صفحات لأنواع غير مرفوعة»: attachment sections without uploads drop out.
+ // "No pages for types without uploads": attachment sections without uploads drop out.
         var attachmentCounts = new Dictionary<int, int>
         {
             [22] = printed.SiteMaps.Count,
@@ -254,8 +254,8 @@ public sealed class ValuationReportDocumentService(
                 : ValuationReportDisplayRules.FormatMoney(recon.WeightedValue),
             MethodsRationale = recon?.MethodsRationale,
             AllowsIssuance = gates?.AllowsIssuance ?? false,
-            // قرار 23: نسخة واحدة للحزمة كلها — التمييز داخل التقرير بالموضع والعنوان،
-            // ورقم النسخة يوسم الحزمة لا الفقرة؛ المُصدَر مجمّد على نصوصه (لقطة ق-6).
+            // Decision 23: one version for the whole package — distinction inside the report is by position and title;
+            // the version number labels the package, not the paragraph; issued reports are frozen on their texts (Q-6 snapshot).
             TextLayerNoteAr =
                 $"النصوص المعيارية/القانونية — الحزمة نسخة {org?.ValuationReport?.TextPackageVersion ?? 1} "
                 + "(تُجمَّد لحظة الإصدار — قرار 23).",

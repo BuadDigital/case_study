@@ -69,7 +69,7 @@ export type KeyEnvelopeTimelineEntry = {
 export type KeyEnvelopeRow = {
   id: string;
   requestNumber: string;
-  /** ورشة الترقيم: الرقم المرجعي الداخلي KE-{سنة}-{تسلسل ٥}. */
+  /** Numbering workshop: internal reference KE-{year}-{5-digit sequence}. */
   referenceNumber?: string | null;
   court: string;
   circuit: string;
@@ -102,7 +102,7 @@ export type KeyEnvelopeFeeReportRow = {
   circuit: string;
   photoAttachmentId?: string | null;
   receiptAttachmentId?: string | null;
-  /** بلا مبلغ = مؤشر استحقاق تُسعّره المالية عند فوترة إنفاذ. */
+  /** No amount = entitlement marker priced by finance when billing Enfaz. */
   feeAmountSar?: number | null;
   collectionStatus?: string;
   invoiceReference?: string | null;
@@ -197,8 +197,8 @@ export function envelopeDisplayRef(
   createdAtUtc?: string,
   referenceNumber?: string | null,
 ): string {
- // ورشة الترقيم: الرقم الحقيقي KE-{سنة}-{تسلسل ٥} من الخادم يتقدم؛ التوليفة
- // القديمة من GUID تبقى احتياطاً للسجلات التي لم تُرقّم بعد.
+ // Numbering workshop: real KE-{year}-{5-digit seq} from server takes precedence; the old
+ // GUID composition remains a fallback for records not yet numbered.
   const real = referenceNumber?.trim();
   if (real) return real;
   const digits = id.replace(NON_DIGIT_PATTERN, "");

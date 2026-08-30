@@ -1,6 +1,6 @@
 namespace RealEstateEval.CaseStudy.Application.Contracts;
 
-/// <summary>ق-9: حالة المعاملة المشتقة — شبكة المراحل والأطراف و«من ينتظر من».</summary>
+/// <summary>Q-9: Derived transaction status — network of stages, parties and “who is waiting for whom”.</summary>
 public class TransactionStageStateDto
 {
     public required string Key { get; init; }
@@ -29,16 +29,16 @@ public class TransactionStateDto
     public required string OverallStatusLabelAr { get; init; }
     public string WaitingSummaryAr { get; init; } = "";
 
- /// <summary>الختام الثاني جاهز: شهادة الإيداع صادرة وكل الأطراف مكتملة.</summary>
+ /// <summary>The second conclusion is ready: Deposit Certificate issued and all terminals completed.</summary>
     public bool AllowsEnfazHandover { get; init; }
     public string? EnfazHandoverAtUtc { get; init; }
- /// <summary>حزمة رفع إنفاذ (ق-9/ق-14).</summary>
+ /// <summary>Enfaz upload package (Q-9/Q-14).</summary>
     public IReadOnlyList<string> HandoverPackageAr { get; init; } = [];
 }
 
 /// <summary>
-/// تكميلية ق-9 (ر3): بعد رفع إنفاذ لا يفتح النظام شيئاً آلياً — المدير العام يسجّل
-/// قراره (قناة إنفاذ الرسمية) قيدَ تدقيق فقط؛ استرجاع فعلي من إنفاذ يمر عبر ر2.
+/// Q-9 supplement (R3): after the Enfaz upload, the system does not reopen anything automatically — the General Manager records
+/// Decision (official Enfaz channel) is under review only; Actual retrieval from Enfaz goes through R2.
 /// </summary>
 public class PostEnfazDecisionRequest
 {

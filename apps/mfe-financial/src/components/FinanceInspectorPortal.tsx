@@ -1,8 +1,8 @@
 "use client";
 
 /**
- * بوابة المعاين — full stack (ready-lines + statements).
- * Tailwind فقط (finance-tw) — بلا CSS/style objects.
+ * Inspector portal — full stack (ready-lines + statements).
+ * Tailwind only (finance-tw) — no CSS/style objects.
  */
 
 import { useMemo, useState, type ReactNode } from "react";
@@ -67,7 +67,7 @@ const COST_ST: Record<PortalLine["st"], { t: string; cls: string }> = {
 const cols =
   "min-w-[720px] grid-cols-[minmax(180px,1.6fr)_minmax(120px,0.9fr)_minmax(110px,0.9fr)_minmax(130px,1fr)]";
 
-// toLocaleString الافتراضي = حتى 3 كسور دون أصفار إلزامية — نحافظ على العرض نفسه.
+// Default toLocaleString = up to 3 decimals without forced zeros — keep the same display.
 function money(n: number) {
   return fmtMax(Number(n || 0), 3);
 }

@@ -6,7 +6,7 @@ import {
   prefetchPartySubmissionsForTasks,
   submitPartySubmission,
 } from "@platform/app-shared/prototype/party-submission-api";
-import { notifyTasksChanged } from "@case-study/mfe/lib/prototype/tasks-storage";
+import { notifyTasksChanged } from "@platform/app-shared/workflow/task-types";
 import { dispatchPartySubmissionChanged } from "@platform/app-shared/prototype/party-submission-changed-event";
 import { dispatchWorkflowSubmitted, EVALUATOR_SUBMITTED_EVENT } from "@platform/app-shared/prototype/party-workflow-events";
 import { loadPartyCaseStudyFormDraft } from "@case-study/mfe/lib/prototype/case-study-form-storage";
@@ -172,7 +172,7 @@ async function stampReservedReportNumber(
     const saved = await saveEvaluatorSubmission({ ...submission, reportNo });
     return saved ?? { ...submission, reportNo };
   } catch (err) {
-    // حجز رقم التقرير أفضل-جهد — فشله لا يمنع فتح المسودة، لكنه لم يعد صامتاً.
+    // Best-effort report-number reservation — failure does not block opening the draft, but is no longer silent.
     console.warn("تعذّر حجز رقم تقرير التقييم", err);
     return submission;
   }

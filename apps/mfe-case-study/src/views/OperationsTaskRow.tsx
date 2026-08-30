@@ -47,8 +47,8 @@ type OperationsTaskRowProps = {
   rowMenu: (task: OperationsTask) => RowMoreMenuItem[];
 };
 
-// صف الجدول معزول بـ memo — كتابة نصوص المودالات في الشاشة الأم لا تعيد
-// تصيير الصفوف ما دامت المعالجات ثابتة المرجع (rerender-memo).
+// Table row isolated with memo — typing modal text in the parent screen does not
+// re-render rows while handlers stay referentially stable (rerender-memo).
 export const OperationsTaskRow = memo(function OperationsTaskRow({
   task,
   checked,
@@ -67,7 +67,7 @@ export const OperationsTaskRow = memo(function OperationsTaskRow({
       tabIndex={0}
       className={cn(
         opsGridRow,
-        // الصفوف خارج الشاشة لا تُخطَّط ولا تُرسَم (rendering-content-visibility).
+        // Off-screen rows are not laid out or painted (rendering-content-visibility).
         "[content-visibility:auto] [contain-intrinsic-size:auto_52px]",
       )}
       style={{ gridTemplateColumns: TASKS_LIST_COLS }}

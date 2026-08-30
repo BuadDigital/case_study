@@ -2,7 +2,7 @@
 
 import { useSyncExternalStore } from "react";
 
-// حد Tailwind lg — نفس نقطة تبديل بطاقات الجوال/جداول الديسكتوب في الطوابير.
+// Tailwind lg breakpoint — same mobile-card / desktop-table switch as queues.
 const QUERY = "(min-width: 1024px)";
 
 function subscribe(callback: () => void): () => void {
@@ -20,9 +20,9 @@ function getServerSnapshot(): boolean | null {
 }
 
 /**
- * true = ديسكتوب، false = جوال، null = غير معروف (SSR/الترطيب — اعرض الشجرتين
- * بفئات CSS كما قبل). كانت شجرتا الجوال والديسكتوب تركبان معاً دائماً:
- * display:none يوفّر الرسم لا التصيير، فكل الصفوف تُبنى مرتين (rendering).
+ * true = desktop, false = mobile, null = unknown (SSR/hydration — keep both trees
+ * with CSS classes as before). Mobile and desktop trees used to always mount together:
+ * display:none saves paint not render, so every row was built twice (rendering).
  */
 export function useViewportDesktop(): boolean | null {
   return useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);

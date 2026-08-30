@@ -13,7 +13,7 @@ import {
 import { workOrdersApiConfig } from "../../lib/work-orders-api-config";
 
 /**
- * Decision 20 — العقار المجمع: the system suggests links (same owner / same plan /
+ * Decision 20 — grouped property: the system suggests links (same owner / same plan /
  * adjacent plots / coordinate proximity), a human confirms (audited), and the link
  * is reversible with a reason. Work orders stay administratively independent.
  */

@@ -65,8 +65,8 @@ public class ValuationRequest
     }
 
  /// <summary>
- /// تكميلية ق-9 (ر2): إعادة فتح دور التقييم بعد الإيداع — عكس <see cref="SubmitReport"/>؛
- /// الطلب يعود مفتوحاً فيحجز العقار من جديد حتى نسخة إيداع أحدث.
+ /// Q-9 supplement (R2): reopen valuation cycle after deposit — inverse of <see cref="SubmitReport"/>;
+ /// the request reopens and holds the property again until a newer deposit copy.
  /// </summary>
     public void ReopenReport(DateTime nowUtc)
     {
@@ -75,7 +75,7 @@ public class ValuationRequest
     }
 
  /// <summary>
- /// An impediment (تعذر) keeps the request open — the property stays held until the
+ /// An impediment (unable/blocked) keeps the request open — the property stays held until the
  /// impediment is resolved and a report is submitted.
  /// </summary>
     public ValuationRequestTransition RecordImpediment(DateTime nowUtc)

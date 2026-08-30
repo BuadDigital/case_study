@@ -49,7 +49,7 @@ export function Sec({
   );
 }
 
-/** جداول البنود 06–11 كما في الإعدادات v2 — خلايا رمادية = مصدر الحقل. */
+/** Item tables 06–11 as in settings v2 — gray cells = field source. */
 export function ReportSourceTables({
   isOpen,
   toggle,

@@ -1,6 +1,6 @@
 "use client";
 
-/** أجزاء تبويب المعاينة في تفاصيل العقار — حقول/بطاقات/خلايا على مستوى الوحدة، نُقلت حرفياً (SRP). */
+/** Property-detail inspection-tab parts — module-level fields/cards/cells, moved verbatim (SRP). */
 
 import { useEffect, useMemo, useRef, useState, type ReactNode, Fragment } from "react";
 import { ReturnedForCorrectionNote } from "../ui/ReturnedForCorrectionNote";
@@ -477,7 +477,7 @@ export function PhotoTile({
   );
 }
 
-/** Desktop file-picker cell for feature-table «صورة» (PC friendly). */
+/** Desktop file-picker cell for feature-table «photo» (PC friendly). */
 export function EditableFeaturePhotoCell({
   needsPhoto,
   hasPhoto,

@@ -78,7 +78,7 @@ export const ROLES: Record<RoleId, RoleDef> = {
     init: "أص",
     bg: "var(--success-bg)",
     tc: "var(--success)",
-    // مطابقة صفحات المشرف (يشمل party-fees + التسعيرة) — بلا financial
+    // Match supervisor pages (includes party-fees + fee pricing) — without financial.
     pages: [
       "po",
       "property-map",
@@ -244,12 +244,6 @@ export const NAV: NavItem[] = [
     icon: "M9 11l3 3L22 4",
     grp: "التقييم العقاري",
   },
-  {
-    id: "comparable-properties",
-    label: "بنك المقارنات",
-    icon: "M3 3h7v7H3zM14 3h7v7h-7zM14 14h7v7h-7zM3 14h7v7H3z",
-    grp: "التقييم العقاري",
-  },
 ];
 
 /** CDO (super admin) — union of every prototype route. Filled after NAV is defined. */
@@ -263,6 +257,8 @@ export const ALL_PROTOTYPE_PAGES: PageId[] = [
     SYSTEM_FIELDS_CATALOG_NAV_ITEM.id,
     SYSTEM_SCREEN_CATALOG_NAV_ITEM.id,
     ...ORPHAN_SCREENS_PAGE_IDS,
+    // Finance hub lives in FinanceHtmlNav (not NAV[]) but is a real shell page.
+    "financial",
   ]),
 ];
 
@@ -360,23 +356,23 @@ export const PAGE_BREADCRUMB: Record<PageId, string> = {
 
 import type { PoListStatus } from "./po-list-status";
 
-/** Mock rows aligned with `requirment/system_prototype_4.html` (PO / VR / عقارات). */
+/** Mock rows aligned with `requirment/system_prototype_4.html` (PO / VR / properties). */
 export type PoRow = {
   id: string;
   type: string;
-  /** عدد العقارات المتوقع من إنفاذ */
+  /** Expected property count from Enfath. */
   count: number;
-  /** صكوك / عقارات مسجّلة فعلياً */
+  /** Deeds / properties actually registered. */
   registered: number;
-  /** دراسات حالة مكتملة */
+  /** Completed case studies. */
   done: number;
   status: PoListStatus;
   date: string;
   dueDate: string;
   specialist: string;
-  /** اسم المشروع / وصف أمر العمل — يظهر كتلميح على رقم PO */
+  /** Project name / work-order description — shown as tooltip on the PO number. */
   project?: string;
-  /** أعضاء فريق المعاملة (أفاتارات متراكبة في القائمة) */
+  /** Transaction team members (stacked avatars in the list). */
   team?: string[];
   /** ISO-8601 — used to show newest POs first in the list. */
   createdAtUtc?: string;
@@ -422,7 +418,7 @@ export type StaffUserDetail = {
 
 export type StaffUser = {
   id: string;
-  /** ورشة الترقيم: الرقم المرجعي الداخلي US-{سنة}-{تسلسل ٥}. */
+  /** Numbering workshop: internal reference US-{year}-{5-digit sequence}. */
   referenceNumber?: string | null;
   name: string;
   role: string;
@@ -472,6 +468,7 @@ export const VALID_PAGE_IDS = new Set<PageId>([
   SYSTEM_FIELDS_CATALOG_NAV_ITEM.id,
   SYSTEM_SCREEN_CATALOG_NAV_ITEM.id,
   ...ORPHAN_SCREENS_PAGE_IDS,
+  "financial",
   "profile",
 ]);
 

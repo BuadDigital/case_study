@@ -31,10 +31,10 @@ import {
 import { apiConfig, fmt } from "./lib/shell-utils";
 
 /**
- * قسم أسلوب التكلفة — يملك مسودات التكلفة كاملة (البنود، غير المباشرة، الأعمار،
- * التقادم، التحليل) محلياً: الكتابة هنا لا تعيد رسم صدفة التقييم. يبقى مركّباً
- * (مخفياً) بعد أول زيارة حتى لا تضيع المسودات غير المحفوظة عند التنقل بين الشاشات.
- * الترطيب من دفعة الخادم يتم عبر hydrateKey — يزداد مع كل تحميل كامل فقط.
+ * Cost-approach section — owns full cost drafts (lines, indirects, ages,
+ * obsolescence, analysis) locally: typing here does not re-render the valuation shell. Stays mounted
+ * (hidden) after first visit so unsaved drafts survive screen switches.
+ * Hydrates from the server batch via hydrateKey — bumps on full load only.
  */
 export const CostApproachSection = memo(function CostApproachSection({
   valuationRequestId,
@@ -79,13 +79,13 @@ export const CostApproachSection = memo(function CostApproachSection({
   const [functionalObsRationale, setFunctionalObsRationale] = useState("");
   const [externalObs, setExternalObs] = useState("0");
   const [externalObsRationale, setExternalObsRationale] = useState("");
-  /** تحليل التكلفة — فارغ = يتولّد آلياً من المبررات (نموذج «مقترح حتى يُحرَّر»). */
+  /** Cost analysis — empty = auto-generated from rationales (“suggested until edited” model). */
   const [costAnalysisNotes, setCostAnalysisNotes] = useState("");
-  /** سحب بند تكلفة لإعادة ترتيبه داخل مجموعته (drag-to-reorder من النموذج التفاعلي). */
+  /** Drag a cost line to reorder within its group (drag-to-reorder from the interactive form). */
   const [dragCostId, setDragCostId] = useState<string | null>(null);
 
-  // الترطيب من دفعة الخادم — كل تحميل كامل (hydrateKey جديد) يعيد بذر المسودات؛
-  // التحديثات الصامتة لا تمسّها (نفس دلالة hydrateEdits في الصدفة سابقاً).
+  // Hydrate from the server batch — each full load (new hydrateKey) reseeds drafts;
+  // silent reloads leave them alone (same meaning as hydrateEdits in the shell previously).
   const hydratedKeyRef = useRef<number | null>(null);
   useEffect(() => {
     if (hydratedKeyRef.current === hydrateKey) return;
@@ -226,15 +226,15 @@ export const CostApproachSection = memo(function CostApproachSection({
     }
     setCostDraft(res.data.lines);
     showToast("تم حفظ أسلوب التكلفة", "success");
-    // تحديث صامت — لا وميض هيكل التحميل بعد الحفظ (كان تحديثاً كاملاً سابقاً).
+    // Silent reload — no loading-skeleton flash after save (used to be a full reload).
     onCostSaved(res.data);
   }
 
   const landComplete = !!cost?.landEstimateComplete;
 
-  // حسابات محلية حية بقواعد النموذج التفاعلي (الخادم يعيد الحساب عند الحفظ).
-  // useMemo + مسار واحد بدل map + ثلاثة reduce يعاد تشغيلها مع كل حرف في أي
-  // حقل بالشاشة، مع تمرير الدور الأول مرة بدل find لكل بند (rerender-memo).
+  // Live local calcs per interactive-form rules (server recalculates on save).
+  // useMemo + one pass instead of map + three reduces that re-ran on every keystroke in any
+  // field on screen, passing first-floor once instead of find-per-line (rerender-memo).
   const {
     firstFloorLine,
     computedLines,
@@ -296,7 +296,7 @@ export const CostApproachSection = memo(function CostApproachSection({
           ? COST_GROUP1_KEYS.has(o.key)
           : !COST_GROUP1_KEYS.has(o.key)),
     );
-  // العمر والإهلاك محلياً (حي — يطابق حساب الخادم عند الحفظ).
+  // Age and depreciation locally (live — matches server calc on save).
   const economicLocal = Number(economicAge.replace(",", ".")) || 0;
   const extLifeLocal = economicLocal + (Number(lifeExtension.replace(",", ".")) || 0);
   const actualLocal = Number(actualAge.replace(",", ".")) || 0;
@@ -305,17 +305,17 @@ export const CostApproachSection = memo(function CostApproachSection({
   const functionalLocal = Number(functionalObs.replace(",", ".")) || 0;
   const externalLocal = Number(externalObs.replace(",", ".")) || 0;
   const totalDepLocal = physicalLocal + functionalLocal + externalLocal;
-  // مواصفة النموذج: بلا سقف ١٠٠٪ — تجاوز التقادم يُنتج قيمة سالبة ويحجبه تنبيه m4.
+  // Form spec: no 100% cap — obsolescence overshoot yields a negative value and is gated by alert m4.
   const depValueLocal = (totalCostLocal * Math.max(totalDepLocal, 0)) / 100;
   const netValueLocal = totalCostLocal - depValueLocal;
   const landValueNow = cost?.landValueFromMarket ?? 0;
-  // costValue = landPart + netValue دائماً (landPart = 0 عند عدم اكتمال الأرض).
+  // costValue = landPart + netValue always (landPart = 0 when land is incomplete).
   const costValueLocal =
     netValueLocal + (!buildingOnly && landComplete ? landValueNow : 0);
   const developerProfitPct =
     Number((indirectDraft["developer_profit"]?.pct ?? "0").replace(",", ".")) || 0;
 
-  // تنبيهات أسلوب التكلفة — جدول محفزات النموذج التفاعلي.
+  // Cost-approach alerts — interactive-form trigger table.
   const costAlerts: { kind: "error" | "warn" | "ok"; title: string; body: string }[] = [];
   if (costDraft.length === 0)
     costAlerts.push({
@@ -419,9 +419,9 @@ export const CostApproachSection = memo(function CostApproachSection({
       body: "المدخلات ضمن الحدود المنهجية.",
     });
 
-  // تحليل التكلفة الآلي — buildCostNarrative من النموذج التفاعلي.
-  // memo + قِصر دائرة: النص متعدد الكيلوبايتات كان يُبنى مع كل حرف ثم يُهمل
-  // كلياً متى كان الحقل محرَّراً يدوياً (rerender-memo).
+  // Auto cost analysis — buildCostNarrative from the interactive form.
+  // memo + short-circuit: multi-KB text used to rebuild on every keystroke then be discarded
+  // entirely whenever the field was manually edited (rerender-memo).
   const costNarrativeDirty = costAnalysisNotes.trim().length > 0;
   const costNarrativeAuto = useMemo(() => {
     if (costNarrativeDirty) return "";
@@ -500,7 +500,7 @@ export const CostApproachSection = memo(function CostApproachSection({
   });
   const addCostLine = (partial: Partial<ValuationCostLineDto>) =>
     setCostDraft([...costDraft, blankCostLine(partial)]);
-  /** إدراج بند مخصص بعد صف محدد — يرث مجموعة الصف (hover-insert من النموذج). */
+  /** Insert a custom line after a given row — inherits the row’s group (hover-insert from the form). */
   const insertCostLineAfter = (idx: number) => {
     const anchor = costDraft[idx];
     if (!anchor) return;
@@ -514,7 +514,7 @@ export const CostApproachSection = memo(function CostApproachSection({
     );
     setCostDraft(next);
   };
-  /** نقل بند مسحوب إلى موضع صف الهدف — يُرفض عبور المجموعات (كما في النموذج). */
+  /** Move a dragged line to the target row position — cross-group moves are rejected (as in the form). */
   const moveCostLine = (sourceId: string, targetIdx: number) => {
     const sourceIdx = costDraft.findIndex((l) => l.id === sourceId);
     const target = costDraft[targetIdx];
@@ -934,7 +934,7 @@ export const CostApproachSection = memo(function CostApproachSection({
                           </button>
                         </td>
                       </tr>
-                      {/* شريط إدراج بين الصفوف (hover-insert) — بند مخصص يرث المجموعة */}
+                      {/* Between-row insert bar (hover-insert) — custom line inherits the group */}
                       <tr>
                         <td colSpan={7} className="border-0 p-0">
                           <div className="flex h-2.5 items-center justify-center">
@@ -1230,7 +1230,7 @@ export const CostApproachSection = memo(function CostApproachSection({
         </Card>
       </div>
 
-      {/* النتائج والتوصيات — مواصفة النموذج التفاعلي */}
+      {/* Results and recommendations — interactive-form spec */}
       <h2 className="mb-3 mt-0 text-[17px] font-extrabold text-heading">
         النتائج والتوصيات
       </h2>
@@ -1361,8 +1361,8 @@ export const CostApproachSection = memo(function CostApproachSection({
   );
 });
 
-/** بطاقة أساس/وحدة التكلفة على شاشة التكلفة — تحفظ فوق آخر إعدادات محفوظة.
- * مسوداتها محلية؛ الصدفة تعيد تركيبها (key) عند تغيّر القيم المحفوظة. */
+/** Cost basis/unit card on the cost screen — saves over the last saved settings.
+ * Drafts are local; the shell remounts it (key) when saved values change. */
 export const CostBasisUnitCard = memo(function CostBasisUnitCard({
   savedBasisKey,
   savedUnitKey,

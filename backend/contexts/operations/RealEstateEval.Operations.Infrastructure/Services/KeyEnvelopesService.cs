@@ -190,7 +190,7 @@ public sealed partial class KeyEnvelopesService : IKeyEnvelopesService
             Texts.NullIfBlank(request.Notes),
             operationsTaskId);
 
- // ورشة الترقيم (بندا البتّ 2 و5): الرقم المرجعي للظرف يُخصَّص عند التسجيل ويُعرض.
+ // Numbering session (bit lines 2 and 5): The envelope reference number is assigned at registration and displayed.
         var (referenceNumber, referenceError) = await ReferenceSequenceAllocator.AllocateYearlyAsync(
             _ops,
             DatabaseSchemas.Operations,
@@ -222,7 +222,7 @@ public sealed partial class KeyEnvelopesService : IKeyEnvelopesService
 
         if (scenario == KeyReceiveScenarios.Court)
         {
- // Receipt revenue is billed to إنفاذ by finance, not owed to a party at a configured rate,
+ // Receipt revenue is billed to Enfaz by finance, not owed to a party at a configured rate,
  // so registration marks the entitlement and stops there. Stamping an amount from the
  // pricing table produced a figure nobody had agreed to bill.
             entity.MarkCourtRevenueEntitlement(now);

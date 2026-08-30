@@ -45,7 +45,7 @@ public static class WorkflowTaskPhaseRules
         return string.IsNullOrEmpty(deed) ? "—" : deed;
     }
 
-    // كانت نسخة حرفية من الخريطة المشتركة — منتِجان لنفس العنوان المخزّن في الجدول الزمني.
+    // Was a literal copy of the shared map — two producers of the same timeline-stored title.
     public static string PartyAssignedTitle(WorkflowTaskKind kind) =>
         WorkflowTaskKindLabels.AssignedTitleAr(kind);
 
@@ -60,7 +60,7 @@ public static class WorkflowTaskPhaseRules
 
     public static TaskDistributionDraftDto NormalizeDistribution(TaskDistributionDraftDto dto)
     {
- // المراجع الحكومي يُسند من مهام العمليات (court_visit) وليس من توزيع المعاملات.
+ // Government reviewer is assigned from operations tasks (court_visit), not from party distribution.
         dto.GovernmentAuditor = false;
         dto.GovernmentAuditorId = "";
         dto.OperationsCoordinatorId = "";

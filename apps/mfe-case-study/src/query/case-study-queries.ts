@@ -31,7 +31,7 @@ export async function loadPoRecordsWithTaskSync() {
   // Quiet slot sync: keep primary-data task slots aligned without broadcasting
   // TASKS_CHANGED (that would re-invalidate workflow-tasks on every PO warm
   // and compete with page navigation). Mutating paths already notify.
-  // المزامنة مستقلة عن السجلات — بالتوازي لا تسلسلاً (async-parallel).
+  // Sync is independent of records — run in parallel, not sequentially (async-parallel).
   const [records, sync] = await Promise.all([
     loadPoRecords(),
     syncTasksFromPoRecords({ notify: false }),

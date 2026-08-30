@@ -17,7 +17,7 @@ export type PropertyDetailPartySubmission = {
   taskStatusLabel?: string;
   /** ISO timestamp when the party submitted (for party cards / timeline). */
   submittedAtUtc?: string | null;
-  /** Specialist acceptance — only accepted packages feed إنفاذ. */
+  /** Specialist acceptance — only accepted packages feed Infath. */
   acceptedAtUtc?: string | null;
   acceptedByName?: string | null;
   /** Raw package workflow status for accept/return actions. */
@@ -93,7 +93,7 @@ export type EngineeringSurveySubmissionSnapshot = {
   westBoundary: string;
   westBoundaryLengthM: string;
   surveyNotes: string;
-  /** ملاحظة تبويب «ملاحظة» في مساحة المكتب الهندسي */
+  /** Note for the «Note» tab in the engineering-office workspace */
   transactionNote: string;
   updatedAtUtc: string;
   submittedAtUtc?: string;

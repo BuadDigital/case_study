@@ -11,17 +11,17 @@ export type PoEnfazRevenueLineDto = {
   propertyLabel: string;
   workStatus: string;
   workStatusLabel: string;
-  /** دخل دراسة المعاملة */
+  /** Transaction study income */
   caseStudyFeeSar: number;
-  /** دخل تكاليف الرفع */
+  /** Survey-cost income */
   surveyFeeSar: number;
-  /** أتعاب مفاتيح (يدوي عند وجود استحقاق) */
+  /** Key fees (manual when an entitlement exists) */
   keyFeeSar: number;
   keyEntitlementEnvelopeId: string | null;
   hasKeyEntitlement: boolean;
-  /** مراجع مرفقات ظرف المفتاح — عرض فقط */
+  /** Key-envelope attachment refs — display only */
   keyAttachmentIds: string[];
-  /** مجموع البنود */
+  /** Line-item total */
   enfazFeeSar: number;
   includedInBilling: boolean;
 };
@@ -39,7 +39,7 @@ export type PoEnfazBillingDto = {
   collectedAmountSar: number;
   collectedAtUtc: string | null;
   isOverdue: boolean;
-  /** مرفقات الفاتورة / ظروف المفاتيح — عرض فقط */
+  /** Invoice attachments / key envelopes — display only */
   attachmentIds: string[];
 };
 

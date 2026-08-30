@@ -12,7 +12,7 @@ import { getCachedOrganizationSettings } from "@platform/app-shared/organization
 import { escapeHtml } from "@platform/app-shared/lib/html-escape";
 import { PROPERTY_IDENTIFIER_COLUMN_LABEL } from "./po-intake-data";
 
-// افتراضيات عند برود كاش إعدادات المنشأة فقط — المصدر الحاكم أصول المنشأة المشتركة (قرار 25).
+// Defaults only when facility-settings cache is cold — shared facility assets remain the source of truth (decision 25).
 const DEFAULT_COMPANY_CR = "4030297680";
 const DEFAULT_LETTERHEAD_PATH = "/case-study/ejadah-letterhead.png";
 const NAVY = "#0F2A4E";

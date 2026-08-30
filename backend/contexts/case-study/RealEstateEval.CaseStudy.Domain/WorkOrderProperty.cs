@@ -6,7 +6,7 @@ public class WorkOrderProperty
 {
     public Guid Id { get; set; }
     public Guid WorkOrderId { get; set; }
- /// <summary>ورشة الترقيم: الرقم المرجعي الداخلي للمعاملة TX-{سنة}-{تسلسل ٥}.</summary>
+ /// <summary>Numbering shop: Internal transaction reference number TX-{year}-{sequence 5}.</summary>
     public string? ReferenceNumber { get; set; }
     public PropertyIdentifierType IdentifierType { get; set; }
  /// <summary>Deed kind — traditional / registered title.</summary>
@@ -26,11 +26,11 @@ public class WorkOrderProperty
  /// <summary>Real-estate registration date — registered-title path (yyyy-MM-dd).</summary>
     public string? RealEstateRegDate { get; set; }
     public string? OwnerName { get; set; }
- /// <summary>JSON array of {name, sharePct} — الملاك وحصصهم from the deed transcription.</summary>
+ /// <summary>JSON array of {name, sharePct} — Owners and Their Shares from the dead transcription.</summary>
     public string? DeedOwnersJson { get; set; }
- /// <summary>Manual نوع الملكية override — see <see cref="OwnershipTypes"/>. Null = derived.</summary>
+ /// <summary>Manual Ownership Type override — see <see cref="OwnershipTypes"/>. Null = derived.</summary>
     public string? OwnershipType { get; set; }
- /// <summary>True when the valuer overrode the derived ownership type (e.g. استثمار).</summary>
+ /// <summary>True when the appraiser overrode the derived ownership type (e.g. investment).</summary>
     public bool OwnershipTypeIsManual { get; set; }
  /// <summary>yes / no — property restrictions (bourse stage).</summary>
     public string? RestrictionsPresent { get; set; }
@@ -99,9 +99,9 @@ public class WorkOrderProperty
  /// <summary>Site map URL — initial data (ad-hoc when no plan/plot).</summary>
     public string? LocationMapUrl { get; set; }
 
-    /// <summary>محضر التجزئة — رقم.</summary>
+    /// <summary>Retail report — No.</summary>
     public string? PartitionMinutesNumber { get; set; }
-    /// <summary>محضر التجزئة — تاريخ.</summary>
+    /// <summary>Retail Minutes — History.</summary>
     public string? PartitionMinutesDate { get; set; }
 
     /// <summary>Finishing level: luxury | medium | ordinary | none.</summary>
@@ -109,21 +109,27 @@ public class WorkOrderProperty
  /// <summary>Structural system: concrete | metal | mixed | other.</summary>
     public string? FinishingStructure { get; set; }
 
+ /// <summary>
+ /// JSON bag for specialist valuation extras that are not first-class columns yet:
+ /// ESG groups, search-scope notes, print attachment keys, Infath deposit draft.
+ /// </summary>
+    public string? SpecialistReportExtrasJson { get; set; }
+
  /// <summary>Are there buildings/structures to value? yes | no | ""</summary>
     public string HasStructuresToValue { get; set; } = "";
 
- // حدود المعاينة (القرار 24 + ق-7) — نمط سؤال الإنشاءات: أعمدة على العقار.
- /// <summary>نطاق المعاينة: full | external | desktop | "" (لم يُلتقط).</summary>
+ // Inspection Limitations (Decision 24 + Q-7) — Construction Question Pattern: Columns on property.
+ /// <summary>Inspection Scope: full | external | desktop | “(Not captured).</summary>
     public string InspectionScopeKey { get; set; } = "";
- /// <summary>سبب تقييد/تعذّر المعاينة — إلزامي عند نطاق غير كامل.</summary>
+ /// <summary>Reason why Inspector is restricted/unabled — Mandatory when range is incomplete.</summary>
     public string? InspectionRestrictionReason { get; set; }
- /// <summary>JSON — وحدات لم تُعايَن (عدد + سبب لكل حالة).</summary>
+ /// <summary>JSON — unseen units (number + reason for each case).</summary>
     public string? UninspectedUnitsJson { get; set; }
- /// <summary>ق-7 — اعتماد المقيّم المعتمد لنطاق «مكتبية عن بُعد».</summary>
+ /// <summary>Q-7 — certified appraiser approval for the “remote desktop” scope.</summary>
     public string? RemoteInspectionApprovedBy { get; set; }
     public DateTime? RemoteInspectionApprovedAtUtc { get; set; }
 
- /// <summary>ق-9 (الختام الثاني): رفع المعاملة على إنفاذ — التسليم الشامل بعد شهادة الإيداع.</summary>
+ /// <summary>Q-9 (Second End): Upload the Transaction over Enfaz — Complete Delivery after Deposit Certificate.</summary>
     public DateTime? EnfazHandoverAtUtc { get; set; }
     public string? EnfazHandoverByUserId { get; set; }
 

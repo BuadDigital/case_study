@@ -15,7 +15,7 @@ export function useAuth() {
     hasCapability,
     rolePages,
   } = usePrototype();
-  // مرجع الجلسة مستقر (كاش بالسلسلة الخام في auth-client) فيصلح كاعتمادية.
+  // Session ref is stable (raw-string cache in auth-client) so it works as a dependency.
   const session = getValidAuthSession();
 
   const logout = useCallback(() => {
@@ -47,7 +47,7 @@ export function useAuth() {
     })();
   }, []);
 
-  // قيمة مستقرة الهوية — كائن جديد كل تصيير كان يكسر أي memo/dep يعتمد عليها
+  // Stable-identity value — a new object each render used to break any memo/dep on it
   // (rerender-split-combined-hooks).
   return useMemo(
     () => ({

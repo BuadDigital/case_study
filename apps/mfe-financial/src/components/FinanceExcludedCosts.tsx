@@ -30,8 +30,8 @@ import {
 } from "../lib/finance-tw";
 
 /**
- * مستبعدة: بنود مخسومة/مستبعدة قبل الاستحقاق + مسيرات ملغاة (سجل).
- * وفق مرجع عرض فقط.
+ * Excluded: written-off/excluded lines before entitlement + cancelled payrolls (log).
+ * Display-reference only.
  */
 export function FinanceExcludedCosts({
   assigneeId = null,

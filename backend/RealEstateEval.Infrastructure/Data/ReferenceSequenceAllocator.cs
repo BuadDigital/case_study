@@ -5,13 +5,13 @@ using RealEstateEval.Domain;
 namespace RealEstateEval.Infrastructure.Data;
 
 /// <summary>
-/// تخصيص الأرقام المرجعية السنوية (ورشة الترقيم — بنود البتّ 1–2): كل سياق مالك
-/// يخصص محلياً من جدوله <c>ReferenceSequences</c> — لا نداء عابر للخدمات ولا
-/// دورة اعتماديات. الصيغة نفسها من <see cref="ReferenceNumbering.Format"/> حصراً.
+/// Assignment of annual reference numbers (numbering shop — bit lines 1–2): each owner context
+/// Allocates locally from its table <c>ReferenceSequences</c> — no transient call to services or
+/// Credentials cycle. The same format is exclusively from <see cref="ReferenceNumbering.Format"/>.
 /// </summary>
 public static class ReferenceSequenceAllocator
 {
- /// <summary>تحميل زائد للسياقات الملموسة — يفوّض إلى مسار الواجهات الأولية.</summary>
+ /// <summary>Overloading of concrete contexts — delegated to the primary interfaces path.</summary>
     public static Task<(string? Reference, string? Error)> AllocateYearlyAsync(
         DbContext db,
         string schema,
@@ -28,9 +28,9 @@ public static class ReferenceSequenceAllocator
             cancellationToken);
 
  /// <summary>
- /// يخصص الرقم التالي للبادئة في سنة «الآن» (بتوقيت الرياض) ويعيده مُنسَّقاً.
- /// upsert ذري على Npgsql؛ ومسار EF بديل لمزودي الاختبار. واجهات أولية كي
- /// تعمل عبر facade المستودعات (ICaseStudyRepository) كما عبر السياقات الملموسة.
+ /// Assigns the next number to the prefix in the year “now” (Riyadh time) and returns it formatted.
+ /// atomic upsert on npgsql; An alternative EF pathway for test providers. Primary facades ki
+ /// It operates across facade repositories (ICaseStudyRepository) as well as across concrete contexts.
  /// </summary>
     public static async Task<(string? Reference, string? Error)> AllocateYearlyAsync(
         DatabaseFacade database,
@@ -49,8 +49,8 @@ public static class ReferenceSequenceAllocator
 
         if (database.IsNpgsql())
         {
- // المخطط واسم الجدول ثابتان من السياق المالك لا من مدخلات المستخدم —
- // الدمج النصي آمن هنا.
+ // The schema and table name are fixed from the owner context, not from user input —
+ // Text merging is safe here.
             var table = ReferenceSequenceModel.TableNameFor(schema);
             var sql =
                 $$"""

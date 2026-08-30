@@ -43,8 +43,8 @@ public sealed class OrganizationSettingsService : IOrganizationSettingsService
             .FirstOrDefaultAsync(cancellationToken);
         var dto = row is null ? Defaults() : FromRow(row);
 
-        // قرار 23: الحزمة الشُحنة (الافتراضية) نسخة 1 ضمنياً؛ سجل النسخ يبدأ فعلياً مع
-        // أول حفظ يمس الكتلة المُدارة.
+        // Decision 23: Seed Package (default) version 1 implicit; Version History actually starts with
+        // The first save touches the managed block.
         var latestVersion = await _db.ValuationReportTextPackages.AsNoTracking()
             .OrderByDescending(p => p.Version)
             .Select(p => (int?)p.Version)
@@ -69,8 +69,8 @@ public sealed class OrganizationSettingsService : IOrganizationSettingsService
         var row = await _db.OrganizationSettings.FirstOrDefaultAsync(cancellationToken);
         var now = _time.UtcNow();
 
-        // قرار 23: أي تعديل في الكتلة المُدارة للنصوص يصدر حزمة نصوص جديدة كاملة برقم
-        // نسخة واحد للحزمة — سجل نسخ غير قابل للتعديل.
+        // Decision 23: Any modification in the managed text block releases a complete new text package with number
+        // one version for the package — an immutable version history.
         var textPackageVersion = await EnsureTextPackageVersionAsync(
             current.ValuationReport, next.ValuationReport, actorId, now, cancellationToken);
         next.ValuationReport.TextPackageVersion = textPackageVersion;
@@ -94,7 +94,7 @@ public sealed class OrganizationSettingsService : IOrganizationSettingsService
         }
 
         next = FromRow(row);
-        // إعادة البناء عبر التطبيع تُسقط الرقم المحسوب — يُعاد ختمه من السجل.
+        // Reconstruction via normalization drops the calculated number — it is re-stamped from the record.
         next.ValuationReport.TextPackageVersion = textPackageVersion;
  // Audit without secret values — only configuration shape.
         _db.AuditLogs.Add(_audit.Create(
@@ -117,9 +117,9 @@ public sealed class OrganizationSettingsService : IOrganizationSettingsService
     }
 
  /// <summary>
- /// قرار 23: الكتلة المُدارة = الحقول الستة (معايير مهنية/استقلالية/قيود/شروط/IVS/مسرد).
- /// الحزمة الشُحنة تُسجَّل «نسخة 1» عند أول مساس بالكتلة، وأي اختلاف لاحق يضيف نسخة
- /// جديدة كاملة — الصفوف لا تُعدَّل أبداً.
+ /// Decision 23: Managed block = 6 fields (Professional Standards/Autonomy/Restrictions/Conditions/IVS/Glossary).
+ /// Seed Package “Copy 1” is recorded when the block is first touched, any subsequent variation adds a copy
+ /// Completely new — rows are never modified.
  /// </summary>
     private async Task<int> EnsureTextPackageVersionAsync(
         OrganizationValuationReportSettingsDto current,
@@ -143,7 +143,7 @@ public sealed class OrganizationSettingsService : IOrganizationSettingsService
                 Version = ReportTextPackageRules.InitialVersion,
                 TextsJson = currentJson,
                 CreatedAtUtc = nowUtc,
-                CreatedByUserId = null, // الحزمة الشُحنة — ليست تعديل مستخدم.
+                CreatedByUserId = null, // Seed package — not a user edit.
             });
             if (string.Equals(nextJson, currentJson, StringComparison.Ordinal))
                 return ReportTextPackageRules.InitialVersion;
@@ -174,7 +174,7 @@ public sealed class OrganizationSettingsService : IOrganizationSettingsService
         return version;
     }
 
- /// <summary>ترتيب ثابت للمقارنة الحرفية — الحقول الستة فقط (لا رقم النسخة).</summary>
+ /// <summary>Fixed order for literal comparison — only the six fields (no version number).</summary>
     private static string CanonicalTextsJson(OrganizationValuationReportSettingsDto vr) =>
         JsonSerializer.Serialize(new
         {
@@ -260,7 +260,7 @@ public sealed class OrganizationSettingsService : IOrganizationSettingsService
                 Branding = dto.Branding ?? new OrganizationBrandingSettingsDto(),
                 Communications = NormalizeCommunications(dto.Communications),
                 Sla = NormalizeSla(dto.Sla),
- // كانتا تسقطان هنا فتضيع القيم المحفوظة عند القراءة — تصحيح.
+ // They were dropped here and the saved values were lost when reading - Correction.
                 Valuation = dto.Valuation ?? new OrganizationValuationSettingsDto(),
                 ValuationReport = NormalizeValuationReport(
                     dto.ValuationReport ?? new OrganizationValuationReportSettingsDto()),
@@ -406,7 +406,7 @@ public sealed class OrganizationSettingsService : IOrganizationSettingsService
             UpdatedAtUtc = _time.UtcNow(),
         };
 
-    /// <summary>نصوص تقرير التقييم: فراغ ⟵ افتراضي القالب؛ قص الحقول الطويلة.</summary>
+    /// <summary>Valuation Report text: blank ⟵ template default; trim long fields.</summary>
     private static OrganizationValuationReportSettingsDto NormalizeValuationReport(
         OrganizationValuationReportSettingsDto dto) => new()
     {

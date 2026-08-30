@@ -7,7 +7,7 @@ import { deedsMatch } from "./deed-number";
 export type PropertyOpsScopeInput = {
   poNumber: string;
   deedNumber: string;
-  /** Display form (e.g. with مدينة) for softer deed matching. */
+  /** Display form (e.g. with city) for softer deed matching. */
   deedDisplay?: string;
 };
 

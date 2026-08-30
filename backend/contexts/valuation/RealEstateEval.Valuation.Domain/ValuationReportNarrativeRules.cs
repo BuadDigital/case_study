@@ -35,14 +35,14 @@ public static class ValuationReportNarrativeRules
         string? basisLabelAr,
         string? premiseLabelAr,
         string? restrictionsLine,
- // القرار 24 — نص تحفّظ حدود المعاينة المركّب آلياً (فارغ عند معاينة كاملة).
+ // Decision 24 — auto-composed inspection-boundary caveat text (empty for full inspection).
         string? inspectionReservationLine = null,
- // بند الأخصائي (IVS 101 1-20/ل): «لا» ⟵ نفي قياسي · «نعم» ⟵ التوضيح يحل محله.
+ // Specialist clause (IVS 101 1-20/l): "No" ⟵ standard denial · "Yes" ⟵ details replace it.
         bool externalSpecialistUsed = false,
         string? externalSpecialistDetails = null,
- // بنود منتقاة من مكتبة إعدادات تبويب تقرير التقييم + إضافات المقيّم الحرة.
+ // Items selected from the valuation-report tab settings library + valuer free-text additions.
         IReadOnlyList<string>? selectedAssumptions = null,
- // سطر الأثر الرجعي عند اختياره (التاريخ + المبرر).
+ // Retrospective line when selected (date + rationale).
         string? retrospectiveLine = null)
     {
         var bits = new List<string>
@@ -71,8 +71,8 @@ public static class ValuationReportNarrativeRules
         if (!string.IsNullOrWhiteSpace(inspectionReservationLine))
             bits.Add(inspectionReservationLine.Trim());
 
- // بند الأخصائي — الأخصائي الخارجي الذي استعان به المقيّم لمهمة التقييم حصراً
- // (لا أخصائي الإسناد ولا أخصائي دراسة الحالة — دوران داخليان في سير المعاملة).
+ // Specialist clause — the external specialist the valuer engaged for this valuation only
+ // (not the assignment specialist nor the case-study specialist — internal transaction roles).
         bits.Add(externalSpecialistUsed && !string.IsNullOrWhiteSpace(externalSpecialistDetails)
             ? $"استُعين في هذه المهمة بأخصائي خارجي: {externalSpecialistDetails.Trim()}، وتقريره مرفق بالتقرير."
             : "لم يستعن المقيّم بأي أخصائي خارجي في أداء مهمة التقييم هذه.");

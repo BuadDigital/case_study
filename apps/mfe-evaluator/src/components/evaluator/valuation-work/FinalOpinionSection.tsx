@@ -39,10 +39,10 @@ import {
 import { apiConfig, fmt, JUSTIFICATION_MIN_LENGTH } from "./lib/shell-utils";
 
 /**
- * شاشة رأي القيمة النهائي — تملك مسودات التوفيق (الأوزان، المبررات، أساس القيمة،
- * خصم التصفية، معالجات التنبيهات) محلياً: الكتابة هنا لا تعيد رسم صدفة التقييم.
- * تبقى مركّبة (مخفية) بعد أول زيارة حفاظاً على المسودات غير المحفوظة، وتترطب من
- * دفعة الخادم عبر hydrateKey (تحميل كامل)؛ التحديث الصامت يدمج قيم الأساليب فقط.
+ * Final-opinion screen — owns reconciliation drafts (weights, rationales, value basis,
+ * liquidation discount, alert dispositions) locally: typing here does not re-render the valuation shell.
+ * Stays mounted (hidden) after first visit so unsaved drafts survive; hydrates from
+ * the server batch via hydrateKey (full load); silent reload merges approach values only.
  */
 export const FinalOpinionSection = memo(function FinalOpinionSection({
   valuationRequestId,
@@ -77,8 +77,8 @@ export const FinalOpinionSection = memo(function FinalOpinionSection({
   );
   const [methodsRationale, setMethodsRationale] = useState("");
   const [finalRoundDecimals, setFinalRoundDecimals] = useState("0");
-  // اشتقاق صرف من نوع الإسناد — لا يضبطه المستخدم ولا يُستبدل بالمحفوظ
-  // (rerender-derived-state-no-effect؛ كان state تكتبه خمسة مواضع بنفس القيمة).
+  // Pure derivation from assignment type — not user-controlled and not overwritten by saved state
+  // (rerender-derived-state-no-effect; was state written from five places with the same value).
   const basisOfValueKey = useMemo(
     () =>
       assignmentType?.trim()
@@ -94,12 +94,12 @@ export const FinalOpinionSection = memo(function FinalOpinionSection({
     Record<string, { overrideRationale: string; acknowledged: boolean }>
   >({});
 
-  /* ─── ق-6: الإصدار ثنائي المرحلة + شهادة الإيداع ─── */
+  /* ─── Rule Q-6: two-stage issuance + deposit certificate ─── */
   const [issuance, setIssuance] = useState<ValuationReportIssuanceStateDto | null>(null);
   const [issuanceBusy, setIssuanceBusy] = useState(false);
   const [depositCodeDraft, setDepositCodeDraft] = useState("");
   const [certificateFile, setCertificateFile] = useState<File | null>(null);
-  // تكميلية ق-9 (ر2): سبب إعادة فتح دور التقييم بعد الإيداع.
+  // Supplement Rule Q-9 (R2): reason for reopening the valuation cycle after deposit.
   const [reopenReason, setReopenReason] = useState("");
 
   const refreshIssuance = async () => {
@@ -114,7 +114,7 @@ export const FinalOpinionSection = memo(function FinalOpinionSection({
 
   useEffect(() => {
     void refreshIssuance();
-    // الحالة تُنعَّش أيضاً بعد حفظ الترجيح (تغيّر الحواجب).
+    // State is also refreshed after reconciliation save (gates may change).
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [valuationRequestId, gates?.allowsIssuance]);
 
@@ -143,8 +143,8 @@ export const FinalOpinionSection = memo(function FinalOpinionSection({
     setIssuanceBusy(true);
     let certificateContentBase64: string | null = null;
     if (certificateFile) {
-      // ترميز مُقسّم عبر المساعد المشترك — الحلقة حرفاً حرفاً كانت تجمّد
-      // التبويب ثواني على صور الشهادات الكبيرة (js-perf).
+      // Chunked encoding via the shared helper — a char-by-char loop used to freeze
+      // the tab for seconds on large certificate images (js-perf).
       certificateContentBase64 = await fileToBase64(certificateFile);
     }
     const res = await registerDepositCertificate(config, valuationRequestId, {
@@ -162,8 +162,8 @@ export const FinalOpinionSection = memo(function FinalOpinionSection({
     showToast("سُجِّلت الشهادة وصدرت النسخة النهائية (ق-6)", "success");
   };
 
-  // ر2: النسخة المودعة لا تُعدَّل — تُعلَّم «ملغاة — حلّت محلها نسخة أحدث» وتبقى
-  // بالملف، ويُفتح دور تقييم جديد ينتهي بنسخة إيداع N+1 (موافقة مشرف القسم شرط الخادم).
+  // R2: deposited version is not edited — marked “superseded — replaced by a newer version” and kept
+  // on file; a new valuation cycle opens ending in deposit version N+1 (section-supervisor approval is a server rule).
   const reopenIssuance = async () => {
     const config = apiConfig();
     if (!config || !valuationRequestId) return;
@@ -206,7 +206,7 @@ export const FinalOpinionSection = memo(function FinalOpinionSection({
     URL.revokeObjectURL(url);
   };
 
-  // قوائم التقييم من الاستعلام المشترك — كان GET مكرراً مع تبويب المراجعة النهائية.
+  // Valuation lists from the shared query — used to duplicate a GET with the final-review tab.
   const { data: valuationLists } = useValuationListsQuery();
   const basisOptions = useMemo(() => {
     const bases = valuationLists
@@ -220,7 +220,7 @@ export const FinalOpinionSection = memo(function FinalOpinionSection({
       : [];
   }, [valuationLists]);
 
-  // أساس القيمة دائماً من أمر العمل (PO) — لا نفرض تصفية عند غياب النوع.
+  // Value basis always comes from the work order (PO) — do not force liquidation when type is absent.
   useEffect(() => {
     if (!assignmentType?.trim()) return;
     const next = basisOfValueKeyForAssignment(assignmentType);
@@ -236,8 +236,8 @@ export const FinalOpinionSection = memo(function FinalOpinionSection({
     }
   }, [assignmentType]);
 
-  // الترطيب: مفتاح جديد = تحميل كامل (بذر شامل)؛ نفس المفتاح مع دفعة جديدة = تحديث
-  // صامت يدمج قيم الأساليب المحسوبة ويبقي أوزان/مبررات المستخدم كما هي.
+  // Hydration: new key = full load (full reseed); same key with a new batch = silent
+  // reload that merges computed approach values and keeps user weights/rationales.
   const hydratedKeyRef = useRef<number | null>(null);
   useEffect(() => {
     if (hydratedKeyRef.current === hydrateKey) {
@@ -279,7 +279,7 @@ export const FinalOpinionSection = memo(function FinalOpinionSection({
     setReconMethods(recon.methods);
     setMethodsRationale(recon.methodsRationale ?? "");
     setFinalRoundDecimals(String(recon.finalRoundDecimals ?? 0));
-    // أساس القيمة من أمر العمل (PO) فقط — لا يُستبدل بما حُفظ سابقاً في التسوية.
+    // Value basis from the work order (PO) only — not overwritten by previously saved reconciliation.
     if (assignmentType?.trim()) {
       const nextBasis = basisOfValueKeyForAssignment(assignmentType);
       let nextPremise = recon.valuePremiseKey || "";
@@ -307,12 +307,12 @@ export const FinalOpinionSection = memo(function FinalOpinionSection({
     setAlertOverrides(ovMap);
   }, [hydrateKey, recon, assignmentType]);
 
-  /* ─── حساب رأي القيمة الحي (مواصفة النموذج التفاعلي) ─── */
+  /* ─── Live value-opinion calc (interactive-form spec) ─── */
   const finalComputed = useMemo(() => {
     const weightSumLocal = reconMethods.reduce((s, m) => s + (m.weightPct || 0), 0);
     const reconWeightsBad =
       reconMethods.length >= 2 && Math.round(weightSumLocal) !== 100;
-    // مواصفة النموذج التفاعلي: القيم كما هي (قد تكون جزئية أو سالبة) — الاعتماد هو الحاجز.
+    // Interactive-form spec: values as-is (may be partial or negative) — adoption is the gate.
     const weightedLocal =
       reconMethods.length === 0
         ? 0
@@ -323,7 +323,7 @@ export const FinalOpinionSection = memo(function FinalOpinionSection({
               0,
             );
 
-    // اكتمال المؤشرات كما في النموذج: السوق = مقارن معتمد؛ التكلفة = بنود + عمر ممتد (+ أرض ما لم يكن «مبنى فقط»).
+    // Indicator completeness as in the form: market = adopted comparable; cost = lines + extended life (+ land unless building-only).
     const costBuildReady =
       (cost?.lines?.length ?? 0) > 0 &&
       (cost?.directCostTotal ?? 0) > 0 &&
@@ -352,7 +352,7 @@ export const FinalOpinionSection = memo(function FinalOpinionSection({
     const soleCost =
       reconMethods.length === 1 && reconMethods[0]?.approachKind === "cost";
 
-    // buildOpinion — النص الآلي للرأي النهائي.
+    // buildOpinion — auto-generated final-opinion text.
     const basisLabel =
       basisOptions.find((o) => o.value === basisOfValueKey)?.label ??
       basisOfValueKey;
@@ -419,7 +419,7 @@ export const FinalOpinionSection = memo(function FinalOpinionSection({
     if (!config || !valuationRequestId) return;
     onSavingChange(true);
     const res = await saveValuationReconciliation(config, valuationRequestId, {
-      // النص الآلي يُثبَّت عند الحفظ ما لم يحرره المقيّم (نموذج «آلي حتى يُحرَّر»).
+      // Auto text is pinned on save unless the appraiser edited it (“auto until edited” model).
       methodsRationale: methodsRationale.trim() || finalComputed.opinionAuto,
       finalRoundDecimals: Number.parseInt(finalRoundDecimals, 10) || 0,
       basisOfValueKey,
@@ -460,7 +460,7 @@ export const FinalOpinionSection = memo(function FinalOpinionSection({
         : "تم حفظ رأي القيمة النهائي",
       "success",
     );
-    // تحديث بوابات الإصدار والتنبيهات بعد الحفظ (المعالجات تدخل في التقييم فوراً).
+    // Refresh issuance gates and alerts after save (dispositions apply to evaluation immediately).
     onReconSaved(res.data);
   }
 
@@ -475,7 +475,7 @@ export const FinalOpinionSection = memo(function FinalOpinionSection({
       return;
     }
     try {
-      // تحميل شرطي — بنّاء المعاينة يُجلب عند أول نقرة لا مع حزمة الشاشة.
+      // Lazy load — preview builder is fetched on first click, not with the screen bundle.
       const { openValuationReportPreview } = await import(
         "../../../lib/evaluator/valuation-report-preview"
       );
@@ -498,12 +498,12 @@ export const FinalOpinionSection = memo(function FinalOpinionSection({
     methodComplete,
     opinionAuto,
   } = finalComputed;
-  // محرَّر يدوياً فقط عندما يختلف عن النص الآلي (الحفظ يثبّت الآلي دون اعتباره تحريراً).
+  // Treated as manually edited only when it differs from auto text (save pins auto without counting as an edit).
   const opinionDirty =
     methodsRationale.trim().length > 0 &&
     methodsRationale.trim() !== opinionAuto.trim();
 
-  // مسار واحد بدل filter مرتين في نفس التصيير (js-combine-iterations).
+  // Single pass instead of filtering twice in the same render (js-combine-iterations).
   const triggeredAlerts = gates
     ? gates.methodologyAlerts.filter((a) => a.triggered)
     : [];
@@ -701,7 +701,7 @@ export const FinalOpinionSection = memo(function FinalOpinionSection({
               </label>
             </div>
 
-            {/* دفتر القيمة — مواصفة النموذج التفاعلي (invoiceRows) */}
+            {/* Value ledger — interactive-form spec (invoiceRows) */}
             <div className="mb-4 overflow-hidden rounded-[10px] border border-border">
               {soleCost && !buildingOnly ? (
                 <>
@@ -825,7 +825,7 @@ export const FinalOpinionSection = memo(function FinalOpinionSection({
               </div>
             </div>
 
-            {/* نص الرأي النهائي — آلي حتى يُحرَّر */}
+            {/* Final-opinion text — auto until edited */}
             <div className="mb-2 flex items-center justify-between gap-2.5">
               <span className="text-[12.5px] font-bold text-heading">
                 نص الرأي النهائي (مبرر استخدام الطرق)
@@ -907,7 +907,7 @@ export const FinalOpinionSection = memo(function FinalOpinionSection({
               ))}
             </ul>
 
-            {/* التنبيهات المنهجية (21) — المعالجة بمبرر نصي أو إقرار حسب فئة التنبيه */}
+            {/* Methodology alerts (21) — disposition via text rationale or acknowledgment by alert class */}
             <div className="mt-4 border-t border-border pt-3.5">
               <div className="mb-2.5 flex flex-wrap items-baseline justify-between gap-2.5">
                 <span className="text-[13.5px] font-extrabold text-heading">
@@ -1041,7 +1041,7 @@ export const FinalOpinionSection = memo(function FinalOpinionSection({
         </Card>
       ) : null}
 
-      {/* ق-6: الإصدار ثنائي المرحلة + شهادة الإيداع */}
+      {/* Rule Q-6: two-stage issuance + deposit certificate */}
       {issuance ? (
         <Card>
           <CardPad>
@@ -1146,7 +1146,7 @@ export const FinalOpinionSection = memo(function FinalOpinionSection({
                   </p>
                 ) : null}
 
-                {/* تكميلية ق-9 (ر2): إعادة فتح دور التقييم — بموافقة مشرف القسم */}
+                {/* Supplement Rule Q-9 (R2): reopen valuation cycle — section-supervisor approval */}
                 <div className="mt-1 flex flex-wrap items-end gap-2 rounded-[9px] border border-dashed border-red bg-surface-2 p-3">
                   <label className="flex min-w-64 flex-1 flex-col gap-1 text-[11.5px] text-text-2">
                     إعادة فتح دور التقييم (ر2) — سبب إلزامي (

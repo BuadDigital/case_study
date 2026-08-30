@@ -5,7 +5,7 @@ using RealEstateEval.Valuation.Infrastructure.Services;
 
 namespace RealEstateEval.Application.Tests;
 
-/// <summary>ق-6: الإصدار ثنائي المرحلة + شهادة الإيداع.</summary>
+/// <summary>Q-6: two-phase issuance + deposit certificate.</summary>
 public class ValuationReportIssuanceTests
 {
     [Fact]
@@ -38,25 +38,25 @@ public class ValuationReportIssuanceTests
         var service = new ValuationReportIssuanceService(
             db, new StubGates(allows: true), new StubDocuments());
 
-        // المرحلة 1: نسخة الإيداع — تجميد + PDF وخانة الرمز فارغة.
+        // Phase 1: deposit copy — freeze + PDF with empty code field.
         var (deposit, depositErrors) = await service.IssueDepositAsync(id, "user-1");
         Assert.Null(depositErrors);
         Assert.Equal(ReportIssuanceStages.DepositIssued, deposit!.Stage);
         Assert.True(deposit.HasDepositPdf);
         Assert.False(deposit.HasFinalPdf);
 
-        // التكرار مرفوض — التقرير مجمّد.
+        // Repeat rejected — report is frozen.
         var (_, dupErrors) = await service.IssueDepositAsync(id, "user-1");
         Assert.Contains("مجمّد", dupErrors!["_"]);
 
-        // ق-6: حارس التجميد يمنع تحرير التسويات بعد نسخة الإيداع.
+        // Q-6: freeze guard blocks editing adjustments after the deposit copy.
         Assert.True(await ValuationReportFreeze.IsFrozenAsync(db, id));
 
         var depositPdf = await service.GetDepositPdfAsync(id);
         Assert.NotNull(depositPdf);
         Assert.True(depositPdf!.Length > 0);
 
-        // المرحلة 2: تسجيل الشهادة والرمز — النسخة النهائية بصفحة الشهادة والرمز.
+        // Phase 2: register certificate and code — final copy with certificate page and code.
         var (final, finalErrors) = await service.RegisterCertificateAsync(
             id,
             new RegisterDepositCertificateRequest
@@ -76,15 +76,15 @@ public class ValuationReportIssuanceTests
         Assert.NotNull(finalPdf);
         Assert.True(finalPdf!.Length > 0);
 
-        // «نفس التقرير المجمّد حرفياً» — نسخة الإيداع لا تتغير بعد النهائية.
+        // "Same frozen report literally" — deposit copy does not change after the final.
         var depositPdfAfter = await service.GetDepositPdfAsync(id);
         Assert.Equal(depositPdf, depositPdfAfter);
 
-        // الرمز تعبّأ في حقله داخل اللقطة المجمّدة للنسخة النهائية.
+        // Code is filled into its field inside the frozen snapshot for the final copy.
         var row = db.ValuationReportIssuances.Single();
         Assert.Contains("report.deposit_code", row.DocumentJson);
 
-        // اكتمال الخطوة المهنية — الطلب يصبح مكتملاً.
+        // Professional step complete — request becomes completed.
         var vr = db.ValuationRequests.Single(x => x.Id == id);
         Assert.False(vr.IsOpen);
     }
@@ -119,13 +119,13 @@ public class ValuationReportIssuanceTests
         var (deposit, _) = await service.IssueDepositAsync(id, "user-1");
         Assert.Equal(1, deposit!.Version);
 
-        // ٢-ب: سبب إعادة الفتح إلزامي بحد ق-8-2 — القصير مرفوض ولا شيء يتغير.
+        // 2-B: reopen reason required with Q-8-2 minimum — short text rejected; nothing changes.
         var (_, shortErrors) = await service.ReopenAfterDepositAsync(
             id, new ReopenReportIssuanceRequest { Reason = "قصير" }, "supervisor-1");
         Assert.Contains("الحد الأدنى", shortErrors!["reason"]);
         Assert.True(await ValuationReportFreeze.IsFrozenAsync(db, id));
 
-        // ر2: النسخة السارية تُعلَّم ملغاة وتبقى بالملف، والدور يعود مسودة مفتوحة.
+        // R2: current copy is marked superseded and kept on file; cycle returns to an open draft.
         var (reopened, reopenErrors) = await service.ReopenAfterDepositAsync(
             id,
             new ReopenReportIssuanceRequest { Reason = "قيمة المقارنات تغيّرت بعد صفقة مسجلة أحدث" },
@@ -144,14 +144,14 @@ public class ValuationReportIssuanceTests
         Assert.Equal("supervisor-1", superseded.SupersededByUserId);
         Assert.Contains("صفقة مسجلة أحدث", superseded.SupersededReason);
 
-        // الدور الجديد يصدر نسخة إيداع N+1 — لا إعادة استخدام للرقم.
+        // New cycle issues deposit copy N+1 — cycle numbers are not reused.
         var (second, secondErrors) = await service.IssueDepositAsync(id, "user-1");
         Assert.Null(secondErrors);
         Assert.Equal(2, second!.Version);
         Assert.Equal(1, second.SupersededCount);
         Assert.True(await ValuationReportFreeze.IsFrozenAsync(db, id));
 
-        // الملغاة لا تُحذف — نسختان بالملف والسارية هي الأحدث.
+        // Superseded is not deleted — two copies on file; current is the newest.
         db.ChangeTracker.Clear();
         Assert.Equal(2, db.ValuationReportIssuances.Count());
         Assert.Single(db.ValuationReportIssuances.Where(x => x.SupersededAtUtc == null));
@@ -184,7 +184,7 @@ public class ValuationReportIssuanceTests
         return id;
     }
 
- // أصغر PNG صالح (1×1) لاختبار تضمين صفحة الشهادة.
+ // Smallest valid PNG (1×1) for testing certificate-page embedding.
     private static readonly byte[] TinyPng = Convert.FromBase64String(
         "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==");
 

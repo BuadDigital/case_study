@@ -79,7 +79,7 @@ export type OperationsTaskDto = {
   originalAssigneeName?: string | null;
   creditAssigneeId?: string | null;
   creditAssigneeName?: string | null;
-  /** ISO when assignee confirmed receipt; null = بانتظار المنفّذ */
+  /** ISO when assignee confirmed receipt; null = awaiting assignee */
   receiptConfirmedAt?: string | null;
   cancelReason?: string | null;
   linkedEnvelopeId?: string | null;

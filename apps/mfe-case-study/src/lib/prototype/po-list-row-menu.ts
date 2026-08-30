@@ -8,7 +8,7 @@ export function buildPoListRowMoreItems(options: {
   showEdit: boolean;
   showDelete: boolean;
   showLifecycleActions: boolean;
-  /** أخصائي/مشرف — إنشاء مهمة تشغيلية مربوطة بهذا الأمر */
+  /** Specialist/supervisor — create an operations task linked to this work order */
   showCreateOperationsTask?: boolean;
   deleting: boolean;
   lifecycleBusy: boolean;

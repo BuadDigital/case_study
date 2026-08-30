@@ -13,21 +13,21 @@ public class ValuationMarketApproach
     public decimal? SubjectAreaSqm { get; set; }
  /// <summary>one decision per valuation; changes the whole calc path.</summary>
     public string AdjustmentBasis { get; set; } = MarketAdjustmentBasisKeys.PricePerSqm;
-    /// <summary>Frozen methodology coeff — مساحة (٪). Changing org defaults must not rewrite past valuations.</summary>
+    /// <summary>Frozen methodology coeff — area (%). Changing org defaults must not rewrite past valuations.</summary>
     public decimal AreaFactorPct { get; set; } = AreaAdjustmentRules.DefaultAreaFactorPct;
-    /// <summary>Frozen methodology coeff — معدل سوق سنوي (٪) لاقتراح ظروف السوق.</summary>
+    /// <summary>Frozen methodology coeff — annual market rate (%) for market-conditions suggestion.</summary>
     public decimal AnnualMarketRatePct { get; set; } = MarketApproachRules.DefaultAnnualMarketRatePct;
-    /// <summary>Frozen — أسّ تقريب قيمة السوق (١٠^ن). افتراضي ٤ → أقرب ١٠٬٠٠٠.</summary>
+    /// <summary>Frozen — market-value rounding exponent (10^n). Default 4 → nearest 10,000.</summary>
     public int ValueRoundDecimals { get; set; } = MarketApproachRules.DefaultValueRoundDecimals;
     public string? AnalysisNotes { get; set; }
- /// <summary>JSON — أوصاف العقار محل التقييم لكل عامل اختلاف (subjSpec في النموذج التفاعلي).</summary>
+ /// <summary>JSON — subject descriptions per difference factor (subjSpec in the interactive model).</summary>
     public string? SubjectSpecJson { get; set; }
     public DateTime UpdatedAtUtc { get; set; }
 
     public ValuationRequest? ValuationRequest { get; set; }
 }
 
-/// <summary>الأساس المعتمد في التسويات: سعر المتر (يُضرب في المساحة) أو قيمة العقار كاملة.</summary>
+/// <summary>Adjustments basis: unit price (× area) or whole-property value.</summary>
 public static class MarketAdjustmentBasisKeys
 {
     public const string PricePerSqm = "price_per_sqm";
@@ -146,11 +146,11 @@ public class ValuationCostLine
  /// <summary>defined item — see <see cref="CostLineItemKeys"/>; custom = free label.</summary>
     public string ItemKey { get; set; } = CostLineItemKeys.Custom;
     public string Label { get; set; } = "";
- /// <summary>Quantity in the line's unit (م² for areas; م.ط/عدد/مقطوع otherwise).</summary>
+ /// <summary>Quantity in the line's unit (m² for areas; linear-m / count / lump otherwise).</summary>
     public decimal AreaSqm { get; set; }
  /// <summary>unit — see <see cref="CostLineUnits"/>.</summary>
     public string Unit { get; set; } = CostLineUnits.Sqm;
- /// <summary>نسبة البناء column (%), optional.</summary>
+ /// <summary>Build-ratio column (%), optional.</summary>
     public decimal? BuildRatioPct { get; set; }
  /// <summary>repeated-floors count; quantity derives from the first floor × count.</summary>
     public int? RepeatedFloorCount { get; set; }
@@ -162,7 +162,7 @@ public class ValuationCostLine
     public ValuationCostApproach? CostApproach { get; set; }
 }
 
-/// <summary>units: م² · م.ط · عدد · مقطوع.</summary>
+/// <summary>units: m² · linear-m · count · lump.</summary>
 public static class CostLineUnits
 {
     public const string Sqm = "sqm";
@@ -188,10 +188,10 @@ public static class CostLineUnits
     };
 }
 
-/// <summary>defined items — groups 1 (مسطحات) and 2 (تجهيزات) + custom.</summary>
+/// <summary>defined items — groups 1 (floor areas) and 2 (fixtures) + custom.</summary>
 public static class CostLineItemKeys
 {
- // Group 1 — مسطحات المبنى والأدوار
+ // Group 1 — building floor areas and floors
     public const string Basement = "basement";
     public const string GroundFloor = "ground_floor";
     public const string FirstFloor = "first_floor";
@@ -200,7 +200,7 @@ public static class CostLineItemKeys
     public const string LowerAnnex = "lower_annex";
     public const string ApartmentArea = "apartment_area";
     public const string SharedPortion = "shared_portion";
- // Group 2 — تكاليف وتجهيزات إضافية
+ // Group 2 — additional costs and fixtures
     public const string Parking = "parking";
     public const string Fence = "fence";
     public const string Pool = "pool";
@@ -250,7 +250,7 @@ public static class CostLineItemKeys
         _ => "بند مخصص",
     };
 
- /// <summary>Sensible default unit per item (fence م.ط, elevator عدد, lump for systems).</summary>
+ /// <summary>Sensible default unit per item (fence linear-m, elevator count, lump for systems).</summary>
     public static string DefaultUnit(string? value) => Normalize(value) switch
     {
         Fence => CostLineUnits.LinearMeter,
@@ -271,7 +271,7 @@ public static class RepeatedFloorRules
 
 public static class MarketOpinionRules
 {
-    /// <summary>سعر المتر × المساحة — قبل تقريب قاعدة التسويات.</summary>
+    /// <summary>Unit price × area — before adjustments-basis rounding.</summary>
     public static decimal ComputeOpinionValue(decimal weightedPricePerSqm, decimal subjectAreaSqm)
     {
         if (subjectAreaSqm <= 0m || weightedPricePerSqm < 0m) return 0m;
@@ -279,8 +279,8 @@ public static class MarketOpinionRules
     }
 
     /// <summary>
-    /// منطق-التسويات: marketValue = round(landValRaw / 10^decimals) × 10^decimals.
-    /// decimals=0 → أقرب ريال؛ الافتراضي ٤ → أقرب ١٠٬٠٠٠.
+    /// Adjustments logic: marketValue = round(landValRaw / 10^decimals) × 10^decimals.
+    /// decimals=0 → nearest riyal; default 4 → nearest 10,000.
     /// </summary>
     public static decimal RoundMarketValue(
         decimal landValRaw,
@@ -302,8 +302,8 @@ public static class CostApproachRules
         Math.Round(Math.Max(0m, areaSqm) * Math.Max(0m, unitCostSar), 2, MidpointRounding.AwayFromZero);
 
  /// <summary>
- /// مواصفة النموذج التفاعلي: نسبة البناء تُطبَّق على الكمية لبنود م² (فارغة = ١٠٠٪) —
- /// «المسطح الفعلي» يدخل في الإجمالي ومسطحات البناء.
+ /// Interactive model spec: build ratio applies to quantity for m² lines (empty = 100%) —
+ /// "effective floor area" enters the total and building floor areas.
  /// </summary>
     public static decimal EffectiveQuantity(decimal quantity, string? unit, decimal? buildRatioPct)
     {
@@ -315,7 +315,7 @@ public static class CostApproachRules
     }
 
  /// <summary>
- /// مواصفة النموذج التفاعلي: بند «الأدوار المتكررة» بتكلفة وحدة فارغة/صفر يرث سعر متر «الدور الأول».
+ /// Interactive model spec: "repeating floors" with empty/zero unit cost inherits "first floor" m² rate.
  /// </summary>
     public static decimal InheritedUnitCost(
         string? itemKey,
@@ -335,7 +335,7 @@ public static class CostApproachRules
     public static decimal SumDirectCost(IEnumerable<(decimal area, decimal unit, bool included)> lines) =>
         lines.Where(l => l.included).Sum(l => LineTotal(l.area, l.unit));
 
- /// <summary>سعر المتر بعد غير المباشرة لكل بند: total × (1 + indirect٪) ÷ الكمية.</summary>
+ /// <summary>Unit rate after indirects per line: total × (1 + indirect%) ÷ quantity.</summary>
     public static decimal NetUnitRateWithIndirect(decimal lineTotal, decimal quantity, decimal indirectSumPct)
     {
         if (lineTotal <= 0m || quantity <= 0m) return 0m;
@@ -345,9 +345,9 @@ public static class CostApproachRules
     }
 
  /// <summary>
- /// مواصفة النموذج التفاعلي (costCompute): costValue = landPart + netValue دائماً —
- /// الأرض غير المقدَّرة تدخل صفراً (landPart = 0) والمؤشر الجزئي يظهر ويُحجَب الاعتماد
- /// بالبوابات لا بتصفير القيمة. «مبنى فقط» = netValue وحدها.
+ /// Interactive model spec (costCompute): costValue = landPart + netValue always —
+ /// unvalued land enters as zero (landPart = 0); the partial indicator shows and adoption is blocked
+ /// by gates, not by zeroing the value. "Building only" = netValue alone.
  /// </summary>
     public static decimal CostOpinionForScope(
         decimal buildingsAfterDepreciation,
@@ -364,7 +364,7 @@ public static class CostApproachRules
             MidpointRounding.AwayFromZero);
     }
 
- /// <summary>Land (عند اكتمالها، وإلا صفر) + المباني بعد الإهلاك — بلا تصفير كلي.</summary>
+ /// <summary>Land (when complete, else zero) + buildings after depreciation — no wholesale zeroing.</summary>
     public static decimal CostOpinionWithLand(
         decimal buildingsAfterDepreciation,
         decimal landValue,
@@ -439,15 +439,15 @@ public static class CostApproachRules
         Math.Round((physicalPct ?? 0m) + Math.Max(0m, functionalPct) + Math.Max(0m, externalPct), 2, MidpointRounding.AwayFromZero);
 
  /// <summary>
- /// مواصفة النموذج التفاعلي: الإهلاك غير مقيَّد بسقف ١٠٠٪ — تجاوز التقادم ١٠٠٪ يُنتج
- /// قيمة مباني سالبة ويحجبه التنبيه المنهجي m4 عند الاعتماد لا الرياضيات.
+ /// Interactive model spec: depreciation is not capped at 100% — obsolescence over 100% yields
+ /// a negative buildings value; methodology alert m4 blocks adoption, not the math.
  /// </summary>
     public static decimal DepreciationValue(decimal totalCostWithIndirect, decimal totalObsolescencePct) =>
         Math.Round(
             Math.Max(0m, totalCostWithIndirect) * Math.Max(0m, totalObsolescencePct) / 100m,
             2, MidpointRounding.AwayFromZero);
 
- /// <summary>buildings value after depreciation (المباني دون الأرض) — قد تكون سالبة عند تقادم > ١٠٠٪.</summary>
+ /// <summary>buildings value after depreciation (buildings without land) — may be negative when obsolescence > 100%.</summary>
     public static decimal BuildingsAfterDepreciation(decimal totalCostWithIndirect, decimal depreciationValue) =>
         Math.Round(totalCostWithIndirect - depreciationValue, 2, MidpointRounding.AwayFromZero);
 }

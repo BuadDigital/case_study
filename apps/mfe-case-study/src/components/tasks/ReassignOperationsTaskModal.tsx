@@ -29,7 +29,7 @@ function ArrowRightIcon() {
   );
 }
 
-/** إعادة توجيه وإسناد مهمة عمليات — مطابقة Case Study.html `openReassignModal`. */
+/** Redirect and reassign an operations task — matches Case Study.html `openReassignModal`. */
 export function ReassignOperationsTaskModal({
   open,
   currentAssigneeName,

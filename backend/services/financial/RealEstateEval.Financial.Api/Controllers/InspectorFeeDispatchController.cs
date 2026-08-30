@@ -13,6 +13,7 @@ namespace RealEstateEval.Financial.Api.Controllers;
 [ApiController]
 [Route("api/financial-dispatch/inspector-fees")]
 [Authorize]
+[RequireUpstreamDispatch]
 public sealed class InspectorFeeDispatchController(
     IInspectorFeeService fees,
     ICaseStudyLookup lookup) : ControllerBase

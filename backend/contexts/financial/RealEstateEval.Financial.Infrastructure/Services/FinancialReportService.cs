@@ -148,7 +148,7 @@ public sealed class FinancialReportService : IFinancialReportService
         }
 
  // Historical only. Nothing stamps key-receipt amounts any more — registering the envelope
- // marks the entitlement and finance bills إنفاذ by hand — so this line covers the charges
+ // marks the entitlement and finance bills Enfaz by hand — so this line covers the charges
  // written before that change and empties out on its own.
         var keyReceiptSummary = await _fin.KeyReceiptFeeCharges.AsNoTracking()
             .GroupBy(_ => 1)

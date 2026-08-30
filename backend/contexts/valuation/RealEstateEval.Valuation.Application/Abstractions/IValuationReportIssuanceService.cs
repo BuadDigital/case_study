@@ -2,21 +2,21 @@ using RealEstateEval.Valuation.Application.Contracts;
 
 namespace RealEstateEval.Valuation.Application.Abstractions;
 
-/// <summary>ق-6: الإصدار ثنائي المرحلة + شهادة الإيداع.</summary>
+/// <summary>Q-6: two-phase issuance + deposit certificate.</summary>
 public interface IValuationReportIssuanceService
 {
     Task<ValuationReportIssuanceStateDto?> GetStateAsync(
         Guid valuationRequestId,
         CancellationToken cancellationToken = default);
 
- /// <summary>ق-6-1: عند اكتمال الحواجب — تجميد كامل + توليد نسخة الإيداع (خانة الرمز فارغة).</summary>
+ /// <summary>Q-6-1: when gates pass — full freeze + generate deposit copy (empty code field).</summary>
     Task<(ValuationReportIssuanceStateDto? Result, Dictionary<string, string>? Errors)>
         IssueDepositAsync(
             Guid valuationRequestId,
             string? issuedByUserId,
             CancellationToken cancellationToken = default);
 
- /// <summary>ق-6-3/4: تسجيل الشهادة والرمز ثم توليد النسخة النهائية (صفحة الشهادة + الرمز في الميتا).</summary>
+ /// <summary>Q-6-3/4: register certificate and code then generate final copy (certificate page + code in metadata).</summary>
     Task<(ValuationReportIssuanceStateDto? Result, Dictionary<string, string>? Errors)>
         RegisterCertificateAsync(
             Guid valuationRequestId,
@@ -25,8 +25,8 @@ public interface IValuationReportIssuanceService
             CancellationToken cancellationToken = default);
 
  /// <summary>
- /// تكميلية ق-9 (ر2): إعادة فتح دور التقييم بعد الإيداع — النسخة السارية تُعلَّم
- /// «ملغاة — حلّت محلها نسخة أحدث» (لا حذف صلب)، والطلب يعود مفتوحاً نحو نسخة إيداع N+1.
+ /// Q-9 supplement (R2): reopen valuation cycle after deposit — current copy is marked
+ /// "superseded — replaced by a newer copy" (no hard delete); request reopens toward deposit copy N+1.
  /// </summary>
     Task<(ValuationReportIssuanceStateDto? Result, Dictionary<string, string>? Errors)>
         ReopenAfterDepositAsync(

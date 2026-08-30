@@ -28,8 +28,8 @@ public class PropertyGroupsController : ControllerBase
         Guid propertyId,
         CancellationToken ct)
     {
- // «لا مجموعة» يجب أن تصل كـ JSON null بحالة 200 لا 204 — عميل TS يقرأ الجسم دائماً،
- // والجسم الفارغ يُفسَّر خطأ شبكة (HttpNoContentOutputFormatter يحوّل null إلى 204).
+ // “NoSet” should arrive as JSON null with status 200 not 204 — the TS client always reads the body,
+ // The empty body is interpreted as a network error (HttpNoContentOutputFormatter converts null to 204).
         var group = await _groups.GetForPropertyAsync(propertyId, ct);
         return new JsonResult(group);
     }

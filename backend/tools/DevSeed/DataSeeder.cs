@@ -193,7 +193,7 @@ public static class DataSeeder
         Guid.Parse("c3000001-0000-4000-8000-000000000003"),
     ];
 
- /// <summary>Removes legacy demo rows for إدارة المفاتيح (E-440x / seeded GUIDs).</summary>
+ /// <summary>Removes legacy demo rows for key management (E-440x / seeded GUIDs).</summary>
     public static async Task RemoveDemoPropertyKeyRecordsAsync(
         OperationsDbContext db,
         CancellationToken cancellationToken = default)
@@ -584,11 +584,11 @@ public static class DataSeeder
             ["ahmed@ejadah.dev"] = "fi-ahmed",
             ["abdullah.abdulmane@ejadah.dev"] = "fi-abdullah-abdulmane",
             ["survey.jeddah@ejadah.dev"] = "eo-jeddah",
- // Case specialists must be assignable on «توزيع المعاملات» (supervisors stay without ids).
+ // Case specialists must be assignable on «Transaction Distribution» (supervisors stay without ids).
             ["osama@ejadah.dev"] = "cs-osama",
         };
 
- /// <summary>HR membership / badge numbers shown as «رقم العضوية».</summary>
+ /// <summary>HR membership / badge numbers shown as “membership number”.</summary>
     private static readonly Dictionary<string, string> EmployeeNumbersByEmail =
         new(StringComparer.OrdinalIgnoreCase)
         {

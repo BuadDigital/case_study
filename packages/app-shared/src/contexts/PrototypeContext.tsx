@@ -83,14 +83,14 @@ export function PrototypeProvider({ children }: { children: React.ReactNode }) {
     permissions?.identityRoles,
   ]);
 
-  // مرجع ثابت — [] جديدة كل تصيير كانت تكسر useMemo قيمة السياق قبل المصادقة
-  // فتتغير هوية القيمة لكل مستهلكي usePrototype (rerender-dependencies).
+  // Stable ref — a fresh [] each render used to break the pre-auth context useMemo
+  // so value identity changed for every usePrototype consumer (rerender-dependencies).
   const capabilities = permissions?.capabilities ?? EMPTY_CAPABILITIES;
 
   const rolePages = useMemo(() => {
     if (!permissionsResolved) return [];
     const baseline = ROLES[role].pages.filter((page) => {
-      // «جميع المعاملات» — للمسؤول فقط (مرآة لـ pagesFromPermissions)
+      // "All transactions" — admin only (mirrors pagesFromPermissions)
       if (role !== "cdo" && page === "all-transactions") return false;
       return true;
     });

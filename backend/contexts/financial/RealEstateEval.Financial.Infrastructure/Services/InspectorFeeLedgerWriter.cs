@@ -51,9 +51,9 @@ public sealed class InspectorFeeLedgerWriter : IInspectorFeeLedgerWriter
 
         var now = _time.UtcNow();
 
- /* كانت الحلقة تصدر حتى ٥ نداءات لكل (مهمة × صك) — نوع الطرف والتعويض والرسم
-    يعتمدون على مفاتيح تتكرر فتُحفَظ في قواميس، وهوية الدفتر تُحلّ مرة لكل مهمة
-    (الـ DeedId وحده يتغير بين الصكوك)، وفحوص الوجود والتعليق تصير استعلامين. */
+        /* The loop issued up to 5 calls per (task × deed): party type, compensation, and fee
+           depend on repeating keys so they are cached in dictionaries; ledger identity is resolved
+           once per task (only DeedId changes across deeds); existence/hold checks become two queries. */
         var partyTypeCache = new Dictionary<(WorkflowTaskKind Kind, string AssigneeId), string>();
         var compensationCache = new Dictionary<string, bool>(StringComparer.Ordinal);
         var feeCache =
@@ -87,8 +87,8 @@ public sealed class InspectorFeeLedgerWriter : IInspectorFeeLedgerWriter
 
             var po = task.PoNumber.Trim();
             var deeds = await _resolver.ResolveDeedTargetsAsync(task, cancellationToken);
- // TransactionId/UserId لا يعتمدان على الصك؛ وDeedId المُمرَّر دوماً غير فارغ
- // فيساوي deed.DeedId حرفياً (صيغة ResolveLedgerIdentityAsync نفسها).
+ // TransactionId/UserId does not depend on Deed; The DeedId passed is always non-empty
+ // It literally equals deed.DeedId (same format as ResolveLedgerIdentityAsync).
             var baseIdentity = await _resolver.ResolveLedgerIdentityAsync(
                 task,
                 cancellationToken);
@@ -122,7 +122,7 @@ public sealed class InspectorFeeLedgerWriter : IInspectorFeeLedgerWriter
             }
         }
 
- // استعلام وجود واحد لكل الدفعة بدل AnyAsync لكل صك.
+ // There is one query per batch instead of AnyAsync per Deed.
         var existingTriples = new HashSet<(Guid, Guid, string)>();
         if (candidates.Count > 0)
         {
@@ -138,7 +138,7 @@ public sealed class InspectorFeeLedgerWriter : IInspectorFeeLedgerWriter
                 existingTriples.Add((row.TransactionId, row.DeedId, row.UserId));
         }
 
- // استعلام تعليق واحد لكل أزواج (الموظف، المعاملة).
+ // One comment query per (Employee, Transaction) pairs.
         var suspensionByPair = new Dictionary<(string Aid, string Po), string>();
         var employeePairs = candidates
             .Where(c => c.IsEmployee && !string.IsNullOrWhiteSpace(c.Task.AssigneeId))
@@ -249,8 +249,8 @@ public sealed class InspectorFeeLedgerWriter : IInspectorFeeLedgerWriter
         await EnsureLedgersForTasksAsync(feeTasks, cancellationToken);
     }
 
- /* كان يجري داخل استعلام الملخص مع كل GET (تحميل كل الدفاتر + كل المهام وكتابة
-    محتملة لكل استطلاع شاشة الأتعاب) — انتقل إلى حلقة الصيانة الخلفية. */
+        /* Previously ran inside a summary GET (load all ledgers + tasks and write on every
+           fees-screen poll) — moved to the background maintenance loop. */
     public async Task SyncLedgerSnapshotsFromTasksAsync(CancellationToken cancellationToken = default)
     {
         var ledgers = await _financial.InspectorFeeLedgers.ToListAsync(cancellationToken);

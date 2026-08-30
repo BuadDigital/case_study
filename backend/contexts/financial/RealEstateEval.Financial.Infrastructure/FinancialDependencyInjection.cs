@@ -37,9 +37,9 @@ public static class FinancialDependencyInjection
         services.AddRemoteIdentityDirectory(configuration);
         services.AddRemoteAttachmentLookup(configuration);
         services.AddHttpClient<IKeyEntitlementLookup, HttpKeyEntitlementLookup>();
- // E6: كانت إشعارات المضيف المالي NullNotificationService («بقايا حتى يوجد
- // إيفاد») — صار له صندوق صادر حقيقي على نمط Operations/Failures، فتذكيرات
- // مهلة التفاوض وإشعارات الأتعاب القائمة تصل فعلاً.
+ // E6: Financial Host notifications were NullNotificationService(«residue until it exists
+ // Dispatch” — now has a real Operations/Failures-style outbox, with reminders
+ // The negotiation deadline and notices of outstanding fees actually arrive.
         services.AddMessagingPersistence(configuration, connectionString);
         services.AddNotificationInfrastructure(configuration, environment);
         services.AddHttpClient<IOperationsTaskService, HttpOperationsTaskService>();

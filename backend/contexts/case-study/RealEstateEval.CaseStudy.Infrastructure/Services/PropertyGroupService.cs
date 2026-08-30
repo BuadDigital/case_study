@@ -76,12 +76,12 @@ public sealed class PropertyGroupService : IPropertyGroupService
             .Take(500)
             .ToListAsync(cancellationToken);
 
-        // دفعة واحدة لإحداثيات المعاينة بدل استعلام لكل مرشح (كانت N+1 حتى 500 استعلام).
+        // One batch of Inspector coordinates per query allowance (N+1 up to 500 queries).
         var inputs = await BuildCandidateInputsAsync(
             candidates.Append(subject).ToList(), cancellationToken);
         var subjectInput = inputs[subject.Id];
 
-        // كانت تُحمَّل كل أوامر العمل — نكتفي بأوامر المرشحين.
+        // All work orders were uploaded — just the candidates' orders.
         var candidateWorkOrderIds = candidates
             .Select(c => c.WorkOrderId)
             .Distinct()
@@ -134,7 +134,7 @@ public sealed class PropertyGroupService : IPropertyGroupService
         if (propertyId == targetPropertyId)
             return (null, "لا يمكن ربط العقار بنفسه");
 
-        // زوجا التحميل في استعلامين بدل أربعة — نفس الجدول ونفس الشكل.
+        // Load pairs in two queries instead of four — same table, same shape.
         var pair = await db.WorkOrderProperties.AsNoTracking()
             .Where(p => p.Id == propertyId || p.Id == targetPropertyId)
             .ToListAsync(cancellationToken);
@@ -205,7 +205,7 @@ public sealed class PropertyGroupService : IPropertyGroupService
 
         await db.SaveChangesAsync(cancellationToken);
 
- // التأكيد بشري مسجَّل بالتدقيق ( stage 1).
+ // Confirmation is human audited (stage 1).
         await _auditLog.AppendAsync(audit.Create(
             actor,
             "PROPERTY_GROUP_LINK_CONFIRMED",
@@ -248,7 +248,7 @@ public sealed class PropertyGroupService : IPropertyGroupService
         return (await BuildGroupDtoAsync(member.GroupId, cancellationToken), null);
     }
 
-    /// <summary>إحداثيات أحدث معاينة لكل عقار في استعلام واحد — بدل استعلامٍ لكل عقار.</summary>
+    /// <summary>Latest inspection coordinates for each property in one query — instead of one query per property.</summary>
     private async Task<Dictionary<Guid, PropertyGroupRules.CandidateInput>> BuildCandidateInputsAsync(
         IReadOnlyCollection<WorkOrderProperty> props,
         CancellationToken cancellationToken)

@@ -7,7 +7,7 @@ using RealEstateEval.Infrastructure.Data.Contexts;
 namespace RealEstateEval.CaseStudy.Infrastructure.Data.Contexts.CaseStudy.Migrations;
 
 /// <summary>
-/// Valuation package نوع الصك على العقار + مخرج مطابقة الصك/الطبيعة على دراسة الحالة.
+/// Valuation package: deed kind on the property + deed/nature match output on the case study.
 /// </summary>
 [DbContext(typeof(CaseStudyDbContext))]
 [Migration("20260816093000_AddDeedKindAndNatureMatch")]
@@ -42,7 +42,7 @@ public partial class AddDeedKindAndNatureMatch : Migration
             nullable: false,
             defaultValue: "");
 
- // سجّل عقاري كمعرّف ⟵ اقترح سجل عيني كنوع صك.
+ // Real-estate registry as identifier ⟵ suggest registered-title as deed kind.
         migrationBuilder.Sql(
             """
             UPDATE case_study."WorkOrderProperties"

@@ -77,7 +77,7 @@ internal static class StaffUserRules
 
     private static bool IsValidEmail(string email) => Texts.IsValidEmail(email);
 
- // ق٣: التطبيع السعودي الصارم الموحّد مع الدخول — SaudiMobiles.Normalize.
+ // Q3: strict Saudi normalization shared with login — SaudiMobiles.Normalize.
     internal static string? NormalizeMobile(string mobile) =>
         SaudiMobiles.Normalize(mobile);
 

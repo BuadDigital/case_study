@@ -298,8 +298,8 @@ export function ServerNotificationBridge() {
     markSeenIfNew,
   ]);
 
-  // مخفي ← ظاهر فقط: السحب عند التركيب يتم بـ pull(false) داخل التأثير أعلاه،
-  // فقراءة الحالة اللحظية هنا كانت ستُطلق سحباً إضافياً مع تنبيهاته.
+  // Hidden → visible only: pull on mount is done via pull(false) in the effect above,
+  // so reading visibility state here would fire an extra pull with its toasts.
   useEffect(() => {
     const wasVisible = wasVisibleRef.current;
     wasVisibleRef.current = visible;

@@ -1,4 +1,4 @@
-/** Report field sheet for the appraiser — order matches `docs/نموذج تقرير التقييم/تقرير التقييم v3.dc.html`. */
+/** Report field sheet for the appraiser — order matches `docs/valuation-report-form/valuation-report-v3.dc.html`. */
 
 export type ReportTabField = {
   id: string;

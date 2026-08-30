@@ -25,13 +25,13 @@ export function pagesFromPermissions(
   if (!dashboardAllowed) {
     merged.delete("dashboard");
   }
-  // الشاشات اليتيمة (مثل مكاتب الرفع / معاينة قديمة) — للمسؤول فقط
+  // Legacy draft screens removed from nav — strip if still granted by API.
   if (role !== "cdo") {
     for (const pageId of ORPHAN_SCREENS_PAGE_IDS) {
       merged.delete(pageId);
     }
   }
-  // «جميع المعاملات» — للمسؤول (CDO) فقط
+  // "All transactions" is CDO-only.
   if (role !== "cdo") {
     merged.delete("all-transactions");
   }

@@ -13,7 +13,7 @@ export type PoPropertyRowMoreContext = {
   showEdit: boolean;
   showFailureRaise: boolean;
   router: { push: (href: string) => void };
-  /** Open «نسخ من معاملة سابقة» with this property pre-selected. */
+  /** Open "copy from prior transaction" with this property pre-selected. */
   onCopyFromPrior?: () => void;
 };
 

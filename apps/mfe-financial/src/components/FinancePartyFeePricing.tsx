@@ -218,7 +218,7 @@ export function FinancePartyFeePricing() {
   const isSystemAdmin = useCapability("manage-system-config");
   const canEditOps = useCapability("manage-operations");
   const canEditSpecialist = useCapability("manage-work-orders");
-  /** مسؤول النظام · مشرف · أخصائي دراسة حالة */
+  /** System admin · supervisor · case-study specialist */
   const canEdit = isSystemAdmin || canEditOps || canEditSpecialist;
   const { data: staffResult } = useStaffUsersQuery();
   const staffUsers = staffResult?.users ?? EMPTY_STAFF_USERS;
@@ -297,7 +297,7 @@ export function FinancePartyFeePricing() {
     return categoryParties.filter((p) => ids.has(p.id));
   }, [categoryParties, draft.assignedAssigneeIds]);
 
-  /** عضوية مسودة الإسناد — Set بدل includes داخل حلقة العرض */
+  /** Draft assignment membership — Set instead of includes in the render loop */
   const assignSet = useMemo(() => new Set(assignDraft), [assignDraft]);
 
   const draftMatchesCategory =
@@ -584,7 +584,7 @@ export function FinancePartyFeePricing() {
         </p>
       ) : null}
 
-      {/* الفئة — أزرار مقسّمة بنمط المهام */}
+      {/* Category — segmented buttons in task style */}
       <div
         className={cn(opsTfSegRow, "mb-3.5")}
         role="tablist"
@@ -608,7 +608,7 @@ export function FinancePartyFeePricing() {
         })}
       </div>
 
-      {/* بطاقة القسم — رأس فيه اختيار الجدول وأزرار الإنشاء */}
+      {/* Section card — header with table pick and create buttons */}
       <section className={opsLetterCard} aria-busy={loading || busy}>
         <div className={opsLetterHead}>
           <div className="flex items-center gap-[11px]">
@@ -717,7 +717,7 @@ export function FinancePartyFeePricing() {
                 : "animate-[pricing-panel-in_0.28s_ease-out] opacity-100",
             )}
           >
-            {/* هوية الجدول */}
+            {/* Table identity */}
             <div className="space-y-5">
               <div className="flex min-w-0 flex-col gap-1.5">
                 <label htmlFor="pricing-name" className={opsTfLbl}>
@@ -796,7 +796,7 @@ export function FinancePartyFeePricing() {
               )}
             </div>
 
-            {/* الأسعار */}
+            {/* Prices */}
             <div className="mt-6 space-y-5 border-t border-border pt-6">
               {hasAssignments ? (
                 <p className={cn(opsTfNote, "m-0")}>
@@ -997,7 +997,7 @@ export function FinancePartyFeePricing() {
               ) : null}
             </div>
 
-            {/* حفظ واضح */}
+            {/* Explicit save */}
             {canEdit ? (
               <div className={opsTfActions}>
                 <button

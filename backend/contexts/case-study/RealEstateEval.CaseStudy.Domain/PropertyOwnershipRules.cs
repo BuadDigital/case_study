@@ -3,10 +3,10 @@ using RealEstateEval.Domain;
 
 namespace RealEstateEval.CaseStudy.Domain;
 
-/// <summary>One deed owner from the structured transcription (الملاك وحصصهم).</summary>
+/// <summary>One deed owner from the structured transcription (Owners and Their Shares).</summary>
 public sealed record DeedOwner(string Name, decimal? SharePct);
 
-/// <summary>نوع الملكية values — مطلقة / مرهون / استثمار / مشاع.</summary>
+/// <summary>Ownership Type values — absolute / mortgaged / investment / common.</summary>
 public static class OwnershipTypes
 {
     public const string Absolute = "absolute";
@@ -28,7 +28,7 @@ public static class OwnershipTypes
 }
 
 /// <summary>
-/// نوع الملكية derived from the structured deed transcription
+/// Ownership Type derived from the structured deed transcription
 /// (editable-derived: the engine suggests, the valuer approves or overrides).
 /// Investment never appears on the deed, so it is manual-only.
 /// </summary>
@@ -37,8 +37,8 @@ public static class OwnershipTypeRules
     private static readonly JsonSerializerOptions JsonOptions = JsonDefaults.Web;
 
  /// <summary>
- /// Derivation order per the decision: قيد رهن ⟵ مرهون · ملاك بحصص ⟵ مشاع ·
- /// مالك واحد بلا قيود ⟵ مطلقة مبدئيًا.
+ /// Derivation order per the decision: mortgage registration ⟵ mortgaged · owners with shares ⟵ commons ·
+ /// One owner, no restrictions ⟵ Absolute in principle.
  /// </summary>
     public static string Suggest(
         IReadOnlyList<DeedOwner> owners,

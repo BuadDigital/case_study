@@ -78,7 +78,7 @@ public sealed class DifferenceFactorCatalogService(
 
         row.CatalogJson = DifferenceFactorCatalog.Serialize(entries);
 
- // سجل النسخ — the audit trail carries the before/after of every version.
+ // Version history — the audit trail carries the before/after of every version.
         db.AuditLogs.Add(audit.Create(
             string.IsNullOrWhiteSpace(actorId) ? "system" : actorId,
             "DIFFERENCE_FACTOR_CATALOG_SAVED",

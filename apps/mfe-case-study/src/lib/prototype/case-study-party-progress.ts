@@ -49,7 +49,7 @@ export type ComputePartyCaseStudyProgressOptions = {
   includeSpecialistAnswers?: boolean;
 };
 
-/** RTL row: first → right (أخصائي), last → left (المكتب الهندسي). */
+/** RTL row: first → right (specialist), last → left (engineering office). */
 export const PARTY_PROGRESS_DISPLAY_ORDER: CaseStudyInfoPartyId[] = [
   "specA",
   "insp",

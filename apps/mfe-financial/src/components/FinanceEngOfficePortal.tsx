@@ -1,8 +1,8 @@
 "use client";
 
 /**
- * بوابة المكتب الهندسي — full stack (api/party-billing-statements)
- * Tailwind فقط (finance-tw) — بلا CSS/style objects.
+ * Engineering-office portal — full stack (api/party-billing-statements)
+ * Tailwind only (finance-tw) — no CSS/style objects.
  */
 
 import { useMemo, useRef, useState, type ReactNode } from "react";
@@ -45,7 +45,7 @@ import {
 } from "../lib/finance-tw";
 import { todayIso } from "@platform/app-shared/format/date";
 
-// toLocaleString الافتراضي = حتى 3 كسور دون أصفار إلزامية — نحافظ على العرض نفسه.
+// Default toLocaleString = up to 3 decimals without forced zeros — keep the same display.
 function money(n: number) {
   return fmtMax(Number(n || 0), 3);
 }

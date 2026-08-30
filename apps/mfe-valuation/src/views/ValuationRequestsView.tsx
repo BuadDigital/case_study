@@ -80,9 +80,9 @@ export function ValuationRequestsView() {
   const [openingPropId, setOpeningPropId] = useState<string | null>(null);
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState<StatusFilter>("all");
-  // الإدخال فوري والترشيح مؤجل إطاراً — ترشيح محلي بحت (rerender-use-deferred-value).
+  // Input stays immediate; filtering is deferred one frame — pure local filter (rerender-use-deferred-value).
   const deferredSearch = useDeferredValue(search);
-  // بعد الترطيب تركب شجرة واحدة فقط (جدول أو بطاقات) — كانتا تُبنيان معاً.
+  // After hydration mount only one tree (table or cards) — both used to build together.
   const isDesktopViewport = useViewportDesktop();
 
   const { done, prog, failed } = useMemo(() => {
@@ -100,7 +100,7 @@ export function ValuationRequestsView() {
 
   const rows = useMemo(() => {
     const q = deferredSearch.trim();
-    // شروط قصيرة الدائرة بدل join(" ") — كانت مصفوفة + سلسلة لكل صف لكل حرف.
+    // Short-circuit predicates instead of join(" ") — was array + string per row per keystroke.
     return vr.filter((v) => {
       const okS = status === "all" || v.status === status;
       const okQ =
@@ -295,7 +295,7 @@ export function ValuationRequestsView() {
           </div>
         </div>
 
-        {/* بعد الترطيب تركب شجرة واحدة فقط (جدول أو بطاقات) — كانتا تُبنيان معاً. */}
+        {/* After hydration mount only one tree (table or cards) — both used to build together. */}
         {isDesktopViewport === false ? null : (
         <Table pending={!ready} wrapClassName="hidden lg:block">
           <THead>
@@ -415,8 +415,8 @@ export function ValuationRequestsView() {
                     key={v.recordId}
                     className={cn(
                       "overflow-hidden rounded-[14px] border border-border border-s-[3px] bg-surface px-3.5 py-3.5 shadow-[0_2px_8px_rgba(15,52,96,0.06)]",
-                      // قائمة غير مسقوفة — تخطي تخطيط/رسم ما هو خارج الشاشة
-                      // (rendering-content-visibility؛ لا بوابات ولا قياسات).
+                      // Unbounded list — skip layout/paint for off-screen rows
+                      // (rendering-content-visibility; no gates or measurements).
                       "[content-visibility:auto] [contain-intrinsic-size:auto_130px]",
                       tone,
                     )}

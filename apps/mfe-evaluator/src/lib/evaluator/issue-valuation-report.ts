@@ -61,7 +61,7 @@ export async function previewGeneratedValuationReport(input: {
   propertyType?: string;
   appraiserName?: string;
 }): Promise<void> {
-  // فحص الجلسة الرخيص قبل نداءٍ يفتح طلب تقييم على الخادم (async-cheap-condition-before-await).
+  // Cheap session check before a call that opens a valuation request on the server (async-cheap-condition-before-await).
   const config = apiConfig();
   if (!config) {
     throw new Error("تعذّر فتح استعراض تقرير التقييم — تحقق من تسجيل الدخول.");
@@ -79,7 +79,7 @@ export async function previewGeneratedValuationReport(input: {
   const reportNumber =
     input.extras?.reportNumber?.trim() ||
     reservedNumberFromValuationRequest(open);
-  // تحميل شرطي — بنّاء المعاينة يُجلب عند أول استعراض لا مع حزم القوائم الفورية.
+  // Conditional load — preview builder fetched on first preview, not with eager list bundles.
   const { openValuationReportPreview } = await import(
     "./valuation-report-preview"
   );
@@ -99,7 +99,7 @@ export async function snapshotIssuedValuationReport(input: {
   propertyType?: string;
   appraiserName?: string;
 }): Promise<void> {
-  // فحص الجلسة الرخيص قبل نداءٍ يفتح طلب تقييم على الخادم (async-cheap-condition-before-await).
+  // Cheap session check before a call that opens a valuation request on the server (async-cheap-condition-before-await).
   const config = apiConfig();
   if (!config) {
     throw new Error("تعذّر توليد تقرير التقييم — تحقق من تسجيل الدخول.");

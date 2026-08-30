@@ -5,8 +5,8 @@ using RealEstateEval.Platform.Infrastructure.Services;
 namespace RealEstateEval.Application.Tests;
 
 /// <summary>
-/// قرار 23 (المعدَّل ق-15): نسخة واحدة لحزمة النصوص كلها — أي تعديل ولو في فقرة يصدر
-/// حزمة جديدة كاملة؛ قيد العمل يتبنى الأحدث؛ والمُصدَر مجمّد (لقطة ق-6).
+/// Decision 23 (amended by Q-15): one version for the entire text package — any change, even to one paragraph, issues
+/// a complete new package; work in progress adopts the latest; issued reports are frozen (Q-6 snapshot).
 /// </summary>
 public class ReportTextPackageVersionTests
 {
@@ -27,13 +27,13 @@ public class ReportTextPackageVersionTests
         await using var contexts = TestDatabases.Create("text-package-edit");
         var service = new OrganizationSettingsService(contexts.Platform, new AuditLogWriter());
 
-        // حفظ لا يمس الكتلة: يسجّل الحزمة الشُحنة نسخة 1 فقط.
+        // Save does not touch the block: Seed Package records only copy 1.
         await service.SaveAsync(new SaveOrganizationSettingsRequest(), "cdo-1");
         Assert.Equal(1, contexts.Platform.ValuationReportTextPackages.Count());
         var afterNoop = await service.GetInternalAsync();
         Assert.Equal(1, afterNoop.ValuationReport.TextPackageVersion);
 
-        // تعديل فقرة واحدة (الاستقلالية) — الحزمة كلها تصدر نسخة 2.
+        // Modify one paragraph (independence) — the whole package releases version 2.
         var current = await service.GetInternalAsync();
         var edited = await service.SaveAsync(
             new SaveOrganizationSettingsRequest
@@ -49,7 +49,7 @@ public class ReportTextPackageVersionTests
             contexts.Platform.ValuationReportTextPackages
                 .Single(p => p.Version == 2).CreatedByUserId);
 
-        // حفظ مطابق حرفياً — لا نسخة جديدة.
+        // Save verbatim — no new copy.
         var repeat = await service.SaveAsync(
             new SaveOrganizationSettingsRequest
             {
@@ -59,7 +59,7 @@ public class ReportTextPackageVersionTests
         Assert.Equal(2, repeat.ValuationReport.TextPackageVersion);
         Assert.Equal(2, contexts.Platform.ValuationReportTextPackages.Count());
 
-        // تعديل فقرة أخرى — نسخة 3: الرقم يوسم الحزمة لا الفقرة.
+        // Edit another paragraph — Version 3: The number labels the package, not the paragraph.
         var third = await service.SaveAsync(
             new SaveOrganizationSettingsRequest
             {
@@ -71,7 +71,7 @@ public class ReportTextPackageVersionTests
         Assert.Equal(3, contexts.Platform.ValuationReportTextPackages.Count());
     }
 
- // نسخة قابلة للتعديل من كتلة النصوص — الحقول الأخرى تُنقل كما هي.
+ // Editable version of the text block — other fields are transferred as is.
     private static OrganizationValuationReportSettingsDto Clone(
         OrganizationValuationReportSettingsDto source,
         string? independence = null,

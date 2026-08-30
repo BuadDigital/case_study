@@ -3,7 +3,7 @@ import { escapeHtml as esc } from "@platform/app-shared/lib/html-escape";
 
 /**
  * Opens a print-ready window of property photos (user can Save as PDF).
- * Matches Case Study.html «تنزيل الصور PDF» intent without a PDF dependency.
+ * Matches Case Study.html «Download photos PDF» intent without a PDF dependency.
  */
 export function openPropertyPhotosPdfPrint(
   photos: PropertyDetailDocumentEntry[],
@@ -12,7 +12,7 @@ export function openPropertyPhotosPdfPrint(
   const withData = photos.filter((p) => p.dataUrl?.startsWith("data:"));
   if (withData.length === 0 || typeof window === "undefined") return false;
 
-  // «noopener» ضمن الخصائص يجعل window.open يعيد null — نفتح بمقبض ثم نقطع opener.
+  // «noopener» in the features string makes window.open return null — open with a handle then cut opener.
   const win = window.open("", "_blank", "width=960,height=720");
   if (!win) return false;
   win.opener = null;

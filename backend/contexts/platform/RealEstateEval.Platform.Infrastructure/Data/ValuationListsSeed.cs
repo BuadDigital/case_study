@@ -2,7 +2,7 @@ using RealEstateEval.Application.Contracts;
 
 namespace RealEstateEval.Platform.Infrastructure.Data;
 
-/// <summary>Default valuation reference lists — المصدر: الإعدادات v2.dc.html VAL_LISTS / REF_DEFAULTS.</summary>
+/// <summary>Default valuation reference lists — source: settings v2.dc.html VAL_LISTS / REF_DEFAULTS.</summary>
 internal static class ValuationListsSeed
 {
     internal const string DefaultIvsDate = "31 يناير 2025";

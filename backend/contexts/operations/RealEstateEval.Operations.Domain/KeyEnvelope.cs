@@ -1,22 +1,22 @@
 namespace RealEstateEval.Operations.Domain;
 
-/// <summary>ظرف مفاتيح — وحدة التتبع الأساسية.</summary>
+/// <summary>Key envelope — primary tracking unit.</summary>
 public class KeyEnvelope
 {
     public Guid Id { get; set; }
- /// <summary>رقم الطلب من إنفاذ — مرجع الظرف.</summary>
+ /// <summary>Enfaz request number — envelope reference.</summary>
     public string RequestNumber { get; set; } = "";
- /// <summary>ورشة الترقيم: الرقم المرجعي الداخلي KE-{سنة}-{تسلسل ٥}.</summary>
+ /// <summary>Numbering workshop: Internal reference number KE-{year}-{sequence 5}.</summary>
     public string? ReferenceNumber { get; set; }
     public string Court { get; set; } = "";
     public string Circuit { get; set; } = "";
- /// <summary>العدد المكتوب على الظرف.</summary>
+ /// <summary>The number written on the envelope.</summary>
     public int KeysCountLabeled { get; set; }
- /// <summary>العدد الفعلي بعد العد — المعتمد في النظام.</summary>
+ /// <summary>The actual number after counting — approved in the system.</summary>
     public int KeysCountActual { get; set; }
     public Guid? ReceiptAttachmentId { get; set; }
     public Guid? PhotoAttachmentId { get; set; }
- /// <summary>خطاب من حامل المفتاح — سيناريو ج.</summary>
+ /// <summary>Letter from the Keyholder — Scenario C.</summary>
     public Guid? ThirdPartyLetterAttachmentId { get; set; }
     public string? ContactPhones { get; set; }
     public string? Notes { get; set; }
@@ -26,15 +26,15 @@ public class KeyEnvelope
     public string Status { get; set; } = KeyEnvelopeStatuses.Reviewer;
  /// <summary>
  /// Historical only. Key-receipt revenue used to be stamped here from the pricing table; it is now
- /// billed to إنفاذ by finance, so nothing writes these any more. Kept because financial records are
+ /// billed to Enfaz by finance, so nothing writes these any more. Kept because financial records are
  /// never deleted.
  /// </summary>
     public bool FeeGenerated { get; set; }
     public decimal? FeeAmountSar { get; set; }
 
  /// <summary>
- /// مؤشر استحقاق — set when a court envelope is registered, which is what earns the receipt revenue
- /// from إنفاذ. It carries no amount: finance enters that during enforcement billing.
+ /// Entitlement indicator — set when a court envelope is registered, which is what earns the receipt revenue
+ /// from Enfaz. It carries no amount: finance enters that during enforcement billing.
  /// </summary>
     public DateTime? RevenueEntitlementAtUtc { get; set; }
 
@@ -157,11 +157,11 @@ public static class KeyEnvelopeStatuses
 
 public static class KeyReceiveScenarios
 {
- /// <summary>أ — المفاتيح بالمحكمة.</summary>
+ /// <summary>A - The keys to the court.</summary>
     public const string Court = "court";
- /// <summary>ب — المفاتيح غير موجودة.</summary>
+ /// <summary>B — The keys are not present.</summary>
     public const string Missing = "missing";
- /// <summary>ج — المفاتيح عند طرف آخر.</summary>
+ /// <summary>C - The keys are at another party.</summary>
     public const string ThirdParty = "third_party";
 }
 
@@ -198,7 +198,7 @@ public static class KeyAssignmentStatuses
         status is Unmatched or UnmatchedInspected or Missing;
 }
 
-/// <summary>مناولة عهدة الظرف.</summary>
+/// <summary>Handling of envelope custody.</summary>
 public class KeyEnvelopeHandoff
 {
     public Guid Id { get; set; }
@@ -261,12 +261,12 @@ public static class KeyEnvelopeTimelineEvents
     public const string HandoffConfirmed = "handoff_confirmed";
  /// <summary>Historical: a key-receipt amount was stamped from the pricing table.</summary>
     public const string FeeGenerated = "fee_generated";
- /// <summary>مؤشر استحقاق إيراد استلام المفاتيح — بلا مبلغ.</summary>
+ /// <summary>Key Receipt Revenue Accrual Indicator — No amount.</summary>
     public const string RevenueEntitlement = "revenue_entitlement";
     public const string StatusChanged = "status_changed";
 }
 
-/// <summary>مسار دخول مستقل عن الظرف: تمكين / محظر إخلاء.</summary>
+/// <summary>Entry path independent of the envelope: access enablement / eviction record.</summary>
 public class PropertyCourtAccess
 {
     public Guid Id { get; set; }

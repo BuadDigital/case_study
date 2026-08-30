@@ -338,7 +338,7 @@ public sealed class WorkflowTaskDistributionCommands : IWorkflowTaskDistribution
             .Where(t => t.ParentTaskId == parent.Id)
             .ToListAsync(cancellationToken);
 
- // لا يشمل المراجع الحكومي — يُسند عبر مهام العمليات وليس إعادة توزيع الأطراف.
+ // Does not include government reviewer — assigned via operations tasks, not party redistribution.
         var mappings =
             new (bool Enabled, WorkflowTaskKind Kind, string Role, string AssigneeId, string Fallback)[]
         {

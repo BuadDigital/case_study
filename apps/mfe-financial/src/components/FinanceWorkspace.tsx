@@ -42,7 +42,7 @@ const FinanceInspectorPortal = dynamic(
     import("./FinanceInspectorPortal").then((m) => m.FinanceInspectorPortal),
   { ssr: false, loading: areaChunkFallback },
 );
-// تحميل مسبق لحزمة المسار عند التحويم/التركيز على تبويبه (bundle-preload).
+// Prefetch the route chunk on hover/focus of its tab (bundle-preload).
 export const FINANCE_AREA_CHUNK_PRELOAD: Partial<
   Record<FinanceArea, () => Promise<unknown>>
 > = {

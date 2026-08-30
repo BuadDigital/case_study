@@ -99,7 +99,7 @@ function toRiyadhWall(ts: number): RiyadhWall {
 }
 
 function isWorkDayWall(w: RiyadhWall): boolean {
-  return w.day >= 0 && w.day <= 4; // الأحد–الخميس
+  return w.day >= 0 && w.day <= 4; // Sunday–Thursday
 }
 
 /** Epoch ms for a Riyadh wall-clock hour on the given calendar day. */
@@ -238,7 +238,7 @@ export function isTerminalOperationsTaskStatus(status: string): boolean {
   return status === "completed" || status === "cancelled";
 }
 
-/** Creator-facing receipt indicator (دورة اسناد المهام ). */
+/** Creator-facing receipt indicator (task-assignment cycle). */
 export function operationsTaskReceiptLabel(
   task: Pick<OperationsTaskDto, "receiptConfirmedAt" | "status">,
 ): "مؤكَّد" | "بانتظار المنفّذ" | null {
@@ -321,7 +321,7 @@ export function taskStepperIndex(status: string): number | null {
   return null;
 }
 
-/** طباعة خطاب التفويض من snapshot المهمة (court_visit). */
+/** Print the authorization letter from the task snapshot (court_visit). */
 export async function printOperationsTaskDelegationLetter(
   task: OperationsTaskDto,
   agent?: DelegationAgentInfo,
@@ -329,8 +329,8 @@ export async function printOperationsTaskDelegationLetter(
 ): Promise<void> {
   if (task.type !== "court_visit" || task.letterRows.length === 0) return;
   const first = task.letterRows[0]!;
- // ورشة الترقيم + قرار 25 (الكيان 5): الخطاب يأخذ رقمه LT-{سنة}-{تسلسل ٥}
- // من السجل لحظة الطباعة؛ عند تعذّر التخصيص يُطبع بالمرجع القديم (خ.ت-…).
+ // Numbering workshop + Decision 25 (entity 5): letter takes LT-{year}-{5-digit seq}
+ // from the registry at print time; if allocation fails, print with the old reference (CV-…).
   let letterReference = task.reference;
   const config = apiConfig();
   if (config) {
@@ -378,7 +378,7 @@ export async function printOperationsTaskDelegationLetter(
 function courtCityFromLetterCourt(court: string): string {
   const name = court.trim();
   if (!name) return "";
-  // Common pattern: "محكمة التنفيذ بجدة" → جدة
+  // Common pattern: "Execution Court in Jeddah" → Jeddah
   const m = name.match(/ب([\u0600-\u06FF\s]+)$/);
   if (m?.[1]) return m[1].trim();
   return "";

@@ -148,7 +148,7 @@ export function RegisterKeyEnvelopeModal({
   busy: boolean;
   onClose: () => void;
   onRegistered: (envelopeId: string) => void;
-  /** Prefill رقم الطلب when opening from a court-visit task. */
+  /** Prefill request number when opening from a court-visit task. */
   initialRequestNumber?: string;
   /** Link envelope to the court_visit operations task (from ?task=). */
   operationsTaskId?: string;

@@ -1,22 +1,22 @@
 namespace RealEstateEval.Financial.Domain;
 
 /// <summary>
-/// E6 — مهلة التفاوض على التسعيرة المعترَض عليها (بنود البتّ 9–14):
-/// عشرة أيام عمل (الأحد–الخميس، بتوقيت الرياض UTC+3) من دخول «معترض»؛
-/// تذكيران لا يتكرران (قبل الانقضاء بيومي عمل، وصباح يوم الانقضاء)؛
-/// التصعيد بعد الانقضاء. لا احتساب للعطل الرسمية في v1.
+/// E6 — negotiation deadline for an objected fee quote (decision bits 9–14):
+/// ten business days (Sun–Thu, Riyadh UTC+3) from entering “objected”;
+/// two one-shot reminders (two business days before expiry, and morning of expiry day);
+/// escalate after expiry. Official holidays are not counted in v1.
 /// </summary>
 public static class BillingNegotiationDeadlines
 {
     public const int NegotiationBusinessDays = 10;
 
- /// <summary>مفاتيح المراحل — تدخل في مفتاح التفرد وسجل الإرسال.</summary>
+ /// <summary>Phase keys — enter into the uniqueness key and transmission register.</summary>
     public const string StageReminderTwoDays = "reminder-2d";
     public const string StageReminderDeadlineDay = "reminder-0d";
     public const string StageEscalation = "escalation";
 
     private static readonly TimeSpan RiyadhOffset = TimeSpan.FromHours(3);
- // نهاية يوم العمل 17:00 — نفس عرف مهلة التسليم في my-task-row.
+ // End of the working day 17:00 — the same as the delivery deadline specified in my-task-row.
     private static readonly TimeSpan EndOfBusinessDay = TimeSpan.FromHours(17);
     private static readonly TimeSpan MorningReminderTime = TimeSpan.FromHours(9);
 
@@ -55,23 +55,23 @@ public static class BillingNegotiationDeadlines
             date.ToDateTime(TimeOnly.MinValue).Add(timeOfDay).Subtract(RiyadhOffset),
             DateTimeKind.Utc);
 
- /// <summary>المهلة: عشرة أيام عمل من يوم الدخول، تنقضي 17:00 بتوقيت الرياض.</summary>
+ /// <summary>Deadline: Ten working days from the day of entry, ending at 17:00 Riyadh time.</summary>
     public static DateTime DeadlineFromUtc(DateTime enteredDisputedUtc) =>
         RiyadhToUtc(
             AddBusinessDays(ToRiyadhDate(enteredDisputedUtc), NegotiationBusinessDays),
             EndOfBusinessDay);
 
- /// <summary>تذكير أول: 09:00 بتوقيت الرياض قبل يوم الانقضاء بيومي عمل.</summary>
+ /// <summary>First reminder: 09:00 Riyadh time, two business days before the expiration day.</summary>
     public static DateTime ReminderTwoDaysUtc(DateTime deadlineUtc) =>
         RiyadhToUtc(
             SubtractBusinessDays(ToRiyadhDate(deadlineUtc), 2),
             MorningReminderTime);
 
- /// <summary>تذكير ثانٍ: صباح يوم الانقضاء 09:00 بتوقيت الرياض.</summary>
+ /// <summary>Second reminder: The morning of the expiration day is 09:00 Riyadh time.</summary>
     public static DateTime ReminderDeadlineDayUtc(DateTime deadlineUtc) =>
         RiyadhToUtc(ToRiyadhDate(deadlineUtc), MorningReminderTime);
 
- /// <summary>المراحل المستحقة الآن ولم تُرسل بعد، بترتيب الاستحقاق.</summary>
+ /// <summary>Milestones that are due now but not yet sent, in order of due.</summary>
     public static IReadOnlyList<string> DueStages(
         DateTime deadlineUtc,
         DateTime nowUtc,
@@ -110,7 +110,7 @@ public static class BillingNegotiationDeadlines
         return existing.Length == 0 ? stage : $"{string.Join(',', existing)},{stage}";
     }
 
- /// <summary>مفتاح التفرد (بند 14) — ثابت لكل (بند × مرحلة × مهلة).</summary>
+ /// <summary>Unique key (item 14) — constant for each (item x phase x timeout).</summary>
     public static string SourceEventKey(Guid ledgerId, string stage, DateTime deadlineUtc) =>
         $"billing-negotiation:{ledgerId:N}:{stage}:{deadlineUtc:O}";
 }
