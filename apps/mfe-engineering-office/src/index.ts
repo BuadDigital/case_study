@@ -6,7 +6,7 @@ export {
   ENGINEERING_SURVEY_SUBMISSION_CHANGED_EVENT,
   reopenEngineeringSurveySubmission,
 } from "./lib/engineering-survey-submission-storage";
-export { findSurveyChildForParent } from "./lib/engineering-survey-task";
+export { findSurveyChildForParent } from "@platform/app-shared/engineering-survey/survey-task";
 export {
   listEngineeringSurveyDocuments,
   openEngineeringSurveyDocumentPreview,

@@ -6,10 +6,14 @@ import {
   Button,
   Card,
   CardBody,
+  cn,
   EmptyState,
   Note,
   OperationalPanel,
   QueueTableHint,
+  queueTableRowActiveClassName,
+  queueTableRowClassName,
+  RowMoreMenu,
   SkeletonTableRows,
   Table,
   TableFrame,
@@ -21,9 +25,6 @@ import {
   ThAction,
   THead,
   Tr,
-  cn,
-  queueTableRowActiveClassName,
-  queueTableRowClassName,
   useToast,
 } from "@platform/ui-kit";
 import { usePrototype } from "@platform/app-shared/contexts/PrototypeContext";
@@ -34,7 +35,6 @@ import {
 } from "../lib/prototype/bourse-obstruction";
 import type { BourseDeedVitality } from "../lib/prototype/po-intake-data";
 import { PoNumber } from "@case-study/mfe/components/ui/PoNumber";
-import { RowMoreMenu } from "@case-study/mfe/components/ui/RowMoreMenu";
 import {
   emptyProperty,
   formatDateAr,
@@ -68,12 +68,12 @@ import { scheduleScrollToFormField } from "@platform/app-shared/form-ux";
 import type { PendingBoursePropertyDto } from "@platform/api-client";
 import { filterActionablePendingBourseItems } from "../lib/prototype/pending-bourse-queue";
 import { ActiveTransactionPageLayout } from "../components/active-transactions/ActiveTransactionPageLayout";
-import { ActiveQueueMobileCards } from "../components/queue/ActiveQueueMobileCards";
-import type { ActiveQueueMobileCardItem } from "../components/queue/ActiveQueueMobileCards";
+import { ActiveQueueMobileCards } from "@platform/app-shared/components/ActiveQueueMobileCards";
+import type { ActiveQueueMobileCardItem } from "@platform/app-shared/components/ActiveQueueMobileCards";
 import { buildBourseQueueRowMoreItems } from "../lib/prototype/active-queue-row-menu";
 import { caseStudyTaskForProperty } from "../lib/prototype/tasks-storage";
 import { useRouter } from "next/navigation";
-import { poPropertyPath } from "../lib/po-routes";
+import { poPropertyPath } from "@platform/app-shared/domain/po-routes";
 import { InteractiveDeedCell } from "../components/ui/InteractiveDeedCell";
 
 const ROW = queueTableRowClassName;

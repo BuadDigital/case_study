@@ -58,7 +58,7 @@ import type { PoIntakeRecord, PoPropertyIntake } from "../../lib/prototype/po-in
 import type { WorkflowTask } from "../../lib/prototype/tasks-storage";
 import { useWorkflowTasksQuery } from "../../query/case-study-queries";
 import { useCaseStudyQuestionCatalogQuery } from "../../query/case-study-question-catalog-queries";
-import { DEFAULT_CASE_STUDY_QUESTION_CATALOG } from "../../lib/prototype/case-study-question-catalog";
+import { DEFAULT_CASE_STUDY_QUESTION_CATALOG } from "@platform/app-shared/domain/case-study/question-catalog";
 import { EVALUATOR_SUBMISSION_CHANGED_EVENT } from "../../lib/case-study-evaluator-events";
 import { listPropertyComparableLinks } from "@platform/api-client";
 import { workOrdersApiConfig } from "../../lib/work-orders-api-config";

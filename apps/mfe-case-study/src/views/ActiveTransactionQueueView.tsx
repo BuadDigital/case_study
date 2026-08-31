@@ -14,15 +14,16 @@ import { useRouter, useSearchParams } from "next/navigation";
 import dynamic from "next/dynamic";
 import {
   Button,
+  cn,
+  EmptyState,
   Note,
   OperationalPanel,
   PageShellHeader,
+  queueLegacyStatusStyle,
   QueueTableHint,
+  type RowMoreMenuItem,
   StatusPill,
   TableFrame,
-  cn,
-  EmptyState,
-  queueLegacyStatusStyle,
   useToast,
 } from "@platform/ui-kit";
 import { PoNumber } from "@case-study/mfe/components/ui/PoNumber";
@@ -32,7 +33,6 @@ import {
 } from "@case-study/mfe/components/ui/RemainingTimeCell";
 import { useTickingMinute } from "@platform/app-shared/hooks/use-ticking-now";
 import { useViewportDesktop } from "@platform/app-shared/hooks/use-viewport-desktop";
-import type { RowMoreMenuItem } from "@case-study/mfe/components/ui/RowMoreMenu";
 import { buildActiveQueueRowMoreItems } from "../lib/prototype/active-queue-row-menu";
 const CopyFromPriorTransactionModal = dynamic(
   () =>
@@ -56,7 +56,7 @@ import {
 } from "@settings/mfe/query/settings-queries";
 import type { CaseStudyInfoPartyId } from "@settings/mfe/lib/prototype/case-study-info-roles-data";
 import type { PageId, RoleId } from "@platform/types";
-import { poPropertiesPath, poPropertyDetailPath } from "../lib/po-routes";
+import { poPropertiesPath, poPropertyDetailPath } from "@platform/app-shared/domain/po-routes";
 import {
   buildDistributionTableRow,
   compareQueueTasksOldestFirst,
@@ -76,7 +76,7 @@ import {
   ActiveQueueMobileCards,
   toneFromLegacyBadge,
   type ActiveQueueMobileCardItem,
-} from "../components/queue/ActiveQueueMobileCards";
+} from "@platform/app-shared/components/ActiveQueueMobileCards";
 import { InspectorMobileQueue } from "../components/field-inspection/InspectorMobileQueue";
 import { isListedQueueTask } from "../lib/prototype/suspended-transactions-storage";
 import {

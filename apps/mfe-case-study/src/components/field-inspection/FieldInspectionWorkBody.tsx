@@ -2,26 +2,32 @@
 
 import { useCallback, useEffect, useRef, useState, type ReactNode, type RefObject, Fragment } from "react";
 import {
+  AppModal,
   Button,
+  cn,
+  formControlClassName,
   FormRow,
   GoogleMapPin,
   InlineLoadingSkeleton,
   Input,
   Label,
   Note,
-  Select,
-  Textarea,
-  cn,
-  formControlClassName,
   opsInsetPanel,
+  Select,
+  Table,
+  TBody,
+  Td,
+  Textarea,
+  Th,
+  THead,
+  Tr,
   useToast,
 } from "@platform/ui-kit";
-import { AppModal } from "../ui/AppModal";
 import { ReturnedForCorrectionNote } from "../ui/ReturnedForCorrectionNote";
 import { RegField, RegTextarea} from "@platform/app-shared/registration/FormFields";
 import type { PartyTaskPageDef } from "@platform/app-shared/prototype/party-task-pages";
 import { usePrototype } from "@platform/app-shared/contexts/PrototypeContext";
-import { JEDDAH_DEFAULT_LAT, JEDDAH_DEFAULT_LNG } from "@engineering-office/mfe/lib/jeddah-default-coords";
+import { JEDDAH_DEFAULT_LAT, JEDDAH_DEFAULT_LNG } from "@platform/app-shared/domain/jeddah-default-coords";
 import { BuildingInventorySection } from "./BuildingInventorySection";
 import { InspectionLimitsSection } from "./InspectionLimitsSection";
 import { FieldComparableCaptureSection } from "./FieldComparableCaptureSection";
@@ -58,6 +64,17 @@ import {
   hasAnyPartyPhone,
 } from "../../lib/prototype/documentary-workflow-gates";
 import { usePoRecordQuery } from "../../query/case-study-queries";
+import { useFacadeOptions } from "../../query/use-facade-options";
+import { InspectorStepNav, type InspectorStepId } from "./InspectorStepNav";
+import {
+  InspectorPropertyPhotosSection,
+  inspectorPhotosLabel,
+} from "./InspectorPropertyPhotosSection";
+import {
+  InspectorSaveChip,
+  useInspectorSaveState,
+} from "./InspectorSaveChip";
+import { PartyCaseStudyFormTab } from "../case-study/PartyCaseStudyFormTab";
 import {
   INSPECTOR_AMENITY_OPTIONS,
   INSPECTOR_OBSERVATION_CATEGORIES,
@@ -93,8 +110,6 @@ import type { WorkflowTask } from "../../lib/prototype/tasks-storage";
 import {
   BOUNDARY_KEYS,
   BOUNDARY_ROW_MAP,
-  TABLE_TH,
-  TABLE_TD,
   EDIT_CONTROL_CLASS,
   DesktopFeaturePhotoCell,
   InsBadge,
@@ -104,6 +119,19 @@ import {
   MobileCountStepper,
 } from "./FieldInspectionWorkParts";
 export type { FieldInspectionWorkHostRef } from "./FieldInspectionWorkParts";
+
+/** Which step-1 save chip a draft field belongs to. */
+const SAVE_CHIP_SECTION_BY_FIELD: Record<string, "location" | "access" | "photos"> = {
+  mapLatitude: "location",
+  mapLongitude: "location",
+  inspectionDate: "location",
+  inspectionTime: "location",
+  streetName: "access",
+  mainStreetName: "access",
+  streetWidthM: "access",
+  accessRouteDescription: "access",
+  freePhotos: "photos",
+};
 
 export function FieldInspectionWorkBody({
   def,
@@ -124,7 +152,6 @@ export function FieldInspectionWorkBody({
   layout?: "desktop" | "mobile";
   hideSubmitFooter?: boolean;
 }) {
-  void def;
   const mobile = layout === "mobile";
   const { role } = usePrototype();
   const { showToast } = useToast();
@@ -132,6 +159,13 @@ export function FieldInspectionWorkBody({
   const { data: record } = usePoRecordQuery(task.poNumber);
   const property = record?.properties.find((p) => p.id === propertyId);
   const keyAvailability = useInspectorKeyAvailability(task);
+  const facadeTypeOptions = useFacadeOptions() ?? [];
+  const [activeStep, setActiveStep] = useState<InspectorStepId>(1);
+  const { saveState, markDirty } = useInspectorSaveState({
+    location: "empty" as const,
+    access: "empty" as const,
+    photos: "empty" as const,
+  });
 
   const [draft, setDraft] = useState<InspectorWorkspaceDraft | null>(null);
   const [fieldErrors, setFieldErrors] = useState<InspectorWorkspaceFieldErrors>(
@@ -207,6 +241,11 @@ export function FieldInspectionWorkBody({
       if (!task.id || workLocked) return;
       setFieldErrors({});
       setFormError(null);
+      // Design: each step-1 section shows its own مسودة/محفوظ chip.
+      for (const key of Object.keys(patch)) {
+        const section = SAVE_CHIP_SECTION_BY_FIELD[key];
+        if (section) markDirty(section);
+      }
       void updateInspectorWorkspace(task.id, patch)
         .then((next) => {
           if (next) setDraft(next);
@@ -218,7 +257,7 @@ export function FieldInspectionWorkBody({
           );
         });
     },
-    [task.id, workLocked, showToast],
+    [task.id, workLocked, showToast, markDirty],
   );
 
   const requestMapMove = useCallback(
@@ -567,6 +606,12 @@ export function FieldInspectionWorkBody({
         </Note>
       ) : null}
 
+      <InspectorStepNav
+        activeStep={activeStep}
+        onSelect={setActiveStep}
+        className={cn(mobile && "mx-4")}
+      />
+
       <fieldset
         disabled={workLocked}
         className={cn(
@@ -578,10 +623,16 @@ export function FieldInspectionWorkBody({
         <div id="ins-map-section">
         <InspectorCard
           title="بيانات المعاينة"
+          hidden={activeStep !== 1}
           icon="ti-clipboard-check"
-          badge={mobile ? undefined : <InsBadge label="إلزامي" tone="danger" />}
+          badge={
+            <span className="flex items-center gap-2">
+              <InspectorSaveChip state={saveState.location} />
+              {mobile ? null : <InsBadge label="إلزامي" tone="danger" />}
+            </span>
+          }
           layout={cardLayout}
-          step={mobile ? 1 : undefined}
+          step={1}
           subtitle={mobile ? "موقع GPS للعقار" : undefined}
           defaultOpen
         >
@@ -770,9 +821,10 @@ export function FieldInspectionWorkBody({
 
         <InspectorCard
           title={mobile ? "خصائص العقار" : "نموذج التحقق الميداني — خصائص العقار"}
+          hidden={activeStep !== 2}
           icon="ti-list-check"
           layout={cardLayout}
-          step={mobile ? 2 : undefined}
+          step={1}
           subtitle={mobile ? `${featureFields.length} خاصية` : undefined}
           defaultOpen={!mobile}
         >
@@ -785,22 +837,22 @@ export function FieldInspectionWorkBody({
             </p>
           ) : null}
           {/* Desktop: table */}
-          <div className={cn("overflow-x-auto", mobile && "hidden")} id="ins-features-section">
+          <div className={cn(mobile && "hidden")} id="ins-features-section">
             <p className="mb-2 text-[11px] leading-relaxed text-text-3">
               عمود «صورة» لإثبات قيمة الحقل عند الحاجة (مثل «نعم» أو نوع الأصل).{" "}
               <strong className="font-semibold text-text-2">صور أنواع العقار</strong>{" "}
               (لكل خدمة/مرفق اخترته) تُرفع من قسم «توثيق الخدمات والمرافق» أدناه.
             </p>
-            <table className="w-full min-w-[640px] border-collapse">
-              <thead>
-                <tr>
-                  <th className={cn(TABLE_TH, "w-8 text-center")}>#</th>
-                  <th className={cn(TABLE_TH, "text-right")}>الحقل</th>
-                  <th className={cn(TABLE_TH, "w-[180px] text-center")}>القيمة</th>
-                  <th className={cn(TABLE_TH, "w-[140px] text-center")}>صورة</th>
-                </tr>
-              </thead>
-              <tbody>
+            <Table className="min-w-[640px]">
+              <THead>
+                <Tr hoverable={false}>
+                  <Th className="w-8 text-center">#</Th>
+                  <Th className="text-right">الحقل</Th>
+                  <Th className="w-[180px] text-center">القيمة</Th>
+                  <Th className="w-[140px] text-center">صورة</Th>
+                </Tr>
+              </THead>
+              <TBody>
                 {featureFields.map((field, index) => {
                   const value = draft.featureValues[field.key] ?? "";
                   const attachment = draft.featurePhotoAttachments[field.key];
@@ -812,19 +864,19 @@ export function FieldInspectionWorkBody({
                     fieldErrors.missingFeaturePhotoKey === field.key;
                   return (
                     <Fragment key={field.key}>
-                    <tr
+                    <Tr
                       key={field.key}
                       id={`ins-feature-${field.key}`}
+                      hoverable={false}
                       className={cn(
                         (valueMissing || photoMissing) && "bg-danger-bg/45",
                       )}
                     >
-                      <td className={cn(TABLE_TD, "text-center text-[11px] text-text-3")}>
+                      <Td className="text-center text-[11px] text-text-3">
                         {index + 1}
-                      </td>
-                      <td
+                      </Td>
+                      <Td
                         className={cn(
-                          TABLE_TD,
                           (valueMissing || photoMissing) &&
                             "font-semibold text-danger",
                         )}
@@ -843,8 +895,8 @@ export function FieldInspectionWorkBody({
                             صورة مطلوبة
                           </span>
                         ) : null}
-                      </td>
-                      <td className={TABLE_TD}>
+                      </Td>
+                      <Td>
                         <Select
                           value={value}
                           aria-invalid={valueMissing || undefined}
@@ -881,11 +933,10 @@ export function FieldInspectionWorkBody({
                             </option>
                           ))}
                         </Select>
-                      </td>
-                      <td
+                      </Td>
+                      <Td
                         id={`ins-feature-photo-${field.key}`}
                         className={cn(
-                          TABLE_TD,
                           "text-center text-text-3",
                           photoMissing && "bg-danger-bg",
                         )}
@@ -916,16 +967,17 @@ export function FieldInspectionWorkBody({
                             return true;
                           }}
                         />
-                      </td>
-                    </tr>
+                      </Td>
+                    </Tr>
                     {field.key === "movables" && isMovablesPresent(draft.featureValues) ? (
-                      <tr
+                      <Tr
+                        hoverable={false}
                         className={cn(
                           fieldErrors.movablesDescription && "bg-danger-bg/45",
                         )}
                       >
-                        <td className={TABLE_TD} />
-                        <td className={TABLE_TD} colSpan={3}>
+                        <Td />
+                        <Td colSpan={3}>
                           <InspectorMovablesDescriptionField
                             value={
                               draft.featureValues[MOVABLES_DESCRIPTION_KEY] ?? ""
@@ -941,14 +993,14 @@ export function FieldInspectionWorkBody({
                               })
                             }
                           />
-                        </td>
-                      </tr>
+                        </Td>
+                      </Tr>
                     ) : null}
                     </Fragment>
                   );
                 })}
-              </tbody>
-            </table>
+              </TBody>
+            </Table>
           </div>
 
           {/* Mobile: pills / suggest+search (HTML renderInspectMobile) */}
@@ -1122,10 +1174,16 @@ export function FieldInspectionWorkBody({
 
         <InspectorCard
           title="الموقع والوصول"
+          hidden={activeStep !== 1}
           icon="ti-road"
-          badge={mobile ? undefined : <InsBadge label="إدخال ميداني" tone="danger" />}
+          badge={
+            <span className="flex items-center gap-2">
+              <InspectorSaveChip state={saveState.access} />
+              {mobile ? null : <InsBadge label="إدخال ميداني" tone="danger" />}
+            </span>
+          }
           layout={cardLayout}
-          step={mobile ? 3 : undefined}
+          step={2}
           subtitle={mobile ? "الشارع وطريقة الوصول" : undefined}
         >
           {mobile ? (
@@ -1213,15 +1271,34 @@ export function FieldInspectionWorkBody({
             </>
           )}
         </InspectorCard>
+        <InspectorCard
+          title="تصوير العقار"
+          hidden={activeStep !== 1}
+          icon="ti-camera"
+          badge={<InspectorSaveChip state={saveState.photos} />}
+          layout={cardLayout}
+          step={3}
+          subtitle={mobile ? inspectorPhotosLabel(draft.freePhotos.length) : undefined}
+        >
+          <InspectorPropertyPhotosSection
+            draft={liveDraft}
+            disabled={locked}
+            mobile={mobile}
+            onPatch={(patch) => persist(patch)}
+            onDirty={() => markDirty("photos")}
+          />
+        </InspectorCard>
+
 
         {!isLandInspection ? (
         <div id="ins-components-section">
         <InspectorCard
           title="مكوّنات العقار"
+          hidden={activeStep !== 2}
           icon="ti-building-estate"
           badge={mobile ? undefined : <InsBadge label="إدخال ميداني" tone="danger" />}
           layout={cardLayout}
-          step={mobile ? 4 : undefined}
+          step={2}
           subtitle={mobile ? "الغرف والمرافق" : undefined}
         >
           <FormRow className={cn("grid-cols-1", !mobile && "sm:grid-cols-2 lg:grid-cols-3")}>
@@ -1499,10 +1576,11 @@ export function FieldInspectionWorkBody({
 
         <InspectorCard
           title={mobile ? "مساحات المباني" : "مساحات المباني"}
+          hidden={activeStep !== 2}
           icon="ti-ruler-measure"
           badge={mobile ? undefined : <InsBadge label="إدخال ميداني" tone="danger" />}
           layout={cardLayout}
-          step={mobile ? 5 : undefined}
+          step={3}
           subtitle={mobile ? "م²" : undefined}
         >
           {!isLandInspection ? (
@@ -1609,6 +1687,7 @@ export function FieldInspectionWorkBody({
         {!boundariesUnavailable && property ? (
           <InspectorCard
             title="الحدود والأطوال"
+            hidden={activeStep !== 2}
             icon="ti-vector"
             badge={
               mobile ? undefined : (
@@ -1619,7 +1698,7 @@ export function FieldInspectionWorkBody({
               )
             }
             layout={cardLayout}
-            step={mobile ? 6 : undefined}
+            step={4}
             subtitle={mobile ? "مطابقة الصك" : undefined}
           >
             {mobile ? null : (
@@ -1648,6 +1727,28 @@ export function FieldInspectionWorkBody({
                         {desc} · {len !== "—" ? `${len} م` : "—"}
                       </span>
                     </div>
+                    <MobileFieldLabel>نوع الواجهة</MobileFieldLabel>
+                    <Select
+                      aria-label={`نوع الواجهة — ${row.label}`}
+                      value={match.facade}
+                      disabled={locked}
+                      className={cn(mobileControlClassName, "mb-2.5")}
+                      onChange={(e) =>
+                        persist({
+                          boundaryMatches: {
+                            ...draft.boundaryMatches,
+                            [key]: { ...match, facade: e.target.value },
+                          },
+                        })
+                      }
+                    >
+                      <option value="">— اختر —</option>
+                      {facadeTypeOptions.map((opt) => (
+                        <option key={opt} value={opt}>
+                          {opt}
+                        </option>
+                      ))}
+                    </Select>
                     <MobilePills
                       options={["مطابق", "عدم تطابق"]}
                       value={match.matches ? "مطابق" : "عدم تطابق"}
@@ -1689,11 +1790,32 @@ export function FieldInspectionWorkBody({
               return (
                 <div
                   key={key}
-                  className="grid grid-cols-1 items-start gap-3 border-b border-border py-2.5 last:border-b-0 md:grid-cols-[90px_1fr_90px_minmax(200px,250px)]"
+                  className="grid grid-cols-1 items-start gap-3 border-b border-border py-2.5 last:border-b-0 md:grid-cols-[90px_150px_1fr_90px_minmax(200px,250px)]"
                 >
                   <span className="text-xs font-semibold text-text-2">
                     {row.label}
                   </span>
+                  <Select
+                    aria-label={`نوع الواجهة — ${row.label}`}
+                    value={match.facade}
+                    disabled={locked}
+                    className="text-[11.5px]"
+                    onChange={(e) =>
+                      persist({
+                        boundaryMatches: {
+                          ...draft.boundaryMatches,
+                          [key]: { ...match, facade: e.target.value },
+                        },
+                      })
+                    }
+                  >
+                    <option value="">— اختر —</option>
+                    {facadeTypeOptions.map((opt) => (
+                      <option key={opt} value={opt}>
+                        {opt}
+                      </option>
+                    ))}
+                  </Select>
                   <span className="text-xs">{desc}</span>
                   <span className="text-xs font-semibold">
                     {len !== "—" ? `${len} م` : "—"}
@@ -1753,10 +1875,11 @@ export function FieldInspectionWorkBody({
 
         <InspectorCard
           title={mobile ? "الخدمات والمرافق" : "الخدمات والمرافق المحيطة"}
+          hidden={activeStep !== 2}
           icon="ti-plug"
           badge={mobile ? undefined : <InsBadge label="اختيار متعدد" />}
           layout={cardLayout}
-          step={mobile ? 7 : undefined}
+          step={5}
           subtitle={mobile ? "اختيار متعدد" : undefined}
         >
           {mobile ? (
@@ -1804,6 +1927,7 @@ export function FieldInspectionWorkBody({
         {draft.services.includes("كهرباء") || draft.services.includes("ماء") ? (
           <InspectorCard
             title="عدادات الخدمات"
+            hidden={activeStep !== 2}
             icon="ti-hash"
             layout={cardLayout}
           >
@@ -1848,10 +1972,11 @@ export function FieldInspectionWorkBody({
 
         <InspectorCard
           title="الوصف والملاحظات"
+          hidden={activeStep !== 3}
           icon="ti-notes"
           badge={mobile ? undefined : <InsBadge label="نص حر" />}
           layout={cardLayout}
-          step={mobile ? 8 : undefined}
+          step={1}
           subtitle={mobile ? "نص حر" : undefined}
         >
           {mobile ? (
@@ -1958,9 +2083,10 @@ export function FieldInspectionWorkBody({
         <div id="ins-defined-photos">
           <InspectorCard
             title={mobile ? "توثيق الخدمات" : "توثيق الخدمات والمرافق"}
+            hidden={activeStep !== 3}
             icon="ti-photo"
             layout={cardLayout}
-            step={mobile ? 9 : undefined}
+            step={2}
             subtitle={mobile ? photoCoverage : undefined}
             badge={
               mobile ? undefined : (
@@ -1985,6 +2111,7 @@ export function FieldInspectionWorkBody({
         <div id="ins-observations">
         <InspectorCard
           title={mobile ? "الملاحظات المصوّرة" : "ملاحظات العقار الموثّقة بالصور"}
+          hidden={activeStep !== 3}
           icon="ti-camera-plus"
           badge={
             mobile ? undefined : (
@@ -1992,7 +2119,7 @@ export function FieldInspectionWorkBody({
             )
           }
           layout={cardLayout}
-          step={mobile ? 10 : undefined}
+          step={3}
           subtitle={mobile ? "شرح + صورة" : undefined}
         >
           {mobile ? null : (
@@ -2417,9 +2544,10 @@ export function FieldInspectionWorkBody({
 
         <InspectorCard
           title="العقارات المقارنة"
+          hidden={activeStep !== 3}
           icon="ti-building-estate"
           layout={cardLayout}
-          step={mobile ? 11 : undefined}
+          step={4}
           subtitle={mobile ? "إضافة مقارن" : undefined}
           badge={
             mobile ? undefined : (
@@ -2438,6 +2566,17 @@ export function FieldInspectionWorkBody({
             disabled={workLocked}
           />
         </InspectorCard>
+        <InspectorCard
+          title="أسئلة دراسة الحالة — المعاين"
+          hidden={activeStep !== 3}
+          icon="ti-list-check"
+          layout={cardLayout}
+          step={5}
+          subtitle={mobile ? "أسئلة الطرف" : undefined}
+        >
+          <PartyCaseStudyFormTab def={def} childTask={task} forceReadOnly={locked} />
+        </InspectorCard>
+
 
         {beforeSubmitFooter}
 

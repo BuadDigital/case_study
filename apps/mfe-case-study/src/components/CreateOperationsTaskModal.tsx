@@ -1,7 +1,12 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { Note, Spinner, cn } from "@platform/ui-kit";
+import {
+  AppModal,
+  cn,
+  Note,
+  Spinner,
+} from "@platform/ui-kit";
 import {
   fetchPartyFeePricingById,
   fetchPartyFeePricingTables,
@@ -11,7 +16,6 @@ import {
 import { pad2 } from "@platform/app-shared/format/date";
 import type { StaffUser } from "@platform/app-shared/prototype/constants";
 import { prototypeModulesApiConfig } from "@platform/app-shared/prototype/prototype-modules-api-config";
-import { AppModal } from "./ui/AppModal";
 import {
   type DistributionAssignee,
 } from "../lib/prototype/distribution-parties";

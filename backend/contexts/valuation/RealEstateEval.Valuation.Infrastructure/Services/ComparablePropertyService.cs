@@ -244,6 +244,19 @@ public sealed class ComparablePropertyService(
         return (true, null);
     }
 
+    public async Task<(bool Ok, string? Error)> ReactivateAsync(
+        Guid id,
+        CancellationToken cancellationToken = default)
+    {
+        var entity = await db.ComparableProperties
+            .FirstOrDefaultAsync(x => x.Id == id, cancellationToken);
+        if (entity is null) return (false, "المقارن غير موجود");
+        entity.IsActive = true;
+        entity.UpdatedAtUtc = _time.UtcNow();
+        await db.SaveChangesAsync(cancellationToken);
+        return (true, null);
+    }
+
     public async Task<ComparableProximitySuggestionListDto> SuggestByProximityAsync(
         ComparableProximityQuery query,
         CancellationToken cancellationToken = default)

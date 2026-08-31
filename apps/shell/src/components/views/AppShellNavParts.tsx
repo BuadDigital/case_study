@@ -4,7 +4,10 @@
 import Link from "next/link";
 import { useLinkStatus } from "next/link";
 import { useEffect, useRef, useState } from "react";
-import { Spinner } from "@platform/ui-kit";
+import {
+  cn,
+  Spinner,
+} from "@platform/ui-kit";
 import { NavIcon } from "@/components/views/NavIcon";
 import { ThemeSwitch } from "@/components/views/ThemeSwitch";
 import type { PageId, RoleId } from "@platform/types";
@@ -33,7 +36,6 @@ import {
   isInFinancialSection,
   type FinanceNavArea,
 } from "@platform/app-shared/prototype/financial-nav";
-import { cn } from "@platform/ui-kit";
 
 export function TopbarSvgIcon({ children }: { children: React.ReactNode }) {
   return (

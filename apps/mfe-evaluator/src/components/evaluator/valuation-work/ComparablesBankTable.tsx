@@ -20,17 +20,13 @@ import { Card } from "./atoms";
 import {
   areaRatio,
   areaRatioValue,
+  NEARBY_RADIUS_KM,
   sourceCardLine,
+  type BankDisplayRow,
 } from "./lib/bank-ranking";
 import { fmt } from "./lib/shell-utils";
 
-export type ComparablesBankRow = {
-  key: string;
-  selected: boolean;
-  adopted: boolean;
-  comp: ComparablePropertyDto;
-  item?: ValuationComparableSelectionDto;
-};
+export type ComparablesBankRow = BankDisplayRow;
 
 /**
  * Comparables bank — owns search and compEdit drafts locally so typing does not
@@ -105,7 +101,7 @@ export const ComparablesBankTable = memo(function ComparablesBankTable({
             {adoptedCount} من {maxAdopted} معتمدة
           </span>
           <span className="hidden text-[11.5px] text-text-3 md:inline">
-            ضمن ٥ كم إن وُجد — وإلا من البنك مرتّبًا حسب أقرب مساحة، ثم المسافة
+            ضمن {NEARBY_RADIUS_KM} كم من موقع العقار — الأقرب أولاً
           </span>
         </div>
         {onSearch ? (
@@ -302,7 +298,7 @@ export const ComparablesBankTable = memo(function ComparablesBankTable({
             ))}
             {rows.length === 0 ? (
               <TableEmptyRow colSpan={12}>
-                لا مرشحين — أضف إلى البنك من صفحة بنك المقارنات.
+                لا مقارنات ضمن {NEARBY_RADIUS_KM} كم — أضف مقارناً في بنك المقارنات (مدينة + إحداثيات).
               </TableEmptyRow>
             ) : null}
           </TBody>

@@ -37,7 +37,7 @@ export { PoHeaderEditRoute } from "./views/po-routes/PoHeaderEditRoute";
 export { PoPropertyEditRoute } from "./views/po-routes/PoPropertyEditRoute";
 export { PoPropertyFailureRoute } from "./views/po-routes/PoPropertyFailureRoute";
 
-export * from "./lib/po-routes";
+export * from "@platform/app-shared/domain/po-routes";
 export * from "./lib/my-task-routes";
 export * from "./lib/work-orders-api-config";
 export * from "./lib/prototype/po-intake-data";
@@ -51,7 +51,7 @@ export * from "./lib/prototype/my-task-row";
 export * from "./lib/prototype/active-transaction-page-situation";
 export * from "./lib/prototype/active-transactions-situation";
 export * from "./lib/prototype/case-study-form-data";
-export * from "./lib/prototype/case-study-question-catalog";
+export * from "@platform/app-shared/domain/case-study/question-catalog";
 export * from "./query/case-study-question-catalog-queries";
 export * from "./lib/prototype/case-study-form-storage";
 export * from "./lib/prototype/case-study-tracks";
@@ -70,7 +70,7 @@ export {
   RowMoreMenu,
   RowMoreMenuIcons,
   type RowMoreMenuItem,
-} from "./components/ui/RowMoreMenu";
+} from "@platform/ui-kit";
 export { RemainingTimeCell } from "./components/ui/RemainingTimeCell";
 export { useActiveTransactionPageSituation } from "./query/use-active-transaction-page-situation";
 export * from "./query/case-study-queries";

@@ -1,5 +1,5 @@
 import type { PoIntakeRecord } from "./po-intake-data";
-import { poPropertyPath } from "../po-routes";
+import { poPropertyPath } from "@platform/app-shared/domain/po-routes";
 
 /** Temporary deed lookup until map points link directly by poNumber/propertyId. */
 export function findPropertyPathByDeed(

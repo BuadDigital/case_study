@@ -13,10 +13,12 @@ import { Fragment, useCallback, useDeferredValue, useMemo, useState } from "reac
 import Link from "next/link";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
+  cn,
   KpiBand,
   KpiCell,
   QueueTableHint,
   StatusPill,
+  type StatusPillStyle,
   Table,
   TableEmptyRow,
   TableFrame,
@@ -26,10 +28,8 @@ import {
   Th,
   THead,
   Tr,
-  cn,
   useToast,
 } from "@platform/ui-kit";
-import type { StatusPillStyle } from "@platform/ui-kit";
 import {
   type InspectorFeeAction,
   type InspectorFeeRowDto,
@@ -43,7 +43,7 @@ import {
 } from "@platform/app-shared/prototype/party-billing-statements-api";
 import { sortInspectorFeeRowsNewestFirst } from "@platform/app-shared/fees/party-fee-meta";
 import { usePrototype } from "@platform/app-shared/contexts/PrototypeContext";
-import { KeyEnvelopeFeesPanel } from "@keys/mfe/components/KeyEnvelopeFeesPanel";
+import { KeyEnvelopeFeesPanel } from "./KeyEnvelopeFeesPanelSlot";
 import { useInspectorFeesQuery } from "../../query/inspector-fees-queries";
 import { useCourtVisitFeesQuery } from "../../query/operations-tasks-queries";
 import { EngFeesHtmlTabs, EngFeesSectionTitle } from "./EngFeesHtmlTabs";

@@ -3,14 +3,16 @@
 /** Property-detail inspection-tab parts — module-level fields/cards/cells, moved verbatim (SRP). */
 
 import { useEffect, useMemo, useRef, useState, type ReactNode, Fragment } from "react";
+import { arabicStepLabel } from "../field-inspection/FieldInspectionWorkParts";
 import { ReturnedForCorrectionNote } from "../ui/ReturnedForCorrectionNote";
 import {
+  AppModal,
   Button,
+  cn,
+  formControlClassName,
   GoogleMapPin,
   InlineLoadingSkeleton,
   Label,
-  cn,
-  formControlClassName,
   useToast,
 } from "@platform/ui-kit";
 import { DetailBadge, EmptyState } from "./PropertyDetailFields";
@@ -73,7 +75,6 @@ import { InspectorPhotoFilePicker } from "../field-inspection/InspectorPhotoFile
 import { InspectorStampedPhotoThumb } from "../field-inspection/InspectorStampedPhotoThumb";
 import { InspectorMovablesDescriptionField } from "../field-inspection/InspectorMovablesDescriptionField";
 import { photoLocationFlagLabel } from "@platform/app-shared/media/photo-location";
-import { AppModal } from "../ui/AppModal";
 import {
   firstInspectorWorkspaceError,
   firstInspectorWorkspaceErrorTarget,
@@ -87,7 +88,7 @@ import type { WorkflowTask } from "../../lib/prototype/tasks-storage";
 import type { PropertyDetailPartyCard } from "../../lib/prototype/property-detail-parties";
 
 /** Shared control style for in-tab edit inputs — matches InsField typography. */
-export { EDIT_CONTROL_CLASS } from "../field-inspection/FieldInspectionWorkParts";
+export { EDIT_CONTROL_CLASS, INS_LABEL_CLASS, INS_TH_CLASS, INS_TD_CLASS } from "../field-inspection/FieldInspectionWorkParts";
 import { EDIT_CONTROL_CLASS } from "../field-inspection/FieldInspectionWorkParts";
 
 export function formatAcceptedDate(iso: string): string {
@@ -151,6 +152,7 @@ export function InsEditField({
   className,
   invalid,
   errorMessage,
+  disabled = false,
 }: {
   id?: string;
   label: string;
@@ -164,7 +166,19 @@ export function InsEditField({
   className?: string;
   invalid?: boolean;
   errorMessage?: string;
+  disabled?: boolean;
 }) {
+  if (disabled) {
+    return (
+      <InsField
+        label={label}
+        value={value}
+        ltr={ltr}
+        badge={badge}
+        className={className}
+      />
+    );
+  }
   return (
     <div className={cn("min-w-0", className)} id={id ? `${id}-wrap` : undefined}>
       <div className="mb-1 flex flex-wrap items-center gap-1.5">
@@ -250,6 +264,7 @@ export function InsEditTextarea({
   onChange,
   rows = 3,
   className,
+  disabled = false,
 }: {
   id?: string;
   label: string;
@@ -257,7 +272,11 @@ export function InsEditTextarea({
   onChange: (value: string) => void;
   rows?: number;
   className?: string;
+  disabled?: boolean;
 }) {
+  if (disabled) {
+    return <InsField label={label} value={value} className={className} />;
+  }
   return (
     <div className={cn("min-w-0", className)}>
       <div className="mb-1 flex flex-wrap items-center gap-1.5">
@@ -298,14 +317,26 @@ export function InsCard({
   title,
   badge,
   children,
+  step,
+  hidden = false,
 }: {
   title: string;
   badge?: React.ReactNode;
   children: React.ReactNode;
+  /** Section number inside its wizard step. */
+  step?: number;
+  /** Belongs to a wizard step that is not the active one. */
+  hidden?: boolean;
 }) {
+  if (hidden) return null;
   return (
     <section className="mb-3 rounded-[12px] border border-border bg-surface px-4 py-3.5 shadow-none">
       <div className="mb-3 flex flex-wrap items-center gap-2">
+        {step != null ? (
+          <span className="grid size-[30px] shrink-0 place-items-center rounded-full bg-ink text-[14px] font-extrabold text-[var(--gold-2,#c8b591)]">
+            {arabicStepLabel(step)}
+          </span>
+        ) : null}
         <h4 className="m-0 text-[13px] font-bold text-heading">{title}</h4>
         <span className="flex-1" />
         {badge}

@@ -2,6 +2,7 @@
 
 import { memo, useMemo, useState, type ReactNode } from "react";
 import {
+  Table,
   cn,
   opsBtnPrimary,
   opsLetterCard,
@@ -812,505 +813,503 @@ export const AdjustmentsMatrix = memo(function AdjustmentsMatrix({
       </div>
 
       <div className={panelCardClass}>
-        <div className="overflow-x-auto">
-          <table className="w-full min-w-[1100px] border-collapse">
-            <thead>
-              <tr>
-                <th className={cn(thBandClass, "w-[230px]")}>البند</th>
-                <th
-                  className={cn(
-                    thCompBaseClass,
-                    "border-x border-x-border-md bg-gold-soft",
-                  )}
-                >
-                  <div>العقار محل التقييم</div>
-                  <div className="mt-[3px] text-[10.5px] font-normal text-gold-d">
-                    أساس المقارنة
+        <Table className="min-w-[1100px]">
+          <thead>
+            <tr>
+              <th className={cn(thBandClass, "w-[230px]")}>البند</th>
+              <th
+                className={cn(
+                  thCompBaseClass,
+                  "border-x border-x-border-md bg-gold-soft",
+                )}
+              >
+                <div>العقار محل التقييم</div>
+                <div className="mt-[3px] text-[10.5px] font-normal text-gold-d">
+                  أساس المقارنة
+                </div>
+              </th>
+              {adopted.map((item) => (
+                <th key={item.id} className={thCompClass}>
+                  <div dir="ltr">{item.comparable.referenceCode}</div>
+                  <div className="mt-[3px] text-[10.5px] font-normal text-text-3">
+                    {item.comparable.transactionKindLabelAr}
                   </div>
                 </th>
-                {adopted.map((item) => (
-                  <th key={item.id} className={thCompClass}>
-                    <div dir="ltr">{item.comparable.referenceCode}</div>
-                    <div className="mt-[3px] text-[10.5px] font-normal text-text-3">
-                      {item.comparable.transactionKindLabelAr}
-                    </div>
-                  </th>
-                ))}
-                <th
-                  className={cn(
-                    thBandClass,
-                    "min-w-[230px] border-s border-s-border",
-                  )}
-                >
-                  مبرر التسوية
-                </th>
-              </tr>
-            </thead>
-            <tbody>
-              {/* Basis: property value */}
-              <tr className={isUnit ? "bg-surface-2" : "bg-surface"}>
-                <LabelCell
-                  label="قيمة العقار المقارن"
-                  hint="إجمالي الصفقة (ريال) — التسويات على قيمة العقار كاملة"
-                  tip="إجمالي سعر العقار المقارن. عند اعتماده تُجرى كل التسويات على قيمة العقار كاملة."
-                  locked={locked}
-                  pickable
-                  picked={!isUnit}
-                  onPick={() =>
-                    void dispatch({ type: "change-basis", basis: "whole_property" })
-                  }
-                />
-                <SubjCell value="المطلوب تقديره" note="مخرج التقييم" />
-                {adopted.map((item) => (
-                  <CompReadonly
-                    key={item.id}
-                    value={fmt(effPrice(item))}
-                    note={item.comparable.transactionDate}
-                    valueClassName={!isUnit ? "text-heading" : "text-text-3"}
-                  />
-                ))}
-                <JustCell />
-              </tr>
-
-              {/* Basis: price per sqm */}
-              <tr className={isUnit ? "bg-surface" : "bg-surface-2"}>
-                <LabelCell
-                  label="سعر متر المقارن"
-                  hint="ريال / م² — سعر المتر يُضرب في مساحة العقار آخر المطاف"
-                  tip="سعر المتر المرصود للمقارن قبل أي تسوية."
-                  locked={locked}
-                  pickable
-                  picked={isUnit}
-                  onPick={() =>
-                    void dispatch({ type: "change-basis", basis: "price_per_sqm" })
-                  }
-                />
-                <SubjCell value="المطلوب تقديره" note="مخرج التقييم" />
-                {adopted.map((item) => (
-                  <CompReadonly
-                    key={item.id}
-                    value={fmt(effUnit(item))}
-                    note={item.comparable.transactionDate}
-                    valueClassName={isUnit ? "text-heading" : "text-text-3"}
-                  />
-                ))}
-                <JustCell />
-              </tr>
-
-              {/* Sequential */}
-              {sequentialKeys.map((factorKey) => {
-                const desc = factorDescriptor(factorKey);
-                const meta = factorMeta(
-                  factorKey,
-                  lineOf(adopted[0]!, factorKey)?.labelAr,
-                );
-                const included =
-                  lineOf(adopted[0]!, factorKey)?.isIncluded !== false;
-                const deletable = desc?.deletable === true;
-                return (
-                  <tr
-                    key={factorKey}
-                    className={included ? "bg-surface" : "bg-surface-2"}
-                  >
-                    <LabelCell
-                      label={meta.label}
-                      hint={meta.hint}
-                      tip={meta.tip}
-                      definition={factorDefinitions[meta.label]}
-                      locked={locked}
-                      removable={deletable}
-                      included={included}
-                      onToggle={() => {
-                        const first = adopted[0];
-                        if (first)
-                          void dispatch({
-                            type: "toggle-included",
-                            item: first,
-                            factorKey,
-                          });
-                      }}
-                      offNote={
-                        included ? undefined : "غير محتسب في السعر التسلسلي"
-                      }
-                      deleteKey={deletable ? factorKey : undefined}
-                      confirmDelete={confirmDelete}
-                      onConfirmDelete={setConfirmDelete}
-                      onDelete={
-                        deletable
-                          ? () =>
-                              void dispatch({
-                                type: "remove-sequential",
-                                factorKey,
-                              })
-                          : undefined
-                      }
-                    />
-                    <SubjCell
-                      value={
-                        desc?.subjectCell === "valuation-date"
-                          ? "تاريخ التقييم"
-                          : "—"
-                      }
-                      note={
-                        desc?.subjectCell === "valuation-date"
-                          ? valuationDate || undefined
-                          : undefined
-                      }
-                    />
-                    {adopted.map((item) => {
-                      // “Suggested” from the server — the primed draft is not a manual entry.
-                      const line = lineOf(item, factorKey);
-                      const suggested =
-                        desc?.compNote === "kind-suggested" &&
-                        line?.isSuggestedValue === true;
-                      const included2 = line?.isIncluded !== false;
-                      const cellKey = `${item.id}:${factorKey}`;
-                      return (
-                        <CompInput
-                          key={item.id}
-                          cellKey={cellKey}
-                          value={String(linePct(item, factorKey))}
-                          disabled={locked || !included2}
-                          muted={suggested || !included2}
-                          note={
-                            desc?.compNote === "deal-age"
-                              ? `عمر الصفقة ${item.market?.dealAgeMonths ?? "—"} شهراً`
-                              : desc?.compNote === "kind-suggested"
-                                ? [
-                                    item.comparable.transactionKindLabelAr,
-                                    suggested ? "مقترح" : "تجاوز يدوي",
-                                  ].join(" · ")
-                                : undefined
-                          }
-                          onCommit={
-                            included2
-                              ? (_key, raw) =>
-                                  dispatch({
-                                    type: "save-cell",
-                                    item,
-                                    factorKey,
-                                    raw,
-                                  })
-                              : undefined
-                          }
-                        />
-                      );
-                    })}
-                    <JustCell
-                      factorKey={factorKey}
-                      value={justValue(factorKey)}
-                      locked={locked}
-                      onCommit={saveRationale}
-                      overrides={overridesFor(factorKey)}
-                      onSaveOverride={saveLineRationale}
-                    />
-                  </tr>
-                );
-              })}
-
-              {/* After sequential */}
-              <tr className="bg-surface-2">
-                <LabelCell
-                  label="السعر بعد التسويات التسلسلية"
-                  hint="ضربية بالترتيب"
-                  tip="السعر × (1+تمويل) × (1+سوق) × (1+نوع)."
-                  locked={locked}
-                />
-                <SubjCell value="—" />
-                {adopted.map((item) => (
-                  <CompReadonly
-                    key={item.id}
-                    value={fmt(item.market?.pricePerSqmAfterSequential)}
-                  />
-                ))}
-                <JustCell />
-              </tr>
-
-              {/* Area */}
-              <tr>
-                <LabelCell
-                  label={factorMeta(AUTO_AREA_KEY).label}
-                  hint={areaMethod}
-                  tip={factorMeta(AUTO_AREA_KEY).tip}
-                  locked={locked}
-                  areaFactor={areaFactor}
-                  onAreaFactorChange={(value) =>
-                    void dispatch({ type: "area-factor-change", value })
-                  }
-                />
-                <SubjCell
-                  value={`${fmt(Number(subjectArea.replace(",", ".")) || null)} م²`}
-                  note="مساحة الأرض"
-                />
-                {adopted.map((item) => {
-                  const adj = item.market?.suggestedAreaAdjustmentPct ?? 0;
-                  return (
-                    <CompReadonly
-                      key={item.id}
-                      value={pct(adj)}
-                      valueClassName={pctClass(adj)}
-                      note={`${fmt(effArea(item))} م²`}
-                    />
-                  );
-                })}
-                <JustCell
-                  factorKey={AUTO_AREA_KEY}
-                  value={justValue(AUTO_AREA_KEY)}
-                  locked={locked}
-                  onCommit={saveRationale}
-                  overrides={overridesFor(AUTO_AREA_KEY)}
-                  onSaveOverride={saveLineRationale}
-                />
-              </tr>
-
-              {/* Difference factors */}
-              {differenceKeys.map((factorKey) => {
-                const desc = factorDescriptor(factorKey);
-                const meta = factorMeta(
-                  factorKey,
-                  lineOf(adopted[0]!, factorKey)?.labelAr,
-                );
-                const included =
-                  lineOf(adopted[0]!, factorKey)?.isIncluded !== false;
-                const specEnabled = factorHasSpecCell(factorKey);
-                let subjVal = "—";
-                let subjNote: string | undefined;
-                if (desc?.subjectCell === "ideal-area") {
-                  subjVal = `${fmt(Number(idealArea.replace(",", ".")) || Number(subjectArea.replace(",", ".")) || null)} م²`;
-                  subjNote = "السائدة في الحي";
-                } else if (desc?.subjectCell === "location") {
-                  subjVal = district || "—";
-                  subjNote = city;
+              ))}
+              <th
+                className={cn(
+                  thBandClass,
+                  "min-w-[230px] border-s border-s-border",
+                )}
+              >
+                مبرر التسوية
+              </th>
+            </tr>
+          </thead>
+          <tbody>
+            {/* Basis: property value */}
+            <tr className={isUnit ? "bg-surface-2" : "bg-surface"}>
+              <LabelCell
+                label="قيمة العقار المقارن"
+                hint="إجمالي الصفقة (ريال) — التسويات على قيمة العقار كاملة"
+                tip="إجمالي سعر العقار المقارن. عند اعتماده تُجرى كل التسويات على قيمة العقار كاملة."
+                locked={locked}
+                pickable
+                picked={!isUnit}
+                onPick={() =>
+                  void dispatch({ type: "change-basis", basis: "whole_property" })
                 }
-                const subjEditable =
-                  specEnabled && !desc?.subjectCell && !!canEditSubjectSpec;
-                return (
-                  <tr
-                    key={factorKey}
-                    className={included ? "bg-surface" : "bg-surface-2"}
-                  >
-                    <LabelCell
-                      label={meta.label}
-                      hint={meta.hint}
-                      tip={meta.tip}
-                      definition={factorDefinitions[meta.label]}
-                      locked={locked}
-                      removable
-                      included={included}
-                      onToggle={() => {
-                        const first = adopted[0];
-                        if (first)
-                          void dispatch({
-                            type: "toggle-included",
-                            item: first,
-                            factorKey,
-                          });
-                      }}
-                      offNote={included ? undefined : "غير محتسب في المجموع"}
-                      deleteKey={factorKey}
-                      confirmDelete={confirmDelete}
-                      onConfirmDelete={setConfirmDelete}
-                      onDelete={() =>
-                        void dispatch({ type: "remove-factor", factorKey })
-                      }
-                    />
-                    {subjEditable ? (
-                      <td className={tdSubjClass}>
-                        <InlineDraftInput
-                          disabled={locked}
-                          placeholder="وصف العقار…"
-                          value={subjectSpecs?.[factorKey] ?? ""}
-                          onCommit={(text) =>
+              />
+              <SubjCell value="المطلوب تقديره" note="مخرج التقييم" />
+              {adopted.map((item) => (
+                <CompReadonly
+                  key={item.id}
+                  value={fmt(effPrice(item))}
+                  note={item.comparable.transactionDate}
+                  valueClassName={!isUnit ? "text-heading" : "text-text-3"}
+                />
+              ))}
+              <JustCell />
+            </tr>
+
+            {/* Basis: price per sqm */}
+            <tr className={isUnit ? "bg-surface" : "bg-surface-2"}>
+              <LabelCell
+                label="سعر متر المقارن"
+                hint="ريال / م² — سعر المتر يُضرب في مساحة العقار آخر المطاف"
+                tip="سعر المتر المرصود للمقارن قبل أي تسوية."
+                locked={locked}
+                pickable
+                picked={isUnit}
+                onPick={() =>
+                  void dispatch({ type: "change-basis", basis: "price_per_sqm" })
+                }
+              />
+              <SubjCell value="المطلوب تقديره" note="مخرج التقييم" />
+              {adopted.map((item) => (
+                <CompReadonly
+                  key={item.id}
+                  value={fmt(effUnit(item))}
+                  note={item.comparable.transactionDate}
+                  valueClassName={isUnit ? "text-heading" : "text-text-3"}
+                />
+              ))}
+              <JustCell />
+            </tr>
+
+            {/* Sequential */}
+            {sequentialKeys.map((factorKey) => {
+              const desc = factorDescriptor(factorKey);
+              const meta = factorMeta(
+                factorKey,
+                lineOf(adopted[0]!, factorKey)?.labelAr,
+              );
+              const included =
+                lineOf(adopted[0]!, factorKey)?.isIncluded !== false;
+              const deletable = desc?.deletable === true;
+              return (
+                <tr
+                  key={factorKey}
+                  className={included ? "bg-surface" : "bg-surface-2"}
+                >
+                  <LabelCell
+                    label={meta.label}
+                    hint={meta.hint}
+                    tip={meta.tip}
+                    definition={factorDefinitions[meta.label]}
+                    locked={locked}
+                    removable={deletable}
+                    included={included}
+                    onToggle={() => {
+                      const first = adopted[0];
+                      if (first)
+                        void dispatch({
+                          type: "toggle-included",
+                          item: first,
+                          factorKey,
+                        });
+                    }}
+                    offNote={
+                      included ? undefined : "غير محتسب في السعر التسلسلي"
+                    }
+                    deleteKey={deletable ? factorKey : undefined}
+                    confirmDelete={confirmDelete}
+                    onConfirmDelete={setConfirmDelete}
+                    onDelete={
+                      deletable
+                        ? () =>
                             void dispatch({
-                              type: "save-subject-spec",
+                              type: "remove-sequential",
                               factorKey,
-                              text,
                             })
-                          }
-                          className="w-full rounded-[7px] border border-dashed border-border-md bg-surface px-2 py-1.5 text-center text-[12px] font-bold text-gold-d"
-                        />
-                      </td>
-                    ) : (
-                      <SubjCell value={subjVal} note={subjNote} />
-                    )}
-                    {adopted.map((item) => {
-                      const line = lineOf(item, factorKey);
-                      const cellKey = `${item.id}:${factorKey}`;
-                      const descKey = `${cellKey}:desc`;
-                      return (
-                        <CompInput
-                          key={item.id}
-                          cellKey={cellKey}
-                          value={String(linePct(item, factorKey))}
-                          disabled={locked || !included}
-                          muted={!included}
-                          onCommit={
-                            included
-                              ? (_key, raw) =>
-                                  dispatch({
-                                    type: "save-cell",
-                                    item,
-                                    factorKey,
-                                    raw,
-                                  })
+                        : undefined
+                    }
+                  />
+                  <SubjCell
+                    value={
+                      desc?.subjectCell === "valuation-date"
+                        ? "تاريخ التقييم"
+                        : "—"
+                    }
+                    note={
+                      desc?.subjectCell === "valuation-date"
+                        ? valuationDate || undefined
+                        : undefined
+                    }
+                  />
+                  {adopted.map((item) => {
+                    // “Suggested” from the server — the primed draft is not a manual entry.
+                    const line = lineOf(item, factorKey);
+                    const suggested =
+                      desc?.compNote === "kind-suggested" &&
+                      line?.isSuggestedValue === true;
+                    const included2 = line?.isIncluded !== false;
+                    const cellKey = `${item.id}:${factorKey}`;
+                    return (
+                      <CompInput
+                        key={item.id}
+                        cellKey={cellKey}
+                        value={String(linePct(item, factorKey))}
+                        disabled={locked || !included2}
+                        muted={suggested || !included2}
+                        note={
+                          desc?.compNote === "deal-age"
+                            ? `عمر الصفقة ${item.market?.dealAgeMonths ?? "—"} شهراً`
+                            : desc?.compNote === "kind-suggested"
+                              ? [
+                                  item.comparable.transactionKindLabelAr,
+                                  suggested ? "مقترح" : "تجاوز يدوي",
+                                ].join(" · ")
                               : undefined
-                          }
-                          note={
-                            desc?.subjectCell === "location"
-                              ? `${item.comparable.district || "—"} · ${city || ""}`
-                              : undefined
-                          }
-                          extra={
-                            specEnabled ? (
-                              <InlineDraftInput
-                                key={descKey}
-                                disabled={locked}
-                                placeholder="وصف المقارن…"
-                                value={line?.descriptionAr ?? ""}
-                                onCommit={(text) =>
-                                  void dispatch({
-                                    type: "save-description",
-                                    item,
-                                    factorKey,
-                                    text,
-                                  })
-                                }
-                                className="mt-1 w-[110px] rounded-md border border-dashed border-border bg-surface px-1.5 py-1 text-center text-[10.5px] font-medium text-text-2"
-                              />
-                            ) : null
-                          }
-                        />
-                      );
-                    })}
-                    <JustCell
-                      factorKey={factorKey}
-                      value={justValue(factorKey)}
-                      locked={locked}
-                      onCommit={saveRationale}
-                      overrides={overridesFor(factorKey)}
-                      onSaveOverride={saveLineRationale}
-                    />
-                  </tr>
-                );
-              })}
+                        }
+                        onCommit={
+                          included2
+                            ? (_key, raw) =>
+                                dispatch({
+                                  type: "save-cell",
+                                  item,
+                                  factorKey,
+                                  raw,
+                                })
+                            : undefined
+                        }
+                      />
+                    );
+                  })}
+                  <JustCell
+                    factorKey={factorKey}
+                    value={justValue(factorKey)}
+                    locked={locked}
+                    onCommit={saveRationale}
+                    overrides={overridesFor(factorKey)}
+                    onSaveOverride={saveLineRationale}
+                  />
+                </tr>
+              );
+            })}
 
-              {addableFactors.length > 0 ? (
-                <AddFactorRow
-                  options={addableFactors}
-                  locked={locked}
-                  colSpan={3 + adopted.length}
-                  onAdd={(factorKey, labelAr) =>
-                    void dispatch({ type: "add-factor", factorKey, labelAr })
-                  }
+            {/* After sequential */}
+            <tr className="bg-surface-2">
+              <LabelCell
+                label="السعر بعد التسويات التسلسلية"
+                hint="ضربية بالترتيب"
+                tip="السعر × (1+تمويل) × (1+سوق) × (1+نوع)."
+                locked={locked}
+              />
+              <SubjCell value="—" />
+              {adopted.map((item) => (
+                <CompReadonly
+                  key={item.id}
+                  value={fmt(item.market?.pricePerSqmAfterSequential)}
                 />
-              ) : null}
+              ))}
+              <JustCell />
+            </tr>
 
-              {/* Sum */}
-              <tr className="bg-surface-2">
-                <LabelCell
-                  label="مجموع نسب التسويات"
-                  hint="الصافي بإشاراته"
-                  tip="مجموع تسوية المساحة وعوامل الاختلاف. تجاوز ±٣٥٪ يستلزم مبرراً موثقاً ومراجعة صلاحية المقارن."
-                  locked={locked}
-                />
-                <SubjCell value="أساس المقارنة" note="صفر بالتعريف" />
-                {adopted.map((item) => {
-                  const sum = item.market?.sumDifferencePct ?? 0;
-                  const over = Math.abs(sum) > 35;
-                  return (
-                    <CompReadonly
-                      key={item.id}
-                      value={pct(sum)}
-                      valueClassName={over ? "text-danger-text" : pctClass(sum)}
-                      note={over ? "التبرير إلزامي" : undefined}
-                    />
-                  );
-                })}
-                <JustCell />
-              </tr>
-
-              {/* After difference factors */}
-              <tr>
-                <LabelCell
-                  label="القيمة بعد ضبط عوامل الاختلاف"
-                  hint={isUnit ? "ريال / م²" : "ريال — قيمة العقار"}
-                  tip="السعر التسلسلي × (1 + مجموع نسب التسويات)."
-                  locked={locked}
-                />
-                <SubjCell value="—" />
-                {adopted.map((item) => (
+            {/* Area */}
+            <tr>
+              <LabelCell
+                label={factorMeta(AUTO_AREA_KEY).label}
+                hint={areaMethod}
+                tip={factorMeta(AUTO_AREA_KEY).tip}
+                locked={locked}
+                areaFactor={areaFactor}
+                onAreaFactorChange={(value) =>
+                  void dispatch({ type: "area-factor-change", value })
+                }
+              />
+              <SubjCell
+                value={`${fmt(Number(subjectArea.replace(",", ".")) || null)} م²`}
+                note="مساحة الأرض"
+              />
+              {adopted.map((item) => {
+                const adj = item.market?.suggestedAreaAdjustmentPct ?? 0;
+                return (
                   <CompReadonly
                     key={item.id}
-                    value={fmt(item.market?.pricePerSqmAfterDifference)}
+                    value={pct(adj)}
+                    valueClassName={pctClass(adj)}
+                    note={`${fmt(effArea(item))} م²`}
                   />
-                ))}
-                <JustCell />
-              </tr>
+                );
+              })}
+              <JustCell
+                factorKey={AUTO_AREA_KEY}
+                value={justValue(AUTO_AREA_KEY)}
+                locked={locked}
+                onCommit={saveRationale}
+                overrides={overridesFor(AUTO_AREA_KEY)}
+                onSaveOverride={saveLineRationale}
+              />
+            </tr>
 
-              {/* Weight */}
-              <tr>
-                <LabelCell
-                  label="الوزن النسبي"
-                  hint="مقترح آلياً · قابل للتعديل"
-                  tip="المقارن الذي مجموع نسب تسوياته أقرب إلى الصفر يأخذ الوزن الأكبر."
-                  locked={locked}
-                />
-                <SubjCell value="—" />
-                {adopted.map((item) => {
-                  const manual = item.market?.weightIsManual;
-                  const display = String(
-                    manual
-                      ? (item.market?.weightPct ??
-                          item.market?.effectiveWeightPct ??
-                          "")
-                      : (item.market?.suggestedWeightPct ??
-                          item.market?.effectiveWeightPct ??
-                          ""),
-                  );
-                  return (
-                    <WeightCell
-                      key={item.id}
-                      value={display}
-                      manual={manual}
-                      suggestedNote={`مقترح ${item.market?.suggestedWeightPct ?? "—"}%`}
-                      locked={locked}
-                      onCommit={(raw) =>
-                        dispatch({
-                          type: "save-weight",
-                          item,
-                          rawPct: raw,
-                          // Last committed justification — the cell draft commits itself on blur.
-                          weightRationale: justValue("weight"),
-                        })
-                      }
-                    />
-                  );
-                })}
-                <JustCell
-                  factorKey="weight"
-                  value={justValue("weight")}
-                  locked={locked}
-                  onCommit={saveRationale}
-                />
-              </tr>
+            {/* Difference factors */}
+            {differenceKeys.map((factorKey) => {
+              const desc = factorDescriptor(factorKey);
+              const meta = factorMeta(
+                factorKey,
+                lineOf(adopted[0]!, factorKey)?.labelAr,
+              );
+              const included =
+                lineOf(adopted[0]!, factorKey)?.isIncluded !== false;
+              const specEnabled = factorHasSpecCell(factorKey);
+              let subjVal = "—";
+              let subjNote: string | undefined;
+              if (desc?.subjectCell === "ideal-area") {
+                subjVal = `${fmt(Number(idealArea.replace(",", ".")) || Number(subjectArea.replace(",", ".")) || null)} م²`;
+                subjNote = "السائدة في الحي";
+              } else if (desc?.subjectCell === "location") {
+                subjVal = district || "—";
+                subjNote = city;
+              }
+              const subjEditable =
+                specEnabled && !desc?.subjectCell && !!canEditSubjectSpec;
+              return (
+                <tr
+                  key={factorKey}
+                  className={included ? "bg-surface" : "bg-surface-2"}
+                >
+                  <LabelCell
+                    label={meta.label}
+                    hint={meta.hint}
+                    tip={meta.tip}
+                    definition={factorDefinitions[meta.label]}
+                    locked={locked}
+                    removable
+                    included={included}
+                    onToggle={() => {
+                      const first = adopted[0];
+                      if (first)
+                        void dispatch({
+                          type: "toggle-included",
+                          item: first,
+                          factorKey,
+                        });
+                    }}
+                    offNote={included ? undefined : "غير محتسب في المجموع"}
+                    deleteKey={factorKey}
+                    confirmDelete={confirmDelete}
+                    onConfirmDelete={setConfirmDelete}
+                    onDelete={() =>
+                      void dispatch({ type: "remove-factor", factorKey })
+                    }
+                  />
+                  {subjEditable ? (
+                    <td className={tdSubjClass}>
+                      <InlineDraftInput
+                        disabled={locked}
+                        placeholder="وصف العقار…"
+                        value={subjectSpecs?.[factorKey] ?? ""}
+                        onCommit={(text) =>
+                          void dispatch({
+                            type: "save-subject-spec",
+                            factorKey,
+                            text,
+                          })
+                        }
+                        className="w-full rounded-[7px] border border-dashed border-border-md bg-surface px-2 py-1.5 text-center text-[12px] font-bold text-gold-d"
+                      />
+                    </td>
+                  ) : (
+                    <SubjCell value={subjVal} note={subjNote} />
+                  )}
+                  {adopted.map((item) => {
+                    const line = lineOf(item, factorKey);
+                    const cellKey = `${item.id}:${factorKey}`;
+                    const descKey = `${cellKey}:desc`;
+                    return (
+                      <CompInput
+                        key={item.id}
+                        cellKey={cellKey}
+                        value={String(linePct(item, factorKey))}
+                        disabled={locked || !included}
+                        muted={!included}
+                        onCommit={
+                          included
+                            ? (_key, raw) =>
+                                dispatch({
+                                  type: "save-cell",
+                                  item,
+                                  factorKey,
+                                  raw,
+                                })
+                            : undefined
+                        }
+                        note={
+                          desc?.subjectCell === "location"
+                            ? `${item.comparable.district || "—"} · ${city || ""}`
+                            : undefined
+                        }
+                        extra={
+                          specEnabled ? (
+                            <InlineDraftInput
+                              key={descKey}
+                              disabled={locked}
+                              placeholder="وصف المقارن…"
+                              value={line?.descriptionAr ?? ""}
+                              onCommit={(text) =>
+                                void dispatch({
+                                  type: "save-description",
+                                  item,
+                                  factorKey,
+                                  text,
+                                })
+                              }
+                              className="mt-1 w-[110px] rounded-md border border-dashed border-border bg-surface px-1.5 py-1 text-center text-[10.5px] font-medium text-text-2"
+                            />
+                          ) : null
+                        }
+                      />
+                    );
+                  })}
+                  <JustCell
+                    factorKey={factorKey}
+                    value={justValue(factorKey)}
+                    locked={locked}
+                    onCommit={saveRationale}
+                    overrides={overridesFor(factorKey)}
+                    onSaveOverride={saveLineRationale}
+                  />
+                </tr>
+              );
+            })}
 
-              {/* After weight */}
-              <tr className="bg-surface-2">
-                <LabelCell
-                  label="القيمة بعد الوزن النسبي"
-                  hint={isUnit ? "ريال / م²" : "ريال — قيمة العقار"}
-                  tip="القيمة بعد التسويات × الوزن."
-                  locked={locked}
+            {addableFactors.length > 0 ? (
+              <AddFactorRow
+                options={addableFactors}
+                locked={locked}
+                colSpan={3 + adopted.length}
+                onAdd={(factorKey, labelAr) =>
+                  void dispatch({ type: "add-factor", factorKey, labelAr })
+                }
+              />
+            ) : null}
+
+            {/* Sum */}
+            <tr className="bg-surface-2">
+              <LabelCell
+                label="مجموع نسب التسويات"
+                hint="الصافي بإشاراته"
+                tip="مجموع تسوية المساحة وعوامل الاختلاف. تجاوز ±٣٥٪ يستلزم مبرراً موثقاً ومراجعة صلاحية المقارن."
+                locked={locked}
+              />
+              <SubjCell value="أساس المقارنة" note="صفر بالتعريف" />
+              {adopted.map((item) => {
+                const sum = item.market?.sumDifferencePct ?? 0;
+                const over = Math.abs(sum) > 35;
+                return (
+                  <CompReadonly
+                    key={item.id}
+                    value={pct(sum)}
+                    valueClassName={over ? "text-danger-text" : pctClass(sum)}
+                    note={over ? "التبرير إلزامي" : undefined}
+                  />
+                );
+              })}
+              <JustCell />
+            </tr>
+
+            {/* After difference factors */}
+            <tr>
+              <LabelCell
+                label="القيمة بعد ضبط عوامل الاختلاف"
+                hint={isUnit ? "ريال / م²" : "ريال — قيمة العقار"}
+                tip="السعر التسلسلي × (1 + مجموع نسب التسويات)."
+                locked={locked}
+              />
+              <SubjCell value="—" />
+              {adopted.map((item) => (
+                <CompReadonly
+                  key={item.id}
+                  value={fmt(item.market?.pricePerSqmAfterDifference)}
                 />
-                <SubjCell value="—" />
-                {adopted.map((item) => (
-                  <CompReadonly key={item.id} value={fmt(afterWeight(item))} />
-                ))}
-                <JustCell />
-              </tr>
-            </tbody>
-          </table>
-        </div>
+              ))}
+              <JustCell />
+            </tr>
+
+            {/* Weight */}
+            <tr>
+              <LabelCell
+                label="الوزن النسبي"
+                hint="مقترح آلياً · قابل للتعديل"
+                tip="المقارن الذي مجموع نسب تسوياته أقرب إلى الصفر يأخذ الوزن الأكبر."
+                locked={locked}
+              />
+              <SubjCell value="—" />
+              {adopted.map((item) => {
+                const manual = item.market?.weightIsManual;
+                const display = String(
+                  manual
+                    ? (item.market?.weightPct ??
+                        item.market?.effectiveWeightPct ??
+                        "")
+                    : (item.market?.suggestedWeightPct ??
+                        item.market?.effectiveWeightPct ??
+                        ""),
+                );
+                return (
+                  <WeightCell
+                    key={item.id}
+                    value={display}
+                    manual={manual}
+                    suggestedNote={`مقترح ${item.market?.suggestedWeightPct ?? "—"}%`}
+                    locked={locked}
+                    onCommit={(raw) =>
+                      dispatch({
+                        type: "save-weight",
+                        item,
+                        rawPct: raw,
+                        // Last committed justification — the cell draft commits itself on blur.
+                        weightRationale: justValue("weight"),
+                      })
+                    }
+                  />
+                );
+              })}
+              <JustCell
+                factorKey="weight"
+                value={justValue("weight")}
+                locked={locked}
+                onCommit={saveRationale}
+              />
+            </tr>
+
+            {/* After weight */}
+            <tr className="bg-surface-2">
+              <LabelCell
+                label="القيمة بعد الوزن النسبي"
+                hint={isUnit ? "ريال / م²" : "ريال — قيمة العقار"}
+                tip="القيمة بعد التسويات × الوزن."
+                locked={locked}
+              />
+              <SubjCell value="—" />
+              {adopted.map((item) => (
+                <CompReadonly key={item.id} value={fmt(afterWeight(item))} />
+              ))}
+              <JustCell />
+            </tr>
+          </tbody>
+        </Table>
       </div>
 
       {/* Outputs below the table */}

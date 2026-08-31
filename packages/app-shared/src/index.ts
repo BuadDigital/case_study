@@ -75,6 +75,12 @@ export * from "./prototype/party-task-recall-storage";
 export * from "./prototype/party-workflow-events";
 export * from "./prototype/screen-catalog";
 export { prototypeKeys } from "./query/prototype-keys";
+export {
+  optimisticPatchListItem,
+  restoreOptimisticPatch,
+  restoreQueryData,
+} from "./query/optimistic-list";
+export type { OptimisticPatchResult } from "./query/optimistic-list";
 export { usePermissionsQuery } from "./query/permissions-queries";
 export * from "./workflow/task-types";
 export {

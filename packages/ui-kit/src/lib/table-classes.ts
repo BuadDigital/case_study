@@ -17,6 +17,7 @@ function conflictKey(token: string): string | null {
   ) {
     return "font-weight";
   }
+  if (bare === "table-auto" || bare === "table-fixed") return "table-layout";
   if (/^justify-/.test(bare)) return "justify";
   if (/^items-/.test(bare)) return "items";
   if (/^self-/.test(bare)) return "self";

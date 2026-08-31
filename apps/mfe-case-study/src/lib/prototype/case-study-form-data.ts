@@ -9,19 +9,13 @@ import {
 import {
   DEFAULT_CASE_STUDY_QUESTION_CATALOG,
   type CaseStudyQuestionSection,
-} from "./case-study-question-catalog";
+} from "@platform/app-shared/domain/case-study/question-catalog";
 
 export type { CaseStudyQuestionSection };
 
 export type CaseStudyFormAnswer = "A" | "B" | "NA";
 
-export const CASE_STUDY_FORM_STEPS = [
-  { id: 1, label: "بيانات الصك والعقار" },
-  { id: 2, label: "الرفع المساحي والطبيعة" },
-  { id: 3, label: "مكونات العقار" },
-  { id: 4, label: "الإشغال والإيجار" },
-  { id: 5, label: "ملاحظات إضافية" },
-] as const;
+export { CASE_STUDY_FORM_STEPS } from "@platform/app-shared/domain/case-study/question-catalog";
 
 const DEFAULT_PROVIDER_NAME = "شركة إجادة المهنية للتقييم";
 const DEFAULT_STAMP = "/case-study/ejadah-stamp.svg";
@@ -77,15 +71,10 @@ export const CASE_STUDY_TABLE_HEADERS: Record<
   extra: { colA: "يوجد", colB: "لا يوجد", colNa: "لا ينطبق" },
 };
 
-export const CASE_STUDY_SECTION_QUESTIONS =
-  DEFAULT_CASE_STUDY_QUESTION_CATALOG.sectionQuestions;
-
-export function caseStudyAnswerKey(
-  section: CaseStudyQuestionSection,
-  index: number,
-): string {
-  return `${section}_${index}`;
-}
+export {
+  CASE_STUDY_SECTION_QUESTIONS,
+  caseStudyAnswerKey,
+} from "@platform/app-shared/domain/case-study/question-catalog";
 
 export function caseStudyTotalQuestions(): number {
   return (

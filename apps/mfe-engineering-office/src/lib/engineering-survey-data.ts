@@ -1,4 +1,4 @@
-import { jeddahDefaultCoords } from "./jeddah-default-coords";
+import { jeddahDefaultCoords } from "@platform/app-shared/domain/jeddah-default-coords";
 
 /** Field verification checklist — 13 items (from engineering_office_screen.html). */
 export const ENGINEERING_SURVEY_CHECKLIST_ITEMS = [

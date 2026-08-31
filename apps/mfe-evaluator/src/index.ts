@@ -45,6 +45,6 @@ export {
   InfathTextField,
   InfathTextAreaField,
   InfathSection,
-} from "./components/evaluator/InfathFormFields";
+} from "@platform/ui-kit";
 
 export * from "./query/evaluator-queries";

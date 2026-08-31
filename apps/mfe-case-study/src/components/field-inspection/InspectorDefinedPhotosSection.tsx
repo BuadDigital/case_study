@@ -50,7 +50,7 @@ function slotPhotoRef(slotId: string, photoId: number): string {
   return `slot:${slotId}:${photoId}`;
 }
 
-function freePhotoRef(photoId: number): string {
+export function freePhotoRef(photoId: number): string {
   return `free:${photoId}`;
 }
 

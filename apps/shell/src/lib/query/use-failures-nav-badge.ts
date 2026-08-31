@@ -5,7 +5,7 @@ import { useQuery } from "@tanstack/react-query";
 import { prototypeKeys } from "@platform/app-shared/query/prototype-keys";
 import { usePrototype } from "@platform/app-shared/contexts/PrototypeContext";
 import { countOpenFailuresForPartyRole } from "@failures/mfe/lib/failures-party-raiser-scope";
-import type { FailureRecord } from "@failures/mfe/lib/failures-types";
+import type { FailureRecord } from "@platform/app-shared/failures/failures-types";
 import { loadFailuresQuery } from "@failures/mfe/lib/failures-repository";
 
 const STALE_MS = 60_000;

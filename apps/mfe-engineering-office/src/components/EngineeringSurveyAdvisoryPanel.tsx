@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { RegistrationFormCard } from "@platform/app-shared/registration/RegistrationFormCard";
 import { Button, InlineLoadingSkeleton, Label, cn, formControlClassName } from "@platform/ui-kit";
 import type { WorkflowTask } from "@case-study/mfe/lib/prototype/tasks-storage";
-import { findSurveyChildForParent } from "../lib/engineering-survey-task";
+import { findSurveyChildForParent } from "@platform/app-shared/engineering-survey/survey-task";
 import type { EngineeringSurveySubmission } from "../lib/engineering-survey-data";
 import {
   ENGINEERING_SURVEY_SUBMISSION_CHANGED_EVENT,

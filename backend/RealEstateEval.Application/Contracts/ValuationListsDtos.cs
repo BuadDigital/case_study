@@ -10,10 +10,12 @@ public static class ValuationListIds
     public const string Glossary = "glossary";
     public const string IvsStandards = "ivsStandards";
     public const string Attachments = "attachments";
+    public const string Facades = "facades";
 
     public static readonly string[] TableLists =
     [
-        Purposes, ValueBases, Premises, Methods, Comparables, Glossary, IvsStandards, Attachments,
+        Purposes, ValueBases, Premises, Methods, Comparables, Facades, Glossary, IvsStandards,
+        Attachments,
     ];
 }
 

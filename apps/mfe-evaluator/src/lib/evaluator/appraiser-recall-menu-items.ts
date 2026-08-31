@@ -1,4 +1,4 @@
-import type { RowMoreMenuItem } from "@case-study/mfe/components/ui/RowMoreMenu";
+import type { RowMoreMenuItem } from "@platform/ui-kit";
 import type { WorkflowTask } from "@platform/app-shared/workflow/task-types";
 import {
   getPartyTaskRecall,

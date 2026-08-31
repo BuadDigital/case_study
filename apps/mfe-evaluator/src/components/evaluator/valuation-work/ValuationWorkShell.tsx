@@ -11,7 +11,6 @@ import {
   useState,
 } from "react";
 import {
-  getApiBase,
   ensureOpenValuationRequestByProperty,
   listValuationComparableSelections,
   saveValuationComparableMarket,
@@ -47,6 +46,7 @@ import type {
   EvaluatorSubmission,
 } from "../../../lib/evaluator/evaluator-window-data";
 import { createEvaluatorDraft } from "../../../lib/evaluator/evaluator-window-data";
+import { fetchInspectorWorkspace } from "@case-study/mfe/lib/prototype/inspector-workspace-storage";
 
 import {
   Card,
@@ -58,9 +58,12 @@ import { ApproachSettingsSection } from "./ApproachSettingsSection";
 import { ComparablesBankTable } from "./ComparablesBankTable";
 import {
   BANK_DISPLAY_LIMIT,
+  buildBankDisplayRows,
   fetchBankCandidates,
+  filterSelectionNearSubject,
   isVacantLandComparable,
   parseSubjectAreaSqm,
+  resolveSubjectCoordsForBank,
 } from "./lib/bank-ranking";
 import {
   AUTO_AREA_KEYS,
@@ -211,9 +214,10 @@ export function ValuationWorkShell({
   const [landSelection, setLandSelection] =
     useState<ValuationComparableSelectionListDto | null>(null);
   const [candidates, setCandidates] = useState<ComparablePropertyDto[]>([]);
-  const [candidateDistanceKm, setCandidateDistanceKm] = useState<
-    Record<string, number>
-  >({});
+  const [bankSubjectCoords, setBankSubjectCoords] = useState<{
+    lat: number;
+    lng: number;
+  } | null>(null);
   const [subjectArea, setSubjectArea] = useState("");
   const [adjustmentBasis, setAdjustmentBasis] = useState("price_per_sqm");
   const [analysisNotes, setAnalysisNotes] = useState("");
@@ -269,6 +273,7 @@ export function ValuationWorkShell({
 
 
   const subjectAreaSyncedRef = useRef<string | null>(null);
+  const autoUnadoptFarRef = useRef<string | null>(null);
 
   /** Subject transaction area from the property wins over stale market-approach area on the server —
       sync once per (request, area) so it does not repeat on every load. */
@@ -298,6 +303,51 @@ export function ValuationWorkShell({
     });
     if (syncRes.ok) setSelection(syncRes.data);
   }
+
+  const resolveBankFetchOpts = useCallback(
+    async (search?: string) => {
+      const inspector = propertyId.trim()
+        ? await fetchInspectorWorkspace(propertyId.trim())
+        : null;
+      const lat = Number(inspector?.mapLatitude);
+      const lng = Number(inspector?.mapLongitude);
+      const hasInspectorPin =
+        Number.isFinite(lat) &&
+        Number.isFinite(lng) &&
+        !(lat === 0 && lng === 0);
+      return {
+        q: search?.trim() || undefined,
+        propertyId: propertyId.trim() || undefined,
+        district:
+          property?.district?.trim() ||
+          districtHint?.trim() ||
+          intakeProperty?.district?.trim() ||
+          undefined,
+        city: property?.city || intakeProperty?.city || undefined,
+        deedNumber:
+          property?.deedNumber || intakeProperty?.deedNumber || undefined,
+        locationMapUrl: intakeProperty?.locationMapUrl,
+        propertyType: property?.propertyType?.trim() || undefined,
+        subjectSqm: parseSubjectAreaSqm(subjectArea, property?.area),
+        latitude: hasInspectorPin ? lat : null,
+        longitude: hasInspectorPin ? lng : null,
+      };
+    },
+    [
+      propertyId,
+      districtHint,
+      property?.district,
+      property?.city,
+      property?.deedNumber,
+      property?.propertyType,
+      property?.area,
+      intakeProperty?.city,
+      intakeProperty?.deedNumber,
+      intakeProperty?.district,
+      intakeProperty?.locationMapUrl,
+      subjectArea,
+    ],
+  );
 
   const reload = useCallback(
     async (opts?: { silent?: boolean; scope?: "full" | "derived" }) => {
@@ -358,16 +408,13 @@ export function ValuationWorkShell({
     // Apply each response as it arrives — adoption flag does not wait on the slowest call (issuance gates).
     const selP = listValuationComparableSelections(config, requestId, MARKET_CONTEXT);
     const landP = listValuationComparableSelections(config, requestId, LAND_WITHIN_COST);
-    // Display bank: within 5 km (no district filter), then bank sorted by closest area — 6 for display.
+    // Display bank: within 3 km of subject (district coords when known), nearest first — up to 6 rows.
     // Text search is a separate call inside the bank table (searchBank) — not routed here.
     const bankP = derivedOnly
       ? null
-      : fetchBankCandidates(config, {
-          propertyId: propertyId.trim() || undefined,
-          district: districtHint || property?.district || undefined,
-          propertyType: property?.propertyType?.trim() || undefined,
-          subjectSqm: parseSubjectAreaSqm(subjectArea, property?.area),
-        });
+      : resolveBankFetchOpts().then((bankOpts) =>
+          fetchBankCandidates(config, bankOpts),
+        );
     const costP = getValuationCostApproach(config, requestId);
     const reconP = getValuationReconciliation(config, requestId);
     const gatesP = getValuationIssuanceGates(config, requestId);
@@ -382,7 +429,7 @@ export function ValuationWorkShell({
       void bankP.then((bankRes) => {
         if (!bankRes.ok) return;
         setCandidates(bankRes.data);
-        setCandidateDistanceKm(bankRes.distances);
+        setBankSubjectCoords(bankRes.subjectCoords);
       });
     }
     void gatesP.then((gatesRes) => setGates(gatesRes.ok ? gatesRes.data : null));
@@ -459,6 +506,12 @@ export function ValuationWorkShell({
     property?.area,
     property?.district,
     property?.propertyType,
+    property?.city,
+    property?.deedNumber,
+    intakeProperty?.city,
+    intakeProperty?.deedNumber,
+    intakeProperty?.locationMapUrl,
+    resolveBankFetchOpts,
     ],
   );
 
@@ -547,22 +600,68 @@ export function ValuationWorkShell({
     () => selection?.items.filter((i) => i.isAdopted) ?? [],
     [selection],
   );
-  const factorRows = useMemo(
-    () => buildFactorRows(adoptedMarket),
-    [adoptedMarket],
-  );
   /** Cost-approach land table (land_within_cost) — data and adjustments independent of market approach. */
   const adoptedLand = useMemo(
     () => landSelection?.items.filter((i) => i.isAdopted) ?? [],
     [landSelection],
   );
-  const landFactorRows = useMemo(
-    () => buildFactorRows(adoptedLand),
-    [adoptedLand],
-  );
   const subjectSpecs = useMemo(
     () => selection?.subjectSpecs ?? {},
     [selection],
+  );
+
+  const subjectCity =
+    property?.city?.trim() || intakeProperty?.city?.trim() || "";
+  const subjectDistrict =
+    property?.district?.trim() ||
+    districtHint?.trim() ||
+    intakeProperty?.district?.trim() ||
+    "";
+  const subjectCoordsForBank = useMemo(
+    () =>
+      bankSubjectCoords ??
+      resolveSubjectCoordsForBank({
+        city: subjectCity || undefined,
+        district: subjectDistrict || undefined,
+        deedNumber:
+          property?.deedNumber || intakeProperty?.deedNumber || undefined,
+        locationMapUrl: intakeProperty?.locationMapUrl,
+      }),
+    [
+      bankSubjectCoords,
+      subjectCity,
+      subjectDistrict,
+      property?.deedNumber,
+      intakeProperty?.deedNumber,
+      intakeProperty?.locationMapUrl,
+    ],
+  );
+
+  const visibleAdoptedMarket = useMemo(
+    () =>
+      filterSelectionNearSubject(
+        adoptedMarket,
+        subjectCity || undefined,
+        subjectCoordsForBank,
+      ),
+    [adoptedMarket, subjectCity, subjectCoordsForBank],
+  );
+  const visibleFactorRows = useMemo(
+    () => buildFactorRows(visibleAdoptedMarket),
+    [visibleAdoptedMarket],
+  );
+  const visibleAdoptedLand = useMemo(
+    () =>
+      filterSelectionNearSubject(
+        adoptedLand,
+        subjectCity || undefined,
+        subjectCoordsForBank,
+      ),
+    [adoptedLand, subjectCity, subjectCoordsForBank],
+  );
+  const visibleLandFactorRows = useMemo(
+    () => buildFactorRows(visibleAdoptedLand),
+    [visibleAdoptedLand],
   );
 
   /** Context that owns the comparable selection — picks the correct factor list. */
@@ -572,10 +671,10 @@ export function ValuationWorkShell({
       : MARKET_CONTEXT;
   }
   function adoptedFor(context: string) {
-    return context === LAND_WITHIN_COST ? adoptedLand : adoptedMarket;
+    return context === LAND_WITHIN_COST ? visibleAdoptedLand : visibleAdoptedMarket;
   }
   function factorRowsFor(context: string) {
-    return context === LAND_WITHIN_COST ? landFactorRows : factorRows;
+    return context === LAND_WITHIN_COST ? visibleLandFactorRows : visibleFactorRows;
   }
 
   /**
@@ -583,91 +682,140 @@ export function ValuationWorkShell({
    * justifications (“not justified” when empty) until the appraiser edits it manually.
    */
   const autoNarrative = useMemo(() => {
-    if (!adoptedMarket.length) {
+    if (!visibleAdoptedMarket.length) {
       return "لم تُعتمد أي مقارنة بعد؛ يلزم اعتماد مقارن واحد على الأقل لتكوين رأي القيمة.";
     }
-    const first = adoptedMarket[0]?.market?.adjustmentLines ?? [];
+    const first = visibleAdoptedMarket[0]?.market?.adjustmentLines ?? [];
     const bullets: string[] = [];
-    for (const f of factorRows) {
+    for (const f of visibleFactorRows) {
       const line = first.find((l) => l.factorKey === f.factorKey);
       const just = (line?.rationale ?? "").trim();
       bullets.push(`• ${f.labelAr || f.factorKey} — ${just || "لم يتم تبريره"}`);
     }
     const weightJust = (
-      adoptedMarket[0]?.market?.weightOverrideRationale ?? ""
+      visibleAdoptedMarket[0]?.market?.weightOverrideRationale ?? ""
     ).trim();
     bullets.push(`• الوزن النسبي — ${weightJust || "لم يتم تبريره"}`);
     return `مبررات التسويات:\n${bullets.join("\n")}`;
-  }, [adoptedMarket, factorRows]);
+  }, [visibleAdoptedMarket, visibleFactorRows]);
   const narrativeDirty = analysisNotes.trim().length > 0;
 
-  const selectedIds = useMemo(
-    () => new Set(selection?.items.map((i) => i.comparablePropertyId) ?? []),
-    [selection],
-  );
-  const landSelectedIds = useMemo(
-    () => new Set(landSelection?.items.map((i) => i.comparablePropertyId) ?? []),
-    [landSelection],
+  /** Drop adopted comps that are too far from the subject (e.g. demo Riyadh seed on a Jeddah case). */
+  useEffect(() => {
+    const config = apiConfig();
+    if (!config || !valuationRequestId || loading) return;
+    if (!subjectCoordsForBank && !subjectCity) return;
+
+    const farMarket = selection
+      ? adoptedMarket.filter(
+          (item) =>
+            filterSelectionNearSubject(
+              [item],
+              subjectCity || undefined,
+              subjectCoordsForBank,
+            ).length === 0,
+        )
+      : [];
+    const farLand = landSelection
+      ? adoptedLand.filter(
+          (item) =>
+            filterSelectionNearSubject(
+              [item],
+              subjectCity || undefined,
+              subjectCoordsForBank,
+            ).length === 0,
+        )
+      : [];
+    if (farMarket.length === 0 && farLand.length === 0) return;
+
+    const signature = `${valuationRequestId}:m${farMarket
+      .map((i) => i.comparablePropertyId)
+      .sort()
+      .join(",")}:l${farLand
+      .map((i) => i.comparablePropertyId)
+      .sort()
+      .join(",")}`;
+    if (autoUnadoptFarRef.current === signature) return;
+    autoUnadoptFarRef.current = signature;
+
+    void (async () => {
+      for (const item of farMarket) {
+        await setValuationComparableAdopted(
+          config,
+          valuationRequestId,
+          item.comparablePropertyId,
+          false,
+          MARKET_CONTEXT,
+        );
+      }
+      for (const item of farLand) {
+        await setValuationComparableAdopted(
+          config,
+          valuationRequestId,
+          item.comparablePropertyId,
+          false,
+          LAND_WITHIN_COST,
+        );
+      }
+      await reload({ silent: true, scope: "full" });
+    })();
+  }, [
+    loading,
+    valuationRequestId,
+    selection,
+    landSelection,
+    adoptedMarket,
+    adoptedLand,
+    subjectCity,
+    subjectCoordsForBank,
+    reload,
+  ]);
+
+  const { rows: bankRows, distances: bankDistanceKm } = useMemo(
+    () =>
+      buildBankDisplayRows({
+        selectionItems: selection?.items ?? [],
+        candidates,
+        subjectCity: subjectCity || undefined,
+        subjectCoords: subjectCoordsForBank,
+        subjectSqm: parseSubjectAreaSqm(subjectArea, property?.area),
+        limit: BANK_DISPLAY_LIMIT,
+      }),
+    [
+      selection?.items,
+      candidates,
+      subjectCity,
+      subjectCoordsForBank,
+      subjectArea,
+      property?.area,
+    ],
   );
 
-  const bankRows = useMemo(() => {
-    const rows: {
-      key: string;
-      selected: boolean;
-      adopted: boolean;
-      comp: ComparablePropertyDto;
-      item?: ValuationComparableSelectionDto;
-    }[] = [];
-    for (const item of selection?.items ?? []) {
-      rows.push({
-        key: item.id,
-        selected: true,
-        adopted: item.isAdopted,
-        comp: item.comparable,
-        item,
-      });
-    }
-    for (const c of candidates) {
-      if (selectedIds.has(c.id)) continue;
-      rows.push({
-        key: c.id,
-        selected: false,
-        adopted: false,
-        comp: c,
-      });
-    }
-    return rows.slice(0, BANK_DISPLAY_LIMIT);
-  }, [selection, candidates, selectedIds]);
-
-  const landBankRows = useMemo(() => {
-    const rows: {
-      key: string;
-      selected: boolean;
-      adopted: boolean;
-      comp: ComparablePropertyDto;
-      item?: ValuationComparableSelectionDto;
-    }[] = [];
-    for (const item of landSelection?.items ?? []) {
-      rows.push({
-        key: item.id,
-        selected: true,
-        adopted: item.isAdopted,
-        comp: item.comparable,
-        item,
-      });
-    }
-    for (const c of candidates) {
-      if (!isVacantLandComparable(c.comparablePropertyType)) continue;
-      if (landSelectedIds.has(c.id)) continue;
-      rows.push({
-        key: `land-${c.id}`,
-        selected: false,
-        adopted: false,
-        comp: c,
-      });
-    }
-    return rows.slice(0, BANK_DISPLAY_LIMIT);
-  }, [landSelection, candidates, landSelectedIds]);
+  const landCandidates = useMemo(
+    () =>
+      candidates.filter((c) => isVacantLandComparable(c.comparablePropertyType)),
+    [candidates],
+  );
+  const { rows: landBankRows, distances: landBankDistanceKm } = useMemo(
+    () =>
+      buildBankDisplayRows({
+        selectionItems: landSelection?.items ?? [],
+        candidates: landCandidates,
+        subjectCity: subjectCity || undefined,
+        subjectCoords: subjectCoordsForBank,
+        subjectSqm: cost?.landAreaSqm ?? parseSubjectAreaSqm(subjectArea, property?.area),
+        limit: BANK_DISPLAY_LIMIT,
+      }),
+    [
+      landSelection?.items,
+      landCandidates,
+      subjectCity,
+      subjectCoordsForBank,
+      cost?.landAreaSqm,
+      subjectArea,
+      property?.area,
+    ],
+  );
 
   const subjectAreaNum = Number(subjectArea.replace(",", ".")) || null;
 
@@ -699,25 +847,18 @@ export function ValuationWorkShell({
       void (async () => {
         const config = apiConfig();
         if (!config) return;
-        const res = await fetchBankCandidates(config, {
-          q: search,
-          propertyId: propertyId.trim() || undefined,
-          district: districtHint || property?.district || undefined,
-          propertyType: property?.propertyType?.trim() || undefined,
-          subjectSqm: parseSubjectAreaSqm(subjectAreaRef.current, property?.area),
-        });
+        const bankOpts = await resolveBankFetchOpts(search);
+        bankOpts.subjectSqm = parseSubjectAreaSqm(
+          subjectAreaRef.current,
+          property?.area,
+        );
+        const res = await fetchBankCandidates(config, bankOpts);
         if (!res.ok) return;
         setCandidates(res.data);
-        setCandidateDistanceKm(res.distances);
+        setBankSubjectCoords(res.subjectCoords);
       })();
     },
-    [
-      propertyId,
-      districtHint,
-      property?.district,
-      property?.propertyType,
-      property?.area,
-    ],
+    [resolveBankFetchOpts, property?.area],
   );
 
   useEffect(() => {
@@ -737,7 +878,7 @@ export function ValuationWorkShell({
     {
       id: "market",
       label: "طريقة المقارنة",
-      badge: selection?.adoptedCount,
+      badge: visibleAdoptedMarket.length || undefined,
       show: marketEnabled,
     },
     {
@@ -779,27 +920,32 @@ export function ValuationWorkShell({
     if (isAdopted) {
       const adoptedNow =
         context === MARKET_CONTEXT
-          ? selection?.adoptedCount ?? 0
-          : landSelection?.adoptedCount ?? 0;
+          ? visibleAdoptedMarket.length
+          : visibleAdoptedLand.length;
       if (adoptedNow >= MAX_ADOPTED_COMPARABLES) {
         showToast("الحد الأقصى ٥ مقارنات معتمدة — ألغِ اعتماد مقارن أولاً", "error");
         return;
       }
     }
-    // Optimistic flag flip — server confirms in the background; silent reload reconciles.
+    // Optimistic flag flip when the comp is already linked to this valuation.
     const setter = context === MARKET_CONTEXT ? setSelection : setLandSelection;
-    setter((prev) => {
-      if (!prev) return prev;
-      const found = prev.items.some((i) => i.comparablePropertyId === compId);
-      if (!found) return prev;
-      return {
-        ...prev,
-        adoptedCount: Math.max(0, prev.adoptedCount + (isAdopted ? 1 : -1)),
-        items: prev.items.map((i) =>
-          i.comparablePropertyId === compId ? { ...i, isAdopted } : i,
-        ),
-      };
-    });
+    const current =
+      context === MARKET_CONTEXT ? selection : landSelection;
+    const alreadyLinked = current?.items.some(
+      (i) => i.comparablePropertyId === compId,
+    );
+    if (alreadyLinked) {
+      setter((prev) => {
+        if (!prev) return prev;
+        return {
+          ...prev,
+          adoptedCount: Math.max(0, prev.adoptedCount + (isAdopted ? 1 : -1)),
+          items: prev.items.map((i) =>
+            i.comparablePropertyId === compId ? { ...i, isAdopted } : i,
+          ),
+        };
+      });
+    }
     const res = await setValuationComparableAdopted(
       config,
       valuationRequestId,
@@ -809,10 +955,13 @@ export function ValuationWorkShell({
     );
     if (!res.ok) {
       showToast(res.message ?? "تعذّر تحديث الاعتماد", "error");
-      await reload({ silent: true, scope: "derived" }); // roll back to true server state
+      await reload({ silent: true, scope: "derived" });
       return;
     }
-    await reload({ silent: true, scope: "derived" }); // reconcile weights and suggestions
+    await reload({
+      silent: true,
+      scope: alreadyLinked ? "derived" : "full",
+    });
   }
 
   async function saveSubjectArea() {
@@ -1470,9 +1619,9 @@ export function ValuationWorkShell({
         <ComparablesBankTable
           rows={bankRows}
           subjectSqm={subjectAreaNum}
-          adoptedCount={selection?.adoptedCount ?? 0}
+          adoptedCount={visibleAdoptedMarket.length}
           maxAdopted={MAX_ADOPTED_COMPARABLES}
-          distanceKm={candidateDistanceKm}
+          distanceKm={bankDistanceKm}
           onAdopt={onAdoptMarket}
           onSearch={onSearchBank}
           onSaveOverride={onSaveBankOverride}
@@ -1482,7 +1631,7 @@ export function ValuationWorkShell({
           <Suspense fallback={<InlineLoadingSkeleton />}>
             <AdjustmentsMatrix
               selection={selection}
-              adopted={adoptedMarket}
+              adopted={visibleAdoptedMarket}
               locked={adjustmentsLocked}
               saving={saving}
               subjectArea={subjectArea}
@@ -1659,9 +1808,9 @@ export function ValuationWorkShell({
         <ComparablesBankTable
           rows={landBankRows}
           subjectSqm={cost?.landAreaSqm || subjectAreaNum}
-          adoptedCount={landSelection?.adoptedCount ?? 0}
+          adoptedCount={visibleAdoptedLand.length}
           maxAdopted={MAX_ADOPTED_COMPARABLES}
-          distanceKm={candidateDistanceKm}
+          distanceKm={landBankDistanceKm}
           onAdopt={onAdoptLand}
           onSaveOverride={onSaveBankOverride}
         />
@@ -1670,7 +1819,7 @@ export function ValuationWorkShell({
           <Suspense fallback={<InlineLoadingSkeleton />}>
             <AdjustmentsMatrix
               selection={landSelection}
-              adopted={adoptedLand}
+              adopted={visibleAdoptedLand}
               locked={adjustmentsLocked}
               saving={saving}
               subjectArea={String(cost?.landAreaSqm || subjectArea)}
@@ -1902,7 +2051,7 @@ export function ValuationWorkShell({
                     (approachSettings?.costScopeKey ?? "land_and_building") ===
                     "building_only"
                   }
-                  hasAdoptedMarket={adoptedMarket.length > 0}
+                  hasAdoptedMarket={visibleAdoptedMarket.length > 0}
                   assignmentType={assignmentType}
                   officialValuationDate={officialValuationDate}
                   saving={saving}
@@ -1921,5 +2070,4 @@ export function ValuationWorkShell({
   );
 }
 
-/** Alias matching the previous public export name. */
 export { ValuationWorkShell as EvaluatorComparableSelectionPanel };

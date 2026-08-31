@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useCallback, useDeferredValue, useEffect, useMemo, useState, Fragment } from "react";
+import { useCallback, useDeferredValue, useEffect, useMemo, useRef, useState, Fragment } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { usePrototype } from "@platform/app-shared/contexts/PrototypeContext";
 import { useViewportDesktop } from "@platform/app-shared/hooks/use-viewport-desktop";
@@ -38,17 +38,17 @@ import {
   queueTableRowClassName,
   useToast,
 } from "@platform/ui-kit";
+import { formatPoDisplay } from "@platform/ui-kit";
+import { PROPERTY_IDENTIFIER_COLUMN_LABEL } from "@platform/app-shared/domain/property-labels";
+import { poPropertyPath } from "@platform/app-shared/domain/po-routes";
 import {
-  formatPoDisplay,
-  PROPERTY_IDENTIFIER_COLUMN_LABEL,
-} from "@case-study/mfe/lib/prototype/po-intake-data";
-import { poPropertyPath } from "@case-study/mfe/lib/po-routes";
-import { suspendPropertyTransaction } from "@case-study/mfe/lib/prototype/suspend-property-transaction";
-import { usePoRecordsQuery } from "@case-study/mfe/query/case-study-queries";
+  getFailuresCaseStudyBridge,
+  usePoRecordsViaBridge,
+} from "@platform/app-shared/failures/case-study-bridge";
 import {
   ActiveQueueMobileCards,
   type ActiveQueueMobileCardItem,
-} from "@case-study/mfe/components/queue/ActiveQueueMobileCards";
+} from "@platform/app-shared/components/ActiveQueueMobileCards";
 import {
   failuresForPartyRole,
   isPartyScopedFailuresRole,
@@ -70,8 +70,14 @@ import {
 import {
   isActiveFailureStatus,
   type FailureRecord,
-} from "../lib/failures-types";
-import { useFailuresQuery } from "../query/failures-queries";
+  type FailureStatus,
+} from "@platform/app-shared/failures/failures-types";
+import {
+  invalidateFailuresRelated,
+  optimisticFailureStatus,
+  restoreFailuresSnapshot,
+  useFailuresQuery,
+} from "../query/failures-queries";
 
 function isCaseEditor(role: RoleId) {
   return isSuperAdmin(role) || role === "case-specialist";
@@ -118,7 +124,7 @@ export function FailuresView() {
     if (scoped) return scoped;
     return items;
   }, [items, role]);
-  const { data: poRecords = [] } = usePoRecordsQuery();
+  const { data: poRecords = [] } = usePoRecordsViaBridge();
   const assignmentSpecialistByPo = useMemo(() => {
     const map = new Map<string, string>();
     for (const record of poRecords) {
@@ -140,6 +146,8 @@ export function FailuresView() {
   const [resolveOpen, setResolveOpen] = useState<Record<string, boolean>>({});
   /** `failureId:action` — shows Spinner on the button during the network call. */
   const [busyKey, setBusyKey] = useState<string | null>(null);
+  /** Sync guard — React state alone can miss two clicks in the same frame. */
+  const busyLockRef = useRef(false);
 
   useEffect(() => {
     if (!highlightId || !isFetched) return;
@@ -152,18 +160,46 @@ export function FailuresView() {
   const router = useRouter();
 
   const refresh = useCallback(() => {
-    void queryClient.invalidateQueries({ queryKey: prototypeKeys.failures() });
-    void queryClient.invalidateQueries({
-      queryKey: prototypeKeys.suspendedTransactions(),
-    });
-    void queryClient.invalidateQueries({
-      queryKey: prototypeKeys.workflowTasks(),
-    });
-    void queryClient.invalidateQueries({
-      queryKey: prototypeKeys.pendingBourseItems(),
-    });
+    invalidateFailuresRelated(queryClient);
     void refetch();
   }, [queryClient, refetch]);
+
+  async function runOptimisticStatus(
+    id: string,
+    nextStatus: FailureStatus,
+    work: () => Promise<{ ok: true } | { ok: false; error: string }>,
+    opts: {
+      busyKey: string;
+      successToast: string;
+      errorToast: string;
+      extra?: Partial<FailureRecord>;
+      onOk?: () => void;
+    },
+  ): Promise<void> {
+    await runBusy(opts.busyKey, async () => {
+      await queryClient.cancelQueries({ queryKey: prototypeKeys.failures() });
+      const snapshot = optimisticFailureStatus(
+        queryClient,
+        id,
+        nextStatus,
+        opts.extra,
+      );
+      try {
+        const result = await work();
+        if (!result.ok) {
+          restoreFailuresSnapshot(queryClient, snapshot);
+          showToast(result.error, "error");
+          return;
+        }
+        showToast(opts.successToast, "success");
+        opts.onOk?.();
+        refresh();
+      } catch {
+        restoreFailuresSnapshot(queryClient, snapshot);
+        showToast(opts.errorToast, "error");
+      }
+    });
+  }
 
   const stats = useMemo(() => {
     // One pass computes all four badges — countOpenFailures was a second full pass
@@ -230,119 +266,119 @@ export function FailuresView() {
     key: string,
     work: () => Promise<void>,
   ): Promise<void> {
+    // One in-flight mutation at a time — overlapping optimistic patches on the
+    // same list desync when an earlier request fails after a later one patched.
+    if (busyLockRef.current) return;
+    busyLockRef.current = true;
     setBusyKey(key);
     try {
       await work();
     } finally {
+      busyLockRef.current = false;
       setBusyKey(null);
     }
   }
 
   function handleSubmit(id: string) {
-    void runBusy(`${id}:submit`, async () => {
-      try {
-        const result = await submitFailureForReview(id);
-        if (!result.ok) {
-          showToast(result.error, "error");
-          return;
-        }
-        showToast("تم تصعيد التعذر", "success");
-        refresh();
-      } catch {
-        showToast("تعذّر إرسال التعذر للمراجعة — حاول مرة أخرى", "error");
-      }
+    void runOptimisticStatus(id, "review", () => submitFailureForReview(id), {
+      busyKey: `${id}:submit`,
+      successToast: "تم تصعيد التعذر",
+      errorToast: "تعذّر إرسال التعذر للمراجعة — حاول مرة أخرى",
     });
   }
 
   function handleUpgrade(id: string) {
-    void runBusy(`${id}:upgrade`, async () => {
-      try {
-        const result = await upgradeFailureToInternal(id);
-        if (!result.ok) {
-          showToast(result.error, "error");
-          return;
-        }
-        showToast("تم تأكيد التعذر الداخلي", "success");
-        refresh();
-      } catch {
-        showToast("تعذّر ترقية التعذر — حاول مرة أخرى", "error");
-      }
+    void runOptimisticStatus(id, "internal", () => upgradeFailureToInternal(id), {
+      busyKey: `${id}:upgrade`,
+      successToast: "تم تأكيد التعذر الداخلي",
+      errorToast: "تعذّر ترقية التعذر — حاول مرة أخرى",
+      extra: { severity: "internal" },
     });
   }
 
   function handleApprove(id: string) {
-    void runBusy(`${id}:approve`, async () => {
-      try {
-        const result = await approveFailure(id, supervisorNote[id] ?? "");
-        if (!result.ok) {
-          showToast(result.error, "error");
-          return;
-        }
-        showToast("تم اعتماد التعذر", "success");
-        refresh();
-      } catch {
-        showToast("تعذّر اعتماد التعذر — حاول مرة أخرى", "error");
-      }
-    });
+    const note = supervisorNote[id] ?? "";
+    void runOptimisticStatus(
+      id,
+      "approved",
+      () => approveFailure(id, note),
+      {
+        busyKey: `${id}:approve`,
+        successToast: "تم اعتماد التعذر",
+        errorToast: "تعذّر اعتماد التعذر — حاول مرة أخرى",
+        extra: { finalNote: note },
+      },
+    );
   }
 
   function handleReturn(id: string) {
-    void runBusy(`${id}:return`, async () => {
-      try {
-        const result = await returnFailure(id, supervisorNote[id] ?? "");
-        if (!result.ok) {
-          showToast(result.error, "error");
-          return;
-        }
-        showToast("أُعيد التعذر للأخصائي", "success");
-        refresh();
-      } catch {
-        showToast("تعذّر إرجاع التعذر — حاول مرة أخرى", "error");
-      }
-    });
+    const note = supervisorNote[id] ?? "";
+    void runOptimisticStatus(
+      id,
+      "returned",
+      () => returnFailure(id, note),
+      {
+        busyKey: `${id}:return`,
+        successToast: "أُعيد التعذر للأخصائي",
+        errorToast: "تعذّر إرجاع التعذر — حاول مرة أخرى",
+        extra: { finalNote: note },
+      },
+    );
   }
 
   async function handleSuspend(id: string) {
     const failure = items.find((f) => f.id === id);
     if (!failure) return;
-    await runBusy(`${id}:suspend`, async () => {
-      const result = await suspendPropertyTransaction({
-        failure,
-        supervisorNote: supervisorNote[id] ?? "",
-      });
-      if (result.ok) {
-        showToast("تم تعليق المعاملة", "success");
-        refresh();
-        return;
-      }
-      showToast(result.error || "تعذّر إيقاف المعاملة — حاول مرة أخرى", "error");
-    });
+    await runOptimisticStatus(
+      id,
+      "suspended",
+      async () => {
+        const result = await getFailuresCaseStudyBridge().suspendPropertyTransaction({
+          failure,
+          supervisorNote: supervisorNote[id] ?? "",
+        });
+        if (result.ok) return { ok: true as const };
+        return {
+          ok: false as const,
+          error: result.error || "تعذّر إيقاف المعاملة — حاول مرة أخرى",
+        };
+      },
+      {
+        busyKey: `${id}:suspend`,
+        successToast: "تم تعليق المعاملة",
+        errorToast: "تعذّر إيقاف المعاملة — حاول مرة أخرى",
+      },
+    );
   }
 
   function handleResolve(id: string) {
     const draft = resolveDraft[id] ?? { reason: "", instructions: "" };
     if (!draft.reason.trim() || !draft.instructions.trim()) return;
     const failure = items.find((f) => f.id === id);
-    void runBusy(`${id}:resolve`, async () => {
-      try {
-        const result = await resolveFailure(id, {
+    void runOptimisticStatus(
+      id,
+      "resolved",
+      () =>
+        resolveFailure(id, {
           resolutionReason: draft.reason,
           continueInstructions: draft.instructions,
-        });
-        if (!result.ok) {
-          showToast(result.error, "error");
-          return;
-        }
-        setResolveOpen((o) => ({ ...o, [id]: false }));
-        showToast("تم حل التعذر", "success");
-        refresh();
-        if (failure?.problemTypeId === "unknown-boundaries") {
-          router.push("/bourse-inquiry");
-        }
-      } catch {
-        showToast("تعذّر حل التعذر — حاول مرة أخرى", "error");
-      }
-    });
+        }),
+      {
+        busyKey: `${id}:resolve`,
+        successToast: "تم حل التعذر",
+        errorToast: "تعذّر حل التعذر — حاول مرة أخرى",
+        extra: {
+          resolutionReason: draft.reason,
+          continueInstructions: draft.instructions,
+        },
+        onOk: () => {
+          setResolveOpen((o) => ({ ...o, [id]: false }));
+          if (failure?.problemTypeId === "unknown-boundaries") {
+            router.push("/bourse-inquiry");
+          }
+        },
+      },
+    );
   }
 
   function toggleResolve(id: string) {

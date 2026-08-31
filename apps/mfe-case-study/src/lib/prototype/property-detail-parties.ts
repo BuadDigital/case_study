@@ -21,7 +21,10 @@ export type PropertyDetailPartyCard = {
 };
 
 export type PropertyDetailPartyStatusRow = {
+  key: string;
+  /** Display name of the assigned person/office (not the role title). */
   label: string;
+  role: string;
   badge: string;
   badgeClass: "pd-badge-teal" | "pd-badge-amber" | "pd-badge-gray";
 };
@@ -32,7 +35,7 @@ function timelineBadgeForParty(
   roleKey: string,
 ): { badge: string; badgeClass: PropertyDetailPartyStatusRow["badgeClass"] } {
   if (!enabled) {
-    return { badge: "غير معيّن", badgeClass: "pd-badge-gray" };
+    return { badge: "معطّل", badgeClass: "pd-badge-gray" };
   }
   if (state === "done") {
     return { badge: "مكتمل", badgeClass: "pd-badge-teal" };
@@ -101,7 +104,7 @@ export function buildPropertyDetailPartyCards(input: {
   ];
 }
 
-/** Timeline sidebar party rows — matches HTML mockup (no specialist). */
+/** Timeline sidebar party rows — assignee names with status badges. */
 export function buildPropertyDetailTimelinePartyRows(input: {
   task: WorkflowTask | null;
   allTasks: WorkflowTask[];
@@ -115,17 +118,23 @@ export function buildPropertyDetailTimelinePartyRows(input: {
     assignees.find((p) => p.trackId === trackId);
 
   const defs = [
-    { key: "inspection", label: "المعاين", trackId: "inspection" },
-    { key: "survey", label: "المكتب الهندسي", trackId: "survey" },
-    { key: "appraisal", label: "المقيّم", trackId: "appraisal" },
+    { key: "inspection", role: "المعاين", trackId: "inspection" },
+    { key: "survey", role: "المكتب الهندسي", trackId: "survey" },
+    { key: "appraisal", role: "المقيّم", trackId: "appraisal" },
   ] as const;
 
   return defs.map((def) => {
     const party = byTrack(def.trackId);
     const enabled = party?.enabled ?? false;
     const state = party?.state ?? "new";
+    const name =
+      enabled && party?.name && party.name !== "—"
+        ? party.name
+        : "لم يُعيَّن";
     return {
-      label: def.label,
+      key: def.key,
+      label: name,
+      role: def.role,
       ...timelineBadgeForParty(enabled, state, def.key),
     };
   });

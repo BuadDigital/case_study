@@ -1,7 +1,7 @@
 import {
   jeddahDefaultCoords,
   shouldUseJeddahDefaultCoords,
-} from "@engineering-office/mfe/lib/jeddah-default-coords";
+} from "@platform/app-shared/domain/jeddah-default-coords";
 import {
   getPartyTaskSubmission,
   isPersistedPartyTaskSubmission,
@@ -76,6 +76,7 @@ function readBoundaryMatches(
     base[key] = {
       matches: obj.matches !== false,
       mismatchNote: readString(obj.mismatchNote),
+      facade: readString(obj.facade),
     };
   }
   return base;

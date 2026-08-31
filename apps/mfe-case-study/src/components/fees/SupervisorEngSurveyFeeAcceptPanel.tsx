@@ -29,7 +29,7 @@ import {
   prefetchEngineeringSurveySubmissions,
   loadEngineeringSurveySubmission,
   isEngineeringSurveyOutputsAccepted,
-} from "@engineering-office/mfe/lib/engineering-survey-submission-storage";
+} from "../../lib/engineering-survey-bridge";
 import { useWorkflowTasksQuery } from "../../query/case-study-queries";
 import type { WorkflowTask } from "../../lib/prototype/tasks-storage";
 import { PoNumber } from "../ui/PoNumber";

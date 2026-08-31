@@ -3,12 +3,12 @@
 import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
 import { useSearchParams } from "next/navigation";
-import { findSurveyChildForParent } from "@engineering-office/mfe/lib/engineering-survey-task";
+import { findSurveyChildForParent } from "@platform/app-shared/engineering-survey/survey-task";
 import { Activity, useMemo, useRef, useState, useEffect } from "react";
 import { failuresForProperty } from "@failures/mfe/lib/failure-property-match";
 import { useFailuresQuery } from "@failures/mfe/query/failures-queries";
 import { failureStatusLabel } from "@failures/mfe/lib/failures-labels";
-import type { FailureRecord } from "@failures/mfe/lib/failures-types";
+import type { FailureRecord } from "@platform/app-shared/failures/failures-types";
 import {
   Button,
   InlineLoadingSkeleton,
@@ -20,26 +20,16 @@ import {
 } from "@platform/ui-kit";
 import { usePrototype } from "@platform/app-shared/contexts/PrototypeContext";
 import { canViewPropertyTimelineRail } from "../../lib/prototype/po-roles";
-import { DetailBadge, EmptyState, FieldBox, FieldsGrid, InfoBox, ltrValueClass, SectionHeader } from "./PropertyDetailFields";
+import { DetailBadge, EmptyState, InfoBox, ltrValueClass, SectionHeader } from "./PropertyDetailFields";
+import { PropertyDetailBasicTab } from "./PropertyDetailBasicTab";
 import { PropertyDetailSurveyNotesTab, buildPartyRemarksSections } from "./PropertyDetailSurveyNotesTab";
 import { PropertyTransactionTimeline } from "./PropertyTransactionTimeline";
 import { PropertyDetailMobileGlance } from "./PropertyDetailMobileGlance";
-import { PropertyDetailMediaGlance } from "./PropertyDetailMediaGlance";
-import { boundariesAvailabilityLabel, boundariesMarkedUnavailable, formatDateAr, formatPropertyDeedDisplay,
-  hasBourseDetailFields, 
-  ownershipStatusLabel, 
-  formatPropertyRestrictionsLine,
-  showsCourtFields,
-  skipsBourseForIdentifier,
-  PROPERTY_BOUNDARY_ROWS,
-  type PoIntakeRecord,
-  type PoPropertyIntake,
-} from "../../lib/prototype/po-intake-data";
+import { formatDateAr, formatPropertyDeedDisplay, type PoIntakeRecord, type PoPropertyIntake } from "../../lib/prototype/po-intake-data";
 import { useStaffUsersQuery } from "@settings/mfe/query/settings-queries";
 import { resolveAssigneeDisplayName } from "@platform/app-shared/fees/party-fee-meta";
-import { isValidContactEntry } from "../../lib/domain/po-intake/property-validation";
 import { buildPropertyDetailPartyCards, type PropertyDetailPartyCard } from "../../lib/prototype/property-detail-parties";
-import { poPropertyFailurePath } from "../../lib/po-routes";
+import { poPropertyFailurePath } from "@platform/app-shared/domain/po-routes";
 import { buildPropertyDetailTimeline, formatTimelineDate } from "../../lib/prototype/property-detail-timeline";
 import { usePropertyTimelineQuery } from "../../query/use-property-timeline-query";
 import { caseStudyTaskForProperty, type WorkflowTask } from "../../lib/prototype/tasks-storage";
@@ -49,7 +39,7 @@ import { usePropertyDetailDocuments } from "../../query/property-detail-document
 import { useWorkflowTasksQuery } from "../../query/case-study-queries";
 import { useInspectorFeesQuery } from "../../query/inspector-fees-queries";
 import { usePropertyDetailPartySubmissionsQuery } from "../../query/property-detail-party-submissions-queries";
-import { poPropertyPath } from "../../lib/po-routes";
+import { poPropertyPath, poPropertyDetailPath } from "@platform/app-shared/domain/po-routes";
 import { usePropertyOperationsTasks } from "../../query/use-property-operations-tasks";
 import { keysStatusLabelAr, usePropertyKeyGateQuery } from "../../query/use-property-key-gate-query";
 import { loadSeenPropertyTabFingerprints, markPropertyTabSeen, propertyTabHasNewDot, type SeenPropertyTabMap} from "../../lib/prototype/property-detail-local-ui";
@@ -318,256 +308,6 @@ function logIconClass(): string {
   return "bg-[color-mix(in_srgb,#3f8f5f_10%,transparent)] text-[#2f7a4d]";
 }
 
-function BasicTab({
-  record,
-  property,
-  primaryPhoto,
-}: {
-  record: PoIntakeRecord;
-  property: PoPropertyIntake;
-  primaryPhoto?: PropertyDetailDocumentEntry | null;
-}) {
-  const boursePending = !property.bourseDataCompleted;
-  const needsBourse = !skipsBourseForIdentifier(property.identifierType);
-  const showBourseSection =
-    needsBourse &&
-    (boursePending ||
-      hasBourseDetailFields(property) ||
-      property.bourseDataCompleted);
-  const validContacts = property.contacts.filter((c) => isValidContactEntry(c));
-  const restrictions = formatPropertyRestrictionsLine(property);
-  const courtLine = [property.court, property.circuit]
-    .filter(Boolean)
-    .join(" / ");
-  const primaryContact = validContacts[0];
-  const ownershipStatus = ownershipStatusLabel(property);
-  const boundaryRows = PROPERTY_BOUNDARY_ROWS.map((row) => ({
-    label: row.label,
-    desc: property[row.descKey].trim(),
-    len: property[row.lenKey].trim(),
-  }));
-  const hasBoundaryRows = boundaryRows.some((r) => r.desc || r.len);
-  const boundariesUnavailable = boundariesMarkedUnavailable( property.boundariesAvailability );
-  const boundariesAwaiting = !boundariesUnavailable && !hasBoundaryRows && !property.bourseDataCompleted;
-
-  return (
-    <>
-      <PropertyDetailMediaGlance
-        property={property}
-        primaryPhoto={primaryPhoto}
-      />
-
-      <SectionHeader>بيانات الصك</SectionHeader>
-      <FieldsGrid>
-        <FieldBox label="رقم أمر العمل" value={record.poNumber} ltr />
-        <FieldBox label="رقم الصك" value={property.deedNumber} ltr />
-        <FieldBox label="تاريخ الصك" value={property.deedDate} ltr />
-        <FieldBox
-          label="تسجيل عيني"
-          value={property.realEstateRegNumber}
-          ltr
-        />
-        <FieldBox
-          label="تاريخ التسجيل العيني"
-          value={property.realEstateRegDate}
-          ltr
-        />
-        <FieldBox
-          label="رقم التكليف"
-          value={property.assignmentMandateNumber}
-          ltr
-        />
-        <FieldBox
-          label="تاريخ التكليف"
-          value={property.assignmentMandateDate}
-          ltr
-        />
-        <FieldBox label="رقم الطلب" value={property.requestNumber} ltr />
-        <FieldBox label="حالة الصك">
-          {property.deedStatus.trim() ? (
-            <DetailBadge tone="teal">{property.deedStatus}</DetailBadge>
-          ) : null}
-        </FieldBox>
-        <FieldBox label="اسم المالك" value={property.ownerName} />
-        <FieldBox label="حالة الملك" value={ownershipStatus} />
-        <FieldBox
-          label="القيود على العقار"
-          value={restrictions}
-          emptyLabel="لا توجد قيود"
-        />
-      </FieldsGrid>
-
-      <SectionHeader>بيانات الموقع</SectionHeader>
-      <FieldsGrid>
-        <FieldBox label="المدينة" value={property.city} />
-        <FieldBox label="الحي" value={property.district} />
-        {showsCourtFields(record.assignmentType) ? (
-          <FieldBox label="المحكمة / الدائرة" value={courtLine} />
-        ) : null}
-        <FieldBox label="رقم المخطط" value={property.planNumber} ltr />
-        <FieldBox label="رقم القطعة" value={property.plotNumber} ltr />
-        <FieldBox
-          label="محضر التجزئة"
-          value={[property.partitionMinutesNumber, property.partitionMinutesDate]
-            .map((x) => x.trim())
-            .filter(Boolean)
-            .join(" · ")}
-          ltr
-        />
-      </FieldsGrid>
-
-      <SectionHeader>البيانات المساحية</SectionHeader>
-      <FieldsGrid>
-        <FieldBox label="التصنيف" value={property.classification} />
-        <FieldBox label="النوع / الاستخدام" value={property.propertyType} />
-        <FieldBox
-          label="المساحة الإجمالية"
-          value={property.area.trim() ? `${property.area.trim()} م²` : ""}
-        />
-      </FieldsGrid>
-
-      <div className="mb-2 mt-3.5 text-[11.5px] font-bold text-heading">
-        حدود العقار وأطواله
-      </div>
-      {boundariesUnavailable ? (
-        <InfoBox icon="ℹ">الحدود غير متوفرة لهذا العقار.</InfoBox>
-      ) : boundariesAwaiting ? (
-        <div className="rounded border border-[#fad7a0] bg-[#fef3d7] px-3 py-2.5 text-[11.5px] leading-relaxed text-[#7a5b12]">
-          بانتظار بيانات البورصة — تُعرض حدود العقار وأطوال أضلاعه بعد اكتمال
-          الاستعلام.
-        </div>
-      ) : hasBoundaryRows ? (
-        <>
-          <div className="overflow-x-auto rounded border border-border">
-            <table className="w-full min-w-[420px] border-collapse text-[12px]">
-              <thead>
-                <tr className="bg-surface-2">
-                  <th className="border-b border-border px-3 py-2 text-start text-[11px] font-bold text-text-2">
-                    الحد
-                  </th>
-                  <th className="border-b border-border px-3 py-2 text-center text-[11px] font-bold text-text-2">
-                    وصف الحد
-                  </th>
-                  <th className="border-b border-border px-3 py-2 text-center text-[11px] font-bold text-text-2">
-                    طول الضلع
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {boundaryRows.map((row, i) => (
-                  <tr key={row.label}>
-                    <td
-                      className={cn(
-                        "px-3 py-2 font-semibold text-heading",
-                        i < boundaryRows.length - 1 && "border-b border-border",
-                      )}
-                    >
-                      {row.label}
-                    </td>
-                    <td
-                      className={cn(
-                        "px-3 py-2 text-center text-text",
-                        i < boundaryRows.length - 1 && "border-b border-border",
-                      )}
-                    >
-                      {row.desc || "—"}
-                    </td>
-                    <td
-                      className={cn(
-                        "px-3 py-2 text-center text-text [direction:ltr]",
-                        i < boundaryRows.length - 1 && "border-b border-border",
-                      )}
-                    >
-                      {row.len ? `${row.len} م` : "—"}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-          <p className="mt-1.5 mb-0 text-[10.5px] text-text-3">
-            «بطول» = طول ضلع العقار على ذلك الحد. المصدر: البورصة العقارية /
-            الصك.
-          </p>
-        </>
-      ) : (
-        <InfoBox icon="ℹ">لم تُسجَّل حدود وأطوال بعد.</InfoBox>
-      )}
-
-      <SectionHeader>بيانات الاتصال</SectionHeader>
-      <p className="-mt-1 mb-2 text-[10.5px] text-text-3">
-        المصدر: البيانات الأولية للمعاملة
-      </p>
-      {validContacts.length === 0 ? (
-        <InfoBox icon="ℹ">لا يوجد ضابط اتصال مسجّل.</InfoBox>
-      ) : (
-        <FieldsGrid cols={3}>
-          <FieldBox label="الاسم" value={primaryContact.name.trim() || "—"} />
-          <FieldBox label="رقم الجوال" value={primaryContact.phone} ltr />
-          <FieldBox
-            label="الصلة"
-            value={primaryContact.role.trim() || "المالك"}
-          />
-        </FieldsGrid>
-      )}
-
-      {showBourseSection ? (
-        <>
-          <SectionHeader>بيانات الاستعلام — البورصة العقارية</SectionHeader>
-          {boursePending && !hasBourseDetailFields(property) ? (
-            <InfoBox variant="amber" icon="ℹ">
-              لم تُسجَّل بعد بيانات استعلام البورصة — أكملها من «استعلام
-              البورصة» في شريط الإجراءات.
-            </InfoBox>
-          ) : (
-            <>
-              {property.bourseDataCompleted ? (
-                <InfoBox variant="teal" icon="✓">
-                  اكتمل استعلام البورصة العقارية بنجاح
-                  {record.receivedFromEnfathAt ? (
-                    <>
-                      {" بتاريخ "}
-                      <bdi dir="ltr" className={ltrValueClass}>
-                        {formatDateAr(record.receivedFromEnfathAt)}
-                      </bdi>
-                    </>
-                  ) : null}
-                  .
-                </InfoBox>
-              ) : null}
-              <FieldsGrid>
-                <FieldBox
-                  label="حالة الصك في البورصة"
-                  value={property.deedStatus}
-                />
-                <FieldBox
-                  label="توفر الحدود"
-                  value={boundariesAvailabilityLabel(
-                    property.boundariesAvailability,
-                  )}
-                />
-                <FieldBox
-                  label="الفروق / الملاحظات"
-                  emptyLabel="لا توجد فروق"
-                />
-                <FieldBox
-                  label="تاريخ آخر تحديث"
-                  ltr
-                  value={
-                    record.receivedFromEnfathAt
-                      ? formatDateAr(record.receivedFromEnfathAt)
-                      : ""
-                  }
-                />
-              </FieldsGrid>
-            </>
-          )}
-        </>
-      ) : null}
-    </>
-  );
-}
-
 export type PoPropertyDetailInspectorWorkspace = {
   /** Active field-inspection task for this property (desktop HTML inspect-desktop). */
   task: WorkflowTask;
@@ -624,6 +364,14 @@ export function PoPropertyDetailTabs({
       return;
     }
     router.replace(`${base}?tab=inspection`, { scroll: false });
+  };
+
+  const selectTab = (next: TabId) => {
+    setTab(next);
+    if (workspaceForced) return;
+    router.replace(poPropertyDetailPath(poNumber, property.id, next), {
+      scroll: false,
+    });
   };
 
   useEffect(() => {
@@ -899,7 +647,7 @@ export function PoPropertyDetailTabs({
         allowedTabs={visibleTabs.map((t) => t.id)}
         onOpenTab={(next) => {
           if (!isAllowedPropertyTab(role, next)) return;
-          setTab(next);
+          selectTab(next);
           if (inspectEdit) {
             setInspectEdit(false);
             replaceInspectQuery(null);
@@ -931,7 +679,7 @@ export function PoPropertyDetailTabs({
                   key={t.id}
                   active={active}
                   onClick={() => {
-                    setTab(t.id);
+                    selectTab(t.id);
                     if (workspaceForced) return;
                     /* Tab is view-only — input mode opens from the property-inspection button. */
                     if (t.id === "inspection" && inspectEdit) {
@@ -939,6 +687,7 @@ export function PoPropertyDetailTabs({
                       replaceInspectQuery(null);
                     } else if (t.id !== "inspection" && inspectEdit) {
                       setInspectEdit(false);
+                      replaceInspectQuery(null);
                     }
                   }}
                   className={cn(
@@ -965,7 +714,7 @@ export function PoPropertyDetailTabs({
           >
           {visitedTabsRef.current.has("basic") ? (
             <Activity mode={tabMode("basic")}>
-              <BasicTab
+              <PropertyDetailBasicTab
                 record={record}
                 property={property}
                 primaryPhoto={primaryPhoto}
@@ -1124,13 +873,20 @@ export function PoPropertyDetailTabs({
               property={property}
               inspectionTask={inspectionTask}
               inspectionCard={inspectionCard}
-              editMode={inspectEdit}
-              lockEditMode={workspaceForced && inspectorWorkspace?.forceEdit !== false}
+              editMode={
+                workspaceForced
+                  ? inspectorWorkspace?.forceEdit !== false
+                  : false
+              }
+              lockEditMode={
+                workspaceForced && inspectorWorkspace?.forceEdit !== false
+              }
               onEditModeChange={(edit) => {
                 if (workspaceForced && !edit) {
                   inspectorWorkspace?.onCancel?.();
                   return;
                 }
+                if (!workspaceForced) return;
                 setInspectEdit(edit);
                 replaceInspectQuery(edit ? "edit" : null);
               }}

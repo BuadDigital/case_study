@@ -228,12 +228,15 @@ export function PropertyTransactionTimeline({
       <SideCard title="حالة الأطراف">
         <div className="grid gap-[9px]">
           {partyRows.map((row) => (
-            <div key={row.label} className="flex min-w-0 items-center gap-2">
+            <div key={row.key} className="flex min-w-0 items-center gap-2">
               <PartyRing
                 progress={partyRingProgress(row.badgeClass)}
                 color={partyRingColor(row.badgeClass)}
               />
-              <span className="min-w-0 flex-1 truncate text-[11.5px] text-text-2">
+              <span
+                className="min-w-0 flex-1 truncate text-[11.5px] text-text-2"
+                title={row.role}
+              >
                 {row.label}
               </span>
               <DetailBadge

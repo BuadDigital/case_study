@@ -3,7 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
 import { PoPropertyEdit } from "@case-study/mfe/components/po-intake/PoPropertyEdit";
-import { poPropertiesPath } from "../../lib/po-routes";
+import { poPropertiesPath } from "@platform/app-shared/domain/po-routes";
 import { prototypeKeys } from "@platform/app-shared/query/prototype-keys";
 
 export function PoPropertyEditRoute({

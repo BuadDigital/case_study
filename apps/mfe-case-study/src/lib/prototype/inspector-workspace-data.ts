@@ -7,9 +7,11 @@ export type InspectorBoundaryKey = "north" | "south" | "east" | "west";
 export type InspectorBoundaryMatch = {
   matches: boolean;
   mismatchNote: string;
+  /** «نوع الواجهة» — facade finish on this side; options come from the report dictionary. */
+  facade: string;
 };
 
-import { jeddahDefaultCoords } from "@engineering-office/mfe/lib/jeddah-default-coords";
+import { jeddahDefaultCoords } from "@platform/app-shared/domain/jeddah-default-coords";
 
 export type InspectorPhotoAttachment = {
   fileName: string;
@@ -340,14 +342,28 @@ export function isLandHiddenInspectorFeatureKey(key: string): boolean {
   return LAND_HIDDEN_FEATURE_KEY_SET.has(key);
 }
 
+/**
+ * Feature keys retired from the inspector screen (Field Inspection Workspace
+ * design). Kept on the draft model because the valuation report and the Infath
+ * upload still read them for previously-captured inspections.
+ */
+export const RETIRED_INSPECTOR_FEATURE_KEYS = new Set<string>([
+  "hasFence",
+  "hasCentralAc",
+  "hasTanks",
+  "hasLandscaping",
+]);
+
 export function visibleInspectorFeatureFields(
   isLand: boolean,
 ): InspectorFeatureField[] {
-  if (!isLand) return INSPECTOR_FEATURE_FIELDS;
   return INSPECTOR_FEATURE_FIELDS.filter(
-    (field) => !isLandHiddenInspectorFeatureKey(field.key),
+    (field) =>
+      !RETIRED_INSPECTOR_FEATURE_KEYS.has(field.key) &&
+      (!isLand || !isLandHiddenInspectorFeatureKey(field.key)),
   );
 }
+
 
 export const INSPECTOR_SERVICE_OPTIONS = [
   "كهرباء",
@@ -544,10 +560,10 @@ function emptyBoundaryMatches(): Record<
   InspectorBoundaryMatch
 > {
   return {
-    north: { matches: true, mismatchNote: "" },
-    south: { matches: true, mismatchNote: "" },
-    east: { matches: true, mismatchNote: "" },
-    west: { matches: true, mismatchNote: "" },
+    north: { matches: true, mismatchNote: "", facade: "" },
+    south: { matches: true, mismatchNote: "", facade: "" },
+    east: { matches: true, mismatchNote: "", facade: "" },
+    west: { matches: true, mismatchNote: "", facade: "" },
   };
 }
 

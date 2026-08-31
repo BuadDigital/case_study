@@ -1,14 +1,14 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { AppModal } from "@case-study/mfe/components/ui/AppModal";
-import { RegField, RegSelect } from "@platform/app-shared/registration/FormFields";
 import {
+  AppModal,
   Button,
-  Note,
   cn,
+  Note,
   useToast,
 } from "@platform/ui-kit";
+import { RegField, RegSelect } from "@platform/app-shared/registration/FormFields";
 import type { PriorDeedRegistrationDto } from "@platform/api-client";
 import { PoNumber } from "@case-study/mfe/components/ui/PoNumber";
 import {

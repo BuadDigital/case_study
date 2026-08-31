@@ -13,7 +13,7 @@ import {
   filterTasksForDistribution,
   filterTasksForPrimaryData,
 } from "@case-study/mfe/lib/prototype/transaction-filters";
-import type { FailureRecord } from "@failures/mfe/lib/failures-types";
+import type { FailureRecord } from "@platform/app-shared/failures/failures-types";
 import { isTaskOnSuspendedProperty } from "@case-study/mfe/lib/prototype/suspended-transactions-storage";
 import { listedTasksForPage } from "@case-study/mfe/lib/prototype/active-transaction-page-situation";
 import { PARTY_TASK_PAGES } from "@platform/app-shared/prototype/party-task-pages";

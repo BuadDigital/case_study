@@ -3,7 +3,7 @@ import {
   openEngineeringSurveyDocumentPreview,
   downloadEngineeringSurveyDocument,
   type EngineeringSurveyDocumentEntry,
-} from "@engineering-office/mfe/lib/engineering-survey-attachments";
+} from "../engineering-survey-bridge";
 import {
   getCachedEvaluatorDepositCertificate,
   getCachedEvaluatorReport,

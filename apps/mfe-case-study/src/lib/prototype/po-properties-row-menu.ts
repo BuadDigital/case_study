@@ -1,11 +1,11 @@
-import type { RowMoreMenuItem } from "@case-study/mfe/components/ui/RowMoreMenu";
+import type { RowMoreMenuItem } from "@platform/ui-kit";
 import { getPropertyFailure } from "@failures/mfe/lib/failures-repository";
 import type { PoPropertyIntake } from "./po-intake-data";
 import {
   poPropertyEditPath,
   poPropertyFailurePath,
   poPropertyPath,
-} from "../po-routes";
+} from "@platform/app-shared/domain/po-routes";
 
 export type PoPropertyRowMoreContext = {
   poNumber: string;

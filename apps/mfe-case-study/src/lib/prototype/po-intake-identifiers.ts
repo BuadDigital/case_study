@@ -205,7 +205,7 @@ export function propertyIdentifierFieldLabel(
 }
 
 /** Table column headers — includes deed and registered title. */
-export const PROPERTY_IDENTIFIER_COLUMN_LABEL = "رقم الصك/التسجيل العيني";
+export { PROPERTY_IDENTIFIER_COLUMN_LABEL } from "@platform/app-shared/domain/property-labels";
 
 /** Digits only — length is free (up to DB max). */
 export function sanitizePropertyIdentifierInput(

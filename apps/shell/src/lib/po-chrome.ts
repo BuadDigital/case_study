@@ -3,7 +3,7 @@ import {
   PO_PROPERTY_SEGMENT,
   poListPath,
   poPropertiesPath,
-} from "@case-study/mfe/lib/po-routes";
+} from "@platform/app-shared/domain/po-routes";
 import { formatPoDisplay } from "@case-study/mfe/lib/prototype/po-intake-data";
 import type { BreadcrumbSegment } from "./breadcrumb";
 

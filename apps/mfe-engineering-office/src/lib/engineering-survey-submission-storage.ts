@@ -28,7 +28,7 @@ import {
 import {
   jeddahDefaultCoords,
   shouldUseJeddahDefaultCoords,
-} from "./jeddah-default-coords";
+} from "@platform/app-shared/domain/jeddah-default-coords";
 
 export const ENGINEERING_SURVEY_SUBMISSION_CHANGED_EVENT =
   "engineering-survey-submission-changed";

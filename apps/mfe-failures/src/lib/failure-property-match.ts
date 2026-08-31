@@ -1,10 +1,10 @@
 import { getFailureProblemType } from "./failure-types-data";
-import type { FailureRecord } from "./failures-types";
+import type { FailureRecord } from "@platform/app-shared/failures/failures-types";
 import {
   isActiveFailureStatus,
   isBlockingFailureStatus,
   isHistoricalFailureStatus,
-} from "./failures-types";
+} from "@platform/app-shared/failures/failures-types";
 
 export type FailurePropertyRef = {
   poNumber: string;

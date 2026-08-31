@@ -36,7 +36,7 @@ import { blockingFailureForProperty } from "@failures/mfe/lib/failure-property-m
 import { failureRecordTitle } from "@failures/mfe/lib/failures-labels";
 import { failureRaiserRoleForParty } from "@failures/mfe/lib/failure-party-roles";
 import { useFailuresQuery } from "@failures/mfe/query/failures-queries";
-import { isActiveFailureStatus } from "@failures/mfe/lib/failures-types";
+import { isActiveFailureStatus } from "@platform/app-shared/failures/failures-types";
 import {
   createEngineeringSurveyDraft,
   isEngineeringSurveyFormLocked,

@@ -17,7 +17,7 @@ import type {
   CreateFailureInput,
   FailureRecord,
   ResolveFailureInput,
-} from "./failures-types";
+} from "@platform/app-shared/failures/failures-types";
 
 export type { FailureMutationResult } from "./failures-api";
 

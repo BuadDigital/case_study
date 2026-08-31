@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState, useTransition } from "react";
 import {
+  cn,
   EmptyState,
   KpiAlertIcon,
   KpiBand,
@@ -16,6 +17,9 @@ import {
   PageShell,
   PageToolbar,
   QueueTableHint,
+  queueTableRowClassName,
+  RowMoreMenu,
+  type RowMoreMenuItem,
   SkeletonTableRows,
   Table,
   TableFrame,
@@ -26,8 +30,6 @@ import {
   ThAction,
   THead,
   Tr,
-  cn,
-  queueTableRowClassName,
 } from "@platform/ui-kit";
 import { getAuthSession } from "@platform/auth-client";
 import { useTickingMinute } from "@platform/app-shared/hooks/use-ticking-now";
@@ -39,13 +41,11 @@ import { isSuperAdmin } from "@platform/app-shared/prototype/prototype-role-acce
 import type { RoleId } from "@platform/types";
 import { PoNumber } from "../components/ui/PoNumber";
 import { TickingRemainingTimeCell } from "../components/ui/RemainingTimeCell";
-import { RowMoreMenu } from "../components/ui/RowMoreMenu";
-import type { RowMoreMenuItem } from "../components/ui/RowMoreMenu";
 import { InteractiveDeedCell } from "../components/ui/InteractiveDeedCell";
 import {
   ActiveQueueMobileCards,
   type ActiveQueueMobileCardItem,
-} from "../components/queue/ActiveQueueMobileCards";
+} from "@platform/app-shared/components/ActiveQueueMobileCards";
 import {
   formatPoDisplay,
   formatPropertyDeedDisplay,
@@ -53,7 +53,7 @@ import {
   type PoIntakeRecord,
 } from "../lib/prototype/po-intake-data";
 import { remainingTimerTick, resolveRemainingTime, formatRemainingDuration } from "../lib/prototype/my-task-row";
-import { poPropertiesPath, poPropertyPath } from "../lib/po-routes";
+import { poPropertiesPath, poPropertyPath } from "@platform/app-shared/domain/po-routes";
 import {
   propertySuspensionKey,
   type SuspendedTransaction,

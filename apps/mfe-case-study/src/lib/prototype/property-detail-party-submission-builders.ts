@@ -8,7 +8,7 @@ import {
 import {
   DEFAULT_CASE_STUDY_QUESTION_CATALOG,
   questionLabelFromCatalog,
-} from "./case-study-question-catalog";
+} from "@platform/app-shared/domain/case-study/question-catalog";
 import {
   type CaseStudyFormDraft,
   type CaseStudyFormStatus,

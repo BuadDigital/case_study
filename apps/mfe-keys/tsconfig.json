@@ -1,7 +1,6 @@
 {
   "extends": "../../tsconfig.base.json",
   "compilerOptions": {
-    "baseUrl": ".",
     "paths": {
       "@keys/mfe": ["./src/index.ts"],
       "@keys/mfe/*": ["./src/*"],

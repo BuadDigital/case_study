@@ -18,7 +18,7 @@ import { PropertyDetailHero } from "../components/po-intake/PropertyDetailHero";
 import { PropertyTransactionTimeline } from "../components/po-intake/PropertyTransactionTimeline";
 import { usePrototype } from "@platform/app-shared/contexts/PrototypeContext";
 import { activeCaseStudyPath } from "../lib/my-task-routes";
-import { poPropertiesPath, poPropertyPath } from "../lib/po-routes";
+import { poPropertiesPath, poPropertyPath } from "@platform/app-shared/domain/po-routes";
 import { findPropertyForTask } from "../lib/prototype/my-task-row";
 import { canOpenCaseStudyWorkspace } from "../lib/prototype/viewer-task-access";
 import type { WorkflowTask } from "../lib/prototype/tasks-storage";

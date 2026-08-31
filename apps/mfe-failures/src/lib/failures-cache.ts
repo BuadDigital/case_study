@@ -1,5 +1,5 @@
 import { activeFailureForProperty } from "./failure-property-match";
-import type { FailureRecord } from "./failures-types";
+import type { FailureRecord } from "@platform/app-shared/failures/failures-types";
 
 let listCache: FailureRecord[] = [];
 // Lazy index by work-order number — getCachedPropertyFailure is called per property when loading

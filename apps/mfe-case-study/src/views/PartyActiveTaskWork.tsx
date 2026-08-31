@@ -282,7 +282,7 @@ export function PartyActiveTaskWork({
     [record, surveyProperty],
   );
 
-  if (isFieldInspection && layout === "page") {
+  if (isFieldInspection) {
     const inspectionReadOnly = fieldInspectionLocked || submitSuccess;
     const inspectorCard: PropertyDetailPartyCard = {
       roleKey: "inspection",
@@ -293,51 +293,78 @@ export function PartyActiveTaskWork({
       enabled: true,
     };
 
+    const inspectionForm =
+      surveyProperty ? (
+        <PropertyDetailInspectionTab
+          property={surveyProperty}
+          inspectionTask={task}
+          inspectionCard={inspectorCard}
+          editMode={!inspectionReadOnly}
+          lockEditMode={!inspectionReadOnly}
+          onEditModeChange={(edit) => {
+            if (!edit) exit();
+          }}
+          onSubmitted={() =>
+            completePartyTaskSubmit(def.completeMessage, {
+              showToast: false,
+            })
+          }
+          steps
+          caseStudyDef={def}
+        />
+      ) : (
+        <InlineLoadingSkeleton className={LOADING_TEXT} />
+      );
+
     const desktopStandalone =
       record && surveyProperty && surveyPropertyIndex >= 0 ? (
         <div
           id="view-active-inspection-workspace"
-          className="flex min-h-0 w-full flex-1 flex-col overflow-hidden bg-[#f5f3ee]"
+          className="flex h-full min-h-0 w-full flex-1 flex-col overflow-hidden bg-[#f5f3ee]"
         >
-          <PageShell
-            variant="canvas"
-            className="gap-0 overflow-x-hidden overflow-y-auto bg-[#f5f3ee] px-[30px] py-[26px] max-sm:px-4 max-sm:py-4"
-          >
+          {/* Own scrollport — #content is overflow-hidden for this route; PageShell canvas uses h-fit. */}
+          <div className="min-h-0 flex-1 overflow-x-hidden overflow-y-auto px-[30px] py-[26px] max-sm:px-4 max-sm:py-4">
             <PropertyDetailHero
               record={record}
               property={surveyProperty}
               propertyIndex={surveyPropertyIndex + 1}
               hideOpenCaseStudy
+              stickyCompact
             />
-            <div className="grid min-h-0 flex-1 grid-cols-1 items-start gap-3.5 lg:grid-cols-[minmax(0,1fr)_250px]">
+            <div className="mt-3.5 grid grid-cols-1 items-start gap-3.5 pb-8 lg:grid-cols-[minmax(0,1fr)_252px]">
               <div className={opsContentPanel}>
-                <PropertyDetailInspectionTab
-                  property={surveyProperty}
-                  inspectionTask={task}
-                  inspectionCard={inspectorCard}
-                  editMode={!inspectionReadOnly}
-                  lockEditMode={!inspectionReadOnly}
-                  onEditModeChange={(edit) => {
-                    if (!edit) exit();
-                  }}
-                  onSubmitted={() =>
-                    completePartyTaskSubmit(def.completeMessage, {
-                      showToast: false,
-                    })
-                  }
-                />
+                {inspectionForm}
               </div>
-              <PropertyTransactionTimeline record={record} property={surveyProperty} />
+              <PropertyTransactionTimeline
+                record={record}
+                property={surveyProperty}
+              />
             </div>
-          </PageShell>
+          </div>
+        </div>
+      ) : recordLoading && !record ? (
+        <div className="flex h-full min-h-0 w-full flex-1 flex-col overflow-hidden bg-[#f5f3ee]">
+          <PanelSkeleton />
         </div>
       ) : (
-        <InlineLoadingSkeleton className={LOADING_TEXT} />
+        <TaskWorkChrome
+          layout={layout}
+          title={`${def.workTitle} — ${deedLabel}`}
+          subtitle={`${def.assigneeSubtitle} · ${formatPoDisplay(task.poNumber)} · ${location}`}
+          deedBadge={deedLabel}
+          saving={saving}
+          onClose={exit}
+          onSave={exit}
+          saveLabel={inspectionReadOnly ? "رجوع" : def.saveLabel}
+          showFooter={false}
+        >
+          <div className="mx-auto max-w-[920px]">{inspectionForm}</div>
+        </TaskWorkChrome>
       );
 
     return (
       <>
-        <div className="hidden min-h-0 w-full flex-1 flex-col overflow-hidden lg:flex">
+        <div className="hidden h-full min-h-0 w-full flex-1 flex-col overflow-hidden lg:flex">
           {desktopStandalone}
         </div>
         <div className="flex h-full min-h-0 w-full flex-1 flex-col overflow-hidden lg:hidden">
@@ -577,79 +604,6 @@ export function PartyActiveTaskWork({
       >
         {appraisalWork}
       </TaskWorkChrome>
-    );
-  }
-
-  if (isFieldInspection) {
-    const inspectionReadOnly = fieldInspectionLocked || submitSuccess;
-    const inspectorCard: PropertyDetailPartyCard = {
-      roleKey: "inspection",
-      role: "المعاين",
-      name: task.assigneeName?.trim() || def.assigneeSubtitle || "المعاين",
-      unassigned: false,
-      state: inspectionReadOnly ? "done" : "progress",
-      enabled: true,
-    };
-
-    return (
-      <>
-        <div className="hidden min-h-0 w-full flex-1 flex-col lg:flex">
-          <TaskWorkChrome
-            layout={layout}
-            title={`${def.workTitle} — ${deedLabel}`}
-            subtitle={`${def.assigneeSubtitle} · ${formatPoDisplay(task.poNumber)} · ${location}`}
-            deedBadge={deedLabel}
-            saving={saving}
-            onClose={exit}
-            onSave={exit}
-            saveLabel={inspectionReadOnly ? "رجوع" : def.saveLabel}
-            showFooter={false}
-          >
-            {/* Case Study.html pdInspectionHtml — same surface as property-detail edit */}
-            <div className="mx-auto max-w-[920px]">
-              {surveyProperty ? (
-                <PropertyDetailInspectionTab
-                  property={surveyProperty}
-                  inspectionTask={task}
-                  inspectionCard={inspectorCard}
-                  editMode={!inspectionReadOnly}
-                  lockEditMode={!inspectionReadOnly}
-                  onEditModeChange={(edit) => {
-                    if (!edit) exit();
-                  }}
-                  onSubmitted={() =>
-                    completePartyTaskSubmit(def.completeMessage, {
-                      showToast: false,
-                    })
-                  }
-                />
-              ) : (
-                <InlineLoadingSkeleton className={LOADING_TEXT} />
-              )}
-              <div>
-                <PartyTaskFailureRaise
-                  def={def}
-                  task={task}
-                  deedNumber={deedLabel}
-                  onSubmitted={refresh}
-                />
-              </div>
-            </div>
-          </TaskWorkChrome>
-        </div>
-        <div className="flex h-full min-h-0 w-full flex-1 flex-col overflow-hidden lg:hidden">
-          <FieldInspectionMobileShell
-            def={def}
-            task={task}
-            hostRef={fieldInspectionHostRef}
-            deedLabel={deedLabel}
-            locationLabel={location}
-            submitting={saving}
-            onClose={exit}
-            onFailureSubmitted={refresh}
-          />
-        </div>
-      </>
     );
   }
 

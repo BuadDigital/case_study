@@ -4,8 +4,8 @@ import {
   ActiveQueueMobileCards,
   toneFromLegacyBadge,
   type ActiveQueueMobileCardItem,
-} from "../queue/ActiveQueueMobileCards";
-import type { RowMoreMenuItem } from "../ui/RowMoreMenu";
+} from "@platform/app-shared/components/ActiveQueueMobileCards";
+import type { RowMoreMenuItem } from "@platform/ui-kit";
 import {
   buildPrimaryDataTableRow,
   findPropertyForTask,

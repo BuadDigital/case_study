@@ -32,10 +32,9 @@ public sealed partial class PartyFeePricingService
         string defaultName,
         CancellationToken cancellationToken)
     {
-        var active = await _db.PartyFeePricingTables
-            .Include(x => x.AreaTiers)
-            .FirstOrDefaultAsync(x => x.Category == category && x.IsActive, cancellationToken);
-        if (active is not null) return;
+        var hasActive = await _db.PartyFeePricingTables.AsNoTracking()
+            .AnyAsync(x => x.Category == category && x.IsActive, cancellationToken);
+        if (hasActive) return;
 
         var any = await _db.PartyFeePricingTables
             .Include(x => x.AreaTiers)

@@ -6,8 +6,12 @@ import dynamic from "next/dynamic";
 import { useQueryClient } from "@tanstack/react-query";
 import {
   Button,
+  cn,
   Note,
   PageGutter,
+  PanelSkeleton,
+  RowMoreMenu,
+  type RowMoreMenuItem,
   Table,
   TableFrame,
   TBody,
@@ -17,11 +21,7 @@ import {
   ThAction,
   THead,
   Tr,
-  cn,
-  PanelSkeleton,
 } from "@platform/ui-kit";
-import { RowMoreMenu } from "@case-study/mfe/components/ui/RowMoreMenu";
-import type { RowMoreMenuItem } from "@case-study/mfe/components/ui/RowMoreMenu";
 import { PoNumber } from "@case-study/mfe/components/ui/PoNumber";
 import { ltrValueClass } from "../components/po-intake/PropertyDetailFields";
 const CopyFromPriorTransactionModal = dynamic(
@@ -55,7 +55,7 @@ import {
   hasBourseDetailFields,
   isPastDue,
 } from "../lib/prototype/po-intake-data";
-import { poHeaderEditPath, poPropertyPath, poListPath } from "../lib/po-routes";
+import { poHeaderEditPath, poPropertyPath, poListPath } from "@platform/app-shared/domain/po-routes";
 import { buildCopyPriorTargetOptions } from "../lib/prototype/po-intake-storage";
 import {
   buildPoPropertiesRowMoreItems,

@@ -10,6 +10,7 @@ import {
 } from "@platform/api-client/notifications";
 import { ApiAuthError } from "@platform/api-client";
 import { isFeatureEnabled } from "@platform/app-shared/feature-flags";
+import { ensureFreshAuthSession } from "@platform/app-shared/auth/ensure-fresh-session";
 import { useAuth } from "@platform/app-shared/hooks/useAuth";
 import { useDocumentVisible } from "@platform/app-shared/hooks/use-document-visible";
 import { prototypeKeys } from "@platform/app-shared/query/prototype-keys";
@@ -30,7 +31,8 @@ import {
   type AppNotification,
 } from "@platform/app-shared/notifications/notification-store";
 
-const SSE_RETRY_MS = 5_000;
+const SSE_RETRY_BASE_MS = 2_000;
+const SSE_RETRY_MAX_MS = 60_000;
 const LOCAL_SYNC_SUPPRESS_MS = 60_000;
 
 function isNetworkFailure(err: unknown): boolean {
@@ -42,10 +44,14 @@ function isNetworkFailure(err: unknown): boolean {
 
 /**
  * Server inbox sync — three independent delivery channels can each surface the
- * same notification (SSE stream, browser Web Push via the service worker, and
- * a tab-refocus catch-up pull), so `seenIdsRef` / `localSyncSourceEventsRef`
+ * same notification (SSE stream via fetch+Bearer — not EventSource, which cannot
+ * send Authorization — browser Web Push via the service worker, and a
+ * tab-refocus catch-up pull), so `seenIdsRef` / `localSyncSourceEventsRef`
  * are shared at component scope and every channel must check them before
  * showing a toast — otherwise the same event shows up more than once.
+ *
+ * SSE/push deliveries also trigger targeted React Query invalidations for live
+ * queues (not a full `prototypeKeys.all` refetch).
  */
 export function ServerNotificationBridge() {
   const { token, authReady, isAuthenticated, role, user } = useAuth();
@@ -246,9 +252,9 @@ export function ServerNotificationBridge() {
 
     const streamAbort = new AbortController();
     let retryTimer: number | undefined;
+    let retryAttempt = 0;
 
-    async function connectStream() {
-      const authToken = token;
+    async function connectStream(authToken: string) {
       if (!authToken || cancelled || stopSync) return;
 
       try {
@@ -257,24 +263,37 @@ export function ServerNotificationBridge() {
           handleServerDto,
           streamAbort.signal,
         );
-        // Resolved without throwing means the stream ended cleanly (e.g. a
-        // backend deploy/restart closed the connection) — reconnect just
-        // like a network failure would, or the tab goes stale silently.
+        // Clean close (deploy/restart) — reset backoff and reconnect.
+        retryAttempt = 0;
       } catch (err) {
         if (cancelled || streamAbort.signal.aborted || stopSync) return;
         if (err instanceof ApiAuthError) {
-          stopSync = true;
+          // fetch-based SSE supports Bearer; on 401 rotate access token and retry.
+          const session = await ensureFreshAuthSession({ force: true });
+          if (!session?.token || cancelled || stopSync) {
+            stopSync = true;
+            return;
+          }
+          retryAttempt = 0;
+          retryTimer = window.setTimeout(() => {
+            void connectStream(session.token);
+          }, SSE_RETRY_BASE_MS);
           return;
         }
       }
 
       if (cancelled || streamAbort.signal.aborted || stopSync) return;
+      const delay = Math.min(
+        SSE_RETRY_MAX_MS,
+        SSE_RETRY_BASE_MS * 2 ** retryAttempt,
+      );
+      retryAttempt += 1;
       retryTimer = window.setTimeout(() => {
-        void connectStream();
-      }, SSE_RETRY_MS);
+        void connectStream(authToken);
+      }, delay);
     }
 
-    void connectStream();
+    void connectStream(token);
 
     return () => {
       cancelled = true;

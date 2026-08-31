@@ -11,7 +11,7 @@ import {
   FAILURE_RAISER_SPECIALIST,
   FAILURE_RAISER_SUPERVISOR,
 } from "@failures/mfe/lib/failure-party-roles";
-import { isBlockingFailureStatus } from "@failures/mfe/lib/failures-types";
+import { isBlockingFailureStatus } from "@platform/app-shared/failures/failures-types";
 import { useFailuresQuery } from "@failures/mfe/query/failures-queries";
 import {
   emptyProperty,

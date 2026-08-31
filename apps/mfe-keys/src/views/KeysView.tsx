@@ -7,6 +7,7 @@ import { usePrototype } from "@platform/app-shared/contexts/PrototypeContext";
 import { isSuperAdmin } from "@platform/app-shared/prototype/prototype-role-access";
 import {
   Button,
+  cn,
   KpiAlertIcon,
   KpiBand,
   KpiCell,
@@ -22,30 +23,30 @@ import {
   OperationalToolbarPrimaryButton,
   OperationalToolbarSearch,
   OperationalToolbarSelect,
+  opsBtnGhost,
+  opsChip,
   PageShell,
+  PanelSkeleton,
+  type RowMoreMenuItem,
   ShowAllEye,
   SkeletonTableRows,
-  TBody,
-  THead,
   Table,
   TableFrame,
+  TBody,
   Td,
   TdAction,
   TdLtr,
   Th,
   ThAction,
+  THead,
   Tr,
-  cn,
-  opsBtnGhost,
-  opsChip,
   useShowAllEyeBlink,
   useToast,
 } from "@platform/ui-kit";
 import {
   ActiveQueueMobileCards,
   type ActiveQueueMobileCardItem,
-} from "@case-study/mfe/components/queue/ActiveQueueMobileCards";
-import type { RowMoreMenuItem } from "@case-study/mfe/components/ui/RowMoreMenu";
+} from "@platform/app-shared/components/ActiveQueueMobileCards";
 import { KeysEmpty, KeysStatusPill } from "../components/KeysHtmlPrimitives";
 import { removeKeyEnvelope } from "../lib/keys-envelope-api";
 import {
@@ -72,9 +73,7 @@ const KeyEnvelopeDetailPage = dynamic(
     ),
   {
     ssr: false,
-    loading: () => (
-      <div className="py-8 text-center text-sm text-text-3">جاري التحميل…</div>
-    ),
+    loading: () => <PanelSkeleton className="min-h-[40vh] p-4" />,
   },
 );
 const KeyEnvelopeFeesPanel = dynamic(
@@ -83,9 +82,7 @@ const KeyEnvelopeFeesPanel = dynamic(
       (m) => m.KeyEnvelopeFeesPanel,
     ),
   {
-    loading: () => (
-      <div className="py-8 text-center text-sm text-text-3">جاري التحميل…</div>
-    ),
+    loading: () => <PanelSkeleton className="min-h-[40vh] p-4" />,
   },
 );
 const RegisterKeyEnvelopeModal = dynamic(

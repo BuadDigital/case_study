@@ -7,7 +7,7 @@ import { PoPropertyFailureRoute } from "@case-study/mfe/views/po-routes/PoProper
 import {
   PO_PROPERTY_SEGMENT,
   decodePoParam,
-} from "@case-study/mfe/lib/po-routes";
+} from "@platform/app-shared/domain/po-routes";
 
 function normalizeSegments(value: string | string[] | undefined): string[] {
   if (!value) return [];

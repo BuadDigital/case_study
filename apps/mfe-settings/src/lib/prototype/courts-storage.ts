@@ -1,5 +1,5 @@
 import { listCourts } from "@platform/api-client";
-import { COURTS_BY_CITY } from "@case-study/mfe/lib/prototype/po-intake-data";
+import { COURTS_BY_CITY } from "@platform/app-shared/domain/courts/courts-by-city";
 import { apiErrorMessage, courtsApiConfig } from "../settings-api-config";
 
 export type CourtCatalogEntry = {

@@ -1,7 +1,10 @@
 "use client";
 
-import { Note, Spinner } from "@platform/ui-kit";
-import { AppModal } from "../ui/AppModal";
+import {
+  AppModal,
+  Note,
+  Spinner,
+} from "@platform/ui-kit";
 import {
   opsBtnGhost,
   opsBtnPrimary,

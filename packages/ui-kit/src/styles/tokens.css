@@ -79,15 +79,15 @@
   --shadow: 0 1px 2px rgba(18, 40, 76, 0.03), 0 6px 16px -18px rgba(18, 40, 76, 0.1);
   --shadow-lg: 0 10px 28px -8px rgba(18, 40, 76, 0.28);
 
-  /* ── سُلَّم الطبقات (z-index) — استخدم الرموز بدل الأرقام الحرّة في الطبقات العامة ── */
-  --z-sticky: 20; /* أشرطة/رؤوس ثابتة داخل الصفحة */
-  --z-dropdown: 30; /* قوائم منسدلة وبحث */
-  --z-chrome: 50; /* هيكل التطبيق: الشريط الجانبي والعلوي */
-  --z-banner: 90; /* لافتات عائمة فوق الهيكل ودون النوافذ (تثبيت PWA وغيرها) */
-  --z-modal: 1000; /* النوافذ الحوارية وخلفياتها */
-  --z-modal-2: 1100; /* نافذة فوق نافذة */
-  --z-lightbox: 1200; /* معاينات ملء الشاشة فوق النوافذ */
-  --z-toast: 1300; /* التنبيهات فوق كل شيء تفاعلي */
+  /* ── Layer scale (z-index) — use these tokens instead of raw numbers for app-wide layers ── */
+  --z-sticky: 20; /* Sticky bars / headers inside the page */
+  --z-dropdown: 30; /* Dropdown menus and search */
+  --z-chrome: 50; /* App chrome: sidebar and top bar */
+  --z-banner: 90; /* Floating banners above the chrome, below modals (PWA install, etc.) */
+  --z-modal: 1000; /* Dialogs and their backdrops */
+  --z-modal-2: 1100; /* Modal stacked on top of a modal */
+  --z-lightbox: 1200; /* Full-screen previews above modals */
+  --z-toast: 1300; /* Toasts above everything interactive */
 }
 
 /* ── Dark theme (docs/new look) — overrides raw values; aliases follow via var(). ── */

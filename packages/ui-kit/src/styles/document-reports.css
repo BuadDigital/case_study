@@ -1,6 +1,6 @@
 ﻿/* Valuation + case-study print/document chrome — descendant tables, @page, mm units. */
 
-/* Millimetric copy of الإعدادات v2 `.rpt-ref` */
+/* Millimetric copy of the Settings v2 `.rpt-ref` */
 .rpt-ref {
   color: var(--text-1);
   max-width: 100%;
@@ -314,7 +314,7 @@
 }
 
 
-/* Case study report â€” designer layout (csrd-*) */
+/* Case study report — designer layout (csrd-*) */
 
 .csrd-root {
   --navy: #0f2a4e;
@@ -363,7 +363,7 @@
   margin: 0;
 }
 
-/* â”€â”€ Header / footer / watermark â”€â”€ */
+/* ── Header / footer / watermark ── */
 .csrd-header {
   position: absolute;
   top: 0;
@@ -533,7 +533,7 @@
   white-space: nowrap;
 }
 
-/* â”€â”€ Content â”€â”€ */
+/* ── Content ── */
 .csrd-content {
   position: relative;
   z-index: 1;
@@ -573,7 +573,7 @@
   font-size: 8.5pt;
 }
 
-/* â”€â”€ Tables â”€â”€ */
+/* ── Tables ── */
 .csrd-table {
   width: 100%;
   border-collapse: collapse;
@@ -722,7 +722,7 @@
   page-break-inside: avoid;
 }
 
-/* â”€â”€ Modal preview shell (header/footer ط¯ط§ط®ظ„ ط§ظ„طµظپط­ط©) â”€â”€ */
+/* ── Modal preview shell (header/footer inside the page) ── */
 .cs-report-preview-shell {
   background: #eef3f9;
   padding: 8px 0 16px;

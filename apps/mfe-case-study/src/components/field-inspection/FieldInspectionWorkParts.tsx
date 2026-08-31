@@ -3,13 +3,26 @@
 /** Field-inspection work body parts — module-level components, moved verbatim (SRP). */
 
 import { useCallback, useEffect, useRef, useState, type ReactNode, type RefObject, Fragment } from "react";
-import { Button, FormRow, GoogleMapPin, InlineLoadingSkeleton, Input, Label, Note, Select, Textarea, cn, formControlClassName, useToast } from "@platform/ui-kit";
-import { AppModal } from "../ui/AppModal";
+import {
+  AppModal,
+  Button,
+  cn,
+  formControlClassName,
+  FormRow,
+  GoogleMapPin,
+  InlineLoadingSkeleton,
+  Input,
+  Label,
+  Note,
+  Select,
+  Textarea,
+  useToast,
+} from "@platform/ui-kit";
 import { ReturnedForCorrectionNote } from "../ui/ReturnedForCorrectionNote";
 import { RegField, RegTextarea} from "@platform/app-shared/registration/FormFields";
 import type { PartyTaskPageDef } from "@platform/app-shared/prototype/party-task-pages";
 import { usePrototype } from "@platform/app-shared/contexts/PrototypeContext";
-import { JEDDAH_DEFAULT_LAT, JEDDAH_DEFAULT_LNG } from "@engineering-office/mfe/lib/jeddah-default-coords";
+import { JEDDAH_DEFAULT_LAT, JEDDAH_DEFAULT_LNG } from "@platform/app-shared/domain/jeddah-default-coords";
 import { BuildingInventorySection } from "./BuildingInventorySection";
 import { InspectionLimitsSection } from "./InspectionLimitsSection";
 import { FieldComparableCaptureSection } from "./FieldComparableCaptureSection";
@@ -96,12 +109,25 @@ export const BOUNDARY_ROW_MAP: Record<
   west: PROPERTY_BOUNDARY_ROWS[3],
 };
 
-export const TABLE_TH =
-  "border border-border bg-surface-2 px-2.5 py-[7px] text-[11px] font-bold text-text-2";
-export const TABLE_TD = "border border-border px-2.5 py-1.5 align-middle text-[12px]";
-
+/**
+ * Field Inspection Workspace.dc.html CSS → Tailwind
+ *
+ * .ins-ctl  → EDIT_CONTROL_CLASS
+ * .ins-lbl  → INS_LABEL_CLASS
+ * .ins-th   → INS_TH_CLASS
+ * .ins-td   → INS_TD_CLASS
+ * .num      → tabular-nums
+ */
 export const EDIT_CONTROL_CLASS =
-  "w-full appearance-none rounded-lg border border-border-md bg-surface px-[11px] py-[7px] text-[12.5px] text-text font-inherit";
+  "w-full box-border appearance-none rounded-lg border border-border-md bg-surface px-3 py-2 font-inherit text-[12.5px] text-text outline-none focus:border-gold focus:shadow-[0_0_0_3px_color-mix(in_srgb,var(--gold)_22%,transparent)]";
+
+export const INS_LABEL_CLASS =
+  "mb-[5px] block text-[11px] font-semibold text-text-2";
+
+export const INS_TH_CLASS =
+  "border border-border bg-surface-2 px-2.5 py-2 text-start text-[11px] font-bold text-text-2";
+
+export const INS_TD_CLASS = "border border-border px-2.5 py-[7px] text-xs";
 
 /**
  * Desktop feature photo cell — always a real file picker on computer
@@ -293,7 +319,7 @@ export function MobileInspectMap({
   );
 }
 
-function arabicStepLabel(step: number | string): string {
+export function arabicStepLabel(step: number | string): string {
   const n = typeof step === "number" ? step : Number.parseInt(String(step), 10);
   const map = ["١", "٢", "٣", "٤", "٥", "٦", "٧", "٨", "٩", "١٠"];
   if (Number.isFinite(n) && n >= 1 && n <= 10) return map[n - 1]!;
@@ -309,6 +335,7 @@ export function InspectorCard({
   layout = "desktop",
   step,
   subtitle,
+  hidden = false,
 }: {
   title: string;
   icon: string;
@@ -318,9 +345,13 @@ export function InspectorCard({
   layout?: "desktop" | "mobile";
   step?: number | string;
   subtitle?: string;
+  /** Belongs to a wizard step that is not the active one. */
+  hidden?: boolean;
 }) {
   const [open, setOpen] = useState(defaultOpen);
   const mobile = layout === "mobile";
+
+  if (hidden) return null;
 
   if (mobile) {
     return (
@@ -382,6 +413,11 @@ export function InspectorCard({
   return (
     <section className="mb-3 rounded-lg border border-border bg-surface px-4 py-3.5 shadow-none">
       <div className="mb-3 flex items-center gap-2">
+        {step != null ? (
+          <span className="grid size-[30px] shrink-0 place-items-center rounded-full bg-ink text-[14px] font-extrabold text-[var(--gold-2,#c8b591)]">
+            {arabicStepLabel(step)}
+          </span>
+        ) : null}
         <h4 className="m-0 text-[13px] font-bold text-heading">{title}</h4>
         <span className="flex-1" />
         {badge}

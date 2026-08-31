@@ -1,5 +1,5 @@
 import { suspendFailure } from "@failures/mfe/lib/failures-repository";
-import type { FailureRecord } from "@failures/mfe/lib/failures-types";
+import type { FailureRecord } from "@platform/app-shared/failures/failures-types";
 import {
   isPropertySuspended,
   notifySuspendedTransactionsChanged,

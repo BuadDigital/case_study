@@ -546,6 +546,7 @@ export {
   createComparableProperty,
   updateComparableProperty,
   deactivateComparableProperty,
+  reactivateComparableProperty,
   setComparableQualityTags,
   type SaveComparableQualityTagsRequest,
   type ComparablePropertiesApiConfig,

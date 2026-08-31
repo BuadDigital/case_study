@@ -107,19 +107,25 @@ export function FieldsGrid({
 export function SectionHeader({
   children,
   icon,
+  divider = false,
 }: {
   children: ReactNode;
   icon?: ReactNode;
+  /** Case Study.html — thin rule after section title. */
+  divider?: boolean;
 }) {
   return (
-    <h3 className="mb-2.5 mt-[18px] flex items-center gap-1.5 text-[13px] font-bold text-heading first:mt-0">
-      {icon ? (
-        <span className="inline-flex items-center opacity-75" aria-hidden>
-          {icon}
-        </span>
-      ) : null}
-      {children}
-    </h3>
+    <div className="mb-2.5 mt-[18px] first:mt-0">
+      <h3 className="m-0 flex items-center gap-1.5 text-[13px] font-bold text-heading">
+        {icon ? (
+          <span className="inline-flex items-center opacity-75" aria-hidden>
+            {icon}
+          </span>
+        ) : null}
+        {children}
+      </h3>
+      {divider ? <div className="mt-2 h-px bg-border" aria-hidden /> : null}
+    </div>
   );
 }
 

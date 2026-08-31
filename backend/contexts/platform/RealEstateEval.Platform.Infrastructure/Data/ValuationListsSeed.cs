@@ -16,6 +16,7 @@ internal static class ValuationListsSeed
         [ValuationListIds.Premises] = Premises(),
         [ValuationListIds.Methods] = Methods(),
         [ValuationListIds.Comparables] = Comparables(),
+        [ValuationListIds.Facades] = Facades(),
         [ValuationListIds.Glossary] = Glossary(),
         [ValuationListIds.IvsStandards] = IvsStandards(),
         [ValuationListIds.Attachments] = Attachments(),
@@ -119,6 +120,13 @@ internal static class ValuationListsSeed
             Row(ValuationListIds.Comparables, ++i, "coords", "الإحداثيات", 112, "إدخال — تحديد على الخريطة"),
         ];
     }
+
+    /// <summary>
+    /// «أنواع الواجهات» — option list for the inspector's «الواجهة» field
+    /// (INSPECTOR_FEATURE_FIELDS key "facade"). Intentionally empty: the admin
+    /// owns these values and adds them from the dictionary screen.
+    /// </summary>
+    private static List<ValuationListItemDto> Facades() => [];
 
     private static List<ValuationListItemDto> IvsStandards()
     {

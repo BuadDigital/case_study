@@ -1,4 +1,4 @@
-import type { FailureRecord } from "@failures/mfe/lib/failures-types";
+import type { FailureRecord } from "@platform/app-shared/failures/failures-types";
 import { failuresForProperty } from "@failures/mfe/lib/failure-property-match";
 import type { PoPropertyIntake } from "./po-intake-data";
 import type { PropertyUiStatus } from "./po-intake-data";

@@ -7,7 +7,7 @@ import type {
   InspectorFeeRowDto,
   PendingBoursePropertyDto,
 } from "@platform/api-client";
-import { filterEngineeringSurveyListedTasks } from "@engineering-office/mfe/lib/engineering-survey-queue";
+import { filterEngineeringSurveyListedTasks } from "../engineering-survey-bridge";
 import {
   appraiserQueueStatusGroup,
   filterAppraiserListedTasks,

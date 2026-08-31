@@ -1,6 +1,6 @@
-import type { RowMoreMenuItem } from "@case-study/mfe/components/ui/RowMoreMenu";
+import type { RowMoreMenuItem } from "@platform/ui-kit";
 import type { PoListStatus } from "@platform/app-shared/prototype/po-list-status";
-import { poHeaderEditPath, poPropertiesPath } from "../po-routes";
+import { poHeaderEditPath, poPropertiesPath } from "@platform/app-shared/domain/po-routes";
 
 export function buildPoListRowMoreItems(options: {
   poNumber: string;

@@ -92,4 +92,13 @@ public class ComparablePropertiesController : ControllerBase
         if (!ok) return this.BadRequestProblem(error ?? "تعذر تنفيذ العملية.");
         return NoContent();
     }
+
+    [HttpPost("{id:guid}/reactivate")]
+    [Authorize(Policy = CapabilityPolicyNames.WriteComparableBank)]
+    public async Task<IActionResult> Reactivate(Guid id, CancellationToken ct)
+    {
+        var (ok, error) = await _bank.ReactivateAsync(id, ct);
+        if (!ok) return this.BadRequestProblem(error ?? "تعذر تنفيذ العملية.");
+        return NoContent();
+    }
 }

@@ -2,9 +2,12 @@
 
 import { useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { AppModal } from "@case-study/mfe/components/ui/AppModal";
+import {
+  AppModal,
+  Button,
+  useToast,
+} from "@platform/ui-kit";
 import { prototypeKeys } from "@platform/app-shared/query/prototype-keys";
-import { Button, useToast } from "@platform/ui-kit";
 import { FailureRaiseFields, failurePayloadFromProblemType } from "@failures/mfe/components/failures/FailureRaiseFields";
 import { createFailure } from "@failures/mfe/lib/failures-repository";
 import { FAILURE_PROBLEM_TYPES } from "@failures/mfe/lib/failure-types-data";

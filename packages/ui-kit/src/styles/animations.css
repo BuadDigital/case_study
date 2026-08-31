@@ -138,7 +138,7 @@
     animation: ui-skeleton-shimmer 1.4s ease-in-out infinite;
   }
 
-  /* Live status dot (e.g. "قيد الدراسة") */
+  /* Live status dot (e.g. an "in progress" status) */
   .ui-status-dot-live {
     position: relative;
     animation: ui-pulse-fade 1.4s ease-in-out infinite;

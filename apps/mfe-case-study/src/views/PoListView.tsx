@@ -23,6 +23,7 @@ import {
 } from "@platform/app-shared/prototype/po-list-status";
 import {
   Button,
+  cn,
   KpiAlertIcon,
   KpiBand,
   KpiCell,
@@ -37,6 +38,8 @@ import {
   PageGutter,
   PageShell,
   PageToolbar,
+  queueTableRowClassName,
+  RowMoreMenu,
   SkeletonTableRows,
   StatusPill,
   Table,
@@ -49,17 +52,14 @@ import {
   ThAction,
   THead,
   Tr,
-  cn,
-  queueTableRowClassName,
   useToast,
 } from "@platform/ui-kit";
 import { PoNumber } from "@case-study/mfe/components/ui/PoNumber";
-import { RowMoreMenu } from "@case-study/mfe/components/ui/RowMoreMenu";
 import { buildPoListRowMoreItems } from "../lib/prototype/po-list-row-menu";
 import {
   ActiveQueueMobileCards,
   type ActiveQueueMobileCardItem,
-} from "../components/queue/ActiveQueueMobileCards";
+} from "@platform/app-shared/components/ActiveQueueMobileCards";
 import { usePrototype } from "@platform/app-shared/contexts/PrototypeContext";
 import {
   formatDateAr,
@@ -71,7 +71,7 @@ import {
   deletePoRecord,
   stopPoRecord,
 } from "../lib/prototype/po-intake-storage";
-import { poPropertiesPath, poPropertyPath } from "../lib/po-routes";
+import { poPropertiesPath, poPropertyPath } from "@platform/app-shared/domain/po-routes";
 import {
   buildPoDeedIndex,
   buildPoListDisplay,

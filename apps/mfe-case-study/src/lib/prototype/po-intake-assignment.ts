@@ -14,12 +14,8 @@ import {
   NABR_SEED_CLIENT_ID,
 } from "@platform/api-client";
 
-export function formatPoDisplay(poNumber: string): string {
-  const n = poNumber.trim();
-  if (!n) return "";
-  if (/^PO[-\s]/i.test(n)) return n;
-  return `PO-${n}`;
-}
+/** Display contract lives with the shared PoNumber component. */
+export { formatPoDisplay } from "@platform/ui-kit";
 
 export const ASSIGNMENT_TYPE_OPTIONS = [
   "تنفيذ",
@@ -208,34 +204,5 @@ export function businessDaysForAssignmentType(type: AssignmentType): number {
     : Math.max(1, sla.defaultBusinessDays);
 }
 
-/** Mock courts and circuits — replace with supervisor-managed list. */
-export const COURTS_BY_CITY: Record<
-  string,
-  { court: string; circuits: string[] }[]
-> = {
-  "مكة المكرمة": [
-    {
-      court: "محكمة التنفيذ بمكة المكرمة",
-      circuits: ["الدائرة الأولى", "الدائرة الثانية"],
-    },
-    {
-      court: "محكمة الاستئناف بمكة المكرمة",
-      circuits: ["دائرة الأحوال"],
-    },
-  ],
-  جدة: [
-    {
-      court: "محكمة التنفيذ بجدة",
-      circuits: ["الدائرة الأولى", "الدائرة الثانية", "الدائرة الثالثة"],
-    },
-  ],
-  الرياض: [
-    {
-      court: "محكمة التنفيذ بالرياض",
-      circuits: ["الدائرة الأولى", "الدائرة الثانية"],
-    },
-  ],
-  الطائف: [
-    { court: "محكمة التنفيذ بالطائف", circuits: ["الدائرة الأولى"] },
-  ],
-};
+/** Court catalog moved to the shared domain layer. */
+export { COURTS_BY_CITY } from "@platform/app-shared/domain/courts/courts-by-city";

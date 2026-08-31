@@ -1,5 +1,7 @@
-import type { StatusPillStyle } from "@platform/ui-kit";
-import type { RowMoreMenuItem } from "@case-study/mfe/components/ui/RowMoreMenu";
+import {
+  type RowMoreMenuItem,
+  type StatusPillStyle,
+} from "@platform/ui-kit";
 import { isSuperAdmin } from "@platform/app-shared/prototype/prototype-role-access";
 import type { RoleId } from "@platform/types";
 import {
@@ -11,7 +13,7 @@ import {
   taskKindLabel,
   type WorkflowTask,
 } from "./tasks-storage";
-import { poPropertyDetailPath, poPropertiesPath } from "../po-routes";
+import { poPropertyDetailPath, poPropertiesPath } from "@platform/app-shared/domain/po-routes";
 
 /** Short phase labels matching Case Study.html `renderAllTransactions`. */
 export function allTransactionsPhaseLabel(task: WorkflowTask): string {

@@ -7,5 +7,31 @@
   "eslint.workingDirectories": [
     { "directory": "apps/shell", "changeProcessCWD": true }
   ],
-  "files.autoSave": "onFocusChange"
+  "files.autoSave": "onFocusChange",
+  "files.watcherExclude": {
+    "**/node_modules/**": true,
+    "**/.next/**": true,
+    "**/dist/**": true,
+    "**/build/**": true,
+    "**/.turbo/**": true,
+    "**/coverage/**": true,
+    "**/playwright-report/**": true,
+    "**/test-results/**": true,
+    "**/backend/**/bin/**": true,
+    "**/backend/**/obj/**": true,
+    "**/data/blobs/**": true
+  },
+  "search.exclude": {
+    "**/node_modules": true,
+    "**/.next": true,
+    "**/dist": true,
+    "**/build": true,
+    "**/.turbo": true,
+    "**/coverage": true,
+    "**/playwright-report": true,
+    "**/test-results": true,
+    "**/backend/**/bin": true,
+    "**/backend/**/obj": true,
+    "**/data/blobs": true
+  }
 }

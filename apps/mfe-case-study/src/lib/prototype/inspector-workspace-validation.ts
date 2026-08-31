@@ -1,4 +1,4 @@
-import { shouldUseJeddahDefaultCoords } from "@engineering-office/mfe/lib/jeddah-default-coords";
+import { shouldUseJeddahDefaultCoords } from "@platform/app-shared/domain/jeddah-default-coords";
 import {
   invalidControlClass,
   resolveFirstErrorMessage,

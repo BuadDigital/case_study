@@ -15,7 +15,7 @@ import {
 } from "@platform/ui-kit";
 import { useEscapeKey } from "@platform/app-shared/hooks/use-escape-key";
 import { usePoRecordsQuery } from "../query/case-study-queries";
-import { poPropertyPath } from "../lib/po-routes";
+import { poPropertyPath } from "@platform/app-shared/domain/po-routes";
 import { findPropertyPathByDeed } from "../lib/prototype/map-open-property";
 import {
   mapComparableDtosToMapRecords,

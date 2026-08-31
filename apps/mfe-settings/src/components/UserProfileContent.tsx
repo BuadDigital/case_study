@@ -7,6 +7,10 @@ import {
   type InspectorFeeRowDto,
 } from "@platform/api-client";
 import type { StaffUser } from "@platform/app-shared/prototype/constants";
+import {
+  tryGetPartyOfficeBillingStatementsPanel,
+  type PartyOfficeBillingStatementsPanelProps,
+} from "@platform/app-shared/party-appraisal/billing-statements-slot";
 import { supervisingDepartmentLabel } from "@platform/app-shared/users/admin-staff-roles";
 import { getAuthSession } from "@platform/auth-client";
 import {
@@ -24,20 +28,23 @@ import {
 } from "@platform/ui-kit";
 import { ProfileInspectorDuesPanel } from "./ProfileInspectorDuesPanel";
 
-const PartyOfficeBillingStatementsPanel = dynamic(
-  () =>
-    import("@case-study/mfe/components/fees/PartyOfficeBillingStatementsPanel").then(
-      (m) => m.PartyOfficeBillingStatementsPanel,
-    ),
-  {
-    ssr: false,
-    loading: () => (
+/**
+ * Supplied by the shell at boot via the app-shared slot — settings must not
+ * import `@case-study/mfe` (it would re-create the settings <-> case-study cycle).
+ */
+function PartyOfficeBillingStatementsPanel(
+  props: PartyOfficeBillingStatementsPanelProps,
+) {
+  const Panel = tryGetPartyOfficeBillingStatementsPanel();
+  if (!Panel) {
+    return (
       <div className="flex justify-center py-10">
         <Spinner />
       </div>
-    ),
-  },
-);
+    );
+  }
+  return <Panel {...props} />;
+}
 
 type ProfileTab =
   | "basic"

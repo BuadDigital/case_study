@@ -8,12 +8,18 @@
 
 import { Fragment, memo, type ReactNode } from "react";
 import {
+  cn,
   OperationalToolbarSearch,
   OperationalToolbarSelect,
   PageToolbar,
+  queueTableRowActiveClassName,
+  queueTableRowClassName,
+  RowMoreMenu,
+  type RowMoreMenuItem,
   ShowAllEye,
   SkeletonTableRows,
   StatusPill,
+  type StatusPillStyle,
   Table,
   TableEmptyRow,
   TBody,
@@ -24,17 +30,11 @@ import {
   ThAction,
   THead,
   Tr,
-  cn,
-  queueTableRowActiveClassName,
-  queueTableRowClassName,
   useShowAllEyeBlink,
-  type StatusPillStyle,
 } from "@platform/ui-kit";
 import { PoNumber } from "@case-study/mfe/components/ui/PoNumber";
-import { RowMoreMenu } from "@case-study/mfe/components/ui/RowMoreMenu";
-import type { RowMoreMenuItem } from "@case-study/mfe/components/ui/RowMoreMenu";
 import { InteractiveDeedCell } from "../components/ui/InteractiveDeedCell";
-import { RowAttentionDot } from "../components/ui/RowAttentionDot";
+import { RowAttentionDot } from "@platform/ui-kit";
 import { PartyAssigneeCell } from "../components/ui/PartyAssigneeCell";
 import { HoverPortalCard } from "../components/ui/HoverPortalCard";
 import {

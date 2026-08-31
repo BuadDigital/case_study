@@ -3,7 +3,13 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useMemo } from "react";
-import { Button, cn, useToast } from "@platform/ui-kit";
+import {
+  Button,
+  cn,
+  RowMoreMenu,
+  type RowMoreMenuItem,
+  useToast,
+} from "@platform/ui-kit";
 import { usePrototype } from "@platform/app-shared/contexts/PrototypeContext";
 import { getPropertyFailure } from "@failures/mfe/lib/failures-repository";
 import { canEditProperty, canRaisePropertyFailure } from "../../lib/prototype/po-roles";
@@ -12,7 +18,7 @@ import {
   poPropertyEditPath,
   poPropertyFailurePath,
   poPropertyPath,
-} from "../../lib/po-routes";
+} from "@platform/app-shared/domain/po-routes";
 import {
   activeSurveyWorkspacePath,
   caseStudyWorkspacePath,
@@ -27,10 +33,6 @@ import { canOpenCaseStudyWorkspace } from "../../lib/prototype/viewer-task-acces
 import { canManageOperationsTasks } from "../../lib/prototype/operations-task-roles";
 import { formatPropertyDeedDisplay } from "../../lib/prototype/po-intake-data";
 import { usePoRecordQuery, useWorkflowTasksQuery } from "../../query/case-study-queries";
-import {
-  RowMoreMenu,
-  type RowMoreMenuItem,
-} from "../ui/RowMoreMenu";
 
 const shellBtn = (variant: "default" | "primary" = "default") =>
   cn(

@@ -13,7 +13,7 @@ import {
   InfoBox,
   SectionHeader,
 } from "./PropertyDetailFields";
-import { poPropertiesPath, poPropertyPath } from "../../lib/po-routes";
+import { poPropertiesPath, poPropertyPath } from "@platform/app-shared/domain/po-routes";
 import {
   formatPropertyDeedDisplay,
   formatPropertyLocation,

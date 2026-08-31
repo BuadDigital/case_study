@@ -359,3 +359,21 @@ export async function deactivateComparableProperty(
     return { ok: false, kind: "network" };
   }
 }
+
+export async function reactivateComparableProperty(
+  config: ComparablePropertiesApiConfig,
+  id: string,
+): Promise<Result<null>> {
+  const base = config.baseUrl ?? getApiBase();
+  try {
+    const res = await fetch(
+      `${base}/api/comparable-properties/${id}/reactivate`,
+      { method: "POST", headers: headers(config.token) },
+    );
+    if (res.status === 401) return { ok: false, kind: "auth" };
+    if (!res.ok) return { ok: false, kind: "server" };
+    return { ok: true, data: null };
+  } catch {
+    return { ok: false, kind: "network" };
+  }
+}

@@ -6,7 +6,7 @@ import { prototypeKeys } from "@platform/app-shared/query/prototype-keys";
 import {
   DEFAULT_CASE_STUDY_QUESTION_CATALOG,
   loadCaseStudyQuestionCatalog,
-} from "../lib/prototype/case-study-question-catalog";
+} from "@platform/app-shared/domain/case-study/question-catalog";
 
 export const CASE_STUDY_QUESTION_CATALOG_CHANGED_EVENT =
   "field-dictionary-changed";

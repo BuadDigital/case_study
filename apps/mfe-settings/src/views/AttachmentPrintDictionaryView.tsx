@@ -50,6 +50,7 @@ const TABS: { id: string; label: string; kind: "table" | "ivs" | "photos" | "cer
   { id: "premises", label: "فرضية القيمة", kind: "table" },
   { id: "methods", label: "أساليب وطرق التقييم", kind: "table" },
   { id: "comparables", label: "العقارات المقارنة", kind: "table" },
+  { id: "facades", label: "أنواع الواجهات", kind: "table" },
   { id: "glossary", label: "المصطلحات المهنية", kind: "table" },
   { id: "ivsStandards", label: "معايير التقييم الدولية", kind: "table" },
   { id: "attachments", label: "مرفقات التقرير", kind: "table" },
@@ -87,6 +88,11 @@ const TABLE_META: Record<
     addLabel: "إضافة عنوان",
     cols: ["العنوان", "مصدر التعبئة", "الاستخدام", "الحالة", ""],
     note: "العناوين المطلوبة لكل عقار مقارن — تظهر أعمدةً في جدول «العقارات المقارنة» بالتقرير، ويعبئها المقيم لكل مقارن.",
+  },
+  facades: {
+    addLabel: "إضافة نوع واجهة",
+    cols: ["نوع الواجهة", "التصنيف", "الاستخدام", "الحالة", ""],
+    note: "أنواع الواجهات — تُعرض قائمةَ اختيار في حقل «الواجهة» لدى المعاين في شاشة المعاينة الميدانية. المفعَّل فقط يظهر له، ويُنقل المختار إلى وصف العقار في التقرير.",
   },
   glossary: {
     addLabel: "إضافة مصطلح",

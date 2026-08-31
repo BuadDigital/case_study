@@ -8,6 +8,7 @@
 import { useCallback, useDeferredValue, useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
+  cn,
   KpiBand,
   KpiCell,
   ModalBody,
@@ -16,21 +17,20 @@ import {
   ModalHeader,
   ModalOverlay,
   ModalTitle,
+  opsInsetPanel,
   StatusPill,
-  TBody,
-  THead,
+  type StatusPillStyle,
   Table,
   TableEmptyRow,
   TableFrame,
+  TBody,
   Td,
   TdLtr,
   Th,
+  THead,
   Tr,
-  cn,
-  opsInsetPanel,
   useToast,
 } from "@platform/ui-kit";
-import type { StatusPillStyle } from "@platform/ui-kit";
 import {
   type InspectorFeeAction,
   type InspectorFeeRowDto,

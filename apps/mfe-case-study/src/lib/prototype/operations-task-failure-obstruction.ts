@@ -1,5 +1,5 @@
 import { blockingFailureForProperty } from "@failures/mfe/lib/failure-property-match";
-import type { FailureRecord } from "@failures/mfe/lib/failures-types";
+import type { FailureRecord } from "@platform/app-shared/failures/failures-types";
 import type { OperationsTask } from "./operations-tasks-storage";
 import type { PoIntakeRecord } from "./po-intake-data";
 import {

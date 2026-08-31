@@ -1,7 +1,7 @@
 import {
   DEFAULT_CASE_STUDY_QUESTION_CATALOG,
   type CaseStudyQuestionCatalog,
-} from "./case-study-question-catalog";
+} from "@platform/app-shared/domain/case-study/question-catalog";
 import {
   caseStudyProviderName,
   caseStudyApproverName,

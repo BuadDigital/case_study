@@ -7,7 +7,7 @@ import { PropertyDetailHero } from "@case-study/mfe/components/po-intake/Propert
 import {
   requiresAssignmentDecree,
 } from "../lib/prototype/po-intake-data";
-import { poListPath, poPropertiesPath } from "../lib/po-routes";
+import { poListPath, poPropertiesPath } from "@platform/app-shared/domain/po-routes";
 import { usePoRecordQuery } from "@case-study/mfe/query/case-study-queries";
 
 export function PoPropertyDetailPage({

@@ -18,7 +18,7 @@ import {
   workOrdersApiConfig,
   apiErrorMessage,
 } from "@platform/app-shared/prototype/work-orders-api-config";
-import { notifyTasksChanged } from "@case-study/mfe/lib/prototype/tasks-storage";
+import { notifyTasksChanged } from "@platform/app-shared/workflow/task-types";
 import {
   getCachedFailuresList,
   getCachedPropertyFailure,
@@ -34,7 +34,7 @@ import type {
   FailureSeverity,
   FailureStatus,
   ResolveFailureInput,
-} from "./failures-types";
+} from "@platform/app-shared/failures/failures-types";
 
 export type { FailuresApiConfig };
 

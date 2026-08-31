@@ -13,7 +13,7 @@ import { PanelSkeleton } from "@platform/ui-kit";
  * heavy pages like the dashboard are a fully blank content area on first load.
  */
 function MfeLoading() {
-  return <PanelSkeleton className="p-4" />;
+  return <PanelSkeleton className="min-h-[min(60vh,32rem)] p-4" />;
 }
 
 const DashboardView = dynamic(

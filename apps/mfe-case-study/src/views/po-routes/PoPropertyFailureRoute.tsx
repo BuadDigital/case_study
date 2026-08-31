@@ -3,7 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
 import { ROLES } from "@platform/app-shared/prototype/constants";
-import { poPropertiesPath } from "../../lib/po-routes";
+import { poPropertiesPath } from "@platform/app-shared/domain/po-routes";
 import { prototypeKeys } from "@platform/app-shared/query/prototype-keys";
 import { usePrototype } from "@platform/app-shared/contexts/PrototypeContext";
 import { failureRaiserLabelForPartyRole } from "@failures/mfe/lib/failures-party-raiser-scope";

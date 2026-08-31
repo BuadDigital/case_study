@@ -1,8 +1,8 @@
-import type { RowMoreMenuItem } from "@case-study/mfe/components/ui/RowMoreMenu";
+import type { RowMoreMenuItem } from "@platform/ui-kit";
 import {
   poPropertiesPath,
   poPropertyPath,
-} from "@case-study/mfe/lib/po-routes";
+} from "@platform/app-shared/domain/po-routes";
 import type { WorkflowTask } from "@platform/app-shared/workflow/task-types";
 
 export function buildAppraiserQueueRowMoreItems(options: {

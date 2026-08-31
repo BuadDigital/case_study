@@ -16,7 +16,7 @@ export {
   FAILURE_RAISER_LABEL_BY_KIND,
 } from "./lib/failure-party-roles";
 
-export * from "./lib/failures-types";
+export * from "@platform/app-shared/failures/failures-types";
 export * from "./lib/failures-events";
 export * from "./lib/failures-repository";
 export {

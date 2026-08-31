@@ -250,6 +250,8 @@ public class FailureService : IFailureService
         Guid id,
         CancellationToken cancellationToken = default)
     {
+        // Domain Try* + side effects (tasks/notifications/timeline) require a
+        // loaded entity — ExecuteUpdateAsync would skip rules and those writes.
         var entity = await _failures.PropertyFailures.FirstOrDefaultAsync(f => f.Id == id, cancellationToken);
         if (entity is null) return null;
         if (!entity.TryUpgradeToInternal(_time.UtcNow())) return null;

@@ -2,9 +2,9 @@
 
 import {
   fetchEngineeringSurveySubmission,
-  ENGINEERING_SURVEY_SUBMISSION_CHANGED_EVENT,
-} from "@engineering-office/mfe/lib/engineering-survey-submission-storage";
-import { prefetchEngineeringSurveyDocuments } from "@engineering-office/mfe/lib/engineering-survey-attachments";
+  prefetchEngineeringSurveyDocuments,
+} from "../lib/engineering-survey-bridge";
+import { ENGINEERING_SURVEY_SUBMISSION_CHANGED_EVENT } from "../lib/case-study-engineering-survey-events";
 import {
   fetchEvaluatorSubmission,
   prefetchEvaluatorReport,

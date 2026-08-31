@@ -1,8 +1,12 @@
 "use client";
 
 import { useState } from "react";
-import { Note, Spinner, cn } from "@platform/ui-kit";
-import { AppModal } from "../ui/AppModal";
+import {
+  AppModal,
+  cn,
+  Note,
+  Spinner,
+} from "@platform/ui-kit";
 import {
   opsBtnGhost,
   opsFldTextarea,

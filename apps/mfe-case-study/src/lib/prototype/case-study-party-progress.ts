@@ -7,7 +7,7 @@ import {
   isPartyQuestionVisible,
   type CaseStudyInfoRolesMatrix,
 } from "@settings/mfe/lib/prototype/case-study-info-roles-storage";
-import { DEFAULT_CASE_STUDY_QUESTION_CATALOG } from "./case-study-question-catalog";
+import { DEFAULT_CASE_STUDY_QUESTION_CATALOG } from "@platform/app-shared/domain/case-study/question-catalog";
 import {
   type CaseStudyFormAnswer,
   type CaseStudyQuestionSection,

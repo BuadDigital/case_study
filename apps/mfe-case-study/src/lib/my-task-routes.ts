@@ -1,6 +1,6 @@
 import type { PageId } from "@platform/types";
 import { isPartyTaskPage } from "@platform/app-shared/prototype/party-task-pages";
-import { poPropertyInspectionInputPath } from "./po-routes";
+import { poPropertyInspectionInputPath } from "@platform/app-shared/domain/po-routes";
 import type { WorkflowTask } from "./prototype/tasks-storage";
 
 export function myTasksPath(): string {

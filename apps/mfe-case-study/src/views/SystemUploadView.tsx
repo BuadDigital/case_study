@@ -11,7 +11,7 @@ import {
   caseStudyWorkspacePath,
   systemUploadPath,
 } from "../lib/my-task-routes";
-import { poPropertyPath } from "../lib/po-routes";
+import { poPropertyPath } from "@platform/app-shared/domain/po-routes";
 
 export function SystemUploadView() {
   const config = useMemo(

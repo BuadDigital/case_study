@@ -1,9 +1,9 @@
-import type { FailureRecord, FailureStatus } from "./failures-types";
+import type { FailureRecord, FailureStatus } from "@platform/app-shared/failures/failures-types";
 import {
   DEED_INACTIVE_RESOLVED_LABEL,
   failureProblemTypeLabel,
 } from "./failure-types-data";
-import { isHistoricalFailureStatus } from "./failures-types";
+import { isHistoricalFailureStatus } from "@platform/app-shared/failures/failures-types";
 
 export function failureRecordTitle(
   failure: Pick<FailureRecord, "problemTypeId" | "title" | "status">,

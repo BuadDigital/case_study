@@ -85,6 +85,13 @@ export { FormRow } from "./components/FormRow";
 export { Card, CardBody, CardHeader } from "./components/Card";
 export { Badge, type BadgeTone } from "./components/Badge";
 export { Note } from "./components/Note";
+export { RowAttentionDot } from "./components/RowAttentionDot";
+export {
+  PoNumber,
+  formatPoDisplay,
+  poNumberClassName,
+  poNumberLinkClassName,
+} from "./components/PoNumber";
 export {
   Table,
   TableFrame,

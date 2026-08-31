@@ -1,7 +1,13 @@
 "use client";
 
 import { memo } from "react";
-import { Tr, Td, TdAction } from "@platform/ui-kit";
+import {
+  RowMoreMenu,
+  type RowMoreMenuItem,
+  Td,
+  TdAction,
+  Tr,
+} from "@platform/ui-kit";
 import type { StaffUser } from "@platform/app-shared/prototype/constants";
 import {
   isActiveOperationsTask,
@@ -14,7 +20,6 @@ import {
   operationsTaskScopeLabel,
   operationsTaskTypeLabel,
 } from "../lib/prototype/operations-task-display";
-import { RowMoreMenu, type RowMoreMenuItem } from "../components/ui/RowMoreMenu";
 import {
   opsRemindMini,
   opsRowMeta,

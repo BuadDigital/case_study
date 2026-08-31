@@ -5,6 +5,7 @@ import {
   createComparableProperty,
   deactivateComparableProperty,
   listComparableProperties,
+  reactivateComparableProperty,
   setComparableQualityTags,
   type ComparablePropertyDto,
   type UpsertComparablePropertyRequest,
@@ -16,6 +17,7 @@ import {
   GoogleMapPin,
   googleMapsSearchUrl,
   InlineLoadingSkeleton,
+  reverseGeocodeLocation,
   PageShell,
   Spinner,
   useToast,
@@ -112,6 +114,26 @@ function hasMapPin(form: UpsertComparablePropertyRequest): boolean {
   return Number.isFinite(form.latitude) && Number.isFinite(form.longitude);
 }
 
+function parseLatLngPair(
+  raw: string,
+): { lat: number; lng: number } | null {
+  const trimmed = raw.trim();
+  if (!trimmed) return null;
+  const match = trimmed.match(
+    /^(-?\d+(?:\.\d+)?)\s*[,،]\s*(-?\d+(?:\.\d+)?)$/,
+  );
+  if (!match) return null;
+  const lat = Number(match[1]);
+  const lng = Number(match[2]);
+  if (!Number.isFinite(lat) || !Number.isFinite(lng)) return null;
+  if (Math.abs(lat) > 90 || Math.abs(lng) > 180) return null;
+  return { lat, lng };
+}
+
+function formatLatLngPair(lat: number, lng: number): string {
+  return `${lat.toFixed(6)}, ${lng.toFixed(6)}`;
+}
+
 function bankContextPins(rows: ComparablePropertyDto[]): GoogleMapContextPin[] {
   return rows
     .filter(
@@ -147,8 +169,19 @@ function AddComparableForm({
   const [form, setForm] = useState<UpsertComparablePropertyRequest>(emptyForm);
   const [saving, setSaving] = useState(false);
   const [placeLabel, setPlaceLabel] = useState<string | null>(null);
+  const [coordInput, setCoordInput] = useState("");
+  const [areaText, setAreaText] = useState("");
+  const [priceText, setPriceText] = useState("");
   const mapPin = hasMapPin(form);
   const contextPins = useMemo(() => bankContextPins(bankRows), [bankRows]);
+
+  const mapPinLabel = useMemo(() => {
+    const parts = [
+      form.comparablePropertyType || null,
+      form.district || null,
+    ].filter(Boolean);
+    return parts.length > 0 ? parts.join(" · ") : "موقع المقارن الجديد";
+  }, [form.comparablePropertyType, form.district]);
 
   const pinCaption = useMemo(() => {
     const parts = [
@@ -174,6 +207,43 @@ function AddComparableForm({
       city: detail.city?.trim() || f.city,
       district: detail.district?.trim() || f.district,
     }));
+    setCoordInput(formatLatLngPair(detail.lat, detail.lng));
+  }
+
+  function setCoords(lat: number, lng: number) {
+    const latVal = Number(lat.toFixed(6));
+    const lngVal = Number(lng.toFixed(6));
+    setForm((f) => ({
+      ...f,
+      latitude: latVal,
+      longitude: lngVal,
+    }));
+    setCoordInput(formatLatLngPair(latVal, lngVal));
+  }
+
+  function applyCoordsFromInput(lat: number, lng: number) {
+    setCoords(lat, lng);
+    void reverseGeocodeLocation(lat, lng).then(applyPlaceDetail);
+  }
+
+  function onCoordInputChange(raw: string) {
+    setCoordInput(raw);
+    const parsed = parseLatLngPair(raw);
+    if (parsed) applyCoordsFromInput(parsed.lat, parsed.lng);
+  }
+
+  function onCoordInputBlur() {
+    const trimmed = coordInput.trim();
+    if (!trimmed) return;
+    const parsed = parseLatLngPair(trimmed);
+    if (!parsed) {
+      showToast(
+        "صيغة الإحداثيات غير صحيحة — استخدم: خط العرض، خط الطول",
+        "error",
+      );
+      return;
+    }
+    applyCoordsFromInput(parsed.lat, parsed.lng);
   }
 
   async function onCreate() {
@@ -200,6 +270,9 @@ function AddComparableForm({
       anomaly ? "error" : "success",
     );
     setPlaceLabel(null);
+    setCoordInput("");
+    setAreaText("");
+    setPriceText("");
     setForm(emptyForm());
     onCreated();
   }
@@ -348,31 +421,35 @@ function AddComparableForm({
           <div className={opsFld}>
             <label className={opsTfLbl}>المساحة م² *</label>
             <input
-              type="number"
+              inputMode="decimal"
               dir="ltr"
               className={opsFldControl}
-              value={form.areaSqm || ""}
-              onChange={(e) =>
+              value={areaText}
+              onChange={(e) => {
+                const next = e.target.value;
+                setAreaText(next);
                 setForm((f) => ({
                   ...f,
-                  areaSqm: Number(e.target.value) || 0,
-                }))
-              }
+                  areaSqm: Number(next) || 0,
+                }));
+              }}
             />
           </div>
           <div className={opsFld}>
             <label className={opsTfLbl}>السعر *</label>
             <input
-              type="number"
+              inputMode="decimal"
               dir="ltr"
               className={opsFldControl}
-              value={form.price || ""}
-              onChange={(e) =>
+              value={priceText}
+              onChange={(e) => {
+                const next = e.target.value;
+                setPriceText(next);
                 setForm((f) => ({
                   ...f,
-                  price: Number(e.target.value) || 0,
-                }))
-              }
+                  price: Number(next) || 0,
+                }));
+              }}
             />
           </div>
           <div className={opsFld}>
@@ -432,6 +509,26 @@ function AddComparableForm({
           </div>
           <div className={opsFldFull}>
             <label className={opsTfLbl}>موقع العقار على الخريطة *</label>
+            <div className="mb-2">
+              <label className={opsTfLbl} htmlFor="comparable_coords_pair">
+                الإحداثيات (خط العرض، خط الطول)
+              </label>
+              <input
+                id="comparable_coords_pair"
+                dir="ltr"
+                className={opsFldControl}
+                placeholder="21.581000, 39.154300"
+                value={coordInput}
+                onChange={(e) => onCoordInputChange(e.target.value)}
+                onBlur={onCoordInputBlur}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    e.preventDefault();
+                    onCoordInputBlur();
+                  }
+                }}
+              />
+            </div>
             <div className="relative h-[320px] overflow-hidden rounded-[9px] border border-border-md sm:h-[380px]">
               <GoogleMapPin
                 lat={mapPin ? form.latitude : null}
@@ -440,15 +537,9 @@ function AddComparableForm({
                 interactive
                 mapTypeControl
                 resolvePlace
-                pinLabel={pinCaption}
+                pinLabel={mapPinLabel}
                 contextPins={contextPins}
-                onCoordsChange={(lat, lng) =>
-                  setForm((f) => ({
-                    ...f,
-                    latitude: Number(lat.toFixed(6)),
-                    longitude: Number(lng.toFixed(6)),
-                  }))
-                }
+                onCoordsChange={(lat, lng) => setCoords(lat, lng)}
                 onLocationDetail={applyPlaceDetail}
               />
               {mapPin ? (
@@ -475,7 +566,7 @@ function AddComparableForm({
               <p className="m-0 text-[11.5px] text-text-3">
                 {mapPin
                   ? "يمكنك سحب الدبوس أو النقر لتعديل الموقع — النقاط الذهبية مقارنات موجودة في البنك"
-                  : "اضغط على الخريطة لتحديد موقع العقار (النقاط الذهبية = مقارنات البنك)"}
+                  : "اضغط على الخريطة أو أدخل الإحداثيات (مثل: 21.581000, 39.154300) — النقاط الذهبية = مقارنات البنك"}
               </p>
               {mapPin ? (
                 <a
@@ -627,6 +718,7 @@ export function ComparablePropertiesView() {
   const [q, setQ] = useState("");
   const [debouncedQ, setDebouncedQ] = useState("");
   const [showForm, setShowForm] = useState(false);
+  const [showInactive, setShowInactive] = useState(false);
   const [tagEditId, setTagEditId] = useState<string | null>(null);
   const requestSeqRef = useRef(0);
 
@@ -647,6 +739,7 @@ export function ComparablePropertiesView() {
     const res = await listComparableProperties(config, {
       q: debouncedQ || undefined,
       take: 100,
+      includeInactive: showInactive,
     });
     if (seq !== requestSeqRef.current) return;
     setLoading(false);
@@ -656,7 +749,7 @@ export function ComparablePropertiesView() {
     }
     setError(null);
     setRows(res.data);
-  }, [debouncedQ]);
+  }, [debouncedQ, showInactive]);
 
   useEffect(() => {
     void reload();
@@ -670,9 +763,27 @@ export function ComparablePropertiesView() {
       showToast("تعذّر التعطيل", "error");
       return;
     }
-    showToast("عُطّل المقارن (بدون حذف صلب)", "success");
+    showToast(
+      "عُطّل المقارن (بدون حذف) — فعّل «إظهار المعطّلة» لمراجعته",
+      "success",
+    );
     await reload();
   }
+
+  async function onReactivate(id: string) {
+    const config = apiConfig();
+    if (!config) return;
+    const res = await reactivateComparableProperty(config, id);
+    if (!res.ok) {
+      showToast("تعذّر التفعيل", "error");
+      return;
+    }
+    showToast("أُعيد تفعيل المقارن", "success");
+    await reload();
+  }
+
+  const inactiveCount = rows.filter((row) => !row.isActive).length;
+  const activeCount = rows.length - inactiveCount;
 
   return (
     <PageShell
@@ -701,6 +812,15 @@ export function ComparablePropertiesView() {
               placeholder="مرجع / نوع / حي / إعلان…"
             />
           </div>
+          <label className="flex items-center gap-1.5 self-end pb-2 text-[12.5px] text-text-2">
+            <input
+              type="checkbox"
+              className="size-4 accent-[var(--gold-d)]"
+              checked={showInactive}
+              onChange={(e) => setShowInactive(e.target.checked)}
+            />
+            إظهار المعطّلة
+          </label>
           <button
             type="button"
             className={opsBtnGhost}
@@ -744,8 +864,12 @@ export function ComparablePropertiesView() {
               <div className={opsLetterTitle}>سجل المقارنات</div>
               <div className={opsLetterSub}>
                 {rows.length === 0
-                  ? "لا مقارنات بعد"
-                  : `${rows.length} ${rows.length === 1 ? "مقارن" : "مقارنًا"}`}
+                  ? showInactive
+                    ? "لا مقارنات"
+                    : "لا مقارنات نشطة — جرّب إظهار المعطّلة"
+                  : showInactive && inactiveCount > 0
+                    ? `${activeCount} نشط · ${inactiveCount} معطّل`
+                    : `${rows.length} ${rows.length === 1 ? "مقارن" : "مقارنًا"}`}
               </div>
             </div>
           </div>
@@ -754,7 +878,13 @@ export function ComparablePropertiesView() {
         <div className="px-4 pb-2 sm:px-[18px]">
           {rows.length === 0 ? (
             <EmptyState
-              line={loading ? "جاري التحميل…" : "لا مقارنات."}
+              line={
+                loading
+                  ? "جاري التحميل…"
+                  : showInactive
+                    ? "لا مقارنات."
+                    : "لا مقارنات نشطة — فعّل «إظهار المعطّلة» لرؤية المعطّلة سابقاً."
+              }
             />
           ) : (
             <div className={cn(loading && "opacity-60")}>
@@ -846,7 +976,15 @@ export function ComparablePropertiesView() {
                         >
                           تعطيل
                         </button>
-                      ) : null}
+                      ) : (
+                        <button
+                          type="button"
+                          className="inline-flex shrink-0 cursor-pointer items-center gap-1.5 rounded-[9px] border border-border-md bg-surface px-3.5 py-2 font-[inherit] text-[12.5px] font-semibold text-gold-d transition-colors enabled:hover:border-gold/40 enabled:hover:bg-gold-soft disabled:cursor-not-allowed disabled:opacity-50"
+                          onClick={() => void onReactivate(row.id)}
+                        >
+                          تفعيل
+                        </button>
+                      )}
                     </div>
                   </div>
                   {tagEditId === row.id ? (

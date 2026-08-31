@@ -131,27 +131,72 @@ const CITY_GEO: Record<string, [number, number]> = {
   بريدة: [26.326, 43.975],
   نجران: [17.5656, 44.2289],
   جازان: [16.8894, 42.5706],
+  الجموم: [21.6158, 39.6982],
 };
 
+/** Known district centroids — `${city}|${district}` */
+const DISTRICT_GEO: Record<string, [number, number]> = {
+  "جدة|الروضة": [21.5731, 39.1521],
+  "جدة|السلامة": [21.6001, 39.1435],
+  "جدة|النعيم": [21.628, 39.123],
+  "جدة|أبحر الشمالية": [21.7743, 39.0987],
+  "جدة|الشاطئ": [21.6152, 39.1044],
+  "الرياض|النرجس": [24.8419, 46.658],
+  "الرياض|الملقا": [24.8034, 46.6002],
+  "الرياض|حطين": [24.7729, 46.5977],
+  "الرياض|العارض": [24.9066, 46.635],
+  "الجموم|السنابل": [21.6172, 39.7011],
+  "مكة المكرمة|الراشدية": [21.3891, 39.8579],
+};
+
+function districtGeoKey(city: string, district: string): string {
+  return `${city.trim()}|${district.trim()}`;
+}
+
+/** True when city+district resolves to a known centroid (not city-only fallback). */
+export function hasDistrictGeo(city: string, district: string): boolean {
+  const c = city.trim();
+  const d = district.trim();
+  if (!c || !d) return false;
+  return Boolean(DISTRICT_GEO[districtGeoKey(c, d)]);
+}
+
 /**
- * Approximate lat/lng for OSM embed (city centroid + deed-based jitter).
+ * Approximate lat/lng for OSM embed (district centroid, else city + deed jitter).
  * Matches Case Study.html CITY_GEO heuristic until real coordinates exist.
  */
 export function approximatePropertyGeo(property: {
   city: string;
+  district?: string;
   deedNumber: string;
 }): { lat: number; lng: number } | null {
   const city = property.city.trim();
   if (!city) return null;
-  const base = CITY_GEO[city] ?? [24.7136, 46.6753];
+  const district = property.district?.trim();
+  let base: [number, number];
+  let jitterDivisor = 1000;
+  if (district) {
+    const districtBase =
+      DISTRICT_GEO[districtGeoKey(city, district)] ??
+      DISTRICT_GEO[districtGeoKey(city, district.replace(/^حي\s+/u, ""))];
+    if (districtBase) {
+      base = districtBase;
+      jitterDivisor = 5000;
+    } else {
+      base = CITY_GEO[city] ?? [24.7136, 46.6753];
+    }
+  } else {
+    base = CITY_GEO[city] ?? [24.7136, 46.6753];
+  }
   let seed = 0;
   const deed = property.deedNumber.trim() || city;
   for (let i = 0; i < deed.length; i += 1) {
     seed += deed.charCodeAt(i) * (i + 1);
   }
+  const jitter = jitterDivisor;
   return {
-    lat: base[0] + ((seed % 37) - 18) / 1000,
-    lng: base[1] + ((seed % 53) - 26) / 1000,
+    lat: base[0] + ((seed % 37) - 18) / jitter,
+    lng: base[1] + ((seed % 53) - 26) / jitter,
   };
 }
 

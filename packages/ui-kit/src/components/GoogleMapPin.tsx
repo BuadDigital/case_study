@@ -122,7 +122,12 @@ export function GoogleMapPin({
       `<div style="font:600 12px/1.4 Tajawal,system-ui,sans-serif;max-width:220px;color:#12284C">${label.replace(/</g, "&lt;")}</div>`,
     );
     infoRef.current.setPosition(position);
-    if (mapRef.current) infoRef.current.open({ map: mapRef.current });
+    if (mapRef.current) {
+      infoRef.current.open({
+        map: mapRef.current,
+        shouldFocus: false,
+      });
+    }
   };
 
   useEffect(() => {
@@ -294,13 +299,19 @@ export function GoogleMapPin({
     const marker = markerRef.current;
     if (!map || !marker || !window.google?.maps) return;
     const pos = marker.getPosition();
-    if (!pos || !pinLabel?.trim()) {
+    const label = pinLabel?.trim();
+    if (!pos || !label) {
       infoRef.current?.close();
       return;
     }
-    openPrimaryInfo(window.google, { lat: pos.lat(), lng: pos.lng() });
-    // openPrimaryInfo reads pinLabelRef
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    // Update caption only — do not reopen the info window (would steal input focus).
+    if (!infoRef.current) {
+      infoRef.current = new window.google.maps.InfoWindow();
+    }
+    infoRef.current.setContent(
+      `<div style="font:600 12px/1.4 Tajawal,system-ui,sans-serif;max-width:220px;color:#12284C">${label.replace(/</g, "&lt;")}</div>`,
+    );
+    infoRef.current.setPosition({ lat: pos.lat(), lng: pos.lng() });
   }, [pinLabel]);
 
   if (error) {

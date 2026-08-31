@@ -13,7 +13,7 @@ import {
   cn,
   opsEmptyHint,
 } from "@platform/ui-kit";
-import { JEDDAH_DEFAULT_CENTER } from "../lib/jeddah-default-coords";
+import { JEDDAH_DEFAULT_CENTER } from "@platform/app-shared/domain/jeddah-default-coords";
 
 const DEFAULT_CENTER = JEDDAH_DEFAULT_CENTER;
 const DEFAULT_ZOOM = 6;
