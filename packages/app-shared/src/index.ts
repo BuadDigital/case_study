@@ -25,6 +25,8 @@ export {
   readPrefetchedJson,
   readPrefetchedOperationsTasks,
   readPrefetchedPartySubmissions,
+  readPrefetchedPoRecord,
+  readPrefetchedPoRecords,
   readPrefetchedWorkflowTasks,
   savePrefetchedOperationsTasks,
   type BasicDocPrefetchEntry,

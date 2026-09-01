@@ -514,14 +514,14 @@ export function InspectorDefinedPhotosSection({
           />
         </div>
 
-        {untaggedFree.length > 0 && layout !== "desktop" ? (
+        {untaggedFree.length > 0 ? (
           <div className="mb-2.5 flex items-center gap-1.5 rounded-lg border border-orange bg-orange-bg px-3 py-2 text-[11px] font-semibold text-orange">
             <i className="ti ti-alert-triangle" aria-hidden />
             {untaggedFree.length} صورة بحاجة لتعريف — اضغط عليها لتحديد نوعها
           </div>
         ) : null}
 
-        {layout !== "desktop" ? (
+        {draft.freePhotos.length > 0 ? (
         <div className="flex flex-wrap gap-2">
           {draft.freePhotos.map((photo) => {
             if (!photo.category) {

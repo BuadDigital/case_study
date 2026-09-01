@@ -15,7 +15,6 @@ import {
 } from "@platform/app-shared/offline/offline-write";
 import { reopenPartySubmission, acceptPartySubmission, fetchPartySubmission, type PartyWorkMutationResult } from "@platform/app-shared/prototype/party-submission-api";
 import { dispatchPartySubmissionChanged } from "@platform/app-shared/prototype/party-submission-changed-event";
-import { dispatchWorkflowSubmitted, FIELD_INSPECTION_SUBMITTED_EVENT } from "@platform/app-shared/prototype/party-workflow-events";
 import { resolveApiError, workOrdersApiConfig } from "../work-orders-api-config";
 import {
   applyEnfathPrefillToInspectorDraft,
@@ -705,7 +704,7 @@ function clearSaveDebounce(taskId: string): void {
 }
 
 /** Flush pending debounced saves so submit / navigation persist the latest keystrokes. */
-export async function flushInspectorWorkspaceSave(
+async function flushInspectorWorkspaceSave(
   taskId: string,
 ): Promise<InspectorWorkspaceDraft | null> {
   clearSaveDebounce(taskId);
@@ -836,7 +835,6 @@ export async function submitInspectorWorkspace(
         }
         const draft = payloadToDraft(result.data, saved);
         writeCache(draft);
-        dispatchWorkflowSubmitted(FIELD_INSPECTION_SUBMITTED_EVENT);
       },
     });
 

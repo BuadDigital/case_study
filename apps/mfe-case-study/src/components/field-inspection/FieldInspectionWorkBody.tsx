@@ -405,6 +405,7 @@ export function FieldInspectionWorkBody({
       if (result.queued) {
         showToast("محفوظة للمزامنة — ستُرسل عند عودة الاتصال", "info");
       } else {
+        showToast("تم حفظ بيانات المعاينة وإرسالها.", "success");
         hostRef.current?.onSubmitted?.();
       }
       return true;

@@ -10,6 +10,8 @@ export const OPS_TASKS_PREFETCH_ID = (userId: string) => `ops-tasks:${userId}`;
 export const PARTY_SUBMISSIONS_PREFETCH_ID = (userId: string) =>
   `party-submissions:${userId}`;
 export const BASIC_DOCS_PREFETCH_ID = (userId: string) => `docs:${userId}`;
+const PO_RECORD_PREFETCH_ID = (userId: string, poNumber: string) =>
+  `po:${userId}:${poNumber.trim()}`;
 
 export const BASIC_DOC_PREFETCH_SCOPES = [
   { kind: "deed", scope: "property-deed-ownership" },
@@ -115,4 +117,39 @@ export async function readPrefetchedBasicDocMap(): Promise<
     BASIC_DOCS_PREFETCH_ID(userId),
   );
   return parsed?.entries ?? null;
+}
+
+export async function readPrefetchedPoRecord<T>(
+  poNumber: string,
+): Promise<T | null> {
+  const userId = currentOfflineUserId();
+  const n = poNumber.trim();
+  if (!userId || !n) return null;
+  return readPrefetchedJson<T>(PO_RECORD_PREFETCH_ID(userId, n));
+}
+
+/** PO records cached for active workflow tasks (queue + property hero offline). */
+export async function readPrefetchedPoRecords<
+  T extends { poNumber?: string },
+>(): Promise<T[]> {
+  const userId = currentOfflineUserId();
+  if (!userId) return [];
+
+  const workflow = await readPrefetchedJson<{
+    tasks?: Array<{ poNumber?: string; PoNumber?: string }>;
+  }>(WORKFLOW_TASKS_PREFETCH_ID(userId));
+  const poNumbers = [
+    ...new Set(
+      (workflow?.tasks ?? [])
+        .map((task) => String(task.poNumber ?? task.PoNumber ?? "").trim())
+        .filter(Boolean),
+    ),
+  ];
+
+  const records: T[] = [];
+  for (const po of poNumbers) {
+    const row = await readPrefetchedPoRecord<T>(po);
+    if (row) records.push(row);
+  }
+  return records;
 }

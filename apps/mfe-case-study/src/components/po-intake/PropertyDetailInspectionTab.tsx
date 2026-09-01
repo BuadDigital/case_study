@@ -68,7 +68,6 @@ import {
 } from "../../lib/prototype/inspector-photo-drop";
 import { FieldComparableCaptureSection } from "../field-inspection/FieldComparableCaptureSection";
 import { InspectorWorkspaceWizard } from "../field-inspection/InspectorWorkspaceWizard";
-import { InspectorDefinedPhotosSection } from "../field-inspection/InspectorDefinedPhotosSection";
 import { InspectorPhotoFilePicker } from "../field-inspection/InspectorPhotoFilePicker";
 import { InspectorStampedPhotoThumb } from "../field-inspection/InspectorStampedPhotoThumb";
 import { InspectorMovablesDescriptionField } from "../field-inspection/InspectorMovablesDescriptionField";
@@ -578,7 +577,6 @@ export function PropertyDetailInspectionTab({
           transactionPhotos={transactionPhotos}
           locked={locked || !showEditFields}
           saving={saving}
-          formError={formError}
           fieldErrors={fieldErrors}
           flat={!steps}
           onPatch={(patch) => patchDraft(patch)}

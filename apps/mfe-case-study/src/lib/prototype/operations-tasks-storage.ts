@@ -54,7 +54,7 @@ function offlineTaskStub(
     createdAtUtc: now,
     updatedAtUtc: now,
     ...patch,
-  } as OperationsTask;
+  } as unknown as OperationsTask;
 }
 
 async function enqueueOperationsTaskPatch(

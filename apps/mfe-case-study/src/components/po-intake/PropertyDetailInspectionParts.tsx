@@ -2,57 +2,24 @@
 
 /** Property-detail inspection-tab parts — module-level fields/cards/cells, moved verbatim (SRP). */
 
-import { useEffect, useMemo, useRef, useState, createContext, useContext, type ReactNode, Fragment } from "react";
+import {
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+  createContext,
+  useContext,
+  type CSSProperties,
+  type ReactNode,
+} from "react";
+import { createPortal } from "react-dom";
 import { arabicStepLabel } from "../field-inspection/FieldInspectionWorkParts";
-import { ReturnedForCorrectionNote } from "../ui/ReturnedForCorrectionNote";
+import { cn, useToast } from "@platform/ui-kit";
+import { formatDateAr } from "../../lib/prototype/po-intake-data";
+import type { InspectorWorkspacePatch } from "../../lib/prototype/inspector-workspace-storage";
 import {
-  AppModal,
-  Button,
-  cn,
-  formControlClassName,
-  GoogleMapPin,
-  InlineLoadingSkeleton,
-  Label,
-  useToast,
-} from "@platform/ui-kit";
-import { DetailBadge, EmptyState } from "./PropertyDetailFields";
-import {
-  PROPERTY_BOUNDARY_ROWS,
-  approximatePropertyGeo,
-  boundariesMarkedUnavailable,
-  formatDateAr,
-  formatPropertyDeedDisplay,
-  type PoPropertyIntake,
-} from "../../lib/prototype/po-intake-data";
-import {
-  FIELD_INSPECTION_SUBMISSION_CHANGED_EVENT,
-  acceptInspectorWorkspace,
-  getOrCreateInspectorWorkspace,
-  loadInspectorWorkspaceSnapshot,
-  reopenInspectorWorkspace,
-  saveInspectorWorkspaceDraft,
-  updateInspectorWorkspace,
-} from "../../lib/prototype/inspector-workspace-storage";
-import {
-  INSPECTOR_SERVICE_OPTIONS,
-  INSPECTOR_AMENITY_OPTIONS,
-  INSPECTOR_OBSERVATION_CATEGORIES,
-  MOVABLES_DESCRIPTION_KEY,
-  inspectorFeatureRequiresPhoto,
-  inspectorPhotoCoverageLabel,
-  inspectorPhotoStampText,
-  isCommercialShopInspectionContext,
-  isInspectorWorkspaceAccepted,
-  isInspectorWorkspaceLocked,
-  isLandInspectionContext,
-  isMovablesPresent,
-  isShopHiddenInspectorComponentKey,
-  listServiceAmenityPhotoSlots,
-  newObservationId,
   parseInspectorCount,
-  patchInspectorFeatureValues,
-  visibleInspectorFeatureFields,
-  type InspectorBoundaryKey,
   type InspectorComponentPhotoKey,
   type InspectorPhotoAttachment,
   type InspectorSlotPhoto,
@@ -69,32 +36,16 @@ import {
   filterInspectorPhotoFiles,
   useInspectorPhotoDropZone,
 } from "../../lib/prototype/inspector-photo-drop";
-import { FieldComparableCaptureSection } from "../field-inspection/FieldComparableCaptureSection";
-import { InspectorDefinedPhotosSection } from "../field-inspection/InspectorDefinedPhotosSection";
 import { InspectorPhotoFilePicker } from "../field-inspection/InspectorPhotoFilePicker";
 import { InspectorStampedPhotoThumb } from "../field-inspection/InspectorStampedPhotoThumb";
-import { InspectorMovablesDescriptionField } from "../field-inspection/InspectorMovablesDescriptionField";
 import { photoLocationFlagLabel } from "@platform/app-shared/media/photo-location";
+import { inspectorInvalidControlClass } from "../../lib/prototype/inspector-workspace-validation";
 import {
-  firstInspectorWorkspaceError,
-  firstInspectorWorkspaceErrorTarget,
-  inspectorInvalidControlClass,
-  scrollToInspectorField,
-  validateInspectorWorkspace,
-  type InspectorWorkspaceFieldErrors,
-} from "../../lib/prototype/inspector-workspace-validation";
-import { finalizeInspectorWorkspace } from "../../lib/prototype/finalize-field-inspection-submission";
-import type { WorkflowTask } from "../../lib/prototype/tasks-storage";
-import type { PropertyDetailPartyCard } from "../../lib/prototype/property-detail-parties";
-import {
-  convertDualCalendarDate,
-  detectDualCalendarKind,
-  dualCalendarGregorianIso,
   formatDualCalendarDate,
-  gregorianIsoToHijriParts,
   parseDualCalendarDate,
   type DualCalendarKind,
 } from "../../lib/prototype/dual-calendar-date";
+import { DualCalendarPickerPanel } from "../field-inspection/DualCalendarPickerPanel";
 
 /** Shared control style for in-tab edit inputs — matches InsField typography. */
 export { EDIT_CONTROL_CLASS, INS_LABEL_CLASS, INS_TH_CLASS, INS_TD_CLASS } from "../field-inspection/FieldInspectionWorkParts";
@@ -254,7 +205,61 @@ export function InsEditField({
   );
 }
 
-/** Building-permit and similar dates — toggle Hijri / Gregorian entry. */
+function InsCalendarIcon({ className }: { className?: string }) {
+  return (
+    <svg
+      className={className}
+      width="16"
+      height="16"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.75"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden
+    >
+      <rect x="3" y="4.5" width="18" height="16" rx="2.5" />
+      <path d="M8 3v3M16 3v3M3 9.5h18" />
+    </svg>
+  );
+}
+
+const CALENDAR_PANEL_WIDTH = 288;
+const CALENDAR_VIEWPORT_MARGIN = 8;
+const CALENDAR_PANEL_GAP = 4;
+
+function computeDualCalendarPanelStyle(
+  trigger: HTMLElement,
+  panel: HTMLElement,
+): CSSProperties {
+  const rect = trigger.getBoundingClientRect();
+  const vw = window.innerWidth;
+  const vh = window.innerHeight;
+  const panelWidth = panel.offsetWidth || CALENDAR_PANEL_WIDTH;
+  const panelHeight = panel.offsetHeight;
+
+  let left = rect.right - panelWidth;
+  left = Math.max(
+    CALENDAR_VIEWPORT_MARGIN,
+    Math.min(left, vw - panelWidth - CALENDAR_VIEWPORT_MARGIN),
+  );
+
+  let top = rect.bottom + CALENDAR_PANEL_GAP;
+  if (top + panelHeight > vh - CALENDAR_VIEWPORT_MARGIN) {
+    const above = rect.top - panelHeight - CALENDAR_PANEL_GAP;
+    if (above >= CALENDAR_VIEWPORT_MARGIN) top = above;
+  }
+
+  return {
+    position: "fixed",
+    top,
+    left,
+    zIndex: 1200,
+  };
+}
+
+/** Building-permit and similar dates — Hijri / Gregorian picker inside calendar popup. */
 export function InsDualCalendarDateField({
   id,
   label,
@@ -271,61 +276,58 @@ export function InsDualCalendarDateField({
   className?: string;
 }) {
   const gridCentered = useInsFieldsGridCentered();
+  const rootRef = useRef<HTMLDivElement>(null);
+  const triggerRef = useRef<HTMLButtonElement>(null);
+  const panelRef = useRef<HTMLDivElement>(null);
+  const [mounted, setMounted] = useState(false);
+  const [open, setOpen] = useState(false);
+  const [panelStyle, setPanelStyle] = useState<CSSProperties>({});
   const parsed = useMemo(() => parseDualCalendarDate(value), [value]);
-  const [calendar, setCalendar] = useState<DualCalendarKind>(
-    () => parsed?.kind ?? detectDualCalendarKind(value),
+  const [panelCalendar, setPanelCalendar] = useState<DualCalendarKind>(
+    () => parsed?.kind ?? "gregorian",
   );
 
   useEffect(() => {
-    const next = parseDualCalendarDate(value);
-    if (next) setCalendar(next.kind);
-  }, [value]);
+    setMounted(true);
+  }, []);
 
-  const gregorianIso = useMemo(() => {
-    if (!parsed) return "";
-    return dualCalendarGregorianIso(parsed) ?? "";
-  }, [parsed]);
+  useEffect(() => {
+    if (parsed) setPanelCalendar(parsed.kind);
+  }, [value, parsed]);
 
-  const hijriParts = useMemo(() => {
-    if (parsed?.kind === "hijri") return parsed;
-    if (gregorianIso) return gregorianIsoToHijriParts(gregorianIso);
-    return null;
-  }, [parsed, gregorianIso]);
+  useLayoutEffect(() => {
+    if (!open || !triggerRef.current || !panelRef.current) return;
 
-  const calendarToggle = (
-    <div className={cn("mb-1.5 flex flex-wrap gap-1", gridCentered && "justify-center")}>
-      {(["gregorian", "hijri"] as const).map((kind) => {
-        const on = calendar === kind;
-        return (
-          <button
-            key={kind}
-            type="button"
-            disabled={disabled}
-            className={cn(
-              "rounded-full border px-2.5 py-0.5 font-inherit text-[10.5px] font-semibold",
-              disabled ? "cursor-default" : "cursor-pointer",
-              on
-                ? "border-ink bg-ink text-white"
-                : "border-border-md bg-surface text-text-2",
-            )}
-            onClick={() => {
-              if (disabled || on) return;
-              setCalendar(kind);
-              const converted = parsed ? convertDualCalendarDate(parsed, kind) : null;
-              if (converted) onChange(formatDualCalendarDate(converted));
-            }}
-          >
-            {kind === "gregorian" ? "ميلادي" : "هجري"}
-          </button>
-        );
-      })}
-    </div>
-  );
+    let raf = 0;
+    const placePanel = () => {
+      if (!triggerRef.current || !panelRef.current) return;
+      setPanelStyle(
+        computeDualCalendarPanelStyle(triggerRef.current, panelRef.current),
+      );
+    };
 
-  const hijriInputClass = cn(
-    EDIT_CONTROL_CLASS,
-    "min-w-0 px-2 text-center [direction:ltr] [unicode-bidi:isolate]",
-  );
+    placePanel();
+    raf = requestAnimationFrame(placePanel);
+    window.addEventListener("resize", placePanel);
+    window.addEventListener("scroll", placePanel, { capture: true, passive: true });
+    return () => {
+      cancelAnimationFrame(raf);
+      window.removeEventListener("resize", placePanel);
+      window.removeEventListener("scroll", placePanel, { capture: true });
+    };
+  }, [open, panelCalendar, parsed, value]);
+
+  useEffect(() => {
+    if (!open) return;
+    const onDocumentMouseDown = (event: MouseEvent) => {
+      const target = event.target as Node;
+      if (rootRef.current?.contains(target)) return;
+      if (panelRef.current?.contains(target)) return;
+      setOpen(false);
+    };
+    document.addEventListener("mousedown", onDocumentMouseDown);
+    return () => document.removeEventListener("mousedown", onDocumentMouseDown);
+  }, [open]);
 
   if (disabled) {
     return (
@@ -333,108 +335,54 @@ export function InsDualCalendarDateField({
     );
   }
 
-  if (calendar === "gregorian") {
-    return (
-      <div className={cn("min-w-0", className)} id={id ? `${id}-wrap` : undefined}>
-        <div className={insFieldLabelRowClass(gridCentered)}>
-          <span className={insFieldLabelClass(gridCentered)}>{label}</span>
-        </div>
-        {calendarToggle}
-        <input
-          id={id}
-          type="date"
-          className={cn(
-            EDIT_CONTROL_CLASS,
-            "text-center [direction:ltr] [unicode-bidi:isolate]",
-          )}
-          value={gregorianIso}
-          onChange={(e) => {
-            const iso = e.target.value;
-            if (!iso) {
-              onChange("");
-              return;
-            }
-            const [year, month, day] = iso.split("-").map(Number);
-            onChange(
-              formatDualCalendarDate({ kind: "gregorian", year, month, day }),
-            );
-          }}
-        />
-      </div>
-    );
-  }
-
-  const emitHijri = (year: string, month: string, day: string) => {
-    if (!year.trim() || !month.trim() || !day.trim()) {
-      onChange("");
-      return;
-    }
-    const y = Number(year);
-    const m = Number(month);
-    const d = Number(day);
-    if (!Number.isFinite(y) || !Number.isFinite(m) || !Number.isFinite(d)) return;
-    onChange(formatDualCalendarDate({ kind: "hijri", year: y, month: m, day: d }));
-  };
+  const displayText = parsed ? formatDualCalendarDate(parsed) : "";
 
   return (
-    <div className={cn("min-w-0", className)} id={id ? `${id}-wrap` : undefined}>
+    <div
+      ref={rootRef}
+      className={cn("relative min-w-0", className)}
+      id={id ? `${id}-wrap` : undefined}
+    >
       <div className={insFieldLabelRowClass(gridCentered)}>
         <span className={insFieldLabelClass(gridCentered)}>{label}</span>
       </div>
-      {calendarToggle}
-      <div className="grid grid-cols-3 gap-1">
-        <input
-          id={id ? `${id}-day` : undefined}
-          type="number"
-          inputMode="numeric"
-          min={1}
-          max={30}
-          placeholder="يوم"
-          aria-label={`${label} — يوم`}
-          className={hijriInputClass}
-          value={hijriParts?.day ? String(hijriParts.day) : ""}
-          onChange={(e) =>
-            emitHijri(
-              hijriParts?.year ? String(hijriParts.year) : "",
-              hijriParts?.month ? String(hijriParts.month) : "",
-              e.target.value,
+      <div className="relative">
+        <button
+          ref={triggerRef}
+          id={id}
+          type="button"
+          className={cn(
+            EDIT_CONTROL_CLASS,
+            "flex cursor-pointer items-center justify-between gap-2 text-left [direction:ltr] [unicode-bidi:isolate]",
+            gridCentered && "text-center",
+          )}
+          aria-haspopup="dialog"
+          aria-expanded={open}
+          aria-label={displayText ? `${label}: ${displayText}` : label}
+          onClick={() => setOpen((wasOpen) => !wasOpen)}
+        >
+          <span className={cn("min-w-0 flex-1 truncate", !displayText && "font-normal text-text-3")}>
+            {displayText || "mm/dd/yyyy"}
+          </span>
+          <InsCalendarIcon className="shrink-0 text-text-3" />
+        </button>
+        {mounted && open
+          ? createPortal(
+              <div ref={panelRef} style={panelStyle}>
+                <DualCalendarPickerPanel
+                  selected={parsed}
+                  calendar={panelCalendar}
+                  onCalendarChange={setPanelCalendar}
+                  onSelect={(parts) => {
+                    onChange(formatDualCalendarDate(parts));
+                    setPanelCalendar(parts.kind);
+                    setOpen(false);
+                  }}
+                />
+              </div>,
+              document.body,
             )
-          }
-        />
-        <input
-          type="number"
-          inputMode="numeric"
-          min={1}
-          max={12}
-          placeholder="شهر"
-          aria-label={`${label} — شهر`}
-          className={hijriInputClass}
-          value={hijriParts?.month ? String(hijriParts.month) : ""}
-          onChange={(e) =>
-            emitHijri(
-              hijriParts?.year ? String(hijriParts.year) : "",
-              e.target.value,
-              hijriParts?.day ? String(hijriParts.day) : "",
-            )
-          }
-        />
-        <input
-          type="number"
-          inputMode="numeric"
-          min={1300}
-          max={1600}
-          placeholder="سنة"
-          aria-label={`${label} — سنة`}
-          className={hijriInputClass}
-          value={hijriParts?.year ? String(hijriParts.year) : ""}
-          onChange={(e) =>
-            emitHijri(
-              e.target.value,
-              hijriParts?.month ? String(hijriParts.month) : "",
-              hijriParts?.day ? String(hijriParts.day) : "",
-            )
-          }
-        />
+          : null}
       </div>
     </div>
   );
@@ -875,7 +823,7 @@ export function ComponentCountWithPhotoField({
   draft: InspectorWorkspaceDraft;
   editMode: boolean;
   disabled?: boolean;
-  onPatch: (patch: Parameters<typeof updateInspectorWorkspace>[1]) => void;
+  onPatch: (patch: InspectorWorkspacePatch) => void;
 }) {
   const { showToast } = useToast();
   const count = parseInspectorCount(countValue);

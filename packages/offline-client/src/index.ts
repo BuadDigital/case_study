@@ -1,6 +1,7 @@
 export type {
   OfflineDraftRecord,
   OfflineOutboxItem,
+  OfflinePrefetchRecord,
   OfflineSyncState,
   OutboxKind,
 } from "./types";

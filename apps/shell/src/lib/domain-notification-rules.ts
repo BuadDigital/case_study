@@ -5,7 +5,6 @@ import {
   ENGINEERING_SURVEY_ACCEPTED_EVENT,
   ENGINEERING_SURVEY_RETURNED_EVENT,
   EVALUATOR_SUBMITTED_EVENT,
-  FIELD_INSPECTION_SUBMITTED_EVENT,
 } from "@platform/app-shared/prototype/party-workflow-events";
 import type { PushNotificationInput } from "@platform/app-shared/notifications/notification-store";
 
@@ -32,18 +31,11 @@ export const DOMAIN_NOTIFICATION_RULES: DomainNotificationRule[] = [
       sourceEvent: FAILURE_TYPES_CHANGED_EVENT,
     },
   },
-  {
-    event: FIELD_INSPECTION_SUBMITTED_EVENT,
-    notification: {
-      title: "إرسال معاينة",
-      body: "تم إرسال المعاينة الميدانية.",
-      tone: "success",
-      href: "/active-inspection",
-      category: "workflow",
-      entityType: "task",
-      sourceEvent: FIELD_INSPECTION_SUBMITTED_EVENT,
-    },
-  },
+  // Field inspection submit toasts are intentionally omitted here: they only
+  // fire in the submitter's browser, and PropertyDetailInspectionTab /
+  // FieldInspectionWorkBody already show the single success toast
+  // ("تم حفظ بيانات المعاينة وإرسالها."). Domain toasts here duplicated
+  // that message (same pattern as ENGINEERING_SURVEY_SUBMITTED).
   // ENGINEERING_SURVEY_SUBMITTED_EVENT is intentionally omitted: it only fires
   // in the submitter's browser, and PartyActiveTaskWork already shows the
   // single success toast ("survey completed for this property."). Domain toasts

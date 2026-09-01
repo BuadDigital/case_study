@@ -39,6 +39,11 @@ import {
   workOrderExists,
 } from "@platform/api-client";
 import { hydrateSpecialistReportExtrasFromApi } from "@platform/app-shared/storage/specialist-report-extras-sync";
+import { isBrowserOffline } from "@platform/app-shared/offline/offline-write";
+import {
+  readPrefetchedPoRecord,
+  readPrefetchedPoRecords,
+} from "@platform/app-shared/offline/prefetch-read";
 import { normalizeDeedNumber } from "./deed-number";
 import { prototypeModulesApiConfig } from "@platform/app-shared/prototype/prototype-modules-api-config";
 import {
@@ -385,8 +390,17 @@ export function parseOwnersDraft(
 }
 
 export async function loadPoRecords(): Promise<PoIntakeRecord[]> {
-  const dtos = await loadWorkOrderDtos();
-  return mapWorkOrderDtosToPoRecords(dtos);
+  if (isBrowserOffline()) {
+    return readPrefetchedPoRecords<PoIntakeRecord>();
+  }
+  try {
+    const dtos = await loadWorkOrderDtos();
+    return mapWorkOrderDtosToPoRecords(dtos);
+  } catch {
+    const cached = await readPrefetchedPoRecords<PoIntakeRecord>();
+    if (cached.length) return cached;
+    throw new Error("تعذّر تحميل أوامر العمل");
+  }
 }
 
 export function mapWorkOrderDtosToPoRecords(dtos: WorkOrderDto[]): PoIntakeRecord[] {
@@ -1014,16 +1028,35 @@ export async function completePropertyBourse(
 export async function getPoRecord(
   poNumber: string,
 ): Promise<PoIntakeRecord | null> {
-  const config = workOrdersApiConfig();
-  if (!config) return null;
-  const result = await getWorkOrder(config, poNumber);
-  if (!result.ok) {
-    if (result.kind === "not_found") return null;
-    throw new Error(
-      resolveApiError(result.kind, result.errors, "تعذّر تحميل أمر العمل"),
-    );
+  const n = poNumber.trim();
+  if (!n) return null;
+
+  if (isBrowserOffline()) {
+    return readPrefetchedPoRecord<PoIntakeRecord>(n);
   }
-  return dtoToRecord(result.data);
+
+  const config = workOrdersApiConfig();
+  if (!config) {
+    return readPrefetchedPoRecord<PoIntakeRecord>(n);
+  }
+
+  try {
+    const result = await getWorkOrder(config, n);
+    if (!result.ok) {
+      if (result.kind === "not_found") return null;
+      const cached = await readPrefetchedPoRecord<PoIntakeRecord>(n);
+      if (cached) return cached;
+      throw new Error(
+        resolveApiError(result.kind, result.errors, "تعذّر تحميل أمر العمل"),
+      );
+    }
+    return dtoToRecord(result.data);
+  } catch (err) {
+    const cached = await readPrefetchedPoRecord<PoIntakeRecord>(n);
+    if (cached) return cached;
+    if (err instanceof Error) throw err;
+    throw new Error("تعذّر تحميل أمر العمل");
+  }
 }
 
 export async function deletePoRecord(

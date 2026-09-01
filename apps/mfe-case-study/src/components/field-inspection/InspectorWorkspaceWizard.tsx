@@ -30,6 +30,7 @@ import {
   isLandInspectionContext,
   isShopHiddenInspectorComponentKey,
   isCommercialShopInspectionContext,
+  inspectorPhotoCoverageLabel,
   newObservationId,
   patchInspectorFeatureValues,
   visibleInspectorFeatureFields,
@@ -39,6 +40,7 @@ import {
 import { InspectorStepNav, type InspectorStepId } from "./InspectorStepNav";
 import { InspectorFeatureWizardFields } from "./InspectorFeatureWizardFields";
 import { InspectorPropertyPhotosSection } from "./InspectorPropertyPhotosSection";
+import { InspectorDefinedPhotosSection } from "./InspectorDefinedPhotosSection";
 import { FieldComparableCaptureSection } from "./FieldComparableCaptureSection";
 import { ComponentCountWithPhotoField, InsCard, InsDualCalendarDateField, InsEditField, InsEditTextarea, InsFieldsGrid, ChipRow, EDIT_CONTROL_CLASS } from "../po-intake/PropertyDetailInspectionParts";
 import { INFATH_FIELD_LABELS } from "../../lib/prototype/infath-field-labels";
@@ -90,7 +92,6 @@ export function InspectorWorkspaceWizard({
   transactionPhotos = [],
   locked,
   saving,
-  formError,
   fieldErrors = {},
   onPatch,
   onSubmit,
@@ -112,7 +113,6 @@ export function InspectorWorkspaceWizard({
   transactionPhotos?: PropertyDetailDocumentEntry[];
   locked: boolean;
   saving: boolean;
-  formError: string | null;
   fieldErrors?: InspectorWorkspaceFieldErrors;
   onPatch: (patch: Partial<InspectorWorkspaceDraft>) => void;
   onSubmit: () => void;
@@ -175,6 +175,8 @@ export function InspectorWorkspaceWizard({
       ? `${draft.mapLatitude.trim()}, ${draft.mapLongitude.trim()}`
       : "";
 
+  const photoCoverage = inspectorPhotoCoverageLabel(draft);
+
   function advance() {
     setDoneSteps((prev) => {
       const next = new Set(prev);
@@ -192,18 +194,6 @@ export function InspectorWorkspaceWizard({
           doneSteps={doneSteps}
           onSelect={setActiveStep}
         />
-      ) : null}
-
-      {formError ? (
-        <div
-          className="mb-3 rounded-lg border border-danger border-e-[3px] border-e-danger bg-danger-bg px-3.5 py-2.5 text-xs leading-relaxed text-danger-text"
-          role="alert"
-        >
-          <p className="m-0 font-semibold">{formError}</p>
-          <p className="m-0 mt-1 text-[11px] opacity-90">
-            تم توجيهك لأول حقل ناقص — الحقول باللون الأحمر مطلوبة.
-          </p>
-        </div>
       ) : null}
 
       {showStep(1) ? (
@@ -799,6 +789,28 @@ export function InspectorWorkspaceWizard({
 
       {showStep(3) ? (
         <>
+          <div id="ins-defined-photos">
+            <InsCard
+              title="توثيق الخدمات والمرافق"
+              badge={<DetailBadge tone="gray">{photoCoverage}</DetailBadge>}
+            >
+              <InspectorDefinedPhotosSection
+                draft={draft}
+                disabled={!editable}
+                onPatch={onPatch}
+                layout="desktop"
+              />
+              {fieldErrors.definedPhotos ? (
+                <p
+                  className="mt-2 mb-0 text-[11px] font-semibold text-danger-text"
+                  role="alert"
+                >
+                  {fieldErrors.definedPhotos}
+                </p>
+              ) : null}
+            </InsCard>
+          </div>
+
           <InsCard title="العقارات المقارنة">
             <FieldComparableCaptureSection
               latitude={draft.mapLatitude}

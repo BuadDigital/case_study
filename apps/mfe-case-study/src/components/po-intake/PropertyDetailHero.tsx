@@ -50,13 +50,11 @@ function BuildingIcon() {
 function StripCell({
   label,
   children,
-  first,
   compact = false,
   valueTone,
 }: {
   label: string;
   children: ReactNode;
-  first?: boolean;
   /** Collapsed hero: label and value sit inline on one tight row. */
   compact?: boolean;
   /** HTML strip: due date uses danger text. */
@@ -65,12 +63,10 @@ function StripCell({
   return (
     <div
       className={cn(
-        "min-w-0 py-1",
+        "min-w-0 shrink-0 py-1",
         compact
-          ? "flex items-center gap-1.5 px-3 py-0 text-start"
-          : "px-[18px] text-center max-lg:px-0 max-lg:text-start",
-        !first && "border-border max-lg:border-0 lg:border-s",
-        first && "ps-0",
+          ? "flex items-center gap-1.5 py-0 text-start"
+          : "text-center max-lg:text-start",
       )}
     >
       <div
@@ -323,7 +319,6 @@ export function PropertyDetailHero({
                   compact ? "text-[14px]" : "text-[21px]",
                 )}
               >
-                صك رقم{" "}
                 <bdi dir="ltr" className={ltrValueClass}>
                   {titleDeed}
                 </bdi>
@@ -468,18 +463,17 @@ export function PropertyDetailHero({
           return (
             <div
               className={cn(
-                "flex flex-wrap items-center justify-start",
+                "flex flex-wrap items-start",
                 compact
-                  ? "mt-1 border-0 pb-1.5"
-                  : "mt-3 border-t border-border py-2.5",
+                  ? "mt-1 gap-x-3 gap-y-1 border-0 pb-1.5"
+                  : "mt-3 gap-x-5 gap-y-2 border-t border-border py-2.5 sm:gap-x-6 lg:gap-x-7",
               )}
               aria-label="ملخص العقار"
             >
-              {stripCells.map((cell, i) => (
+              {stripCells.map((cell) => (
                 <StripCell
                   key={cell.label}
                   label={cell.label}
-                  first={i === 0}
                   compact={compact}
                   valueTone={cell.valueTone}
                 >
