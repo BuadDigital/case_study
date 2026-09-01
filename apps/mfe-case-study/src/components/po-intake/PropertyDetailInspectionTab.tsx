@@ -28,6 +28,7 @@ import {
   reopenInspectorWorkspace,
   saveInspectorWorkspaceDraft,
   updateInspectorWorkspace,
+  mergeInspectorWorkspacePatch,
 } from "../../lib/prototype/inspector-workspace-storage";
 import {
   INSPECTOR_SERVICE_OPTIONS,
@@ -84,6 +85,7 @@ import { finalizeInspectorWorkspace } from "../../lib/prototype/finalize-field-i
 import type { PartyTaskPageDef } from "@platform/app-shared/prototype/party-task-pages";
 import type { WorkflowTask } from "../../lib/prototype/tasks-storage";
 import type { PropertyDetailPartyCard } from "../../lib/prototype/property-detail-parties";
+import type { PropertyDetailDocumentEntry } from "../../lib/prototype/property-detail-documents";
 import {
   EDIT_CONTROL_CLASS,
   formatAcceptedDate,
@@ -110,6 +112,9 @@ export function PropertyDetailInspectionTab({
   onSubmitted,
   steps = false,
   caseStudyDef,
+  includeRetiredFeatureKeys,
+  serviceProofFromTransactionPhotos = false,
+  transactionPhotos = [],
 }: {
   property: PoPropertyIntake;
   inspectionTask: WorkflowTask | null;
@@ -124,6 +129,11 @@ export function PropertyDetailInspectionTab({
   steps?: boolean;
   /** Enables case-study questions card when provided. */
   caseStudyDef?: PartyTaskPageDef;
+  /** Show retired inspector fields (e.g. zoneStatus for case-study specialist). */
+  includeRetiredFeatureKeys?: readonly string[];
+  /** Case-study specialist: require كهرباء/ماء proof from transaction photos. */
+  serviceProofFromTransactionPhotos?: boolean;
+  transactionPhotos?: PropertyDetailDocumentEntry[];
 }) {
   const { showToast } = useToast();
   const [draft, setDraft] = useState<InspectorWorkspaceDraft | null>(null);
@@ -225,9 +235,26 @@ export function PropertyDetailInspectionTab({
     if (!inspectionTask || locked) return;
     setFieldErrors({});
     setFormError(null);
+    // Update the controlled inputs immediately — network save is debounced.
+    setDraft((prev) =>
+      prev ? mergeInspectorWorkspacePatch(prev, patch) : prev,
+    );
     void updateInspectorWorkspace(inspectionTask.id, patch)
       .then((next) => {
-        if (next) setDraft(next);
+        if (!next) return;
+        setDraft((prev) => {
+          if (!prev) return next;
+          const prevTs = Date.parse(prev.updatedAtUtc);
+          const nextTs = Date.parse(next.updatedAtUtc);
+          if (
+            Number.isFinite(prevTs) &&
+            Number.isFinite(nextTs) &&
+            prevTs > nextTs
+          ) {
+            return prev;
+          }
+          return next;
+        });
       })
       .catch((err: unknown) => {
         showToast(
@@ -308,6 +335,8 @@ export function PropertyDetailInspectionTab({
         ),
         classification: property.classification,
         propertyType: property.propertyType,
+        includeRetiredFeatureKeys,
+        specialistProofServicesOnly: serviceProofFromTransactionPhotos,
       });
       // Confirmation is set above — don't block on it for this path.
       delete errors.inspectionConfirmed;
@@ -342,9 +371,16 @@ export function PropertyDetailInspectionTab({
 
       setDraft(result.draft);
       setFieldErrors({});
-      showToast("تم حفظ بيانات المعاينة وإرسالها.", "success");
-      onSubmitted?.();
-      if (!lockEditMode) {
+      showToast(
+        result.queued
+          ? "محفوظة للمزامنة — ستُرسل عند عودة الاتصال"
+          : "تم حفظ بيانات المعاينة وإرسالها.",
+        result.queued ? "info" : "success",
+      );
+      if (!result.queued) {
+        onSubmitted?.();
+      }
+      if (!lockEditMode && !result.queued) {
         onEditModeChange?.(false);
       }
     } catch (err: unknown) {
@@ -411,7 +447,7 @@ export function PropertyDetailInspectionTab({
   const canReturn = canReviewPackage && !inspectionAccepted;
 
   return (
-    <div id="pdInspection">
+    <div id="pdInspection" className="pt-5">
       {!showEditFields && canReviewPackage && !returnOpen ? (
         <div className="mb-3.5 flex flex-wrap items-center justify-end gap-2">
           {inspectionAccepted ? (
@@ -537,9 +573,13 @@ export function PropertyDetailInspectionTab({
           draft={draft}
           inspectionTask={inspectionTask}
           caseStudyDef={caseStudyDef}
-          locked={!steps || locked || !showEditFields}
+          includeRetiredFeatureKeys={includeRetiredFeatureKeys}
+          serviceProofFromTransactionPhotos={serviceProofFromTransactionPhotos}
+          transactionPhotos={transactionPhotos}
+          locked={locked || !showEditFields}
           saving={saving}
           formError={formError}
+          fieldErrors={fieldErrors}
           flat={!steps}
           onPatch={(patch) => patchDraft(patch)}
           onSubmit={() => void handleSaveAndSubmit()}

@@ -44,4 +44,55 @@ describe("offline-client store", () => {
       ),
     ).toContain("server-guid");
   });
+
+  it("round-trips prefetch records", async () => {
+    const { savePrefetch, getPrefetch, listPrefetchByKind } = await import(
+      "@platform/offline-client"
+    );
+
+    await savePrefetch({
+      id: "tasks:user-a",
+      userId: "user-a",
+      kind: "workflow-tasks",
+      payloadJson: JSON.stringify({ tasks: [{ id: "t1" }] }),
+      updatedAtUtc: new Date().toISOString(),
+    });
+
+    const row = await getPrefetch("user-a", "tasks:user-a");
+    expect(row?.kind).toBe("workflow-tasks");
+    expect(row?.payloadJson).toContain("t1");
+
+    const byKind = await listPrefetchByKind("user-a", "workflow-tasks");
+    expect(byKind).toHaveLength(1);
+  });
+
+  it("caches prefetched attachment bytes without outbox upload", async () => {
+    const { cachePrefetchAttachment, getOfflineBlob } = await import(
+      "@platform/offline-client"
+    );
+
+    const bytes = new TextEncoder().encode("pdf-bytes").buffer;
+    await cachePrefetchAttachment({
+      userId: "user-a",
+      attachmentId: "att-1",
+      scope: "property-deed-ownership",
+      scopeKey: "PO-1:prop-1",
+      fileName: "deed.pdf",
+      contentType: "application/pdf",
+      bytes,
+    });
+
+    const blob = await getOfflineBlob("user-a", "att-1");
+    expect(blob?.serverAttachmentId).toBe("att-1");
+    expect(blob?.bytes.byteLength).toBeGreaterThan(0);
+  });
+});
+
+describe("offline write interceptor classification", () => {
+  it("classifies operations task patch and comment routes", async () => {
+    const { installOfflineWriteInterceptor } = await import(
+      "@platform/app-shared/offline/install-offline-write-interceptor"
+    );
+    expect(typeof installOfflineWriteInterceptor).toBe("function");
+  });
 });

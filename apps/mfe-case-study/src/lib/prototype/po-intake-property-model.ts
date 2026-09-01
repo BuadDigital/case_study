@@ -25,6 +25,15 @@ export const CONTACT_ROLE_OPTIONS = [
   "أخرى",
 ] as const;
 
+/** Role dropdown options — keeps transaction values (e.g. «ضابط») even if not in the catalog. */
+export function contactRoleSelectOptions(currentRole?: string): string[] {
+  const role = currentRole?.trim() ?? "";
+  if (role && !(CONTACT_ROLE_OPTIONS as readonly string[]).includes(role)) {
+    return [role, ...CONTACT_ROLE_OPTIONS];
+  }
+  return [...CONTACT_ROLE_OPTIONS];
+}
+
 export type PoContact = {
   name: string;
   /** Officer capacity — required */

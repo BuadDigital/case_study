@@ -1255,8 +1255,10 @@ export function ActiveTransactionQueueView({
   const queuePanel = (
         <OperationalPanel
           className={cn(
-            "min-h-0 flex-1",
-            hasRail && panelOpen ? undefined : "flex-none",
+            "min-h-0",
+            hasRail && panelOpen
+              ? "lg:h-full lg:overflow-hidden"
+              : "flex-none",
             /* Desktop menus may escape; never let X overflow widen the mobile page. */
             isPartyQueueToggleTable && "max-lg:overflow-x-hidden lg:overflow-visible",
             /* Mobile: drop heavy table panel chrome — cards float on canvas. */
@@ -1313,7 +1315,12 @@ export function ActiveTransactionQueueView({
               )}
               {isDesktopViewport === false ? null : (
               <TableFrame
-                className="max-lg:hidden lg:block"
+                className={cn(
+                  "max-lg:hidden lg:block",
+                  hasRail &&
+                    panelOpen &&
+                    "lg:min-h-0 lg:flex-1 lg:overflow-auto",
+                )}
                 onMouseEnter={preloadRowWork}
                 onFocus={preloadRowWork}
               >

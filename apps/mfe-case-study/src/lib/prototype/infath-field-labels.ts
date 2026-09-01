@@ -48,6 +48,7 @@ export const INFATH_FIELD_LABELS = {
   propertyDescription: "وصف العقار",
   districtProsCons: "الإيجابيات والعيوب الظاهرة على الحي",
   accessRoute: "طريقة الوصول للعقار",
+  accessRouteHint: "تم الوصول الى العقار بمعرفة:",
   assetNotes: "ملاحظات على الأصل",
   northBoundary: "الحد الشمالي",
   northLength: "طول الحد الشمالي التقريبي (م)",

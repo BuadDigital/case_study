@@ -14,9 +14,9 @@ import {
 } from "@platform/ui-kit";
 import {
   PROPERTY_BOUNDARY_ROWS,
-  PROPERTY_BOUNDARY_TYPE_OPTIONS,
   type PoPropertyIntake,
 } from "../../lib/prototype/po-intake-data";
+import { useBoundaryTypeOptions } from "../../query/use-boundary-type-options";
 
 type Props = {
   property: PoPropertyIntake;
@@ -32,6 +32,8 @@ export function PoPropertyBoundariesEntrySection({
   fieldErrors,
   onPatch,
 }: Props) {
+  const boundaryTypeOptions = useBoundaryTypeOptions();
+
   return (
     <div className="mt-4 w-full rounded-lg border border-border bg-surface-2 p-3">
       <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
@@ -65,13 +67,14 @@ export function PoPropertyBoundariesEntrySection({
                   {row.label}
                 </Td>
                 <Td className="align-top">
-                  <Select
+                    <Select
                     id={`bnd_type_${row.typeKey}`}
                     className="text-xs"
                     value={property[row.typeKey]}
                     onChange={(e) => onPatch(row.typeKey, e.target.value)}
                   >
-                    {PROPERTY_BOUNDARY_TYPE_OPTIONS.map((o) => (
+                    <option value="">—</option>
+                    {boundaryTypeOptions.map((o) => (
                       <option key={o.value || "empty"} value={o.value}>
                         {o.label}
                       </option>

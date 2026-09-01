@@ -2,7 +2,7 @@
 
 /** Property-detail inspection-tab parts — module-level fields/cards/cells, moved verbatim (SRP). */
 
-import { useEffect, useMemo, useRef, useState, type ReactNode, Fragment } from "react";
+import { useEffect, useMemo, useRef, useState, createContext, useContext, type ReactNode, Fragment } from "react";
 import { arabicStepLabel } from "../field-inspection/FieldInspectionWorkParts";
 import { ReturnedForCorrectionNote } from "../ui/ReturnedForCorrectionNote";
 import {
@@ -86,6 +86,15 @@ import {
 import { finalizeInspectorWorkspace } from "../../lib/prototype/finalize-field-inspection-submission";
 import type { WorkflowTask } from "../../lib/prototype/tasks-storage";
 import type { PropertyDetailPartyCard } from "../../lib/prototype/property-detail-parties";
+import {
+  convertDualCalendarDate,
+  detectDualCalendarKind,
+  dualCalendarGregorianIso,
+  formatDualCalendarDate,
+  gregorianIsoToHijriParts,
+  parseDualCalendarDate,
+  type DualCalendarKind,
+} from "../../lib/prototype/dual-calendar-date";
 
 /** Shared control style for in-tab edit inputs — matches InsField typography. */
 export { EDIT_CONTROL_CLASS, INS_LABEL_CLASS, INS_TH_CLASS, INS_TD_CLASS } from "../field-inspection/FieldInspectionWorkParts";
@@ -104,6 +113,24 @@ export function SharedBadge() {
   );
 }
 
+const InsFieldsGridCenteredContext = createContext(false);
+
+function useInsFieldsGridCentered() {
+  return useContext(InsFieldsGridCenteredContext);
+}
+
+function insFieldLabelRowClass(centered: boolean) {
+  return cn("mb-1 flex flex-wrap items-center gap-1.5", centered && "justify-center");
+}
+
+function insFieldLabelClass(centered: boolean, invalid?: boolean) {
+  return cn(
+    "text-[11px] font-semibold",
+    centered && "w-full text-center",
+    invalid ? "text-danger" : "text-text-2",
+  );
+}
+
 /** Case Study.html `insField` — plain label + value (no gold FieldBox). */
 export function InsField({
   label,
@@ -118,17 +145,18 @@ export function InsField({
   badge?: ReactNode;
   className?: string;
 }) {
+  const gridCentered = useInsFieldsGridCentered();
   const trimmed = value?.trim() ?? "";
   return (
     <div className={cn("min-w-0", className)}>
-      <div className="mb-1 flex flex-wrap items-center gap-1.5">
-        <span className="text-[11px] font-semibold text-text-2">{label}</span>
+      <div className={insFieldLabelRowClass(gridCentered)}>
+        <span className={insFieldLabelClass(gridCentered)}>{label}</span>
         {badge}
       </div>
       <div
         className={cn(
           "py-0.5 text-[13px] font-semibold text-heading",
-          ltr && "[direction:ltr] [unicode-bidi:isolate] text-start",
+          ltr && "[direction:ltr] [unicode-bidi:isolate] text-center",
           !trimmed && "font-normal text-text-3",
         )}
       >
@@ -168,26 +196,37 @@ export function InsEditField({
   errorMessage?: string;
   disabled?: boolean;
 }) {
+  const gridCentered = useInsFieldsGridCentered();
+  const inputCenterClass =
+    ltr || gridCentered ? "text-center [direction:ltr] [unicode-bidi:isolate]" : undefined;
+
   if (disabled) {
     return (
-      <InsField
-        label={label}
-        value={value}
-        ltr={ltr}
-        badge={badge}
-        className={className}
-      />
+      <div className={cn("min-w-0", className)} id={id ? `${id}-wrap` : undefined}>
+        <div className={insFieldLabelRowClass(gridCentered)}>
+          <span className={insFieldLabelClass(gridCentered)}>{label}</span>
+          {badge}
+        </div>
+        <input
+          id={id}
+          type={type}
+          readOnly
+          tabIndex={-1}
+          aria-readonly="true"
+          className={cn(
+            EDIT_CONTROL_CLASS,
+            inputCenterClass,
+            "cursor-default font-semibold text-heading",
+          )}
+          value={value}
+        />
+      </div>
     );
   }
   return (
     <div className={cn("min-w-0", className)} id={id ? `${id}-wrap` : undefined}>
-      <div className="mb-1 flex flex-wrap items-center gap-1.5">
-        <span
-          className={cn(
-            "text-[11px] font-semibold",
-            invalid ? "text-danger" : "text-text-2",
-          )}
-        >
+      <div className={insFieldLabelRowClass(gridCentered)}>
+        <span className={insFieldLabelClass(gridCentered, invalid)}>
           {label}
         </span>
         {badge}
@@ -199,7 +238,7 @@ export function InsEditField({
         aria-invalid={invalid || undefined}
         className={cn(
           EDIT_CONTROL_CLASS,
-          ltr && "[direction:ltr]",
+          inputCenterClass,
           invalid && inspectorInvalidControlClass,
         )}
         value={value}
@@ -211,6 +250,192 @@ export function InsEditField({
           {errorMessage}
         </p>
       ) : null}
+    </div>
+  );
+}
+
+/** Building-permit and similar dates — toggle Hijri / Gregorian entry. */
+export function InsDualCalendarDateField({
+  id,
+  label,
+  value,
+  onChange,
+  disabled = false,
+  className,
+}: {
+  id?: string;
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+  disabled?: boolean;
+  className?: string;
+}) {
+  const gridCentered = useInsFieldsGridCentered();
+  const parsed = useMemo(() => parseDualCalendarDate(value), [value]);
+  const [calendar, setCalendar] = useState<DualCalendarKind>(
+    () => parsed?.kind ?? detectDualCalendarKind(value),
+  );
+
+  useEffect(() => {
+    const next = parseDualCalendarDate(value);
+    if (next) setCalendar(next.kind);
+  }, [value]);
+
+  const gregorianIso = useMemo(() => {
+    if (!parsed) return "";
+    return dualCalendarGregorianIso(parsed) ?? "";
+  }, [parsed]);
+
+  const hijriParts = useMemo(() => {
+    if (parsed?.kind === "hijri") return parsed;
+    if (gregorianIso) return gregorianIsoToHijriParts(gregorianIso);
+    return null;
+  }, [parsed, gregorianIso]);
+
+  const calendarToggle = (
+    <div className={cn("mb-1.5 flex flex-wrap gap-1", gridCentered && "justify-center")}>
+      {(["gregorian", "hijri"] as const).map((kind) => {
+        const on = calendar === kind;
+        return (
+          <button
+            key={kind}
+            type="button"
+            disabled={disabled}
+            className={cn(
+              "rounded-full border px-2.5 py-0.5 font-inherit text-[10.5px] font-semibold",
+              disabled ? "cursor-default" : "cursor-pointer",
+              on
+                ? "border-ink bg-ink text-white"
+                : "border-border-md bg-surface text-text-2",
+            )}
+            onClick={() => {
+              if (disabled || on) return;
+              setCalendar(kind);
+              const converted = parsed ? convertDualCalendarDate(parsed, kind) : null;
+              if (converted) onChange(formatDualCalendarDate(converted));
+            }}
+          >
+            {kind === "gregorian" ? "ميلادي" : "هجري"}
+          </button>
+        );
+      })}
+    </div>
+  );
+
+  const hijriInputClass = cn(
+    EDIT_CONTROL_CLASS,
+    "min-w-0 px-2 text-center [direction:ltr] [unicode-bidi:isolate]",
+  );
+
+  if (disabled) {
+    return (
+      <InsField label={label} value={value} ltr className={className} />
+    );
+  }
+
+  if (calendar === "gregorian") {
+    return (
+      <div className={cn("min-w-0", className)} id={id ? `${id}-wrap` : undefined}>
+        <div className={insFieldLabelRowClass(gridCentered)}>
+          <span className={insFieldLabelClass(gridCentered)}>{label}</span>
+        </div>
+        {calendarToggle}
+        <input
+          id={id}
+          type="date"
+          className={cn(
+            EDIT_CONTROL_CLASS,
+            "text-center [direction:ltr] [unicode-bidi:isolate]",
+          )}
+          value={gregorianIso}
+          onChange={(e) => {
+            const iso = e.target.value;
+            if (!iso) {
+              onChange("");
+              return;
+            }
+            const [year, month, day] = iso.split("-").map(Number);
+            onChange(
+              formatDualCalendarDate({ kind: "gregorian", year, month, day }),
+            );
+          }}
+        />
+      </div>
+    );
+  }
+
+  const emitHijri = (year: string, month: string, day: string) => {
+    if (!year.trim() || !month.trim() || !day.trim()) {
+      onChange("");
+      return;
+    }
+    const y = Number(year);
+    const m = Number(month);
+    const d = Number(day);
+    if (!Number.isFinite(y) || !Number.isFinite(m) || !Number.isFinite(d)) return;
+    onChange(formatDualCalendarDate({ kind: "hijri", year: y, month: m, day: d }));
+  };
+
+  return (
+    <div className={cn("min-w-0", className)} id={id ? `${id}-wrap` : undefined}>
+      <div className={insFieldLabelRowClass(gridCentered)}>
+        <span className={insFieldLabelClass(gridCentered)}>{label}</span>
+      </div>
+      {calendarToggle}
+      <div className="grid grid-cols-3 gap-1">
+        <input
+          id={id ? `${id}-day` : undefined}
+          type="number"
+          inputMode="numeric"
+          min={1}
+          max={30}
+          placeholder="يوم"
+          aria-label={`${label} — يوم`}
+          className={hijriInputClass}
+          value={hijriParts?.day ? String(hijriParts.day) : ""}
+          onChange={(e) =>
+            emitHijri(
+              hijriParts?.year ? String(hijriParts.year) : "",
+              hijriParts?.month ? String(hijriParts.month) : "",
+              e.target.value,
+            )
+          }
+        />
+        <input
+          type="number"
+          inputMode="numeric"
+          min={1}
+          max={12}
+          placeholder="شهر"
+          aria-label={`${label} — شهر`}
+          className={hijriInputClass}
+          value={hijriParts?.month ? String(hijriParts.month) : ""}
+          onChange={(e) =>
+            emitHijri(
+              hijriParts?.year ? String(hijriParts.year) : "",
+              e.target.value,
+              hijriParts?.day ? String(hijriParts.day) : "",
+            )
+          }
+        />
+        <input
+          type="number"
+          inputMode="numeric"
+          min={1300}
+          max={1600}
+          placeholder="سنة"
+          aria-label={`${label} — سنة`}
+          className={hijriInputClass}
+          value={hijriParts?.year ? String(hijriParts.year) : ""}
+          onChange={(e) =>
+            emitHijri(
+              e.target.value,
+              hijriParts?.month ? String(hijriParts.month) : "",
+              hijriParts?.day ? String(hijriParts.day) : "",
+            )
+          }
+        />
+      </div>
     </div>
   );
 }
@@ -265,6 +490,10 @@ export function InsEditTextarea({
   rows = 3,
   className,
   disabled = false,
+  invalid,
+  errorMessage,
+  placeholder,
+  hint,
 }: {
   id?: string;
   label: string;
@@ -273,42 +502,74 @@ export function InsEditTextarea({
   rows?: number;
   className?: string;
   disabled?: boolean;
+  invalid?: boolean;
+  errorMessage?: string;
+  placeholder?: string;
+  hint?: string;
 }) {
   if (disabled) {
     return <InsField label={label} value={value} className={className} />;
   }
   return (
-    <div className={cn("min-w-0", className)}>
+    <div className={cn("min-w-0", className)} id={id ? `${id}-wrap` : undefined}>
       <div className="mb-1 flex flex-wrap items-center gap-1.5">
-        <span className="text-[11px] font-semibold text-text-2">{label}</span>
+        <span
+          className={cn(
+            "text-[11px] font-semibold",
+            invalid ? "text-danger" : "text-text-2",
+          )}
+        >
+          {label}
+        </span>
       </div>
+      {hint ? (
+        <p id={id ? `${id}-hint` : undefined} className="mb-1.5 text-[11px] text-text-3">
+          {hint}
+        </p>
+      ) : null}
       <textarea
         id={id}
         rows={rows}
-        className={cn(EDIT_CONTROL_CLASS, "resize-y")}
+        placeholder={placeholder}
+        aria-describedby={
+          [hint && id ? `${id}-hint` : null, invalid && errorMessage && id ? `${id}-error` : null]
+            .filter(Boolean)
+            .join(" ") || undefined
+        }
+        className={cn(EDIT_CONTROL_CLASS, "resize-y", invalid && inspectorInvalidControlClass)}
         value={value}
+        aria-invalid={invalid || undefined}
         onChange={(e) => onChange(e.target.value)}
       />
+      {invalid && errorMessage ? (
+        <p id={id ? `${id}-error` : undefined} className="mt-1 mb-0 text-[11px] text-danger-text">
+          {errorMessage}
+        </p>
+      ) : null}
     </div>
   );
 }
 
 export function InsFieldsGrid({
   min = 150,
+  centered = false,
   children,
 }: {
   min?: number;
+  centered?: boolean;
   children: ReactNode;
 }) {
   return (
-    <div
-      className="grid gap-3"
-      style={{
-        gridTemplateColumns: `repeat(auto-fit, minmax(${min}px, 1fr))`,
-      }}
-    >
-      {children}
-    </div>
+    <InsFieldsGridCenteredContext.Provider value={centered}>
+      <div
+        className="grid gap-3"
+        style={{
+          gridTemplateColumns: `repeat(auto-fit, minmax(${min}px, 1fr))`,
+        }}
+      >
+        {children}
+      </div>
+    </InsFieldsGridCenteredContext.Provider>
   );
 }
 

@@ -12,6 +12,7 @@ import {
   cn,
   GoogleMapPin,
   Select,
+  useToast,
 } from "@platform/ui-kit";
 import { DetailBadge } from "../po-intake/PropertyDetailFields";
 import {
@@ -21,9 +22,11 @@ import {
   type PoPropertyIntake,
 } from "../../lib/prototype/po-intake-data";
 import {
+  SITE_LOCATION_ACK_PENDING_MESSAGE,
   INSPECTOR_AMENITY_OPTIONS,
   INSPECTOR_OBSERVATION_CATEGORIES,
   INSPECTOR_SERVICE_OPTIONS,
+  isSpecialistProofService,
   isLandInspectionContext,
   isShopHiddenInspectorComponentKey,
   isCommercialShopInspectionContext,
@@ -37,9 +40,18 @@ import { InspectorStepNav, type InspectorStepId } from "./InspectorStepNav";
 import { InspectorFeatureWizardFields } from "./InspectorFeatureWizardFields";
 import { InspectorPropertyPhotosSection } from "./InspectorPropertyPhotosSection";
 import { FieldComparableCaptureSection } from "./FieldComparableCaptureSection";
-import { ComponentCountWithPhotoField, InsCard, InsEditField, InsEditTextarea, InsFieldsGrid, ChipRow, EDIT_CONTROL_CLASS } from "../po-intake/PropertyDetailInspectionParts";
-import { INS_LABEL_CLASS, INS_TH_CLASS, INS_TD_CLASS } from "./FieldInspectionWorkParts";
+import { ComponentCountWithPhotoField, InsCard, InsDualCalendarDateField, InsEditField, InsEditTextarea, InsFieldsGrid, ChipRow, EDIT_CONTROL_CLASS } from "../po-intake/PropertyDetailInspectionParts";
+import { INFATH_FIELD_LABELS } from "../../lib/prototype/infath-field-labels";
+import { INS_LABEL_CLASS, INS_TH_CLASS, INS_TD_CLASS, INS_WIZARD_PIN_BUTTON_CLASS } from "./FieldInspectionWorkParts";
 import { InspectorCaseStudyChips } from "./InspectorCaseStudyChips";
+import { InspectorAccessContactFields } from "./InspectorAccessContactFields";
+import {
+  SpecialistServiceProofPhotoFields,
+  withoutSpecialistProofSlots,
+} from "./SpecialistServiceProofPhotoFields";
+import type { PropertyDetailDocumentEntry } from "../../lib/prototype/property-detail-documents";
+import { useFacadeOptions } from "../../query/use-facade-options";
+import type { InspectorWorkspaceFieldErrors } from "../../lib/prototype/inspector-workspace-validation";
 import type { PartyTaskPageDef } from "@platform/app-shared/prototype/party-task-pages";
 import type { WorkflowTask } from "../../lib/prototype/tasks-storage";
 
@@ -73,9 +85,13 @@ export function InspectorWorkspaceWizard({
   draft,
   inspectionTask,
   caseStudyDef,
+  includeRetiredFeatureKeys,
+  serviceProofFromTransactionPhotos = false,
+  transactionPhotos = [],
   locked,
   saving,
   formError,
+  fieldErrors = {},
   onPatch,
   onSubmit,
   onCancel,
@@ -90,9 +106,14 @@ export function InspectorWorkspaceWizard({
   draft: InspectorWorkspaceDraft;
   inspectionTask: WorkflowTask;
   caseStudyDef?: PartyTaskPageDef;
+  includeRetiredFeatureKeys?: readonly string[];
+  /** Case-study specialist: proof photos for كهرباء/ماء from transaction images. */
+  serviceProofFromTransactionPhotos?: boolean;
+  transactionPhotos?: PropertyDetailDocumentEntry[];
   locked: boolean;
   saving: boolean;
   formError: string | null;
+  fieldErrors?: InspectorWorkspaceFieldErrors;
   onPatch: (patch: Partial<InspectorWorkspaceDraft>) => void;
   onSubmit: () => void;
   onCancel: () => void;
@@ -108,6 +129,11 @@ export function InspectorWorkspaceWizard({
   );
   const editable = !locked;
   const showStep = (step: InspectorStepId) => flat || activeStep === step;
+  const { showToast } = useToast();
+  const catalogFacadeOptions = useFacadeOptions();
+  const facadeTypeOptions =
+    catalogFacadeOptions ??
+    ["دهان", "حجر", "رخام", "زجاج", "طوب", "بدون تشطيب", "أخرى"];
 
   const mapGeo = useMemo(() => {
     const lat = Number(draft.mapLatitude);
@@ -133,13 +159,15 @@ export function InspectorWorkspaceWizard({
 
   const featureFields = useMemo(
     () =>
-      visibleInspectorFeatureFields(isLand).filter(
+      visibleInspectorFeatureFields(isLand, {
+        includeRetiredKeys: includeRetiredFeatureKeys,
+      }).filter(
         (f) =>
           !COMPONENT_BOOL_KEYS.includes(
             f.key as (typeof COMPONENT_BOOL_KEYS)[number],
           ),
       ),
-    [isLand],
+    [isLand, includeRetiredFeatureKeys],
   );
 
   const coordsValue =
@@ -231,7 +259,7 @@ export function InspectorWorkspaceWizard({
               {editable ? (
                 <button
                   type="button"
-                  className="h-[38px] rounded-lg border border-border-md bg-surface-2 px-5 font-inherit text-[12.5px] font-bold text-heading"
+                  className={INS_WIZARD_PIN_BUTTON_CLASS}
                   onClick={onPin}
                 >
                   تثبيت الموقع
@@ -263,14 +291,16 @@ export function InspectorWorkspaceWizard({
                 onChange={(v) => onPatch({ streetWidthM: v })}
               disabled={!editable} />
             </InsFieldsGrid>
-            <div className="mt-3">
-              <InsEditTextarea
-                label="طريقة الوصول للعقار"
-                value={draft.accessRouteDescription}
-                
-                onChange={(v) => onPatch({ accessRouteDescription: v })}
-              disabled={!editable} />
-            </div>
+            <InspectorAccessContactFields
+              draft={draft}
+              contacts={property.contacts}
+              editable={editable}
+              fieldErrors={fieldErrors}
+              onPatch={onPatch}
+              onAckClick={() =>
+                showToast(SITE_LOCATION_ACK_PENDING_MESSAGE, "info")
+              }
+            />
           </InsCard>
 
           <InsCard title="تصوير العقار" step={3}>
@@ -294,6 +324,10 @@ export function InspectorWorkspaceWizard({
               fields={featureFields}
               draft={draft}
               deedNumber={property.deedNumber}
+              emptyFeatureKeys={fieldErrors.emptyFeatureKeys}
+              missingFeaturePhotoKey={fieldErrors.missingFeaturePhotoKey}
+              movablesDescriptionError={fieldErrors.movablesDescription}
+              occupancyDescriptionError={fieldErrors.occupancyDescription}
               hidePhotos
               disabled={!editable}
               onPatch={onPatch}
@@ -302,7 +336,7 @@ export function InspectorWorkspaceWizard({
 
           {!isLand ? (
             <InsCard title="مكوّنات العقار">
-              <InsFieldsGrid min={130}>
+              <InsFieldsGrid min={130} centered>
                 {showShop("roomCount") ? (
                   <InsEditField
                     label="عدد الغرف"
@@ -456,7 +490,7 @@ export function InspectorWorkspaceWizard({
 
           {!isLand ? (
             <InsCard title="مساحات المباني">
-              <InsFieldsGrid min={140}>
+              <InsFieldsGrid min={140} centered>
                 <InsEditField
                   label="مساحة البناء (م²)"
                   value={draft.builtArea}
@@ -482,11 +516,12 @@ export function InspectorWorkspaceWizard({
                   onChange={(v) => editable && onPatch({ annexTotal: v })}
                 disabled={!editable} />
                 <InsEditField
-                  label="إجمالي مساحة المباني (م²)"
+                  label={INFATH_FIELD_LABELS.buildingsTotal}
                   value={draft.buildingsTotal}
                   ltr
-                  onChange={(v) => editable && onPatch({ buildingsTotal: v })}
-                disabled={!editable} />
+                  disabled
+                  onChange={() => {}}
+                />
                 <InsEditField
                   label="رقم رخصة البناء"
                   value={draft.buildLicenseNumber}
@@ -495,15 +530,15 @@ export function InspectorWorkspaceWizard({
                     editable && onPatch({ buildLicenseNumber: v })
                   }
                 disabled={!editable} />
-                <InsEditField
+                <InsDualCalendarDateField
+                  id="ins-build-license-date"
                   label="تاريخ رخصة البناء"
                   value={draft.buildLicenseDate}
-                  ltr
-                  type="date"
+                  disabled={!editable}
                   onChange={(v) =>
                     editable && onPatch({ buildLicenseDate: v })
                   }
-                disabled={!editable} />
+                />
               </InsFieldsGrid>
             </InsCard>
           ) : null}
@@ -574,17 +609,7 @@ export function InspectorWorkspaceWizard({
                               }
                             >
                               <option value="">— اختر —</option>
-                              {(
-                                [
-                                  "دهان",
-                                  "حجر",
-                                  "رخام",
-                                  "زجاج",
-                                  "طوب",
-                                  "بدون تشطيب",
-                                  "أخرى",
-                                ] as const
-                              ).map((o) => (
+                              {facadeTypeOptions.map((o) => (
                                 <option key={o} value={o}>
                                   {o}
                                 </option>
@@ -706,15 +731,38 @@ export function InspectorWorkspaceWizard({
               selected={draft.services}
               onToggle={
                 editable
-                  ? (item) =>
-                      onPatch({
-                        services: draft.services.includes(item)
-                          ? draft.services.filter((s) => s !== item)
-                          : [...draft.services, item],
-                      })
+                  ? (item) => {
+                      const removing = draft.services.includes(item);
+                      const nextServices = removing
+                        ? draft.services.filter((s) => s !== item)
+                        : [...draft.services, item];
+                      const patch: Partial<InspectorWorkspaceDraft> = {
+                        services: nextServices,
+                      };
+                      if (
+                        serviceProofFromTransactionPhotos &&
+                        removing &&
+                        isSpecialistProofService(item)
+                      ) {
+                        patch.definedPhotos = withoutSpecialistProofSlots(
+                          draft,
+                          [item],
+                        );
+                      }
+                      onPatch(patch);
+                    }
                   : undefined
               }
             />
+            {serviceProofFromTransactionPhotos ? (
+              <SpecialistServiceProofPhotoFields
+                draft={draft}
+                transactionPhotos={transactionPhotos}
+                disabled={!editable}
+                invalid={Boolean(fieldErrors.definedPhotos)}
+                onPatch={onPatch}
+              />
+            ) : null}
             <div className="mt-3">
               <span className={INS_LABEL_CLASS}>
                 المرافق المحيطة

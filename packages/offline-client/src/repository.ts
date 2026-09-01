@@ -34,6 +34,29 @@ export async function persistDraftLocally(input: {
   return record;
 }
 
+export async function cachePrefetchAttachment(input: {
+  userId: string;
+  attachmentId: string;
+  scope: string;
+  scopeKey: string;
+  fileName: string;
+  contentType: string;
+  bytes: ArrayBuffer;
+}): Promise<void> {
+  await saveOfflineBlob({
+    id: input.attachmentId,
+    userId: input.userId,
+    scope: input.scope,
+    scopeKey: input.scopeKey,
+    fileName: input.fileName,
+    contentType: input.contentType,
+    sizeBytes: input.bytes.byteLength,
+    bytes: input.bytes,
+    createdAtUtc: new Date().toISOString(),
+    serverAttachmentId: input.attachmentId,
+  });
+}
+
 export async function enqueueSubmitLocally(input: {
   userId: string;
   taskId: string;

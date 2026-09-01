@@ -7,10 +7,16 @@ import {
   type ScrollToFormFieldOptions,
 } from "@platform/app-shared/form-ux";
 import {
+  ACCESS_CONTACT_NAME_LABEL,
+  ACCESS_CONTACT_PHONE_LABEL,
+  ACCESS_CONTACT_ROLE_LABEL,
+  ACCESS_ROUTE_DESCRIPTION_REQUIRED,
   MOVABLES_DESCRIPTION_KEY,
+  OCCUPANCY_DESCRIPTION_KEY,
   isCommercialShopInspectionContext,
   isLandInspectionContext,
   isMovablesPresent,
+  isOccupied,
   listInspectorPhotoValidationIssues,
   sanitizeInspectorDraftForLand,
   visibleInspectorFeatureFields,
@@ -23,6 +29,10 @@ export type InspectorWorkspaceFieldErrors = Partial<
     | "inspectionTime"
     | "mapLatitude"
     | "mapLongitude"
+    | "accessRouteDescription"
+    | "accessContactName"
+    | "accessContactPhone"
+    | "accessContactRole"
     | "inspectionConfirmed"
     | "observations"
     | "definedPhotos"
@@ -30,6 +40,7 @@ export type InspectorWorkspaceFieldErrors = Partial<
     | "componentPhotos"
     | "features"
     | "movablesDescription"
+    | "occupancyDescription"
     | "_"
     ,
     string
@@ -62,10 +73,19 @@ export function inspectorFieldTargetId(
     case "mapLatitude":
     case "mapLongitude":
       return "ins-map-section";
+    case "accessRouteDescription":
+    case "accessContactName":
+      return "ins-access-name";
+    case "accessContactPhone":
+      return "ins-access-phone";
+    case "accessContactRole":
+      return "ins-access-role";
     case "features":
       return "ins-features-section";
     case "movablesDescription":
       return `ins-feature-${MOVABLES_DESCRIPTION_KEY}`;
+    case "occupancyDescription":
+      return `ins-${OCCUPANCY_DESCRIPTION_KEY}`;
     case "featurePhotos":
       return "ins-features-section";
     case "componentPhotos":
@@ -90,11 +110,26 @@ export function firstInspectorWorkspaceErrorTarget(
   if (errors.mapLatitude || errors.mapLongitude) {
     return inspectorFieldTargetId("mapLatitude");
   }
+  if (errors.accessContactName) {
+    return inspectorFieldTargetId("accessContactName");
+  }
+  if (errors.accessContactPhone) {
+    return inspectorFieldTargetId("accessContactPhone");
+  }
+  if (errors.accessContactRole) {
+    return inspectorFieldTargetId("accessContactRole");
+  }
+  if (errors.accessRouteDescription) {
+    return inspectorFieldTargetId("accessRouteDescription");
+  }
   if (errors.emptyFeatureKeys?.[0]) {
     return inspectorFieldTargetId(`feature:${errors.emptyFeatureKeys[0]}`);
   }
   if (errors.movablesDescription) {
     return inspectorFieldTargetId("movablesDescription");
+  }
+  if (errors.occupancyDescription) {
+    return inspectorFieldTargetId("occupancyDescription");
   }
   if (errors.missingFeaturePhotoKey) {
     return inspectorFieldTargetId(
@@ -129,6 +164,8 @@ export function validateInspectorWorkspace(
     boundariesUnavailable?: boolean;
     classification?: string | null;
     propertyType?: string | null;
+    includeRetiredFeatureKeys?: readonly string[];
+    specialistProofServicesOnly?: boolean;
   },
 ): InspectorWorkspaceFieldErrors {
   const errors: InspectorWorkspaceFieldErrors = {};
@@ -148,7 +185,9 @@ export function validateInspectorWorkspace(
     classification: options?.classification,
     propertyType: options?.propertyType,
   });
-  const featureFields = visibleInspectorFeatureFields(isLand);
+  const featureFields = visibleInspectorFeatureFields(isLand, {
+    includeRetiredKeys: options?.includeRetiredFeatureKeys,
+  });
   if (!submission.inspectionDate.trim()) {
     errors.inspectionDate = "تاريخ المعاينة مطلوب";
   }
@@ -163,6 +202,22 @@ export function validateInspectorWorkspace(
     )
   ) {
     errors.mapLatitude = "يجب تحديد موقع العقار (GPS)";
+  }
+  if (!submission.accessContactName.trim()) {
+    errors.accessContactName = `${ACCESS_CONTACT_NAME_LABEL} مطلوب`;
+  }
+  if (!submission.accessContactPhone.trim()) {
+    errors.accessContactPhone = `${ACCESS_CONTACT_PHONE_LABEL} مطلوب`;
+  }
+  if (!submission.accessContactRole.trim()) {
+    errors.accessContactRole = `${ACCESS_CONTACT_ROLE_LABEL} مطلوبة`;
+  }
+  if (
+    errors.accessContactName ||
+    errors.accessContactPhone ||
+    errors.accessContactRole
+  ) {
+    errors.accessRouteDescription = ACCESS_ROUTE_DESCRIPTION_REQUIRED;
   }
   if (!submission.inspectionConfirmed) {
     errors.inspectionConfirmed = "يجب التأشير على إقرار المعاينة";
@@ -184,6 +239,11 @@ export function validateInspectorWorkspace(
     errors.movablesDescription = "وصف المنقولات مطلوب عند اختيار «نعم»";
   }
 
+  if (isOccupied(submission.featureValues)
+    && !(submission.featureValues[OCCUPANCY_DESCRIPTION_KEY] ?? "").trim()) {
+    errors.occupancyDescription = "سبب الإشغال مطلوب عند اختيار «مشغول»";
+  }
+
   const incompleteObs = submission.observations.filter((o) => !o.text.trim());
   if (incompleteObs.length > 0) {
     errors.observations = "كل ملاحظة يجب أن تتضمن شرحاً";
@@ -192,6 +252,7 @@ export function validateInspectorWorkspace(
   const photoIssues = listInspectorPhotoValidationIssues(submission, {
     isLand,
     isShop,
+    specialistProofServicesOnly: options?.specialistProofServicesOnly,
   });
   if (photoIssues.length > 0) {
     const featureIssue = photoIssues.find((issue) => issue.includes("توثيقية"));
@@ -227,8 +288,13 @@ const INSPECTOR_ERROR_KEYS = [
   "inspectionDate",
   "inspectionTime",
   "mapLatitude",
+  "accessContactName",
+  "accessContactPhone",
+  "accessContactRole",
+  "accessRouteDescription",
   "features",
   "movablesDescription",
+  "occupancyDescription",
   "featurePhotos",
   "componentPhotos",
   "definedPhotos",

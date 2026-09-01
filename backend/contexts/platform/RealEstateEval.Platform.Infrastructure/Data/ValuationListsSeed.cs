@@ -17,6 +17,7 @@ internal static class ValuationListsSeed
         [ValuationListIds.Methods] = Methods(),
         [ValuationListIds.Comparables] = Comparables(),
         [ValuationListIds.Facades] = Facades(),
+        [ValuationListIds.BoundaryTypes] = BoundaryTypes(),
         [ValuationListIds.Glossary] = Glossary(),
         [ValuationListIds.IvsStandards] = IvsStandards(),
         [ValuationListIds.Attachments] = Attachments(),
@@ -122,11 +123,37 @@ internal static class ValuationListsSeed
     }
 
     /// <summary>
-    /// «أنواع الواجهات» — option list for the inspector's «الواجهة» field
-    /// (INSPECTOR_FEATURE_FIELDS key "facade"). Intentionally empty: the admin
-    /// owns these values and adds them from the dictionary screen.
+    /// «أنواع الواجهات» — inspector «نوع الواجهة» picker (mobile + desktop wizard).
     /// </summary>
-    private static List<ValuationListItemDto> Facades() => [];
+    private static List<ValuationListItemDto> Facades()
+    {
+        var i = 0;
+        return
+        [
+            Row(ValuationListIds.Facades, ++i, "paint", "دهان", 0),
+            Row(ValuationListIds.Facades, ++i, "stone", "حجر", 0),
+            Row(ValuationListIds.Facades, ++i, "marble", "رخام", 0),
+            Row(ValuationListIds.Facades, ++i, "glass", "زجاج", 0),
+            Row(ValuationListIds.Facades, ++i, "brick", "طوب", 0),
+            Row(ValuationListIds.Facades, ++i, "none", "بدون تشطيب", 0),
+            Row(ValuationListIds.Facades, ++i, "other", "أخرى", 0),
+        ];
+    }
+
+    /// <summary>
+    /// «أنواع الحد» — PO bourse boundary «النوع» column (street · plot · passage · rail).
+    /// </summary>
+    private static List<ValuationListItemDto> BoundaryTypes()
+    {
+        var i = 0;
+        return
+        [
+            Row(ValuationListIds.BoundaryTypes, ++i, "street", "شارع", 0),
+            Row(ValuationListIds.BoundaryTypes, ++i, "plot", "قطعة", 0),
+            Row(ValuationListIds.BoundaryTypes, ++i, "passage", "ممر", 0),
+            Row(ValuationListIds.BoundaryTypes, ++i, "rail", "سكة", 0),
+        ];
+    }
 
     private static List<ValuationListItemDto> IvsStandards()
     {

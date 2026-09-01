@@ -15,6 +15,21 @@ export {
 } from "./offline/offline-write";
 export { installOfflineWriteInterceptor } from "./offline/install-offline-write-interceptor";
 export {
+  BASIC_DOC_PREFETCH_SCOPES,
+  BASIC_DOCS_PREFETCH_ID,
+  OPS_TASKS_PREFETCH_ID,
+  PARTY_SUBMISSIONS_PREFETCH_ID,
+  WORKFLOW_TASKS_PREFETCH_ID,
+  mergePrefetchedOperationsTaskPatch,
+  readPrefetchedBasicDocMap,
+  readPrefetchedJson,
+  readPrefetchedOperationsTasks,
+  readPrefetchedPartySubmissions,
+  readPrefetchedWorkflowTasks,
+  savePrefetchedOperationsTasks,
+  type BasicDocPrefetchEntry,
+} from "./offline/prefetch-read";
+export {
   buildEvidenceStampLines,
   compressEvidenceImage,
   extractEvidenceExif,

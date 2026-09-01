@@ -5,6 +5,8 @@ import {
   uploadAttachment,
 } from "@platform/api-client";
 import { prototypeModulesApiConfig } from "@platform/app-shared/prototype/prototype-modules-api-config";
+import { currentOfflineUserId } from "@platform/app-shared/offline/offline-write";
+import { getOfflineBlob } from "@platform/offline-client";
 import {
   blobToDataUrl,
   fileToBase64,
@@ -426,26 +428,37 @@ async function hydrateOneMeta(
     attachmentId: meta.id,
   };
 
-  if (!blobResult.ok) {
+  let blob: Blob | null = blobResult.ok ? blobResult.data : null;
+  if (!blob) {
+    const userId = currentOfflineUserId();
+    if (userId) {
+      const cached = await getOfflineBlob(userId, meta.id);
+      if (cached?.bytes) {
+        blob = new Blob([cached.bytes], { type: cached.contentType });
+      }
+    }
+  }
+
+  if (!blob) {
     upsertCachedDoc(key, payload, generationAtStart);
     return;
   }
 
   if (
     meta.contentType.startsWith("image/") &&
-    blobResult.data.size <= MAX_IMAGE_BYTES
+    blob.size <= MAX_IMAGE_BYTES
   ) {
     try {
-      payload.dataUrl = await blobToDataUrl(blobResult.data);
+      payload.dataUrl = await blobToDataUrl(blob);
     } catch {
       /* metadata only */
     }
   } else if (
     isPdfMeta(meta.contentType, meta.fileName) &&
-    blobResult.data.size <= MAX_PDF_PREVIEW_BYTES
+    blob.size <= MAX_PDF_PREVIEW_BYTES
   ) {
     try {
-      payload.dataUrl = await pdfBlobToFirstPageDataUrl(blobResult.data);
+      payload.dataUrl = await pdfBlobToFirstPageDataUrl(blob);
     } catch {
       /* metadata only */
     }

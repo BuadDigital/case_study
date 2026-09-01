@@ -652,6 +652,27 @@ export async function savePrefetch(
   });
 }
 
+export async function getPrefetch(
+  userId: string,
+  id: string,
+): Promise<OfflinePrefetchRecord | null> {
+  return getEncrypted<OfflinePrefetchRecord>("prefetch", userId, id);
+}
+
+export async function listPrefetchByUser(
+  userId: string,
+): Promise<OfflinePrefetchRecord[]> {
+  return listEncrypted<OfflinePrefetchRecord>("prefetch", userId);
+}
+
+export async function listPrefetchByKind(
+  userId: string,
+  kind: string,
+): Promise<OfflinePrefetchRecord[]> {
+  const rows = await listPrefetchByUser(userId);
+  return rows.filter((row) => row.kind === kind);
+}
+
 export async function setMeta(key: string, value: unknown): Promise<void> {
   await withDb((db) =>
     db.put("meta", { key, valueJson: JSON.stringify(value) }),

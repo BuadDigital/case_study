@@ -9,7 +9,11 @@ export {
   closeOfflineDb,
   countPendingOutbox,
   getOfflineDraft,
+  getOfflineBlob,
+  getPrefetch,
   listOutboxItems,
+  listPrefetchByKind,
+  listPrefetchByUser,
   purgeOfflineData,
   requestPersistentStorage,
   saveOfflineDraft,
@@ -29,6 +33,7 @@ export {
   tickOfflineLease,
 } from "./lease";
 export {
+  cachePrefetchAttachment,
   enqueueSubmitLocally,
   persistAttachmentLocally,
   persistDraftLocally,

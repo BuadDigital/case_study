@@ -18,8 +18,11 @@ import {
   INSPECTOR_FEATURE_FIELDS,
   MOVABLES_DESCRIPTION_KEY,
   MOVABLES_DESCRIPTION_LABEL,
+  OCCUPANCY_DESCRIPTION_KEY,
+  OCCUPANCY_DESCRIPTION_LABEL,
   inspectorWorkspaceStatusLabel,
   isMovablesPresent,
+  isOccupied,
 } from "./inspector-workspace-data";
 import type { InspectorWorkspaceSnapshot } from "./inspector-workspace-storage";
 import type { PropertyDetailPartyRoleKey } from "./property-detail-parties";
@@ -788,6 +791,12 @@ export function buildFromFieldInspection(
       pushInspectionField(
         MOVABLES_DESCRIPTION_LABEL,
         submission.featureValues[MOVABLES_DESCRIPTION_KEY] ?? "",
+      );
+    }
+    if (field.key === "occupancyState" && isOccupied(submission.featureValues)) {
+      pushInspectionField(
+        OCCUPANCY_DESCRIPTION_LABEL,
+        submission.featureValues[OCCUPANCY_DESCRIPTION_KEY] ?? "",
       );
     }
   }

@@ -43,10 +43,27 @@ export type KeyEnvelopeMutationFn = (input: {
   payloadJson: string;
 }) => Promise<{ ok: true } | { ok: false; error: string; terminal?: boolean }>;
 
+export type OperationsTaskPatchFn = (input: {
+  taskId: string;
+  bodyJson: string;
+}) => Promise<{ ok: true } | { ok: false; error: string; terminal?: boolean }>;
+
+export type OperationsTaskCommentFn = (input: {
+  taskId: string;
+  payloadJson: string;
+}) => Promise<{ ok: true } | { ok: false; error: string; terminal?: boolean }>;
+
+export type PropertyCourtAccessFn = (input: {
+  bodyJson: string;
+}) => Promise<{ ok: true } | { ok: false; error: string; terminal?: boolean }>;
+
 export type OfflineSyncDeps = {
   uploadAttachment: AttachmentUploadFn;
   saveSubmission: SubmissionSaveFn;
   submitSubmission: SubmissionSubmitFn;
+  patchOperationsTask?: OperationsTaskPatchFn;
+  addOperationsTaskComment?: OperationsTaskCommentFn;
+  upsertPropertyCourtAccess?: PropertyCourtAccessFn;
   createKeyEnvelope?: KeyEnvelopeCreateFn;
   addKeyEnvelopeAssignment?: KeyEnvelopeMutationFn;
   confirmKeyEnvelopeAssignment?: KeyEnvelopeMutationFn;
@@ -122,9 +139,16 @@ export async function requestBackgroundSync(): Promise<boolean> {
 
 function kindOrder(kind: OutboxKind): number {
   if (kind === "attachment-upload") return 0;
-  if (kind === "party-submission-save") return 1;
-  if (kind === "key-envelope-create") return 1;
   if (
+    kind === "party-submission-save" ||
+    kind === "key-envelope-create" ||
+    kind === "operations-task-patch" ||
+    kind === "property-court-access"
+  ) {
+    return 1;
+  }
+  if (
+    kind === "operations-task-comment" ||
     kind === "key-envelope-assignment-add" ||
     kind === "key-envelope-handoff-create"
   ) {
@@ -368,6 +392,123 @@ async function processSubmit(
   return true;
 }
 
+async function processOperationsTaskPatch(
+  userId: string,
+  item: OfflineOutboxItem,
+  deps: OfflineSyncDeps,
+  attachmentMap: Map<string, string>,
+): Promise<boolean> {
+  if (!deps.patchOperationsTask) {
+    await saveOutboxItem({
+      ...item,
+      status: "failed",
+      lastError: "مزامنة مهام العمليات غير مفعّلة",
+      updatedAtUtc: new Date().toISOString(),
+    });
+    return false;
+  }
+  const bodyJson = rewriteLocalAttachmentIds(item.payloadJson, attachmentMap);
+  if (bodyJson.includes("local:")) {
+    await saveOutboxItem({
+      ...item,
+      status: "failed",
+      lastError: "بانتظار رفع المرفقات",
+      updatedAtUtc: new Date().toISOString(),
+    });
+    return false;
+  }
+  const result = await deps.patchOperationsTask({
+    taskId: item.targetId,
+    bodyJson,
+  });
+  if (!result.ok) {
+    await saveOutboxItem({
+      ...item,
+      status: result.terminal ? "terminal" : "failed",
+      attempts: item.attempts + 1,
+      lastError: result.error,
+      updatedAtUtc: new Date().toISOString(),
+    });
+    return false;
+  }
+  await deleteOutboxItem(userId, item.id);
+  return true;
+}
+
+async function processOperationsTaskComment(
+  userId: string,
+  item: OfflineOutboxItem,
+  deps: OfflineSyncDeps,
+  attachmentMap: Map<string, string>,
+): Promise<boolean> {
+  if (!deps.addOperationsTaskComment) {
+    await saveOutboxItem({
+      ...item,
+      status: "failed",
+      lastError: "مزامنة تعليقات المهام غير مفعّلة",
+      updatedAtUtc: new Date().toISOString(),
+    });
+    return false;
+  }
+  const payloadJson = rewriteLocalAttachmentIds(item.payloadJson, attachmentMap);
+  if (payloadJson.includes("local:")) {
+    await saveOutboxItem({
+      ...item,
+      status: "failed",
+      lastError: "بانتظار رفع مرفقات التعليق",
+      updatedAtUtc: new Date().toISOString(),
+    });
+    return false;
+  }
+  const result = await deps.addOperationsTaskComment({
+    taskId: item.targetId,
+    payloadJson,
+  });
+  if (!result.ok) {
+    await saveOutboxItem({
+      ...item,
+      status: result.terminal ? "terminal" : "failed",
+      attempts: item.attempts + 1,
+      lastError: result.error,
+      updatedAtUtc: new Date().toISOString(),
+    });
+    return false;
+  }
+  await deleteOutboxItem(userId, item.id);
+  return true;
+}
+
+async function processPropertyCourtAccess(
+  userId: string,
+  item: OfflineOutboxItem,
+  deps: OfflineSyncDeps,
+): Promise<boolean> {
+  if (!deps.upsertPropertyCourtAccess) {
+    await saveOutboxItem({
+      ...item,
+      status: "failed",
+      lastError: "مزامنة مسار الدخول غير مفعّلة",
+      updatedAtUtc: new Date().toISOString(),
+    });
+    return false;
+  }
+  const result = await deps.upsertPropertyCourtAccess({
+    bodyJson: item.payloadJson,
+  });
+  if (!result.ok) {
+    await saveOutboxItem({
+      ...item,
+      status: result.terminal ? "terminal" : "failed",
+      attempts: item.attempts + 1,
+      lastError: result.error,
+      updatedAtUtc: new Date().toISOString(),
+    });
+    return false;
+  }
+  await deleteOutboxItem(userId, item.id);
+  return true;
+}
+
 async function processKeyEnvelopeCreate(
   userId: string,
   item: OfflineOutboxItem,
@@ -555,6 +696,22 @@ export async function runOfflineSync(
         ok = await processSave(userId, item, deps, attachmentMap);
       } else if (item.kind === "party-submission-submit") {
         ok = await processSubmit(userId, item, deps);
+      } else if (item.kind === "operations-task-patch") {
+        ok = await processOperationsTaskPatch(
+          userId,
+          item,
+          deps,
+          attachmentMap,
+        );
+      } else if (item.kind === "operations-task-comment") {
+        ok = await processOperationsTaskComment(
+          userId,
+          item,
+          deps,
+          attachmentMap,
+        );
+      } else if (item.kind === "property-court-access") {
+        ok = await processPropertyCourtAccess(userId, item, deps);
       } else if (item.kind === "key-envelope-create") {
         ok = await processKeyEnvelopeCreate(userId, item, deps, attachmentMap);
       } else if (item.kind === "key-envelope-assignment-add") {

@@ -52,6 +52,19 @@ public static class FieldInspectionSubmissionValidator
         if (!ValidateGps(root))
             errors["mapLatitude"] = "يجب تحديد موقع العقار (GPS)";
 
+        if (!HasNonEmptyString(root, "accessContactName"))
+            errors["accessContactName"] = "الاسم مطلوب";
+        if (!HasNonEmptyString(root, "accessContactPhone"))
+            errors["accessContactPhone"] = "رقم الجوال مطلوب";
+        if (!HasNonEmptyString(root, "accessContactRole"))
+            errors["accessContactRole"] = "الصلة مطلوبة";
+        if (errors.ContainsKey("accessContactName")
+            || errors.ContainsKey("accessContactPhone")
+            || errors.ContainsKey("accessContactRole"))
+        {
+            errors["accessRouteDescription"] = "أكمل بيانات من سهّل الوصول (الاسم، رقم الجوال، الصلة)";
+        }
+
         if (!GetBool(root, "inspectionConfirmed"))
             errors["inspectionConfirmed"] = "يجب التأشير على إقرار المعاينة";
 
@@ -60,6 +73,9 @@ public static class FieldInspectionSubmissionValidator
 
         if (RequiresMovablesDescription(root))
             errors["movablesDescription"] = "وصف المنقولات مطلوب عند اختيار «نعم»";
+
+        if (RequiresOccupancyDescription(root))
+            errors["occupancyDescription"] = "سبب الإشغال مطلوب عند اختيار «مشغول»";
 
         var photoIssues = ListPhotoValidationIssues(root);
         foreach (var issue in photoIssues)
@@ -165,6 +181,19 @@ public static class FieldInspectionSubmissionValidator
         var movables = ReadString(features, "movables");
         if (movables != "نعم") return false;
         return string.IsNullOrWhiteSpace(ReadString(features, "movablesDescription"));
+    }
+
+    private static bool RequiresOccupancyDescription(JsonElement root)
+    {
+        if (!root.TryGetProperty("featureValues", out var features) ||
+            features.ValueKind != JsonValueKind.Object)
+        {
+            return false;
+        }
+
+        var occupancy = ReadString(features, "occupancyState");
+        if (occupancy != "مشغول") return false;
+        return string.IsNullOrWhiteSpace(ReadString(features, "occupancyDescription"));
     }
 
     private static bool HasIncompleteObservations(JsonElement root)

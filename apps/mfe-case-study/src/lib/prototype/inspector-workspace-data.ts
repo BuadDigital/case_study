@@ -70,8 +70,48 @@ export const MOVABLES_FEATURE_KEY = "movables";
 export const MOVABLES_DESCRIPTION_KEY = "movablesDescription";
 export const MOVABLES_DESCRIPTION_LABEL = "وصف المنقولات";
 
+export const OCCUPANCY_STATE_KEY = "occupancyState";
+export const OCCUPANCY_DESCRIPTION_KEY = "occupancyDescription";
+export const OCCUPANCY_DESCRIPTION_LABEL = "سبب الإشغال";
+
+/** Who facilitated site access — contact fields (same as بيانات الاتصال). */
+export const ACCESS_ROUTE_DESCRIPTION_LABEL = "تأكيد موقع العقار";
+export const ACCESS_ROUTE_DESCRIPTION_HINT =
+  "تم الوصول الى العقار بمعرفة:";
+export const ACCESS_CONTACT_NAME_LABEL = "الاسم";
+export const ACCESS_CONTACT_PHONE_LABEL = "رقم الجوال";
+export const ACCESS_CONTACT_ROLE_LABEL = "الصلة";
+export const ACCESS_CONTACT_NEW_BUTTON_LABEL = "+ جهة اتصال جديدة";
+export const ACCESS_CONTACT_ADD_BUTTON_LABEL = "إضافة لجهات الاتصال";
+export const ACCESS_ROUTE_DESCRIPTION_REQUIRED =
+  "أكمل بيانات من سهّل الوصول (الاسم، رقم الجوال، الصلة)";
+
+export const SITE_LOCATION_ACK_BUTTON_LABEL = "إقرار صحة الموقع";
+export const SITE_LOCATION_ACK_PENDING_MESSAGE =
+  "سيتم إضافة خطاب إقرار ضابط الاتصال بصحة موقع العقار قريباً.";
+
+/** Compose Infath / payload free-text from the three contact fields. */
+export function composeAccessRouteDescription(input: {
+  name: string;
+  phone: string;
+  role: string;
+}): string {
+  const name = input.name.trim();
+  const phone = input.phone.trim();
+  const role = input.role.trim();
+  const parts: string[] = [];
+  if (role) parts.push(role);
+  if (name) parts.push(name);
+  if (phone) parts.push(`رقم الجوال ${phone}`);
+  return parts.join("، ");
+}
+
 export function isMovablesPresent(featureValues: Record<string, string>): boolean {
   return (featureValues[MOVABLES_FEATURE_KEY] ?? "").trim() === "نعم";
+}
+
+export function isOccupied(featureValues: Record<string, string>): boolean {
+  return (featureValues[OCCUPANCY_STATE_KEY] ?? "").trim() === "مشغول";
 }
 
 export function normalizeInspectorLandText(value: string): string {
@@ -101,6 +141,9 @@ export function patchInspectorFeatureValues(
   const values = { ...featureValues, [key]: next };
   if (key === MOVABLES_FEATURE_KEY && next.trim() !== "نعم") {
     values[MOVABLES_DESCRIPTION_KEY] = "";
+  }
+  if (key === OCCUPANCY_STATE_KEY && next.trim() !== "مشغول") {
+    values[OCCUPANCY_DESCRIPTION_KEY] = "";
   }
   if (key === "assetSubject" && textLooksLikeVacantLand(next)) {
     for (const hidden of LAND_HIDDEN_INSPECTOR_FEATURE_KEYS) {
@@ -297,6 +340,10 @@ export function sanitizeInspectorDraftForLand(
       changed = true;
     }
   }
+  if (featureValues[OCCUPANCY_DESCRIPTION_KEY]) {
+    featureValues[OCCUPANCY_DESCRIPTION_KEY] = "";
+    changed = true;
+  }
   if (!changed) return draft;
   return { ...draft, featureValues, featurePhotoAttachments };
 }
@@ -352,14 +399,25 @@ export const RETIRED_INSPECTOR_FEATURE_KEYS = new Set<string>([
   "hasCentralAc",
   "hasTanks",
   "hasLandscaping",
+  "zoneStatus",
 ]);
+
+/** Retired for the field inspector — shown again in case-study specialist appraisal. */
+export const CASE_STUDY_SPECIALIST_FEATURE_KEYS = ["zoneStatus"] as const;
+
+export type InspectorFeatureFieldVisibilityOptions = {
+  includeRetiredKeys?: readonly string[];
+};
 
 export function visibleInspectorFeatureFields(
   isLand: boolean,
+  options?: InspectorFeatureFieldVisibilityOptions,
 ): InspectorFeatureField[] {
+  const includeRetired = new Set(options?.includeRetiredKeys ?? []);
   return INSPECTOR_FEATURE_FIELDS.filter(
     (field) =>
-      !RETIRED_INSPECTOR_FEATURE_KEYS.has(field.key) &&
+      (includeRetired.has(field.key) ||
+        !RETIRED_INSPECTOR_FEATURE_KEYS.has(field.key)) &&
       (!isLand || !isLandHiddenInspectorFeatureKey(field.key)),
   );
 }
@@ -373,6 +431,17 @@ export const INSPECTOR_SERVICE_OPTIONS = [
   "سفلتة",
   "إنارة",
 ] as const;
+
+/** Specialist must attach proof from transaction photos when these services are selected. */
+export const SPECIALIST_PROOF_SERVICES = ["كهرباء", "ماء"] as const;
+
+export type SpecialistProofService = (typeof SPECIALIST_PROOF_SERVICES)[number];
+
+export function isSpecialistProofService(
+  label: string,
+): label is SpecialistProofService {
+  return (SPECIALIST_PROOF_SERVICES as readonly string[]).includes(label);
+}
 
 export const INSPECTOR_AMENITY_OPTIONS = [
   "مدارس",
@@ -438,6 +507,22 @@ export function listServiceAmenityPhotoSlots(draft: {
   return out;
 }
 
+/** Electricity / water proof slots — case-study specialist picks from transaction photos. */
+export function listSpecialistProofServicePhotoSlots(draft: {
+  services: string[];
+}): ServiceAmenityPhotoSlotDef[] {
+  const out: ServiceAmenityPhotoSlotDef[] = [];
+  for (const label of SPECIALIST_PROOF_SERVICES) {
+    if (!draft.services.includes(label)) continue;
+    out.push({
+      id: serviceAmenityPhotoSlotId("service", label),
+      kind: "service",
+      label,
+    });
+  }
+  return out;
+}
+
 export function isServiceAmenityPhotoSlotComplete(
   slot: InspectorDefinedPhotoSlot | undefined,
 ): boolean {
@@ -485,7 +570,11 @@ export type InspectorWorkspaceDraft = {
   streetName: string;
   mainStreetName: string;
   streetWidthM: string;
+  /** Composed Infath free-text from access contact fields. */
   accessRouteDescription: string;
+  accessContactName: string;
+  accessContactPhone: string;
+  accessContactRole: string;
   roomCount: string;
   hallCount: string;
   unitCount: string;
@@ -551,6 +640,41 @@ export type InspectorWorkspaceDraft = {
   updatedAtUtc: string;
 };
 
+export function patchAccessContact(
+  draft: Pick<
+    InspectorWorkspaceDraft,
+    | "accessContactName"
+    | "accessContactPhone"
+    | "accessContactRole"
+    | "accessRouteDescription"
+  >,
+  patch: Partial<{
+    accessContactName: string;
+    accessContactPhone: string;
+    accessContactRole: string;
+  }>,
+): Pick<
+  InspectorWorkspaceDraft,
+  | "accessContactName"
+  | "accessContactPhone"
+  | "accessContactRole"
+  | "accessRouteDescription"
+> {
+  const next = {
+    accessContactName: patch.accessContactName ?? draft.accessContactName,
+    accessContactPhone: patch.accessContactPhone ?? draft.accessContactPhone,
+    accessContactRole: patch.accessContactRole ?? draft.accessContactRole,
+  };
+  return {
+    ...next,
+    accessRouteDescription: composeAccessRouteDescription({
+      name: next.accessContactName,
+      phone: next.accessContactPhone,
+      role: next.accessContactRole,
+    }),
+  };
+}
+
 function emptyDefinedPhotos(): Record<string, InspectorDefinedPhotoSlot> {
   return {};
 }
@@ -607,6 +731,9 @@ export function createInspectorWorkspaceDraft(input: {
     mainStreetName: "",
     streetWidthM: "",
     accessRouteDescription: "",
+    accessContactName: "",
+    accessContactPhone: "",
+    accessContactRole: "",
     roomCount: "",
     hallCount: "",
     unitCount: "",
@@ -709,12 +836,15 @@ export function inspectorPhotoStampText(
   return [deed ? `صك ${deed}` : "", coords, when].filter(Boolean).join("\n");
 }
 
-export function computeInspectorPhotoCoverage(draft: InspectorWorkspaceDraft): {
+export function computeInspectorPhotoCoverage(
+  draft: InspectorWorkspaceDraft,
+  slotDefs?: ServiceAmenityPhotoSlotDef[],
+): {
   requiredTotal: number;
   requiredDone: number;
   pendingApproval: number;
 } {
-  const slots = listServiceAmenityPhotoSlots(draft);
+  const slots = slotDefs ?? listServiceAmenityPhotoSlots(draft);
   const requiredTotal = slots.length;
   const requiredDone = slots.filter((def) =>
     isServiceAmenityPhotoSlotComplete(draft.definedPhotos[def.id]),
@@ -750,6 +880,33 @@ export function parseInspectorCount(value: string): number {
   return Number.isFinite(n) && n > 0 ? n : 0;
 }
 
+/** Parses a non-negative area in m² from inspector text input. */
+export function parseInspectorAreaSqm(value: string): number {
+  const trimmed = value.trim().replace(/,/g, "");
+  if (!trimmed) return 0;
+  const n = Number(trimmed);
+  return Number.isFinite(n) && n >= 0 ? n : 0;
+}
+
+/** buildingsTotal = builtArea + basementTotal + annexTotal */
+export function computeBuildingsTotalSqm(
+  builtArea: string,
+  basementTotal: string,
+  annexTotal: string,
+): string {
+  const hasInput = [builtArea, basementTotal, annexTotal].some(
+    (v) => v.trim().length > 0,
+  );
+  if (!hasInput) return "";
+  const sum =
+    parseInspectorAreaSqm(builtArea) +
+    parseInspectorAreaSqm(basementTotal) +
+    parseInspectorAreaSqm(annexTotal);
+  if (!Number.isFinite(sum)) return "";
+  if (Number.isInteger(sum)) return String(sum);
+  return String(Math.round(sum * 100) / 100);
+}
+
 export function inspectorFeatureRequiresPhoto(
   field: InspectorFeatureField,
   value: string,
@@ -768,6 +925,8 @@ export function listInspectorPhotoValidationIssues(
     isShop?: boolean;
     classification?: string | null;
     propertyType?: string | null;
+    /** Case-study specialist: only كهرباء/ماء proof from transaction photos. */
+    specialistProofServicesOnly?: boolean;
   },
 ): string[] {
   const issues: string[] = [];
@@ -817,11 +976,17 @@ export function listInspectorPhotoValidationIssues(
     issues.push("يجب إرفاق صورة البئر");
   }
 
+  const proofSlots = options?.specialistProofServicesOnly
+    ? listSpecialistProofServicePhotoSlots(draft)
+    : undefined;
+
   const { requiredTotal, requiredDone, pendingApproval } =
-    computeInspectorPhotoCoverage(draft);
+    computeInspectorPhotoCoverage(draft, proofSlots);
   if (requiredDone < requiredTotal) {
     issues.push(
-      "وثّق بالصورة كل خدمة/مرفق اخترته في «الخدمات والمرافق المحيطة»",
+      options?.specialistProofServicesOnly
+        ? "اختر صورة إثبات من صور المعاملة لكل خدمة (كهرباء / ماء) محددة"
+        : "وثّق بالصورة كل خدمة/مرفق اخترته في «الخدمات والمرافق المحيطة»",
     );
   }
   if (pendingApproval > 0) {
@@ -829,7 +994,7 @@ export function listInspectorPhotoValidationIssues(
   }
 
   const untagged = draft.freePhotos.filter((photo) => !photo.category).length;
-  if (untagged > 0) {
+  if (!options?.specialistProofServicesOnly && untagged > 0) {
     issues.push(`${untagged} صورة إضافية بحاجة لتعريف`);
   }
 

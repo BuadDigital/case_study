@@ -21,7 +21,26 @@ public class FieldInspectionSubmissionValidatorTests
         Assert.Contains("inspectionDate", errors.Keys);
         Assert.Contains("inspectionTime", errors.Keys);
         Assert.Contains("mapLatitude", errors.Keys);
+        Assert.Contains("accessContactName", errors.Keys);
+        Assert.Contains("accessContactPhone", errors.Keys);
+        Assert.Contains("accessContactRole", errors.Keys);
+        Assert.Contains("accessRouteDescription", errors.Keys);
         Assert.Contains("inspectionConfirmed", errors.Keys);
+    }
+
+    [Fact]
+    public void Validate_rejects_missing_access_contact_fields()
+    {
+        using var doc = JsonDocument.Parse(
+            MinimalValidPayload()
+                .Replace("\"accessContactName\": \"عبدالرحمن عبدالله الغامدي\",", "\"accessContactName\": \"\",")
+                .Replace("\"accessContactPhone\": \"0500000001\",", "\"accessContactPhone\": \"\",")
+                .Replace("\"accessContactRole\": \"مالك\",", "\"accessContactRole\": \"\","));
+        var errors = FieldInspectionSubmissionValidator.Validate(doc.RootElement);
+        Assert.Equal("الاسم مطلوب", errors["accessContactName"]);
+        Assert.Equal("رقم الجوال مطلوب", errors["accessContactPhone"]);
+        Assert.Equal("الصلة مطلوبة", errors["accessContactRole"]);
+        Assert.Equal("أكمل بيانات من سهّل الوصول (الاسم، رقم الجوال، الصلة)", errors["accessRouteDescription"]);
     }
 
     [Fact]
@@ -55,6 +74,28 @@ public class FieldInspectionSubmissionValidatorTests
                 """ "featureValues": { "movables": "نعم", "movablesDescription": "أثاث ومكيفات" }, "featurePhotoAttachments": { "movables": { "fileName": "m.jpg", "attachmentId": "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaa3" } } """));
         var errors = FieldInspectionSubmissionValidator.Validate(doc.RootElement);
         Assert.DoesNotContain("movablesDescription", errors.Keys);
+    }
+
+    [Fact]
+    public void Validate_rejects_occupied_without_description()
+    {
+        using var doc = JsonDocument.Parse(
+            MinimalValidPayload().Replace(
+                "\"featureValues\": {}",
+                """ "featureValues": { "occupancyState": "مشغول" } """));
+        var errors = FieldInspectionSubmissionValidator.Validate(doc.RootElement);
+        Assert.Equal("سبب الإشغال مطلوب عند اختيار «مشغول»", errors["occupancyDescription"]);
+    }
+
+    [Fact]
+    public void Validate_accepts_occupied_with_description()
+    {
+        using var doc = JsonDocument.Parse(
+            MinimalValidPayload().Replace(
+                "\"featureValues\": {}",
+                """ "featureValues": { "occupancyState": "مشغول", "occupancyDescription": "مستأجر حتى نهاية العقد" } """));
+        var errors = FieldInspectionSubmissionValidator.Validate(doc.RootElement);
+        Assert.DoesNotContain("occupancyDescription", errors.Keys);
     }
 
     [Fact]
@@ -226,6 +267,10 @@ public class FieldInspectionSubmissionValidatorTests
           "inspectionTime": "10:30",
           "mapLatitude": "21.481000",
           "mapLongitude": "39.186500",
+          "accessContactName": "عبدالرحمن عبدالله الغامدي",
+          "accessContactPhone": "0500000001",
+          "accessContactRole": "مالك",
+          "accessRouteDescription": "مالك، عبدالرحمن عبدالله الغامدي، رقم الجوال 0500000001",
           "inspectionConfirmed": true,
           "hasAnnex": "لا",
           "showroomCount": "",

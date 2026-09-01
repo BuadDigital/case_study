@@ -129,6 +129,14 @@ export const INS_TH_CLASS =
 
 export const INS_TD_CLASS = "border border-border px-2.5 py-[7px] text-xs";
 
+/** «تثبيت الموقع» / «إقرار صحة الموقع» — wizard map card action. */
+export const INS_WIZARD_PIN_BUTTON_CLASS =
+  "inline-flex h-[38px] items-center justify-center rounded-lg border border-border-md bg-surface-2 px-5 font-inherit text-[12.5px] font-bold text-heading transition-colors hover:bg-surface disabled:cursor-not-allowed disabled:opacity-50";
+
+/** Mobile map pin action — full width. */
+export const INS_MOBILE_PIN_BUTTON_CLASS =
+  "flex w-full min-h-12 items-center justify-center gap-2 rounded-xl border-[1.5px] border-ink bg-[color-mix(in_srgb,var(--ink)_7%,transparent)] font-inherit text-[14px] font-bold text-ink transition-colors disabled:cursor-not-allowed disabled:opacity-50";
+
 /**
  * Desktop feature photo cell — always a real file picker on computer
  * (not camera-only). Empty: attach photo; attached: HTML-style "attached" + replace.

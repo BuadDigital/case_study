@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using RealEstateEval.Application.Abstractions;
 using RealEstateEval.Application.Contracts;
+using RealEstateEval.Application.Rules;
 using RealEstateEval.Domain;
 using RealEstateEval.Infrastructure.Data.Contexts;
 using RealEstateEval.Valuation.Application.Abstractions;
@@ -22,6 +23,7 @@ public sealed class ValuationReportFieldInjectionService(
     ICaseStudyLookup caseStudy,
     IAttachmentLookup attachments,
     IOrganizationSettingsService organizationSettings,
+    IValuationListsService valuationLists,
     IValuationComparableSelectionService selections,
     IValuationCostApproachService costApproach,
     IValuationReconciliationService reconciliation,
@@ -77,10 +79,25 @@ public sealed class ValuationReportFieldInjectionService(
         var cost = await costApproach.GetAsync(valuationRequestId, cancellationToken);
         var recon = await reconciliation.GetAsync(valuationRequestId, cancellationToken);
         var org = await organizationSettings.GetAsync(cancellationToken);
+        var valuationCatalog = await valuationLists.GetAsync(cancellationToken);
         var printable = await LoadPrintableAttachmentsAsync(propertyId, cancellationToken);
 
         var today = DateOnly.FromDateTime(clock.GetUtcNow().UtcDateTime);
-        var bag = BuildValueBag( vr, prop, workspace, inspector, client, org, market, cost, recon, printable, hasStructures, deedNatureMatchOutcome, today);
+        var bag = BuildValueBag(
+            vr,
+            prop,
+            workspace,
+            inspector,
+            client,
+            org,
+            market,
+            cost,
+            recon,
+            printable,
+            hasStructures,
+            deedNatureMatchOutcome,
+            today,
+            valuationCatalog);
         var fields = new List<ValuationReportFieldDto>(ValuationReportFieldCatalog.Count);
         var valuesByFieldKey = new Dictionary<string, string>(StringComparer.Ordinal);
         var filled = 0;
@@ -182,7 +199,8 @@ public sealed class ValuationReportFieldInjectionService(
         IReadOnlyList<FileAttachmentMetaDto> printable,
         bool hasStructures,
         string deedNatureMatchOutcome,
-        DateOnly today)
+        DateOnly today,
+        ValuationListsDto? valuationCatalog = null)
     {
         var d = new Dictionary<string, string?>(StringComparer.Ordinal);
 
@@ -226,19 +244,19 @@ public sealed class ValuationReportFieldInjectionService(
             Put("partition_minutes_date", prop!.PartitionMinutesDate);
         Put("north_boundary", prop?.NorthBoundary);
         Put("north_boundary_length_m", prop?.NorthBoundaryLengthM);
-        Put("boundary_north_type", PropertyBoundaryTypes.LabelAr(prop?.NorthBoundaryType));
+        Put("boundary_north_type", ValuationBoundaryTypeLabels.Resolve(valuationCatalog, prop?.NorthBoundaryType));
         Put("finishing_facade_north", prop?.NorthFacadeFinishing);
         Put("south_boundary", prop?.SouthBoundary);
         Put("south_boundary_length_m", prop?.SouthBoundaryLengthM);
-        Put("boundary_south_type", PropertyBoundaryTypes.LabelAr(prop?.SouthBoundaryType));
+        Put("boundary_south_type", ValuationBoundaryTypeLabels.Resolve(valuationCatalog, prop?.SouthBoundaryType));
         Put("finishing_facade_south", prop?.SouthFacadeFinishing);
         Put("east_boundary", prop?.EastBoundary);
         Put("east_boundary_length_m", prop?.EastBoundaryLengthM);
-        Put("boundary_east_type", PropertyBoundaryTypes.LabelAr(prop?.EastBoundaryType));
+        Put("boundary_east_type", ValuationBoundaryTypeLabels.Resolve(valuationCatalog, prop?.EastBoundaryType));
         Put("finishing_facade_east", prop?.EastFacadeFinishing);
         Put("west_boundary", prop?.WestBoundary);
         Put("west_boundary_length_m", prop?.WestBoundaryLengthM);
-        Put("boundary_west_type", PropertyBoundaryTypes.LabelAr(prop?.WestBoundaryType));
+        Put("boundary_west_type", ValuationBoundaryTypeLabels.Resolve(valuationCatalog, prop?.WestBoundaryType));
         Put("finishing_facade_west", prop?.WestFacadeFinishing);
 
         var streetCount = PropertyBoundaryTypes.CountStreets(

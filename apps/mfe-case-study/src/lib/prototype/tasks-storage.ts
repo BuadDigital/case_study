@@ -17,6 +17,8 @@ import {
 } from "@platform/api-client";
 import { getAuthSession } from "@platform/auth-client";
 import { apiErrorMessage, resolveApiError, workOrdersApiConfig } from "../work-orders-api-config";
+import { isBrowserOffline } from "@platform/app-shared/offline/offline-write";
+import { readPrefetchedWorkflowTasks } from "@platform/app-shared/offline/prefetch-read";
 import { notifyWorkOrdersChanged } from "@platform/app-shared/prototype/work-orders-api-config";
 import { isSuperAdmin } from "@platform/app-shared/prototype/prototype-role-access";
 import { hasRuntimeCapability } from "@platform/app-shared/prototype/runtime-access";
@@ -196,16 +198,28 @@ export async function loadWorkflowTasks(): Promise<WorkflowTask[]> {
 /** React Query loader — surfaces API failures; fetches workflow tasks in paginated chunks. */
 export async function loadWorkflowTasksForQuery(): Promise<WorkflowTask[]> {
   const config = workOrdersApiConfig();
-  if (!config) {
-    throw new Error(apiErrorMessage("auth"));
+  if (!config || isBrowserOffline()) {
+    const cached = await readPrefetchedWorkflowTasks<WorkflowTask>();
+    if (cached?.length) return cached;
+    if (!config) throw new Error(apiErrorMessage("auth"));
+    throw new Error("تعذّر تحميل مهام سير العمل");
   }
-  const result = await listWorkflowTasks(config);
-  if (!result.ok) {
-    throw new Error(
-      apiErrorMessage(result.kind, "تعذّر تحميل مهام سير العمل"),
-    );
+  try {
+    const result = await listWorkflowTasks(config);
+    if (!result.ok) {
+      const cached = await readPrefetchedWorkflowTasks<WorkflowTask>();
+      if (cached?.length) return cached;
+      throw new Error(
+        apiErrorMessage(result.kind, "تعذّر تحميل مهام سير العمل"),
+      );
+    }
+    return result.data.map(dtoToTask);
+  } catch (err) {
+    const cached = await readPrefetchedWorkflowTasks<WorkflowTask>();
+    if (cached?.length) return cached;
+    if (err instanceof Error) throw err;
+    throw new Error("تعذّر تحميل مهام سير العمل");
   }
-  return result.data.map(dtoToTask);
 }
 
 export type SyncTasksResult = { ok: true } | { ok: false; error: string };

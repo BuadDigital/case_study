@@ -3,7 +3,6 @@ import {
   shouldUseJeddahDefaultCoords,
 } from "@platform/app-shared/domain/jeddah-default-coords";
 import {
-  getPartyTaskSubmission,
   isPersistedPartyTaskSubmission,
   savePartyTaskSubmission,
   submitPartyTaskSubmission,
@@ -14,7 +13,7 @@ import {
   submitWithOfflineFallback,
   loadQueuedDraftPayload,
 } from "@platform/app-shared/offline/offline-write";
-import { reopenPartySubmission, acceptPartySubmission, type PartyWorkMutationResult } from "@platform/app-shared/prototype/party-submission-api";
+import { reopenPartySubmission, acceptPartySubmission, fetchPartySubmission, type PartyWorkMutationResult } from "@platform/app-shared/prototype/party-submission-api";
 import { dispatchPartySubmissionChanged } from "@platform/app-shared/prototype/party-submission-changed-event";
 import { dispatchWorkflowSubmitted, FIELD_INSPECTION_SUBMITTED_EVENT } from "@platform/app-shared/prototype/party-workflow-events";
 import { resolveApiError, workOrdersApiConfig } from "../work-orders-api-config";
@@ -23,6 +22,8 @@ import {
   inspectorDraftNeedsEnfathPrefill,
 } from "./inspector-enfath-prefill";
 import {
+  composeAccessRouteDescription,
+  computeBuildingsTotalSqm,
   createInspectorWorkspaceDraft,
   inspectionStampFromNow,
   sanitizeInspectorDraftForLand,
@@ -303,7 +304,16 @@ function payloadToDraft(
     streetName: readString(payload.streetName),
     mainStreetName: readString(payload.mainStreetName),
     streetWidthM: readString(payload.streetWidthM),
-    accessRouteDescription: readString(payload.accessRouteDescription),
+    accessContactName: readString(payload.accessContactName),
+    accessContactPhone: readString(payload.accessContactPhone),
+    accessContactRole: readString(payload.accessContactRole),
+    accessRouteDescription:
+      readString(payload.accessRouteDescription) ||
+      composeAccessRouteDescription({
+        name: readString(payload.accessContactName),
+        phone: readString(payload.accessContactPhone),
+        role: readString(payload.accessContactRole),
+      }),
     roomCount: readString(payload.roomCount),
     hallCount: readString(payload.hallCount),
     unitCount: readString(payload.unitCount),
@@ -368,7 +378,14 @@ function payloadToDraft(
     acceptedByName: dto.acceptedByName ?? null,
     updatedAtUtc: dto.updatedAtUtc || draft.updatedAtUtc,
   };
-  return sanitizeInspectorDraftForLand(mapped);
+  return sanitizeInspectorDraftForLand({
+    ...mapped,
+    buildingsTotal: computeBuildingsTotalSqm(
+      mapped.builtArea,
+      mapped.basementTotal,
+      mapped.annexTotal,
+    ),
+  });
 }
 
 function draftToPayload(
@@ -387,7 +404,16 @@ function draftToPayload(
     streetName: draft.streetName,
     mainStreetName: draft.mainStreetName,
     streetWidthM: draft.streetWidthM,
-    accessRouteDescription: draft.accessRouteDescription,
+    accessContactName: draft.accessContactName,
+    accessContactPhone: draft.accessContactPhone,
+    accessContactRole: draft.accessContactRole,
+    accessRouteDescription:
+      draft.accessRouteDescription.trim() ||
+      composeAccessRouteDescription({
+        name: draft.accessContactName,
+        phone: draft.accessContactPhone,
+        role: draft.accessContactRole,
+      }),
     roomCount: draft.roomCount,
     hallCount: draft.hallCount,
     unitCount: draft.unitCount,
@@ -463,29 +489,14 @@ export function loadInspectorWorkspace(
 export async function fetchInspectorWorkspace(
   taskId: string,
 ): Promise<InspectorWorkspaceDraft | null> {
-  const config = workOrdersApiConfig();
-  if (!config) {
-    const queued = await loadQueuedDraftPayload<Record<string, unknown>>(
-      "field-inspection",
-      taskId,
-    );
-    if (queued) {
-      const local: PartyTaskSubmissionDto = {
-        taskId,
-        kind: "field-inspection",
-        status: "draft",
-        payload: queued,
-        updatedAtUtc: new Date().toISOString(),
-      };
-      const draft = payloadToDraft(local);
-      setCache(draft);
-      return draft;
-    }
-    return loadInspectorWorkspace(taskId);
+  let submission: PartyTaskSubmissionDto | null = null;
+  try {
+    submission = await fetchPartySubmission(taskId);
+  } catch {
+    submission = null;
   }
 
-  const result = await getPartyTaskSubmission(config, taskId);
-  if (result.ok && !isPersistedPartyTaskSubmission(result.data)) {
+  if (!submission || !isPersistedPartyTaskSubmission(submission)) {
     const queued = await loadQueuedDraftPayload<Record<string, unknown>>(
       "field-inspection",
       taskId,
@@ -502,49 +513,11 @@ export async function fetchInspectorWorkspace(
       setCache(draft);
       return draft;
     }
-    return null;
-  }
-  if (!result.ok) {
-    if (result.kind === "not_found") {
-      const queued = await loadQueuedDraftPayload<Record<string, unknown>>(
-        "field-inspection",
-        taskId,
-      );
-      if (queued) {
-        const local: PartyTaskSubmissionDto = {
-          taskId,
-          kind: "field-inspection",
-          status: "draft",
-          payload: queued,
-          updatedAtUtc: new Date().toISOString(),
-        };
-        const draft = payloadToDraft(local);
-        setCache(draft);
-        return draft;
-      }
-      return null;
-    }
-    const queued = await loadQueuedDraftPayload<Record<string, unknown>>(
-      "field-inspection",
-      taskId,
-    );
-    if (queued) {
-      const local: PartyTaskSubmissionDto = {
-        taskId,
-        kind: "field-inspection",
-        status: "draft",
-        payload: queued,
-        updatedAtUtc: new Date().toISOString(),
-      };
-      const draft = payloadToDraft(local);
-      setCache(draft);
-      return draft;
-    }
-    return loadInspectorWorkspace(taskId);
+    return submission ? payloadToDraft(submission) : loadInspectorWorkspace(taskId);
   }
 
-  let draft = payloadToDraft(result.data);
-  const payload = result.data.payload ?? {};
+  let draft = payloadToDraft(submission);
+  const payload = submission.payload ?? {};
   draft = await migrateInspectorDefaultCoordsIfNeeded(draft, {
     latitude: readString(payload.mapLatitude),
     longitude: readString(payload.mapLongitude),
@@ -619,6 +592,10 @@ export async function saveInspectorWorkspaceDraft(
       },
     });
     if (queued.queued) {
+      const cached = loadInspectorWorkspace(draft.taskId);
+      if (cached && isDraftNewerThan(cached, nextDraft)) {
+        return cached;
+      }
       writeCache(nextDraft);
       return nextDraft;
     }
@@ -648,11 +625,20 @@ export async function saveInspectorWorkspaceDraft(
         throw err;
       }
       const next = payloadToDraft(result.data, draft);
+      const cached = loadInspectorWorkspace(draft.taskId);
+      // A newer local edit may have landed while this request was in flight.
+      if (cached && isDraftNewerThan(cached, draft)) {
+        return;
+      }
       writeCache(next);
     },
   });
 
   if (queued.queued) {
+    const cached = loadInspectorWorkspace(draft.taskId);
+    if (cached && isDraftNewerThan(cached, nextDraft)) {
+      return cached;
+    }
     writeCache(nextDraft);
     return nextDraft;
   }
@@ -660,25 +646,24 @@ export async function saveInspectorWorkspaceDraft(
   return loadInspectorWorkspace(draft.taskId) ?? nextDraft;
 }
 
-export async function updateInspectorWorkspace(
-  taskId: string,
-  patch: Partial<
-    Omit<
-      InspectorWorkspaceDraft,
-      | "taskId"
-      | "propertyId"
-      | "poNumber"
-      | "status"
-      | "submittedAtUtc"
-      | "updatedAtUtc"
-    >
-  >,
-): Promise<InspectorWorkspaceDraft | null> {
-  const current =
-    loadInspectorWorkspace(taskId) ?? (await fetchInspectorWorkspace(taskId));
-  if (!current || current.status === "submitted") return current;
+export type InspectorWorkspacePatch = Partial<
+  Omit<
+    InspectorWorkspaceDraft,
+    | "taskId"
+    | "propertyId"
+    | "poNumber"
+    | "status"
+    | "submittedAtUtc"
+    | "updatedAtUtc"
+  >
+>;
 
-  const next: InspectorWorkspaceDraft = {
+/** Merge a field patch into a draft (shared by UI optimistic updates + persistence). */
+export function mergeInspectorWorkspacePatch(
+  current: InspectorWorkspaceDraft,
+  patch: InspectorWorkspacePatch,
+): InspectorWorkspaceDraft {
+  const merged: InspectorWorkspaceDraft = {
     ...current,
     ...patch,
     definedPhotos: patch.definedPhotos ?? current.definedPhotos,
@@ -692,16 +677,125 @@ export async function updateInspectorWorkspace(
       patch.componentPhotoAttachments ?? current.componentPhotoAttachments,
     services: patch.services ?? current.services,
     amenities: patch.amenities ?? current.amenities,
+    buildingsTotal: computeBuildingsTotalSqm(
+      patch.builtArea ?? current.builtArea,
+      patch.basementTotal ?? current.basementTotal,
+      patch.annexTotal ?? current.annexTotal,
+    ),
     status: current.status === "reopened" ? "reopened" : "draft",
     updatedAtUtc: new Date().toISOString(),
   };
-  return saveInspectorWorkspaceDraft(next);
+  return merged;
+}
+
+const SAVE_DEBOUNCE_MS = 400;
+const saveDebounceTimers = new Map<string, ReturnType<typeof setTimeout>>();
+const saveDebounceWaiters = new Map<
+  string,
+  Array<{
+    resolve: (draft: InspectorWorkspaceDraft) => void;
+    reject: (err: unknown) => void;
+  }>
+>();
+
+function clearSaveDebounce(taskId: string): void {
+  const timer = saveDebounceTimers.get(taskId);
+  if (timer) clearTimeout(timer);
+  saveDebounceTimers.delete(taskId);
+}
+
+/** Flush pending debounced saves so submit / navigation persist the latest keystrokes. */
+export async function flushInspectorWorkspaceSave(
+  taskId: string,
+): Promise<InspectorWorkspaceDraft | null> {
+  clearSaveDebounce(taskId);
+  const waiters = saveDebounceWaiters.get(taskId) ?? [];
+  saveDebounceWaiters.delete(taskId);
+  const draft = loadInspectorWorkspace(taskId);
+  if (!draft) {
+    for (const w of waiters) {
+      w.reject(new Error("لا توجد مسودة للحفظ"));
+    }
+    return null;
+  }
+  if (draft.status === "submitted") {
+    for (const w of waiters) w.resolve(draft);
+    return draft;
+  }
+  try {
+    const saved = await saveInspectorWorkspaceDraft(draft);
+    for (const w of waiters) w.resolve(saved);
+    return saved;
+  } catch (err) {
+    for (const w of waiters) w.reject(err);
+    throw err;
+  }
+}
+
+function scheduleDebouncedSave(
+  taskId: string,
+): Promise<InspectorWorkspaceDraft> {
+  return new Promise((resolve, reject) => {
+    const waiters = saveDebounceWaiters.get(taskId) ?? [];
+    waiters.push({ resolve, reject });
+    saveDebounceWaiters.set(taskId, waiters);
+    clearSaveDebounce(taskId);
+    saveDebounceTimers.set(
+      taskId,
+      setTimeout(() => {
+        saveDebounceTimers.delete(taskId);
+        const pending = saveDebounceWaiters.get(taskId) ?? [];
+        saveDebounceWaiters.delete(taskId);
+        const draft = loadInspectorWorkspace(taskId);
+        if (!draft) {
+          for (const w of pending) {
+            w.reject(new Error("لا توجد مسودة للحفظ"));
+          }
+          return;
+        }
+        void saveInspectorWorkspaceDraft(draft).then(
+          (saved) => {
+            for (const w of pending) w.resolve(saved);
+          },
+          (err: unknown) => {
+            for (const w of pending) w.reject(err);
+          },
+        );
+      }, SAVE_DEBOUNCE_MS),
+    );
+  });
+}
+
+function isDraftNewerThan(
+  local: InspectorWorkspaceDraft,
+  incoming: InspectorWorkspaceDraft,
+): boolean {
+  const localTs = Date.parse(local.updatedAtUtc);
+  const incomingTs = Date.parse(incoming.updatedAtUtc);
+  if (Number.isFinite(localTs) && Number.isFinite(incomingTs)) {
+    return localTs > incomingTs;
+  }
+  return false;
+}
+
+export async function updateInspectorWorkspace(
+  taskId: string,
+  patch: InspectorWorkspacePatch,
+): Promise<InspectorWorkspaceDraft | null> {
+  const current =
+    loadInspectorWorkspace(taskId) ?? (await fetchInspectorWorkspace(taskId));
+  if (!current || current.status === "submitted") return current;
+
+  // Apply locally first so typing stays instant; network save is debounced.
+  const next = mergeInspectorWorkspacePatch(current, patch);
+  setCache(next);
+  return scheduleDebouncedSave(taskId);
 }
 
 export async function submitInspectorWorkspace(
   taskId: string,
 ): Promise<
-  | { ok: true; draft: InspectorWorkspaceDraft }
+  | { ok: true; draft: InspectorWorkspaceDraft; queued?: boolean }
   | { ok: false; message: string; errors?: Record<string, string> }
 > {
   // Cheap session check before a network fetch that would be wasted without a session (async-cheap-condition-before-await).
@@ -718,7 +812,7 @@ export async function submitInspectorWorkspace(
     return { ok: true, draft: current };
   }
 
-  const saved = await saveInspectorWorkspaceDraft(current);
+  const saved = await flushInspectorWorkspaceSave(taskId) ?? current;
   const payload = draftToPayload(saved);
 
   try {
@@ -753,7 +847,7 @@ export async function submitInspectorWorkspace(
         updatedAtUtc: new Date().toISOString(),
       };
       writeCache(pending);
-      return { ok: true, draft: pending };
+      return { ok: true, draft: pending, queued: true };
     }
 
     return {

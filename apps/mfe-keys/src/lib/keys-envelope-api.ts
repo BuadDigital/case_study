@@ -62,6 +62,28 @@ function mapEnvelope(dto: KeyEnvelopeDto): KeyEnvelopeRow {
   };
 }
 
+function pendingAccessStub(
+  body: UpsertPropertyCourtAccessRequest,
+): PropertyCourtAccessRow {
+  const now = new Date().toISOString();
+  return mapAccess({
+    id: body.propertyId,
+    propertyId: body.propertyId,
+    poNumber: "",
+    deedNumber: "",
+    requestNumber: "",
+    hasEnablingLetter: body.hasEnablingLetter,
+    enablingLetterAttachmentId: body.enablingLetterAttachmentId ?? null,
+    hasEvictionNotice: body.hasEvictionNotice,
+    evictionNoticeAttachmentId: body.evictionNoticeAttachmentId ?? null,
+    studyHoldStatus: "pending_sync",
+    contactPhones: body.contactPhones ?? null,
+    notes: body.notes ?? null,
+    updatedByName: "",
+    updatedAtUtc: now,
+  });
+}
+
 function mapAccess(dto: PropertyCourtAccessDto): PropertyCourtAccessRow {
   return { ...dto };
 }
@@ -522,8 +544,52 @@ export async function savePropertyCourtAccess(
   body: UpsertPropertyCourtAccessRequest,
 ): Promise<MutationResult<PropertyCourtAccessRow>> {
   const config = prototypeModulesApiConfig();
+  const userId = currentOfflineUserId();
+  const targetId = String(body.propertyId ?? body.deedNumber ?? "").trim();
+
+  if ((!config || isBrowserOffline()) && userId) {
+    await enqueueOutbox({
+      userId,
+      kind: "property-court-access",
+      targetId: targetId || crypto.randomUUID(),
+      payloadJson: JSON.stringify(body),
+    });
+    await beginOfflineLease(userId);
+    return { ok: true, data: pendingAccessStub(body) };
+  }
+
   if (!config) return { ok: false, error: apiErrorMessage("auth") };
-  const result = await upsertPropertyCourtAccess(config, body);
-  if (!result.ok) return fail(result, "تعذّر حفظ مسار الدخول");
-  return { ok: true, data: mapAccess(result.data) };
+
+  try {
+    const result = await upsertPropertyCourtAccess(config, body);
+    if (!result.ok) {
+      if (result.kind === "network" && userId) {
+        await enqueueOutbox({
+          userId,
+          kind: "property-court-access",
+          targetId: targetId || crypto.randomUUID(),
+          payloadJson: JSON.stringify(body),
+        });
+        await beginOfflineLease(userId);
+        return { ok: true, data: pendingAccessStub(body) };
+      }
+      return fail(result, "تعذّر حفظ مسار الدخول");
+    }
+    return { ok: true, data: mapAccess(result.data) };
+  } catch (err) {
+    if (userId) {
+      await enqueueOutbox({
+        userId,
+        kind: "property-court-access",
+        targetId: targetId || crypto.randomUUID(),
+        payloadJson: JSON.stringify(body),
+      });
+      await beginOfflineLease(userId);
+      return { ok: true, data: pendingAccessStub(body) };
+    }
+    return {
+      ok: false,
+      error: err instanceof Error ? err.message : "تعذّر حفظ مسار الدخول",
+    };
+  }
 }

@@ -5,7 +5,7 @@ import { submitInspectorWorkspace } from "./inspector-workspace-storage";
 export async function finalizeInspectorWorkspace(
   taskId: string,
 ): Promise<
-  | { ok: true; draft: InspectorWorkspaceDraft }
+  | { ok: true; draft: InspectorWorkspaceDraft; queued?: boolean }
   | { ok: false; message: string; errors?: Record<string, string> }
 > {
   return submitInspectorWorkspace(taskId);

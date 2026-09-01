@@ -23,6 +23,7 @@ import {
   Tr,
   useToast,
 } from "@platform/ui-kit";
+import { InsDualCalendarDateField } from "../po-intake/PropertyDetailInspectionParts";
 import { ReturnedForCorrectionNote } from "../ui/ReturnedForCorrectionNote";
 import { RegField, RegTextarea} from "@platform/app-shared/registration/FormFields";
 import type { PartyTaskPageDef } from "@platform/app-shared/prototype/party-task-pages";
@@ -34,6 +35,8 @@ import { FieldComparableCaptureSection } from "./FieldComparableCaptureSection";
 import { InspectorDefinedPhotosSection } from "./InspectorDefinedPhotosSection";
 import { InspectorSubmitFooter } from "./InspectorSubmitFooter";
 import { InspectorMovablesDescriptionField } from "./InspectorMovablesDescriptionField";
+import { InspectorOccupancyDescriptionField } from "./InspectorOccupancyDescriptionField";
+import { InspectorAccessContactFields } from "./InspectorAccessContactFields";
 import { InspectorPhotoFilePicker } from "./InspectorPhotoFilePicker";
 import { InspectorStampedPhotoThumb } from "./InspectorStampedPhotoThumb";
 import {
@@ -79,7 +82,10 @@ import {
   INSPECTOR_AMENITY_OPTIONS,
   INSPECTOR_OBSERVATION_CATEGORIES,
   INSPECTOR_SERVICE_OPTIONS,
+  SITE_LOCATION_ACK_PENDING_MESSAGE,
   MOVABLES_DESCRIPTION_KEY,
+  OCCUPANCY_DESCRIPTION_KEY,
+  OCCUPANCY_STATE_KEY,
   inspectorFeatureRequiresPhoto,
   inspectorPhotoCoverageLabel,
   inspectorPhotoStampText,
@@ -87,6 +93,7 @@ import {
   isInspectorWorkspaceLocked,
   isLandInspectionContext,
   isMovablesPresent,
+  isOccupied,
   isShopHiddenInspectorComponentKey,
   newObservationId,
   parseInspectorCount,
@@ -97,7 +104,8 @@ import {
   type InspectorWorkspaceDraft,
 } from "../../lib/prototype/inspector-workspace-data";
 import { finalizeInspectorWorkspace } from "../../lib/prototype/finalize-field-inspection-submission";
-import { getOrCreateInspectorWorkspace, saveInspectorWorkspaceDraft, updateInspectorWorkspace } from "../../lib/prototype/inspector-workspace-storage";
+import { INFATH_FIELD_LABELS } from "../../lib/prototype/infath-field-labels";
+import { getOrCreateInspectorWorkspace, saveInspectorWorkspaceDraft, updateInspectorWorkspace, mergeInspectorWorkspacePatch } from "../../lib/prototype/inspector-workspace-storage";
 import {
   firstInspectorWorkspaceError,
   firstInspectorWorkspaceErrorTarget,
@@ -107,6 +115,13 @@ import {
   type InspectorWorkspaceFieldErrors,
 } from "../../lib/prototype/inspector-workspace-validation";
 import type { WorkflowTask } from "../../lib/prototype/tasks-storage";
+
+const INSPECTOR_BUILDING_AREA_INPUTS = [
+  ["builtArea", "مساحة البناء (م²)"],
+  ["buildingFloors", "عدد أدوار المباني"],
+  ["basementTotal", "إجمالي مساحة القبو (م²)"],
+  ["annexTotal", "إجمالي مساحة الملاحق (م²)"],
+] as const;
 import {
   BOUNDARY_KEYS,
   BOUNDARY_ROW_MAP,
@@ -130,6 +145,9 @@ const SAVE_CHIP_SECTION_BY_FIELD: Record<string, "location" | "access" | "photos
   mainStreetName: "access",
   streetWidthM: "access",
   accessRouteDescription: "access",
+  accessContactName: "access",
+  accessContactPhone: "access",
+  accessContactRole: "access",
   freePhotos: "photos",
 };
 
@@ -246,9 +264,26 @@ export function FieldInspectionWorkBody({
         const section = SAVE_CHIP_SECTION_BY_FIELD[key];
         if (section) markDirty(section);
       }
+      // Update controlled inputs immediately — network save is debounced.
+      setDraft((prev) =>
+        prev ? mergeInspectorWorkspacePatch(prev, patch) : prev,
+      );
       void updateInspectorWorkspace(task.id, patch)
         .then((next) => {
-          if (next) setDraft(next);
+          if (!next) return;
+          setDraft((prev) => {
+            if (!prev) return next;
+            const prevTs = Date.parse(prev.updatedAtUtc);
+            const nextTs = Date.parse(next.updatedAtUtc);
+            if (
+              Number.isFinite(prevTs) &&
+              Number.isFinite(nextTs) &&
+              prevTs > nextTs
+            ) {
+              return prev;
+            }
+            return next;
+          });
         })
         .catch((err: unknown) => {
           showToast(
@@ -367,7 +402,11 @@ export function FieldInspectionWorkBody({
 
     if (result.ok) {
       setDraft(result.draft);
-      hostRef.current?.onSubmitted?.();
+      if (result.queued) {
+        showToast("محفوظة للمزامنة — ستُرسل عند عودة الاتصال", "info");
+      } else {
+        hostRef.current?.onSubmitted?.();
+      }
       return true;
     }
 
@@ -458,6 +497,34 @@ export function FieldInspectionWorkBody({
       targetId: "ins-map-section",
     });
   }
+  if (fieldErrors.accessContactName) {
+    errorLinks.push({
+      key: "accessContactName",
+      message: fieldErrors.accessContactName,
+      targetId: "ins-access-name",
+    });
+  }
+  if (fieldErrors.accessContactPhone) {
+    errorLinks.push({
+      key: "accessContactPhone",
+      message: fieldErrors.accessContactPhone,
+      targetId: "ins-access-phone",
+    });
+  }
+  if (fieldErrors.accessContactRole) {
+    errorLinks.push({
+      key: "accessContactRole",
+      message: fieldErrors.accessContactRole,
+      targetId: "ins-access-role",
+    });
+  }
+  if (fieldErrors.accessRouteDescription) {
+    errorLinks.push({
+      key: "accessRouteDescription",
+      message: fieldErrors.accessRouteDescription,
+      targetId: "ins-access-name",
+    });
+  }
   if (fieldErrors.features) {
     errorLinks.push({
       key: "features",
@@ -465,6 +532,20 @@ export function FieldInspectionWorkBody({
       targetId: fieldErrors.emptyFeatureKeys?.[0]
         ? `ins-feature-${fieldErrors.emptyFeatureKeys[0]}`
         : "ins-features-section",
+    });
+  }
+  if (fieldErrors.movablesDescription) {
+    errorLinks.push({
+      key: "movablesDescription",
+      message: fieldErrors.movablesDescription,
+      targetId: `ins-${MOVABLES_DESCRIPTION_KEY}`,
+    });
+  }
+  if (fieldErrors.occupancyDescription) {
+    errorLinks.push({
+      key: "occupancyDescription",
+      message: fieldErrors.occupancyDescription,
+      targetId: `ins-${OCCUPANCY_DESCRIPTION_KEY}`,
     });
   }
   if (fieldErrors.featurePhotos) {
@@ -996,6 +1077,33 @@ export function FieldInspectionWorkBody({
                         </Td>
                       </Tr>
                     ) : null}
+                    {field.key === OCCUPANCY_STATE_KEY && isOccupied(draft.featureValues) ? (
+                      <Tr
+                        hoverable={false}
+                        className={cn(
+                          fieldErrors.occupancyDescription && "bg-danger-bg/45",
+                        )}
+                      >
+                        <Td />
+                        <Td colSpan={3}>
+                          <InspectorOccupancyDescriptionField
+                            value={
+                              draft.featureValues[OCCUPANCY_DESCRIPTION_KEY] ?? ""
+                            }
+                            disabled={locked}
+                            invalid={Boolean(fieldErrors.occupancyDescription)}
+                            onChange={(next) =>
+                              persist({
+                                featureValues: {
+                                  ...draft.featureValues,
+                                  [OCCUPANCY_DESCRIPTION_KEY]: next,
+                                },
+                              })
+                            }
+                          />
+                        </Td>
+                      </Tr>
+                    ) : null}
                     </Fragment>
                   );
                 })}
@@ -1161,6 +1269,21 @@ export function FieldInspectionWorkBody({
                       }
                     />
                   ) : null}
+                  {field.key === OCCUPANCY_STATE_KEY && isOccupied(draft.featureValues) ? (
+                    <InspectorOccupancyDescriptionField
+                      value={draft.featureValues[OCCUPANCY_DESCRIPTION_KEY] ?? ""}
+                      disabled={locked}
+                      invalid={Boolean(fieldErrors.occupancyDescription)}
+                      onChange={(next) =>
+                        persist({
+                          featureValues: {
+                            ...draft.featureValues,
+                            [OCCUPANCY_DESCRIPTION_KEY]: next,
+                          },
+                        })
+                      }
+                    />
+                  ) : null}
                 </div>
               );
             })}
@@ -1221,19 +1344,17 @@ export function FieldInspectionWorkBody({
                   className={mobileControlClassName}
                 />
               </div>
-              <div>
-                <MobileFieldLabel>طريقة الوصول</MobileFieldLabel>
-                <Textarea
-                  id="ins-access"
-                  rows={2}
-                  value={draft.accessRouteDescription}
-                  disabled={locked}
-                  onChange={(e) =>
-                    persist({ accessRouteDescription: e.target.value })
-                  }
-                  className={cn(mobileControlClassName, "min-h-[72px] resize-y")}
-                />
-              </div>
+              <InspectorAccessContactFields
+                draft={draft}
+                contacts={property?.contacts}
+                editable={!locked}
+                fieldErrors={fieldErrors}
+                layout={mobile ? "mobile" : "desktop"}
+                onPatch={(patch) => persist(patch)}
+                onAckClick={() =>
+                  showToast(SITE_LOCATION_ACK_PENDING_MESSAGE, "info")
+                }
+              />
             </div>
           ) : (
             <>
@@ -1260,13 +1381,15 @@ export function FieldInspectionWorkBody({
                   onChange={(v) => persist({ streetWidthM: v })}
                 />
               </FormRow>
-              <RegTextarea
-                id="ins-access"
-                label="طريقة الوصول للعقار"
-                rows={3}
-                className="mt-3"
-                value={draft.accessRouteDescription}
-                onChange={(v) => persist({ accessRouteDescription: v })}
+              <InspectorAccessContactFields
+                draft={draft}
+                contacts={property?.contacts}
+                editable={!locked}
+                fieldErrors={fieldErrors}
+                onPatch={(patch) => persist(patch)}
+                onAckClick={() =>
+                  showToast(SITE_LOCATION_ACK_PENDING_MESSAGE, "info")
+                }
               />
             </>
           )}
@@ -1587,15 +1710,7 @@ export function FieldInspectionWorkBody({
           <>
           {mobile ? (
             <div className="grid gap-3.5">
-              {(
-                [
-                  ["builtArea", "مساحة البناء (م²)"],
-                  ["buildingFloors", "عدد أدوار المباني"],
-                  ["basementTotal", "إجمالي مساحة القبو (م²)"],
-                  ["annexTotal", "إجمالي مساحة الملاحق (م²)"],
-                  ["buildingsTotal", "إجمالي مساحة المباني (م²)"],
-                ] as const
-              ).map(([key, label]) => (
+              {INSPECTOR_BUILDING_AREA_INPUTS.map(([key, label]) => (
                 <div key={key}>
                   <MobileFieldLabel>{label}</MobileFieldLabel>
                   <Input
@@ -1609,6 +1724,17 @@ export function FieldInspectionWorkBody({
                 </div>
               ))}
               <div>
+                <MobileFieldLabel>{INFATH_FIELD_LABELS.buildingsTotal}</MobileFieldLabel>
+                <Input
+                  id="ins-buildingsTotal"
+                  type="number"
+                  value={draft.buildingsTotal}
+                  disabled
+                  readOnly
+                  className={cn(mobileControlClassName, "text-center [direction:ltr] [unicode-bidi:isolate]")}
+                />
+              </div>
+              <div>
                 <MobileFieldLabel>رقم رخصة البناء</MobileFieldLabel>
                 <Input
                   id="ins-build-license"
@@ -1620,31 +1746,17 @@ export function FieldInspectionWorkBody({
                   className={mobileControlClassName}
                 />
               </div>
-              <div>
-                <MobileFieldLabel>تاريخ رخصة البناء</MobileFieldLabel>
-                <Input
-                  id="ins-build-license-date"
-                  value={draft.buildLicenseDate}
-                  disabled={locked}
-                  placeholder="هـ أو م"
-                  onChange={(e) =>
-                    persist({ buildLicenseDate: e.target.value })
-                  }
-                  className={mobileControlClassName}
-                />
-              </div>
+              <InsDualCalendarDateField
+                id="ins-build-license-date"
+                label="تاريخ رخصة البناء"
+                value={draft.buildLicenseDate}
+                disabled={locked}
+                onChange={(v) => persist({ buildLicenseDate: v })}
+              />
             </div>
           ) : (
             <FormRow className="grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
-              {(
-                [
-                  ["builtArea", "مساحة البناء (م²)"],
-                  ["buildingFloors", "عدد أدوار المباني"],
-                  ["basementTotal", "إجمالي مساحة القبو (م²)"],
-                  ["annexTotal", "إجمالي مساحة الملاحق (م²)"],
-                  ["buildingsTotal", "إجمالي مساحة المباني (م²)"],
-                ] as const
-              ).map(([key, label]) => (
+              {INSPECTOR_BUILDING_AREA_INPUTS.map(([key, label]) => (
                 <RegField
                   key={key}
                   id={`ins-${key}`}
@@ -1655,15 +1767,26 @@ export function FieldInspectionWorkBody({
                 />
               ))}
               <RegField
+                id="ins-buildingsTotal"
+                label={INFATH_FIELD_LABELS.buildingsTotal}
+                type="number"
+                value={draft.buildingsTotal}
+                dir="ltr"
+                readOnly
+                className="[&_input]:text-center"
+                onChange={() => {}}
+              />
+              <RegField
                 id="ins-build-license"
                 label="رقم رخصة البناء"
                 value={draft.buildLicenseNumber}
                 onChange={(v) => persist({ buildLicenseNumber: v })}
               />
-              <RegField
-                id="ins-build-license-date"
+              <InsDualCalendarDateField
+                id="ins-build-license-date-desktop"
                 label="تاريخ رخصة البناء"
                 value={draft.buildLicenseDate}
+                disabled={locked}
                 onChange={(v) => persist({ buildLicenseDate: v })}
               />
             </FormRow>

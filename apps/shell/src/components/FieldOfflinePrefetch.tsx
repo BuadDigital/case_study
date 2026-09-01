@@ -7,13 +7,89 @@ import { useAuth } from "@platform/app-shared/hooks/useAuth";
 import { useOnlineStatus } from "@platform/app-shared/hooks/useOnlineStatus";
 import { prototypeKeys } from "@platform/app-shared/query/prototype-keys";
 import { prefetchPartySubmissionsForTasks } from "@platform/app-shared/prototype/party-submission-api";
-import { savePrefetch, requestPersistentStorage } from "@platform/offline-client";
+import { prototypeModulesApiConfig } from "@platform/app-shared/prototype/prototype-modules-api-config";
+import {
+  BASIC_DOC_PREFETCH_SCOPES,
+  BASIC_DOCS_PREFETCH_ID,
+  OPS_TASKS_PREFETCH_ID,
+  WORKFLOW_TASKS_PREFETCH_ID,
+  type BasicDocPrefetchEntry,
+} from "@platform/app-shared/offline/prefetch-read";
+import {
+  cachePrefetchAttachment,
+  savePrefetch,
+  requestPersistentStorage,
+} from "@platform/offline-client";
+import {
+  downloadAttachmentBlob,
+  listAttachments,
+} from "@platform/api-client";
 import { getPoRecord } from "@case-study/mfe/lib/prototype/po-intake-storage";
+import { loadOperationsTasks } from "@case-study/mfe/lib/prototype/operations-tasks-storage";
 import { useWorkflowTasksQuery } from "@/lib/query/prototype-queries";
 
+function scopeKeyForProperty(poNumber: string, propertyId: string): string {
+  return `${poNumber.trim()}:${propertyId}`;
+}
+
+async function prefetchBasicDocBinaries(input: {
+  userId: string;
+  properties: Array<{ poNumber: string; propertyId: string }>;
+}): Promise<BasicDocPrefetchEntry[]> {
+  const config = prototypeModulesApiConfig();
+  if (!config) return [];
+
+  const entries: BasicDocPrefetchEntry[] = [];
+  const seen = new Set<string>();
+
+  for (const property of input.properties) {
+    const poNumber = property.poNumber.trim();
+    const propertyId = property.propertyId.trim();
+    if (!poNumber || !propertyId) continue;
+    const scopeKey = scopeKeyForProperty(poNumber, propertyId);
+
+    for (const doc of BASIC_DOC_PREFETCH_SCOPES) {
+      const dedupe = `${doc.scope}:${scopeKey}`;
+      if (seen.has(dedupe)) continue;
+      seen.add(dedupe);
+
+      const listed = await listAttachments(config, doc.scope, scopeKey);
+      if (!listed.ok || listed.data.length === 0) continue;
+      const meta = listed.data[0]!;
+
+      const blobResult = await downloadAttachmentBlob(config, meta.id);
+      if (!blobResult.ok) continue;
+
+      const bytes = await blobResult.data.arrayBuffer();
+      await cachePrefetchAttachment({
+        userId: input.userId,
+        attachmentId: meta.id,
+        scope: doc.scope,
+        scopeKey,
+        fileName: meta.fileName,
+        contentType: meta.contentType,
+        bytes,
+      });
+
+      entries.push({
+        attachmentId: meta.id,
+        scope: doc.scope,
+        scopeKey,
+        fileName: meta.fileName,
+        contentType: meta.contentType,
+        poNumber,
+        propertyId,
+        kind: doc.kind,
+      });
+    }
+  }
+
+  return entries;
+}
+
 /**
- * Pre-fetches active tasks, PO records, party submissions, and basic document
- * metadata for field roles while online so offline forms remain usable.
+ * Pre-fetches active tasks, PO records, party submissions, ops tasks, and basic
+ * document binaries for field roles while online so offline forms remain usable.
  */
 export function FieldOfflinePrefetch() {
   const { role, user, isAuthenticated } = useAuth();
@@ -42,6 +118,17 @@ export function FieldOfflinePrefetch() {
             .filter(Boolean),
         ),
       ];
+      const properties = [
+        ...new Map(
+          tasks
+            .map((task) => ({
+              poNumber: String(task.poNumber ?? task.PoNumber ?? "").trim(),
+              propertyId: String(task.propertyId ?? task.PropertyId ?? "").trim(),
+            }))
+            .filter((row) => row.poNumber && row.propertyId)
+            .map((row) => [`${row.poNumber}:${row.propertyId}`, row] as const),
+        ).values(),
+      ];
 
       void (async () => {
         try {
@@ -50,7 +137,7 @@ export function FieldOfflinePrefetch() {
             await Promise.all([
               prefetchPartySubmissionsForTasks(taskIds),
               savePrefetch({
-                id: `tasks:${userId}`,
+                id: WORKFLOW_TASKS_PREFETCH_ID(userId),
                 userId,
                 kind: "workflow-tasks",
                 payloadJson: JSON.stringify({ taskIds, tasks }),
@@ -58,6 +145,18 @@ export function FieldOfflinePrefetch() {
               }),
             ]);
           }
+
+          const opsTasks = await loadOperationsTasks({ assigneeId: userId });
+          if (opsTasks.length) {
+            await savePrefetch({
+              id: OPS_TASKS_PREFETCH_ID(userId),
+              userId,
+              kind: "operations-tasks",
+              payloadJson: JSON.stringify({ tasks: opsTasks }),
+              updatedAtUtc: new Date().toISOString(),
+            });
+          }
+
           await Promise.allSettled(
             poNumbers.slice(0, 40).map(async (po) => {
               const record = await queryClient.fetchQuery({
@@ -76,7 +175,11 @@ export function FieldOfflinePrefetch() {
               }
             }),
           );
-          // Basic document hints from tasks (deed/assignment refs) for offline display.
+
+          const docEntries = await prefetchBasicDocBinaries({
+            userId,
+            properties,
+          });
           const docHints = tasks
             .map((task) => ({
               taskId: String(task.id ?? task.Id ?? ""),
@@ -90,15 +193,16 @@ export function FieldOfflinePrefetch() {
               ),
             }))
             .filter((row) => row.taskId);
-          if (docHints.length) {
-            await savePrefetch({
-              id: `docs:${userId}`,
-              userId,
-              kind: "basic-docs",
-              payloadJson: JSON.stringify(docHints),
-              updatedAtUtc: new Date().toISOString(),
-            });
-          }
+          await savePrefetch({
+            id: BASIC_DOCS_PREFETCH_ID(userId),
+            userId,
+            kind: "basic-docs",
+            payloadJson: JSON.stringify({
+              hints: docHints,
+              entries: docEntries,
+            }),
+            updatedAtUtc: new Date().toISOString(),
+          });
         } catch {
           // Offline crypto/IDB may be unavailable (non-secure context); ignore.
         }

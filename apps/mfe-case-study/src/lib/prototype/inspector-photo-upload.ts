@@ -28,6 +28,8 @@ import {
   blobToDataUrl,
   fileToBase64,
 } from "@platform/app-shared/media/file-encoding";
+import { currentOfflineUserId } from "@platform/app-shared/offline/offline-write";
+import { getOfflineBlob } from "@platform/offline-client";
 
 const SCOPE = "field-inspection-photo";
 /** Pre-process ceiling; after compress the upload is ≤ 1 MB. */
@@ -73,11 +75,48 @@ export async function prefetchInspectorPhoto(
   const cached = previewCache.get(key);
   if (cached) return cached;
 
-  const config = prototypeModulesApiConfig();
-  if (!config || !attachment.attachmentId) return undefined;
+  const attachmentId = attachment.attachmentId?.trim();
+  if (attachmentId?.startsWith("local:")) {
+    const userId = currentOfflineUserId();
+    if (userId) {
+      const blob = await getOfflineBlob(userId, attachmentId);
+      if (blob?.bytes) {
+        try {
+          const dataUrl = await blobToDataUrl(
+            new Blob([blob.bytes], { type: blob.contentType }),
+          );
+          previewCache.set(key, dataUrl);
+          return dataUrl;
+        } catch {
+          return undefined;
+        }
+      }
+    }
+    return undefined;
+  }
 
-  const blobResult = await downloadAttachmentBlob(config, attachment.attachmentId);
-  if (!blobResult.ok) return undefined;
+  const config = prototypeModulesApiConfig();
+  if (!config || !attachmentId) return undefined;
+
+  const blobResult = await downloadAttachmentBlob(config, attachmentId);
+  if (!blobResult.ok) {
+    const userId = currentOfflineUserId();
+    if (userId && attachmentId) {
+      const offlineBlob = await getOfflineBlob(userId, attachmentId);
+      if (offlineBlob?.bytes) {
+        try {
+          const dataUrl = await blobToDataUrl(
+            new Blob([offlineBlob.bytes], { type: offlineBlob.contentType }),
+          );
+          previewCache.set(key, dataUrl);
+          return dataUrl;
+        } catch {
+          return undefined;
+        }
+      }
+    }
+    return undefined;
+  }
 
   try {
     const dataUrl = await blobToDataUrl(blobResult.data);

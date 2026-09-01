@@ -11,11 +11,12 @@ public static class ValuationListIds
     public const string IvsStandards = "ivsStandards";
     public const string Attachments = "attachments";
     public const string Facades = "facades";
+    public const string BoundaryTypes = "boundaryTypes";
 
     public static readonly string[] TableLists =
     [
-        Purposes, ValueBases, Premises, Methods, Comparables, Facades, Glossary, IvsStandards,
-        Attachments,
+        Purposes, ValueBases, Premises, Methods, Comparables, Facades, BoundaryTypes, Glossary,
+        IvsStandards, Attachments,
     ];
 }
 

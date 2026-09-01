@@ -14,6 +14,8 @@ import {
 import { CaseStudyForm } from "../components/case-study/CaseStudyForm";
 import { CaseStudyPropertyComparablesTab } from "../components/case-study/CaseStudyPropertyComparablesTab";
 import { SpecialistValuationReportInputs } from "../components/po-intake/SpecialistValuationReportInputs";
+import { PropertyDetailInspectionTab } from "../components/po-intake/PropertyDetailInspectionTab";
+import { EmptyState } from "../components/po-intake/PropertyDetailFields";
 import { PropertyDetailHero } from "../components/po-intake/PropertyDetailHero";
 import { PropertyTransactionTimeline } from "../components/po-intake/PropertyTransactionTimeline";
 import { usePrototype } from "@platform/app-shared/contexts/PrototypeContext";
@@ -22,11 +24,20 @@ import { poPropertiesPath, poPropertyPath } from "@platform/app-shared/domain/po
 import { findPropertyForTask } from "../lib/prototype/my-task-row";
 import { canOpenCaseStudyWorkspace } from "../lib/prototype/viewer-task-access";
 import type { WorkflowTask } from "../lib/prototype/tasks-storage";
+import { childTasksForCaseStudyParent } from "../lib/prototype/case-study-party-answers";
+import { CASE_STUDY_SPECIALIST_FEATURE_KEYS } from "../lib/prototype/inspector-workspace-data";
+import {
+  buildPropertyDetailPartyCards,
+  type PropertyDetailPartyCard,
+} from "../lib/prototype/property-detail-parties";
+import { listPropertyDetailPhotos } from "../lib/prototype/property-detail-documents";
 import {
   usePoRecordQuery,
   useWorkflowTasksQuery,
 } from "../query/case-study-queries";
 import { usePropertyDetailDocuments } from "../query/property-detail-documents-query";
+import { useStaffUsersQuery } from "@settings/mfe/query/settings-queries";
+import { resolveAssigneeDisplayName } from "@platform/app-shared/fees/party-fee-meta";
 
 export type CaseStudyWorkspacePartiesExtrasProps = {
   task: WorkflowTask;
@@ -59,22 +70,62 @@ function CaseStudyAppraisalPanel({
   property,
   poNumber,
   tasks,
+  caseStudyTask,
 }: {
   property: NonNullable<ReturnType<typeof findPropertyForTask>>;
   poNumber: string;
   tasks: WorkflowTask[];
+  caseStudyTask: WorkflowTask;
 }) {
+  const { data: staffResult } = useStaffUsersQuery();
+  const staffUsers = staffResult?.users ?? [];
+
+  const inspectionTask = useMemo(() => {
+    const fromParent = childTasksForCaseStudyParent(caseStudyTask.id, tasks).find(
+      (t) => t.kind === "field-inspection",
+    );
+    if (fromParent) return fromParent;
+    return (
+      tasks.find(
+        (t) =>
+          t.kind === "field-inspection" &&
+          t.poNumber.trim() === poNumber.trim() &&
+          t.propertyId === property.id,
+      ) ?? null
+    );
+  }, [caseStudyTask.id, tasks, poNumber, property.id]);
+
+  const inspectionCard = useMemo((): PropertyDetailPartyCard | null => {
+    const fromParties = buildPropertyDetailPartyCards({
+      task: caseStudyTask,
+      allTasks: tasks,
+      staffUsers,
+    }).find((c) => c.roleKey === "inspection");
+    if (fromParties?.enabled) return fromParties;
+    if (!inspectionTask) return null;
+    return {
+      roleKey: "inspection",
+      role: "المعاين",
+      name:
+        resolveAssigneeDisplayName({
+          assigneeName: inspectionTask.assigneeName,
+          assigneeId: inspectionTask.assigneeId,
+          staffUsers,
+          fallback: "المعاين",
+        }) || "المعاين",
+      unassigned: false,
+      state: "progress",
+      enabled: true,
+    };
+  }, [caseStudyTask, tasks, staffUsers, inspectionTask]);
+
   const surveyTaskId = relatedTaskId(tasks, property.id, "engineering-survey");
   const appraisalTaskId = relatedTaskId(
     tasks,
     property.id,
     "property-appraisal",
   );
-  const inspectionTaskId = relatedTaskId(
-    tasks,
-    property.id,
-    "field-inspection",
-  );
+  const inspectionTaskId = inspectionTask?.id ?? null;
   const propertyDocumentSections = usePropertyDetailDocuments({
     property,
     showDecree: true,
@@ -87,9 +138,45 @@ function CaseStudyAppraisalPanel({
     () => propertyDocumentSections.flatMap((s) => s.documents),
     [propertyDocumentSections],
   );
+  const transactionPhotos = useMemo(
+    () => listPropertyDetailPhotos(propertyDocumentSections),
+    [propertyDocumentSections],
+  );
 
   return (
     <div className="pt-5">
+      <section className="mb-6">
+        <div className="mb-3 flex items-center gap-2.5">
+          <span className="h-[17px] w-[3px] rounded-full bg-gold" aria-hidden />
+          <h3 className="m-0 text-[14px] font-extrabold text-heading">
+            معاينة العقار — إدخال البيانات
+          </h3>
+          <span className="flex-1 border-t border-border" aria-hidden />
+        </div>
+        <p className="mb-3 text-[11.5px] leading-relaxed text-text-3">
+          نفس حقول مساحة عمل المعاين الميدانية (الموقع والتصوير، بيانات العقار،
+          التجهيز والإكمال) — يعبّئها الأخصائي هنا قبل مدخلات تقرير التقييم.
+          التعديل يُحفظ تلقائياً في مسودة المعاينة.
+        </p>
+        {inspectionTask && inspectionCard ? (
+          <PropertyDetailInspectionTab
+            property={property}
+            inspectionTask={inspectionTask}
+            inspectionCard={inspectionCard}
+            editMode
+            lockEditMode
+            includeRetiredFeatureKeys={CASE_STUDY_SPECIALIST_FEATURE_KEYS}
+            serviceProofFromTransactionPhotos
+            transactionPhotos={transactionPhotos}
+          />
+        ) : (
+          <EmptyState
+            title="لا توجد مهمة معاينة بعد"
+            sub="يُفعَّل إدخال بيانات المعاينة بعد تعيين المعاين من توزيع المعاملات."
+          />
+        )}
+      </section>
+
       <SpecialistValuationReportInputs
         propertyId={property.id}
         documents={propertyDocuments}
@@ -270,6 +357,7 @@ export function CaseStudyWorkspaceView({
                 property={property}
                 poNumber={record.poNumber}
                 tasks={tasks ?? []}
+                caseStudyTask={task}
               />
             )}
             {renderPartiesExtras ? (

@@ -30,6 +30,9 @@ import {
   createKeyEnvelopeHandoff,
   confirmKeyEnvelopeHandoff,
   upsertFieldSyncStatus,
+  patchOperationsTask,
+  addOperationsTaskComment,
+  upsertPropertyCourtAccess,
 } from "@platform/api-client";
 import { getValidAuthSession } from "@platform/auth-client";
 import { prototypeModulesApiConfig } from "@platform/app-shared/prototype/prototype-modules-api-config";
@@ -52,6 +55,12 @@ function outboxKindLabel(kind: string): string {
       return "حفظ مسودة";
     case "party-submission-submit":
       return "إرسال مهمة";
+    case "operations-task-patch":
+      return "تحديث مهمة عمليات";
+    case "operations-task-comment":
+      return "تعليق مهمة";
+    case "property-court-access":
+      return "مسار دخول المحكمة";
     case "key-envelope-create":
       return "تسجيل ظرف مفاتيح";
     case "key-envelope-assignment-add":
@@ -214,6 +223,99 @@ async function runSync(userId: string): Promise<void> {
             submitResult.kind === "auth" ||
             submitResult.kind === "forbidden" ||
             submitResult.kind === "validation",
+        };
+      }
+      return { ok: true };
+    },
+    patchOperationsTask: async (input) => {
+      if (!workOrdersConfig) {
+        return { ok: false, error: "غير مصادق", terminal: true };
+      }
+      let body: Parameters<typeof patchOperationsTask>[2];
+      try {
+        body = JSON.parse(input.bodyJson) as Parameters<
+          typeof patchOperationsTask
+        >[2];
+      } catch {
+        return { ok: false, error: "بيانات مهمة غير صالحة", terminal: true };
+      }
+      const result = await patchOperationsTask(
+        workOrdersConfig,
+        input.taskId,
+        body,
+      );
+      if (!result.ok) {
+        if (result.kind === "auth" || result.kind === "forbidden") {
+          await purgeOfflineData(userId, "auth-rejected");
+        }
+        return {
+          ok: false,
+          error: "تعذّر تحديث المهمة",
+          terminal:
+            result.kind === "auth" ||
+            result.kind === "forbidden" ||
+            result.kind === "validation",
+        };
+      }
+      return { ok: true };
+    },
+    addOperationsTaskComment: async (input) => {
+      if (!workOrdersConfig) {
+        return { ok: false, error: "غير مصادق", terminal: true };
+      }
+      let payload: {
+        text?: string;
+        kind?: string;
+        files?: Parameters<typeof addOperationsTaskComment>[4];
+      };
+      try {
+        payload = JSON.parse(input.payloadJson) as typeof payload;
+      } catch {
+        return { ok: false, error: "بيانات تعليق غير صالحة", terminal: true };
+      }
+      const result = await addOperationsTaskComment(
+        workOrdersConfig,
+        input.taskId,
+        payload.text ?? "",
+        payload.kind,
+        payload.files,
+      );
+      if (!result.ok) {
+        if (result.kind === "auth" || result.kind === "forbidden") {
+          await purgeOfflineData(userId, "auth-rejected");
+        }
+        return {
+          ok: false,
+          error: "تعذّر إضافة التعليق",
+          terminal:
+            result.kind === "auth" ||
+            result.kind === "forbidden" ||
+            result.kind === "validation",
+        };
+      }
+      return { ok: true };
+    },
+    upsertPropertyCourtAccess: async (input) => {
+      if (!modulesConfig) {
+        return { ok: false, error: "غير مصادق", terminal: true };
+      }
+      let body: Parameters<typeof upsertPropertyCourtAccess>[1];
+      try {
+        body = JSON.parse(input.bodyJson) as Parameters<
+          typeof upsertPropertyCourtAccess
+        >[1];
+      } catch {
+        return { ok: false, error: "بيانات مسار الدخول غير صالحة", terminal: true };
+      }
+      const result = await upsertPropertyCourtAccess(modulesConfig, body);
+      if (!result.ok) {
+        if (result.kind === "auth" || result.kind === "forbidden") {
+          await purgeOfflineData(userId, "auth-rejected");
+        }
+        return {
+          ok: false,
+          error: "تعذّر حفظ مسار الدخول",
+          terminal: result.kind === "auth" || result.kind === "forbidden",
         };
       }
       return { ok: true };

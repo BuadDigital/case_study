@@ -15,11 +15,23 @@ import {
 import { clearInspectorPhotoDataUrl, uploadInspectorPhotoFromFile } from "../../lib/prototype/inspector-photo-upload";
 import { EditableFeaturePhotoCell } from "../po-intake/PropertyDetailInspectionParts";
 import { InspectorMovablesDescriptionField } from "./InspectorMovablesDescriptionField";
+import { InspectorOccupancyDescriptionField } from "./InspectorOccupancyDescriptionField";
 import {
   EDIT_CONTROL_CLASS,
   INS_LABEL_CLASS,
 } from "./FieldInspectionWorkParts";
-import { MOVABLES_DESCRIPTION_KEY } from "../../lib/prototype/inspector-workspace-data";
+import {
+  MOVABLES_DESCRIPTION_KEY,
+  OCCUPANCY_STATE_KEY,
+  OCCUPANCY_DESCRIPTION_KEY,
+} from "../../lib/prototype/inspector-workspace-data";
+
+const INS_LABEL_CENTERED_CLASS = cn(INS_LABEL_CLASS, "w-full text-center");
+const INS_GRID_SELECT_CLASS = cn(EDIT_CONTROL_CLASS, "text-center");
+const INS_GRID_NUMERIC_CLASS = cn(
+  EDIT_CONTROL_CLASS,
+  "text-center tabular-nums [direction:ltr] [unicode-bidi:isolate]",
+);
 
 function chipStyle(on: boolean, disabled = false) {
   return cn(
@@ -47,6 +59,8 @@ export function InspectorFeatureWizardFields({
   deedNumber,
   emptyFeatureKeys,
   missingFeaturePhotoKey,
+  movablesDescriptionError,
+  occupancyDescriptionError,
   hidePhotos = false,
   disabled = false,
   onPatch,
@@ -56,6 +70,8 @@ export function InspectorFeatureWizardFields({
   deedNumber?: string;
   emptyFeatureKeys?: string[];
   missingFeaturePhotoKey?: string;
+  movablesDescriptionError?: string;
+  occupancyDescriptionError?: string;
   /** Field Inspection Workspace design — no per-feature photo column. */
   hidePhotos?: boolean;
   disabled?: boolean;
@@ -108,7 +124,7 @@ export function InspectorFeatureWizardFields({
           const photoMissing = missingFeaturePhotoKey === field.key;
           return (
             <div key={field.key} id={`ins-feature-${field.key}`}>
-              <span className={INS_LABEL_CLASS}>
+              <span className={INS_LABEL_CENTERED_CLASS}>
                 {field.label}
               </span>
               <select
@@ -116,7 +132,7 @@ export function InspectorFeatureWizardFields({
                 aria-invalid={valueMissing || undefined}
                 disabled={disabled}
                 className={cn(
-                  EDIT_CONTROL_CLASS,
+                  INS_GRID_SELECT_CLASS,
                   disabled && "cursor-default opacity-90",
                   (valueMissing || photoMissing) && "border-danger",
                 )}
@@ -161,16 +177,14 @@ export function InspectorFeatureWizardFields({
           );
         })}
         <div>
-          <span className={INS_LABEL_CLASS}>
+          <span className={INS_LABEL_CENTERED_CLASS}>
             عمر العقار (سنوات)
           </span>
           <input
             className={cn(
-              EDIT_CONTROL_CLASS,
-              "tabular-nums",
+              INS_GRID_NUMERIC_CLASS,
               disabled && "cursor-default opacity-90",
             )}
-            dir="ltr"
             inputMode="numeric"
             disabled={disabled}
             value={draft.propertyAgeYears}
@@ -191,13 +205,13 @@ export function InspectorFeatureWizardFields({
           const photoMissing = missingFeaturePhotoKey === field.key;
           return (
             <div key={field.key} id={`ins-feature-${field.key}`}>
-              <span className={INS_LABEL_CLASS}>
+              <span className={INS_LABEL_CENTERED_CLASS}>
                 {field.label}
                 {valueMissing ? (
                   <span className="ms-1.5 text-[10px] font-bold text-danger">مطلوب</span>
                 ) : null}
               </span>
-              <div className="flex flex-wrap gap-1.5">
+              <div className="flex flex-wrap justify-center gap-1.5">
                 {field.options.map((opt) => (
                   <button
                     key={opt}
@@ -236,6 +250,21 @@ export function InspectorFeatureWizardFields({
                     }}
                   />
                 </div>
+              ) : null}
+              {field.key === OCCUPANCY_STATE_KEY && rawVal === "مشغول" ? (
+                <InspectorOccupancyDescriptionField
+                  value={draft.featureValues[OCCUPANCY_DESCRIPTION_KEY] ?? ""}
+                  disabled={disabled}
+                  invalid={Boolean(occupancyDescriptionError)}
+                  onChange={(v) =>
+                    onPatch({
+                      featureValues: {
+                        ...draft.featureValues,
+                        [OCCUPANCY_DESCRIPTION_KEY]: v,
+                      },
+                    })
+                  }
+                />
               ) : null}
             </div>
           );
@@ -303,6 +332,7 @@ export function InspectorFeatureWizardFields({
                     <InspectorMovablesDescriptionField
                       value={draft.featureValues[MOVABLES_DESCRIPTION_KEY] ?? ""}
                       disabled={disabled}
+                      invalid={Boolean(movablesDescriptionError)}
                       onChange={(v) =>
                         onPatch({
                           featureValues: {

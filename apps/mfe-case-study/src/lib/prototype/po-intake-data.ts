@@ -100,6 +100,7 @@ export {
 export {
   INCOMPLETE_CONTACT_MARKER_PHONE,
   CONTACT_ROLE_OPTIONS,
+  contactRoleSelectOptions,
   type PoContact,
   type PropertyUiStatus,
   propertyUiStatusLabel,

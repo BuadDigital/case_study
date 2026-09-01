@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using RealEstateEval.Application.Abstractions;
 using RealEstateEval.Application.Contracts;
+using RealEstateEval.Application.Rules;
 using RealEstateEval.Domain;
 using RealEstateEval.Infrastructure.Data.Contexts;
 using RealEstateEval.Valuation.Application.Abstractions;
@@ -226,16 +227,16 @@ internal static class ValuationReportFieldBuilder
 
             case ValuationReportSectionKeys.Boundaries:
                 d["north"] = JoinBoundary(prop?.NorthBoundary, prop?.NorthBoundaryLengthM);
-                d["northType"] = PropertyBoundaryTypes.LabelAr(prop?.NorthBoundaryType);
+                d["northType"] = ValuationBoundaryTypeLabels.Resolve(valuationCatalog, prop?.NorthBoundaryType);
                 d["northFacade"] = prop?.NorthFacadeFinishing;
                 d["south"] = JoinBoundary(prop?.SouthBoundary, prop?.SouthBoundaryLengthM);
-                d["southType"] = PropertyBoundaryTypes.LabelAr(prop?.SouthBoundaryType);
+                d["southType"] = ValuationBoundaryTypeLabels.Resolve(valuationCatalog, prop?.SouthBoundaryType);
                 d["southFacade"] = prop?.SouthFacadeFinishing;
                 d["east"] = JoinBoundary(prop?.EastBoundary, prop?.EastBoundaryLengthM);
-                d["eastType"] = PropertyBoundaryTypes.LabelAr(prop?.EastBoundaryType);
+                d["eastType"] = ValuationBoundaryTypeLabels.Resolve(valuationCatalog, prop?.EastBoundaryType);
                 d["eastFacade"] = prop?.EastFacadeFinishing;
                 d["west"] = JoinBoundary(prop?.WestBoundary, prop?.WestBoundaryLengthM);
-                d["westType"] = PropertyBoundaryTypes.LabelAr(prop?.WestBoundaryType);
+                d["westType"] = ValuationBoundaryTypeLabels.Resolve(valuationCatalog, prop?.WestBoundaryType);
                 d["westFacade"] = prop?.WestFacadeFinishing;
                 d["streetCount"] = PropertyBoundaryTypes.CountStreets(
                     prop?.NorthBoundaryType,

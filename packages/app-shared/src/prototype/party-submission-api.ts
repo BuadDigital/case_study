@@ -7,10 +7,16 @@ import {
   submitPartyTaskSubmission,
   type PartyTaskSubmissionDto,
 } from "@platform/api-client";
+import { savePrefetch } from "@platform/offline-client";
 import {
+  PARTY_SUBMISSIONS_PREFETCH_ID,
+} from "../offline/prefetch-read";
+import {
+  currentOfflineUserId,
+  isBrowserOffline,
+  loadQueuedDraftPayload,
   saveDraftWithOfflineFallback,
   submitWithOfflineFallback,
-  loadQueuedDraftPayload,
 } from "../offline/offline-write";
 import {
   apiErrorMessage,
@@ -48,7 +54,7 @@ export async function fetchPartySubmission(
   taskId: string,
 ): Promise<PartyTaskSubmissionDto | null> {
   const config = workOrdersApiConfig();
-  if (!config) {
+  if (!config || isBrowserOffline()) {
     const queued = await loadQueuedDraftPayload<Record<string, unknown>>(
       "field-inspection",
       taskId,
@@ -63,6 +69,11 @@ export async function fetchPartySubmission(
       };
       setCachedPartySubmission(local, taskId);
       return local;
+    }
+    const prefetched = await loadSubmissionFromPrefetch(taskId);
+    if (prefetched) {
+      setCachedPartySubmission(prefetched, taskId);
+      return prefetched;
     }
     return getCachedPartySubmission(taskId);
   }
@@ -90,6 +101,11 @@ export async function fetchPartySubmission(
       };
       setCachedPartySubmission(local, taskId);
       return local;
+    }
+    const prefetched = await loadSubmissionFromPrefetch(taskId);
+    if (prefetched) {
+      setCachedPartySubmission(prefetched, taskId);
+      return prefetched;
     }
   }
   if (result.kind === "not_found") {
@@ -281,6 +297,42 @@ export function partySubmissionTaskIdsKey(taskIds: string[]): string {
     .join("\0");
 }
 
+async function persistSubmissionCacheToPrefetch(taskIds: string[]): Promise<void> {
+  const userId = currentOfflineUserId();
+  if (!userId || taskIds.length === 0) return;
+  const map: Record<string, PartyTaskSubmissionDto> = {};
+  for (const taskId of taskIds) {
+    const dto = submissionCache.get(taskId);
+    if (dto) map[taskId] = dto;
+  }
+  await savePrefetch({
+    id: PARTY_SUBMISSIONS_PREFETCH_ID(userId),
+    userId,
+    kind: "party-submissions",
+    payloadJson: JSON.stringify(map),
+    updatedAtUtc: new Date().toISOString(),
+  });
+}
+
+async function loadSubmissionFromPrefetch(
+  taskId: string,
+): Promise<PartyTaskSubmissionDto | null> {
+  const userId = currentOfflineUserId();
+  if (!userId) return null;
+  const { getPrefetch } = await import("@platform/offline-client");
+  const row = await getPrefetch(userId, PARTY_SUBMISSIONS_PREFETCH_ID(userId));
+  if (!row) return null;
+  try {
+    const map = JSON.parse(row.payloadJson) as Record<
+      string,
+      PartyTaskSubmissionDto
+    >;
+    return map[taskId] ?? null;
+  } catch {
+    return null;
+  }
+}
+
 let prefetchInflight: Promise<void> | null = null;
 let prefetchInflightKey = "";
 
@@ -313,6 +365,7 @@ export async function prefetchPartySubmissionsForTasks(
   prefetchInflight = (async () => {
     if (ids.length === 1) {
       await fetchPartySubmission(ids[0]!);
+      await persistSubmissionCacheToPrefetch(ids);
       return;
     }
 
@@ -339,6 +392,7 @@ export async function prefetchPartySubmissionsForTasks(
     for (const id of ids) {
       if (!returned.has(id)) setCachedPartySubmission(null, id);
     }
+    await persistSubmissionCacheToPrefetch(ids);
   })().finally(() => {
     prefetchInflight = null;
     prefetchInflightKey = "";

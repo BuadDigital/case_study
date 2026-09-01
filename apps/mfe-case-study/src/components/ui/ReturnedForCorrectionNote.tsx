@@ -3,8 +3,9 @@
 import { cn } from "@platform/ui-kit";
 
 /**
- * Shared «returned for correction» notice — prominent title and return reason on their own line,
- * with a gold start rail and the same return icon used on status cards.
+ * Operational return-for-correction alert.
+ * Uses warning (amber) tokens — gold is reserved for brand / active stepper,
+ * so a gold wash here looked like chrome, not a specialist return.
  */
 export function ReturnedForCorrectionNote({
   note,
@@ -18,12 +19,12 @@ export function ReturnedForCorrectionNote({
     <div
       role="alert"
       className={cn(
-        "flex items-start gap-3 rounded-[10px] border border-[color-mix(in_srgb,var(--gold)_38%,transparent)] border-s-[3px] border-s-gold-d bg-[color-mix(in_srgb,var(--gold)_10%,var(--surface))] px-3.5 py-3",
+        "flex items-start gap-3 rounded-[10px] border border-[color-mix(in_srgb,var(--amber)_35%,var(--border))] border-s-[3px] border-s-amber bg-amber-light px-3.5 py-3",
         className,
       )}
     >
       <span
-        className="mt-0.5 grid size-8 shrink-0 place-items-center rounded-[9px] bg-gold-soft text-gold-d"
+        className="mt-px grid size-8 shrink-0 place-items-center rounded-[8px] bg-surface text-amber-text shadow-[inset_0_0_0_1px_color-mix(in_srgb,var(--amber)_28%,transparent)]"
         aria-hidden
       >
         <svg
@@ -40,15 +41,19 @@ export function ReturnedForCorrectionNote({
           <path d="M3 3v6h6" />
         </svg>
       </span>
-      <div className="min-w-0">
+      <div className="min-w-0 flex-1">
         <p className="m-0 text-[13px] font-bold leading-snug text-heading">
           معادة للتصحيح
         </p>
         {reason ? (
-          <p className="m-0 mt-1 text-[12.5px] leading-relaxed text-text-2">
-            <span className="font-semibold text-text-1">سبب الإعادة:</span>{" "}
-            {reason}
-          </p>
+          <div className="mt-2 rounded-[8px] border border-[color-mix(in_srgb,var(--amber)_22%,var(--border))] bg-surface px-3 py-2">
+            <p className="m-0 text-[10.5px] font-bold tracking-wide text-amber-text">
+              سبب الإعادة
+            </p>
+            <p className="m-0 mt-1 text-[12.5px] leading-relaxed text-heading">
+              {reason}
+            </p>
+          </div>
         ) : null}
       </div>
     </div>

@@ -3,7 +3,6 @@ import {
   INSPECTOR_FEATURE_FIELDS,
   type InspectorWorkspaceDraft,
 } from "./inspector-workspace-data";
-
 function mapPropertyTypeToAssetSubject(propertyType: string): string {
   const t = propertyType.trim();
   if (!t) return "";

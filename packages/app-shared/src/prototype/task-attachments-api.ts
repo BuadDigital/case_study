@@ -9,6 +9,12 @@ import {
   blobToDataUrl,
   fileToBase64,
 } from "@platform/app-shared/media/file-encoding";
+import {
+  currentOfflineUserId,
+  isBrowserOffline,
+  uploadAttachmentWithOfflineFallback,
+} from "../offline/offline-write";
+import { getOfflineBlob } from "@platform/offline-client";
 
 export type TaskAttachmentPreview = {
   fileName: string;
@@ -111,6 +117,20 @@ async function hydrateAttachmentPreview(
     } catch {
       /* metadata only */
     }
+  } else {
+    const userId = currentOfflineUserId();
+    if (userId && base.attachmentId) {
+      const cached = await getOfflineBlob(userId, base.attachmentId);
+      if (cached?.bytes) {
+        try {
+          preview.dataUrl = await blobToDataUrl(
+            new Blob([cached.bytes], { type: cached.contentType }),
+          );
+        } catch {
+          /* metadata only */
+        }
+      }
+    }
   }
 
   if (scope && taskId) {
@@ -126,7 +146,6 @@ export async function uploadTaskScopedAttachment(
 ): Promise<TaskAttachmentPreview | null> {
   if (!taskId) return null;
 
-  const config = prototypeModulesApiConfig();
   const preview: TaskAttachmentPreview = {
     fileName: file.name,
     mimeType: file.type || "application/octet-stream",
@@ -136,32 +155,47 @@ export async function uploadTaskScopedAttachment(
   const wantsPreview =
     file.type.startsWith("image/") || file.type === "application/pdf";
 
-  if (config) {
-    // Single file read; encoding runs in parallel with clearing old attachments.
-    const [, contentBase64] = await Promise.all([
-      replaceScopeAttachments(scope, taskId),
-      fileToBase64(file),
-    ]);
-    if (wantsPreview) {
-      preview.dataUrl = `data:${preview.mimeType};base64,${contentBase64}`;
-    }
-    const upload = await uploadAttachment(config, {
-      scope,
-      scopeKey: taskId,
-      fileName: file.name,
-      contentType: preview.mimeType,
-      contentBase64,
-    });
-    if (!upload.ok) {
-      return null;
-    }
-    preview.attachmentId = upload.data.id;
-  } else if (wantsPreview) {
+  if (wantsPreview) {
     try {
       preview.dataUrl = await blobToDataUrl(file);
     } catch {
       /* continue */
     }
+  }
+
+  const bytes = await file.arrayBuffer();
+  const config = prototypeModulesApiConfig();
+  if (config && !isBrowserOffline()) {
+    await replaceScopeAttachments(scope, taskId);
+  }
+
+  try {
+    const uploaded = await uploadAttachmentWithOfflineFallback({
+      scope,
+      scopeKey: taskId,
+      fileName: file.name,
+      contentType: preview.mimeType,
+      bytes,
+      onlineUpload: async () => {
+        if (!config) {
+          throw new TypeError("Failed to fetch");
+        }
+        const upload = await uploadAttachment(config, {
+          scope,
+          scopeKey: taskId,
+          fileName: file.name,
+          contentType: preview.mimeType,
+          contentBase64: await fileToBase64(file),
+        });
+        if (!upload.ok) {
+          throw new TypeError("Failed to fetch");
+        }
+        return upload.data.id;
+      },
+    });
+    preview.attachmentId = uploaded.attachmentId;
+  } catch {
+    return null;
   }
 
   previewCache.set(cacheKey(scope, taskId), preview);

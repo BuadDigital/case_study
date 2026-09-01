@@ -153,7 +153,14 @@ public sealed class AttachmentPrintDictionaryService
                     continue;
                 var rows = JsonSerializer.Deserialize<List<ValuationListItemDto>>(arr.GetRawText(), JsonOptions);
                 if (rows is { Count: > 0 })
+                {
                     state.Lists[id] = NormalizeList(id, rows);
+                }
+                else if (seeded.TryGetValue(id, out var seedRows) && seedRows.Count > 0)
+                {
+                    // Stored empty array — keep seeded defaults (e.g. أنواع الحد / أنواع الواجهات).
+                    state.Lists[id] = seedRows;
+                }
             }
         }
         else if (root.TryGetProperty("types", out var typesEl))
