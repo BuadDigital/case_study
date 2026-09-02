@@ -33,7 +33,7 @@ import {
 } from "@case-study/mfe/components/ui/RemainingTimeCell";
 import { useTickingMinute } from "@platform/app-shared/hooks/use-ticking-now";
 import { useViewportDesktop } from "@platform/app-shared/hooks/use-viewport-desktop";
-import { buildActiveQueueRowMoreItems } from "../lib/prototype/active-queue-row-menu";
+import { buildActiveQueueRowMoreItems } from "../lib/app-data/active-queue-row-menu";
 const CopyFromPriorTransactionModal = dynamic(
   () =>
     import("../components/po-intake/CopyFromPriorTransactionModal").then(
@@ -41,20 +41,20 @@ const CopyFromPriorTransactionModal = dynamic(
     ),
   { ssr: false },
 );
-import { buildCopyPriorTargetOptions } from "../lib/prototype/po-intake-storage";
+import { buildCopyPriorTargetOptions } from "../lib/app-data/po-intake-model";
 import {
   computePartyCaseStudyProgress,
   loadPartyCaseStudyAnswersByParty,
-} from "../lib/prototype/case-study-party-progress";
-import { PARTY_CASE_STUDY_FORM_CHANGED_EVENT } from "../lib/prototype/case-study-form-storage";
+} from "../lib/app-data/case-study-party-progress";
+import { PARTY_CASE_STUDY_FORM_CHANGED_EVENT } from "../lib/app-data/case-study-form-storage";
 import { getAuthSession } from "@platform/auth-client";
-import { usePrototype } from "@platform/app-shared/contexts/PrototypeContext";
-import { emptyCaseStudyInfoRolesConfig } from "@settings/mfe/lib/prototype/case-study-info-roles-storage";
+import { useAppAccess } from "@platform/app-shared/contexts/AppAccessContext";
+import { emptyCaseStudyInfoRolesConfig } from "@settings/mfe/lib/app-data/case-study-info-roles-storage";
 import {
   useCaseStudyInfoRolesQuery,
   useStaffUsersQuery,
 } from "@settings/mfe/query/settings-queries";
-import type { CaseStudyInfoPartyId } from "@settings/mfe/lib/prototype/case-study-info-roles-data";
+import type { CaseStudyInfoPartyId } from "@settings/mfe/lib/app-data/case-study-info-roles-data";
 import type { PageId, RoleId } from "@platform/types";
 import { poPropertiesPath, poPropertyDetailPath } from "@platform/app-shared/domain/po-routes";
 import {
@@ -66,29 +66,29 @@ import {
   formatRemainingDuration,
   remainingTimerTick,
   resolveSlaTimerRatio,
-} from "../lib/prototype/my-task-row";
-import type { PoIntakeRecord } from "../lib/prototype/po-intake-data";
+} from "../lib/app-data/my-task-row";
+import type { PoIntakeRecord } from "../lib/app-data/po-intake-data";
 import {
   formatPoDisplay,
   skipsBourseForIdentifier,
-} from "../lib/prototype/po-intake-data";
+} from "../lib/app-data/po-intake-data";
 import {
   ActiveQueueMobileCards,
   toneFromLegacyBadge,
   type ActiveQueueMobileCardItem,
 } from "@platform/app-shared/components/ActiveQueueMobileCards";
 import { InspectorMobileQueue } from "../components/field-inspection/InspectorMobileQueue";
-import { isListedQueueTask } from "../lib/prototype/suspended-transactions-storage";
+import { isListedQueueTask } from "../lib/app-data/suspended-transactions-storage";
 import {
   TASKS_CHANGED_EVENT,
   type WorkflowTask,
-} from "../lib/prototype/tasks-storage";
-import { resolveQueueTasksForViewer } from "../lib/prototype/viewer-task-access";
+} from "../lib/app-data/tasks-storage";
+import { resolveQueueTasksForViewer } from "../lib/app-data/viewer-task-access";
 import {
   buildRowAttentionFingerprint,
   rowHasAttentionDot,
   useRowAttentionSeenMap,
-} from "../lib/prototype/row-attention-storage";
+} from "../lib/app-data/row-attention-storage";
 import {
   buildDistributionQueueRowMeta,
   buildPrimaryQueueRowMeta,
@@ -96,19 +96,19 @@ import {
   filterPrimaryQueueRowMeta,
   resolveQueueTaskStatusBadge,
   uniqueSortedLabels,
-} from "../lib/prototype/active-queue-list-filters";
+} from "../lib/app-data/active-queue-list-filters";
 import {
   allTransactionsPhaseStyle,
   buildAllTransactionsQueueRowMeta,
   filterAllTransactionsQueueRows,
   uniqueSortedPoOrder,
-} from "../lib/prototype/all-transactions-queue";
+} from "../lib/app-data/all-transactions-queue";
 import { useFieldInspectionWorkspacesQuery } from "../query/field-inspection-workspaces-queries";
 import {
   getCachedPartySubmission,
   partySubmissionTaskIdsKey,
   prefetchPartySubmissionsForTasks,
-} from "@platform/app-shared/prototype/party-submission-api";
+} from "@platform/app-shared/app-data/party-submission-api";
 import {
   usePoRecordsQuery,
   useWorkflowTasksQuery,
@@ -118,7 +118,7 @@ import {
   appraiserQueueStatusGroup,
 } from "../lib/evaluator-bridge";
 import { ActiveTransactionPageLayout } from "../components/active-transactions/ActiveTransactionPageLayout";
-import { prototypeKeys } from "@platform/app-shared/query/prototype-keys";
+import { appDataKeys } from "@platform/app-shared/query/app-data-keys";
 import {
   AllTransactionsQueueTable,
   DistributionQueueTable,
@@ -261,7 +261,7 @@ export function ActiveTransactionQueueView({
   const selectedId = searchParams.get("task");
   const [isOpeningTask, startOpenTask] = useTransition();
   const [openingTaskId, setOpeningTaskId] = useState<string | null>(null);
-  const { role, viewerEmail, distributionAssigneeId } = usePrototype();
+  const { role, viewerEmail, distributionAssigneeId } = useAppAccess();
   const { data: staffResult } = useStaffUsersQuery();
   const { data: infoRolesData } = useCaseStudyInfoRolesQuery();
   const infoRolesMatrix = infoRolesData?.matrix ?? DEFAULT_INFO_ROLES.matrix;
@@ -337,12 +337,12 @@ export function ActiveTransactionQueueView({
     void refetchPoRecords();
     if (config.allowPhaseRevert) {
       void queryClient.invalidateQueries({
-        queryKey: prototypeKeys.pendingBourseItems(),
+        queryKey: appDataKeys.pendingBourseItems(),
       });
     }
     if (needsInspectionWorkspaces) {
       void queryClient.invalidateQueries({
-        queryKey: prototypeKeys.fieldInspectionWorkspaces(),
+        queryKey: appDataKeys.fieldInspectionWorkspaces(),
       });
     }
   }, [
@@ -358,20 +358,20 @@ export function ActiveTransactionQueueView({
     // Independent keys in parallel; invalidating workflowTasks refetches on its own —
     // the extra refetchTasks was a duplicate identical GET (async-parallel).
     const invalidations = [
-      queryClient.invalidateQueries({ queryKey: prototypeKeys.poRecords() }),
-      queryClient.invalidateQueries({ queryKey: prototypeKeys.workflowTasks() }),
+      queryClient.invalidateQueries({ queryKey: appDataKeys.poRecords() }),
+      queryClient.invalidateQueries({ queryKey: appDataKeys.workflowTasks() }),
     ];
     if (config.allowPhaseRevert) {
       invalidations.push(
         queryClient.invalidateQueries({
-          queryKey: prototypeKeys.pendingBourseItems(),
+          queryKey: appDataKeys.pendingBourseItems(),
         }),
       );
     }
     if (needsInspectionWorkspaces) {
       invalidations.push(
         queryClient.invalidateQueries({
-          queryKey: prototypeKeys.fieldInspectionWorkspaces(),
+          queryKey: appDataKeys.fieldInspectionWorkspaces(),
         }),
       );
     }
@@ -678,16 +678,16 @@ export function ActiveTransactionQueueView({
 
   const handleCopiedFromPrior = useCallback(() => {
     void queryClient.invalidateQueries({
-      queryKey: prototypeKeys.poRecord(copyPoNumber),
+      queryKey: appDataKeys.poRecord(copyPoNumber),
     });
     void queryClient.invalidateQueries({
-      queryKey: prototypeKeys.poRecords(),
+      queryKey: appDataKeys.poRecords(),
     });
     void queryClient.invalidateQueries({
-      queryKey: prototypeKeys.workflowTasks(),
+      queryKey: appDataKeys.workflowTasks(),
     });
     void queryClient.invalidateQueries({
-      queryKey: prototypeKeys.pendingBourseItems(),
+      queryKey: appDataKeys.pendingBourseItems(),
     });
     refreshWork();
   }, [queryClient, copyPoNumber, refreshWork]);

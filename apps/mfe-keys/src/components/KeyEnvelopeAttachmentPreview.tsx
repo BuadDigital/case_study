@@ -2,8 +2,8 @@
 
 import { useEffect, useState, type ReactNode } from "react";
 import { downloadAttachmentBlob } from "@platform/api-client";
-import { prototypeModulesApiConfig } from "@platform/app-shared/prototype/prototype-modules-api-config";
-import { openTaskAttachmentPreview, type TaskAttachmentPreview } from "@platform/app-shared/prototype/task-attachments-api";
+import { prototypeModulesApiConfig } from "@platform/app-shared/app-data/modules-api-config";
+import { openTaskAttachmentPreview, type TaskAttachmentPreview } from "@platform/app-shared/app-data/task-attachments-api";
 import { blobToDataUrl } from "@platform/app-shared/media/file-encoding";
 import { cn } from "@platform/ui-kit";
 

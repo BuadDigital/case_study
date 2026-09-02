@@ -1,7 +1,7 @@
 "use client";
 
 import { Button, Input, Label, cn } from "@platform/ui-kit";
-import type { PoPropertyIntake } from "../../lib/prototype/po-intake-data";
+import type { PoPropertyIntake } from "../../lib/app-data/po-intake-data";
 
 type OwnerRow = { name: string; sharePct: string };
 

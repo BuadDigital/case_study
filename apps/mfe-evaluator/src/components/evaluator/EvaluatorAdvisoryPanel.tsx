@@ -3,14 +3,14 @@
 import { useEffect, useMemo, useState } from "react";
 import { RegistrationFormCard } from "@platform/app-shared/registration/RegistrationFormCard";
 import { Button, cn, InlineLoadingSkeleton } from "@platform/ui-kit";
-import { emptyCaseStudyInfoRolesConfig } from "@settings/mfe/lib/prototype/case-study-info-roles-storage";
+import { emptyCaseStudyInfoRolesConfig } from "@settings/mfe/lib/app-data/case-study-info-roles-storage";
 import { useCaseStudyInfoRolesQuery } from "@settings/mfe/query/settings-queries";
 import type { WorkflowTask } from "@platform/app-shared/workflow/task-types";
 import {
   loadPartyCaseStudyFormDraft,
   PARTY_CASE_STUDY_FORM_CHANGED_EVENT,
   type CaseStudyFormDraft,
-} from "@case-study/mfe/lib/prototype/case-study-form-storage";
+} from "@case-study/mfe/lib/app-data/case-study-form-storage";
 import { findAppraisalChildForParent } from "../../lib/evaluator/evaluator-inspection-gate";
 import { openEvaluatorReportPreview } from "../../lib/evaluator/evaluator-report-attachments";
 import {
@@ -19,7 +19,7 @@ import {
   loadEvaluatorSubmission,
 } from "../../lib/evaluator/evaluator-submission-storage";
 import { PartyRecallAdvisorySection } from "@case-study/mfe/components/party-tasks/PartyRecallAdvisorySection";
-import { PARTY_TASK_RECALL_CHANGED_EVENT } from "@platform/app-shared/prototype/party-task-recall-storage";
+import { PARTY_TASK_RECALL_CHANGED_EVENT } from "@platform/app-shared/app-data/party-task-recall-storage";
 import { useWindowEvents } from "@platform/app-shared/hooks/useWindowEvents";
 import {
   checklistAnswerLabel,

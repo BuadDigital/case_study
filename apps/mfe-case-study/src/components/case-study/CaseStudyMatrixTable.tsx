@@ -13,13 +13,15 @@ import {
   cn,
 } from "@platform/ui-kit";
 import {
+  CASE_STUDY_ANSWER_LABEL_A,
+  CASE_STUDY_ANSWER_LABEL_B,
   CASE_STUDY_SECTION_QUESTIONS,
   caseStudyAnswerKey,
   type CaseStudyFormAnswer,
   type CaseStudyQuestionSection,
-} from "../../lib/prototype/case-study-form-data";
-import { caseStudyQuestionTargetId } from "../../lib/prototype/case-study-form-ux";
-import type { PartyQuestionContribution } from "../../lib/prototype/case-study-party-answers";
+} from "../../lib/app-data/case-study-form-data";
+import { caseStudyQuestionTargetId } from "../../lib/app-data/case-study-form-ux";
+import type { PartyQuestionContribution } from "../../lib/app-data/case-study-party-answers";
 import { invalidControlClass } from "@platform/app-shared/form-ux";
 import {
   answerToYn,
@@ -74,27 +76,22 @@ function IconAlert({ size = 13 }: { size?: number }) {
 }
 
 function PartyBadge({ short, value }: { short: string; value: MatrixYn }) {
-  const label = value === "Y" ? "نعم" : value === "NA" ? "لا ينطبق" : "لا";
+  const label = value === "Y" ? "نعم" : "لا";
+  const fullLabel =
+    value === "Y" ? CASE_STUDY_ANSWER_LABEL_A : CASE_STUDY_ANSWER_LABEL_B;
   return (
     <span
+      title={fullLabel}
       className={cn(
         "inline-flex items-center gap-1 rounded-[6px] border px-2 py-0.5 text-[11px] leading-none whitespace-nowrap",
         value === "Y"
           ? "border-[color-mix(in_srgb,var(--ink)_18%,var(--border))] bg-success-bg text-success-text"
-          : value === "NA"
-            ? "border-border-md bg-surface-2 text-text-2"
-            : "border-[color-mix(in_srgb,var(--danger)_22%,var(--border))] bg-danger-bg text-danger",
+          : "border-[color-mix(in_srgb,var(--danger)_22%,var(--border))] bg-danger-bg text-danger",
       )}
     >
       <span className="font-semibold text-text-2">{short}</span>
       <span className="inline-flex items-center" aria-hidden="true">
-        {value === "Y" ? (
-          <IconCheck size={11} />
-        ) : value === "NA" ? (
-          <span className="text-[10px] font-bold">—</span>
-        ) : (
-          <IconX size={11} />
-        )}
+        {value === "Y" ? <IconCheck size={11} /> : <IconX size={11} />}
       </span>
       <span className="font-semibold">{label}</span>
     </span>
@@ -110,7 +107,7 @@ function OfficialAnswerCell({
   onAdopt,
 }: {
   value: MatrixYn | null;
-  target: MatrixYn;
+  target: Exclude<MatrixYn, "NA">;
   disabled?: boolean;
   onPick: (next: MatrixYn | null) => void;
   showAdopt?: boolean;
@@ -119,12 +116,10 @@ function OfficialAnswerCell({
   const on = value === target;
   const adoptLabel =
     target === "Y"
-      ? "اعتماد الأطراف (نعم)"
-      : target === "NA"
-        ? "اعتماد الأطراف (لا ينطبق)"
-        : "اعتماد الأطراف (لا)";
+      ? `اعتماد الأطراف (${CASE_STUDY_ANSWER_LABEL_A})`
+      : `اعتماد الأطراف (${CASE_STUDY_ANSWER_LABEL_B})`;
   const aria =
-    target === "Y" ? "نعم" : target === "NA" ? "لا ينطبق" : "لا";
+    target === "Y" ? CASE_STUDY_ANSWER_LABEL_A : CASE_STUDY_ANSWER_LABEL_B;
 
   return (
     <div className="mx-auto flex w-full max-w-[3rem] flex-col items-center justify-center gap-1">
@@ -135,9 +130,7 @@ function OfficialAnswerCell({
           on
             ? target === "Y"
               ? "border-ink bg-ink text-white"
-              : target === "NA"
-                ? "border-ink bg-surface-2 text-heading"
-                : "border-danger bg-danger text-white"
+              : "border-danger bg-danger text-white"
             : "border-border-md bg-surface text-text-3 hover:border-[color-mix(in_srgb,var(--ink)_30%,var(--border))] hover:text-heading",
           disabled &&
             "cursor-not-allowed opacity-45 hover:border-border-md hover:text-text-3",
@@ -153,8 +146,6 @@ function OfficialAnswerCell({
         {on ? (
           target === "Y" ? (
             <IconCheck size={12} />
-          ) : target === "NA" ? (
-            <span className="text-[10px] font-bold">—</span>
           ) : (
             <IconX size={12} />
           )
@@ -234,7 +225,7 @@ export function CaseStudyMatrixTable({
   }
 
   /* Fixed columns so header (yes/no) lines up with body cells */
-  const ynColClass = "w-[72px] text-center";
+  const ynColClass = "w-[72px] text-center align-middle";
   /* Density overrides on the shared Th/Td contract — this matrix runs tighter. */
   const headClass = "whitespace-normal px-3 py-2.5 text-[12px]";
   const cellClass = "px-3 py-2.5 text-[12.5px]";
@@ -254,21 +245,30 @@ export function CaseStudyMatrixTable({
         </div>
       ) : null}
 
+      <p className="m-0 border-b border-border bg-surface-2/70 px-3 py-2 text-[11px] leading-relaxed text-text-3">
+        مقياس الإجابة الموحّد:{" "}
+        <span className="font-semibold text-text-2">
+          {CASE_STUDY_ANSWER_LABEL_A}
+        </span>
+        {" · "}
+        <span className="font-semibold text-text-2">
+          {CASE_STUDY_ANSWER_LABEL_B}
+        </span>
+      </p>
+
       <Table className="min-w-[640px] table-fixed" dir="rtl">
         <colgroup>
           {showPartyColumn ? (
             <>
               <col style={{ width: "36%" }} />
               <col />
-              <col style={{ width: 64 }} />
-              <col style={{ width: 64 }} />
+              <col style={{ width: 72 }} />
               <col style={{ width: 72 }} />
             </>
           ) : (
             <>
               <col />
-              <col style={{ width: 64 }} />
-              <col style={{ width: 64 }} />
+              <col style={{ width: 72 }} />
               <col style={{ width: 72 }} />
             </>
           )}
@@ -284,14 +284,19 @@ export function CaseStudyMatrixTable({
                 <span className="font-normal text-text-3">(استدلال)</span>
               </Th>
             ) : null}
-            <Th scope="col" className={cn(headClass, ynColClass)}>
+            <Th
+              scope="col"
+              title={CASE_STUDY_ANSWER_LABEL_A}
+              className={cn(headClass, ynColClass)}
+            >
               نعم
             </Th>
-            <Th scope="col" className={cn(headClass, ynColClass)}>
+            <Th
+              scope="col"
+              title={CASE_STUDY_ANSWER_LABEL_B}
+              className={cn(headClass, ynColClass)}
+            >
               لا
-            </Th>
-            <Th scope="col" className={cn(headClass, ynColClass)}>
-              لا ينطبق
             </Th>
           </Tr>
         </THead>
@@ -415,22 +420,6 @@ export function CaseStudyMatrixTable({
                       official !== "N"
                     }
                     onAdopt={() => setOfficial("N")}
-                  />
-                </Td>
-                <Td className={cn(cellClass, ynColClass, conflictBg)}>
-                  <OfficialAnswerCell
-                    value={official}
-                    target="NA"
-                    disabled={!editable}
-                    onPick={setOfficial}
-                    showAdopt={
-                      editable &&
-                      showPartyColumn &&
-                      status === "consensus" &&
-                      consensus === "NA" &&
-                      official !== "NA"
-                    }
-                    onAdopt={() => setOfficial("NA")}
                   />
                 </Td>
               </Tr>

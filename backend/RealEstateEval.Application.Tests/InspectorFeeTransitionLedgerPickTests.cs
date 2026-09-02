@@ -1,7 +1,8 @@
-using RealEstateEval.Domain;
+﻿using RealEstateEval.Domain;
 using RealEstateEval.Infrastructure.Services;
 using RealEstateEval.Financial.Domain;
 using RealEstateEval.Financial.Infrastructure.Services;
+using RealEstateEval.Financial.Application.Rules;
 
 namespace RealEstateEval.Application.Tests;
 
@@ -35,7 +36,7 @@ public class InspectorFeeTransitionLedgerPickTests
             CreatedAtUtc = DateTime.UtcNow,
         };
 
-        var picked = InspectorFeeService.PickLedgerForTransition(
+        var picked = InspectorFeeAccrualRules.PickLedgerForTransition(
             [returnedLegacy, draft],
             InspectorFeeActions.SubmitToSupervisor,
             "fi-abdullah-abdulmane");

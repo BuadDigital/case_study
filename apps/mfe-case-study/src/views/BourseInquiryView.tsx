@@ -1,7 +1,7 @@
 "use client";
 
 import { useQueryClient } from "@tanstack/react-query";
-import { useCallback, useMemo, useState, useTransition } from "react";
+import { useCallback, useMemo, useRef, useState, useTransition } from "react";
 import {
   Button,
   Card,
@@ -27,13 +27,14 @@ import {
   Tr,
   useToast,
 } from "@platform/ui-kit";
-import { usePrototype } from "@platform/app-shared/contexts/PrototypeContext";
-import { ROLES } from "@platform/app-shared/prototype/constants";
+import { useAppAccess } from "@platform/app-shared/contexts/AppAccessContext";
+import { useIdempotentAction } from "@platform/app-shared";
+import { ROLES } from "@platform/app-shared/app-data/constants";
 import {
   submitBourseObstruction,
   validateBourseObstructionReason,
-} from "../lib/prototype/bourse-obstruction";
-import type { BourseDeedVitality } from "../lib/prototype/po-intake-data";
+} from "../lib/app-data/bourse-obstruction";
+import type { BourseDeedVitality } from "../lib/app-data/po-intake-data";
 import { PoNumber } from "@case-study/mfe/components/ui/PoNumber";
 import {
   emptyProperty,
@@ -42,12 +43,10 @@ import {
   formatPoDisplay,
   PROPERTY_IDENTIFIER_COLUMN_LABEL,
   type PoPropertyIntake,
-} from "../lib/prototype/po-intake-data";
-import {
-  completePropertyBourse,
-  findPropertyInRecord,
-} from "../lib/prototype/po-intake-storage";
-import { prototypeKeys } from "@platform/app-shared/query/prototype-keys";
+} from "../lib/app-data/po-intake-data";
+import { findPropertyInRecord } from "../lib/app-data/po-intake-reads";
+import { completePropertyBourse } from "../lib/app-data/po-intake-commands";
+import { appDataKeys } from "@platform/app-shared/query/app-data-keys";
 import { useFailuresQuery } from "@failures/mfe/query/failures-queries";
 import {
   usePendingBourseItemsQuery,
@@ -66,12 +65,12 @@ import {
 import { scheduleScrollToFirstPoPropertyError } from "../lib/domain/po-intake/po-field-error-targets";
 import { scheduleScrollToFormField } from "@platform/app-shared/form-ux";
 import type { PendingBoursePropertyDto } from "@platform/api-client";
-import { filterActionablePendingBourseItems } from "../lib/prototype/pending-bourse-queue";
+import { filterActionablePendingBourseItems } from "../lib/app-data/pending-bourse-queue";
 import { ActiveTransactionPageLayout } from "../components/active-transactions/ActiveTransactionPageLayout";
 import { ActiveQueueMobileCards } from "@platform/app-shared/components/ActiveQueueMobileCards";
 import type { ActiveQueueMobileCardItem } from "@platform/app-shared/components/ActiveQueueMobileCards";
-import { buildBourseQueueRowMoreItems } from "../lib/prototype/active-queue-row-menu";
-import { caseStudyTaskForProperty } from "../lib/prototype/tasks-storage";
+import { buildBourseQueueRowMoreItems } from "../lib/app-data/active-queue-row-menu";
+import { caseStudyTaskForProperty } from "../lib/app-data/tasks-storage";
 import { useRouter } from "next/navigation";
 import { poPropertyPath } from "@platform/app-shared/domain/po-routes";
 import { InteractiveDeedCell } from "../components/ui/InteractiveDeedCell";
@@ -80,7 +79,7 @@ const ROW = queueTableRowClassName;
 const ROW_ACTIVE = queueTableRowActiveClassName;
 
 export function BourseInquiryView() {
-  const { role } = usePrototype();
+  const { role } = useAppAccess();
   const router = useRouter();
   const queryClient = useQueryClient();
   const {
@@ -126,13 +125,35 @@ export function BourseInquiryView() {
     // the extra refetch was a duplicate identical GET.
     await Promise.all([
       queryClient.invalidateQueries({
-        queryKey: prototypeKeys.pendingBourseItems(),
+        queryKey: appDataKeys.pendingBourseItems(),
       }),
       queryClient.invalidateQueries({
-        queryKey: prototypeKeys.workflowTasks(),
+        queryKey: appDataKeys.workflowTasks(),
       }),
     ]);
   }, [queryClient]);
+
+  const pendingBourseComplete = useRef<{
+    poNumber: string;
+    propertyId: string;
+    property: PoPropertyIntake;
+  } | null>(null);
+
+  const { execute: executeBourseComplete, loading: bourseCompleting } =
+    useIdempotentAction(
+      useCallback(async (idempotencyKey: string) => {
+        const pending = pendingBourseComplete.current;
+        if (!pending) {
+          throw new Error("لا توجد بيانات بورصة للإرسال");
+        }
+        return completePropertyBourse(
+          pending.poNumber,
+          pending.propertyId,
+          pending.property,
+          idempotencyKey,
+        );
+      }, []),
+    );
 
   const patchProperty = useCallback(
     <K extends keyof PoPropertyIntake>(key: K, value: PoPropertyIntake[K]) => {
@@ -239,7 +260,7 @@ export function BourseInquiryView() {
           // refresh() invalidates workflowTasks on its own — keep invalidating failures in parallel with it.
           await Promise.all([
             queryClient.invalidateQueries({
-              queryKey: prototypeKeys.failures(),
+              queryKey: appDataKeys.failures(),
             }),
             refresh(),
           ]);
@@ -262,12 +283,15 @@ export function BourseInquiryView() {
       setSaving(true);
       setFormError(null);
       try {
-        const result = await completePropertyBourse(
-          selected.poNumber,
-          selected.propertyId,
-          { ...property, deedStatus: "فعال" },
-        );
+        pendingBourseComplete.current = {
+          poNumber: selected.poNumber,
+          propertyId: selected.propertyId,
+          property: { ...property, deedStatus: "فعال" },
+        };
+        const outcome = await executeBourseComplete();
+        if (outcome.status === "skipped") return;
 
+        const result = outcome.value;
         if (!result.ok) {
           setFormError(result.error);
           if (result.errors) setFieldErrors(result.errors);
@@ -531,8 +555,8 @@ export function BourseInquiryView() {
                 <Button
                   type="button"
                   variant="primary"
-                  loading={saving}
-                  disabled={saving}
+                  loading={saving || bourseCompleting}
+                  disabled={saving || bourseCompleting}
                   showActionToast={false}
                   className="min-h-10 leading-tight"
                   actionLabel={

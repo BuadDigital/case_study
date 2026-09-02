@@ -1,5 +1,5 @@
 import type { InspectorFeeRowDto } from "@platform/api-client";
-import type { StaffUser } from "../prototype/constants";
+import type { StaffUser } from "../app-data/constants";
 
 /** Seed / distribution assignee ids → Arabic display when staff lookup is empty. */
 const ASSIGNEE_DISPLAY_FALLBACKS: Record<string, string> = {

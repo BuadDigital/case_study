@@ -1,13 +1,10 @@
-﻿using System.ComponentModel.DataAnnotations;
-
-namespace RealEstateEval.Application.Contracts;
+﻿namespace RealEstateEval.Application.Contracts;
 
 public class AttachmentPrintTypeDto
 {
     public required string Id { get; init; }
     public required string Key { get; init; }
     public required string LabelAr { get; init; }
- /// <summary>Empty = applies to all property types.</summary>
     public IReadOnlyList<string> PropertyTypeKeys { get; init; } = [];
     public bool IsRequired { get; init; }
     public bool IsSystemDefault { get; init; }

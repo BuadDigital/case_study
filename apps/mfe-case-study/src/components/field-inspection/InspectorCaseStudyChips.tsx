@@ -10,25 +10,26 @@ import { cn, InlineLoadingSkeleton, Note } from "@platform/ui-kit";
 import {
   emptyCaseStudyInfoRolesConfig,
   isPartyQuestionVisible,
-} from "@settings/mfe/lib/prototype/case-study-info-roles-storage";
-import { partyIdForRoleId } from "@settings/mfe/lib/prototype/case-study-info-roles-data";
+} from "@settings/mfe/lib/app-data/case-study-info-roles-storage";
+import { partyIdForRoleId } from "@settings/mfe/lib/app-data/case-study-info-roles-data";
 import { useCaseStudyInfoRolesQuery } from "@settings/mfe/query/settings-queries";
 import {
   DEFAULT_CASE_STUDY_QUESTION_CATALOG,
   caseStudyAnswerKey,
 } from "@platform/app-shared/domain/case-study/question-catalog";
-import type { PartyTaskPageDef } from "@platform/app-shared/prototype/party-task-pages";
-import type { WorkflowTask } from "../../lib/prototype/tasks-storage";
+import type { PartyTaskPageDef } from "@platform/app-shared/app-data/party-task-pages";
+import type { WorkflowTask } from "../../lib/app-data/tasks-storage";
 import {
-  CASE_STUDY_TABLE_HEADERS,
+  CASE_STUDY_ANSWER_LABEL_A,
+  CASE_STUDY_ANSWER_LABEL_B,
   type CaseStudyFormAnswer,
   type CaseStudyQuestionSection,
-} from "../../lib/prototype/case-study-form-data";
+} from "../../lib/app-data/case-study-form-data";
 import {
   loadPartyCaseStudyFormDraft,
   savePartyCaseStudyFormDraft,
   type CaseStudyFormDraft,
-} from "../../lib/prototype/case-study-form-storage";
+} from "../../lib/app-data/case-study-form-storage";
 import { useWorkflowTasksQuery } from "../../query/case-study-queries";
 import { useCaseStudyQuestionCatalogQuery } from "../../query/case-study-question-catalog-queries";
 
@@ -43,7 +44,12 @@ const GROUPS: { title: string; section: CaseStudyQuestionSection }[] = [
   { title: "ملاحظات إضافية", section: "extra" },
 ];
 
-const OPTS: CaseStudyFormAnswer[] = ["A", "B", "NA"];
+/** Inspector chips: one binary scale for every section (no NA / section-specific wording). */
+const OPTS: Array<Extract<CaseStudyFormAnswer, "A" | "B">> = ["A", "B"];
+const OPT_LABELS: Record<(typeof OPTS)[number], string> = {
+  A: CASE_STUDY_ANSWER_LABEL_A,
+  B: CASE_STUDY_ANSWER_LABEL_B,
+};
 
 function resolveParentId(
   task: WorkflowTask,
@@ -150,7 +156,7 @@ export function InspectorCaseStudyChips({
       n +
       g.questions.filter((q) => {
         const v = answers[q.key];
-        return v === "A" || v === "B" || v === "NA";
+        return v === "A" || v === "B";
       }).length,
     0,
   );
@@ -191,14 +197,7 @@ export function InspectorCaseStudyChips({
           {answered}/{total} مُجاب
         </span>
       </div>
-      {groups.map((g) => {
-        const headers = CASE_STUDY_TABLE_HEADERS[g.section];
-        const labels: Record<CaseStudyFormAnswer, string> = {
-          A: headers.colA,
-          B: headers.colB,
-          NA: headers.colNa,
-        };
-        return (
+      {groups.map((g) => (
           <div key={g.section} className="mb-3.5">
             <span className="mb-[5px] block text-[11px] font-semibold text-text-2">
               {g.title}
@@ -231,7 +230,7 @@ export function InspectorCaseStudyChips({
                               forceReadOnly && "cursor-default opacity-80",
                             )}
                           >
-                            {labels[opt]}
+                            {OPT_LABELS[opt]}
                           </button>
                         );
                       })}
@@ -241,8 +240,7 @@ export function InspectorCaseStudyChips({
               })}
             </div>
           </div>
-        );
-      })}
+        ))}
     </div>
   );
 }

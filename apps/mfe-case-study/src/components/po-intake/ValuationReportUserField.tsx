@@ -6,7 +6,7 @@ import {
   showsValuationReportUserField,
   VALUATION_REPORT_USER_OPTION_LABEL,
   type AssignmentType,
-} from "../../lib/prototype/po-intake-data";
+} from "../../lib/app-data/po-intake-data";
 
 export function ValuationReportUserField({
   assignmentType,

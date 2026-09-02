@@ -1,13 +1,14 @@
 "use client";
 
-import { useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import {
   AppModal,
   Button,
   useToast,
 } from "@platform/ui-kit";
-import { prototypeKeys } from "@platform/app-shared/query/prototype-keys";
+import { useIdempotentAction } from "@platform/app-shared";
+import { appDataKeys } from "@platform/app-shared/query/app-data-keys";
 import { FailureRaiseFields, failurePayloadFromProblemType } from "@failures/mfe/components/failures/FailureRaiseFields";
 import { createFailure } from "@failures/mfe/lib/failures-repository";
 import { FAILURE_PROBLEM_TYPES } from "@failures/mfe/lib/failure-types-data";
@@ -68,8 +69,16 @@ function FailureRaiseForm({
   const { showToast } = useToast();
   const { data: catalog } = useFailureTypesQuery();
   const [problemTypeId, setProblemTypeId] = useState("");
-  const [saving, setSaving] = useState(false);
   const [invalid, setInvalid] = useState(false);
+  const pendingFailure = useRef<Parameters<typeof createFailure>[0] | null>(null);
+
+  const { execute: executeCreateFailure, loading: saving } = useIdempotentAction(
+    useCallback(async (idempotencyKey: string) => {
+      const input = pendingFailure.current;
+      if (!input) throw new Error("لا توجد بيانات تعذر");
+      return createFailure(input, idempotencyKey);
+    }, []),
+  );
 
   function requestClose() {
     if (saving) return;
@@ -88,33 +97,32 @@ function FailureRaiseForm({
       return;
     }
     if (saving) return;
-    setSaving(true);
     setInvalid(false);
+    pendingFailure.current = {
+      poNumber,
+      propertyId,
+      deedNumber,
+      ...payload,
+      raisedByRole,
+      specialist,
+    };
     try {
-      await createFailure({
-        poNumber,
-        propertyId,
-        deedNumber,
-        ...payload,
-        raisedByRole,
-        specialist,
-      });
+      const outcome = await executeCreateFailure();
+      if (outcome.status === "skipped") return;
       // poRecords / workflow for shells that filter by active failure — not
       // the whole prototype tree (avoids mass sidebar/finance refetch).
       // Independent query keys — invalidate in parallel, not sequentially (async-parallel).
       await Promise.all([
-        queryClient.invalidateQueries({ queryKey: prototypeKeys.failures() }),
-        queryClient.invalidateQueries({ queryKey: prototypeKeys.operationsTasks() }),
-        queryClient.invalidateQueries({ queryKey: prototypeKeys.workflowTasks() }),
-        queryClient.invalidateQueries({ queryKey: prototypeKeys.poListRows() }),
+        queryClient.invalidateQueries({ queryKey: appDataKeys.failures() }),
+        queryClient.invalidateQueries({ queryKey: appDataKeys.operationsTasks() }),
+        queryClient.invalidateQueries({ queryKey: appDataKeys.workflowTasks() }),
+        queryClient.invalidateQueries({ queryKey: appDataKeys.poListRows() }),
       ]);
       showToast("تم رفع التعذر — سيظهر لأخصائي دراسة الحالة.", "success");
       onSubmitted?.();
       onClose();
     } catch {
       showToast("تعذّر تسجيل التعذر — حاول مرة أخرى", "error");
-    } finally {
-      setSaving(false);
     }
   }
 

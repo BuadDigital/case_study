@@ -2,11 +2,11 @@
 
 import { useEffect, useState } from "react";
 import { cn } from "@platform/ui-kit";
-import type { InspectorPhotoAttachment } from "../../lib/prototype/inspector-workspace-data";
+import type { InspectorPhotoAttachment } from "../../lib/app-data/inspector-workspace-data";
 import {
   getInspectorPhotoDataUrl,
   prefetchInspectorPhoto,
-} from "../../lib/prototype/inspector-photo-upload";
+} from "../../lib/app-data/inspector-photo-upload";
 
 export function InspectorStampedPhotoThumb({
   stamp,

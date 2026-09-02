@@ -508,7 +508,10 @@ public partial class UserRegistrationService : IUserRegistrationService
 
         var currentRoles = await _userManager.GetRolesAsync(user);
         var target = defaults.IdentityRoles.Distinct().ToList();
-        var stale = (previous?.IdentityRoles ?? [])
+        var removable = (previous?.IdentityRoles ?? [])
+            .Concat(DepartmentRoles.RetiredIdentityRoles)
+            .Distinct();
+        var stale = removable
             .Where(role => !target.Contains(role) && currentRoles.Contains(role));
         foreach (var role in stale)
             await _userManager.RemoveFromRoleAsync(user, role);

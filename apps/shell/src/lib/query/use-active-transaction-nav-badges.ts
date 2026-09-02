@@ -2,36 +2,36 @@
 
 import { useCallback, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { prototypeKeys } from "@platform/app-shared/query/prototype-keys";
+import { appDataKeys } from "@platform/app-shared/query/app-data-keys";
 import { getAuthSession } from "@platform/auth-client";
 import type { PageId } from "@platform/types";
-import { usePrototype } from "@platform/app-shared/contexts/PrototypeContext";
+import { useAppAccess } from "@platform/app-shared/contexts/AppAccessContext";
 import {
   filterTasksForCaseStudy,
-} from "@platform/app-shared/prototype/active-transactions";
+} from "@platform/app-shared/app-data/active-transactions";
 import {
   filterTasksForDistribution,
   filterTasksForPrimaryData,
-} from "@case-study/mfe/lib/prototype/transaction-filters";
+} from "@case-study/mfe/lib/app-data/transaction-filters";
 import type { FailureRecord } from "@platform/app-shared/failures/failures-types";
-import { isTaskOnSuspendedProperty } from "@case-study/mfe/lib/prototype/suspended-transactions-storage";
-import { listedTasksForPage } from "@case-study/mfe/lib/prototype/active-transaction-page-situation";
-import { PARTY_TASK_PAGES } from "@platform/app-shared/prototype/party-task-pages";
-import { seesAllCaseStudyWorkflowTasks } from "@case-study/mfe/lib/prototype/viewer-task-access";
+import { isTaskOnSuspendedProperty } from "@case-study/mfe/lib/app-data/suspended-transactions-storage";
+import { listedTasksForPage } from "@case-study/mfe/lib/app-data/active-transaction-page-situation";
+import { PARTY_TASK_PAGES } from "@platform/app-shared/app-data/party-task-pages";
+import { seesAllCaseStudyWorkflowTasks } from "@case-study/mfe/lib/app-data/viewer-task-access";
 import {
   tasksForPartyAssignee,
   tasksForRole,
-} from "@case-study/mfe/lib/prototype/tasks-storage";
-import type { PoIntakeRecord } from "@case-study/mfe/lib/prototype/po-intake-data";
+} from "@case-study/mfe/lib/app-data/tasks-storage";
+import type { PoIntakeRecord } from "@case-study/mfe/lib/app-data/po-intake-data";
 import {
   useFailuresQuery,
   usePendingBourseItemsQuery,
   usePoRecordsQuery,
   useWorkflowTasksQuery,
-} from "@/lib/query/prototype-queries";
-import { filterActionablePendingBourseItems } from "@case-study/mfe/lib/prototype/pending-bourse-queue";
+} from "@/lib/query/app-data-queries";
+import { filterActionablePendingBourseItems } from "@case-study/mfe/lib/app-data/pending-bourse-queue";
 import { useStaffUsersQuery } from "@settings/mfe/query/settings-queries";
-import { loadInspectorFeesSummary } from "@platform/app-shared/prototype/inspector-fees-api";
+import { loadInspectorFeesSummary } from "@platform/app-shared/app-data/inspector-fees-api";
 
 const EMPTY_FAILURES: FailureRecord[] = [];
 
@@ -51,7 +51,7 @@ type ActiveTransactionNavIndicators = {
 /** Red sidebar counts for active transactions. */
 export function useActiveTransactionNavBadges(): ActiveTransactionNavIndicators {
   const { role, viewerEmail, distributionAssigneeId, hasCapability } =
-    usePrototype();
+    useAppAccess();
   const resolvedViewerEmail = viewerEmail ?? getAuthSession()?.user.email ?? null;
   const { data: tasks } = useWorkflowTasksQuery();
   const { data: poRecords } = usePoRecordsQuery();
@@ -90,7 +90,7 @@ export function useActiveTransactionNavBadges(): ActiveTransactionNavIndicators 
   );
 
   const { data: feeCount } = useQuery({
-    queryKey: [...prototypeKeys.all, "inspector-fees", "nav-badges", role],
+    queryKey: [...appDataKeys.all, "inspector-fees", "nav-badges", role],
     queryFn: () =>
       loadInspectorFeesSummary({
         assigneeId: hasCapability("manage-financial")

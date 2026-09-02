@@ -14,26 +14,26 @@ import {
   type OperationsTaskLetterRowDto,
 } from "@platform/api-client";
 import { pad2 } from "@platform/app-shared/format/date";
-import type { StaffUser } from "@platform/app-shared/prototype/constants";
-import { prototypeModulesApiConfig } from "@platform/app-shared/prototype/prototype-modules-api-config";
+import type { StaffUser } from "@platform/app-shared/app-data/constants";
+import { prototypeModulesApiConfig } from "@platform/app-shared/app-data/modules-api-config";
 import {
   type DistributionAssignee,
-} from "../lib/prototype/distribution-parties";
+} from "../lib/app-data/distribution-parties";
 import {
   assigneesForOperationsTaskType,
   groupAssigneesForSelect,
-} from "../lib/prototype/operations-task-assignees";
+} from "../lib/app-data/operations-task-assignees";
 import {
   formatPropertyDeedDisplay,
   showsCourtFields,
   type PoIntakeRecord,
-} from "../lib/prototype/po-intake-data";
+} from "../lib/app-data/po-intake-data";
 import {
   OPERATIONS_TASK_PRIORITY_LABELS,
   OPERATIONS_TASK_SCOPE_LABELS,
   OPERATIONS_TASK_TYPE_LABELS,
-} from "../lib/prototype/operations-task-display";
-import { createOperationsTaskRecord } from "../lib/prototype/operations-tasks-storage";
+} from "../lib/app-data/operations-task-display";
+import { createOperationsTaskRecord } from "../lib/app-data/operations-tasks-storage";
 import { LetterTable } from "../views/OperationsTasksViewParts";
 import {
   opsBtnGhost,
@@ -58,7 +58,7 @@ import {
   opsTfSeg,
   opsTfSegActive,
   opsTfSegRow,
-} from "../lib/prototype/ops-tasks-tw";
+} from "../lib/app-data/ops-tasks-tw";
 
 const TASK_TYPES = ["general", "court_visit"] as const;
 

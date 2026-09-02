@@ -38,9 +38,9 @@ import {
   useShowAllEyeBlink,
   useToast,
 } from "@platform/ui-kit";
-import { usePrototype } from "@platform/app-shared/contexts/PrototypeContext";
-import type { StaffUser } from "@platform/app-shared/prototype/constants";
-import { displayPersonName } from "@platform/app-shared/prototype/person-display-name";
+import { useAppAccess } from "@platform/app-shared/contexts/AppAccessContext";
+import type { StaffUser } from "@platform/app-shared/app-data/constants";
+import { displayPersonName } from "@platform/app-shared/app-data/person-display-name";
 import {
   useStaffUsersQuery,
   useDistributionAssigneesQuery,
@@ -55,7 +55,7 @@ import {
   reassignOperationsTaskRecord,
   remindOperationsTaskRecord,
   type OperationsTask,
-} from "../lib/prototype/operations-tasks-storage";
+} from "../lib/app-data/operations-tasks-storage";
 import {
   OPERATIONS_TASK_PRIORITY_COLORS,
   OPERATIONS_TASK_REMIND_LABELS,
@@ -72,22 +72,22 @@ import {
   operationsTaskTypeLabel,
   printOperationsTaskDelegationLetter,
   taskCountdown,
-} from "../lib/prototype/operations-task-display";
-import { resolveSlaTimerRatio } from "../lib/prototype/my-task-row";
+} from "../lib/app-data/operations-task-display";
+import { resolveSlaTimerRatio } from "../lib/app-data/my-task-row";
 import { useTickingMinute } from "@platform/app-shared/hooks/use-ticking-now";
 import { useViewportDesktop } from "@platform/app-shared/hooks/use-viewport-desktop";
 import {
   canManageOperationsTasks,
   canRemindOperationsTasks,
   operationsTasksUseAssigneeScope,
-} from "../lib/prototype/operations-task-roles";
-import { failureTargetsForOperationsTask } from "../lib/prototype/operations-task-failure-targets";
-import type { OperationsTaskFailureTarget } from "../lib/prototype/operations-task-failure-targets";
+} from "../lib/app-data/operations-task-roles";
+import { failureTargetsForOperationsTask } from "../lib/app-data/operations-task-failure-targets";
+import type { OperationsTaskFailureTarget } from "../lib/app-data/operations-task-failure-targets";
 import {
   isOperationsTaskBlockedByFailure,
   isOpsTaskFailurePauseReason,
   OPS_TASK_FAILURE_PAUSE_REASON,
-} from "../lib/prototype/operations-task-failure-obstruction";
+} from "../lib/app-data/operations-task-failure-obstruction";
 import { GOVERNMENT_REVIEWER_FAILURE_RAISER } from "@failures/mfe/lib/failure-party-roles";
 import { useFailuresQuery } from "@failures/mfe/query/failures-queries";
 const FailureRaiseModal = dynamic(
@@ -97,8 +97,8 @@ const FailureRaiseModal = dynamic(
     ),
   { ssr: false },
 );
-import { agentInfoFromStaff } from "../lib/prototype/internal-delegation-letters";
-import { partyAccountForRole, partyAccountForViewer } from "../lib/prototype/distribution-parties";
+import { agentInfoFromStaff } from "../lib/app-data/internal-delegation-letters";
+import { partyAccountForRole, partyAccountForViewer } from "../lib/app-data/distribution-parties";
 import { OperationsTaskRow } from "./OperationsTaskRow";
 import {
   ActiveQueueMobileCards,
@@ -210,7 +210,7 @@ import {
   opsTfSeg,
   opsTfSegActive,
   opsTfSegRow,
-} from "../lib/prototype/ops-tasks-tw";
+} from "../lib/app-data/ops-tasks-tw";
 import {
   PRIORITY_OFFSET_MS,
   DraftFile,
@@ -250,7 +250,7 @@ export function OperationsTasksView() {
   const prefillDeed = searchParams.get("deed")?.trim() || undefined;
   const { showToast } = useToast();
 
-  const { role, viewerEmail, viewerDisplayName } = usePrototype();
+  const { role, viewerEmail, viewerDisplayName } = useAppAccess();
   const { data: staffResult, isPending: staffPending } = useStaffUsersQuery();
   const { data: distResult, isPending: distPending } =
     useDistributionAssigneesQuery();

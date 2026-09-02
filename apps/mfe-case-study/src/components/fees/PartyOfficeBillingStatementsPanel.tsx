@@ -2,13 +2,13 @@
 
 import { Fragment, useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { prototypeKeys } from "@platform/app-shared/query/prototype-keys";
+import { appDataKeys } from "@platform/app-shared/query/app-data-keys";
 import {
   loadPartyBillingStatements,
   openPartyBillingAttachment,
   runSubmitVendorInvoice,
   uploadPartyBillingVendorInvoice,
-} from "@platform/app-shared/prototype/party-billing-statements-api";
+} from "@platform/app-shared/app-data/party-billing-statements-api";
 import {
   Button,
   Input,
@@ -97,7 +97,7 @@ export function PartyOfficeBillingStatementsPanel({
 
   const { data: statements = [], isPending, isFetched } = useQuery({
     queryKey: [
-      ...prototypeKeys.all,
+      ...appDataKeys.all,
       "party-billing",
       "statements",
       assigneeId ?? "all",
@@ -144,7 +144,7 @@ export function PartyOfficeBillingStatementsPanel({
       setInvoiceNo("");
       setInvoiceFile(null);
       await queryClient.invalidateQueries({
-        queryKey: [...prototypeKeys.all, "party-billing"],
+        queryKey: [...appDataKeys.all, "party-billing"],
       });
     } finally {
       setBusyId(null);

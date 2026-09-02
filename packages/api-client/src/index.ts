@@ -1,6 +1,12 @@
 export { getApiBase } from "./api-base";
 
 export {
+  createIdempotencyKey,
+  IDEMPOTENCY_HEADER,
+  withIdempotencyKey,
+} from "./idempotency-key";
+
+export {
   clearApiWriteInterceptor,
   installApiWriteInterceptor,
   repositoryFetch,

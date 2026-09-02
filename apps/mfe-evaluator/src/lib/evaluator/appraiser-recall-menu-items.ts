@@ -3,7 +3,7 @@ import type { WorkflowTask } from "@platform/app-shared/workflow/task-types";
 import {
   getPartyTaskRecall,
   requestPartyTaskRecall,
-} from "@platform/app-shared/prototype/party-task-recall-storage";
+} from "@platform/app-shared/app-data/party-task-recall-storage";
 import { loadEvaluatorSubmission } from "./evaluator-submission-storage";
 
 export function buildAppraiserRecallMenuItems(

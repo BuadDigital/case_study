@@ -3,20 +3,20 @@
 import { useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import dynamic from "next/dynamic";
-import { usePrototype } from "@platform/app-shared/contexts/PrototypeContext";
-import { isPartyWorkflowRole } from "@platform/app-shared/prototype/party-task-pages";
+import { useAppAccess } from "@platform/app-shared/contexts/AppAccessContext";
+import { isPartyWorkflowRole } from "@platform/app-shared/app-data/party-task-pages";
 import { PanelSkeleton, useToast } from "@platform/ui-kit";
 import { CaseStudyTaskWork } from "./MyTaskWorkView";
 import {
   ActiveTransactionQueueView,
   type ActiveTransactionQueueConfig,
 } from "./ActiveTransactionQueueView";
-import { filterOpenAssignedTransactions } from "../lib/prototype/assigned-transactions-filter";
-import { isTaskOnSuspendedProperty } from "../lib/prototype/suspended-transactions-storage";
+import { filterOpenAssignedTransactions } from "../lib/app-data/assigned-transactions-filter";
+import { isTaskOnSuspendedProperty } from "../lib/app-data/suspended-transactions-storage";
 import {
   reopenCompletedTransaction,
   type WorkflowTask,
-} from "../lib/prototype/tasks-storage";
+} from "../lib/app-data/tasks-storage";
 import { ENGINEERING_SURVEY_SUBMISSION_CHANGED_EVENT } from "../lib/case-study-engineering-survey-events";
 import { EVALUATOR_SUBMISSION_CHANGED_EVENT } from "../lib/case-study-evaluator-events";
 import { FIELD_INSPECTION_SUBMISSION_CHANGED_EVENT } from "../lib/case-study-field-inspection-events";
@@ -30,7 +30,7 @@ import {
 import {
   allTransactionsPhaseLabel,
   buildAllTransactionsRowMoreItems,
-} from "../lib/prototype/all-transactions-queue";
+} from "../lib/app-data/all-transactions-queue";
 const ReopenCompletedTransactionModal = dynamic(
   () =>
     import("../components/transactions/ReopenCompletedTransactionModal").then(
@@ -50,7 +50,7 @@ function assignedListedTasks(tasks: WorkflowTask[]): WorkflowTask[] {
 }
 
 export function AllAssignedTransactionsView() {
-  const { role, viewerDisplayName } = usePrototype();
+  const { role, viewerDisplayName } = useAppAccess();
   const router = useRouter();
   const searchParams = useSearchParams();
   const legacyTask = searchParams.get("task");

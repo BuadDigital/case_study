@@ -118,6 +118,7 @@ public static class ServicePipelineExtensions
         app.UseRealEstateEvalRateLimiter();
         app.UseAuthentication();
         app.UseAuthorization();
+        app.UseCommandIdempotency();
         return app;
     }
 

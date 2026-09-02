@@ -19,22 +19,22 @@ import {
   formatPropertyLocation,
   type PoIntakeRecord,
   type PoPropertyIntake,
-} from "../../lib/prototype/po-intake-data";
+} from "../../lib/app-data/po-intake-data";
 import {
   findPriorDeedFull,
   listPriorDeedsFull,
-} from "../../lib/prototype/po-intake-storage";
-import { loadCaseStudyFormDraft } from "../../lib/prototype/case-study-form-storage";
-import type { WorkflowTask } from "../../lib/prototype/tasks-storage";
-import { usePrototype } from "@platform/app-shared/contexts/PrototypeContext";
+} from "../../lib/app-data/po-intake-reads";
+import { loadCaseStudyFormDraft } from "../../lib/app-data/case-study-form-storage";
+import type { WorkflowTask } from "../../lib/app-data/tasks-storage";
+import { useAppAccess } from "@platform/app-shared/contexts/AppAccessContext";
 import { useOperationsTasksQuery } from "../../query/operations-tasks-queries";
 import {
   operationsTaskStatusLabel,
   operationsTaskTypeLabel,
-} from "../../lib/prototype/operations-task-display";
-import { canManageOperationsTasks } from "../../lib/prototype/operations-task-roles";
-import { isActiveOperationsTask } from "../../lib/prototype/operations-tasks-storage";
-import { deedsMatch, normalizeDeedNumber } from "../../lib/prototype/deed-number";
+} from "../../lib/app-data/operations-task-display";
+import { canManageOperationsTasks } from "../../lib/app-data/operations-task-roles";
+import { isActiveOperationsTask } from "../../lib/app-data/operations-tasks-storage";
+import { deedsMatch, normalizeDeedNumber } from "../../lib/app-data/deed-number";
 import { workOrdersApiConfig } from "../../lib/work-orders-api-config";
 
 type LinkedSamePo = {
@@ -89,7 +89,7 @@ export function PropertyDetailLinkedTab({
   property: PoPropertyIntake;
   caseStudyTask: WorkflowTask | null;
 }) {
-  const { role } = usePrototype();
+  const { role } = useAppAccess();
   const canCreateOps = canManageOperationsTasks(role);
   const { data: opsTasks = [] } = useOperationsTasksQuery({ live: true });
   const poNumber = record.poNumber.trim();

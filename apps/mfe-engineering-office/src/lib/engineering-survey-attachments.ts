@@ -7,10 +7,10 @@ import {
   prefetchTaskAttachment,
   uploadTaskScopedAttachment,
   type TaskAttachmentPreview,
-} from "@platform/app-shared/prototype/task-attachments-api";
-import { getCachedPartySubmission } from "@platform/app-shared/prototype/party-submission-api";
-import { persistPartySubmissionPayload } from "@platform/app-shared/prototype/party-submission-api";
-import { dispatchPartySubmissionChanged } from "@platform/app-shared/prototype/party-submission-changed-event";
+} from "@platform/app-shared/app-data/task-attachments-api";
+import { getCachedPartySubmission } from "@platform/app-shared/app-data/party-submission-api";
+import { persistPartySubmissionPayload } from "@platform/app-shared/app-data/party-submission-api";
+import { dispatchPartySubmissionChanged } from "@platform/app-shared/app-data/party-submission-changed-event";
 import { ENGINEERING_SURVEY_SUBMISSION_CHANGED_EVENT } from "./engineering-survey-submission-storage";
 import { loadEngineeringSurveySubmission } from "./engineering-survey-submission-storage";
 

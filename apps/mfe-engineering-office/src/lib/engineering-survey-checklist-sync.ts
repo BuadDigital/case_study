@@ -1,5 +1,5 @@
-import type { CaseStudyFormAnswer } from "@case-study/mfe/lib/prototype/case-study-form-data";
-import { caseStudyAnswerKey } from "@case-study/mfe/lib/prototype/case-study-form-data";
+import type { CaseStudyFormAnswer } from "@case-study/mfe/lib/app-data/case-study-form-data";
+import { caseStudyAnswerKey } from "@case-study/mfe/lib/app-data/case-study-form-data";
 import type {
   ChecklistAnswer,
   EngineeringSurveyChecklistRow,

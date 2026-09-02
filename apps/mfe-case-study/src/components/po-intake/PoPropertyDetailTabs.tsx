@@ -18,23 +18,23 @@ import {
   cn,
   opsContentPanel,
 } from "@platform/ui-kit";
-import { usePrototype } from "@platform/app-shared/contexts/PrototypeContext";
-import { canViewPropertyTimelineRail } from "../../lib/prototype/po-roles";
+import { useAppAccess } from "@platform/app-shared/contexts/AppAccessContext";
+import { canViewPropertyTimelineRail } from "../../lib/app-data/po-roles";
 import { DetailBadge, EmptyState, InfoBox, ltrValueClass, SectionHeader } from "./PropertyDetailFields";
 import { PropertyDetailBasicTab } from "./PropertyDetailBasicTab";
 import { PropertyDetailSurveyNotesTab, buildPartyRemarksSections } from "./PropertyDetailSurveyNotesTab";
 import { PropertyTransactionTimeline } from "./PropertyTransactionTimeline";
 import { PropertyDetailMobileGlance } from "./PropertyDetailMobileGlance";
-import { formatDateAr, formatPropertyDeedDisplay, type PoIntakeRecord, type PoPropertyIntake } from "../../lib/prototype/po-intake-data";
+import { formatDateAr, formatPropertyDeedDisplay, type PoIntakeRecord, type PoPropertyIntake } from "../../lib/app-data/po-intake-data";
 import { useStaffUsersQuery } from "@settings/mfe/query/settings-queries";
 import { resolveAssigneeDisplayName } from "@platform/app-shared/fees/party-fee-meta";
-import { buildPropertyDetailPartyCards, type PropertyDetailPartyCard } from "../../lib/prototype/property-detail-parties";
+import { buildPropertyDetailPartyCards, type PropertyDetailPartyCard } from "../../lib/app-data/property-detail-parties";
 import { poPropertyFailurePath } from "@platform/app-shared/domain/po-routes";
-import { buildPropertyDetailTimeline, formatTimelineDate } from "../../lib/prototype/property-detail-timeline";
+import { buildPropertyDetailTimeline, formatTimelineDate } from "../../lib/app-data/property-detail-timeline";
 import { usePropertyTimelineQuery } from "../../query/use-property-timeline-query";
-import { caseStudyTaskForProperty, type WorkflowTask } from "../../lib/prototype/tasks-storage";
-import { childTasksForCaseStudyParent } from "../../lib/prototype/case-study-party-answers";
-import { downloadPropertyDetailDocument, listPropertyDetailPhotos, pickPrimaryPropertyDetailPhoto, type PropertyDetailDocumentEntry, type PropertyDetailDocumentSection } from "../../lib/prototype/property-detail-documents";
+import { caseStudyTaskForProperty, type WorkflowTask } from "../../lib/app-data/tasks-storage";
+import { childTasksForCaseStudyParent } from "../../lib/app-data/case-study-party-answers";
+import { downloadPropertyDetailDocument, listPropertyDetailPhotos, pickPrimaryPropertyDetailPhoto, type PropertyDetailDocumentEntry, type PropertyDetailDocumentSection } from "../../lib/app-data/property-detail-documents";
 import { usePropertyDetailDocuments } from "../../query/property-detail-documents-query";
 import { useWorkflowTasksQuery } from "../../query/case-study-queries";
 import { useInspectorFeesQuery } from "../../query/inspector-fees-queries";
@@ -42,8 +42,8 @@ import { usePropertyDetailPartySubmissionsQuery } from "../../query/property-det
 import { poPropertyPath, poPropertyDetailPath } from "@platform/app-shared/domain/po-routes";
 import { usePropertyOperationsTasks } from "../../query/use-property-operations-tasks";
 import { keysStatusLabelAr, usePropertyKeyGateQuery } from "../../query/use-property-key-gate-query";
-import { loadSeenPropertyTabFingerprints, markPropertyTabSeen, propertyTabHasNewDot, type SeenPropertyTabMap} from "../../lib/prototype/property-detail-local-ui";
-import { buildPropertyDetailTabActivity } from "../../lib/prototype/property-detail-tab-activity";
+import { loadSeenPropertyTabFingerprints, markPropertyTabSeen, propertyTabHasNewDot, type SeenPropertyTabMap} from "../../lib/app-data/property-detail-local-ui";
+import { buildPropertyDetailTabActivity } from "../../lib/app-data/property-detail-tab-activity";
 
 const tabChunkFallback = () => (
   <InlineLoadingSkeleton className="my-2" />
@@ -334,7 +334,7 @@ export function PoPropertyDetailTabs({
 }) {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { role } = usePrototype();
+  const { role } = useAppAccess();
   const visibleTabs = useMemo(() => propertyDetailTabsForRole(role), [role]);
   const showCaseStudySideRail = canViewPropertyTimelineRail(role);
   const initialTab = searchParams.get("tab");

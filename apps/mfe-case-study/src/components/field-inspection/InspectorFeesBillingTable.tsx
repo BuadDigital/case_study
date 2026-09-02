@@ -19,7 +19,7 @@ import {
   pageToolbarClassName,
   useToast,
 } from "@platform/ui-kit";
-import { prototypeKeys } from "@platform/app-shared/query/prototype-keys";
+import { appDataKeys } from "@platform/app-shared/query/app-data-keys";
 import {
   inspectorFeeStatusLabel,
   inspectorFeeStatusTone,
@@ -29,11 +29,11 @@ import { PoNumber } from "../ui/PoNumber";
 import {
   runInspectorFeeTransition,
   saveInspectorFeePatch,
-} from "@platform/app-shared/prototype/inspector-fees-api";
+} from "@platform/app-shared/app-data/inspector-fees-api";
 import { FeeDiscountModal } from "@platform/app-shared/fees/FeeDiscountModal";
 import { FeeActionReasonModal } from "@platform/app-shared/fees/FeeActionReasonModal";
 import { ENG_DISCOUNT_REASONS } from "@platform/app-shared/fees/party-fee-meta";
-import { PROPERTY_IDENTIFIER_COLUMN_LABEL } from "../../lib/prototype/po-intake-data";
+import { PROPERTY_IDENTIFIER_COLUMN_LABEL } from "../../lib/app-data/po-intake-data";
 
 export type FeesBillingMode = "readonly" | "supervisor" | "finance";
 
@@ -203,7 +203,7 @@ export function InspectorFeesBillingTable({
 
   const invalidate = useCallback(async () => {
     await queryClient.invalidateQueries({
-      queryKey: [...prototypeKeys.all, "inspector-fees"],
+      queryKey: [...appDataKeys.all, "inspector-fees"],
     });
     onChanged?.();
   }, [onChanged, queryClient]);

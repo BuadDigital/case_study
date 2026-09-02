@@ -80,6 +80,13 @@ public static class PoRoleMatrixRules
     }
 
  /// <summary>
+ /// Case-study staff may correct a submitted field-inspection package
+ /// (e.g. map pin) without being the inspector assignee.
+ /// </summary>
+    public static bool CanCorrectFieldInspectionSubmission(string? prototypeRole) =>
+        CanManagePartySubmissions(prototypeRole);
+
+ /// <summary>
  /// Party read access: case staff read every task, parties read only their own.
  /// Strictly wider than <see cref="CanWritePartyTask"/>.
  /// </summary>

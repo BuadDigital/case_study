@@ -20,8 +20,8 @@ import {
   type AuthSession,
   getValidAuthSession,
 } from "@platform/auth-client";
-import { defaultLandingPath } from "@platform/app-shared/prototype/page-access";
-import { pagesFromPermissions } from "@platform/app-shared/prototype/permissions-pages";
+import { defaultLandingPath } from "@platform/app-shared/app-data/page-access";
+import { pagesFromPermissions } from "@platform/app-shared/app-data/permissions-pages";
 import { cn, useToast } from "@platform/ui-kit";
 import { EjadaLogo } from "@/components/views/EjadaLogo";
 

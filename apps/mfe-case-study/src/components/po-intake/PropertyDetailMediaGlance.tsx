@@ -3,11 +3,11 @@
 import {
   buildPropertyDescriptionLine,
   type PoPropertyIntake,
-} from "../../lib/prototype/po-intake-data";
+} from "../../lib/app-data/po-intake-data";
 import {
   openPropertyDetailDocumentPreview,
   type PropertyDetailDocumentEntry,
-} from "../../lib/prototype/property-detail-documents";
+} from "../../lib/app-data/property-detail-documents";
 import { cn } from "@platform/ui-kit";
 import { PropertyLocationMapGlance } from "./PropertyLocationMapGlance";
 

@@ -6,7 +6,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import type { RoleId } from "@platform/types";
 import type { UpdateStaffUserRequest } from "@platform/api-client";
 import { useCapability } from "@platform/app-shared/components/Can";
-import { prototypeKeys } from "@platform/app-shared/query/prototype-keys";
+import { appDataKeys } from "@platform/app-shared/query/app-data-keys";
 import { adminStaffRoleOptions } from "@platform/app-shared/users/admin-staff-roles";
 import {
   isSectionSupervisorRole,
@@ -51,7 +51,7 @@ import {
   useToast,
 } from "@platform/ui-kit";
 import { getAuthSession } from "@platform/auth-client";
-import type { StaffUser } from "@platform/app-shared/prototype/constants";
+import type { StaffUser } from "@platform/app-shared/app-data/constants";
 import { DevSystemResetPanel } from "../../components/DevSystemResetPanel";
 import {
   requestActivationTicket,
@@ -363,7 +363,7 @@ export function UsersOrganizationView() {
       });
       setAdding(true);
       // Invalidation already refetches the active query — an extra refetch was a duplicate GET.
-      await queryClient.invalidateQueries({ queryKey: prototypeKeys.staffUsers() });
+      await queryClient.invalidateQueries({ queryKey: appDataKeys.staffUsers() });
       showToast("تم إنشاء المستخدم بنجاح.", "success");
     } finally {
       setSaving(false);
@@ -408,7 +408,7 @@ export function UsersOrganizationView() {
         return;
       }
       // Invalidation already refetches the active query — an extra refetch was a duplicate GET.
-      await queryClient.invalidateQueries({ queryKey: prototypeKeys.staffUsers() });
+      await queryClient.invalidateQueries({ queryKey: appDataKeys.staffUsers() });
       showToast("تم تعطيل المستخدم.", "success");
     } finally {
       setDeletingId(null);
@@ -435,7 +435,7 @@ export function UsersOrganizationView() {
 
       setEditingUser(null);
       // Invalidation already refetches the active query — an extra refetch was a duplicate GET.
-      await queryClient.invalidateQueries({ queryKey: prototypeKeys.staffUsers() });
+      await queryClient.invalidateQueries({ queryKey: appDataKeys.staffUsers() });
       showToast("تم حفظ التعديلات.", "success");
       return null;
     } finally {
@@ -461,7 +461,7 @@ export function UsersOrganizationView() {
         return;
       }
       // Invalidation already refetches the active query — an extra refetch was a duplicate GET.
-      await queryClient.invalidateQueries({ queryKey: prototypeKeys.staffUsers() });
+      await queryClient.invalidateQueries({ queryKey: appDataKeys.staffUsers() });
       showToast("تم تفعيل المستخدم.", "success");
     } finally {
       setPendingActionId(null);
@@ -482,7 +482,7 @@ export function UsersOrganizationView() {
         return;
       }
       // Invalidation already refetches the active query — an extra refetch was a duplicate GET.
-      await queryClient.invalidateQueries({ queryKey: prototypeKeys.staffUsers() });
+      await queryClient.invalidateQueries({ queryKey: appDataKeys.staffUsers() });
       showToast("تم فك قفل الحساب.", "success");
     } finally {
       setPendingActionId(null);

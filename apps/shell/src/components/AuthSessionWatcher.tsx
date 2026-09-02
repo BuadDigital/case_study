@@ -14,7 +14,7 @@ import {
   evaluateOfflineLease,
   isOfflineCapableRole,
 } from "@platform/app-shared/offline/offline-write";
-import { usePrototype } from "@platform/app-shared/contexts/PrototypeContext";
+import { useAppAccess } from "@platform/app-shared/contexts/AppAccessContext";
 import { useDocumentVisible } from "@platform/app-shared/hooks/use-document-visible";
 import { beginOfflineLease } from "@platform/offline-client";
 
@@ -26,7 +26,7 @@ const CHECK_INTERVAL_MS = 30_000;
  */
 export function AuthSessionWatcher() {
   const router = useRouter();
-  const { role } = usePrototype();
+  const { role } = useAppAccess();
   const visible = useDocumentVisible();
   const checkRef = useRef<() => void>(() => {});
   const wasVisibleRef = useRef(visible);

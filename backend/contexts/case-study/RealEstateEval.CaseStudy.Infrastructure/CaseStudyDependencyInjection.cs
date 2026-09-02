@@ -39,6 +39,9 @@ public static class CaseStudyDependencyInjection
         services.AddScoped<IWorkOrderVisibilityFilter, WorkOrderVisibilityFilter>();
         services.AddScoped<ICaseStudyFormService, CaseStudyFormService>();
         services.AddScoped<ICaseStudyValuationDispatchService, CaseStudyValuationDispatchService>();
+        services.AddScoped<IPartyTaskSubmissionRepository, PartyTaskSubmissionRepository>();
+        services.AddScoped<IPartyTaskFailureGate, PartyTaskFailureGate>();
+        services.AddScoped<ICurrentPrototypeRoleResolver, HttpCurrentPrototypeRoleResolver>();
         services.AddScoped<IPartyTaskSubmissionService, PartyTaskSubmissionService>();
         services.AddScoped<IFieldInspectionWorkspaceService, FieldInspectionWorkspaceService>();
         services.AddScoped<IFieldInspectionAttachmentVerifier, FieldInspectionAttachmentVerifier>();
@@ -90,7 +93,6 @@ public static class CaseStudyDependencyInjection
  /// <summary>Workflow task façade + query / distribution / lifecycle collaborators.</summary>
     public static IServiceCollection AddWorkflowTaskCollaborators(this IServiceCollection services)
     {
-        services.AddScoped<IWorkflowTaskVisibilityFilter, WorkflowTaskVisibilityFilter>();
         services.AddScoped<IWorkflowTaskQuery, WorkflowTaskQueryService>();
         services.AddScoped<IDashboardOpsMetricsQuery, DashboardOpsMetricsQueryService>();
         services.AddScoped<IWorkflowTaskSlotSynchronizer, WorkflowTaskSlotSynchronizer>();

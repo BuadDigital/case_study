@@ -538,7 +538,6 @@ public class StaffUserUpdateTests
         var roleManager = provider.GetRequiredService<RoleManager<IdentityRole>>();
         foreach (var role in new[]
                  {
-                     DepartmentRoles.Hr,
                      DepartmentRoles.Proc,
                      OrgRoles.Cdo,
                      "Editor",

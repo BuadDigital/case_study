@@ -1,4 +1,5 @@
 import { getApiBase } from "./api-base";
+import { withIdempotencyKey } from "./idempotency-key";
 import { repositoryFetch as fetch } from "./write-repository";
 import type { ApiErr, ApiOk, WorkOrdersApiConfig } from "./work-orders";
 import { fetchAllListPages } from "./pagination";
@@ -49,11 +50,12 @@ export type ConfirmTaskDistributionResponseDto = {
   children: WorkflowTaskDto[];
 };
 
-function headers(token: string): HeadersInit {
-  return {
+function headers(token: string, idempotencyKey?: string): HeadersInit {
+  const base = {
     "Content-Type": "application/json",
     Authorization: `Bearer ${token}`,
   };
+  return idempotencyKey ? withIdempotencyKey(base, idempotencyKey) : base;
 }
 
 async function readJson<T>(res: Response): Promise<T> {
@@ -119,6 +121,7 @@ export async function confirmWorkflowTaskDistribution(
     deedNumber: string;
     assigneeNames?: Record<string, string>;
   },
+  idempotencyKey?: string,
 ): Promise<ApiOk<ConfirmTaskDistributionResponseDto> | ApiErr> {
   const base = config.baseUrl ?? getApiBase();
   try {
@@ -126,7 +129,7 @@ export async function confirmWorkflowTaskDistribution(
       `${base}/api/workflow-tasks/${taskId}/confirm-distribution`,
       {
         method: "POST",
-        headers: headers(config.token),
+        headers: headers(config.token, idempotencyKey),
         body: JSON.stringify(body),
       },
     );
@@ -151,6 +154,7 @@ export async function redistributeWorkflowTaskParties(
     assigneeNames?: Record<string, string>;
     reason: string;
   },
+  idempotencyKey?: string,
 ): Promise<ApiOk<WorkflowTaskDto> | ApiErr> {
   const base = config.baseUrl ?? getApiBase();
   try {
@@ -158,7 +162,7 @@ export async function redistributeWorkflowTaskParties(
       `${base}/api/workflow-tasks/${taskId}/redistribute`,
       {
         method: "POST",
-        headers: headers(config.token),
+        headers: headers(config.token, idempotencyKey),
         body: JSON.stringify(body),
       },
     );

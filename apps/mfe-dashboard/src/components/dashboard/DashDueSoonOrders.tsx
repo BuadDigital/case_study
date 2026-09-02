@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import type { PoRow } from "@platform/app-shared/prototype/constants";
+import type { PoRow } from "@platform/app-shared/app-data/constants";
 import {
   daysUntilDue,
   formatDateLtr,

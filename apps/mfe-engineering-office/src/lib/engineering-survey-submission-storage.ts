@@ -1,11 +1,11 @@
-import { notifyTasksChanged } from "@case-study/mfe/lib/prototype/tasks-storage";
-import { dispatchPartySubmissionChanged } from "@platform/app-shared/prototype/party-submission-changed-event";
+import { notifyTasksChanged } from "@case-study/mfe/lib/app-data/tasks-storage";
+import { dispatchPartySubmissionChanged } from "@platform/app-shared/app-data/party-submission-changed-event";
 import {
   dispatchWorkflowSubmitted,
   ENGINEERING_SURVEY_ACCEPTED_EVENT,
   ENGINEERING_SURVEY_RETURNED_EVENT,
   ENGINEERING_SURVEY_SUBMITTED_EVENT,
-} from "@platform/app-shared/prototype/party-workflow-events";
+} from "@platform/app-shared/app-data/party-workflow-events";
 import {
   fetchPartySubmission,
   getCachedPartySubmission,
@@ -16,7 +16,7 @@ import {
   reopenPartySubmission,
   submitPartySubmission,
   type PartyWorkMutationResult,
-} from "@platform/app-shared/prototype/party-submission-api";
+} from "@platform/app-shared/app-data/party-submission-api";
 import {
   createEngineeringSurveyDraft,
   normalizeEngineeringSurveyChecklist,
@@ -267,6 +267,7 @@ export async function updateEngineeringSurveyDraft(
 
 export async function submitEngineeringSurveySubmission(
   taskId: string,
+  idempotencyKey?: string,
 ): Promise<PartyWorkMutationResult<EngineeringSurveySubmission>> {
   const current = loadEngineeringSurveySubmission(taskId);
   if (!current) {
@@ -290,7 +291,7 @@ export async function submitEngineeringSurveySubmission(
     };
   }
 
-  const submitted = await submitPartySubmission(taskId);
+  const submitted = await submitPartySubmission(taskId, idempotencyKey);
   if (!submitted.ok) return { ok: false, error: submitted.error };
   notifyChanged();
   dispatchWorkflowSubmitted(ENGINEERING_SURVEY_SUBMITTED_EVENT);

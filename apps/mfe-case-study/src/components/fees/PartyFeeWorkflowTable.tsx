@@ -17,7 +17,7 @@ import {
   opsMobileCard,
   useToast,
 } from "@platform/ui-kit";
-import { prototypeKeys } from "@platform/app-shared/query/prototype-keys";
+import { appDataKeys } from "@platform/app-shared/query/app-data-keys";
 import {
   inspectorFeeStatusLabel,
   inspectorFeeStatusTone,
@@ -25,7 +25,7 @@ import {
   type InspectorFeeAction,
   type InspectorFeeRowDto,
 } from "@platform/api-client";
-import { runInspectorFeeTransition } from "@platform/app-shared/prototype/inspector-fees-api";
+import { runInspectorFeeTransition } from "@platform/app-shared/app-data/inspector-fees-api";
 import { FeeActionReasonModal } from "@platform/app-shared/fees/FeeActionReasonModal";
 import { PoNumber } from "../ui/PoNumber";
 
@@ -237,7 +237,7 @@ export function PartyFeeWorkflowTable({
 
   const invalidate = useCallback(async () => {
     await queryClient.invalidateQueries({
-      queryKey: [...prototypeKeys.all, "inspector-fees"],
+      queryKey: [...appDataKeys.all, "inspector-fees"],
     });
     onChanged?.();
   }, [onChanged, queryClient]);

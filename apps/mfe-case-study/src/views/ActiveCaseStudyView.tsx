@@ -3,13 +3,13 @@
 import { useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import dynamic from "next/dynamic";
-import { filterTasksForCaseStudy } from "@platform/app-shared/prototype/active-transactions";
+import { filterTasksForCaseStudy } from "@platform/app-shared/app-data/active-transactions";
 import { PanelSkeleton, useToast } from "@platform/ui-kit";
 import {
   ActiveTransactionQueueView,
   type ActiveTransactionQueueConfig,
 } from "./ActiveTransactionQueueView";
-import { buildCaseStudyQueueRowMoreItems } from "../lib/prototype/active-queue-row-menu";
+import { buildCaseStudyQueueRowMoreItems } from "../lib/app-data/active-queue-row-menu";
 const RedistributePartiesModal = dynamic(
   () =>
     import("../components/distribution/RedistributePartiesModal").then(
@@ -20,7 +20,7 @@ const RedistributePartiesModal = dynamic(
 import {
   redistributeTaskParties,
   type WorkflowTask,
-} from "../lib/prototype/tasks-storage";
+} from "../lib/app-data/tasks-storage";
 import {
   activeCaseStudyPath,
   caseStudyTaskPath,
@@ -80,16 +80,18 @@ export function ActiveCaseStudyView() {
           open={redistributeTask !== null}
           task={redistributeTask}
           onClose={() => setRedistributeTask(null)}
-          onConfirm={async (distribution, reason) => {
+          onConfirm={async (distribution, reason, idempotencyKey) => {
             if (!redistributeTask) return;
             const result = await redistributeTaskParties(
               redistributeTask.id,
               distribution,
               reason,
+              [],
+              idempotencyKey,
             );
             if (!result.ok) {
               showToast(result.error, "error");
-              return;
+              throw new Error(result.error);
             }
             showToast("تم تحديث إسناد الأطراف", "success");
           }}

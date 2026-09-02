@@ -54,13 +54,13 @@ import {
   formatPropertyTypeLine,
   hasBourseDetailFields,
   isPastDue,
-} from "../lib/prototype/po-intake-data";
+} from "../lib/app-data/po-intake-data";
 import { poHeaderEditPath, poPropertyPath, poListPath } from "@platform/app-shared/domain/po-routes";
-import { buildCopyPriorTargetOptions } from "../lib/prototype/po-intake-storage";
+import { buildCopyPriorTargetOptions } from "../lib/app-data/po-intake-model";
 import {
   buildPoPropertiesRowMoreItems,
   type PoPropertyRowMoreContext,
-} from "../lib/prototype/po-properties-row-menu";
+} from "../lib/app-data/po-properties-row-menu";
 import { DeliveryCountdown } from "../components/po-intake/DeliveryCountdown";
 import {
   usePoRecordQuery,
@@ -72,12 +72,12 @@ import {
   canEditProperty,
   canRaisePropertyFailure,
   canViewPoEye,
-} from "../lib/prototype/po-roles";
-import { usePrototype } from "@platform/app-shared/contexts/PrototypeContext";
-import { prototypeKeys } from "@platform/app-shared/query/prototype-keys";
-import type { PropertyWorkflowStage } from "@platform/app-shared/prototype/constants";
+} from "../lib/app-data/po-roles";
+import { useAppAccess } from "@platform/app-shared/contexts/AppAccessContext";
+import { appDataKeys } from "@platform/app-shared/query/app-data-keys";
+import type { PropertyWorkflowStage } from "@platform/app-shared/app-data/constants";
 import { PropertyListRowStatuses } from "@platform/api-client";
-import type { PoPropertyIntake } from "../lib/prototype/po-intake-data";
+import type { PoPropertyIntake } from "../lib/app-data/po-intake-data";
 
 function deedLabel(property: PoPropertyIntake): string {
   return (
@@ -117,7 +117,7 @@ export function PoPropertiesPage({
 }) {
   const router = useRouter();
   const queryClient = useQueryClient();
-  const { role } = usePrototype();
+  const { role } = useAppAccess();
   const showEdit = canEditProperty(role);
   const showHeaderEdit = canEditPoHeader(role) || showEdit;
   const showFailureRaise = canRaisePropertyFailure(role);
@@ -158,16 +158,16 @@ export function PoPropertiesPage({
 
   const handleCopiedFromPrior = useCallback(() => {
     void queryClient.invalidateQueries({
-      queryKey: prototypeKeys.poRecord(poNumber),
+      queryKey: appDataKeys.poRecord(poNumber),
     });
     void queryClient.invalidateQueries({
-      queryKey: prototypeKeys.workflowTasks(),
+      queryKey: appDataKeys.workflowTasks(),
     });
     void queryClient.invalidateQueries({
-      queryKey: prototypeKeys.pendingBourseItems(),
+      queryKey: appDataKeys.pendingBourseItems(),
     });
     void queryClient.invalidateQueries({
-      queryKey: prototypeKeys.propertyListItems(),
+      queryKey: appDataKeys.propertyListItems(),
     });
   }, [queryClient, poNumber]);
 

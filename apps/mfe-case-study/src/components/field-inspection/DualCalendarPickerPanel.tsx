@@ -16,7 +16,7 @@ import {
   todayDualCalendarParts,
   type DualCalendarDateParts,
   type DualCalendarKind,
-} from "../../lib/prototype/dual-calendar-date";
+} from "../../lib/app-data/dual-calendar-date";
 
 const WEEKDAY_HEADERS = ["س", "ح", "ن", "ث", "ر", "خ", "ج"] as const;
 

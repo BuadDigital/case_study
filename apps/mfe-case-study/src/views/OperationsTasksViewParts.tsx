@@ -6,13 +6,13 @@ import { type RefObject } from "react";
 import { Input, Note, Select, StatusPill, Textarea, cn, Spinner, Table, TableFrame, TBody, Td, TdLtr, Th, THead, Tr, EmptyState, opsPanelCard } from "@platform/ui-kit";
 import { pad2 } from "@platform/app-shared/format/date";
 import { useTickingNow } from "@platform/app-shared/hooks/use-ticking-now";
-import type { StaffUser } from "@platform/app-shared/prototype/constants";
-import { displayPersonName } from "@platform/app-shared/prototype/person-display-name";
-import { PROPERTY_IDENTIFIER_COLUMN_LABEL } from "../lib/prototype/po-intake-data";
+import type { StaffUser } from "@platform/app-shared/app-data/constants";
+import { displayPersonName } from "@platform/app-shared/app-data/person-display-name";
+import { PROPERTY_IDENTIFIER_COLUMN_LABEL } from "../lib/app-data/po-intake-data";
 import {
   isActiveOperationsTask,
   type OperationsTask,
-} from "../lib/prototype/operations-tasks-storage";
+} from "../lib/app-data/operations-tasks-storage";
 import {
   OPERATIONS_TASK_PRIORITY_COLORS,
   OPERATIONS_TASK_PRIORITY_LABELS,
@@ -27,13 +27,13 @@ import {
   taskCountdown,
   taskStepperIndex,
   taskUrgency,
-} from "../lib/prototype/operations-task-display";
-import { type DistributionAssignee } from "../lib/prototype/distribution-parties";
-import { assigneesForOperationsTaskType } from "../lib/prototype/operations-task-assignees";
+} from "../lib/app-data/operations-task-display";
+import { type DistributionAssignee } from "../lib/app-data/distribution-parties";
+import { assigneesForOperationsTaskType } from "../lib/app-data/operations-task-assignees";
 import {
   downloadTaskAttachmentAsync,
   uploadTaskScopedAttachment,
-} from "@platform/app-shared/prototype/task-attachments-api";
+} from "@platform/app-shared/app-data/task-attachments-api";
 import {
   opsAttachBtn,
   opsBtnGhost,
@@ -86,7 +86,7 @@ import {
   opsTfSeg,
   opsTfSegActive,
   opsTfSegRow,
-} from "../lib/prototype/ops-tasks-tw";
+} from "../lib/app-data/ops-tasks-tw";
 
 export const PRIORITY_OFFSET_MS: Record<string, number> = {
   high: 4 * 3_600_000,

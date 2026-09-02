@@ -1,5 +1,4 @@
 type ContractType = "Internal" | "Freelance" | "ServiceProvider";
-type RegistrationSourceApi = "Hr" | "Proc";
 export type UserStatusApi = "Active" | "Disabled" | "PendingActivation" | "Locked";
 
 type UserDetailField = {
@@ -33,7 +32,6 @@ export type UserListItem = {
   reviewerCityCoverage?: string[];
   contractType: ContractType;
   status: UserStatusApi;
-  registrationSource: RegistrationSourceApi;
   phoneNumber?: string | null;
   createdAtUtc?: string;
   lastLoginAtUtc?: string | null;

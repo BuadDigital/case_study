@@ -7,6 +7,8 @@ using RealEstateEval.Domain;
 using RealEstateEval.Infrastructure.Data.Contexts;
 using RealEstateEval.Infrastructure.Services;
 using RealEstateEval.CaseStudy.Infrastructure.Data.Contexts;
+using RealEstateEval.CaseStudy.Application.Services;
+using RealEstateEval.CaseStudy.Infrastructure.Persistence;
 using RealEstateEval.CaseStudy.Infrastructure.Services;
 using RealEstateEval.CaseStudy.Application.Contracts;
 using RealEstateEval.CaseStudy.Domain;
@@ -68,6 +70,101 @@ public class PartyTaskSubmissionAuthorizationTests
         Assert.Null(errors);
         Assert.NotNull(result);
         Assert.Equal("draft", result!.Status);
+    }
+
+    [Fact]
+    public async Task SaveDraft_allows_case_specialist_to_correct_submitted_field_inspection()
+    {
+        var bundle = CreateDb();
+        var db = bundle.CaseStudy;
+        SeedTask(db, assigneeId: "dist-inspector");
+        var now = DateTime.UtcNow;
+        db.PartyTaskSubmissions.Add(new PartyTaskSubmission
+        {
+            Id = Guid.NewGuid(),
+            WorkflowTaskId = TaskId,
+            Kind = WorkflowTaskKindValues.FieldInspection,
+            Status = PartyTaskSubmissionStatus.Submitted,
+            PropertyId = PropertyId,
+            PoNumber = "PO-AUTH",
+            PayloadJson =
+                """{"status":"submitted","mapLatitude":"21.58000","mapLongitude":"39.15000","inspectorMapLatitude":"21.58000","inspectorMapLongitude":"39.15000"}""",
+            SubmittedAtUtc = now,
+            CreatedAtUtc = now,
+            UpdatedAtUtc = now,
+        });
+        db.SaveChanges();
+        var service = CreateService(db);
+
+        var payload = JsonDocument.Parse(
+            """{"status":"submitted","mapLatitude":"21.57805","mapLongitude":"39.15431","inspectorMapLatitude":"21.58000","inspectorMapLongitude":"39.15000"}""")
+            .RootElement;
+        var (result, errors) = await service.SaveDraftAsync(
+            TaskId,
+            new SavePartyTaskSubmissionRequest { Payload = payload },
+            new PartySubmissionActor
+            {
+                UserId = "staff-1",
+                DisplayName = "أخصائي",
+                PrototypeRole = "case-specialist",
+                DistributionAssigneeId = null,
+            });
+
+        Assert.Null(errors);
+        Assert.NotNull(result);
+        Assert.Equal(PartyTaskSubmissionStatus.Submitted, result!.Status);
+        Assert.Contains("21.57805", result.Payload.GetRawText());
+        Assert.Contains("inspectorMapLatitude", result.Payload.GetRawText());
+        Assert.Contains("21.58000", result.Payload.GetRawText());
+    }
+
+    [Fact]
+    public async Task SaveDraft_forbids_case_specialist_correcting_submitted_non_inspection()
+    {
+        var bundle = CreateDb();
+        var db = bundle.CaseStudy;
+        var now = DateTime.UtcNow;
+        db.WorkflowTasks.Add(WorkflowTask.Create(
+            WorkflowTaskKind.EngineeringSurvey,
+            "PO-AUTH",
+            now,
+            title: "الرفع المساحي",
+            phase: WorkflowTaskPhase.Done,
+            assigneeRole: "engineering-office",
+            assigneeName: "مكتب",
+            id: TaskId,
+            propertyId: PropertyId,
+            assigneeId: "eng-1"));
+        db.PartyTaskSubmissions.Add(new PartyTaskSubmission
+        {
+            Id = Guid.NewGuid(),
+            WorkflowTaskId = TaskId,
+            Kind = WorkflowTaskKindValues.EngineeringSurvey,
+            Status = PartyTaskSubmissionStatus.Submitted,
+            PropertyId = PropertyId,
+            PoNumber = "PO-AUTH",
+            PayloadJson = """{"status":"submitted"}""",
+            SubmittedAtUtc = now,
+            CreatedAtUtc = now,
+            UpdatedAtUtc = now,
+        });
+        db.SaveChanges();
+        var service = CreateService(db);
+
+        var payload = JsonDocument.Parse("""{"status":"submitted","note":"x"}""").RootElement;
+        var (result, errors) = await service.SaveDraftAsync(
+            TaskId,
+            new SavePartyTaskSubmissionRequest { Payload = payload },
+            new PartySubmissionActor
+            {
+                UserId = "staff-1",
+                DisplayName = "أخصائي",
+                PrototypeRole = "case-specialist",
+            });
+
+        Assert.Null(result);
+        Assert.NotNull(errors);
+        Assert.Contains("صلاحية", errors!["_"]);
     }
 
     [Fact]
@@ -308,13 +405,12 @@ public class PartyTaskSubmissionAuthorizationTests
         var timeline = TestInspectorFeeServiceFactory.CreateTimeline(db);
         var (notifications, recipients) = TestInspectorFeeServiceFactory.CreateNotificationDeps(db);
         return new(
-            db,
-            new FailureLookup(failures),
+            new PartyTaskSubmissionRepository(db),
+            new PartyTaskFailureGate(new FailureLookup(failures)),
             TestInspectorFeeServiceFactory.CreateWorkflow(db),
             new FieldInspectionAttachmentVerifier(TestInspectorFeeServiceFactory.ShareAttachmentLookup(db)),
             timeline,
-            new NullHttpContextAccessor(),
-            new NullPermissionService(),
+            new HttpCurrentPrototypeRoleResolver(new NullHttpContextAccessor(), new NullPermissionService()),
             TestInspectorFeeServiceFactory.Create(db),
             notifications,
             recipients);

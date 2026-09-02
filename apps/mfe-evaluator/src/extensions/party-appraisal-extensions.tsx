@@ -1,7 +1,7 @@
 "use client";
 
 import type { PartyAppraisalExtensions } from "@case-study/mfe/lib/party-appraisal-extensions";
-import type { PoIntakeRecord } from "@case-study/mfe/lib/prototype/po-intake-data";
+import type { PoIntakeRecord } from "@case-study/mfe/lib/app-data/po-intake-data";
 import type { WorkflowTask } from "@platform/app-shared/workflow/task-types";
 import { propertyAppraisalWorkspacePath } from "@case-study/mfe/lib/my-task-routes";
 import dynamic from "next/dynamic";
@@ -17,7 +17,7 @@ const AppraiserUploadTab = dynamic(
 );
 import { buildAppraiserQueueRowMoreItems } from "../lib/evaluator/appraiser-queue-row-menu";
 import { appraiserTaskStatusBadge, canAppraiserOpenTask, filterAppraiserListedTasks } from "../lib/evaluator/evaluator-queue";
-import { PARTY_TASK_RECALL_CHANGED_EVENT, PARTY_TASK_RECALL_HYDRATED_EVENT, hydratePartyTaskRecalls } from "@platform/app-shared/prototype/party-task-recall-storage";
+import { PARTY_TASK_RECALL_CHANGED_EVENT, PARTY_TASK_RECALL_HYDRATED_EVENT, hydratePartyTaskRecalls } from "@platform/app-shared/app-data/party-task-recall-storage";
 import { EVALUATOR_SUBMISSION_CHANGED_EVENT, isEvaluatorFormLocked, loadEvaluatorSubmission, prefetchEvaluatorSubmissions } from "../lib/evaluator/evaluator-submission-storage";
 import type { EvaluatorWindowHostRefObject } from "../lib/evaluator/evaluator-window-host";
 

@@ -16,9 +16,9 @@ import {
   type UpdateStaffUserResult,
   type UsersApiConfig,
 } from "@platform/api-client";
-import type { StaffUser } from "@platform/app-shared/prototype/constants";
+import type { StaffUser } from "@platform/app-shared/app-data/constants";
 import { userListItemToStaff } from "@platform/app-shared/users/user-mappers";
-import { hasRuntimeCapability } from "@platform/app-shared/prototype/runtime-access";
+import { hasRuntimeCapability } from "@platform/app-shared/app-data/runtime-access";
 import { apiConfig } from "@platform/app-shared/auth/api-config";
 
 type FetchStaffUsersResult = {

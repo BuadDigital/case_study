@@ -3,7 +3,7 @@
 import { useEffect, useRef } from "react";
 import { MarkerClusterer, type Renderer } from "@googlemaps/markerclusterer";
 import { loadGoogleMapsApi } from "@platform/ui-kit";
-import type { LayerKey } from "../../lib/prototype/map-locations-logic";
+import type { LayerKey } from "../../lib/app-data/map-locations-logic";
 import type {
   MapBasemap,
   MapViewCommand,

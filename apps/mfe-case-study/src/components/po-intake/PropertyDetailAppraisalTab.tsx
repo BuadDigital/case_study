@@ -4,8 +4,8 @@ import { EmptyState } from "./PropertyDetailFields";
 import { PartyRoleDetailPanel } from "./PartyRoleDetailPanel";
 import { ReturnedForCorrectionNote } from "../ui/ReturnedForCorrectionNote";
 import { PropertyDetailPartyPackageReview } from "./PropertyDetailPartyPackageReview";
-import type { PropertyDetailPartyCard } from "../../lib/prototype/property-detail-parties";
-import type { PropertyDetailPartySubmission } from "../../lib/prototype/property-detail-party-submissions";
+import type { PropertyDetailPartyCard } from "../../lib/app-data/property-detail-parties";
+import type { PropertyDetailPartySubmission } from "../../lib/app-data/property-detail-party-submissions";
 
 /**
  * Property-detail appraisal tab — package review + read-only payload.

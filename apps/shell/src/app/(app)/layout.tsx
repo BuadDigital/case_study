@@ -14,7 +14,7 @@ import { OfflineWriteInterceptorHost } from "@/components/OfflineWriteIntercepto
 import { PlatformRuntimeBootstrap } from "@/components/PlatformRuntimeBootstrap";
 import { PageAccessGate } from "@/components/PageAccessGate";
 import { AppShell } from "@/components/views/AppShell";
-import { PrototypeProvider } from "@platform/app-shared/contexts/PrototypeContext";
+import { AppAccessProvider } from "@platform/app-shared/contexts/AppAccessContext";
 import { NotificationProvider } from "@platform/app-shared/notifications/NotificationProvider";
 import { QueryProvider } from "@/providers/QueryProvider";
 import { ErrorBoundary, PanelSkeleton } from "@platform/ui-kit";
@@ -29,7 +29,7 @@ export default function AppSectionLayout({
       <NotificationProvider>
         <Suspense fallback={<PanelSkeleton className="min-h-svh" />}>
           <PrototypeAppGate>
-            <PrototypeProvider>
+            <AppAccessProvider>
               <PlatformRuntimeBootstrap />
               <AuthSessionWatcher />
               <DomainEventBridge />
@@ -45,7 +45,7 @@ export default function AppSectionLayout({
                   <PushPermissionPrompt />
                 </ErrorBoundary>
               </PageAccessGate>
-            </PrototypeProvider>
+            </AppAccessProvider>
           </PrototypeAppGate>
         </Suspense>
       </NotificationProvider>

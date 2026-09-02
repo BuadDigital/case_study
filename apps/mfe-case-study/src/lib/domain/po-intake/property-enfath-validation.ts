@@ -6,7 +6,7 @@ import {
   validatePropertyIdentifierNumber,
   type AssignmentType,
   type PoPropertyIntake,
-} from "../../prototype/po-intake-data";
+} from "../../app-data/po-intake-data";
 import {
   collectRequiredErrors,
   mergeFieldErrors,

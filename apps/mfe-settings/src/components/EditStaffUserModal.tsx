@@ -3,7 +3,7 @@
 import { useMemo, useState } from "react";
 import type { RoleId } from "@platform/types";
 import type { UpdateStaffUserRequest } from "@platform/api-client";
-import type { StaffUser } from "@platform/app-shared/prototype/constants";
+import type { StaffUser } from "@platform/app-shared/app-data/constants";
 import { adminStaffRoleOptions } from "@platform/app-shared/users/admin-staff-roles";
 import {
   isSectionSupervisorRole,

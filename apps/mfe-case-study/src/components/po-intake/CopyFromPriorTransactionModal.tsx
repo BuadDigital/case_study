@@ -12,11 +12,11 @@ import { RegField, RegSelect } from "@platform/app-shared/registration/FormField
 import type { PriorDeedRegistrationDto } from "@platform/api-client";
 import { PoNumber } from "@case-study/mfe/components/ui/PoNumber";
 import {
-  copyPropertyFromPriorTransaction,
-  findPriorDeedFull,
   type CopyPriorScope,
   type CopyPriorTargetOption,
-} from "../../lib/prototype/po-intake-storage";
+} from "../../lib/app-data/po-intake-model";
+import { findPriorDeedFull } from "../../lib/app-data/po-intake-reads";
+import { copyPropertyFromPriorTransaction } from "../../lib/app-data/po-intake-commands";
 
 type Props = {
   open: boolean;

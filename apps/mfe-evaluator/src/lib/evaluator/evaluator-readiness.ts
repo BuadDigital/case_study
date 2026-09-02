@@ -1,7 +1,7 @@
 import type { WorkflowTask } from "@platform/app-shared/workflow/task-types";
 import { findSiblingInspectionTask } from "./evaluator-inspection-gate";
 import { loadEvaluatorSubmission } from "./evaluator-submission-storage";
-import { getPartyTaskRecall } from "@platform/app-shared/prototype/party-task-recall-storage";
+import { getPartyTaskRecall } from "@platform/app-shared/app-data/party-task-recall-storage";
 
 /** Case Study.html `valReadiness` buckets. */
 export type AppraiserReadiness =

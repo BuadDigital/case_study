@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { prototypeKeys } from "@platform/app-shared/query/prototype-keys";
+import { appDataKeys } from "@platform/app-shared/query/app-data-keys";
 import {
   cn,
   EmptyState,
@@ -18,13 +18,13 @@ import {
   CASE_STUDY_QUESTION_CATALOG,
   type CaseStudyInfoPartyId,
   type CaseStudyInfoRoleType,
-} from "../lib/prototype/case-study-info-roles-data";
-import { downloadCaseStudyInfoRolesMarkdown } from "../lib/prototype/case-study-info-roles-markdown";
+} from "../lib/app-data/case-study-info-roles-data";
+import { downloadCaseStudyInfoRolesMarkdown } from "../lib/app-data/case-study-info-roles-markdown";
 import {
   emptyCaseStudyInfoRolesConfig,
   saveCaseStudyInfoRolesConfig,
   type CaseStudyInfoRolesConfig,
-} from "../lib/prototype/case-study-info-roles-storage";
+} from "../lib/app-data/case-study-info-roles-storage";
 import { apiErrorMessage } from "../lib/settings-api-config";
 import {
   setCaseStudyInfoRolesCache,
@@ -159,7 +159,7 @@ export function CaseStudyInfoRolesView() {
     ) => {
       const prev =
         queryClient.getQueryData<CaseStudyInfoRolesConfig>(
-          prototypeKeys.caseStudyInfoRoles(),
+          appDataKeys.caseStudyInfoRoles(),
         ) ?? config;
       if (!prev) return;
 
@@ -174,7 +174,7 @@ export function CaseStudyInfoRolesView() {
         noteSaveTimersRef.current[noteKey] = setTimeout(() => {
           delete noteSaveTimersRef.current[noteKey];
           const latest = queryClient.getQueryData<CaseStudyInfoRolesConfig>(
-            prototypeKeys.caseStudyInfoRoles(),
+            appDataKeys.caseStudyInfoRoles(),
           );
           if (latest) enqueueSave(latest, rollback);
         }, debounceMs);

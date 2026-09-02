@@ -5,7 +5,7 @@ import { Button, Label, cn } from "@platform/ui-kit";
 import {
   clearCachedPropertyDoc,
   type PropertyDocKind,
-} from "../../lib/prototype/assignment-doc-attachments";
+} from "../../lib/app-data/assignment-doc-attachments";
 import { AssignmentDocAttachment } from "./AssignmentDocAttachment";
 
 const ACCEPT =

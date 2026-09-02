@@ -2,7 +2,7 @@
 
 import { useMemo } from "react";
 import { Select } from "@platform/ui-kit";
-import { usePrototype } from "@platform/app-shared/contexts/PrototypeContext";
+import { useAppAccess } from "@platform/app-shared/contexts/AppAccessContext";
 import { filterFailureCategoriesForRole, filterFailureProblemTypesForRole } from "../../lib/failure-category-role-visibility";
 import {
   FAILURE_PROBLEM_TYPES,
@@ -32,7 +32,7 @@ export function FailureRaiseFields({
   disabled?: boolean;
   autoFocus?: boolean;
 }) {
-  const { role } = usePrototype();
+  const { role } = useAppAccess();
   const { data: catalog, isPending, isError } = useFailureTypesQuery();
 
   const catalogCategories =

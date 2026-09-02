@@ -3,18 +3,18 @@
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect } from "react";
 import { PanelSkeleton } from "@platform/ui-kit";
-import { usePrototype } from "@platform/app-shared/contexts/PrototypeContext";
+import { useAppAccess } from "@platform/app-shared/contexts/AppAccessContext";
 import {
   canAccessPathname,
   defaultLandingPath,
   pageIdFromPathname,
-} from "@platform/app-shared/prototype/page-access";
+} from "@platform/app-shared/app-data/page-access";
 
 /** Redirects to the user's first allowed page when they lack permission for the current route. */
 export function PageAccessGate({ children }: { children: React.ReactNode }) {
   const pathname = usePathname() ?? "/";
   const router = useRouter();
-  const { rolePages, authReady } = usePrototype();
+  const { rolePages, authReady } = useAppAccess();
 
   useEffect(() => {
     if (!authReady) return;

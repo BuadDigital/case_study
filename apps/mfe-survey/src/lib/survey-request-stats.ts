@@ -1,5 +1,5 @@
 import { listWorkflowTasks } from "@platform/api-client";
-import { workOrdersApiConfig } from "@platform/app-shared/prototype/work-orders-api-config";
+import { workOrdersApiConfig } from "@platform/app-shared/app-data/work-orders-api-config";
 
 type SurveyRequestStats = {
   total: number;

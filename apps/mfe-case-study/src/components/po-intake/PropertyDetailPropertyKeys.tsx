@@ -19,13 +19,13 @@ import { PropertyKeyGateSources, PropertyKeysStatuses } from "@platform/api-clie
 import {
   formatPropertyDeedDisplay,
   type PoPropertyIntake,
-} from "../../lib/prototype/po-intake-data";
+} from "../../lib/app-data/po-intake-data";
 import {
   courtVisitResultKindLabel,
-} from "../../lib/prototype/operations-task-property-scope";
+} from "../../lib/app-data/operations-task-property-scope";
 import {
   operationsTaskStatusLabel,
-} from "../../lib/prototype/operations-task-display";
+} from "../../lib/app-data/operations-task-display";
 import { usePropertyOperationsTasks } from "../../query/use-property-operations-tasks";
 import {
   keyGateSourceLabelAr,
@@ -34,8 +34,8 @@ import {
   resolveEnvelopeIdFromSources,
   usePropertyKeyGateQuery,
 } from "../../query/use-property-key-gate-query";
-import { canManageOperationsTasks } from "../../lib/prototype/operations-task-roles";
-import { usePrototype } from "@platform/app-shared/contexts/PrototypeContext";
+import { canManageOperationsTasks } from "../../lib/app-data/operations-task-roles";
+import { useAppAccess } from "@platform/app-shared/contexts/AppAccessContext";
 import Link from "next/link";
 
 function keysBadgeTone(status: string): BadgeTone {
@@ -56,7 +56,7 @@ export function PropertyDetailPropertyKeys({
   poNumber: string;
   property: PoPropertyIntake;
 }) {
-  const { role } = usePrototype();
+  const { role } = useAppAccess();
   const canCreateOps = canManageOperationsTasks(role);
   const deedNumber = property.deedNumber.trim();
   const deedDisplay = formatPropertyDeedDisplay(property) || deedNumber;

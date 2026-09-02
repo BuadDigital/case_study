@@ -8,7 +8,7 @@ import {
   formatGeoDec,
   formatGeoDms,
   type PoPropertyIntake,
-} from "../../lib/prototype/po-intake-data";
+} from "../../lib/app-data/po-intake-data";
 
 const goldSoft =
   "rounded border border-transparent bg-[color-mix(in_srgb,#f1ece2_45%,transparent)]";

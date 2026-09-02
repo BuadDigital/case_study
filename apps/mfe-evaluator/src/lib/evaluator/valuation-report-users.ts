@@ -1,8 +1,8 @@
-import type { PoIntakeRecord } from "@case-study/mfe/lib/prototype/po-intake-data";
+import type { PoIntakeRecord } from "@case-study/mfe/lib/app-data/po-intake-data";
 import {
   VALUATION_REPORT_USER_OPTION_LABEL,
   showsValuationReportUserField,
-} from "@case-study/mfe/lib/prototype/po-intake-data";
+} from "@case-study/mfe/lib/app-data/po-intake-data";
 import type { ClientDto } from "@platform/api-client";
 
 /* Valuation report user formatting — lightweight module independent of valuation-report-live-fill

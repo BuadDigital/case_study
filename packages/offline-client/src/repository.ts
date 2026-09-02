@@ -60,12 +60,14 @@ export async function cachePrefetchAttachment(input: {
 export async function enqueueSubmitLocally(input: {
   userId: string;
   taskId: string;
+  idempotencyKey?: string;
 }): Promise<void> {
   await enqueueOutbox({
     userId: input.userId,
     kind: "party-submission-submit",
     targetId: input.taskId,
     payloadJson: JSON.stringify({ taskId: input.taskId }),
+    idempotencyKey: input.idempotencyKey,
   });
 }
 

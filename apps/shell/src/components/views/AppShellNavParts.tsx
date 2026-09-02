@@ -11,13 +11,13 @@ import {
 import { NavIcon } from "@/components/views/NavIcon";
 import { ThemeSwitch } from "@/components/views/ThemeSwitch";
 import type { PageId, RoleId } from "@platform/types";
-import { NAV } from "@platform/app-shared/prototype/constants";
+import { NAV } from "@platform/app-shared/app-data/constants";
 import {
   ACTIVE_TRANSACTIONS_GROUP,
   ACTIVE_TRANSACTIONS_GROUP_ICON,
   type ActiveTransactionNavItem,
   isInActiveTransactionsSection,
-} from "@platform/app-shared/prototype/active-transactions";
+} from "@platform/app-shared/app-data/active-transactions";
 import {
   SYSTEM_SETTINGS_GROUP,
   SYSTEM_SETTINGS_GROUP_ICON,
@@ -25,7 +25,7 @@ import {
   isSettingsNavItemActive,
   type SettingsNavTreeNode,
   type SystemSettingsNavItem,
-} from "@platform/app-shared/prototype/system-settings-nav";
+} from "@platform/app-shared/app-data/system-settings-nav";
 import {
   FINANCIAL_GROUP,
   FINANCIAL_GROUP_ICON,
@@ -35,7 +35,7 @@ import {
   isFinanceCoreArea,
   isInFinancialSection,
   type FinanceNavArea,
-} from "@platform/app-shared/prototype/financial-nav";
+} from "@platform/app-shared/app-data/financial-nav";
 
 export function TopbarSvgIcon({ children }: { children: React.ReactNode }) {
   return (

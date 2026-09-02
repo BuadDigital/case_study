@@ -9,7 +9,7 @@ import {
 } from "@platform/api-client";
 import { cn, opsFldControl, useToast } from "@platform/ui-kit";
 
-import { valuationPurposeKeyForAssignment } from "@platform/app-shared/prototype/assignment-valuation-defaults";
+import { valuationPurposeKeyForAssignment } from "@platform/app-shared/app-data/assignment-valuation-defaults";
 import {
   Card,
   CardPad,

@@ -22,7 +22,7 @@ import {
 
   type PropertyDocKind,
 
-} from "../../lib/prototype/assignment-doc-attachments";
+} from "../../lib/app-data/assignment-doc-attachments";
 
 import { Button, cn } from "@platform/ui-kit";
 

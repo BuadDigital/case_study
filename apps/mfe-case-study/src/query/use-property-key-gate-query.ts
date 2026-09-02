@@ -8,8 +8,8 @@ import {
   PropertyKeysStatuses,
   type PropertyKeyGateDto,
 } from "@platform/api-client";
-import { prototypeKeys } from "@platform/app-shared/query/prototype-keys";
-import { prototypeModulesApiConfig } from "@platform/app-shared/prototype/prototype-modules-api-config";
+import { appDataKeys } from "@platform/app-shared/query/app-data-keys";
+import { prototypeModulesApiConfig } from "@platform/app-shared/app-data/modules-api-config";
 
 export function usePropertyKeyGateQuery(params: {
   propertyId?: string | null;
@@ -21,7 +21,7 @@ export function usePropertyKeyGateQuery(params: {
   const enabled = params.enabled ?? true;
   return useQuery({
     queryKey: [
-      ...prototypeKeys.all,
+      ...appDataKeys.all,
       "property-key-gate",
       params.propertyId ?? "",
       params.poNumber ?? "",

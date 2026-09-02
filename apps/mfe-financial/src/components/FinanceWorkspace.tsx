@@ -11,7 +11,7 @@ import {
   type FinanceArea,
   type RevenueStage,
 } from "../lib/finance-nav";
-import { financeLeafForArea } from "@platform/app-shared/prototype/financial-nav";
+import { financeLeafForArea } from "@platform/app-shared/app-data/financial-nav";
 import { FinanceMyTasks } from "./FinanceMyTasks";
 import { EmptyState, opsLetterCard } from "@platform/ui-kit";
 import { useFinanceTabCounts } from "../query/finance-tab-counts";

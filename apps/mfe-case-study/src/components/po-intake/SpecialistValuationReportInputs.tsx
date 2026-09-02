@@ -6,8 +6,8 @@ import {
   loadSpecialistPrintAttachmentKeys,
   printKeyForPropertyDocument,
   saveSpecialistPrintAttachmentKeys,
-} from "../../lib/prototype/valuation-print-attachment-keys";
-import type { PropertyDetailDocumentEntry } from "../../lib/prototype/property-detail-documents";
+} from "../../lib/app-data/valuation-print-attachment-keys";
+import type { PropertyDetailDocumentEntry } from "../../lib/app-data/property-detail-documents";
 import { SpecialistValuationReportEsgEditor } from "./SpecialistValuationReportEsgEditor";
 import { SpecialistValuationReportFinishingEditor } from "./SpecialistValuationReportFinishingEditor";
 import { SpecialistValuationReportSearchScopeEditor } from "./SpecialistValuationReportSearchScopeEditor";

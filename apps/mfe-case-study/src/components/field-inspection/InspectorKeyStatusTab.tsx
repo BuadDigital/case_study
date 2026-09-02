@@ -8,7 +8,7 @@ import {
   type PropertyKeyGateDto,
 } from "@platform/api-client";
 import { Button, Note, cn } from "@platform/ui-kit";
-import { prototypeModulesApiConfig } from "@platform/app-shared/prototype/prototype-modules-api-config";
+import { prototypeModulesApiConfig } from "@platform/app-shared/app-data/modules-api-config";
 import {
   FieldBox,
   FieldsGrid,
@@ -18,7 +18,7 @@ import {
   keyHandedLabelAr,
   keysStatusLabelAr,
 } from "../../query/use-property-key-gate-query";
-import type { WorkflowTask } from "../../lib/prototype/tasks-storage";
+import type { WorkflowTask } from "../../lib/app-data/tasks-storage";
 
 export type InspectorKeyAvailability = {
   keyHandedToInspector: string;

@@ -3,12 +3,12 @@ import {
   submitValuationImpediment,
   submitValuationReport,
 } from "@platform/api-client";
-import type { VrRow } from "@platform/app-shared/prototype/constants";
+import type { VrRow } from "@platform/app-shared/app-data/constants";
 import {
   prototypeModulesApiConfig,
   requirePrototypeModulesApiConfig,
   unwrapApiResult,
-} from "@platform/app-shared/prototype/prototype-modules-api-config";
+} from "@platform/app-shared/app-data/modules-api-config";
 function mapStatus(status: string): VrRow["status"] {
   if (status === "done") return "done";
   if (status === "fail") return "fail";

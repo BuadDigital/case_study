@@ -6,22 +6,21 @@ using RealEstateEval.Domain;
 using RealEstateEval.Infrastructure.Data;
 using RealEstateEval.Infrastructure.Data.Contexts;
 using RealEstateEval.CaseStudy.Application.Abstractions;
+using RealEstateEval.CaseStudy.Application.Rules;
+using RealEstateEval.CaseStudy.Domain;
 
 namespace RealEstateEval.CaseStudy.Infrastructure.Services;
 
 public sealed class WorkflowTaskQueryService : IWorkflowTaskQuery
 {
     private readonly ICaseStudyRepository _caseStudy;
-    private readonly IWorkflowTaskVisibilityFilter _visibility;
     private readonly DatabaseOptions _dbOptions;
 
     public WorkflowTaskQueryService(
         ICaseStudyRepository caseStudy,
-        IWorkflowTaskVisibilityFilter? visibility = null,
         IOptions<DatabaseOptions>? dbOptions = null)
     {
         _caseStudy = caseStudy;
-        _visibility = visibility ?? new WorkflowTaskVisibilityFilter();
         _dbOptions = dbOptions?.Value ?? new DatabaseOptions();
     }
 
@@ -30,7 +29,7 @@ public sealed class WorkflowTaskQueryService : IWorkflowTaskQuery
         CancellationToken cancellationToken = default)
     {
         var (_, take, _, _) = NpgsqlConfiguration.ResolveListPaging(null, null, _dbOptions);
-        var list = await _visibility.VisibleTaskQuery(_caseStudy.WorkflowTasks.AsNoTracking(), actor)
+        var list = await VisibleOrderedTasks(actor)
             .Take(take)
             .ToListAsync(cancellationToken);
         var dtos = list.Select(WorkflowTaskMapper.ToDto).ToList();
@@ -48,7 +47,7 @@ public sealed class WorkflowTaskQueryService : IWorkflowTaskQuery
             page,
             pageSize,
             _dbOptions);
-        var query = _visibility.VisibleTaskQuery(_caseStudy.WorkflowTasks.AsNoTracking(), actor);
+        var query = VisibleOrderedTasks(actor);
         var total = await query.CountAsync(cancellationToken);
         var list = await query
             .Skip(skip)
@@ -66,6 +65,15 @@ public sealed class WorkflowTaskQueryService : IWorkflowTaskQuery
             PageSize = take,
         };
     }
+
+    /// <summary>Visibility rule from Application applied to the tracked set, in list order.</summary>
+    private IQueryable<WorkflowTask> VisibleOrderedTasks(PermissionsDto? actor) =>
+        _caseStudy.WorkflowTasks
+            .AsNoTracking()
+            .OrderByDescending(t => t.CreatedAtUtc)
+            .ThenBy(t => t.PoNumber)
+            .ThenBy(t => t.PropertyOrdinal)
+            .Where(WorkflowTaskVisibilityRules.VisibleTo(actor));
 
     public Task<bool> IsAssignedToAsync(
         Guid id,

@@ -3,7 +3,7 @@
 import { useMemo, type ReactNode } from "react";
 import { useWindowEvents } from "@platform/app-shared/hooks/useWindowEvents";
 import { useQueryClient } from "@tanstack/react-query";
-import { prototypeKeys } from "@platform/app-shared/query/prototype-keys";
+import { appDataKeys } from "@platform/app-shared/query/app-data-keys";
 import {
   cn,
   opsPanelCard,
@@ -14,11 +14,11 @@ import {
   buildPropertyDetailTimeline,
   formatTimelineDate,
   type PropertyTimelineTone,
-} from "../../lib/prototype/property-detail-timeline";
-import { buildPropertyDetailTimelinePartyRows } from "../../lib/prototype/property-detail-parties";
-import { formatDateAr } from "../../lib/prototype/po-intake-data";
-import type { PoIntakeRecord, PoPropertyIntake } from "../../lib/prototype/po-intake-data";
-import { caseStudyTaskForProperty } from "../../lib/prototype/tasks-storage";
+} from "../../lib/app-data/property-detail-timeline";
+import { buildPropertyDetailTimelinePartyRows } from "../../lib/app-data/property-detail-parties";
+import { formatDateAr } from "../../lib/app-data/po-intake-data";
+import type { PoIntakeRecord, PoPropertyIntake } from "../../lib/app-data/po-intake-data";
+import { caseStudyTaskForProperty } from "../../lib/app-data/tasks-storage";
 import { TASKS_CHANGED_EVENT } from "../../query/case-study-queries";
 import { usePropertyTimelineQuery } from "../../query/use-property-timeline-query";
 import { useWorkflowTasksQuery } from "../../query/case-study-queries";
@@ -145,7 +145,7 @@ export function PropertyTransactionTimeline({
 
   const invalidateTimeline = () => {
     void queryClient.invalidateQueries({
-      queryKey: prototypeKeys.propertyTimeline(poNumber, property.id),
+      queryKey: appDataKeys.propertyTimeline(poNumber, property.id),
     });
   };
   useWindowEvents({

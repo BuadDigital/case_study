@@ -5,15 +5,19 @@
  * Disbursement voucher + transfer ref + receipt on the same page.
  */
 
-import { useState } from "react";
-import type { PartyBillingStatementDto } from "@platform/api-client";
+import { useCallback, useRef, useState } from "react";
+import type {
+  ClosePartyBillingStatementRequest,
+  PartyBillingStatementDto,
+} from "@platform/api-client";
+import { useIdempotentAction } from "@platform/app-shared";
 import { fmtMax } from "@platform/app-shared/format/number";
 import { useEscapeKey } from "@platform/app-shared/hooks/use-escape-key";
 import {
   openPartyBillingAttachment,
   runClosePartyBillingStatement,
   uploadPartyBillingTransferReceipt,
-} from "@platform/app-shared/prototype/party-billing-statements-api";
+} from "@platform/app-shared/app-data/party-billing-statements-api";
 import {
   ModalBody,
   ModalCard,
@@ -73,8 +77,22 @@ function FinanceDisbursementCloseForm({
   const [err, setErr] = useState("");
   const [busy, setBusy] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const pendingClose = useRef<ClosePartyBillingStatementRequest | null>(null);
 
-  useEscapeKey(!busy && !uploading, onClose);
+  const { execute: executeClose, loading: closing } = useIdempotentAction(
+    useCallback(
+      async (idempotencyKey: string) => {
+        const body = pendingClose.current;
+        if (!body) throw new Error("لا توجد بيانات صرف");
+        return runClosePartyBillingStatement(statement.id, body, idempotencyKey);
+      },
+      [statement.id],
+    ),
+  );
+
+  const commandBusy = busy || closing;
+
+  useEscapeKey(!commandBusy && !uploading, onClose);
 
   const total = statementDisplayTotal(statement);
 
@@ -117,13 +135,16 @@ function FinanceDisbursementCloseForm({
       const paidAtUtc = paidAt
         ? new Date(`${paidAt}T12:00:00`).toISOString()
         : undefined;
-      const result = await runClosePartyBillingStatement(statement.id, {
+      pendingClose.current = {
         disbursementVoucher: v,
         transferReference: t,
         transferReceiptAttachmentId: receiptId,
         transferReceiptRef: receiptRef.trim() || undefined,
         paidAtUtc,
-      });
+      };
+      const outcome = await executeClose();
+      if (outcome.status === "skipped") return;
+      const result = outcome.value;
       if (!result.ok) {
         setErr(result.error);
         showToast(result.error, "error");
@@ -148,7 +169,7 @@ function FinanceDisbursementCloseForm({
       role="presentation"
       className="items-start bg-[rgba(16,43,78,0.42)] pt-[6vh] backdrop-blur-[2px] !z-[var(--z-modal)]"
       onClick={() => {
-        if (!busy && !uploading) onClose();
+        if (!commandBusy && !uploading) onClose();
       }}
     >
       <ModalCard
@@ -169,7 +190,7 @@ function FinanceDisbursementCloseForm({
             </ModalTitle>
           </div>
           <ModalClose
-            disabled={busy || uploading}
+            disabled={commandBusy || uploading}
             onClick={onClose}
             aria-label="إغلاق"
             className="grid h-8 w-8 shrink-0 place-items-center rounded-[9px] border-none bg-surface-2 text-[15px] text-text-2 hover:bg-[#faf6ee] hover:text-heading"
@@ -228,7 +249,7 @@ function FinanceDisbursementCloseForm({
               <input
                 id="disburse-voucher"
                 dir="ltr"
-                disabled={busy}
+                disabled={commandBusy}
                 value={voucher}
                 onChange={(e) => {
                   setVoucher(e.target.value);
@@ -248,7 +269,7 @@ function FinanceDisbursementCloseForm({
               <input
                 id="disburse-transfer"
                 dir="ltr"
-                disabled={busy}
+                disabled={commandBusy}
                 value={transferRef}
                 onChange={(e) => {
                   setTransferRef(e.target.value);
@@ -270,7 +291,7 @@ function FinanceDisbursementCloseForm({
             <input
               id="disburse-paid-at"
               type="date"
-              disabled={busy}
+              disabled={commandBusy}
               value={paidAt}
               onChange={(e) => setPaidAt(e.target.value)}
               className="w-full max-w-[220px] rounded-[9px] border border-[#ddd8cc] bg-surface-2 px-3 py-2.5 text-[13px] text-text outline-none focus:border-gold disabled:opacity-60"
@@ -288,7 +309,7 @@ function FinanceDisbursementCloseForm({
               id="disburse-receipt"
               type="file"
               accept="image/*,application/pdf"
-              disabled={busy || uploading}
+              disabled={commandBusy || uploading}
               onChange={(e) => {
                 void handleReceiptFile(e.target.files?.[0]);
                 e.target.value = "";
@@ -322,7 +343,7 @@ function FinanceDisbursementCloseForm({
             </label>
             <input
               id="disburse-receipt-note"
-              disabled={busy}
+              disabled={commandBusy}
               value={receiptRef}
               onChange={(e) => setReceiptRef(e.target.value)}
               className="w-full rounded-[9px] border border-[#ddd8cc] bg-surface-2 px-3 py-2.5 text-[13px] text-text outline-none focus:border-gold disabled:opacity-60"
@@ -334,15 +355,15 @@ function FinanceDisbursementCloseForm({
           <button
             type="button"
             className={opsBtnGhost}
-            disabled={busy || uploading}
+            disabled={commandBusy || uploading}
             onClick={onClose}
           >
             إلغاء
           </button>
           <button
             type="button"
-            className={cn(opsBtnPrimary, (busy || uploading) && "opacity-75")}
-            disabled={busy || uploading}
+            className={cn(opsBtnPrimary, (commandBusy || uploading) && "opacity-75")}
+            disabled={commandBusy || uploading}
             onClick={() => void handleClosePaid()}
           >
             {busy ? "جارٍ…" : "إقفال أمر الصرف كمدفوع"}

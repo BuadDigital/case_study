@@ -13,7 +13,7 @@ import {
 import {
   isBourseInquiryIdentifier,
   type PoPropertyIntake,
-} from "../../prototype/po-intake-data";
+} from "../../app-data/po-intake-data";
 
 /** Top→bottom order for property edit / task work forms. */
 export const PO_PROPERTY_ERROR_KEY_ORDER = [

@@ -3,9 +3,9 @@
 import { cn } from "@platform/ui-kit";
 import {
   OCCUPANCY_DESCRIPTION_KEY,
-} from "../../lib/prototype/inspector-workspace-data";
+} from "../../lib/app-data/inspector-workspace-data";
 import { EDIT_CONTROL_CLASS } from "./FieldInspectionWorkParts";
-import { inspectorInvalidControlClass } from "../../lib/prototype/inspector-workspace-validation";
+import { inspectorInvalidControlClass } from "../../lib/app-data/inspector-workspace-validation";
 
 /** Shown when «حالة الإشغال» = مشغول — explain why the property is occupied. */
 export function InspectorOccupancyDescriptionField({

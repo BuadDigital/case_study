@@ -81,7 +81,6 @@ public static class DataSeeder
             }
             await RemoveDemoPropertyKeyRecordsAsync(operations, cancellationToken);
             await RemoveSeededFinancialReportConfigAsync(financial, cancellationToken);
-            await RemoveRetiredOrgAdminUsersAsync(userManager, cancellationToken);
             try
             {
                 await ComparableBankSeed.EnsureAsync(valuation, cancellationToken);
@@ -157,8 +156,6 @@ public static class DataSeeder
         }
 
         await EnsureLegacyAdminAsync(userManager);
-
-        await RemoveRetiredOrgAdminUsersAsync(userManager, cancellationToken);
 
         foreach (var staff in HrStaffSeeds)
             await EnsureHrStaffAsync(userManager, identity, staff, cancellationToken);
@@ -238,9 +235,7 @@ public static class DataSeeder
 
             ContractType.Internal,
 
-            OrgRoles.Cdo,
-
-            DepartmentRoles.Hr),
+            OrgRoles.Cdo),
 
         new(
 
@@ -263,8 +258,6 @@ public static class DataSeeder
             "مدير",
 
             ContractType.Internal,
-
-            DepartmentRoles.Hr,
 
             "Editor"),
 
@@ -290,8 +283,6 @@ public static class DataSeeder
 
             ContractType.Internal,
 
-            DepartmentRoles.Hr,
-
             "Supervisor"),
 
         new(
@@ -315,8 +306,6 @@ public static class DataSeeder
             "محرر",
 
             ContractType.Internal,
-
-            DepartmentRoles.Hr,
 
             "Editor"),
 
@@ -344,8 +333,6 @@ public static class DataSeeder
 
             ContractType.Freelance,
 
-            DepartmentRoles.Hr,
-
             "Editor"),
 
         new(
@@ -369,8 +356,6 @@ public static class DataSeeder
             "محرر",
 
             ContractType.Internal,
-
-            DepartmentRoles.Hr,
 
             "Editor"),
 
@@ -396,8 +381,6 @@ public static class DataSeeder
 
             ContractType.Internal,
 
-            DepartmentRoles.Hr,
-
             "Editor"),
 
         new(
@@ -421,8 +404,6 @@ public static class DataSeeder
             "محرر",
 
             ContractType.Internal,
-
-            DepartmentRoles.Hr,
 
             "Editor"),
 
@@ -448,8 +429,6 @@ public static class DataSeeder
 
             ContractType.Freelance,
 
-            DepartmentRoles.Hr,
-
             "Editor"),
 
         new(
@@ -474,8 +453,6 @@ public static class DataSeeder
 
             ContractType.Internal,
 
-            DepartmentRoles.Hr,
-
             "Editor"),
 
         new(
@@ -499,8 +476,6 @@ public static class DataSeeder
             "محرر",
 
             ContractType.Internal,
-
-            DepartmentRoles.Hr,
 
             "Editor"),
 
@@ -588,7 +563,7 @@ public static class DataSeeder
             ["osama@ejadah.dev"] = "cs-osama",
         };
 
- /// <summary>HR membership / badge numbers shown as “membership number”.</summary>
+ /// <summary>Staff membership / badge numbers shown as “membership number”.</summary>
     private static readonly Dictionary<string, string> EmployeeNumbersByEmail =
         new(StringComparer.OrdinalIgnoreCase)
         {
@@ -1122,13 +1097,16 @@ public static class DataSeeder
         var roles = await userManager.GetRolesAsync(user);
 
         foreach (var role in seed.IdentityRoles.Distinct())
-
         {
-
             if (!roles.Contains(role))
-
                 await userManager.AddToRoleAsync(user, role);
+        }
 
+        roles = await userManager.GetRolesAsync(user);
+        foreach (var retired in DepartmentRoles.RetiredIdentityRoles)
+        {
+            if (roles.Contains(retired))
+                await userManager.RemoveFromRoleAsync(user, retired);
         }
 
 
@@ -1384,8 +1362,14 @@ public static class DataSeeder
         var roles = await userManager.GetRolesAsync(user);
 
         if (!roles.Contains(DepartmentRoles.Proc))
-
             await userManager.AddToRoleAsync(user, DepartmentRoles.Proc);
+
+        roles = await userManager.GetRolesAsync(user);
+        foreach (var retired in DepartmentRoles.RetiredIdentityRoles)
+        {
+            if (roles.Contains(retired))
+                await userManager.RemoveFromRoleAsync(user, retired);
+        }
 
 
 
@@ -1679,12 +1663,8 @@ public static class DataSeeder
             .ExecuteDeleteAsync(cancellationToken);
     }
 
-    private static readonly string[] RetiredOrgAdminUsernames =
-        ["alaa", "ali", "shahd"];
-
  /// <summary>
- /// UserProfile.Department stores the canonical supervising-department code. Legacy Arabic
- /// administration / section labels remain on HrEmployee for display only.
+ /// UserProfile.Department stores the canonical supervising-department code.
  /// </summary>
     private static string? ResolveCanonicalDepartment(HrStaffSeed seed)
     {
@@ -1699,28 +1679,6 @@ public static class DataSeeder
             fallbackSection: seed.Section);
         return department;
     }
-
- /// <summary>Drops retired HR/PROC/CRM admin demo accounts (alaa / ali / shahd).</summary>
-    private static async Task RemoveRetiredOrgAdminUsersAsync(
-        UserManager<ApplicationUser> userManager,
-        CancellationToken cancellationToken)
-    {
-        foreach (var username in RetiredOrgAdminUsernames)
-        {
-            var user = await userManager.FindByNameAsync(username);
-            if (user is null)
-                continue;
-
-            var result = await userManager.DeleteAsync(user);
-            if (!result.Succeeded)
-            {
-                throw new InvalidOperationException(
-                    "Failed to remove retired org admin " + username + ": "
-                    + string.Join("; ", result.Errors.Select(e => e.Description)));
-            }
-        }
-    }
-
 
 }
 

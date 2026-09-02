@@ -2,7 +2,7 @@
 
 import { useEffect } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { prototypeKeys } from "@platform/app-shared/query/prototype-keys";
+import { appDataKeys } from "@platform/app-shared/query/app-data-keys";
 import { FAILURE_TYPES_CHANGED_EVENT } from "../lib/failure-types-events";
 import { loadFailureTypesCatalog } from "../lib/failure-types-storage";
 
@@ -16,7 +16,7 @@ export function useFailureTypesQuery() {
   useEffect(() => {
     const onChange = () => {
       void queryClient.invalidateQueries({
-        queryKey: prototypeKeys.failureTypes(),
+        queryKey: appDataKeys.failureTypes(),
       });
     };
     window.addEventListener(FAILURE_TYPES_CHANGED_EVENT, onChange);
@@ -25,7 +25,7 @@ export function useFailureTypesQuery() {
   }, [queryClient]);
 
   return useQuery({
-    queryKey: prototypeKeys.failureTypes(),
+    queryKey: appDataKeys.failureTypes(),
     queryFn: loadFailureTypesCatalog,
     ...queryDefaults,
   });

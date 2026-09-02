@@ -8,16 +8,16 @@ import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { dmy } from "@platform/app-shared/format/date";
 import { fmtMax } from "@platform/app-shared/format/number";
-import { prototypeKeys } from "@platform/app-shared/query/prototype-keys";
+import { appDataKeys } from "@platform/app-shared/query/app-data-keys";
 import {
   loadPartyBillingReadyLines,
   loadPartyBillingStatements,
-} from "@platform/app-shared/prototype/party-billing-statements-api";
+} from "@platform/app-shared/app-data/party-billing-statements-api";
 import type {
   PartyBillingReadyLineDto,
   PartyBillingStatementDto,
 } from "@platform/api-client";
-import type { StaffUser } from "@platform/app-shared/prototype/constants";
+import type { StaffUser } from "@platform/app-shared/app-data/constants";
 import {
   Badge,
   Spinner,
@@ -149,7 +149,7 @@ export function ProfileInspectorDuesPanel({ user }: { user: StaffUser }) {
 
   const readyQuery = useQuery({
     queryKey: [
-      ...prototypeKeys.all,
+      ...appDataKeys.all,
       "party-billing",
       "ready-lines",
       "profile-inspector",
@@ -162,7 +162,7 @@ export function ProfileInspectorDuesPanel({ user }: { user: StaffUser }) {
 
   const statementsQuery = useQuery({
     queryKey: [
-      ...prototypeKeys.all,
+      ...appDataKeys.all,
       "party-billing",
       "statements",
       "profile-inspector",

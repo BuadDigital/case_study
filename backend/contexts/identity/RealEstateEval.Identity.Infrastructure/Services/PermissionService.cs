@@ -57,10 +57,7 @@ public sealed class PermissionService : IPermissionService
 
         capabilities.Add("authenticated");
 
- // Prefer the stored department; fall back to the legacy HR section label so seeded
- // supervisors whose UserProfile still says "Real Estate Valuation Management" keep their authority.
         var department = SupervisingDepartments.NormalizeProfileValue(profile?.Department)
-            ?? SupervisingDepartments.NormalizeProfileValue(profile?.HrEmployee?.Section)
             ?? SupervisingDepartments.DeriveForRole(prototypeRole ?? profile?.RoleId);
 
         return new PermissionsDto

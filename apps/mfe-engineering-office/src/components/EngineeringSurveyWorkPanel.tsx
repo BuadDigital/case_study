@@ -13,20 +13,21 @@ import {
   opsFldControl,
   opsTfLbl,
 } from "@platform/ui-kit";
-import type { PartyTaskPageDef } from "@platform/app-shared/prototype/party-task-pages";
-import type { WorkflowTask } from "@case-study/mfe/lib/prototype/tasks-storage";
+import type { PartyTaskPageDef } from "@platform/app-shared/app-data/party-task-pages";
+import type { WorkflowTask } from "@case-study/mfe/lib/app-data/tasks-storage";
 import { activeSurveyEntryPath } from "@case-study/mfe/lib/my-task-routes";
 import {
   emptyCaseStudyFormDraft,
   loadPartyCaseStudyFormDraft,
   savePartyCaseStudyFormDraft,
-} from "@case-study/mfe/lib/prototype/case-study-form-storage";
+} from "@case-study/mfe/lib/app-data/case-study-form-storage";
 import {
   surveyWorkGate,
   declarationPhoneGate,
   hasAnyPartyPhone,
-} from "@case-study/mfe/lib/prototype/documentary-workflow-gates";
-import { usePrototype } from "@platform/app-shared/contexts/PrototypeContext";
+} from "@case-study/mfe/lib/app-data/documentary-workflow-gates";
+import { useAppAccess } from "@platform/app-shared/contexts/AppAccessContext";
+import { useIdempotentAction } from "@platform/app-shared";
 import {
   usePoRecordQuery,
   useWorkflowTasksQuery,
@@ -114,7 +115,7 @@ export function EngineeringSurveyWorkPanel({
   forceReadOnly?: boolean;
 }) {
   const router = useRouter();
-  const { role } = usePrototype();
+  const { role } = useAppAccess();
   const viewOnly = variant === "workspace";
   const propertyId = task.propertyId ?? "";
   const { showToast, runWithUploadToast } = useToast();
@@ -286,6 +287,15 @@ export function EngineeringSurveyWorkPanel({
     forceReadOnly ||
     task.status === "completed";
   const formDisabled = locked || viewOnly || !documentaryGate.ready;
+
+  const { execute: executeSurveySubmit } = useIdempotentAction(
+    useCallback(
+      async (idempotencyKey: string) =>
+        finalizeEngineeringSurveySubmission(task.id, idempotencyKey),
+      [task.id],
+    ),
+  );
+
   const transactionActive = useMemo(
     () => isEngineeringSurveyTransactionActive(task.status, draft?.status),
     [draft?.status, task.status],
@@ -506,9 +516,12 @@ export function EngineeringSurveyWorkPanel({
 
     hostRef.current?.onSavingChange?.(true);
     setFormError(null);
-    const result = await finalizeEngineeringSurveySubmission(task.id);
+    const outcome = await executeSurveySubmit();
     hostRef.current?.onSavingChange?.(false);
 
+    if (outcome.status === "skipped") return false;
+
+    const result = outcome.value;
     if (result) {
       setDraft(result.submission);
       setLocalFields(localFieldsFromDraft(result.submission));
@@ -534,6 +547,7 @@ export function EngineeringSurveyWorkPanel({
     task.id,
     hostRef,
     showToast,
+    executeSurveySubmit,
   ]);
 
   useEffect(() => {

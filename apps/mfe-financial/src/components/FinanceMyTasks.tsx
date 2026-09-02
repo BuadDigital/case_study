@@ -5,12 +5,12 @@ import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { fmtMax } from "@platform/app-shared/format/number";
-import { prototypeKeys } from "@platform/app-shared/query/prototype-keys";
-import { loadEnfazTracking } from "@platform/app-shared/prototype/enfaz-billing-api";
+import { appDataKeys } from "@platform/app-shared/query/app-data-keys";
+import { loadEnfazTracking } from "@platform/app-shared/app-data/enfaz-billing-api";
 import {
   loadPartyBillingReadyLines,
   loadPartyBillingStatements,
-} from "@platform/app-shared/prototype/party-billing-statements-api";
+} from "@platform/app-shared/app-data/party-billing-statements-api";
 import type { PartyBillingStatementDto } from "@platform/api-client";
 import {
   TBody,
@@ -227,17 +227,17 @@ export function FinanceMyTasks() {
   );
 
   const trackingQuery = useQuery({
-    queryKey: [...prototypeKeys.all, "enfaz-billing", "tracking", "my-tasks"],
+    queryKey: [...appDataKeys.all, "enfaz-billing", "tracking", "my-tasks"],
     queryFn: loadEnfazTracking,
     staleTime: 20_000,
   });
   const readyQuery = useQuery({
-    queryKey: [...prototypeKeys.all, "party-billing", "ready-lines", "my-tasks"],
+    queryKey: [...appDataKeys.all, "party-billing", "ready-lines", "my-tasks"],
     queryFn: () => loadPartyBillingReadyLines(),
     staleTime: 20_000,
   });
   const statementsQuery = useQuery({
-    queryKey: [...prototypeKeys.all, "party-billing", "statements", "my-tasks"],
+    queryKey: [...appDataKeys.all, "party-billing", "statements", "my-tasks"],
     queryFn: () => loadPartyBillingStatements(),
     staleTime: 20_000,
   });
@@ -290,10 +290,10 @@ export function FinanceMyTasks() {
   const invalidateBilling = useCallback(async () => {
     await Promise.all([
       queryClient.invalidateQueries({
-        queryKey: [...prototypeKeys.all, "party-billing"],
+        queryKey: [...appDataKeys.all, "party-billing"],
       }),
       queryClient.invalidateQueries({
-        queryKey: [...prototypeKeys.all, "enfaz-billing"],
+        queryKey: [...appDataKeys.all, "enfaz-billing"],
       }),
     ]);
   }, [queryClient]);

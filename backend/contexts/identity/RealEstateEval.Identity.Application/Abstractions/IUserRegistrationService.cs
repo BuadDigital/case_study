@@ -1,5 +1,4 @@
 using RealEstateEval.Application.Contracts;
-using RealEstateEval.Domain;
 
 namespace RealEstateEval.Identity.Application.Abstractions;
 
@@ -13,7 +12,6 @@ public interface IUserRegistrationService
         CancellationToken cancellationToken = default);
 
     Task<IReadOnlyList<UserListItemDto>> ListAsync(
-        RegistrationSource? sourceScope = null,
         CancellationToken cancellationToken = default);
 
  /// <summary>Full staff profile, with an identity-only fallback for unprofiled users.</summary>

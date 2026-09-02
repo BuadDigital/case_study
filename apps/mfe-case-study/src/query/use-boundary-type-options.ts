@@ -3,7 +3,7 @@
 import { useMemo } from "react";
 import { activeValuationListOptions } from "@platform/api-client";
 import { useValuationListsQuery } from "@platform/app-shared/query/valuation-lists-query";
-import { PROPERTY_BOUNDARY_TYPE_OPTIONS } from "../lib/prototype/po-intake-data";
+import { PROPERTY_BOUNDARY_TYPE_OPTIONS } from "../lib/app-data/po-intake-data";
 
 const FALLBACK = PROPERTY_BOUNDARY_TYPE_OPTIONS.filter((o) => o.value.length > 0).map(
   (o) => ({ value: o.value, label: o.label }),

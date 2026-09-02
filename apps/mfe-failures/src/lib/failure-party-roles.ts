@@ -1,4 +1,4 @@
-import type { PartyTaskPageDef } from "@platform/app-shared/prototype/party-task-pages";
+import type { PartyTaskPageDef } from "@platform/app-shared/app-data/party-task-pages";
 import type { WorkflowTaskKind } from "@platform/app-shared/workflow/task-types";
 
 /** Party names as in the failures document. */

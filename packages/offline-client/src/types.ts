@@ -33,6 +33,11 @@ export type OfflineOutboxItem = {
   targetId: string;
   /** JSON payload for replay. */
   payloadJson: string;
+  /**
+   * Stable Idempotency-Key for this outbox intent. Replayed on flush so
+   * online retries after timeout match the original user action.
+   */
+  idempotencyKey?: string;
   /** When kind is attachment-upload, the local placeholder id written into drafts. */
   localAttachmentId?: string;
   scope?: string;

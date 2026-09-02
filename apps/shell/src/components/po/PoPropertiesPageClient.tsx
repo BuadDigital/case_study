@@ -2,19 +2,19 @@
 
 import { useCallback, useEffect } from "react";
 import { PoPropertiesPage } from "@case-study/mfe/views/PoPropertiesPage";
-import type { PoPropertyRowMoreContext } from "@case-study/mfe/lib/prototype/po-properties-row-menu";
+import type { PoPropertyRowMoreContext } from "@case-study/mfe/lib/app-data/po-properties-row-menu";
 import {
   type RowMoreMenuItem,
   useToast,
 } from "@platform/ui-kit";
-import { usePrototype } from "@platform/app-shared/contexts/PrototypeContext";
+import { useAppAccess } from "@platform/app-shared/contexts/AppAccessContext";
 import { buildAppraiserRecallMenuItems } from "@evaluator/mfe/lib/evaluator/appraiser-recall-menu-items";
 import { EVALUATOR_SUBMISSION_CHANGED_EVENT } from "@evaluator/mfe/lib/evaluator/evaluator-submission-storage";
-import { PARTY_TASK_RECALL_CHANGED_EVENT } from "@platform/app-shared/prototype/party-task-recall-storage";
-import { useWorkflowTasksQuery } from "@/lib/query/prototype-queries";
+import { PARTY_TASK_RECALL_CHANGED_EVENT } from "@platform/app-shared/app-data/party-task-recall-storage";
+import { useWorkflowTasksQuery } from "@/lib/query/app-data-queries";
 
 export function PoPropertiesPageClient({ poNumber }: { poNumber: string }) {
-  const { role } = usePrototype();
+  const { role } = useAppAccess();
   const { showToast } = useToast();
   const { data: tasks, refetch } = useWorkflowTasksQuery();
 

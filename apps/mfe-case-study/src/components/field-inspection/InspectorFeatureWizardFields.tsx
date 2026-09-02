@@ -11,8 +11,8 @@ import {
   patchInspectorFeatureValues,
   type InspectorFeatureField,
   type InspectorWorkspaceDraft,
-} from "../../lib/prototype/inspector-workspace-data";
-import { clearInspectorPhotoDataUrl, uploadInspectorPhotoFromFile } from "../../lib/prototype/inspector-photo-upload";
+} from "../../lib/app-data/inspector-workspace-data";
+import { clearInspectorPhotoDataUrl, uploadInspectorPhotoFromFile } from "../../lib/app-data/inspector-photo-upload";
 import { EditableFeaturePhotoCell } from "../po-intake/PropertyDetailInspectionParts";
 import { InspectorMovablesDescriptionField } from "./InspectorMovablesDescriptionField";
 import { InspectorOccupancyDescriptionField } from "./InspectorOccupancyDescriptionField";
@@ -24,7 +24,7 @@ import {
   MOVABLES_DESCRIPTION_KEY,
   OCCUPANCY_STATE_KEY,
   OCCUPANCY_DESCRIPTION_KEY,
-} from "../../lib/prototype/inspector-workspace-data";
+} from "../../lib/app-data/inspector-workspace-data";
 
 const INS_LABEL_CENTERED_CLASS = cn(INS_LABEL_CLASS, "w-full text-center");
 const INS_GRID_SELECT_CLASS = cn(EDIT_CONTROL_CLASS, "text-center");

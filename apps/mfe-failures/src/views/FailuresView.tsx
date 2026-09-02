@@ -4,10 +4,10 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useDeferredValue, useEffect, useMemo, useRef, useState, Fragment } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { usePrototype } from "@platform/app-shared/contexts/PrototypeContext";
+import { useAppAccess } from "@platform/app-shared/contexts/AppAccessContext";
 import { useViewportDesktop } from "@platform/app-shared/hooks/use-viewport-desktop";
-import { prototypeKeys } from "@platform/app-shared/query/prototype-keys";
-import { isSuperAdmin } from "@platform/app-shared/prototype/prototype-role-access";
+import { appDataKeys } from "@platform/app-shared/query/app-data-keys";
+import { isSuperAdmin } from "@platform/app-shared/app-data/role-access";
 import type { RoleId } from "@platform/types";
 import {
   Button,
@@ -114,7 +114,7 @@ export function FailuresView() {
   const searchParams = useSearchParams();
   const highlightId = searchParams.get("highlight")?.trim() || null;
   const { showToast } = useToast();
-  const { role } = usePrototype();
+  const { role } = useAppAccess();
   const ce = isCaseEditor(role);
   const ca = isSupervisor(role);
   const { data: items = [], isFetched, isError, error, refetch } =
@@ -177,7 +177,7 @@ export function FailuresView() {
     },
   ): Promise<void> {
     await runBusy(opts.busyKey, async () => {
-      await queryClient.cancelQueries({ queryKey: prototypeKeys.failures() });
+      await queryClient.cancelQueries({ queryKey: appDataKeys.failures() });
       const snapshot = optimisticFailureStatus(
         queryClient,
         id,

@@ -259,19 +259,20 @@ public class GodServiceCollaboratorTests
     [Fact]
     public void Workflow_visibility_hides_foreign_assignee()
     {
-        var filter = new RealEstateEval.CaseStudy.Infrastructure.Services.WorkflowTaskVisibilityFilter();
         var tasks = new[]
         {
             FieldInspectionTask(Guid.NewGuid(), "mine", WorkflowTaskStatus.Open, assigneeId: "me"),
             FieldInspectionTask(Guid.NewGuid(), "theirs", WorkflowTaskStatus.Open, assigneeId: "them"),
         }.AsQueryable();
 
-        var visible = filter.VisibleTaskQuery(tasks, new PermissionsDto
-        {
-            UserId = "u1",
-            PrototypeRole = "field-inspector",
-            DistributionAssigneeId = "me",
-        }).ToList();
+        var visible = tasks
+            .Where(RealEstateEval.CaseStudy.Application.Rules.WorkflowTaskVisibilityRules.VisibleTo(new PermissionsDto
+            {
+                UserId = "u1",
+                PrototypeRole = "field-inspector",
+                DistributionAssigneeId = "me",
+            }))
+            .ToList();
 
         Assert.Single(visible);
         Assert.Equal("me", visible[0].AssigneeId);

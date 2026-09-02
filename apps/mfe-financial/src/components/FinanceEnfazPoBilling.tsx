@@ -1,8 +1,12 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { prototypeKeys } from "@platform/app-shared/query/prototype-keys";
+import {
+  useCommandMutation,
+  useIdempotentAction,
+} from "@platform/app-shared";
+import { appDataKeys } from "@platform/app-shared/query/app-data-keys";
 import {
   loadPoEnfazBillingForQuery,
   loadReadyEnfazPoSummaries,
@@ -11,7 +15,7 @@ import {
   collectEnfazInvoice,
   downloadEnfazInvoicePdf,
   openEnfazAttachment,
-} from "@platform/app-shared/prototype/enfaz-billing-api";
+} from "@platform/app-shared/app-data/enfaz-billing-api";
 import {
   EmptyState,
   Input,
@@ -95,8 +99,32 @@ export function FinanceEnfazPoBilling({
   const [collectAmount, setCollectAmount] = useState("");
   const [busy, setBusy] = useState(false);
 
+  const { execute: executeIssueInvoice, loading: issuing } = useIdempotentAction(
+    useCallback(async (idempotencyKey: string) => {
+      if (!selectedPo) throw new Error("اختر أمر عمل");
+      return issueEnfazInvoice(selectedPo, idempotencyKey);
+    }, [selectedPo]),
+  );
+
+  const { run: runCollect, loading: collecting } = useCommandMutation(
+    useCallback(
+      async (
+        args: { poNumber: string; amountSar: number },
+        idempotencyKey: string,
+      ) =>
+        collectEnfazInvoice(
+          args.poNumber,
+          { amountSar: args.amountSar },
+          idempotencyKey,
+        ),
+      [],
+    ),
+  );
+
+  const commandBusy = busy || issuing || collecting;
+
   const { data: readySummaries = EMPTY_READY_SUMMARIES } = useQuery({
-    queryKey: [...prototypeKeys.all, "enfaz-billing", "ready-summary"],
+    queryKey: [...appDataKeys.all, "enfaz-billing", "ready-summary"],
     queryFn: loadReadyEnfazPoSummaries,
   });
 
@@ -114,7 +142,7 @@ export function FinanceEnfazPoBilling({
   }, [initialPo, readyPos, selectedPo]);
 
   const { data: billing, isPending, isError, error, refetch } = useQuery({
-    queryKey: [...prototypeKeys.all, "enfaz-billing", selectedPo],
+    queryKey: [...appDataKeys.all, "enfaz-billing", selectedPo],
     queryFn: () => loadPoEnfazBillingForQuery(selectedPo!),
     enabled: Boolean(selectedPo),
   });
@@ -190,7 +218,7 @@ export function FinanceEnfazPoBilling({
       }
       showToast("تم حفظ الأتعاب", "success");
       await queryClient.invalidateQueries({
-        queryKey: [...prototypeKeys.all, "enfaz-billing"],
+        queryKey: [...appDataKeys.all, "enfaz-billing"],
       });
     } finally {
       setBusy(false);
@@ -201,7 +229,9 @@ export function FinanceEnfazPoBilling({
     if (!selectedPo) return;
     setBusy(true);
     try {
-      const issuedBilling = await issueEnfazInvoice(selectedPo);
+      const outcome = await executeIssueInvoice();
+      if (outcome.status === "skipped") return;
+      const issuedBilling = outcome.value;
       if (!issuedBilling) {
         showToast("تعذّر إصدار الفاتورة — حاول مرة أخرى", "error");
         return;
@@ -210,7 +240,7 @@ export function FinanceEnfazPoBilling({
       // Download does not depend on invalidation — parallel so the PDF is not delayed (async-parallel).
       const [, downloaded] = await Promise.all([
         queryClient.invalidateQueries({
-          queryKey: [...prototypeKeys.all, "enfaz-billing"],
+          queryKey: [...appDataKeys.all, "enfaz-billing"],
         }),
         downloadEnfazInvoicePdf(selectedPo),
       ]);
@@ -243,22 +273,19 @@ export function FinanceEnfazPoBilling({
       );
       if (!ok) return;
     }
-    setBusy(true);
-    try {
-      const result = await collectEnfazInvoice(selectedPo, {
-        amountSar: amount,
-      });
-      if (!result) {
-        showToast("تعذّر تسجيل التحصيل — تحقق من المبلغ", "error");
-        return;
-      }
-      showToast("تم تسجيل التحصيل", "success");
-      await queryClient.invalidateQueries({
-        queryKey: [...prototypeKeys.all, "enfaz-billing"],
-      });
-    } finally {
-      setBusy(false);
+    const outcome = await runCollect({
+      poNumber: selectedPo,
+      amountSar: amount,
+    });
+    if (outcome.status === "skipped") return;
+    if (!outcome.value) {
+      showToast("تعذّر تسجيل التحصيل — تحقق من المبلغ", "error");
+      return;
     }
+    showToast("تم تسجيل التحصيل", "success");
+    await queryClient.invalidateQueries({
+      queryKey: [...appDataKeys.all, "enfaz-billing"],
+    });
   };
 
   const downloadPdf = async () => {
@@ -551,7 +578,7 @@ export function FinanceEnfazPoBilling({
                       <button
                         type="button"
                         className={opsBtnGhost}
-                        disabled={busy}
+                        disabled={commandBusy}
                         onClick={() => void save()}
                       >
                         حفظ المطابقة
@@ -560,7 +587,7 @@ export function FinanceEnfazPoBilling({
                         type="button"
                         className={opsBtnPrimary}
                         disabled={
-                          busy ||
+                          commandBusy ||
                           !billing.poReadyForBilling ||
                           totals.total <= 0
                         }
@@ -600,7 +627,7 @@ export function FinanceEnfazPoBilling({
                           <button
                             type="button"
                             className={opsBtnPrimary}
-                            disabled={busy}
+                            disabled={commandBusy}
                             onClick={() => void collect()}
                           >
                             تسجيل تحصيل
@@ -610,7 +637,7 @@ export function FinanceEnfazPoBilling({
                       <button
                         type="button"
                         className={opsBtnGhost}
-                        disabled={busy}
+                        disabled={commandBusy}
                         onClick={() => void downloadPdf()}
                       >
                         تحميل PDF

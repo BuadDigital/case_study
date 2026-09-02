@@ -16,11 +16,11 @@ import {
 import { useEscapeKey } from "@platform/app-shared/hooks/use-escape-key";
 import { usePoRecordsQuery } from "../query/case-study-queries";
 import { poPropertyPath } from "@platform/app-shared/domain/po-routes";
-import { findPropertyPathByDeed } from "../lib/prototype/map-open-property";
+import { findPropertyPathByDeed } from "../lib/app-data/map-open-property";
 import {
   mapComparableDtosToMapRecords,
   mapPoRecordsToMapProperties,
-} from "../lib/prototype/map-live-records";
+} from "../lib/app-data/map-live-records";
 import {
   POINT_FAMILIES,
   WORKFLOW_STATUS,
@@ -42,14 +42,14 @@ import {
   type MapPropertyRecord,
   type PropertyKindCat,
   type PropertyUsageCat,
-} from "../lib/prototype/map-locations-logic";
+} from "../lib/app-data/map-locations-logic";
 import type {
   MapBasemap,
   MapViewCommand,
   PropertyMapMarker,
 } from "../components/property-map/PropertyMapCanvas";
 import { listComparableProperties } from "@platform/api-client";
-import { prototypeModulesApiConfig } from "@platform/app-shared/prototype/prototype-modules-api-config";
+import { prototypeModulesApiConfig } from "@platform/app-shared/app-data/modules-api-config";
 import { useQuery } from "@tanstack/react-query";
 
 const PropertyMapCanvas = dynamic(

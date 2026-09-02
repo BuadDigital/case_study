@@ -8,18 +8,18 @@ import {
   TdAction,
   Tr,
 } from "@platform/ui-kit";
-import type { StaffUser } from "@platform/app-shared/prototype/constants";
+import type { StaffUser } from "@platform/app-shared/app-data/constants";
 import {
   isActiveOperationsTask,
   type OperationsTask,
-} from "../lib/prototype/operations-tasks-storage";
+} from "../lib/app-data/operations-tasks-storage";
 import {
   OPERATIONS_TASK_PRIORITY_COLORS,
   operationsTaskLinkLabel,
   operationsTaskPriorityLabel,
   operationsTaskScopeLabel,
   operationsTaskTypeLabel,
-} from "../lib/prototype/operations-task-display";
+} from "../lib/app-data/operations-task-display";
 import {
   opsRemindMini,
   opsRowMeta,
@@ -27,7 +27,7 @@ import {
   opsTkCheck,
   opsCheckInput,
   opsTypeIconSm,
-} from "../lib/prototype/ops-tasks-tw";
+} from "../lib/app-data/ops-tasks-tw";
 import {
   assigneeRoleLabel,
   BellIcon,

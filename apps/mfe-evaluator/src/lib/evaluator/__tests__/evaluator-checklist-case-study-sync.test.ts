@@ -11,7 +11,7 @@ import {
   EVALUATOR_SIMPLE_QUESTIONS,
   emptyChecklist,
 } from "../evaluator-window-data";
-import { defaultCaseStudyInfoRolesMatrix } from "@settings/mfe/lib/prototype/default-case-study-info-roles-matrix";
+import { defaultCaseStudyInfoRolesMatrix } from "@settings/mfe/lib/app-data/default-case-study-info-roles-matrix";
 
 describe("evaluator-checklist-case-study-sync", () => {
   it("maps case study A/B to checklist booleans", () => {

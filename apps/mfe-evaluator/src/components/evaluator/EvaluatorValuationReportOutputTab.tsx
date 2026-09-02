@@ -26,11 +26,11 @@ import {
   type ValuationReconciliationDto,
 } from "@platform/api-client";
 import { getAuthSession } from "@platform/auth-client";
-import { fetchInspectorWorkspace } from "@case-study/mfe/lib/prototype/inspector-workspace-storage";
-import { loadInfathDeposit } from "@case-study/mfe/lib/prototype/infath-deposit-storage";
-import type { InspectorWorkspaceDraft } from "@case-study/mfe/lib/prototype/inspector-workspace-data";
-import { isLandInspectionContext } from "@case-study/mfe/lib/prototype/inspector-workspace-data";
-import type { PoPropertyIntake } from "@case-study/mfe/lib/prototype/po-intake-data";
+import { fetchInspectorWorkspace } from "@case-study/mfe/lib/app-data/inspector-workspace-reads";
+import { loadInfathDeposit } from "@case-study/mfe/lib/app-data/infath-deposit-storage";
+import type { InspectorWorkspaceDraft } from "@case-study/mfe/lib/app-data/inspector-workspace-data";
+import { isLandInspectionContext } from "@case-study/mfe/lib/app-data/inspector-workspace-data";
+import type { PoPropertyIntake } from "@case-study/mfe/lib/app-data/po-intake-data";
 import { openHtmlDocumentInNewTab } from "@case-study/mfe/lib/open-html-document";
 import { usePoRecordQuery } from "@case-study/mfe/query/case-study-queries";
 import type { EvaluatorSubmission } from "../../lib/evaluator/evaluator-window-data";

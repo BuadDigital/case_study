@@ -1,4 +1,5 @@
 import { getApiBase } from "./api-base";
+import { withIdempotencyKey } from "./idempotency-key";
 import { repositoryFetch as fetch } from "./write-repository";
 import type { ApiErr, ApiOk, WorkOrdersApiConfig } from "./work-orders";
 
@@ -148,11 +149,12 @@ export type PropertyEnfazRevenueDto = {
   hasEnfazRevenue: boolean;
 };
 
-function headers(token: string): HeadersInit {
-  return {
+function headers(token: string, idempotencyKey?: string): HeadersInit {
+  const base = {
     "Content-Type": "application/json",
     Authorization: `Bearer ${token}`,
   };
+  return idempotencyKey ? withIdempotencyKey(base, idempotencyKey) : base;
 }
 
 function normalizeAttachmentIds(raw: unknown): string[] {
@@ -376,12 +378,13 @@ export async function listEnfazTracking(
 export async function issuePoEnfazInvoice(
   config: EnfazBillingApiConfig,
   poNumber: string,
+  idempotencyKey?: string,
 ): Promise<ApiOk<PoEnfazBillingDto> | ApiErr> {
   const base = config.baseUrl ?? getApiBase();
   try {
     const res = await fetch(
       `${base}/api/enfaz-billing/${encodeURIComponent(poNumber)}/issue-invoice`,
-      { method: "POST", headers: headers(config.token) },
+      { method: "POST", headers: headers(config.token, idempotencyKey) },
     );
     if (res.status === 401) return { ok: false, kind: "auth" };
     if (!res.ok) return { ok: false, kind: "server" };
@@ -396,6 +399,7 @@ export async function collectPoEnfazInvoice(
   config: EnfazBillingApiConfig,
   poNumber: string,
   body: CollectPoEnfazInvoiceRequest,
+  idempotencyKey?: string,
 ): Promise<ApiOk<PoEnfazBillingDto> | ApiErr> {
   const base = config.baseUrl ?? getApiBase();
   try {
@@ -403,7 +407,7 @@ export async function collectPoEnfazInvoice(
       `${base}/api/enfaz-billing/${encodeURIComponent(poNumber)}/collect`,
       {
         method: "POST",
-        headers: headers(config.token),
+        headers: headers(config.token, idempotencyKey),
         body: JSON.stringify(body),
       },
     );

@@ -15,11 +15,11 @@ import {
   toggleRestrictionType,
   type BourseDeedVitality,
   type PoPropertyIntake,
-} from "../../lib/prototype/po-intake-data";
+} from "../../lib/app-data/po-intake-data";
 import {
   cacheBourseDeedImageDoc,
   clearCachedPropertyDoc,
-} from "../../lib/prototype/assignment-doc-attachments";
+} from "../../lib/app-data/assignment-doc-attachments";
 import { PoPropertyBoundariesEntrySection } from "./PoPropertyBoundariesEntrySection";
 import { PoPropertyGroupSection } from "./PoPropertyGroupSection";
 import { PoPropertyOwnersSection } from "./PoPropertyOwnersSection";

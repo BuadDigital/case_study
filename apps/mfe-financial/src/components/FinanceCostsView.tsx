@@ -10,14 +10,14 @@ import {
 } from "@platform/ui-kit";
 import { useQuery } from "@tanstack/react-query";
 import { fmtMax } from "@platform/app-shared/format/number";
-import { prototypeKeys } from "@platform/app-shared/query/prototype-keys";
+import { appDataKeys } from "@platform/app-shared/query/app-data-keys";
 import {
   loadPartyBillingReadyLines,
   loadPartyBillingStatements,
-} from "@platform/app-shared/prototype/party-billing-statements-api";
+} from "@platform/app-shared/app-data/party-billing-statements-api";
 import { resolvePartyName } from "@platform/app-shared/fees/party-fee-meta";
 import { useStaffUsersQuery } from "@settings/mfe/query/settings-queries";
-import type { StaffUser } from "@platform/app-shared/prototype/constants";
+import type { StaffUser } from "@platform/app-shared/app-data/constants";
 import {
   applyCostTax,
   buildFinanceCostParties,
@@ -128,12 +128,12 @@ export function FinanceCostsView({
   const staffUsers = staffResult?.users ?? EMPTY_STAFF_USERS;
 
   const readyQuery = useQuery({
-    queryKey: [...prototypeKeys.all, "party-billing", "ready-lines", "account"],
+    queryKey: [...appDataKeys.all, "party-billing", "ready-lines", "account"],
     queryFn: () => loadPartyBillingReadyLines(),
     staleTime: 20_000,
   });
   const statementsQuery = useQuery({
-    queryKey: [...prototypeKeys.all, "party-billing", "statements", "account"],
+    queryKey: [...appDataKeys.all, "party-billing", "statements", "account"],
     queryFn: () => loadPartyBillingStatements(),
     staleTime: 20_000,
   });

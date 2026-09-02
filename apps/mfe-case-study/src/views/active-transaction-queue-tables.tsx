@@ -41,24 +41,24 @@ import {
   buildDistributionTableRow,
   findPropertyForTask,
   type RemainingTimeState,
-} from "../lib/prototype/my-task-row";
-import type { PrimaryQueueRowMeta } from "../lib/prototype/active-queue-list-filters";
-import { INSPECTION_TABLE_TYPE } from "../lib/prototype/queue-table-type";
-import type { PoIntakeRecord } from "../lib/prototype/po-intake-data";
-import { PROPERTY_IDENTIFIER_COLUMN_LABEL } from "../lib/prototype/po-intake-data";
-import type { WorkflowTask } from "../lib/prototype/tasks-storage";
+} from "../lib/app-data/my-task-row";
+import type { PrimaryQueueRowMeta } from "../lib/app-data/active-queue-list-filters";
+import { INSPECTION_TABLE_TYPE } from "../lib/app-data/queue-table-type";
+import type { PoIntakeRecord } from "../lib/app-data/po-intake-data";
+import { PROPERTY_IDENTIFIER_COLUMN_LABEL } from "../lib/app-data/po-intake-data";
+import type { WorkflowTask } from "../lib/app-data/tasks-storage";
 import {
   allTransactionsPhaseStyle,
   buildAllTransactionsQueueRowMeta,
-} from "../lib/prototype/all-transactions-queue";
-import { buildCaseStudyPartyAssignees } from "../lib/prototype/case-study-tracks";
+} from "../lib/app-data/all-transactions-queue";
+import { buildCaseStudyPartyAssignees } from "../lib/app-data/case-study-tracks";
 import {
   appraiserInspectionDone,
   appraiserNeedsSurvey,
   appraiserQueueStatusBadge,
   appraiserSurveyDone,
 } from "../lib/evaluator-bridge";
-import type { CaseStudyInfoPartyId } from "@settings/mfe/lib/prototype/case-study-info-roles-data";
+import type { CaseStudyInfoPartyId } from "@settings/mfe/lib/app-data/case-study-info-roles-data";
 
 const ROW = queueTableRowClassName;
 const ROW_ACTIVE = queueTableRowActiveClassName;

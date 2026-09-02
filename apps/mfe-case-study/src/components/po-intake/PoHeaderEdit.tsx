@@ -8,8 +8,8 @@ import {
   subClientIdFromReportUsers,
   type AssignmentType,
   type PoIntakeRecord,
-} from "../../lib/prototype/po-intake-data";
-import { updatePoRecord } from "../../lib/prototype/po-intake-storage";
+} from "../../lib/app-data/po-intake-data";
+import { updatePoRecord } from "../../lib/app-data/po-intake-commands";
 import { RegField, RegTextarea } from "@platform/app-shared/registration/FormFields";
 import { RegistrationFormCard } from "@platform/app-shared/registration/RegistrationFormCard";
 import {

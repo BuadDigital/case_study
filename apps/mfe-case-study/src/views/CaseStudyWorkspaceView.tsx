@@ -18,19 +18,19 @@ import { PropertyDetailInspectionTab } from "../components/po-intake/PropertyDet
 import { EmptyState } from "../components/po-intake/PropertyDetailFields";
 import { PropertyDetailHero } from "../components/po-intake/PropertyDetailHero";
 import { PropertyTransactionTimeline } from "../components/po-intake/PropertyTransactionTimeline";
-import { usePrototype } from "@platform/app-shared/contexts/PrototypeContext";
+import { useAppAccess } from "@platform/app-shared/contexts/AppAccessContext";
 import { activeCaseStudyPath } from "../lib/my-task-routes";
 import { poPropertiesPath, poPropertyPath } from "@platform/app-shared/domain/po-routes";
-import { findPropertyForTask } from "../lib/prototype/my-task-row";
-import { canOpenCaseStudyWorkspace } from "../lib/prototype/viewer-task-access";
-import type { WorkflowTask } from "../lib/prototype/tasks-storage";
-import { childTasksForCaseStudyParent } from "../lib/prototype/case-study-party-answers";
-import { CASE_STUDY_SPECIALIST_FEATURE_KEYS } from "../lib/prototype/inspector-workspace-data";
+import { findPropertyForTask } from "../lib/app-data/my-task-row";
+import { canOpenCaseStudyWorkspace } from "../lib/app-data/viewer-task-access";
+import type { WorkflowTask } from "../lib/app-data/tasks-storage";
+import { childTasksForCaseStudyParent } from "../lib/app-data/case-study-party-answers";
+import { CASE_STUDY_SPECIALIST_FEATURE_KEYS } from "../lib/app-data/inspector-workspace-data";
 import {
   buildPropertyDetailPartyCards,
   type PropertyDetailPartyCard,
-} from "../lib/prototype/property-detail-parties";
-import { listPropertyDetailPhotos } from "../lib/prototype/property-detail-documents";
+} from "../lib/app-data/property-detail-parties";
+import { listPropertyDetailPhotos } from "../lib/app-data/property-detail-documents";
 import {
   usePoRecordQuery,
   useWorkflowTasksQuery,
@@ -202,7 +202,7 @@ export function CaseStudyWorkspaceView({
     "study",
   );
   const router = useRouter();
-  const { role } = usePrototype();
+  const { role } = useAppAccess();
   const {
     data: tasks,
     isFetched: tasksFetched,

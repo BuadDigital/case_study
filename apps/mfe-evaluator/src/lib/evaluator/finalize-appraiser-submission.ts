@@ -1,7 +1,7 @@
 import {
   loadPartyCaseStudyFormDraft,
   savePartyCaseStudyFormDraft,
-} from "@case-study/mfe/lib/prototype/case-study-form-storage";
+} from "@case-study/mfe/lib/app-data/case-study-form-storage";
 import {
   loadEvaluatorSubmission,
   saveEvaluatorSubmission,
@@ -17,7 +17,7 @@ import {
   allocateValuationReportNumber,
   formatValuationReportIssueDateIso,
 } from "./valuation-report-number";
-import { clearPartyTaskRecall } from "@platform/app-shared/prototype/party-task-recall-storage";
+import { clearPartyTaskRecall } from "@platform/app-shared/app-data/party-task-recall-storage";
 import type { EvaluatorSubmission } from "./evaluator-window-data";
 
 export type FinalizeAppraiserResult =
@@ -27,6 +27,7 @@ export type FinalizeAppraiserResult =
 /** Submits the appraiser valuation + inference answers to the case-study specialist. */
 export async function finalizeAppraiserSubmission(
   appraisalTaskId: string,
+  idempotencyKey?: string,
 ): Promise<FinalizeAppraiserResult> {
   const partyDraft = await loadPartyCaseStudyFormDraft(appraisalTaskId);
   if (loadEvaluatorSubmission(appraisalTaskId) && partyDraft) {
@@ -90,7 +91,7 @@ export async function finalizeAppraiserSubmission(
     }
   }
 
-  const result = await submitEvaluatorSubmission(appraisalTaskId);
+  const result = await submitEvaluatorSubmission(appraisalTaskId, idempotencyKey);
   if (!result.ok) return result;
 
   clearPartyTaskRecall(appraisalTaskId);

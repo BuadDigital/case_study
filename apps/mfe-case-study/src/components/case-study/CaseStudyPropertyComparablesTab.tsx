@@ -36,7 +36,7 @@ import {
   emptyComparableEntryDraft,
 } from "../../lib/comparable-entry";
 import { ComparablePropertyEntryFields } from "../comparables/ComparablePropertyEntryFields";
-import type { PoPropertyIntake } from "../../lib/prototype/po-intake-data";
+import type { PoPropertyIntake } from "../../lib/app-data/po-intake-data";
 
 function specialistColumns(cols: ValuationListItemDto[]): ValuationListItemDto[] {
   const withoutCoords = cols.filter((c) => c.key !== "coords");

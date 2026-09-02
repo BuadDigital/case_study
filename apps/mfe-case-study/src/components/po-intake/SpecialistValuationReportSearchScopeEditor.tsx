@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import {
   loadSpecialistSearchScopeNotes,
   saveSpecialistSearchScopeNotes,
-} from "../../lib/prototype/valuation-report-specialist-search-scope";
+} from "../../lib/app-data/valuation-report-specialist-search-scope";
 
 /** Editable search-scope notes for case specialist / CDO / admin. */
 export function SpecialistValuationReportSearchScopeEditor({

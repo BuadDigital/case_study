@@ -6,7 +6,7 @@ import { PoDetailPropertyCard } from "@case-study/mfe/components/po-intake/PoDet
 import { PropertyDetailHero } from "@case-study/mfe/components/po-intake/PropertyDetailHero";
 import {
   requiresAssignmentDecree,
-} from "../lib/prototype/po-intake-data";
+} from "../lib/app-data/po-intake-data";
 import { poListPath, poPropertiesPath } from "@platform/app-shared/domain/po-routes";
 import { usePoRecordQuery } from "@case-study/mfe/query/case-study-queries";
 

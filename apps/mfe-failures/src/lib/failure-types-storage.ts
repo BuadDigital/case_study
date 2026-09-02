@@ -7,7 +7,7 @@ import {
   prototypeModulesApiConfig,
   requirePrototypeModulesApiConfig,
   resolveApiError,
-} from "@platform/app-shared/prototype/prototype-modules-api-config";
+} from "@platform/app-shared/app-data/modules-api-config";
 import {
   FAILURE_PROBLEM_TYPES,
   FAILURE_TYPE_CATEGORIES,

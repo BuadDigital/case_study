@@ -8,7 +8,7 @@ import {
   loadDomainJsonSync,
   saveDomainJsonSync,
 } from "./browser-domain-store";
-import { workOrdersApiConfig } from "../prototype/work-orders-api-config";
+import { workOrdersApiConfig } from "../app-data/work-orders-api-config";
 
 export type SpecialistReportExtrasBag = {
   esg?: unknown;

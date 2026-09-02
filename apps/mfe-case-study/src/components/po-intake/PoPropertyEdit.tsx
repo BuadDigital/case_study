@@ -7,13 +7,15 @@ import {
   isBourseInquiryIdentifier,
   type PoIntakeRecord,
   type PoPropertyIntake,
-} from "../../lib/prototype/po-intake-data";
+} from "../../lib/app-data/po-intake-data";
 import {
   deedExistsInPo,
   findPropertyInRecord,
+} from "../../lib/app-data/po-intake-reads";
+import {
   removePropertyFromPo,
   updatePropertyInPo,
-} from "../../lib/prototype/po-intake-storage";
+} from "../../lib/app-data/po-intake-commands";
 import {
   hasFieldErrors,
   mergeFieldErrors,
@@ -43,8 +45,8 @@ import {
 } from "../../lib/domain/po-intake/property-enfath-validation";
 import { contactsForApi } from "../../lib/domain/po-intake/property-validation";
 import { scheduleScrollToFirstPoPropertyError } from "../../lib/domain/po-intake/po-field-error-targets";
-import { usePrototype } from "@platform/app-shared/contexts/PrototypeContext";
-import { canDeleteProperty } from "../../lib/prototype/po-roles";
+import { useAppAccess } from "@platform/app-shared/contexts/AppAccessContext";
+import { canDeleteProperty } from "../../lib/app-data/po-roles";
 
 function EditChrome({
   title,
@@ -91,7 +93,7 @@ export function PoPropertyEdit({
   onSavedAction: () => void;
   onDeletedAction?: () => void;
 }) {
-  const { role } = usePrototype();
+  const { role } = useAppAccess();
   const [initialRecord, setInitialRecord] = useState<PoIntakeRecord | null>(null);
   const [property, setProperty] = useState<PoPropertyIntake | null>(null);
   const [loading, setLoading] = useState(true);

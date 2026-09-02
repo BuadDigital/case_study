@@ -31,7 +31,7 @@ public class UsersController : ControllerBase
     public async Task<ActionResult<IReadOnlyList<UserListItemDto>>> List(
         CancellationToken cancellationToken)
     {
-        var list = await _users.ListAsync(null, cancellationToken);
+        var list = await _users.ListAsync(cancellationToken);
         return Ok(list);
     }
 

@@ -11,7 +11,7 @@ import {
   saveSpecialistEsgInputs,
   type SpecialistEsgGroup,
   type SpecialistEsgInputs,
-} from "../../lib/prototype/valuation-report-specialist-esg";
+} from "../../lib/app-data/valuation-report-specialist-esg";
 
 const thClass =
   "border-b border-border bg-surface-2 px-2.5 py-2 text-start text-[11px] font-bold text-text-2";

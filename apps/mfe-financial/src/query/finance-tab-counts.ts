@@ -1,19 +1,19 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
-import { prototypeKeys } from "@platform/app-shared/query/prototype-keys";
-import { loadInspectorFeesSummary } from "@platform/app-shared/prototype/inspector-fees-api";
-import { loadPartyBillingStatements } from "@platform/app-shared/prototype/party-billing-statements-api";
+import { appDataKeys } from "@platform/app-shared/query/app-data-keys";
+import { loadInspectorFeesSummary } from "@platform/app-shared/app-data/inspector-fees-api";
+import { loadPartyBillingStatements } from "@platform/app-shared/app-data/party-billing-statements-api";
 
 export function useFinanceTabCounts() {
   const statementsQuery = useQuery({
-    queryKey: [...prototypeKeys.all, "party-billing", "statements", "counts"],
+    queryKey: [...appDataKeys.all, "party-billing", "statements", "counts"],
     queryFn: () => loadPartyBillingStatements(),
     staleTime: 30_000,
   });
 
   const feesQuery = useQuery({
-    queryKey: [...prototypeKeys.all, "inspector-fees", "excluded-counts"],
+    queryKey: [...appDataKeys.all, "inspector-fees", "excluded-counts"],
     queryFn: () => loadInspectorFeesSummary({ submittedOnly: false }),
     staleTime: 60_000,
   });

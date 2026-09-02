@@ -40,13 +40,13 @@ import {
   opsLetterCard,
   useToast,
 } from "@platform/ui-kit";
-import type { PoPropertyIntake } from "@case-study/mfe/lib/prototype/po-intake-data";
+import type { PoPropertyIntake } from "@case-study/mfe/lib/app-data/po-intake-data";
 import type {
   EvaluatorReportChoices,
   EvaluatorSubmission,
 } from "../../../lib/evaluator/evaluator-window-data";
 import { createEvaluatorDraft } from "../../../lib/evaluator/evaluator-window-data";
-import { fetchInspectorWorkspace } from "@case-study/mfe/lib/prototype/inspector-workspace-storage";
+import { fetchInspectorWorkspace } from "@case-study/mfe/lib/app-data/inspector-workspace-reads";
 
 import {
   Card,

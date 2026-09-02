@@ -1,11 +1,11 @@
 "use client";
 
 import { PageShell, cn } from "@platform/ui-kit";
-import { usePrototype } from "@platform/app-shared/contexts/PrototypeContext";
+import { useAppAccess } from "@platform/app-shared/contexts/AppAccessContext";
 import type { RoleId } from "@platform/types";
 import { PartyFeesWorkspace } from "../components/fees/PartyFeesWorkspace";
 import type { PartyFeesVariant } from "../components/field-inspection/InspectorFeesTab";
-import { opsTfNote } from "../lib/prototype/ops-tasks-tw";
+import { opsTfNote } from "../lib/app-data/ops-tasks-tw";
 
 /** Role → party fees lane (one module shell, per-party content). */
 function feesVariantForRole(role: RoleId): PartyFeesVariant | null {
@@ -16,7 +16,7 @@ function feesVariantForRole(role: RoleId): PartyFeesVariant | null {
 }
 
 export function PartyFeesView() {
-  const { role, distributionAssigneeId, hasCapability } = usePrototype();
+  const { role, distributionAssigneeId, hasCapability } = useAppAccess();
   const variant = feesVariantForRole(role);
   // Party roles keep office UI even if they also hold manage-operations.
   const isSupervisor = hasCapability("manage-operations") && !variant;

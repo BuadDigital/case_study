@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useWindowEvents } from "@platform/app-shared/hooks/useWindowEvents";
 import {
   Button,
@@ -16,8 +16,9 @@ import {
   progressMessageForActionLabel,
   useToast,
 } from "@platform/ui-kit";
+import { useIdempotentAction } from "@platform/app-shared";
 import { RegField } from "@platform/app-shared/registration/FormFields";
-import { CASE_STUDY_FORM_STEPS, caseStudyAnswerKey,type CaseStudyFormAnswer,type CaseStudyQuestionSection} from "../../lib/prototype/case-study-form-data";
+import { CASE_STUDY_FORM_STEPS, caseStudyAnswerKey,type CaseStudyFormAnswer,type CaseStudyQuestionSection} from "../../lib/app-data/case-study-form-data";
 import { CaseStudyReportActions } from "./CaseStudyReportActions";
 import { CaseStudyProgressDonut } from "./CaseStudyProgressDonut";
 import { CaseStudyMatrixTable } from "./CaseStudyMatrixTable";
@@ -30,15 +31,15 @@ import {
   emptyCaseStudyInfoRolesConfig,
   isCaseStudyQuestionVisibleToSpecialist,
   isPartyQuestionVisible,
-} from "@settings/mfe/lib/prototype/case-study-info-roles-storage";
+} from "@settings/mfe/lib/app-data/case-study-info-roles-storage";
 import {
   partyById,
   type CaseStudyInfoPartyId,
-} from "@settings/mfe/lib/prototype/case-study-info-roles-data";
+} from "@settings/mfe/lib/app-data/case-study-info-roles-data";
 import {
   collectPartyAnswersByQuestion,
   type PartyQuestionContribution,
-} from "../../lib/prototype/case-study-party-answers";
+} from "../../lib/app-data/case-study-party-answers";
 import { useCaseStudyInfoRolesQuery, useStaffUsersQuery } from "@settings/mfe/query/settings-queries";
 import {
   emptyCaseStudyFormDraft,
@@ -51,11 +52,11 @@ import {
   savePartyCaseStudyFormDraft,
   type CaseStudyFormDraft,
   type CaseStudyMeterType,
-} from "../../lib/prototype/case-study-form-storage";
-import { buildCaseStudyReportModel } from "../../lib/prototype/case-study-report-model";
-import { scheduleScrollToCaseStudyQuestion } from "../../lib/prototype/case-study-form-ux";
-import type { PoIntakeRecord, PoPropertyIntake } from "../../lib/prototype/po-intake-data";
-import type { WorkflowTask } from "../../lib/prototype/tasks-storage";
+} from "../../lib/app-data/case-study-form-storage";
+import { buildCaseStudyReportModel } from "../../lib/app-data/case-study-report-model";
+import { scheduleScrollToCaseStudyQuestion } from "../../lib/app-data/case-study-form-ux";
+import type { PoIntakeRecord, PoPropertyIntake } from "../../lib/app-data/po-intake-data";
+import type { WorkflowTask } from "../../lib/app-data/tasks-storage";
 import { useWorkflowTasksQuery } from "../../query/case-study-queries";
 import { useCaseStudyQuestionCatalogQuery } from "../../query/case-study-question-catalog-queries";
 import { DEFAULT_CASE_STUDY_QUESTION_CATALOG } from "@platform/app-shared/domain/case-study/question-catalog";
@@ -503,12 +504,25 @@ export function CaseStudyForm({
   }, [isParty, partyChildTaskId]);
 
   const persistToServer = useCallback(
-    async (next: CaseStudyFormDraft) => {
+    async (next: CaseStudyFormDraft, idempotencyKey?: string) => {
       if (isParty) return savePartyCaseStudyFormDraft(next);
-      return saveCaseStudyFormDraft(next);
+      return saveCaseStudyFormDraft(next, idempotencyKey);
     },
     [isParty],
   );
+
+  const pendingSubmitDraft = useRef<CaseStudyFormDraft | null>(null);
+  const { execute: executeFormSubmit, loading: submittingForm } =
+    useIdempotentAction(
+      useCallback(
+        async (idempotencyKey: string) => {
+          const next = pendingSubmitDraft.current;
+          if (!next) throw new Error("لا يوجد نموذج للإرسال");
+          return persistToServer(next, idempotencyKey);
+        },
+        [persistToServer],
+      ),
+    );
 
   const persist = useCallback(
     (next: CaseStudyFormDraft) => {
@@ -649,16 +663,24 @@ export function CaseStudyForm({
     actionLabel: string,
     successMessage: string,
     buildNext: () => CaseStudyFormDraft,
-    opts?: { skipSavingGuard?: boolean },
+    opts?: { skipSavingGuard?: boolean; idempotentSubmit?: boolean },
   ): Promise<boolean> => {
-    if (!opts?.skipSavingGuard && saving) return false;
+    if (!opts?.skipSavingGuard && (saving || submittingForm)) return false;
 
     const progressId = showProgressToast(
       progressMessageForActionLabel(actionLabel),
     );
     if (!opts?.skipSavingGuard) setSaving(true);
     try {
-      const result = await persistToServer(buildNext());
+      let result: Awaited<ReturnType<typeof persistToServer>>;
+      if (opts?.idempotentSubmit) {
+        pendingSubmitDraft.current = buildNext();
+        const outcome = await executeFormSubmit();
+        if (outcome.status === "skipped") return false;
+        result = outcome.value;
+      } else {
+        result = await persistToServer(buildNext());
+      }
       if (!result.ok) {
         showToast(result.error, "error");
         return false;
@@ -684,7 +706,7 @@ export function CaseStudyForm({
   const submitForm = async () => {
     if (!isParty && draft.status === "submitted") return;
     if (isParty && (draft.status === "submitted" || parentFormSubmitted)) return;
-    if (saving) return;
+    if (saving || submittingForm) return;
     if (isParty) {
       await withSaveFeedback(
         "حفظ إجاباتي",
@@ -776,7 +798,7 @@ export function CaseStudyForm({
       "رفع النموذج للنظام",
       "تم رفع نموذج دراسة الحالة للنظام بنجاح",
       () => ({ ...draft, status: "submitted" }),
-      { skipSavingGuard: true },
+      { skipSavingGuard: true, idempotentSubmit: true },
     );
     } finally {
       setSaving(false);
@@ -872,7 +894,7 @@ export function CaseStudyForm({
         <Button
           variant="primary"
           showActionToast={false}
-          loading={saving}
+          loading={saving || submittingForm}
           onClick={submitForm}
         >
           رفع النموذج للنظام

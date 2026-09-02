@@ -1,4 +1,5 @@
 import { getApiBase } from "./api-base";
+import { withIdempotencyKey } from "./idempotency-key";
 import { repositoryFetch as fetch } from "./write-repository";
 import { parseFieldErrorsFromResponse } from "./field-errors";
 import { parseJson } from "./parse-json";
@@ -17,11 +18,12 @@ export type PrototypeModulesResult<T> =
       errors?: Record<string, string>;
     };
 
-function headers(token: string): HeadersInit {
-  return {
+function headers(token: string, idempotencyKey?: string): HeadersInit {
+  const base = {
     "Content-Type": "application/json",
     Authorization: `Bearer ${token}`,
   };
+  return idempotencyKey ? withIdempotencyKey(base, idempotencyKey) : base;
 }
 
 
@@ -429,12 +431,16 @@ async function keyEnvelopeMutation(
   config: PrototypeModulesApiConfig,
   path: string,
   init?: RequestInit,
+  idempotencyKey?: string,
 ): Promise<PrototypeModulesResult<KeyEnvelopeDto>> {
   const base = config.baseUrl ?? getApiBase();
   try {
     const res = await fetch(`${base}${path}`, {
       ...init,
-      headers: { ...headers(config.token), ...init?.headers },
+      headers: {
+        ...headers(config.token, idempotencyKey),
+        ...init?.headers,
+      },
     });
     if (res.status === 401) return { ok: false, kind: "auth" };
     if (res.status === 403) return { ok: false, kind: "forbidden" };
@@ -636,11 +642,17 @@ export async function listPropertyCourtAccess(
 export async function createKeyEnvelope(
   config: PrototypeModulesApiConfig,
   body: CreateKeyEnvelopeRequest,
+  idempotencyKey?: string,
 ): Promise<PrototypeModulesResult<KeyEnvelopeDto>> {
-  return keyEnvelopeMutation(config, "/api/key-envelopes", {
-    method: "POST",
-    body: JSON.stringify(body),
-  });
+  return keyEnvelopeMutation(
+    config,
+    "/api/key-envelopes",
+    {
+      method: "POST",
+      body: JSON.stringify(body),
+    },
+    idempotencyKey,
+  );
 }
 
 export async function addKeyEnvelopeAssignment(
@@ -660,11 +672,13 @@ export async function confirmKeyEnvelopeAssignment(
   envelopeId: string,
   assignmentId: string,
   body: ConfirmKeyAssignmentRequest,
+  idempotencyKey?: string,
 ): Promise<PrototypeModulesResult<KeyEnvelopeDto>> {
   return keyEnvelopeMutation(
     config,
     `/api/key-envelopes/${envelopeId}/assignments/${assignmentId}/confirm`,
     { method: "POST", body: JSON.stringify(body) },
+    idempotencyKey,
   );
 }
 
@@ -672,11 +686,13 @@ export async function createKeyEnvelopeHandoff(
   config: PrototypeModulesApiConfig,
   envelopeId: string,
   body: CreateKeyEnvelopeHandoffRequest,
+  idempotencyKey?: string,
 ): Promise<PrototypeModulesResult<KeyEnvelopeDto>> {
   return keyEnvelopeMutation(
     config,
     `/api/key-envelopes/${envelopeId}/handoffs`,
     { method: "POST", body: JSON.stringify(body) },
+    idempotencyKey,
   );
 }
 
@@ -684,11 +700,13 @@ export async function confirmKeyEnvelopeHandoff(
   config: PrototypeModulesApiConfig,
   envelopeId: string,
   handoffId: string,
+  idempotencyKey?: string,
 ): Promise<PrototypeModulesResult<KeyEnvelopeDto>> {
   return keyEnvelopeMutation(
     config,
     `/api/key-envelopes/${envelopeId}/handoffs/${handoffId}/confirm`,
     { method: "POST" },
+    idempotencyKey,
   );
 }
 

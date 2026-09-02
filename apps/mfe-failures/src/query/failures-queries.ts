@@ -6,14 +6,14 @@ import {
   restoreOptimisticPatch,
   type OptimisticPatchResult,
 } from "@platform/app-shared/query/optimistic-list";
-import { prototypeKeys } from "@platform/app-shared/query/prototype-keys";
+import { appDataKeys } from "@platform/app-shared/query/app-data-keys";
 import { loadFailuresQuery } from "../lib/failures-repository";
 import type { FailureRecord, FailureStatus } from "@platform/app-shared/failures/failures-types";
 
 const STALE_MS = 60_000;
 const GC_MS = 10 * 60_000;
 const queryDefaults = { staleTime: STALE_MS, gcTime: GC_MS };
-const failuresKey = prototypeKeys.failures();
+const failuresKey = appDataKeys.failures();
 
 export function useFailuresQuery() {
   return useQuery({
@@ -53,12 +53,12 @@ export function restoreFailuresSnapshot(
 export function invalidateFailuresRelated(queryClient: QueryClient): void {
   void queryClient.invalidateQueries({ queryKey: failuresKey });
   void queryClient.invalidateQueries({
-    queryKey: prototypeKeys.suspendedTransactions(),
+    queryKey: appDataKeys.suspendedTransactions(),
   });
   void queryClient.invalidateQueries({
-    queryKey: prototypeKeys.workflowTasks(),
+    queryKey: appDataKeys.workflowTasks(),
   });
   void queryClient.invalidateQueries({
-    queryKey: prototypeKeys.pendingBourseItems(),
+    queryKey: appDataKeys.pendingBourseItems(),
   });
 }

@@ -10,13 +10,13 @@ import Link from "next/link";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { fmtMax } from "@platform/app-shared/format/number";
 import { useEscapeKey } from "@platform/app-shared/hooks/use-escape-key";
-import { prototypeKeys } from "@platform/app-shared/query/prototype-keys";
+import { appDataKeys } from "@platform/app-shared/query/app-data-keys";
 import { resolvePartyName } from "@platform/app-shared/fees/party-fee-meta";
 import {
   loadPartyBillingStatements,
   runSubmitVendorInvoice,
   uploadPartyBillingVendorInvoice,
-} from "@platform/app-shared/prototype/party-billing-statements-api";
+} from "@platform/app-shared/app-data/party-billing-statements-api";
 import type { PartyBillingStatementDto } from "@platform/api-client";
 import { useStaffUsersQuery } from "@settings/mfe/query/settings-queries";
 import { getEngineeringOffices } from "@case-study/mfe/lib/distribution-assignees";
@@ -92,7 +92,7 @@ export function FinanceEngOfficePortal({
 
   const statementsQuery = useQuery({
     queryKey: [
-      ...prototypeKeys.all,
+      ...appDataKeys.all,
       "party-billing",
       "statements",
       "eng-portal",
@@ -202,7 +202,7 @@ export function FinanceEngOfficePortal({
       }
       showToast("رُفعت الفاتورة على المسير — بانتظار مطابقة المالية");
       await queryClient.invalidateQueries({
-        queryKey: [...prototypeKeys.all, "party-billing"],
+        queryKey: [...appDataKeys.all, "party-billing"],
       });
       setModalRunId(null);
       setFile(null);

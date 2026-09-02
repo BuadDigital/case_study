@@ -3,7 +3,7 @@
 import { useDeferredValue, useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { fmtMax } from "@platform/app-shared/format/number";
-import { prototypeKeys } from "@platform/app-shared/query/prototype-keys";
+import { appDataKeys } from "@platform/app-shared/query/app-data-keys";
 import {
   loadPartyBillingReadyLines,
   loadPartyBillingStatements,
@@ -15,7 +15,7 @@ import {
   runMatchVendorInvoice,
   runRejectVendorInvoice,
   uploadPartyBillingTransferReceipt,
-} from "@platform/app-shared/prototype/party-billing-statements-api";
+} from "@platform/app-shared/app-data/party-billing-statements-api";
 import { resolvePartyName } from "@platform/app-shared/fees/party-fee-meta";
 import { useStaffUsersQuery } from "@settings/mfe/query/settings-queries";
 import {
@@ -120,12 +120,12 @@ export function FinancePartyBillingStatements({
   );
 
   const readyQuery = useQuery({
-    queryKey: [...prototypeKeys.all, "party-billing", "ready-lines"],
+    queryKey: [...appDataKeys.all, "party-billing", "ready-lines"],
     queryFn: () => loadPartyBillingReadyLines(),
   });
 
   const statementsQuery = useQuery({
-    queryKey: [...prototypeKeys.all, "party-billing", "statements"],
+    queryKey: [...appDataKeys.all, "party-billing", "statements"],
     queryFn: () => loadPartyBillingStatements(),
   });
 
@@ -214,10 +214,10 @@ export function FinancePartyBillingStatements({
   const invalidate = async () => {
     await Promise.all([
       queryClient.invalidateQueries({
-        queryKey: [...prototypeKeys.all, "party-billing"],
+        queryKey: [...appDataKeys.all, "party-billing"],
       }),
       queryClient.invalidateQueries({
-        queryKey: [...prototypeKeys.all, "inspector-fees"],
+        queryKey: [...appDataKeys.all, "inspector-fees"],
       }),
     ]);
   };

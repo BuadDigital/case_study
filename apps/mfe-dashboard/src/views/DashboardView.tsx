@@ -5,7 +5,7 @@ import type {
   ReportingCompletionYearDto,
   ReportingStageDwellDto,
 } from "@platform/api-client";
-import type { PoRow } from "@platform/app-shared/prototype/constants";
+import type { PoRow } from "@platform/app-shared/app-data/constants";
 import { cn, ReportPageBody } from "@platform/ui-kit";
 import { DashActionQueue } from "../components/dashboard/DashActionQueue";
 import { DashActivityFeed } from "../components/dashboard/DashActivityFeed";

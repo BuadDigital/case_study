@@ -1,7 +1,7 @@
-using RealEstateEval.Application.Abstractions;
+﻿using RealEstateEval.Application.Abstractions;
 using RealEstateEval.Application.Contracts;
 using RealEstateEval.Domain;
-using System.Text.Json;
+using RealEstateEval.CaseStudy.Application.Rules;
 using RealEstateEval.CaseStudy.Domain;
 
 namespace RealEstateEval.CaseStudy.Infrastructure.Services;
@@ -136,39 +136,14 @@ public static class WorkOrderMapper
  /// <summary>
  /// Accepts legacy plain filename or JSON array string in the same column.
  /// </summary>
-    public static List<string> ParseFileNameList(string? stored)
-    {
-        if (string.IsNullOrWhiteSpace(stored)) return [];
-        var trimmed = stored.Trim();
-        if (trimmed.StartsWith('['))
-        {
-            try
-            {
-                return (JsonSerializer.Deserialize<List<string>>(trimmed) ?? [])
-                    .Select(s => s.Trim())
-                    .Where(s => s.Length > 0)
-                    .ToList();
-            }
-            catch
-            {
-                return [];
-            }
-        }
+    public static List<string> ParseFileNameList(string? stored) =>
+        PropertyFileNameList.Parse(stored);
 
-        return [trimmed];
-    }
-
-    public static string? SerializeFileNameList(IEnumerable<string>? names)
-    {
-        var list = (names ?? [])
-            .Select(s => s.Trim())
-            .Where(s => s.Length > 0)
-            .ToList();
-        return list.Count == 0 ? null : JsonSerializer.Serialize(list);
-    }
+    public static string? SerializeFileNameList(IEnumerable<string>? names) =>
+        PropertyFileNameList.Serialize(names);
 
     public static bool HasStoredFileNames(string? stored) =>
-        ParseFileNameList(stored).Count > 0;
+        PropertyFileNameList.HasAny(stored);
 
     public static WorkOrderListItemDto ToListItem(
         WorkOrder entity,

@@ -192,9 +192,13 @@ public static class DependencyInjection
         var messagingConnection = BoundedContextConnections.Resolve(
             configuration,
             BoundedContextConnections.ServiceNames.Messaging);
-        return services.AddBoundedContextPersistence<MessagingDbContext>(
+        services.AddBoundedContextPersistence<MessagingDbContext>(
             configuration,
             messagingConnection);
+        // Durable Idempotency-Key replay across instances (ADR 0008).
+        services.RemoveAll<ICommandIdempotencyStore>();
+        services.AddScoped<ICommandIdempotencyStore, EfCommandIdempotencyStore>();
+        return services;
     }
 
  /// <summary>

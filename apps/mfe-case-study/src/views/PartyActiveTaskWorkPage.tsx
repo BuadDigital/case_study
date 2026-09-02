@@ -4,7 +4,7 @@ import { useRouter } from "next/navigation";
 import { useRef } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { Button, PageGutter, PageShell, PanelSkeleton } from "@platform/ui-kit";
-import { partyTaskPageDef } from "@platform/app-shared/prototype/party-task-pages";
+import { partyTaskPageDef } from "@platform/app-shared/app-data/party-task-pages";
 import type { PageId } from "@platform/types";
 import type { PartyAppraisalExtensions } from "../lib/party-appraisal-extensions";
 import type { PartyEngineeringSurveyExtensions } from "../lib/party-engineering-survey-extensions";

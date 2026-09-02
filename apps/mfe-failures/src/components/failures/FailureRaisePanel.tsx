@@ -1,9 +1,10 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { Button, cn, useToast } from "@platform/ui-kit";
-import { prototypeKeys } from "@platform/app-shared/query/prototype-keys";
+import { useCommandMutation } from "@platform/app-shared";
+import { appDataKeys } from "@platform/app-shared/query/app-data-keys";
 import {
   activeFailureForProperty,
   failuresForProperty,
@@ -77,8 +78,17 @@ export function FailureRaisePanel({
   const { data: failures = [] } = useFailuresQuery();
   const { data: catalog } = useFailureTypesQuery();
   const [problemTypeId, setProblemTypeId] = useState(initialProblemTypeId);
-  const [saving, setSaving] = useState(false);
   const [invalid, setInvalid] = useState(false);
+
+  const { run: runCreateFailure, loading: saving } = useCommandMutation(
+    useCallback(
+      async (
+        input: Parameters<typeof createFailure>[0],
+        idempotencyKey: string,
+      ) => createFailure(input, idempotencyKey),
+      [],
+    ),
+  );
 
   const propertyRef = useMemo(
     () => ({ poNumber, propertyId, deedNumber }),
@@ -143,10 +153,9 @@ export function FailureRaisePanel({
     }
     if (openFailureForCreate || saving) return;
 
-    setSaving(true);
     setInvalid(false);
     try {
-      await createFailure({
+      const outcome = await runCreateFailure({
         poNumber,
         propertyId,
         deedNumber,
@@ -154,12 +163,13 @@ export function FailureRaisePanel({
         raisedByRole,
         specialist,
       });
+      if (outcome.status === "skipped") return;
       await Promise.all([
         queryClient.invalidateQueries({
-          queryKey: prototypeKeys.failures(),
+          queryKey: appDataKeys.failures(),
         }),
         queryClient.invalidateQueries({
-          queryKey: prototypeKeys.propertyKeys(),
+          queryKey: appDataKeys.propertyKeys(),
         }),
       ]);
       setProblemTypeId("");
@@ -167,8 +177,6 @@ export function FailureRaisePanel({
       onSubmitted?.();
     } catch {
       showToast("تعذر حفظ التعذر — تحقق من الاتصال وحاول مرة أخرى.", "error");
-    } finally {
-      setSaving(false);
     }
   }
 

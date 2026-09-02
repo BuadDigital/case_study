@@ -6,8 +6,8 @@ import { InfoBox } from "./PropertyDetailFields";
 import {
   openPropertyDetailDocumentPreview,
   type PropertyDetailDocumentEntry,
-} from "../../lib/prototype/property-detail-documents";
-import { openPropertyPhotosPdfPrint } from "../../lib/prototype/property-photos-pdf";
+} from "../../lib/app-data/property-detail-documents";
+import { openPropertyPhotosPdfPrint } from "../../lib/app-data/property-photos-pdf";
 
 /**
  * Case Study.html photo groups — sections always listed; empty groups hide tiles

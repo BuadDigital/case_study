@@ -11,8 +11,8 @@ import {
   opsFldControl,
   opsFldTextarea,
   opsTfLbl,
-} from "../../lib/prototype/ops-tasks-tw";
-import type { DistributionAssignee } from "../../lib/prototype/distribution-parties";
+} from "../../lib/app-data/ops-tasks-tw";
+import type { DistributionAssignee } from "../../lib/app-data/distribution-parties";
 
 function ArrowRightIcon() {
   return (

@@ -11,19 +11,17 @@ import {
   formControlClassName,
 } from "@platform/ui-kit";
 import { PartyRecallAdvisorySection } from "../party-tasks/PartyRecallAdvisorySection";
-import { PARTY_TASK_RECALL_CHANGED_EVENT } from "@platform/app-shared/prototype/party-task-recall-storage";
-import type { WorkflowTask } from "../../lib/prototype/tasks-storage";
+import { PARTY_TASK_RECALL_CHANGED_EVENT } from "@platform/app-shared/app-data/party-task-recall-storage";
+import type { WorkflowTask } from "../../lib/app-data/tasks-storage";
 import { findInspectionChildForParent } from "../../lib/field-inspection-task";
-import {
-  FIELD_INSPECTION_SUBMISSION_CHANGED_EVENT,
-  loadInspectorWorkspaceSnapshot,
-  reopenInspectorWorkspace,
-} from "../../lib/prototype/inspector-workspace-storage";
+import { FIELD_INSPECTION_SUBMISSION_CHANGED_EVENT } from "../../lib/app-data/inspector-workspace-model";
+import { loadInspectorWorkspaceSnapshot } from "../../lib/app-data/inspector-workspace-reads";
+import { reopenInspectorWorkspace } from "../../lib/app-data/inspector-workspace-commands";
 import {
   inspectorPhotoCoverageLabel,
   inspectorWorkspaceStatusLabel,
   type InspectorWorkspaceDraft,
-} from "../../lib/prototype/inspector-workspace-data";
+} from "../../lib/app-data/inspector-workspace-data";
 
 export function FieldInspectionAdvisoryPanel({
   parentTask,

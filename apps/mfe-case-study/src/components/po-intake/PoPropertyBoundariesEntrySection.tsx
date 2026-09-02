@@ -15,7 +15,7 @@ import {
 import {
   PROPERTY_BOUNDARY_ROWS,
   type PoPropertyIntake,
-} from "../../lib/prototype/po-intake-data";
+} from "../../lib/app-data/po-intake-data";
 import { useBoundaryTypeOptions } from "../../query/use-boundary-type-options";
 
 type Props = {

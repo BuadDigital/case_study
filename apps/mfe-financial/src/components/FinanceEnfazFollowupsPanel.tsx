@@ -2,13 +2,13 @@
 
 import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { prototypeKeys } from "@platform/app-shared/query/prototype-keys";
+import { appDataKeys } from "@platform/app-shared/query/app-data-keys";
 import {
   createEnfazFollowup,
   loadEnfazFollowups,
   markEnfazFinanceFlag,
   unmarkEnfazFinanceFlag,
-} from "@platform/app-shared/prototype/enfaz-billing-api";
+} from "@platform/app-shared/app-data/enfaz-billing-api";
 import {
   cn,
   EmptyState,
@@ -32,7 +32,7 @@ export function FinanceEnfazFollowupsPanel({ poNumber }: { poNumber: string }) {
   const [busy, setBusy] = useState(false);
 
   const followupsQuery = useQuery({
-    queryKey: [...prototypeKeys.all, "enfaz-billing", "followups", poNumber],
+    queryKey: [...appDataKeys.all, "enfaz-billing", "followups", poNumber],
     queryFn: () => loadEnfazFollowups(poNumber),
     enabled: Boolean(poNumber.trim()),
   });
@@ -60,14 +60,14 @@ export function FinanceEnfazFollowupsPanel({ poNumber }: { poNumber: string }) {
       await Promise.all([
         queryClient.invalidateQueries({
           queryKey: [
-            ...prototypeKeys.all,
+            ...appDataKeys.all,
             "enfaz-billing",
             "followups",
             poNumber,
           ],
         }),
         queryClient.invalidateQueries({
-          queryKey: [...prototypeKeys.all, "enfaz-billing", "tracking"],
+          queryKey: [...appDataKeys.all, "enfaz-billing", "tracking"],
         }),
       ]);
     } finally {
@@ -97,7 +97,7 @@ export function FinanceEnfazFollowupsPanel({ poNumber }: { poNumber: string }) {
         "success",
       );
       await queryClient.invalidateQueries({
-        queryKey: [...prototypeKeys.all, "enfaz-billing", "tracking"],
+        queryKey: [...appDataKeys.all, "enfaz-billing", "tracking"],
       });
     } finally {
       setBusy(false);

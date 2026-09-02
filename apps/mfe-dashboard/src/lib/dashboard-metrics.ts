@@ -1,5 +1,5 @@
-import type { PoRow } from "@platform/app-shared/prototype/constants";
-import { normalizePoListStatus } from "@platform/app-shared/prototype/po-list-status";
+import type { PoRow } from "@platform/app-shared/app-data/constants";
+import { normalizePoListStatus } from "@platform/app-shared/app-data/po-list-status";
 import type { OperationsTaskDto } from "@platform/api-client";
 
 /** HTML DONE_ST — completed / fully billed / cancelled. */

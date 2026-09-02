@@ -4,7 +4,7 @@ import {
   poListPath,
   poPropertiesPath,
 } from "@platform/app-shared/domain/po-routes";
-import { formatPoDisplay } from "@case-study/mfe/lib/prototype/po-intake-data";
+import { formatPoDisplay } from "@case-study/mfe/lib/app-data/po-intake-data";
 import type { BreadcrumbSegment } from "./breadcrumb";
 
 type PoChrome = {

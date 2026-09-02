@@ -5,7 +5,7 @@ import { Button } from "@platform/ui-kit";
 import {
   getSurveyWorkTopbarState,
   subscribeSurveyWorkTopbar,
-} from "@platform/app-shared/prototype/survey-work-topbar-bridge";
+} from "@platform/app-shared/app-data/survey-work-topbar-bridge";
 
 const getServerTopbarSnapshot = () => null;
 

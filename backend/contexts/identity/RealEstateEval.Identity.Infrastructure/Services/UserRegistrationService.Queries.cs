@@ -46,7 +46,6 @@ public partial class UserRegistrationService
     }
 
     public async Task<IReadOnlyList<UserListItemDto>> ListAsync(
-        RegistrationSource? sourceScope = null,
         CancellationToken cancellationToken = default)
     {
         var (_, take, _, _) = NpgsqlConfiguration.ResolveListPaging(null, null, _dbOptions);
@@ -72,7 +71,6 @@ public partial class UserRegistrationService
             .ToDictionary(g => g.Key, g => (IReadOnlyList<string>)g.Select(x => x.RoleName).ToList());
 
         return rows
-            .Where(p => sourceScope is null || p.RegistrationSource == sourceScope.Value)
             .Select(p => RegistrationMapper.ToListItem(
                 p.User,
                 p,
@@ -118,7 +116,6 @@ public partial class UserRegistrationService
                 UserName = user.UserName ?? string.Empty,
                 ContractType = ContractType.Internal,
                 Status = UserStatus.Active,
-                RegistrationSource = RegistrationSource.Hr,
                 PhoneNumber = user.PhoneNumber,
                 CreatedAtUtc = _time.UtcNow(),
                 SystemRoles = roles,
@@ -132,7 +129,7 @@ public partial class UserRegistrationService
     public async Task<IReadOnlyList<UserListItemDto>> ListDistributionAssigneesAsync(
         CancellationToken cancellationToken = default)
     {
-        var all = await ListAsync(null, cancellationToken);
+        var all = await ListAsync(cancellationToken);
         return all
             .Where(u =>
                 u.Status == UserStatus.Active
@@ -163,9 +160,7 @@ public partial class UserRegistrationService
         OrgPersonDto? ToPerson(UserProfile p)
         {
             var roles = rolesByUser.GetValueOrDefault(p.UserId, []);
-            var orgRole = roles.FirstOrDefault(r =>
-                OrgRoles.IsOrgRole(r)
-                || OrgRoles.RetiredDepartmentAdmins.Contains(r));
+            var orgRole = roles.FirstOrDefault(OrgRoles.IsOrgRole);
             if (orgRole is null)
                 return null;
 
@@ -193,11 +188,10 @@ public partial class UserRegistrationService
             [
                 new OrgDepartmentDto
                 {
-                    Code = "HR",
-                    Title = "الموارد البشرية",
+                    Code = "STAFF",
+                    Title = "الموظفون",
                     Description = "موظفون — كل أنواع التوظيف",
                     IsActive = true,
-                    Admin = byRole.GetValueOrDefault(OrgRoles.HrAdmin),
                 },
                 new OrgDepartmentDto
                 {
@@ -205,15 +199,6 @@ public partial class UserRegistrationService
                     Title = "المالية والعقود",
                     Description = "مقدمو خدمة — أفراد ومؤسسات",
                     IsActive = true,
-                    Admin = byRole.GetValueOrDefault(OrgRoles.ProcAdmin),
-                },
-                new OrgDepartmentDto
-                {
-                    Code = "CRM",
-                    Title = "علاقات العملاء",
-                    Description = "عملاء محتملون وفعليون",
-                    IsActive = false,
-                    Admin = byRole.GetValueOrDefault(OrgRoles.CrmAdmin),
                 },
             ],
         };

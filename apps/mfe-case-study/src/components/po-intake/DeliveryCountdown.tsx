@@ -5,7 +5,7 @@ import { useTickingNow } from "@platform/app-shared/hooks/use-ticking-now";
 import {
   formatLiveDeliveryCountdown,
   isDeliveryCountdownUrgent,
-} from "../../lib/prototype/delivery-countdown";
+} from "../../lib/app-data/delivery-countdown";
 
 /** Live SLA countdown — matches countdown-remaining-for-delivery.md */
 export function DeliveryCountdown({

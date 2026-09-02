@@ -5,7 +5,7 @@ import { cn } from "@platform/ui-kit";
 import {
   contactRoleSelectOptions,
   type PoContact,
-} from "../../lib/prototype/po-intake-data";
+} from "../../lib/app-data/po-intake-data";
 import { isValidContactEntry } from "../../lib/domain/po-intake/property-validation";
 import {
   ACCESS_CONTACT_ADD_BUTTON_LABEL,
@@ -17,8 +17,8 @@ import {
   ACCESS_ROUTE_DESCRIPTION_LABEL,
   patchAccessContact,
   type InspectorWorkspaceDraft,
-} from "../../lib/prototype/inspector-workspace-data";
-import type { InspectorWorkspaceFieldErrors } from "../../lib/prototype/inspector-workspace-validation";
+} from "../../lib/app-data/inspector-workspace-data";
+import type { InspectorWorkspaceFieldErrors } from "../../lib/app-data/inspector-workspace-validation";
 import {
   EDIT_CONTROL_CLASS,
   INS_LABEL_CLASS,

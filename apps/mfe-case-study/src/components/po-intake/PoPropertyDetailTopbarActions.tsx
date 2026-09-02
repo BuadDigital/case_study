@@ -10,9 +10,9 @@ import {
   type RowMoreMenuItem,
   useToast,
 } from "@platform/ui-kit";
-import { usePrototype } from "@platform/app-shared/contexts/PrototypeContext";
+import { useAppAccess } from "@platform/app-shared/contexts/AppAccessContext";
 import { getPropertyFailure } from "@failures/mfe/lib/failures-repository";
-import { canEditProperty, canRaisePropertyFailure } from "../../lib/prototype/po-roles";
+import { canEditProperty, canRaisePropertyFailure } from "../../lib/app-data/po-roles";
 import {
   poPropertyDetailPath,
   poPropertyEditPath,
@@ -27,11 +27,11 @@ import {
 import {
   caseStudyTaskForProperty,
   tasksForRole,
-} from "../../lib/prototype/tasks-storage";
-import { childTasksForCaseStudyParent } from "../../lib/prototype/case-study-party-answers";
-import { canOpenCaseStudyWorkspace } from "../../lib/prototype/viewer-task-access";
-import { canManageOperationsTasks } from "../../lib/prototype/operations-task-roles";
-import { formatPropertyDeedDisplay } from "../../lib/prototype/po-intake-data";
+} from "../../lib/app-data/tasks-storage";
+import { childTasksForCaseStudyParent } from "../../lib/app-data/case-study-party-answers";
+import { canOpenCaseStudyWorkspace } from "../../lib/app-data/viewer-task-access";
+import { canManageOperationsTasks } from "../../lib/app-data/operations-task-roles";
+import { formatPropertyDeedDisplay } from "../../lib/app-data/po-intake-data";
 import { usePoRecordQuery, useWorkflowTasksQuery } from "../../query/case-study-queries";
 
 const shellBtn = (variant: "default" | "primary" = "default") =>
@@ -63,7 +63,7 @@ export function PoPropertyDetailTopbarActions({
 }) {
   const router = useRouter();
   const { showToast } = useToast();
-  const { role } = usePrototype();
+  const { role } = useAppAccess();
   const showEdit = canEditProperty(role);
   const showFailure = canRaisePropertyFailure(role);
   const canCreateOps = canManageOperationsTasks(role);

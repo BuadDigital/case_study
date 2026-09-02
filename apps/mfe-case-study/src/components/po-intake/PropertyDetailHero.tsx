@@ -18,13 +18,13 @@ import {
   showsCourtFields,
   type PoIntakeRecord,
   type PoPropertyIntake,
-} from "../../lib/prototype/po-intake-data";
-import { childTasksForCaseStudyParent } from "../../lib/prototype/case-study-party-answers";
-import { caseStudyTaskForProperty } from "../../lib/prototype/tasks-storage";
+} from "../../lib/app-data/po-intake-data";
+import { childTasksForCaseStudyParent } from "../../lib/app-data/case-study-party-answers";
+import { caseStudyTaskForProperty } from "../../lib/app-data/tasks-storage";
 import { useWorkflowTasksQuery } from "../../query/case-study-queries";
 import { useFailuresQuery } from "@failures/mfe/query/failures-queries";
-import { derivePropertyUiStatus } from "../../lib/prototype/property-detail-ui-status";
-import { useFavoriteProperties } from "../../lib/prototype/favorite-properties";
+import { derivePropertyUiStatus } from "../../lib/app-data/property-detail-ui-status";
+import { useFavoriteProperties } from "../../lib/app-data/favorite-properties";
 import { PoPropertyDetailTopbarActions } from "./PoPropertyDetailTopbarActions";
 
 function deedTitle(property: { deedNumber: string }): string {

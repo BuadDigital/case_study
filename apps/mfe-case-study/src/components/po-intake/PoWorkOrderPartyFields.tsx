@@ -9,7 +9,7 @@ import {
   isSelectableWorkOrderClient,
   showsSubClientField,
   type AssignmentType,
-} from "../../lib/prototype/po-intake-data";
+} from "../../lib/app-data/po-intake-data";
 import { ValuationReportUserField } from "./ValuationReportUserField";
 
 export function PoWorkOrderPartyFields({

@@ -6,7 +6,7 @@ import type {
   PartyBillingStatementDto,
 } from "@platform/api-client";
 import { resolvePartyName } from "@platform/app-shared/fees/party-fee-meta";
-import type { StaffUser } from "@platform/app-shared/prototype/constants";
+import type { StaffUser } from "@platform/app-shared/app-data/constants";
 
 export type FinanceCostParty = {
   assigneeId: string;

@@ -236,7 +236,7 @@ public class StaffAccountActivationTests
         await db.Database.EnsureCreatedAsync();
 
         var roleManager = provider.GetRequiredService<RoleManager<IdentityRole>>();
-        foreach (var role in new[] { DepartmentRoles.Hr, "Editor", "Supervisor" })
+        foreach (var role in new[] { "Editor", "Supervisor" })
         {
             if (!await roleManager.RoleExistsAsync(role))
                 await roleManager.CreateAsync(new IdentityRole(role));

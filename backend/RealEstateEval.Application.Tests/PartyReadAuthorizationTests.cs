@@ -9,6 +9,8 @@ using RealEstateEval.Infrastructure.Integration;
 using RealEstateEval.Infrastructure.Services;
 using RealEstateEval.CaseStudy.Infrastructure.Data.Contexts;
 using RealEstateEval.CaseStudy.Domain;
+using RealEstateEval.CaseStudy.Application.Services;
+using RealEstateEval.CaseStudy.Infrastructure.Persistence;
 using RealEstateEval.CaseStudy.Infrastructure.Services;
 using RealEstateEval.CaseStudy.Application.Contracts;
 using RealEstateEval.Failures.Infrastructure.Data.Contexts;
@@ -199,13 +201,12 @@ public class PartyTaskSubmissionReadAuthorizationTests
     {
         var (notifications, recipients) = TestInspectorFeeServiceFactory.CreateNotificationDeps(db);
         return new(
-            db,
-            new FailureLookup(failures),
+            new PartyTaskSubmissionRepository(db),
+            new PartyTaskFailureGate(new FailureLookup(failures)),
             TestInspectorFeeServiceFactory.CreateWorkflow(db),
             new FieldInspectionAttachmentVerifier(TestInspectorFeeServiceFactory.ShareAttachmentLookup(db)),
             TestInspectorFeeServiceFactory.CreateTimeline(db),
-            new NullHttpContextAccessor(),
-            new NullPermissionService(),
+            new HttpCurrentPrototypeRoleResolver(new NullHttpContextAccessor(), new NullPermissionService()),
             TestInspectorFeeServiceFactory.Create(db),
             notifications,
             recipients);

@@ -1,5 +1,5 @@
 import type { QueryClient } from "@tanstack/react-query";
-import { prototypeKeys } from "@platform/app-shared/query/prototype-keys";
+import { appDataKeys } from "@platform/app-shared/query/app-data-keys";
 import type { PageId } from "@platform/types";
 import { ENGINEERING_SURVEY_SUBMISSION_CHANGED_EVENT } from "./case-study-engineering-survey-events";
 import { EVALUATOR_SUBMISSION_CHANGED_EVENT } from "./case-study-evaluator-events";
@@ -18,11 +18,11 @@ export function refreshPartyTaskWorkQueries(
   pageId: PageId,
 ): void {
   void queryClient.invalidateQueries({
-    queryKey: prototypeKeys.workflowTasks(),
+    queryKey: appDataKeys.workflowTasks(),
   });
   if (pageId === "property-inspection" || pageId === "active-inspection") {
     void queryClient.invalidateQueries({
-      queryKey: prototypeKeys.fieldInspectionWorkspaces(),
+      queryKey: appDataKeys.fieldInspectionWorkspaces(),
     });
   }
   const eventName = PARTY_PAGE_SUBMISSION_EVENTS[pageId];

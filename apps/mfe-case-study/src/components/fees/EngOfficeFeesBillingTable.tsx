@@ -23,15 +23,15 @@ import {
   type StatusPillStyle,
   useToast,
 } from "@platform/ui-kit";
-import { prototypeKeys } from "@platform/app-shared/query/prototype-keys";
+import { appDataKeys } from "@platform/app-shared/query/app-data-keys";
 import {
   type InspectorFeeAction,
   type InspectorFeeRowDto,
 } from "@platform/api-client";
-import { runInspectorFeeTransition } from "@platform/app-shared/prototype/inspector-fees-api";
+import { runInspectorFeeTransition } from "@platform/app-shared/app-data/inspector-fees-api";
 import { FeeActionReasonModal } from "@platform/app-shared/fees/FeeActionReasonModal";
 import { fmtMax } from "@platform/app-shared/format/number";
-import { PROPERTY_IDENTIFIER_COLUMN_LABEL } from "../../lib/prototype/po-intake-data";
+import { PROPERTY_IDENTIFIER_COLUMN_LABEL } from "../../lib/app-data/po-intake-data";
 
 /** Case Study.html `FEE_ST` mapping for engineering office billing. */
 type EngFeeUiStatus =
@@ -173,7 +173,7 @@ export function EngOfficeFeesBillingTable({
 
   const invalidate = useCallback(async () => {
     await queryClient.invalidateQueries({
-      queryKey: [...prototypeKeys.all, "inspector-fees"],
+      queryKey: [...appDataKeys.all, "inspector-fees"],
     });
     onChanged?.();
   }, [onChanged, queryClient]);

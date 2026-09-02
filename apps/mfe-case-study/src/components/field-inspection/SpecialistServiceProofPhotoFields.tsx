@@ -6,7 +6,7 @@ import {
   isPropertyDetailDocumentAvailable,
   openPropertyDetailDocumentPreview,
   type PropertyDetailDocumentEntry,
-} from "../../lib/prototype/property-detail-documents";
+} from "../../lib/app-data/property-detail-documents";
 import {
   isServiceAmenityPhotoSlotComplete,
   listSpecialistProofServicePhotoSlots,
@@ -15,11 +15,11 @@ import {
   type InspectorDefinedPhotoSlot,
   type InspectorSlotPhoto,
   type InspectorWorkspaceDraft,
-} from "../../lib/prototype/inspector-workspace-data";
+} from "../../lib/app-data/inspector-workspace-data";
 import {
   getInspectorPhotoDataUrl,
   setInspectorPhotoDataUrl,
-} from "../../lib/prototype/inspector-photo-upload";
+} from "../../lib/app-data/inspector-photo-upload";
 import { INS_LABEL_CLASS } from "./FieldInspectionWorkParts";
 
 function slotPhotoRef(slotId: string, photoId: number): string {

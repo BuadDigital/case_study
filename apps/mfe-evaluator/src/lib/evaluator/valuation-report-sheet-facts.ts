@@ -9,7 +9,7 @@ import {
   type ValuationCostLineDto,
   type ValuationReconciliationDto,
 } from "@platform/api-client";
-import type { InspectorWorkspaceDraft } from "@case-study/mfe/lib/prototype/inspector-workspace-data";
+import type { InspectorWorkspaceDraft } from "@case-study/mfe/lib/app-data/inspector-workspace-data";
 import type { EvaluatorReportChoices } from "./evaluator-window-data";
 import { formatAmountNumberDisplay } from "./arabic-amount-words";
 

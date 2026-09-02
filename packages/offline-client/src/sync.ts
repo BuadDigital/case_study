@@ -29,10 +29,12 @@ export type SubmissionSaveFn = (input: {
 
 export type SubmissionSubmitFn = (input: {
   taskId: string;
+  idempotencyKey?: string;
 }) => Promise<{ ok: true } | { ok: false; error: string; terminal?: boolean }>;
 
 export type KeyEnvelopeCreateFn = (input: {
   bodyJson: string;
+  idempotencyKey?: string;
 }) => Promise<
   | { ok: true; envelopeId: string }
   | { ok: false; error: string; terminal?: boolean }
@@ -41,6 +43,7 @@ export type KeyEnvelopeCreateFn = (input: {
 export type KeyEnvelopeMutationFn = (input: {
   envelopeId: string;
   payloadJson: string;
+  idempotencyKey?: string;
 }) => Promise<{ ok: true } | { ok: false; error: string; terminal?: boolean }>;
 
 export type OperationsTaskPatchFn = (input: {
@@ -104,6 +107,7 @@ export async function enqueueOutbox(
     attempts: 0,
     targetId: item.targetId,
     payloadJson: item.payloadJson,
+    idempotencyKey: item.idempotencyKey,
     localAttachmentId: item.localAttachmentId,
     scope: item.scope,
     scopeKey: item.scopeKey,
@@ -377,7 +381,10 @@ async function processSubmit(
     });
     return false;
   }
-  const result = await deps.submitSubmission({ taskId: item.targetId });
+  const result = await deps.submitSubmission({
+    taskId: item.targetId,
+    idempotencyKey: item.idempotencyKey,
+  });
   if (!result.ok) {
     await saveOutboxItem({
       ...item,
@@ -534,7 +541,10 @@ async function processKeyEnvelopeCreate(
     });
     return false;
   }
-  const result = await deps.createKeyEnvelope({ bodyJson });
+  const result = await deps.createKeyEnvelope({
+    bodyJson,
+    idempotencyKey: item.idempotencyKey,
+  });
   if (!result.ok) {
     await saveOutboxItem({
       ...item,
@@ -631,7 +641,11 @@ async function processKeyEnvelopeMutation(
     return false;
   }
 
-  const result = await fn({ envelopeId, payloadJson });
+  const result = await fn({
+    envelopeId,
+    payloadJson,
+    idempotencyKey: item.idempotencyKey,
+  });
   if (!result.ok) {
     await saveOutboxItem({
       ...item,

@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { usePrototype } from "@platform/app-shared/contexts/PrototypeContext";
+import { useAppAccess } from "@platform/app-shared/contexts/AppAccessContext";
 import {
   listPendingLocations,
   reviewPendingCity,
@@ -62,7 +62,7 @@ function kindLabel(kind: string): string {
 }
 
 export function LocationsPendingView() {
-  const { authReady } = usePrototype();
+  const { authReady } = useAppAccess();
   const { showToast } = useToast();
   const [items, setItems] = useState<PendingLocationDto[]>([]);
   const [loading, setLoading] = useState(true);

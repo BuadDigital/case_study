@@ -1,5 +1,6 @@
 import { parseFieldErrorsFromResponse } from "./field-errors";
 import { getApiBase } from "./api-base";
+import { withIdempotencyKey } from "./idempotency-key";
 import { repositoryFetch as fetch } from "./write-repository";
 import type { ApiErr, ApiOk, WorkOrdersApiConfig } from "./work-orders";
 
@@ -47,11 +48,12 @@ export type AnswerProvenanceEntryDto = {
   answeredAtUtc: string;
 };
 
-function headers(token: string): HeadersInit {
-  return {
+function headers(token: string, idempotencyKey?: string): HeadersInit {
+  const base = {
     "Content-Type": "application/json",
     Authorization: `Bearer ${token}`,
   };
+  return idempotencyKey ? withIdempotencyKey(base, idempotencyKey) : base;
 }
 
 export async function getCaseStudyForm(
@@ -76,12 +78,13 @@ export async function saveCaseStudyForm(
   config: WorkOrdersApiConfig,
   taskId: string,
   form: CaseStudyFormDto,
+  idempotencyKey?: string,
 ): Promise<ApiOk<CaseStudyFormDto> | ApiErr> {
   const base = config.baseUrl ?? getApiBase();
   try {
     const res = await fetch(`${base}/api/case-study-forms/${taskId}`, {
       method: "PUT",
-      headers: headers(config.token),
+      headers: headers(config.token, idempotencyKey),
       body: JSON.stringify({ form }),
     });
     if (res.status === 401) return { ok: false, kind: "auth" };

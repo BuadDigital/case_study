@@ -2,7 +2,7 @@ import {
   ENGINEERING_SURVEY_ACCEPTED_EVENT,
   ENGINEERING_SURVEY_RETURNED_EVENT,
   ENGINEERING_SURVEY_SUBMITTED_EVENT,
-} from "../prototype/party-workflow-events";
+} from "../app-data/party-workflow-events";
 import type { AppNotification } from "./notification-store";
 
 const ENGINEERING_OFFICE_ROLE = "engineering-office";

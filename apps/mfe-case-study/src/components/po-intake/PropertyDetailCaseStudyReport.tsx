@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { usePrototype } from "@platform/app-shared/contexts/PrototypeContext";
+import { useAppAccess } from "@platform/app-shared/contexts/AppAccessContext";
 import { useEscapeKey } from "@platform/app-shared/hooks/use-escape-key";
 import { allocateNumberedDocument } from "@platform/api-client";
 import { apiConfig } from "@platform/app-shared/auth/api-config";
@@ -17,23 +17,23 @@ import {
   useToast,
 } from "@platform/ui-kit";
 import { CaseStudyReportDocument } from "../case-study/CaseStudyReportDocument";
-import { buildCaseStudyReportModel } from "../../lib/prototype/case-study-report-model";
-import type { CaseStudyReportSection } from "../../lib/prototype/case-study-report-model";
+import { buildCaseStudyReportModel } from "../../lib/app-data/case-study-report-model";
+import type { CaseStudyReportSection } from "../../lib/app-data/case-study-report-model";
 import {
   CASE_STUDY_SECTION_REMARKS_HINT,
   type CaseStudyQuestionSection,
-} from "../../lib/prototype/case-study-form-data";
+} from "../../lib/app-data/case-study-form-data";
 import {
   loadCaseStudyFormDraft,
   PARTY_CASE_STUDY_FORM_CHANGED_EVENT,
   type CaseStudyFormDraft,
-} from "../../lib/prototype/case-study-form-storage";
-import { buildCaseStudyReportPrintHtml } from "../../lib/prototype/case-study-report-html";
+} from "../../lib/app-data/case-study-form-storage";
+import { buildCaseStudyReportPrintHtml } from "../../lib/app-data/case-study-report-html";
 import { openHtmlDocumentInNewTab } from "../../lib/open-html-document";
-import type { PoIntakeRecord, PoPropertyIntake } from "../../lib/prototype/po-intake-data";
-import type { WorkflowTask } from "../../lib/prototype/tasks-storage";
+import type { PoIntakeRecord, PoPropertyIntake } from "../../lib/app-data/po-intake-data";
+import type { WorkflowTask } from "../../lib/app-data/tasks-storage";
 import { caseStudyWorkspacePath } from "../../lib/my-task-routes";
-import { canOpenCaseStudyWorkspace } from "../../lib/prototype/viewer-task-access";
+import { canOpenCaseStudyWorkspace } from "../../lib/app-data/viewer-task-access";
 import { useWorkflowTasksQuery } from "../../query/case-study-queries";
 import { EmptyState, InfoBox } from "./PropertyDetailFields";
 const SECTION_AR_NUMS: Record<CaseStudyQuestionSection, string> = {
@@ -285,7 +285,7 @@ export function PropertyDetailCaseStudyReport({
   property: PoPropertyIntake;
   task: WorkflowTask | null;
 }) {
-  const { role } = usePrototype();
+  const { role } = useAppAccess();
   const { showToast } = useToast();
   const [draft, setDraft] = useState<CaseStudyFormDraft | null>(null);
   const [loading, setLoading] = useState(false);

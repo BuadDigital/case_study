@@ -4,11 +4,11 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
 import {
   prefetchCorePrototypeData,
-  usePrototypeDataSync,
-} from "@/lib/query/prototype-queries";
+  useAppAccessDataSync,
+} from "@/lib/query/app-data-queries";
 
 function PrototypeQueryEffects() {
-  usePrototypeDataSync();
+  useAppAccessDataSync();
   return null;
 }
 

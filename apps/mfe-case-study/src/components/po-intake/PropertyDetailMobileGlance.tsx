@@ -10,12 +10,12 @@ import { useOperationsTasksQuery } from "../../query/operations-tasks-queries";
 import {
   operationsTaskStatusLabel,
   operationsTaskTypeLabel,
-} from "../../lib/prototype/operations-task-display";
-import { isActiveOperationsTask } from "../../lib/prototype/operations-tasks-storage";
+} from "../../lib/app-data/operations-task-display";
+import { isActiveOperationsTask } from "../../lib/app-data/operations-tasks-storage";
 import {
   formatPropertyDeedDisplay,
   type PoPropertyIntake,
-} from "../../lib/prototype/po-intake-data";
+} from "../../lib/app-data/po-intake-data";
 import type { InspectorFeeRowDto } from "@platform/api-client";
 import { operationsTaskPath } from "../../lib/my-task-routes";
 

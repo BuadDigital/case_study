@@ -3,9 +3,9 @@
 import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { formatSar } from "./FinancePartyBillingParts";
-import { prototypeKeys } from "@platform/app-shared/query/prototype-keys";
-import { loadInspectorFeesSummary } from "@platform/app-shared/prototype/inspector-fees-api";
-import { loadPartyBillingStatements } from "@platform/app-shared/prototype/party-billing-statements-api";
+import { appDataKeys } from "@platform/app-shared/query/app-data-keys";
+import { loadInspectorFeesSummary } from "@platform/app-shared/app-data/inspector-fees-api";
+import { loadPartyBillingStatements } from "@platform/app-shared/app-data/party-billing-statements-api";
 import { resolvePartyName } from "@platform/app-shared/fees/party-fee-meta";
 import { useStaffUsersQuery } from "@settings/mfe/query/settings-queries";
 import {
@@ -39,12 +39,12 @@ export function FinanceExcludedCosts({
   const staffUsers = staffResult?.users ?? [];
 
   const feesQuery = useQuery({
-    queryKey: [...prototypeKeys.all, "inspector-fees", "finance-excluded"],
+    queryKey: [...appDataKeys.all, "inspector-fees", "finance-excluded"],
     queryFn: () => loadInspectorFeesSummary({ submittedOnly: false }),
   });
 
   const statementsQuery = useQuery({
-    queryKey: [...prototypeKeys.all, "party-billing", "statements", "excluded"],
+    queryKey: [...appDataKeys.all, "party-billing", "statements", "excluded"],
     queryFn: () => loadPartyBillingStatements(),
   });
 

@@ -5,8 +5,8 @@
 import { useCallback, useEffect, useMemo, useState, Fragment } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { fmt } from "@platform/app-shared/format/number";
-import { prototypeKeys } from "@platform/app-shared/query/prototype-keys";
-import { loadEnfazTracking } from "@platform/app-shared/prototype/enfaz-billing-api";
+import { appDataKeys } from "@platform/app-shared/query/app-data-keys";
+import { loadEnfazTracking } from "@platform/app-shared/app-data/enfaz-billing-api";
 import type { EnfazTrackingRowDto } from "@platform/api-client";
 import {
   DeedLabel,

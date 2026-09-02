@@ -4,7 +4,7 @@ import {
   defaultPremiseKeyForBasis,
   valuationPurposeKeyForAssignment,
   VALUE_BASIS_OPTIONS,
-} from "@platform/app-shared/prototype/assignment-valuation-defaults";
+} from "@platform/app-shared/app-data/assignment-valuation-defaults";
 
 export type EvaluatorSubmissionStatus =
   | "draft"

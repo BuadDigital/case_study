@@ -11,8 +11,9 @@ using RealEstateEval.Infrastructure.Notifications;
 using RealEstateEval.Financial.Domain;
 using RealEstateEval.Financial.Infrastructure.Data.Contexts;
 using RealEstateEval.Attachments.Application.Abstractions;
+using RealEstateEval.Financial.Application.Rules;
 using RealEstateEval.Operations.Application.Abstractions;
-using static RealEstateEval.Financial.Infrastructure.Services.PartyBillingRowMapper;
+using static RealEstateEval.Financial.Application.Rules.PartyBillingRowMapper;
 
 namespace RealEstateEval.Financial.Infrastructure.Services;
 
@@ -21,15 +22,11 @@ public partial class PartyBillingStatementService : IPartyBillingStatementServic
     private const int MaxListRows = 500;
 
  /// <summary>ledger-backed party fee kinds (workflow + inspector fee ledger).</summary>
-    private static readonly HashSet<WorkflowTaskKind> StatementKinds =
-    [
-        WorkflowTaskKind.FieldInspection,
-        WorkflowTaskKind.GovernmentReview,
-        WorkflowTaskKind.EngineeringSurvey,
-    ];
+    private static readonly IReadOnlySet<WorkflowTaskKind> StatementKinds =
+        PartyBillingStatementRules.StatementKinds;
 
  /// <summary>Ops court-visit fee charges — individual payee, same statement close path as individuals.</summary>
-    public const string CourtVisitTaskKind = WorkflowTaskKindValues.CourtVisit;
+    public const string CourtVisitTaskKind = PartyBillingStatementRules.CourtVisitTaskKind;
 
     private readonly FinancialDbContext _db;
     private readonly ICaseStudyLookup _lookup;
@@ -162,13 +159,7 @@ public partial class PartyBillingStatementService : IPartyBillingStatementServic
 
  // Reassignment twins + multi-deed share one statement line (unique WorkflowTaskId).
  // Surface one ready row per task.
-        var ledgers = PartyBillingRowMapper.CollapseReadyLedgers(ledgerRows)
-            .GroupBy(l => l.WorkflowTaskId)
-            .Select(g => g
-                .OrderByDescending(l => l.UpdatedAtUtc)
-                .ThenByDescending(l => l.CreatedAtUtc)
-                .First())
-            .ToList();
+        var ledgers = PartyBillingStatementRules.PickOneLedgerPerTask(ledgerRows);
         var kindByTask = ledgers.ToDictionary(
             ledger => ledger.WorkflowTaskId,
             ledger => kindByTaskId.GetValueOrDefault(ledger.WorkflowTaskId));
@@ -207,10 +198,7 @@ public partial class PartyBillingStatementService : IPartyBillingStatementServic
             .ToListAsync(cancellationToken);
 
         var visitReady = visitCharges.Select(PartyBillingRowMapper.ToCourtVisitReadyDto).ToList();
-        return ledgerReady
-            .Concat(visitReady)
-            .OrderByDescending(l => l.UpdatedAtUtc ?? l.AccruedAtUtc ?? DateTime.MinValue)
-            .ToList();
+        return PartyBillingStatementRules.OrderReadyLines(ledgerReady.Concat(visitReady));
     }
 
     public async Task<IReadOnlyList<PartyBillingStatementDto>> ListStatementsAsync(
@@ -286,16 +274,12 @@ public partial class PartyBillingStatementService : IPartyBillingStatementServic
                 && c.Status == CourtVisitFeeStatuses.Open
                 && c.AmountSar > 0)
             .ToListAsync(cancellationToken);
+        var mixError = PartyBillingStatementRules.ValidateCourtVisitMix(openCharges.Count, taskIds.Count);
+        if (mixError is not null)
+            return new CreatePartyBillingStatementResponseDto { Error = mixError };
+
         if (openCharges.Count > 0)
         {
-            if (openCharges.Count != taskIds.Count)
-            {
-                return new CreatePartyBillingStatementResponseDto
-                {
-                    Error = "لا تُخلط أتعاب زيارة المحكمة مع بنود أخرى في نفس أمر الصرف.",
-                };
-            }
-
             return await CreateCourtVisitStatementAsync(
                 taskIds,
                 openCharges,
@@ -308,98 +292,25 @@ public partial class PartyBillingStatementService : IPartyBillingStatementServic
             .Where(l => taskIds.Contains(l.WorkflowTaskId))
             .ToListAsync(cancellationToken);
 
-        var missingTaskIds = taskIds
-            .Where(id => candidates.All(l => l.WorkflowTaskId != id))
-            .ToList();
-        if (missingTaskIds.Count > 0)
-        {
-            return new CreatePartyBillingStatementResponseDto
-            {
-                Error = "بعض البنود المحددة غير موجودة في سجل الأتعاب.",
-            };
-        }
-
  // Unique IX on PartyBillingStatementLines.WorkflowTaskId — cannot re-bill a task.
         var alreadyLined = await _db.PartyBillingStatementLines.AsNoTracking()
             .Where(l => taskIds.Contains(l.WorkflowTaskId))
             .Select(l => l.WorkflowTaskId)
             .Distinct()
             .ToListAsync(cancellationToken);
-        if (alreadyLined.Count > 0)
-        {
-            return new CreatePartyBillingStatementResponseDto
-            {
-                Error = "أحد البنود مُدرج مسبقاً في مسير صرف (مدفوع أو قائم).",
-            };
-        }
-
- // Ready ledgers only; twin reassignments collapse; multi-deed stays one line per task
- // (unique WorkflowTaskId) with summed net.
-        var readyForSelected = candidates
-            .Where(l =>
-                !l.ExcludedFromBatch
-                && !l.PartyBillingStatementId.HasValue
-                && InspectorFeeBillingRules.IsReadyForEngStatement(l.BillingStatus))
-            .ToList();
-        var ledgerGroups = CollapseReadyLedgers(readyForSelected)
-            .GroupBy(l => l.WorkflowTaskId)
-            .ToList();
-
-        var notReadyTasks = taskIds
-            .Where(id => ledgerGroups.All(g => g.Key != id))
-            .ToList();
-        if (notReadyTasks.Count > 0)
-        {
-            return new CreatePartyBillingStatementResponseDto
-            {
-                Error = "لا يُدرج في كشف الفوترة إلا البنود الجاهزة أو المرحَّلة.",
-            };
-        }
-
-        var chosenIds = ledgerGroups.SelectMany(g => g).Select(l => l.Id).ToHashSet();
-        var trackedLedgers = candidates.Where(l => chosenIds.Contains(l.Id)).ToList();
-        var trackedByTask = trackedLedgers.GroupBy(l => l.WorkflowTaskId)
-            .ToDictionary(g => g.Key, g => g.ToList());
 
         var kinds = await _lookup.GetWorkflowTaskKindsAsync(taskIds, cancellationToken);
-        var taskKinds = kinds
-            .Select(kv => new { Id = kv.Key, Kind = kv.Value })
-            .ToList();
+        var plan = PartyBillingStatementRules.BuildLedgerStatementPlan(
+            taskIds,
+            candidates,
+            alreadyLined,
+            kinds);
+        if (plan.Error is not null)
+            return new CreatePartyBillingStatementResponseDto { Error = plan.Error };
 
-        if (taskKinds.Count != taskIds.Count
-            || taskKinds.Any(t => !StatementKinds.Contains(t.Kind)))
-        {
-            return new CreatePartyBillingStatementResponseDto
-            {
-                Error = "كشف الفوترة يقبل بنود المعاينة والرفع المساحي وزيارة المحكمة (وأتعاب المراجعة القديمة إن وُجدت).",
-            };
-        }
-
-        if (taskKinds.Select(t => t.Kind).Distinct().Count() != 1)
-        {
-            return new CreatePartyBillingStatementResponseDto
-            {
-                Error = "يجب أن تكون كل بنود الكشف من نفس نوع المهمة.",
-            };
-        }
-
-        var statementKind = taskKinds[0].Kind;
-
-        var assignees = trackedLedgers
-            .Select(l => l.AssigneeId?.Trim() ?? "")
-            .Where(a => a.Length > 0)
-            .Distinct(StringComparer.Ordinal)
-            .ToList();
-
-        if (assignees.Count != 1)
-        {
-            return new CreatePartyBillingStatementResponseDto
-            {
-                Error = "يجب أن تكون كل بنود الكشف لنفس الطرف.",
-            };
-        }
-
-        var assigneeId = assignees[0];
+        var ledgerGroups = plan.Groups;
+        var statementKind = plan.StatementKind;
+        var assigneeId = plan.AssigneeId;
 
         var now = _time.UtcNow();
         string reference;
@@ -427,9 +338,8 @@ public partial class PartyBillingStatementService : IPartyBillingStatementServic
 
         foreach (var group in ledgerGroups)
         {
-            var groupLedgers = trackedByTask[group.Key];
-            var net = groupLedgers.Sum(l =>
-                InspectorFeeRules.NetFee(l.AgreedFeeSar, l.SupervisorDiscountSar));
+            var groupLedgers = group.Value;
+            var net = PartyBillingStatementRules.NetForGroup(groupLedgers);
             total += net;
 
             foreach (var ledger in groupLedgers)
@@ -438,16 +348,13 @@ public partial class PartyBillingStatementService : IPartyBillingStatementServic
                 ledger.BillingStatus = InspectorFeeBillingStatus.InStatement;
                 ledger.PartyBillingStatementId = statementId;
                 ledger.UpdatedAtUtc = now;
-                _db.InspectorFeeTransitions.Add(new InspectorFeeTransition
-                {
-                    Id = Guid.NewGuid(),
-                    WorkflowTaskId = ledger.WorkflowTaskId,
-                    FromStatus = fromStatus,
-                    ToStatus = InspectorFeeBillingStatus.InStatement,
-                    Reason = $"إدراج في كشف {reference}",
-                    ActorUserId = actorUserId,
-                    CreatedAtUtc = now,
-                });
+                _db.InspectorFeeTransitions.Add(PartyBillingStatementRules.Transition(
+                    ledger,
+                    fromStatus,
+                    InspectorFeeBillingStatus.InStatement,
+                    PartyBillingStatementRules.InsertedInStatementReason(reference),
+                    actorUserId,
+                    now));
             }
 
             statementLines.Add(new PartyBillingStatementLine
@@ -494,16 +401,13 @@ public partial class PartyBillingStatementService : IPartyBillingStatementServic
                 {
                     ledger.BillingStatus = InspectorFeeBillingStatus.Deferred;
                     ledger.UpdatedAtUtc = now;
-                    _db.InspectorFeeTransitions.Add(new InspectorFeeTransition
-                    {
-                        Id = Guid.NewGuid(),
-                        WorkflowTaskId = ledger.WorkflowTaskId,
-                        FromStatus = InspectorFeeBillingStatus.AtFinance,
-                        ToStatus = InspectorFeeBillingStatus.Deferred,
-                        Reason = $"ترحيل — لم يُدرج في كشف {reference}",
-                        ActorUserId = actorUserId,
-                        CreatedAtUtc = now,
-                    });
+                    _db.InspectorFeeTransitions.Add(PartyBillingStatementRules.Transition(
+                        ledger,
+                        InspectorFeeBillingStatus.AtFinance,
+                        InspectorFeeBillingStatus.Deferred,
+                        PartyBillingStatementRules.NotInStatementDeferralReason(reference),
+                        actorUserId,
+                        now));
                     deferredDtos.Add(ToReadyDto(ledger, labels, statementKind));
                 }
             }
@@ -520,7 +424,7 @@ public partial class PartyBillingStatementService : IPartyBillingStatementServic
             TotalNetSar = total,
             CreatedByUserId = actorUserId,
             CreatedAtUtc = now,
-            Notes = string.IsNullOrWhiteSpace(request.Notes) ? null : request.Notes.Trim(),
+            Notes = PartyBillingStatementRules.NormalizeNotes(request.Notes),
             Lines = statementLines,
         });
 
@@ -544,13 +448,11 @@ public partial class PartyBillingStatementService : IPartyBillingStatementServic
         if (statement is null)
             return (null, "مسير الصرف غير موجود.");
 
-        if (statement.Status != PartyBillingStatementStatus.Draft)
-            return (null, "لا يمكن إرسال إلا المسيرات/الأوامر في حالة المسودة.");
-
         var lineCount = await _db.PartyBillingStatementLines
             .CountAsync(l => l.StatementId == statementId, cancellationToken);
-        if (lineCount == 0)
-            return (null, "لا يمكن إرسال مستند بلا بنود.");
+        var issueError = PartyBillingStatementRules.ValidateIssue(statement.Status, lineCount);
+        if (issueError is not null)
+            return (null, issueError);
 
         var now = _time.UtcNow();
         statement.Status = PartyBillingStatementStatus.Issued;
@@ -576,38 +478,21 @@ public partial class PartyBillingStatementService : IPartyBillingStatementServic
         if (statement is null)
             return (null, "مسير الصرف غير موجود.");
 
-        var isVendor = statement.PayeeType == PartyBillingPayeeType.Vendor;
-        if (isVendor)
-        {
-            if (statement.Status != PartyBillingStatementStatus.InvoiceReceived)
-                return (null, "لا يُصرف للمورّد إلا بعد ورود الفاتورة ومطابقتها.");
-            if (statement.VendorInvoiceMatchedAtUtc is null)
-                return (null, "أقر مطابقة الفاتورة قبل توثيق الصرف.");
-        }
-        else
-        {
-            if (statement.Status != PartyBillingStatementStatus.Issued
-                && statement.Status != PartyBillingStatementStatus.Draft)
-                return (null, "لا يُصرف للفرد إلا من أمر صرف صادر أو مُعد.");
+        var check = PartyBillingStatementRules.ValidateClose(statement, request);
  // Individual: promote draft to issued implicitly so path is Payment Order issued → paid
-            if (statement.Status == PartyBillingStatementStatus.Draft)
-            {
-                statement.Status = PartyBillingStatementStatus.Issued;
-                statement.IssuedAtUtc = _time.UtcNow();
-                statement.IssuedByUserId = actorUserId;
-            }
+        if (check.PromoteDraftToIssued)
+        {
+            statement.Status = PartyBillingStatementStatus.Issued;
+            statement.IssuedAtUtc = _time.UtcNow();
+            statement.IssuedByUserId = actorUserId;
         }
 
-        var voucher = (request.DisbursementVoucher ?? request.ExternalInvoiceNumber ?? "").Trim();
-        if (voucher.Length == 0)
-            return (null, "رقم سند الصرف مطلوب.");
+        if (check.Error is not null)
+            return (null, check.Error);
 
-        var transferRef = (request.TransferReference ?? "").Trim();
-        if (transferRef.Length == 0)
-            return (null, "مرجع التحويل مطلوب.");
-
-        if (!Guid.TryParse(request.TransferReceiptAttachmentId, out var receiptId))
-            return (null, "إيصال التحويل (مرفق) مطلوب.");
+        var voucher = check.Voucher;
+        var transferRef = check.TransferReference;
+        var receiptId = check.ReceiptAttachmentId;
 
         var receiptExists = await _attachments.ExistsAsync(receiptId, actor: null, cancellationToken);
         if (!receiptExists)
@@ -621,9 +506,7 @@ public partial class PartyBillingStatementService : IPartyBillingStatementServic
         if (voucherTaken)
             return (null, "رقم سند الصرف مُستخدم مسبقاً — لا صرف مزدوج.");
 
-        var receiptRef = string.IsNullOrWhiteSpace(request.TransferReceiptRef)
-            ? null
-            : request.TransferReceiptRef.Trim();
+        var receiptRef = check.TransferReceiptRef;
 
         var lines = await _db.PartyBillingStatementLines
             .Where(l => l.StatementId == statementId)
@@ -646,9 +529,8 @@ public partial class PartyBillingStatementService : IPartyBillingStatementServic
         statement.TransferReference = transferRef;
         statement.TransferReceiptAttachmentId = receiptId;
         statement.TransferReceiptRef = receiptRef;
-        statement.ExternalInvoiceNumber = isVendor
-            ? (statement.VendorInvoiceNumber ?? voucher)
-            : voucher;
+        statement.ExternalInvoiceNumber =
+            PartyBillingStatementRules.ExternalInvoiceOnClose(statement, voucher);
         statement.PaidAtUtc = paidAt;
         if (!string.IsNullOrWhiteSpace(request.Notes))
             statement.Notes = request.Notes.Trim();
@@ -659,16 +541,13 @@ public partial class PartyBillingStatementService : IPartyBillingStatementServic
             ledger.BillingStatus = InspectorFeeBillingStatus.Disbursed;
             ledger.DisbursementVoucher = voucher;
             ledger.UpdatedAtUtc = now;
-            _db.InspectorFeeTransitions.Add(new InspectorFeeTransition
-            {
-                Id = Guid.NewGuid(),
-                WorkflowTaskId = ledger.WorkflowTaskId,
-                FromStatus = fromStatus,
-                ToStatus = InspectorFeeBillingStatus.Disbursed,
-                Reason = $"صرف موثَّق — سند {voucher}",
-                ActorUserId = actorUserId,
-                CreatedAtUtc = now,
-            });
+            _db.InspectorFeeTransitions.Add(PartyBillingStatementRules.Transition(
+                ledger,
+                fromStatus,
+                InspectorFeeBillingStatus.Disbursed,
+                PartyBillingStatementRules.DisbursedReason(voucher),
+                actorUserId,
+                now));
         }
 
         foreach (var charge in visitCharges)
@@ -721,48 +600,28 @@ public partial class PartyBillingStatementService : IPartyBillingStatementServic
         foreach (var taskId in taskIds)
         {
             var ledger = ledgers.FirstOrDefault(l => l.WorkflowTaskId == taskId);
-            if (ledger is null)
+            var lineError = PartyBillingStatementRules.DeferLineError(
+                ledger,
+                statementTaskIdSet.Contains(taskId));
+            if (lineError is not null || ledger is null)
             {
                 failed.Add(new InspectorFeeTransitionErrorDto
                 {
                     WorkflowTaskId = taskId.ToString(),
-                    Error = "البند غير موجود.",
-                });
-                continue;
-            }
-
-            if (!statementTaskIdSet.Contains(taskId))
-            {
-                failed.Add(new InspectorFeeTransitionErrorDto
-                {
-                    WorkflowTaskId = taskId.ToString(),
-                    Error = "الترحيل لمسار صرف المستحقين فقط.",
-                });
-                continue;
-            }
-
-            if (ledger.BillingStatus != InspectorFeeBillingStatus.AtFinance)
-            {
-                failed.Add(new InspectorFeeTransitionErrorDto
-                {
-                    WorkflowTaskId = taskId.ToString(),
-                    Error = "لا يمكن ترحيل إلا البنود الجاهزة للصرف.",
+                    Error = lineError ?? "البند غير موجود.",
                 });
                 continue;
             }
 
             ledger.BillingStatus = InspectorFeeBillingStatus.Deferred;
             ledger.UpdatedAtUtc = now;
-            _db.InspectorFeeTransitions.Add(new InspectorFeeTransition
-            {
-                Id = Guid.NewGuid(),
-                WorkflowTaskId = ledger.WorkflowTaskId,
-                FromStatus = InspectorFeeBillingStatus.AtFinance,
-                ToStatus = InspectorFeeBillingStatus.Deferred,
-                Reason = "ترحيل بقرار المحاسب",
-                ActorUserId = actorUserId,
-                CreatedAtUtc = now,
-            });
+            _db.InspectorFeeTransitions.Add(PartyBillingStatementRules.Transition(
+                ledger,
+                InspectorFeeBillingStatus.AtFinance,
+                InspectorFeeBillingStatus.Deferred,
+                PartyBillingStatementRules.AccountantDeferralReason,
+                actorUserId,
+                now));
             succeeded.Add(PartyBillingRowMapper.ToReadyDto(ledger, labels, kindByTask.GetValueOrDefault(taskId)));
         }
 
@@ -790,7 +649,7 @@ public partial class PartyBillingStatementService : IPartyBillingStatementServic
             };
         }
 
-        var monthStart = new DateTime(_time.UtcNow().Year, _time.UtcNow().Month, 1, 0, 0, 0, DateTimeKind.Utc);
+        var monthStart = PartyBillingStatementRules.MonthStart(_time.UtcNow());
         var created = new List<PartyBillingStatementDto>();
         var linesIncluded = 0;
 
@@ -857,15 +716,12 @@ public partial class PartyBillingStatementService : IPartyBillingStatementServic
             .FirstOrDefaultAsync(s => s.Id == statementId, cancellationToken);
         if (statement is null)
             return (null, "مسير الصرف غير موجود.");
-        if (statement.Status is PartyBillingStatementStatus.Closed or PartyBillingStatementStatus.Cancelled)
-            return (null, "لا يمكن إلغاء مستند مغلق أو ملغى.");
-        if (statement.Status == PartyBillingStatementStatus.InvoiceReceived
-            && statement.VendorInvoiceMatchedAtUtc is not null)
-            return (null, "لا يُلغى مسير بعد مطابقة فاتورة — استخدم الإعادة أو أكمل الصرف.");
-
-        var reason = (request.Reason ?? "").Trim();
-        if (reason.Length < 3)
-            return (null, "سبب الإلغاء إلزامي.");
+        var (cancelError, reason) = PartyBillingStatementRules.ValidateCancel(
+            statement.Status,
+            statement.VendorInvoiceMatchedAtUtc,
+            request.Reason);
+        if (cancelError is not null)
+            return (null, cancelError);
 
         var lines = await _db.PartyBillingStatementLines
             .Where(l => l.StatementId == statementId)
@@ -887,16 +743,13 @@ public partial class PartyBillingStatementService : IPartyBillingStatementServic
             ledger.BillingStatus = InspectorFeeBillingStatus.AtFinance;
             ledger.PartyBillingStatementId = null;
             ledger.UpdatedAtUtc = now;
-            _db.InspectorFeeTransitions.Add(new InspectorFeeTransition
-            {
-                Id = Guid.NewGuid(),
-                WorkflowTaskId = ledger.WorkflowTaskId,
-                FromStatus = from,
-                ToStatus = InspectorFeeBillingStatus.AtFinance,
-                Reason = $"إلغاء {statement.ReferenceNumber}: {reason}",
-                ActorUserId = actorUserId,
-                CreatedAtUtc = now,
-            });
+            _db.InspectorFeeTransitions.Add(PartyBillingStatementRules.Transition(
+                ledger,
+                from,
+                InspectorFeeBillingStatus.AtFinance,
+                PartyBillingStatementRules.CancelledReason(statement.ReferenceNumber, reason),
+                actorUserId,
+                now));
         }
 
         await _db.SaveChangesAsync(cancellationToken);
@@ -915,20 +768,6 @@ public partial class PartyBillingStatementService : IPartyBillingStatementServic
         var chargeRows = await _db.CourtVisitFeeCharges.AsNoTracking()
             .Where(c => taskIds.Contains(c.Id))
             .ToListAsync(cancellationToken);
-        var chargeById = chargeRows.ToDictionary(c => c.Id);
-
- // Twin ledgers share WorkflowTaskId; pick by statement binding when available.
-        static InspectorFeeLedger? ResolveLedger(
-            Guid statementId,
-            Guid workflowTaskId,
-            IReadOnlyList<InspectorFeeLedger> rows)
-        {
-            var forTask = rows.Where(l => l.WorkflowTaskId == workflowTaskId).ToList();
-            if (forTask.Count == 0) return null;
-            var bound = forTask.FirstOrDefault(l => l.PartyBillingStatementId == statementId);
-            if (bound is not null) return bound;
-            return PartyBillingRowMapper.CollapseReadyLedgers(forTask).FirstOrDefault();
-        }
 
         var propertyIds = ledgerRows
             .Where(l => l.PropertyId.HasValue)
@@ -937,89 +776,12 @@ public partial class PartyBillingStatementService : IPartyBillingStatementServic
             .ToList();
         var labels = await LoadPropertyLabelsAsync(propertyIds, cancellationToken);
 
-        var linesByStatement = lines.GroupBy(l => l.StatementId)
-            .ToDictionary(g => g.Key, g => g.ToList());
-
-        return statements.Select(s =>
-        {
-            var stmtLines = linesByStatement.GetValueOrDefault(s.Id) ?? [];
-            return new PartyBillingStatementDto
-            {
-                Id = s.Id.ToString(),
-                ReferenceNumber = s.ReferenceNumber,
-                AssigneeId = s.AssigneeId,
-                PayeeType = string.IsNullOrWhiteSpace(s.PayeeType)
-                    ? PartyBillingPayeeType.Vendor
-                    : s.PayeeType,
-                PayeeTypeLabel = PartyBillingPayeeType.Label(s.PayeeType),
-                TaskKind = s.TaskKind,
-                Status = s.Status,
-                StatusLabel = PartyBillingStatementStatus.Label(s.Status),
-                TotalNetSar = s.TotalNetSar,
-                CreatedByUserId = s.CreatedByUserId,
-                CreatedAtUtc = s.CreatedAtUtc,
-                IssuedAtUtc = s.IssuedAtUtc,
-                ClosedAtUtc = s.ClosedAtUtc,
-                ExternalInvoiceNumber = s.ExternalInvoiceNumber,
-                TransferReceiptAttachmentId = s.TransferReceiptAttachmentId?.ToString(),
-                TransferReceiptRef = s.TransferReceiptRef,
-                TransferReference = s.TransferReference,
-                DisbursementVoucher = s.DisbursementVoucher,
-                PaidAtUtc = s.PaidAtUtc,
-                Notes = s.Notes,
-                VendorInvoiceNumber = s.VendorInvoiceNumber,
-                VendorInvoiceDate = s.VendorInvoiceDate,
-                VendorInvoiceAttachmentId = s.VendorInvoiceAttachmentId?.ToString(),
-                VendorInvoiceSubmittedAtUtc = s.VendorInvoiceSubmittedAtUtc,
-                VendorInvoiceMatched = s.VendorInvoiceMatchedAtUtc.HasValue,
-                VendorInvoiceMatchedAtUtc = s.VendorInvoiceMatchedAtUtc,
-                RejectedInvoices = PartyBillingRowMapper.ParseRejected(s.RejectedInvoicesJson),
-                CancelledAtUtc = s.CancelledAtUtc,
-                CancelReason = s.CancelReason,
-                Lines = stmtLines.Select(line =>
-                {
-                    if (chargeById.TryGetValue(line.WorkflowTaskId, out var charge))
-                    {
-                        var chargeStatus = charge.Status == CourtVisitFeeStatuses.Settled
-                            || s.Status == PartyBillingStatementStatus.Closed
-                            ? InspectorFeeBillingStatus.Disbursed
-                            : s.Status == PartyBillingStatementStatus.Cancelled
-                                ? InspectorFeeBillingStatus.AtFinance
-                                : InspectorFeeBillingStatus.InStatement;
-                        return new PartyBillingStatementLineDto
-                        {
-                            Id = line.Id.ToString(),
-                            WorkflowTaskId = line.WorkflowTaskId.ToString(),
-                            PropertyId = null,
-                            PropertyLabel = string.IsNullOrWhiteSpace(charge.TaskDisplayId)
-                                ? "زيارة محكمة"
-                                : charge.TaskDisplayId.Trim(),
-                            PoNumber = charge.PoNumber ?? "",
-                            NetFeeSar = line.NetFeeSar,
-                            BillingStatus = chargeStatus,
-                            BillingStatusLabel = InspectorFeeBillingRules.StatusLabel(chargeStatus),
-                        };
-                    }
-
-                    var ledger = ResolveLedger(s.Id, line.WorkflowTaskId, ledgerRows);
-                    var status = ledger?.BillingStatus ?? InspectorFeeBillingStatus.InStatement;
-                    return new PartyBillingStatementLineDto
-                    {
-                        Id = line.Id.ToString(),
-                        WorkflowTaskId = line.WorkflowTaskId.ToString(),
-                        PropertyId = ledger?.PropertyId?.ToString(),
-                        PropertyLabel = ledger?.PropertyId is { } pid
-                            && labels.TryGetValue(pid, out var label)
-                            ? label
-                            : ledger?.PropertyOrdinal.ToString() ?? "—",
-                        PoNumber = ledger?.PoNumber ?? "",
-                        NetFeeSar = line.NetFeeSar,
-                        BillingStatus = status,
-                        BillingStatusLabel = InspectorFeeBillingRules.StatusLabel(status),
-                    };
-                }).ToList(),
-            };
-        }).ToList();
+        return PartyBillingStatementRules.MapStatements(
+            statements,
+            lines,
+            ledgerRows,
+            chargeRows,
+            labels);
     }
 
     private async Task<Dictionary<Guid, string>> LoadPropertyLabelsAsync(
@@ -1029,23 +791,7 @@ public partial class PartyBillingStatementService : IPartyBillingStatementServic
         if (propertyIds.Count == 0) return new Dictionary<Guid, string>();
 
         var snapshots = await _lookup.ListPropertiesByIdsAsync(propertyIds, cancellationToken);
-        var properties = snapshots.ToList();
-
-        var result = new Dictionary<Guid, string>();
-        foreach (var property in properties)
-        {
-            var slot = string.IsNullOrWhiteSpace(property.RequestNumber)
-                ? (string.IsNullOrWhiteSpace(property.DeedNumber)
-                    ? property.Id.ToString()[..8]
-                    : property.DeedNumber.Trim())
-                : property.RequestNumber.Trim();
-            var district = property.District?.Trim() ?? "";
-            result[property.Id] = string.IsNullOrEmpty(district)
-                ? slot
-                : $"{slot} — {district}";
-        }
-
-        return result;
+        return PartyBillingStatementRules.PropertyLabels(snapshots);
     }
 
     private async Task<CreatePartyBillingStatementResponseDto> CreateCourtVisitStatementAsync(
@@ -1060,28 +806,11 @@ public partial class PartyBillingStatementService : IPartyBillingStatementServic
             .Select(l => l.WorkflowTaskId)
             .Distinct()
             .ToListAsync(cancellationToken);
-        if (alreadyLined.Count > 0)
-        {
-            return new CreatePartyBillingStatementResponseDto
-            {
-                Error = "أحد بنود زيارة المحكمة مُدرج مسبقاً في مسير صرف (مدفوع أو قائم).",
-            };
-        }
+        var (selectionError, assigneeId) =
+            PartyBillingStatementRules.ValidateCourtVisitSelection(charges, alreadyLined);
+        if (selectionError is not null)
+            return new CreatePartyBillingStatementResponseDto { Error = selectionError };
 
-        var assignees = charges
-            .Select(c => c.CreditAssigneeId?.Trim() ?? "")
-            .Where(a => a.Length > 0)
-            .Distinct(StringComparer.Ordinal)
-            .ToList();
-        if (assignees.Count != 1)
-        {
-            return new CreatePartyBillingStatementResponseDto
-            {
-                Error = "يجب أن تكون كل بنود زيارة المحكمة لنفس المستحق.",
-            };
-        }
-
-        var assigneeId = assignees[0];
         var now = _time.UtcNow();
         string reference;
         try
@@ -1125,7 +854,7 @@ public partial class PartyBillingStatementService : IPartyBillingStatementServic
             TotalNetSar = total,
             CreatedByUserId = actorUserId,
             CreatedAtUtc = now,
-            Notes = string.IsNullOrWhiteSpace(request.Notes) ? null : request.Notes.Trim(),
+            Notes = PartyBillingStatementRules.NormalizeNotes(request.Notes),
             Lines = statementLines,
         });
 

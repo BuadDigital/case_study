@@ -1,8 +1,8 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
-import { prototypeKeys } from "@platform/app-shared/query/prototype-keys";
-import { loadEnfazTracking } from "@platform/app-shared/prototype/enfaz-billing-api";
+import { appDataKeys } from "@platform/app-shared/query/app-data-keys";
+import { loadEnfazTracking } from "@platform/app-shared/app-data/enfaz-billing-api";
 import {
   Badge,
   SkeletonTableRows,
@@ -44,7 +44,7 @@ function invoiceStatusTone(
 
 export function SupervisorEnfazTracking() {
   const { data = [], isPending } = useQuery({
-    queryKey: [...prototypeKeys.all, "enfaz-billing", "tracking"],
+    queryKey: [...appDataKeys.all, "enfaz-billing", "tracking"],
     queryFn: loadEnfazTracking,
   });
 

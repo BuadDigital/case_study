@@ -27,7 +27,7 @@ export {
   requestPartyTaskRecall as requestEvaluatorRecall,
   type PartyTaskRecallRequest as EvaluatorRecallRequest,
   type PartyTaskRecallStatus as EvaluatorRecallStatus,
-} from "@platform/app-shared/prototype/party-task-recall-storage";
+} from "@platform/app-shared/app-data/party-task-recall-storage";
 export * from "./lib/evaluator/evaluator-validation";
 export * from "./lib/evaluator/evaluator-report-attachments";
 export * from "./lib/evaluator/evaluator-deposit-attachments";

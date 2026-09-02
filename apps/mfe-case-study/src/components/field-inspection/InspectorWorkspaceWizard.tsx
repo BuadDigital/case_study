@@ -20,7 +20,7 @@ import {
   approximatePropertyGeo,
   boundariesMarkedUnavailable,
   type PoPropertyIntake,
-} from "../../lib/prototype/po-intake-data";
+} from "../../lib/app-data/po-intake-data";
 import {
   SITE_LOCATION_ACK_PENDING_MESSAGE,
   INSPECTOR_AMENITY_OPTIONS,
@@ -30,18 +30,27 @@ import {
   isLandInspectionContext,
   isShopHiddenInspectorComponentKey,
   isCommercialShopInspectionContext,
+  mapPinPatchForActor,
   newObservationId,
   patchInspectorFeatureValues,
+  inspectorPhotoStampText,
   visibleInspectorFeatureFields,
   type InspectorBoundaryKey,
+  type InspectorMapActor,
   type InspectorWorkspaceDraft,
-} from "../../lib/prototype/inspector-workspace-data";
+} from "../../lib/app-data/inspector-workspace-data";
+import {
+  clearInspectorPhotoDataUrl,
+  uploadInspectorPhotoFromFile,
+} from "../../lib/app-data/inspector-photo-upload";
 import { InspectorStepNav, type InspectorStepId } from "./InspectorStepNav";
 import { InspectorFeatureWizardFields } from "./InspectorFeatureWizardFields";
 import { InspectorPropertyPhotosSection } from "./InspectorPropertyPhotosSection";
+import { InspectorPhotoFilePicker } from "./InspectorPhotoFilePicker";
+import { InspectorStampedPhotoThumb } from "./InspectorStampedPhotoThumb";
 import { FieldComparableCaptureSection } from "./FieldComparableCaptureSection";
 import { ComponentCountWithPhotoField, InsCard, InsDualCalendarDateField, InsEditField, InsEditTextarea, InsFieldsGrid, ChipRow, EDIT_CONTROL_CLASS } from "../po-intake/PropertyDetailInspectionParts";
-import { INFATH_FIELD_LABELS } from "../../lib/prototype/infath-field-labels";
+import { INFATH_FIELD_LABELS } from "../../lib/app-data/infath-field-labels";
 import { INS_LABEL_CLASS, INS_TH_CLASS, INS_TD_CLASS, INS_WIZARD_PIN_BUTTON_CLASS } from "./FieldInspectionWorkParts";
 import { InspectorCaseStudyChips } from "./InspectorCaseStudyChips";
 import { InspectorAccessContactFields } from "./InspectorAccessContactFields";
@@ -49,11 +58,11 @@ import {
   SpecialistServiceProofPhotoFields,
   withoutSpecialistProofSlots,
 } from "./SpecialistServiceProofPhotoFields";
-import type { PropertyDetailDocumentEntry } from "../../lib/prototype/property-detail-documents";
+import type { PropertyDetailDocumentEntry } from "../../lib/app-data/property-detail-documents";
 import { useFacadeOptions } from "../../query/use-facade-options";
-import type { InspectorWorkspaceFieldErrors } from "../../lib/prototype/inspector-workspace-validation";
-import type { PartyTaskPageDef } from "@platform/app-shared/prototype/party-task-pages";
-import type { WorkflowTask } from "../../lib/prototype/tasks-storage";
+import type { InspectorWorkspaceFieldErrors } from "../../lib/app-data/inspector-workspace-validation";
+import type { PartyTaskPageDef } from "@platform/app-shared/app-data/party-task-pages";
+import type { WorkflowTask } from "../../lib/app-data/tasks-storage";
 
 const DESIGN_AMENITIES = [
   "مدارس",
@@ -98,6 +107,9 @@ export function InspectorWorkspaceWizard({
   mapPinned,
   onPin,
   mapPinEpoch,
+  mapActor = "inspector",
+  canRestoreInspectorMap = false,
+  onRestoreInspectorMap,
   /** Property-detail review: show all design sections at once (no step filter). */
   flat = false,
 }: {
@@ -119,6 +131,9 @@ export function InspectorWorkspaceWizard({
   mapPinned: boolean;
   onPin: () => void;
   mapPinEpoch: number;
+  mapActor?: InspectorMapActor;
+  canRestoreInspectorMap?: boolean;
+  onRestoreInspectorMap?: () => void;
   flat?: boolean;
 }) {
   const [activeStep, setActiveStep] = useState<InspectorStepId>(1);
@@ -172,6 +187,7 @@ export function InspectorWorkspaceWizard({
     draft.mapLatitude.trim() && draft.mapLongitude.trim()
       ? `${draft.mapLatitude.trim()}, ${draft.mapLongitude.trim()}`
       : "";
+  const photoStamp = inspectorPhotoStampText(draft);
 
   function advance() {
     setDoneSteps((prev) => {
@@ -230,10 +246,14 @@ export function InspectorWorkspaceWizard({
                     value={coordsValue}
                     onChange={(e) => {
                       const parts = e.target.value.split(/[,،]/);
-                      onPatch({
-                        mapLatitude: (parts[0] || "").trim(),
-                        mapLongitude: (parts[1] || "").trim(),
-                      });
+                      onPatch(
+                        mapPinPatchForActor(
+                          draft,
+                          (parts[0] || "").trim(),
+                          (parts[1] || "").trim(),
+                          mapActor,
+                        ),
+                      );
                     }}
                   />
                 ) : (
@@ -250,6 +270,16 @@ export function InspectorWorkspaceWizard({
                 >
                   تثبيت الموقع
                 </button>
+              ) : null}
+              {editable && canRestoreInspectorMap && onRestoreInspectorMap ? (
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  onClick={onRestoreInspectorMap}
+                >
+                  استعادة موقع المعاين
+                </Button>
               ) : null}
             </div>
           </InsCard>
@@ -842,14 +872,16 @@ export function InspectorWorkspaceWizard({
               </p>
             ) : null}
             <div className="mt-2 flex flex-col gap-2">
-              {draft.observations.map((obs, index) => (
+              {draft.observations.map((obs, index) => {
+                const obsPhotoRef = `observation:${obs.id}`;
+                return (
                 <div
                   key={obs.id}
                   className="grid grid-cols-[150px_minmax(0,1fr)_auto_auto] items-center gap-2 rounded-lg border border-border bg-surface-2 p-2.5"
                 >
                   <Select
-                    
                     value={obs.category}
+                    disabled={!editable}
                     onChange={(e) => {
                       const next = [...draft.observations];
                       next[index] = { ...obs, category: e.target.value };
@@ -864,18 +896,67 @@ export function InspectorWorkspaceWizard({
                   </Select>
                   <input
                     className={EDIT_CONTROL_CLASS}
-                    
                     placeholder="اشرح الملاحظة…"
                     value={obs.text}
+                    disabled={!editable}
                     onChange={(e) => {
                       const next = [...draft.observations];
                       next[index] = { ...obs, text: e.target.value };
                       onPatch({ observations: next });
                     }}
                   />
-                  <span className="text-[11px] text-text-3">
-                    {obs.photo?.fileName ? "صورة مرفقة" : "بدون صورة"}
-                  </span>
+                  <div className="min-w-[96px]">
+                    {obs.photo?.fileName ? (
+                      <InspectorStampedPhotoThumb
+                        stamp={photoStamp}
+                        compact
+                        taskId={draft.taskId}
+                        photoRef={obsPhotoRef}
+                        attachment={obs.photo}
+                        onClear={
+                          editable
+                            ? () => {
+                                clearInspectorPhotoDataUrl(
+                                  draft.taskId,
+                                  obsPhotoRef,
+                                );
+                                const next = [...draft.observations];
+                                next[index] = { ...obs, photo: null };
+                                onPatch({ observations: next });
+                              }
+                            : undefined
+                        }
+                      />
+                    ) : editable ? (
+                      <InspectorPhotoFilePicker
+                        label="إرفاق صورة"
+                        disabled={!editable}
+                        className="[&_button]:min-h-9 [&_button]:px-2.5 [&_button]:py-1.5 [&_button]:text-[11px]"
+                        onFilesSelected={async (files) => {
+                          const file = files[0];
+                          if (!file) return false;
+                          const result = await uploadInspectorPhotoFromFile(
+                            draft.taskId,
+                            obsPhotoRef,
+                            file,
+                            {
+                              draft,
+                              deedNumber: property.deedNumber,
+                            },
+                          );
+                          if (!result.ok) {
+                            throw new Error(result.error);
+                          }
+                          const next = [...draft.observations];
+                          next[index] = { ...obs, photo: result.attachment };
+                          onPatch({ observations: next });
+                          return true;
+                        }}
+                      />
+                    ) : (
+                      <span className="text-[11px] text-text-3">بدون صورة</span>
+                    )}
+                  </div>
                   {editable ? (
                     <Button
                       type="button"
@@ -893,7 +974,8 @@ export function InspectorWorkspaceWizard({
                     </Button>
                   ) : null}
                 </div>
-              ))}
+                );
+              })}
             </div>
             {editable ? (
               <Button

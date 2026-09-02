@@ -10,7 +10,7 @@ import {
   type AssignmentType,
   type PoPropertyIntake,
   type PropertyIdentifierType,
-} from "../../lib/prototype/po-intake-data";
+} from "../../lib/app-data/po-intake-data";
 import {
   cacheAssignmentDoc,
   cacheDeedOwnershipDoc,
@@ -21,11 +21,9 @@ import {
   clonePropertyDocumentsFromPrior,
   rememberPendingPriorDocumentClone,
   removeCachedPropertyDoc,
-} from "../../lib/prototype/assignment-doc-attachments";
-import {
-  buildPropertyFromPriorDeed,
-  findPriorDeedFull,
-} from "../../lib/prototype/po-intake-storage";
+} from "../../lib/app-data/assignment-doc-attachments";
+import { buildPropertyFromPriorDeed } from "../../lib/app-data/po-intake-model";
+import { findPriorDeedFull } from "../../lib/app-data/po-intake-reads";
 import { RegField } from "@platform/app-shared/registration/FormFields";
 import type { FieldErrors } from "@platform/app-shared/registration/registration-utils";
 import {

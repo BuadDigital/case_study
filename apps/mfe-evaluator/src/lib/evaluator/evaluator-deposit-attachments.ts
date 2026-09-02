@@ -2,8 +2,8 @@ import {
   clearTaskScopedAttachments,
   getCachedTaskAttachment,
   uploadTaskScopedAttachment,
-} from "@platform/app-shared/prototype/task-attachments-api";
-import { getCachedPartySubmission } from "@platform/app-shared/prototype/party-submission-api";
+} from "@platform/app-shared/app-data/task-attachments-api";
+import { getCachedPartySubmission } from "@platform/app-shared/app-data/party-submission-api";
 import { MAX_EVALUATOR_PDF_BYTES } from "./evaluator-window-data";
 import {
   loadEvaluatorSubmission,

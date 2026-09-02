@@ -27,8 +27,8 @@ import { invalidControlClass } from "@platform/app-shared/form-ux";
 import { useWindowEvents } from "@platform/app-shared/hooks/useWindowEvents";
 import { usePoRecordQuery, useWorkflowTasksQuery } from "@case-study/mfe/query/case-study-queries";
 import { usePropertyDetailDocuments } from "@case-study/mfe/query/property-detail-documents-query";
-import { subClientIdFromReportUsers } from "@case-study/mfe/lib/prototype/po-intake-data";
-import type { PoPropertyIntake } from "@case-study/mfe/lib/prototype/po-intake-data";
+import { subClientIdFromReportUsers } from "@case-study/mfe/lib/app-data/po-intake-data";
+import type { PoPropertyIntake } from "@case-study/mfe/lib/app-data/po-intake-data";
 import {
   ESG_ENV_FACTORS,
   ESG_GOV_FACTORS,
@@ -38,14 +38,14 @@ import {
   loadSpecialistEsgInputs,
   type SpecialistEsgGroup,
   type SpecialistEsgInputs,
-} from "@case-study/mfe/lib/prototype/valuation-report-specialist-esg";
+} from "@case-study/mfe/lib/app-data/valuation-report-specialist-esg";
 import {
   VALUATION_PRINT_KEYS_CHANGED_EVENT,
   loadSpecialistPrintAttachmentKeys,
-} from "@case-study/mfe/lib/prototype/valuation-print-attachment-keys";
+} from "@case-study/mfe/lib/app-data/valuation-print-attachment-keys";
 import {
   basisOfValueKeyForAssignment,
-} from "@platform/app-shared/prototype/assignment-valuation-defaults";
+} from "@platform/app-shared/app-data/assignment-valuation-defaults";
 import type {
   EvaluatorReportChoices,
   EvaluatorSubmission,

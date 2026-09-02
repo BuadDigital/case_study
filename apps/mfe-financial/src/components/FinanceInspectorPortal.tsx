@@ -9,7 +9,7 @@ import { useMemo, useState, type ReactNode } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { dmy } from "@platform/app-shared/format/date";
 import { fmtMax } from "@platform/app-shared/format/number";
-import { prototypeKeys } from "@platform/app-shared/query/prototype-keys";
+import { appDataKeys } from "@platform/app-shared/query/app-data-keys";
 import {
   buildAssigneeStaffIndex,
   resolvePartyName,
@@ -17,13 +17,13 @@ import {
 import {
   loadPartyBillingReadyLines,
   loadPartyBillingStatements,
-} from "@platform/app-shared/prototype/party-billing-statements-api";
+} from "@platform/app-shared/app-data/party-billing-statements-api";
 import type {
   PartyBillingReadyLineDto,
   PartyBillingStatementDto,
 } from "@platform/api-client";
 import { useStaffUsersQuery } from "@settings/mfe/query/settings-queries";
-import type { StaffUser } from "@platform/app-shared/prototype/constants";
+import type { StaffUser } from "@platform/app-shared/app-data/constants";
 import { getFieldInspectors } from "@case-study/mfe/lib/distribution-assignees";
 import {
   EmptyState,
@@ -201,7 +201,7 @@ export function FinanceInspectorPortal({
 
   const readyQuery = useQuery({
     queryKey: [
-      ...prototypeKeys.all,
+      ...appDataKeys.all,
       "party-billing",
       "ready-lines",
       "inspector-portal",
@@ -212,7 +212,7 @@ export function FinanceInspectorPortal({
 
   const statementsQuery = useQuery({
     queryKey: [
-      ...prototypeKeys.all,
+      ...appDataKeys.all,
       "party-billing",
       "statements",
       "inspector-portal",

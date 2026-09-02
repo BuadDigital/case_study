@@ -2,7 +2,7 @@
 
 import { useEffect, useRef } from "react";
 import "leaflet/dist/leaflet.css";
-import type { LayerKey, MapCoords } from "../../lib/prototype/map-locations-logic";
+import type { LayerKey, MapCoords } from "../../lib/app-data/map-locations-logic";
 import { escapeHtml } from "@platform/app-shared/lib/html-escape";
 
 export type PropertyMapMarker = {

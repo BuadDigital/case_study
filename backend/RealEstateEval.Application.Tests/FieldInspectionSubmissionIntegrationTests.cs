@@ -9,6 +9,8 @@ using RealEstateEval.Infrastructure.Services;
 using RealEstateEval.CaseStudy.Infrastructure.Data.Contexts;
 using RealEstateEval.Failures.Infrastructure.Data.Contexts;
 using RealEstateEval.Operations.Infrastructure.Data.Contexts;
+using RealEstateEval.CaseStudy.Application.Services;
+using RealEstateEval.CaseStudy.Infrastructure.Persistence;
 using RealEstateEval.CaseStudy.Infrastructure.Services;
 using RealEstateEval.CaseStudy.Application.Contracts;
 using RealEstateEval.Failures.Infrastructure.Services;
@@ -215,13 +217,12 @@ public class FieldInspectionSubmissionIntegrationTests
         var timeline = TestInspectorFeeServiceFactory.CreateTimeline(db);
         var recipients = TestInspectorFeeServiceFactory.CreateRecipients(db);
         return new(
-            caseStudy,
-            new FailureLookup(failures),
+            new PartyTaskSubmissionRepository(caseStudy),
+            new PartyTaskFailureGate(new FailureLookup(failures)),
             TestInspectorFeeServiceFactory.CreateWorkflow(db),
             new FieldInspectionAttachmentVerifier(TestInspectorFeeServiceFactory.ShareAttachmentLookup(db)),
             timeline,
-            new NullHttpContextAccessor(),
-            new NullPermissionService(),
+            new HttpCurrentPrototypeRoleResolver(new NullHttpContextAccessor(), new NullPermissionService()),
             TestInspectorFeeServiceFactory.Create(db),
             notifications ?? TestInspectorFeeServiceFactory.CreateNotificationDeps(db).Notifications,
             recipients);
@@ -397,6 +398,10 @@ public class FieldInspectionSubmissionIntegrationTests
           "mapLatitude": "21.481000",
           "mapLongitude": "39.186500",
           "inspectionConfirmed": true,
+          "accessContactName": "عبدالرحمن عبدالله الغامدي",
+          "accessContactPhone": "0501234567",
+          "accessContactRole": "المالك",
+          "accessRouteDescription": "المدخل الرئيسي من الشارع العام",
           "keyAvailable": true,
           "hasAnnex": "لا",
           "showroomCount": "",

@@ -3,29 +3,29 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { EjadaLogo } from "@/components/views/EjadaLogo";
-import { usePrototype } from "@platform/app-shared/contexts/PrototypeContext";
+import { useAppAccess } from "@platform/app-shared/contexts/AppAccessContext";
 import {
   prefetchPoRecord,
   prefetchPrototypePage,
   usePoRecordQuery,
-} from "@/lib/query/prototype-queries";
+} from "@/lib/query/app-data-queries";
 import type { PageId } from "@platform/types";
-import { PAGE_BREADCRUMB, PAGE_TITLES, ROLES } from "@platform/app-shared/prototype/constants";
+import { PAGE_BREADCRUMB, PAGE_TITLES, ROLES } from "@platform/app-shared/app-data/constants";
 import {
   activeTransactionNavForRole,
   isPartyFeesUnderActiveTransactions,
-} from "@platform/app-shared/prototype/active-transactions";
+} from "@platform/app-shared/app-data/active-transactions";
 import {
   settingsNavTreeForRole,
   organizationSettingsLeafTitle,
-} from "@platform/app-shared/prototype/system-settings-nav";
-import { isPartyTaskPage } from "@platform/app-shared/prototype/party-task-pages";
+} from "@platform/app-shared/app-data/system-settings-nav";
+import { isPartyTaskPage } from "@platform/app-shared/app-data/party-task-pages";
 import { decodeTaskParam, isPartyTaskWorkPath } from "@case-study/mfe/lib/my-task-routes";
-import { formatPropertyDeedDisplay } from "@case-study/mfe/lib/prototype/po-intake-data";
+import { formatPropertyDeedDisplay } from "@case-study/mfe/lib/app-data/po-intake-data";
 import {
   loadWorkflowTasksForQuery,
   type WorkflowTask,
-} from "@case-study/mfe/lib/prototype/tasks-storage";
+} from "@case-study/mfe/lib/app-data/tasks-storage";
 import { AppBreadcrumb } from "@/components/views/AppBreadcrumb";
 import { NotificationCenter } from "@/components/NotificationCenter";
 import { OfflineSyncCoordinator } from "@/components/OfflineSyncCoordinator";
@@ -36,13 +36,13 @@ import {
   EngineeringSurveyTopbarActions,
 } from "@engineering-office/mfe/components/EngineeringSurveyTopbarActions";
 import { useQuery } from "@tanstack/react-query";
-import { loadOperationsTasks } from "@case-study/mfe/lib/prototype/operations-tasks-storage";
-import { prototypeKeys } from "@platform/app-shared/query/prototype-keys";
+import { loadOperationsTasks } from "@case-study/mfe/lib/app-data/operations-tasks-storage";
+import { appDataKeys } from "@platform/app-shared/query/app-data-keys";
 import {
   financeLeafForArea,
   parseFinanceNavArea,
   showFinancialNavGroup,
-} from "@platform/app-shared/prototype/financial-nav";
+} from "@platform/app-shared/app-data/financial-nav";
 import { useFinanceNavBadges } from "@/lib/query/use-finance-nav-badges";
 import { useActiveTransactionNavBadges } from "@/lib/query/use-active-transaction-nav-badges";
 import { useFailuresNavBadge } from "@/lib/query/use-failures-nav-badge";
@@ -69,13 +69,13 @@ import {
   SystemSettingsNavDropdown,
   ProfileMenu,
 } from "./AppShellNavParts";
-import { PAGE_CHUNK_PRELOAD } from "./PrototypePageView";
+import { PAGE_CHUNK_PRELOAD } from "./AppPageView";
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
   const queryClient = useQueryClient();
-  const { role, rolePages } = usePrototype();
+  const { role, rolePages } = useAppAccess();
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const contentRef = useRef<HTMLDivElement>(null);
@@ -223,7 +223,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   );
 
   const { data: workspaceTasks } = useQuery({
-    queryKey: prototypeKeys.workflowTasks(),
+    queryKey: appDataKeys.workflowTasks(),
     queryFn: loadWorkflowTasksForQuery,
     staleTime: 60_000,
     gcTime: 10 * 60_000,
@@ -296,7 +296,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const opsTaskDeepLink =
     currentPage === "operations-tasks" ? taskQuery?.trim() || null : null;
   const { data: operationsTasks } = useQuery({
-    queryKey: prototypeKeys.operationsTasks(),
+    queryKey: appDataKeys.operationsTasks(),
     queryFn: () => loadOperationsTasks(),
     enabled: Boolean(opsTaskDeepLink),
     staleTime: 30_000,

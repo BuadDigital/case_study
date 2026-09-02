@@ -5,9 +5,9 @@ import { useQueryClient } from "@tanstack/react-query";
 import { isOfflineCapableRole } from "@platform/app-shared/offline/offline-write";
 import { useAuth } from "@platform/app-shared/hooks/useAuth";
 import { useOnlineStatus } from "@platform/app-shared/hooks/useOnlineStatus";
-import { prototypeKeys } from "@platform/app-shared/query/prototype-keys";
-import { prefetchPartySubmissionsForTasks } from "@platform/app-shared/prototype/party-submission-api";
-import { prototypeModulesApiConfig } from "@platform/app-shared/prototype/prototype-modules-api-config";
+import { appDataKeys } from "@platform/app-shared/query/app-data-keys";
+import { prefetchPartySubmissionsForTasks } from "@platform/app-shared/app-data/party-submission-api";
+import { prototypeModulesApiConfig } from "@platform/app-shared/app-data/modules-api-config";
 import {
   BASIC_DOC_PREFETCH_SCOPES,
   BASIC_DOCS_PREFETCH_ID,
@@ -24,9 +24,9 @@ import {
   downloadAttachmentBlob,
   listAttachments,
 } from "@platform/api-client";
-import { getPoRecord } from "@case-study/mfe/lib/prototype/po-intake-storage";
-import { loadOperationsTasks } from "@case-study/mfe/lib/prototype/operations-tasks-storage";
-import { useWorkflowTasksQuery } from "@/lib/query/prototype-queries";
+import { getPoRecord } from "@case-study/mfe/lib/app-data/po-intake-reads";
+import { loadOperationsTasks } from "@case-study/mfe/lib/app-data/operations-tasks-storage";
+import { useWorkflowTasksQuery } from "@/lib/query/app-data-queries";
 
 function scopeKeyForProperty(poNumber: string, propertyId: string): string {
   return `${poNumber.trim()}:${propertyId}`;
@@ -160,7 +160,7 @@ export function FieldOfflinePrefetch() {
           await Promise.allSettled(
             poNumbers.slice(0, 40).map(async (po) => {
               const record = await queryClient.fetchQuery({
-                queryKey: prototypeKeys.poRecord(po),
+                queryKey: appDataKeys.poRecord(po),
                 queryFn: () => getPoRecord(po),
                 staleTime: 60_000,
               });

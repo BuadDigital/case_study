@@ -1,4 +1,4 @@
-using Microsoft.EntityFrameworkCore;
+﻿using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using RealEstateEval.Application;
 using RealEstateEval.Application.Abstractions;
@@ -11,6 +11,7 @@ using RealEstateEval.CaseStudy.Domain;
 using RealEstateEval.Financial.Domain;
 using RealEstateEval.Financial.Infrastructure.Data.Contexts;
 using RealEstateEval.Financial.Application.Abstractions;
+using RealEstateEval.Financial.Application.Rules;
 
 namespace RealEstateEval.Financial.Infrastructure.Services;
 
@@ -87,20 +88,15 @@ public class InspectorFeeService : IInspectorFeeService
     {
         var snapshot = await _lookup.GetWorkflowTaskAsync(workflowTaskId, cancellationToken);
         if (snapshot is null)
-            return (null, "المهمة غير موجودة.");
+            return (null, InspectorFeeAccrualRules.TaskNotFoundError);
         var task = snapshot.ToWorkflowTask();
-
-        if (task.Kind != WorkflowTaskKind.EngineeringSurvey)
-            return (null, "الاستحقاق خاص بمهام الرفع المساحي فقط.");
 
         var submissions = await _lookup.ListPartyTaskSubmissionsByTaskIdsAsync(
             [workflowTaskId], cancellationToken);
         var submission = submissions.FirstOrDefault()?.ToSubmission();
-        if (submission is null || submission.Status != PartyTaskSubmissionStatus.Submitted)
-            return (null, "لا يمكن الاستحقاق قبل إرسال المخرجات وقبولها.");
-
-        if (task.Status != WorkflowTaskStatus.Completed)
-            return (null, "مهمة الرفع المساحي غير مكتملة.");
+        var accrualError = InspectorFeeAccrualRules.ValidateEngineeringSurveyAccrual(task, submission);
+        if (accrualError is not null)
+            return (null, accrualError);
 
         var deeds = await _resolver.ResolveDeedTargetsAsync(task, cancellationToken);
         var existingForTask = await _financial.InspectorFeeLedgers
@@ -108,9 +104,7 @@ public class InspectorFeeService : IInspectorFeeService
             .ToListAsync(cancellationToken);
 
  // Idempotent: every target deed already accrued — do not create a second fee on re-accept.
-        if (deeds.Count > 0
-            && deeds.All(d => existingForTask.Any(l =>
-                l.DeedId == d.DeedId && l.AccruedAtUtc is not null && l.AgreedFeeSar > 0m)))
+        if (InspectorFeeAccrualRules.AllDeedsAccrued(deeds, existingForTask))
         {
             return (await GetByWorkflowTaskIdAsync(workflowTaskId, cancellationToken), null);
         }
@@ -129,7 +123,7 @@ public class InspectorFeeService : IInspectorFeeService
  // Prefer that submitted area for tier pricing, and backfill the property row when empty.
             if (areaM2 is not > 0m)
             {
-                areaM2 = TryParseSurveyOnSiteAreaM2(submission.PayloadJson);
+                areaM2 = InspectorFeeAccrualRules.TryParseSurveyOnSiteAreaM2(submission!.PayloadJson);
                 if (areaM2 is > 0m && deed.PropertyId is Guid propertyId)
                     await BackfillPropertyAreaIfEmptyAsync(
                         propertyId, areaM2.Value, cancellationToken);
@@ -158,7 +152,7 @@ public class InspectorFeeService : IInspectorFeeService
                         && x.UserId == identity.UserId,
                     cancellationToken);
 
-            if (ledger is not null && ledger.AccruedAtUtc is not null && ledger.AgreedFeeSar > 0m)
+            if (ledger is not null && InspectorFeeAccrualRules.IsAccrued(ledger))
             {
                 lastLedger = ledger;
                 continue;
@@ -166,78 +160,34 @@ public class InspectorFeeService : IInspectorFeeService
 
             if (ledger is null)
             {
-                ledger = new InspectorFeeLedger
-                {
-                    Id = Guid.NewGuid(),
-                    TransactionId = identity.TransactionId,
-                    DeedId = identity.DeedId,
-                    UserId = identity.UserId,
-                    WorkflowTaskId = task.Id,
-                    PoNumber = task.PoNumber.Trim(),
-                    PropertyId = deed.PropertyId,
-                    PropertyOrdinal = deed.PropertyId == task.PropertyId
-                        ? task.PropertyOrdinal
-                        : ordinal,
-                    AssigneeId = task.AssigneeId,
-                    InspectorType = partyType,
-                    SupervisingDepartment = SupervisingDepartments.ForTaskKind(task.Kind),
-                    AgreedFeeSar = agreedFee,
-                    PricingTableId = resolvedFee.PricingTableId,
-                    SupervisorDiscountSar = 0m,
-                    DiscountReason = null,
-                    BillingStatus = InspectorFeeBillingStatus.AtFinance,
-                    ExcludedFromBatch = false,
-                    ExclusionReason = null,
-                    ReturnTo = null,
-                    DisbursementBatchId = null,
-                    DisbursementVoucher = null,
-                    AccruedAtUtc = now,
-                    CreatedAtUtc = now,
-                    UpdatedAtUtc = now,
-                };
+                ledger = InspectorFeeAccrualRules.NewAccruedLedger(
+                    task,
+                    identity,
+                    deed,
+                    ordinal,
+                    partyType,
+                    agreedFee,
+                    resolvedFee.PricingTableId,
+                    now);
                 _financial.InspectorFeeLedgers.Add(ledger);
                 existingForTask.Add(ledger);
             }
             else
             {
-                ledger.TransactionId = identity.TransactionId;
-                ledger.DeedId = identity.DeedId;
-                ledger.UserId = identity.UserId;
-                ledger.AgreedFeeSar = agreedFee;
-                ledger.PricingTableId = resolvedFee.PricingTableId;
-                ledger.InspectorType = partyType;
-                ledger.SupervisingDepartment = SupervisingDepartments.ForTaskKind(task.Kind);
-                ledger.AssigneeId = task.AssigneeId;
-                ledger.PropertyId = deed.PropertyId;
-                ledger.PropertyOrdinal = deed.PropertyId == task.PropertyId
-                    ? task.PropertyOrdinal
-                    : ordinal;
-                ledger.PoNumber = task.PoNumber.Trim();
-                if (ledger.SupervisorDiscountSar <= 0m)
-                {
-                    ledger.SupervisorDiscountSar = 0m;
-                    ledger.DiscountReason = null;
-                    ledger.BillingStatus = InspectorFeeBillingStatus.AtFinance;
-                }
-                else
-                {
-                    ledger.BillingStatus = InspectorFeeBillingStatus.OfficeReview;
-                }
-
-                ledger.AccruedAtUtc = now;
-                ledger.UpdatedAtUtc = now;
+                InspectorFeeAccrualRules.RefreshAccruedLedger(
+                    ledger,
+                    task,
+                    identity,
+                    deed,
+                    ordinal,
+                    partyType,
+                    agreedFee,
+                    resolvedFee.PricingTableId,
+                    now);
             }
 
-            _financial.InspectorFeeTransitions.Add(new InspectorFeeTransition
-            {
-                Id = Guid.NewGuid(),
-                WorkflowTaskId = ledger.WorkflowTaskId,
-                FromStatus = "—",
-                ToStatus = ledger.BillingStatus,
-                Reason = "استحقاق عند قبول الأخصائي لمخرجات الرفع المساحي",
-                ActorUserId = actorUserId,
-                CreatedAtUtc = now,
-            });
+            _financial.InspectorFeeTransitions.Add(
+                InspectorFeeAccrualRules.AccrualTransition(ledger, actorUserId, now));
             lastLedger = ledger;
         }
 
@@ -292,117 +242,26 @@ public class InspectorFeeService : IInspectorFeeService
             return null;
         }
 
-        if (!InspectorFeeBillingRules.IsEditableStatus(ledger.BillingStatus))
-            return null;
-
-        if (request.AgreedFeeSar.HasValue)
-        {
-            if (!InspectorFeeRules.IsEmployee(ledger.InspectorType))
-                return null;
- // Flat-priced incentives keep their table stamp; hand override is only for the legacy
- // zero-draft rows that never resolved from a flat schedule.
-            if (ledger.PricingTableId is not null)
-                return null;
-            ledger.AgreedFeeSar = Math.Max(0m, request.AgreedFeeSar.Value);
-        }
-
-        if (request.SupervisorDiscountSar.HasValue)
-        {
-            var nextDiscount = Math.Max(0m, request.SupervisorDiscountSar.Value);
- // E6 (Decision Clause 12): The opponent's change during the objection cancels the negotiation deadline and its reminders.
-            if (ledger.BillingStatus == InspectorFeeBillingStatus.Disputed
-                && ledger.SupervisorDiscountSar != nextDiscount)
-            {
-                ledger.DisputeDeadlineUtc = null;
-                ledger.DisputeNotifiedStages = null;
-            }
-            ledger.SupervisorDiscountSar = nextDiscount;
-        }
-
-        if (request.DiscountReason is not null)
-        {
-            ledger.DiscountReason = string.IsNullOrWhiteSpace(request.DiscountReason)
-                ? null
-                : request.DiscountReason.Trim();
-        }
-
-        if (request.ExcludedFromBatch.HasValue)
-        {
-            ledger.ExcludedFromBatch = request.ExcludedFromBatch.Value;
-            if (!ledger.ExcludedFromBatch)
-                ledger.ExclusionReason = null;
-        }
-
-        if (request.ExclusionReason is not null)
-            ledger.ExclusionReason = request.ExclusionReason.Trim();
-
-        if (ledger.ExcludedFromBatch && string.IsNullOrWhiteSpace(ledger.ExclusionReason))
-            return null;
-
-        if (ledger.SupervisorDiscountSar <= 0)
-            ledger.DiscountReason = null;
-
-        if (!InspectorFeeBillingRules.ValidateDiscount(
-                ledger.SupervisorDiscountSar,
-                ledger.DiscountReason,
-                out _))
-        {
-            return null;
-        }
-
         var fromStatus = ledger.BillingStatus;
+        if (!InspectorFeeAccrualRules.TryApplyPatch(ledger, request)) return null;
+
         var kinds = await _lookup.GetWorkflowTaskKindsAsync(
             [workflowTaskId], cancellationToken);
         var taskKind = kinds.GetValueOrDefault(workflowTaskId);
         var isEmployee = InspectorFeeRules.IsEmployee(ledger.InspectorType);
-        var discountApplied = request.SupervisorDiscountSar.HasValue
-            && ledger.SupervisorDiscountSar > 0m;
+        var discountApplied = InspectorFeeAccrualRules.DiscountApplied(ledger, request);
 
- // Employees never enter the office-approval / dispute loop. A supervisor discount sends the
- // line straight to finance and the assignee is told.
-        if (isEmployee
-            && discountApplied
-            && ledger.BillingStatus is InspectorFeeBillingStatus.Draft
-                or InspectorFeeBillingStatus.SupReview
-                or InspectorFeeBillingStatus.AtFinance
-                or InspectorFeeBillingStatus.Returned
-                or InspectorFeeBillingStatus.Inquiry
-                or InspectorFeeBillingStatus.OfficeReview
-                or InspectorFeeBillingStatus.Disputed)
-        {
-            ledger.BillingStatus = InspectorFeeBillingStatus.AtFinance;
-        }
-        else if (!isEmployee
-            && taskKind == WorkflowTaskKind.EngineeringSurvey
-            && ledger.AccruedAtUtc is not null
-            && ledger.BillingStatus is InspectorFeeBillingStatus.Draft
-                or InspectorFeeBillingStatus.AtFinance
-                or InspectorFeeBillingStatus.OfficeReview
-                or InspectorFeeBillingStatus.Disputed
-                or InspectorFeeBillingStatus.SupReview)
-        {
- // Engineering-office billing: discounted cooperator lines need explicit office approval.
-            if (ledger.SupervisorDiscountSar > 0m)
-                ledger.BillingStatus = InspectorFeeBillingStatus.OfficeReview;
-            else if (ledger.BillingStatus is InspectorFeeBillingStatus.OfficeReview
-                or InspectorFeeBillingStatus.Disputed
-                or InspectorFeeBillingStatus.Draft)
-                ledger.BillingStatus = InspectorFeeBillingStatus.AtFinance;
-        }
+        InspectorFeeAccrualRules.ApplyStatusAfterPatch(
+            ledger,
+            taskKind,
+            isEmployee,
+            discountApplied);
 
         ledger.UpdatedAtUtc = _time.UtcNow();
         if (fromStatus != ledger.BillingStatus)
         {
-            _financial.InspectorFeeTransitions.Add(new InspectorFeeTransition
-            {
-                Id = Guid.NewGuid(),
-                WorkflowTaskId = ledger.WorkflowTaskId,
-                FromStatus = fromStatus,
-                ToStatus = ledger.BillingStatus,
-                Reason = ledger.DiscountReason,
-                ActorUserId = "system",
-                CreatedAtUtc = _time.UtcNow(),
-            });
+            _financial.InspectorFeeTransitions.Add(
+                InspectorFeeAccrualRules.PatchTransition(ledger, fromStatus, _time.UtcNow()));
         }
 
         await _financial.SaveChangesAsync(cancellationToken);
@@ -430,10 +289,13 @@ public class InspectorFeeService : IInspectorFeeService
             .ThenByDescending(x => x.CreatedAtUtc)
             .ToListAsync(cancellationToken);
         if (candidates.Count == 0)
-            return (null, "سجل الأتعاب غير موجود.");
+            return (null, InspectorFeeAccrualRules.LedgerNotFoundError);
 
-        var action = request.Action.Trim().ToLowerInvariant();
-        var ledger = PickLedgerForTransition(candidates, action, actorAssigneeId)
+        var action = InspectorFeeAccrualRules.NormalizeAction(request.Action);
+        var ledger = InspectorFeeAccrualRules.PickLedgerForTransition(
+            candidates,
+            action,
+            actorAssigneeId)
             ?? candidates[0];
 
         var error = await _transitions.ApplyAsync(
@@ -455,65 +317,6 @@ public class InspectorFeeService : IInspectorFeeService
         return (row, null);
     }
 
- /// <summary>
- /// Multiple identity lines can share one workflow task (reassign / legacy UserId).
- /// Prefer the row the actor can legally transition — not an arbitrary insert order.
- /// </summary>
-    public static InspectorFeeLedger? PickLedgerForTransition(
-        IReadOnlyList<InspectorFeeLedger> candidates,
-        string action,
-        string? actorAssigneeId)
-    {
-        if (candidates.Count == 0) return null;
-        if (candidates.Count == 1) return candidates[0];
-
-        bool Actionable(InspectorFeeLedger ledger)
-        {
-            if (!InspectorFeeBillingRules.TryResolveTransition(
-                    ledger.BillingStatus,
-                    action,
-                    out _,
-                    out _,
-                    out _,
-                    ledger.PreSuspensionStatus))
-            {
-                return false;
-            }
-
-            if (action is InspectorFeeActions.SubmitToSupervisor
-                or InspectorFeeActions.CreateDisbursementRequest
-                or InspectorFeeActions.OfficeApproveDiscount
-                or InspectorFeeActions.OfficeDispute)
-            {
-                if (string.IsNullOrWhiteSpace(actorAssigneeId)) return false;
-                if (!string.Equals(
-                        ledger.AssigneeId?.Trim(),
-                        actorAssigneeId.Trim(),
-                        StringComparison.Ordinal))
-                {
-                    return false;
-                }
-
-                if (action == InspectorFeeActions.SubmitToSupervisor)
-                {
-                    if (ledger.ExcludedFromBatch) return false;
-                    if (!InspectorFeeRules.HasBillableAgreedFee(ledger.AgreedFeeSar))
-                        return false;
-                    if (ledger.BillingStatus == InspectorFeeBillingStatus.Returned
-                        && ledger.ReturnTo != InspectorFeeReturnTo.Office)
-                        return false;
-                    if (ledger.BillingStatus == InspectorFeeBillingStatus.Inquiry
-                        && ledger.ReturnTo != InspectorFeeReturnTo.Office)
-                        return false;
-                }
-            }
-
-            return true;
-        }
-
-        return candidates.FirstOrDefault(Actionable);
-    }
-
     public async Task<BatchInspectorFeeTransitionResponseDto> BatchTransitionAsync(
         BatchInspectorFeeTransitionRequest request,
         string actorUserId,
@@ -531,11 +334,9 @@ public class InspectorFeeService : IInspectorFeeService
         {
             if (!Guid.TryParse(rawId.Trim(), out var taskId))
             {
-                failed.Add(new InspectorFeeTransitionErrorDto
-                {
-                    WorkflowTaskId = rawId,
-                    Error = "معرّف مهمة غير صالح.",
-                });
+                failed.Add(InspectorFeeAccrualRules.TransitionError(
+                    rawId,
+                    InspectorFeeAccrualRules.InvalidTaskIdError));
                 continue;
             }
 
@@ -543,22 +344,15 @@ public class InspectorFeeService : IInspectorFeeService
                 .FirstOrDefaultAsync(x => x.WorkflowTaskId == taskId, cancellationToken);
             if (ledger is null)
             {
-                failed.Add(new InspectorFeeTransitionErrorDto
-                {
-                    WorkflowTaskId = rawId,
-                    Error = "سجل الأتعاب غير موجود.",
-                });
+                failed.Add(InspectorFeeAccrualRules.TransitionError(
+                    rawId,
+                    InspectorFeeAccrualRules.LedgerNotFoundError));
                 continue;
             }
 
             var error = await _transitions.ApplyAsync(
                 ledger,
-                new InspectorFeeTransitionRequest
-                {
-                    Action = request.Action,
-                    Reason = request.Reason,
-                    DisbursementVoucher = request.DisbursementVoucher,
-                },
+                InspectorFeeAccrualRules.BatchLineRequest(request),
                 actorUserId,
                 actorAssigneeId,
                 isOperationsManager,
@@ -569,11 +363,7 @@ public class InspectorFeeService : IInspectorFeeService
 
             if (error is not null)
             {
-                failed.Add(new InspectorFeeTransitionErrorDto
-                {
-                    WorkflowTaskId = rawId,
-                    Error = error,
-                });
+                failed.Add(InspectorFeeAccrualRules.TransitionError(rawId, error));
                 continue;
             }
 
@@ -584,8 +374,7 @@ public class InspectorFeeService : IInspectorFeeService
         if (succeeded.Count > 0)
             await _financial.SaveChangesAsync(cancellationToken);
 
-        if (string.Equals(request.Action.Trim(), InspectorFeeActions.Disburse, StringComparison.OrdinalIgnoreCase)
-            && succeeded.Count > 0)
+        if (InspectorFeeAccrualRules.IsDisburseAction(request.Action) && succeeded.Count > 0)
         {
             await NotifyPartiesFeesDisbursedAsync(succeeded, cancellationToken);
         }
@@ -605,17 +394,7 @@ public class InspectorFeeService : IInspectorFeeService
         CancellationToken cancellationToken = default)
     {
  //new disbursement batches are retired — use party billing statements.
-        return Task.FromResult(new CreateDisbursementBatchResponseDto
-        {
-            Failed =
-            [
-                new InspectorFeeTransitionErrorDto
-                {
-                    WorkflowTaskId = "",
-                    Error = "إنشاء طلب صرف متوقف — البنود الجاهزة تُفوتر عبر كشف الأطراف.",
-                },
-            ],
-        });
+        return Task.FromResult(InspectorFeeAccrualRules.RetiredDisbursementBatchResponse());
     }
 
     public async Task DeleteForWorkflowTaskIdsAsync(
@@ -654,20 +433,9 @@ public class InspectorFeeService : IInspectorFeeService
             return;
         }
 
-        var net = InspectorFeeRules.NetFee(ledger.AgreedFeeSar, ledger.SupervisorDiscountSar);
         await _notifications.CreateForUsersAsync(
             [userId],
-            new CreateUserNotificationRequest
-            {
-                Title = "خصم على أتعابك",
-                Body =
-                    $"طُبّق خصم {ledger.SupervisorDiscountSar:N0} ر.س على أمر العمل {ledger.PoNumber}."
-                    + $" الصافي {net:N0} ر.س — البند جاهز للفوترة.",
-                Tone = "warning",
-                Href = "/party-fees",
-                Category = "financial",
-                SourceEvent = $"fee-discount-notified:{ledger.WorkflowTaskId:N}",
-            },
+            InspectorFeeAccrualRules.EmployeeDiscountNotification(ledger),
             cancellationToken);
     }
 
@@ -675,14 +443,8 @@ public class InspectorFeeService : IInspectorFeeService
         IReadOnlyList<InspectorFeeRowDto> rows,
         CancellationToken cancellationToken)
     {
-        var assigneeIds = rows
-            .Select(row => row.AssigneeId?.Trim())
-            .Where(assigneeId => !string.IsNullOrWhiteSpace(assigneeId))
-            .Cast<string>()
-            .Distinct(StringComparer.Ordinal)
-            .ToList();
         var usersByAssignee = await _recipients.ResolveUserIdsForDistributionAssigneesAsync(
-            assigneeIds,
+            InspectorFeeAccrualRules.DistinctAssigneeIds(rows),
             cancellationToken);
         var notifications =
             new List<(string UserId, CreateUserNotificationRequest Request)>();
@@ -692,41 +454,10 @@ public class InspectorFeeService : IInspectorFeeService
             if (string.IsNullOrWhiteSpace(row.AssigneeId)) continue;
             if (!usersByAssignee.TryGetValue(row.AssigneeId.Trim(), out var userId)) continue;
 
-            notifications.Add((userId, new CreateUserNotificationRequest
-            {
-                Title = "تم صرف الأتعاب",
-                Body = $"صُرفت أتعاب العقار {row.PropertyLabel}.",
-                Tone = "success",
-                Href = "/party-fees",
-                Category = "financial",
-                EntityType = "task",
-                EntityId = row.WorkflowTaskId,
-                SourceEvent = $"fee-disbursed:{row.WorkflowTaskId}",
-            }));
+            notifications.Add((userId, InspectorFeeAccrualRules.FeeDisbursedNotification(row)));
         }
 
         await _notifications.CreateManyAsync(notifications, cancellationToken);
-    }
-
- /// <summary>
- /// Reads total area from the engineering-survey submission payload.
- /// </summary>
-    private static decimal? TryParseSurveyOnSiteAreaM2(string payloadJson)
-    {
-        if (string.IsNullOrWhiteSpace(payloadJson)) return null;
-        try
-        {
-            using var doc = System.Text.Json.JsonDocument.Parse(payloadJson);
-            var raw = PartyTaskSubmissionPayloadRules.GetString(
-                doc.RootElement, "onSiteAreaSqm");
-            return EngineeringSurveyFeeRules.TryParseAreaM2(raw, out var area)
-                ? area
-                : null;
-        }
-        catch (System.Text.Json.JsonException)
-        {
-            return null;
-        }
     }
 
     private async Task BackfillPropertyAreaIfEmptyAsync(

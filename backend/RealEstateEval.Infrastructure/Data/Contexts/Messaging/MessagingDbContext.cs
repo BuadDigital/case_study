@@ -20,6 +20,8 @@ public sealed class MessagingDbContext(DbContextOptions<MessagingDbContext> opti
     public DbSet<OutboxMessage> OutboxMessages => Set<OutboxMessage>();
     public DbSet<ProcessedIntegrationEvent> ProcessedIntegrationEvents =>
         Set<ProcessedIntegrationEvent>();
+    public DbSet<CommandIdempotencyRecord> CommandIdempotencyRecords =>
+        Set<CommandIdempotencyRecord>();
     public DbSet<UserNotification> UserNotifications => Set<UserNotification>();
     public DbSet<PushSubscription> PushSubscriptions => Set<PushSubscription>();
     public DbSet<PushPreference> PushPreferences => Set<PushPreference>();

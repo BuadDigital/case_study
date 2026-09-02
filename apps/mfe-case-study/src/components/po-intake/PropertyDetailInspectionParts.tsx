@@ -16,35 +16,35 @@ import {
 import { createPortal } from "react-dom";
 import { arabicStepLabel } from "../field-inspection/FieldInspectionWorkParts";
 import { cn, useToast } from "@platform/ui-kit";
-import { formatDateAr } from "../../lib/prototype/po-intake-data";
-import type { InspectorWorkspacePatch } from "../../lib/prototype/inspector-workspace-storage";
+import { formatDateAr } from "../../lib/app-data/po-intake-data";
+import type { InspectorWorkspacePatch } from "../../lib/app-data/inspector-workspace-model";
 import {
   parseInspectorCount,
   type InspectorComponentPhotoKey,
   type InspectorPhotoAttachment,
   type InspectorSlotPhoto,
   type InspectorWorkspaceDraft,
-} from "../../lib/prototype/inspector-workspace-data";
+} from "../../lib/app-data/inspector-workspace-data";
 import {
   clearInspectorPhotoDataUrl,
   getInspectorPhotoDataUrl,
   prefetchInspectorPhoto,
   uploadInspectorPhotoFromFile,
-} from "../../lib/prototype/inspector-photo-upload";
+} from "../../lib/app-data/inspector-photo-upload";
 import {
   INSPECTOR_PHOTO_ACCEPT,
   filterInspectorPhotoFiles,
   useInspectorPhotoDropZone,
-} from "../../lib/prototype/inspector-photo-drop";
+} from "../../lib/app-data/inspector-photo-drop";
 import { InspectorPhotoFilePicker } from "../field-inspection/InspectorPhotoFilePicker";
 import { InspectorStampedPhotoThumb } from "../field-inspection/InspectorStampedPhotoThumb";
 import { photoLocationFlagLabel } from "@platform/app-shared/media/photo-location";
-import { inspectorInvalidControlClass } from "../../lib/prototype/inspector-workspace-validation";
+import { inspectorInvalidControlClass } from "../../lib/app-data/inspector-workspace-validation";
 import {
   formatDualCalendarDate,
   parseDualCalendarDate,
   type DualCalendarKind,
-} from "../../lib/prototype/dual-calendar-date";
+} from "../../lib/app-data/dual-calendar-date";
 import { DualCalendarPickerPanel } from "../field-inspection/DualCalendarPickerPanel";
 
 /** Shared control style for in-tab edit inputs — matches InsField typography. */

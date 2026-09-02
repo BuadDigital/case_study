@@ -11,8 +11,8 @@ import {
   opsBtnGhost,
   opsFldTextarea,
   opsTfLbl,
-} from "../../lib/prototype/ops-tasks-tw";
-import type { WorkflowTask } from "../../lib/prototype/tasks-storage";
+} from "../../lib/app-data/ops-tasks-tw";
+import type { WorkflowTask } from "../../lib/app-data/tasks-storage";
 
 function LockOpenIcon({ size = 20 }: { size?: number }) {
   return (

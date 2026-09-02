@@ -1,5 +1,6 @@
 import { parseFieldErrorsFromResponse } from "./field-errors";
 import { getApiBase } from "./api-base";
+import { withIdempotencyKey } from "./idempotency-key";
 import { repositoryFetch as fetch } from "./write-repository";
 import { fetchAllListPages } from "./pagination";
 
@@ -8,11 +9,12 @@ export type WorkOrdersApiConfig = {
   token: string;
 };
 
-function headers(token: string): HeadersInit {
-  return {
+function headers(token: string, idempotencyKey?: string): HeadersInit {
+  const base = {
     "Content-Type": "application/json",
     Authorization: `Bearer ${token}`,
   };
+  return idempotencyKey ? withIdempotencyKey(base, idempotencyKey) : base;
 }
 
 export type PropertyContactDto = {
@@ -529,6 +531,7 @@ export async function listPriorDeeds(
 export async function createWorkOrder(
   config: WorkOrdersApiConfig,
   body: CreateWorkOrderRequest,
+  idempotencyKey?: string,
 ): Promise<ApiOk<WorkOrderDto> | ApiErr> {
   const base = config.baseUrl ?? getApiBase();
   const payload: CreateWorkOrderRequest = {
@@ -538,7 +541,7 @@ export async function createWorkOrder(
   try {
     const res = await fetch(`${base}/api/work-orders`, {
       method: "POST",
-      headers: headers(config.token),
+      headers: headers(config.token, idempotencyKey),
       body: JSON.stringify(payload),
     });
     if (res.status === 401) return { ok: false, kind: "auth" };
@@ -753,6 +756,7 @@ export async function completePropertyBourseData(
   poNumber: string,
   propertyId: string,
   body: UpdatePropertyBourseRequest,
+  idempotencyKey?: string,
 ): Promise<ApiOk<WorkOrderPropertyDto> | ApiErr> {
   const base = config.baseUrl ?? getApiBase();
   try {
@@ -760,7 +764,7 @@ export async function completePropertyBourseData(
       `${base}/api/work-orders/${encodeURIComponent(poNumber.trim())}/properties/${propertyId}/bourse`,
       {
         method: "PUT",
-        headers: headers(config.token),
+        headers: headers(config.token, idempotencyKey),
         body: JSON.stringify(body),
       },
     );

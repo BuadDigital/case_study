@@ -120,6 +120,7 @@ export async function submitWithOfflineFallback(input: {
   kind: OfflineDraftRecord["kind"];
   payload: unknown;
   onlineSubmit: () => Promise<void>;
+  idempotencyKey?: string;
 }): Promise<{ queued: boolean }> {
   const userId = currentOfflineUserId();
   if (!userId) {
@@ -134,7 +135,11 @@ export async function submitWithOfflineFallback(input: {
       kind: input.kind,
       payload: input.payload,
     });
-    await enqueueSubmitLocally({ userId, taskId: input.taskId });
+    await enqueueSubmitLocally({
+      userId,
+      taskId: input.taskId,
+      idempotencyKey: input.idempotencyKey,
+    });
     await beginOfflineLease(userId);
     return { queued: true };
   }
@@ -150,7 +155,11 @@ export async function submitWithOfflineFallback(input: {
         kind: input.kind,
         payload: input.payload,
       });
-      await enqueueSubmitLocally({ userId, taskId: input.taskId });
+      await enqueueSubmitLocally({
+        userId,
+        taskId: input.taskId,
+        idempotencyKey: input.idempotencyKey,
+      });
       await beginOfflineLease(userId);
     });
   }

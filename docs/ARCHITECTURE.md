@@ -60,3 +60,7 @@ packages/api-client/      HTTP client boundary
 1. Move remaining `lib/prototype/*-storage.ts` modules behind API + Infrastructure services.
 2. Add `ICourtsCatalogService` so `CourtsController` does not use `DbContext` directly.
 3. Split `apps/shell` into microfrontends per `apps/plan/FRONTEND.md`.
+
+## Assessments
+
+- [`architecture/solid-scorecard.md`](architecture/solid-scorecard.md) — 2026-09-02 design-pattern inventory and SOLID scorecard with measured evidence and recommended next slices.

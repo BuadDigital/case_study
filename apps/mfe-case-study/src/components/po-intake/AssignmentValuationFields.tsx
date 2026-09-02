@@ -5,14 +5,14 @@ import {
   VALUATION_PURPOSE_OPTIONS,
   VALUE_BASIS_OPTIONS,
   VALUE_PREMISE_OPTIONS,
-} from "@platform/app-shared/prototype/assignment-valuation-defaults";
+} from "@platform/app-shared/app-data/assignment-valuation-defaults";
 import {
   basisOfValueForAssignment,
   defaultSubClientId,
   valuationPurposeForAssignment,
   valuePremiseForAssignment,
   type AssignmentType,
-} from "../../lib/prototype/po-intake-data";
+} from "../../lib/app-data/po-intake-data";
 
 export function AssignmentValuationFields({
   assignmentType,

@@ -2,10 +2,10 @@
 
 import { useRouter } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
-import { ROLES } from "@platform/app-shared/prototype/constants";
+import { ROLES } from "@platform/app-shared/app-data/constants";
 import { poPropertiesPath } from "@platform/app-shared/domain/po-routes";
-import { prototypeKeys } from "@platform/app-shared/query/prototype-keys";
-import { usePrototype } from "@platform/app-shared/contexts/PrototypeContext";
+import { appDataKeys } from "@platform/app-shared/query/app-data-keys";
+import { useAppAccess } from "@platform/app-shared/contexts/AppAccessContext";
 import { failureRaiserLabelForPartyRole } from "@failures/mfe/lib/failures-party-raiser-scope";
 import {
   FAILURE_RAISER_SPECIALIST,
@@ -23,7 +23,7 @@ export function PoPropertyFailureRoute({
 }) {
   const router = useRouter();
   const queryClient = useQueryClient();
-  const { role } = usePrototype();
+  const { role } = useAppAccess();
   const { data: record } = usePoRecordQuery(poNumber);
   const property = record?.properties.find((p) => p.id === propertyId);
   const partyRaiser = failureRaiserLabelForPartyRole(role);
@@ -49,7 +49,7 @@ export function PoPropertyFailureRoute({
       specialist={ROLES[role]?.name ?? "أخصائي"}
       raisedByRole={raisedByRole}
       onDone={() => {
-        void queryClient.invalidateQueries({ queryKey: prototypeKeys.all });
+        void queryClient.invalidateQueries({ queryKey: appDataKeys.all });
         router.push(afterPath);
       }}
       onCancel={() => router.push(afterPath)}

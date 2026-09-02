@@ -6,7 +6,7 @@ import {
   INSPECTOR_PHOTO_ACCEPT,
   filterInspectorPhotoFiles,
   useInspectorPhotoDropZone,
-} from "../../lib/prototype/inspector-photo-drop";
+} from "../../lib/app-data/inspector-photo-drop";
 
 const UPLOAD_BTN =
   "inline-flex w-full items-center justify-center gap-1.5 rounded-md border border-dashed border-border-md bg-surface px-2.5 py-2 text-[11px] text-text-2 hover:border-primary hover:text-primary disabled:cursor-not-allowed disabled:opacity-60 max-lg:min-h-12 max-lg:rounded-xl max-lg:text-[13px] max-lg:font-semibold";

@@ -26,8 +26,9 @@ import {
 import { InsDualCalendarDateField } from "../po-intake/PropertyDetailInspectionParts";
 import { ReturnedForCorrectionNote } from "../ui/ReturnedForCorrectionNote";
 import { RegField, RegTextarea} from "@platform/app-shared/registration/FormFields";
-import type { PartyTaskPageDef } from "@platform/app-shared/prototype/party-task-pages";
-import { usePrototype } from "@platform/app-shared/contexts/PrototypeContext";
+import type { PartyTaskPageDef } from "@platform/app-shared/app-data/party-task-pages";
+import { useAppAccess } from "@platform/app-shared/contexts/AppAccessContext";
+import { useIdempotentAction } from "@platform/app-shared";
 import { JEDDAH_DEFAULT_LAT, JEDDAH_DEFAULT_LNG } from "@platform/app-shared/domain/jeddah-default-coords";
 import { BuildingInventorySection } from "./BuildingInventorySection";
 import { InspectionLimitsSection } from "./InspectionLimitsSection";
@@ -49,23 +50,23 @@ import {
   mobileControlClassName,
 } from "./InspectMobileControls";
 import { useInspectorKeyAvailability } from "./InspectorKeyStatusTab";
-import { clearInspectorPhotoDataUrl, uploadInspectorPhotoFromFile } from "../../lib/prototype/inspector-photo-upload";
+import { clearInspectorPhotoDataUrl, uploadInspectorPhotoFromFile } from "../../lib/app-data/inspector-photo-upload";
 import {
   INSPECTOR_PHOTO_ACCEPT,
   filterInspectorPhotoFiles,
   useInspectorPhotoDropZone,
-} from "../../lib/prototype/inspector-photo-drop";
+} from "../../lib/app-data/inspector-photo-drop";
 import {
   approximatePropertyGeo,
   boundariesMarkedUnavailable,
   formatPropertyDeedDisplay,
   PROPERTY_BOUNDARY_ROWS,
   type PoPropertyIntake,
-} from "../../lib/prototype/po-intake-data";
+} from "../../lib/app-data/po-intake-data";
 import {
   declarationPhoneGate,
   hasAnyPartyPhone,
-} from "../../lib/prototype/documentary-workflow-gates";
+} from "../../lib/app-data/documentary-workflow-gates";
 import { usePoRecordQuery } from "../../query/case-study-queries";
 import { useFacadeOptions } from "../../query/use-facade-options";
 import { InspectorStepNav, type InspectorStepId } from "./InspectorStepNav";
@@ -95,6 +96,8 @@ import {
   isMovablesPresent,
   isOccupied,
   isShopHiddenInspectorComponentKey,
+  ensureInspectorOriginalMapOnSubmit,
+  mapPinPatchForActor,
   newObservationId,
   parseInspectorCount,
   patchInspectorFeatureValues,
@@ -102,10 +105,15 @@ import {
   type InspectorComponentPhotoKey,
   type InspectorBoundaryKey,
   type InspectorWorkspaceDraft,
-} from "../../lib/prototype/inspector-workspace-data";
-import { finalizeInspectorWorkspace } from "../../lib/prototype/finalize-field-inspection-submission";
-import { INFATH_FIELD_LABELS } from "../../lib/prototype/infath-field-labels";
-import { getOrCreateInspectorWorkspace, saveInspectorWorkspaceDraft, updateInspectorWorkspace, mergeInspectorWorkspacePatch } from "../../lib/prototype/inspector-workspace-storage";
+} from "../../lib/app-data/inspector-workspace-data";
+import { finalizeInspectorWorkspace } from "../../lib/app-data/finalize-field-inspection-submission";
+import { INFATH_FIELD_LABELS } from "../../lib/app-data/infath-field-labels";
+import { mergeInspectorWorkspacePatch } from "../../lib/app-data/inspector-workspace-model";
+import {
+  getOrCreateInspectorWorkspace,
+  saveInspectorWorkspaceDraft,
+  updateInspectorWorkspace,
+} from "../../lib/app-data/inspector-workspace-commands";
 import {
   firstInspectorWorkspaceError,
   firstInspectorWorkspaceErrorTarget,
@@ -113,8 +121,8 @@ import {
   scrollToInspectorField,
   validateInspectorWorkspace,
   type InspectorWorkspaceFieldErrors,
-} from "../../lib/prototype/inspector-workspace-validation";
-import type { WorkflowTask } from "../../lib/prototype/tasks-storage";
+} from "../../lib/app-data/inspector-workspace-validation";
+import type { WorkflowTask } from "../../lib/app-data/tasks-storage";
 
 const INSPECTOR_BUILDING_AREA_INPUTS = [
   ["builtArea", "مساحة البناء (م²)"],
@@ -171,7 +179,7 @@ export function FieldInspectionWorkBody({
   hideSubmitFooter?: boolean;
 }) {
   const mobile = layout === "mobile";
-  const { role } = usePrototype();
+  const { role } = useAppAccess();
   const { showToast } = useToast();
   const propertyId = task.propertyId ?? "";
   const { data: record } = usePoRecordQuery(task.poNumber);
@@ -254,6 +262,14 @@ export function FieldInspectionWorkBody({
     ? boundariesMarkedUnavailable(property.boundariesAvailability)
     : false;
 
+  const { execute: executeInspectorSubmit } = useIdempotentAction(
+    useCallback(
+      async (idempotencyKey: string) =>
+        finalizeInspectorWorkspace(task.id, idempotencyKey),
+      [task.id],
+    ),
+  );
+
   const persist = useCallback(
     (patch: Parameters<typeof updateInspectorWorkspace>[1]) => {
       if (!task.id || workLocked) return;
@@ -297,15 +313,13 @@ export function FieldInspectionWorkBody({
 
   const requestMapMove = useCallback(
     (lat: number, lng: number): "saved" | "pending" | "same" => {
+      if (!draft) return "same";
       const nextLat = lat.toFixed(5);
       const nextLng = lng.toFixed(5);
-      const curLat = (draft?.mapLatitude ?? "").trim();
-      const curLng = (draft?.mapLongitude ?? "").trim();
+      const curLat = draft.mapLatitude.trim();
+      const curLng = draft.mapLongitude.trim();
       if (!curLat || !curLng || !mapPinnedRef.current) {
-        persist({
-          mapLatitude: nextLat,
-          mapLongitude: nextLng,
-        });
+        persist(mapPinPatchForActor(draft, nextLat, nextLng, "inspector"));
         return "saved";
       }
       if (curLat === nextLat && curLng === nextLng) return "same";
@@ -317,7 +331,7 @@ export function FieldInspectionWorkBody({
       });
       return "pending";
     },
-    [draft?.mapLatitude, draft?.mapLongitude, persist],
+    [draft, persist],
   );
 
   const saveDraft = useCallback(async (): Promise<boolean> => {
@@ -378,7 +392,8 @@ export function FieldInspectionWorkBody({
     hostRef.current?.onSavingChange?.(true);
     setFormError(null);
     try {
-      const saved = await saveInspectorWorkspaceDraft(draft);
+      const toSave = ensureInspectorOriginalMapOnSubmit(draft);
+      const saved = await saveInspectorWorkspaceDraft(toSave);
       setDraft(saved);
     } catch (err: unknown) {
       hostRef.current?.onSavingChange?.(false);
@@ -397,9 +412,12 @@ export function FieldInspectionWorkBody({
         (draft.clientDeclarationSigned && hasPhone),
     });
     if (patched) setDraft(patched);
-    const result = await finalizeInspectorWorkspace(task.id);
+    const outcome = await executeInspectorSubmit();
     hostRef.current?.onSavingChange?.(false);
 
+    if (outcome.status === "skipped") return false;
+
+    const result = outcome.value;
     if (result.ok) {
       setDraft(result.draft);
       if (result.queued) {
@@ -433,6 +451,7 @@ export function FieldInspectionWorkBody({
     property,
     keyAvailability.keyAvailable,
     boundariesUnavailable,
+    executeInspectorSubmit,
   ]);
 
   useEffect(() => {
@@ -610,15 +629,19 @@ export function FieldInspectionWorkBody({
   const featureFields = visibleInspectorFeatureFields(isLandInspection);
 
   function confirmPendingMapMove() {
-    if (!pendingMapMove) return;
+    if (!pendingMapMove || !draft) return;
     setMapBackup({
       lat: pendingMapMove.prevLat,
       lng: pendingMapMove.prevLng,
     });
-    persist({
-      mapLatitude: pendingMapMove.nextLat,
-      mapLongitude: pendingMapMove.nextLng,
-    });
+    persist(
+      mapPinPatchForActor(
+        draft,
+        pendingMapMove.nextLat,
+        pendingMapMove.nextLng,
+        "inspector",
+      ),
+    );
     setPendingMapMove(null);
     setMapPinned(true);
   }
@@ -629,11 +652,8 @@ export function FieldInspectionWorkBody({
   }
 
   function undoMapMove() {
-    if (!mapBackup) return;
-    persist({
-      mapLatitude: mapBackup.lat,
-      mapLongitude: mapBackup.lng,
-    });
+    if (!mapBackup || !draft) return;
+    persist(mapPinPatchForActor(draft, mapBackup.lat, mapBackup.lng, "inspector"));
     setMapBackup(null);
     setMapPinEpoch((n) => n + 1);
   }
@@ -758,7 +778,16 @@ export function FieldInspectionWorkBody({
                   disabled={locked}
                   value={draft.mapLatitude}
                   placeholder={JEDDAH_DEFAULT_LAT}
-                  onChange={(e) => persist({ mapLatitude: e.target.value })}
+                  onChange={(e) =>
+                    persist(
+                      mapPinPatchForActor(
+                        draft,
+                        e.target.value,
+                        draft.mapLongitude,
+                        "inspector",
+                      ),
+                    )
+                  }
                 />
               </div>
               <div className="min-w-0">
@@ -772,7 +801,16 @@ export function FieldInspectionWorkBody({
                   disabled={locked}
                   value={draft.mapLongitude}
                   placeholder={JEDDAH_DEFAULT_LNG}
-                  onChange={(e) => persist({ mapLongitude: e.target.value })}
+                  onChange={(e) =>
+                    persist(
+                      mapPinPatchForActor(
+                        draft,
+                        draft.mapLatitude,
+                        e.target.value,
+                        "inspector",
+                      ),
+                    )
+                  }
                 />
               </div>
             </div>

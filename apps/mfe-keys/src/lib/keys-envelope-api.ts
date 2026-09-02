@@ -18,12 +18,12 @@ import {
   type PropertyCourtAccessDto,
   type UpsertPropertyCourtAccessRequest,
 } from "@platform/api-client";
-import { apiErrorMessage, resolveApiError, type MutationResult, } from "@platform/app-shared/prototype/work-orders-api-config";
+import { apiErrorMessage, resolveApiError, type MutationResult, } from "@platform/app-shared/app-data/work-orders-api-config";
 import { processEvidencePhoto } from "@platform/app-shared/media/process-evidence-photo";
 import { fileToBase64 } from "@platform/app-shared/media/file-encoding";
 import { currentOfflineUserId, isBrowserOffline, uploadAttachmentWithOfflineFallback } from "@platform/app-shared/offline/offline-write";
 import { beginOfflineLease, enqueueOutbox, type OutboxKind } from "@platform/offline-client";
-import { prototypeModulesApiConfig } from "@platform/app-shared/prototype/prototype-modules-api-config";
+import { prototypeModulesApiConfig } from "@platform/app-shared/app-data/modules-api-config";
 import type {
   KeyAssignmentMatchStatus,
   KeyEnvelopeFeeReportRow,
@@ -132,6 +132,7 @@ async function enqueueKeyEnvelopeWrite(
   kind: OutboxKind,
   envelopeId: string,
   payload: Record<string, unknown>,
+  idempotencyKey?: string,
 ): Promise<boolean> {
   const userId = currentOfflineUserId();
   if (!userId) return false;
@@ -140,6 +141,7 @@ async function enqueueKeyEnvelopeWrite(
     kind,
     targetId: envelopeId,
     payloadJson: JSON.stringify({ envelopeId, ...payload }),
+    idempotencyKey,
   });
   await beginOfflineLease(userId);
   return true;
@@ -324,6 +326,7 @@ export type CreateEnvelopeInput = {
 
 export async function registerKeyEnvelope(
   input: CreateEnvelopeInput,
+  idempotencyKey?: string,
 ): Promise<MutationResult<KeyEnvelopeRow>> {
   const config = prototypeModulesApiConfig();
   const body: CreateKeyEnvelopeRequest = {
@@ -353,6 +356,7 @@ export async function registerKeyEnvelope(
       kind: "key-envelope-create",
       targetId: clientId,
       payloadJson: JSON.stringify({ ...body, clientEnvelopeId: clientId }),
+      idempotencyKey,
     });
     await beginOfflineLease(userId);
     return { ok: true, data: pendingEnvelopeStub(body, clientId) };
@@ -361,7 +365,7 @@ export async function registerKeyEnvelope(
   if (!config) return { ok: false, error: apiErrorMessage("auth") };
 
   try {
-    const result = await createKeyEnvelope(config, body);
+    const result = await createKeyEnvelope(config, body, idempotencyKey);
     if (!result.ok) {
       if (result.kind === "network" && userId) {
         const clientId = `local-pending:${crypto.randomUUID()}`;
@@ -370,6 +374,7 @@ export async function registerKeyEnvelope(
           kind: "key-envelope-create",
           targetId: clientId,
           payloadJson: JSON.stringify({ ...body, clientEnvelopeId: clientId }),
+          idempotencyKey,
         });
         await beginOfflineLease(userId);
         return { ok: true, data: pendingEnvelopeStub(body, clientId) };
@@ -385,6 +390,7 @@ export async function registerKeyEnvelope(
         kind: "key-envelope-create",
         targetId: clientId,
         payloadJson: JSON.stringify({ ...body, clientEnvelopeId: clientId }),
+        idempotencyKey,
       });
       await beginOfflineLease(userId);
       return { ok: true, data: pendingEnvelopeStub(body, clientId) };
@@ -401,6 +407,7 @@ export async function confirmEnvelopeAssignment(
   assignmentId: string,
   status: KeyAssignmentMatchStatus,
   notes?: string,
+  idempotencyKey?: string,
 ): Promise<MutationResult<KeyEnvelopeRow>> {
   const config = prototypeModulesApiConfig();
   const body = { assignmentId, status, notes: notes ?? null };
@@ -410,6 +417,7 @@ export async function confirmEnvelopeAssignment(
       "key-envelope-assignment-confirm",
       envelopeId,
       body,
+      idempotencyKey,
     );
     return { ok: true, data: { id: envelopeId } as KeyEnvelopeRow };
   }
@@ -420,6 +428,7 @@ export async function confirmEnvelopeAssignment(
       envelopeId,
       assignmentId,
       { status, notes: notes ?? null },
+      idempotencyKey,
     );
     if (!result.ok) {
       if (result.kind === "network" && userId) {
@@ -427,6 +436,7 @@ export async function confirmEnvelopeAssignment(
           "key-envelope-assignment-confirm",
           envelopeId,
           body,
+          idempotencyKey,
         );
         return { ok: true, data: { id: envelopeId } as KeyEnvelopeRow };
       }
@@ -439,6 +449,7 @@ export async function confirmEnvelopeAssignment(
         "key-envelope-assignment-confirm",
         envelopeId,
         body,
+        idempotencyKey,
       );
       return { ok: true, data: { id: envelopeId } as KeyEnvelopeRow };
     }
@@ -452,23 +463,35 @@ export async function confirmEnvelopeAssignment(
 export async function createEnvelopeHandoff(
   envelopeId: string,
   body: CreateKeyEnvelopeHandoffRequest,
+  idempotencyKey?: string,
 ): Promise<MutationResult<KeyEnvelopeRow>> {
   const config = prototypeModulesApiConfig();
   const userId = currentOfflineUserId();
   if ((!config || isBrowserOffline()) && userId) {
-    await enqueueKeyEnvelopeWrite("key-envelope-handoff-create", envelopeId, {
-      ...body,
-    });
+    await enqueueKeyEnvelopeWrite(
+      "key-envelope-handoff-create",
+      envelopeId,
+      { ...body },
+      idempotencyKey,
+    );
     return { ok: true, data: { id: envelopeId } as KeyEnvelopeRow };
   }
   if (!config) return { ok: false, error: apiErrorMessage("auth") };
   try {
-    const result = await createKeyEnvelopeHandoff(config, envelopeId, body);
+    const result = await createKeyEnvelopeHandoff(
+      config,
+      envelopeId,
+      body,
+      idempotencyKey,
+    );
     if (!result.ok) {
       if (result.kind === "network" && userId) {
-        await enqueueKeyEnvelopeWrite("key-envelope-handoff-create", envelopeId, {
-          ...body,
-        });
+        await enqueueKeyEnvelopeWrite(
+          "key-envelope-handoff-create",
+          envelopeId,
+          { ...body },
+          idempotencyKey,
+        );
         return { ok: true, data: { id: envelopeId } as KeyEnvelopeRow };
       }
       return fail(result, "تعذّر تسجيل المناولة");
@@ -476,9 +499,12 @@ export async function createEnvelopeHandoff(
     return { ok: true, data: mapEnvelope(result.data) };
   } catch (err) {
     if (userId) {
-      await enqueueKeyEnvelopeWrite("key-envelope-handoff-create", envelopeId, {
-        ...body,
-      });
+      await enqueueKeyEnvelopeWrite(
+        "key-envelope-handoff-create",
+        envelopeId,
+        { ...body },
+        idempotencyKey,
+      );
       return { ok: true, data: { id: envelopeId } as KeyEnvelopeRow };
     }
     return {
@@ -491,23 +517,35 @@ export async function createEnvelopeHandoff(
 export async function confirmEnvelopeHandoff(
   envelopeId: string,
   handoffId: string,
+  idempotencyKey?: string,
 ): Promise<MutationResult<KeyEnvelopeRow>> {
   const config = prototypeModulesApiConfig();
   const userId = currentOfflineUserId();
   if ((!config || isBrowserOffline()) && userId) {
-    await enqueueKeyEnvelopeWrite("key-envelope-handoff-confirm", envelopeId, {
-      handoffId,
-    });
+    await enqueueKeyEnvelopeWrite(
+      "key-envelope-handoff-confirm",
+      envelopeId,
+      { handoffId },
+      idempotencyKey,
+    );
     return { ok: true, data: { id: envelopeId } as KeyEnvelopeRow };
   }
   if (!config) return { ok: false, error: apiErrorMessage("auth") };
   try {
-    const result = await confirmKeyEnvelopeHandoff(config, envelopeId, handoffId);
+    const result = await confirmKeyEnvelopeHandoff(
+      config,
+      envelopeId,
+      handoffId,
+      idempotencyKey,
+    );
     if (!result.ok) {
       if (result.kind === "network" && userId) {
-        await enqueueKeyEnvelopeWrite("key-envelope-handoff-confirm", envelopeId, {
-          handoffId,
-        });
+        await enqueueKeyEnvelopeWrite(
+          "key-envelope-handoff-confirm",
+          envelopeId,
+          { handoffId },
+          idempotencyKey,
+        );
         return { ok: true, data: { id: envelopeId } as KeyEnvelopeRow };
       }
       return fail(result, "تعذّر تأكيد المناولة");
@@ -515,9 +553,12 @@ export async function confirmEnvelopeHandoff(
     return { ok: true, data: mapEnvelope(result.data) };
   } catch (err) {
     if (userId) {
-      await enqueueKeyEnvelopeWrite("key-envelope-handoff-confirm", envelopeId, {
-        handoffId,
-      });
+      await enqueueKeyEnvelopeWrite(
+        "key-envelope-handoff-confirm",
+        envelopeId,
+        { handoffId },
+        idempotencyKey,
+      );
       return { ok: true, data: { id: envelopeId } as KeyEnvelopeRow };
     }
     return {

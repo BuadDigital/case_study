@@ -19,7 +19,7 @@ export { SystemScreenCatalogView } from "./views/SystemScreenCatalogView";
 
 export * from "./lib/settings-api-config";
 export * from "./lib/users-api";
-export * from "./lib/prototype/courts-storage";
-export * from "./lib/prototype/case-study-info-roles-data";
-export * from "./lib/prototype/case-study-info-roles-storage";
+export * from "./lib/app-data/courts-storage";
+export * from "./lib/app-data/case-study-info-roles-data";
+export * from "./lib/app-data/case-study-info-roles-storage";
 export * from "./query/settings-queries";

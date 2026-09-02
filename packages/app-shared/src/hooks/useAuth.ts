@@ -3,7 +3,7 @@
 import { useCallback, useMemo } from "react";
 import { revokeAuthSession } from "@platform/api-client";
 import { clearAuthSession, getValidAuthSession } from "@platform/auth-client";
-import { usePrototype } from "../contexts/PrototypeContext";
+import { useAppAccess } from "../contexts/AppAccessContext";
 
 export function useAuth() {
   const {
@@ -14,7 +14,7 @@ export function useAuth() {
     capabilities,
     hasCapability,
     rolePages,
-  } = usePrototype();
+  } = useAppAccess();
   // Session ref is stable (raw-string cache in auth-client) so it works as a dependency.
   const session = getValidAuthSession();
 

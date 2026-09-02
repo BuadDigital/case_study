@@ -1,5 +1,5 @@
 import type { RoleId } from "@platform/types";
-import type { StaffUser } from "@platform/app-shared/prototype/constants";
+import type { StaffUser } from "@platform/app-shared/app-data/constants";
 
 export type DistributionAssignee = {
   id: string;
@@ -53,7 +53,7 @@ function employmentSubtitle(user: StaffUser): string | undefined {
     (d) => d.section === "بيانات التوظيف" && d.label === "نوع التوظيف",
   )?.value;
   if (employment?.trim()) return `${user.role} — ${employment.trim()}`;
-  if (user.source === "proc") return user.role;
+  if (user.roleId === "engineering-office") return user.role;
   return user.role;
 }
 
@@ -135,7 +135,7 @@ export function getCaseSpecialists(users: StaffUser[]): DistributionAssignee[] {
   return staffUsersForPartyRole(users, "case-specialist");
 }
 
-export function getPrototypeRoleAssigneeId(
+export function getRoleAssigneeId(
   users: StaffUser[],
 ): Partial<Record<RoleId, string>> {
   const map: Partial<Record<RoleId, string>> = {};

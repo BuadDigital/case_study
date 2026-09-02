@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using RealEstateEval.Application;
 using RealEstateEval.Application.Contracts;
 using RealEstateEval.Financial.Domain;
+using RealEstateEval.Financial.Application.Rules;
 
 namespace RealEstateEval.Financial.Infrastructure.Services;
 

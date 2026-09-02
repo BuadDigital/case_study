@@ -3,6 +3,7 @@
  */
 import { parseFieldErrorsFromResponse } from "./field-errors";
 import { getApiBase } from "./api-base";
+import { withIdempotencyKey } from "./idempotency-key";
 import { repositoryFetch as fetch } from "./write-repository";
 import type { ApiErr, ApiOk, WorkOrdersApiConfig } from "./work-orders";
 
@@ -56,11 +57,12 @@ export type FailureNoteRequest = {
   note: string;
 };
 
-function headers(token: string): HeadersInit {
-  return {
+function headers(token: string, idempotencyKey?: string): HeadersInit {
+  const base = {
     "Content-Type": "application/json",
     Authorization: `Bearer ${token}`,
   };
+  return idempotencyKey ? withIdempotencyKey(base, idempotencyKey) : base;
 }
 
 export async function listFailures(
@@ -107,6 +109,7 @@ async function postFailureAction(
   config: FailuresApiConfig,
   path: string,
   body?: unknown,
+  idempotencyKey?: string,
 ): Promise<
   | ApiOk<FailureRecordDto>
   | (ApiErr & { errors?: Record<string, string> })
@@ -115,7 +118,7 @@ async function postFailureAction(
   try {
     const res = await fetch(`${base}${path}`, {
       method: "POST",
-      headers: headers(config.token),
+      headers: headers(config.token, idempotencyKey),
       body: body !== undefined ? JSON.stringify(body) : undefined,
     });
     if (res.status === 401) return { ok: false, kind: "auth" };
@@ -133,11 +136,12 @@ async function postFailureAction(
 export async function createFailure(
   config: FailuresApiConfig,
   request: CreateFailureRequest,
+  idempotencyKey?: string,
 ): Promise<
   | ApiOk<FailureRecordDto>
   | (ApiErr & { errors?: Record<string, string> })
 > {
-  return postFailureAction(config, "/api/failures", request);
+  return postFailureAction(config, "/api/failures", request, idempotencyKey);
 }
 
 export async function reportBourseObstruction(

@@ -36,19 +36,19 @@ import {
   type InspectorFeeRowDto,
   type PartyBillingStatementDto,
 } from "@platform/api-client";
-import { prototypeKeys } from "@platform/app-shared/query/prototype-keys";
-import { runInspectorFeeTransition } from "@platform/app-shared/prototype/inspector-fees-api";
+import { appDataKeys } from "@platform/app-shared/query/app-data-keys";
+import { runInspectorFeeTransition } from "@platform/app-shared/app-data/inspector-fees-api";
 import {
   loadPartyBillingStatements,
   openPartyBillingAttachment,
   runSubmitVendorInvoice,
   uploadPartyBillingVendorInvoice,
-} from "@platform/app-shared/prototype/party-billing-statements-api";
+} from "@platform/app-shared/app-data/party-billing-statements-api";
 import { sortInspectorFeeRowsNewestFirst } from "@platform/app-shared/fees/party-fee-meta";
 import { useInspectorFeesQuery } from "../../query/inspector-fees-queries";
 import {
   computeEngineeringFeesSituation,
-} from "../../lib/prototype/active-transaction-page-situation";
+} from "../../lib/app-data/active-transaction-page-situation";
 import { engFeeUiStatus } from "./EngOfficeFeesBillingTable";
 import { EngFeesHtmlTabs, EngFeesSectionTitle } from "./EngFeesHtmlTabs";
 import { VendorInvoicePdfField } from "./VendorInvoicePdfField";
@@ -59,7 +59,7 @@ import {
   opsFilters,
   opsListCount,
   opsToolbar,
-} from "../../lib/prototype/ops-tasks-tw";
+} from "../../lib/app-data/ops-tasks-tw";
 
 type TabId = "action" | "ready" | "statements";
 
@@ -231,7 +231,7 @@ export function EngFeesHtmlScreen({ assigneeId }: { assigneeId?: string }) {
 
   const { data: statements = [] } = useQuery({
     queryKey: [
-      ...prototypeKeys.all,
+      ...appDataKeys.all,
       "party-billing",
       "statements",
       assigneeId ?? "none",
@@ -302,10 +302,10 @@ export function EngFeesHtmlScreen({ assigneeId }: { assigneeId?: string }) {
     // Two independent keys — in parallel (async-parallel).
     await Promise.all([
       queryClient.invalidateQueries({
-        queryKey: [...prototypeKeys.all, "inspector-fees"],
+        queryKey: [...appDataKeys.all, "inspector-fees"],
       }),
       queryClient.invalidateQueries({
-        queryKey: [...prototypeKeys.all, "party-billing"],
+        queryKey: [...appDataKeys.all, "party-billing"],
       }),
     ]);
   }, [queryClient]);

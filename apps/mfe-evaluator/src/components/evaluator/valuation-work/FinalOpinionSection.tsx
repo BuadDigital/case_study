@@ -33,7 +33,7 @@ import {
 import {
   VALUE_BASIS_OPTIONS,
   basisOfValueKeyForAssignment,
-} from "@platform/app-shared/prototype/assignment-valuation-defaults";
+} from "@platform/app-shared/app-data/assignment-valuation-defaults";
 import { amountWordsOrZero } from "../../../lib/evaluator/value-estimation";
 import {
   Card,

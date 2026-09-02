@@ -1,6 +1,6 @@
 import { getFieldDictionary, type FieldDictionaryFieldDto } from "@platform/api-client";
-import { PROPERTY_FIELDS_CATALOG } from "@platform/app-shared/prototype/property-fields-catalog";
-import { workOrdersApiConfig } from "@platform/app-shared/prototype/work-orders-api-config";
+import { PROPERTY_FIELDS_CATALOG } from "@platform/app-shared/app-data/property-fields-catalog";
+import { workOrdersApiConfig } from "@platform/app-shared/app-data/work-orders-api-config";
 
 export type CaseStudyQuestionSection =
   | "deed"

@@ -12,6 +12,7 @@ public class RepositoryBoundaryTests
     {
         { "Client", "IClientRepository" },
         { "PoIntakeDraft", "IPoIntakeDraftRepository" },
+        { "PartyTaskSubmission", "IPartyTaskSubmissionRepository" },
     };
 
     [Theory]

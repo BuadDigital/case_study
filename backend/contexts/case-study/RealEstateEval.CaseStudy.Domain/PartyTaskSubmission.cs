@@ -92,6 +92,19 @@ public class PartyTaskSubmission
     }
 
  /// <summary>
+ /// Specialist correction of an already-submitted package (payload only; status stays submitted).
+ /// </summary>
+    public string? CorrectSubmittedPayload(string payloadJson, DateTime nowUtc)
+    {
+        if (Status is not PartyTaskSubmissionStatus.Submitted)
+            return "لا يوجد إرسال مُكتمل للتصحيح";
+
+        PayloadJson = payloadJson;
+        UpdatedAtUtc = nowUtc;
+        return null;
+    }
+
+ /// <summary>
  /// Repost for correction — from “sent” only; Acceptance is invalidated until the specialist approves the deliverables
  /// Corrected again.
  /// </summary>

@@ -25,4 +25,4 @@ export function organizationSettingsApiConfig(): OrganizationSettingsApiConfig |
 
 // A forked copy dropped forbidden/conflict branches and swallowed 403/409 —
 // messages come from the unified source in app-shared.
-export { apiErrorMessage } from "@platform/app-shared/prototype/work-orders-api-config";
+export { apiErrorMessage } from "@platform/app-shared/app-data/work-orders-api-config";

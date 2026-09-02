@@ -51,15 +51,14 @@ public sealed class WorkOrderPropertyCommands : IWorkOrderPropertyCommands
         CancellationToken cancellationToken)
     {
         var entity = await _loader.LoadAsync(poNumber, cancellationToken);
-        if (entity is null) return (null, new Dictionary<string, string> { ["_"] = "أمر العمل غير موجود" });
+        if (entity is null) return (null, WorkOrderPropertyWriteRules.WorkOrderNotFound());
 
         var errors = WorkOrderValidator.ValidatePropertyEnfath(
             property,
             entity.AssignmentType,
             entity.PoNumber,
             null,
-            (deed, _) => entity.Properties.Any(p =>
-                !p.IsRemoved && p.DeedNumber.Trim() == deed.Trim()));
+            WorkOrderPropertyWriteRules.DeedTakenProbe(entity));
         if (errors.Count > 0) return (null, errors);
 
  // Never trust client ids on insert — draft ids make EF emit UPDATE and fail with 0 rows.
@@ -91,26 +90,25 @@ public sealed class WorkOrderPropertyCommands : IWorkOrderPropertyCommands
         CancellationToken cancellationToken)
     {
         var entity = await _loader.LoadAsync(poNumber, cancellationToken);
-        if (entity is null) return (null, new Dictionary<string, string> { ["_"] = "أمر العمل غير موجود" });
+        if (entity is null) return (null, WorkOrderPropertyWriteRules.WorkOrderNotFound());
 
-        var existing = entity.Properties.FirstOrDefault(p => p.Id == propertyId);
-        if (existing is null) return (null, new Dictionary<string, string> { ["_"] = "العقار غير موجود" });
-        if (existing.IsRemoved)
-            return (null, new Dictionary<string, string> { ["_"] = "لا يمكن تعديل عقار محذوف" });
+        var notEditable = WorkOrderPropertyWriteRules.FindEditableProperty(
+            entity,
+            propertyId,
+            out var existing);
+        if (notEditable is not null) return (null, notEditable);
 
-        var previousLocationMapUrl = existing.LocationMapUrl;
+        var previousLocationMapUrl = existing!.LocationMapUrl;
+
+        var enfathErrors = WorkOrderValidator.ValidatePropertyEnfath(
+            property,
+            entity.AssignmentType,
+            entity.PoNumber,
+            propertyId,
+            WorkOrderPropertyWriteRules.DeedTakenProbe(entity));
 
         if (property.BourseDataCompleted)
         {
-            var enfathErrors = WorkOrderValidator.ValidatePropertyEnfath(
-                property,
-                entity.AssignmentType,
-                entity.PoNumber,
-                propertyId,
-                (deed, excludeId) =>
-                    entity.Properties.Any(p =>
-                        !p.IsRemoved &&
-                        p.DeedNumber.Trim() == deed.Trim() && p.Id != excludeId));
             var bourseErrors = WorkOrderValidator.ValidatePropertyBourse(new UpdatePropertyBourseRequest
             {
                 City = property.City,
@@ -129,28 +127,17 @@ public sealed class WorkOrderPropertyCommands : IWorkOrderPropertyCommands
                 BoundariesAvailability = property.BoundariesAvailability,
                 BoundariesExternalDocName = property.BoundariesExternalDocName,
             });
-            var errors = enfathErrors.Concat(bourseErrors)
-                .GroupBy(kv => kv.Key)
-                .ToDictionary(g => g.Key, g => g.First().Value);
+            var errors = WorkOrderPropertyWriteRules.MergeErrors(enfathErrors, bourseErrors);
             if (errors.Count > 0) return (null, errors);
-            ApplyPropertyEnfath(existing, property);
-            ApplyPropertyBourse(existing, property);
+            WorkOrderPropertyWriteRules.ApplyPropertyEnfath(existing, property);
+            WorkOrderPropertyWriteRules.ApplyPropertyBourse(existing, property);
             existing.BourseDataCompleted = true;
             existing.BourseCompletedAtUtc = _time.UtcNow();
         }
         else
         {
-            var errors = WorkOrderValidator.ValidatePropertyEnfath(
-                property,
-                entity.AssignmentType,
-                entity.PoNumber,
-                propertyId,
-                (deed, excludeId) =>
-                    entity.Properties.Any(p =>
-                        !p.IsRemoved &&
-                        p.DeedNumber.Trim() == deed.Trim() && p.Id != excludeId));
-            if (errors.Count > 0) return (null, errors);
-            ApplyPropertyEnfath(existing, property);
+            if (enfathErrors.Count > 0) return (null, enfathErrors);
+            WorkOrderPropertyWriteRules.ApplyPropertyEnfath(existing, property);
         }
 
  // Never mix contact DELETE/INSERT with property UPDATE in one SaveChanges —
@@ -168,12 +155,7 @@ public sealed class WorkOrderPropertyCommands : IWorkOrderPropertyCommands
         {
             var kinds = string.Join(", ",
                 ex.Entries.Select(e => e.Metadata.ClrType.Name + ":" + e.State));
-            return (null, new Dictionary<string, string>
-            {
-                ["_"] = string.IsNullOrEmpty(kinds)
-                    ? "تعذّر حفظ العقار — أعد تحميل الصفحة وحاول مرة أخرى"
-                    : $"تعذّر حفظ العقار ({kinds}) — أعد تحميل الصفحة وحاول مرة أخرى",
-            });
+            return (null, WorkOrderPropertyWriteRules.ConcurrencyErrors(kinds));
         }
         await ApplyDocumentarySideEffectsAfterPropertySaveAsync(
             entity,
@@ -195,24 +177,19 @@ public sealed class WorkOrderPropertyCommands : IWorkOrderPropertyCommands
         CancellationToken cancellationToken)
     {
         var entity = await _loader.LoadAsync(poNumber, cancellationToken);
-        if (entity is null) return (null, new Dictionary<string, string> { ["_"] = "أمر العمل غير موجود" });
+        if (entity is null) return (null, WorkOrderPropertyWriteRules.WorkOrderNotFound());
 
-        var existing = entity.Properties.FirstOrDefault(p => p.Id == propertyId);
-        if (existing is null) return (null, new Dictionary<string, string> { ["_"] = "العقار غير موجود" });
-        if (existing.IsRemoved)
-            return (null, new Dictionary<string, string> { ["_"] = "لا يمكن تعديل عقار محذوف" });
+        var notEditable = WorkOrderPropertyWriteRules.FindEditableProperty(
+            entity,
+            propertyId,
+            out var existing);
+        if (notEditable is not null) return (null, notEditable);
 
-        var trimmed = locationMapUrl?.Trim() ?? "";
-        if (!string.IsNullOrEmpty(trimmed) && !DocumentaryWorkflowRules.HasLocationMapUrl(trimmed))
-        {
-            return (null, new Dictionary<string, string>
-            {
-                ["locationMapUrl"] = "رابط الموقع يجب أن يبدأ بـ http:// أو https://",
-            });
-        }
+        var (urlErrors, url) = WorkOrderPropertyWriteRules.ValidateLocationMapUrl(locationMapUrl);
+        if (urlErrors is not null) return (null, urlErrors);
 
-        var previousLocationMapUrl = existing.LocationMapUrl;
-        existing.LocationMapUrl = string.IsNullOrEmpty(trimmed) ? null : trimmed;
+        var previousLocationMapUrl = existing!.LocationMapUrl;
+        existing.LocationMapUrl = url;
 
         await _db.SaveChangesAsync(cancellationToken);
         await ApplyDocumentarySideEffectsAfterPropertySaveAsync(
@@ -230,42 +207,18 @@ public sealed class WorkOrderPropertyCommands : IWorkOrderPropertyCommands
         CancellationToken cancellationToken)
     {
         var entity = await _loader.LoadAsync(poNumber, cancellationToken);
-        if (entity is null) return (null, new Dictionary<string, string> { ["_"] = "أمر العمل غير موجود" });
+        if (entity is null) return (null, WorkOrderPropertyWriteRules.WorkOrderNotFound());
 
-        var existing = entity.Properties.FirstOrDefault(p => p.Id == propertyId);
-        if (existing is null) return (null, new Dictionary<string, string> { ["_"] = "العقار غير موجود" });
-        if (existing.IsRemoved)
-            return (null, new Dictionary<string, string> { ["_"] = "لا يمكن تعديل عقار محذوف" });
+        var notEditable = WorkOrderPropertyWriteRules.FindEditableProperty(
+            entity,
+            propertyId,
+            out var existing);
+        if (notEditable is not null) return (null, notEditable);
 
-        var trimmed = specialistReportExtrasJson?.Trim();
-        if (string.IsNullOrEmpty(trimmed) || trimmed == "null")
-        {
-            existing.SpecialistReportExtrasJson = null;
-        }
-        else
-        {
-            try
-            {
-                using var _ = System.Text.Json.JsonDocument.Parse(trimmed);
-            }
-            catch (System.Text.Json.JsonException)
-            {
-                return (null, new Dictionary<string, string>
-                {
-                    ["specialistReportExtrasJson"] = "صيغة JSON غير صالحة",
-                });
-            }
-
-            if (trimmed.Length > 64_000)
-            {
-                return (null, new Dictionary<string, string>
-                {
-                    ["specialistReportExtrasJson"] = "حجم البيانات أكبر من المسموح",
-                });
-            }
-
-            existing.SpecialistReportExtrasJson = trimmed;
-        }
+        var (extrasErrors, extras) = WorkOrderPropertyWriteRules.ValidateSpecialistReportExtras(
+            specialistReportExtrasJson);
+        if (extrasErrors is not null) return (null, extrasErrors);
+        existing!.SpecialistReportExtrasJson = extras;
 
         await _db.SaveChangesAsync(cancellationToken);
         return (WorkOrderMapper.ToPropertyDto(existing), null);
@@ -278,86 +231,23 @@ public sealed class WorkOrderPropertyCommands : IWorkOrderPropertyCommands
         CancellationToken cancellationToken)
     {
         var entity = await _loader.LoadAsync(poNumber, cancellationToken);
-        if (entity is null) return (null, new Dictionary<string, string> { ["_"] = "أمر العمل غير موجود" });
+        if (entity is null) return (null, WorkOrderPropertyWriteRules.WorkOrderNotFound());
 
-        var existing = entity.Properties.FirstOrDefault(p => p.Id == propertyId);
-        if (existing is null) return (null, new Dictionary<string, string> { ["_"] = "العقار غير موجود" });
-        if (existing.IsRemoved)
-            return (null, new Dictionary<string, string> { ["_"] = "لا يمكن تعديل عقار محذوف" });
+        var notEditable = WorkOrderPropertyWriteRules.FindEditableProperty(
+            entity,
+            propertyId,
+            out var existing);
+        if (notEditable is not null) return (null, notEditable);
 
         var errors = WorkOrderValidator.ValidatePropertyBourse(request);
         if (errors.Count > 0) return (null, errors);
 
-        existing.City = request.City.Trim();
-        existing.Region = request.Region?.Trim();
-        existing.RegionId = request.RegionId;
-        existing.CityId = request.CityId;
-        existing.District = request.District.Trim();
-        existing.Classification = request.Classification.Trim();
-        existing.PropertyType = request.PropertyType.Trim();
-        existing.Area = request.Area?.Trim();
-        existing.DeedStatus = request.DeedStatus?.Trim();
-        existing.BourseDeedImageFileName = request.BourseDeedImageFileName?.Trim();
-        existing.RestrictionsPresent = request.RestrictionsPresent?.Trim();
-        existing.RestrictionType = NormalizeRestrictionType(request.RestrictionsPresent, request.RestrictionType);
-        existing.RestrictionOtherReason = NormalizeRestrictionOtherReason(
-            request.RestrictionsPresent,
-            request.RestrictionType,
-            request.RestrictionOtherReason);
-
- // owners+shares from the transcription; ownership type is editable-derived.
-        if (request.Owners is not null)
-        {
-            var owners = request.Owners
-                .Select(o => new DeedOwner(o.Name?.Trim() ?? "", o.SharePct))
-                .Where(o => !string.IsNullOrWhiteSpace(o.Name))
-                .ToList();
-            if (OwnershipTypeRules.ValidateOwners(owners) is { } ownersError)
-                return (null, new Dictionary<string, string> { ["owners"] = ownersError });
-            existing.DeedOwnersJson = OwnershipTypeRules.SerializeOwners(owners);
-            if (owners.Count > 0)
-                existing.OwnerName = owners[0].Name;
-        }
-
-        if (request.OwnershipTypeIsManual)
-        {
-            if (!OwnershipTypes.IsKnown(request.OwnershipType))
-                return (null, new Dictionary<string, string> { ["ownershipType"] = "نوع ملكية غير معروف" });
-            existing.OwnershipType = request.OwnershipType!.Trim().ToLowerInvariant();
-            existing.OwnershipTypeIsManual = true;
-        }
-        else
-        {
-            existing.OwnershipType = null;
-            existing.OwnershipTypeIsManual = false;
-        }
-
-        existing.BoundariesAvailability = request.BoundariesAvailability?.Trim();
-        existing.BoundariesExternalDocName = request.BoundariesExternalDocName?.Trim();
-        existing.NorthBoundary = IWorkOrderLoader.NormalizeOptionalText(request.NorthBoundary);
-        existing.NorthBoundaryLengthM = IWorkOrderLoader.NormalizeOptionalText(request.NorthBoundaryLengthM);
-        existing.NorthBoundaryType = NormalizeBoundaryType(request.NorthBoundaryType);
-        existing.NorthFacadeFinishing = IWorkOrderLoader.NormalizeOptionalText(request.NorthFacadeFinishing);
-        existing.SouthBoundary = IWorkOrderLoader.NormalizeOptionalText(request.SouthBoundary);
-        existing.SouthBoundaryLengthM = IWorkOrderLoader.NormalizeOptionalText(request.SouthBoundaryLengthM);
-        existing.SouthBoundaryType = NormalizeBoundaryType(request.SouthBoundaryType);
-        existing.SouthFacadeFinishing = IWorkOrderLoader.NormalizeOptionalText(request.SouthFacadeFinishing);
-        existing.EastBoundary = IWorkOrderLoader.NormalizeOptionalText(request.EastBoundary);
-        existing.EastBoundaryLengthM = IWorkOrderLoader.NormalizeOptionalText(request.EastBoundaryLengthM);
-        existing.EastBoundaryType = NormalizeBoundaryType(request.EastBoundaryType);
-        existing.EastFacadeFinishing = IWorkOrderLoader.NormalizeOptionalText(request.EastFacadeFinishing);
-        existing.WestBoundary = IWorkOrderLoader.NormalizeOptionalText(request.WestBoundary);
-        existing.WestBoundaryLengthM = IWorkOrderLoader.NormalizeOptionalText(request.WestBoundaryLengthM);
-        existing.WestBoundaryType = NormalizeBoundaryType(request.WestBoundaryType);
-        existing.WestFacadeFinishing = IWorkOrderLoader.NormalizeOptionalText(request.WestFacadeFinishing);
         var bourseNow = _time.UtcNow();
-        var boundariesUnavailable = DocumentaryWorkflowRules.BoundariesUnavailable(
-            existing.BoundariesAvailability);
-        if (!boundariesUnavailable)
-        {
-            existing.BourseDataCompleted = true;
-            existing.BourseCompletedAtUtc = bourseNow;
-        }
+        var (applyErrors, boundariesUnavailable) = WorkOrderPropertyWriteRules.ApplyBourseRequest(
+            existing!,
+            request,
+            bourseNow);
+        if (applyErrors is not null) return (null, applyErrors);
 
         await _db.SaveChangesAsync(cancellationToken);
 
@@ -369,7 +259,7 @@ public sealed class WorkOrderPropertyCommands : IWorkOrderPropertyCommands
             await _failures.EnsureSystemInternalFailureAsync(
                 IWorkOrderLoader.NormalizePo(poNumber),
                 propertyId.ToString(),
-                existing.DeedNumber,
+                existing!.DeedNumber,
                 "unknown-boundaries",
                 "عدم معرفة حدود العقار",
                 "توفر الحدود = غير متوفرة حسب استعلام البورصة.",
@@ -377,17 +267,12 @@ public sealed class WorkOrderPropertyCommands : IWorkOrderPropertyCommands
                 cancellationToken);
         }
 
-        var location = string.Join(
-            " · ",
-            new[] { existing.City, existing.District }
-                .Where(s => !string.IsNullOrWhiteSpace(s))
-                .Select(s => s.Trim()));
         await _timeline.RecordAsync(
             IWorkOrderLoader.NormalizePo(poNumber),
             propertyId,
             "property-bourse",
             "بيانات البورصة للعقار",
-            string.IsNullOrEmpty(location) ? null : location,
+            WorkOrderPropertyWriteRules.BourseTimelineLocation(existing!.City, existing.District),
             PropertyTimelineTones.Done,
             bourseNow,
             cancellationToken);
@@ -401,11 +286,8 @@ public sealed class WorkOrderPropertyCommands : IWorkOrderPropertyCommands
         string reason,
         CancellationToken cancellationToken)
     {
-        var trimmedReason = (reason ?? "").Trim();
-        if (trimmedReason.Length == 0)
-            return (false, "سبب الحذف مطلوب");
-        if (trimmedReason.Length > 500)
-            return (false, "سبب الحذف طويل جداً");
+        var (reasonError, trimmedReason) = WorkOrderPropertyWriteRules.ValidateDeleteReason(reason);
+        if (reasonError is not null) return (false, reasonError);
 
         var entity = await _loader.LoadAsync(poNumber, cancellationToken);
         if (entity is null) return (false, "أمر العمل غير موجود");
@@ -417,7 +299,8 @@ public sealed class WorkOrderPropertyCommands : IWorkOrderPropertyCommands
         prop.IsRemoved = true;
         prop.RemovalReason = trimmedReason;
         prop.RemovedAtUtc = _time.UtcNow();
-        entity.ExpectedPropertyCount = Math.Max(1, entity.ExpectedPropertyCount - 1);
+        entity.ExpectedPropertyCount = WorkOrderPropertyWriteRules.ExpectedCountAfterRemoval(
+            entity.ExpectedPropertyCount);
 
         await _db.SaveChangesAsync(cancellationToken);
         return (true, null);
@@ -426,118 +309,8 @@ public sealed class WorkOrderPropertyCommands : IWorkOrderPropertyCommands
     public WorkOrderProperty MapPropertyEnfath(
         WorkOrderPropertyDto dto,
         Guid workOrderId,
-        bool forInsert)
-    {
-        var entity = new WorkOrderProperty
-        {
-            Id = forInsert ? Guid.NewGuid() : (dto.Id ?? Guid.NewGuid()),
-            WorkOrderId = workOrderId,
-            BourseDataCompleted = false,
-        };
-        ApplyPropertyEnfath(entity, dto);
-        ReplacePropertyContacts(entity, dto.Contacts, clearExisting: false);
-        return entity;
-    }
-
-    private static string? NormalizeRestrictionType(string? present, string? type)
-    {
-        if (!string.Equals(present?.Trim(), "yes", StringComparison.OrdinalIgnoreCase))
-            return null;
-        if (string.IsNullOrWhiteSpace(type)) return null;
-        var seen = new HashSet<string>(StringComparer.Ordinal);
-        var parts = new List<string>();
-        foreach (var raw in type.Split([',', '،'], StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
-        {
-            var v = raw.ToLowerInvariant();
-            if (v is not ("mortgaged" or "seized" or "suspended" or "other")) continue;
-            if (!seen.Add(v)) continue;
-            parts.Add(v);
-        }
-        return parts.Count == 0 ? null : string.Join(",", parts);
-    }
-
-    private static string? NormalizeRestrictionOtherReason(
-        string? present,
-        string? type,
-        string? reason)
-    {
-        if (!string.Equals(present?.Trim(), "yes", StringComparison.OrdinalIgnoreCase))
-            return null;
-        var types = (type ?? "")
-            .Split([',', '،'], StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
-            .Select(t => t.ToLowerInvariant());
-        if (!types.Contains("other"))
-            return null;
-        return IWorkOrderLoader.NormalizeOptionalText(reason);
-    }
-
-    private static void ApplyPropertyEnfath(
-        WorkOrderProperty entity,
-        WorkOrderPropertyDto dto)
-    {
-        PropertyIdentifierTypeLabels.TryParseApiValue(dto.IdentifierType, out var idType);
-        entity.IdentifierType = idType;
-
- // suggestion from the identifier; the valuer's explicit choice wins.
-        entity.DeedKind =
-            !string.IsNullOrWhiteSpace(dto.DeedKind)
-            && DeedKindLabels.TryParseApiValue(dto.DeedKind, out var deedKind)
-                ? deedKind
-                : DeedKindLabels.SuggestFromIdentifier(idType);
-
-        if (idType == PropertyIdentifierType.BourseInquiry &&
-            string.IsNullOrWhiteSpace(dto.DeedNumber))
-        {
-            entity.DeedNumber = $"INQ-{entity.Id.ToString("N")[..8].ToUpperInvariant()}";
-        }
-        else
-        {
-            entity.DeedNumber = dto.DeedNumber.Trim();
-        }
-
-        entity.RequestNumber = dto.RequestNumber?.Trim();
-        entity.HasRequestNumber = dto.HasRequestNumber;
-        entity.AssignmentMandateNumber = dto.AssignmentMandateNumber?.Trim();
-        entity.AssignmentMandateDate = dto.AssignmentMandateDate?.Trim();
-        entity.DeedDate = dto.DeedDate?.Trim();
-        entity.RealEstateRegNumber = dto.RealEstateRegNumber?.Trim();
-        entity.RealEstateRegDate = dto.RealEstateRegDate?.Trim();
-        entity.OwnerName = dto.OwnerName?.Trim();
-        entity.AssignmentDocFileName = WorkOrderMapper.SerializeFileNameList(dto.AssignmentDocFileNames);
-        entity.DelegationLetterFileName = WorkOrderMapper.SerializeFileNameList(dto.DelegationLetterFileNames);
-        entity.OtherDocumentFileNames = WorkOrderMapper.SerializeFileNameList(dto.OtherDocumentFileNames);
-        entity.RealEstateRegFileName = dto.RealEstateRegFileName?.Trim();
-        entity.DeedOwnershipFileName = dto.DeedOwnershipFileName?.Trim();
-        entity.BourseDeedImageFileName = dto.BourseDeedImageFileName?.Trim();
-        entity.CourtId = dto.CourtId;
-        entity.CircuitId = dto.CircuitId;
-        entity.RegionId = dto.RegionId;
-        entity.CityId = dto.CityId;
-        entity.Court = dto.Court?.Trim();
-        entity.Circuit = dto.Circuit?.Trim();
-        entity.Region = dto.Region?.Trim();
-        entity.District = dto.District?.Trim() ?? "";
-        entity.Classification = dto.Classification?.Trim() ?? "";
-        entity.PropertyType = dto.PropertyType?.Trim() ?? "";
-        entity.DeedStatus = dto.DeedStatus?.Trim();
-        entity.Area = dto.Area?.Trim();
-        entity.PlanNumber = IWorkOrderLoader.NormalizeOptionalText(dto.PlanNumber);
-        entity.PlanName = IWorkOrderLoader.NormalizeOptionalText(dto.PlanName);
-        entity.PlotNumber = IWorkOrderLoader.NormalizeOptionalText(dto.PlotNumber);
-        entity.BlockNumber = IWorkOrderLoader.NormalizeOptionalText(dto.BlockNumber);
-        entity.LocationMapUrl = IWorkOrderLoader.NormalizeOptionalText(dto.LocationMapUrl);
-        entity.PartitionMinutesNumber = IWorkOrderLoader.NormalizeOptionalText(dto.PartitionMinutesNumber);
-        entity.PartitionMinutesDate = IWorkOrderLoader.NormalizeOptionalText(dto.PartitionMinutesDate);
-        entity.FinishingType = NormalizeFinishingType(dto.FinishingType);
-        entity.FinishingStructure = NormalizeFinishingStructure(dto.FinishingStructure);
-        if (dto.SpecialistReportExtrasJson is not null)
-        {
-            var extras = dto.SpecialistReportExtrasJson.Trim();
-            entity.SpecialistReportExtrasJson = string.IsNullOrEmpty(extras) || extras == "null"
-                ? null
-                : extras;
-        }
-    }
+        bool forInsert) =>
+        WorkOrderPropertyWriteRules.NewPropertyFromEnfath(dto, workOrderId, forInsert);
 
     private void DetachTrackedContacts(WorkOrderProperty entity)
     {
@@ -562,107 +335,11 @@ public sealed class WorkOrderPropertyCommands : IWorkOrderPropertyCommands
             entry.State = EntityState.Detached;
         }
 
-        var order = 0;
-        var rows = contacts
-            .Where(c => !string.IsNullOrWhiteSpace(c.Phone) || !string.IsNullOrWhiteSpace(c.Role))
-            .Select(c => new PropertyContact
-            {
-                Id = Guid.NewGuid(),
-                PropertyId = propertyId,
-                Name = (c.Name ?? "").Trim(),
-                Role = (c.Role ?? "").Trim(),
-                Phone = (c.Phone ?? "").Trim(),
-                SortOrder = order++,
-            })
-            .ToList();
-
+        var rows = WorkOrderPropertyWriteRules.BuildContacts(propertyId, contacts);
         if (rows.Count == 0) return;
 
         _db.PropertyContacts.AddRange(rows);
         await _db.SaveChangesAsync(cancellationToken);
-    }
-
-    private static void ReplacePropertyContacts(
-        WorkOrderProperty entity,
-        IEnumerable<PropertyContactDto> contacts,
-        bool clearExisting)
-    {
-        if (clearExisting)
-            entity.Contacts.Clear();
-
-        var order = 0;
-        foreach (var c in contacts.Where(c =>
-                     !string.IsNullOrWhiteSpace(c.Phone) || !string.IsNullOrWhiteSpace(c.Role)))
-        {
-            entity.Contacts.Add(new PropertyContact
-            {
-                Id = Guid.NewGuid(),
-                PropertyId = entity.Id,
-                Name = c.Name.Trim(),
-                Role = c.Role.Trim(),
-                Phone = c.Phone.Trim(),
-                SortOrder = order++,
-            });
-        }
-    }
-
-    private static void ApplyPropertyBourse(WorkOrderProperty entity, WorkOrderPropertyDto dto)
-    {
-        entity.City = dto.City.Trim();
-        entity.Region = dto.Region?.Trim();
-        entity.RegionId = dto.RegionId;
-        entity.CityId = dto.CityId;
-        entity.District = dto.District.Trim();
-        entity.Classification = dto.Classification.Trim();
-        entity.PropertyType = dto.PropertyType.Trim();
-        entity.Area = dto.Area?.Trim();
-        entity.DeedStatus = dto.DeedStatus?.Trim();
-        entity.BourseDeedImageFileName = dto.BourseDeedImageFileName?.Trim();
-        entity.RestrictionsPresent = dto.RestrictionsPresent?.Trim();
-        entity.RestrictionType = NormalizeRestrictionType(dto.RestrictionsPresent, dto.RestrictionType);
-        entity.RestrictionOtherReason = NormalizeRestrictionOtherReason(
-            dto.RestrictionsPresent,
-            dto.RestrictionType,
-            dto.RestrictionOtherReason);
-        entity.BoundariesAvailability = dto.BoundariesAvailability?.Trim();
-        entity.BoundariesExternalDocName = dto.BoundariesExternalDocName?.Trim();
-        entity.NorthBoundary = IWorkOrderLoader.NormalizeOptionalText(dto.NorthBoundary);
-        entity.NorthBoundaryLengthM = IWorkOrderLoader.NormalizeOptionalText(dto.NorthBoundaryLengthM);
-        entity.NorthBoundaryType = NormalizeBoundaryType(dto.NorthBoundaryType);
-        entity.NorthFacadeFinishing = IWorkOrderLoader.NormalizeOptionalText(dto.NorthFacadeFinishing);
-        entity.SouthBoundary = IWorkOrderLoader.NormalizeOptionalText(dto.SouthBoundary);
-        entity.SouthBoundaryLengthM = IWorkOrderLoader.NormalizeOptionalText(dto.SouthBoundaryLengthM);
-        entity.SouthBoundaryType = NormalizeBoundaryType(dto.SouthBoundaryType);
-        entity.SouthFacadeFinishing = IWorkOrderLoader.NormalizeOptionalText(dto.SouthFacadeFinishing);
-        entity.EastBoundary = IWorkOrderLoader.NormalizeOptionalText(dto.EastBoundary);
-        entity.EastBoundaryLengthM = IWorkOrderLoader.NormalizeOptionalText(dto.EastBoundaryLengthM);
-        entity.EastBoundaryType = NormalizeBoundaryType(dto.EastBoundaryType);
-        entity.EastFacadeFinishing = IWorkOrderLoader.NormalizeOptionalText(dto.EastFacadeFinishing);
-        entity.WestBoundary = IWorkOrderLoader.NormalizeOptionalText(dto.WestBoundary);
-        entity.WestBoundaryLengthM = IWorkOrderLoader.NormalizeOptionalText(dto.WestBoundaryLengthM);
-        entity.WestBoundaryType = NormalizeBoundaryType(dto.WestBoundaryType);
-        entity.WestFacadeFinishing = IWorkOrderLoader.NormalizeOptionalText(dto.WestFacadeFinishing);
-    }
-
-    private static string? NormalizeBoundaryType(string? value)
-    {
-        var t = IWorkOrderLoader.NormalizeOptionalText(value);
-        if (t is null) return null;
-        return PropertyBoundaryTypes.IsKnown(t) ? t.Trim().ToLowerInvariant() : t;
-    }
-
-    private static string? NormalizeFinishingType(string? value)
-    {
-        var t = IWorkOrderLoader.NormalizeOptionalText(value);
-        if (t is null) return null;
-        return PropertyFinishingTypes.IsKnown(t) ? t.Trim().ToLowerInvariant() : t;
-    }
-
-    private static string? NormalizeFinishingStructure(string? value)
-    {
-        var t = IWorkOrderLoader.NormalizeOptionalText(value);
-        if (t is null) return null;
-        return PropertyFinishingStructures.IsKnown(t) ? t.Trim().ToLowerInvariant() : t;
     }
 
     private async Task ApplyDocumentarySideEffectsAfterPropertySaveAsync(

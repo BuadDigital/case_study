@@ -8,20 +8,20 @@ import {
   copyInfathText,
   downloadInfathDocument,
   type InfathOpsContext,
-} from "../../lib/prototype/infath-upload-model";
+} from "../../lib/app-data/infath-upload-model";
 import type {
   InfathUploadAttachment,
   InfathUploadField,
   InfathUploadSection,
-} from "../../lib/prototype/infath-upload-types";
-import type { PropertyDetailDocumentSection } from "../../lib/prototype/property-detail-documents";
-import type { PropertyDetailPartySubmissionsMap } from "../../lib/prototype/property-detail-party-submissions";
+} from "../../lib/app-data/infath-upload-types";
+import type { PropertyDetailDocumentSection } from "../../lib/app-data/property-detail-documents";
+import type { PropertyDetailPartySubmissionsMap } from "../../lib/app-data/property-detail-party-submissions";
 import {
   formatPropertyDeedDisplay,
   type PoIntakeRecord,
   type PoPropertyIntake,
-} from "../../lib/prototype/po-intake-data";
-import type { WorkflowTask } from "../../lib/prototype/tasks-storage";
+} from "../../lib/app-data/po-intake-data";
+import type { WorkflowTask } from "../../lib/app-data/tasks-storage";
 import { usePropertyOperationsTasks } from "../../query/use-property-operations-tasks";
 import {
   resolveEnvelopeIdFromSources,
@@ -30,7 +30,7 @@ import {
 import {
   loadInfathDeposit,
   saveInfathDeposit,
-} from "../../lib/prototype/infath-deposit-storage";
+} from "../../lib/app-data/infath-deposit-storage";
 
 type CopyKey = string;
 

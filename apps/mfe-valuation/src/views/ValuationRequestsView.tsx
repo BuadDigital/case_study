@@ -4,13 +4,13 @@ import { useRouter } from "next/navigation";
 import { useDeferredValue, useMemo, useState } from "react";
 import { useViewportDesktop } from "@platform/app-shared/hooks/use-viewport-desktop";
 import { listWorkflowTasks } from "@platform/api-client";
-import { usePrototype } from "@platform/app-shared/contexts/PrototypeContext";
-import { isSuperAdmin } from "@platform/app-shared/prototype/prototype-role-access";
-import { loadPropertyListItems } from "@platform/app-shared/prototype/work-orders-read";
+import { useAppAccess } from "@platform/app-shared/contexts/AppAccessContext";
+import { isSuperAdmin } from "@platform/app-shared/app-data/role-access";
+import { loadPropertyListItems } from "@platform/app-shared/app-data/work-orders-read";
 import {
   requireWorkOrdersApiConfig,
   unwrapApiResult,
-} from "@platform/app-shared/prototype/work-orders-api-config";
+} from "@platform/app-shared/app-data/work-orders-api-config";
 import {
   Button,
   KpiAlertIcon,
@@ -74,7 +74,7 @@ type StatusFilter = "all" | "progress" | "done" | "fail";
 
 export function ValuationRequestsView() {
   const router = useRouter();
-  const { role } = usePrototype();
+  const { role } = useAppAccess();
   const { showToast } = useToast();
   const mgr = isValuationMgr(role);
   const isApp = role === "real-estate-appraiser";

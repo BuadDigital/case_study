@@ -4,6 +4,7 @@
  */
 import { parseFieldErrorsFromResponse } from "./field-errors";
 import { getApiBase } from "./api-base";
+import { withIdempotencyKey } from "./idempotency-key";
 import { repositoryFetch as fetch } from "./write-repository";
 import type { ApiErr, ApiOk, WorkOrdersApiConfig } from "./work-orders";
 
@@ -53,11 +54,12 @@ export type ReopenPartyTaskSubmissionRequest = {
   returnNote: string;
 };
 
-function headers(token: string): HeadersInit {
-  return {
+function headers(token: string, idempotencyKey?: string): HeadersInit {
+  const base = {
     "Content-Type": "application/json",
     Authorization: `Bearer ${token}`,
   };
+  return idempotencyKey ? withIdempotencyKey(base, idempotencyKey) : base;
 }
 
 function normalizeSubmissionDto(raw: unknown): PartyTaskSubmissionDto {
@@ -161,6 +163,7 @@ export async function savePartyTaskSubmission(
 export async function submitPartyTaskSubmission(
   config: WorkOrdersApiConfig,
   taskId: string,
+  idempotencyKey?: string,
 ): Promise<
   | ApiOk<PartyTaskSubmissionDto>
   | (ApiErr & { errors?: Record<string, string> })
@@ -169,7 +172,7 @@ export async function submitPartyTaskSubmission(
   try {
     const res = await fetch(`${base}/api/party-task-submissions/${taskId}/submit`, {
       method: "POST",
-      headers: headers(config.token),
+      headers: headers(config.token, idempotencyKey),
     });
     if (res.status === 401) return { ok: false, kind: "auth" };
     if (res.status === 403 || res.status === 400) return parseSaveFailure(res);
@@ -208,6 +211,7 @@ export async function reopenPartyTaskSubmission(
 export async function acceptPartyTaskSubmission(
   config: WorkOrdersApiConfig,
   taskId: string,
+  idempotencyKey?: string,
 ): Promise<
   | ApiOk<PartyTaskSubmissionDto>
   | (ApiErr & { errors?: Record<string, string> })
@@ -216,7 +220,7 @@ export async function acceptPartyTaskSubmission(
   try {
     const res = await fetch(`${base}/api/party-task-submissions/${taskId}/accept`, {
       method: "POST",
-      headers: headers(config.token),
+      headers: headers(config.token, idempotencyKey),
     });
     if (res.status === 401) return { ok: false, kind: "auth" };
     if (res.status === 403 || res.status === 400) return parseSaveFailure(res);

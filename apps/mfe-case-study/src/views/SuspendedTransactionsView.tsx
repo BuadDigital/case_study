@@ -34,10 +34,10 @@ import {
 import { getAuthSession } from "@platform/auth-client";
 import { useTickingMinute } from "@platform/app-shared/hooks/use-ticking-now";
 import { useViewportDesktop } from "@platform/app-shared/hooks/use-viewport-desktop";
-import { usePrototype } from "@platform/app-shared/contexts/PrototypeContext";
+import { useAppAccess } from "@platform/app-shared/contexts/AppAccessContext";
 import { useStaffUsersQuery } from "@settings/mfe/query/settings-queries";
-import { PARTY_TASK_PAGES } from "@platform/app-shared/prototype/party-task-pages";
-import { isSuperAdmin } from "@platform/app-shared/prototype/prototype-role-access";
+import { PARTY_TASK_PAGES } from "@platform/app-shared/app-data/party-task-pages";
+import { isSuperAdmin } from "@platform/app-shared/app-data/role-access";
 import type { RoleId } from "@platform/types";
 import { PoNumber } from "../components/ui/PoNumber";
 import { TickingRemainingTimeCell } from "../components/ui/RemainingTimeCell";
@@ -51,14 +51,14 @@ import {
   formatPropertyDeedDisplay,
   PROPERTY_IDENTIFIER_COLUMN_LABEL,
   type PoIntakeRecord,
-} from "../lib/prototype/po-intake-data";
-import { remainingTimerTick, resolveRemainingTime, formatRemainingDuration } from "../lib/prototype/my-task-row";
+} from "../lib/app-data/po-intake-data";
+import { remainingTimerTick, resolveRemainingTime, formatRemainingDuration } from "../lib/app-data/my-task-row";
 import { poPropertiesPath, poPropertyPath } from "@platform/app-shared/domain/po-routes";
 import {
   propertySuspensionKey,
   type SuspendedTransaction,
-} from "../lib/prototype/suspended-transactions-storage";
-import { tasksForPartyAssignee } from "../lib/prototype/tasks-storage";
+} from "../lib/app-data/suspended-transactions-storage";
+import { tasksForPartyAssignee } from "../lib/app-data/tasks-storage";
 import { usePoRecordsQuery, useWorkflowTasksQuery } from "../query/case-study-queries";
 import { useSuspendedTransactionsQuery } from "../query/suspended-transactions-queries";
 
@@ -112,7 +112,7 @@ function buildSuspendedRowMoreItems(
 
 export function SuspendedTransactionsView() {
   const router = useRouter();
-  const { role, viewerEmail, distributionAssigneeId } = usePrototype();
+  const { role, viewerEmail, distributionAssigneeId } = useAppAccess();
   const { data: items = [], isFetched } = useSuspendedTransactionsQuery();
   const { data: poRecords = [] } = usePoRecordsQuery();
   const { data: tasks = [] } = useWorkflowTasksQuery();

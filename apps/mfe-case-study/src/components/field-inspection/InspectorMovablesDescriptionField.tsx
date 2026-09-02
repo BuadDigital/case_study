@@ -3,9 +3,9 @@
 import { cn } from "@platform/ui-kit";
 import {
   MOVABLES_DESCRIPTION_KEY,
-} from "../../lib/prototype/inspector-workspace-data";
+} from "../../lib/app-data/inspector-workspace-data";
 import { EDIT_CONTROL_CLASS } from "./FieldInspectionWorkParts";
-import { inspectorInvalidControlClass } from "../../lib/prototype/inspector-workspace-validation";
+import { inspectorInvalidControlClass } from "../../lib/app-data/inspector-workspace-validation";
 
 /** Field Inspection Workspace.dc.html — single-line input beside «يوجد منقولات». */
 export function InspectorMovablesDescriptionField({

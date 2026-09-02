@@ -17,9 +17,9 @@ import {
   PROPERTY_BOUNDARY_ROWS,
   type PoIntakeRecord,
   type PoPropertyIntake,
-} from "../../lib/prototype/po-intake-data";
+} from "../../lib/app-data/po-intake-data";
 import { isValidContactEntry } from "../../lib/domain/po-intake/property-validation";
-import type { PropertyDetailDocumentEntry } from "../../lib/prototype/property-detail-documents";
+import type { PropertyDetailDocumentEntry } from "../../lib/app-data/property-detail-documents";
 import { PropertyDetailMediaGlance } from "./PropertyDetailMediaGlance";
 import {
   DetailBadge,

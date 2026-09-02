@@ -4,9 +4,9 @@ import { useCallback, useState } from "react";
 import { Button, ModalBody, ModalHeader, ModalOverlay, ModalTitle, useToast } from "@platform/ui-kit";
 import { useEscapeKey } from "@platform/app-shared/hooks/use-escape-key";
 import { CaseStudyReportDocument } from "./CaseStudyReportDocument";
-import { buildCaseStudyReportPrintHtml } from "../../lib/prototype/case-study-report-html";
+import { buildCaseStudyReportPrintHtml } from "../../lib/app-data/case-study-report-html";
 import { openHtmlDocumentInNewTab } from "../../lib/open-html-document";
-import type { CaseStudyReportModel } from "../../lib/prototype/case-study-report-model";
+import type { CaseStudyReportModel } from "../../lib/app-data/case-study-report-model";
 
 type Props = {
   model: CaseStudyReportModel;

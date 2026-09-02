@@ -1,6 +1,6 @@
 "use client";
 
-import type { PartyTaskPageDef } from "@platform/app-shared/prototype/party-task-pages";
+import type { PartyTaskPageDef } from "@platform/app-shared/app-data/party-task-pages";
 import type { WorkflowTask } from "@platform/app-shared/workflow/task-types";
 import { EvaluatorWindow } from "./EvaluatorWindow";
 import type { EvaluatorWindowHostRefObject } from "../../lib/evaluator/evaluator-window-host";

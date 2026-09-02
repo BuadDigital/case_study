@@ -19,19 +19,19 @@ import {
   formatDateAr,
   formatPropertyDeedDisplay,
   type PoPropertyIntake,
-} from "../../lib/prototype/po-intake-data";
+} from "../../lib/app-data/po-intake-data";
 import {
   courtVisitResultKindLabel,
   letterRowForProperty,
-} from "../../lib/prototype/operations-task-property-scope";
+} from "../../lib/app-data/operations-task-property-scope";
 import {
   operationsTaskStatusLabel,
   operationsTaskTypeLabel,
-} from "../../lib/prototype/operations-task-display";
-import { isActiveOperationsTask } from "../../lib/prototype/operations-tasks-storage";
+} from "../../lib/app-data/operations-task-display";
+import { isActiveOperationsTask } from "../../lib/app-data/operations-tasks-storage";
 import { usePropertyOperationsTasks } from "../../query/use-property-operations-tasks";
-import { usePrototype } from "@platform/app-shared/contexts/PrototypeContext";
-import { canManageOperationsTasks } from "../../lib/prototype/operations-task-roles";
+import { useAppAccess } from "@platform/app-shared/contexts/AppAccessContext";
+import { canManageOperationsTasks } from "../../lib/app-data/operations-task-roles";
 
 /**
  * Government reviews — projection of court_visit ops tasks for this deed.
@@ -43,7 +43,7 @@ export function PropertyDetailGovernmentReviewsTab({
   poNumber: string;
   property: PoPropertyIntake;
 }) {
-  const { role } = usePrototype();
+  const { role } = useAppAccess();
   const canCreate = canManageOperationsTasks(role);
   const deedNumber = property.deedNumber.trim();
   const deedDisplay = formatPropertyDeedDisplay(property) || deedNumber;

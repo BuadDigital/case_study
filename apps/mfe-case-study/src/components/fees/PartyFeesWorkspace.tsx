@@ -5,9 +5,9 @@ import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
 import { QueueTableHint } from "@platform/ui-kit";
 import { KeyEnvelopeFeesPanel } from "./KeyEnvelopeFeesPanelSlot";
-import { usePrototype } from "@platform/app-shared/contexts/PrototypeContext";
-import { prototypeKeys } from "@platform/app-shared/query/prototype-keys";
-import { loadPartyBillingStatements } from "@platform/app-shared/prototype/party-billing-statements-api";
+import { useAppAccess } from "@platform/app-shared/contexts/AppAccessContext";
+import { appDataKeys } from "@platform/app-shared/query/app-data-keys";
+import { loadPartyBillingStatements } from "@platform/app-shared/app-data/party-billing-statements-api";
 import { useInspectorFeesQuery } from "../../query/inspector-fees-queries";
 import { InspectorFeesBillingTable } from "../field-inspection/InspectorFeesBillingTable";
 import { PartyFeeWorkflowTable } from "./PartyFeeWorkflowTable";
@@ -24,7 +24,7 @@ import {
 } from "./SupervisorEngSurveyFeeAcceptPanel";
 import { sortInspectorFeeRowsNewestFirst } from "@platform/app-shared/fees/party-fee-meta";
 import { useWorkflowTasksQuery } from "../../query/case-study-queries";
-import { opsLetterCard } from "../../lib/prototype/ops-tasks-tw";
+import { opsLetterCard } from "../../lib/app-data/ops-tasks-tw";
 
 type PartyFeesTab =
   | "action"
@@ -45,7 +45,7 @@ export function PartyFeesWorkspace({
   assigneeId?: string;
   isSupervisor: boolean;
 }) {
-  const { hasCapability } = usePrototype();
+  const { hasCapability } = useAppAccess();
   const [tab, setTab] = useState<PartyFeesTab>(
     isSupervisor ? "financial" : "action",
   );
@@ -108,7 +108,7 @@ export function PartyFeesWorkspace({
 
   const { data: issuedStatements = [] } = useQuery({
     queryKey: [
-      ...prototypeKeys.all,
+      ...appDataKeys.all,
       "party-billing",
       "statements",
       assigneeId ?? (isSupervisor ? "all" : "none"),

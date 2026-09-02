@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState, type ReactNode, Fragment } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode, Fragment } from "react";
 import { ReturnedForCorrectionNote } from "../ui/ReturnedForCorrectionNote";
 import {
   AppModal,
@@ -11,6 +11,7 @@ import {
   formControlClassName,
   useToast,
 } from "@platform/ui-kit";
+import { useIdempotentAction } from "@platform/app-shared";
 import { DetailBadge, EmptyState } from "./PropertyDetailFields";
 import {
   PROPERTY_BOUNDARY_ROWS,
@@ -19,22 +20,26 @@ import {
   formatDateAr,
   formatPropertyDeedDisplay,
   type PoPropertyIntake,
-} from "../../lib/prototype/po-intake-data";
+} from "../../lib/app-data/po-intake-data";
 import {
   FIELD_INSPECTION_SUBMISSION_CHANGED_EVENT,
+  mergeInspectorWorkspacePatch,
+} from "../../lib/app-data/inspector-workspace-model";
+import { loadInspectorWorkspaceSnapshot } from "../../lib/app-data/inspector-workspace-reads";
+import {
   acceptInspectorWorkspace,
   getOrCreateInspectorWorkspace,
-  loadInspectorWorkspaceSnapshot,
   reopenInspectorWorkspace,
   saveInspectorWorkspaceDraft,
   updateInspectorWorkspace,
-  mergeInspectorWorkspacePatch,
-} from "../../lib/prototype/inspector-workspace-storage";
+} from "../../lib/app-data/inspector-workspace-commands";
 import {
   INSPECTOR_SERVICE_OPTIONS,
   INSPECTOR_AMENITY_OPTIONS,
   INSPECTOR_OBSERVATION_CATEGORIES,
   MOVABLES_DESCRIPTION_KEY,
+  activeMapDiffersFromInspectorOriginal,
+  ensureInspectorOriginalMapOnSubmit,
   inspectorFeatureRequiresPhoto,
   inspectorPhotoCoverageLabel,
   inspectorPhotoStampText,
@@ -45,27 +50,29 @@ import {
   isMovablesPresent,
   isShopHiddenInspectorComponentKey,
   listServiceAmenityPhotoSlots,
+  mapPinPatchForActor,
   newObservationId,
   parseInspectorCount,
   patchInspectorFeatureValues,
+  restoreInspectorOriginalMapPin,
   visibleInspectorFeatureFields,
   type InspectorBoundaryKey,
   type InspectorComponentPhotoKey,
   type InspectorPhotoAttachment,
   type InspectorSlotPhoto,
   type InspectorWorkspaceDraft,
-} from "../../lib/prototype/inspector-workspace-data";
+} from "../../lib/app-data/inspector-workspace-data";
 import {
   clearInspectorPhotoDataUrl,
   getInspectorPhotoDataUrl,
   prefetchInspectorPhoto,
   uploadInspectorPhotoFromFile,
-} from "../../lib/prototype/inspector-photo-upload";
+} from "../../lib/app-data/inspector-photo-upload";
 import {
   INSPECTOR_PHOTO_ACCEPT,
   filterInspectorPhotoFiles,
   useInspectorPhotoDropZone,
-} from "../../lib/prototype/inspector-photo-drop";
+} from "../../lib/app-data/inspector-photo-drop";
 import { FieldComparableCaptureSection } from "../field-inspection/FieldComparableCaptureSection";
 import { InspectorWorkspaceWizard } from "../field-inspection/InspectorWorkspaceWizard";
 import { InspectorPhotoFilePicker } from "../field-inspection/InspectorPhotoFilePicker";
@@ -79,12 +86,12 @@ import {
   scrollToInspectorField,
   validateInspectorWorkspace,
   type InspectorWorkspaceFieldErrors,
-} from "../../lib/prototype/inspector-workspace-validation";
-import { finalizeInspectorWorkspace } from "../../lib/prototype/finalize-field-inspection-submission";
-import type { PartyTaskPageDef } from "@platform/app-shared/prototype/party-task-pages";
-import type { WorkflowTask } from "../../lib/prototype/tasks-storage";
-import type { PropertyDetailPartyCard } from "../../lib/prototype/property-detail-parties";
-import type { PropertyDetailDocumentEntry } from "../../lib/prototype/property-detail-documents";
+} from "../../lib/app-data/inspector-workspace-validation";
+import { finalizeInspectorWorkspace } from "../../lib/app-data/finalize-field-inspection-submission";
+import type { PartyTaskPageDef } from "@platform/app-shared/app-data/party-task-pages";
+import type { WorkflowTask } from "../../lib/app-data/tasks-storage";
+import type { PropertyDetailPartyCard } from "../../lib/app-data/property-detail-parties";
+import type { PropertyDetailDocumentEntry } from "../../lib/app-data/property-detail-documents";
 import {
   EDIT_CONTROL_CLASS,
   formatAcceptedDate,
@@ -146,7 +153,6 @@ export function PropertyDetailInspectionTab({
   const [returnNote, setReturnNote] = useState("");
   const [returnError, setReturnError] = useState<string | null>(null);
   const [returning, setReturning] = useState(false);
-  const [accepting, setAccepting] = useState(false);
   const [mapPinned, setMapPinned] = useState(false);
   const mapPinnedRef = useRef(false);
   mapPinnedRef.current = mapPinned;
@@ -161,6 +167,35 @@ export function PropertyDetailInspectionTab({
     prevLng: string;
   } | null>(null);
   const [mapPinEpoch, setMapPinEpoch] = useState(0);
+
+  const { execute: executeInspectorSubmit, loading: inspectorSubmitting } =
+    useIdempotentAction(
+      useCallback(
+        async (idempotencyKey: string) => {
+          if (!inspectionTask) {
+            throw new Error("لا توجد مهمة معاينة");
+          }
+          return finalizeInspectorWorkspace(inspectionTask.id, idempotencyKey);
+        },
+        [inspectionTask],
+      ),
+    );
+
+  const { execute: executeAcceptInspection, loading: acceptSubmitting } =
+    useIdempotentAction(
+      useCallback(
+        async (idempotencyKey: string) => {
+          if (!inspectionTask) {
+            throw new Error("لا توجد مهمة معاينة");
+          }
+          return acceptInspectorWorkspace(inspectionTask.id, idempotencyKey);
+        },
+        [inspectionTask],
+      ),
+    );
+
+  const submitBusy = saving || inspectorSubmitting;
+  const acceptBusy = acceptSubmitting;
 
   useEffect(() => {
     if (!inspectionTask) {
@@ -257,8 +292,13 @@ export function PropertyDetailInspectionTab({
     return approximatePropertyGeo(property);
   }, [draft, property]);
 
-  const locked = draft ? isInspectorWorkspaceLocked(draft.status) : false;
+  const locked =
+    Boolean(draft && isInspectorWorkspaceLocked(draft.status)) &&
+    !serviceProofFromTransactionPhotos;
   const showEditFields = editMode && Boolean(draft) && !locked;
+  const mapActor = serviceProofFromTransactionPhotos
+    ? "specialist"
+    : "inspector";
 
   function patchDraft(patch: Parameters<typeof updateInspectorWorkspace>[1]) {
     if (!inspectionTask || locked) return;
@@ -268,7 +308,9 @@ export function PropertyDetailInspectionTab({
     setDraft((prev) =>
       prev ? mergeInspectorWorkspacePatch(prev, patch) : prev,
     );
-    void updateInspectorWorkspace(inspectionTask.id, patch)
+    void updateInspectorWorkspace(inspectionTask.id, patch, {
+      allowWhenSubmitted: serviceProofFromTransactionPhotos,
+    })
       .then((next) => {
         if (!next) return;
         setDraft((prev) => {
@@ -294,12 +336,13 @@ export function PropertyDetailInspectionTab({
   }
 
   function requestMapMove(lat: number, lng: number) {
+    if (!draft) return;
     const nextLat = lat.toFixed(5);
     const nextLng = lng.toFixed(5);
-    const curLat = (draft?.mapLatitude ?? "").trim();
-    const curLng = (draft?.mapLongitude ?? "").trim();
+    const curLat = (draft.mapLatitude ?? "").trim();
+    const curLng = (draft.mapLongitude ?? "").trim();
     if (!curLat || !curLng || !mapPinnedRef.current) {
-      patchDraft({ mapLatitude: nextLat, mapLongitude: nextLng });
+      patchDraft(mapPinPatchForActor(draft, nextLat, nextLng, mapActor));
       return;
     }
     if (curLat === nextLat && curLng === nextLng) return;
@@ -312,17 +355,31 @@ export function PropertyDetailInspectionTab({
   }
 
   function confirmPendingMapMove() {
-    if (!pendingMapMove) return;
+    if (!pendingMapMove || !draft) return;
     setMapBackup({
       lat: pendingMapMove.prevLat,
       lng: pendingMapMove.prevLng,
     });
-    patchDraft({
-      mapLatitude: pendingMapMove.nextLat,
-      mapLongitude: pendingMapMove.nextLng,
-    });
+    patchDraft(
+      mapPinPatchForActor(
+        draft,
+        pendingMapMove.nextLat,
+        pendingMapMove.nextLng,
+        mapActor,
+      ),
+    );
     setPendingMapMove(null);
     setMapPinned(true);
+  }
+
+  function restoreInspectorMap() {
+    if (!draft) return;
+    const restored = restoreInspectorOriginalMapPin(draft);
+    if (!restored) return;
+    patchDraft(restored);
+    setMapPinned(true);
+    setMapPinEpoch((n) => n + 1);
+    showToast("تم استعادة موقع المعاين", "success");
   }
 
   function cancelPendingMapMove() {
@@ -351,10 +408,14 @@ export function PropertyDetailInspectionTab({
     setSaving(true);
     setFormError(null);
     try {
-      const confirmed: InspectorWorkspaceDraft = {
+      const baseConfirmed: InspectorWorkspaceDraft = {
         ...draft,
         inspectionConfirmed: true,
       };
+      const confirmed =
+        mapActor === "inspector"
+          ? ensureInspectorOriginalMapOnSubmit(baseConfirmed)
+          : baseConfirmed;
       const saved = await saveInspectorWorkspaceDraft(confirmed);
       setDraft(saved);
 
@@ -382,7 +443,10 @@ export function PropertyDetailInspectionTab({
         return;
       }
 
-      const result = await finalizeInspectorWorkspace(inspectionTask.id);
+      const outcome = await executeInspectorSubmit();
+      if (outcome.status === "skipped") return;
+
+      const result = outcome.value;
       if (!result.ok) {
         if (result.errors) {
           setFieldErrors(result.errors as InspectorWorkspaceFieldErrors);
@@ -445,17 +509,24 @@ export function PropertyDetailInspectionTab({
   }
 
   async function handleAcceptInspection() {
-    if (!inspectionTask) return;
-    setAccepting(true);
-    const accepted = await acceptInspectorWorkspace(inspectionTask.id);
-    setAccepting(false);
-    if (!accepted.ok) {
-      showToast(accepted.error, "error");
-      return;
+    if (!inspectionTask || acceptBusy) return;
+    try {
+      const outcome = await executeAcceptInspection();
+      if (outcome.status === "skipped") return;
+      const accepted = outcome.value;
+      if (!accepted.ok) {
+        showToast(accepted.error, "error");
+        return;
+      }
+      setDraft(accepted.data);
+      showToast("تم اعتماد بيانات المعاينة — تظهر في حزمة إنفاذ", "success");
+      onSubmitted?.();
+    } catch (error) {
+      showToast(
+        error instanceof Error ? error.message : "تعذّر اعتماد بيانات المعاينة",
+        "error",
+      );
     }
-    setDraft(accepted.data);
-    showToast("تم اعتماد بيانات المعاينة — تظهر في حزمة إنفاذ", "success");
-    onSubmitted?.();
   }
 
   if (!inspectionCard) {
@@ -495,7 +566,7 @@ export function PropertyDetailInspectionTab({
               type="button"
               size="sm"
               variant="primary"
-              loading={accepting}
+              loading={acceptBusy}
               showActionToast={false}
               className="max-lg:min-h-11 max-lg:flex-1"
               onClick={() => void handleAcceptInspection()}
@@ -507,7 +578,7 @@ export function PropertyDetailInspectionTab({
             <button
               type="button"
               className="rounded-lg border border-border-md bg-surface px-3.5 py-1.5 text-[11.5px] font-bold text-text-2 max-lg:min-h-11 max-lg:flex-1 max-lg:rounded-[12px] max-lg:text-[13px]"
-              disabled={accepting}
+              disabled={acceptBusy}
               onClick={() => {
                 setReturnOpen(true);
                 setReturnError(null);
@@ -520,7 +591,7 @@ export function PropertyDetailInspectionTab({
             <button
               type="button"
               className="rounded-lg border border-border-md bg-surface px-3.5 py-1.5 text-[11.5px] font-bold text-text-2 max-lg:min-h-11 max-lg:w-full max-lg:rounded-[12px] max-lg:text-[13px]"
-              disabled={accepting}
+              disabled={acceptBusy}
               onClick={() => {
                 setReturnOpen(true);
                 setReturnError(null);
@@ -606,7 +677,7 @@ export function PropertyDetailInspectionTab({
           serviceProofFromTransactionPhotos={serviceProofFromTransactionPhotos}
           transactionPhotos={transactionPhotos}
           locked={locked || !showEditFields}
-          saving={saving}
+          saving={submitBusy}
           fieldErrors={fieldErrors}
           flat={!steps}
           onPatch={(patch) => patchDraft(patch)}
@@ -614,12 +685,22 @@ export function PropertyDetailInspectionTab({
           onCancel={() => void handleCancelEdit()}
           onMapMove={requestMapMove}
           mapPinned={mapPinned}
+          mapActor={mapActor}
+          canRestoreInspectorMap={
+            mapActor === "specialist" &&
+            Boolean(draft && activeMapDiffersFromInspectorOriginal(draft))
+          }
+          onRestoreInspectorMap={restoreInspectorMap}
           onPin={() => {
-            if (!draft.mapLatitude.trim() && mapGeo) {
-              patchDraft({
-                mapLatitude: mapGeo.lat.toFixed(5),
-                mapLongitude: mapGeo.lng.toFixed(5),
-              });
+            if (!draft) return;
+            const nextLat =
+              draft.mapLatitude.trim() ||
+              (mapGeo ? mapGeo.lat.toFixed(5) : "");
+            const nextLng =
+              draft.mapLongitude.trim() ||
+              (mapGeo ? mapGeo.lng.toFixed(5) : "");
+            if (nextLat && nextLng) {
+              patchDraft(mapPinPatchForActor(draft, nextLat, nextLng, mapActor));
             }
             setMapPinned(true);
             showToast("تم تثبيت الموقع", "success");

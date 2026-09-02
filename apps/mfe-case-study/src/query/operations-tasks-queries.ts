@@ -1,9 +1,9 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
-import { prototypeKeys } from "@platform/app-shared/query/prototype-keys";
+import { appDataKeys } from "@platform/app-shared/query/app-data-keys";
 import { LIVE_QUEUE_POLL_INTERVAL_MS } from "@platform/app-shared/query/live-query";
-import { loadOperationsTasks, loadCourtVisitFees } from "../lib/prototype/operations-tasks-storage";
+import { loadOperationsTasks, loadCourtVisitFees } from "../lib/app-data/operations-tasks-storage";
 
 const STALE_MS = 30_000;
 
@@ -18,7 +18,7 @@ export function useOperationsTasksQuery(options?: {
   const status = options?.status?.trim() || undefined;
 
   return useQuery({
-    queryKey: [...prototypeKeys.operationsTasks(), assigneeId, createdBy, status],
+    queryKey: [...appDataKeys.operationsTasks(), assigneeId, createdBy, status],
     queryFn: () => loadOperationsTasks({ assigneeId, createdBy, status }),
     staleTime: STALE_MS,
     refetchInterval: options?.live ? LIVE_QUEUE_POLL_INTERVAL_MS : false,
@@ -31,7 +31,7 @@ export function useCourtVisitFeesQuery(options?: {
 }) {
   const creditAssigneeId = options?.creditAssigneeId?.trim() || undefined;
   return useQuery({
-    queryKey: prototypeKeys.courtVisitFees({ creditAssigneeId }),
+    queryKey: appDataKeys.courtVisitFees({ creditAssigneeId }),
     queryFn: () => loadCourtVisitFees({ creditAssigneeId }),
     enabled: options?.enabled ?? true,
     staleTime: STALE_MS,

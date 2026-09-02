@@ -11,12 +11,12 @@ import {
   type InspectorFreePhoto,
   type InspectorFreePhotoUploader,
   type InspectorWorkspaceDraft,
-} from "../../lib/prototype/inspector-workspace-data";
+} from "../../lib/app-data/inspector-workspace-data";
 import {
   getInspectorPhotoDataUrl,
   prefetchInspectorPhoto,
   uploadInspectorPhotoFromFile,
-} from "../../lib/prototype/inspector-photo-upload";
+} from "../../lib/app-data/inspector-photo-upload";
 import { InspectorPhotoFilePicker } from "./InspectorPhotoFilePicker";
 import { InspectorStampedPhotoThumb } from "./InspectorStampedPhotoThumb";
 import { freePhotoRef } from "./InspectorDefinedPhotosSection";

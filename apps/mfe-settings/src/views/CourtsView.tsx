@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { usePrototype } from "@platform/app-shared/contexts/PrototypeContext";
+import { useAppAccess } from "@platform/app-shared/contexts/AppAccessContext";
 import {
   createAdminCourt,
   createAdminCourtCircuit,
@@ -255,7 +255,7 @@ function CircuitFormModal({
 }
 
 export function CourtsView() {
-  const { authReady, hasCapability } = usePrototype();
+  const { authReady, hasCapability } = useAppAccess();
   const canEdit = hasCapability("courts.manage");
   const { showToast } = useToast();
   const [courts, setCourts] = useState<AdminCourtDto[]>([]);

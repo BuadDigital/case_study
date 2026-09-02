@@ -13,7 +13,7 @@ import { isFeatureEnabled } from "@platform/app-shared/feature-flags";
 import { ensureFreshAuthSession } from "@platform/app-shared/auth/ensure-fresh-session";
 import { useAuth } from "@platform/app-shared/hooks/useAuth";
 import { useDocumentVisible } from "@platform/app-shared/hooks/use-document-visible";
-import { prototypeKeys } from "@platform/app-shared/query/prototype-keys";
+import { appDataKeys } from "@platform/app-shared/query/app-data-keys";
 import {
   filterNotificationsForRole,
   shouldShowNotificationToast,
@@ -51,7 +51,7 @@ function isNetworkFailure(err: unknown): boolean {
  * showing a toast — otherwise the same event shows up more than once.
  *
  * SSE/push deliveries also trigger targeted React Query invalidations for live
- * queues (not a full `prototypeKeys.all` refetch).
+ * queues (not a full `appDataKeys.all` refetch).
  */
 export function ServerNotificationBridge() {
   const { token, authReady, isAuthenticated, role, user } = useAuth();
@@ -67,7 +67,7 @@ export function ServerNotificationBridge() {
   const pullOnVisibleRef = useRef<() => void>(() => {});
 
   // Any server-pushed notification means something changed on the backend.
-  // Invalidate only live queues / sidebar feeds — NOT prototypeKeys.all
+  // Invalidate only live queues / sidebar feeds — NOT appDataKeys.all
   // (which also marks finance nav, inspector-fees badges, court visit fees,
   // property timelines, … and fights every page change with a mass refetch).
   const refreshTransactions = useCallback(() => {
@@ -77,25 +77,25 @@ export function ServerNotificationBridge() {
     refreshDebounceRef.current = window.setTimeout(() => {
       refreshDebounceRef.current = undefined;
       void queryClient.invalidateQueries({
-        queryKey: prototypeKeys.workflowTasks(),
+        queryKey: appDataKeys.workflowTasks(),
       });
       void queryClient.invalidateQueries({
-        queryKey: prototypeKeys.poListRows(),
+        queryKey: appDataKeys.poListRows(),
       });
       void queryClient.invalidateQueries({
-        queryKey: prototypeKeys.propertyListItems(),
+        queryKey: appDataKeys.propertyListItems(),
       });
       void queryClient.invalidateQueries({
-        queryKey: prototypeKeys.operationsTasks(),
+        queryKey: appDataKeys.operationsTasks(),
       });
       void queryClient.invalidateQueries({
-        queryKey: prototypeKeys.failures(),
+        queryKey: appDataKeys.failures(),
       });
       void queryClient.invalidateQueries({
-        queryKey: prototypeKeys.pendingBourseItems(),
+        queryKey: appDataKeys.pendingBourseItems(),
       });
       void queryClient.invalidateQueries({
-        queryKey: prototypeKeys.suspendedTransactions(),
+        queryKey: appDataKeys.suspendedTransactions(),
       });
       void queryClient.invalidateQueries({
         queryKey: ["reporting", "dashboard"],

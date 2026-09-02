@@ -6,7 +6,7 @@ import {
   listInspectorFees,
   type InspectorFeeRowDto,
 } from "@platform/api-client";
-import type { StaffUser } from "@platform/app-shared/prototype/constants";
+import type { StaffUser } from "@platform/app-shared/app-data/constants";
 import {
   tryGetPartyOfficeBillingStatementsPanel,
   type PartyOfficeBillingStatementsPanelProps,

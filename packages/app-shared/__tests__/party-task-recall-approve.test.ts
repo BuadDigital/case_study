@@ -22,12 +22,12 @@ vi.mock("@platform/api-client", () => ({
 const fetchPartySubmission = vi.fn();
 const reopenPartySubmission = vi.fn();
 
-vi.mock("../src/prototype/party-submission-api", () => ({
+vi.mock("../src/app-data/party-submission-api", () => ({
   fetchPartySubmission: (...args: unknown[]) => fetchPartySubmission(...args),
   reopenPartySubmission: (...args: unknown[]) => reopenPartySubmission(...args),
 }));
 
-vi.mock("../src/prototype/prototype-modules-api-config", () => ({
+vi.mock("../src/app-data/modules-api-config", () => ({
   prototypeModulesApiConfig: () => ({ baseUrl: "http://test", token: "t" }),
 }));
 
@@ -36,7 +36,7 @@ const {
   hydratePartyTaskRecalls,
   getPartyTaskRecall,
   partyTaskRecallReturnNote,
-} = await import("../src/prototype/party-task-recall-storage");
+} = await import("../src/app-data/party-task-recall-storage");
 
 const TASK_ID = "11111111-1111-1111-1111-111111111111";
 

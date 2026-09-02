@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   Button,
   Input,
@@ -33,9 +33,10 @@ import {
   opsSurfaceCard,
   useToast,
 } from "@platform/ui-kit";
+import { useIdempotentAction } from "@platform/app-shared";
 import { useDistributionAssigneesQuery } from "@settings/mfe/query/settings-queries";
-import { displayPersonName as sharedDisplayPersonName } from "@platform/app-shared/prototype/person-display-name";
-import { PROPERTY_IDENTIFIER_COLUMN_LABEL } from "@case-study/mfe/lib/prototype/po-intake-data";
+import { displayPersonName as sharedDisplayPersonName } from "@platform/app-shared/app-data/person-display-name";
+import { PROPERTY_IDENTIFIER_COLUMN_LABEL } from "@case-study/mfe/lib/app-data/po-intake-data";
 import { getFieldInspectors } from "@case-study/mfe/lib/distribution-assignees";
 import {
   confirmEnvelopeAssignment,
@@ -257,6 +258,39 @@ export function KeyEnvelopeDetailPage({
   const [courtEditTarget, setCourtEditTarget] =
     useState<KeyEnvelopeLinkedProperty | null>(null);
 
+  const pendingAssignment = useRef<{
+    assignmentId: string;
+    status: KeyAssignmentMatchStatus;
+    notes?: string;
+  } | null>(null);
+  const pendingHandoffId = useRef<string | null>(null);
+
+  const { execute: executeConfirmAssignment, loading: confirmingAssignment } =
+    useIdempotentAction(
+      useCallback(async (idempotencyKey: string) => {
+        const pending = pendingAssignment.current;
+        if (!env || !pending) throw new Error("لا يوجد إسناد للتأكيد");
+        return confirmEnvelopeAssignment(
+          env.id,
+          pending.assignmentId,
+          pending.status,
+          pending.notes,
+          idempotencyKey,
+        );
+      }, [env]),
+    );
+
+  const { execute: executeConfirmHandoff, loading: confirmingHandoff } =
+    useIdempotentAction(
+      useCallback(async (idempotencyKey: string) => {
+        const handoffId = pendingHandoffId.current;
+        if (!env || !handoffId) throw new Error("لا توجد مناولة للتأكيد");
+        return confirmEnvelopeHandoff(env.id, handoffId, idempotencyKey);
+      }, [env]),
+    );
+
+  const commandBusy = busy || confirmingAssignment || confirmingHandoff;
+
   const onBackRef = useRef(onBack);
   onBackRef.current = onBack;
   const showToastRef = useRef(showToast);
@@ -320,14 +354,10 @@ export function KeyEnvelopeDetailPage({
     if (!env) return;
     const deed =
       env.assignments.find((a) => a.id === assignmentId)?.deedNumber ?? "";
-    setBusy(true);
-    const result = await confirmEnvelopeAssignment(
-      env.id,
-      assignmentId,
-      status,
-      notes,
-    );
-    setBusy(false);
+    pendingAssignment.current = { assignmentId, status, notes };
+    const outcome = await executeConfirmAssignment();
+    if (outcome.status === "skipped") return;
+    const result = outcome.value;
     if (!result.ok) {
       showToast(result.error, "error");
       return;
@@ -342,9 +372,10 @@ export function KeyEnvelopeDetailPage({
 
   async function handleConfirmHandoff(handoffId: string) {
     if (!env) return;
-    setBusy(true);
-    const result = await confirmEnvelopeHandoff(env.id, handoffId);
-    setBusy(false);
+    pendingHandoffId.current = handoffId;
+    const outcome = await executeConfirmHandoff();
+    if (outcome.status === "skipped") return;
+    const result = outcome.value;
     if (!result.ok) {
       showToast(result.error, "error");
       return;
@@ -546,7 +577,7 @@ export function KeyEnvelopeDetailPage({
               env={env}
               rows={sortedAssignments}
               canEdit={canEdit}
-              busy={busy}
+              busy={commandBusy}
               onMatch={(a) => setMatchTarget(a)}
             />
           ) : null}
@@ -554,7 +585,7 @@ export function KeyEnvelopeDetailPage({
             <CustodyPanel
               env={env}
               canEdit={canEdit}
-              busy={busy}
+              busy={commandBusy}
               onConfirm={(id) => void handleConfirmHandoff(id)}
             />
           ) : null}
@@ -573,7 +604,7 @@ export function KeyEnvelopeDetailPage({
       {matchTarget && env ? (
         <MatchResultModal
           deed={matchTarget.deedNumber}
-          busy={busy}
+          busy={commandBusy}
           onClose={() => setMatchTarget(null)}
           onSave={(status, note) =>
             void handleConfirmAssignment(matchTarget.id, status, note)
@@ -587,7 +618,7 @@ export function KeyEnvelopeDetailPage({
             env={env}
             inspectors={fieldInspectors}
             staffLoadError={staffLoadError}
-            busy={busy}
+            busy={commandBusy}
             onClose={() => setHandoffOpen(false)}
             onBusy={setBusy}
             onDone={async (next) => {
@@ -598,7 +629,7 @@ export function KeyEnvelopeDetailPage({
         ) : (
           <ReceiveEnvelopeModal
             env={env}
-            busy={busy}
+            busy={commandBusy}
             onClose={() => setHandoffOpen(false)}
             onBusy={setBusy}
             onDone={async (next) => {
@@ -1336,6 +1367,18 @@ function ReceiveEnvelopeModal({
   const holder =
     resolvedHolder === "—" ? "الطرف الحالي" : resolvedHolder;
 
+  const { execute: executeReceive, loading: receiving } = useIdempotentAction(
+    useCallback(
+      async (idempotencyKey: string) => {
+        if (!pending) throw new Error("لا توجد مناولة بانتظار التأكيد");
+        return confirmEnvelopeHandoff(env.id, pending.id, idempotencyKey);
+      },
+      [env.id, pending?.id],
+    ),
+  );
+
+  const buttonBusy = busy || receiving;
+
   return (
     <ModalOverlay onClick={onClose}>
       <ModalCard
@@ -1382,7 +1425,7 @@ function ReceiveEnvelopeModal({
         <ModalFooter className="justify-start gap-2 border-t border-border px-5 py-3.5">
           <Button
             variant="outline"
-            disabled={busy}
+            disabled={buttonBusy}
             showActionToast={false}
             onClick={onClose}
           >
@@ -1390,7 +1433,7 @@ function ReceiveEnvelopeModal({
           </Button>
           <Button
             variant="primary"
-            loading={busy}
+            loading={buttonBusy}
             disabled={!pending}
             showActionToast={false}
             onClick={async () => {
@@ -1399,20 +1442,22 @@ function ReceiveEnvelopeModal({
                 return;
               }
               onBusy(true);
-              const result = await confirmEnvelopeHandoff(
-                env.id,
-                pending.id,
-              );
-              onBusy(false);
-              if (!result.ok) {
-                showToast(result.error, "error");
-                return;
+              try {
+                const outcome = await executeReceive();
+                if (outcome.status === "skipped") return;
+                const result = outcome.value;
+                if (!result.ok) {
+                  showToast(result.error, "error");
+                  return;
+                }
+                showToast(
+                  `تم تأكيد استلام الظرف ${env.requestNumber}.`,
+                  "success",
+                );
+                await onDone(result.data);
+              } finally {
+                onBusy(false);
               }
-              showToast(
-                `تم تأكيد استلام الظرف ${env.requestNumber}.`,
-                "success",
-              );
-              await onDone(result.data);
             }}
           >
             تأكيد الاستلام
@@ -1452,6 +1497,27 @@ function DeliverEnvelopeModal({
   const [letterName, setLetterName] = useState("");
   const [err, setErr] = useState("");
   const fileRef = useRef<HTMLInputElement>(null);
+  const pendingHandoffBody = useRef<{
+    kind: string;
+    fromParty: string;
+    toParty: string;
+    toUserId: string | null;
+    letterAttachmentId: string | null;
+    notes: null;
+  } | null>(null);
+
+  const { execute: executeDeliver, loading: delivering } = useIdempotentAction(
+    useCallback(
+      async (idempotencyKey: string) => {
+        const body = pendingHandoffBody.current;
+        if (!body) throw new Error("لا توجد بيانات تسليم");
+        return createEnvelopeHandoff(env.id, body, idempotencyKey);
+      },
+      [env.id],
+    ),
+  );
+
+  const buttonBusy = busy || delivering;
 
   return (
     <ModalOverlay onClick={onClose}>
@@ -1623,7 +1689,7 @@ function DeliverEnvelopeModal({
         <ModalFooter className="justify-start gap-2 border-t border-border px-5 py-3.5">
           <Button
             variant="outline"
-            disabled={busy}
+            disabled={buttonBusy}
             showActionToast={false}
             onClick={onClose}
           >
@@ -1631,7 +1697,7 @@ function DeliverEnvelopeModal({
           </Button>
           <Button
             variant="primary"
-            loading={busy}
+            loading={buttonBusy}
             showActionToast={false}
             onClick={async () => {
               let toParty = "";
@@ -1671,31 +1737,37 @@ function DeliverEnvelopeModal({
                 toParty = env.court || "المحكمة";
               }
 
-              onBusy(true);
-              const result = await createEnvelopeHandoff(env.id, {
+              pendingHandoffBody.current = {
                 kind,
                 fromParty: env.createdByName || "المراجع الحكومي",
                 toParty,
                 toUserId: toUserIdVal,
                 letterAttachmentId: letterId,
                 notes: null,
-              });
-              onBusy(false);
-              if (!result.ok) {
-                showToast(result.error, "error");
-                return;
+              };
+              onBusy(true);
+              try {
+                const outcome = await executeDeliver();
+                if (outcome.status === "skipped") return;
+                const result = outcome.value;
+                if (!result.ok) {
+                  showToast(result.error, "error");
+                  return;
+                }
+                const typeTxt =
+                  kind === "internal"
+                    ? "تسليم داخلي"
+                    : kind === "external"
+                      ? "تسليم خارجي"
+                      : "إرجاع للمحكمة";
+                showToast(
+                  `تم تسجيل «${typeTxt}» على الظرف ${env.requestNumber}.`,
+                  "success",
+                );
+                await onDone(result.data);
+              } finally {
+                onBusy(false);
               }
-              const typeTxt =
-                kind === "internal"
-                  ? "تسليم داخلي"
-                  : kind === "external"
-                    ? "تسليم خارجي"
-                    : "إرجاع للمحكمة";
-              showToast(
-                `تم تسجيل «${typeTxt}» على الظرف ${env.requestNumber}.`,
-                "success",
-              );
-              await onDone(result.data);
             }}
           >
             تسليم

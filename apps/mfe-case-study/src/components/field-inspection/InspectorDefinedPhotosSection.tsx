@@ -25,19 +25,19 @@ import {
   type InspectorFreePhoto,
   type InspectorSlotPhoto,
   type InspectorWorkspaceDraft,
-} from "../../lib/prototype/inspector-workspace-data";
+} from "../../lib/app-data/inspector-workspace-data";
 import {
   INSPECTOR_PHOTO_ACCEPT,
   filterInspectorPhotoFiles,
   useInspectorPhotoDropZone,
-} from "../../lib/prototype/inspector-photo-drop";
+} from "../../lib/app-data/inspector-photo-drop";
 import {
   clearInspectorPhotoDataUrl,
   getInspectorPhotoDataUrl,
   openInspectorPhotoPreview,
   prefetchInspectorPhoto,
   uploadInspectorPhotoFromFile,
-} from "../../lib/prototype/inspector-photo-upload";
+} from "../../lib/app-data/inspector-photo-upload";
 import { InspectorPhotoFilePicker } from "./InspectorPhotoFilePicker";
 
 type PreviewRef =

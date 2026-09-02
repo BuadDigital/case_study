@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useToast } from "@platform/ui-kit";
+import { useCommandMutation } from "@platform/app-shared";
 import {
   INFATH_SEED_CLIENT_ID,
   listClients,
@@ -13,16 +14,20 @@ import {
   showsSubClientField,
   type AssignmentType,
   type PoIntakeRecord,
-} from "../../lib/prototype/po-intake-data";
+} from "../../lib/app-data/po-intake-data";
 import {
   buildPoRecord,
-  clearPoDraft,
-  hydratePoDraft,
   PO_INTAKE_DRAFT_SAVE_FAILED_EVENT,
+} from "../../lib/app-data/po-intake-model";
+import {
+  hydratePoDraft,
   poRecordExists,
+} from "../../lib/app-data/po-intake-reads";
+import {
+  clearPoDraft,
   savePoDraft,
   savePoRecord,
-} from "../../lib/prototype/po-intake-storage";
+} from "../../lib/app-data/po-intake-commands";
 import {
   collectRequiredErrors,
   hasFieldErrors,
@@ -40,7 +45,6 @@ const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 export function usePoIntakeForm(onComplete: (record: PoIntakeRecord) => void) {
   const { showToast } = useToast();
-  const [saving, setSaving] = useState(false);
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
   const [formError, setFormError] = useState<string | null>(null);
 
@@ -210,43 +214,86 @@ export function usePoIntakeForm(onComplete: (record: PoIntakeRecord) => void) {
     return true;
   }
 
+  const { run: runSave, loading: saving } = useCommandMutation(
+    useCallback(
+      async (
+        args: {
+          poNumber: string;
+          assignmentType: AssignmentType;
+          promulgationDate: string;
+          assignmentSpecialist: string;
+          assignmentSpecialistEmail: string;
+          expectedPropertyCount: string;
+          workOrderDescription: string;
+          subClientId: string;
+          clients: typeof clients;
+        },
+        idempotencyKey: string,
+      ) => {
+        const clientNameAr = args.clients.find(
+          (c) => c.id === INFATH_SEED_CLIENT_ID,
+        )?.nameAr;
+        const record = buildPoRecord({
+          poNumber: args.poNumber.trim(),
+          assignmentType: args.assignmentType,
+          promulgationDate: args.promulgationDate,
+          assignmentSpecialist: args.assignmentSpecialist.trim(),
+          assignmentSpecialistEmail: args.assignmentSpecialistEmail.trim(),
+          expectedPropertyCount: Math.max(
+            1,
+            parseInt(args.expectedPropertyCount, 10) || 1,
+          ),
+          reportUserClientIds: reportUserClientIdsForAssignment(
+            args.assignmentType,
+            INFATH_SEED_CLIENT_ID,
+            args.subClientId,
+          ),
+          propertiesRegion: "",
+          workOrderDescription: args.workOrderDescription.trim(),
+          clientId: INFATH_SEED_CLIENT_ID,
+          clientNameAr,
+          properties: [],
+        });
+        return savePoRecord(record, idempotencyKey);
+      },
+      [],
+    ),
+  );
+
   async function save() {
     if (!(await validateHeader())) return;
 
-    setSaving(true);
     clearErrors();
 
-    const clientNameAr = clients.find((c) => c.id === INFATH_SEED_CLIENT_ID)?.nameAr;
-    const record = buildPoRecord({
-      poNumber: poNumber.trim(),
-      assignmentType: assignmentType as AssignmentType,
-      promulgationDate,
-      assignmentSpecialist: assignmentSpecialist.trim(),
-      assignmentSpecialistEmail: assignmentSpecialistEmail.trim(),
-      expectedPropertyCount: Math.max(1, parseInt(expectedPropertyCount, 10) || 1),
-      reportUserClientIds: reportUserClientIdsForAssignment(
-        assignmentType,
-        INFATH_SEED_CLIENT_ID,
+    try {
+      const outcome = await runSave({
+        poNumber,
+        assignmentType: assignmentType as AssignmentType,
+        promulgationDate,
+        assignmentSpecialist,
+        assignmentSpecialistEmail,
+        expectedPropertyCount,
+        workOrderDescription,
         subClientId,
-      ),
-      propertiesRegion: "",
-      workOrderDescription: workOrderDescription.trim(),
-      clientId: INFATH_SEED_CLIENT_ID,
-      clientNameAr,
-      properties: [],
-    });
+        clients,
+      });
+      if (outcome.status === "skipped") return;
 
-    const result = await savePoRecord(record);
-    setSaving(false);
+      const result = outcome.value;
+      if (!result.ok) {
+        setFormError(result.error);
+        if (result.errors) setFieldErrors(result.errors);
+        return;
+      }
 
-    if (!result.ok) {
-      setFormError(result.error);
-      if (result.errors) setFieldErrors(result.errors);
-      return;
+      await clearPoDraft();
+      onComplete(result.data);
+    } catch (error) {
+      showToast(
+        error instanceof Error ? error.message : "تعذّر حفظ أمر العمل",
+        "error",
+      );
     }
-
-    await clearPoDraft();
-    onComplete(result.data);
   }
 
   return {

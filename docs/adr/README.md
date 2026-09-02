@@ -11,6 +11,8 @@ are decision-record dates, not necessarily the first date the code implemented t
 | [0004](0004-transactional-outbox-consumer-inbox.md) | Accepted | Use transactional outbox delivery and a consumer inbox for integration events |
 | [0005](0005-postgresql-xmin-optimistic-concurrency.md) | Accepted | Use PostgreSQL `xmin` optimistic-concurrency tokens and return HTTP 409 on conflicts |
 | [0006](0006-deploy-time-database-migrations.md) | Proposed — implementation in flight | Move schema migration from Case Study process startup to a deploy-time step |
+| [0007](0007-valuation-field-catalog.md) | Accepted | Valuation report field catalog ownership and injection rules |
+| [0008](0008-idempotent-command-buttons.md) | Accepted | Three-layer idempotency for command buttons (UI guard + client key + server dedupe) |
 
 The decomposition sequence and gates are in
 [`docs/architecture-split-plan.md`](../architecture-split-plan.md). Phase 0 of that plan is

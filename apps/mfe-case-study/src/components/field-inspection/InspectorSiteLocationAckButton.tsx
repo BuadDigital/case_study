@@ -1,7 +1,7 @@
 "use client";
 
 import { cn } from "@platform/ui-kit";
-import { SITE_LOCATION_ACK_BUTTON_LABEL } from "../../lib/prototype/inspector-workspace-data";
+import { SITE_LOCATION_ACK_BUTTON_LABEL } from "../../lib/app-data/inspector-workspace-data";
 import { INS_WIZARD_PIN_BUTTON_CLASS } from "./FieldInspectionWorkParts";
 
 /** Placeholder — contact-officer site-accuracy letter flow will plug in here later. */

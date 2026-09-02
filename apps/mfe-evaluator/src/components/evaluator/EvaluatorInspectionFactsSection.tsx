@@ -10,8 +10,8 @@ import {
   isLandInspectionContext,
   type InspectorWorkspaceDraft,
   visibleInspectorFeatureFields,
-} from "@case-study/mfe/lib/prototype/inspector-workspace-data";
-import { fetchInspectorWorkspace } from "@case-study/mfe/lib/prototype/inspector-workspace-storage";
+} from "@case-study/mfe/lib/app-data/inspector-workspace-data";
+import { fetchInspectorWorkspace } from "@case-study/mfe/lib/app-data/inspector-workspace-reads";
 import { EvaluatorCopyField } from "./EvaluatorChecklistTab";
 import { EngInfo, EngSection } from "./EvaluatorHtmlPrimitives";
 

@@ -3,10 +3,10 @@
 import { InlineLoadingSkeleton, Note } from "@platform/ui-kit";
 import { useMemo } from "react";
 import { CaseStudyForm } from "./CaseStudyForm";
-import { partyIdForRoleId } from "@settings/mfe/lib/prototype/case-study-info-roles-data";
-import { findPropertyForTask } from "../../lib/prototype/my-task-row";
-import type { PartyTaskPageDef } from "@platform/app-shared/prototype/party-task-pages";
-import type { WorkflowTask } from "../../lib/prototype/tasks-storage";
+import { partyIdForRoleId } from "@settings/mfe/lib/app-data/case-study-info-roles-data";
+import { findPropertyForTask } from "../../lib/app-data/my-task-row";
+import type { PartyTaskPageDef } from "@platform/app-shared/app-data/party-task-pages";
+import type { WorkflowTask } from "../../lib/app-data/tasks-storage";
 import {
   usePoRecordQuery,
   useWorkflowTasksQuery,

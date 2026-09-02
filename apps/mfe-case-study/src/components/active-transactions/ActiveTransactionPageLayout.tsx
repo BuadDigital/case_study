@@ -31,8 +31,7 @@ export function ActiveTransactionPageLayout({
   const railActive = panelOpen || reserveRail;
   /** Queue + form split evenly when the side panel is open. */
   const openGrid = railGridClassName ?? "lg:grid-cols-2";
-  const splitPane =
-    "flex min-h-0 min-w-0 flex-col overflow-hidden lg:h-[calc(100dvh-var(--topbar-h)-11rem)]";
+  const splitPane = "flex min-h-0 min-w-0 flex-col overflow-hidden lg:h-[calc(100dvh-var(--topbar-h)-11rem)]";
 
   return (
     <PageShell variant="canvas" className="h-fit min-w-0 max-w-full">

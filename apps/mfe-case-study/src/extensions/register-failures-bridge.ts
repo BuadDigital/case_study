@@ -7,7 +7,7 @@
  */
 
 import { registerFailuresCaseStudyBridge } from "@platform/app-shared/failures/case-study-bridge";
-import { suspendPropertyTransaction } from "../lib/prototype/suspend-property-transaction";
+import { suspendPropertyTransaction } from "../lib/app-data/suspend-property-transaction";
 import { usePoRecordsQuery } from "../query/case-study-queries";
 
 let registered = false;

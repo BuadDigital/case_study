@@ -4,7 +4,7 @@ import {
   resolveAssigneeDisplayName,
   resolvePartyName,
 } from "../party-fee-meta";
-import type { StaffUser } from "../../prototype/constants";
+import type { StaffUser } from "../../app-data/constants";
 
 const staff: StaffUser[] = [
   {

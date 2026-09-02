@@ -1,6 +1,7 @@
 "use client";
 
 import {
+  useCallback,
   useEffect,
   useMemo,
   useRef,
@@ -14,7 +15,8 @@ import {
   opsFldControl,
   useToast,
 } from "@platform/ui-kit";
-import { loadWorkOrderDtos } from "@platform/app-shared/prototype/work-orders-read";
+import { useIdempotentAction } from "@platform/app-shared";
+import { loadWorkOrderDtos } from "@platform/app-shared/app-data/work-orders-read";
 import {
   fetchLinkedPropertiesByRequestNumber,
   registerKeyEnvelope,
@@ -207,13 +209,23 @@ function RegisterKeyEnvelopeForm({
   const [suggestions, setSuggestions] = useState<RequestSuggestion[]>([]);
   const [listOpen, setListOpen] = useState(false);
   const [dragOver, setDragOver] = useState(false);
-  const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [formError, setFormError] = useState("");
   const photoRef = useRef<HTMLInputElement>(null);
   const receiptRef = useRef<HTMLInputElement>(null);
   const letterRef = useRef<HTMLInputElement>(null);
   const blurTimer = useRef<number | null>(null);
+  const pendingRegister = useRef<Parameters<typeof registerKeyEnvelope>[0] | null>(
+    null,
+  );
+
+  const { execute: executeRegister, loading: saving } = useIdempotentAction(
+    useCallback(async (idempotencyKey: string) => {
+      const input = pendingRegister.current;
+      if (!input) throw new Error("لا توجد بيانات ظرف للإرسال");
+      return registerKeyEnvelope(input, idempotencyKey);
+    }, []),
+  );
 
   useEffect(() => {
     let cancelled = false;
@@ -378,7 +390,6 @@ function RegisterKeyEnvelopeForm({
       return;
     }
 
-    setSaving(true);
     setFormError("");
     const contact =
       source === "third_party"
@@ -393,7 +404,7 @@ function RegisterKeyEnvelopeForm({
         : source === "missing"
           ? missingPhones.trim()
           : "";
-    const result = await registerKeyEnvelope({
+    pendingRegister.current = {
       requestNumber: request,
       court: court.trim() || "—",
       circuit: circuit.trim() || "—",
@@ -410,8 +421,10 @@ function RegisterKeyEnvelopeForm({
         deedNumber: p.deedNumber,
         propertyId: p.propertyId,
       })),
-    });
-    setSaving(false);
+    };
+    const outcome = await executeRegister();
+    if (outcome.status === "skipped") return;
+    const result = outcome.value;
     if (!result.ok) {
       setFormError(result.error);
       showToast(result.error, "error");

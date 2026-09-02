@@ -1,7 +1,7 @@
 import {
   loadPartyCaseStudyFormDraft,
   savePartyCaseStudyFormDraft,
-} from "@case-study/mfe/lib/prototype/case-study-form-storage";
+} from "@case-study/mfe/lib/app-data/case-study-form-storage";
 import type { EngineeringSurveySubmission } from "./engineering-survey-data";
 import { submitEngineeringSurveySubmission } from "./engineering-survey-submission-storage";
 
@@ -25,8 +25,9 @@ function isPartyFormAlreadyClosedError(error: string | undefined): boolean {
 /** Sends the survey + case-study form answers to the case-study specialist. */
 export async function finalizeEngineeringSurveySubmission(
   surveyTaskId: string,
+  idempotencyKey?: string,
 ): Promise<FinalizeEngineeringSurveyResult | null> {
-  const submitted = await submitEngineeringSurveySubmission(surveyTaskId);
+  const submitted = await submitEngineeringSurveySubmission(surveyTaskId, idempotencyKey);
   if (!submitted.ok) return null;
 
   let warning: string | undefined;

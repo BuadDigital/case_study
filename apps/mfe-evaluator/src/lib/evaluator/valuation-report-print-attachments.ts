@@ -5,7 +5,7 @@ import {
   type FileAttachmentMetaDto,
   type PrototypeModulesApiConfig,
 } from "@platform/api-client";
-import type { InspectorWorkspaceDraft } from "@case-study/mfe/lib/prototype/inspector-workspace-data";
+import type { InspectorWorkspaceDraft } from "@case-study/mfe/lib/app-data/inspector-workspace-data";
 import { blobToDataUrl } from "@platform/app-shared/media/file-encoding";
 
 /** Mirrors backend `AttachmentPrintRules` for client-side report fill. */

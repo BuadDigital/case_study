@@ -5,7 +5,7 @@ import {
   loadSpecialistFinishingLevel,
   saveSpecialistFinishingLevel,
   type SpecialistFinishingLevel,
-} from "../../lib/prototype/valuation-report-specialist-finishing";
+} from "../../lib/app-data/valuation-report-specialist-finishing";
 
 const OPTIONS: { value: SpecialistFinishingLevel; label: string }[] = [
   { value: "", label: "— اختر المستوى —" },

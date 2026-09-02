@@ -2,7 +2,7 @@
 
 import { useCallback, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { usePrototype } from "@platform/app-shared/contexts/PrototypeContext";
+import { useAppAccess } from "@platform/app-shared/contexts/AppAccessContext";
 import {
   cn,
   EmptyState,
@@ -26,8 +26,8 @@ import {
   opsTfLbl,
   opsTfNote,
 } from "@platform/ui-kit";
-import { prototypeKeys } from "@platform/app-shared/query/prototype-keys";
-import { isSuperAdmin } from "@platform/app-shared/prototype/prototype-role-access";
+import { appDataKeys } from "@platform/app-shared/query/app-data-keys";
+import { isSuperAdmin } from "@platform/app-shared/app-data/role-access";
 import type { RoleId } from "@platform/types";
 import {
   addFailureProblemType,
@@ -64,7 +64,7 @@ function OpsIcon({ path, size = 20 }: { path: string; size?: number }) {
 
 export function FailureTypesView() {
   const queryClient = useQueryClient();
-  const { role } = usePrototype();
+  const { role } = useAppAccess();
   const canEdit = canManageFailureTypes(role);
   const { data: catalog, isFetched } = useFailureTypesQuery();
   const [categoryId, setCategoryId] = useState("");
@@ -75,7 +75,7 @@ export function FailureTypesView() {
 
   const refresh = useCallback(async () => {
     await queryClient.invalidateQueries({
-      queryKey: prototypeKeys.failureTypes(),
+      queryKey: appDataKeys.failureTypes(),
     });
   }, [queryClient]);
 

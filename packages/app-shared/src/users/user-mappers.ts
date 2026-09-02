@@ -1,5 +1,5 @@
 import type { UserListItem } from "@platform/types";
-import type { StaffUser } from "../prototype/constants";
+import type { StaffUser } from "../app-data/constants";
 
 function reviewerCityCoverageFromUser(u: UserListItem): string[] {
   const raw = u.reviewerCityCoverage;
@@ -25,12 +25,6 @@ export function userListItemToStaff(u: UserListItem): StaffUser {
     distributionAssigneeId: u.distributionAssigneeId ?? undefined,
     reviewerCityCoverage: reviewerCityCoverageFromUser(u),
     type: contractTypeToStaffType(u.contractType),
-    source:
-      u.registrationSource === "Hr"
-        ? "hr"
-        : u.registrationSource === "Proc"
-          ? "proc"
-          : "crm",
     phone: u.mobile ?? u.phoneNumber,
     roleId: u.roleId,
     city: u.city,

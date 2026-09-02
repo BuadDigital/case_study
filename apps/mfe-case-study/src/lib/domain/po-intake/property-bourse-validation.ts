@@ -1,5 +1,5 @@
-import type { PoPropertyIntake } from "../../prototype/po-intake-data";
-import { parseRestrictionTypes } from "../../prototype/po-intake-data";
+import type { PoPropertyIntake } from "../../app-data/po-intake-data";
+import { parseRestrictionTypes } from "../../app-data/po-intake-data";
 import {
   collectRequiredErrors,
   mergeFieldErrors,

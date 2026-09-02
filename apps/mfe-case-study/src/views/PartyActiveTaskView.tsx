@@ -5,11 +5,11 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { PanelSkeleton } from "@platform/ui-kit";
 import { ActiveTransactionQueueView, type ActiveTransactionQueueConfig } from "./ActiveTransactionQueueView";
 import { PartyActiveTaskWorkPanel } from "./PartyActiveTaskWorkPanel";
-import { filterTasksForPartyKind } from "@platform/app-shared/prototype/party-task-pages";
+import { filterTasksForPartyKind } from "@platform/app-shared/app-data/party-task-pages";
 import {
   partyTaskPageDef,
   type PartyTaskPageDef,
-} from "@platform/app-shared/prototype/party-task-pages";
+} from "@platform/app-shared/app-data/party-task-pages";
 import {
   activeSurveyWorkspacePath,
   decodeTaskParam,
@@ -19,14 +19,14 @@ import {
   fieldInspectionWorkspacePath,
 } from "../lib/my-task-routes";
 import type { PageId } from "@platform/types";
-import type { PoIntakeRecord } from "../lib/prototype/po-intake-data";
-import type { WorkflowTask } from "../lib/prototype/tasks-storage";
+import type { PoIntakeRecord } from "../lib/app-data/po-intake-data";
+import type { WorkflowTask } from "../lib/app-data/tasks-storage";
 import type { PartyAppraisalExtensions } from "../lib/party-appraisal-extensions";
 import type { PartyEngineeringSurveyExtensions } from "../lib/party-engineering-survey-extensions";
 import {
   FIELD_INSPECTION_SUBMISSION_CHANGED_EVENT,
 } from "../lib/case-study-field-inspection-events";
-import { fieldInspectionTaskStatusBadge } from "../lib/prototype/field-inspection-work-queue";
+import { fieldInspectionTaskStatusBadge } from "../lib/app-data/field-inspection-work-queue";
 
 function queueConfig(
   def: PartyTaskPageDef,

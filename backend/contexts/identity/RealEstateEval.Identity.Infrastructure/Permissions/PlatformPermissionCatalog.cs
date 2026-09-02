@@ -38,10 +38,6 @@ public static class PlatformPermissionCatalog
     private static readonly Dictionary<string, string[]> IdentityRolePages = new(StringComparer.OrdinalIgnoreCase)
     {
         ["CDO"] = AllPages.ToArray(),
- // Department admins: no prototype shell surfaces by default (screen catalog is CDO-only).
-        ["HR"] = [],
-        ["PROC"] = [],
-        ["CRM"] = [],
     };
 
     private static readonly Dictionary<string, string[]> PrototypeRolePages = new(StringComparer.OrdinalIgnoreCase)

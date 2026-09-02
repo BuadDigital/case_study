@@ -35,14 +35,14 @@ import {
   type InspectorFeeRowDto,
   type PartyBillingStatementDto,
 } from "@platform/api-client";
-import { prototypeKeys } from "@platform/app-shared/query/prototype-keys";
-import { runInspectorFeeTransition } from "@platform/app-shared/prototype/inspector-fees-api";
+import { appDataKeys } from "@platform/app-shared/query/app-data-keys";
+import { runInspectorFeeTransition } from "@platform/app-shared/app-data/inspector-fees-api";
 import {
   loadPartyBillingStatements,
   openPartyBillingAttachment,
-} from "@platform/app-shared/prototype/party-billing-statements-api";
+} from "@platform/app-shared/app-data/party-billing-statements-api";
 import { sortInspectorFeeRowsNewestFirst } from "@platform/app-shared/fees/party-fee-meta";
-import { usePrototype } from "@platform/app-shared/contexts/PrototypeContext";
+import { useAppAccess } from "@platform/app-shared/contexts/AppAccessContext";
 import { KeyEnvelopeFeesPanel } from "./KeyEnvelopeFeesPanelSlot";
 import { useInspectorFeesQuery } from "../../query/inspector-fees-queries";
 import { useCourtVisitFeesQuery } from "../../query/operations-tasks-queries";
@@ -55,7 +55,7 @@ import {
   opsFilters,
   opsListCount,
   opsToolbar,
-} from "../../lib/prototype/ops-tasks-tw";
+} from "../../lib/app-data/ops-tasks-tw";
 export type IndividualFeesVariant = "field-inspection" | "court-visit";
 
 type TabId = "action" | "tracking" | "ready" | "statements" | "visit-fees" | "key-fees";
@@ -362,7 +362,7 @@ export function PartyIndividualFeesHtmlScreen({
 }) {
   const queryClient = useQueryClient();
   const { showToast } = useToast();
-  const { hasCapability } = usePrototype();
+  const { hasCapability } = useAppAccess();
   const copy = COPY[variant];
   const isCourtVisit = variant === "court-visit";
   const showVisitKey = isCourtVisit;
@@ -404,7 +404,7 @@ export function PartyIndividualFeesHtmlScreen({
 
   const { data: statementsRaw = [] } = useQuery({
     queryKey: [
-      ...prototypeKeys.all,
+      ...appDataKeys.all,
       "party-billing",
       "statements",
       assigneeId ?? "none",
@@ -548,10 +548,10 @@ export function PartyIndividualFeesHtmlScreen({
     // Two independent keys — in parallel (async-parallel).
     await Promise.all([
       queryClient.invalidateQueries({
-        queryKey: [...prototypeKeys.all, "inspector-fees"],
+        queryKey: [...appDataKeys.all, "inspector-fees"],
       }),
       queryClient.invalidateQueries({
-        queryKey: [...prototypeKeys.all, "party-billing"],
+        queryKey: [...appDataKeys.all, "party-billing"],
       }),
     ]);
   }, [queryClient]);

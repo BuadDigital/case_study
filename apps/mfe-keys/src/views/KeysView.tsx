@@ -3,8 +3,8 @@
 import { useDeferredValue, useEffect, useMemo, useState } from "react";
 import dynamic from "next/dynamic";
 import { useRouter, useSearchParams } from "next/navigation";
-import { usePrototype } from "@platform/app-shared/contexts/PrototypeContext";
-import { isSuperAdmin } from "@platform/app-shared/prototype/prototype-role-access";
+import { useAppAccess } from "@platform/app-shared/contexts/AppAccessContext";
+import { isSuperAdmin } from "@platform/app-shared/app-data/role-access";
 import {
   Button,
   cn,
@@ -220,7 +220,7 @@ export function KeysView() {
   const { showToast } = useToast();
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { role, hasCapability } = usePrototype();
+  const { role, hasCapability } = useAppAccess();
   const viewOnly = !isSuperAdmin(role) && role === "general-manager";
   const canEditEnvelope =
     !viewOnly &&

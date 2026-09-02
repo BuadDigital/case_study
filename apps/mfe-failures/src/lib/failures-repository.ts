@@ -27,8 +27,9 @@ export async function loadFailuresQuery(): Promise<FailureRecord[]> {
 
 export async function createFailure(
   input: CreateFailureInput,
+  idempotencyKey?: string,
 ): Promise<FailureRecord> {
-  return createFailureAsync(input);
+  return createFailureAsync(input, idempotencyKey);
 }
 
 export async function upgradeFailureToInternal(

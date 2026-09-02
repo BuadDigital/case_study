@@ -9,4 +9,4 @@ export {
   unwrapApiResult,
   workOrdersApiConfig,
   type MutationResult,
-} from "@platform/app-shared/prototype/work-orders-api-config";
+} from "@platform/app-shared/app-data/work-orders-api-config";

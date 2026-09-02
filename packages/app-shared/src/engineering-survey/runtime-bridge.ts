@@ -5,7 +5,7 @@
  * Mirrors `../party-appraisal/evaluator-runtime-bridge`.
  */
 
-import type { PartyWorkMutationResult } from "../prototype/party-submission-api";
+import type { PartyWorkMutationResult } from "../app-data/party-submission-api";
 import type { WorkflowTask } from "../workflow/task-types";
 
 export type EngineeringSurveyDocField = "surveyReport" | "siteLetter";

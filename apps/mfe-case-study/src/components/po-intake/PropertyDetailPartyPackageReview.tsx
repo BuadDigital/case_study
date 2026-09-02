@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useCallback, useState } from "react";
 import {
   Button,
   Label,
@@ -8,11 +8,12 @@ import {
   formControlClassName,
   useToast,
 } from "@platform/ui-kit";
+import { useIdempotentAction } from "@platform/app-shared";
 import {
   acceptPartySubmission,
   reopenPartySubmission,
-} from "@platform/app-shared/prototype/party-submission-api";
-import { formatDateAr } from "../../lib/prototype/po-intake-data";
+} from "@platform/app-shared/app-data/party-submission-api";
+import { formatDateAr } from "../../lib/app-data/po-intake-data";
 
 function formatAcceptedDate(iso: string): string {
   const day = iso.trim().slice(0, 10);
@@ -59,7 +60,16 @@ export function PropertyDetailPartyPackageReview({
   const [returnOpen, setReturnOpen] = useState(false);
   const [returnNote, setReturnNote] = useState("");
   const [returnError, setReturnError] = useState<string | null>(null);
-  const [busy, setBusy] = useState(false);
+  const [returnBusy, setReturnBusy] = useState(false);
+
+  const { execute: executeAccept, loading: acceptBusy } = useIdempotentAction(
+    useCallback(
+      async (idempotencyKey: string) => acceptPartySubmission(taskId!, idempotencyKey),
+      [taskId],
+    ),
+  );
+
+  const busy = acceptBusy || returnBusy;
 
   const status = (submissionStatus ?? "").trim().toLowerCase();
   const canReview = Boolean(taskId) && status === "submitted" && !disabled;
@@ -75,17 +85,21 @@ export function PropertyDetailPartyPackageReview({
 
   async function handleAccept() {
     if (!taskId || busy) return;
-    setBusy(true);
     try {
-      const result = await acceptPartySubmission(taskId);
+      const outcome = await executeAccept();
+      if (outcome.status === "skipped") return;
+      const result = outcome.value;
       if (!result.ok) {
         showToast(result.error, "error");
         return;
       }
       showToast(acceptSuccessToast, "success");
       onChanged?.();
-    } finally {
-      setBusy(false);
+    } catch (error) {
+      showToast(
+        error instanceof Error ? error.message : "تعذّر قبول مخرجات المهمة",
+        "error",
+      );
     }
   }
 
@@ -96,7 +110,7 @@ export function PropertyDetailPartyPackageReview({
       setReturnError("يجب إدخال سبب الإرجاع للتصحيح");
       return;
     }
-    setBusy(true);
+    setReturnBusy(true);
     setReturnError(null);
     try {
       const result = await reopenPartySubmission(taskId, trimmed);
@@ -109,7 +123,7 @@ export function PropertyDetailPartyPackageReview({
       showToast(returnSuccessToast, "success");
       onChanged?.();
     } finally {
-      setBusy(false);
+      setReturnBusy(false);
     }
   }
 

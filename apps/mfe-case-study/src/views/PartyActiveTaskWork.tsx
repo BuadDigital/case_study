@@ -15,21 +15,21 @@ import {
 } from "../components/field-inspection/FieldInspectionWorkBody";
 import { PartyCaseStudyFormTab } from "../components/case-study/PartyCaseStudyFormTab";
 import { PropertyDetailInspectionTab } from "../components/po-intake/PropertyDetailInspectionTab";
-import type { PropertyDetailPartyCard } from "../lib/prototype/property-detail-parties";
+import type { PropertyDetailPartyCard } from "../lib/app-data/property-detail-parties";
 import { useFieldInspectionWorkspacesQuery } from "../query/field-inspection-workspaces-queries";
-import { isFieldInspectionLocked } from "../lib/prototype/field-inspection-work-queue";
-import type { PartyTaskPageDef } from "@platform/app-shared/prototype/party-task-pages";
+import { isFieldInspectionLocked } from "../lib/app-data/field-inspection-work-queue";
+import type { PartyTaskPageDef } from "@platform/app-shared/app-data/party-task-pages";
 import { partyTaskPath } from "../lib/my-task-routes";
 import {
   formatPoDisplay,
   formatPropertyDeedDisplay,
   requiresAssignmentDecree,
-} from "../lib/prototype/po-intake-data";
+} from "../lib/app-data/po-intake-data";
 import {
   completeChildTask,
   taskDisplayPropertyLabel,
   type WorkflowTask,
-} from "../lib/prototype/tasks-storage";
+} from "../lib/app-data/tasks-storage";
 import { usePoRecordQuery, useWorkflowTasksQuery } from "../query/case-study-queries";
 import {
   findSiblingInspectionTask,

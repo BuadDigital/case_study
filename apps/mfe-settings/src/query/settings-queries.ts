@@ -4,13 +4,13 @@ import {
   useQuery,
   type QueryClient,
 } from "@tanstack/react-query";
-import { prototypeKeys } from "@platform/app-shared/query/prototype-keys";
+import { appDataKeys } from "@platform/app-shared/query/app-data-keys";
 import { getAuthSession } from "@platform/auth-client";
-import { usePrototype } from "@platform/app-shared/contexts/PrototypeContext";
+import { useAppAccess } from "@platform/app-shared/contexts/AppAccessContext";
 import {
   loadCaseStudyInfoRolesConfig,
   type CaseStudyInfoRolesConfig,
-} from "../lib/prototype/case-study-info-roles-storage";
+} from "../lib/app-data/case-study-info-roles-storage";
 import {
   fetchDistributionAssignees,
   fetchStaffUsers,
@@ -22,14 +22,14 @@ const queryDefaults = { staleTime: STALE_MS, gcTime: GC_MS };
 
 export function useCaseStudyInfoRolesQuery() {
   return useQuery({
-    queryKey: prototypeKeys.caseStudyInfoRoles(),
+    queryKey: appDataKeys.caseStudyInfoRoles(),
     queryFn: loadCaseStudyInfoRolesConfig,
     ...queryDefaults,
   });
 }
 
 export function useStaffUsersQuery() {
-  const { authReady, capabilities } = usePrototype();
+  const { authReady, capabilities } = useAppAccess();
   const userId = getAuthSession()?.user.id ?? "anonymous";
   const canManageUsers = capabilities.includes("manage-users");
   // List is authorized on the API via manage-work-orders | manage-operations.
@@ -37,7 +37,7 @@ export function useStaffUsersQuery() {
   // cache a silent empty list while capabilities are still hydrating.
   return useQuery({
     queryKey: [
-      ...prototypeKeys.staffUsers(),
+      ...appDataKeys.staffUsers(),
       userId,
       canManageUsers ? "manage" : "assignees",
     ],
@@ -52,10 +52,10 @@ export function useStaffUsersQuery() {
 }
 
 export function useDistributionAssigneesQuery() {
-  const { authReady } = usePrototype();
+  const { authReady } = useAppAccess();
   const userId = getAuthSession()?.user.id ?? "anonymous";
   return useQuery({
-    queryKey: [...prototypeKeys.distributionAssignees(), userId],
+    queryKey: [...appDataKeys.distributionAssignees(), userId],
     queryFn: fetchDistributionAssignees,
     enabled: authReady,
     ...queryDefaults,
@@ -66,5 +66,5 @@ export function setCaseStudyInfoRolesCache(
   queryClient: QueryClient,
   config: CaseStudyInfoRolesConfig,
 ) {
-  queryClient.setQueryData(prototypeKeys.caseStudyInfoRoles(), config);
+  queryClient.setQueryData(appDataKeys.caseStudyInfoRoles(), config);
 }

@@ -13,7 +13,7 @@ import {
   openPartyBillingAttachment,
   runMatchVendorInvoice,
   runRejectVendorInvoice,
-} from "@platform/app-shared/prototype/party-billing-statements-api";
+} from "@platform/app-shared/app-data/party-billing-statements-api";
 import {
   ModalBody,
   ModalCard,

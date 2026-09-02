@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
 import { RegistrationFormCard } from "@platform/app-shared/registration/RegistrationFormCard";
@@ -19,7 +19,8 @@ import {
   hasFieldErrors,
   type FieldErrors,
 } from "@platform/app-shared/registration/registration-utils";
-import { usePrototype } from "@platform/app-shared/contexts/PrototypeContext";
+import { useAppAccess } from "@platform/app-shared/contexts/AppAccessContext";
+import { useIdempotentAction } from "@platform/app-shared";
 import { myTasksPath } from "../lib/my-task-routes";
 import {
   emptyProperty,
@@ -31,19 +32,21 @@ import {
   type BourseDeedVitality,
   type PoPropertyIntake,
   type PropertyIdentifierType,
-} from "../lib/prototype/po-intake-data";
-import { ROLES } from "@platform/app-shared/prototype/constants";
+} from "../lib/app-data/po-intake-data";
+import { ROLES } from "@platform/app-shared/app-data/constants";
 import {
   submitBourseObstruction,
   validateBourseObstructionReason,
-} from "../lib/prototype/bourse-obstruction";
+} from "../lib/app-data/bourse-obstruction";
+import {
+  deedExistsInPo,
+  findPriorDeedFull,
+} from "../lib/app-data/po-intake-reads";
 import {
   addPropertyToPo,
   completePropertyBourse,
-  deedExistsInPo,
-  findPriorDeedFull,
   updatePropertyInPo,
-} from "../lib/prototype/po-intake-storage";
+} from "../lib/app-data/po-intake-commands";
 import {
   FAILURE_RAISER_SPECIALIST,
   FAILURE_RAISER_SUPERVISOR,
@@ -61,13 +64,13 @@ import {
   taskDisplayPropertyLabel,
   type TaskDistributionDraft,
   type WorkflowTask,
-} from "../lib/prototype/tasks-storage";
+} from "../lib/app-data/tasks-storage";
 import {
   usePoRecordQuery,
 } from "@case-study/mfe/query/case-study-queries";
 import { Button, InlineLoadingSkeleton, Note, useToast } from "@platform/ui-kit";
 import { useQueryClient } from "@tanstack/react-query";
-import { prototypeKeys } from "@platform/app-shared/query/prototype-keys";
+import { appDataKeys } from "@platform/app-shared/query/app-data-keys";
 import { useStaffUsersQuery } from "@settings/mfe/query/settings-queries";
 
 const LOADING_TEXT = "text-xs text-text-3";
@@ -137,7 +140,7 @@ export function CaseStudyTaskWork({
   const router = useRouter();
   const queryClient = useQueryClient();
   const exit = onClose ?? (() => router.push(myTasksPath()));
-  const { role } = usePrototype();
+  const { role } = useAppAccess();
   const { showToast, runWithActionToast } = useToast();
   const { data: staffResult } = useStaffUsersQuery();
   const staffUsers = staffResult?.users ?? [];
@@ -146,6 +149,11 @@ export function CaseStudyTaskWork({
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
   const [formError, setFormError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const pendingBourseComplete = useRef<{
+    poNumber: string;
+    propertyId: string;
+    property: PoPropertyIntake;
+  } | null>(null);
   const [deedVitality, setDeedVitality] = useState<BourseDeedVitality | null>(
     null,
   );
@@ -161,6 +169,39 @@ export function CaseStudyTaskWork({
   const [phaseOverride, setPhaseOverride] = useState<WorkflowTask["phase"] | null>(
     null,
   );
+
+  const { execute: executeBourseComplete, loading: bourseCompleting } =
+    useIdempotentAction(
+      useCallback(async (idempotencyKey: string) => {
+        const pending = pendingBourseComplete.current;
+        if (!pending) {
+          throw new Error("لا توجد بيانات بورصة للإرسال");
+        }
+        return completePropertyBourse(
+          pending.poNumber,
+          pending.propertyId,
+          pending.property,
+          idempotencyKey,
+        );
+      }, []),
+    );
+
+  const { execute: executeConfirmDistribution, loading: confirmingDistribution } =
+    useIdempotentAction(
+      useCallback(
+        async (idempotencyKey: string) =>
+          confirmTaskDistribution(
+            task.id,
+            distribution,
+            formatPropertyDeedDisplay(property),
+            staffUsers,
+            idempotencyKey,
+          ),
+        [task.id, distribution, property, staffUsers],
+      ),
+    );
+
+  const submitBusy = saving || bourseCompleting || confirmingDistribution;
   const { data: poRecord, isPending: poRecordLoading } = usePoRecordQuery(
     task.poNumber,
   );
@@ -376,10 +417,10 @@ export function CaseStudyTaskWork({
             specialist: ROLES[role]?.name ?? "أخصائي دراسة الحالة",
           });
           void queryClient.invalidateQueries({
-            queryKey: prototypeKeys.failures(),
+            queryKey: appDataKeys.failures(),
           });
           void queryClient.invalidateQueries({
-            queryKey: prototypeKeys.workflowTasks(),
+            queryKey: appDataKeys.workflowTasks(),
           });
           onRefresh();
         } finally {
@@ -468,11 +509,18 @@ export function CaseStudyTaskWork({
           setPhaseOverride(enfathAdvance.task.phase);
         }
 
-        const result = await completePropertyBourse(
-          task.poNumber,
-          propertyId!,
-          { ...prop, deedStatus: "فعال" },
-        );
+        const result = await (async () => {
+          pendingBourseComplete.current = {
+            poNumber: task.poNumber,
+            propertyId: propertyId!,
+            property: { ...prop, deedStatus: "فعال" },
+          };
+          const outcome = await executeBourseComplete();
+          if (outcome.status === "skipped") {
+            throw new Error("duplicate-submit");
+          }
+          return outcome.value;
+        })();
 
         if (!result.ok) {
           setFormError(result.error);
@@ -519,12 +567,10 @@ export function CaseStudyTaskWork({
     await runWithActionToast("تأكيد التوزيع وإرسال المهام", async () => {
       setSaving(true);
       try {
-        const result = await confirmTaskDistribution(
-          task.id,
-          distribution,
-          formatPropertyDeedDisplay(property),
-          staffUsers,
-        );
+        const outcome = await executeConfirmDistribution();
+        if (outcome.status === "skipped") return;
+
+        const result = outcome.value;
         if (!result.parent) {
           const message = result.error ?? CONFIRM_DISTRIBUTION_ERROR;
           setFormError(message);
@@ -533,7 +579,7 @@ export function CaseStudyTaskWork({
 
         setPhaseOverride(result.parent.phase);
         void queryClient.invalidateQueries({
-          queryKey: prototypeKeys.workflowTasks(),
+          queryKey: appDataKeys.workflowTasks(),
         });
         onRefresh();
       } finally {
@@ -779,7 +825,7 @@ export function CaseStudyTaskWork({
       }
       subtitle={workSubtitle}
       deedBadge={panelDeedBadge}
-      saving={saving}
+      saving={submitBusy}
       onClose={exit}
       onSave={showPrimarySave ? handlePrimarySave : exit}
       saveLabel={showPrimarySave ? saveLabel : "رجوع للمهام"}

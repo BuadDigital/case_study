@@ -1,12 +1,12 @@
 "use client";
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import type { VrRow } from "@platform/app-shared/prototype/constants";
+import type { VrRow } from "@platform/app-shared/app-data/constants";
 import {
   optimisticPatchListItem,
   restoreOptimisticPatch,
 } from "@platform/app-shared/query/optimistic-list";
-import { prototypeKeys } from "@platform/app-shared/query/prototype-keys";
+import { appDataKeys } from "@platform/app-shared/query/app-data-keys";
 import {
   loadValuationRequests,
   submitValuationRequestImpediment,
@@ -15,7 +15,7 @@ import {
 
 const STALE_MS = 60_000;
 const GC_MS = 10 * 60_000;
-const valuationKey = prototypeKeys.valuationRequests();
+const valuationKey = appDataKeys.valuationRequests();
 
 function invalidateValuationQueries(queryClient: ReturnType<typeof useQueryClient>) {
   void queryClient.invalidateQueries({

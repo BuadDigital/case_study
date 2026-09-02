@@ -1,6 +1,6 @@
 import { notFound } from "next/navigation";
-import { PrototypePageView } from "@/components/views/PrototypePageView";
-import { VALID_PAGE_IDS } from "@platform/app-shared/prototype/constants";
+import { AppPageView } from "@/components/views/AppPageView";
+import { VALID_PAGE_IDS } from "@platform/app-shared/app-data/constants";
 import type { PageId } from "@platform/types";
 
 export default async function PrototypePage({
@@ -10,5 +10,5 @@ export default async function PrototypePage({
 }) {
   const { page: raw } = await params;
   if (!VALID_PAGE_IDS.has(raw as PageId)) notFound();
-  return <PrototypePageView page={raw as PageId} />;
+  return <AppPageView page={raw as PageId} />;
 }

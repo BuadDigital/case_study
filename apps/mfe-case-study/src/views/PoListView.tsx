@@ -13,14 +13,14 @@ import {
   type ReactNode,
 } from "react";
 import { createPortal } from "react-dom";
-import type { PoRow } from "@platform/app-shared/prototype/constants";
+import type { PoRow } from "@platform/app-shared/app-data/constants";
 import {
   isPoListStatusTerminal,
   PO_LIST_STATUS_OPTIONS,
   poListStatusMeta,
   poProgressPct,
   type PoListStatus,
-} from "@platform/app-shared/prototype/po-list-status";
+} from "@platform/app-shared/app-data/po-list-status";
 import {
   Button,
   cn,
@@ -55,31 +55,31 @@ import {
   useToast,
 } from "@platform/ui-kit";
 import { PoNumber } from "@case-study/mfe/components/ui/PoNumber";
-import { buildPoListRowMoreItems } from "../lib/prototype/po-list-row-menu";
+import { buildPoListRowMoreItems } from "../lib/app-data/po-list-row-menu";
 import {
   ActiveQueueMobileCards,
   type ActiveQueueMobileCardItem,
 } from "@platform/app-shared/components/ActiveQueueMobileCards";
-import { usePrototype } from "@platform/app-shared/contexts/PrototypeContext";
+import { useAppAccess } from "@platform/app-shared/contexts/AppAccessContext";
 import {
   formatDateAr,
   formatPoDisplay,
   isPastDue,
-} from "../lib/prototype/po-intake-data";
+} from "../lib/app-data/po-intake-data";
 import {
   cancelPoRecord,
   deletePoRecord,
   stopPoRecord,
-} from "../lib/prototype/po-intake-storage";
+} from "../lib/app-data/po-intake-commands";
 import { poPropertiesPath, poPropertyPath } from "@platform/app-shared/domain/po-routes";
 import {
   buildPoDeedIndex,
   buildPoListDisplay,
   classifyPoListSearch,
   poListSearchModeLabel,
-} from "../lib/prototype/po-list-search";
+} from "../lib/app-data/po-list-search";
 import { PoIntakeModal } from "@case-study/mfe/components/po-intake/PoIntakeModal";
-import { prototypeKeys } from "@platform/app-shared/query/prototype-keys";
+import { appDataKeys } from "@platform/app-shared/query/app-data-keys";
 import {
   usePoListRowsQuery,
   usePropertyListItemsQuery,
@@ -90,8 +90,8 @@ import {
   canEditPoHeader,
   canReceivePo,
   isPoViewOnly,
-} from "../lib/prototype/po-roles";
-import { canManageOperationsTasks } from "../lib/prototype/operations-task-roles";
+} from "../lib/app-data/po-roles";
+import { canManageOperationsTasks } from "../lib/app-data/operations-task-roles";
 
 type SortKey = "created" | "po" | "received" | "due";
 type SortDir = "asc" | "desc";
@@ -375,7 +375,7 @@ export function PoListView() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const queryClient = useQueryClient();
-  const { role } = usePrototype();
+  const { role } = useAppAccess();
   const viewOnly = isPoViewOnly(role);
   const showIntake = canReceivePo(role);
   const showEdit = canEditPoHeader(role);
@@ -641,7 +641,7 @@ export function PoListView() {
       showToast(result.error, "error");
       return;
     }
-    await queryClient.invalidateQueries({ queryKey: prototypeKeys.all });
+    await queryClient.invalidateQueries({ queryKey: appDataKeys.all });
     showToast(`تم إلغاء أمر العمل «${poNumber}».`, "success");
   }
 
@@ -660,7 +660,7 @@ export function PoListView() {
       showToast(result.error, "error");
       return;
     }
-    await queryClient.invalidateQueries({ queryKey: prototypeKeys.all });
+    await queryClient.invalidateQueries({ queryKey: appDataKeys.all });
     showToast(`تم إيقاف أمر العمل «${poNumber}».`, "success");
   }
 
@@ -679,7 +679,7 @@ export function PoListView() {
       showToast(result.error, "error");
       return;
     }
-    await queryClient.invalidateQueries({ queryKey: prototypeKeys.all });
+    await queryClient.invalidateQueries({ queryKey: appDataKeys.all });
     showToast(`تم حذف أمر العمل «${poNumber}» وعقاراته.`, "success");
   }
 

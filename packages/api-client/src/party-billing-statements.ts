@@ -2,6 +2,7 @@
  * Party billing statements (payroll sheet / payment order) — vendor invoice match + individual pay.
  */
 import { getApiBase } from "./api-base";
+import { withIdempotencyKey } from "./idempotency-key";
 import { repositoryFetch as fetch } from "./write-repository";
 import type { ApiErr, ApiOk, WorkOrdersApiConfig } from "./work-orders";
 
@@ -149,11 +150,12 @@ export type DeferPartyBillingLinesResponseDto = {
 /** @deprecated Use DeferPartyBillingLinesResponseDto */
 export type DeferPartyBillingLinesResult = DeferPartyBillingLinesResponseDto;
 
-function headers(token: string): HeadersInit {
-  return {
+function headers(token: string, idempotencyKey?: string): HeadersInit {
+  const base = {
     "Content-Type": "application/json",
     Authorization: `Bearer ${token}`,
   };
+  return idempotencyKey ? withIdempotencyKey(base, idempotencyKey) : base;
 }
 
 function asRecord(raw: unknown): Record<string, unknown> {
@@ -439,6 +441,7 @@ async function postStatementAction(
   statementId: string,
   action: string,
   body?: unknown,
+  idempotencyKey?: string,
 ): Promise<ApiOk<PartyBillingStatementDto> | ApiErr> {
   const base = config.baseUrl ?? getApiBase();
   try {
@@ -446,7 +449,7 @@ async function postStatementAction(
       `${base}/api/party-billing-statements/${encodeURIComponent(statementId)}/${action}`,
       {
         method: "POST",
-        headers: headers(config.token),
+        headers: headers(config.token, idempotencyKey),
         body: body === undefined ? undefined : JSON.stringify(body),
       },
     );
@@ -499,8 +502,9 @@ export async function closePartyBillingStatement(
   config: PartyBillingStatementsApiConfig,
   statementId: string,
   body: ClosePartyBillingStatementRequest,
+  idempotencyKey?: string,
 ): Promise<ApiOk<PartyBillingStatementDto> | ApiErr> {
-  return postStatementAction(config, statementId, "close", body);
+  return postStatementAction(config, statementId, "close", body, idempotencyKey);
 }
 
 export async function deferPartyBillingLines(

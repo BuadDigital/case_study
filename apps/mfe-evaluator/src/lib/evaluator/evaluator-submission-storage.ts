@@ -5,13 +5,13 @@ import {
   persistPartySubmissionPayload,
   prefetchPartySubmissionsForTasks,
   submitPartySubmission,
-} from "@platform/app-shared/prototype/party-submission-api";
+} from "@platform/app-shared/app-data/party-submission-api";
 import { notifyTasksChanged } from "@platform/app-shared/workflow/task-types";
-import { dispatchPartySubmissionChanged } from "@platform/app-shared/prototype/party-submission-changed-event";
-import { dispatchWorkflowSubmitted, EVALUATOR_SUBMITTED_EVENT } from "@platform/app-shared/prototype/party-workflow-events";
-import { loadPartyCaseStudyFormDraft } from "@case-study/mfe/lib/prototype/case-study-form-storage";
+import { dispatchPartySubmissionChanged } from "@platform/app-shared/app-data/party-submission-changed-event";
+import { dispatchWorkflowSubmitted, EVALUATOR_SUBMITTED_EVENT } from "@platform/app-shared/app-data/party-workflow-events";
+import { loadPartyCaseStudyFormDraft } from "@case-study/mfe/lib/app-data/case-study-form-storage";
 import { mergeEvaluatorChecklistFromCaseStudy } from "./evaluator-checklist-case-study-sync";
-import { basisOfValueLabelArForAssignment } from "@platform/app-shared/prototype/assignment-valuation-defaults";
+import { basisOfValueLabelArForAssignment } from "@platform/app-shared/app-data/assignment-valuation-defaults";
 import {
   createEvaluatorDraft,
   normalizeReportChoices,
@@ -255,6 +255,7 @@ export async function updateEvaluatorDraft(
 
 export async function submitEvaluatorSubmission(
   taskId: string,
+  idempotencyKey?: string,
 ): Promise<
   | { ok: true; submission: EvaluatorSubmission }
   | { ok: false; message: string }
@@ -279,7 +280,7 @@ export async function submitEvaluatorSubmission(
     };
   }
 
-  const submitted = await submitPartySubmission(taskId);
+  const submitted = await submitPartySubmission(taskId, idempotencyKey);
   if (!submitted.ok) {
     return {
       ok: false,

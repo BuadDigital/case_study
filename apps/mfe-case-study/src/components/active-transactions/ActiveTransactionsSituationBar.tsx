@@ -5,7 +5,7 @@ import Link from "next/link";
 import { KpiBand, KpiCell, cn, opsMobileCard } from "@platform/ui-kit";
 import type { PageId } from "@platform/types";
 import { useActiveTransactionPageSituation } from "@case-study/mfe/query/use-active-transaction-page-situation";
-import type { PageSituationCardDef, SituationIconKind, SituationTone } from "@case-study/mfe/lib/prototype/active-transaction-page-situation";
+import type { PageSituationCardDef, SituationIconKind, SituationTone } from "@case-study/mfe/lib/app-data/active-transaction-page-situation";
 
 const toneIconClass: Record<SituationTone, string> = {
   blue: "bg-navy-soft text-ink",

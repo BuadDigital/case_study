@@ -20,8 +20,8 @@ import {
 } from "@platform/ui-kit";
 import { ReturnedForCorrectionNote } from "../ui/ReturnedForCorrectionNote";
 import { RegField, RegTextarea} from "@platform/app-shared/registration/FormFields";
-import type { PartyTaskPageDef } from "@platform/app-shared/prototype/party-task-pages";
-import { usePrototype } from "@platform/app-shared/contexts/PrototypeContext";
+import type { PartyTaskPageDef } from "@platform/app-shared/app-data/party-task-pages";
+import { useAppAccess } from "@platform/app-shared/contexts/AppAccessContext";
 import { JEDDAH_DEFAULT_LAT, JEDDAH_DEFAULT_LNG } from "@platform/app-shared/domain/jeddah-default-coords";
 import { BuildingInventorySection } from "./BuildingInventorySection";
 import { InspectionLimitsSection } from "./InspectionLimitsSection";
@@ -41,23 +41,23 @@ import {
   mobileControlClassName,
 } from "./InspectMobileControls";
 import { useInspectorKeyAvailability } from "./InspectorKeyStatusTab";
-import { clearInspectorPhotoDataUrl, uploadInspectorPhotoFromFile } from "../../lib/prototype/inspector-photo-upload";
+import { clearInspectorPhotoDataUrl, uploadInspectorPhotoFromFile } from "../../lib/app-data/inspector-photo-upload";
 import {
   INSPECTOR_PHOTO_ACCEPT,
   filterInspectorPhotoFiles,
   useInspectorPhotoDropZone,
-} from "../../lib/prototype/inspector-photo-drop";
+} from "../../lib/app-data/inspector-photo-drop";
 import {
   approximatePropertyGeo,
   boundariesMarkedUnavailable,
   formatPropertyDeedDisplay,
   PROPERTY_BOUNDARY_ROWS,
   type PoPropertyIntake,
-} from "../../lib/prototype/po-intake-data";
+} from "../../lib/app-data/po-intake-data";
 import {
   declarationPhoneGate,
   hasAnyPartyPhone,
-} from "../../lib/prototype/documentary-workflow-gates";
+} from "../../lib/app-data/documentary-workflow-gates";
 import { usePoRecordQuery } from "../../query/case-study-queries";
 import {
   INSPECTOR_AMENITY_OPTIONS,
@@ -79,9 +79,13 @@ import {
   type InspectorComponentPhotoKey,
   type InspectorBoundaryKey,
   type InspectorWorkspaceDraft,
-} from "../../lib/prototype/inspector-workspace-data";
-import { finalizeInspectorWorkspace } from "../../lib/prototype/finalize-field-inspection-submission";
-import { getOrCreateInspectorWorkspace, saveInspectorWorkspaceDraft, updateInspectorWorkspace } from "../../lib/prototype/inspector-workspace-storage";
+} from "../../lib/app-data/inspector-workspace-data";
+import { finalizeInspectorWorkspace } from "../../lib/app-data/finalize-field-inspection-submission";
+import {
+  getOrCreateInspectorWorkspace,
+  saveInspectorWorkspaceDraft,
+  updateInspectorWorkspace,
+} from "../../lib/app-data/inspector-workspace-commands";
 import {
   firstInspectorWorkspaceError,
   firstInspectorWorkspaceErrorTarget,
@@ -89,8 +93,8 @@ import {
   scrollToInspectorField,
   validateInspectorWorkspace,
   type InspectorWorkspaceFieldErrors,
-} from "../../lib/prototype/inspector-workspace-validation";
-import type { WorkflowTask } from "../../lib/prototype/tasks-storage";
+} from "../../lib/app-data/inspector-workspace-validation";
+import type { WorkflowTask } from "../../lib/app-data/tasks-storage";
 
 export const BOUNDARY_KEYS: InspectorBoundaryKey[] = [
   "north",

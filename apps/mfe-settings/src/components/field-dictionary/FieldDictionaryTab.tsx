@@ -7,7 +7,7 @@ import {
   fieldsForDictionaryStage,
   propertyFieldsCatalogTotalCount,
   type FieldDictionaryStageId,
-} from "@platform/app-shared/prototype/property-fields-catalog";
+} from "@platform/app-shared/app-data/property-fields-catalog";
 
 function DictionaryIcon() {
   return (

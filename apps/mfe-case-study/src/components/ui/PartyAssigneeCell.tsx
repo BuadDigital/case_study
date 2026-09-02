@@ -1,8 +1,8 @@
 "use client";
 
 import { cn } from "@platform/ui-kit";
-import type { CaseStudyPartyAssignee } from "../../lib/prototype/case-study-tracks";
-import { INSPECTION_TABLE_TYPE } from "../../lib/prototype/queue-table-type";
+import type { CaseStudyPartyAssignee } from "../../lib/app-data/case-study-tracks";
+import { INSPECTION_TABLE_TYPE } from "../../lib/app-data/queue-table-type";
 
 function progressBarClass(pct: number, done: boolean): string {
   // Real green — design-token --success is ink (navy), not a success green.

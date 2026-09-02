@@ -14,17 +14,15 @@ import { EVALUATOR_SUBMISSION_CHANGED_EVENT } from "../lib/case-study-evaluator-
 import {
   prefetchPropertyDocAttachments,
   subscribeAssignmentDocCache,
-} from "../lib/prototype/assignment-doc-attachments";
-import { prefetchInspectorWorkspacePhotos } from "../lib/prototype/inspector-photo-upload";
-import {
-  fetchInspectorWorkspace,
-  FIELD_INSPECTION_SUBMISSION_CHANGED_EVENT,
-} from "../lib/prototype/inspector-workspace-storage";
+} from "../lib/app-data/assignment-doc-attachments";
+import { prefetchInspectorWorkspacePhotos } from "../lib/app-data/inspector-photo-upload";
+import { FIELD_INSPECTION_SUBMISSION_CHANGED_EVENT } from "../lib/app-data/inspector-workspace-model";
+import { fetchInspectorWorkspace } from "../lib/app-data/inspector-workspace-reads";
 import {
   collectPropertyDetailDocumentSections,
   type PropertyDetailDocumentSection,
-} from "../lib/prototype/property-detail-documents";
-import type { PoPropertyIntake } from "../lib/prototype/po-intake-data";
+} from "../lib/app-data/property-detail-documents";
+import type { PoPropertyIntake } from "../lib/app-data/po-intake-data";
 
 export function usePropertyDetailDocuments(input: {
   property: PoPropertyIntake;

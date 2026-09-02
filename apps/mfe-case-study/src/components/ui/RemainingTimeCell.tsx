@@ -5,7 +5,7 @@ import { useTickingNow } from "@platform/app-shared/hooks/use-ticking-now";
 import {
   resolveRemainingTime,
   type RemainingTimeState,
-} from "../../lib/prototype/my-task-row";
+} from "../../lib/app-data/my-task-row";
 
 export function RemainingTimeCell({ state }: { state: RemainingTimeState }) {
   if (state.status === "missing") {

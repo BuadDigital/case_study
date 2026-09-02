@@ -13,6 +13,7 @@ import {
   getValuationIssuanceGates,
 } from "@platform/api-client";
 import { getAuthSession } from "@platform/auth-client";
+import { useIdempotentAction } from "@platform/app-shared";
 import dynamic from "next/dynamic";
 import { Activity, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { WorkflowTask } from "@platform/app-shared/workflow/task-types";
@@ -151,6 +152,17 @@ export function EvaluatorWindow({
 
   const locked = isEvaluatorFormLocked(draft.status);
   const formDisabled = locked || !gate.ready;
+
+  const { execute: executeAppraiserSubmit, loading: appraiserSubmitting } =
+    useIdempotentAction(
+      useCallback(
+        async (idempotencyKey: string) =>
+          finalizeAppraiserSubmission(task.id, idempotencyKey),
+        [task.id],
+      ),
+    );
+
+  const submitBusy = submitting || appraiserSubmitting;
 
   const visibleTabs = useMemo(
     () =>
@@ -371,7 +383,10 @@ export function EvaluatorWindow({
         return false;
       }
 
-      const result = await finalizeAppraiserSubmission(task.id);
+      const outcome = await executeAppraiserSubmit();
+      if (outcome.status === "skipped") return false;
+
+      const result = outcome.value;
       if (result.ok) {
         setDraft(result.submission);
         showToast(
@@ -409,6 +424,7 @@ export function EvaluatorWindow({
     draft.reportChoices,
     hostRef,
     showToast,
+    executeAppraiserSubmit,
   ]);
 
   useEffect(() => {
@@ -612,7 +628,7 @@ export function EvaluatorWindow({
                     onDraftPatch={onDraftPatch}
                     onReportChoicesPatch={onReportChoicesPatch}
                     onSubmit={() => void submit()}
-                    submitting={submitting}
+                    submitting={submitBusy}
                     showSubmit={!formDisabled}
                     screen={workScreen}
                     onScreenChange={onWorkScreenChange}

@@ -35,8 +35,8 @@ import {
   upsertPropertyCourtAccess,
 } from "@platform/api-client";
 import { getValidAuthSession } from "@platform/auth-client";
-import { prototypeModulesApiConfig } from "@platform/app-shared/prototype/prototype-modules-api-config";
-import { workOrdersApiConfig } from "@platform/app-shared/prototype/work-orders-api-config";
+import { prototypeModulesApiConfig } from "@platform/app-shared/app-data/modules-api-config";
+import { workOrdersApiConfig } from "@platform/app-shared/app-data/work-orders-api-config";
 
 function arrayBufferToBase64(buf: ArrayBuffer): string {
   const bytes = new Uint8Array(buf);
@@ -211,6 +211,7 @@ async function runSync(userId: string): Promise<void> {
       const submitResult = await submitPartyTaskSubmission(
         workOrdersConfig,
         input.taskId,
+        input.idempotencyKey,
       );
       if (!submitResult.ok) {
         if (submitResult.kind === "auth" || submitResult.kind === "forbidden") {
@@ -332,7 +333,11 @@ async function runSync(userId: string): Promise<void> {
       } catch {
         return { ok: false, error: "بيانات ظرف غير صالحة", terminal: true };
       }
-      const createResult = await createKeyEnvelope(modulesConfig, body);
+      const createResult = await createKeyEnvelope(
+        modulesConfig,
+        body,
+        input.idempotencyKey,
+      );
       if (!createResult.ok) {
         if (createResult.kind === "auth" || createResult.kind === "forbidden") {
           await purgeOfflineData(userId, "auth-rejected");
@@ -401,6 +406,7 @@ async function runSync(userId: string): Promise<void> {
         input.envelopeId,
         payload.assignmentId,
         { status: payload.status, notes: payload.notes ?? null },
+        input.idempotencyKey,
       );
       if (!result.ok) {
         if (result.kind === "auth" || result.kind === "forbidden") {
@@ -430,6 +436,7 @@ async function runSync(userId: string): Promise<void> {
         modulesConfig,
         input.envelopeId,
         payload,
+        input.idempotencyKey,
       );
       if (!result.ok) {
         if (result.kind === "auth" || result.kind === "forbidden") {
@@ -460,6 +467,7 @@ async function runSync(userId: string): Promise<void> {
         modulesConfig,
         input.envelopeId,
         payload.handoffId,
+        input.idempotencyKey,
       );
       if (!result.ok) {
         if (result.kind === "auth" || result.kind === "forbidden") {

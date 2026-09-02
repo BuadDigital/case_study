@@ -22,7 +22,7 @@ import {
   cn,
   useToast,
 } from "@platform/ui-kit";
-import { prototypeKeys } from "@platform/app-shared/query/prototype-keys";
+import { appDataKeys } from "@platform/app-shared/query/app-data-keys";
 import {
   acceptEngineeringSurveySubmission,
   reopenEngineeringSurveySubmission,
@@ -31,7 +31,7 @@ import {
   isEngineeringSurveyOutputsAccepted,
 } from "../../lib/engineering-survey-bridge";
 import { useWorkflowTasksQuery } from "../../query/case-study-queries";
-import type { WorkflowTask } from "../../lib/prototype/tasks-storage";
+import type { WorkflowTask } from "../../lib/app-data/tasks-storage";
 import { PoNumber } from "../ui/PoNumber";
 
 function deedFromTitle(title: string | undefined): string {
@@ -63,7 +63,7 @@ export type EngSurveyPendingAcceptRow = {
 };
 
 const PENDING_ACCEPT_KEY = [
-  ...prototypeKeys.all,
+  ...appDataKeys.all,
   "eng-survey-fee-accept-pending",
 ] as const;
 
@@ -120,9 +120,9 @@ export function SupervisorEngSurveyFeeAcceptPanel() {
     await Promise.all([
       queryClient.invalidateQueries({ queryKey: PENDING_ACCEPT_KEY }),
       queryClient.invalidateQueries({
-        queryKey: [...prototypeKeys.all, "inspector-fees"],
+        queryKey: [...appDataKeys.all, "inspector-fees"],
       }),
-      queryClient.invalidateQueries({ queryKey: prototypeKeys.workflowTasks() }),
+      queryClient.invalidateQueries({ queryKey: appDataKeys.workflowTasks() }),
     ]);
   }, [queryClient]);
 

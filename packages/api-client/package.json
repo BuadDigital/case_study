@@ -7,7 +7,8 @@
     "./api-base": "./src/api-base.ts",
     "./audit": "./src/audit.ts",
     "./notifications": "./src/notifications.ts",
-    "./push": "./src/push.ts"
+    "./push": "./src/push.ts",
+    "./idempotency-key": "./src/idempotency-key.ts"
   },
   "sideEffects": false
 }
