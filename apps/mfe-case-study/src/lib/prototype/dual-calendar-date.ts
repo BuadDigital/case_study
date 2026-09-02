@@ -270,6 +270,77 @@ export function stepDualCalendarYear(
   return { year: year + delta, month };
 }
 
+export function listDualCalendarYears(kind: DualCalendarKind): number[] {
+  const current = todayDualCalendarParts(kind).year;
+  if (kind === "hijri") {
+    const max = Math.min(1600, current + 5);
+    const min = 1300;
+    return Array.from({ length: max - min + 1 }, (_, index) => max - index);
+  }
+  const max = current + 10;
+  const min = 1900;
+  return Array.from({ length: max - min + 1 }, (_, index) => max - index);
+}
+
+export function dualCalendarMonthLabel(
+  kind: DualCalendarKind,
+  year: number,
+  month: number,
+): string {
+  if (kind === "gregorian") {
+    return new Intl.DateTimeFormat("ar-SA", {
+      month: "long",
+      calendar: "gregory",
+    }).format(new Date(year, month - 1, 15));
+  }
+  const iso = hijriPartsToGregorianIso(year, month, 15);
+  if (!iso) return String(month);
+  return new Intl.DateTimeFormat("ar-SA-u-ca-islamic-umalqura", {
+    month: "long",
+  }).format(new Date(`${iso}T12:00:00`));
+}
+
+export function dualCalendarYearLabel(
+  kind: DualCalendarKind,
+  year: number,
+): string {
+  return kind === "hijri" ? `${year} هـ` : `${year} م`;
+}
+
+export function normalizeDualCalendarView(
+  calendar: DualCalendarKind,
+  year: number,
+  month: number,
+  selected: DualCalendarDateParts | null,
+): { year: number; month: number } {
+  const fallback = selected
+    ? convertDualCalendarDate(selected, calendar) ?? todayDualCalendarParts(calendar)
+    : todayDualCalendarParts(calendar);
+
+  const monthClamped = Math.min(12, Math.max(1, month));
+  const grid =
+    calendar === "gregorian"
+      ? buildGregorianMonthGrid(year, monthClamped)
+      : buildHijriMonthGrid(year, monthClamped);
+
+  if (grid.some(Boolean)) {
+    return { year, month: monthClamped };
+  }
+
+  return { year: fallback.year, month: fallback.month };
+}
+
+export function dualCalendarViewAnchor(
+  calendar: DualCalendarKind,
+  selected: DualCalendarDateParts | null,
+): DualCalendarDateParts {
+  if (selected) {
+    const converted = convertDualCalendarDate(selected, calendar);
+    if (converted) return converted;
+  }
+  return todayDualCalendarParts(calendar);
+}
+
 export function formatDualCalendarMonthTitle(
   kind: DualCalendarKind,
   year: number,

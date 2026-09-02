@@ -1407,6 +1407,7 @@ export function FieldInspectionWorkBody({
           <InspectorPropertyPhotosSection
             draft={liveDraft}
             disabled={locked}
+            actor="inspector"
             mobile={mobile}
             onPatch={(patch) => persist(patch)}
             onDirty={() => markDirty("photos")}
@@ -2118,19 +2119,6 @@ export function FieldInspectionWorkBody({
                   className={cn(mobileControlClassName, "min-h-[88px] resize-y")}
                 />
               </div>
-              <div>
-                <MobileFieldLabel>إيجابيات وعيوب الحي</MobileFieldLabel>
-                <Textarea
-                  id="ins-pros-cons"
-                  rows={3}
-                  value={draft.districtProsCons}
-                  disabled={locked}
-                  onChange={(e) =>
-                    persist({ districtProsCons: e.target.value })
-                  }
-                  className={cn(mobileControlClassName, "min-h-[88px] resize-y")}
-                />
-              </div>
             </div>
           ) : (
             <>
@@ -2184,22 +2172,6 @@ export function FieldInspectionWorkBody({
                   onChange={(v) => persist({ violationsDescription: v })}
                 />
               ) : null}
-              <RegTextarea
-                id="ins-pros-cons"
-                label="الإيجابيات والعيوب الظاهرة على الحي"
-                rows={3}
-                className="mt-3"
-                value={draft.districtProsCons}
-                onChange={(v) => persist({ districtProsCons: v })}
-              />
-              <RegTextarea
-                id="ins-asset-notes"
-                label="ملاحظات على الأصل"
-                rows={3}
-                className="mt-3"
-                value={draft.assetNotes}
-                onChange={(v) => persist({ assetNotes: v })}
-              />
             </>
           )}
         </InspectorCard>

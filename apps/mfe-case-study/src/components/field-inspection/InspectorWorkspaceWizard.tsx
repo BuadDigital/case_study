@@ -30,7 +30,6 @@ import {
   isLandInspectionContext,
   isShopHiddenInspectorComponentKey,
   isCommercialShopInspectionContext,
-  inspectorPhotoCoverageLabel,
   newObservationId,
   patchInspectorFeatureValues,
   visibleInspectorFeatureFields,
@@ -40,7 +39,6 @@ import {
 import { InspectorStepNav, type InspectorStepId } from "./InspectorStepNav";
 import { InspectorFeatureWizardFields } from "./InspectorFeatureWizardFields";
 import { InspectorPropertyPhotosSection } from "./InspectorPropertyPhotosSection";
-import { InspectorDefinedPhotosSection } from "./InspectorDefinedPhotosSection";
 import { FieldComparableCaptureSection } from "./FieldComparableCaptureSection";
 import { ComponentCountWithPhotoField, InsCard, InsDualCalendarDateField, InsEditField, InsEditTextarea, InsFieldsGrid, ChipRow, EDIT_CONTROL_CLASS } from "../po-intake/PropertyDetailInspectionParts";
 import { INFATH_FIELD_LABELS } from "../../lib/prototype/infath-field-labels";
@@ -175,8 +173,6 @@ export function InspectorWorkspaceWizard({
       ? `${draft.mapLatitude.trim()}, ${draft.mapLongitude.trim()}`
       : "";
 
-  const photoCoverage = inspectorPhotoCoverageLabel(draft);
-
   function advance() {
     setDoneSteps((prev) => {
       const next = new Set(prev);
@@ -297,6 +293,7 @@ export function InspectorWorkspaceWizard({
             <InspectorPropertyPhotosSection
               draft={draft}
               disabled={!editable}
+              actor={serviceProofFromTransactionPhotos ? "specialist" : "inspector"}
               onPatch={onPatch}
             />
           </InsCard>
@@ -309,6 +306,15 @@ export function InspectorWorkspaceWizard({
 
       {showStep(2) ? (
         <>
+          <InsCard title="وصف العقار">
+            <InsEditTextarea
+              label="وصف العقار"
+              value={draft.propertyDescription}
+              onChange={(v) => onPatch({ propertyDescription: v })}
+              disabled={!editable}
+            />
+          </InsCard>
+
           <InsCard title="خصائص العقار">
             <InspectorFeatureWizardFields
               fields={featureFields}
@@ -789,28 +795,6 @@ export function InspectorWorkspaceWizard({
 
       {showStep(3) ? (
         <>
-          <div id="ins-defined-photos">
-            <InsCard
-              title="توثيق الخدمات والمرافق"
-              badge={<DetailBadge tone="gray">{photoCoverage}</DetailBadge>}
-            >
-              <InspectorDefinedPhotosSection
-                draft={draft}
-                disabled={!editable}
-                onPatch={onPatch}
-                layout="desktop"
-              />
-              {fieldErrors.definedPhotos ? (
-                <p
-                  className="mt-2 mb-0 text-[11px] font-semibold text-danger-text"
-                  role="alert"
-                >
-                  {fieldErrors.definedPhotos}
-                </p>
-              ) : null}
-            </InsCard>
-          </div>
-
           <InsCard title="العقارات المقارنة">
             <FieldComparableCaptureSection
               latitude={draft.mapLatitude}
@@ -824,33 +808,27 @@ export function InspectorWorkspaceWizard({
             />
           </InsCard>
 
-          <InsCard
-            title="الوصف والملاحظات"
-            badge={<DetailBadge tone="gray">نص حر</DetailBadge>}
-          >
-            <InsEditTextarea
-              label="وصف العقار"
-              value={draft.propertyDescription}
-              
-              onChange={(v) => onPatch({ propertyDescription: v })}
-            disabled={!editable} />
-            <div className="mt-3">
+          {serviceProofFromTransactionPhotos ? (
+            <InsCard
+              title="الوصف والملاحظات"
+              badge={<DetailBadge tone="gray">نص حر</DetailBadge>}
+            >
               <InsEditTextarea
                 label="الإيجابيات والعيوب الظاهرة على الحي"
                 value={draft.districtProsCons}
-                
                 onChange={(v) => onPatch({ districtProsCons: v })}
-              disabled={!editable} />
-            </div>
-            <div className="mt-3">
-              <InsEditTextarea
-                label="ملاحظات على الأصل"
-                value={draft.assetNotes}
-                
-                onChange={(v) => onPatch({ assetNotes: v })}
-              disabled={!editable} />
-            </div>
-          </InsCard>
+                disabled={!editable}
+              />
+              <div className="mt-3">
+                <InsEditTextarea
+                  label="ملاحظات على الأصل"
+                  value={draft.assetNotes}
+                  onChange={(v) => onPatch({ assetNotes: v })}
+                  disabled={!editable}
+                />
+              </div>
+            </InsCard>
+          ) : null}
 
           <InsCard
             title="الملاحظات الميدانية"

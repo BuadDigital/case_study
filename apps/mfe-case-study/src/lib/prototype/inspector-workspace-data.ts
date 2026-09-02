@@ -46,17 +46,40 @@ export type InspectorDefinedPhotoSlot = {
   photos: InspectorSlotPhoto[];
 };
 
+export type InspectorFreePhotoUploader = "inspector" | "specialist";
+
 export type InspectorFreePhoto = {
   id: number;
   category: string | null;
   approved: boolean;
   fileName: string;
   mimeType: string;
+  /** Who added this general property photo — defaults to inspector for legacy rows. */
+  uploadedBy?: InspectorFreePhotoUploader;
   attachmentId?: string;
   sizeBytes?: number;
   locationFlag?: string | null;
   distanceM?: number | null;
 };
+
+export function inspectorFreePhotoUploader(
+  photo: InspectorFreePhoto,
+): InspectorFreePhotoUploader {
+  return photo.uploadedBy ?? "inspector";
+}
+
+export function canDeleteInspectorFreePhoto(
+  photo: InspectorFreePhoto,
+  actor: InspectorFreePhotoUploader,
+): boolean {
+  return inspectorFreePhotoUploader(photo) === actor;
+}
+
+export function inspectorFreePhotoUploaderLabel(
+  uploader: InspectorFreePhotoUploader,
+): string {
+  return uploader === "specialist" ? "الأخصائي" : "المعاين";
+}
 
 export type InspectorFeatureField = {
   key: string;

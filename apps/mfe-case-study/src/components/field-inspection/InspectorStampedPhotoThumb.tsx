@@ -16,6 +16,7 @@ export function InspectorStampedPhotoThumb({
   photoRef,
   attachment,
   dataUrl: dataUrlProp,
+  ownerBadge,
   onClear,
   onClick,
 }: {
@@ -26,6 +27,8 @@ export function InspectorStampedPhotoThumb({
   photoRef?: string;
   attachment?: InspectorPhotoAttachment | null;
   dataUrl?: string;
+  /** Shown when the photo belongs to another party (read-only for the current actor). */
+  ownerBadge?: string;
   onClear?: () => void;
   onClick?: () => void;
 }) {
@@ -70,8 +73,11 @@ export function InspectorStampedPhotoThumb({
       <button
         type="button"
         onClick={onClick}
+        title={onClick ? "معاينة الصورة" : undefined}
+        aria-label={onClick ? "معاينة الصورة" : undefined}
         className={cn(
           "relative overflow-hidden rounded-md border bg-cover bg-center",
+          onClick && dataUrl ? "cursor-zoom-in" : null,
           dataUrl
             ? "border-teal-light"
             : "border-teal-light bg-teal-light text-teal-text",
@@ -94,6 +100,11 @@ export function InspectorStampedPhotoThumb({
           </span>
         )}
       </button>
+      {ownerBadge ? (
+        <span className="pointer-events-none absolute end-0 top-0 z-10 max-w-[calc(100%-4px)] truncate rounded-bl-md bg-black/65 px-1 py-0.5 text-[8px] font-semibold leading-tight text-white">
+          {ownerBadge}
+        </span>
+      ) : null}
       {onClear ? (
         <button
           type="button"

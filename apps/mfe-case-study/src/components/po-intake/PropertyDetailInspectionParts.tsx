@@ -226,18 +226,18 @@ function InsCalendarIcon({ className }: { className?: string }) {
 }
 
 const CALENDAR_PANEL_WIDTH = 288;
+const CALENDAR_PANEL_EST_HEIGHT = 330;
 const CALENDAR_VIEWPORT_MARGIN = 8;
 const CALENDAR_PANEL_GAP = 4;
 
 function computeDualCalendarPanelStyle(
   trigger: HTMLElement,
-  panel: HTMLElement,
+  panelWidth = CALENDAR_PANEL_WIDTH,
+  panelHeight = CALENDAR_PANEL_EST_HEIGHT,
 ): CSSProperties {
   const rect = trigger.getBoundingClientRect();
   const vw = window.innerWidth;
   const vh = window.innerHeight;
-  const panelWidth = panel.offsetWidth || CALENDAR_PANEL_WIDTH;
-  const panelHeight = panel.offsetHeight;
 
   let left = rect.right - panelWidth;
   left = Math.max(
@@ -279,7 +279,7 @@ export function InsDualCalendarDateField({
   const rootRef = useRef<HTMLDivElement>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
   const panelRef = useRef<HTMLDivElement>(null);
-  const [mounted, setMounted] = useState(false);
+  const ignoreNextOutsideClickRef = useRef(false);
   const [open, setOpen] = useState(false);
   const [panelStyle, setPanelStyle] = useState<CSSProperties>({});
   const parsed = useMemo(() => parseDualCalendarDate(value), [value]);
@@ -288,45 +288,44 @@ export function InsDualCalendarDateField({
   );
 
   useEffect(() => {
-    setMounted(true);
-  }, []);
-
-  useEffect(() => {
     if (parsed) setPanelCalendar(parsed.kind);
   }, [value, parsed]);
 
   useLayoutEffect(() => {
-    if (!open || !triggerRef.current || !panelRef.current) return;
+    if (!open || !triggerRef.current) return;
 
-    let raf = 0;
     const placePanel = () => {
-      if (!triggerRef.current || !panelRef.current) return;
-      setPanelStyle(
-        computeDualCalendarPanelStyle(triggerRef.current, panelRef.current),
-      );
+      if (!triggerRef.current) return;
+      const width = panelRef.current?.offsetWidth ?? CALENDAR_PANEL_WIDTH;
+      const height = panelRef.current?.offsetHeight ?? CALENDAR_PANEL_EST_HEIGHT;
+      setPanelStyle(computeDualCalendarPanelStyle(triggerRef.current, width, height));
     };
 
     placePanel();
-    raf = requestAnimationFrame(placePanel);
     window.addEventListener("resize", placePanel);
     window.addEventListener("scroll", placePanel, { capture: true, passive: true });
     return () => {
-      cancelAnimationFrame(raf);
       window.removeEventListener("resize", placePanel);
       window.removeEventListener("scroll", placePanel, { capture: true });
     };
-  }, [open, panelCalendar, parsed, value]);
+  }, [open]);
 
   useEffect(() => {
     if (!open) return;
-    const onDocumentMouseDown = (event: MouseEvent) => {
+
+    const onDocumentClick = (event: MouseEvent) => {
+      if (ignoreNextOutsideClickRef.current) {
+        ignoreNextOutsideClickRef.current = false;
+        return;
+      }
       const target = event.target as Node;
       if (rootRef.current?.contains(target)) return;
       if (panelRef.current?.contains(target)) return;
       setOpen(false);
     };
-    document.addEventListener("mousedown", onDocumentMouseDown);
-    return () => document.removeEventListener("mousedown", onDocumentMouseDown);
+
+    document.addEventListener("click", onDocumentClick);
+    return () => document.removeEventListener("click", onDocumentClick);
   }, [open]);
 
   if (disabled) {
@@ -359,14 +358,18 @@ export function InsDualCalendarDateField({
           aria-haspopup="dialog"
           aria-expanded={open}
           aria-label={displayText ? `${label}: ${displayText}` : label}
-          onClick={() => setOpen((wasOpen) => !wasOpen)}
+          onClick={(event) => {
+            event.stopPropagation();
+            ignoreNextOutsideClickRef.current = true;
+            setOpen((wasOpen) => !wasOpen);
+          }}
         >
           <span className={cn("min-w-0 flex-1 truncate", !displayText && "font-normal text-text-3")}>
             {displayText || "mm/dd/yyyy"}
           </span>
           <InsCalendarIcon className="shrink-0 text-text-3" />
         </button>
-        {mounted && open
+        {open
           ? createPortal(
               <div ref={panelRef} style={panelStyle}>
                 <DualCalendarPickerPanel

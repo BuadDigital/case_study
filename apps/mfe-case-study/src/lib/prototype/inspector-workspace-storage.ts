@@ -143,6 +143,11 @@ function readFreePhotos(value: unknown): InspectorFreePhoto[] {
     const fileName = readString(obj.fileName);
     if (!id || !fileName) continue;
     const attachmentId = readString(obj.attachmentId);
+    const uploadedByRaw = readString(obj.uploadedBy);
+    const uploadedBy =
+      uploadedByRaw === "specialist" || uploadedByRaw === "inspector"
+        ? uploadedByRaw
+        : undefined;
     const photo: InspectorFreePhoto = {
       id,
       category: readString(obj.category) || null,
@@ -152,6 +157,7 @@ function readFreePhotos(value: unknown): InspectorFreePhoto[] {
       sizeBytes:
         typeof obj.sizeBytes === "number" ? obj.sizeBytes : undefined,
     };
+    if (uploadedBy) photo.uploadedBy = uploadedBy;
     if (attachmentId) photo.attachmentId = attachmentId;
     out.push(photo);
   }

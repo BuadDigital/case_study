@@ -1,15 +1,18 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { cn } from "@platform/ui-kit";
 import {
   buildGregorianMonthGrid,
   buildHijriMonthGrid,
   convertDualCalendarDate,
-  formatDualCalendarMonthTitle,
+  dualCalendarMonthLabel,
+  dualCalendarViewAnchor,
+  dualCalendarYearLabel,
+  listDualCalendarYears,
+  normalizeDualCalendarView,
   sameDualCalendarDate,
   stepDualCalendarMonth,
-  stepDualCalendarYear,
   todayDualCalendarParts,
   type DualCalendarDateParts,
   type DualCalendarKind,
@@ -67,19 +70,35 @@ export function DualCalendarPickerPanel({
   onSelect: (parts: DualCalendarDateParts) => void;
 }) {
   const anchor = useMemo(
-    () => selected ?? todayDualCalendarParts(calendar),
+    () => dualCalendarViewAnchor(calendar, selected),
     [selected, calendar],
   );
   const [viewYear, setViewYear] = useState(anchor.year);
   const [viewMonth, setViewMonth] = useState(anchor.month);
+  const [yearPickerOpen, setYearPickerOpen] = useState(false);
+  const selectedYearRef = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
-    setViewYear(anchor.year);
-    setViewMonth(anchor.month);
-  }, [anchor.year, anchor.month, calendar]);
+    const next = normalizeDualCalendarView(
+      calendar,
+      anchor.year,
+      anchor.month,
+      selected,
+    );
+    setViewYear(next.year);
+    setViewMonth(next.month);
+    setYearPickerOpen(false);
+  }, [anchor.year, anchor.month, calendar, selected]);
+
+  useEffect(() => {
+    if (!yearPickerOpen) return;
+    selectedYearRef.current?.scrollIntoView({ block: "nearest" });
+  }, [yearPickerOpen, viewYear]);
 
   const today = useMemo(() => todayDualCalendarParts(calendar), [calendar]);
-  const monthTitle = formatDualCalendarMonthTitle(calendar, viewYear, viewMonth);
+  const monthLabel = dualCalendarMonthLabel(calendar, viewYear, viewMonth);
+  const yearLabel = dualCalendarYearLabel(calendar, viewYear);
+  const yearOptions = useMemo(() => listDualCalendarYears(calendar), [calendar]);
   const grid = useMemo(
     () =>
       calendar === "gregorian"
@@ -88,16 +107,15 @@ export function DualCalendarPickerPanel({
     [calendar, viewYear, viewMonth],
   );
 
-  const shiftMonth = (delta: number) => {
-    const next = stepDualCalendarMonth(calendar, viewYear, viewMonth, delta);
+  const setView = (year: number, month: number) => {
+    const next = normalizeDualCalendarView(calendar, year, month, selected);
     setViewYear(next.year);
     setViewMonth(next.month);
   };
 
-  const shiftYear = (delta: number) => {
-    const next = stepDualCalendarYear(viewYear, viewMonth, delta);
-    setViewYear(next.year);
-    setViewMonth(next.month);
+  const shiftMonth = (delta: number) => {
+    const next = stepDualCalendarMonth(calendar, viewYear, viewMonth, delta);
+    setView(next.year, next.month);
   };
 
   const navButtonClass =
@@ -105,12 +123,12 @@ export function DualCalendarPickerPanel({
 
   const handleCalendarKindChange = (kind: DualCalendarKind) => {
     onCalendarChange(kind);
+    setYearPickerOpen(false);
     const converted = selected
       ? convertDualCalendarDate(selected, kind)
       : todayDualCalendarParts(kind);
     if (converted) {
-      setViewYear(converted.year);
-      setViewMonth(converted.month);
+      setView(converted.year, converted.month);
     }
   };
 
@@ -122,81 +140,105 @@ export function DualCalendarPickerPanel({
     >
       <CalendarKindToggle calendar={calendar} onChange={handleCalendarKindChange} />
 
-      <div className="mb-2 flex items-center justify-between gap-1">
-        <div className="flex items-center gap-0.5">
-          <button
-            type="button"
-            className={navButtonClass}
-            aria-label="السنة السابقة"
-            onClick={() => shiftYear(-1)}
-          >
-            »
-          </button>
-          <button
-            type="button"
-            className={navButtonClass}
-            aria-label="الشهر السابق"
-            onClick={() => shiftMonth(-1)}
-          >
-            ›
-          </button>
-        </div>
-        <span className="min-w-0 flex-1 truncate px-1 text-center text-[12px] font-bold text-heading">
-          {monthTitle}
+      <div className="mb-1.5 grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-1">
+        <button
+          type="button"
+          className={navButtonClass}
+          aria-label="الشهر السابق"
+          onClick={() => shiftMonth(-1)}
+        >
+          ‹
+        </button>
+        <span className="truncate px-1 text-center text-[12px] font-bold text-heading">
+          {monthLabel}
         </span>
-        <div className="flex items-center gap-0.5">
-          <button
-            type="button"
-            className={navButtonClass}
-            aria-label="الشهر التالي"
-            onClick={() => shiftMonth(1)}
-          >
-            ‹
-          </button>
-          <button
-            type="button"
-            className={navButtonClass}
-            aria-label="السنة التالية"
-            onClick={() => shiftYear(1)}
-          >
-            «
-          </button>
-        </div>
+        <button
+          type="button"
+          className={navButtonClass}
+          aria-label="الشهر التالي"
+          onClick={() => shiftMonth(1)}
+        >
+          ›
+        </button>
       </div>
 
-      <div className="grid grid-cols-7 gap-0.5 text-center">
-        {WEEKDAY_HEADERS.map((label) => (
-          <div
-            key={label}
-            className="py-1 text-[10px] font-bold text-text-3"
-            aria-hidden
-          >
-            {label}
-          </div>
-        ))}
-        {grid.map((cell, index) =>
-          cell ? (
-            <button
-              key={`${cell.parts.year}-${cell.parts.month}-${cell.parts.day}-${index}`}
-              type="button"
-              className={cn(
-                "rounded-md py-1.5 text-[11px] font-semibold transition-colors",
-                sameDualCalendarDate(cell.parts, selected)
-                  ? "bg-ink text-white"
-                  : "text-heading hover:bg-[color-mix(in_srgb,var(--text-3)_12%,transparent)]",
-                sameDualCalendarDate(cell.parts, today) &&
-                  !sameDualCalendarDate(cell.parts, selected) &&
-                  "ring-1 ring-gold ring-inset",
-              )}
-              onClick={() => onSelect(cell.parts)}
-            >
-              {cell.day}
-            </button>
-          ) : (
-            <div key={`empty-${index}`} aria-hidden />
-          ),
+      <button
+        type="button"
+        className={cn(
+          "mb-2 w-full rounded-md border px-2 py-1.5 font-inherit text-[12px] font-bold tabular-nums transition-colors [direction:ltr]",
+          yearPickerOpen
+            ? "border-gold bg-[color-mix(in_srgb,var(--gold)_12%,transparent)] text-heading"
+            : "border-border-md bg-surface text-heading hover:bg-[color-mix(in_srgb,var(--text-3)_8%,transparent)]",
         )}
-      </div>
+        aria-expanded={yearPickerOpen}
+        aria-label={`السنة: ${yearLabel}`}
+        onClick={() => setYearPickerOpen((open) => !open)}
+      >
+        {yearLabel}
+      </button>
+
+      {yearPickerOpen ? (
+        <div className="mb-1 max-h-[196px] overflow-y-auto rounded-lg border border-border-md bg-surface-2 p-1.5">
+          <div className="grid grid-cols-4 gap-1">
+            {yearOptions.map((year) => {
+              const on = year === viewYear;
+              return (
+                <button
+                  key={year}
+                  ref={on ? selectedYearRef : undefined}
+                  type="button"
+                  className={cn(
+                    "rounded-md px-1 py-1.5 text-[11px] font-semibold tabular-nums transition-colors",
+                    on
+                      ? "bg-ink text-white"
+                      : "text-heading hover:bg-[color-mix(in_srgb,var(--text-3)_12%,transparent)]",
+                  )}
+                  onClick={() => {
+                    setView(year, viewMonth);
+                    setYearPickerOpen(false);
+                  }}
+                >
+                  {year}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      ) : (
+        <div className="grid grid-cols-7 gap-0.5 text-center">
+          {WEEKDAY_HEADERS.map((label) => (
+            <div
+              key={label}
+              className="py-1 text-[10px] font-bold text-text-3"
+              aria-hidden
+            >
+              {label}
+            </div>
+          ))}
+          {grid.map((cell, index) =>
+            cell ? (
+              <button
+                key={`${cell.parts.year}-${cell.parts.month}-${cell.parts.day}-${index}`}
+                type="button"
+                className={cn(
+                  "rounded-md py-1.5 text-[11px] font-semibold transition-colors",
+                  sameDualCalendarDate(cell.parts, selected)
+                    ? "bg-ink text-white"
+                    : "text-heading hover:bg-[color-mix(in_srgb,var(--text-3)_12%,transparent)]",
+                  sameDualCalendarDate(cell.parts, today) &&
+                    !sameDualCalendarDate(cell.parts, selected) &&
+                    "ring-1 ring-gold ring-inset",
+                )}
+                onClick={() => onSelect(cell.parts)}
+              >
+                {cell.day}
+              </button>
+            ) : (
+              <div key={`empty-${index}`} aria-hidden />
+            ),
+          )}
+        </div>
+      )}
     </div>
   );
 }

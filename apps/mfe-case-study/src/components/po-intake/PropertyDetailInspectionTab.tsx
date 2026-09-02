@@ -212,6 +212,36 @@ export function PropertyDetailInspectionTab({
   }, [inspectionTask, editMode, property]);
 
   useEffect(() => {
+    if (!inspectionTask || !editMode) return;
+    const taskId = inspectionTask.id;
+    const onChange = () => {
+      void loadInspectorWorkspaceSnapshot(taskId).then((loaded) => {
+        if (!loaded) return;
+        setDraft((prev) => {
+          if (!prev) return loaded;
+          const prevTs = Date.parse(prev.updatedAtUtc);
+          const nextTs = Date.parse(loaded.updatedAtUtc);
+          if (
+            Number.isFinite(prevTs) &&
+            Number.isFinite(nextTs) &&
+            prevTs > nextTs
+          ) {
+            return prev;
+          }
+          return loaded;
+        });
+      });
+    };
+    window.addEventListener(FIELD_INSPECTION_SUBMISSION_CHANGED_EVENT, onChange);
+    return () => {
+      window.removeEventListener(
+        FIELD_INSPECTION_SUBMISSION_CHANGED_EVENT,
+        onChange,
+      );
+    };
+  }, [inspectionTask, editMode]);
+
+  useEffect(() => {
     if (editMode) {
       setFormError(null);
       setFieldErrors({});
