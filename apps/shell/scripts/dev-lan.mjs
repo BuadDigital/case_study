@@ -90,7 +90,7 @@ if (lan) {
   console.log(`  Share this URL:  http://${lan}:${port}`);
   console.log(`  Login:           http://${lan}:${port}/login`);
   console.log("");
-  console.log("  Demo login:      admin@local.dev  /  user1234");
+  console.log("  Demo login:      mobile or email → any 6-digit OTP (not 000000)");
   console.log("  (Same Wi‑Fi only — not public internet.)");
   console.log("");
   console.log(

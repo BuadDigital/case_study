@@ -51,7 +51,7 @@ const stepTag = "mb-4 inline-flex items-center gap-[7px] rounded-full bg-gold-so
 
 const footNote = "mt-6 flex items-center justify-center gap-2 text-center text-xs leading-relaxed text-text-3";
 
-// Hoisted: these run on every keystroke of the identifier/password fields.
+// Hoisted: these run on every keystroke of the identifier field.
 const EMAIL_LIKE_RE = /[a-zA-Z@]/;
 const NON_DIGIT_RE = /\D/g;
 
@@ -143,7 +143,6 @@ export default function LoginPage() {
   const { showToast } = useToast();
   const [step, setStep] = useState<Step>("creds");
   const [identifier, setIdentifier] = useState("");
-  const [password, setPassword] = useState("");  const [showPassword, setShowPassword] = useState(false);
   const [remember, setRemember] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [otpError, setOtpError] = useState<string | null>(null);
@@ -151,16 +150,16 @@ export default function LoginPage() {
   const [otp, setOtp] = useState<string[]>(["", "", "", "", "", ""]);
   const [otpBad, setOtpBad] = useState(false);
   const [mobileBad, setMobileBad] = useState(false);
-  const [passwordBad, setPasswordBad] = useState(false);
   const [resendLeft, setResendLeft] = useState(0);
-  const [pendingSession, setPendingSession] = useState<AuthSession | null>(null);
   const [landingPath, setLandingPath] = useState("/active-primary-data");
   const otpRefs = useRef<Array<HTMLInputElement | null>>([]);
   const mobileRef = useRef<HTMLInputElement | null>(null);
   const otpConfirmingRef = useRef(false);
   const isEmailMode = EMAIL_LIKE_RE.test(identifier);
   const mobileDigits = identifier.replace(NON_DIGIT_RE, "");
-  const credsReady = isEmailMode? identifier.trim().length > 3 && password.length >= 1 : mobileDigits.length >= 9 && password.length >= 1;
+  const credsReady = isEmailMode
+    ? identifier.trim().length > 3
+    : mobileDigits.length >= 9;
   const otpValue = otp.join("");
 
   useEffect(() => {
@@ -216,10 +215,10 @@ export default function LoginPage() {
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), 10_000);
     try {
-      const res = await fetch(`${getApiBase()}/api/auth/login`, {
+      const res = await fetch(`${getApiBase()}/api/auth/login-username`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ username: value, password }),
+        body: JSON.stringify({ username: value }),
         signal: controller.signal,
       });
       const data = (await res.json().catch(() => null)) as
@@ -232,14 +231,14 @@ export default function LoginPage() {
           data && "message" in data && typeof data.message === "string"
             ? data.message
             : isEmailMode
-              ? "البريد الإلكتروني أو كلمة المرور غير صحيحة."
-              : "رقم الجوال أو كلمة المرور غير صحيحة.";
-        setError(msg);
+              ? "تعذّر تسجيل الدخول. تأكد من البريد الإلكتروني."
+              : "تعذّر تسجيل الدخول. تأكد من رقم الجوال.";
+        setOtpError(msg);
         return null;
       }
 
       if (!data || !("token" in data)) {
-        setError("استجابة غير متوقعة من الخادم.");
+        setOtpError("استجابة غير متوقعة من الخادم.");
         return null;
       }
 
@@ -253,7 +252,7 @@ export default function LoginPage() {
     } catch (err) {
       console.error("login failed", err);
       const timedOut = err instanceof DOMException && err.name === "AbortError";
-      setError(
+      setOtpError(
         timedOut
           ? "انتهت مهلة الاتصال. تأكد أن الخادم يعمل (npm run dev:api) وانتظر حتى يظهر login-ready."
           : typeof window !== "undefined" &&
@@ -271,7 +270,6 @@ export default function LoginPage() {
     e?.preventDefault();
     setError(null);
     setMobileBad(false);
-    setPasswordBad(false);
 
     if (!isEmailMode) {
       if (mobileDigits.length < 9) {
@@ -292,31 +290,10 @@ export default function LoginPage() {
       return;
     }
 
-    if (!password) {
-      setError("اكتب كلمة المرور");
-      setPasswordBad(true);
-      return;
-    }
-
-    setLoading(true);
-    try {
-      const session = await authenticate();
-      if (!session) {
-        setMobileBad(true);
-        setPasswordBad(true);
-        return;
-      }
-
-      const path = await resolvePostLoginPath(session.token);
-      setLandingPath(path);
-      setPendingSession(session);
-      resetOtp();
-      startOtpTimer();
-      setStep("otp");
-      window.setTimeout(() => otpRefs.current[0]?.focus(), 50);
-    } finally {
-      setLoading(false);
-    }
+    resetOtp();
+    startOtpTimer();
+    setStep("otp");
+    window.setTimeout(() => otpRefs.current[0]?.focus(), 50);
   }
 
   function onOtpChange(index: number, raw: string) {
@@ -363,7 +340,7 @@ export default function LoginPage() {
 
   async function onOtpConfirm(codeOverride?: string) {
     const code = (codeOverride ?? otpValue).replace(NON_DIGIT_RE, "").slice(0, 6);
-    if (code.length !== 6 || !pendingSession || otpConfirmingRef.current) return;
+    if (code.length !== 6 || otpConfirmingRef.current) return;
     if (code === "000000") {
       setOtpBad(true);
       setOtpError("الرمز غير صحيح، تأكد من الأرقام وحاول مجدداً");
@@ -373,9 +350,19 @@ export default function LoginPage() {
     otpConfirmingRef.current = true;
     flushSync(() => setLoading(true));
     try {
-      setAuthSession(pendingSession);
+      const session = await authenticate();
+      if (!session) {
+        setOtpBad(true);
+        otpConfirmingRef.current = false;
+        setLoading(false);
+        return;
+      }
+
+      const path = await resolvePostLoginPath(session.token);
+      setLandingPath(path);
+      setAuthSession(session);
       showToast("تم تسجيل الدخول !", "success");
-      router.replace(landingPath);
+      router.replace(path);
     } catch {
       otpConfirmingRef.current = false;
       setLoading(false);
@@ -383,9 +370,7 @@ export default function LoginPage() {
   }
 
   function onForgot() {
-    setError(
-      "يتم تعيين كلمة المرور عبر رابط الدعوة على جوالك. لإعادة الإرسال تواصل مع مدير النظام.",
-    );
+    setError("للمساعدة في الدخول تواصل مع مدير النظام.");
   }
 
   function onBiometric() {
@@ -445,8 +430,8 @@ export default function LoginPage() {
                 تسجيل الدخول
               </h1>
               <p className="mb-[26px] text-[15px] leading-[1.7] text-text-2">
-                أدخل <b className="font-bold text-text">رقم الجوال</b> وكلمة
-                المرور للمتابعة إلى نظام دراسة الحالة.
+                أدخل <b className="font-bold text-text">رقم الجوال</b> لإرسال رمز
+                التحقق والمتابعة إلى نظام دراسة الحالة.
               </p>
 
               {error ? <Alert>{error}</Alert> : null}
@@ -491,76 +476,6 @@ export default function LoginPage() {
                         mobileBad && fieldInputBad,
                       )}
                     />
-                  </div>
-                </div>
-
-                <div className="mb-[17px]">
-                  <label
-                    htmlFor="password"
-                    className="mb-2 block text-[13px] font-bold text-text-2"
-                  >
-                    كلمة المرور
-                  </label>
-                  <div className="relative flex items-center">
-                    <input
-                      id="password"
-                      type={showPassword ? "text" : "password"}
-                      autoComplete="current-password"
-                      placeholder="••••••••"
-                      value={password}
-                      onChange={(e) => {
-                        setPassword(e.target.value);
-                        setError(null);
-                        setPasswordBad(false);
-                      }}
-                      dir="ltr"
-                      className={cn(
-                        fieldInput,
-                        "pl-[46px] text-left",
-                        // Hide Edge/IE native password reveal so only our eye control shows.
-                        "[&::-ms-reveal]:hidden [&::-ms-clear]:hidden",
-                        passwordBad && fieldInputBad,
-                      )}
-                    />
-                    <button
-                      type="button"
-                      className="absolute left-2 grid size-8 place-items-center rounded-lg border-0 bg-transparent text-text-3 transition-colors hover:bg-surface-2 hover:text-gold-d"
-                      aria-label={
-                        showPassword ? "إخفاء كلمة المرور" : "إظهار كلمة المرور"
-                      }
-                      onClick={() => setShowPassword((v) => !v)}
-                    >
-                      {showPassword ? (
-                        <svg
-                          className="size-[19px]"
-                          viewBox="0 0 24 24"
-                          fill="none"
-                          stroke="currentColor"
-                          strokeWidth="1.9"
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          aria-hidden
-                        >
-                          <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-10-8-10-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 10 8 10 8a18.5 18.5 0 0 1-2.16 3.19" />
-                          <path d="M1 1l22 22" />
-                          <path d="M9.9 9.9a3 3 0 0 0 4.2 4.2" />
-                        </svg>
-                      ) : (
-                        <svg
-                          className="size-[19px]"
-                          viewBox="0 0 24 24"
-                          fill="none"
-                          stroke="currentColor"
-                          strokeWidth="1.9"
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          aria-hidden
-                        >
-                          <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7z" />
-                          <circle cx="12" cy="12" r="3" />
-                        </svg>
-                      )}
-                    </button>
                   </div>
                 </div>
 
@@ -673,16 +588,15 @@ export default function LoginPage() {
                   disabled={loading}
                   onClick={() => {
                     setStep("creds");
-                    setPendingSession(null);
                     resetOtp();
                     setResendLeft(0);
                     setMobileBad(false);
-                    setPasswordBad(false);
                     setError(null);
+                    setOtpError(null);
                     window.setTimeout(() => mobileRef.current?.focus(), 50);
                   }}
                 >
-                  تغيير رقم الجوال
+                  تغيير {isEmailMode ? "البريد" : "رقم الجوال"}
                   <svg
                     className="size-4"
                     viewBox="0 0 24 24"
@@ -718,7 +632,7 @@ export default function LoginPage() {
                 أدخل رمز التحقق
               </h1>
               <p className="mb-[26px] text-[15px] leading-[1.7] text-text-2">
-                أرسلنا رمزاً مكوّناً من ٦ أرقام عبر رسالة نصية إلى الجوال{" "}
+                أرسلنا رمزاً مكوّناً من ٦ أرقام عبر رسالة نصية إلى{" "}
                 <span className="inline-block font-bold text-text [direction:ltr]">
                   {otpTarget}
                 </span>

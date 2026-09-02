@@ -70,7 +70,10 @@ public sealed class AuthSessionService(
         if (string.IsNullOrWhiteSpace(username))
             return null;
 
-        var user = await userManager.FindByNameAsync(username.Trim());
+        var user = await LoginUserResolver.FindAsync(
+            userManager,
+            username,
+            cancellationToken);
         return user is null
             ? null
             : await IssueAsync(user, cancellationToken);
