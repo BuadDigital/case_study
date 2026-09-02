@@ -12,7 +12,6 @@ import {
   opsContentPanel,
 } from "@platform/ui-kit";
 import { CaseStudyForm } from "../components/case-study/CaseStudyForm";
-import { CaseStudyPropertyComparablesTab } from "../components/case-study/CaseStudyPropertyComparablesTab";
 import { SpecialistValuationReportInputs } from "../components/po-intake/SpecialistValuationReportInputs";
 import { PropertyDetailInspectionTab } from "../components/po-intake/PropertyDetailInspectionTab";
 import { EmptyState } from "../components/po-intake/PropertyDetailFields";
@@ -134,10 +133,6 @@ function CaseStudyAppraisalPanel({
     appraisalTaskId,
     inspectionTaskId,
   });
-  const propertyDocuments = useMemo(
-    () => propertyDocumentSections.flatMap((s) => s.documents),
-    [propertyDocumentSections],
-  );
   const transactionPhotos = useMemo(
     () => listPropertyDetailPhotos(propertyDocumentSections),
     [propertyDocumentSections],
@@ -177,14 +172,7 @@ function CaseStudyAppraisalPanel({
         )}
       </section>
 
-      <SpecialistValuationReportInputs
-        propertyId={property.id}
-        documents={propertyDocuments}
-      />
-      <CaseStudyPropertyComparablesTab
-        property={property}
-        poNumber={poNumber}
-      />
+      <SpecialistValuationReportInputs propertyId={property.id} />
     </div>
   );
 }

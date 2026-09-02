@@ -321,7 +321,7 @@ export const PAGE_BREADCRUMB: Record<PageId, string> = {
   "system-upload": "المعاملات النشطة / الرفع على النظام",
   po: "أوامر العمل",
   "all-transactions": "جميع المعاملات",
-  "property-map": "دراسة الحالة / خريطة العقارات",
+  "property-map": "خريطة العقارات",
   favorites: "المفضلة",
   "bourse-inquiry": "المعاملات النشطة / استعلام بورصة",
   keys: "محفظة المفاتيح",

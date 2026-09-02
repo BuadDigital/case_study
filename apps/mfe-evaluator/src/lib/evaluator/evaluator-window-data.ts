@@ -5,6 +5,7 @@ import {
   valuationPurposeKeyForAssignment,
   VALUE_BASIS_OPTIONS,
 } from "@platform/app-shared/app-data/assignment-valuation-defaults";
+import { ESG_NONE_NOTES } from "@case-study/mfe/lib/app-data/valuation-report-specialist-esg";
 
 export type EvaluatorSubmissionStatus =
   | "draft"
@@ -106,8 +107,12 @@ export type EvaluatorReportChoices = {
 const EMPTY_ESG: EvaluatorEsgGroup = {
   none: true,
   selected: [],
-  notes: "لا يوجد تأثير للعوامل على القيمة التقديرية للعقار.",
+  notes: "",
 };
+
+function defaultEsgGroup(noneNotes: string): EvaluatorEsgGroup {
+  return { none: true, selected: [], notes: noneNotes };
+}
 
 export { defaultPremiseKeyForBasis };
 
@@ -147,9 +152,9 @@ export function emptyReportChoices(): EvaluatorReportChoices {
     incomeMethodKey: "",
     finishingLevel: "",
     specialAssumptionOn: [],
-    esgEnv: { ...EMPTY_ESG },
-    esgSoc: { ...EMPTY_ESG },
-    esgGov: { ...EMPTY_ESG },
+    esgEnv: defaultEsgGroup(ESG_NONE_NOTES.env),
+    esgSoc: defaultEsgGroup(ESG_NONE_NOTES.soc),
+    esgGov: defaultEsgGroup(ESG_NONE_NOTES.gov),
     printAttachmentKeys: [],
     incomeAnnual: "",
     incomeVacancyPct: "",
@@ -163,15 +168,22 @@ export function normalizeReportChoices(raw: unknown): EvaluatorReportChoices {
   const base = emptyReportChoices();
   if (!raw || typeof raw !== "object") return base;
   const row = raw as Partial<EvaluatorReportChoices>;
-  const esg = (value: unknown): EvaluatorEsgGroup => {
-    if (!value || typeof value !== "object") return { ...EMPTY_ESG };
+  const esg = (value: unknown, noneNotes: string): EvaluatorEsgGroup => {
+    if (!value || typeof value !== "object") return defaultEsgGroup(noneNotes);
     const g = value as Partial<EvaluatorEsgGroup>;
+    const none = g.none !== false;
+    const notes =
+      typeof g.notes === "string" && g.notes.trim()
+        ? g.notes
+        : none
+          ? noneNotes
+          : "";
     return {
-      none: Boolean(g.none),
+      none,
       selected: Array.isArray(g.selected)
         ? g.selected.filter((x): x is string => typeof x === "string")
         : [],
-      notes: typeof g.notes === "string" ? g.notes : "",
+      notes,
     };
   };
   return {
@@ -193,9 +205,9 @@ export function normalizeReportChoices(raw: unknown): EvaluatorReportChoices {
     specialAssumptionOn: Array.isArray(row.specialAssumptionOn)
       ? row.specialAssumptionOn.map(Boolean)
       : [],
-    esgEnv: esg(row.esgEnv),
-    esgSoc: esg(row.esgSoc),
-    esgGov: esg(row.esgGov),
+    esgEnv: esg(row.esgEnv, ESG_NONE_NOTES.env),
+    esgSoc: esg(row.esgSoc, ESG_NONE_NOTES.soc),
+    esgGov: esg(row.esgGov, ESG_NONE_NOTES.gov),
     printAttachmentKeys: Array.isArray(row.printAttachmentKeys)
       ? row.printAttachmentKeys.filter((x): x is string => typeof x === "string")
       : [],

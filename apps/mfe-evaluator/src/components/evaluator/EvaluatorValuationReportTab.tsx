@@ -22,20 +22,6 @@ import { subClientIdFromReportUsers } from "@case-study/mfe/lib/app-data/po-inta
 import { usePoRecordQuery } from "@case-study/mfe/query/case-study-queries";
 import { PropertyDetailMediaGlance } from "@case-study/mfe/components/po-intake/PropertyDetailMediaGlance";
 import {
-  VALUATION_PRINT_KEYS_CHANGED_EVENT,
-  loadSpecialistPrintAttachmentKeys,
-} from "@case-study/mfe/lib/app-data/valuation-print-attachment-keys";
-import {
-  VALUATION_SPECIALIST_ESG_CHANGED_EVENT,
-  loadSpecialistEsgInputs,
-  type SpecialistEsgGroup,
-  type SpecialistEsgInputs,
-} from "@case-study/mfe/lib/app-data/valuation-report-specialist-esg";
-import {
-  VALUATION_SPECIALIST_SEARCH_SCOPE_CHANGED_EVENT,
-  loadSpecialistSearchScopeNotes,
-} from "@case-study/mfe/lib/app-data/valuation-report-specialist-search-scope";
-import {
   VALUATION_SPECIALIST_FINISHING_CHANGED_EVENT,
   loadSpecialistFinishingLevel,
   type SpecialistFinishingLevel,
@@ -98,15 +84,6 @@ function approachUsed(key: string | null | undefined): boolean {
   return Boolean(key && key !== UNUSED);
 }
 
-function esgGroupsEqual(a: SpecialistEsgGroup, b: SpecialistEsgGroup): boolean {
-  return (
-    a.none === b.none &&
-    a.notes === b.notes &&
-    a.selected.length === b.selected.length &&
-    a.selected.every((x, i) => x === b.selected[i])
-  );
-}
-
 /** Property valuation tab data bundle — one cacheable query. */
 async function loadReportTabBundle(inspectionTaskId: string | null) {
   const config = apiConfig();
@@ -163,6 +140,8 @@ export function EvaluatorValuationReportTab({
   onSubmit,
   submitting = false,
   showSubmit = false,
+  /** Photo + map strip — only on «البيانات الأساسية». */
+  showPropertyMedia = true,
 }: {
   draft: EvaluatorSubmission;
   disabled?: boolean;
@@ -183,16 +162,8 @@ export function EvaluatorValuationReportTab({
   onSubmit?: () => void;
   submitting?: boolean;
   showSubmit?: boolean;
+  showPropertyMedia?: boolean;
 }) {
-  const [specialistKeys, setSpecialistKeys] = useState<string[]>(() =>
-    loadSpecialistPrintAttachmentKeys(property?.id ?? draft.propertyId),
-  );
-  const [specialistEsg, setSpecialistEsg] = useState<SpecialistEsgInputs>(() =>
-    loadSpecialistEsgInputs(property?.id ?? draft.propertyId),
-  );
-  const [specialistSearchScope, setSpecialistSearchScope] = useState(() =>
-    loadSpecialistSearchScopeNotes(property?.id ?? draft.propertyId),
-  );
   const [specialistFinishing, setSpecialistFinishing] =
     useState<SpecialistFinishingLevel>(() =>
       loadSpecialistFinishingLevel(property?.id ?? draft.propertyId),
@@ -205,11 +176,6 @@ export function EvaluatorValuationReportTab({
 
   const specialistPropertyId = property?.id ?? draft.propertyId;
   useEffect(() => {
-    setSpecialistKeys(loadSpecialistPrintAttachmentKeys(specialistPropertyId));
-    setSpecialistEsg(loadSpecialistEsgInputs(specialistPropertyId));
-    setSpecialistSearchScope(
-      loadSpecialistSearchScopeNotes(specialistPropertyId),
-    );
     setSpecialistFinishing(loadSpecialistFinishingLevel(specialistPropertyId));
   }, [specialistPropertyId]);
   // Refresh synced specialist inputs via window events — ignore other properties.
@@ -219,17 +185,6 @@ export function EvaluatorValuationReportTab({
     refresh();
   };
   useWindowEvents({
-    [VALUATION_PRINT_KEYS_CHANGED_EVENT]: ifThisProperty(() =>
-      setSpecialistKeys(loadSpecialistPrintAttachmentKeys(specialistPropertyId)),
-    ),
-    [VALUATION_SPECIALIST_ESG_CHANGED_EVENT]: ifThisProperty(() =>
-      setSpecialistEsg(loadSpecialistEsgInputs(specialistPropertyId)),
-    ),
-    [VALUATION_SPECIALIST_SEARCH_SCOPE_CHANGED_EVENT]: ifThisProperty(() =>
-      setSpecialistSearchScope(
-        loadSpecialistSearchScopeNotes(specialistPropertyId),
-      ),
-    ),
     [VALUATION_SPECIALIST_FINISHING_CHANGED_EVENT]: ifThisProperty(() =>
       setSpecialistFinishing(loadSpecialistFinishingLevel(specialistPropertyId)),
     ),
@@ -320,40 +275,17 @@ export function EvaluatorValuationReportTab({
   const patchRef = useRef(patch);
   patchRef.current = patch;
 
-  // Pour specialist → report draft (for print) — ESG, attachments, search scope, finishes.
+  // Pour specialist → report draft (for print) — finishes.
   useEffect(() => {
     if (disabled || loading) return;
     const current = choicesRef.current;
-    const keysSame =
-      current.printAttachmentKeys.length === specialistKeys.length &&
-      specialistKeys.every((k) => current.printAttachmentKeys.includes(k));
-    const esgSame =
-      esgGroupsEqual(current.esgEnv, specialistEsg.esgEnv) &&
-      esgGroupsEqual(current.esgSoc, specialistEsg.esgSoc) &&
-      esgGroupsEqual(current.esgGov, specialistEsg.esgGov);
     const finishingSame = current.finishingLevel === specialistFinishing;
-    if (!keysSame || !esgSame || !finishingSame) {
+    if (!finishingSame) {
       patchRef.current({
-        printAttachmentKeys: specialistKeys,
-        esgEnv: specialistEsg.esgEnv,
-        esgSoc: specialistEsg.esgSoc,
-        esgGov: specialistEsg.esgGov,
         finishingLevel: specialistFinishing,
       });
     }
-  }, [disabled, loading, specialistEsg, specialistFinishing, specialistKeys]);
-
-  useEffect(() => {
-    if (disabled || loading) return;
-    if ((draft.searchScopeNotes ?? "") === specialistSearchScope) return;
-    onDraftPatch?.({ searchScopeNotes: specialistSearchScope });
-  }, [
-    disabled,
-    draft.searchScopeNotes,
-    loading,
-    onDraftPatch,
-    specialistSearchScope,
-  ]);
+  }, [disabled, loading, specialistFinishing]);
 
   const patchValues = useCallback(
     (partial: {
@@ -450,29 +382,31 @@ export function EvaluatorValuationReportTab({
         <p className="mb-3 text-[12px] font-semibold text-danger-text">{error}</p>
       ) : null}
 
-      <div className="mb-4">
-        <PropertyDetailMediaGlance
-          property={property}
-          primaryPhoto={primaryPhoto}
-          inspectorDescription={inspector?.propertyDescription}
-          latitude={inspector?.mapLatitude}
-          longitude={inspector?.mapLongitude}
-          showCoordinates={false}
-          valueBasisLabel={valueBasisDisplay}
-          valuePremiseLabel={valuePremiseDisplay}
-          valuationPurposeLabel={valuationPurposeDisplay}
-          reportUsersLabel={reportUsersDisplay}
-        />
-        {inspectionChips.length > 0 ? (
-          <div className="mt-2 flex flex-wrap gap-1.5">
-            {inspectionChips.map((chip) => (
-              <span key={chip} className={opsChip}>
-                {chip}
-              </span>
-            ))}
-          </div>
-        ) : null}
-      </div>
+      {showPropertyMedia ? (
+        <div className="mb-4">
+          <PropertyDetailMediaGlance
+            property={property}
+            primaryPhoto={primaryPhoto}
+            inspectorDescription={inspector?.propertyDescription}
+            latitude={inspector?.mapLatitude}
+            longitude={inspector?.mapLongitude}
+            showCoordinates={false}
+            valueBasisLabel={valueBasisDisplay}
+            valuePremiseLabel={valuePremiseDisplay}
+            valuationPurposeLabel={valuationPurposeDisplay}
+            reportUsersLabel={reportUsersDisplay}
+          />
+          {inspectionChips.length > 0 ? (
+            <div className="mt-2 flex flex-wrap gap-1.5">
+              {inspectionChips.map((chip) => (
+                <span key={chip} className={opsChip}>
+                  {chip}
+                </span>
+              ))}
+            </div>
+          ) : null}
+        </div>
+      ) : null}
 
       {incomeOn ? (
         <>

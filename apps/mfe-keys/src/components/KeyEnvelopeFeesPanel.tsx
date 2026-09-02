@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import {
   SkeletonTableRows,
   Spinner,
@@ -15,7 +15,6 @@ import {
   cn,
   opsBtnGhost,
   opsChip,
-  opsDashCard,
   opsTapCard,
   useToast,
 } from "@platform/ui-kit";
@@ -55,21 +54,6 @@ export function KeyEnvelopeFeesPanel({
   const ready = !feesQuery.isPending;
   const [busyId, setBusyId] = useState<string | null>(null);
 
-  const openRows = useMemo(
-    () => rows.filter((r) => (r.collectionStatus ?? "open") !== "collected"),
-    [rows],
-  );
-  // Only the historical stamped rows carry an amount, so the totals speak for those alone. Rows
-  // without one are entitlements waiting to be priced in enforcement billing.
-  const totalOpen = useMemo(
-    () => openRows.reduce((sum, r) => sum + (r.feeAmountSar || 0), 0),
-    [openRows],
-  );
-  const unpricedCount = useMemo(
-    () => rows.filter((r) => !r.feeAmountSar).length,
-    [rows],
-  );
-
   async function collect(row: KeyEnvelopeFeeReportRow) {
     setBusyId(row.envelopeId);
     const result = await markEnvelopeFeeCollected(row.envelopeId);
@@ -87,35 +71,6 @@ export function KeyEnvelopeFeesPanel({
       {onBack ? (
         <KeysBackLink onClick={onBack}>محفظة المفاتيح</KeysBackLink>
       ) : null}
-
-      {/* renderKeyFees KPI dash-cards */}
-      <div className="mb-5 grid grid-cols-1 gap-4 sm:grid-cols-3">
-        <div className={opsDashCard}>
-          <div className="text-[30px] font-extrabold leading-none text-heading tabular-nums">
-            {ready ? rows.length : "—"}
-          </div>
-          <div className="mt-1.5 text-[12.5px] text-text-2">
-            أظرف مستحقة (سيناريو المحكمة)
-          </div>
-        </div>
-        <div className={opsDashCard}>
-          <div className="text-[30px] font-extrabold leading-none text-[#8a5e14] tabular-nums">
-            {ready ? unpricedCount : "—"}
-          </div>
-          <div className="mt-1.5 text-[12.5px] text-text-2">
-            بانتظار فوترة إنفاذ (بلا مبلغ)
-          </div>
-        </div>
-        <div className={opsDashCard}>
-          <div className="text-[30px] font-extrabold leading-none text-[#2f7a4d] tabular-nums">
-            {ready ? totalOpen.toLocaleString("ar-SA") : "—"}{" "}
-            <span className="text-[15px]">ر.س</span>
-          </div>
-          <div className="mt-1.5 text-[12.5px] text-text-2">
-            مبالغ مختومة سابقاً مفتوحة للتحصيل
-          </div>
-        </div>
-      </div>
 
       <div className="mb-3.5 flex items-center gap-2.5">
         <h2 className="m-0 text-[17px] font-extrabold text-heading">

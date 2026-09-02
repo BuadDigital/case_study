@@ -604,6 +604,7 @@ export function EvaluatorWindow({
                     fieldErrors={fieldErrors}
                     onChange={onReportChoicesChange}
                     onDraftPatch={onDraftPatch}
+                    showPropertyMedia={workScreen === "basic"}
                   />
                 </div>
                 {property?.id ? (

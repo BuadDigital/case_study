@@ -28,6 +28,7 @@ import {
   blobToDataUrl,
   fileToBase64,
 } from "@platform/app-shared/media/file-encoding";
+import type { PropertyDetailDocumentEntry } from "./property-detail-documents";
 import { currentOfflineUserId } from "@platform/app-shared/offline/offline-write";
 import { getOfflineBlob } from "@platform/offline-client";
 
@@ -383,6 +384,31 @@ export async function uploadInspectorPhotoFromFile(
   }
 
   return { ok: true, attachment };
+}
+
+function mimeFromFileName(fileName: string): string {
+  const lower = fileName.toLowerCase();
+  if (lower.endsWith(".png")) return "image/png";
+  if (lower.endsWith(".webp")) return "image/webp";
+  if (lower.endsWith(".gif")) return "image/gif";
+  return "image/jpeg";
+}
+
+/** Reuse a property/transaction image already on the case — no re-upload. */
+export function inspectorPhotoAttachmentFromTransactionDoc(
+  taskId: string,
+  photoRef: string,
+  doc: PropertyDetailDocumentEntry,
+): InspectorPhotoAttachment {
+  const attachment: InspectorPhotoAttachment = {
+    fileName: doc.fileName,
+    mimeType: mimeFromFileName(doc.fileName),
+    attachmentId: doc.attachmentId?.trim() || doc.id,
+  };
+  if (doc.dataUrl) {
+    setInspectorPhotoDataUrl(taskId, photoRef, doc.dataUrl);
+  }
+  return attachment;
 }
 
 export function openInspectorPhotoPreview(dataUrl: string): void {

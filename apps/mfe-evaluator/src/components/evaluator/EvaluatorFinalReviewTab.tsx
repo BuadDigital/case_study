@@ -10,12 +10,6 @@ import {
 } from "@platform/api-client";
 import {
   Spinner,
-  TBody,
-  THead,
-  Table,
-  Td,
-  Th,
-  Tr,
   cn,
   opsBtnPrimary,
   opsFldControl,
@@ -24,25 +18,10 @@ import {
 } from "@platform/ui-kit";
 
 import { invalidControlClass } from "@platform/app-shared/form-ux";
-import { useWindowEvents } from "@platform/app-shared/hooks/useWindowEvents";
 import { usePoRecordQuery, useWorkflowTasksQuery } from "@case-study/mfe/query/case-study-queries";
 import { usePropertyDetailDocuments } from "@case-study/mfe/query/property-detail-documents-query";
 import { subClientIdFromReportUsers } from "@case-study/mfe/lib/app-data/po-intake-data";
 import type { PoPropertyIntake } from "@case-study/mfe/lib/app-data/po-intake-data";
-import {
-  ESG_ENV_FACTORS,
-  ESG_GOV_FACTORS,
-  ESG_NONE_NOTES,
-  ESG_SOC_FACTORS,
-  VALUATION_SPECIALIST_ESG_CHANGED_EVENT,
-  loadSpecialistEsgInputs,
-  type SpecialistEsgGroup,
-  type SpecialistEsgInputs,
-} from "@case-study/mfe/lib/app-data/valuation-report-specialist-esg";
-import {
-  VALUATION_PRINT_KEYS_CHANGED_EVENT,
-  loadSpecialistPrintAttachmentKeys,
-} from "@case-study/mfe/lib/app-data/valuation-print-attachment-keys";
 import {
   basisOfValueKeyForAssignment,
 } from "@platform/app-shared/app-data/assignment-valuation-defaults";
@@ -56,64 +35,14 @@ import {
 } from "../../lib/evaluator/valuation-report-property-attachments";
 import { apiConfig } from "./valuation-work/lib/shell-utils";
 import { ValCard, ValFieldsGrid } from "./EvaluatorHtmlPrimitives";
+import { ValuationReportAttachmentsEditor } from "./ValuationReportAttachmentsEditor";
+import { ValuationReportEsgEditor } from "./ValuationReportEsgEditor";
 
 import { useValuationListsQuery } from "@platform/app-shared/query/valuation-lists-query";
 
-function esgGroupsEqual(a: SpecialistEsgGroup, b: SpecialistEsgGroup): boolean {
-  return (
-    a.none === b.none &&
-    a.notes === b.notes &&
-    a.selected.length === b.selected.length &&
-    a.selected.every((x, i) => x === b.selected[i])
-  );
-}
-
-function EsgReadonlyRow({
-  label,
-  factors,
-  group,
-  noneNotes,
-}: {
-  label: string;
-  factors: readonly string[];
-  group: SpecialistEsgGroup;
-  noneNotes: string;
-}) {
-  const hasImpact = !group.none;
-  const displayNotes = group.none
-    ? group.notes.trim() || noneNotes
-    : group.notes.trim() || "—";
-
-  return (
-    <Tr hoverable={false}>
-      <Td className="align-middle font-semibold text-text-2">
-        <div>{label}</div>
-        <div className="mt-1 text-[10.5px] font-normal leading-relaxed text-text-3">
-          عوامل للاعتبار: {factors.join(" · ")}
-        </div>
-      </Td>
-      <Td className="align-middle text-center">
-        <span
-          className={cn(
-            "inline-block rounded-md px-2 py-1 text-[11px] font-bold",
-            hasImpact
-              ? "bg-[color-mix(in_srgb,var(--gold)_22%,transparent)] text-gold-d"
-              : "bg-surface-2 text-text-3",
-          )}
-        >
-          {hasImpact ? "يوجد تأثير" : "لا يوجد"}
-        </span>
-      </Td>
-      <Td className="align-middle text-[12.5px] leading-relaxed text-text">
-        {displayNotes}
-      </Td>
-    </Tr>
-  );
-}
-
 const noteClassName = "mb-2 text-[11px] leading-relaxed text-text-3";
 
-/** Final review: delivery opinion, special assumptions, ESG (read-only). */
+/** Final review: delivery opinion, special assumptions, ESG + attachments (appraiser). */
 export function EvaluatorFinalReviewTab({
   draft,
   disabled = false,
@@ -147,12 +76,6 @@ export function EvaluatorFinalReviewTab({
   const { data: record } = usePoRecordQuery(draft.poNumber);
   const choices = draft.reportChoices ?? emptyReportChoices();
 
-  const [specialistEsg, setSpecialistEsg] = useState<SpecialistEsgInputs>(() =>
-    loadSpecialistEsgInputs(property?.id ?? draft.propertyId),
-  );
-  const [specialistKeys, setSpecialistKeys] = useState<string[]>(() =>
-    loadSpecialistPrintAttachmentKeys(property?.id ?? draft.propertyId),
-  );
   // Valuation lists from the shared query — previously a duplicate GET with final-opinion.
   const { data: valuationLists } = useValuationListsQuery();
   const attachmentCatalog = useMemo<
@@ -225,62 +148,10 @@ export function EvaluatorFinalReviewTab({
       buildValuationPrintAttachmentRows({
         catalog: attachmentCatalog,
         documents: propertyDocuments,
-        specialistKeys,
-        propertyId,
+        selectedKeys: choices.printAttachmentKeys,
       }),
-    [attachmentCatalog, propertyDocuments, propertyId, specialistKeys],
+    [attachmentCatalog, choices.printAttachmentKeys, propertyDocuments],
   );
-  // Single filter pass per render + Set instead of includes (js-combine-iterations).
-  const selectedPrintRows = useMemo(() => {
-    const keys = new Set(specialistKeys);
-    return printRows.filter((row) => keys.has(row.key));
-  }, [printRows, specialistKeys]);
-
-  useEffect(() => {
-    setSpecialistEsg(loadSpecialistEsgInputs(propertyId));
-    setSpecialistKeys(loadSpecialistPrintAttachmentKeys(propertyId));
-  }, [propertyId]);
-  // Refresh synced specialist inputs via window events — ignore other properties.
-  const ifThisProperty = (refresh: () => void) => (ev: Event) => {
-    const detail = (ev as CustomEvent<{ propertyId?: string }>).detail;
-    if (detail?.propertyId && detail.propertyId !== propertyId) return;
-    refresh();
-  };
-  useWindowEvents({
-    [VALUATION_SPECIALIST_ESG_CHANGED_EVENT]: ifThisProperty(() =>
-      setSpecialistEsg(loadSpecialistEsgInputs(propertyId)),
-    ),
-    [VALUATION_PRINT_KEYS_CHANGED_EVENT]: ifThisProperty(() =>
-      setSpecialistKeys(loadSpecialistPrintAttachmentKeys(propertyId)),
-    ),
-  });
-
-  // Pour specialist ESG and attachments into the report draft for print.
-  useEffect(() => {
-    if (disabled || loading) return;
-    const current = draft.reportChoices ?? emptyReportChoices();
-    const esgSame =
-      esgGroupsEqual(current.esgEnv, specialistEsg.esgEnv) &&
-      esgGroupsEqual(current.esgSoc, specialistEsg.esgSoc) &&
-      esgGroupsEqual(current.esgGov, specialistEsg.esgGov);
-    const keysSame =
-      current.printAttachmentKeys.length === specialistKeys.length &&
-      specialistKeys.every((k) => current.printAttachmentKeys.includes(k));
-    if (esgSame && keysSame) return;
-    onReportChoicesPatch?.({
-      esgEnv: specialistEsg.esgEnv,
-      esgSoc: specialistEsg.esgSoc,
-      esgGov: specialistEsg.esgGov,
-      printAttachmentKeys: specialistKeys,
-    });
-  }, [
-    disabled,
-    draft.reportChoices,
-    loading,
-    onReportChoicesPatch,
-    specialistEsg,
-    specialistKeys,
-  ]);
 
   /** Seed assumptions list from settings — shared by standalone and shell modes. */
   const seedAssumptions = useCallback((s: ValuationApproachSettingsDto) => {
@@ -573,78 +444,30 @@ export function EvaluatorFinalReviewTab({
 
       <ValCard title="العوامل البيئية والاجتماعية والحوكمة (ESG)">
         <p className={noteClassName}>
-          يعبّئها الأخصائي من دراسة الحالة — تظهر هنا للعرض فقط.
+          يعبّئها المقيّم في المراجعة النهائية وتُطبع في تقرير التقييم.
         </p>
-        <Table className="min-w-[560px]">
-          <THead>
-            <Tr hoverable={false}>
-              <Th className="w-[28%]">المجموعة</Th>
-              <Th className="w-[14%] text-center">يوجد تأثير</Th>
-              <Th>وصف الأثر</Th>
-            </Tr>
-          </THead>
-          <TBody>
-            <EsgReadonlyRow
-              label="التأثيرات البيئية"
-              factors={ESG_ENV_FACTORS}
-              group={specialistEsg.esgEnv}
-              noneNotes={ESG_NONE_NOTES.env}
-            />
-            <EsgReadonlyRow
-              label="التأثيرات الاجتماعية"
-              factors={ESG_SOC_FACTORS}
-              group={specialistEsg.esgSoc}
-              noneNotes={ESG_NONE_NOTES.soc}
-            />
-            <EsgReadonlyRow
-              label="تأثيرات الحوكمة"
-              factors={ESG_GOV_FACTORS}
-              group={specialistEsg.esgGov}
-              noneNotes={ESG_NONE_NOTES.gov}
-            />
-          </TBody>
-        </Table>
+        <ValuationReportEsgEditor
+          esgEnv={choices.esgEnv}
+          esgSoc={choices.esgSoc}
+          esgGov={choices.esgGov}
+          disabled={disabled}
+          onPatch={(patch) => onReportChoicesPatch?.(patch)}
+        />
       </ValCard>
 
       <ValCard title="مرفقات التقرير">
         <p className={noteClassName}>
-          يحدّدها الأخصائي من مستندات العقار — تظهر هنا للعرض فقط.
+          يحدّدها المقيّم في المراجعة النهائية وتُطبع في تقرير التقييم، وترتبط بما
+          هو متوفر في مستندات العقار.
         </p>
-        <div className="flex flex-col gap-2">
-          {selectedPrintRows
-            .map((row) => {
-              const docHint = row.docs[0];
-              return (
-                <div
-                  key={row.key}
-                  className="flex items-start gap-2.5 rounded-[var(--radius)] border border-border bg-surface-2 px-3 py-2.5 text-[12.5px] text-text"
-                >
-                  <span
-                    className="mt-0.5 size-2 shrink-0 rounded-full bg-gold"
-                    aria-hidden
-                  />
-                  <span className="min-w-0 flex-1">
-                    <span className="font-semibold text-heading">{row.name}</span>
-                    <span className="mt-0.5 block text-[10.5px] leading-relaxed text-text-3">
-                      {row.available && docHint
-                        ? `في مستندات العقار: ${docHint.name} · ${docHint.source}`
-                        : "غير متوفر بعد في مستندات العقار"}
-                    </span>
-                  </span>
-                </div>
-              );
-            })}
-          {specialistKeys.length === 0 ? (
-            <p className="m-0 text-[12px] text-text-3">
-              لم يحدد الأخصائي مرفقات للتقرير بعد.
-            </p>
-          ) : null}
-          {specialistKeys.length > 0 && selectedPrintRows.length === 0 ? (
-            <p className="m-0 text-[12px] text-text-3">
-              المفاتيح المحددة غير موجودة في قوائم المرفقات الحالية.
-            </p>
-          ) : null}
-        </div>
+        <ValuationReportAttachmentsEditor
+          rows={printRows}
+          selectedKeys={choices.printAttachmentKeys}
+          disabled={disabled}
+          onChange={(printAttachmentKeys) =>
+            onReportChoicesPatch?.({ printAttachmentKeys })
+          }
+        />
       </ValCard>
     </div>
   );

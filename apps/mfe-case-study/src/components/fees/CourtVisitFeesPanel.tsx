@@ -1,6 +1,5 @@
 "use client";
 
-import { useMemo } from "react";
 import {
   EmptyState,
   OperationalPanel,
@@ -15,7 +14,6 @@ import {
   Tr,
   cn,
   opsPanelCard,
-  opsWorkCard,
   queueTableRowClassName,
 } from "@platform/ui-kit";
 import { useCourtVisitFeesQuery } from "../../query/operations-tasks-queries";
@@ -29,29 +27,8 @@ export function CourtVisitFeesPanel({
   const rows = feesQuery.data ?? [];
   const ready = !feesQuery.isPending;
 
-  const total = useMemo(
-    () => rows.reduce((sum, r) => sum + (r.amountSar || 0), 0),
-    [rows],
-  );
-
   return (
     <div className="space-y-4">
-      <div className="grid gap-3 sm:grid-cols-2 sm:gap-4">
-        <div className={opsWorkCard}>
-          <div className="text-[30px] font-extrabold leading-none text-heading tabular-nums">
-            {ready ? rows.length : "—"}
-          </div>
-          <div className="mt-1.5 text-[12.5px] text-text-2">بنود أتعاب الزيارة</div>
-        </div>
-        <div className={opsWorkCard}>
-          <div className="text-[30px] font-extrabold leading-none text-[#2f7a4d] tabular-nums">
-            {ready ? total.toLocaleString("ar-SA") : "—"}{" "}
-            <span className="text-[15px]">ر.س</span>
-          </div>
-          <div className="mt-1.5 text-[12.5px] text-text-2">إجمالي أتعاب الزيارة</div>
-        </div>
-      </div>
-
       <OperationalPanel className="shrink-0 overflow-visible">
         <div className="hidden lg:block">
           <Table pending={!ready}>

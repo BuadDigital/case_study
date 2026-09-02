@@ -248,7 +248,6 @@ export function ValuationWorkShell({
     const end = approachSettings.retrospectiveDateEnd?.trim();
     return end ? `${start} — ${end}` : start;
   }, [approachSettings]);
-  const valDate = officialValuationDate ?? "عند الاعتماد";
 
   useEffect(() => {
     const config = apiConfig();
@@ -1619,8 +1618,6 @@ export function ValuationWorkShell({
         <ComparablesBankTable
           rows={bankRows}
           subjectSqm={subjectAreaNum}
-          adoptedCount={visibleAdoptedMarket.length}
-          maxAdopted={MAX_ADOPTED_COMPARABLES}
           distanceKm={bankDistanceKm}
           onAdopt={onAdoptMarket}
           onSearch={onSearchBank}
@@ -1808,8 +1805,6 @@ export function ValuationWorkShell({
         <ComparablesBankTable
           rows={landBankRows}
           subjectSqm={cost?.landAreaSqm || subjectAreaNum}
-          adoptedCount={visibleAdoptedLand.length}
-          maxAdopted={MAX_ADOPTED_COMPARABLES}
           distanceKm={landBankDistanceKm}
           onAdopt={onAdoptLand}
           onSaveOverride={onSaveBankOverride}
@@ -1891,26 +1886,8 @@ export function ValuationWorkShell({
 
   return (
     <div dir="rtl" className="relative min-h-[480px]">
-      {embeddedInTopTabs ? (
-        <div className="mb-3.5 flex flex-wrap items-center justify-end gap-3">
-          <div className="flex h-[38px] items-center gap-[7px] rounded-[var(--radius)] border border-border-md bg-surface-2 px-[13px] text-[13px] font-medium text-text-2">
-            <span>تاريخ التقييم</span>
-            <b dir="ltr" className="text-heading">
-              {valDate}
-            </b>
-          </div>
-        </div>
-      ) : (
+      {!embeddedInTopTabs ? (
         <div className={opsLetterCard}>
-          <header className="flex items-center justify-end gap-[18px] border-b border-border px-[22px] py-3.5">
-            <div className="flex h-[38px] items-center gap-[7px] rounded-[var(--radius)] border border-border-md bg-surface-2 px-[13px] text-[13px] font-medium text-text-2">
-              <span>تاريخ التقييم</span>
-              <b dir="ltr" className="text-heading">
-                {valDate}
-              </b>
-            </div>
-          </header>
-
           <nav className="flex flex-wrap gap-1.5 px-[22px] py-3">
             {navItems
               .filter((n) => n.show)
@@ -1946,7 +1923,7 @@ export function ValuationWorkShell({
               })}
           </nav>
         </div>
-      )}
+      ) : null}
 
       <div
         className={cn(

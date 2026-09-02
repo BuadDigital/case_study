@@ -11,6 +11,7 @@ import {
   Button,
   cn,
   GoogleMapPin,
+  type GoogleMapContextPin,
   Select,
   useToast,
 } from "@platform/ui-kit";
@@ -30,6 +31,8 @@ import {
   isLandInspectionContext,
   isShopHiddenInspectorComponentKey,
   isCommercialShopInspectionContext,
+  activeMapDiffersFromInspectorOriginal,
+  hasInspectorOriginalMapPin,
   mapPinPatchForActor,
   newObservationId,
   patchInspectorFeatureValues,
@@ -41,6 +44,7 @@ import {
 } from "../../lib/app-data/inspector-workspace-data";
 import {
   clearInspectorPhotoDataUrl,
+  inspectorPhotoAttachmentFromTransactionDoc,
   uploadInspectorPhotoFromFile,
 } from "../../lib/app-data/inspector-photo-upload";
 import { InspectorStepNav, type InspectorStepId } from "./InspectorStepNav";
@@ -155,6 +159,29 @@ export function InspectorWorkspaceWizard({
     return approximatePropertyGeo(property);
   }, [draft.mapLatitude, draft.mapLongitude, property]);
 
+  /** After specialist pins — show inspector's original pin for comparison (display only). */
+  const inspectorReferencePins = useMemo((): GoogleMapContextPin[] => {
+    if (
+      mapActor !== "specialist" ||
+      !mapPinned ||
+      !hasInspectorOriginalMapPin(draft) ||
+      !activeMapDiffersFromInspectorOriginal(draft)
+    ) {
+      return [];
+    }
+    const lat = Number(draft.inspectorMapLatitude);
+    const lng = Number(draft.inspectorMapLongitude);
+    if (!Number.isFinite(lat) || !Number.isFinite(lng)) return [];
+    return [
+      {
+        lat,
+        lng,
+        title: "موقع المعاين الأصلي",
+        label: "مع",
+      },
+    ];
+  }, [draft, mapActor, mapPinned]);
+
   const isLand = isLandInspectionContext({
     vacantLand: draft.vacantLand,
     assetSubject: draft.featureValues.assetSubject,
@@ -221,6 +248,12 @@ export function InspectorWorkspaceWizard({
                   lng={mapGeo?.lng}
                   title="خريطة المعاينة"
                   interactive={editable && !mapPinned}
+                  pinLabel={
+                    mapPinned && mapActor === "specialist"
+                      ? "الموقع المعتمد"
+                      : undefined
+                  }
+                  contextPins={inspectorReferencePins}
                   onCoordsChange={
                     editable && !mapPinned
                       ? (lat, lng) => onMapMove(lat, lng)
@@ -282,6 +315,12 @@ export function InspectorWorkspaceWizard({
                 </Button>
               ) : null}
             </div>
+            {inspectorReferencePins.length > 0 ? (
+              <p className="mt-2 mb-0 text-[10.5px] leading-relaxed text-text-3">
+                الدبوس الذهبي يعرض موقع المعاين الأصلي للمقارنة فقط — لا يُرفع مع
+                التقرير.
+              </p>
+            ) : null}
           </InsCard>
 
           <InsCard title="بيانات الموقع والوصول" step={2}>
@@ -877,11 +916,12 @@ export function InspectorWorkspaceWizard({
                 return (
                 <div
                   key={obs.id}
-                  className="grid grid-cols-[150px_minmax(0,1fr)_auto_auto] items-center gap-2 rounded-lg border border-border bg-surface-2 p-2.5"
+                  className="grid grid-cols-[150px_minmax(0,1fr)_auto_auto] items-stretch gap-2 rounded-lg border border-border bg-surface-2 p-2.5"
                 >
                   <Select
                     value={obs.category}
                     disabled={!editable}
+                    className="h-full min-h-9"
                     onChange={(e) => {
                       const next = [...draft.observations];
                       next[index] = { ...obs, category: e.target.value };
@@ -895,7 +935,7 @@ export function InspectorWorkspaceWizard({
                     ))}
                   </Select>
                   <input
-                    className={EDIT_CONTROL_CLASS}
+                    className={cn(EDIT_CONTROL_CLASS, "h-full min-h-9")}
                     placeholder="اشرح الملاحظة…"
                     value={obs.text}
                     disabled={!editable}
@@ -905,7 +945,7 @@ export function InspectorWorkspaceWizard({
                       onPatch({ observations: next });
                     }}
                   />
-                  <div className="min-w-[96px]">
+                  <div className="flex min-w-[96px] self-stretch">
                     {obs.photo?.fileName ? (
                       <InspectorStampedPhotoThumb
                         stamp={photoStamp}
@@ -930,8 +970,31 @@ export function InspectorWorkspaceWizard({
                     ) : editable ? (
                       <InspectorPhotoFilePicker
                         label="إرفاق صورة"
+                        compact
                         disabled={!editable}
-                        className="[&_button]:min-h-9 [&_button]:px-2.5 [&_button]:py-1.5 [&_button]:text-[11px]"
+                        className="h-full"
+                        transactionPhotos={
+                          serviceProofFromTransactionPhotos
+                            ? transactionPhotos
+                            : undefined
+                        }
+                        onTransactionPhotoSelected={
+                          serviceProofFromTransactionPhotos
+                            ? (doc) => {
+                                const next = [...draft.observations];
+                                next[index] = {
+                                  ...obs,
+                                  photo: inspectorPhotoAttachmentFromTransactionDoc(
+                                    draft.taskId,
+                                    obsPhotoRef,
+                                    doc,
+                                  ),
+                                };
+                                onPatch({ observations: next });
+                                return true;
+                              }
+                            : undefined
+                        }
                         onFilesSelected={async (files) => {
                           const file = files[0];
                           if (!file) return false;
@@ -962,6 +1025,7 @@ export function InspectorWorkspaceWizard({
                       type="button"
                       size="sm"
                       variant="default"
+                      className="self-center"
                       onClick={() =>
                         onPatch({
                           observations: draft.observations.filter(

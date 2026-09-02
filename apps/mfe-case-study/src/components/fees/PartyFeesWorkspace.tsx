@@ -278,26 +278,29 @@ export function PartyFeesWorkspace({
         ) : null}
 
         {supTab === "fees" ? (
-          <>
-            <EngFeesSectionTitle
-              title="الحسم والمراجعة"
-              sub="الحسم هنا — للمكتب الهندسي: الخصم يُرسل لموافقة المكتب قبل المالية."
-            />
-            <div className="hidden lg:block">
-              <InspectorFeesBillingTable
-                rows={rows}
-                mode="supervisor"
-                pending={isLoading && !isFetched}
+          <section className={opsLetterCard}>
+            <div className="px-4 pb-4 pt-1 sm:px-[18px]">
+              <EngFeesSectionTitle
+                className="mb-3 mt-3"
+                title="الحسم والمراجعة"
+                sub="الحسم هنا — للمكتب الهندسي: الخصم يُرسل لموافقة المكتب قبل المالية."
               />
+              <div className="hidden lg:block">
+                <InspectorFeesBillingTable
+                  rows={rows}
+                  mode="supervisor"
+                  pending={isLoading && !isFetched}
+                />
+              </div>
+              <div className="lg:hidden">
+                <PartyFeeWorkflowTable
+                  rows={rows}
+                  role="supervisor"
+                  pending={isLoading && !isFetched}
+                />
+              </div>
             </div>
-            <div className="lg:hidden">
-              <PartyFeeWorkflowTable
-                rows={rows}
-                role="supervisor"
-                pending={isLoading && !isFetched}
-              />
-            </div>
-          </>
+          </section>
         ) : null}
 
         {supTab === "statements" ? (

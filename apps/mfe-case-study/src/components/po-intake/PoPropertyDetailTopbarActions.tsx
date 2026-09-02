@@ -2,21 +2,24 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import {
   Button,
   cn,
   RowMoreMenu,
   type RowMoreMenuItem,
-  useToast,
 } from "@platform/ui-kit";
 import { useAppAccess } from "@platform/app-shared/contexts/AppAccessContext";
+import { ROLES } from "@platform/app-shared/app-data/constants";
+import {
+  FAILURE_RAISER_SPECIALIST,
+  FAILURE_RAISER_SUPERVISOR,
+} from "@failures/mfe/lib/failure-party-roles";
 import { getPropertyFailure } from "@failures/mfe/lib/failures-repository";
 import { canEditProperty, canRaisePropertyFailure } from "../../lib/app-data/po-roles";
 import {
   poPropertyDetailPath,
   poPropertyEditPath,
-  poPropertyFailurePath,
   poPropertyPath,
 } from "@platform/app-shared/domain/po-routes";
 import {
@@ -33,6 +36,7 @@ import { canOpenCaseStudyWorkspace } from "../../lib/app-data/viewer-task-access
 import { canManageOperationsTasks } from "../../lib/app-data/operations-task-roles";
 import { formatPropertyDeedDisplay } from "../../lib/app-data/po-intake-data";
 import { usePoRecordQuery, useWorkflowTasksQuery } from "../../query/case-study-queries";
+import { FailureRaiseModal } from "../failures/FailureRaiseModal";
 
 const shellBtn = (variant: "default" | "primary" = "default") =>
   cn(
@@ -62,7 +66,6 @@ export function PoPropertyDetailTopbarActions({
   hideOpenCaseStudy?: boolean;
 }) {
   const router = useRouter();
-  const { showToast } = useToast();
   const { role } = useAppAccess();
   const showEdit = canEditProperty(role);
   const showFailure = canRaisePropertyFailure(role);
@@ -71,6 +74,7 @@ export function PoPropertyDetailTopbarActions({
   const { data: tasks = [] } = useWorkflowTasksQuery();
   const isHero = variant === "hero";
   const btn = shellBtn;
+  const [failureModalOpen, setFailureModalOpen] = useState(false);
 
   const property = useMemo(
     () => record?.properties.find((item) => item.id === propertyId) ?? null,
@@ -86,6 +90,19 @@ export function PoPropertyDetailTopbarActions({
     if (!task) return false;
     return canOpenCaseStudyWorkspace(role, task, tasks);
   }, [task, role, tasks]);
+
+  const canOpenFailureModal = Boolean(
+    showFailure &&
+      property &&
+      !property.isRemoved &&
+      !getPropertyFailure(poNumber.trim(), property.id),
+  );
+
+  const failureRaisedByRole =
+    role === "section-supervisor"
+      ? FAILURE_RAISER_SUPERVISOR
+      : FAILURE_RAISER_SPECIALIST;
+  const failureSpecialist = ROLES[role]?.name ?? "أخصائي";
 
   const partyActions = useMemo((): PartyAction[] => {
     if (!property) return [];
@@ -170,114 +187,45 @@ export function PoPropertyDetailTopbarActions({
   }, [task, tasks, role, isHero, property, poNumber, propertyId]);
 
   const heroMenuItems = useMemo((): RowMoreMenuItem[] => {
-    if (!isHero || !record || !property) return [];
-
-    const go = (action: PartyAction): RowMoreMenuItem => ({
-      id: action.id,
-      label: action.label,
-      onClick: () => {
-        if (action.toast) showToast(action.toast, "info");
-        if (action.href) router.push(action.href);
+    if (!isHero || !canOpenFailureModal) return [];
+    return [
+      {
+        id: "failure",
+        label: "تسجيل تعذر",
+        danger: true,
+        onClick: () => setFailureModalOpen(true),
       },
-    });
-
-    const items: RowMoreMenuItem[] = [];
-
-    if (!hideOpenCaseStudy) {
-      items.push({
-        id: "case-study",
-        label: "فتح دراسة الحالة",
-        onClick: () => {
-          if (showCaseStudyLink && task) {
-            router.push(caseStudyWorkspacePath(task.id));
-            return;
-          }
-          showToast(
-            "فتح دراسة الحالة — متاح بعد إنشاء مهمة دراسة الحالة من التوزيع.",
-            "info",
-          );
-        },
-      });
-    }
-
-    items.push(...partyActions.map(go));
-
-    let firstSecondary = true;
-    const secondary = (item: RowMoreMenuItem): RowMoreMenuItem => {
-      const withSep = { ...item, separatorBefore: firstSecondary };
-      firstSecondary = false;
-      return withSep;
-    };
-
-    if (showEdit) {
-      items.push(
-        secondary({
-          id: "edit",
-          label: "تعديل العقار",
-          onClick: () => router.push(poPropertyEditPath(poNumber, property.id)),
-        }),
-      );
-    }
-
-    items.push(
-      secondary({
-        id: "bourse",
-        label: "استعلام البورصة",
-        onClick: () => router.push("/bourse-inquiry"),
-      }),
-    );
-
-    if (showFailure && !property.isRemoved && !getPropertyFailure(poNumber.trim(), property.id)) {
-      items.push(
-        secondary({
-          id: "failure",
-          label: "تسجيل تعذّر",
-          onClick: () =>
-            router.push(poPropertyFailurePath(poNumber, property.id)),
-        }),
-      );
-    }
-
-    if (canCreateOps) {
-      const deedDisplay =
-        formatPropertyDeedDisplay(property) || property.deedNumber.trim();
-      const createTaskHref = `/operations-tasks?create=1&type=general&scope=transaction&po=${encodeURIComponent(poNumber.trim())}&deed=${encodeURIComponent(deedDisplay)}`;
-      items.push(
-        secondary({
-          id: "create-task",
-          label: "إنشاء مهمة",
-          onClick: () => router.push(createTaskHref),
-        }),
-      );
-    }
-
-    return items;
-  }, [
-    isHero,
-    record,
-    property,
-    hideOpenCaseStudy,
-    showCaseStudyLink,
-    task,
-    partyActions,
-    showEdit,
-    showFailure,
-    canCreateOps,
-    poNumber,
-    router,
-    showToast,
-  ]);
+    ];
+  }, [isHero, canOpenFailureModal]);
 
   if (!record || !property) return null;
+
+  const failureModal = canOpenFailureModal ? (
+    <FailureRaiseModal
+      open={failureModalOpen}
+      onClose={() => setFailureModalOpen(false)}
+      poNumber={poNumber}
+      propertyId={property.id}
+      deedNumber={
+        formatPropertyDeedDisplay(property) || property.deedNumber.trim()
+      }
+      specialist={failureSpecialist}
+      raisedByRole={failureRaisedByRole}
+      onSubmitted={() => setFailureModalOpen(false)}
+    />
+  ) : null;
 
   if (isHero) {
     if (heroMenuItems.length === 0) return null;
     return (
-      <RowMoreMenu
-        items={heroMenuItems}
-        ariaLabel="إجراءات العقار"
-        buttonClassName="border-border-md bg-surface text-text-2"
-      />
+      <>
+        <RowMoreMenu
+          items={heroMenuItems}
+          ariaLabel="إجراءات العقار"
+          buttonClassName="border-border-md bg-surface text-text-2"
+        />
+        {failureModal}
+      </>
     );
   }
 
@@ -343,6 +291,7 @@ export function PoPropertyDetailTopbarActions({
           إنشاء مهمة
         </Link>
       ) : null}
+      {failureModal}
     </div>
   );
 }

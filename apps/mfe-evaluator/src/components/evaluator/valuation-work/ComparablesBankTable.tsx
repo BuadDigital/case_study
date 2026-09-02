@@ -35,8 +35,6 @@ export type ComparablesBankRow = BankDisplayRow;
 export const ComparablesBankTable = memo(function ComparablesBankTable({
   rows,
   subjectSqm,
-  adoptedCount,
-  maxAdopted,
   distanceKm,
   onAdopt,
   onSearch,
@@ -44,8 +42,6 @@ export const ComparablesBankTable = memo(function ComparablesBankTable({
 }: {
   rows: ComparablesBankRow[];
   subjectSqm: number | null;
-  adoptedCount: number;
-  maxAdopted: number;
   distanceKm: Record<string, number>;
   onAdopt: (comparableId: string, adopted: boolean) => void;
   /** Market context only — when absent, show a vacant-land badge instead of the search field. */
@@ -97,9 +93,6 @@ export const ComparablesBankTable = memo(function ComparablesBankTable({
           <h2 className="m-0 text-[17px] font-extrabold text-heading">
             بنك المقارنات
           </h2>
-          <span className="inline-flex items-center rounded-md bg-gold-soft px-2.5 py-[3px] text-[12px] font-bold text-gold-d">
-            {adoptedCount} من {maxAdopted} معتمدة
-          </span>
           <span className="hidden text-[11.5px] text-text-3 md:inline">
             ضمن {NEARBY_RADIUS_KM} كم من موقع العقار — الأقرب أولاً
           </span>

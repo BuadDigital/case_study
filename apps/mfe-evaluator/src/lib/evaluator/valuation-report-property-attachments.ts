@@ -1,17 +1,9 @@
 /** Map property documents ↔ report attachment keys (valuation lists). */
 
 import type { PropertyDetailDocumentEntry } from "@case-study/mfe/lib/app-data/property-detail-documents";
-import {
-  loadSpecialistPrintAttachmentKeys,
-  printKeyForPropertyDocument,
-} from "@case-study/mfe/lib/app-data/valuation-print-attachment-keys";
+import { printKeyForPropertyDocument } from "@case-study/mfe/lib/app-data/valuation-print-attachment-keys";
 
-export {
-  loadSpecialistPrintAttachmentKeys,
-  saveSpecialistPrintAttachmentKeys,
-  printKeyForPropertyDocument,
-  VALUATION_PRINT_KEYS_CHANGED_EVENT,
-} from "@case-study/mfe/lib/app-data/valuation-print-attachment-keys";
+export { printKeyForPropertyDocument } from "@case-study/mfe/lib/app-data/valuation-print-attachment-keys";
 
 export type ValuationPrintAttachmentRow = {
   key: string;
@@ -19,19 +11,23 @@ export type ValuationPrintAttachmentRow = {
   isRequired: boolean;
   docs: PropertyDetailDocumentEntry[];
   available: boolean;
-  specialistSelected: boolean;
+  selected: boolean;
+};
+
+const FALLBACK_LABELS: Record<string, string> = {
+  deed: "صك الملكية",
+  survey: "التقرير المساحي",
+  "zoning-sketch": "كروكي الموقع / التنظيم",
+  "building-permit": "رخصة البناء",
 };
 
 export function buildValuationPrintAttachmentRows(input: {
   catalog: { key: string; name: string; isRequired?: boolean }[];
   documents: PropertyDetailDocumentEntry[];
-  specialistKeys?: string[];
-  propertyId?: string | null;
+  selectedKeys?: string[];
 }): ValuationPrintAttachmentRow[] {
-  const specialistKeys =
-    input.specialistKeys ??
-    loadSpecialistPrintAttachmentKeys(input.propertyId);
-  const specialist = new Set(specialistKeys);
+  const selectedKeys = input.selectedKeys ?? [];
+  const selected = new Set(selectedKeys);
   const byKey = new Map<string, PropertyDetailDocumentEntry[]>();
   for (const doc of input.documents) {
     const key = printKeyForPropertyDocument(doc);
@@ -41,7 +37,16 @@ export function buildValuationPrintAttachmentRows(input: {
     byKey.set(key, list);
   }
 
-  const rows: ValuationPrintAttachmentRow[] = input.catalog.map((row) => {
+  const catalog =
+    input.catalog.length > 0
+      ? input.catalog
+      : Object.keys(FALLBACK_LABELS).map((key) => ({
+          key,
+          name: FALLBACK_LABELS[key] ?? key,
+          isRequired: false,
+        }));
+
+  const rows: ValuationPrintAttachmentRow[] = catalog.map((row) => {
     const docs = byKey.get(row.key) ?? [];
     return {
       key: row.key,
@@ -49,20 +54,20 @@ export function buildValuationPrintAttachmentRows(input: {
       isRequired: Boolean(row.isRequired),
       docs,
       available: docs.length > 0,
-      specialistSelected: specialist.has(row.key),
+      selected: selected.has(row.key),
     };
   });
 
-  for (const key of specialist) {
+  for (const key of selected) {
     if (rows.some((r) => r.key === key)) continue;
     const docs = byKey.get(key) ?? [];
     rows.push({
       key,
-      name: key,
+      name: FALLBACK_LABELS[key] ?? key,
       isRequired: false,
       docs,
       available: docs.length > 0,
-      specialistSelected: true,
+      selected: true,
     });
   }
 
@@ -73,7 +78,5 @@ export function buildValuationPrintAttachmentRows(input: {
 export function defaultPrintAttachmentKeys(
   rows: ValuationPrintAttachmentRow[],
 ): string[] {
-  const specialist = rows.filter((r) => r.specialistSelected).map((r) => r.key);
-  if (specialist.length) return specialist;
   return rows.filter((r) => r.available && r.isRequired).map((r) => r.key);
 }

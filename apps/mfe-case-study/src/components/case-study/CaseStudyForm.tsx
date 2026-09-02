@@ -61,8 +61,6 @@ import { useWorkflowTasksQuery } from "../../query/case-study-queries";
 import { useCaseStudyQuestionCatalogQuery } from "../../query/case-study-question-catalog-queries";
 import { DEFAULT_CASE_STUDY_QUESTION_CATALOG } from "@platform/app-shared/domain/case-study/question-catalog";
 import { EVALUATOR_SUBMISSION_CHANGED_EVENT } from "../../lib/case-study-evaluator-events";
-import { listPropertyComparableLinks } from "@platform/api-client";
-import { workOrdersApiConfig } from "../../lib/work-orders-api-config";
 
 /** Stable fallback — avoid calling emptyCaseStudyInfoRolesConfig() per render (infinite effect loop). */
 const DEFAULT_INFO_ROLES_CONFIG = emptyCaseStudyInfoRolesConfig();
@@ -718,33 +716,6 @@ export function CaseStudyForm({
 
     setSaving(true);
     try {
-    const propertyId = (draft.propertyId || property?.id || "").trim();
-    if (propertyId) {
-      const config = workOrdersApiConfig();
-      if (!config) {
-        showToast(
-          "تعذّر التحقق من المقارنات المربوطة — أعد المحاولة قبل رفع النموذج.",
-          "error",
-        );
-        return;
-      }
-      const links = await listPropertyComparableLinks(config, propertyId);
-      if (!links.ok) {
-        showToast(
-          "تعذّر التحقق من المقارنات المربوطة — أعد المحاولة قبل رفع النموذج.",
-          "error",
-        );
-        return;
-      }
-      if (!links.data.meetsMinimumForAppraisalPrep) {
-        showToast(
-          `لا يمكن رفع النموذج للمقيم قبل ربط ${links.data.minimumRequired} مقارنين على الأقل. افتح تبويب تقييم العقار.`,
-          "error",
-        );
-        return;
-      }
-    }
-
     const { answered, total, pct } = summary;
     const deedNonMatchKeys = sectionQuestions.deed
       .map((_, i) => caseStudyAnswerKey("deed", i))

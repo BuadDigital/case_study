@@ -32,6 +32,7 @@ import type { PartyBillingStatementDto } from "@platform/api-client";
 import { EngFeesSectionTitle } from "./EngFeesHtmlTabs";
 import { VendorInvoicePdfField } from "./VendorInvoicePdfField";
 import { ymd as formatYmd } from "@platform/app-shared/format/date";
+import { opsLetterCard } from "../../lib/app-data/ops-tasks-tw";
 
 function fmtSar(n: number): string {
   return `${Number(n || 0).toLocaleString("en-US")} ر.س`;
@@ -175,28 +176,30 @@ export function PartyOfficeBillingStatementsPanel({
   const pending = isPending && !isFetched;
 
   return (
-    <div className="flex flex-col gap-0">
-      <EngFeesSectionTitle
-        title="كشوف الفوترة الصادرة"
-        sub="يُصدرها المحاسب نهاية الشهر من البنود الجاهزة فقط — مستند داخلي لتحديد نطاق الصرف؛ الفاتورة من البرنامج المحاسبي. للاطلاع ومتابعة الصرف فقط."
-      />
+    <section className={opsLetterCard}>
+      <div className="px-4 pb-4 pt-1 sm:px-[18px]">
+        <EngFeesSectionTitle
+          className="mb-3 mt-3"
+          title="كشوف الفوترة الصادرة"
+          sub="يُصدرها المحاسب نهاية الشهر من البنود الجاهزة فقط — مستند داخلي لتحديد نطاق الصرف؛ الفاتورة من البرنامج المحاسبي. للاطلاع ومتابعة الصرف فقط."
+        />
 
-      <PageToolbar className="mt-0 shrink-0 flex-wrap items-center justify-between gap-2.5 border-b border-border bg-surface-2">
-        <div className="flex min-w-0 flex-1 flex-wrap items-center gap-2.5">
-          <OperationalToolbarSearch
-            type="search"
-            placeholder="رقم الكشف أو رقم صك ضمنه…"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            aria-label="بحث كشوف الفوترة"
-          />
-          <span className="ms-auto shrink-0 rounded-full bg-gold-soft px-3 py-[5px] text-[12px] font-bold text-gold-d">
-            {filtered.length} كشف
-          </span>
-        </div>
-      </PageToolbar>
+        <PageToolbar className="mt-0 shrink-0 flex-wrap items-center justify-between gap-2.5 border-b border-border bg-surface-2">
+          <div className="flex min-w-0 flex-1 flex-wrap items-center gap-2.5">
+            <OperationalToolbarSearch
+              type="search"
+              placeholder="رقم الكشف أو رقم صك ضمنه…"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              aria-label="بحث كشوف الفوترة"
+            />
+            <span className="ms-auto shrink-0 rounded-full bg-gold-soft px-3 py-[5px] text-[12px] font-bold text-gold-d">
+              {filtered.length} كشف
+            </span>
+          </div>
+        </PageToolbar>
 
-      <TableFrame>
+        <TableFrame>
         <Table className="w-full min-w-[820px]" pending={pending}>
           <THead>
             <Tr hoverable={false}>
@@ -458,6 +461,7 @@ export function PartyOfficeBillingStatementsPanel({
           للمالية.
         </div>
       </TableFrame>
-    </div>
+      </div>
+    </section>
   );
 }

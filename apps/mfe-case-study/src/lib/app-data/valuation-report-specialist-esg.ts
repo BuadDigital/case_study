@@ -1,4 +1,4 @@
-/** ESG inputs filled by the case specialist — mirrored read-only to the appraiser. */
+/** Shared ESG constants and types — filled by the appraiser in final review. */
 
 import {
   loadSpecialistReportExtrasBag,
